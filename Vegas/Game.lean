@@ -15,5 +15,6 @@ import Vegas.Game.SourceRequestCorrespondence
 import Vegas.Game.SealedMessages
 import Vegas.Game.SealedRelease
 import Vegas.Game.SealedTimeoutApplication
+import Vegas.Game.Windowed
 
 /-! # Games, strategy representations, and request implementations -/

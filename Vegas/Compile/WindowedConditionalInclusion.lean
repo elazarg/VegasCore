@@ -182,7 +182,9 @@ theorem conditional_ordinary_inclusion
     subst handle
     have haccepted := (code.binding?_opaque_iff execution.native.application.base.memory
       (owner, state.fieldOf spec.binding)).1 hbinding
-    exact checkpoint.conditional_legal_choice_frozen hother haccepted chosen.1 hlegal value hvalue
+    exact checkpoint.conditional_legal_choice_frozen (by
+      simp only [windowedPlayers, Function.update_of_ne hother])
+      haccepted chosen.1 hlegal value hvalue
   obtain ⟨activation, hactivation, hkey, _⟩ :=
     checkpoint.active_origin_clock (.conditional code) rest hhead
   have hactive : runtime.image.activeAddress? polled.native.application.base.memory =

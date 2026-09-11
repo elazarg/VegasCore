@@ -248,10 +248,33 @@ entire available runtime history. The persistent-disclosure regression covers
 all five nonterminal instruction kinds in one six-block program, with arbitrary
 source profiles and pure raw commands.
 
-The theorem requires the structural plan, initial public reads, binding origins,
+The pure theorem requires the structural plan, initial public reads, binding origins,
 source-certified fallbacks, a duplicate-free roster containing every decision
 owner, and an unchanged relay. Its fixed service does not deliver pending
-packets to player inboxes. Randomized deviations still require applying the
-finite-mixture reduction to this whole-program law; strategic exports and
-comparisons admitting in-flight delivery or adaptive scheduling remain separate
-obligations. The existing request/serialization theorem route is not superseded.
+packets to player inboxes. `ApplicationPlan.windowed_deviation_source_public_mixture`
+applies finite predrawing to this law: every randomized focal raw policy is
+matched by a finite mixture of legal source replacements, with all opponents
+unchanged and equality of the completion bit and executable public readout.
+`WFProgram.windowedGame` is the actual native policy game; its strategies are
+unrestricted randomized raw-command policies, not emitted player clients.
+`WFProgram.windowed_deviation_mixture` exports the law at that game boundary,
+and `WFProgram.windowed_guarantee` transfers any real-valued lower bound on the
+public observation from all source replacements to all native replacements.
+
+These theorems run the same initialized block environment through the fixed
+repetition of block invocations. They do not cover in-flight inbox delivery or
+adaptive scheduling. The existing windowed honest law instead uses a lifted
+serial service, so an honest-profile law for this block service remains necessary
+before Nash or epsilon-Nash preservation can be derived. The existing
+request/serialization theorem route is not superseded.
+
+The honest-law proof needs cache freshness for every player, not only the
+opponents of a distinguished replacement. `WindowedCheckpoint.block_reference_caches`
+preserves `RemainingCachesEmpty` across a complete reference block. The
+first-poll laws for public and conditional choice, and the registered-binding
+projection, take explicit reference-policy equality; the first-poll laws also
+take head-cache freshness. Binding readiness has the same explicit interface.
+These premises allow an honest owner at the distinguished coordinate without
+adding another player or excluding single-player games. Combining the owner
+kernels and their successor couplings into the honest-profile law remains a
+separate proof obligation.

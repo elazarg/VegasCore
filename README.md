@@ -69,6 +69,16 @@ finishes, and its public-terminal distribution is exactly the independent
 written-order source distribution projected to public bindings. This covers all
 application-plan constructors, including repeated conditional publication.
 It is a reference-service forward law, not an arbitrary-deviation simulation.
+For the separate fixed windowed block service, every randomized raw unilateral
+strategy is matched, against unchanged opponents, by a finite mixture of legal
+source deviations with the same completion flag and executable public readout.
+The induced native game therefore preserves any public-outcome lower bound that
+holds against every source replacement. Exact eligibility includes public
+initial reads, binding origins, certified fallbacks, a duplicate-free roster
+covering all owners, and a distinct unchanged relay. This service has neither
+pending-packet inbox delivery nor adaptive scheduling. Its honest law for the
+same initialized block environment and repeated block schedule is still
+missing, so no Nash or epsilon-Nash preservation follows here.
 Chance instructions retain the source distribution, require public dependencies,
 and cannot reroll after completion. They assume ideal unbiased entropy; the
 environment selects the invocation time, not the sampled value. Sealed-input

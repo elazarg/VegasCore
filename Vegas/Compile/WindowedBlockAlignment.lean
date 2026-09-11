@@ -132,4 +132,37 @@ theorem runPolicies_repeatedBlocks_history_alignment
     rw [Nat.mul_comm count (roster.length + 2)]
     exact Nat.mul_div_right count hpositive
 
+/-- After the ordinary polls, the remaining player invocations occupy only
+relay slots. This depends on the schedule and history counts, not on policies. -/
+theorem runPolicies_polls_relay_slots
+    (runtime : WindowedApplication P L) (roster : List P) (hroster : roster.Nodup)
+    (players : P → runtime.application.PlayerPolicy)
+    (environment : runtime.application.EnvironmentPolicy) (blockIndex : Nat)
+    (execution polled : runtime.application.PolicyExecution)
+    (hstart : ∀ actor ∈ roster, (execution.principalHistory actor).length = 3 * blockIndex)
+    (hpolled : polled ∈ (runtime.application.runPolicies players environment
+      (roster.flatMap fun actor => [Invocation.player actor, .player actor]) execution).support) :
+    ∀ actor index, (polled.principalHistory actor).length ≤ index →
+      index < (polled.principalHistory actor).length +
+        ([Invocation.environment, .environment] ++
+          roster.flatMap fun actor => [Invocation.player actor, .environment]).countP
+            (fun call : @Invocation P => match call with
+              | .player who => decide (who = actor)
+              | .environment => false) → index % 3 = 2 := by
+  intro actor index hlo hhi
+  have hcount := relayInvocations_player_count roster hroster actor
+  simp only [List.countP_append, List.countP_cons, List.countP_nil, Bool.false_eq_true,
+    ↓reduceIte, Nat.zero_add, hcount] at hhi
+  by_cases hmem : actor ∈ roster
+  · simp only [hmem, ↓reduceIte] at hhi
+    have hlength := runtime.application.runPolicies_principalHistory_length actor players
+      environment _ execution polled hpolled
+    have hlength' := hlength.trans
+      (congrArg (fun count => (execution.principalHistory actor).length + count)
+        (ordinaryPolls_player_count roster hroster actor))
+    simp only [if_pos hmem, hstart actor hmem] at hlength'
+    omega
+  · simp only [hmem, ↓reduceIte, Nat.add_zero] at hhi
+    omega
+
 end Vegas.WindowedApplication

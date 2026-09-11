@@ -601,9 +601,24 @@ cases against the original `denoteSource` gives
 program's canonical initialization and equates the complete native
 completion/public-output law with the original source evaluator under the
 extracted focal policy. Its persistent-disclosure regression exercises all
-instruction kinds with an arbitrary pure raw command policy. Applying the
-finite-mixture reduction for randomized deviations and exporting the strategic
-consequences remain to be done; the request/serialization path is not superseded.
+instruction kinds with an arbitrary pure raw command policy.
+`ApplicationPlan.windowed_deviation_source_public_mixture` applies finite
+predrawing to obtain the same joint law for arbitrary randomized replacements,
+as a finite mixture of legal source deviations. `WFProgram.windowedGame`
+retains the native runner and unrestricted raw policies, and
+`WFProgram.windowed_guarantee` transports every source lower bound on the public
+result. The service does not deliver pending packets to player inboxes.
+
+Equilibrium preservation additionally needs the honest-profile law under this
+same block service. The serial-service honest law is not that premise.
+Honest execution must retain `RemainingCachesEmpty` for every player, including
+the distinguished coordinate exempted by the unilateral-deviation invariant.
+`WindowedCheckpoint.block_reference_caches` preserves this stronger invariant
+through complete blocks. Owner readiness and registration provenance take
+explicit reference-policy equality, and readiness also uses head-cache
+freshness. The remaining honest-law induction must combine those facts with
+the fixed-draw block laws for every owner. The request/serialization path is
+not superseded.
 
 The information and law theorems must require the fixed polling roster to
 include every emitted decision owner. A certified fallback can resolve an

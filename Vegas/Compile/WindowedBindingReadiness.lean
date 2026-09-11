@@ -75,6 +75,51 @@ theorem binding_dispatch
   simp only [ApplicationPlan.liftProfileIn, hdone, Bool.false_eq_true, ↓reduceIte]
   rfl
 
+/-- The next binding slot has no prior private registration whenever its
+current instruction cache is empty. -/
+theorem binding_preparation_empty_of_cacheEmpty
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
+      profile current execution)
+    (hcaches :
+      let runtime := root.windowed deadlineOf binding choice windowOf
+      let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
+        .here guard tail
+      let code := site.bindingCode fresh state (site.compiledField fresh state)
+      (.bind code : ApplicationInstruction P L).CacheEmpty (root.image deadlineOf)
+        (runtime.eraseExecution execution)) :
+    execution.native.application.base.prepared.lookup (owner, state.nextField) = none := by
+  let runtime := root.windowed deadlineOf binding choice windowOf
+  let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
+    .here guard tail
+  let code := site.bindingCode fresh state (site.compiledField fresh state)
+  have hconsistent := checkpoint.registrationConsistent owner state.nextField
+  have hcached := (runtime.registrationCache_erasePlayerEntry (root.image deadlineOf)
+    state.nextField (execution.principalHistory owner)).trans hcaches.1
+  have hprojection := runtime.registrationCache_erasePlayerEntry runtime.image
+    state.nextField (execution.principalHistory owner)
+  exact hconsistent.symm.trans (hprojection.symm.trans hcached)
+
+/-- An unchanged owner supplies an empty cache certificate for the binding at
+the current head. -/
+theorem binding_head_cacheEmpty
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
+      profile current execution)
+    (hother : owner ≠ focal) :
+    let runtime := root.windowed deadlineOf binding choice windowOf
+    let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
+      .here guard tail
+    let code := site.bindingCode fresh state (site.compiledField fresh state)
+    (.bind code : ApplicationInstruction P L).CacheEmpty (root.image deadlineOf)
+      (runtime.eraseExecution execution) := by
+  intro runtime site code
+  have hhead : (ApplicationPlan.binding (newName := newName) (fresh := fresh)
+      unrestricted nextPlan).instructions deadlineOf = .bind code ::
+        nextPlan.instructions deadlineOf := rfl
+  exact checkpoint.head_cacheEmpty (.bind code) _ hhead
+    (fun heq => hother (Option.some.inj heq))
+
 /-- An unchanged owner's next binding slot has no prior private registration.
 Freshness follows from actual history and write-once storage consistency,
 not from the registration command being able to overwrite a previous value. -/
@@ -83,35 +128,31 @@ theorem binding_preparation_empty
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hother : owner ≠ focal) :
-    execution.native.application.base.prepared.lookup (owner, state.nextField) = none := by
-  let runtime := root.windowed deadlineOf binding choice windowOf
-  let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
-    .here guard tail
-  let code := site.bindingCode fresh state (site.compiledField fresh state)
-  have hhead : (ApplicationPlan.binding (newName := newName) (fresh := fresh)
-      unrestricted nextPlan).instructions deadlineOf = .bind code ::
-        nextPlan.instructions deadlineOf := rfl
-  have hall := checkpoint.unchangedCaches
-  rw [RemainingUnchangedCachesEmpty, hhead] at hall
-  have hfirst := (List.forall_cons _ _ _).mp hall |>.1
-  rcases hfirst with heq | hcache
-  · exact False.elim (hother (Option.some.inj heq))
-  · have hconsistent := checkpoint.registrationConsistent owner state.nextField
-    have hcached := (runtime.registrationCache_erasePlayerEntry (root.image deadlineOf)
-      state.nextField (execution.principalHistory owner)).trans hcache.1
-    have hprojection := runtime.registrationCache_erasePlayerEntry runtime.image
-      state.nextField (execution.principalHistory owner)
-    exact hconsistent.symm.trans (hprojection.symm.trans hcached)
+    execution.native.application.base.prepared.lookup (owner, state.nextField) = none :=
+  checkpoint.binding_preparation_empty_of_cacheEmpty
+    (checkpoint.binding_head_cacheEmpty hother)
 
-/-- Every local prerequisite of the generated two-poll binding law follows
-from an initialized checkpoint, the unchanged owner's roster position, and
-the root's public-initial-read eligibility. -/
-theorem binding_polls_ready
+/-- Explicit reference-policy and cache facts supply the local prerequisites
+of the two-poll binding law, including at the distinguished coordinate. -/
+theorem binding_polls_ready_of_policy_cacheEmpty
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal) :
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (hpolicy :
+      let runtime := root.windowed deadlineOf binding choice windowOf
+      let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf
+        focal replacement
+      players owner = runtime.blockPlayer owner
+        (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)))
+    (hcaches :
+      let runtime := root.windowed deadlineOf binding choice windowOf
+      let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
+        .here guard tail
+      let code := site.bindingCode fresh state (site.compiledField fresh state)
+      (.bind code : ApplicationInstruction P L).CacheEmpty (root.image deadlineOf)
+        (runtime.eraseExecution execution)) :
     let runtime := root.windowed deadlineOf binding choice windowOf
     let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
       .here guard tail
@@ -121,10 +162,6 @@ theorem binding_polls_ready
   intro runtime site code
   let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf
     focal replacement
-  have hpolicy : players owner = runtime.blockPlayer owner
-      (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) := by
-    simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
-    rfl
   have hhead : (ApplicationPlan.binding (newName := newName) (fresh := fresh)
       unrestricted nextPlan).instructions deadlineOf = .bind code ::
         nextPlan.instructions deadlineOf := rfl
@@ -138,14 +175,6 @@ theorem binding_polls_ready
   have hresolved : code.resolved execution.native.application.base.memory = false := by
     rw [BindingCode.resolved, site.bindingCode_sourceField, hunbound]
     exact hready.2.1
-  have hcaches : (.bind code : ApplicationInstruction P L).CacheEmpty (root.image deadlineOf)
-      (runtime.eraseExecution execution) := by
-    have hall := checkpoint.unchangedCaches
-    rw [RemainingUnchangedCachesEmpty, hhead] at hall
-    have hfirst := (List.forall_cons _ _ _).mp hall |>.1
-    rcases hfirst with heq | hcache
-    · exact False.elim (hother (Option.some.inj heq))
-    · exact hcache
   have hinitialHead := checkpoint.continuation.initialControllerReadsPublic hinitial
   obtain ⟨reads, hreadout, _, hview⟩ :=
     checkpoint.continuation.windowedBlock_ownerReadout?_of_ready_source_view deadlineOf
@@ -169,6 +198,31 @@ theorem binding_polls_ready
   · exact checkpoint.activeAddress?_head (.bind code) _ hhead
   · rw [halign.1]
     omega
+
+/-- Every local prerequisite of the generated two-poll binding law follows
+from an initialized checkpoint, the unchanged owner's roster position, and
+the root's public-initial-read eligibility. -/
+theorem binding_polls_ready
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
+      profile current execution)
+    (hinitial : root.InitialControllerReadsPublic)
+    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal) :
+    let runtime := root.windowed deadlineOf binding choice windowOf
+    let site : SourceDecisionSite owner (.commit name owner guard tail) Γ name ty guard :=
+      .here guard tail
+    let code := site.bindingCode fresh state (site.compiledField fresh state)
+    site.WindowedBindingPollsReady fresh state (root.image deadlineOf) runtime
+      (.bind { code with timeout := binding code }) execution current.current.source := by
+  let runtime := root.windowed deadlineOf binding choice windowOf
+  let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf
+    focal replacement
+  have hpolicy : players owner = runtime.blockPlayer owner
+      (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) := by
+    simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
+    rfl
+  exact checkpoint.binding_polls_ready_of_policy_cacheEmpty hinitial hroster howner hpolicy
+    (checkpoint.binding_head_cacheEmpty hother)
 
 /-- The original compiled reference profile samples the current source
 binding exactly once at an actual checkpoint and then submits its opaque
@@ -345,10 +399,20 @@ end Vegas.ApplicationPlan.WindowedCheckpoint
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.WindowedCheckpoint.binding_dispatch
 
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.binding_preparation_empty_of_cacheEmpty'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.binding_preparation_empty_of_cacheEmpty
+
 /-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.binding_preparation_empty'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.ApplicationPlan.WindowedCheckpoint.binding_preparation_empty
+
+/-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.binding_polls_ready_of_policy_cacheEmpty'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.ApplicationPlan.WindowedCheckpoint.binding_polls_ready_of_policy_cacheEmpty
 
 /-- info: 'Vegas.ApplicationPlan.WindowedCheckpoint.binding_polls_ready' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

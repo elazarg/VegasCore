@@ -101,7 +101,9 @@ private theorem RemainingUnchangedCachesEmpty.windowed_playerStep_idleOrExpiry
       (runtime.playerStep_erased_support image actor execution next command hstep) hempty
       (instruction.idleOrExpiry_rejectsCommand image actor _ hcommand)
 
-private theorem blockPlayer_relay_idleOrExpiry
+/-- A block's relay slot only waits or submits a due expiry, independently
+of the underlying reference policy. -/
+theorem blockPlayer_relay_idleOrExpiry
     (runtime : WindowedApplication P L) (image : ApplicationImage P L) (actor : P)
     (base : runtime.application.PlayerPolicy)
     (history : List runtime.application.PlayerEntry) (view : runtime.application.View)
@@ -348,30 +350,9 @@ theorem WindowedCheckpoint.block_caches
   · intro actor hactor
     simp only [players, windowedPlayers, Function.update_of_ne hactor, windowedReferencePlayers]
     rfl
-  · intro actor index hlo hhi
-    have hcount : ([Invocation.environment, .environment] ++ relays).countP
-        (fun call : @Invocation P =>
-        match call with
-        | .player who => decide (who = actor)
-        | .environment => false) = if actor ∈ roster then 1 else 0 := by
-      simp only [List.countP_append, List.countP_cons, List.countP_nil, Bool.false_eq_true,
-        ↓reduceIte, Nat.zero_add]
-      convert WindowedApplication.relayInvocations_player_count roster hroster actor using 1
-      rfl
-    rw [hcount] at hhi
-    by_cases hmem : actor ∈ roster
-    · simp only [hmem, ↓reduceIte] at hhi
-      have hlength := runtime.application.runPolicies_principalHistory_length actor players
-        (runtime.blockEnvironment roster) polls execution polled hpolled
-      have hpolls := WindowedApplication.ordinaryPolls_player_count roster hroster actor
-      change polls.countP _ = _ at hpolls
-      have hlength' := hlength.trans
-        (congrArg (fun count => (execution.principalHistory actor).length + count) hpolls)
-      simp only [hmem, ↓reduceIte] at hlength'
-      have hstart := (checkpoint.historyAlignment hroster actor hmem).1
-      omega
-    · simp only [hmem, ↓reduceIte, Nat.add_zero] at hhi
-      omega
+  · exact runtime.runPolicies_polls_relay_slots roster hroster players
+      (runtime.blockEnvironment roster) blockIndex execution polled
+      (fun actor hactor => (checkpoint.historyAlignment hroster actor hactor).1) hpolled
   · exact hpolledFresh
   · exact hnext
 

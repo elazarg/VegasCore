@@ -56,15 +56,22 @@ variable {current : CoupledAt
 variable {execution :
   (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
 
-/-- The actual generated owner has a fresh cache and its first ordinary
-command has exactly the encoded source decision law. The source policy may
-randomize and depend on its declared private observations. -/
+/-- A reference owner's first ordinary command has exactly the encoded
+source decision law when its cache is fresh. The owner may occupy the
+distinguished coordinate; its source policy may randomize. -/
 theorem publicChoice_first_poll
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
       focal replacement blockIndex (.publicChoice (newName := newName) (unresolved := unresolved)
         publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal) :
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (hpolicy :
+      root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement owner =
+        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf owner)
+    (hcaches :
+      (.publicChoice ((PublicChoiceSite.atHead name publicName owner guard tail).code fresh state) :
+        ApplicationInstruction P L).CacheEmpty (root.image deadlineOf)
+          ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution)) :
     let runtime := root.windowed deadlineOf binding choice windowOf
     let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
       replacement
@@ -80,21 +87,9 @@ theorem publicChoice_first_poll
   let site := PublicChoiceSite.atHead name publicName owner guard tail
   let code := site.code fresh state
   let instruction : ApplicationInstruction P L := .publicChoice { code with timeout := choice code }
-  have hpolicy : players owner = runtime.blockPlayer owner
-      (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) := by
-    simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
-    rfl
   have hhead : (ApplicationPlan.publicChoice (newName := newName) (unresolved := unresolved)
       (fresh := fresh) publicGuard nextPlan).instructions deadlineOf =
         .publicChoice code :: nextPlan.instructions deadlineOf := rfl
-  have hcaches : (.publicChoice code : ApplicationInstruction P L).CacheEmpty
-      (root.image deadlineOf) (runtime.eraseExecution execution) := by
-    have hall := checkpoint.unchangedCaches
-    rw [RemainingUnchangedCachesEmpty, hhead] at hall
-    have hfirst := (List.forall_cons _ _ _).mp hall |>.1
-    rcases hfirst with heq | hcache
-    · exact False.elim (hother (Option.some.inj heq))
-    · exact hcache
   have hcache : (encoding.submission runtime.application).cachedValue runtime.application
       (execution.principalHistory owner) = none :=
     (runtime.cachedValue_erasePlayerEntry (root.image deadlineOf) encoding
@@ -146,7 +141,6 @@ theorem publicChoice_polls_source_law_of_input_eq
           (runtime.application.playerStep owner middle (.submit (encoding.encode chosen.1))).bind
             fun submitted => runtime.application.playerStep owner submitted .wait := by
   intro runtime players encoding
-  obtain ⟨hcache, hfirst⟩ := checkpoint.publicChoice_first_poll hinitial hroster howner hother
   have hhistory : middle.principalHistory owner = execution.principalHistory owner :=
     congrArg Prod.fst hinput
   have hview : State.observe runtime.application middle.native owner =
@@ -171,6 +165,9 @@ theorem publicChoice_polls_source_law_of_input_eq
       hindexOriginal, Option.map_some, ApplicationInstruction.withBindingTimeouts,
       ApplicationInstruction.withChoiceTimeouts, instruction]
   have halign := checkpoint.historyAlignment hroster owner howner
+  obtain ⟨hcache, hfirst⟩ := checkpoint.publicChoice_first_poll hinitial hroster howner hpolicy
+    (checkpoint.head_cacheEmpty (.publicChoice code) _ hhead
+      (fun heq => hother (Option.some.inj heq)))
   change players owner (execution.principalHistory owner)
       (State.observe runtime.application execution.native owner) =
     (profile owner (.here guard (.reveal publicName owner name .here tail))

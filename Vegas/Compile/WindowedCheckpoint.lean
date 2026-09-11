@@ -140,6 +140,19 @@ variable {current : CoupledAt (compileCore prog fresh state).graph state}
 variable {execution :
   (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
 
+/-- The head cache is fresh when its submitter is not the replaced player.
+The instruction may be any emitted application instruction. -/
+theorem head_cacheEmpty (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding
+    choice windowOf roster who replacement blockIndex plan profile current execution)
+    (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
+    (hhead : plan.instructions deadlineOf = instruction :: rest)
+    (hother : instruction.submitter ≠ some who) :
+    instruction.CacheEmpty (root.image deadlineOf)
+      ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution) := by
+  have hall := checkpoint.unchangedCaches
+  rw [RemainingUnchangedCachesEmpty, hhead] at hall
+  exact ((List.forall_cons _ _ _).mp hall |>.1).resolve_left hother
+
 /-- The source continuation occupies exactly the unexecuted instruction
 suffix. Block coordinates count application instructions, not graph nodes. -/
 theorem instructions_suffix (checkpoint : WindowedCheckpoint root rootProfile deadlineOf
@@ -323,13 +336,16 @@ theorem registrationConsistent
     (root.windowedInitialExecution deadlineOf binding choice windowOf) execution
     (by intro owner slot; rfl) checkpoint.reached
 
-/-- The unchanged owner's accepted snapshots retain their actual typed
-registration provenance, even when another player uses an arbitrary raw policy.
-The source suffix uses the same compiled graph as the original program. -/
+/-- An owner using its reference policy retains typed registration provenance.
+The condition applies equally to an unchanged opponent and to a reference
+replacement at the distinguished coordinate. -/
 theorem registeredBindings
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
       who replacement blockIndex plan profile current execution)
-    (owner : P) (hother : owner ≠ who) :
+    (owner : P)
+    (hpolicy :
+      root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement owner =
+        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf owner) :
     let runtime := root.windowed deadlineOf binding choice windowOf
     runtime.image.RegisteredBindings owner
       (fun slot typed => ∃ fieldSpec : FieldSpec P L,
@@ -341,10 +357,6 @@ theorem registeredBindings
   intro runtime
   let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf who
     replacement
-  have hpolicy : players owner = runtime.blockPlayer owner
-      (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) := by
-    simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
-    rfl
   have hbindings := root.windowedBlock_registeredBindings deadlineOf binding choice windowOf
     rootProfile owner players hpolicy (runtime.blockEnvironment roster)
     (List.replicate blockIndex (WindowedApplication.blockInvocations roster)).flatten

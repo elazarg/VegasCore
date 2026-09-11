@@ -83,17 +83,25 @@ theorem conditional_binding_disposition
     ((horigins.withBindingTimeouts binding).withChoiceTimeouts choice)
     (List.mem_of_getElem? hindex)
 
-/-- An unchanged conditional owner's first ordinary poll has a fresh cache
-and exactly its source decision law, encoded for the actual accepted disposition.
-All readiness, information readout, and controller-selection obligations are
-derived from the initialized checkpoint and the existing head constructor. -/
+/-- A reference owner's first conditional poll has the source decision law,
+encoded for the actual accepted disposition. Explicit cache freshness also
+permits the owner to occupy the distinguished coordinate. -/
 theorem conditional_first_poll
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
       focal replacement blockIndex plan profile current execution)
     (head : ConditionalHead spec plan)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
-    (hroster : roster.Nodup) (howner : owner ∈ roster) (hother : owner ≠ focal)
+    (hroster : roster.Nodup) (howner : owner ∈ roster)
+    (hpolicy :
+      root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement owner =
+        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf owner)
+    (hcaches :
+      let site := ConditionalPublicationSite.atHead name publicName owner guard tail spec
+      let code := site.code fresh state (site.sourceField fresh state)
+        (deadlineOf (site.choice.publicationNode fresh state))
+      (.conditional code : ApplicationInstruction P L).CacheEmpty (root.image deadlineOf)
+        ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution))
     (disposition : BindingDisposition (CommitmentHandle P Nat) (L.Val spec.secretTy))
     (hbinding : let site := ConditionalPublicationSite.atHead name publicName owner guard tail spec
       (site.code fresh state (site.sourceField fresh state)
@@ -119,19 +127,7 @@ theorem conditional_first_poll
   obtain ⟨actual, hactual, hcanonical⟩ := checkpoint.conditional_binding_disposition head horigins
   have heq : actual = disposition := Option.some.inj (hactual.symm.trans hbinding)
   subst actual
-  have hpolicy : players owner = runtime.blockPlayer owner
-      (runtime.liftPlayerPolicy (root.liftProfile deadlineOf rootProfile owner)) := by
-    simp only [players, windowedPlayers, Function.update_of_ne hother, windowedReferencePlayers]
-    rfl
   obtain ⟨rest, hhead⟩ := head.instructions deadlineOf
-  have hcaches : (.conditional code : ApplicationInstruction P L).CacheEmpty
-      (root.image deadlineOf) (runtime.eraseExecution execution) := by
-    have hall := checkpoint.unchangedCaches
-    rw [RemainingUnchangedCachesEmpty, hhead] at hall
-    have hfirst := (List.forall_cons _ _ _).mp hall |>.1
-    rcases hfirst with heq | hcache
-    · exact False.elim (hother (Option.some.inj heq))
-    · exact hcache
   have hcacheOriginal : (encoding.submission (root.image deadlineOf).application).cachedValue
       (root.image deadlineOf).application
       ((execution.principalHistory owner).map runtime.erasePlayerEntry) = none := by
@@ -199,8 +195,6 @@ theorem conditional_polls_source_law_of_input_eq
           (runtime.application.playerStep owner middle (.submit (encoding.encode chosen.1))).bind
             fun submitted => runtime.application.playerStep owner submitted .wait := by
   intro runtime players site encoding
-  obtain ⟨hcache, hfirst⟩ := checkpoint.conditional_first_poll head hinitial horigins hroster
-    howner hother disposition hbinding
   have hhistory : middle.principalHistory owner = execution.principalHistory owner :=
     congrArg Prod.fst hinput
   have hview : State.observe runtime.application middle.native owner =
@@ -215,6 +209,9 @@ theorem conditional_polls_source_law_of_input_eq
   let code := site.code fresh state (site.sourceField fresh state)
     (deadlineOf (site.choice.publicationNode fresh state))
   obtain ⟨rest, hhead⟩ := head.instructions deadlineOf
+  obtain ⟨hcache, hfirst⟩ := checkpoint.conditional_first_poll head hinitial horigins hroster
+    howner hpolicy (checkpoint.head_cacheEmpty (.conditional code) rest hhead
+      (fun heq => hother (Option.some.inj heq))) disposition hbinding
   have hindexOriginal := checkpoint.instruction_at (.conditional code) rest hhead
   have hindex : runtime.image.instructions[blockIndex]? = some (.conditional code) := by
     simp only [runtime, windowed, ApplicationImage.withChoiceTimeouts,
@@ -304,13 +301,15 @@ theorem conditional_polls_source_law_after_others
   exact checkpoint.conditional_polls_source_law_of_input_eq head hinitial horigins hroster
     howner hother disposition hbinding environment middle hrefines hinput
 
-/-- A legal successful choice of the unchanged owner opens the exact frozen
+/-- A legal successful choice of a reference owner opens the exact frozen
 source binding. Snapshot equality follows from real registration provenance,
 not from an extra source-to-runtime invariant supplied by the caller. -/
 theorem conditional_legal_choice_frozen
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
       focal replacement blockIndex plan profile current execution)
-    (hother : owner ≠ focal)
+    (hpolicy :
+      root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement owner =
+        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf owner)
     (haccepted : execution.native.application.base.memory.accepted (state.fieldOf spec.binding) =
       some (.opaque (owner, state.fieldOf spec.binding)))
     (chosen : L.Val ty)
@@ -324,7 +323,7 @@ theorem conditional_legal_choice_frozen
       show (root.windowed deadlineOf binding choice windowOf).image.application.PlayerEntry from
         (root.windowed deadlineOf binding choice windowOf).erasePlayerEntry entry)
     execution.native.application.base checkpoint.refines
-    (checkpoint.registeredBindings owner hother)
+    (checkpoint.registeredBindings owner hpolicy)
     haccepted chosen hlegal
 
 end Vegas.ApplicationPlan.WindowedCheckpoint

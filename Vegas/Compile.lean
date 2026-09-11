@@ -171,6 +171,7 @@ import Vegas.Compile.WindowedBindingLocality
 import Vegas.Compile.WindowedBindingReadiness
 import Vegas.Compile.WindowedSampleCaches
 import Vegas.Compile.WindowedBlockCaches
+import Vegas.Compile.WindowedReferenceCaches
 import Vegas.Compile.WindowedSampleCheckpoint
 import Vegas.Compile.WindowedSamplePrivacy
 import Vegas.Compile.WindowedForeignProvenance
@@ -200,6 +201,7 @@ import Vegas.Compile.WindowedFocalBindingLaw
 import Vegas.Compile.WindowedFocalPublicLaw
 import Vegas.Compile.WindowedConditionalContinuation
 import Vegas.Compile.WindowedDeviationLaw
+import Vegas.Compile.WindowedMixedDeviation
 import Vegas.Compile.WindowedConditionalLaw
 import Vegas.Compile.WindowedBindingOwner
 import Vegas.Compile.WindowedPublicChoiceOwner
@@ -258,6 +260,10 @@ decision kernels and a total source policy assembled along the original syntax.
 Every actual focal source edge selects its recorded action through this root
 policy. Exact block laws compose into the original source evaluator's joint
 completion/public-output law with only the focal source policy replaced.
-Randomized deviation mixtures, strategic exports, and comparisons admitting
-pending-message delivery or adaptive scheduling remain separate obligations.
+Predrawing finite executions extends this law to arbitrary randomized raw
+replacements as finite mixtures of source deviations. The native operational
+game consequently transports public-outcome bounds independently of the
+deviator's preferences. The honest-profile law for this same block service,
+its equilibrium consequences, and comparisons admitting pending-message
+delivery or adaptive scheduling remain separate obligations.
 -/

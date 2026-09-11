@@ -52,15 +52,21 @@ original source profile throughout the shared policy runner; it does not
 simulate arbitrary public-message deviations. The mixed-feature regression is
 `VegasTests/GeneratedApplicationSourceLaw.lean`, and the paper-facing statement
 is `Paper.Source.public_application_reference_law` in the `Vegas` namespace.
-`Vegas/Compile/WindowedDeviationLaw.lean` proves a whole-program pure-deviation
-law for the fixed windowed block service. An arbitrary pure, history-dependent
-raw command policy has exactly the completion/public-terminal law of one legal
-source deviation against unchanged opponents. Source-certified fallbacks and
-an unchanged relay ensure completion; the roster must include every decision
-owner. This service does not deliver pending packets to player inboxes.
-Randomized deviation mixtures and strategic exports for this runtime remain
-unproved. The mixed-feature regression is `VegasTests/WindowedDeviationLaw.lean`;
-the paper audit is `Paper.Source.public_application_windowed_pure_deviation_law`.
+`Vegas/Compile/WindowedMixedDeviation.lean` proves a whole-program randomized
+deviation law for the fixed windowed block service. Every finite-support,
+history-dependent raw policy has exactly the joint completion/public-terminal
+law of a finite mixture of legal source deviations against unchanged opponents.
+`Vegas/Game/Windowed.lean` exposes the actual native policy game and transfers
+any lower bound on an executable public-outcome utility from all source
+deviations to every native deviation. It emits no player clients. Eligibility
+requires public initial reads, binding origins, certified fallbacks, a
+duplicate-free roster covering every decision owner, and a distinct unchanged
+relay. The fixed schedule repeatedly invokes each block against the same
+initialized block environment; it has no pending-packet inbox delivery or
+adaptive scheduler. Its honest-profile law is not yet proved for this same
+service, so Nash and epsilon-Nash preservation do not follow. The separate
+request/serialization result is not superseded. The paper audit is
+`Paper.Source.public_application_windowed_deviation_mixture`.
 `ApplicationWithholding` proves that a waiting owner prevents completion at
 generated binding and fallback-free ordinary-choice sites under every service policy;
 `ConditionalExpirationSourceCoupling` proves the existing conditional-expiry

@@ -12,7 +12,7 @@ import Vegas.Compile.ApplicationForwardLaw
 import Vegas.Compile.ApplicationTimeoutForwardLaw
 import Vegas.Compile.WindowedSourceSafety
 import Vegas.Compile.WindowedForwardLaw
-import Vegas.Compile.WindowedDeviationLaw
+import Vegas.Game.Windowed
 import Vegas.Compile.PublicChoiceResolution
 import Vegas.Compile.BindingTimeoutCompilation
 import Vegas.Compile.ApplicationWithholding
@@ -244,9 +244,10 @@ section WindowedDeviation
 
 open Vegas.ToEventGraph
 
-/-- The initialized fixed block service simulates any pure unilateral raw
-deviation by one legal source policy, observing completion and public output. -/
-theorem public_application_windowed_pure_deviation_law
+/-- The initialized fixed block service simulates every randomized unilateral
+raw policy by a finite mixture of legal source policies, observing completion
+and the executable public output. -/
+theorem public_application_windowed_deviation_mixture
     {P : Type} [DecidableEq P] {L : IExpr}
     (source : WFProgram P L)
     (plan : ApplicationPlan source.accounted source.core.fresh
@@ -261,15 +262,9 @@ theorem public_application_windowed_pure_deviation_law
     (hroster : roster.Nodup)
     (howners : ∀ instruction ∈ plan.instructions deadlineOf,
       ∀ actor, instruction.submitter = some actor → actor ∈ roster)
-    (command : List (plan.windowed deadlineOf binding choice windowOf).application.PlayerEntry →
-      (plan.windowed deadlineOf binding choice windowOf).application.View →
-        (plan.windowed deadlineOf binding choice windowOf).application.PlayerCommand)
+    (replacement : (plan.windowed deadlineOf binding choice windowOf).application.PlayerPolicy)
     (relay : P) (hrelay : relay ∈ roster) (hrelayOther : relay ≠ focal) :
-    let replacement := fun history view => FinDist.pure (command history view)
-    let sourceReplacement : SourceBehavioralPolicy source.core.prog focal :=
-      plan.extractedSourcePolicy profile deadlineOf binding choice windowOf
-      roster focal replacement (compiledInitialCoupled source.core) hinitial horigins hroster
-      howners command rfl relay hrelay hrelayOther
+    ∃ sourceMixture : FinDist (SourceBehavioralPolicy source.core.prog focal),
     (((plan.windowed deadlineOf binding choice windowOf).application.runPolicies
       (plan.windowedPlayers profile deadlineOf binding choice windowOf focal replacement)
       ((plan.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
@@ -278,17 +273,55 @@ theorem public_application_windowed_pure_deviation_law
       (plan.windowedInitialExecution deadlineOf binding choice windowOf)).map fun out =>
         (out.native.application.base.memory.finished (compile source.core).graph.nodeCount,
           (compile source.core).readPublicTerminal? out.native.application.base.memory)) =
-      (denoteSource source.core.prog
+      sourceMixture.bind fun sourceReplacement =>
+        (denoteSource source.core.prog
+          (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
+            sourceReplacement) source.core.env).map fun terminal =>
+          (true, some (cast (congrArg (VEnv L)
+            (compileCore_terminalCtx_eq_sourceTerminalCtx source.core.prog source.core.fresh
+              (BuildState.fromInitial
+                (initialState source.core.Γ source.core.env source.core.wctx))).symm)
+              terminal).erasePubEnv) := by
+  exact ApplicationPlan.windowed_deviation_source_public_mixture source plan profile deadlineOf
+    binding choice windowOf roster focal hinitial horigins hfallbacks hroster howners replacement
+    relay hrelay hrelayOther
+
+/-- The native windowed game transfers every source lower bound on the public
+result to arbitrary randomized raw-command deviations. -/
+theorem public_application_windowed_game_guarantee
+    {P : Type} [DecidableEq P] {L : IExpr}
+    (source : WFProgram P L)
+    (plan : ApplicationPlan source.accounted source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
+    (profile : SourceBehavioralProfile source.core.prog) (deadlineOf : Nat → Nat)
+    (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
+    (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
+    (windowOf : Nat → Nat) (roster : List P) (focal : P)
+    (hinitial : plan.InitialControllerReadsPublic)
+    (horigins : (plan.image deadlineOf).HasBindingOrigins)
+    (hfallbacks : plan.BlockFallbacks binding choice) (hroster : roster.Nodup)
+    (howners : ∀ instruction ∈ plan.instructions deadlineOf,
+      ∀ actor, instruction.submitter = some actor → actor ∈ roster)
+    (value : (Bool × Option (Env L.Val
+      (erasePubVCtx (compile source.core).terminalCtx))) → ℝ)
+    (bound : ℝ)
+    (hbound : ∀ alternative : SourceBehavioralPolicy source.core.prog focal,
+      bound ≤ ((sourceGameForm source.core.prog source.core.env).play
         (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
-          sourceReplacement) source.core.env).map fun terminal =>
-        (true, some (cast (congrArg (VEnv L)
-          (compileCore_terminalCtx_eq_sourceTerminalCtx source.core.prog source.core.fresh
-            (BuildState.fromInitial
-              (initialState source.core.Γ source.core.env source.core.wctx))).symm)
-            terminal).erasePubEnv) :=
-  ApplicationPlan.windowed_pure_deviation_source_public_law source plan profile deadlineOf
-    binding choice windowOf roster focal hinitial horigins hfallbacks hroster howners
-    command relay hrelay hrelayOther
+          alternative)).expect (fun terminal => value (source.publicResult terminal)))
+    (replacement : (source.windowedGame plan deadlineOf binding choice windowOf roster).sig.Strategy
+      focal)
+    (relay : P) (hrelay : relay ∈ roster) (hrelayOther : relay ≠ focal) :
+    bound ≤ ((source.windowedGame plan deadlineOf binding choice windowOf roster).play
+      (Profile.update
+        (sig := (source.windowedGame plan deadlineOf binding choice windowOf roster).sig)
+        (fun who => source.windowedCompilePolicy plan deadlineOf binding choice windowOf
+          who (profile who)) focal replacement)).expect
+      (fun out => value
+        (source.windowedPublicResult plan deadlineOf binding choice windowOf out)) := by
+  exact source.windowed_guarantee plan deadlineOf binding choice windowOf profile roster focal
+    hinitial horigins hfallbacks hroster howners value bound hbound replacement relay hrelay
+    hrelayOther
 
 end WindowedDeviation
 
@@ -868,10 +901,15 @@ theorem scheduled_request_approximate_nash_iff (source : WFProgram Player L)
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.Source.public_application_windowed_reference_law
 
-/-- info: 'Vegas.Paper.Source.public_application_windowed_pure_deviation_law'
+/-- info: 'Vegas.Paper.Source.public_application_windowed_deviation_mixture'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.Source.public_application_windowed_pure_deviation_law
+#print axioms Vegas.Paper.Source.public_application_windowed_deviation_mixture
+
+/-- info: 'Vegas.Paper.Source.public_application_windowed_game_guarantee'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_windowed_game_guarantee
 
 /-- info: 'Vegas.Paper.Source.public_application_withholding' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
