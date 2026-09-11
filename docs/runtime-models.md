@@ -57,7 +57,10 @@ establish the `PolicyAgreement` invariant after delivery: the paired runs must
 also agree on the delivered pool (or the runtime must provide a hiding
 projection). This is the information-flow condition still needed before a
 whole-prefix deviation simulation can be instantiated for public in-flight
-messages. Source-level quitting does not discharge it.
+messages. Source-level quitting discharges a separate branch only after the
+runtime supplies a support-level quit law; the reusable transfer theorem is
+proved in `GameTheoryExtensions.Core.QuitTransfer`, but that law is not yet
+available for the active delivery service.
 
 Still open are whole-prefix extraction of a pure source deviation, linear
 extension to arbitrary randomized deviations, and the final whole-program

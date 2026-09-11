@@ -62,7 +62,14 @@ giving a recipient different delivery inputs; the `PolicyAgreement` relation
 then fails at its pool component. A delivery-level strategic theorem needs a
 separate hiding/equivalence premise (for example, a cryptographic projection
 that erases payload content), or an explicitly richer source observation. The
-checked delivery coverage theorem does not assume either premise.
+checked delivery coverage theorem does not assume either premise. The generic
+`GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash`
+theorem proves the corresponding mechanism-design step: once a runtime quit
+law is shown to be supported entirely on the source quit, any strict source
+improvement over quit refutes the compiled target equilibrium. The active
+delivery model has not yet established that law; its reaction policy still
+admits commands beyond waiting or quitting, and some pending payloads are
+intentionally visible.
 
 No active theorem establishes general adaptive scheduling equivalence,
 censorship resistance, cryptographic hiding, gas behavior, or EVM execution.
