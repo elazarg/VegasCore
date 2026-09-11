@@ -583,7 +583,7 @@ traffic and private preparation to change. These facts identify the canonical
 resolved source value with the fixed draw. Generic fallback independence is
 false for absent or ill-typed frozen values and is not needed.
 
-The remaining law induction follows `ApplicationPlan`, whose publication
+The checked law induction follows `ApplicationPlan`, whose publication
 constructors consume an adjacent source commit/reveal pair. At each suffix,
 the source profile replaces only the focal policy with the local extracted
 checkpoint family; constructor reduction aligns its continuation with the next
@@ -595,8 +595,15 @@ the point-mass source kernel to this unchanged native law preserves the native
 marginal (`FinDist.bind_const`); it does not assert deterministic native
 execution or canonical focal commands. The fixed-draw couplings handle
 unchanged owners, and the chance coupling handles samples. Composing these
-cases against the original `denoteSource` remains unproved. The finite-mixture
-reduction applies only after the pure-deviator whole-program law is established.
+cases against the original `denoteSource` gives
+`WindowedSourcePrefix.pure_deviation_public_law`.
+`ApplicationPlan.windowed_pure_deviation_source_public_law` starts at a checked
+program's canonical initialization and equates the complete native
+completion/public-output law with the original source evaluator under the
+extracted focal policy. Its persistent-disclosure regression exercises all
+instruction kinds with an arbitrary pure raw command policy. Applying the
+finite-mixture reduction for randomized deviations and exporting the strategic
+consequences remain to be done; the request/serialization path is not superseded.
 
 The information and law theorems must require the fixed polling roster to
 include every emitted decision owner. A certified fallback can resolve an

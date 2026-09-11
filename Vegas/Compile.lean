@@ -195,6 +195,11 @@ import Vegas.Compile.WindowedPolicyContinuation
 import Vegas.Compile.WindowedSourceDecisionCoverage
 import Vegas.Compile.WindowedPublicChoiceLaw
 import Vegas.Compile.WindowedBindingLaw
+import Vegas.Compile.WindowedBlockLaw
+import Vegas.Compile.WindowedFocalBindingLaw
+import Vegas.Compile.WindowedFocalPublicLaw
+import Vegas.Compile.WindowedConditionalContinuation
+import Vegas.Compile.WindowedDeviationLaw
 import Vegas.Compile.WindowedConditionalLaw
 import Vegas.Compile.WindowedBindingOwner
 import Vegas.Compile.WindowedPublicChoiceOwner
@@ -251,6 +256,8 @@ under arbitrary unilateral replacement, with certified fallback and relay condit
 For pure raw replacements, source-view information preservation yields consistent
 decision kernels and a total source policy assembled along the original syntax.
 Every actual focal source edge selects its recorded action through this root
-policy. Unchanged-owner block factorizations retain the exact source draws;
-whole-program deviation-law correspondence remains a separate obligation.
+policy. Exact block laws compose into the original source evaluator's joint
+completion/public-output law with only the focal source policy replaced.
+Randomized deviation mixtures, strategic exports, and comparisons admitting
+pending-message delivery or adaptive scheduling remain separate obligations.
 -/

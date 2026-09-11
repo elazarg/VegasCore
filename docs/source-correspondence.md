@@ -232,9 +232,26 @@ for conditional discharge and copy. Their shared publication lemma identifies
 the final field with the original guarded source draw, using the actual
 binding disposition and the conditional encoding equivalence.
 
-The general public-message deviation law still requires composition of these
-block laws into equality of whole-program outcome distributions against
-unchanged opponents. The extracted focal policy currently
-assumes a pure raw replacement; randomized deviations require applying the
-finite-mixture reduction to the completed pure-deviation law. Support and
-information preservation alone do not give these probability statements.
+`WindowedSourcePrefix.pure_deviation_public_law` composes these block laws
+against the original `denoteSource` evaluator. At every actual suffix prefix,
+the remaining native run has the source law with only the focal policy replaced
+by its extracted checkpoint extension. For focal blocks, action consistency
+identifies one source decision across the native successor distribution; the
+native commands and residual state remain unrestricted. For unchanged owners
+and chance, fixed-draw couplings retain the original stochastic kernels.
+
+`ApplicationPlan.windowed_pure_deviation_source_public_law` instantiates this
+induction at a checked program's canonical initialization. It proves equality
+of the joint completion/public-terminal law, with no successful-run conditioning
+or assumed source-prefix witness. The pure raw replacement can depend on its
+entire available runtime history. The persistent-disclosure regression covers
+all five nonterminal instruction kinds in one six-block program, with arbitrary
+source profiles and pure raw commands.
+
+The theorem requires the structural plan, initial public reads, binding origins,
+source-certified fallbacks, a duplicate-free roster containing every decision
+owner, and an unchanged relay. Its fixed service does not deliver pending
+packets to player inboxes. Randomized deviations still require applying the
+finite-mixture reduction to this whole-program law; strategic exports and
+comparisons admitting in-flight delivery or adaptive scheduling remain separate
+obligations. The existing request/serialization theorem route is not superseded.

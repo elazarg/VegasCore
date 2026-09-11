@@ -12,6 +12,7 @@ import Vegas.Compile.ApplicationForwardLaw
 import Vegas.Compile.ApplicationTimeoutForwardLaw
 import Vegas.Compile.WindowedSourceSafety
 import Vegas.Compile.WindowedForwardLaw
+import Vegas.Compile.WindowedDeviationLaw
 import Vegas.Compile.PublicChoiceResolution
 import Vegas.Compile.BindingTimeoutCompilation
 import Vegas.Compile.ApplicationWithholding
@@ -238,6 +239,58 @@ theorem public_application_windowed_reference_law (source : WFProgram Player L)
             terminal).erasePubEnv) :=
   plan.windowed_service_source_public_law source deadlineOf binding choice windowOf
     profile hinitial horigins
+
+section WindowedDeviation
+
+open Vegas.ToEventGraph
+
+/-- The initialized fixed block service simulates any pure unilateral raw
+deviation by one legal source policy, observing completion and public output. -/
+theorem public_application_windowed_pure_deviation_law
+    {P : Type} [DecidableEq P] {L : IExpr}
+    (source : WFProgram P L)
+    (plan : ApplicationPlan source.accounted source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx)))
+    (profile : SourceBehavioralProfile source.core.prog) (deadlineOf : Nat → Nat)
+    (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
+    (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
+    (windowOf : Nat → Nat) (roster : List P) (focal : P)
+    (hinitial : plan.InitialControllerReadsPublic)
+    (horigins : (plan.image deadlineOf).HasBindingOrigins)
+    (hfallbacks : plan.BlockFallbacks binding choice)
+    (hroster : roster.Nodup)
+    (howners : ∀ instruction ∈ plan.instructions deadlineOf,
+      ∀ actor, instruction.submitter = some actor → actor ∈ roster)
+    (command : List (plan.windowed deadlineOf binding choice windowOf).application.PlayerEntry →
+      (plan.windowed deadlineOf binding choice windowOf).application.View →
+        (plan.windowed deadlineOf binding choice windowOf).application.PlayerCommand)
+    (relay : P) (hrelay : relay ∈ roster) (hrelayOther : relay ≠ focal) :
+    let replacement := fun history view => FinDist.pure (command history view)
+    let sourceReplacement : SourceBehavioralPolicy source.core.prog focal :=
+      plan.extractedSourcePolicy profile deadlineOf binding choice windowOf
+      roster focal replacement (compiledInitialCoupled source.core) hinitial horigins hroster
+      howners command rfl relay hrelay hrelayOther
+    (((plan.windowed deadlineOf binding choice windowOf).application.runPolicies
+      (plan.windowedPlayers profile deadlineOf binding choice windowOf focal replacement)
+      ((plan.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+      (List.replicate (plan.instructions deadlineOf).length
+        (WindowedApplication.blockInvocations roster)).flatten
+      (plan.windowedInitialExecution deadlineOf binding choice windowOf)).map fun out =>
+        (out.native.application.base.memory.finished (compile source.core).graph.nodeCount,
+          (compile source.core).readPublicTerminal? out.native.application.base.memory)) =
+      (denoteSource source.core.prog
+        (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
+          sourceReplacement) source.core.env).map fun terminal =>
+        (true, some (cast (congrArg (VEnv L)
+          (compileCore_terminalCtx_eq_sourceTerminalCtx source.core.prog source.core.fresh
+            (BuildState.fromInitial
+              (initialState source.core.Γ source.core.env source.core.wctx))).symm)
+            terminal).erasePubEnv) :=
+  ApplicationPlan.windowed_pure_deviation_source_public_law source plan profile deadlineOf
+    binding choice windowOf roster focal hinitial horigins hfallbacks hroster howners
+    command relay hrelay hrelayOther
+
+end WindowedDeviation
 
 /-- A missing authenticated submission cannot be supplied by scheduling.
 The generated code's submission requirement is an inspectable static premise. -/
@@ -814,6 +867,11 @@ theorem scheduled_request_approximate_nash_iff (source : WFProgram Player L)
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.Source.public_application_windowed_reference_law
+
+/-- info: 'Vegas.Paper.Source.public_application_windowed_pure_deviation_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.public_application_windowed_pure_deviation_law
 
 /-- info: 'Vegas.Paper.Source.public_application_withholding' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

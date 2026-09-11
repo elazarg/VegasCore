@@ -19,7 +19,7 @@ noncomputable section
 
 namespace Vegas
 
-open GameTheory.Math.Probability
+open GameTheory GameTheory.Math.Probability
 
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
@@ -154,6 +154,115 @@ def ret {Γ : VCtx P L} {payouts : List (P × L.Expr (erasePubVCtx Γ) L.int)} {
   intro Δ x b guard site
   cases site
 
+/-- Updating one source player commutes with passage through a sample. -/
+theorem update_extend_afterSample {Γ : VCtx P L} {sampleName : VarId} {sampleTy : L.Ty}
+    {dist : L.DistExpr (erasePubVCtx Γ) sampleTy}
+    {tail : VegasCore P L ((sampleName, .pub sampleTy) :: Γ)}
+    (profile : SourceBehavioralProfile (.sample sampleName dist tail)) (focal : P)
+    (child : SourcePolicyCheckpoints tail focal) :
+    SourceBehavioralProfile.afterSample
+      (Profile.update (sig := sourceGameSignature (.sample sampleName dist tail)) profile focal
+        (SourcePolicyCheckpoints.extend (sample child) (profile focal))) =
+        Profile.update (sig := sourceGameSignature tail) profile.afterSample focal
+          (SourcePolicyCheckpoints.extend child (profile.afterSample focal)) := by
+  funext who Δ x b innerGuard site visible
+  by_cases hwho : who = focal
+  · subst who
+    simp [SourceBehavioralProfile.afterSample, SourcePolicyCheckpoints.extend,
+      SourcePolicyCheckpoints.sample]
+  · simp [SourceBehavioralProfile.afterSample, Profile.update_of_ne, hwho]
+
+/-- Updating one source player commutes with passage through a reveal. -/
+theorem update_extend_afterReveal {Γ : VCtx P L} {publicName sealedName : VarId}
+    {actor focal : P} {revealTy : L.Ty}
+    {source : VHasVar Γ sealedName (.sealed actor revealTy)}
+    {tail : VegasCore P L ((publicName, .pub revealTy) :: Γ)}
+    (profile : SourceBehavioralProfile (.reveal publicName actor sealedName source tail))
+    (child : SourcePolicyCheckpoints tail focal) :
+    SourceBehavioralProfile.afterReveal
+      (Profile.update (sig := sourceGameSignature
+          (.reveal publicName actor sealedName source tail)) profile focal
+        (SourcePolicyCheckpoints.extend (reveal child) (profile focal))) =
+        Profile.update (sig := sourceGameSignature tail) profile.afterReveal focal
+          (SourcePolicyCheckpoints.extend child (profile.afterReveal focal)) := by
+  funext who Δ x b innerGuard site visible
+  by_cases hwho : who = focal
+  · subst who
+    simp [SourceBehavioralProfile.afterReveal, SourcePolicyCheckpoints.extend,
+      SourcePolicyCheckpoints.reveal]
+  · simp [SourceBehavioralProfile.afterReveal, Profile.update_of_ne, hwho]
+
+/-- The continuation of an owned commitment receives the child checkpoint
+extension of the updated profile. -/
+theorem update_ownedCommit_afterCommit {Γ : VCtx P L} {name : VarId} {focal : P}
+    {ty : L.Ty} {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx focal Γ)) L.bool}
+    {tail : VegasCore P L ((name, .sealed focal ty) :: Γ)}
+    (profile : SourceBehavioralProfile (.commit name focal guard tail))
+    (head : SourceDecisionCheckpoints focal guard)
+    (child : SourcePolicyCheckpoints tail focal) :
+    SourceBehavioralProfile.afterCommit
+      (Profile.update (sig := sourceGameSignature (.commit name focal guard tail)) profile focal
+        (SourcePolicyCheckpoints.extend (ownedCommit head child) (profile focal))) =
+        Profile.update (sig := sourceGameSignature tail) profile.afterCommit focal
+          (SourcePolicyCheckpoints.extend child (profile.afterCommit focal)) := by
+  funext who Δ x b innerGuard site visible
+  by_cases hwho : who = focal
+  · subst who
+    simp [SourceBehavioralProfile.afterCommit, SourcePolicyCheckpoints.extend,
+      SourcePolicyCheckpoints.ownedCommit]
+  · simp [SourceBehavioralProfile.afterCommit, Profile.update_of_ne, hwho]
+
+/-- The continuation of a commitment owned by another player receives the
+child checkpoint extension of the updated focal profile. -/
+theorem update_otherCommit_afterCommit {Γ : VCtx P L} {name : VarId} {actor focal : P}
+    (hne : actor ≠ focal) {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx actor Γ)) L.bool}
+    {tail : VegasCore P L ((name, .sealed actor ty) :: Γ)}
+    (profile : SourceBehavioralProfile (.commit name actor guard tail))
+    (child : SourcePolicyCheckpoints tail focal) :
+    SourceBehavioralProfile.afterCommit
+      (Profile.update (sig := sourceGameSignature (.commit name actor guard tail)) profile focal
+        (SourcePolicyCheckpoints.extend (otherCommit hne child) (profile focal))) =
+        Profile.update (sig := sourceGameSignature tail) profile.afterCommit focal
+          (SourcePolicyCheckpoints.extend child (profile.afterCommit focal)) := by
+  funext who Δ x b innerGuard site visible
+  by_cases hwho : who = focal
+  · subst who
+    simp [SourceBehavioralProfile.afterCommit, SourcePolicyCheckpoints.extend,
+      SourcePolicyCheckpoints.otherCommit]
+  · simp [SourceBehavioralProfile.afterCommit, Profile.update_of_ne, hwho]
+
+/-- At an owned head, the updated profile evaluates to the totalized head
+checkpoint kernel. -/
+theorem update_ownedCommit_here {Γ : VCtx P L} {name : VarId} {focal : P}
+    {ty : L.Ty} {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx focal Γ)) L.bool}
+    {tail : VegasCore P L ((name, .sealed focal ty) :: Γ)}
+    (profile : SourceBehavioralProfile (.commit name focal guard tail))
+    (head : SourceDecisionCheckpoints focal guard)
+    (child : SourcePolicyCheckpoints tail focal)
+    (visible : Env L.Val (eraseVCtx (viewVCtx focal Γ))) :
+    Profile.update (sig := sourceGameSignature (.commit name focal guard tail)) profile focal
+        (SourcePolicyCheckpoints.extend (ownedCommit head child) (profile focal)) focal
+          (.here guard tail) visible =
+      SourceDecisionCheckpoints.extend head (profile focal (.here guard tail)) visible := by
+  simp [SourcePolicyCheckpoints.extend, SourcePolicyCheckpoints.ownedCommit]
+
+/-- Updating a different player leaves the commitment owner's head kernel
+unchanged. -/
+theorem update_otherCommit_here {Γ : VCtx P L} {name : VarId} {actor focal : P}
+    (hne : actor ≠ focal) {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx actor Γ)) L.bool}
+    {tail : VegasCore P L ((name, .sealed actor ty) :: Γ)}
+    (profile : SourceBehavioralProfile (.commit name actor guard tail))
+    (child : SourcePolicyCheckpoints tail focal)
+    (visible : Env L.Val (eraseVCtx (viewVCtx actor Γ))) :
+    Profile.update (sig := sourceGameSignature (.commit name actor guard tail)) profile focal
+        (SourcePolicyCheckpoints.extend (otherCommit hne child) (profile focal)) actor
+          (.here guard tail) visible =
+      profile actor (.here guard tail) visible := by
+  rw [Profile.update_of_ne (sig := sourceGameSignature (.commit name actor guard tail))
+    profile _ hne]
+
 end SourcePolicyCheckpoints
 
 end Vegas
@@ -167,3 +276,23 @@ end Vegas
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourcePolicyCheckpoints.extend_at_checkpoint
+
+/-- info: 'Vegas.SourcePolicyCheckpoints.update_extend_afterSample' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourcePolicyCheckpoints.update_extend_afterSample
+
+/-- info: 'Vegas.SourcePolicyCheckpoints.update_extend_afterReveal' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourcePolicyCheckpoints.update_extend_afterReveal
+
+/-- info: 'Vegas.SourcePolicyCheckpoints.update_ownedCommit_afterCommit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourcePolicyCheckpoints.update_ownedCommit_afterCommit
+
+/-- info: 'Vegas.SourcePolicyCheckpoints.update_otherCommit_afterCommit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourcePolicyCheckpoints.update_otherCommit_afterCommit

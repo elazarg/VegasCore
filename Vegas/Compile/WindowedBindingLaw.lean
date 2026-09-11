@@ -169,7 +169,13 @@ theorem binding_fixed_branch_source_coupling
         WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster focal
           replacement (blockIndex + 1) nextPlan profile.afterCommit sourceNext final ∧
         (root.windowed deadlineOf binding choice windowOf).image.activeAddress?
-          final.native.application.base.memory ≠ some state.nodes.length := by
+          final.native.application.base.memory ≠ some state.nodes.length ∧
+        chosen.1 = BindingCode.resolvedValue ((.here guard tail : SourceDecisionSite owner
+          (.commit name owner guard tail) Γ name ty guard).bindingCode fresh state
+            ((.here guard tail : SourceDecisionSite owner
+              (.commit name owner guard tail) Γ name ty guard).compiledField fresh state))
+          (L.eval fallback.expr current.current.source.erasePubEnv)
+            final.native.application.base := by
   let runtime := root.windowed deadlineOf binding choice windowOf
   let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
     replacement
@@ -265,7 +271,7 @@ theorem binding_fixed_branch_source_coupling
       execution final hroster owner howner hother hfull
   have heq : actual = chosen.1 := hactual.trans hvalue
   rw [heq] at hsource
-  exact ⟨sourceNext, hsource, hstep, hnext, hinactiveFinal⟩
+  exact ⟨sourceNext, hsource, hstep, hnext, hinactiveFinal, hvalue.symm⟩
 
 end Vegas.ApplicationPlan.WindowedCheckpoint
 
