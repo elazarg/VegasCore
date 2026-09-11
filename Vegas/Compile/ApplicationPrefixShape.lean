@@ -217,7 +217,8 @@ theorem profilePoint_after
     {rootProfile : SourceBehavioralProfile rootProg} {deadlineOf : Nat → Nat}
     {binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty)}
     {choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)}
-    {windowOf : Nat → Nat} {roster : List P} {focal : P}
+    {windowOf : Nat → Nat}
+    {service : (root.windowed deadlineOf binding choice windowOf).Service} {focal : P}
     {replacement : (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy}
     {initial : CoupledAt (compileCore rootProg rootFresh rootState).graph rootState}
     {Γ : VCtx P L} {pending : Finset VarId} {prog : VegasCore P L Γ}
@@ -228,7 +229,8 @@ theorem profilePoint_after
     {current : CoupledAt (compileCore prog fresh state).graph state}
     {execution : (root.windowed deadlineOf binding choice
       windowOf).application.PolicyExecution}
-    (derivation : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster
+    (derivation : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      service
       focal replacement initial blockIndex plan profile current execution) :
     ProfilePoint.after blockIndex (.of root rootProfile) = some (.of plan profile) := by
   induction derivation with
@@ -245,7 +247,8 @@ theorem profilePoint_eq
     {rootProfile : SourceBehavioralProfile rootProg} {deadlineOf : Nat → Nat}
     {binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty)}
     {choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)}
-    {windowOf : Nat → Nat} {roster : List P} {focal : P}
+    {windowOf : Nat → Nat}
+    {service : (root.windowed deadlineOf binding choice windowOf).Service} {focal : P}
     {replacement : (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy}
     {initial : CoupledAt (compileCore rootProg rootFresh rootState).graph rootState}
     {leftΓ rightΓ : VCtx P L} {leftPending rightPending : Finset VarId}
@@ -263,9 +266,11 @@ theorem profilePoint_eq
     {rightCurrent : CoupledAt (compileCore rightProg rightFresh rightState).graph rightState}
     {left right : (root.windowed deadlineOf binding choice
       windowOf).application.PolicyExecution}
-    (leftPrefix : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster
+    (leftPrefix : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      service
       focal replacement initial blockIndex leftPlan leftProfile leftCurrent left)
-    (rightPrefix : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster
+    (rightPrefix : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      service
       focal replacement initial blockIndex rightPlan rightProfile rightCurrent right) :
     ProfilePoint.of leftPlan leftProfile = ProfilePoint.of rightPlan rightProfile := by
   exact Option.some.inj

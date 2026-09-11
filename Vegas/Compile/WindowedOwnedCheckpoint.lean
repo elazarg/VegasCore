@@ -47,10 +47,12 @@ focal information agreement. All runtime command forms remain available to
 the pure focal replacement; unchanged policies use their actual root lift.
 The two source environments need not agree on opponents' sealed values. -/
 theorem owned_block_agreement
-    (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex plan profile leftCurrent left)
     (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex plan profile rightCurrent right)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex plan profile rightCurrent right)
     (agreement : WindowedApplication.PolicyAgreement
       (root.windowed deadlineOf binding choice windowOf) focal left right)
     (command :

@@ -37,6 +37,7 @@ variable {binding : (code : BindingCode P L) → Option (PublicFallbackCode L co
 variable {choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)}
 variable {windowOf : Nat → Nat} {roster : List P} {focal owner : P}
 variable {replacement : (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy}
+variable {service : (root.windowed deadlineOf binding choice windowOf).Service}
 variable {blockIndex : Nat} {name publicName : VarId} {ty : L.Ty}
 variable {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx owner Γ)) L.bool}
 variable {tail : VegasCore P L ((publicName, .pub ty) :: (name, .sealed owner ty) :: Γ)}
@@ -58,7 +59,8 @@ variable {execution :
 Opaque dispositions use the generated owner/slot; public defaults remain
 typed source values. This holds even for a deviating conditional owner. -/
 theorem conditional_binding_disposition
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      service
       focal replacement blockIndex plan profile current execution)
     (head : ConditionalHead spec plan)
     (horigins : (root.image deadlineOf).HasBindingOrigins) :
@@ -87,7 +89,8 @@ theorem conditional_binding_disposition
 encoded for the actual accepted disposition. Explicit cache freshness also
 permits the owner to occupy the distinguished coordinate. -/
 theorem conditional_first_poll
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex plan profile current execution)
     (head : ConditionalHead spec plan)
     (hinitial : root.InitialControllerReadsPublic)
@@ -170,7 +173,8 @@ theorem conditional_first_poll
 /-- At unchanged owner input, the ordinary polls draw exactly once from the
 source kernel, submit its disposition-specific packet, and then wait. -/
 theorem conditional_polls_source_law_of_input_eq
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex plan profile current execution)
     (head : ConditionalHead spec plan)
     (hinitial : root.InitialControllerReadsPublic)
@@ -266,7 +270,8 @@ theorem conditional_polls_source_law_of_input_eq
 source draw and its submit-then-wait law. No delivery or inclusion is performed
 in this prefix, but the replacing player's raw polling actions are unrestricted. -/
 theorem conditional_polls_source_law_after_others
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex plan profile current execution)
     (head : ConditionalHead spec plan)
     (hinitial : root.InitialControllerReadsPublic)
@@ -312,11 +317,12 @@ theorem conditional_polls_source_law_after_others
 source binding. Snapshot equality follows from real registration provenance,
 not from an extra source-to-runtime invariant supplied by the caller. -/
 theorem conditional_legal_choice_frozen
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      service
       focal replacement blockIndex plan profile current execution)
     (hpolicy :
-      root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement owner =
-        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf owner)
+      service.players (root.liftProfile deadlineOf rootProfile) focal replacement owner =
+        service.referencePlayers (root.liftProfile deadlineOf rootProfile) owner)
     (haccepted : execution.native.application.base.memory.accepted (state.fieldOf spec.binding) =
       some (.opaque (owner, state.fieldOf spec.binding)))
     (chosen : L.Val ty)

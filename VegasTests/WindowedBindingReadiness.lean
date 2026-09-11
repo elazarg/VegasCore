@@ -53,7 +53,7 @@ theorem source_law (profile : SourceBehavioralProfile source.prog)
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial
     DisclosureAccounting.persistentChecked applicationPlan profile (fun _ => 10)
     (fun code => code.timeout) (fun code => code.timeout) (fun _ => 10)
-    [0, 1] 1 replacement
+    (runtime.blockService [0, 1]) 1 replacement
   exact checkpoint.binding_polls_source_law GeneratedApplicationSourceLaw.initial_reads_public
     (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide)) environment
 
@@ -75,7 +75,7 @@ theorem source_law_after_raw_polls (profile : SourceBehavioralProfile source.pro
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial
     DisclosureAccounting.persistentChecked applicationPlan profile (fun _ => 10)
     (fun code => code.timeout) (fun code => code.timeout) (fun _ => 10)
-    [0, 1] 1 replacement
+    (runtime.blockService [0, 1]) 1 replacement
   exact checkpoint.binding_polls_source_law_after_others
     GeneratedApplicationSourceLaw.initial_reads_public (by decide) (by simp)
     (checkpoint.referenceOwner_of_ne 0 (by decide))
@@ -96,7 +96,7 @@ theorem included_observer_agreement (profile : SourceBehavioralProfile source.pr
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial
     DisclosureAccounting.persistentChecked applicationPlan profile (fun _ => 10)
     (fun code => code.timeout) (fun code => code.timeout) (fun _ => 10)
-    [0, 1] 1 replacement
+    (runtime.blockService [0, 1]) 1 replacement
   have agreement : WindowedApplication.PolicyAgreement runtime 1 initial initial :=
     ⟨⟨ApplicationImage.State.AgreesFor.refl _ _, rfl⟩, rfl, rfl, rfl⟩
   exact checkpoint.binding_inclusion_agreement _ _ checkpoint agreement

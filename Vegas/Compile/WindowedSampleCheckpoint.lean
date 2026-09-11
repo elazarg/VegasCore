@@ -51,7 +51,8 @@ theorem sample_block
     (profile : SourceBehavioralProfile (.sample name dist tail))
     (current : CoupledAt (compileCore (.sample name dist tail) fresh state).graph state)
     (execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       who replacement blockIndex (.sample (fresh := fresh) nextPlan) profile current execution) :
     let runtime := root.windowed deadlineOf binding choice windowOf
     let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf who
@@ -116,7 +117,8 @@ theorem sample_block_support_at_source
     (current : CoupledAt (compileCore (.sample name dist tail) fresh state).graph state)
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       who replacement blockIndex (.sample (fresh := fresh) nextPlan) profile current execution)
     (recorded : CoupledAt
       (compileCore tail fresh.2 (state.addSampleEvent name dist fresh.1).1).graph
@@ -168,7 +170,8 @@ theorem sample_successor
     (profile : SourceBehavioralProfile (.sample name dist tail))
     (current : CoupledAt (compileCore (.sample name dist tail) fresh state).graph state)
     (execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       who replacement blockIndex (.sample (fresh := fresh) nextPlan) profile current execution)
     (hroster : roster.Nodup)
     (next : CoupledAt (compileCore (.sample name dist tail) fresh state).graph
@@ -180,7 +183,8 @@ theorem sample_successor
       (WindowedApplication.blockInvocations roster) execution).support)
     (hrefines : final.native.application.base.Refines next.current.graph.1)
     (hactivation : final.native.application.FreshActivation) :
-    WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster who replacement
+    WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) who replacement
       (blockIndex + 1) nextPlan profile.afterSample next final := by
   let runtime := root.windowed deadlineOf binding choice windowOf
   let code := headSampleCode fresh state
@@ -229,7 +233,8 @@ theorem sample_block_successor
     (current : CoupledAt (compileCore (.sample name dist tail) fresh state).graph state)
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       who replacement blockIndex (.sample (fresh := fresh) nextPlan) profile current execution)
     (hroster : roster.Nodup)
     (hfinal : final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
@@ -241,7 +246,8 @@ theorem sample_block_successor
         (state.addSampleEvent name dist fresh.1).1),
       value ∈ (L.evalDist dist current.current.source.eraseSampleEnv).support ∧
       next.current.source = current.current.source.cons value ∧
-      WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster who replacement
+      WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) who replacement
         (blockIndex + 1) nextPlan profile.afterSample next final ∧
       SmallStep ⟨Γ, current.current.source, .sample name dist tail⟩
         ⟨(name, .pub ty) :: Γ, next.current.source, tail⟩ := by
@@ -268,7 +274,8 @@ theorem sample_bind
     (profile : SourceBehavioralProfile (.sample name dist tail))
     (current : CoupledAt (compileCore (.sample name dist tail) fresh state).graph state)
     (execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       who replacement blockIndex (.sample (fresh := fresh) nextPlan) profile current execution)
     (hroster : roster.Nodup)
     {Ω : Type*}
@@ -276,7 +283,8 @@ theorem sample_bind
       FinDist Ω)
     (sourceAfter : VEnv L ((name, .pub ty) :: Γ) → FinDist Ω)
     (hafter : ∀ next native,
-      WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster who replacement
+      WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) who replacement
         (blockIndex + 1) nextPlan profile.afterSample next native →
         after native = sourceAfter next.current.source) :
     (((root.windowed deadlineOf binding choice windowOf).application.runPolicies

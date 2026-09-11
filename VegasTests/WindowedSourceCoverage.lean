@@ -92,7 +92,7 @@ theorem complete_source_execution
       final.native.application.base.memory.finished 10 = true := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial
     DisclosureAccounting.persistentChecked applicationPlan profile (fun _ => 10)
-    bindingSelector choiceSelector (fun _ => 10) [0, 1] 0 replacement
+    bindingSelector choiceSelector (fun _ => 10) (runtime.blockService [0, 1]) 0 replacement
   exact ApplicationPlan.WindowedSourcePrefix.terminates checkpoint block_fallbacks
     ApplicationBindingOrigins.persistent_image_has_binding_origins (by decide) 1
     (by simp) (by decide) final hfinal
@@ -127,7 +127,7 @@ theorem binding_fixed_draw_source_successor
         final.native.application.base.Refines sourceNext.current.graph.1 := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial
     DisclosureAccounting.persistentChecked applicationPlan profile (fun _ => 10)
-    bindingSelector choiceSelector (fun _ => 10) [1, 0] 1 replacement
+    bindingSelector choiceSelector (fun _ => 10) (runtime.blockService [1, 0]) 1 replacement
   obtain ⟨sourceNext, hsource, _, hnext, _⟩ :=
     checkpoint.binding_fixed_branch_source_coupling _ _ profile bindingFallback 10 rfl
       (compiledInitialCoupled source) initial final

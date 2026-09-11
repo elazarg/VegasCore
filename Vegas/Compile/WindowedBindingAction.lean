@@ -95,10 +95,12 @@ source-prefix information theorem must supply the preceding agreement. Distinct
 source fallback certificates are compared through the single selected compiled
 fallback code, rather than by identifying their source expressions. -/
 theorem binding_block_action_eq
-    (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       owner replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile leftCurrent left)
-    (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       owner replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile rightCurrent right)
     (agreement : WindowedApplication.PolicyAgreement

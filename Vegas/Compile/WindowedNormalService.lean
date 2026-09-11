@@ -38,7 +38,8 @@ theorem blockEnvironment_after_ordinary_polls
     {current : CoupledAt (compileCore prog fresh state).graph state}
     {execution polled :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex plan profile current execution)
     (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
     (hhead : plan.instructions deadlineOf = instruction :: rest)

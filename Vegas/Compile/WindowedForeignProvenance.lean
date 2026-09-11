@@ -462,7 +462,8 @@ theorem foreignKnownCompleted
     {profile : SourceBehavioralProfile prog}
     {current : CoupledAt (compileCore prog fresh state).graph state}
     {execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       who replacement blockIndex plan profile current execution)
     (hroster : roster.Nodup) :
     (root.windowed deadlineOf binding choice windowOf).ForeignKnownCompleted who

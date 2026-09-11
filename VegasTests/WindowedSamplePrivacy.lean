@@ -105,7 +105,7 @@ theorem initial_sample_block_agreement_of_same_draw
         (runtime.blockEnvironment [0, 1])
         (WindowedApplication.blockInvocations [0, 1]) initial).support := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked plan profile deadlineOf
-    noBinding noChoice windowOf [0, 1] 0 (replacement command)
+    noBinding noChoice windowOf (runtime.blockService [0, 1]) 0 (replacement command)
   have agreement : WindowedApplication.PolicyAgreement runtime 0 initial initial :=
     ⟨⟨ApplicationImage.State.AgreesFor.refl _ _, rfl⟩, rfl, rfl, rfl⟩
   apply ApplicationPlan.WindowedCheckpoint.sample_block_agreement_of_same_draw
@@ -145,7 +145,7 @@ theorem initial_sample_block_agreement_at_source
       (WindowedApplication.blockInvocations [0, 1]) initial).support) :
     WindowedApplication.PolicyAgreement runtime 0 finalLeft finalRight := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked plan profile deadlineOf
-    noBinding noChoice windowOf [0, 1] 0 (replacement command)
+    noBinding noChoice windowOf (runtime.blockService [0, 1]) 0 (replacement command)
   have agreement : WindowedApplication.PolicyAgreement runtime 0 initial initial :=
     ⟨⟨ApplicationImage.State.AgreesFor.refl _ _, rfl⟩, rfl, rfl, rfl⟩
   exact ApplicationPlan.WindowedCheckpoint.sample_block_agreement_at_source nextPlan profile

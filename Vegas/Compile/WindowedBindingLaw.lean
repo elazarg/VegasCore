@@ -54,7 +54,8 @@ theorem binding_block_source_factorization
     (profile : SourceBehavioralProfile (.commit name owner guard tail))
     (current : CoupledAt (compileCore (.commit name owner guard tail) fresh state).graph state)
     (execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -128,7 +129,8 @@ theorem binding_fixed_branch_source_coupling
     (current : CoupledAt (compileCore (.commit name owner guard tail) fresh state).graph state)
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -168,7 +170,8 @@ theorem binding_fixed_branch_source_coupling
       sourceNext.current.source = current.current.source.cons chosen.1 ∧
         SmallStep ⟨Γ, current.current.source, .commit name owner guard tail⟩
           ⟨(name, .sealed owner ty) :: Γ, sourceNext.current.source, tail⟩ ∧
-        WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster focal
+        WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
           replacement (blockIndex + 1) nextPlan profile.afterCommit sourceNext final ∧
         (root.windowed deadlineOf binding choice windowOf).image.activeAddress?
           final.native.application.base.memory ≠ some state.nodes.length ∧

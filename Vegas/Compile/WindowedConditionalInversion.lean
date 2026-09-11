@@ -53,7 +53,8 @@ theorem conditional_fixed_branch_publication
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex plan profile current execution)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex plan profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
     (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
@@ -224,7 +225,8 @@ theorem conditional_ordinary_support_result
     (execution polled :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex plan profile current execution)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex plan profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
     (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)
@@ -322,7 +324,8 @@ theorem conditional_block_support_at_source
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex plan profile current execution)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex plan profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
     (hroster : roster.Nodup) (howner : owner ∈ roster) (reference : checkpoint.ReferenceOwner owner)

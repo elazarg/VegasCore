@@ -725,7 +725,8 @@ theorem publicChoice_block_resolution
         fresh state).graph state)
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
@@ -1061,7 +1062,8 @@ theorem publicChoice_block
         fresh state).graph state)
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
@@ -1086,7 +1088,8 @@ theorem publicChoice_block
             .commit name owner guard (.reveal publicName owner name .here tail)⟩
           ⟨(publicName, .pub ty) :: (name, .sealed owner ty) :: Γ,
             sourceNext.current.source, tail⟩ ∧
-        WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster focal
+        WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
           replacement (blockIndex + 1) nextPlan profile.afterCommit.afterReveal
             sourceNext final ∧
         (root.windowed deadlineOf binding choice windowOf).image.activeAddress?

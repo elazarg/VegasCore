@@ -65,7 +65,8 @@ theorem continuation_bind_of_successors
         fresh state).graph state)
     (execution :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex plan profile current execution)
     (nativeAfter :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution → FinDist α)
@@ -85,11 +86,13 @@ theorem continuation_bind_of_successors
             publicName focal .here fresh.2.1).1),
         sourceNext.current.source = (current.current.source.cons value).cons value ∧
         final.native.application.base.Refines sourceNext.current.graph.1 ∧
-        WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+        WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
           replacement initial (blockIndex + 1) nextPlan profile.afterCommit.afterReveal
             sourceNext final)
     (hafter : ∀ sourceNext final,
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement initial (blockIndex + 1) nextPlan profile.afterCommit.afterReveal
           sourceNext final →
       nativeAfter final = sourceAfter sourceNext.current.source) :

@@ -34,6 +34,7 @@ variable {binding : (code : BindingCode P L) → Option (PublicFallbackCode L co
 variable {choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)}
 variable {windowOf : Nat → Nat} {roster : List P} {focal : P}
 variable {replacement : (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy}
+variable {service : (root.windowed deadlineOf binding choice windowOf).Service}
 variable {blockIndex : Nat} {name : VarId} {owner : P} {ty : L.Ty}
 variable {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx owner Γ)) L.bool}
 variable {tail : VegasCore P L ((name, .sealed owner ty) :: Γ)}
@@ -52,7 +53,8 @@ variable {execution :
 checkpoint, for every history supplied to that policy. Completed-prefix
 refinement supplies the dispatch facts; no policy-equality premise is assumed. -/
 theorem binding_dispatch
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      service
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution) :
     let runtime := root.windowed deadlineOf binding choice windowOf
@@ -78,7 +80,8 @@ theorem binding_dispatch
 /-- The next binding slot has no prior private registration whenever its
 current instruction cache is empty. -/
 theorem binding_preparation_empty_of_cacheEmpty
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      service
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hcaches :
@@ -104,7 +107,8 @@ theorem binding_preparation_empty_of_cacheEmpty
 Freshness follows from actual history and write-once storage consistency,
 not from the registration command being able to overwrite a previous value. -/
 theorem binding_preparation_empty
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      service
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (reference : checkpoint.ReferenceOwner owner) :
@@ -115,7 +119,8 @@ theorem binding_preparation_empty
 /-- Explicit reference-policy and cache facts supply the local prerequisites
 of the two-poll binding law, including at the distinguished coordinate. -/
 theorem binding_polls_ready_of_policy_cacheEmpty
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -189,7 +194,8 @@ theorem binding_polls_ready_of_policy_cacheEmpty
 from an initialized checkpoint, the reference owner's roster position, and
 the root's public-initial-read eligibility. -/
 theorem binding_polls_ready
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -214,7 +220,8 @@ theorem binding_polls_ready
 binding exactly once at an actual checkpoint and then submits its opaque
 handle. All cache, readout, and dispatch obligations are derived. -/
 theorem binding_polls_source_law
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -249,7 +256,8 @@ theorem binding_polls_source_law
 /-- The generated two-poll law is unchanged when the owner's actual policy
 input is unchanged. Hidden preparations of other principals need not agree. -/
 theorem binding_polls_source_law_of_input_eq
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -298,7 +306,8 @@ kernel at the owner's two ordinary polls. The earlier raw commands and native
 states remain in the joint law. Environment turns are excluded here because
 delivery or inclusion may change the owner's information. -/
 theorem binding_polls_source_law_after_others
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -339,14 +348,16 @@ all controller prerequisites, exact sampling laws, and selected-message
 freshness are derived from the actual checkpoints. This is a local segment,
 not yet the complete-block or whole-prefix information theorem. -/
 theorem binding_inclusion_agreement
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (rightCurrent :
       CoupledAt (compileCore (.commit name owner guard tail) fresh state).graph state)
     (rightExecution :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile rightCurrent rightExecution)
     (agreement : WindowedApplication.PolicyAgreement

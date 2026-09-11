@@ -848,16 +848,40 @@ The checked local ingredients are:
   resolved public state and records acceptance (`WindowedPendingAdmission`).
 - Equal focal information survives fixed delivery and pure focal reactions,
   with other players waiting over the actual visited history interval
-  (`WindowedReactionPrivacy`).
+  (`WindowedReactionPrivacy`). `WindowedDeliveryPrivacy` connects this comparison
+  to the concrete delivery environment and raw roster reactions, given paired
+  pre-delivery executions with the same selected envelope.
+- The actual delivery-prefix policy executes the selected identifier's fixed
+  recipient deliveries (`WindowedDeliveryPhase`). Its proof permits repeated
+  recipients and derives preservation of application state and packet selection
+  from the native delivery transition.
+- The unchanged owner's selected identifier remains selected after arbitrary
+  reactions. The concrete delivery/reaction/normal-service segment accepts the
+  same admissible envelope and records its accepted public state and receipt
+  (`WindowedDeliveryAdmission.delivery_reaction_normal_accepts`). The theorem
+  derives normal inclusion from the service policy; its premises still require
+  the starting generated request to be admissible.
 
-These are not a whole-program deviation theorem. The service recomputes the
-identifier for ordinary inclusion after reactions. For an unchanged owner,
-connect the preserved request to that actual selection; for a deviating owner,
-allow the new selection to differ. Then extend per-head source/native couplings,
-successor checkpoints, and the full-prefix information comparison to this service.
-Source-readout and owner-sampling lemmas accept the reference source-command law
-and the actual ordinary invocation, rather than a hard-coded three-slot gate;
-the complete source-prefix induction still uses `blockEnvironment`.
+`WindowedApplication.Service` packages the reference-policy lift, environment
+policy, and actual invocation block, with a checked source-command provenance
+condition. Both `WindowedCheckpoint` and `WindowedSourcePrefix` are indexed by
+this service. Their source refinement, source-step tracking, binding provenance,
+and initialized-execution facts apply to both concrete services. The service
+record carries no source outcome law or deviation-simulation assumption.
+
+`WindowedDeliveryReadiness` derives unchanged-owner first-poll source laws at
+actual delivery-service checkpoints for binding, public choice, and both
+conditional forms. The binding law retains the sampled value jointly with an
+arbitrary subsequent native execution. These statements concern source draws
+and their native continuations, not just terminal-state reachability.
+
+The whole-program pending-message deviation theorem remains open. The remaining
+construction must combine these laws with per-head source/native couplings,
+successor delivery checkpoints, and the full-prefix information comparison.
+For a deviating owner, normal service may select a different packet after its
+reaction; that case must remain unrestricted. The current whole-program law
+specializes the shared checkpoint/prefix layer to `blockService`, not
+`deliveryService`.
 
 Extra inbox observations can invalidate the current pointwise source-view
 agreement invariant without refuting finite-mixture deviation simulation.
@@ -866,8 +890,13 @@ a strategic impossibility. Any negative claim must exhibit an actual source
 profile and native deviation whose observed outcome law cannot be matched by
 source deviations. Do not extend source semantics solely to repair that invariant.
 For the fixed delivery service, retain finite predrawing and paired-prefix
-comparison. A randomized or adaptive service requires fixing its independent
-random tape as well and proving that its remaining choices respect the declared
+comparison. Compare public-choice and conditional branches at equal successor
+source views, which contain the accepted public choice. Pending binding payloads
+are fixed opaque owner/slot handles, independent of the private source draw.
+Retain the actual reaction commands, serials, pool, and histories in that
+comparison; no command-postponement or serial-renaming premise is justified by
+the source-view argument alone. A randomized or adaptive service requires fixing
+its independent random tape as well and proving that its remaining choices respect the declared
 information boundary. Predrawing does not itself prove that boundary. Conditional
 source kernels are an alternative proof method if pointwise comparison becomes
 inadequate; neither method permits conditioning an earlier choice on future chance.

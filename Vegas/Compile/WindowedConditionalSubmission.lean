@@ -48,7 +48,8 @@ variable {execution :
 a draw from its actual source kernel. Both opaque commitments and public
 defaults use their disposition-specific encoding. -/
 theorem conditional_ordinary_submission
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex plan profile current execution)
     (head : ConditionalHead spec plan)
     (hinitial : root.InitialControllerReadsPublic)

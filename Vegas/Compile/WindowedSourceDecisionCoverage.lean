@@ -51,7 +51,8 @@ private theorem root_kernel_of_suffix
     {plan : ApplicationPlan accounted fresh state} {profile : SourceBehavioralProfile prog}
     {current : CoupledAt (compileCore prog fresh state).graph state}
     {execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex plan profile current execution)
     {Δ : VCtx P L} {name : VarId} {ty : L.Ty}
     {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx focal Δ)) L.bool}
@@ -92,7 +93,8 @@ theorem BlockSourceStep.exists_focal_local_source_choice
     {sourceNext : CoupledAt (compileCore nextProg nextFresh nextState).graph nextState}
     {execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex plan profile current execution)
     (block : final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
       (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -100,7 +102,8 @@ theorem BlockSourceStep.exists_focal_local_source_choice
       (WindowedApplication.blockInvocations roster) execution).support)
     (source : BlockSourceStep binding final.native.application.base plan profile current
       nextPlan nextProfile sourceNext)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement (blockIndex + 1) nextPlan nextProfile sourceNext final)
     (howner : (plan.instructions deadlineOf).head?.bind ApplicationInstruction.submitter =
       some focal) :
@@ -247,7 +250,8 @@ theorem BlockSourceStep.exists_focal_source_choice
     {sourceNext : CoupledAt (compileCore nextProg nextFresh nextState).graph nextState}
     {execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex plan profile current execution)
     (block : final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
       (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -255,7 +259,8 @@ theorem BlockSourceStep.exists_focal_source_choice
       (WindowedApplication.blockInvocations roster) execution).support)
     (source : BlockSourceStep binding final.native.application.base plan profile current
       nextPlan nextProfile sourceNext)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement (blockIndex + 1) nextPlan nextProfile sourceNext final)
     (howner : (plan.instructions deadlineOf).head?.bind ApplicationInstruction.submitter =
       some focal) :

@@ -12,14 +12,16 @@ import Vegas.Compile.WindowedBlockService
 import Vegas.Compile.WindowedPolicyProjection
 import Vegas.Compile.WindowedSourceSafety
 import Vegas.Compile.WindowedBlockProvenance
+import Vegas.Compile.WindowedService
 import Interaction.MessageApplicationCounters
 
 /-! # Actual windowed source checkpoints
 
 This is a proof certificate over the single emitted windowed interpreter. It
 indexes an actual repeated-block policy prefix by the source suffix which that
-prefix represents. No paired execution or information-equivalence claim is
-stored in the certificate.
+prefix represents. The service parameter supplies the concrete reference-policy
+lift, environment policy, and invocation block. No paired execution,
+information-equivalence, or deviation-simulation claim is stored in it.
 -/
 
 noncomputable section
@@ -98,7 +100,8 @@ structure WindowedCheckpoint
     (deadlineOf : Nat → Nat)
     (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
     (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
-    (windowOf : Nat → Nat) (roster : List P) (who : P)
+    (windowOf : Nat → Nat)
+    (service : (root.windowed deadlineOf binding choice windowOf).Service) (who : P)
     (replacement : (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy)
     (blockIndex : Nat) (plan : ApplicationPlan accounted fresh state)
     (profile : SourceBehavioralProfile prog)
@@ -111,10 +114,10 @@ structure WindowedCheckpoint
   refines : execution.native.application.base.Refines current.current.graph.1
   reached : execution ∈
     ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
-      (root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement)
-      ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+      (service.players (root.liftProfile deadlineOf rootProfile) who replacement)
+      service.environment
       (List.replicate blockIndex
-        (WindowedApplication.blockInvocations roster)).flatten
+        service.invocations).flatten
       (root.windowedInitialExecution deadlineOf binding choice windowOf)).support
   unchangedCaches : RemainingUnchangedCachesEmpty (root.image deadlineOf) deadlineOf
     plan who ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution)
@@ -133,6 +136,7 @@ variable {rootProfile : SourceBehavioralProfile rootProg} {deadlineOf : Nat → 
 variable {binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty)}
 variable {choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)}
 variable {windowOf : Nat → Nat} {roster : List P} {who : P}
+variable {service : (root.windowed deadlineOf binding choice windowOf).Service}
 variable {replacement : (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy}
 variable {blockIndex : Nat} {plan : ApplicationPlan accounted fresh state}
 variable {profile : SourceBehavioralProfile prog}
@@ -144,20 +148,20 @@ variable {execution :
 certificate applies both to an unchanged opponent and to an honest player at
 the distinguished coordinate. -/
 structure ReferenceOwner
-    (_checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (_checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
       who replacement blockIndex plan profile current execution) (owner : P) : Prop where
-  policy : root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement
-    owner = root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf owner
+  policy : service.players (root.liftProfile deadlineOf rootProfile) who replacement
+    owner = service.referencePlayers (root.liftProfile deadlineOf rootProfile) owner
   caches : ∀ instruction ∈ plan.instructions deadlineOf,
     instruction.submitter = some owner → instruction.CacheEmpty (root.image deadlineOf)
       ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution)
 
 /-- Every unchanged owner has the reference policy and fresh owned caches. -/
 theorem referenceOwner_of_ne
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
       who replacement blockIndex plan profile current execution)
     (owner : P) (hother : owner ≠ who) : checkpoint.ReferenceOwner owner := by
-  refine ⟨by simp only [windowedPlayers, Function.update_of_ne hother], ?_⟩
+  refine ⟨by simp only [WindowedApplication.Service.players, Function.update_of_ne hother], ?_⟩
   intro instruction hinstruction howner
   have hcache := List.forall_iff_forall_mem.mp checkpoint.unchangedCaches instruction hinstruction
   exact hcache.resolve_left (fun heq => hother (Option.some.inj (howner.symm.trans heq)))
@@ -165,20 +169,21 @@ theorem referenceOwner_of_ne
 /-- Full reference execution supplies the owner certificate at every player,
 including the distinguished coordinate. -/
 theorem referenceOwner_of_caches
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
       who replacement blockIndex plan profile current execution)
     (hreplacement : replacement =
-      root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf who)
+      service.referencePlayers (root.liftProfile deadlineOf rootProfile) who)
     (hcaches : plan.RemainingCachesEmpty (root.image deadlineOf) deadlineOf
       ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution))
     (owner : P) : checkpoint.ReferenceOwner owner := by
-  refine ⟨by simp only [windowedPlayers, hreplacement, Function.update_eq_self], ?_⟩
+  refine ⟨by
+    simp only [WindowedApplication.Service.players, hreplacement, Function.update_eq_self], ?_⟩
   intro instruction hinstruction _
   exact List.forall_iff_forall_mem.mp hcaches instruction hinstruction
 
 /-- The reference owner's current head cache is fresh. -/
 theorem ReferenceOwner.head_cacheEmpty
-    {checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    {checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
       who replacement blockIndex plan profile current execution}
     {owner : P} (reference : checkpoint.ReferenceOwner owner)
     (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
@@ -191,7 +196,7 @@ theorem ReferenceOwner.head_cacheEmpty
 /-- The head cache is fresh when its submitter is not the replaced player.
 The instruction may be any emitted application instruction. -/
 theorem head_cacheEmpty (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding
-    choice windowOf roster who replacement blockIndex plan profile current execution)
+    choice windowOf service who replacement blockIndex plan profile current execution)
     (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
     (hhead : plan.instructions deadlineOf = instruction :: rest)
     (hother : instruction.submitter ≠ some who) :
@@ -204,7 +209,7 @@ theorem head_cacheEmpty (checkpoint : WindowedCheckpoint root rootProfile deadli
 /-- The source continuation occupies exactly the unexecuted instruction
 suffix. Block coordinates count application instructions, not graph nodes. -/
 theorem instructions_suffix (checkpoint : WindowedCheckpoint root rootProfile deadlineOf
-    binding choice windowOf roster who replacement blockIndex plan profile current execution) :
+    binding choice windowOf service who replacement blockIndex plan profile current execution) :
     ∃ before, before.length = blockIndex ∧
       root.instructions deadlineOf = before ++ plan.instructions deadlineOf := by
   obtain ⟨before, hbefore⟩ := checkpoint.continuation.instructions_suffix deadlineOf
@@ -218,7 +223,7 @@ theorem instructions_suffix (checkpoint : WindowedCheckpoint root rootProfile de
 count. A paired commit/publication occupies one slot even though it lowers
 to two graph nodes. -/
 theorem instruction_at (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding
-    choice windowOf roster who replacement blockIndex plan profile current execution)
+    choice windowOf service who replacement blockIndex plan profile current execution)
     (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
     (hhead : plan.instructions deadlineOf = instruction :: rest) :
     (root.instructions deadlineOf)[blockIndex]? = some instruction := by
@@ -230,7 +235,7 @@ theorem instruction_at (checkpoint : WindowedCheckpoint root rootProfile deadlin
 its actual block length. This is derived from graph refinement, not added to
 the checkpoint as an independent history assumption. -/
 theorem completed_instructions (checkpoint : WindowedCheckpoint root rootProfile deadlineOf
-    binding choice windowOf roster who replacement blockIndex plan profile current execution) :
+    binding choice windowOf service who replacement blockIndex plan profile current execution) :
     ∃ before, before.length = blockIndex ∧
       root.instructions deadlineOf = before ++ plan.instructions deadlineOf ∧
       (∀ instruction ∈ before,
@@ -249,7 +254,7 @@ theorem completed_instructions (checkpoint : WindowedCheckpoint root rootProfile
 /-- Timeout decoration preserves the active source instruction. The current
 address follows from source refinement even under a raw unilateral policy. -/
 theorem activeAddress?_head (checkpoint : WindowedCheckpoint root rootProfile deadlineOf
-    binding choice windowOf roster who replacement blockIndex plan profile current execution)
+    binding choice windowOf service who replacement blockIndex plan profile current execution)
     (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
     (hhead : plan.instructions deadlineOf = instruction :: rest) :
     (root.windowed deadlineOf binding choice windowOf).image.activeAddress?
@@ -261,8 +266,10 @@ theorem activeAddress?_head (checkpoint : WindowedCheckpoint root rootProfile de
 
 /-- The environment's block coordinate follows from actual execution, whether
 or not any particular principal belongs to the polling roster. -/
-theorem environmentHistory_length (checkpoint : WindowedCheckpoint root rootProfile deadlineOf
-    binding choice windowOf roster who replacement blockIndex plan profile current execution) :
+theorem environmentHistory_length
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      who replacement blockIndex plan profile current execution) :
     execution.environmentHistory.length = blockIndex * (roster.length + 2) := by
   have hlength := (root.windowed deadlineOf binding choice windowOf).application
     |>.runPolicies_environmentHistory_length
@@ -278,24 +285,25 @@ theorem environmentHistory_length (checkpoint : WindowedCheckpoint root rootProf
 by a successor checkpoint. Source advancement and cache preservation are
 separate obligations. -/
 theorem reached_after_block (checkpoint : WindowedCheckpoint root rootProfile deadlineOf
-    binding choice windowOf roster who replacement blockIndex plan profile current execution)
+    binding choice windowOf service who replacement blockIndex plan profile current execution)
     (next : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (hnext : next ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
-      (root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement)
-      ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
-      (WindowedApplication.blockInvocations roster) execution).support) :
+      (service.players (root.liftProfile deadlineOf rootProfile) who replacement)
+      service.environment
+      service.invocations execution).support) :
     next ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
-      (root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement)
-      ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
+      (service.players (root.liftProfile deadlineOf rootProfile) who replacement)
+      service.environment
       (List.replicate (blockIndex + 1)
-        (WindowedApplication.blockInvocations roster)).flatten
+        service.invocations).flatten
       (root.windowedInitialExecution deadlineOf binding choice windowOf)).support := by
   rw [List.replicate_succ', List.flatten_append, List.flatten_cons, List.flatten_nil,
     List.append_nil, MessageApplication.runPolicies_append, FinDist.support_bind]
   exact Set.mem_iUnion.mpr ⟨execution, Set.mem_iUnion.mpr ⟨checkpoint.reached, hnext⟩⟩
 
 theorem noDeliveryProvenance
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       who replacement blockIndex plan profile current execution) :
     execution.native.pool.NoDeliveryProvenance := by
   let runtime := root.windowed deadlineOf binding choice windowOf
@@ -307,14 +315,14 @@ theorem noDeliveryProvenance
   · exact checkpoint.reached
 
 theorem serialsBeforeNext
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
       who replacement blockIndex plan profile current execution) :
     execution.native.pool.SerialsBeforeNext := by
   exact (root.windowed deadlineOf binding choice windowOf).application
     |>.runPolicies_initial_serialsBeforeNext _ _ _ _ execution checkpoint.reached
 
 theorem consistent
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
       who replacement blockIndex plan profile current execution) :
     (root.windowed deadlineOf binding choice windowOf).Consistent
       execution.native.application := by
@@ -328,7 +336,7 @@ theorem consistent
 Freshness is an inductive checkpoint invariant; mere monotonicity of the
 public clock would not imply this ordinary-service opportunity. -/
 theorem active_origin_clock
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
       who replacement blockIndex plan profile current execution)
     (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
     (hhead : plan.instructions deadlineOf = instruction :: rest) :
@@ -347,7 +355,7 @@ theorem active_origin_clock
 have their generated owner and slot; timeout defaults remain public defaults.
 This follows from initialized execution and is not an extra checkpoint field. -/
 theorem resolvedBindings
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
       who replacement blockIndex plan profile current execution) :
     (root.windowed deadlineOf binding choice windowOf).image.ResolvedBindings
       execution.native.application.base := by
@@ -364,9 +372,9 @@ theorem resolvedBindings
     apply ApplicationImage.instructions_allocated_withBindingTimeouts
     exact root.instructions_allocated deadlineOf
   exact runtime.runPolicies_resolvedBindings rootState.initialFields.length hnodup hallocated
-    (root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement)
-    (runtime.blockEnvironment roster)
-    (List.replicate blockIndex (WindowedApplication.blockInvocations roster)).flatten
+    (service.players (root.liftProfile deadlineOf rootProfile) who replacement)
+    service.environment
+    (List.replicate blockIndex service.invocations).flatten
     (root.windowedInitialExecution deadlineOf binding choice windowOf) execution
     (ApplicationImage.ResolvedBindings.initial runtime.image
       (compileCore rootProg rootFresh rootState).graph) checkpoint.reached
@@ -374,13 +382,13 @@ theorem resolvedBindings
 /-- At an initialized checkpoint, preparation is exactly the first private
 registration recorded in each owner's history, including under raw deviations. -/
 theorem registrationConsistent
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
       who replacement blockIndex plan profile current execution) :
     (root.windowed deadlineOf binding choice windowOf).RegistrationConsistent execution := by
   apply (root.windowed deadlineOf binding choice windowOf).runPolicies_registrationConsistent
-    (root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement)
-    ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
-    (List.replicate blockIndex (WindowedApplication.blockInvocations roster)).flatten
+    (service.players (root.liftProfile deadlineOf rootProfile) who replacement)
+    service.environment
+    (List.replicate blockIndex service.invocations).flatten
     (root.windowedInitialExecution deadlineOf binding choice windowOf) execution
     (by intro owner slot; rfl) checkpoint.reached
 
@@ -388,12 +396,12 @@ theorem registrationConsistent
 The condition applies equally to an unchanged opponent and to a reference
 replacement at the distinguished coordinate. -/
 theorem registeredBindings
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
       who replacement blockIndex plan profile current execution)
     (owner : P)
     (hpolicy :
-      root.windowedPlayers rootProfile deadlineOf binding choice windowOf who replacement owner =
-        root.windowedReferencePlayers rootProfile deadlineOf binding choice windowOf owner) :
+      service.players (root.liftProfile deadlineOf rootProfile) who replacement owner =
+        service.referencePlayers (root.liftProfile deadlineOf rootProfile) owner) :
     let runtime := root.windowed deadlineOf binding choice windowOf
     runtime.image.RegisteredBindings owner
       (fun slot typed => ∃ fieldSpec : FieldSpec P L,
@@ -403,22 +411,23 @@ theorem registeredBindings
         show runtime.image.application.PlayerEntry from runtime.erasePlayerEntry entry)
       execution.native.application.base := by
   intro runtime
-  let players := root.windowedPlayers rootProfile deadlineOf binding choice windowOf who
-    replacement
+  let players := service.players (root.liftProfile deadlineOf rootProfile) who replacement
   have hbindings := root.windowed_registeredBindings_of_source_commands deadlineOf binding choice
     windowOf rootProfile owner players (by
       intro history view command hcommand
       dsimp only [players] at hcommand
       rw [hpolicy] at hcommand
-      exact runtime.blockPlayer_supported owner (root.liftProfile deadlineOf rootProfile owner)
-        history view command hcommand) (runtime.blockEnvironment roster)
-    (List.replicate blockIndex (WindowedApplication.blockInvocations roster)).flatten
+      exact service.reference_supported owner (root.liftProfile deadlineOf rootProfile owner)
+        history view command hcommand) service.environment
+    (List.replicate blockIndex service.invocations).flatten
     execution checkpoint.reached
   rw [← checkpoint.continuation.compile_eq]
   exact hbindings
 
-theorem historyAlignment (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding
-    choice windowOf roster who replacement blockIndex plan profile current execution)
+theorem historyAlignment
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      who replacement blockIndex plan profile current execution)
     (hroster : roster.Nodup) (actor : P) (hactor : actor ∈ roster) :
     (execution.principalHistory actor).length = 3 * blockIndex ∧
       execution.environmentHistory.length = blockIndex * (roster.length + 2) ∧
@@ -438,10 +447,11 @@ theorem initial (source : WFProgram P L)
     (deadlineOf : Nat → Nat)
     (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
     (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
-    (windowOf : Nat → Nat) (roster : List P) (who : P)
+    (windowOf : Nat → Nat)
+    (service : (root.windowed deadlineOf binding choice windowOf).Service) (who : P)
     (replacement :
       (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy) :
-    WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster who
+    WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service who
       replacement 0 root rootProfile (compiledInitialCoupled source.core)
       (root.windowedInitialExecution deadlineOf binding choice windowOf) := by
   refine ⟨.refl, Nat.zero_add _, ApplicationImage.State.initial_refines _, ?_, ?_, ?_⟩

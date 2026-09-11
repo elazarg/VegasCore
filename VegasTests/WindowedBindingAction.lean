@@ -41,7 +41,7 @@ theorem initial_binding_action_eq
         right.native.application.base := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial
     DisclosureAccounting.persistentChecked applicationPlan profile (fun _ => 10)
-    bindingSelector choiceSelector (fun _ => 10) [0, 1] 0
+    bindingSelector choiceSelector (fun _ => 10) (runtime.blockService [0, 1]) 0
     (fun history view => FinDist.pure (command history view))
   have agreement : WindowedApplication.PolicyAgreement runtime 0 initial initial :=
     ⟨⟨ApplicationImage.State.AgreesFor.refl _ _, rfl⟩, rfl, rfl, rfl⟩
@@ -79,9 +79,10 @@ theorem initial_extractedSourcePolicy_at_binding
   let coupled := compiledInitialCoupled source
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial
     DisclosureAccounting.persistentChecked applicationPlan profile (fun _ => 10)
-    bindingSelector choiceSelector (fun _ => 10) [0, 1] 0 replacement
+    bindingSelector choiceSelector (fun _ => 10) (runtime.blockService [0, 1]) 0 replacement
   have sourcePrefix : ApplicationPlan.WindowedSourcePrefix applicationPlan profile
-      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 0 replacement coupled
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10)
+      (runtime.blockService [0, 1]) 0 replacement coupled
       0 applicationPlan profile coupled initial :=
     .initial checkpoint
   let checkpoints : SourcePolicyCheckpoints source.prog (0 : TestPlayer) :=

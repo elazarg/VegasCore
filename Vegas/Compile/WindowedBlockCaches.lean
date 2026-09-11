@@ -317,7 +317,8 @@ theorem WindowedCheckpoint.block_caches
     (execution next :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex plan profile current execution)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex plan profile current execution)
     (hnext : next ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
       (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
       ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)

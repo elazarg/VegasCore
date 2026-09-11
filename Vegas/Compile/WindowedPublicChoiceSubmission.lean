@@ -55,7 +55,8 @@ variable {execution :
 The retained draw belongs to the actual source kernel; arbitrary other-player
 polls preserve its serial and pending packet. -/
 theorem publicChoice_ordinary_submission
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.publicChoice (newName := newName) (unresolved := unresolved)
         publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -106,7 +107,8 @@ theorem publicChoice_ordinary_submission
 choice and finishes this publication instruction. The selected identifier and
 native acceptance are consequences of actual polling, not service premises. -/
 theorem publicChoice_ordinary_inclusion
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.publicChoice (newName := newName) (unresolved := unresolved)
         publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)

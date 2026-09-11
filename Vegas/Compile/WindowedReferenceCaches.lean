@@ -267,7 +267,8 @@ theorem WindowedCheckpoint.block_reference_caches
     (current : CoupledAt (compileCore prog fresh state).graph state)
     (execution next :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex plan profile current execution)
     (hfresh : plan.RemainingCachesEmpty (root.image deadlineOf) deadlineOf
       ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution))

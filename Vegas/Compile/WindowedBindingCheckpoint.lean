@@ -55,7 +55,8 @@ theorem binding_normal_resolution
     (current : CoupledAt (compileCore (.commit name owner guard tail) fresh state).graph state)
     (execution polled included :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile current execution)
     (hpolled : polled ∈ ((root.windowed deadlineOf binding choice windowOf).application
@@ -198,7 +199,8 @@ theorem binding_block_resolution
     (current : CoupledAt (compileCore (.commit name owner guard tail) fresh state).graph state)
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
@@ -549,7 +551,8 @@ theorem binding_block
     (current : CoupledAt (compileCore (.commit name owner guard tail) fresh state).graph state)
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
@@ -565,7 +568,8 @@ theorem binding_block
       (sourceNext : CoupledAt (compileCore (.commit name owner guard tail) fresh state).graph
         (state.addCommitEvent name owner guard fresh.1).1),
       sourceNext.current.source = current.current.source.cons chosen ∧
-      WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement (blockIndex + 1) nextPlan profile.afterCommit sourceNext final ∧
       chosen = ((.here guard tail : SourceDecisionSite owner
         (.commit name owner guard tail) Γ name ty guard).bindingCode fresh state

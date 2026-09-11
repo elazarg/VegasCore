@@ -47,7 +47,8 @@ theorem exists_root_sourceDecisionSite
     {plan : ApplicationPlan accounted fresh state} {profile : SourceBehavioralProfile prog}
     {current : CoupledAt (compileCore prog fresh state).graph state}
     {execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex plan profile current execution)
     {Δ : VCtx P L} {x : VarId} {ty : L.Ty}
     {guard : L.Expr ((x, ty) :: eraseVCtx (viewVCtx focal Δ)) L.bool}

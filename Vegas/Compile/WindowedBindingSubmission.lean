@@ -52,7 +52,8 @@ variable {execution :
 generated binding packet pending at its fresh serial. Other players may issue
 arbitrary randomized raw commands before and after these two owner polls. -/
 theorem binding_ordinary_submission
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -121,7 +122,8 @@ actual generated packet. Readiness, freshness, and the selected identifier
 are derived from the source checkpoint and supported preceding polls. No
 timeout selector, successful-opening assumption, or unchanged relay is needed. -/
 theorem binding_ordinary_inclusion
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.binding (newName := newName) unrestricted nextPlan)
       profile current execution)
     (hinitial : root.InitialControllerReadsPublic)

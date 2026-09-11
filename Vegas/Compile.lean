@@ -128,8 +128,13 @@ import Vegas.Compile.WindowedRelayResolution
 import Vegas.Compile.WindowedExpiryService
 import Vegas.Compile.WindowedBlockService
 import Vegas.Compile.WindowedDeliveryService
+import Vegas.Compile.WindowedService
 import Vegas.Compile.WindowedDeliveryAlignment
 import Vegas.Compile.WindowedDeliveryProvenance
+import Vegas.Compile.WindowedDeliveryAdmission
+import Vegas.Compile.WindowedDeliveryReadiness
+import Vegas.Compile.WindowedDeliveryPhase
+import Vegas.Compile.WindowedDeliveryPrivacy
 import Vegas.Compile.WindowedPendingAdmission
 import Vegas.Compile.WindowedReactionPrivacy
 import Vegas.Compile.WindowedBlockAlignment

@@ -45,6 +45,57 @@ theorem runEnvironmentCommands_principalHistory
       exact (ih middle hnext).trans
         (congrFun (app.environmentStep_principalHistory execution command middle hmiddle) who)
 
+/-- Repeated delivery of one selected identifier changes only recipient-local
+inboxes and the recorded environment history. The statement permits repeated
+recipients and unsuccessful deliveries. -/
+theorem runEnvironmentCommands_deliver_frame
+    (app : MessageApplication Principal) (recipients : List Principal)
+    (id : MessageId Principal) (execution delivered : app.PolicyExecution)
+    (hdelivered : delivered ∈ (app.runEnvironmentCommands
+      (recipients.map fun recipient =>
+        (MessageInterface.EnvironmentPolicyCommand.deliver recipient id)) execution).support) :
+    delivered.native.application = execution.native.application ∧
+      delivered.native.pool.pending = execution.native.pool.pending ∧
+      delivered.native.pool.nextSerial = execution.native.pool.nextSerial ∧
+      delivered.native.receipts = execution.native.receipts ∧
+      delivered.principalHistory = execution.principalHistory ∧
+      delivered.environmentHistory.length =
+        execution.environmentHistory.length + recipients.length := by
+  induction recipients generalizing execution with
+  | nil =>
+      simp only [List.map_nil, runEnvironmentCommands, FinDist.mem_support_pure] at hdelivered
+      subst delivered
+      exact ⟨rfl, rfl, rfl, rfl, rfl, by simp⟩
+  | cons recipient rest ih =>
+      simp only [List.map_cons, runEnvironmentCommands, FinDist.support_bind,
+        Set.mem_iUnion] at hdelivered
+      obtain ⟨middle, hmiddle, hdelivered⟩ := hdelivered
+      have hmiddleNative : middle.native = { execution.native with
+          pool := (execution.native.pool.deliver recipient id).state } := by
+        have hstep := hmiddle
+        simp only [environmentPolicyStep, advance,
+          EnvironmentPolicyCommand.toAction, step, FinDist.pure_bind,
+          FinDist.mem_support_pure] at hstep
+        subst middle
+        rfl
+      obtain ⟨happlication, hpending, hserial, hreceipts, hprincipal, henvironment⟩ :=
+        ih middle hdelivered
+      refine ⟨happlication.trans ?_, hpending.trans ?_, hserial.trans ?_,
+        hreceipts.trans ?_, hprincipal.trans ?_, ?_⟩
+      · rw [hmiddleNative]
+      · rw [hmiddleNative]
+        exact MessagePool.deliver_preserves_pending execution.native.pool recipient id
+      · rw [hmiddleNative]
+        unfold MessagePool.deliver
+        split <;> rfl
+      · rw [hmiddleNative]
+      · exact app.environmentStep_principalHistory execution (.deliver recipient id) middle
+          hmiddle
+      · rw [henvironment,
+          app.environmentStep_history_length execution (.deliver recipient id) middle hmiddle,
+          List.length_cons]
+        omega
+
 /-- A native environment policy which supplies the indexed fixed command at
 each actual environment-history coordinate executes exactly the command fold.
 Application environment steps may themselves be probabilistic. -/
@@ -88,3 +139,8 @@ end Interaction.MessageApplication
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.MessageApplication.runPolicies_environmentCommands
+
+/-- info: 'Interaction.MessageApplication.runEnvironmentCommands_deliver_frame'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.MessageApplication.runEnvironmentCommands_deliver_frame

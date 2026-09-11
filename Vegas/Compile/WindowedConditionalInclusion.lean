@@ -105,7 +105,8 @@ variable {execution :
 unchanged conditional owner. The accepted disposition, frozen opening value,
 and inactivity are derived from the initialized checkpoint. -/
 theorem conditional_ordinary_inclusion
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex plan profile current execution)
     (head : ConditionalHead spec plan)
     (hinitial : root.InitialControllerReadsPublic)

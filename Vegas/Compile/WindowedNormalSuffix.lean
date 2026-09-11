@@ -68,7 +68,8 @@ private theorem normal_suffix_environment_count (roster : List P) :
 remaining block slots preserve memory, activation, and frozen binding snapshots.
 Private preparation and pending traffic may still change under arbitrary raw policies. -/
 theorem after_normal_frame
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex plan profile leftCurrent left)
     (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
     (hhead : plan.instructions deadlineOf = instruction :: rest)
@@ -140,9 +141,11 @@ theorem after_normal_frame
 when the current instruction has resolved. This applies to every instruction
 kind and does not require its owner to be the focal player. -/
 theorem after_normal_agreement
-    (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex plan profile leftCurrent left)
-    (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex plan profile rightCurrent right)
     (instruction : ApplicationInstruction P L) (rest : List (ApplicationInstruction P L))
     (hhead : plan.instructions deadlineOf = instruction :: rest)

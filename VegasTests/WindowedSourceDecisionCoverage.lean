@@ -55,7 +55,7 @@ theorem initial_binding_has_extracted_source_choice
   let coupled := compiledInitialCoupled source
   have hinitial := ApplicationPlan.WindowedCheckpoint.initial
     DisclosureAccounting.persistentChecked applicationPlan profile (fun _ => 10)
-    bindingSelector choiceSelector (fun _ => 10) [0, 1] 0 replacement
+    bindingSelector choiceSelector (fun _ => 10) (runtime.blockService [0, 1]) 0 replacement
   obtain ⟨Δ, nextPending, nextProg, nextAccounted, nextFresh, nextState,
       nextPlan, nextProfile, sourceNext, trace⟩ :=
     ApplicationPlan.WindowedSourcePrefix.covers hinitial block_fallbacks

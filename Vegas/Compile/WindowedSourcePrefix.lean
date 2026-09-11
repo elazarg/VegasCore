@@ -238,7 +238,8 @@ inductive WindowedSourcePrefix
     (rootProfile : SourceBehavioralProfile rootProg) (deadlineOf : Nat → Nat)
     (binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty))
     (choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty))
-    (windowOf : Nat → Nat) (roster : List P) (focal : P)
+    (windowOf : Nat → Nat)
+    (service : (root.windowed deadlineOf binding choice windowOf).Service) (focal : P)
     (replacement : (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy)
     (initial : CoupledAt (compileCore rootProg rootFresh rootState).graph rootState) :
     {Γ : VCtx P L} → {pending : Finset VarId} → {prog : VegasCore P L Γ} →
@@ -247,10 +248,10 @@ inductive WindowedSourcePrefix
     SourceBehavioralProfile prog → CoupledAt (compileCore prog fresh state).graph state →
     (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution → Prop where
   | initial
-      (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
         focal replacement 0 root rootProfile initial
           (root.windowedInitialExecution deadlineOf binding choice windowOf)) :
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf service focal
         replacement initial 0 root rootProfile initial
           (root.windowedInitialExecution deadlineOf binding choice windowOf)
   | step {Γ Δ : VCtx P L} {pending nextPending : Finset VarId}
@@ -266,17 +267,16 @@ inductive WindowedSourcePrefix
       {sourceNext : CoupledAt (compileCore nextProg nextFresh nextState).graph nextState}
       {execution final :
         (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
-      (previous : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster
+      (previous : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf service
         focal replacement initial blockIndex plan profile current execution)
       (block : final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
-        (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
-        ((root.windowed deadlineOf binding choice windowOf).blockEnvironment roster)
-        (WindowedApplication.blockInvocations roster) execution).support)
+        (service.players (root.liftProfile deadlineOf rootProfile) focal replacement)
+        service.environment service.invocations execution).support)
       (source : BlockSourceStep binding final.native.application.base
         plan profile current nextPlan nextProfile sourceNext)
-      (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+      (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service
         focal replacement (blockIndex + 1) nextPlan nextProfile sourceNext final) :
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf service focal
         replacement initial (blockIndex + 1) nextPlan nextProfile sourceNext final
 
 namespace WindowedSourcePrefix
@@ -288,7 +288,8 @@ theorem checkpoint
     {rootProfile : SourceBehavioralProfile rootProg} {deadlineOf : Nat → Nat}
     {binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty)}
     {choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)}
-    {windowOf : Nat → Nat} {roster : List P} {focal : P}
+    {windowOf : Nat → Nat}
+    {service : (root.windowed deadlineOf binding choice windowOf).Service} {focal : P}
     {replacement : (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy}
     {initial : CoupledAt (compileCore rootProg rootFresh rootState).graph rootState}
     {Γ : VCtx P L} {pending : Finset VarId} {prog : VegasCore P L Γ}
@@ -297,9 +298,9 @@ theorem checkpoint
     {profile : SourceBehavioralProfile prog}
     {current : CoupledAt (compileCore prog fresh state).graph state}
     {execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf service focal
       replacement initial blockIndex plan profile current execution) :
-    WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster focal
+    WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf service focal
       replacement blockIndex plan profile current execution := by
   cases trace <;> assumption
 
@@ -311,7 +312,8 @@ theorem source_steps
     {rootProfile : SourceBehavioralProfile rootProg} {deadlineOf : Nat → Nat}
     {binding : (code : BindingCode P L) → Option (PublicFallbackCode L code.ty)}
     {choice : (code : PublicChoiceCode P L) → Option (PublicFallbackCode L code.guard.ty)}
-    {windowOf : Nat → Nat} {roster : List P} {focal : P}
+    {windowOf : Nat → Nat}
+    {service : (root.windowed deadlineOf binding choice windowOf).Service} {focal : P}
     {replacement : (root.windowed deadlineOf binding choice windowOf).application.PlayerPolicy}
     {initial : CoupledAt (compileCore rootProg rootFresh rootState).graph rootState}
     {Γ : VCtx P L} {pending : Finset VarId} {prog : VegasCore P L Γ}
@@ -320,7 +322,7 @@ theorem source_steps
     {profile : SourceBehavioralProfile prog}
     {current : CoupledAt (compileCore prog fresh state).graph state}
     {execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf service focal
       replacement initial blockIndex plan profile current execution) :
     SmallStep.Star ⟨rootContext, initial.current.source, rootProg⟩
       ⟨Γ, current.current.source, prog⟩ := by

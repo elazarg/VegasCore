@@ -49,10 +49,12 @@ private theorem binding_ordinary_agreement
     (left right :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex
       (.binding (newName := newName) unrestricted nextPlan) profile leftCurrent left)
     (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex
       (.binding (newName := newName) unrestricted nextPlan) profile rightCurrent right)
     (agreement : WindowedApplication.PolicyAgreement
       (root.windowed deadlineOf binding choice windowOf) focal left right)
@@ -260,10 +262,12 @@ theorem binding_block_agreement
     (left right :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex
       (.binding (newName := newName) unrestricted nextPlan) profile leftCurrent left)
     (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex
       (.binding (newName := newName) unrestricted nextPlan) profile rightCurrent right)
     (agreement : WindowedApplication.PolicyAgreement
       (root.windowed deadlineOf binding choice windowOf) focal left right)

@@ -63,7 +63,7 @@ theorem initial_publicChoice_inclusion
     included ∈ (runtime.application.environmentPolicyStep polled (.include (0, 0))).support ∧
       runtime.image.activeAddress? included.native.application.base.memory ≠ some 1 := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
-    (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
+    (fun _ => 0) noBinding noChoice (fun _ => 10) (runtime.blockService [1, 0]) 1 replacement
   obtain ⟨_, _, _, _, hinclude, hinactive⟩ :=
     checkpoint.publicChoice_ordinary_inclusion initial_reads_public
       (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide))
@@ -83,7 +83,7 @@ theorem initial_publicChoice_submission
       polled.native.pool.nextSerial 0 = 1 ∧
       polled.native.pool.lookup (0, 0) = some ⟨(0, 0), .choice 1 ⟨.bool, chosen.1⟩⟩ := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
-    (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
+    (fun _ => 0) noBinding noChoice (fun _ => 10) (runtime.blockService [1, 0]) 1 replacement
   exact checkpoint.publicChoice_ordinary_submission initial_reads_public
     (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide)) polled hpolled
 
@@ -111,7 +111,7 @@ theorem initial_publicChoice_block_source_factorization
             [.environment, .environment, .player 1, .environment,
               .player 0, .environment] polled := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
-    (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
+    (fun _ => 0) noBinding noChoice (fun _ => 10) (runtime.blockService [1, 0]) 1 replacement
   have hlaw := ApplicationPlan.WindowedCheckpoint.publicChoice_block_source_factorization
     first_publicly_validatable _ profile _ initial checkpoint initial_reads_public
     (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide)) [1] [] rfl
@@ -138,7 +138,7 @@ theorem initial_publicChoice_fixed_branch_publication
           .player 0, .environment] polled).support) :
     Store.getAs final.native.application.base.memory.store 2 .bool = some chosen.1 := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
-    (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
+    (fun _ => 0) noBinding noChoice (fun _ => 10) (runtime.blockService [1, 0]) 1 replacement
   apply checkpoint.publicChoice_fixed_branch_publication
     first_publicly_validatable _ profile _ initial final initial_reads_public
     (by decide) (by simp) (checkpoint.referenceOwner_of_ne 0 (by decide))
@@ -160,7 +160,7 @@ theorem initial_publicChoice_draw
       ((source.env.toView 0).eraseEnv)).map Subtype.val).support ∧
       polled ∈ (fixedDrawPolls profile replacement value).support := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
-    (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1 replacement
+    (fun _ => 0) noBinding noChoice (fun _ => 10) (runtime.blockService [1, 0]) 1 replacement
   obtain ⟨value, hvalue, hbranch⟩ :=
     ApplicationPlan.WindowedCheckpoint.publicChoice_ordinary_support_value
       first_publicly_validatable _ profile _ initial polled checkpoint
@@ -208,7 +208,7 @@ theorem initial_publicChoice_block_agreement
         (runtime.blockEnvironment [1, 0])
         (WindowedApplication.blockInvocations [1, 0]) initial).support := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
-    (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1
+    (fun _ => 0) noBinding noChoice (fun _ => 10) (runtime.blockService [1, 0]) 1
     (fun history view => FinDist.pure (command history view))
   have agreement : WindowedApplication.PolicyAgreement runtime 1 initial initial :=
     ⟨⟨Vegas.ApplicationImage.State.AgreesFor.refl _ _, rfl⟩, rfl, rfl, rfl⟩
@@ -250,7 +250,7 @@ theorem initial_publicChoice_block_agreement_at_source
       (WindowedApplication.blockInvocations [1, 0]) initial).support) :
     WindowedApplication.PolicyAgreement runtime 1 finalLeft finalRight := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial checked applicationPlan profile
-    (fun _ => 0) noBinding noChoice (fun _ => 10) [1, 0] 1
+    (fun _ => 0) noBinding noChoice (fun _ => 10) (runtime.blockService [1, 0]) 1
     (fun history view => FinDist.pure (command history view))
   have agreement : WindowedApplication.PolicyAgreement runtime 1 initial initial :=
     ⟨⟨ApplicationImage.State.AgreesFor.refl _ _, rfl⟩, rfl, rfl, rfl⟩

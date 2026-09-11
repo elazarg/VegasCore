@@ -57,9 +57,11 @@ theorem public_block_action_eq
         fresh state).graph state}
     {left right :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
-    (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       owner replacement blockIndex plan profile leftCurrent left)
-    (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       owner replacement blockIndex plan profile rightCurrent right)
     (agreement : WindowedApplication.PolicyAgreement
       (root.windowed deadlineOf binding choice windowOf) owner left right)

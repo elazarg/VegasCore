@@ -50,7 +50,8 @@ theorem reference_conditional_bind
       (compileCore (.commit name owner guard (.reveal publicName owner name .here tail))
         fresh state).graph state)
     (execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex (.conditional (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -61,7 +62,8 @@ theorem reference_conditional_bind
       FinDist α)
     (sourceAfter : VEnv L ((publicName, .pub ty) :: (name, .sealed owner ty) :: Γ) → FinDist α)
     (hafter : ∀ sourceNext final,
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement initial (blockIndex + 1) nextPlan profile.afterCommit.afterReveal
           sourceNext final →
       final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
@@ -153,7 +155,8 @@ theorem reference_conditionalCopy_bind
       (compileCore (.commit name owner guard (.reveal publicName owner name .here tail))
         fresh state).graph state)
     (execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex (.conditionalCopy (newName := newName)
         (unresolved := unresolved) spec publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -164,7 +167,8 @@ theorem reference_conditionalCopy_bind
       FinDist α)
     (sourceAfter : VEnv L ((publicName, .pub ty) :: (name, .sealed owner ty) :: Γ) → FinDist α)
     (hafter : ∀ sourceNext final,
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement initial (blockIndex + 1) nextPlan profile.afterCommit.afterReveal
           sourceNext final →
       final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies

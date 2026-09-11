@@ -4,7 +4,8 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Compile.WindowedDeliveryService
+import Vegas.Compile.WindowedDeliveryAdmission
+import Vegas.Compile.WindowedBindingAdmission
 import VegasTests.WindowedSourceCoverage
 
 /-! # Delivery and raw reaction in a generated windowed application
@@ -48,6 +49,14 @@ def observerReplacement : runtime.application.PlayerPolicy :=
 
 def deliveryPlayers (secret : Bool) : Player → runtime.application.PlayerPolicy :=
   fun who => if who = 1 then observerReplacement
+    else runtime.deliveryBlockPlayer who (ownerBase secret)
+
+/-- Player one may use any randomized raw reaction policy while player zero
+retains the generated delivery reference schedule. -/
+def arbitraryReactionPlayers (secret : Bool)
+    (replacement : runtime.application.PlayerPolicy) :
+    Player → runtime.application.PlayerPolicy :=
+  fun who => if who = 1 then replacement
     else runtime.deliveryBlockPlayer who (ownerBase secret)
 
 def environment : runtime.application.EnvironmentPolicy :=
@@ -232,6 +241,65 @@ theorem replay_before_normal_inclusion (secret : Bool) :
     FinDist.map_pure]
   rfl
 
+/-- The integrated delivery/reaction/normal-service theorem applies to the
+real first generated binding after its two ordinary polls. Player one's raw
+policy is completely arbitrary; every supported delivery interlude still
+records successful acceptance of the owner's original envelope. -/
+theorem arbitrary_reaction_normal_accepts (secret : Bool)
+    (replacement : runtime.application.PlayerPolicy)
+    (final : runtime.application.PolicyExecution)
+    (hfinal : final ∈ (runtime.application.runPolicies
+      (arbitraryReactionPlayers secret replacement) environment
+      [.environment, .player 0, .player 1, .environment]
+      (polled secret)).support) :
+    ((0, 0), true) ∈ final.native.receipts := by
+  let players := arbitraryReactionPlayers secret replacement
+  let code : BindingCode Player simpleExpr :=
+    { GeneratedBindingPolicy.code with
+      timeout := bindingSelector GeneratedBindingPolicy.code }
+  let instruction : ApplicationInstruction Player simpleExpr := .bind code
+  have hwait : ∀ history view,
+      history.length = ((polled secret).principalHistory 0).length →
+        players 0 history view = FinDist.pure .wait := by
+    intro history view hlength
+    change runtime.deliveryBlockPlayer 0 (ownerBase secret) history view =
+      FinDist.pure .wait
+    apply runtime.deliveryBlockPlayer_reaction
+    rw [hlength]
+    rfl
+  have hselected : runtime.application.latestSubmissionCommand 0
+      (State.environmentView runtime.application (polled secret).native) =
+        .include (0, 0) := by
+    cases secret <;> rfl
+  have hlookup : (polled secret).native.pool.lookup (0, 0) = some opaqueMessage := by
+    cases secret <;> rfl
+  have haccepted : ∃ resolved,
+      runtime.handle (polled secret).native.application opaqueMessage = some resolved := by
+    let activation : Activation Nat := ⟨0, 0⟩
+    have hcanonical := runtime.handle_canonical_binding_and_include_inactive
+      (polled secret).native.application activation code 0 (by
+        cases secret <;> rfl) (by
+        cases secret <;> rfl) (by rfl) (by rfl) (by
+        cases secret <;> rfl) (by
+        cases secret <;> rfl) (by
+        cases secret <;> rfl) (polled secret).native.pool
+      (polled secret).native.receipts (by
+        change (polled secret).native.pool.lookup (0, 0) = some opaqueMessage
+        exact hlookup)
+    exact ⟨runtime.advanceTo (polled secret).native.application
+      ((polled secret).native.application.base.bind code (0, 0)), hcanonical.1⟩
+  obtain ⟨resolved, haccepted⟩ := haccepted
+  have result := runtime.delivery_reaction_normal_accepts 0 players roster recipients
+    (by decide) 0 instruction rfl (polled secret) final rfl (by rfl) (by
+      cases secret <;> rfl) hwait (0, 0) opaqueMessage hselected hlookup (by
+      intro _
+      rfl) resolved haccepted (by
+        change final ∈ (runtime.application.runPolicies players environment
+          [.environment, .player 0, .player 1, .environment]
+          (polled secret)).support
+        exact hfinal)
+  exact result.2.2
+
 end VegasTests.WindowedDelivery
 
 /-- info: 'VegasTests.WindowedDelivery.reaction_observes_only_opaque_handle'
@@ -243,3 +311,8 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.WindowedDelivery.replay_before_normal_inclusion
+
+/-- info: 'VegasTests.WindowedDelivery.arbitrary_reaction_normal_accepts'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.WindowedDelivery.arbitrary_reaction_normal_accepts

@@ -60,7 +60,8 @@ variable {execution :
 source decision law when its cache is fresh. The owner may occupy the
 distinguished coordinate; its source policy may randomize. -/
 theorem publicChoice_first_poll
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.publicChoice (newName := newName) (unresolved := unresolved)
         publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -126,7 +127,8 @@ theorem publicChoice_first_poll
 sample once, submit the chosen public value, then wait. This retains the exact
 native execution law, including the submitted packet and both local entries. -/
 theorem publicChoice_polls_source_law_of_input_eq
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.publicChoice (newName := newName) (unresolved := unresolved)
         publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -216,7 +218,8 @@ theorem publicChoice_polls_source_law_of_input_eq
 and sample-once submission law. They may register, submit, replay, or randomize;
 there are no delivery or inclusion turns in this polling prefix. -/
 theorem publicChoice_polls_source_law_after_others
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.publicChoice (newName := newName) (unresolved := unresolved)
         publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)

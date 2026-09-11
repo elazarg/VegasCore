@@ -59,7 +59,7 @@ structure BindingDecision where
   execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution
   final : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution
   sourcePrefix : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
-    roster owner
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) owner
     replacement initial blockIndex (.binding (newName := newName) unrestricted next)
       profile current execution
   fallback : SourceDecisionSite.PublicFallback (.here guard tail)
@@ -136,7 +136,7 @@ structure PublicDecision where
   execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution
   final : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution
   sourcePrefix : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
-    roster owner
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) owner
     replacement initial blockIndex plan profile current execution
   value : L.Val ty
   legal : evalGuard guard value ((current.current.source.toView owner).eraseEnv) = true

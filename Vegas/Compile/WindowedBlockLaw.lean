@@ -54,7 +54,8 @@ theorem reference_binding_bind
     (profile : SourceBehavioralProfile (.commit name owner guard tail))
     (current : CoupledAt (compileCore (.commit name owner guard tail) fresh state).graph state)
     (execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex (.binding (newName := newName) unrestricted nextPlan)
         profile current execution)
     (hfallbacks : root.BlockFallbacks binding choice)
@@ -65,7 +66,8 @@ theorem reference_binding_bind
       FinDist α)
     (sourceAfter : VEnv L ((name, .sealed owner ty) :: Γ) → FinDist α)
     (hafter : ∀ sourceNext final,
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement initial (blockIndex + 1) nextPlan profile.afterCommit sourceNext final →
       final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
         (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -130,7 +132,8 @@ theorem reference_publicChoice_bind
       (compileCore (.commit name owner guard (.reveal publicName owner name .here tail))
         fresh state).graph state)
     (execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hfallbacks : root.BlockFallbacks binding choice)
@@ -141,7 +144,8 @@ theorem reference_publicChoice_bind
       FinDist α)
     (sourceAfter : VEnv L ((publicName, .pub ty) :: (name, .sealed owner ty) :: Γ) → FinDist α)
     (hafter : ∀ sourceNext final,
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement initial (blockIndex + 1) nextPlan profile.afterCommit.afterReveal
           sourceNext final →
       final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
@@ -196,14 +200,16 @@ theorem sample_bind
     (profile : SourceBehavioralProfile (.sample name dist tail))
     (current : CoupledAt (compileCore (.sample name dist tail) fresh state).graph state)
     (execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex (.sample nextPlan) profile current execution)
     (hroster : roster.Nodup)
     (nativeAfter : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution →
       FinDist α)
     (sourceAfter : VEnv L ((name, .pub ty) :: Γ) → FinDist α)
     (hafter : ∀ sourceNext final,
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement initial (blockIndex + 1) nextPlan profile.afterSample sourceNext final →
       final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
         (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)

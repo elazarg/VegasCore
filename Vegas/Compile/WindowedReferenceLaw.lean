@@ -52,7 +52,8 @@ theorem reference_public_law
     (profile : SourceBehavioralProfile prog)
     (current : CoupledAt (compileCore prog fresh state).graph state)
     (execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex plan profile current execution)
     (hcaches : plan.RemainingCachesEmpty (root.image deadlineOf) deadlineOf
       ((root.windowed deadlineOf binding choice windowOf).eraseExecution execution)) :
@@ -205,7 +206,7 @@ theorem windowed_reference_source_public_law
     howners rfl 0 plan profile (compiledInitialCoupled source.core)
     (plan.windowedInitialExecution deadlineOf binding choice windowOf)
     (.initial (WindowedCheckpoint.initial source plan profile deadlineOf binding choice windowOf
-      roster focal
+      ((plan.windowed deadlineOf binding choice windowOf).blockService roster) focal
       (plan.windowedReferencePlayers profile deadlineOf binding choice windowOf focal)))
     (plan.remainingCachesEmpty_of_empty_histories (plan.image deadlineOf) deadlineOf
       ((plan.windowed deadlineOf binding choice windowOf).eraseExecution

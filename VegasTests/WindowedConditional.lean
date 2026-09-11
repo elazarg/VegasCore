@@ -93,7 +93,8 @@ theorem checked_conditional_ordinary_packet
     (execution : runtime.application.PolicyExecution)
     (head : ApplicationPlan.ConditionalHead spec plan)
     (checkpoint : ApplicationPlan.WindowedCheckpoint applicationPlan rootProfile
-      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 1 replacement
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10)
+      (runtime.blockService [0, 1]) 1 replacement
       blockIndex plan profile current execution)
     (polled : runtime.application.PolicyExecution)
     (hpolled : polled ∈ (runtime.application.runPolicies
@@ -155,7 +156,8 @@ theorem checked_conditional_ordinary_inclusion
     (execution polled included : runtime.application.PolicyExecution)
     (head : ApplicationPlan.ConditionalHead spec plan)
     (checkpoint : ApplicationPlan.WindowedCheckpoint applicationPlan rootProfile
-      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 1 replacement
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10)
+      (runtime.blockService [0, 1]) 1 replacement
       blockIndex plan profile current execution)
     (hpolled : polled ∈ (runtime.application.runPolicies
       (unchangedPlayers rootProfile replacement) (runtime.blockEnvironment [0, 1])
@@ -210,10 +212,12 @@ theorem checked_conditional_block_agreement_at_source
     (left right finalLeft finalRight : runtime.application.PolicyExecution)
     (head : ApplicationPlan.ConditionalHead spec plan)
     (leftCheckpoint : ApplicationPlan.WindowedCheckpoint applicationPlan rootProfile
-      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 1 replacement
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10)
+      (runtime.blockService [0, 1]) 1 replacement
       blockIndex plan profile leftCurrent left)
     (rightCheckpoint : ApplicationPlan.WindowedCheckpoint applicationPlan rootProfile
-      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 1 replacement
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10)
+      (runtime.blockService [0, 1]) 1 replacement
       blockIndex plan profile rightCurrent right)
     (agreement : WindowedApplication.PolicyAgreement runtime 1 left right)
     (result : Option (simpleExpr.Val spec.secretTy))
@@ -261,10 +265,12 @@ theorem checked_source_prefix_agreement
     (leftCurrent rightCurrent : point.Coupled)
     (left right : runtime.application.PolicyExecution)
     (leftPrefix : ApplicationPlan.WindowedSourcePrefix applicationPlan rootProfile
-      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 1 replacement initial
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10)
+      (runtime.blockService [0, 1]) 1 replacement initial
       blockIndex point.plan point.profile leftCurrent left)
     (rightPrefix : ApplicationPlan.WindowedSourcePrefix applicationPlan rootProfile
-      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 1 replacement initial
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10)
+      (runtime.blockService [0, 1]) 1 replacement initial
       blockIndex point.plan point.profile rightCurrent right)
     (hview : (leftCurrent.current.source.toView 1).eraseEnv =
       (rightCurrent.current.source.toView 1).eraseEnv) :
@@ -310,10 +316,12 @@ theorem checked_focal_conditional_action_eq
     (left right finalLeft finalRight : runtime.application.PolicyExecution)
     (head : ApplicationPlan.ConditionalHead spec plan)
     (leftPrefix : ApplicationPlan.WindowedSourcePrefix applicationPlan rootProfile
-      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 0 replacement initial
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10)
+      (runtime.blockService [0, 1]) 0 replacement initial
       blockIndex plan profile leftCurrent left)
     (rightPrefix : ApplicationPlan.WindowedSourcePrefix applicationPlan rootProfile
-      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10) [0, 1] 0 replacement initial
+      (fun _ => 10) bindingSelector choiceSelector (fun _ => 10)
+      (runtime.blockService [0, 1]) 0 replacement initial
       blockIndex plan profile rightCurrent right)
     (hview : (leftCurrent.current.source.toView 0).eraseEnv =
       (rightCurrent.current.source.toView 0).eraseEnv)

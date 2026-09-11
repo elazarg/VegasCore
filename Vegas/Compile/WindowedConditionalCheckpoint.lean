@@ -207,7 +207,8 @@ theorem conditional_block_resolution_common
         fresh state).graph state)
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex headPlan profile current execution)
     (hroster : roster.Nodup) (relay : P) (hrelay : relay ∈ roster)
     (hreference : root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal
@@ -501,7 +502,8 @@ theorem conditional_block
         fresh state).graph state)
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex
         (.conditional (unresolved := unresolved) (newName := newName)
           (fresh := fresh) publicGuard nextPlan) profile current execution)
@@ -531,7 +533,8 @@ theorem conditional_block
             .commit name owner guard (.reveal publicName owner name .here tail)⟩
           ⟨(publicName, .pub ty) :: (name, .sealed owner ty) :: Γ,
             sourceNext.current.source, tail⟩ ∧
-        WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster focal
+        WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
           replacement (blockIndex + 1) nextPlan profile.afterCommit.afterReveal
             sourceNext final ∧
         (root.windowed deadlineOf binding choice windowOf).image.activeAddress?
@@ -581,7 +584,8 @@ theorem conditionalCopy_block
         fresh state).graph state)
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex
         (.conditionalCopy (newName := newName) (unresolved := unresolved)
           (fresh := fresh) spec publicGuard nextPlan) profile current execution)
@@ -611,7 +615,8 @@ theorem conditionalCopy_block
             .commit name owner guard (.reveal publicName owner name .here tail)⟩
           ⟨(publicName, .pub ty) :: (name, .sealed owner ty) :: Γ,
             sourceNext.current.source, tail⟩ ∧
-        WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster focal
+        WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
           replacement (blockIndex + 1) nextPlan profile.afterCommit.afterReveal
             sourceNext final ∧
         (root.windowed deadlineOf binding choice windowOf).image.activeAddress?

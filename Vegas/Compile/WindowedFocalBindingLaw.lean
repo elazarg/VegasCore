@@ -60,7 +60,8 @@ theorem continuation_bind
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution → FinDist α)
     (sourceAfter : VEnv L ((name, .sealed focal ty) :: Γ) → FinDist α)
     (hafter : ∀ sourceNext final,
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement initial (blockIndex + 1) next profile.afterCommit sourceNext final →
       nativeAfter final = sourceAfter sourceNext.current.source) :
     let head := bindingDecisionCheckpoints (newName := newName) (fresh := fresh)

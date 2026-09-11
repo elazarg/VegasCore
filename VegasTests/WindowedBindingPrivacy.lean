@@ -49,7 +49,8 @@ theorem initial_binding_block_agreement
     WindowedApplication.PolicyAgreement runtime 1 left right := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial
     DisclosureAccounting.persistentChecked applicationPlan profile (fun _ => 10)
-    bindingSelector choiceSelector (fun _ => 10) [0, 1] 1 (replacement command)
+    bindingSelector choiceSelector (fun _ => 10) (runtime.blockService [0, 1]) 1
+    (replacement command)
   have agreement : WindowedApplication.PolicyAgreement runtime 1 initial initial :=
     ⟨⟨ApplicationImage.State.AgreesFor.refl _ _, rfl⟩, rfl, rfl, rfl⟩
   exact ApplicationPlan.WindowedCheckpoint.binding_block_agreement _ _ profile _ _

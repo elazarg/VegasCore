@@ -46,14 +46,18 @@ theorem BlockSourceStep.policyAgreement
     (rightEdge : BlockSourceStep.Fiber (P := P) (L := L) binding
       finalRight.native.application.base before after)
     (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex before.plan before.profile leftEdge.beforeCurrent left)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex before.plan before.profile leftEdge.beforeCurrent left)
     (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex before.plan before.profile rightEdge.beforeCurrent right)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex before.plan before.profile rightEdge.beforeCurrent right)
     (finalLeftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement (blockIndex + 1) after.plan after.profile
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement (blockIndex + 1) after.plan after.profile
         leftEdge.afterCurrent finalLeft)
     (finalRightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement (blockIndex + 1) after.plan after.profile
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement (blockIndex + 1) after.plan after.profile
         rightEdge.afterCurrent finalRight)
     (hinitial : root.InitialControllerReadsPublic)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
@@ -213,7 +217,8 @@ private structure LastStep
     (before : ProfilePoint P L) where
   current : before.Coupled
   execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution
-  previous : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+  previous : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
     replacement initial blockIndex before.plan before.profile current execution
   block : final ∈ ((root.windowed deadlineOf binding choice windowOf).application.runPolicies
     (root.windowedPlayers rootProfile deadlineOf binding choice windowOf focal replacement)
@@ -221,7 +226,8 @@ private structure LastStep
     (WindowedApplication.blockInvocations roster) execution).support
   source : BlockSourceStep binding final.native.application.base before.plan before.profile current
     after.plan after.profile sourceNext
-  checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster focal
+  checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
     replacement (blockIndex + 1) after.plan after.profile sourceNext final
 
 private theorem lastStep
@@ -233,7 +239,8 @@ private theorem lastStep
     {current : CoupledAt (compileCore prog fresh state).graph state}
     {final : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution}
     {blockIndex : Nat}
-    (derivation : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster
+    (derivation : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement initial (blockIndex + 1) plan profile current final) :
     ∃ before, Nonempty (LastStep (rootProfile := rootProfile) (roster := roster) (focal := focal)
       (replacement := replacement) initial blockIndex (.of plan profile) current final before) := by
@@ -259,9 +266,11 @@ theorem policyAgreement_of_sourceView_eq
     (blockIndex : Nat) :
     ∀ {point : ProfilePoint P L} {leftCurrent rightCurrent : point.Coupled}
       {left right : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution},
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement initial blockIndex point.plan point.profile leftCurrent left →
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement initial blockIndex point.plan point.profile rightCurrent right →
       (leftCurrent.current.source.toView focal).eraseEnv =
         (rightCurrent.current.source.toView focal).eraseEnv →

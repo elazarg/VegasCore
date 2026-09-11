@@ -57,7 +57,8 @@ theorem publicChoice_fixed_branch_publication
         fresh state).graph state)
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
@@ -212,7 +213,8 @@ theorem publicChoice_ordinary_support_value
     (execution polled :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex (.publicChoice (newName := newName)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (hroster : roster.Nodup) (howner : owner ∈ roster)
@@ -285,7 +287,8 @@ theorem publicChoice_block_support_at_source
     (execution final :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (checkpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex (.publicChoice (newName := newName)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex (.publicChoice (newName := newName)
         (unresolved := unresolved) publicGuard nextPlan) profile current execution)
     (hinitial : root.InitialControllerReadsPublic)
     (hroster : roster.Nodup) (howner : owner ∈ roster)

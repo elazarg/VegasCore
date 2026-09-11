@@ -58,7 +58,8 @@ theorem pure_deviation_public_law
     (profile : SourceBehavioralProfile prog)
     (current : CoupledAt (compileCore prog fresh state).graph state)
     (execution : (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex plan profile current execution) :
     let checkpoints : SourcePolicyCheckpoints prog focal :=
       sourcePolicyCheckpointsFrom root rootProfile deadlineOf binding choice
@@ -359,7 +360,8 @@ theorem windowed_pure_deviation_source_public_law
     howners command rfl relay hrelay hrelayOther 0 plan profile (compiledInitialCoupled source.core)
     (plan.windowedInitialExecution deadlineOf binding choice windowOf)
     (.initial (WindowedCheckpoint.initial source plan profile deadlineOf binding choice windowOf
-      roster focal (fun history view => FinDist.pure (command history view))))
+      ((plan.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal (fun history view => FinDist.pure (command history view))))
 
 end Vegas.ApplicationPlan
 

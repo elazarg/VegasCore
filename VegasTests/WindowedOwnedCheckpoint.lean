@@ -70,7 +70,7 @@ theorem initial_owned_block_agreement
     WindowedApplication.PolicyAgreement runtime 0 left right := by
   have checkpoint := ApplicationPlan.WindowedCheckpoint.initial
     DisclosureAccounting.persistentChecked applicationPlan profile deadlineOf noBinding
-      noChoice windowOf [0, 1] 0 (replacement command)
+      noChoice windowOf (runtime.blockService [0, 1]) 0 (replacement command)
   have agreement : WindowedApplication.PolicyAgreement runtime 0 initial initial :=
     ⟨⟨ApplicationImage.State.AgreesFor.refl _ _, rfl⟩, rfl, rfl, rfl⟩
   let rest := (applicationPlan.instructions deadlineOf).tail

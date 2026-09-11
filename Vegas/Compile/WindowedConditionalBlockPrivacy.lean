@@ -53,9 +53,11 @@ theorem conditional_ordinary_agreement_of_same_result
     (left right :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex plan profile leftCurrent left)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex plan profile leftCurrent left)
     (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex plan profile rightCurrent right)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex plan profile rightCurrent right)
     (agreement : WindowedApplication.PolicyAgreement
       (root.windowed deadlineOf binding choice windowOf) focal left right)
     (hinitial : root.InitialControllerReadsPublic)
@@ -246,9 +248,11 @@ theorem conditional_block_agreement_of_same_result
     (left right :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex plan profile leftCurrent left)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex plan profile leftCurrent left)
     (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex plan profile rightCurrent right)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex plan profile rightCurrent right)
     (agreement : WindowedApplication.PolicyAgreement
       (root.windowed deadlineOf binding choice windowOf) focal left right)
     (hinitial : root.InitialControllerReadsPublic)
@@ -430,9 +434,11 @@ theorem conditional_block_agreement_at_source
     (left right finalLeft finalRight :
       (root.windowed deadlineOf binding choice windowOf).application.PolicyExecution)
     (leftCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex plan profile leftCurrent left)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex plan profile leftCurrent left)
     (rightCheckpoint : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
-      roster focal replacement blockIndex plan profile rightCurrent right)
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
+      focal replacement blockIndex plan profile rightCurrent right)
     (agreement : WindowedApplication.PolicyAgreement
       (root.windowed deadlineOf binding choice windowOf) focal left right)
     (hinitial : root.InitialControllerReadsPublic)

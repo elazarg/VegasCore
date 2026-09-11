@@ -46,7 +46,8 @@ variable {execution :
 instruction kind. No settlement or accepted-message premise is imposed on the
 runtime execution; those facts follow from the service and source fallbacks. -/
 theorem extend
-    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+    (trace : WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
       replacement initial blockIndex plan profile current execution)
     (hfallbacks : root.BlockFallbacks binding choice)
     (horigins : (root.image deadlineOf).HasBindingOrigins)
@@ -63,7 +64,8 @@ theorem extend
       (nextPlan : ApplicationPlan nextAccounted nextFresh nextState)
       (nextProfile : SourceBehavioralProfile nextProg)
       (sourceNext : CoupledAt (compileCore nextProg nextFresh nextState).graph nextState),
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement initial (blockIndex + 1) nextPlan nextProfile sourceNext final := by
   have checkpoint := trace.checkpoint
   have hlocal := checkpoint.continuation.blockFallbacks binding choice hfallbacks
@@ -111,7 +113,8 @@ theorem extend
 count, have canonical source evidence. In particular, the prefix carrier does
 not filter runtime deviations by assuming an already-selected source action. -/
 theorem covers
-    (hinitial : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (hinitial : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement 0 root rootProfile initial
         (root.windowedInitialExecution deadlineOf binding choice windowOf))
     (hfallbacks : root.BlockFallbacks binding choice)
@@ -130,7 +133,8 @@ theorem covers
       (nextPlan : ApplicationPlan nextAccounted nextFresh nextState)
       (nextProfile : SourceBehavioralProfile nextProg)
       (sourceNext : CoupledAt (compileCore nextProg nextFresh nextState).graph nextState),
-      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf roster focal
+      WindowedSourcePrefix root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster) focal
         replacement initial blocks nextPlan nextProfile sourceNext final := by
   induction blocks generalizing final with
   | zero =>
@@ -154,7 +158,8 @@ and finishes the native graph. The source witness is the canonical prefix
 constructed from these actual blocks, not a reconstruction from an arbitrary
 terminal graph configuration. -/
 theorem terminates
-    (hinitial : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf roster
+    (hinitial : WindowedCheckpoint root rootProfile deadlineOf binding choice windowOf
+      ((root.windowed deadlineOf binding choice windowOf).blockService roster)
       focal replacement 0 root rootProfile initial
         (root.windowedInitialExecution deadlineOf binding choice windowOf))
     (hfallbacks : root.BlockFallbacks binding choice)
