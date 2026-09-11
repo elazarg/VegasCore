@@ -81,3 +81,9 @@ complete repeated delivery execution, including terminal completion of the
 emitted graph. The whole-prefix pure-deviation extraction and final
 whole-program law remain open. Local block theorems do not by themselves
 imply adaptive progress or deadline fairness.
+
+The reusable mechanism-design step for a designated quit is proved in
+`GameTheoryExtensions/Core/QuitTransfer.lean`. It transfers a strict source
+improvement whenever the runtime supplies a support-level law identifying the
+target quit with the source quit. The active pending-message service does not
+yet satisfy that law for all of its exposed payloads and reaction commands.
