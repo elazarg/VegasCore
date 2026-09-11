@@ -60,8 +60,11 @@ compiler alone as a refinement proof.
 Native support theorems say that supported sealed-message executions decode to
 reachable graph prefixes, and terminal prefixes reconstruct written-order
 source executions with matching payout evaluation. The same support guarantee
-holds for arbitrary bounded policy executions, including public pending
-messages, delivery, inclusion, replay, malformed traffic, and withholding.
+holds for arbitrary bounded policy executions, including pending messages,
+recipient-local delivery, inclusion, replay, malformed traffic, and
+withholding. The scheduler/environment sees the full pending pool; player
+views currently expose only their own inbox, sent messages, and the public
+ledger.
 Ideal-service hiding is proved separately. These results are operational and
 support-level; they do not identify an arbitrary runtime policy with a source
 policy.

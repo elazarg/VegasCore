@@ -46,8 +46,8 @@ instantiate `SealedCompilation.StrategicCertificate` for the concrete pending
 message policy game.
 
 The active runtime model already includes opaque commitments, cleartext
-rejection, public pending messages, delivery, inclusion, replay, and timed
-expiration adapters. These facts are operational and support-level. They do
+rejection, pending messages, recipient-local delivery, inclusion, replay, and
+timed expiration adapters. These facts are operational and support-level. They do
 not by themselves identify a runtime policy with a source policy: pending
 payloads and delivery timing are additional inputs, so the pending-message
 backtranslation must prove the required observation or mixture law explicitly.
