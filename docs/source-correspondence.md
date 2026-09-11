@@ -17,13 +17,11 @@ These statements concern the sequential source and its event graph. Any
 game-theoretic interpretation is derived separately and is not an intermediate
 runtime architecture.
 
-For the fixed windowed native service, the correspondence continues through a
-complete strategic theorem: arbitrary finite-support randomized unilateral
-runtime policies yield finite mixtures of legal source deviations, while the
-compiled honest profile retains the source public-result law. The pending
-message target seeks the same strength, first for the concrete delivery service
-and then for adaptive public scheduling: pure whole-prefix extraction first,
-randomized linearity second, then guarantees and same-error approximate-Nash
-equivalence. The concrete delivery laws are explicit admitted targets in
-`Paper.lean`; the stronger scheduler and outcome scope remains part of the
-paper target.
+The active sealed-message edge does not yet claim a runtime-to-source strategy
+translation. `SealedCompilation.StrategicCertificate` states the missing edge
+explicitly: a concrete runtime must supply the honest outcome law and represent
+each considered unilateral deviation by a finite mixture of source deviations.
+The generic GameTheory layer then proves the expected-utility guarantee and
+same-error approximate-Nash equivalence. The former fixed-windowed theorem and
+its delivery refinements are retained only in `archive/fused/` while this
+backtranslation is rebuilt for the strict edge.

@@ -15,7 +15,10 @@ the existing graph-to-written-source support theorem reconstructs an actual
 source execution with the same terminal bindings and payout evaluation.
 
 The terminal premise is explicit. The theorem does not guarantee that a
-withholding run settles, or compare policies or outcome distributions.
+withholding run settles, or compare policies or outcome distributions. A
+settlement/timeout edge may separately resolve withholding or rejected traffic
+to a source nullable quit; this prefix theorem leaves that resolution law
+visible rather than choosing one silently.
 -/
 
 namespace Vegas.WFProgram

@@ -31,9 +31,9 @@ corresponding commitment. Correctness is stated against actual graph
 reachability and source reconstruction, avoiding a parallel operational
 machine hierarchy.
 
-The `ApplicationPlan` public-choice image is a fused optimization experiment
-pending removal. It is not a commitment-preserving lowering and is outside the
-strict compiler claims.
+The former `ApplicationPlan` public-choice image was a fused optimization
+experiment, not a commitment-preserving lowering. Its source and proofs are
+archived outside the build roots; it is outside the active compiler claims.
 
 Probability tables denote exact finite laws. A concrete entropy mechanism,
 cryptographic commitment scheme, adaptive delivery service, or blockchain
@@ -43,40 +43,20 @@ backend would be a further artifact with its own proof edge.
 
 The strict sealed-message edge has checked whole-run source reconstruction and
 ideal-service hiding laws. Its whole-program strategic preservation theorem is
-not yet proved. The earlier fixed-windowed theorem concerns a fused image and
-is not a theorem for the strict compiler edge.
+not yet proved. `SealedCompilation.StrategicCertificate` packages the exact
+honest-law and finite-mixture obligations needed for the Nash transfer; no
+runtime is granted that certificate by construction.
 
-The pending-message development generalizes the service, checkpoint, and prefix
-infrastructure. The first-poll source law, delivery/reaction acceptance, and a
-paired delivery/reaction segment are checked. Unrestricted binding and
-public-choice heads now have complete delivery-block successor theorems:
-recipient delivery, reaction polls, deadline-aware clocking, and
-unchanged-relay expiry are all in the actual schedule, with a source successor
-and next checkpoint. Conditional resolving handlers now have a complete
-delivery-block successor theorem as well: both ordinary and copied accounting
-constructors use resolved-binding provenance to establish expiry eligibility
-under the same schedule. The four block successors compose into source
-coverage for every complete repeated delivery execution and terminal graph
-completion. Whole-prefix policy extraction, randomized extension, and the
-whole-program law remain open; source coverage does not by itself establish
-adaptive fairness.
-
-The pending-message model has an explicit strategic boundary. `deliver`
+The active pending-message model has an explicit strategic boundary. `deliver`
 places the selected packet in the recipient's pool, and the recipient policy
-sees that pool. The source observation carried by a `ProfilePoint` contains no
-pending-payload pool. Thus two executions can agree on the source view while
-giving a recipient different delivery inputs; the `PolicyAgreement` relation
-then fails at its pool component. A delivery-level strategic theorem needs a
-separate hiding/equivalence premise (for example, a cryptographic projection
-that erases payload content), or an explicitly richer source observation. The
-checked delivery coverage theorem does not assume either premise. The generic
+sees that pool. A source observation need not contain the pending-payload pool,
+so source-view equality alone cannot establish a deviation backtranslation.
+The concrete runtime edge must either prove a hiding/equivalence projection or
+declare the additional observation. The generic
 `GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash`
-theorem proves the corresponding mechanism-design step: once a runtime quit
-law is shown to be supported entirely on the source quit, any strict source
-improvement over quit refutes the compiled target equilibrium. The active
-delivery model has not yet established that law; its reaction policy still
-admits commands beyond waiting or quitting, and some pending payloads are
-intentionally visible.
+theorem proves the mechanism-design step once a runtime resolution law is
+supported entirely on the source quit. The sealed kernel's rejected packet is
+only a stutter; classifying it as quit is a timeout/resolution theorem.
 
 No active theorem establishes general adaptive scheduling equivalence,
 censorship resistance, cryptographic hiding, gas behavior, or EVM execution.
@@ -91,10 +71,8 @@ choices remain owner-authorized; permissionless expiration is a separately
 declared resolution action; binding openings must match the recorded binding
 origin and verifier.
 
-Feature passes must compose over one application plan. Binding, chance,
-ordinary public choice, conditional publication, and their optional timeout
-handlers retain separate eligibility evidence. A later conditional publication
-may reuse an earlier binding only through a certified origin and its own source
-guard. Combining features requires preservation of allocation uniqueness,
-read availability, cache freshness, completed-prefix shape, and handler
-noninterference.
+Feature extensions must compose over the same graph artifact. Each new runtime
+detail—timeouts, public delivery, cryptographic commitments, ledger admission,
+or VM execution—adds a separately typed target and a proof edge. It may not
+silently fuse source nodes or invent source outcomes; the edge must state its
+observation, progress, and strategic obligations explicitly.

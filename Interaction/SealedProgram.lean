@@ -20,7 +20,11 @@ service table or unopened values.
 
 Inclusion has no liveness, timeout, or forced-opening guarantee. Cleartext and
 malformed messages may enter the public ledger, but the application rejects
-them.
+them. Rejection is an operational stutter, not a claim that the programmer's
+explicit quit is unavailable: a surrounding resolution mechanism may map a
+stutter caused by invalid traffic or withholding to the nullable source value
+`Option.none`, and that mapping must be proved at the corresponding runtime
+edge.
 -/
 
 namespace Interaction

@@ -7,6 +7,6 @@ Authors: VegasCore contributors
 import Vegas.Game.SealedMessages
 import Vegas.Game.SealedRelease
 import Vegas.Game.SealedTimeoutApplication
-import Vegas.Game.Windowed
+import Vegas.Game.SealedStrategic
 
 /-! # Native operational games and source correspondence -/

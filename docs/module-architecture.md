@@ -15,17 +15,15 @@ semantics and does not depend on Vegas source syntax.
 
 Within Vegas, `Core` defines source programs and written-order execution,
 `EventGraph` defines the dependency graph and its execution, and `Compile`
-connects them and emits retained native applications. `Game` contains only
-the focused adapters used by those applications.
+connects them to the active sealed-message protocol. `Game` contains the
+focused policy and strategic adapters. The former fused application-plan
+development is outside this active dependency graph in `archive/fused/`.
 
-The application compiler is organized by proof responsibility rather than by
-a second runtime hierarchy. Plan/allocation modules construct the instruction
-inventory; binding, sample, public-choice, and conditional-publication modules
-prove their local image and successor laws; policy modules establish controller
-locality and cache/provenance invariants; service and prefix modules compose
-actual message runs; outcome modules decode completed states. Feature-specific
-modules should depend on the shared plan and native application definitions,
-not duplicate them.
+The active compiler is organized by proof responsibility: source/graph
+construction, sealed rule generation, decoding, native refinement, and source
+reconstruction. A new runtime feature should add a separate interaction or
+compiler edge with explicit state/observation and correspondence laws; it
+must not silently replace a sealed rule with a fused cleartext endpoint.
 
 Ownership boundaries are semantic. Vegas owns source guards, source-declared
 fallbacks, application instruction identity, and source/graph correspondence.

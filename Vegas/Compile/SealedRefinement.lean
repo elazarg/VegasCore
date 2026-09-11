@@ -15,7 +15,9 @@ import Interaction.SealedExecutionLaws
 Successful commitment and opening handlers decode to the graph's actual
 primitive transition. Rejected traffic can affect the public ledger without
 advancing that graph. The correspondence is operational: it does not erase
-the runtime observations or establish a correspondence between strategies.
+runtime observations or establish a correspondence between strategies. A
+runtime resolution may subsequently classify such a stutter as the source's
+explicit nullable quit, but that is a separate law.
 -/
 
 namespace Vegas.EventGraph.SealedFragment

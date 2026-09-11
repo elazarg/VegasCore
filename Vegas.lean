@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import GameTheory
 import Vegas.Core
+import Vegas.Foundation.ViewExtension
 import Vegas.EventGraph
 import Vegas.Language
 import Vegas.Compile
@@ -13,6 +14,7 @@ import Vegas.Game
 
 /-! # Vegas
 
-Checked source programs compile through typed event graphs and application plans
-to native message runtimes. Games interpret each representation's own execution.
+Checked source programs compile through typed event graphs to explicit sealed
+message runtimes. Games interpret the source and runtime representations of the
+same checked program.
 -/

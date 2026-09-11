@@ -28,62 +28,54 @@ a build optimization; the subsequent build checks the proof terms.
 | What is a checked source program? | `Vegas/Core/` |
 | What is its written-order execution? | `Vegas/Core/SmallStep.lean`, `Vegas/Core/Strategy.lean` |
 | How is the event graph built? | `Vegas/Compile/Compiler.lean`, `Vegas/EventGraph/` |
-| How are source decisions and graph reads related? | `Vegas/Compile/SourceLaw.lean` and adjacent compiler laws |
+| How are source decisions and graph reads related? | `Vegas/Compile/Compiler.lean`, `SourceAdequacy.lean`, and the event-graph laws |
 | What executes public messages? | `Interaction/`, `Vegas/Compile/SealedSource.lean` |
-| Which retained applications use that runtime? | `Vegas/Game/SealedMessages.lean`, `SealedRelease.lean`, `SealedTimeoutApplication.lean`, and `Windowed.lean` |
+| Which active games use that runtime? | `Vegas/Game/SealedMessages.lean`, `SealedRelease.lean`, `SealedTimeoutApplication.lean`, and `SealedStrategic.lean` |
 | Which claims are paper-facing? | The single root audit, `Paper.lean` |
 
 Read the owning theorem and definitions, not only its paper-facing restatement.
 The audit pins theorem axioms; it does not prove that prose and formal
 statements agree.
 
-The manuscript's complete target remains registered in `paper-claims.json`.
-Run `python scripts/check-paper-claims.py` for the strict paper-completion gate;
-it fails on the explicit entries in `paper-obligations.json` until active proofs
-replace them. The `--allow-open-obligations` development mode checks structural
-integrity while reporting open obligations. Neither this mode nor an archived
-proof is an active proof of the paper's claim. Without the separate manuscript
-checkout, `--allow-missing-paper` omits prose/snapshot validation, not proof checks.
+The separate manuscript checkout still contains the earlier claim registry and
+is not synchronized with this migration. The active audit therefore records
+only the strict sealed edge and the generic strategic interface below; archived
+fused claims are not silently presented as current results. Until the manuscript
+is rewritten, the paper-claim checker is not a completion gate for the active
+tower. `--allow-missing-paper` only omits prose/snapshot validation; it does not
+turn an unproved theorem into a proof.
 
 ## Trust and scope
 
 Proved audit entries use Lean's standard logical axioms reported by
-`#print axioms`. Open targets in `Paper.lean` explicitly use `sorry` and have
-axiom reports containing `sorryAx`. Their expected admission warnings are
-guarded; other warnings still fail the build. Production libraries cannot
-import the audit or contain admissions. A successful build therefore checks
-the target statements' types, not their unproved conclusions.
+`#print axioms`. The active `Paper.lean` file is intentionally a small
+direct-delegation audit surface and currently contains no admissions. Open
+strategic work is documented as an obligation in `docs/active-tower.md`; it is
+not disguised as a proved paper theorem. Production libraries cannot import
+the audit or contain admissions.
 
 The repository does not treat generated code, test vectors, or an executable
 compiler alone as a refinement proof.
 
-Native support theorems say that supported message executions decode to
-reachable graph prefixes, and terminal prefixes reconstruct source executions
-with matching public results. Independently, the fixed windowed block service
-has an honest source law and a whole-program arbitrary randomized unilateral
-deviation-mixture theorem. With its exact public-read, binding-origin,
-fallback, roster, and unchanged-relay premises, this yields public-outcome
-guarantees and same-error approximate-Nash preservation and reflection at
-compiled profiles.
+Native support theorems say that supported sealed-message executions decode to
+reachable graph prefixes, and terminal prefixes reconstruct written-order
+source executions with matching payout evaluation. The same support guarantee
+holds for arbitrary bounded policy executions, including public pending
+messages, delivery, inclusion, replay, malformed traffic, and withholding.
+Ideal-service hiding is proved separately. These results are operational and
+support-level; they do not identify an arbitrary runtime policy with a source
+policy.
 
-For the pending-message service, generalized checkpoint and prefix machinery,
-the first-poll source law, preservation of acceptance across delivery and
-reaction, and the paired delivery/reaction segment are checked. Complete
-delivery blocks for an unrestricted binding and a public choice now have source
-successors and next checkpoints, including recipient delivery and reaction
-slots. Progress is proved from a duplicate-free unchanged relay and a
-source-certified fallback. The conditional head now has the corresponding
-delivery-block theorem for both ordinary and copied accounting: resolved
-binding provenance supplies expiry eligibility, and the theorem yields the
-same source successor and next checkpoint under the actual delivery/reaction
-schedule. These block successors compose into source coverage for every
-complete repeated delivery execution, including terminal completion of the
-emitted graph. The whole-prefix pure-deviation extraction and final
-whole-program law remain open. Local block theorems do not by themselves
-imply adaptive progress or deadline fairness.
+Strategic preservation is exposed by
+`Vegas.SealedCompilation.StrategicCertificate`. A concrete runtime must provide
+the honest outcome law and finite-mixture backtranslation for its considered
+unilateral deviations. The generic GameTheory layer then proves expected-
+utility guarantees and same-error approximate-Nash preservation and
+reflection. The pending-message certificate is the next open proof obligation;
+support refinement and hiding alone do not discharge it.
 
 The reusable mechanism-design step for a designated quit is proved in
 `GameTheoryExtensions/Core/QuitTransfer.lean`. It transfers a strict source
 improvement whenever the runtime supplies a support-level law identifying the
-target quit with the source quit. The active pending-message service does not
-yet satisfy that law for all of its exposed payloads and reaction commands.
+target quit with the source quit. This law is a field-level obligation of a
+concrete runtime certificate, not an assumption hidden in the sealed compiler.
