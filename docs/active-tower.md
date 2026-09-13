@@ -70,6 +70,18 @@ action law with the replay registration when disclosure inputs agree.
 Absent registrations use an explicit legal fallback, which is separate from
 both registered nullable values and timeout settlement.
 
+`SealedCompilation.extractedSourceRun` is the canonical graph realization of
+written-source play under this policy and the original opponents.
+`extractedSourceRun_source` identifies its complete source-environment law
+with that independent source denotation. In every supported terminal
+realization, `extractedSourceRun_consistent` proves all focal choices equal
+the values extracted by replay of its honest assignment; disclosure-input
+agreement is derived from actual source reads and reveal semantics.
+`extractedSourceRun_locked` retains every focal source-owned registration
+present at the common first-timeout snapshot, including speculative ones.
+This concerns private bindings: the snapshot follows its timeout tick, so
+its newly defaulted public fields need not match those source values.
+
 `SealedFragment.resolvingReplay_prefix_eq_iff` characterizes stopped resolving
 replays by their recorded honest registrations, including when the cutoff
 discards a suffix whose honest values differ. The cutoff may inspect the full
@@ -79,10 +91,13 @@ stopped trace with its honest-registration cylinder mass under any joint
 assignment law. Independence of those coordinates is not assumed. This is
 a replay law, not yet the marginal law of the original honest kernels.
 
-The remaining probability argument must establish the source-input agreement along
-the coupled execution, predraw native responses consistently across honest
-assignments, and identify both whole-program marginals. Local kernel agreement
-alone does not establish the joint law of dependent source decisions.
+The remaining probability argument must establish honest source/native kernel
+agreement along replay, compute the source cylinder masses, and identify the
+actual stopped-native marginal. The source law and its focal consistency are
+checked; the native marginal is not. Randomized responses must also be predrawn
+consistently across honest assignments, and the post-timeout native suffix must
+be attached with its actual continuation law. Pointwise choice agreement alone
+does not establish these probabilities for dependent source decisions.
 
 The backend admits homogeneous commit/reveal programs with unrestricted guards,
 including multistage choices whose information includes earlier public values

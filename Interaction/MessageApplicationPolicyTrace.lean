@@ -205,6 +205,48 @@ theorem tracePolicies_firstRelease_split [DecidableEq Principal]
           · simpa only [PolicyTrace.firstRelease, hrelease, Bool.false_eq_true, ↓reduceIte,
               PolicyTrace.last] using hsuffix
 
+/-- An immutable optional read can be taken when it first becomes present
+or at a common release checkpoint, with the same result. The persistence
+premise concerns supported executions of the unchanged native runner. -/
+theorem tracePolicies_firstRelease_option [DecidableEq Principal] {Value : Type*}
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (read : app.PolicyExecution → Option Value) (release : app.PolicyExecution → Bool)
+    (hpersistent : ∀ schedule initial next, next ∈
+      (app.runPolicies players environment schedule initial).support →
+      ∀ value, read initial = some value → read next = some value)
+    (schedule : List (@Invocation Principal)) (initial : app.PolicyExecution)
+    (trace : app.PolicyTrace)
+    (htrace : trace ∈ (app.tracePolicies players environment schedule initial).support) :
+    read (trace.firstRelease (fun execution => (read execution).isSome || release execution)) =
+      read (trace.firstRelease release) := by
+  induction schedule generalizing initial trace with
+  | nil =>
+      have heq : trace = .finish initial := by simpa only [tracePolicies,
+        FinDist.mem_support_pure] using htrace
+      subst trace
+      rfl
+  | cons invocation rest ih =>
+      cases hread : read initial with
+      | some value =>
+          obtain ⟨front, _, _, hprefix, _⟩ :=
+            app.tracePolicies_firstRelease_split players environment release
+              (invocation :: rest) initial trace htrace
+          have hvalue := hpersistent front initial (trace.firstRelease release) hprefix value hread
+          simp only [tracePolicies, FinDist.support_bind, Set.mem_iUnion,
+            FinDist.support_map, Set.mem_image] at htrace
+          obtain ⟨next, _, tail, _, rfl⟩ := htrace
+          simpa only [PolicyTrace.firstRelease, hread, Option.isSome_some,
+            Bool.true_or, ↓reduceIte] using hvalue.symm
+      | none =>
+          simp only [tracePolicies, FinDist.support_bind, Set.mem_iUnion,
+            FinDist.support_map, Set.mem_image] at htrace
+          obtain ⟨next, _, tail, htail, rfl⟩ := htrace
+          cases hrelease : release initial
+          · simpa only [PolicyTrace.firstRelease, hread, Option.isSome_none,
+              Bool.false_or, hrelease, Bool.false_eq_true, ↓reduceIte] using ih next tail htail
+          · simp only [PolicyTrace.firstRelease, hread, Option.isSome_none,
+              Bool.false_or, hrelease, ↓reduceIte]
+
 /-- Local policy support transfer preserves a complete stopped prefix. The
 premise may use only actions recorded by that prefix; no comparison is needed
 after its selected snapshot. The environment and native kernel are unchanged. -/

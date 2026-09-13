@@ -23,6 +23,7 @@ import Vegas.EventGraph.KernelIndependent
 import Vegas.EventGraph.KernelNative
 import Vegas.EventGraph.KernelProduct
 import Vegas.EventGraph.KernelSupport
+import Vegas.EventGraph.KernelRealization
 import Vegas.EventGraph.KernelPolicy
 import Vegas.EventGraph.KernelPlan
 import Vegas.EventGraph.KernelRound

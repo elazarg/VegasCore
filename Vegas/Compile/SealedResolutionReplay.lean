@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedResolutionReadBound
+import Interaction.SealedResolutionRounds
 
 /-! # Fixed-seed replay and causal registration extraction
 
@@ -91,6 +92,15 @@ theorem resolvingReplay_law :
   Classical.choose_spec (supported.resolvingReplay_exists nullValue window values focal
     deviator environment schedule)
 
+/-- The first timeout snapshot, or the last snapshot at the finite horizon.
+This is a proof readout of the complete native replay, not a runtime stop. -/
+def resolvingStop :
+    (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution :=
+  (supported.resolvingReplay nullValue window values focal
+    deviator environment schedule).firstRelease (fun execution :
+      (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution =>
+        !execution.native.application.visible.timeouts.isEmpty)
+
 def resolvingBinding (decision : Fin G.nodeCount) : Option (L.Val ty) :=
   ((supported.resolvingReplay nullValue window values focal
       deviator environment schedule).firstRelease
@@ -105,6 +115,29 @@ theorem resolvingBinding_law (decision : Fin G.nodeCount) :
         deviator environment schedule decision) := by
   simp only [resolvingBindingLaw, resolvingReplay_law, FinDist.map_pure]
   rfl
+
+/-- All extracted first registrations can be read at one common first-timeout
+snapshot. The resolving runtime retains its private service across the tick,
+so this also covers the snapshot immediately after resolution. -/
+theorem resolvingBinding_eq_stop_lookup (decision : Fin G.nodeCount) :
+    supported.resolvingBinding nullValue window values focal
+      deviator environment schedule decision =
+      (supported.resolvingStop nullValue window values focal
+        deviator environment schedule).native.application.service.lookup (focal, decision.val) := by
+  refine MessageApplication.tracePolicies_firstRelease_option
+    (supported.resolvingRuntime nullValue window).messageApplication
+    (supported.resolvingValuePlayers nullValue window values focal
+      (fun history view => FinDist.pure (deviator history view)))
+    (fun history view => FinDist.pure (environment history view))
+    (fun execution => execution.native.application.service.lookup (focal, decision.val))
+    (fun execution => !execution.native.application.visible.timeouts.isEmpty)
+    ?_ schedule
+    (PolicyExecution.initial _ (State.initial _
+      (supported.resolvingRuntime nullValue window).initial)) _ ?_
+  · intro invocations initial next hnext value hvalue
+    exact (supported.resolvingRuntime nullValue window).runPolicies_lookup_of_eq_some
+      _ _ invocations initial next (focal, decision.val) value hvalue hnext
+  · rw [resolvingReplay_law, FinDist.mem_support_pure]
 
 /-- Pointwise causal extraction using the same native seed at all decisions.
 Both registration and absence are independent of source-future honest values. -/

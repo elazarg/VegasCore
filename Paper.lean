@@ -13,6 +13,7 @@ import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedSourceExtraction
+import Vegas.Compile.SealedSourceRealization
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
@@ -257,6 +258,57 @@ theorem pending_source_choice_law
         deviator environment schedule decision).getD fallback) :=
   compilation.extractedSourcePolicy_law nullValue window focal deviator environment schedule
     fallback values decision guard hdecision reads hinputs
+
+section SourceRealization
+
+variable [Fintype Player] {source : WFProgram Player L} {ty : L.Ty}
+variable [DecidableEq (L.Val ty)] (compilation : SealedCompilation source ty)
+variable (nullValue : L.Val ty) (window : Nat) (focal : Player)
+variable (deviator :
+  List (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry →
+  (compilation.supported.resolvingRuntime nullValue window).messageApplication.View →
+  (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerCommand)
+variable (environment :
+  List
+    (compilation.supported.resolvingRuntime nullValue window).messageApplication.EnvironmentEntry →
+  MessageApplication.EnvironmentObservation
+    (compilation.supported.resolvingRuntime nullValue window).messageApplication →
+  MessageApplication.EnvironmentPolicyCommand
+    (compilation.supported.resolvingRuntime nullValue window).messageApplication)
+variable (schedule : List (@MessageApplication.Invocation Player)) (fallback : L.Val ty)
+
+/-- The source side of the fixed-response coupling is exactly written-source
+execution with the extracted policy and unchanged opponents. -/
+theorem pending_extracted_source_law (profile : SourceBehavioralProfile source.core.prog) :
+    (compilation.extractedSourceRun nullValue window focal deviator environment schedule
+      fallback profile).map (ToEventGraph.observeSourceOutcome source.core) =
+      (denoteSource source.core.prog
+        (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
+          (compilation.extractedSourcePolicy nullValue window focal deviator environment schedule
+            fallback)) source.core.env).map some :=
+  compilation.extractedSourceRun_source nullValue window focal deviator environment schedule
+    fallback profile
+
+/-- Every focal source-owned registration at the common first-timeout snapshot
+is retained by the complete source realization. Native marginal equality is
+a separate probability obligation. -/
+theorem pending_locked_source_choices (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (ToEventGraph.compile source.core).graph)
+    (hcfg : cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment
+      schedule fallback profile).support)
+    (decision : Fin (ToEventGraph.compile source.core).graph.nodeCount) (guard : EventGuard L)
+    (hdecision : ((ToEventGraph.compile source.core).graph.nodeRow decision).sem =
+      .commit focal guard)
+    (value : L.Val ty)
+    (hregistered :
+      (compilation.supported.resolvingStop nullValue window (cfg.1.nodeValues fallback) focal
+        deviator environment schedule).native.application.service.lookup (focal, decision.val) =
+          some value) :
+    cfg.1.nodeValues fallback decision = value :=
+  compilation.extractedSourceRun_locked nullValue window focal deviator environment schedule
+    fallback profile cfg hcfg decision guard hdecision value hregistered
+
+end SourceRealization
 
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal
@@ -856,3 +908,13 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_replay_cylinder
+
+/-- info: 'Vegas.Paper.pending_extracted_source_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_extracted_source_law
+
+/-- info: 'Vegas.Paper.pending_locked_source_choices' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_locked_source_choices

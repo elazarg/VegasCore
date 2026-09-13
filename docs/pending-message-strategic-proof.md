@@ -695,6 +695,11 @@ The current repository has:
 - `SealedCompilation.extractedSourcePolicy`, a legal written-source policy
   reading the corresponding earlier public fields, and its exact local
   registration law under matching disclosure inputs;
+- its actual complete source law with unchanged opponents,
+  `SealedCompilation.extractedSourceRun_source`, and focal-choice consistency
+  at every supported terminal realization;
+- retention of all focal source-owned registrations at a common first-timeout
+  snapshot, including speculative registrations;
 - per-node readiness timestamps, nullable resolution, and continued native
   execution without overwriting the private service;
 - a shared-runner round model separating adaptive wire scheduling from the
@@ -719,11 +724,17 @@ changes to hidden future assignments. The deterministic replay function uses
 this result to fill undisclosed assignment coordinates with a fixed fallback.
 Compiler coverage of earlier public bindings turns that function into an
 ordinary declared-read graph policy; the exact graph-policy roundtrip supplies
-its written-source policy. The local action theorem requires agreement of
-those disclosure reads with replay's assigned values. Establishing that
-agreement in the whole-program coupling and identifying its joint probability
-law remain open. The fallback is only source-policy totalization, not an
-identification of runtime timeout with a source action.
+its written-source policy. For each supported complete source realization,
+`disclosureInputs_eq_nodeValues` derives its disclosure-input agreement from
+the graph's reveal semantics. `extractedSourceRun_consistent` then identifies
+every focal choice with replay's extracted registration. These results use
+the actual source law, not a postulated assignment distribution.
+`extractedSourceRun_locked` retains all focal registrations at the same
+first-timeout snapshot. That snapshot is after the tick, which preserves
+private service values but may have defaulted public fields. Agreement with
+the pre-resolution public prefix is a separate obligation.
+The fallback is only source-policy totalization, not an identification of
+runtime timeout with a source action.
 
 The remaining implementation work is specific:
 
@@ -737,9 +748,11 @@ The remaining implementation work is specific:
    fair-service and termination arguments. Do not assume a bare expiration
    status is a source settlement.
 4. Predraw native responses across honest assignments, and prove
-   coupled-input agreement, source cylinder masses, and both marginal laws using
-   the extracted source policy. Retain the dependence between honest draws and
-   the shared environment randomness.
+   agreement of honest source/native kernel inputs during replay, source
+   cylinder masses, and the actual stopped-native marginal. The source marginal
+   and focal-choice consistency are checked. Attach the actual post-timeout
+   native continuation, retaining dependence between honest draws and the
+   shared environment randomness.
 5. Instantiate the existing `UtilitySimulation` under the explicit
    continuation condition, and audit the end-to-end theorem in `Paper.lean`.
 

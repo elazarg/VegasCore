@@ -2,6 +2,7 @@
 
 import Vegas.Compile.SealedResolutionReplay
 import Vegas.Compile.SourceDisclosureReads
+import Vegas.EventGraph.KernelRealization
 
 /-! # Source-local extraction of native registrations
 
@@ -11,8 +12,10 @@ of the compiled source decision. Reading those fields produces a legal graph
 policy, and the existing policy roundtrip gives a legal written-source policy.
 
 The local agreement theorem identifies its action with the replay registration
-when its disclosure inputs agree with the assigned values. The whole-program
-coupling must establish that agreement and the joint law of the honest draws.
+when its disclosure inputs agree with the assigned values. For a complete
+reachable source realization, the graph's reveal semantics establish the
+disclosure-input equation. The whole-program coupling must still compare the
+honest native inputs and identify the joint law of the honest draws.
 The fallback totalizes absent registrations; it is not a timeout settlement.
 -/
 
@@ -70,6 +73,46 @@ def disclosureInputs (focal : Player)
     compilation.supported.priorHonestCoordinates focal decision → L.Val ty :=
   fun coordinate => reads.read _
     (compilation.priorOpening_mem_reads focal decision guard hdecision coordinate)
+
+/-- In a complete reachable source graph, the extracted policy's actual
+disclosure inputs are the corresponding commitment values. This follows from
+the graph's reveal semantics, not an assumed source/native input equation. -/
+theorem disclosureInputs_eq_nodeValues (focal : Player)
+    (decision : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
+    (hdecision : ((compile source.core).graph.nodeRow decision).sem = .commit focal guard)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (hterminal : Terminal (compile source.core).graph cfg.1)
+    (reads : ReadEnv L guard.choiceReads)
+    (hreads : ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads)
+    (fallback : L.Val ty) :
+    compilation.disclosureInputs focal decision guard hdecision reads =
+      fun coordinate => cfg.1.nodeValues fallback coordinate.val := by
+  funext coordinate
+  let opening := compilation.priorOpening focal decision coordinate
+  have hspec := compilation.priorOpening_spec focal decision coordinate
+  have hread := ReadEnv.ofStore?_read hreads
+    (compilation.priorOpening_mem_reads focal decision guard hdecision coordinate)
+  obtain ⟨row, hrow, hvalid⟩ := reachable_validDoneValues compilation.supported.graphWF
+    cfg.2 opening (hterminal opening)
+  have hrowEq : row = (compile source.core).graph.nodeRow opening :=
+    Option.some.inj (hrow.symm.trans ((compile source.core).graph.nodes_get?_nodeRow opening))
+  subst row
+  rw [hspec.2] at hvalid
+  change ∃ value : L.Val ((compile source.core).graph.nodeRow opening).ty,
+    Store.getAs cfg.1.store ((compile source.core).graph.nodeTarget opening)
+        ((compile source.core).graph.nodeRow opening).ty = some value ∧
+      Store.getAs cfg.1.store ((compile source.core).graph.nodeTarget coordinate.val)
+        ((compile source.core).graph.nodeRow opening).ty = some value at hvalid
+  rw [compilation.supported.rowType opening] at hvalid
+  obtain ⟨value, htarget, hproducer⟩ := hvalid
+  have hvalue : reads.read _
+      (compilation.priorOpening_mem_reads focal decision guard hdecision coordinate) = value :=
+    Option.some.inj (hread.symm.trans htarget)
+  change reads.read _
+    (compilation.priorOpening_mem_reads focal decision guard hdecision coordinate) =
+      (Store.getAs cfg.1.store
+        ((compile source.core).graph.nodeTarget coordinate.val) ty).getD fallback
+  rw [hproducer, Option.getD_some, hvalue]
 
 variable [DecidableEq (L.Val ty)] (nullValue : L.Val ty) (window : Nat) (focal : Player)
 variable (deviator :

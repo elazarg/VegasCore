@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedSourceExtraction
+import Vegas.Compile.SealedSourceRealization
 
 /-! # A native pending disclosure becomes a legal source input
 
@@ -253,5 +253,62 @@ theorem extracted_source_copy (value fallback : Value) :
   have hvalue := FinDist.mem_support_pure.mp
     (hbinding ▸ (FinDist.mem_support_pure.mpr rfl))
   simpa only [cast_eq, ← hvalue, Option.getD_some] using! hlaw
+
+private theorem binding_copies_assignment (values : Fin graph.nodeCount → Value) :
+    supported.resolvingBinding none 3 values 1 deviator environment schedule (node 2) =
+      some (values (node 0)) := by
+  have hbound := supported.resolvingBinding_read_bound none 3 values 1
+    deviator environment schedule (node 2) secondGuard rfl (fun _ => values (node 0))
+  have hagrees : ∀ who, who ≠ (1 : Player) → ∀ index,
+      supported.knownBefore 1 (node 2) (who, index.val) →
+        values index = values (node 0) := by
+    intro who hwho index hknown
+    obtain ⟨opening, hbefore, hsem⟩ := supported.priorHonestCoordinates_opening 1
+      (node 2) index ⟨who, hwho, hknown⟩
+    fin_cases opening
+    · cases hsem
+    · have hindex : index = node 0 := by
+        apply Fin.ext
+        change index.val = 0
+        have hsource := NodeSem.reveal.inj hsem
+        change 0 = 0 + index.val at hsource
+        simpa only [Nat.zero_add] using hsource.symm
+      rw [hindex]
+    · change 2 < 2 at hbefore
+      omega
+    · change 3 < 2 at hbefore
+      omega
+  rw [hbound hagrees]
+  have hlaw := supported.resolvingBinding_law none 3 (fun _ => values (node 0)) 1
+    deviator environment schedule (node 2)
+  rw [pending_copy_law] at hlaw
+  exact (FinDist.mem_support_pure.mp (hlaw ▸ FinDist.mem_support_pure.mpr rfl)).symm
+
+/-- Complete source play reproduces copying an in-flight opening, for every
+honest behavioral kernel and fallback, without postulating input agreement. -/
+theorem complete_source_copies (profile : SourceBehavioralProfile core) (fallback : Value)
+    (cfg : ReachableConfig graph)
+    (hcfg : cfg ∈ (compilation.extractedSourceRun none 3 1 deviator environment schedule
+      fallback profile).support) :
+    cfg.1.nodeValues (ty := BaseTy.option .bool) fallback (node 2) =
+      cfg.1.nodeValues (ty := BaseTy.option .bool) fallback (node 0) := by
+  have hconsistent := compilation.extractedSourceRun_consistent none 3 1 deviator environment
+    schedule fallback profile cfg hcfg (node 2) secondGuard rfl
+  change cfg.1.nodeValues (ty := BaseTy.option .bool) fallback (node 2) =
+    (supported.resolvingBinding none 3 (cfg.1.nodeValues fallback) 1
+      deviator environment schedule (node 2)).getD fallback at hconsistent
+  rw [binding_copies_assignment, Option.getD_some] at hconsistent
+  exact hconsistent
+
+/-- The whole-source consistency test has a supported realization for every
+profile; its support premise is not an empty-event implication. -/
+theorem complete_source_copy_exists (profile : SourceBehavioralProfile core) (fallback : Value) :
+    ∃ cfg ∈ (compilation.extractedSourceRun none 3 1 deviator environment schedule
+      fallback profile).support,
+      cfg.1.nodeValues (ty := BaseTy.option .bool) fallback (node 2) =
+        cfg.1.nodeValues (ty := BaseTy.option .bool) fallback (node 0) := by
+  obtain ⟨cfg, hcfg⟩ := (compilation.extractedSourceRun none 3 1 deviator environment schedule
+    fallback profile).support_nonempty
+  exact ⟨cfg, hcfg, complete_source_copies profile fallback cfg hcfg⟩
 
 end VegasTests.SealedSourceExtraction
