@@ -5,12 +5,13 @@ a resolving public-message runtime. It proves a causal coupling for the
 pre-resolution execution and derives a utility-specific end-to-end theorem.
 The coupling is constructed, not assumed as a theorem premise.
 
-The resolving runtime in Section 3 is a mathematical extension of the current
-sealed application. Its per-node deadlines and nullable continuation rules
-are not implemented by the current Lean timeout adapter. The whole argument
-has not been checked in Lean or independently reviewed. Section 8 gives the
-implementation boundary. In particular, this note is not evidence that the
-repository already proves pending-message Nash preservation.
+The operational resolution rules in Section 3 are implemented by
+`Interaction.SealedResolution`, with a shared policy-runner round driver.
+The compiled-policy adaptation, general source-settlement edge, service and
+termination bounds, and whole-program coupling are still Lean obligations.
+The whole argument has not been checked in Lean or independently reviewed.
+Section 8 gives the implementation boundary. In particular, this note is not
+evidence that the repository already proves pending-message Nash preservation.
 
 ## 1. Exact scope and conclusion
 
@@ -204,6 +205,9 @@ advances by one at the next round boundary. Readiness timestamps are recorded
 when nodes first become ready. Deterministic propagation of defaulted reveals
 is applied after changes to completion state. At a round boundary, expired
 ready nodes are resolved in increasing source order before further commands.
+Completion is tested at round boundaries. If the last node completes during
+a round, the remaining wire opportunities still occur; completed program
+fields cannot change. The round then ends and the driver stops.
 
 Assume a finite service bound `b >= 0`: every submitted message is offered
 inclusion by the end of round `submissionRound + b`, or its application node
@@ -327,9 +331,10 @@ deviator. Their kernels can depend on earlier private values and disclosures.
 Let `H` be the honest commitment sites and let `a in D^H`. Run the actual
 native machine with `D_w,E_w`, replacing each fresh honest draw at site `d`
 by `a_d`. All other policy code, histories, pool operations, validations, and
-clock transitions are unchanged. Stop immediately before the first timeout
-resolution, or at successful completion. Denote this deterministic prefix by
-`T_w(a)`. This is a proof-side evaluation, not an extra runtime strategy.
+clock transitions are unchanged. Stop immediately before the first clock step
+that performs timeout resolution, or at a successful round boundary. Denote
+this deterministic prefix by `T_w(a)`. This is a proof-side evaluation, not an
+extra runtime strategy.
 
 For each focal commitment `c`, let `F_c(w,a)` be its first correctly owned
 private registration in that prefix, or a fixed legal fallback `beta_c` if
@@ -480,8 +485,8 @@ its stopped-prefix marginal, with the actual native runner at seed `w`.
 
 If it completes normally, its assignment is `s_w(a)` and its program outcome
 is `Y`. Otherwise, retain the first-timeout prefix `h`, execute its prescribed
-nullable default, and generate the remaining native execution from its actual
-kernels. Future honest choices on this native suffix need not agree with
+clock-and-resolution step, and generate the remaining native execution from
+its actual kernels. Future honest choices on this native suffix need not agree with
 `s_w(a)`: they may see `bottom` where the counterfactual source continuation
 reveals the original committed value. Integrating this normalized suffix
 preserves the native-prefix marginal and gives the correct complete native
@@ -677,6 +682,14 @@ The current repository has:
   and local source-kernel law;
 - the exact value-substituted replay cylinder for bounded untimed executions;
 - local knowledge-indexed native hiding and the compiled submission barrier;
+- per-node readiness timestamps, nullable resolution, and continued native
+  execution without overwriting the private service;
+- a shared-runner round model separating adaptive wire scheduling from the
+  fixed clock boundary, with exactly one clock unit per round proved;
+- private-binding persistence under arbitrary resolving-runtime policy runs,
+  and exact untimed validator/event projection before the first timeout;
+- a checked-source regression whose missing commitments resolve to the public
+  values of a legal written-source execution;
 - generic utility-based Nash transport.
 
 The local knowledge proofs are included in the warning-free library build.
@@ -687,9 +700,11 @@ The remaining implementation work is specific:
 
 1. Check backend admission for nullable values and direct unique reveals,
    without changing source well-formedness.
-2. Implement per-node relative deadlines, defaulted commitment completion,
-   nullable reveal resolution, and continuation to the existing public
-   outcome evaluator. Distinguish service values from logical defaults.
+2. Adapt the actual source-policy translation to the resolving runtime's
+   completion checks and histories. Connect terminal public fields to the
+   existing source outcome evaluator for every admitted program, not only
+   the concrete settlement regression. Service values and logical defaults
+   remain distinct.
 3. Establish readiness/read invariants after defaults and instantiate the
    fair-service and termination arguments. Do not assume a bare expiration
    status is a source settlement.

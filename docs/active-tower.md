@@ -13,7 +13,8 @@ introducing a new edge and proving its own correspondence laws.
 | Checked source | `Vegas.Core` | `VegasCore`, `WFProgram`, `SourceBehavioralPolicy`, `sourceGameForm` | Intrinsically typed sequential source syntax; guarded source policies; written-order source execution and payoff evaluation. Nullable `yield` supplies an explicit `Option.none` value. |
 | Graph compilation | `Vegas.Compile`, `Vegas.Game.SourceGraph` | canonical graph, declared-read policy runner, `WFProgram.sourceGraphSimulation` | Typed source compilation; exact whole-program terminal-environment law; uniform single-policy backtranslation of every unilateral declared-read graph deviation, with opponents unchanged. A concrete certificate proves Nash and same-error ε-Nash equivalence at compiled profiles for all checked core programs and finite player sets. |
 | Graph strategic presentation | `Vegas.EventGraph.Strategic` | behavioral frontier game and canonical declared-read policy game | Under `CommitInformationLocal` and one ready commitment per player, compiled canonical policies preserve the complete observed outcome law of every behavioral profile; every unilateral canonical replacement is exactly one behavioral graph deviation. This is an event-graph theorem, not yet a source-language or message-runtime theorem. |
-| Sealed native protocol | `Interaction` | message pool, ideal commitment service, `SealedProgram`, policy runner, timed adapter | Commit and reveal are separate protocol actions. Arbitrary finite native traffic—including malformed payloads, retries/replay, delivery, inclusion, and withholding—either stutters or takes a valid graph step. The environment sees the full pending pool; player views expose their own inbox/sent messages and the public ledger. Hiding is proved for protected pre-disclosure traffic. The timed adapter proves clock/expiration operational correspondence; it does not itself assert liveness or source quit. |
+| Sealed native protocol | `Interaction` | message pool, ideal commitment service, `SealedProgram`, policy runner | Commit and reveal are separate protocol actions. Arbitrary finite native traffic—including malformed payloads, retries/replay, delivery, inclusion, and withholding—either stutters or takes a valid graph step. The environment sees the full pending pool; player views expose their own inbox/sent messages and the public ledger. Hiding is proved for protected pre-disclosure traffic. |
+| Resolving native protocol | `Interaction` | `SealedResolution`, shared policy-runner rounds | Per-node relative deadlines, nullable resolution, and continuing execution are implemented. Before the first timeout, validator/event projection is exact. Private bindings persist under arbitrary policies and resolution. Wire scheduling cannot trigger extra clock ticks; every round advances the clock once. General termination, fair-service, and source-settlement theorems remain open. The single-checkpoint `SealedTimeout` model instead records final failure and does not implement this continuation. |
 | Vegas compiler edge | `Vegas.Compile` | `SealedCompilation`, sealed decode/refinement/source modules | One sealed rule per graph node; native prefixes decode to reachable graph states; terminal prefixes reconstruct a written-order source run with matching bindings and payoffs. The policy runner has the same support-level source theorem. |
 | Strategic adapter | `Vegas.Game` | `SealedCompilation.StrategicCertificate` | A concrete target game may supply an honest law and a finite-mixture backtranslation; generic transport then gives the Nash/ε-Nash theorems. The certificate is an explicit obligation, not an automatic consequence of prefix refinement. |
 
@@ -72,13 +73,15 @@ For selective quitting, exact outcome-law simulation and Nash preservation
 are separate targets. The latter can use `UtilitySimulation` if every runtime
 deviation is no better than a legal source deviation. The native fixed-opening
 utility bound is checked, but its whole-program continuation instance is not.
-The current timeout adapter supplies a final-failure status, not the source
-program's quit continuation; missing commitments also need a resolution rule.
-The mathematical note specifies one concrete resolving extension: per-node
-relative deadlines, nullable defaults, and continued execution of the same
-program outcome code. It gives service and termination bounds and constructs
-the source/native coupling for the nullable, unique-direct-reveal fragment.
-That extension and the whole-program proof are not implemented in Lean.
+`SealedResolution` supplies per-node relative deadlines and nullable defaults,
+then permits later application actions. Its round driver uses the shared
+message runner and separates adaptive wire choices from fixed clock ticks.
+A concrete checked-source test identifies its resolved public values with a
+legal written-source execution. The general compiler admission, source-policy
+adaptation, source outcome evaluator connection, and service/termination proofs
+are still missing. The mathematical note gives those arguments and constructs
+the source/native coupling for the nullable, unique-direct-reveal fragment;
+the whole-program proof is not yet implemented in Lean.
 Malformed messages are rejected without a source step. Fair deadline resolution
 must implement the programmer's quitting settlement; a rejected attempt alone
 does not do so. In particular, withholding a committed `some a` cannot be

@@ -8,6 +8,7 @@ import Interaction.TransactionalInclusion
 import Interaction.MessageApplication
 import Interaction.MessageApplicationLaws
 import Interaction.MessageApplicationPolicies
+import Interaction.MessageApplicationWirePolicy
 import Interaction.MessageApplicationIdleService
 import Interaction.MessageApplicationHistoryCounts
 import Interaction.MessageApplicationLocality
@@ -68,3 +69,6 @@ import Interaction.SealedTimeoutHiding
 import Interaction.SealedTimeoutPolicyLaws
 import Interaction.SealedTimeoutApplication
 import Interaction.SealedTimeoutDisclosure
+import Interaction.SealedResolution
+import Interaction.SealedResolutionLaws
+import Interaction.SealedResolutionRounds
