@@ -41,6 +41,12 @@ backend would be a further artifact with its own proof edge.
 
 ## Current boundary
 
+The direct mathematical argument for the pending-message strategic edge is in
+[pending-message-strategic-proof.md](pending-message-strategic-proof.md).
+It targets a causal coupling with a legal source completion, followed by an
+informed-quitting utility bound. The note distinguishes the proved coupling
+consequence from the operational coupling and resolution still to implement.
+
 The written-source-to-declared-read-graph edge has a concrete strategic
 certificate, `WFProgram.sourceGraphSimulation`. Its honest law compares the
 actual graph runner with `denoteSource`; its arbitrary unilateral-deviation
