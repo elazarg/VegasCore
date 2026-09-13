@@ -19,6 +19,19 @@ introducing a new edge and proving its own correspondence laws.
 
 ## Current strategic gap
 
+`SealedCompilation.compilePolicy` implements a written-source policy in the
+native principal-scoped interface. Local reconstruction reads only initial
+source-visible inputs, public application events, and the owner's registration
+history. The checked registration-memory invariant holds under arbitrary
+opponent and environment policies. Fresh registrations use exactly the
+declared-read source kernel; occupied slots publish an opaque handle without
+resampling. Every emitted opening already satisfies the public publication
+barrier, and no compiled-policy packet is a cleartext commitment.
+
+These local policy laws are not the whole-program honest or deviation law.
+The mathematical coupling and its remaining Lean obligations are described in
+[pending-message-strategic-proof.md](pending-message-strategic-proof.md).
+
 The backend admits homogeneous commit/reveal programs with unrestricted guards,
 including multistage choices whose information includes earlier public values
 and their owner's prior commitments. Nonempty choice-information sets are

@@ -1,0 +1,260 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Compile.SealedView
+import Vegas.Compile.SealedCompiler
+import Vegas.Compile.SourcePolicy
+import Interaction.SealedController
+
+/-! # Source policies implemented by sealed-message commands
+
+The translation selects the first owned ready node in source order. Each
+commitment samples its declared-read kernel once into a private write-once
+slot, then publishes only its opaque handle. An opening uses the same cached
+value and the public prerequisite check. The policy receives no ideal-service
+table and ignores unrelated wire observations when choosing source values.
+
+This is a strategy translation for analysis of the open protocol. Players
+are not required to execute it; the native policy interface still admits
+arbitrary unilateral replacements. Its local kernel law below does not claim
+the whole-program pending-message deviation law.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraph.SealedFragment
+
+open Interaction GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
+variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+
+/-- Actual player input reconstruction; all private data comes from this
+principal's own registration history. -/
+def playerStore (supported : SealedFragment G ty) (who : Player)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View) : Store L :=
+  G.sealedPlayerStore ty who (fun slot =>
+    (supported.compile.registrationEncoding slot).cachedValue
+      (supported.compile.messageApplication (Value := L.Val ty)) history) view.application
+
+/-- An empty slot draws once; an occupied slot only publishes its handle. -/
+def commitCommand (supported : SealedFragment G ty) (who : Player)
+    (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
+    (hsem : (G.nodeRow node).sem = .commit who guard)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View) :
+    FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand :=
+  match (supported.compile.registrationEncoding node.val).cachedValue
+      (supported.compile.messageApplication (Value := L.Val ty)) history with
+  | some _ => FinDist.pure (.submit (.commitment node.val (who, node.val)))
+  | none =>
+      match ReadEnv.ofStoreExec? (supported.playerStore who history view) guard.choiceReads with
+      | none => FinDist.pure .wait
+      | some reads => (policy node guard hsem reads).map fun choice =>
+          .privateCommand ⟨(node.val,
+            cast (congrArg L.Val (supported.commitType node who guard hsem)) choice.1)⟩
+
+/-- The optional command of one owned ready node. Prerequisites are checked
+before publication, including before a value-bearing opening enters the pool. -/
+def nodeCommand? (supported : SealedFragment G ty) (who : Player)
+    (policy : CommitPolicy G who)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (node : Fin G.nodeCount) :
+    Option (FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand) :=
+  if SealedProgram.done view.application node.val = false ∧
+      SealedProgram.prerequisitesDone view.application (G.sealedRule node) = true then
+    match hsem : (G.nodeRow node).sem with
+    | .commit owner guard =>
+        if howner : owner = who then
+          some (supported.commitCommand who policy node guard (howner ▸ hsem) history view)
+        else none
+    | .reveal _ =>
+        (supported.compile.openingHandle? view.application who node.val).map fun handle =>
+          match (supported.compile.registrationEncoding handle.2).cachedValue
+              (supported.compile.messageApplication (Value := L.Val ty)) history with
+          | none => FinDist.pure .wait
+          | some value => FinDist.pure (.submit (.opening node.val handle value))
+    | .sample _ => none
+  else none
+
+/-- Playerwise implementation of graph kernels on the actual message runtime. -/
+def playerPolicy (supported : SealedFragment G ty) (who : Player)
+    (policy : CommitPolicy G who) :
+    (supported.compile.messageApplication (Value := L.Val ty)).PlayerPolicy :=
+  fun history view =>
+    ((G.nodeOrder.findSome? (supported.nodeCommand? who policy history view)).getD
+      (FinDist.pure .wait))
+
+theorem commitCommand_cached (supported : SealedFragment G ty) (who : Player)
+    (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
+    (hsem : (G.nodeRow node).sem = .commit who guard)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View) (value : L.Val ty)
+    (hcache : (supported.compile.registrationEncoding node.val).cachedValue
+      (supported.compile.messageApplication (Value := L.Val ty)) history = some value) :
+    supported.commitCommand who policy node guard hsem history view =
+      FinDist.pure (.submit (.commitment node.val (who, node.val))) := by
+  simp only [commitCommand, hcache]
+
+/-- At an empty slot, native local reads give exactly the declared source
+kernel, mapped into a private registration rather than a cleartext packet. -/
+theorem commitCommand_fresh (supported : SealedFragment G ty) (who : Player)
+    (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
+    (hsem : (G.nodeRow node).sem = .commit who guard)
+    (execution : (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution)
+    (hmemory : SealedProgram.RegistrationMemory supported.compile execution)
+    (hbinding : SealedProgram.BindingInvariant supported.compile
+      (supported.compile.eraseReceipts execution.native))
+    (cfg : Config G)
+    (hdecode : G.decodeSealed ty (supported.compile.eraseReceipts execution.native) = some cfg)
+    (reads : ReadEnv L guard.choiceReads)
+    (hreads : ReadEnv.ofStore? cfg.store guard.choiceReads = some reads)
+    (hcache : (supported.compile.registrationEncoding node.val).cachedValue
+      (supported.compile.messageApplication (Value := L.Val ty))
+      (execution.principalHistory who) = none) :
+    supported.commitCommand who policy node guard hsem (execution.principalHistory who)
+      (MessageApplication.State.observe _ execution.native who) =
+      (policy node guard hsem reads).map (fun choice =>
+        (.privateCommand ⟨(node.val,
+          cast (congrArg L.Val (supported.commitType node who guard hsem)) choice.1)⟩ :
+          (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)) := by
+  have hlocal : ReadEnv.ofStoreExec?
+      (supported.playerStore who (execution.principalHistory who)
+        (MessageApplication.State.observe _ execution.native who)) guard.choiceReads =
+      some reads :=
+    ReadEnv.ofStoreExec?_eq_some_of_ofStore?_eq_some
+      (supported.sealedPlayerStore_reads who execution hmemory hbinding cfg hdecode
+        node guard hsem reads hreads)
+  simp only [commitCommand, hcache, hlocal]
+
+private theorem commitCommand_submission (supported : SealedFragment G ty) (who : Player)
+    (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
+    (hsem : (G.nodeRow node).sem = .commit who guard)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (payload : SealedProgram.Payload Player (L.Val ty))
+    (hsubmit : .submit payload ∈
+      (supported.commitCommand who policy node guard hsem history view).support) :
+    payload = .commitment node.val (who, node.val) := by
+  unfold commitCommand at hsubmit
+  split at hsubmit
+  · simpa only [FinDist.mem_support_pure, MessageInterface.PlayerCommand.submit.injEq]
+      using hsubmit
+  · split at hsubmit
+    · simp only [FinDist.mem_support_pure] at hsubmit
+      cases hsubmit
+    · rw [FinDist.support_map] at hsubmit
+      obtain ⟨choice, _, hchoice⟩ := hsubmit
+      cases hchoice
+
+private theorem nodeCommand?_submission (supported : SealedFragment G ty) (who : Player)
+    (policy : CommitPolicy G who)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (node : Fin G.nodeCount)
+    (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
+    (hselected : supported.nodeCommand? who policy history view node = some law)
+    (payload : SealedProgram.Payload Player (L.Val ty))
+    (hsubmit : .submit payload ∈ law.support) :
+    payload = .commitment node.val (who, node.val) ∨
+      ∃ handle value, payload = .opening node.val handle value ∧
+        supported.compile.openingHandle? view.application who node.val = some handle := by
+  unfold nodeCommand? at hselected
+  split at hselected
+  · split at hselected
+    · rename_i owner guard hsem
+      split at hselected
+      · rename_i howner
+        have hlaw := Option.some.inj hselected
+        rw [← hlaw] at hsubmit
+        exact Or.inl (supported.commitCommand_submission who policy node guard
+          (howner ▸ hsem) history view payload hsubmit)
+      · contradiction
+    · cases hhandle : supported.compile.openingHandle? view.application who node.val with
+      | none => simp only [hhandle, Option.map_none] at hselected; contradiction
+      | some handle =>
+          simp only [hhandle, Option.map_some] at hselected
+          split at hselected
+          · rw [← Option.some.inj hselected, FinDist.mem_support_pure] at hsubmit
+            cases hsubmit
+          · rename_i value hcache
+            rw [← Option.some.inj hselected, FinDist.mem_support_pure] at hsubmit
+            exact Or.inr ⟨handle, value, MessageInterface.PlayerCommand.submit.inj hsubmit,
+              rfl⟩
+    · contradiction
+  · contradiction
+
+/-- Every emitted packet is an opaque commitment or an opening whose public
+publication barrier is already satisfied. This holds even on arbitrary inputs. -/
+theorem playerPolicy_submission (supported : SealedFragment G ty) (who : Player)
+    (policy : CommitPolicy G who)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (payload : SealedProgram.Payload Player (L.Val ty))
+    (hsubmit : .submit payload ∈ (supported.playerPolicy who policy history view).support) :
+    (∃ node, payload = .commitment node (who, node)) ∨
+      ∃ node handle value, payload = .opening node handle value ∧
+        supported.compile.openingHandle? view.application who node = some handle := by
+  unfold playerPolicy at hsubmit
+  cases hselected : G.nodeOrder.findSome? (supported.nodeCommand? who policy history view) with
+  | none =>
+      simp only [hselected, Option.getD_none, FinDist.mem_support_pure] at hsubmit
+      cases hsubmit
+  | some law =>
+      simp only [hselected, Option.getD_some] at hsubmit
+      obtain ⟨node, _, hnode⟩ := List.exists_of_findSome?_eq_some hselected
+      rcases supported.nodeCommand?_submission who policy history view node law hnode
+        payload hsubmit with hcommit | ⟨handle, value, hopen, hready⟩
+      · exact Or.inl ⟨node.val, hcommit⟩
+      · exact Or.inr ⟨node.val, handle, value, hopen, hready⟩
+
+theorem playerPolicy_no_cleartext (supported : SealedFragment G ty) (who : Player)
+    (policy : CommitPolicy G who)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (node : Nat) (value : L.Val ty) :
+    .submit (.cleartext node value) ∉ (supported.playerPolicy who policy history view).support := by
+  intro hsubmit
+  rcases supported.playerPolicy_submission who policy history view _ hsubmit with
+    ⟨_, h⟩ | ⟨_, _, _, h, _⟩ <;> cases h
+
+theorem playerPolicy_opening_ready (supported : SealedFragment G ty) (who : Player)
+    (policy : CommitPolicy G who)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (node : Nat) (handle : CommitmentHandle Player Nat) (value : L.Val ty)
+    (hsubmit : .submit (.opening node handle value) ∈
+      (supported.playerPolicy who policy history view).support) :
+    supported.compile.openingReady view.application who node = true := by
+  rcases supported.playerPolicy_submission who policy history view _ hsubmit with
+    ⟨_, h⟩ | ⟨other, actualHandle, actualValue, h, hready⟩
+  · cases h
+  · cases h
+    simp only [SealedProgram.openingReady, hready, Option.isSome_some]
+
+end Vegas.EventGraph.SealedFragment
+
+namespace Vegas.SealedCompilation
+
+open EventGraph ToEventGraph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
+variable {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+
+/-- Compile one written-source policy to the native principal-scoped policy
+interface, through the same graph compilation as the operational theorem. -/
+def compilePolicy (compilation : SealedCompilation source ty) (who : Player)
+    (policy : SourceBehavioralPolicy source.core.prog who) :
+    (compilation.program.messageApplication (Value := L.Val ty)).PlayerPolicy :=
+  compilation.supported.playerPolicy who
+    (compileSourcePolicy source.core.prog source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+      rfl who policy)
+
+end Vegas.SealedCompilation
+
+/-- info: 'Vegas.EventGraph.SealedFragment.commitCommand_fresh' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraph.SealedFragment.commitCommand_fresh

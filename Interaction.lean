@@ -55,6 +55,7 @@ import Interaction.SealedApplicationHiding
 import Interaction.SealedExecutionLaws
 import Interaction.SealedHiding
 import Interaction.SealedController
+import Interaction.SealedMemory
 import Interaction.SealedControllerTrace
 import Interaction.SealedRelease
 import Interaction.SealedPersistence

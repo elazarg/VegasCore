@@ -196,6 +196,54 @@ This proves the replay does not need future source information. On arbitrary
 unreachable source views, a mismatch with earlier own choices can return the
 legal fallback. On reachable views, the induction below proves consistency.
 
+Here is a precise, nonrecursive definition behind that replay. Let `A` be the
+finite product of the value domains of all honest commitment sites. For a full
+assignment `a in A`, run the native machine with `D_w` and `E_w`, replacing each
+fresh honest choice draw at `d` by `a_d`. Keep all other native actions and all
+observations unchanged. Call this deterministic execution `R_w(a)`, stopped at
+the first extra resolution or at the invocation horizon. This is a proof-side
+evaluation of the same runner, not a strategy that reveals `a` to any player.
+
+Define `F_c(w,a)` as the first value registered for focal slot `c` in `R_w(a)`,
+or a fixed legal default if it never registers. There is no reference to an
+extracted source policy in this definition. In the admitted unrestricted-guard
+fragment the default can be fixed independently of the view.
+
+**Read-boundedness lemma.** Let `V_c` contain the honest sites whose source
+reveal precedes focal commitment `c`. If `a` and `a'` agree on `V_c`, then
+`F_c(w,a) = F_c(w,a')`.
+
+**Proof.** Pair the two native runs until the first registration for `c`, the
+first resolution, or the horizon. Honest private slots may have different
+values, but their occupancy and node labels agree. Focal and environment views
+agree. Their deterministic policies therefore choose the same commands. An
+honest invocation selects the same node and the same command shape: a fresh
+registration may differ only in its hidden value; opaque submissions agree.
+An honest opening at `r > c` is impossible before this stopping point by the
+publication barrier. For an opening at `r < c`, its producer is in `V_c`, so its
+payloads agree. There is no reveal at the commitment position `c` itself.
+Delivery and replay copy identical known messages. Inclusion tests either known
+focal data, correctly constructed honest messages, or rejects unauthorized
+attempts independently of hidden values. The paired relation is preserved at
+every step. Both runs stop in the same way with the same focal command or the
+same default. This finite induction proves the assertion.
+
+Consequently `F_c` factors through `a restricted to V_c`. The extracted source
+policy reads those values from the public part of its source view and applies
+that factor. On an inconsistent unreachable view it returns the legal default.
+No other player's unopened value or terminal outcome is an argument. Early
+registration for a later focal site causes no circularity: each `F_c` is already
+defined from `R_w`, and each of its honest-value arguments is source-earlier
+than `c`.
+
+In this fragment the construction does not inspect the numerical honest choice
+kernels: their value-substituted command shapes are fixed by the compiler.
+Taking the finite predraw tree over all honest assignments therefore makes the
+same family of extracted policies and mixture weights work for every honest
+opponent profile, with `D` and `E` fixed. Only the source law (7) changes with
+those opponents. No such uniformity is needed to take the expectation bound,
+but it is useful additional content of the causal construction.
+
 ### Coupling invariant and induction
 
 Use one joint construction with the actual source runner and actual native
@@ -214,14 +262,28 @@ The last clause is a distributional invariant. Merely proving that some source
 completion exists for each native trace is insufficient.
 
 There is a direct finite-probability check for the two marginals. With `w`
-fixed, let `t` be a complete native command prefix up to, but not beyond, its
-first extra resolution. Include private registration commands in this
-proof-facing prefix, although they remain absent from opponent observations.
-Let `J(t)` be the honest sites freshly registered in `t`, and `a_d` their
-values. For a valid prefix, the actual probability is
+fixed, execute the source with its original honest kernels and the extracted
+focal policies. Let `q_w` be its distribution on complete honest assignments.
+It is an ordinary source law: read-boundedness makes every focal choice a
+function of strictly earlier source information. Equivalently,
 
 ```text
-p_w(t) = product over d in J(t) of sigma_owner(d)(a_d | v_d(t)). (6)
+q_w(a) = product over honest sites d of
+           sigma_owner(d)(a_d | sourceView_d(a,F(w,a))).        (7)
+```
+
+The product is generated in source order, not independently coordinate by
+coordinate. In particular, a factor may depend on earlier honest values and
+earlier focal decisions. Normalization follows by summing in reverse source
+order, since every kernel is normalized and every dependency points backwards.
+
+Let `t` be a valid native command prefix, not extending beyond its first extra
+resolution. Include private registration commands in this proof-facing prefix,
+although they remain absent from opponent observations. Let `J(t)` be the honest
+sites freshly registered in `t`, and `b_d` their values. Its actual probability is
+
+```text
+p_w(t) = product over d in J(t) of sigma_owner(d)(b_d | v_d(t)). (6)
 ```
 
 Every other transition is deterministic at fixed `w`. Each `v_d(t)` is already
@@ -229,27 +291,55 @@ fixed by the prefix when registration happens. Readiness implies that any
 predecessor on which its kernel depends has already been supplied. The set
 `J(t)` need not be a prefix of written source order.
 
-The source construction gives exactly the same probability to the cylinder of
-complete source runs that replay `t`. To see this, induct on native commands.
-For focal or environment commands, the next command is constant throughout the
-cylinder: the replay uses only already exposed values. For a fresh honest draw,
-its declared inputs are fixed in the cylinder; refine the cylinder by its chosen
-value, multiplying its mass by the factor in (6). Unexposed honest draws have no
-descendant data tested by this prefix unless that data has already been generated
-and included in the cylinder's constraints. In particular, an unregistered
-honest predecessor cannot be read by a later honest registration. Speculative
-focal registrations are also constant across completions, because replay returns
-at that registration before consulting any later opening.
+**Prefix cylinder lemma.** Define the rectangular event
 
-Equivalently, expand the source run into the product of its honest kernels,
-with the extracted focal choices deterministic. Factors for exposed draws are
-fixed as in (6); sum out unconstrained choices in reverse dependency order.
-Their normalized kernels contribute one. This establishes the cylinder law,
-including dependence between honest choices, without a conditioning library.
-The source marginal is the source runner by construction, and these cylinder
-probabilities establish the actual native prefix marginal. After a quitting
-resolution, generate the native suffix using its actual kernels; do not require
-its choices to agree with the counterfactual source completion.
+```text
+C_t = { a : for every d in J(t), a_d = b_d }.
+```
+
+Then `R_w(a)` extends `t` exactly when `a in C_t`.
+
+**Proof.** The forward implication reads the fresh registration commands in
+the trace. For the reverse implication, induct over `t`. In a value-substituted
+execution, the next fresh honest registration queries exactly one new coordinate
+`a_d`; its answer is fixed by `C_t`. All other operations use already registered
+values, public state, or the fixed deterministic policies. The entire current
+native state agrees, including its private values, so the next command agrees.
+This argument uses the full proof-facing prefix; it does not assert that a
+player can observe the coordinates constrained by `C_t`.
+
+**Kernel agreement lemma.** For each `d in J(t)`, the `d`-th source factor in
+(7) is constant over `C_t` and equals the corresponding factor in (6).
+
+**Proof.** At the native registration for `d`, all its declared read fields
+are available. Honest producers of these fields have already registered, so
+their values are constrained in `C_t`. A focal producer already accepted by
+that point has a first registration in the prefix. By the prefix cylinder
+lemma, that registration agrees in every `R_w(a)` for `a in C_t`; it is exactly
+`F_c(w,a)`, hence the source choice at its site. Included reveals copy these
+same values. Initial visible fields also agree. The declared-read correspondence
+therefore identifies the entire source input of the `d`-th kernel with its
+native input. This also handles an honest site executed ahead of earlier
+unrelated source sites: fields from those sites cannot be in its ready read set.
+
+**Prefix mass lemma.** `q_w(C_t) = p_w(t)`.
+
+**Proof.** Sum (7) over `C_t`. Pull out the factors for `d in J(t)` using kernel
+agreement; their product is (6). Sum the remaining variables in reverse source
+order. Each remaining factor is its normalized source kernel and contributes
+one. Fixed coordinates in `J(t)` pose no problem because their factors have
+already been removed. Causality of every `F_c` ensures there is no forward
+dependency left in a source kernel. This proves the equality without assuming
+independent honest choices or selecting a source strategy from a terminal trace.
+
+The prefix mass lemma gives the native marginal. The source marginal is its
+actual runner by construction. On every coupled pair, focal registrations are
+the source's `F_c` values and honest registrations use the source's `a_d`
+values. This is the required binding compatibility, including speculative
+registrations. After a quitting resolution, generate the native suffix using
+its actual kernels; do not require its choices to agree with the counterfactual
+source completion. Integrating that normalized suffix does not change either
+established marginal. Finally average over `w` to obtain the finite mixture (2).
 
 Induct over the finite source sites, with the bounded native replay between
 sites. The cases are:
@@ -293,10 +383,12 @@ same induction then has source marginal `S(sigma)`, not merely an unspecified
 mixture against `sigma_-i`. An arbitrary-deviation coupling alone would not
 establish this additional identification.
 
-Two parts of this induction need particularly explicit formal treatment:
-deferral of honest draws with dependent kernels, and consistency of replay
-across successive source views. They are the mathematical proof obligations to
-test first. The argument above is not yet a checked operational coupling.
+The read-boundedness and prefix cylinder lemmas remove the need for separate
+source policies chosen at successive stopping histories. One family `F_c`
+determines all focal choices, and the source law supplies every honest draw.
+Kernel agreement and reverse-order summation then preserve the dependent joint
+law. These are the concrete lemmas to formalize against the compiled policy;
+they are not yet a checked operational coupling.
 
 ### Worked multistage test: a disclosure correlated with an unopened value
 
@@ -463,9 +555,12 @@ syntax to express the compiler-side resolution contract.
 ## 8. What this settles, and the next iteration
 
 The finite coupling consequence (Section 5) is a complete mathematical argument.
-Section 4 gives a concrete construction and induction for the causal completion
-coupling; its symbolic execution and draw-deferral steps still need a precise
-operational proof. No end-to-end Lean theorem is claimed here.
+Section 4 defines the extracted policies without recursion through source play
+and proves their read-boundedness, prefix-cylinder characterization, kernel
+agreement, and prefix mass equality for the specified compiled behavior.
+The Lean work must establish those properties for the concrete policy functions
+and native runner. The resolving runtime and its source-accounted settlement
+are still implementation obligations. No end-to-end Lean theorem is claimed here.
 
 The next work should directly serve the following two proofs:
 

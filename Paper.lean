@@ -9,6 +9,7 @@ import GameTheoryExtensions.Core.UtilitySimulation
 import Interaction.SealedTimeoutDisclosure
 import Vegas.Language.Nullable
 import Vegas.Compile.SealedCompiler
+import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
 import Vegas.EventGraph.Confluence
@@ -103,6 +104,31 @@ theorem sealed_cleartext_rejected
     (hpayload : message.payload = .cleartext node value) :
     SealedProgram.handle compilation.program state message = state :=
   SealedProgram.handle_cleartext compilation.program state message node value hpayload
+
+/-- The source-policy implementation never publishes a cleartext commitment. -/
+theorem compiled_policy_no_cleartext
+    {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (who : Player)
+    (policy : SourceBehavioralPolicy source.core.prog who)
+    (history : List (compilation.program.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (compilation.program.messageApplication (Value := L.Val ty)).View)
+    (node : Nat) (value : L.Val ty) :
+    .submit (.cleartext node value) ∉
+      (compilation.compilePolicy who policy history view).support :=
+  compilation.supported.playerPolicy_no_cleartext who _ history view node value
+
+/-- The compiled source strategy checks the barrier before publishing an opening. -/
+theorem compiled_policy_opening_ready
+    {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (who : Player)
+    (policy : SourceBehavioralPolicy source.core.prog who)
+    (history : List (compilation.program.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (compilation.program.messageApplication (Value := L.Val ty)).View)
+    (node : Nat) (handle : CommitmentHandle Player Nat) (value : L.Val ty)
+    (hsubmit : .submit (.opening node handle value) ∈
+      (compilation.compilePolicy who policy history view).support) :
+    compilation.program.openingReady view.application who node = true :=
+  compilation.supported.playerPolicy_opening_ready who _ history view node handle value hsubmit
 
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal
@@ -616,6 +642,16 @@ end Vegas.Paper
 /-- info: 'Vegas.Paper.sealed_cleartext_rejected' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.sealed_cleartext_rejected
+
+/-- info: 'Vegas.Paper.compiled_policy_no_cleartext' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_policy_no_cleartext
+
+/-- info: 'Vegas.Paper.compiled_policy_opening_ready' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_policy_opening_ready
 
 /-- info: 'Vegas.Paper.nullable_quit_is_legal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in

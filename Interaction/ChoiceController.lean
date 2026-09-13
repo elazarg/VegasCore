@@ -188,6 +188,15 @@ theorem cachedValue_append_encoded_of_none
   rw [encoding.cachedValue_append_of_none app history _ hcache]
   simp [cachedValue, encoding.decode_encode]
 
+/-- Chronological concatenation keeps the earliest recognized command. -/
+theorem cachedValue_append (encoding : ChoiceEncoding Value app.PlayerCommand)
+    (history suffix : List app.PlayerEntry) :
+    encoding.cachedValue app (history ++ suffix) =
+      (encoding.cachedValue app history).orElse (fun _ => encoding.cachedValue app suffix) := by
+  cases hcache : encoding.cachedValue app history with
+  | none => exact encoding.cachedValue_append_of_none app history suffix hcache
+  | some value => exact encoding.cachedValue_append_of_some app history suffix value hcache
+
 end ChoiceEncoding
 
 /-- A behavioral choice controller whose first encoded command records its
