@@ -156,4 +156,69 @@ theorem runPolicies_initial_application_invariant [DecidableEq Principal]
   exact app.runPolicies_application_invariant invariant hprivate hhandler henvironment
     players environment schedule (PolicyExecution.initial app initial) next hinitial hnext
 
+private theorem advance_action_property [DecidableEq Principal]
+    (property : app.Action → Prop) (execution : app.PolicyExecution)
+    (action : Option app.Action) (advanced : app.State × List app.Action)
+    (hinitial : ∀ action ∈ execution.nativeTrace, property action)
+    (hcommand : ∀ emitted, action = some emitted → property emitted)
+    (hadvanced : advanced ∈ (app.advance execution action).support) :
+    ∀ action ∈ advanced.2, property action := by
+  cases action with
+  | none =>
+      simp only [advance, FinDist.mem_support_pure] at hadvanced
+      subst advanced
+      exact hinitial
+  | some action =>
+      simp only [advance, FinDist.support_bind, Set.mem_iUnion] at hadvanced
+      obtain ⟨next, _, hadvanced⟩ := hadvanced
+      simp only [FinDist.mem_support_pure] at hadvanced
+      subst advanced
+      intro emitted hemitted
+      rcases List.mem_append.mp hemitted with hprior | hnew
+      · exact hinitial emitted hprior
+      · have heq := List.mem_singleton.mp hnew
+        exact heq ▸ hcommand action rfl
+
+/-- A property of all commands admitted by the policies holds for every
+recorded native action. Application transitions may remain randomized. -/
+theorem runPolicies_action_property [DecidableEq Principal]
+    (property : app.Action → Prop)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (hplayers : ∀ who history view command, command ∈ (players who history view).support →
+      ∀ action, PlayerCommand.toAction app who command = some action → property action)
+    (henvironment : ∀ history view command, command ∈ (environment history view).support →
+      ∀ action, EnvironmentPolicyCommand.toAction app command = some action → property action)
+    (schedule : List (@Invocation Principal)) (execution next : app.PolicyExecution)
+    (hinitial : ∀ action ∈ execution.nativeTrace, property action)
+    (hnext : next ∈ (app.runPolicies players environment schedule execution).support) :
+    ∀ action ∈ next.nativeTrace, property action := by
+  induction schedule generalizing execution with
+  | nil =>
+      simp only [runPolicies, FinDist.mem_support_pure] at hnext
+      subst next
+      exact hinitial
+  | cons invocation rest ih =>
+      simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
+      obtain ⟨middle, hmiddle, hnext⟩ := hnext
+      apply ih middle ?_ hnext
+      cases invocation with
+      | player who =>
+          simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+          obtain ⟨command, hcommand, hstep⟩ := hmiddle
+          simp only [playerStep, FinDist.support_bind, Set.mem_iUnion] at hstep
+          obtain ⟨advanced, hadvanced, hstep⟩ := hstep
+          simp only [FinDist.mem_support_pure] at hstep
+          subst middle
+          exact advance_action_property app property execution _ advanced hinitial
+            (hplayers who _ _ command hcommand) hadvanced
+      | environment =>
+          simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+          obtain ⟨command, hcommand, hstep⟩ := hmiddle
+          simp only [environmentPolicyStep, FinDist.support_bind, Set.mem_iUnion] at hstep
+          obtain ⟨advanced, hadvanced, hstep⟩ := hstep
+          simp only [FinDist.mem_support_pure] at hstep
+          subst middle
+          exact advance_action_property app property execution _ advanced hinitial
+            (henvironment _ _ command hcommand) hadvanced
+
 end Interaction.MessageApplication

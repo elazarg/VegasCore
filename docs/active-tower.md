@@ -32,6 +32,17 @@ These local policy laws are not the whole-program honest or deviation law.
 The mathematical coupling and its remaining Lean obligations are described in
 [pending-message-strategic-proof.md](pending-message-strategic-proof.md).
 
+`SealedFragment.replay` evaluates the shared native runner with assigned honest
+values and fixed deterministic deviator/environment policies. Its checked
+`replay_eq_iff` characterizes each full execution by exactly the honest
+registration coordinates it records. This holds for every finite invocation
+schedule and thus for every invocation prefix. It concerns proof-facing records,
+including private commands; it does not expose those records to players. The
+support-transfer and registration-origin lemmas also allow randomized native
+deviator and environment policies. Read-boundedness under changes to already
+registered but unopened values, kernel agreement, and the probability coupling
+remain to be proved.
+
 The backend admits homogeneous commit/reveal programs with unrestricted guards,
 including multistage choices whose information includes earlier public values
 and their owner's prior commitments. Nonempty choice-information sets are
@@ -39,26 +50,20 @@ justified by the reachable-store invariant, not erased from the source.
 Samples, nontrivial validation guards, and disclosures of initial private
 fields still require further compiler support.
 
-The active code does **not** yet instantiate a `StrategicCertificate` for the
-pending-message policy game. This is the remaining end-to-end deviation proof:
-for every considered player policy (which may inspect that player's visible
-inbox, public ledger, sent messages, receipts, and recorded local history),
-construct a finite mixture of source behavioral policies with the same observed
-outcome law against unchanged opponents and environment policy. Seeing a
-pending opening before inclusion is not by itself an information leak: a
-sealed rule cannot take the corresponding graph step until its prerequisites
-are included. A deviator may pre-submit a later message, but the backtranslation
-must show that this is equivalent to choosing that source action when the
-corresponding source observation becomes available. This causal pending-message
-lemma is still unproved. The runtime kernel already records malformed input as
-a rejected, state-preserving action; a separate resolution law must map such a
-stutter—or a fair timeout after it—to the source program's explicit nullable
-quit (`Option.none`). Once these laws and the rest of the deviation mixture are
-proved, `SealedCompilation.StrategicCertificate` discharges the equilibrium
-conclusion without changing the source language. The graph theorem has this
-same exact-deviation shape after backtranslation; its single-ready hypothesis
-does not hold automatically for graphs with multiple simultaneously ready
-commitments.
+The active code does **not** yet prove whole-program strategic preservation for
+the pending-message policy game. The immediate coupling must give the actual
+native execution marginal and a source marginal that is a finite mixture of
+legal source deviations, against unchanged opponents. The deviator may use its
+inbox, public ledger, sent messages, receipts, and local command history; the
+environment may use all pending payloads. Extraction must preserve the dependence
+between honest draws rather than resample them after disclosure.
+
+An inclusion check alone cannot protect against observing a pending opening.
+The compiled policy checks the publication barrier **before submission**:
+every source-earlier commitment is already bound. Consequently, replay before
+the focal choice is bound can encounter only honest openings already available
+in that choice's source view. The needed whole-run read-boundedness theorem
+connects this local barrier to the extracted source policy.
 
 For selective quitting, exact outcome-law simulation and Nash preservation
 are separate targets. The latter can use `UtilitySimulation` if every runtime
@@ -66,6 +71,15 @@ deviation is no better than a legal source deviation. The native fixed-opening
 utility bound is checked, but its whole-program continuation instance is not.
 The current timeout adapter supplies a final-failure status, not the source
 program's quit continuation; missing commitments also need a resolution rule.
+Malformed messages are rejected without a source step. Fair deadline resolution
+must implement the programmer's quitting settlement; a rejected attempt alone
+does not do so. In particular, withholding a committed `some a` cannot be
+identified with a full source environment where its deterministic reveal copied
+`none`. The coupling must retain the locked source choice and compare its legal
+continuation with the runtime settlement. Ordinary ex-ante strict dominance of
+the source quit action does not establish this comparison at finer stopping
+information. The immediate final interface is the existing `UtilitySimulation`,
+not an assumed exact-outcome `StrategicCertificate` for selective quitting.
 
 The source-to-declared-read-graph strategic edge is discharged independently of
 these pending-message obligations. Its full source-environment outcome law

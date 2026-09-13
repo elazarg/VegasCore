@@ -390,6 +390,18 @@ Kernel agreement and reverse-order summation then preserve the dependent joint
 law. These are the concrete lemmas to formalize against the compiled policy;
 they are not yet a checked operational coupling.
 
+The checked `SealedFragment.replay_law` identifies `R_w(a)` for the untimed
+bounded kernel with its actual shared policy runner. `replay_eq_iff` proves
+the cylinder characterization for any invocation prefix: two full replay
+records agree exactly when their assignments agree at the honest registration
+coordinates recorded in one of them. Its local substitution proof permits a
+fresh command to consult only its emitted coordinate; its converse reads the
+registration from the native trace. The general support-transfer and
+registration-origin results permit randomized deviator and environment policies.
+This establishes the cylinder step, not read-boundedness: changing a registered
+hidden value changes the full private record, even when focal observations
+remain the same. That latter comparison still needs the publication barrier.
+
 ### Worked multistage test: a disclosure correlated with an unopened value
 
 Consider this source order, with `B` the deviator and `A`'s policy fixed:
@@ -510,22 +522,72 @@ the programmer's actual resolution code.
 
 ## 6. Why ordinary strict dominance is not the complete condition
 
-Consider one strategic player and a mandatory fair public chance draw. The
-source first commits either `play` or `quit`, draws a public bit, and then
-deterministically reveals the committed choice. The utility of `quit` is zero.
-The utility of `play` is `3` on heads and `-1` on tails.
+The issue already arises without chance nodes, with both source quit actions
+strictly dominated against every opponent strategy. Consider two players and
+this source order:
 
-At the source, `play` strictly dominates `quit`: its expected utility is `1`,
-against `0`. If the runtime permits withholding after observing the bit and
-settles withholding as quit, the policy "commit play; open on heads; withhold
-on tails" earns `3/2`. The random draw is chance, not a strategic publisher.
-It is observed at the same source stage; the new capability is the later exit.
+```text
+A commits Safe, Risky, or Quit
+B commits H, T, or Quit
+B reveals its choice
+A reveals its choice
+```
 
-This example does not refute (3): on tails its comparison is `0 <= -1`, which
-fails. Nor does it say that visible pending openings intrinsically break Nash.
-It identifies the information at which the quitting comparison must hold.
-The current sealed backend does not implement sample nodes; this example tests
-the broader proposed theorem, not an alleged executable fixture in that backend.
+Both commitments have unrestricted guards. Each three-element domain can be
+represented by the common type `Option Bool`, with `none` as Quit. `B` cannot
+observe `A`'s private commitment when choosing. Source reveals copy the values
+already committed; they are not additional decisions.
+
+`A`'s source utility is:
+
+| A's choice | B: H | B: T | B: Quit |
+| --- | ---: | ---: | ---: |
+| Safe | 1 | 1 | 1 |
+| Risky | 3 | -1 | 1 |
+| Quit | 0 | 0 | 0 |
+
+`B` receives 1 for either H or T and 0 for Quit, independently of `A`'s choice.
+Thus Safe strictly dominates Quit for `A`, and H strictly dominates Quit for
+`B`, each by a margin of 1 against every opponent strategy. This is genuine
+source strict dominance, not a comparison against only one opponent profile.
+
+Take the source profile where `A` chooses Safe and `B` mixes H/T equally.
+`A` receives 1; switching to Risky also yields 1 and switching to Quit yields
+0. `B` already receives its maximum of 1. The profile is Nash. Randomization
+comes from an ordinary player's policy; there is no chance publisher.
+
+Now suppose the runtime implements withholding of `A`'s opening by the
+program's Quit settlement, paying `A` zero. The native deviation "commit Risky;
+after B's reveal, open on H and withhold on T" has expected utility
+
+```text
+(1/2) * 3 + (1/2) * 0 = 3/2 > 1.
+```
+
+It violates neither commitment binding nor the publication barrier. `A` is
+committed before `B` publishes, and learns nothing earlier than in the source.
+The gain uses only the extra later quitting option. Timely inclusion can be
+fully fair; `A` withholds its own opening. The source Nash profile therefore
+is not preserved by this resolving runtime, despite both source quit actions
+being strictly dominated.
+
+The stronger continuation condition detects the failure. On the T branch,
+the locked legal source continuation is Risky, with utility -1. Quitting pays
+0, so (3) would require `0 <= -1`. The dominating Safe strategy cannot replace
+this continuation after Risky has already been committed. That distinction is
+why the comparison records locked choices, not merely a set of source outcomes
+whose average looks preferable before play.
+
+This is a complete mathematical counterexample to sufficiency of ordinary
+source quit dominance. Its source uses the admitted sealed fragment, but the
+current native timeout adapter does not yet execute the assumed general Quit
+settlement. No Lean theorem about that missing resolving runtime is claimed.
+
+With a mandatory fair public chance draw, an even smaller example needs only
+one player choosing Play or Quit: Play pays 3 on heads and -1 on tails, Quit
+pays zero. Play strictly dominates Quit ex ante, yet opening only on heads
+pays 3/2 instead of 1. The two-player example above avoids relying on chance
+support or a separate publisher.
 
 ## 7. Runtime resolution must respect the source meaning
 
@@ -558,16 +620,19 @@ The finite coupling consequence (Section 5) is a complete mathematical argument.
 Section 4 defines the extracted policies without recursion through source play
 and proves their read-boundedness, prefix-cylinder characterization, kernel
 agreement, and prefix mass equality for the specified compiled behavior.
-The Lean work must establish those properties for the concrete policy functions
-and native runner. The resolving runtime and its source-accounted settlement
+The cylinder characterization is checked for the concrete policy and untimed
+runner. The Lean work must still establish read-boundedness, kernel agreement,
+and the two marginal laws, including that an honest source draw occurs at most
+once per commitment. The resolving runtime and its source-accounted settlement
 are still implementation obligations. No end-to-end Lean theorem is claimed here.
 
 The next work should directly serve the following two proofs:
 
 1. Construct the Section 3 coupling for the actual bounded sealed policy runner,
    including arbitrary local deviations and pool-observing adaptive delivery.
-   Implement the compiled policy used by that statement. Prove its honest law
-   with the same coupling, not a second independent whole-program proof.
+   Use the concrete `SealedCompilation.compilePolicy` and its history-based
+   local kernel law. Prove its honest law with the same coupling, not a second
+   independent whole-program proof.
 2. Supply source-accounted deadline resolution and discharge its compatibility
    and incentive premises. Instantiate the existing `UtilitySimulation`; no new
    generic strategic framework is needed.
