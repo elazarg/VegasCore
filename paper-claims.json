@@ -1,4 +1,5 @@
 {
+  "prose:source-graph-policy": ["Vegas.Paper.source_graph_honest_law", "Vegas.Paper.source_graph_deviation_law", "Vegas.Paper.source_graph_nash_iff", "Vegas.Paper.source_graph_approximate_nash_iff"],
   "prose:utility-simulation": ["Vegas.Paper.utility_approximate_nash_preservation"],
   "prose:sealed-opening-barrier": ["Vegas.Paper.sealed_opening_barrier"],
   "prose:selective-quitting-margin": ["Vegas.Paper.selective_quitting_bound"],

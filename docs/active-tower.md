@@ -11,7 +11,7 @@ introducing a new edge and proving its own correspondence laws.
 | Runtime-independent transport | `GameTheoryExtensions` | `MixtureSimulationOn`, `UtilitySimulation`, selective-stopping bounds | Exact observation-law simulation transports arbitrary observation utilities. Utility-specific deviation bounds compose and imply same-error Nash/ε-Nash equivalence at compiled profiles. Selective-stopping bounds require a continuation comparison at the information used to stop. |
 | Vegas semantic substrate | `Vegas.Foundation` | typed environments, visibility, values, obligations | Type/visibility and finite-domain infrastructure. No strategic preservation claim. |
 | Checked source | `Vegas.Core` | `VegasCore`, `WFProgram`, `SourceBehavioralPolicy`, `sourceGameForm` | Intrinsically typed sequential source syntax; guarded source policies; written-order source execution and payoff evaluation. Nullable `yield` supplies an explicit `Option.none` value. |
-| Graph compilation | `Vegas.EventGraph` | canonical graph, finite configurations, graph execution | Typed source nodes, dependencies, declared reads, reachable graph prefixes, and terminal graph-to-written-source correspondence. |
+| Graph compilation | `Vegas.Compile`, `Vegas.Game.SourceGraph` | canonical graph, declared-read policy runner, `WFProgram.sourceGraphSimulation` | Typed source compilation; exact whole-program terminal-environment law; uniform single-policy backtranslation of every unilateral declared-read graph deviation, with opponents unchanged. A concrete certificate proves Nash and same-error ε-Nash equivalence at compiled profiles for all checked core programs and finite player sets. |
 | Graph strategic presentation | `Vegas.EventGraph.Strategic` | behavioral frontier game and canonical declared-read policy game | Under `CommitInformationLocal` and one ready commitment per player, compiled canonical policies preserve the complete observed outcome law of every behavioral profile; every unilateral canonical replacement is exactly one behavioral graph deviation. This is an event-graph theorem, not yet a source-language or message-runtime theorem. |
 | Sealed native protocol | `Interaction` | message pool, ideal commitment service, `SealedProgram`, policy runner, timed adapter | Commit and reveal are separate protocol actions. Arbitrary finite native traffic—including malformed payloads, retries/replay, delivery, inclusion, and withholding—either stutters or takes a valid graph step. The environment sees the full pending pool; player views expose their own inbox/sent messages and the public ledger. Hiding is proved for protected pre-disclosure traffic. The timed adapter proves clock/expiration operational correspondence; it does not itself assert liveness or source quit. |
 | Vegas compiler edge | `Vegas.Compile` | `SealedCompilation`, sealed decode/refinement/source modules | One sealed rule per graph node; native prefixes decode to reachable graph states; terminal prefixes reconstruct a written-order source run with matching bindings and payoffs. The policy runner has the same support-level source theorem. |
@@ -53,6 +53,12 @@ deviation is no better than a legal source deviation. The native fixed-opening
 utility bound is checked, but its whole-program continuation instance is not.
 The current timeout adapter supplies a final-failure status, not the source
 program's quit continuation; missing commitments also need a resolution rule.
+
+The source-to-declared-read-graph strategic edge is discharged independently of
+these pending-message obligations. Its full source-environment outcome law
+allows samples, validation guards, and heterogeneous fields. This does not
+extend the admitted fragment of the sealed backend or grant its policies the
+same information boundary as the graph kernels.
 
 ## Deliberate non-claims
 

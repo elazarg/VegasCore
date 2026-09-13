@@ -19,12 +19,14 @@ import Vegas.EventGraph.Strategic
 import Vegas.Game.SealedMessages
 import Vegas.Game.SealedRelease
 import Vegas.Game.SealedStrategic
+import Vegas.Game.SourceGraph
 
 /-! # Paper theorem audit
 
 This file is deliberately a thin audit surface. Every closed statement below
 delegates directly to a theorem in the active source, graph, or sealed-message
-tower. Strategic preservation is stated through the explicit
+tower. Source-to-declared-read-graph strategic preservation uses a concrete
+compiler simulation. Pending-message preservation still uses an explicit
 `StrategicCertificate`: the runtime must provide the honest law and the
 finite-mixture law for its considered unilateral deviations.
 
@@ -326,6 +328,57 @@ theorem graph_exact_deviation
           (EventGraph.Strategic.behavioralObserve G hwf hguards) :=
   EventGraph.Strategic.deviation_law G hwf hguards hlocal hsingle profile who replacement
 
+/-- Whole-program equality for the actual graph policy runner. -/
+theorem source_graph_honest_law [Fintype Player] (source : WFProgram Player L)
+    (profile : SourceBehavioralProfile source.core.prog) :
+    ((EventGraph.policyGame (ToEventGraph.compile source.core).graph
+      (ToEventGraph.compile source.core).graphWF
+      (ToEventGraph.compile_guardLive source.core source.legal)).play
+      (source.sourceGraphSimulation.compileProfile profile)).map
+        (ToEventGraph.observeSourceOutcome source.core) =
+      (denoteSource source.core.prog profile source.core.env).map some :=
+  source.sourceGraphSimulation.honest_law profile
+
+/-- Exact source backtranslation of every unilateral declared-read kernel. -/
+theorem source_graph_deviation_law [Fintype Player] (source : WFProgram Player L)
+    (profile : SourceBehavioralProfile source.core.prog) (who : Player)
+    (replacement : CommitPolicy (ToEventGraph.compile source.core).graph who) :
+    ((EventGraph.policyGame (ToEventGraph.compile source.core).graph
+      (ToEventGraph.compile source.core).graphWF
+      (ToEventGraph.compile_guardLive source.core source.legal)).play
+      (Profile.update (source.sourceGraphSimulation.compileProfile profile)
+        who replacement)).map (ToEventGraph.observeSourceOutcome source.core) =
+      (denoteSource source.core.prog
+        (Profile.update (sig := sourceGameSignature source.core.prog) profile who
+          (ToEventGraph.backtranslateCommitPolicy source.core who replacement))
+        source.core.env).map some :=
+  ToEventGraph.runPolicyNodes_source_deviation source.core source.legal profile who replacement
+
+theorem source_graph_nash_iff [Fintype Player] (source : WFProgram Player L)
+    (value : Option (VEnv L (sourceTerminalCtx source.core.prog)) → Player → ℝ)
+    (profile : SourceBehavioralProfile source.core.prog) :
+    IsNash (EventGraph.policyGame (ToEventGraph.compile source.core).graph
+      (ToEventGraph.compile source.core).graphWF
+      (ToEventGraph.compile_guardLive source.core source.legal))
+      (euPreference (fun outcome who =>
+        value (ToEventGraph.observeSourceOutcome source.core outcome) who))
+      (source.sourceGraphSimulation.compileProfile profile) ↔
+    IsNash (sourceGameForm source.core.prog source.core.env)
+      (euPreference (fun outcome who => value (some outcome) who)) profile :=
+  source.source_graph_nash_iff value profile
+
+theorem source_graph_approximate_nash_iff [Fintype Player] (source : WFProgram Player L)
+    (value : Option (VEnv L (sourceTerminalCtx source.core.prog)) → Player → ℝ)
+    (ε : ℝ) (profile : SourceBehavioralProfile source.core.prog) :
+    IsεNash (EventGraph.policyGame (ToEventGraph.compile source.core).graph
+      (ToEventGraph.compile source.core).graphWF
+      (ToEventGraph.compile_guardLive source.core source.legal))
+      (fun outcome who => value (ToEventGraph.observeSourceOutcome source.core outcome) who) ε
+      (source.sourceGraphSimulation.compileProfile profile) ↔
+    IsεNash (sourceGameForm source.core.prog source.core.env)
+      (fun outcome who => value (some outcome) who) ε profile :=
+  source.source_graph_approximate_nash_iff value ε profile
+
 theorem source_strategy_support
     {Player : Type} [DecidableEq Player] {L : IExpr} {Γ : VCtx Player L}
     (prog : VegasCore Player L Γ) (profile : SourceBehavioralProfile prog)
@@ -467,6 +520,26 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_strategy_support
+
+/-- info: 'Vegas.Paper.source_graph_honest_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_graph_honest_law
+
+/-- info: 'Vegas.Paper.source_graph_deviation_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_graph_deviation_law
+
+/-- info: 'Vegas.Paper.source_graph_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_graph_nash_iff
+
+/-- info: 'Vegas.Paper.source_graph_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_graph_approximate_nash_iff
 
 /-- info: 'Vegas.Paper.source_decision_information' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

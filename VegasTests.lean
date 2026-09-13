@@ -24,6 +24,7 @@ import VegasTests.PendingTimeoutHiding
 import VegasTests.SealedCompiler
 import VegasTests.PendingDisclosureIncentive
 import VegasTests.PendingStages
+import VegasTests.SourceGraph
 
 /-! # Regression tests for the active strict sealed-message tower
 

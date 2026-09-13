@@ -23,7 +23,7 @@
     "main.tex": "541a3d854cf999e9094a47aca65df97e26c497ca261c4df8466a5c5aa040c558",
     "sections/01-introduction.tex": "f5b9b8accf8d3252a606bc1ea0a71b4c13cb0d63035bcb16118be269e9d64ee4",
     "sections/02-game-programs.tex": "c93e07217d1c3a13ef8fa120ae7d14d03b66739662c46c7c1264f0eea4b530a0",
-    "sections/03-language-graph.tex": "13d4d2aace7dc32f320cf41894ded679789c87cf5ddae6c3cf21cd4071ada1fe",
+    "sections/03-language-graph.tex": "f6d64b8ec09f4078ff564d14362f1b0c249cb8275a6ffec419f25d5930720119",
     "sections/04-strategic-semantics.tex": "6557a3bbeb7cd0b931b44cc2812fd4b8586cf4ecde5d0ae4cd68547f220ab51b",
     "sections/05-correctness.tex": "1a2a71caa385c5891f74a114e946c44a87a6ac7137c59c6515faae55fc1bc57c",
     "sections/06-runtime.tex": "c2dfe915569ae171fb8ad80e71f5690a467b1be16a1d0e1cb5c1abe3b41a27fe",
@@ -34,5 +34,5 @@
     "sections/10-quitting.tex": "fe01ff789a3e1b18a8fb59df91b799746fd8102a97a89a4538d32b8f1d7fb251",
     "vegas-paper.bib": "3e6e2a487f6ab2f74ca82cdfc3c25da1814d0a68d78d4c4c898813ca4c068bdd"
   },
-  "revision": "e34b130d08d6ffd44aefea80b35822a05850299b"
+  "revision": "18950be73b5bea7c0b4982d610b7d7f6e9ce88df"
 }

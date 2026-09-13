@@ -41,15 +41,26 @@ backend would be a further artifact with its own proof edge.
 
 ## Current boundary
 
+The written-source-to-declared-read-graph edge has a concrete strategic
+certificate, `WFProgram.sourceGraphSimulation`. Its honest law compares the
+actual graph runner with `denoteSource`; its arbitrary unilateral-deviation
+law reconstructs one source policy without changing the opponents. Terminal
+decoding preserves every source binding. Nonterminal graph states remain
+undecoded, and the complete law proves that they are never returned. The edge
+supports all checked core programs, including samples and validation guards,
+and needs a finite player set but not finite action types. Nash and epsilon-Nash
+equivalence follow at compiled graph profiles.
+
 The event-graph edge now has a checked strategic theorem at its narrow exact
 frontier. `Vegas.EventGraph.Strategic.deviation_law` and its Nash corollary
 compare the graph's full behavioral presentation with the canonical
 declared-read policy presentation. Under declared-read information locality
 and one ready commitment per player, every canonical unilateral replacement
 has the exact law of one behavioral graph replacement (not merely a mixture),
-for every profile and every observation utility. This theorem is deliberately
-graph-level: it does not identify the written-order `sourceGameForm` with the
-graph game, and it does not instantiate a message runtime.
+for every profile and every observation utility. This presentation theorem is
+graph-level. Its hypotheses still need to be connected to checked compilation
+to extend the concrete source certificate to arbitrary behavioral-frontier
+policies. Neither graph theorem instantiates a message runtime.
 
 The strict sealed-message edge has checked whole-run source reconstruction and
 ideal-service hiding laws. Its whole-program strategic preservation theorem is

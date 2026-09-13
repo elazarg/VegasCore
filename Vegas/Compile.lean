@@ -8,6 +8,13 @@ import Vegas.Compile.Compiler
 import Vegas.Compile.FieldMap
 import Vegas.Compile.SourceView
 import Vegas.Compile.SourceLaw
+import Vegas.Compile.DecisionSite
+import Vegas.Compile.SourcePolicy
+import Vegas.Compile.SourceBacktranslation
+import Vegas.Compile.SourceExecutionLaw
+import Vegas.Compile.SourceExecutionGraph
+import Vegas.Compile.SourceExecutionOutcome
+import Vegas.Compile.SourceCorrespondence
 import Vegas.Compile.SealedMessages
 import Vegas.Compile.SealedDecode
 import Vegas.Compile.SealedExecution

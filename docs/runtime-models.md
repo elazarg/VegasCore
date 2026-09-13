@@ -22,6 +22,12 @@ ideal service and observation boundary.
 
 ## Strategic results
 
+The preceding source-to-graph edge has an instantiated simulation:
+`WFProgram.sourceGraphSimulation` preserves the full source outcome law and
+exactly backtranslates arbitrary declared-read graph policies. Its Nash and
+epsilon-Nash corollaries are end-to-end to that graph runner, not to this
+message runtime. It supplies the source side of the pending-message proof.
+
 The strict sealed-message edge currently has support-level source
 reconstruction and ideal-service hiding laws. Strategic preservation for
 pending messages and public scheduling is not yet proved. The active strategic
@@ -47,9 +53,11 @@ graph prerequisites are included. The missing invariant is causal rather than
 syntactic: a policy may prepare a future message after inspecting a pending
 opening, and the backtranslation must show that the same action can be chosen
 at the corresponding source reveal point, while malformed or never-included
-openings produce no earlier source step. A payload-dependent scheduler or an
-accepted action before that point would be a genuinely stronger runtime model
-and would need an additional source observation or an impossibility theorem.
+openings produce no earlier source step. The environment already sees the
+pending pool and may base delivery and inclusion on its payloads. Its policy
+does not see the ideal service's hidden values. Backtranslation must handle
+the former observations; access to the latter would be a stronger information
+model and would require a separate argument or an impossibility theorem.
 Source-level quitting discharges a separate branch only after the runtime's
 resolution edge supplies a quit law. If the runtime permits selective quitting
 using extra information, its utility must be compared with feasible continuation

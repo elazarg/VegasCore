@@ -4,24 +4,47 @@ The source meaning is the independent written-order semantics of a checked
 program. Compilation allocates source bindings to typed graph fields and turns
 source operations into dependency-constrained events.
 
-The retained correspondence establishes:
+The checked correspondence establishes:
 
 - supported source denotations are genuine small-step source executions;
 - source-visible decision environments and compiled graph reads agree under
   the allocation invariant;
 - compiled guarded local decisions have the source choice law;
+- complete compiled declared-read policy executions have exactly the written
+  source's terminal-environment law;
+- every arbitrary declared-read graph kernel has a uniform playerwise source
+  backtranslation, with exact unilateral outcome laws against unchanged
+  opponents;
 - graph readiness and terminal reconstruction respect source dependencies and
   payoff evaluation.
 
-These statements concern the sequential source and its event graph. Any
-game-theoretic interpretation is derived separately and is not an intermediate
-runtime architecture.
+`Vegas/Compile/SourceCorrespondence.lean` proves the whole-program laws by a
+coupling with the actual graph runner. `Vegas/Game/SourceGraph.lean` constructs
+`WFProgram.sourceGraphSimulation` and derives Nash and same-error epsilon-Nash
+equivalence at compiled profiles. The certificate has no assumed simulation
+field. It applies to every checked core program and a finite player set;
+samples, nontrivial guards, mixed field types, and initial bindings are allowed.
+Each policy decision uses a finite distribution, but the action types need not
+be finite. The stronger finite-domain assumptions needed by other strategic
+presentations are not imposed on this edge.
+
+The decoded observation returns `some` of the entire terminal source
+environment; nonterminal graph states return `none`. The complete execution
+law proves that `none` has zero probability. This decoder is for analysis and
+does not publish sealed fields to players.
+
+This is a semantic compiler edge within the tower. Its target strategy sees
+only a commitment node's declared reads, not a message history or scheduler
+signal. The separate behavioral-frontier presentation requires its own
+information-locality and single-ready-node correspondence; the concrete
+source certificate here does not assume or establish that correspondence.
 
 The active sealed-message edge does not yet claim a runtime-to-source strategy
 translation. `SealedCompilation.StrategicCertificate` states the missing edge
 explicitly: a concrete runtime must supply the honest outcome law and represent
 each considered unilateral deviation by a finite mixture of source deviations.
 The generic GameTheory layer then proves the expected-utility guarantee and
-same-error approximate-Nash equivalence. The former fixed-windowed theorem and
-its delivery refinements are retained only in `archive/fused/` while this
-backtranslation is rebuilt for the strict edge.
+same-error approximate-Nash equivalence. When informed quitting changes the
+outcome law, `UtilitySimulation` can instead prove Nash preservation through
+whole-program utility bounds. The concrete pending-message instance of either
+interface remains open.
