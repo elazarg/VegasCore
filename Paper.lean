@@ -10,6 +10,7 @@ import Interaction.SealedTimeoutDisclosure
 import Vegas.Language.Nullable
 import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedPolicy
+import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
 import Vegas.EventGraph.Confluence
@@ -129,6 +130,34 @@ theorem compiled_policy_opening_ready
       (compilation.compilePolicy who policy history view).support) :
     compilation.program.openingReady view.application who node = true :=
   compilation.supported.playerPolicy_opening_ready who _ history view node handle value hsubmit
+
+/-- Deadline metadata has no effect on the compiled policy before timeout. -/
+theorem compiled_resolving_policy_no_timeout
+    {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (who : Player) (policy : SourceBehavioralPolicy source.core.prog who)
+    (history : List
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
+    (view : (compilation.supported.resolvingRuntime nullValue window).messageApplication.View)
+    (htimeouts : view.application.timeouts = []) :
+    compilation.compileResolvingPolicy nullValue window who policy history view =
+      compilation.compilePolicy who policy
+        ((compilation.supported.resolvingRuntime nullValue window).eventHistory history)
+        ((compilation.supported.resolvingRuntime nullValue window).eventView view) :=
+  compilation.supported.resolvingPolicy_no_timeout nullValue window who _ history view htimeouts
+
+/-- Continuing after timeout retains sealed commitment submissions. -/
+theorem compiled_resolving_policy_no_cleartext
+    {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (who : Player) (policy : SourceBehavioralPolicy source.core.prog who)
+    (history : List
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
+    (view : (compilation.supported.resolvingRuntime nullValue window).messageApplication.View)
+    (node : Nat) (value : L.Val ty) :
+    .submit (.cleartext node value) ∉
+      (compilation.compileResolvingPolicy nullValue window who policy history view).support :=
+  compilation.supported.resolvingPolicy_no_cleartext nullValue window who _ history view node value
 
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal
@@ -703,3 +732,13 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.graph_exact_deviation
+
+/-- info: 'Vegas.Paper.compiled_resolving_policy_no_timeout' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_resolving_policy_no_timeout
+
+/-- info: 'Vegas.Paper.compiled_resolving_policy_no_cleartext' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_resolving_policy_no_cleartext

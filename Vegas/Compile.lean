@@ -25,6 +25,7 @@ import Vegas.Compile.SealedSource
 import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedView
 import Vegas.Compile.SealedPolicy
+import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedReplay
 import Vegas.Compile.SealedPublication
 import Vegas.Compile.SealedPolicyKnowledge

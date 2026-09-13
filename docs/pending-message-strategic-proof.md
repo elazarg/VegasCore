@@ -7,8 +7,10 @@ The coupling is constructed, not assumed as a theorem premise.
 
 The operational resolution rules in Section 3 are implemented by
 `Interaction.SealedResolution`, with a shared policy-runner round driver.
-The compiled-policy adaptation, general source-settlement edge, service and
-termination bounds, and whole-program coupling are still Lean obligations.
+The source-policy translation implements those completion checks and retains
+own private memory across nullable defaults; its before-timeout policy law is
+checked. The general source-settlement edge, service and termination bounds,
+and whole-program coupling are still Lean obligations.
 The whole argument has not been checked in Lean or independently reviewed.
 Section 8 gives the implementation boundary. In particular, this note is not
 evidence that the repository already proves pending-message Nash preservation.
@@ -688,6 +690,10 @@ The current repository has:
   fixed clock boundary, with exactly one clock unit per round proved;
 - private-binding persistence under arbitrary resolving-runtime policy runs,
   and exact untimed validator/event projection before the first timeout;
+- compiled resolving policies using the same sample-once command generation,
+  with exact before-timeout policy agreement and no cleartext commitments;
+- a checked multistage-source regression continuing after a missing commitment
+  or opening, while retaining existing private values and reading public defaults;
 - a checked-source regression whose missing commitments resolve to the public
   values of a legal written-source execution;
 - generic utility-based Nash transport.
@@ -700,8 +706,7 @@ The remaining implementation work is specific:
 
 1. Check backend admission for nullable values and direct unique reveals,
    without changing source well-formedness.
-2. Adapt the actual source-policy translation to the resolving runtime's
-   completion checks and histories. Connect terminal public fields to the
+2. Connect the resolving source-policy translation's terminal public fields to the
    existing source outcome evaluator for every admitted program, not only
    the concrete settlement regression. Service values and logical defaults
    remain distinct.

@@ -22,22 +22,24 @@ namespace Interaction.MessageInterface
 
 open GameTheory GameTheory.Math.Probability
 
-universe uPrincipal
+universe uPrincipal uPrivate uPayload
 
 variable {Principal : Type uPrincipal}
 
-inductive PlayerCommand (interface : MessageInterface Principal) where
-  | privateCommand (command : interface.PrivateCommand)
-  | submit (payload : interface.Payload)
+inductive PlayerCommand (Principal : Type uPrincipal)
+    (PrivateCommand : Type uPrivate) (Payload : Type uPayload) where
+  | privateCommand (command : PrivateCommand)
+  | submit (payload : Payload)
   | replay (id : MessageId Principal)
   | wait
 
 structure PlayerEntry (interface : MessageInterface Principal) where
   beforeView : View interface
-  command : PlayerCommand interface
+  command : PlayerCommand Principal interface.PrivateCommand interface.Payload
 
 abbrev PlayerPolicy (interface : MessageInterface Principal) :=
-  List (PlayerEntry interface) → View interface → FinDist (PlayerCommand interface)
+  List (PlayerEntry interface) → View interface →
+    FinDist (PlayerCommand Principal interface.PrivateCommand interface.Payload)
 
 /-- Environment-controlled wire and application triggers. The application
 command selects a fixed kernel, not one of its stochastic outcomes. -/
@@ -74,7 +76,7 @@ universe uPrincipal
 variable {Principal : Type uPrincipal}
 
 abbrev PlayerCommand (app : MessageApplication Principal) :=
-  MessageInterface.PlayerCommand app.toMessageInterface
+  MessageInterface.PlayerCommand Principal app.PrivateCommand app.Payload
 
 abbrev PlayerEntry (app : MessageApplication Principal) :=
   MessageInterface.PlayerEntry app.toMessageInterface

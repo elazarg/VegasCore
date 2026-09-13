@@ -43,9 +43,30 @@ structure SealedRule (Principal : Type uPrincipal) where
 structure SealedProgram (Principal : Type uPrincipal) where
   rules : List (SealedRule Principal)
 
+/-- Discharge prerequisites completed by an external resolution mechanism.
+Ownership and commitment producers are unchanged. -/
+def SealedRule.discharge {Principal : Type uPrincipal} (rule : SealedRule Principal)
+    (completed : List Nat) : SealedRule Principal :=
+  { rule with requires := rule.requires.filter fun node => !completed.contains node }
+
+@[simp] theorem SealedRule.discharge_nil {Principal : Type uPrincipal}
+    (rule : SealedRule Principal) : rule.discharge [] = rule := by
+  cases rule
+  simp [discharge]
+
 namespace SealedProgram
 
 variable {Principal : Type uPrincipal} {Value : Type uValue}
+
+/-- Apply the same public completion evidence to every rule. -/
+def discharge (program : SealedProgram Principal) (completed : List Nat) :
+    SealedProgram Principal :=
+  ⟨program.rules.map fun rule => rule.discharge completed⟩
+
+@[simp] theorem discharge_nil (program : SealedProgram Principal) :
+    program.discharge [] = program := by
+  cases program
+  simp [discharge]
 
 inductive Payload (Principal : Type uPrincipal) (Value : Type uValue) where
   | commitment (node : Nat) (handle : CommitmentHandle Principal Nat)

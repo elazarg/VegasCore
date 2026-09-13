@@ -32,14 +32,14 @@ private theorem commitCommand_valuePolicy_congr (supported : SealedFragment G ty
     (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
-    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (store : Store L)
     (command : (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
     (hcommand : command ∈
       (supported.commitCommand who (supported.valuePolicy left who)
-        node guard hsem history view).support)
+        node guard hsem history store).support)
     (hagrees : command = .privateCommand ⟨(node.val, left node)⟩ → left node = right node) :
     supported.commitCommand who (supported.valuePolicy right who)
-      node guard hsem history view = FinDist.pure command := by
+      node guard hsem history store = FinDist.pure command := by
   unfold commitCommand at hcommand ⊢
   split at hcommand
   · exact congrArg FinDist.pure (FinDist.mem_support_pure.mp hcommand).symm
@@ -57,14 +57,16 @@ private theorem nodeCommand?_valuePolicy_congr (supported : SealedFragment G ty)
     (node : Fin G.nodeCount)
     (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
     (command : (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (hselected : supported.nodeCommand? who (supported.valuePolicy left who)
-      history view node = some law)
+    (hselected : supported.nodeCommand? who [] (supported.valuePolicy left who)
+      history view (supported.playerStore who history view) node = some law)
     (hcommand : command ∈ law.support)
     (hagrees : ∀ index : Fin G.nodeCount,
       command = .privateCommand ⟨(index.val, left index)⟩ → left index = right index) :
-    supported.nodeCommand? who (supported.valuePolicy right who) history view node =
+    supported.nodeCommand? who [] (supported.valuePolicy right who) history view
+      (supported.playerStore who history view) node =
       some (FinDist.pure command) := by
-  unfold nodeCommand? at hselected ⊢
+  simp only [nodeCommand?, List.contains_nil, Bool.false_eq_true, ite_false,
+    SealedRule.discharge_nil, SealedProgram.discharge_nil] at hselected ⊢
   split at hselected
   · rename_i hready
     rw [if_pos hready]
@@ -75,7 +77,8 @@ private theorem nodeCommand?_valuePolicy_congr (supported : SealedFragment G ty)
         rw [dif_pos howner]
         rw [← Option.some.inj hselected] at hcommand
         rw [supported.commitCommand_valuePolicy_congr left right who node guard
-          (howner ▸ hsem) history view command hcommand (hagrees node)]
+          (howner ▸ hsem) history (supported.playerStore who history view)
+          command hcommand (hagrees node)]
       · rename_i howner
         contradiction
     · rename_i source hsem
@@ -107,14 +110,16 @@ theorem playerPolicy_valuePolicy_congr (supported : SealedFragment G ty)
       FinDist.pure command := by
   unfold playerPolicy at hcommand ⊢
   cases hselected : G.nodeOrder.findSome?
-      (supported.nodeCommand? who (supported.valuePolicy left who) history view) with
+      (supported.nodeCommand? who [] (supported.valuePolicy left who) history view
+        (supported.playerStore who history view)) with
   | none =>
       simp only [hselected, Option.getD_none, FinDist.mem_support_pure] at hcommand
       have hnone : G.nodeOrder.findSome?
-          (supported.nodeCommand? who (supported.valuePolicy right who) history view) = none := by
+          (supported.nodeCommand? who [] (supported.valuePolicy right who) history view
+            (supported.playerStore who history view)) = none := by
         apply List.findSome?_eq_none_iff.mpr
         intro node hnode
-        exact (supported.nodeCommand?_none_iff who _ _ history history view node).mp
+        exact (supported.nodeCommand?_none_iff who [] _ _ history history view _ _ node).mp
           (List.findSome?_eq_none_iff.mp hselected node hnode)
       simp only [hnone, Option.getD_none, hcommand]
   | some law =>
@@ -122,14 +127,15 @@ theorem playerPolicy_valuePolicy_congr (supported : SealedFragment G ty)
       obtain ⟨front, node, rest, hnodes, hnode, hfront⟩ :=
         List.findSome?_eq_some_iff.mp hselected
       have hright : G.nodeOrder.findSome?
-          (supported.nodeCommand? who (supported.valuePolicy right who) history view) =
+          (supported.nodeCommand? who [] (supported.valuePolicy right who) history view
+            (supported.playerStore who history view)) =
           some (FinDist.pure command) := by
         apply List.findSome?_eq_some_iff.mpr
         refine ⟨front, node, rest, hnodes, ?_, ?_⟩
         · exact supported.nodeCommand?_valuePolicy_congr left right who history view
             node law command hnode hcommand hagrees
         · intro prior hprior
-          exact (supported.nodeCommand?_none_iff who _ _ history history view prior).mp
+          exact (supported.nodeCommand?_none_iff who [] _ _ history history view _ _ prior).mp
             (hfront prior hprior)
       simp only [hright, Option.getD_some]
 
@@ -151,11 +157,12 @@ private theorem nodeCommand?_valuePolicy_registration (supported : SealedFragmen
     (node : Fin G.nodeCount)
     (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
     (slot : Nat) (value : L.Val ty)
-    (hselected : supported.nodeCommand? who (supported.valuePolicy values who)
-      history view node = some law)
+    (hselected : supported.nodeCommand? who [] (supported.valuePolicy values who)
+      history view (supported.playerStore who history view) node = some law)
     (hcommand : .privateCommand ⟨(slot, value)⟩ ∈ law.support) :
     slot = node.val ∧ value = values node := by
-  unfold nodeCommand? at hselected
+  simp only [nodeCommand?, List.contains_nil, Bool.false_eq_true, ite_false,
+    SealedRule.discharge_nil, SealedProgram.discharge_nil] at hselected
   split at hselected
   · split at hselected
     · split at hselected
@@ -194,7 +201,8 @@ theorem playerPolicy_valuePolicy_registration (supported : SealedFragment G ty)
     ∃ node : Fin G.nodeCount, slot = node.val ∧ value = values node := by
   unfold playerPolicy at hcommand
   cases hselected : G.nodeOrder.findSome?
-      (supported.nodeCommand? who (supported.valuePolicy values who) history view) with
+      (supported.nodeCommand? who [] (supported.valuePolicy values who) history view
+        (supported.playerStore who history view)) with
   | none =>
       simp only [hselected, Option.getD_none, FinDist.mem_support_pure] at hcommand
       cases hcommand

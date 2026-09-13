@@ -54,7 +54,7 @@ theorem first_command (law : FinDist Value) :
   change supported.commitCommand 0
     (compileSourcePolicy core source.core.fresh initialBuild rfl 0
       (SourceGraph.repeatPolicy law 0)) (node 0) firstGuard rfl []
-      (MessageApplication.State.observe app initial.native 0) = _
+      (supported.playerStore 0 [] (MessageApplication.State.observe app initial.native 0)) = _
   unfold SealedFragment.commitCommand
   simp only [MessageApplication.ChoiceEncoding.cachedValue_nil]
   change (compileSourcePolicy core source.core.fresh initialBuild rfl 0
@@ -71,7 +71,9 @@ theorem cached_command (law : FinDist Value) (value : Value) :
     (compileSourcePolicy core source.core.fresh initialBuild rfl 0
       (SourceGraph.repeatPolicy law 0)) (node 0) firstGuard rfl
       [⟨MessageApplication.State.observe app initial.native 0, .privateCommand ⟨(0, value)⟩⟩]
-      (MessageApplication.State.observe app initial.native 0) = _
+      (supported.playerStore 0
+        [⟨MessageApplication.State.observe app initial.native 0, .privateCommand ⟨(0, value)⟩⟩]
+        (MessageApplication.State.observe app initial.native 0)) = _
   apply supported.commitCommand_cached _ _ _ _ _ _ _ value
   rfl
 

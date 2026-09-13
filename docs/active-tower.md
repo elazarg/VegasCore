@@ -77,10 +77,17 @@ utility bound is checked, but its whole-program continuation instance is not.
 then permits later application actions. Its round driver uses the shared
 message runner and separates adaptive wire choices from fixed clock ticks.
 A concrete checked-source test identifies its resolved public values with a
-legal written-source execution. The general compiler admission, source-policy
-adaptation, source outcome evaluator connection, and service/termination proofs
-are still missing. The mathematical note gives those arguments and constructs
-the source/native coupling for the nullable, unique-direct-reveal fragment;
+legal written-source execution. The source-policy translation shares its node
+selector and sample-once command generation with the untimed policy. It skips
+timed-out nodes, discharges their prerequisites, and reconstructs own missing
+commitment fields using the default; an existing private registration is
+retained. Before timeout the two policies agree exactly on the projected
+event/history input. Checked multistage-source regressions continue after both
+a missing commitment and a missing opening. The general compiler admission,
+source outcome evaluator connection, post-default read invariants, and
+service/termination proofs are still missing. The mathematical note gives
+those arguments and constructs the source/native coupling for the nullable,
+unique-direct-reveal fragment;
 the whole-program proof is not yet implemented in Lean.
 Malformed messages are rejected without a source step. Fair deadline resolution
 must implement the programmer's quitting settlement; a rejected attempt alone

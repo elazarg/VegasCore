@@ -72,3 +72,4 @@ import Interaction.SealedTimeoutDisclosure
 import Interaction.SealedResolution
 import Interaction.SealedResolutionLaws
 import Interaction.SealedResolutionRounds
+import Interaction.SealedResolutionPolicy

@@ -111,9 +111,9 @@ private theorem commitCommand_knowledge (supported : SealedFragment G ty)
     (hvalues : known (who, node.val) → leftValues node = rightValues node) :
     ∃ leftCommand rightCommand,
       supported.commitCommand who (supported.valuePolicy leftValues who) node guard hsem
-        leftHistory view = FinDist.pure leftCommand ∧
+        leftHistory (supported.playerStore who leftHistory view) = FinDist.pure leftCommand ∧
       supported.commitCommand who (supported.valuePolicy rightValues who) node guard hsem
-        rightHistory view = FinDist.pure rightCommand ∧
+        rightHistory (supported.playerStore who rightHistory view) = FinDist.pure rightCommand ∧
       SealedProgram.CommandAgreement supported.compile known who leftCommand rightCommand := by
   have hslot := hoccupied node.val
   unfold commitCommand
@@ -167,13 +167,15 @@ private theorem nodeCommand?_knowledge (supported : SealedFragment G ty)
       supported.compile.openingHandle? view.application who node.val = some handle → known handle)
     (node : Fin G.nodeCount)
     (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (hselected : supported.nodeCommand? who (supported.valuePolicy leftValues who)
-      leftHistory view node = some law) :
+    (hselected : supported.nodeCommand? who [] (supported.valuePolicy leftValues who)
+      leftHistory view (supported.playerStore who leftHistory view) node = some law) :
     ∃ leftCommand rightCommand, law = FinDist.pure leftCommand ∧
-      supported.nodeCommand? who (supported.valuePolicy rightValues who)
-        rightHistory view node = some (FinDist.pure rightCommand) ∧
+      supported.nodeCommand? who [] (supported.valuePolicy rightValues who)
+        rightHistory view (supported.playerStore who rightHistory view) node =
+          some (FinDist.pure rightCommand) ∧
       SealedProgram.CommandAgreement supported.compile known who leftCommand rightCommand := by
-  unfold nodeCommand? at hselected ⊢
+  simp only [nodeCommand?, List.contains_nil, Bool.false_eq_true, ite_false,
+    SealedRule.discharge_nil, SealedProgram.discharge_nil] at hselected ⊢
   split at hselected
   · rename_i hready
     rw [if_pos hready]
@@ -233,14 +235,16 @@ theorem playerPolicy_knowledge (supported : SealedFragment G ty)
       SealedProgram.CommandAgreement supported.compile known who leftCommand rightCommand := by
   unfold playerPolicy
   cases hselected : G.nodeOrder.findSome?
-      (supported.nodeCommand? who (supported.valuePolicy leftValues who) leftHistory view) with
+      (supported.nodeCommand? who [] (supported.valuePolicy leftValues who) leftHistory view
+        (supported.playerStore who leftHistory view)) with
   | none =>
       have hnone : G.nodeOrder.findSome?
-          (supported.nodeCommand? who (supported.valuePolicy rightValues who) rightHistory view) =
+          (supported.nodeCommand? who [] (supported.valuePolicy rightValues who) rightHistory view
+            (supported.playerStore who rightHistory view)) =
             none := by
         apply List.findSome?_eq_none_iff.mpr
         intro node hnode
-        exact (supported.nodeCommand?_none_iff who _ _ leftHistory rightHistory view node).mp
+        exact (supported.nodeCommand?_none_iff who [] _ _ leftHistory rightHistory view _ _ node).mp
           (List.findSome?_eq_none_iff.mp hselected node hnode)
       simp only [hnone, Option.getD_none]
       exact ⟨_, _, rfl, rfl, SealedProgram.CommandAgreement.refl _ who⟩
@@ -251,12 +255,14 @@ theorem playerPolicy_knowledge (supported : SealedFragment G ty)
         leftValues rightValues leftHistory rightHistory view hoccupied hcache hvalues hopenings
         node law hnode
       have hright : G.nodeOrder.findSome?
-          (supported.nodeCommand? who (supported.valuePolicy rightValues who) rightHistory view) =
+          (supported.nodeCommand? who [] (supported.valuePolicy rightValues who) rightHistory view
+            (supported.playerStore who rightHistory view)) =
             some (FinDist.pure rc) := by
         apply List.findSome?_eq_some_iff.mpr
         refine ⟨front, node, rest, hnodes, hr, ?_⟩
         intro prior hprior
-        exact (supported.nodeCommand?_none_iff who _ _ leftHistory rightHistory view prior).mp
+        exact (supported.nodeCommand?_none_iff who [] _ _
+          leftHistory rightHistory view _ _ prior).mp
           (hfront prior hprior)
       simp only [hright, Option.getD_some]
       exact ⟨lc, rc, hl, rfl, hrelated⟩

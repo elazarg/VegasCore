@@ -40,18 +40,6 @@ def Payload.node? : Payload Principal Value → Option Nat
   | .commitment node _ | .opening node _ _ | .cleartext node _ => some node
   | .malformed => none
 
-/-- Remove prerequisites whose completion is supplied by the resolution log.
-This changes readiness checks, not message ownership or opening verification. -/
-def discharge (program : SealedProgram Principal) (completed : List Nat) :
-    SealedProgram Principal :=
-  ⟨program.rules.map fun rule =>
-    { rule with requires := rule.requires.filter fun node => !completed.contains node }⟩
-
-@[simp] theorem discharge_nil (program : SealedProgram Principal) :
-    program.discharge [] = program := by
-  cases program
-  simp [discharge]
-
 end SealedProgram
 
 structure SealedResolution (Principal : Type uPrincipal) (Value : Type uValue) where
