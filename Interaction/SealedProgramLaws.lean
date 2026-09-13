@@ -312,6 +312,23 @@ theorem openingHandle?_sound [DecidableEq Principal]
     all_goals contradiction
   next => contradiction
 
+/-- Public readiness certifies the reveal rule and all of its prerequisites,
+without requiring a proposed opening value. -/
+theorem openingReady_sound [DecidableEq Principal]
+    (program : SealedProgram Principal) (events : List (Event Principal Value))
+    (owner : Principal) (node : Nat)
+    (hready : openingReady program events owner node = true) :
+    ∃ source requires,
+      program.rules[node]? = some ⟨.reveal owner source, requires⟩ ∧
+      done events node = false ∧ requires.all (done events) = true ∧
+      accepted? events source = some (owner, source) := by
+  cases hhandle : openingHandle? program events owner node with
+  | none => simp [openingReady, hhandle] at hready
+  | some handle =>
+      obtain ⟨source, rfl⟩ := openingHandle?_eq_some_owner program events owner node handle hhandle
+      obtain ⟨requires, hchecks⟩ := openingHandle?_sound program events owner node source hhandle
+      exact ⟨source, requires, hchecks⟩
+
 /-- A generated opening request carries the same public-readiness witness. -/
 theorem openingRequest?_sound [DecidableEq Principal]
     (program : SealedProgram Principal) (events : List (Event Principal Value))

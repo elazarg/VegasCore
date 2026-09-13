@@ -1,4 +1,8 @@
 {
+  "prose:utility-simulation": ["Vegas.Paper.utility_approximate_nash_preservation"],
+  "prose:sealed-opening-barrier": ["Vegas.Paper.sealed_opening_barrier"],
+  "prose:selective-quitting-margin": ["Vegas.Paper.selective_quitting_bound"],
+  "prose:pending-disclosure-margin": ["Vegas.Paper.sealed_disclosure_utility_bound"],
   "prose:source-decisions": ["Vegas.Paper.source_strategy_support", "Vegas.Paper.source_decision_information", "Vegas.Paper.source_publication_barrier", "Vegas.Paper.source_decision_roundtrip", "Vegas.Paper.graph_decision_roundtrip"],
   "prose:commitment-accounting": ["Vegas.Paper.Source.committed_binding_accounted", "Vegas.Paper.Source.initial_binding_accounted", "Vegas.Paper.Source.binding_resolutions_nodup"],
   "prose:public-application-support": ["Vegas.Paper.Source.public_application_outcome", "Vegas.Paper.Source.public_application_policy_outcome", "Vegas.Paper.Source.public_application_windowed_outcome"],

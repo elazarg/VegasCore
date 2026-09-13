@@ -20,20 +20,27 @@ variable {G : Graph Player L} {ty : L.Ty}
 namespace SealedFragment
 
 /-- A supported commitment row accepts an arbitrary value of the fragment's
-common type at any configuration where that node is ready. -/
+common type at any coherent configuration where that node is ready. Choice
+information may include earlier public values and the owner's prior choices;
+only the guard's acceptance predicate must be unrestricted. -/
 noncomputable def commitStep (supported : SealedFragment G ty)
     (cfg : Config G) (node : Fin G.nodeCount) (who : Player)
     (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
-    (hready : Ready G cfg node) (value : L.Val ty) :
+    (hready : Ready G cfg node) (hcoherent : StoreCoherent G cfg) (value : L.Val ty) :
     CommitStep G cfg who ⟨node, ⟨ty, value⟩⟩ := by
   have hguardTy : guard.ty = ty := supported.commitType node who guard hsem
-  have hreads : guard.choiceReads = ∅ := supported.commitReads node who guard hsem
+  have hnodeWF := supported.graphWF node (G.nodeRow node) (G.nodes_get?_nodeRow node)
+  unfold Graph.nodeWFAt at hnodeWF
+  rw [hsem] at hnodeWF
   have available : ∀ ref, ref ∈ guard.choiceReads →
       ∃ stored, Store.getAs cfg.store ref.field ref.ty = some stored := by
     intro ref href
-    rw [hreads] at href
-    simp at href
+    apply hcoherent.hasRefOfReadyRead supported.graphWF (G.nodes_get?_nodeRow node) hready
+    · rw [hsem]
+      exact Finset.mem_image.mpr ⟨ref, href, rfl⟩
+    · obtain ⟨spec, hget, hty, _howner⟩ := hnodeWF.2.2.2 ref href
+      exact ⟨spec, hget, hty⟩
   let env : ReadEnv L guard.choiceReads :=
     ReadEnv.ofStore cfg.store guard.choiceReads available
   have henv : ReadEnv.ofStore? cfg.store guard.choiceReads = some env := by
@@ -59,12 +66,12 @@ theorem stepCommit_commitStep (supported : SealedFragment G ty)
     (cfg : Config G) (node : Fin G.nodeCount) (who : Player)
     (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
-    (hready : Ready G cfg node) (value : L.Val ty) :
-    stepCommit G cfg (supported.commitStep cfg node who guard hsem hready value) =
+    (hready : Ready G cfg node) (hcoherent : StoreCoherent G cfg) (value : L.Val ty) :
+    stepCommit G cfg (supported.commitStep cfg node who guard hsem hready hcoherent value) =
       FinDist.pure (cfg.completeNode node ⟨ty, value⟩) := by
   unfold stepCommit
   rw [CommitStep.written_eq_action
-    (supported.commitStep cfg node who guard hsem hready value)]
+    (supported.commitStep cfg node who guard hsem hready hcoherent value)]
 
 /-- A supported reveal whose source is present has an internal-step witness. -/
 def revealStep (supported : SealedFragment G ty)

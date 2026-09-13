@@ -34,6 +34,7 @@ theorem handle_refines (supported : SealedFragment G ty)
     (state : SealedProgram.State Player (L.Val ty)) (cfg : Config G)
     (hdecode : G.decodeSealed ty state = some cfg)
     (hnodup : (state.events.map SealedProgram.Event.node).Nodup)
+    (hcoherent : StoreCoherent G cfg)
     (message : Message Player (SealedProgram.Payload Player (L.Val ty))) :
     ∃ next : Config G,
       G.decodeSealed ty (SealedProgram.handle supported.compile state message) = some next ∧
@@ -70,7 +71,7 @@ theorem handle_refines (supported : SealedFragment G ty)
               Graph.sealedRule] using hrequires)
         obtain ⟨value, hvalue⟩ := Option.isSome_iff_exists.mp hstored
         let event : AvailableEvent G cfg := .commit owner ⟨node, ⟨ty, value⟩⟩
-          (supported.commitStep cfg node owner guard hsem hready value)
+          (supported.commitStep cfg node owner guard hsem hready hcoherent value)
         refine ⟨cfg.completeNode node ⟨ty, value⟩, ?_, Or.inr ⟨event, ?_⟩⟩
         · change G.decodeSealedFrom ty state.service (Config.initial G)
             (state.events ++ [.accepted node.val (owner, node.val)]) = _
@@ -133,6 +134,7 @@ theorem includePending_refines (supported : SealedFragment G ty)
     (state : SealedProgram.State Player (L.Val ty)) (cfg : Config G)
     (hdecode : G.decodeSealed ty state = some cfg)
     (hnodup : (state.events.map SealedProgram.Event.node).Nodup)
+    (hcoherent : StoreCoherent G cfg)
     (id : MessageId Player) :
     ∃ next : Config G,
       G.decodeSealed ty (SealedProgram.includePending supported.compile state id) = some next ∧
@@ -146,7 +148,8 @@ theorem includePending_refines (supported : SealedFragment G ty)
   | some message =>
       rw [SealedProgram.includePending_of_lookup supported.compile state id message hlookup]
       exact supported.handle_refines
-        { state with pool := (state.pool.includePending id).state } cfg hdecode hnodup message
+        { state with pool := (state.pool.includePending id).state } cfg hdecode hnodup
+        hcoherent message
 
 /-- Every native action either stutters or takes a genuine graph step under
 decoding. Registration may extend the private table but cannot rewrite a
@@ -155,6 +158,7 @@ theorem step_refines (supported : SealedFragment G ty)
     (state : SealedProgram.State Player (L.Val ty)) (cfg : Config G)
     (hdecode : G.decodeSealed ty state = some cfg)
     (hnodup : (state.events.map SealedProgram.Event.node).Nodup)
+    (hcoherent : StoreCoherent G cfg)
     (action : SealedProgram.Action Player (L.Val ty)) :
     ∃ next : Config G,
       G.decodeSealed ty (SealedProgram.step supported.compile state action) = some next ∧
@@ -172,7 +176,7 @@ theorem step_refines (supported : SealedFragment G ty)
   | submit sender payload => exact ⟨cfg, hdecode, Or.inl rfl⟩
   | replay broadcaster id => exact ⟨cfg, hdecode, Or.inl rfl⟩
   | deliver observer id => exact ⟨cfg, hdecode, Or.inl rfl⟩
-  | «include» id => exact supported.includePending_refines state cfg hdecode hnodup id
+  | «include» id => exact supported.includePending_refines state cfg hdecode hnodup hcoherent id
 
 /-- Every finite native action sequence from a represented reachable graph
 state decodes to a reachable graph state. No settlement or fairness is assumed. -/
@@ -188,7 +192,8 @@ theorem run_refines_from (supported : SealedFragment G ty)
   induction actions generalizing state cfg with
   | nil => exact ⟨cfg, hdecode, hreachable⟩
   | cons action rest ih =>
-      obtain ⟨next, hnext, hstep⟩ := supported.step_refines state cfg hdecode hnodup action
+      obtain ⟨next, hnext, hstep⟩ := supported.step_refines state cfg hdecode hnodup
+        (reachable_storeCoherent supported.graphWF hreachable) action
       have hnextReachable : Reachable G next := by
         rcases hstep with rfl | ⟨event, hevent⟩
         · exact hreachable

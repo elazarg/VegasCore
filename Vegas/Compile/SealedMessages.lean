@@ -34,8 +34,6 @@ structure SealedFragment (G : Graph Player L) (ty : L.Ty) : Prop where
   rowType : ∀ node, (G.nodeRow node).ty = ty
   noSamples : ∀ node dist, (G.nodeRow node).sem ≠ .sample dist
   commitType : ∀ node who guard, (G.nodeRow node).sem = .commit who guard → guard.ty = ty
-  commitReads : ∀ node who guard, (G.nodeRow node).sem = .commit who guard →
-    guard.choiceReads = ∅
   commitGuard : ∀ node who guard, (G.nodeRow node).sem = .commit who guard →
     ∀ value env, guard.eval value env = true
   revealSource : ∀ node source, (G.nodeRow node).sem = .reveal source →

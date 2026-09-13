@@ -27,6 +27,24 @@ def runEnvironmentCommands (app : MessageApplication Principal) :
       (app.environmentPolicyStep execution command).bind
         (runEnvironmentCommands app rest)
 
+/-- Erasing policy bookkeeping from fixed environment commands gives the
+ordinary native action runner, with waits removed. -/
+theorem runEnvironmentCommands_native (app : MessageApplication Principal)
+    (commands : List app.EnvironmentPolicyCommand) (execution : app.PolicyExecution) :
+    (app.runEnvironmentCommands commands execution).map
+        MessageInterface.PolicyExecution.native =
+      app.run (commands.filterMap (EnvironmentPolicyCommand.toAction app)) execution.native := by
+  induction commands generalizing execution with
+  | nil => simp [runEnvironmentCommands]
+  | cons command rest ih =>
+      simp only [runEnvironmentCommands, FinDist.map_bind]
+      simp_rw [ih]
+      rw [← FinDist.bind_map MessageInterface.PolicyExecution.native,
+        app.environmentStep_native]
+      cases haction : command.toAction with
+      | none => simp [haction]
+      | some action => simp [haction]
+
 /-- Fixed environment-command sequences do not change any principal history. -/
 theorem runEnvironmentCommands_principalHistory
     (app : MessageApplication Principal) (commands : List app.EnvironmentPolicyCommand)

@@ -35,6 +35,7 @@ private theorem handle_refines_timed (supported : SealedFragment G ty)
     (hdecode : G.decodeSealedFrom ty application.service (Config.initial G)
       application.events = some cfg)
     (hnodup : (application.events.map SealedProgram.Event.node).Nodup)
+    (hcoherent : StoreCoherent G cfg)
     (message : Message Player (SealedTimeout.Payload Player (L.Val ty)))
     (hhandle : timed.handle now application message = some next) :
     ∃ result : Config G,
@@ -64,7 +65,7 @@ private theorem handle_refines_timed (supported : SealedFragment G ty)
             cases hhandle
             simp [snapshot, SealedProgram.handle, hvalid]
       obtain ⟨result, hresult, hstep⟩ := supported.handle_refines
-        (snapshot application) cfg hdecode hnodup ⟨message.id, payload⟩
+        (snapshot application) cfg hdecode hnodup hcoherent ⟨message.id, payload⟩
       rw [hordinary] at hresult
       exact ⟨result, hresult, hstep⟩
 
@@ -157,7 +158,8 @@ theorem sealed_timeout_run_refines (supported : SealedFragment G ty)
                     simpa [stepped, SealedTimeout.step, SealedTimeout.includePending,
                       MessagePool.includeApplication, MessagePool.includePending, hlookup, hhandle]
                       using handle_refines_timed supported timed rfl state.clock state.application
-                        next cfg hdecode hnodup message hhandle
+                        next cfg hdecode hnodup
+                        (reachable_storeCoherent supported.graphWF hreachable) message hhandle
       obtain ⟨next, hnext, htransition⟩ := hstep
       have hnextReachable : Reachable G next := by
         rcases htransition with rfl | ⟨event, hevent⟩

@@ -1,4 +1,72 @@
 {
+  "Vegas.Paper.Source.public_application_outcome": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_policy_outcome": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_windowed_outcome": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_reference_law": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_ordered_reference_law": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_windowed_reference_law": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_windowed_game_honest_law": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_windowed_deviation_mixture": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_windowed_game_guarantee": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_windowed_game_nash_iff": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_windowed_game_approximate_nash_iff": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_withholding": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_conditional_phase": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_conditional_continuation": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_conditional_expiry": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_choice_expiry": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
+  "Vegas.Paper.Source.public_application_binding_expiry": {
+    "reason": "The strict sealed-message compiler must establish this paper claim; the archived fused-runtime proof does not discharge it.",
+    "reference": "archive/fused/Paper.lean.txt"
+  },
   "Vegas.Paper.Disclosure.expected_payoffs": {
     "reason": "proof module removed from the active audit and remains to be ported",
     "reference": "archive/split/Paper.lean.txt"

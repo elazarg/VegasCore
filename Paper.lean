@@ -5,8 +5,15 @@ Authors: VegasCore contributors
 -/
 
 import GameTheoryExtensions.Core.MixtureSimulation
+import GameTheoryExtensions.Core.UtilitySimulation
+import Interaction.SealedTimeoutDisclosure
 import Vegas.Language.Nullable
 import Vegas.Compile.SealedCompiler
+import Vegas.Compile.SourceLaw
+import Vegas.Core.AccountingIntegrity
+import Vegas.EventGraph.Confluence
+import Vegas.EventGraph.Fence
+import Vegas.EventGraph.SourceOrder
 import Vegas.Compile.SealedTimeoutRefinement
 import Vegas.EventGraph.Strategic
 import Vegas.Game.SealedMessages
@@ -25,14 +32,16 @@ The pending-message backtranslation for the concrete policy runtime is an open
 research obligation. It is not represented here as a theorem with an
 unjustified universal conclusion; the certificate interface records exactly
 what that proof must construct. If the eventual runtime edge has a target-only
-early-resolution action, its Nash theorem will additionally require a checked
-strict-dominance law for the corresponding source nullable quit, unless that
-action is itself backtranslated as an ordinary source deviation.
+early-resolution action, a Nash theorem may instead use utility domination.
+The comparison must concern feasible whole-program continuations with existing
+commitments fixed at the information available when quitting is chosen. The
+native disclosure bound below does not yet discharge that source-level law.
 -/
 
 namespace Vegas.Paper
 
 open GameTheory Vegas EventGraph Interaction
+open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
@@ -115,6 +124,86 @@ theorem sealed_opening_prerequisites
     ∀ prior, prior ∈ (ToEventGraph.compile source.core).graph.prereqs node →
       SealedProgram.done view.application prior.val = true :=
   supported.openingCommand_prerequisites owner node value view hnonwait
+
+/-- The actual compiled opening barrier, through a complete native policy trace. -/
+theorem sealed_opening_barrier
+    {source : WFProgram Player L} {ty : L.Ty}
+    [DecidableEq (L.Val ty)]
+    (supported : SealedFragment (ToEventGraph.compile source.core).graph ty)
+    (owner : Player) (node prior : Fin (ToEventGraph.compile source.core).graph.nodeCount)
+    (players : Player → (supported.compile.messageApplication (Value := L.Val ty)).PlayerPolicy)
+    (environment : (supported.compile.messageApplication (Value := L.Val ty)).EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Player))
+    (state : (supported.compile.messageApplication (Value := L.Val ty)).State)
+    (invariant : SealedProgram.BindingInvariant supported.compile
+      (supported.compile.eraseReceipts state))
+    (trace : (supported.compile.messageApplication (Value := L.Val ty)).PolicyTrace)
+    (htrace : trace ∈ ((supported.compile.messageApplication (Value := L.Val ty)).tracePolicies
+      players environment schedule (MessageApplication.PolicyExecution.initial _ state)).support)
+    (hready : SealedProgram.openingReady supported.compile
+      (trace.firstRelease (fun (execution :
+        (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution) =>
+        SealedProgram.openingReady supported.compile execution.native.application.events
+          owner node.val)).native.application.events owner node.val = true)
+    (priorOwner : Player) (guard : EventGuard L)
+    (hprior : ((ToEventGraph.compile source.core).graph.nodeRow prior).sem =
+      .commit priorOwner guard)
+    (hearlier : prior.val < node.val) :
+    ∃ value,
+      (trace.firstRelease (fun (execution :
+        (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution) =>
+        SealedProgram.openingReady supported.compile execution.native.application.events
+          owner node.val)).native.application.service.lookup (priorOwner, prior.val) = some value ∧
+      trace.last.native.application.service.lookup (priorOwner, prior.val) = some value :=
+  supported.opening_barrier_trace owner node prior players environment schedule state
+    invariant trace htrace hready priorOwner guard hprior hearlier
+
+/-- The utility comparison needed for an informed, randomized quitting decision. -/
+theorem selective_quitting_bound {State Outcome : Type*}
+    (states : FinDist State) (stop : State → FinDist Bool)
+    (quit proceed : State → FinDist Outcome) (utility : Outcome → ℝ) (margin : ℝ)
+    (hmargin : ∀ state ∈ states.support, true ∈ (stop state).support →
+      (quit state).expect utility + margin ≤ (proceed state).expect utility) :
+    (states.bind fun state => (stop state).bind fun stops =>
+      if stops then quit state else proceed state).expect utility +
+        margin * (states.bind stop).prob true ≤ (states.bind proceed).expect utility :=
+  FinDist.selective_stopping_bound states stop quit proceed utility margin hmargin
+
+/-- Concrete pending-message disclosure, conditional on resolution of this checkpoint. -/
+theorem sealed_disclosure_utility_bound {Value : Type} [DecidableEq Value]
+    (timed : SealedTimeout Player) (initial : SealedTimeout.State Player Value)
+    (owner : Player) (source : Nat) (value : Value) (requires : List Nat)
+    (hrule : timed.program.rules[timed.openingNode]? = some ⟨.reveal owner source, requires⟩)
+    (invariant : SealedTimeout.LockedOpening timed owner source value initial.application)
+    (players : Player → (timed.messageApplication (Value := Value)).PlayerPolicy)
+    (environment : (timed.messageApplication (Value := Value)).EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Player))
+    (hresolved : ∀ execution ∈ ((timed.messageApplication (Value := Value)).runPolicies
+      players environment schedule
+      (MessageApplication.PolicyExecution.initial _ (timed.toSharedState initial))).support,
+      execution.native.application.application.resolution ≠ .pending)
+    (utility : DisclosureResult Value → ℝ) (margin : ℝ)
+    (hmargin : utility .expired + margin ≤ utility (.opened value)) :
+    let law := (timed.messageApplication (Value := Value)).runPolicies players environment schedule
+      (MessageApplication.PolicyExecution.initial _ (timed.toSharedState initial))
+    (law.map (fun execution => timed.disclosureResult
+        execution.native.application.application)).expect utility +
+        margin * (law.map (fun execution => decide
+          (execution.native.application.application.resolution = .expired))).prob true ≤
+      utility (.opened value) :=
+  SealedTimeout.resolved_policy_utility_bound timed initial owner source value requires hrule
+    invariant players environment schedule hresolved utility margin hmargin
+
+/-- Utility-specific simulation suffices even when exact outcome-law simulation fails. -/
+theorem utility_approximate_nash_preservation
+    {source target : GameForm Player}
+    {sourceUtility : source.sig.Outcome → Player → ℝ}
+    {targetUtility : target.sig.Outcome → Player → ℝ}
+    (simulation : GameForm.UtilitySimulation source target sourceUtility targetUtility)
+    (ε : ℝ) (profile : Profile source.sig) :
+    IsεNash target targetUtility ε (simulation.compileProfile profile) ↔
+      IsεNash source sourceUtility ε profile :=
+  simulation.isεNash_compileProfile_iff ε profile
 
 theorem sealed_nash_preservation
     {source : WFProgram Player L} {ty : L.Ty}
@@ -237,7 +326,207 @@ theorem graph_exact_deviation
           (EventGraph.Strategic.behavioralObserve G hwf hguards) :=
   EventGraph.Strategic.deviation_law G hwf hguards hlocal hsingle profile who replacement
 
+theorem source_strategy_support
+    {Player : Type} [DecidableEq Player] {L : IExpr} {Γ : VCtx Player L}
+    (prog : VegasCore Player L Γ) (profile : SourceBehavioralProfile prog)
+    (env : VEnv L Γ) (result : VEnv L (sourceTerminalCtx prog))
+    (hsupport : result ∈ (denoteSource prog profile env).support) :
+    SmallStep.Star { ctx := Γ, env := env, cont := prog }
+      { ctx := sourceTerminalCtx prog, env := result,
+        cont := .ret (sourceTerminalPayoffs prog) } :=
+  denoteSource_support_star prog profile env result hsupport
+
+theorem source_decision_information
+    {Player : Type} [DecidableEq Player] {L : IExpr} {Γ : VCtx Player L}
+    (state : ToEventGraph.BuildState Player L Γ) (who : Player)
+    (hinjective : ToEventGraph.FieldOfNameInjective state.fieldOf) :
+    Function.Bijective (ToEventGraph.viewEnvOfReadEnv state who) :=
+  ToEventGraph.viewEnvOfReadEnv_bijective state who hinjective
+
+theorem source_publication_barrier
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    {G : Graph Player L} {cfg : Config G} {who : Player}
+    {commit publication : Fin G.nodeCount} {row : EventNode Player L}
+    (hreachable : Reachable G cfg) (hcommit : ReadyCommitNode G cfg who commit)
+    (hrow : G.nodes[publication]? = some row)
+    (hlt : (commit : Nat) < (publication : Nat))
+    (hinternal : NodeSem.isInternal row.sem = true) : publication ∉ cfg.done :=
+  hcommit.later_internal_not_done hreachable hrow hlt hinternal
+
+theorem source_decision_roundtrip
+    {Player : Type} [DecidableEq Player] {L : IExpr} {Γ : VCtx Player L}
+    {name : VarId} {ty : L.Ty}
+    (state : ToEventGraph.BuildState Player L Γ) (who : Player)
+    (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
+    (hinjective : ToEventGraph.FieldOfNameInjective state.fieldOf)
+    (policy : (visible : Env L.Val (eraseVCtx (viewVCtx who Γ))) →
+      FinDist {value : L.Val ty // evalGuard guard value visible = true})
+    (visible : Env L.Val (eraseVCtx (viewVCtx who Γ))) :
+    ToEventGraph.backtranslateSourceDecision state who guard hinjective
+      (ToEventGraph.compileSourceDecision state who guard policy) visible = policy visible :=
+  ToEventGraph.backtranslate_compileSourceDecision state who guard hinjective policy visible
+
+theorem graph_decision_roundtrip
+    {Player : Type} [DecidableEq Player] {L : IExpr} {Γ : VCtx Player L}
+    {name : VarId} {ty : L.Ty}
+    (state : ToEventGraph.BuildState Player L Γ) (who : Player)
+    (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
+    (hinjective : ToEventGraph.FieldOfNameInjective state.fieldOf)
+    (policy : (reads : ReadEnv L (ToEventGraph.eventGuardOf state who guard).choiceReads) →
+      FinDist {value : L.Val ty //
+        (ToEventGraph.eventGuardOf state who guard).eval value reads = true})
+    (reads : ReadEnv L (ToEventGraph.eventGuardOf state who guard).choiceReads) :
+    ToEventGraph.compileSourceDecision state who guard
+      (ToEventGraph.backtranslateSourceDecision state who guard hinjective policy) reads =
+        policy reads :=
+  ToEventGraph.compile_backtranslateSourceDecision state who guard hinjective policy reads
+
+theorem schedule_confluence
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    {G : Graph Player L} (cfg : Config G)
+    (value : Fin G.nodeCount → TypedValue L)
+    {left right : List (Fin G.nodeCount)}
+    (hperm : List.Perm left right) (hnodup : left.Nodup) :
+    cfg.scheduleComplete value left = cfg.scheduleComplete value right :=
+  Config.scheduleComplete_perm cfg value hperm hnodup
+
+theorem schedule_observation_confluence
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    {G : Graph Player L} (cfg : Config G) (who : Player)
+    (value : Fin G.nodeCount → TypedValue L)
+    {left right : List (Fin G.nodeCount)}
+    (hperm : List.Perm left right) (hnodup : left.Nodup) :
+    (publicObserve G (cfg.scheduleComplete value left),
+        observe G (cfg.scheduleComplete value left) who) =
+      (publicObserve G (cfg.scheduleComplete value right),
+        observe G (cfg.scheduleComplete value right) who) :=
+  Config.scheduleComplete_observe_perm cfg who value hperm hnodup
+
+theorem execution_diamond
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    {G : Graph Player L} (hwf : G.WF) {cfg leftNext rightNext : Config G}
+    (left right : AvailableEvent G cfg) (hne : left.node ≠ right.node)
+    (hleft : leftNext ∈ (stepAvailableEvent G cfg left).support)
+    (hright : rightNext ∈ (stepAvailableEvent G cfg right).support) :
+    ∃ rightAfterLeft : AvailableEvent G leftNext,
+      ∃ leftAfterRight : AvailableEvent G rightNext,
+        ∃ finalLeft finalRight : Config G,
+          finalLeft ∈ (stepAvailableEvent G leftNext rightAfterLeft).support ∧
+          finalRight ∈ (stepAvailableEvent G rightNext leftAfterRight).support ∧
+          finalLeft = finalRight :=
+  supported_available_events_diamond hwf left right hne hleft hright
+
+theorem commit_reveal_barrier
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    (G : Graph Player L)
+    {node prior : Fin G.nodeCount}
+    {event priorEvent : EventNode Player L} {source : Nat}
+    {who : Player} {guard : EventGuard L}
+    (hnode : G.nodes[node]? = some event)
+    (hprior : G.nodes[prior]? = some priorEvent)
+    (hlt : (prior : Nat) < (node : Nat))
+    (hreveal : event.sem = .reveal source)
+    (hcommit : priorEvent.sem = .commit who guard) :
+    prior ∈ G.prereqs node :=
+  G.prior_commit_mem_prereqs_of_reveal hnode hprior hlt hreveal hcommit
+
+theorem ready_reveal_fence
+    {Player : Type} [DecidableEq Player] {L : IExpr}
+    (G : Graph Player L) (cfg : Config G) {node prior : Fin G.nodeCount}
+    {event priorEvent : EventNode Player L} {source : Nat}
+    {who : Player} {guard : EventGuard L}
+    (hnode : G.nodes[node]? = some event) (hprior : G.nodes[prior]? = some priorEvent)
+    (hlt : (prior : Nat) < (node : Nat)) (hreveal : event.sem = .reveal source)
+    (hcommit : priorEvent.sem = .commit who guard) (hready : Ready G cfg node) :
+    prior ∈ cfg.done :=
+  Ready.prior_commit_done_of_reveal G cfg hnode hprior hlt hreveal hcommit hready
+
+namespace Source
+
+theorem committed_binding_accounted (source : WFProgram Player L) (name : VarId)
+    (hname : name ∈ CommittedVars source.core.prog) :
+    name ∈ RevealedSources source.core.prog ∨
+      name ∈ source.accounted.dispositions :=
+  source.committed_source_resolved name hname
+
+theorem initial_binding_accounted (source : WFProgram Player L) (name : VarId)
+    (hname : name ∈ SealedVars source.core.Γ) :
+    name ∈ RevealedSources source.core.prog ∨
+      name ∈ source.accounted.dispositions :=
+  source.initial_sealed_source_resolved name hname
+
+theorem binding_resolutions_nodup (source : WFProgram Player L) :
+    source.accounted.resolvedSources.Nodup :=
+  source.resolutions_nodup
+
+end Source
+
 end Vegas.Paper
+
+/-- info: 'Vegas.Paper.source_strategy_support' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_strategy_support
+
+/-- info: 'Vegas.Paper.source_decision_information' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_decision_information
+
+/-- info: 'Vegas.Paper.source_publication_barrier' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_publication_barrier
+
+/-- info: 'Vegas.Paper.source_decision_roundtrip' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_decision_roundtrip
+
+/-- info: 'Vegas.Paper.graph_decision_roundtrip' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.graph_decision_roundtrip
+
+/-- info: 'Vegas.Paper.schedule_confluence' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.schedule_confluence
+
+/-- info: 'Vegas.Paper.schedule_observation_confluence' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.schedule_observation_confluence
+
+/-- info: 'Vegas.Paper.execution_diamond' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.execution_diamond
+
+/-- info: 'Vegas.Paper.commit_reveal_barrier' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.commit_reveal_barrier
+
+/-- info: 'Vegas.Paper.ready_reveal_fence' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.ready_reveal_fence
+
+/-- info: 'Vegas.Paper.Source.committed_binding_accounted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.committed_binding_accounted
+
+/-- info: 'Vegas.Paper.Source.initial_binding_accounted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.initial_binding_accounted
+
+/-- info: 'Vegas.Paper.Source.binding_resolutions_nodup' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.Source.binding_resolutions_nodup
 
 /-- info: 'Vegas.Paper.sealed_rule_count' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -262,6 +551,26 @@ end Vegas.Paper
 /-- info: 'Vegas.Paper.sealed_opening_prerequisites' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.sealed_opening_prerequisites
+
+/-- info: 'Vegas.Paper.sealed_opening_barrier' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.sealed_opening_barrier
+
+/-- info: 'Vegas.Paper.selective_quitting_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.selective_quitting_bound
+
+/-- info: 'Vegas.Paper.sealed_disclosure_utility_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.sealed_disclosure_utility_bound
+
+/-- info: 'Vegas.Paper.utility_approximate_nash_preservation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.utility_approximate_nash_preservation
 
 /-- info: 'Vegas.Paper.sealed_nash_preservation' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in

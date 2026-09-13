@@ -65,3 +65,4 @@ import Interaction.SealedTimeoutLaws
 import Interaction.SealedTimeoutHiding
 import Interaction.SealedTimeoutPolicyLaws
 import Interaction.SealedTimeoutApplication
+import Interaction.SealedTimeoutDisclosure

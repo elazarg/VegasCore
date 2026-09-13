@@ -51,15 +51,27 @@ openings produce no earlier source step. A payload-dependent scheduler or an
 accepted action before that point would be a genuinely stronger runtime model
 and would need an additional source observation or an impossibility theorem.
 Source-level quitting discharges a separate branch only after the runtime's
-resolution edge supplies a quit law. If the edge adds a target-only early
-resolution action, the full Nash theorem is conditional on the corresponding
-nullable source quit being strictly dominated at every source profile. If the
-edge backtranslates the action as an ordinary source deviation, the dominance
-assumption is unnecessary. The sealed kernel treats malformed traffic as a
-stutter; a timeout or other resolution rule may then classify that run as the
-source quit, but that classification is a separate proof obligation.
-The reusable transfer theorem is proved in
-`GameTheoryExtensions.Core.QuitTransfer`.
+resolution edge supplies a quit law. If the runtime permits selective quitting
+using extra information, its utility must be compared with feasible continuation
+with the existing commitments fixed, at that finer information. An ex ante
+comparison with always quitting is insufficient. The generic selective-stopping
+bound proves a loss of at least `margin * probability_of_quitting` when the
+continuation advantage is at least `margin` on every supported stopping state.
+If the action is instead an ordinary source deviation, its exact simulation
+requires no incentive assumption.
+
+The native `SealedTimeout.resolved_policy_utility_bound` covers arbitrary
+randomized policy continuations of a locked disclosure checkpoint, assuming
+resolution. Its utility observes only the fixed opening or expiration. The
+compiled two-player regression gives an exact selective-withholding threshold
+in that actual runtime. Neither result constructs a whole-program source
+strategy or supplies settlement. In particular, the current timeout adapter
+freezes protocol acceptance and does not resolve a missing initial commitment.
+
+The compiled release barrier is stronger than checking the arriving opening:
+`SealedFragment.opening_barrier_trace` fixes every earlier commitment at the
+first opening-ready snapshot and preserves those values through the complete
+policy trace. Pending-message observations cannot rewrite those values.
 
 Still open are whole-prefix extraction of a pure source deviation, linear
 extension to arbitrary randomized deviations, and the final whole-program

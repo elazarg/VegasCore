@@ -67,17 +67,40 @@ to the corresponding source action at the first source point where its value is
 observable. A runtime that lets an accepted action depend on a payload before
 that point, or a scheduler that uses private payload data to alter the source
 visible future, would require a stronger source observation or a separate
-impossibility result. The generic
-`GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash`
-theorem proves the mechanism-design step once a runtime resolution law is
-supported entirely on the source quit. If that resolution action is an
-additional target-only action, the end-to-end Nash theorem is therefore
-conditional on the source nullable quit being strictly dominated (uniformly
-over source profiles): a target-only early quit cannot then be a best response.
-If the runtime action can instead be backtranslated as an ordinary source
-deviation, no dominance hypothesis is needed. The sealed kernel's rejected
-packet is only a stutter; classifying it as quit is a timeout/resolution
-theorem.
+impossibility result.
+
+For quitting, two strategic interfaces serve different conclusions. An exact
+`MixtureSimulationOn` transports every utility of the chosen source observation.
+`UtilitySimulation` instead bounds the deviator's expected utility by a legal
+source deviation for the utilities under analysis. It composes and implies
+same-error Nash preservation and reflection at compiled profiles, but does not
+by itself transport another player's worst-case guarantee.
+
+Selective withholding requires a comparison at the information available when
+the player withholds, with existing commitments fixed. Comparing always
+quitting with continuing before the extra observation does not establish that
+comparison. `FinDist.selective_stopping_bound` proves the quantitative rule:
+if feasible continuation exceeds quitting by a margin at every supported
+stopping state, then arbitrary randomized selective stopping loses at least
+that margin times its stopping probability. Weak domination suffices for a
+nonprofitability bound; a positive margin makes positive-probability stopping
+strictly worse. The continuation values must be those of the whole program,
+not merely a payment associated with the current message.
+
+`SealedTimeout.resolved_policy_utility_bound` instantiates this reasoning with
+the actual native runner after a fixed commitment. It concerns the monitored
+disclosure result and assumes resolution. The adapter's expiration freezes
+protocol acceptance; it neither installs a source `none` nor runs a source
+continuation. Whole-program resolution, including missing commitments, and
+the corresponding source utility law remain to be implemented and proved.
+
+The compiled opening barrier is checked independently of that resolution
+problem. `SealedFragment.opening_barrier_trace` proves that when the public
+opening-readiness condition first holds, every earlier commit node has a fixed
+ideal-service value that persists to the end of the same actual policy trace.
+All player and environment policies may randomize and adapt to their declared
+observations. The theorem does not assert that readiness is ever reached or
+that later quitting has the law of an earlier source decision.
 
 No active theorem establishes general adaptive scheduling equivalence,
 censorship resistance, cryptographic hiding, gas behavior, or EVM execution.

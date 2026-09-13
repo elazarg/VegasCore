@@ -8,7 +8,7 @@ introducing a new edge and proving its own correspondence laws.
 | Layer | Owner | Active artifact | What is proved now |
 | --- | --- | --- | --- |
 | Probability and game forms | `GameTheory` | `FinDist`, `GameForm`, profiles | The pinned library's probability and equilibrium definitions. |
-| Runtime-independent transport | `GameTheoryExtensions` | `MixtureSimulationOn`, `QuitTransfer` | Honest observation-law transport; finite-mixture unilateral-deviation transport implies expected-utility bounds and exact Nash/ε-Nash preservation/reflection. A supplied source-quit utility law rules out a target quit when source play strictly improves on it. |
+| Runtime-independent transport | `GameTheoryExtensions` | `MixtureSimulationOn`, `UtilitySimulation`, selective-stopping bounds | Exact observation-law simulation transports arbitrary observation utilities. Utility-specific deviation bounds compose and imply same-error Nash/ε-Nash equivalence at compiled profiles. Selective-stopping bounds require a continuation comparison at the information used to stop. |
 | Vegas semantic substrate | `Vegas.Foundation` | typed environments, visibility, values, obligations | Type/visibility and finite-domain infrastructure. No strategic preservation claim. |
 | Checked source | `Vegas.Core` | `VegasCore`, `WFProgram`, `SourceBehavioralPolicy`, `sourceGameForm` | Intrinsically typed sequential source syntax; guarded source policies; written-order source execution and payoff evaluation. Nullable `yield` supplies an explicit `Option.none` value. |
 | Graph compilation | `Vegas.EventGraph` | canonical graph, finite configurations, graph execution | Typed source nodes, dependencies, declared reads, reachable graph prefixes, and terminal graph-to-written-source correspondence. |
@@ -18,6 +18,13 @@ introducing a new edge and proving its own correspondence laws.
 | Strategic adapter | `Vegas.Game` | `SealedCompilation.StrategicCertificate` | A concrete target game may supply an honest law and a finite-mixture backtranslation; generic transport then gives the Nash/ε-Nash theorems. The certificate is an explicit obligation, not an automatic consequence of prefix refinement. |
 
 ## Current strategic gap
+
+The backend admits homogeneous commit/reveal programs with unrestricted guards,
+including multistage choices whose information includes earlier public values
+and their owner's prior commitments. Nonempty choice-information sets are
+justified by the reachable-store invariant, not erased from the source.
+Samples, nontrivial validation guards, and disclosures of initial private
+fields still require further compiler support.
 
 The active code does **not** yet instantiate a `StrategicCertificate` for the
 pending-message policy game. This is the remaining end-to-end deviation proof:
@@ -39,6 +46,13 @@ conclusion without changing the source language. The graph theorem has this
 same exact-deviation shape after backtranslation; its single-ready hypothesis
 does not hold automatically for graphs with multiple simultaneously ready
 commitments.
+
+For selective quitting, exact outcome-law simulation and Nash preservation
+are separate targets. The latter can use `UtilitySimulation` if every runtime
+deviation is no better than a legal source deviation. The native fixed-opening
+utility bound is checked, but its whole-program continuation instance is not.
+The current timeout adapter supplies a final-failure status, not the source
+program's quit continuation; missing commitments also need a resolution rule.
 
 ## Deliberate non-claims
 

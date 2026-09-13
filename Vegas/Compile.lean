@@ -5,6 +5,9 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.Compiler
+import Vegas.Compile.FieldMap
+import Vegas.Compile.SourceView
+import Vegas.Compile.SourceLaw
 import Vegas.Compile.SealedMessages
 import Vegas.Compile.SealedDecode
 import Vegas.Compile.SealedExecution

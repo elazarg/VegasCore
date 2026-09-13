@@ -179,8 +179,6 @@ theorem sealedFragment : SealedFragment graph (.option .bool) where
     fin_cases node <;> intro h <;> cases h
   commitType node who guard hsem := by
     fin_cases node <;> cases hsem <;> rfl
-  commitReads node who guard hsem := by
-    fin_cases node <;> cases hsem <;> rfl
   commitGuard node who guard hsem value env := by
     fin_cases node <;> cases hsem <;> cases value <;> rfl
   revealSource node sourceField hsem := by
