@@ -48,3 +48,12 @@ same-error approximate-Nash equivalence. When informed quitting changes the
 outcome law, `UtilitySimulation` can instead prove Nash preservation through
 whole-program utility bounds. The concrete pending-message instance of either
 interface remains open.
+
+The resolving message runtime has a checked whole-prefix registration read
+bound, `SealedFragment.resolvingBindingLaw_read_bound`. It executes compiled
+opponents with assigned source values against an arbitrary randomized native
+deviator and full-pool environment. The focal registration law, stopped at the
+first timeout, is unchanged when assigned honest values differ only at handles
+not disclosed before that source decision. This is an input to the causal
+backtranslation; the honest-kernel and joint-distribution correspondence remain
+separate obligations.

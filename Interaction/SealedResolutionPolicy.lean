@@ -22,6 +22,13 @@ universe uPrincipal uValue
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 variable [DecidableEq Principal] [DecidableEq Value]
 
+/-- Forget timing metadata while retaining the actual pool, receipts, and
+private service for proofs about the sealed event kernel. -/
+def eventState (runtime : SealedResolution Principal Value)
+    (state : runtime.messageApplication.State) :
+    (runtime.program.messageApplication (Value := Value)).State :=
+  ⟨⟨state.application.service, state.application.visible.events⟩, state.pool, state.receipts⟩
+
 def eventView (runtime : SealedResolution Principal Value)
     (view : runtime.messageApplication.View) :
     (runtime.program.messageApplication (Value := Value)).View :=

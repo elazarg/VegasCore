@@ -36,7 +36,7 @@ theorem BindingInvariant.empty (program : SealedProgram Principal) :
   constructor <;> simp [State.empty]
 
 omit [DecidableEq Principal] [DecidableEq Value] in
-private theorem BindingInvariant.copy (invariant : BindingInvariant program state)
+theorem BindingInvariant.copy (invariant : BindingInvariant program state)
     {next : State Principal Value} (hservice : next.service = state.service)
     (hevents : next.events = state.events) : BindingInvariant program next := by
   constructor
@@ -51,7 +51,7 @@ private theorem BindingInvariant.copy (invariant : BindingInvariant program stat
       invariant.opened node value hevent
     exact ⟨owner, source, requires, hrule, by simpa [hservice] using hlookup⟩
 
-private theorem BindingInvariant.handle_preserved (invariant : BindingInvariant program state)
+theorem BindingInvariant.handle_preserved (invariant : BindingInvariant program state)
     (message : Message Principal (Payload Principal Value)) :
     BindingInvariant program (handle program state message) := by
   rcases message with ⟨id, payload⟩

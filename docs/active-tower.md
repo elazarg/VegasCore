@@ -43,9 +43,26 @@ support-transfer and registration-origin lemmas also allow randomized native
 deviator and environment policies. The knowledge-indexed native relation
 preserves public observations, pool operations, and validation receipts while
 allowing unknown registered values to differ. The compiled-policy comparison
-and submission barrier supply its local policy premises. Whole-run
-read-boundedness, kernel agreement, and the probability coupling remain to be
-proved.
+and submission barrier supply its local policy premises.
+
+`SealedFragment.resolvingBindingLaw_read_bound` proves a whole-prefix
+registration read bound in the continuing deadline runtime. Substitute complete
+assignments for honest source draws, leaving the focal native policy and the
+full-pool environment arbitrary and randomized. If the assignments agree at
+honest handles disclosed before the focal source decision, the law of that
+decision's first registration is equal, cut off at the first timeout or finite
+horizon. This includes private history, clock, readiness, pending traffic, and
+rejection-receipt effects in the lockstep argument. It does not assume fair
+service. The conditional binding invariant holds on every native policy prefix;
+the compiled command premises are derived from it, not supplied by a caller.
+The cutoff reads the first timeout snapshot after its tick, which preserves
+the private service. Absence of registration is separate from registration
+of the nullable source value.
+
+The theorem supplies the causal read bound for assigned-value replay. Source
+policy extraction, kernel agreement, and the source/native probability
+coupling remain open; equality of these registration marginals alone does not
+establish the joint law of dependent source decisions.
 
 The backend admits homogeneous commit/reveal programs with unrestricted guards,
 including multistage choices whose information includes earlier public values

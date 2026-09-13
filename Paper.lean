@@ -11,6 +11,7 @@ import Vegas.Language.Nullable
 import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
+import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
 import Vegas.EventGraph.Confluence
@@ -158,6 +159,27 @@ theorem compiled_resolving_policy_no_cleartext
     .submit (.cleartext node value) ∉
       (compilation.compileResolvingPolicy nullValue window who policy history view).support :=
   compilation.supported.resolvingPolicy_no_cleartext nullValue window who _ history view node value
+
+/-- Whole-prefix registration hiding with randomized native players and
+full-pool environment policies. Source-kernel coupling is a separate obligation. -/
+theorem pending_binding_read_bound
+    {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
+    (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
+    (hdecision : (G.nodeRow decision).sem = .commit focal guard)
+    (leftValues rightValues : Fin G.nodeCount → L.Val ty)
+    (hvalues : ∀ who, who ≠ focal → ∀ node,
+      supported.knownBefore focal decision (who, node.val) → leftValues node = rightValues node)
+    (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
+    (environment :
+      (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Player)) :
+    supported.resolvingBindingLaw nullValue window leftValues focal decision
+        deviator environment schedule =
+      supported.resolvingBindingLaw nullValue window rightValues focal decision
+        deviator environment schedule :=
+  supported.resolvingBindingLaw_read_bound nullValue window focal decision guard
+    hdecision leftValues rightValues hvalues deviator environment schedule
 
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal
@@ -742,3 +764,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.compiled_resolving_policy_no_cleartext
+
+/-- info: 'Vegas.Paper.pending_binding_read_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_binding_read_bound

@@ -684,6 +684,10 @@ The current repository has:
   and local source-kernel law;
 - the exact value-substituted replay cylinder for bounded untimed executions;
 - local knowledge-indexed native hiding and the compiled submission barrier;
+- a whole-prefix registration read bound for the resolving runtime:
+  `SealedFragment.resolvingBindingLaw_read_bound` allows arbitrary randomized
+  native deviator and full-pool environment policies, and compares assigned
+  honest values agreeing at source-earlier disclosures;
 - per-node readiness timestamps, nullable resolution, and continued native
   execution without overwriting the private service;
 - a shared-runner round model separating adaptive wire scheduling from the
@@ -698,9 +702,15 @@ The current repository has:
   values of a legal written-source execution;
 - generic utility-based Nash transport.
 
-The local knowledge proofs are included in the warning-free library build.
-Local laws do not constitute the whole-run read-boundedness theorem or the
-source/native probability coupling.
+The registration read bound is checked over the actual shared policy runner,
+including clock transitions and rejection receipts. The paired execution
+relation carries the before-timeout binding invariant established under
+arbitrary native traffic. It cuts off at the focal registration or first
+timeout; the latter snapshot follows the tick, which leaves private service
+values unchanged. This gives the required equality of registration laws under
+changes to hidden future assignments. The deterministic replay function and
+its source-policy totalization still need to use this result. The theorem does
+not by itself identify the joint source/native probability law.
 
 The remaining implementation work is specific:
 
@@ -713,8 +723,9 @@ The remaining implementation work is specific:
 3. Establish readiness/read invariants after defaults and instantiate the
    fair-service and termination arguments. Do not assume a bare expiration
    status is a source settlement.
-4. Finish whole-run read-boundedness and the cylinder/kernel/marginal proof
-   for the actual policy runner, including the public clock observations.
+4. Use the checked registration read bound to extract legal source policies,
+   and prove the resolving-runner cylinder, kernel, and marginal laws. Retain
+   the dependence between honest draws and the shared environment randomness.
 5. Instantiate the existing `UtilitySimulation` under the explicit
    continuation condition, and audit the end-to-end theorem in `Paper.lean`.
 

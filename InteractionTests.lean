@@ -10,3 +10,4 @@ import InteractionTests.PolicyTrace
 import InteractionTests.TimeoutGate
 import InteractionTests.SealedTimeout
 import InteractionTests.SealedResolution
+import InteractionTests.SealedResolutionKnowledge
