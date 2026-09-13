@@ -13,6 +13,7 @@ import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedSourceExtraction
+import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
 import Vegas.EventGraph.Confluence
@@ -181,6 +182,41 @@ theorem pending_binding_read_bound
         deviator environment schedule :=
   supported.resolvingBindingLaw_read_bound nullValue window focal decision guard
     hdecision leftValues rightValues hvalues deviator environment schedule
+
+/-- Replay probabilities are exact honest-registration cylinder masses,
+including stopped prefixes. This does not yet identify the assignment law
+with the original state-dependent source kernels. -/
+theorem pending_replay_cylinder
+    {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
+    (focal : Player)
+    (deviator :
+      List (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry →
+      (supported.resolvingRuntime nullValue window).messageApplication.View →
+      (supported.resolvingRuntime nullValue window).messageApplication.PlayerCommand)
+    (environment :
+      List (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentEntry →
+      (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentObservation →
+      (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentPolicyCommand)
+    (schedule : List (@MessageApplication.Invocation Player))
+    (release :
+      (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution → Bool)
+    (assignments : FinDist (Fin G.nodeCount → L.Val ty))
+    (reference : Fin G.nodeCount → L.Val ty) :
+    (assignments.map (fun values =>
+      (supported.resolvingReplay nullValue window values focal
+        deviator environment schedule).prefixThrough release)).prob
+        (supported.resolvingReplay nullValue window reference focal
+          deviator environment schedule |>.prefixThrough release) =
+      assignments.probOf {values | ∀ owner (node : Fin G.nodeCount) (value : L.Val ty),
+        owner ≠ focal →
+          (.privateCommand owner ⟨(node.val, value)⟩ :
+            (supported.resolvingRuntime nullValue window).messageApplication.Action) ∈
+              (supported.resolvingReplay nullValue window reference focal
+                deviator environment schedule |>.prefixThrough release).last.nativeTrace →
+                  reference node = values node} :=
+  supported.resolvingReplay_cylinder_probability nullValue window focal deviator environment
+    schedule release assignments reference
 
 /-- Fixed native responses give a legal written-source policy with the same
 local registration law at matching source disclosure inputs. -/
@@ -815,3 +851,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_source_choice_law
+
+/-- info: 'Vegas.Paper.pending_replay_cylinder' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_replay_cylinder

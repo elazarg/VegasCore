@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Interaction.MessageApplicationPolicies
+import Interaction.MessageApplicationPolicyLaws
 
 /-! # Full invocation traces of message-application games
 
@@ -44,6 +44,29 @@ def PolicyTrace.firstRelease (release : app.PolicyExecution → Bool) :
   | .finish execution => execution
   | .step execution tail =>
       if release execution then execution else tail.firstRelease release
+
+/-- Retain all snapshots through the first selected one, or the complete
+trace if none is selected. This is an analysis projection of the same run. -/
+def PolicyTrace.prefixThrough (release : app.PolicyExecution → Bool) :
+    app.PolicyTrace → app.PolicyTrace
+  | .finish execution => .finish execution
+  | .step execution tail =>
+      if release execution then .finish execution else .step execution (tail.prefixThrough release)
+
+theorem PolicyTrace.prefixThrough_last (trace : app.PolicyTrace)
+    (release : app.PolicyExecution → Bool) :
+    (trace.prefixThrough release).last = trace.firstRelease release := by
+  induction trace with
+  | finish => rfl
+  | step execution tail ih =>
+      cases hrelease : release execution <;>
+        simp only [prefixThrough, firstRelease, hrelease, Bool.false_eq_true, ↓reduceIte, last, ih]
+
+theorem PolicyTrace.prefixThrough_false (trace : app.PolicyTrace) :
+    trace.prefixThrough (fun _ => false) = trace := by
+  induction trace with
+  | finish => rfl
+  | step execution tail ih => simp only [prefixThrough, Bool.false_eq_true, ↓reduceIte, ih]
 
 theorem PolicyTrace.firstRelease_false_eq_last (trace : app.PolicyTrace) :
     trace.firstRelease (fun _ => false) = trace.last := by
@@ -86,6 +109,20 @@ theorem tracePolicies_firstRelease_cons [DecidableEq Principal]
             (PolicyTrace.firstRelease release) := by
   cases hrelease : release execution <;>
     simp [tracePolicies, PolicyTrace.firstRelease, hrelease, Function.comp_def]
+
+theorem tracePolicies_prefixThrough_cons [DecidableEq Principal]
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (release : app.PolicyExecution → Bool)
+    (invocation : @Invocation Principal) (rest : List (@Invocation Principal))
+    (execution : app.PolicyExecution) :
+    (app.tracePolicies players environment (invocation :: rest) execution).map
+        (PolicyTrace.prefixThrough release) =
+      if release execution then FinDist.pure (.finish execution) else
+        (app.invoke players environment execution invocation).bind fun next =>
+          ((app.tracePolicies players environment rest next).map
+            (PolicyTrace.prefixThrough release)).map (.step execution) := by
+  cases hrelease : release execution <;>
+    simp [tracePolicies, PolicyTrace.prefixThrough, hrelease, Function.comp_def]
 
 /-- Fixing all policy responses and native application draws makes the actual
 instrumented runner deterministic, including private actions and waits. -/
@@ -167,6 +204,78 @@ theorem tracePolicies_firstRelease_split [DecidableEq Principal]
             exact ⟨next, hnext, hprefix⟩
           · simpa only [PolicyTrace.firstRelease, hrelease, Bool.false_eq_true, ↓reduceIte,
               PolicyTrace.last] using hsuffix
+
+/-- Local policy support transfer preserves a complete stopped prefix. The
+premise may use only actions recorded by that prefix; no comparison is needed
+after its selected snapshot. The environment and native kernel are unchanged. -/
+theorem tracePolicies_prefix_support_transfer [DecidableEq Principal]
+    (left right : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (release : app.PolicyExecution → Bool)
+    (schedule : List (@Invocation Principal)) (execution : app.PolicyExecution)
+    (trace : app.PolicyTrace)
+    (htrace : trace ∈ ((app.tracePolicies left environment schedule execution).map
+      (PolicyTrace.prefixThrough release)).support)
+    (hplayers : ∀ who history view command, command ∈ (left who history view).support →
+      (∀ action, PlayerCommand.toAction app who command = some action →
+        action ∈ trace.last.nativeTrace) → command ∈ (right who history view).support) :
+    trace ∈ ((app.tracePolicies right environment schedule execution).map
+      (PolicyTrace.prefixThrough release)).support := by
+  induction schedule generalizing execution trace with
+  | nil => exact htrace
+  | cons invocation rest ih =>
+      rw [tracePolicies_prefixThrough_cons] at htrace ⊢
+      cases hrelease : release execution with
+      | true => simpa only [hrelease, ↓reduceIte] using htrace
+      | false =>
+          simp only [hrelease, Bool.false_eq_true, ↓reduceIte,
+            FinDist.support_bind, Set.mem_iUnion, FinDist.support_map, Set.mem_image]
+            at htrace ⊢
+          obtain ⟨next, hnext, tail, htail, rfl⟩ := htrace
+          refine ⟨next, ?_, tail, ?_, rfl⟩
+          · cases invocation with
+            | environment => exact hnext
+            | player who =>
+                simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext ⊢
+                obtain ⟨command, hcommand, hstep⟩ := hnext
+                obtain ⟨actual, hactual, heq⟩ := htail
+                obtain ⟨front, suffix, _, hprefix, _⟩ :=
+                  app.tracePolicies_firstRelease_split left environment release rest next
+                    actual hactual
+                obtain ⟨actions, happend, _⟩ :=
+                  app.runPolicies_native_support left environment front next
+                    (actual.firstRelease release) hprefix
+                refine ⟨command, hplayers who _ _ command hcommand ?_, hstep⟩
+                intro action haction
+                change action ∈ tail.last.nativeTrace
+                rw [← heq, PolicyTrace.prefixThrough_last, happend]
+                exact List.mem_append_left actions
+                  (app.playerStep_action_mem who execution command action haction next hstep)
+          · have htailSupport : tail ∈
+                ((app.tracePolicies left environment rest next).map
+                  (PolicyTrace.prefixThrough release)).support := by
+              simpa only [FinDist.support_map, Set.mem_image] using htail
+            have hresult := ih next tail htailSupport hplayers
+            simpa only [FinDist.support_map, Set.mem_image] using hresult
+
+/-- The full-trace instance has no stopping cutoff. -/
+theorem tracePolicies_support_transfer [DecidableEq Principal]
+    (left right : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (execution : app.PolicyExecution)
+    (trace : app.PolicyTrace)
+    (htrace : trace ∈ (app.tracePolicies left environment schedule execution).support)
+    (hplayers : ∀ who history view command, command ∈ (left who history view).support →
+      (∀ action, PlayerCommand.toAction app who command = some action →
+        action ∈ trace.last.nativeTrace) → command ∈ (right who history view).support) :
+    trace ∈ (app.tracePolicies right environment schedule execution).support := by
+  have hmap : ∀ law : FinDist app.PolicyTrace,
+      law.map (PolicyTrace.prefixThrough (fun _ => false)) = law := by
+    intro law
+    have hfunction : PolicyTrace.prefixThrough (fun _ => false) = (id : app.PolicyTrace → _) :=
+      funext PolicyTrace.prefixThrough_false
+    rw [hfunction, FinDist.map_id]
+  have hresult := app.tracePolicies_prefix_support_transfer left right environment
+    (fun _ => false) schedule execution trace (by simpa only [hmap] using htrace) hplayers
+  simpa only [hmap] using hresult
 
 /-- info: 'Interaction.MessageApplication.tracePolicies_last' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

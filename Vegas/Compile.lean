@@ -30,6 +30,7 @@ import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedResolutionPrivacy
 import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedResolutionReplay
+import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SealedSourceExtraction
 import Vegas.Compile.SealedReplay
 import Vegas.Compile.SealedPublication

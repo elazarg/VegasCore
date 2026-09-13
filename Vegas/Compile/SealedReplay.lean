@@ -52,22 +52,25 @@ private theorem commitCommand_valuePolicy_congr (supported : SealedFragment G ty
       exact congrArg FinDist.pure heq.symm
 
 private theorem nodeCommand?_valuePolicy_congr (supported : SealedFragment G ty)
-    (left right : Fin G.nodeCount → L.Val ty) (who : Player)
+    (left right : Fin G.nodeCount → L.Val ty) (who : Player) (completed : List Nat)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (store : Store L)
     (node : Fin G.nodeCount)
     (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
     (command : (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (hselected : supported.nodeCommand? who [] (supported.valuePolicy left who)
-      history view (supported.playerStore who history view) node = some law)
+    (hselected : supported.nodeCommand? who completed (supported.valuePolicy left who)
+      history view store node = some law)
     (hcommand : command ∈ law.support)
     (hagrees : ∀ index : Fin G.nodeCount,
       command = .privateCommand ⟨(index.val, left index)⟩ → left index = right index) :
-    supported.nodeCommand? who [] (supported.valuePolicy right who) history view
-      (supported.playerStore who history view) node =
+    supported.nodeCommand? who completed (supported.valuePolicy right who) history view store node =
       some (FinDist.pure command) := by
-  simp only [nodeCommand?, List.contains_nil, Bool.false_eq_true, ite_false,
-    SealedRule.discharge_nil, SealedProgram.discharge_nil] at hselected ⊢
+  unfold nodeCommand? at hselected ⊢
+  split at hselected
+  · cases hselected
+  rename_i hcompleted
+  rw [if_neg hcompleted]
   split at hselected
   · rename_i hready
     rw [if_pos hready]
@@ -78,12 +81,13 @@ private theorem nodeCommand?_valuePolicy_congr (supported : SealedFragment G ty)
         rw [dif_pos howner]
         rw [← Option.some.inj hselected] at hcommand
         rw [supported.commitCommand_valuePolicy_congr left right who node guard
-          (howner ▸ hsem) history (supported.playerStore who history view)
+          (howner ▸ hsem) history store
           command hcommand (hagrees node)]
       · rename_i howner
         contradiction
     · rename_i source hsem
-      cases hhandle : supported.compile.openingHandle? view.application who node.val with
+      cases hhandle : (supported.compile.discharge completed).openingHandle?
+          view.application who node.val with
       | none => simp only [hhandle, Option.map_none] at hselected; contradiction
       | some handle =>
           simp only [hhandle, Option.map_some] at hselected ⊢
@@ -98,29 +102,31 @@ private theorem nodeCommand?_valuePolicy_congr (supported : SealedFragment G ty)
 /-- The only assignment coordinate read by an invocation is its fresh private
 registration, if any. Cached submissions, openings, and waits ignore the rest
 of the assignment. The statement uses the actual compiled policy. -/
-theorem playerPolicy_valuePolicy_congr (supported : SealedFragment G ty)
-    (left right : Fin G.nodeCount → L.Val ty) (who : Player)
+theorem selected_valuePolicy_congr (supported : SealedFragment G ty)
+    (left right : Fin G.nodeCount → L.Val ty) (who : Player) (completed : List Nat)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (store : Store L)
     (command : (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
     (hcommand : command ∈
-      (supported.playerPolicy who (supported.valuePolicy left who) history view).support)
+      ((G.nodeOrder.findSome? (supported.nodeCommand? who completed
+        (supported.valuePolicy left who) history view store)).getD (FinDist.pure .wait)).support)
     (hagrees : ∀ node : Fin G.nodeCount,
       command = .privateCommand ⟨(node.val, left node)⟩ → left node = right node) :
-    supported.playerPolicy who (supported.valuePolicy right who) history view =
+    (G.nodeOrder.findSome? (supported.nodeCommand? who completed
+      (supported.valuePolicy right who) history view store)).getD (FinDist.pure .wait) =
       FinDist.pure command := by
-  unfold playerPolicy at hcommand ⊢
   cases hselected : G.nodeOrder.findSome?
-      (supported.nodeCommand? who [] (supported.valuePolicy left who) history view
-        (supported.playerStore who history view)) with
+      (supported.nodeCommand? who completed (supported.valuePolicy left who)
+        history view store) with
   | none =>
       simp only [hselected, Option.getD_none, FinDist.mem_support_pure] at hcommand
       have hnone : G.nodeOrder.findSome?
-          (supported.nodeCommand? who [] (supported.valuePolicy right who) history view
-            (supported.playerStore who history view)) = none := by
+          (supported.nodeCommand? who completed (supported.valuePolicy right who)
+            history view store) = none := by
         apply List.findSome?_eq_none_iff.mpr
         intro node hnode
-        exact (supported.nodeCommand?_none_iff who [] _ _ history history view _ _ node).mp
+        exact (supported.nodeCommand?_none_iff who completed _ _ history history view _ _ node).mp
           (List.findSome?_eq_none_iff.mp hselected node hnode)
       simp only [hnone, Option.getD_none, hcommand]
   | some law =>
@@ -128,16 +134,16 @@ theorem playerPolicy_valuePolicy_congr (supported : SealedFragment G ty)
       obtain ⟨front, node, rest, hnodes, hnode, hfront⟩ :=
         List.findSome?_eq_some_iff.mp hselected
       have hright : G.nodeOrder.findSome?
-          (supported.nodeCommand? who [] (supported.valuePolicy right who) history view
-            (supported.playerStore who history view)) =
+          (supported.nodeCommand? who completed (supported.valuePolicy right who)
+            history view store) =
           some (FinDist.pure command) := by
         apply List.findSome?_eq_some_iff.mpr
         refine ⟨front, node, rest, hnodes, ?_, ?_⟩
-        · exact supported.nodeCommand?_valuePolicy_congr left right who history view
-            node law command hnode hcommand hagrees
+        · exact supported.nodeCommand?_valuePolicy_congr left right who completed history view
+            store node law command hnode hcommand hagrees
         · intro prior hprior
-          exact (supported.nodeCommand?_none_iff who [] _ _ history history view _ _ prior).mp
-            (hfront prior hprior)
+          exact (supported.nodeCommand?_none_iff who completed _ _ history history view
+            _ _ prior).mp (hfront prior hprior)
       simp only [hright, Option.getD_some]
 
 /-- Honest players use assigned source values; the focal principal retains
@@ -152,18 +158,20 @@ def valuePlayers (supported : SealedFragment G ty)
     (fun who => supported.playerPolicy who (supported.valuePolicy values who)) focal deviator
 
 private theorem nodeCommand?_valuePolicy_registration (supported : SealedFragment G ty)
-    (values : Fin G.nodeCount → L.Val ty) (who : Player)
+    (values : Fin G.nodeCount → L.Val ty) (who : Player) (completed : List Nat)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (store : Store L)
     (node : Fin G.nodeCount)
     (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
     (slot : Nat) (value : L.Val ty)
-    (hselected : supported.nodeCommand? who [] (supported.valuePolicy values who)
-      history view (supported.playerStore who history view) node = some law)
+    (hselected : supported.nodeCommand? who completed (supported.valuePolicy values who)
+      history view store node = some law)
     (hcommand : .privateCommand ⟨(slot, value)⟩ ∈ law.support) :
     slot = node.val ∧ value = values node := by
-  simp only [nodeCommand?, List.contains_nil, Bool.false_eq_true, ite_false,
-    SealedRule.discharge_nil, SealedProgram.discharge_nil] at hselected
+  unfold nodeCommand? at hselected
+  split at hselected
+  · cases hselected
   split at hselected
   · split at hselected
     · split at hselected
@@ -180,7 +188,8 @@ private theorem nodeCommand?_valuePolicy_registration (supported : SealedFragmen
               at hcommand
             exact Prod.mk.inj (congrArg ULift.down hcommand)
       · contradiction
-    · cases hhandle : supported.compile.openingHandle? view.application who node.val with
+    · cases hhandle : (supported.compile.discharge completed).openingHandle?
+          view.application who node.val with
       | none => simp only [hhandle, Option.map_none] at hselected; contradiction
       | some handle =>
           simp only [hhandle, Option.map_some] at hselected
@@ -192,38 +201,28 @@ private theorem nodeCommand?_valuePolicy_registration (supported : SealedFragmen
 
 /-- Every honest private registration carries precisely the substituted
 value of its source node. No other assignment coordinate is encoded there. -/
-theorem playerPolicy_valuePolicy_registration (supported : SealedFragment G ty)
-    (values : Fin G.nodeCount → L.Val ty) (who : Player)
+theorem selected_valuePolicy_registration (supported : SealedFragment G ty)
+    (values : Fin G.nodeCount → L.Val ty) (who : Player) (completed : List Nat)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (store : Store L)
     (slot : Nat) (value : L.Val ty)
     (hcommand : .privateCommand ⟨(slot, value)⟩ ∈
-      (supported.playerPolicy who (supported.valuePolicy values who) history view).support) :
+      ((G.nodeOrder.findSome? (supported.nodeCommand? who completed
+        (supported.valuePolicy values who) history view store)).getD
+          (FinDist.pure .wait)).support) :
     ∃ node : Fin G.nodeCount, slot = node.val ∧ value = values node := by
-  unfold playerPolicy at hcommand
   cases hselected : G.nodeOrder.findSome?
-      (supported.nodeCommand? who [] (supported.valuePolicy values who) history view
-        (supported.playerStore who history view)) with
+      (supported.nodeCommand? who completed (supported.valuePolicy values who)
+        history view store) with
   | none =>
       simp only [hselected, Option.getD_none, FinDist.mem_support_pure] at hcommand
       cases hcommand
   | some law =>
       simp only [hselected, Option.getD_some] at hcommand
       obtain ⟨node, _, hnode⟩ := List.exists_of_findSome?_eq_some hselected
-      exact ⟨node, supported.nodeCommand?_valuePolicy_registration values who history view
-        node law slot value hnode hcommand⟩
-
-private theorem privateCommand_mem_trace (supported : SealedFragment G ty)
-    (owner : Player) (slot : Nat) (value : L.Val ty)
-    (initial next : (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution)
-    (hnext : next ∈ ((supported.compile.messageApplication (Value := L.Val ty)).playerStep
-      owner initial (.privateCommand ⟨(slot, value)⟩)).support) :
-    .privateCommand owner ⟨(slot, value)⟩ ∈ next.nativeTrace := by
-  simp only [MessageApplication.playerStep, MessageApplication.advance,
-    MessageApplication.PlayerCommand.toAction, MessageApplication.step,
-    FinDist.pure_bind, FinDist.mem_support_pure] at hnext
-  subst next
-  simp
+      exact ⟨node, supported.nodeCommand?_valuePolicy_registration values who completed history view
+        store node law slot value hnode hcommand⟩
 
 /-- Changing only unused honest assignment coordinates preserves an entire
 supported native execution, including private histories and the pending pool.
@@ -242,41 +241,20 @@ theorem runPolicies_valuePlayers_transfer (supported : SealedFragment G ty)
         left node = right node) :
     final ∈ ((supported.compile.messageApplication (Value := L.Val ty)).runPolicies
       (supported.valuePlayers right focal deviator) environment schedule initial).support := by
-  induction schedule generalizing initial with
-  | nil => exact hfinal
-  | cons invocation rest ih =>
-      simp only [MessageApplication.runPolicies, FinDist.support_bind, Set.mem_iUnion]
-        at hfinal ⊢
-      obtain ⟨middle, hmiddle, hfinal⟩ := hfinal
-      obtain ⟨suffix, htrace, _⟩ :=
-        (supported.compile.messageApplication (Value := L.Val ty)).runPolicies_native_support
-          (supported.valuePlayers left focal deviator) environment rest middle final hfinal
-      have hprefix : ∀ action, action ∈ middle.nativeTrace → action ∈ final.nativeTrace := by
-        intro action haction
-        rw [htrace]
-        exact List.mem_append_left _ haction
-      refine ⟨middle, ?_, ih middle hfinal⟩
-      cases invocation with
-      | environment => exact hmiddle
-      | player owner =>
-          by_cases howner : owner = focal
-          · subst owner
-            simpa only [MessageApplication.invoke, valuePlayers, GameTheory.Profile.update_same]
-              using hmiddle
-          · simp only [MessageApplication.invoke, valuePlayers,
-              GameTheory.Profile.update_of_ne _ _ howner,
-              FinDist.support_bind, Set.mem_iUnion] at hmiddle ⊢
-            obtain ⟨command, hcommand, hstep⟩ := hmiddle
-            have hright := supported.playerPolicy_valuePolicy_congr left right owner
-              (initial.principalHistory owner)
-              (MessageApplication.State.observe _ initial.native owner) command hcommand
-              (fun node heq => by
-                subst command
-                exact hagrees owner node (left node) howner
-                  (hprefix _ (supported.privateCommand_mem_trace owner node.val (left node)
-                    initial middle hstep)))
-            refine ⟨command, ?_, hstep⟩
-            rw [hright, FinDist.mem_support_pure]
+  let app := supported.compile.messageApplication (Value := L.Val ty)
+  rw [← app.tracePolicies_last, FinDist.support_map] at hfinal ⊢
+  obtain ⟨trace, htrace, rfl⟩ := hfinal
+  refine ⟨trace, app.tracePolicies_support_transfer _ _ environment schedule initial trace
+    htrace ?_, rfl⟩
+  intro owner history view command hcommand hrecord
+  by_cases howner : owner = focal
+  · subst owner
+    simpa only [valuePlayers, GameTheory.Profile.update_same] using hcommand
+  · rw [valuePlayers, GameTheory.Profile.update_of_ne _ _ howner] at hcommand ⊢
+    have hright := supported.selected_valuePolicy_congr left right owner []
+      history view _ command hcommand (fun node heq =>
+        hagrees owner node (left node) howner (hrecord _ (by rw [heq]; rfl)))
+    rw [playerPolicy, hright, FinDist.mem_support_pure]
 
 /-- Honest registrations in the actual native trace identify their assigned
 source values, even when the deviator and environment are randomized. -/
@@ -309,8 +287,8 @@ theorem runPolicies_valuePlayers_registration (supported : SealedFragment G ty)
             obtain ⟨rfl, rfl⟩ := ha
             rw [valuePlayers, GameTheory.Profile.update_of_ne _ _ hwho] at hcommand
             obtain ⟨actual, hindex, hvalue⟩ :=
-              supported.playerPolicy_valuePolicy_registration values actor history view
-                index.val registered hcommand
+              supported.selected_valuePolicy_registration values actor [] history view
+                _ index.val registered hcommand
             have hactual : actual = index := Fin.ext hindex.symm
             simpa only [hactual] using hvalue
         | submit payload | replay id | wait =>
@@ -359,8 +337,8 @@ private theorem replay_exists (supported : SealedFragment G ty)
           history view).support_nonempty
       refine ⟨command, ?_⟩
       rw [valuePlayers, GameTheory.Profile.update_of_ne _ _ hwho]
-      exact supported.playerPolicy_valuePolicy_congr values values who history view
-        command hcommand (fun _ _ => rfl)
+      exact supported.selected_valuePolicy_congr values values who [] history view
+        _ command hcommand (fun _ _ => rfl)
   obtain ⟨trace, htrace⟩ := app.tracePolicies_pure
     (supported.valuePlayers values focal (fun history view => FinDist.pure (deviator history view)))
     (fun history view => FinDist.pure (environment history view)) hplayers

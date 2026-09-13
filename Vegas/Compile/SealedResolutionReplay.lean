@@ -19,37 +19,6 @@ open Interaction Interaction.MessageApplication GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
-private theorem nodeCommand?_valuePolicy_pure (supported : SealedFragment G ty)
-    (values : Fin G.nodeCount → L.Val ty) (who : Player) (completed : List Nat)
-    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
-    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
-    (store : Store L) (node : Fin G.nodeCount)
-    (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (hselected : supported.nodeCommand? who completed (supported.valuePolicy values who)
-      history view store node = some law) : ∃ command, law = FinDist.pure command := by
-  unfold nodeCommand? at hselected
-  split at hselected
-  · cases hselected
-  split at hselected
-  · split at hselected
-    · split at hselected
-      · cases hselected
-        unfold commitCommand
-        split
-        · exact ⟨_, rfl⟩
-        · split
-          · exact ⟨_, rfl⟩
-          · exact ⟨_, FinDist.map_pure _ _⟩
-      · cases hselected
-    · unfold Option.map at hselected
-      split at hselected
-      · simp only [Option.some.injEq] at hselected
-        rw [← hselected]
-        split <;> exact ⟨_, rfl⟩
-      · cases hselected
-    · cases hselected
-  · cases hselected
-
 theorem resolvingPolicy_valuePolicy_pure (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat) (values : Fin G.nodeCount → L.Val ty)
     (who : Player)
@@ -57,14 +26,14 @@ theorem resolvingPolicy_valuePolicy_pure (supported : SealedFragment G ty)
     (view : (supported.resolvingRuntime nullValue window).messageApplication.View) :
     ∃ command, supported.resolvingPolicy nullValue window who (supported.valuePolicy values who)
       history view = FinDist.pure command := by
-  unfold resolvingPolicy
-  dsimp only
-  unfold Option.getD
-  split
-  · rename_i law hselected
-    obtain ⟨_, node, _, _, hnode, _⟩ := List.findSome?_eq_some_iff.mp hselected
-    exact supported.nodeCommand?_valuePolicy_pure values who _ _ _ _ node law hnode
-  · exact ⟨_, rfl⟩
+  obtain ⟨command, hcommand⟩ :=
+    (supported.resolvingPolicy nullValue window who (supported.valuePolicy values who)
+      history view).support_nonempty
+  refine ⟨command, ?_⟩
+  exact supported.selected_valuePolicy_congr values values who view.application.timeouts
+    ((supported.resolvingRuntime nullValue window).eventHistory history)
+    ((supported.resolvingRuntime nullValue window).eventView view)
+    _ command hcommand (fun _ _ => rfl)
 
 variable (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
 

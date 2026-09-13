@@ -70,7 +70,16 @@ action law with the replay registration when disclosure inputs agree.
 Absent registrations use an explicit legal fallback, which is separate from
 both registered nullable values and timeout settlement.
 
-The remaining probability argument must establish this input agreement along
+`SealedFragment.resolvingReplay_prefix_eq_iff` characterizes stopped resolving
+replays by their recorded honest registrations, including when the cutoff
+discards a suffix whose honest values differ. The cutoff may inspect the full
+proof-facing snapshot; it does not change player observations.
+`resolvingReplay_cylinder_probability` identifies the probability of each
+stopped trace with its honest-registration cylinder mass under any joint
+assignment law. Independence of those coordinates is not assumed. This is
+a replay law, not yet the marginal law of the original honest kernels.
+
+The remaining probability argument must establish the source-input agreement along
 the coupled execution, predraw native responses consistently across honest
 assignments, and identify both whole-program marginals. Local kernel agreement
 alone does not establish the joint law of dependent source decisions.

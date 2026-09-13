@@ -682,7 +682,9 @@ The current repository has:
 - the checked written-source to declared-read-graph strategic correspondence;
 - the actual sealed source-policy translation, own-history cache invariant,
   and local source-kernel law;
-- the exact value-substituted replay cylinder for bounded untimed executions;
+- exact value-substituted replay cylinders for bounded untimed executions and
+  arbitrarily stopped resolving executions; the latter's probability theorem
+  allows any joint honest-assignment law, including correlated coordinates;
 - local knowledge-indexed native hiding and the compiled submission barrier;
 - a whole-prefix registration read bound for the resolving runtime:
   `SealedFragment.resolvingBindingLaw_read_bound` allows arbitrary randomized
@@ -734,8 +736,8 @@ The remaining implementation work is specific:
 3. Establish readiness/read invariants after defaults and instantiate the
    fair-service and termination arguments. Do not assume a bare expiration
    status is a source settlement.
-4. Predraw native responses across honest assignments, and prove the
-   resolving-runner cylinder, coupled-input agreement, and marginal laws using
+4. Predraw native responses across honest assignments, and prove
+   coupled-input agreement, source cylinder masses, and both marginal laws using
    the extracted source policy. Retain the dependence between honest draws and
    the shared environment randomness.
 5. Instantiate the existing `UtilitySimulation` under the explicit

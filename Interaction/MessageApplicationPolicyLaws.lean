@@ -19,6 +19,18 @@ universe uPrincipal
 
 variable {Principal : Type uPrincipal} (app : MessageApplication Principal)
 
+/-- An action selected by a player invocation is recorded in every supported
+successor, even if it leaves the application state unchanged. -/
+theorem playerStep_action_mem [DecidableEq Principal]
+    (who : Principal) (execution : app.PolicyExecution) (command : app.PlayerCommand)
+    (action : app.Action) (haction : PlayerCommand.toAction app who command = some action)
+    (next : app.PolicyExecution) (hnext : next ∈ (app.playerStep who execution command).support) :
+    action ∈ next.nativeTrace := by
+  simp only [playerStep, advance, haction, FinDist.bind_bind, FinDist.pure_bind,
+    FinDist.support_bind, Set.mem_iUnion, FinDist.mem_support_pure] at hnext
+  obtain ⟨_, _, rfl⟩ := hnext
+  simp
+
 private theorem advance_support [DecidableEq Principal]
     (execution : app.PolicyExecution) (action : Option app.Action)
     (advanced : app.State × List app.Action)
