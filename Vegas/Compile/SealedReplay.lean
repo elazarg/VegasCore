@@ -2,6 +2,7 @@
 
 import Vegas.Compile.SealedPolicy
 import Interaction.MessageApplicationPolicyLaws
+import Interaction.MessageApplicationPolicyTrace
 
 /-! # Value-substituted execution of the compiled sealed policy
 
@@ -326,46 +327,6 @@ theorem runPolicies_valuePlayers_registration (supported : SealedFragment G ty)
         false_implies, implies_true]) hfinal
   exact hproperty _ htrace owner node value howner rfl
 
-private theorem runPolicies_pure (supported : SealedFragment G ty)
-    (players : Player → (supported.compile.messageApplication (Value := L.Val ty)).PlayerPolicy)
-    (environment : (supported.compile.messageApplication (Value := L.Val ty)).EnvironmentPolicy)
-    (hplayers : ∀ who history view, ∃ command, players who history view = FinDist.pure command)
-    (henvironment : ∀ history view, ∃ command, environment history view = FinDist.pure command)
-    (schedule : List (@MessageApplication.Invocation Player))
-    (initial : (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution) :
-    ∃ final, (supported.compile.messageApplication (Value := L.Val ty)).runPolicies
-      players environment schedule initial = FinDist.pure final := by
-  induction schedule generalizing initial with
-  | nil => exact ⟨initial, rfl⟩
-  | cons invocation rest ih =>
-      have hinvoke : ∃ middle,
-          (supported.compile.messageApplication (Value := L.Val ty)).invoke
-            players environment initial invocation = FinDist.pure middle := by
-        cases invocation with
-        | player who =>
-            obtain ⟨command, hcommand⟩ := hplayers who (initial.principalHistory who)
-              (MessageApplication.State.observe _ initial.native who)
-            simp only [MessageApplication.invoke, hcommand, FinDist.pure_bind]
-            cases command <;>
-              simp only [MessageApplication.playerStep, MessageApplication.advance,
-                MessageApplication.PlayerCommand.toAction, MessageApplication.step,
-                FinDist.pure_bind] <;> exact ⟨_, rfl⟩
-        | environment =>
-            obtain ⟨command, hcommand⟩ := henvironment initial.environmentHistory
-              (MessageApplication.State.environmentView _ initial.native)
-            simp only [MessageApplication.invoke, hcommand, FinDist.pure_bind]
-            cases command with
-            | application command => exact nomatch command.down
-            | deliver observer id | «include» id | wait =>
-                simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
-                  MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-                  FinDist.pure_bind]
-                exact ⟨_, rfl⟩
-      obtain ⟨middle, hmiddle⟩ := hinvoke
-      obtain ⟨final, hfinal⟩ := ih middle
-      refine ⟨final, ?_⟩
-      simp only [MessageApplication.runPolicies, hmiddle, FinDist.pure_bind, hfinal]
-
 private theorem replay_exists (supported : SealedFragment G ty)
     (values : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry →
@@ -383,18 +344,31 @@ private theorem replay_exists (supported : SealedFragment G ty)
       (MessageApplication.PolicyExecution.initial _
         (MessageApplication.State.initial _ ⟨IdealCommitments.empty, []⟩)) =
       FinDist.pure final := by
-  apply supported.runPolicies_pure _ _ ?_ (fun _ _ => ⟨_, rfl⟩)
-  intro who history view
-  by_cases hwho : who = focal
-  · subst who
-    exact ⟨deviator history view, by
-      simp only [valuePlayers, GameTheory.Profile.update_same]⟩
-  · obtain ⟨command, hcommand⟩ :=
-      (supported.playerPolicy who (supported.valuePolicy values who) history view).support_nonempty
-    refine ⟨command, ?_⟩
-    rw [valuePlayers, GameTheory.Profile.update_of_ne _ _ hwho]
-    exact supported.playerPolicy_valuePolicy_congr values values who history view command hcommand
-      (fun _ _ => rfl)
+  let app := supported.compile.messageApplication (Value := L.Val ty)
+  have hplayers : ∀ who history view, ∃ command,
+      supported.valuePlayers values focal
+        (fun history view => FinDist.pure (deviator history view)) who history view =
+          FinDist.pure command := by
+    intro who history view
+    by_cases hwho : who = focal
+    · subst who
+      exact ⟨deviator history view, by
+        simp only [valuePlayers, GameTheory.Profile.update_same]⟩
+    · obtain ⟨command, hcommand⟩ :=
+        (supported.playerPolicy who (supported.valuePolicy values who)
+          history view).support_nonempty
+      refine ⟨command, ?_⟩
+      rw [valuePlayers, GameTheory.Profile.update_of_ne _ _ hwho]
+      exact supported.playerPolicy_valuePolicy_congr values values who history view
+        command hcommand (fun _ _ => rfl)
+  obtain ⟨trace, htrace⟩ := app.tracePolicies_pure
+    (supported.valuePlayers values focal (fun history view => FinDist.pure (deviator history view)))
+    (fun history view => FinDist.pure (environment history view)) hplayers
+    (fun _ _ => ⟨_, rfl⟩) (fun _ command => nomatch command.down) schedule
+    (MessageApplication.PolicyExecution.initial _
+      (MessageApplication.State.initial _ ⟨IdealCommitments.empty, []⟩))
+  refine ⟨trace.last, ?_⟩
+  rw [← app.tracePolicies_last, htrace, FinDist.map_pure]
 
 /-- Deterministic value substitution evaluated by the shared native runner.
 This selects its unique outcome; it does not implement a second machine. -/

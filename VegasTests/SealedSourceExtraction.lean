@@ -1,0 +1,257 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Compile.SealedSourceExtraction
+
+/-! # A native pending disclosure becomes a legal source input
+
+The honest player's opening precedes the focal source choice. Native delivery
+lets the focal player copy that opening before its inclusion. The extracted
+source policy must copy the corresponding public source binding, using no
+runtime history as a source input.
+-/
+
+noncomputable section
+
+namespace VegasTests.SealedSourceExtraction
+
+open Vegas Vegas.EventGraph Vegas.ToEventGraph Interaction Interaction.MessageApplication
+open GameTheory.Math.Probability
+
+abbrev Player := Fin 2
+abbrev Value := Option Bool
+
+def core : VegasCore Player simpleExpr [] :=
+  .commit 0 0 (b := .option .bool)
+    (Expr.nullableCommitGuard (Expr.constBool true))
+    (.reveal 1 0 0 .here
+      (.commit 2 1 (b := .option .bool)
+        (Expr.nullableCommitGuard (Expr.constBool true))
+        (.reveal 3 1 2 .here (.ret []))))
+
+def source : WFProgram Player simpleExpr where
+  core := {
+    Γ := []
+    prog := core
+    env := VEnv.empty simpleExpr
+    wctx := by simp
+    fresh := by simp [core, FreshBindings, Fresh] }
+  accounted := CommitmentAccounting.ofRevealComplete core
+    (by simp [core, FreshBindings, Fresh]) [] (by simp) (by decide)
+  legal := by
+    unfold core
+    constructor
+    · intro env
+      exact ⟨declineValue .bool, evalExpr_nullableCommitGuard_declineValue _ _⟩
+    · constructor
+      · intro env
+        exact ⟨declineValue .bool, evalExpr_nullableCommitGuard_declineValue _ _⟩
+      · trivial
+
+abbrev graph := (compile source.core).graph
+def node (index : Fin 4) : Fin graph.nodeCount := index
+
+theorem supported : SealedFragment graph (.option .bool) where
+  graphWF := (compile source.core).graphWF
+  rowType node := by fin_cases node <;> rfl
+  noSamples node dist := by fin_cases node <;> intro h <;> cases h
+  commitType node who guard hsem := by fin_cases node <;> cases hsem <;> rfl
+  commitGuard node who guard hsem value env := by
+    fin_cases node <;> cases hsem <;> cases value <;> rfl
+  revealSource node sourceField hsem := by
+    fin_cases node
+    · cases hsem
+    · cases hsem; exact ⟨node 0, 0, _, rfl, rfl⟩
+    · cases hsem
+    · cases hsem; exact ⟨node 2, 1, _, rfl, rfl⟩
+
+theorem compilation : SealedCompilation source (.option .bool) := ⟨supported⟩
+abbrev runtime := supported.resolvingRuntime none 3
+abbrev app := runtime.messageApplication
+
+def secondSite : SourceDecisionSite (L := simpleExpr) 1 core
+    [(1, .pub (.option .bool)), (0, .sealed 0 (.option .bool))]
+    2 (.option .bool) (Expr.nullableCommitGuard (Expr.constBool true)) :=
+  .commit (.reveal (.here _ _))
+
+def secondGuard : EventGuard simpleExpr :=
+  eventGuardOf (decisionSiteState secondSite source.core.fresh
+    (BuildState.fromInitial (initialState [] (VEnv.empty simpleExpr) (by simp)))) 1
+    (Expr.nullableCommitGuard (x := 2) (b := .bool) (Expr.constBool true))
+
+def reads (value : Value) : ReadEnv simpleExpr secondGuard.choiceReads where
+  read ref href := by
+    have htype : ref.ty = .option .bool := by
+      change ref ∈ ({⟨1, .option .bool⟩} : Finset (FieldRef simpleExpr)) at href
+      exact congrArg FieldRef.ty (Finset.mem_singleton.mp href)
+    exact cast (congrArg simpleExpr.Val htype.symm) value
+
+theorem inputs (value : Value) :
+    compilation.disclosureInputs 1 (node 2) secondGuard rfl (reads value) =
+      fun _ => value := by
+  funext coordinate
+  simp only [SealedCompilation.disclosureInputs, reads, cast_eq]
+
+def deviator (_history : List app.PlayerEntry) (view : app.View) : app.PlayerCommand :=
+  match view.messages.inbox with
+  | ⟨_, .opening _ _ value⟩ :: _ => .privateCommand ⟨(2, value)⟩
+  | _ => .wait
+
+def environment (history : List app.EnvironmentEntry)
+    (_view : app.EnvironmentObservation) : app.EnvironmentPolicyCommand :=
+  if history.isEmpty then .include (0, 0) else .deliver 1 (0, 1)
+
+def schedule : List (@Invocation Player) :=
+  [.player 0, .player 0, .environment, .player 0, .environment, .player 1]
+
+private def initial := PolicyExecution.initial app (State.initial app runtime.initial)
+
+private def registered (value : Value) : app.PolicyExecution :=
+  { initial with
+    native := { initial.native with
+      application.service := (IdealCommitments.empty.sealValue 0 0 value).state }
+    principalHistory := fun who => if who = 0 then
+      [⟨State.observe app initial.native 0, .privateCommand ⟨(0, value)⟩⟩] else []
+    nativeTrace := [.privateCommand 0 ⟨(0, value)⟩] }
+
+private def submitted (value : Value) : app.PolicyExecution :=
+  { registered value with
+    native.pool := ((registered value).native.pool.submit 0 (.commitment 0 (0, 0))).2
+    principalHistory := fun who => if who = 0 then (registered value).principalHistory 0 ++
+      [⟨State.observe app (registered value).native 0, .submit (.commitment 0 (0, 0))⟩]
+      else (registered value).principalHistory who
+    nativeTrace := (registered value).nativeTrace ++ [.submit 0 (.commitment 0 (0, 0))] }
+
+private def included (value : Value) : app.PolicyExecution :=
+  { submitted value with
+    native := {
+      application := {
+        service := (IdealCommitments.empty.sealValue 0 0 value).state
+        visible := { events := [.accepted 0 (0, 0)], readyAt := [(0, 0), (1, 0)] } }
+      pool := ((submitted value).native.pool.includePending (0, 0)).state
+      receipts := [((0, 0), true)] }
+    environmentHistory := [⟨State.environmentView app (submitted value).native, .include (0, 0)⟩]
+    nativeTrace := (submitted value).nativeTrace ++ [.include (0, 0)] }
+
+private def opened (value : Value) : app.PolicyExecution :=
+  { included value with
+    native.pool := ((included value).native.pool.submit 0 (.opening 1 (0, 0) value)).2
+    principalHistory := fun who => if who = 0 then (included value).principalHistory 0 ++
+      [⟨State.observe app (included value).native 0, .submit (.opening 1 (0, 0) value)⟩]
+      else (included value).principalHistory who
+    nativeTrace := (included value).nativeTrace ++ [.submit 0 (.opening 1 (0, 0) value)] }
+
+private def delivered (value : Value) : app.PolicyExecution :=
+  { opened value with
+    native.pool := {
+      pending := [⟨(0, 1), .opening 1 (0, 0) value⟩]
+      ledger := [⟨(0, 0), .commitment 0 (0, 0)⟩]
+      inbox := fun who => if who = 1 then [⟨(0, 1), .opening 1 (0, 0) value⟩] else []
+      sent := (opened value).native.pool.sent
+      nextSerial := (opened value).native.pool.nextSerial }
+    environmentHistory := (opened value).environmentHistory ++
+      [⟨State.environmentView app (opened value).native, .deliver 1 (0, 1)⟩]
+    nativeTrace := (opened value).nativeTrace ++ [.deliver 1 (0, 1)] }
+
+private theorem first_policy (value : Value) :
+    supported.resolvingPolicy none 3 0 (supported.valuePolicy (fun _ => value) 0)
+      [] (State.observe app initial.native 0) =
+        FinDist.pure (.privateCommand ⟨(0, value)⟩ : app.PlayerCommand) := by
+  change supported.commitCommand 0 (supported.valuePolicy (fun _ => value) 0)
+    (node 0) _ rfl [] _ = _
+  unfold SealedFragment.commitCommand
+  simp only [ChoiceEncoding.cachedValue_nil]
+  exact FinDist.map_pure _ _
+
+private theorem register_step (value : Value) :
+    app.playerStep 0 initial (.privateCommand ⟨(0, value)⟩) =
+      FinDist.pure (registered value) := by
+  simp only [playerStep, advance, PlayerCommand.toAction, MessageApplication.step,
+    FinDist.pure_bind]
+  rfl
+
+private theorem second_policy (value : Value) :
+    supported.resolvingPolicy none 3 0 (supported.valuePolicy (fun _ => value) 0)
+      ((registered value).principalHistory 0) (State.observe app (registered value).native 0) =
+        FinDist.pure (.submit (.commitment 0 (0, 0)) : app.PlayerCommand) := rfl
+
+private theorem submit_step (value : Value) :
+    app.playerStep 0 (registered value) (.submit (.commitment 0 (0, 0))) =
+      FinDist.pure (submitted value) := by
+  simp only [playerStep, advance, PlayerCommand.toAction, MessageApplication.step,
+    FinDist.pure_bind]
+  rfl
+
+private theorem include_step (value : Value) :
+    app.environmentPolicyStep (submitted value) (.include (0, 0)) =
+      FinDist.pure (included value) := by
+  simp only [environmentPolicyStep, advance, EnvironmentPolicyCommand.toAction,
+    MessageApplication.step, FinDist.pure_bind]
+  rfl
+
+private theorem third_policy (value : Value) :
+    supported.resolvingPolicy none 3 0 (supported.valuePolicy (fun _ => value) 0)
+      ((included value).principalHistory 0) (State.observe app (included value).native 0) =
+        FinDist.pure (.submit (.opening 1 (0, 0) value) : app.PlayerCommand) := rfl
+
+private theorem open_step (value : Value) :
+    app.playerStep 0 (included value) (.submit (.opening 1 (0, 0) value)) =
+      FinDist.pure (opened value) := by
+  simp only [playerStep, advance, PlayerCommand.toAction, MessageApplication.step,
+    FinDist.pure_bind]
+  rfl
+
+private theorem delivery_step (value : Value) :
+    app.environmentPolicyStep (opened value) (.deliver 1 (0, 1)) =
+      FinDist.pure (delivered value) := by
+  simp only [environmentPolicyStep, advance, EnvironmentPolicyCommand.toAction,
+    MessageApplication.step, FinDist.pure_bind]
+  rfl
+
+private theorem copy_policy (value : Value) :
+    deviator ((delivered value).principalHistory 1) (State.observe app (delivered value).native 1) =
+      .privateCommand ⟨(2, value)⟩ := rfl
+
+theorem pending_copy_law (value : Value) :
+    supported.resolvingBindingLaw none 3 (fun _ => value) 1 (node 2)
+      (fun history view => FinDist.pure (deviator history view))
+      (fun history view => FinDist.pure (environment history view)) schedule =
+        FinDist.pure (some value) := by
+  simp only [SealedFragment.resolvingBindingLaw, schedule, tracePolicies, invoke,
+    SealedFragment.resolvingValuePlayers, GameTheory.Profile.update_same,
+    GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)]
+  erw [first_policy value]
+  simp only [FinDist.pure_bind]
+  erw [register_step value]
+  simp only [FinDist.pure_bind]
+  erw [second_policy value]
+  simp only [FinDist.pure_bind]
+  erw [submit_step value]
+  simp only [FinDist.pure_bind]
+  erw [include_step value]
+  simp only [FinDist.pure_bind]
+  erw [third_policy value]
+  simp only [FinDist.pure_bind]
+  erw [open_step value]
+  simp only [FinDist.pure_bind]
+  erw [delivery_step value]
+  simp only [FinDist.pure_bind]
+  erw [copy_policy value]
+  simp only [playerStep, advance, PlayerCommand.toAction, MessageApplication.step,
+    FinDist.pure_bind, FinDist.map_pure]
+  rfl
+
+theorem extracted_source_copy (value fallback : Value) :
+    (compileSourcePolicy core source.core.fresh
+      (BuildState.fromInitial (initialState [] (VEnv.empty simpleExpr) (by simp))) rfl 1
+      (compilation.extractedSourcePolicy none 3 1 deviator environment schedule fallback)
+      (node 2) secondGuard rfl (reads value)).map Subtype.val = FinDist.pure value := by
+  have hlaw := compilation.extractedSourcePolicy_law none 3 1 deviator environment schedule fallback
+    (fun _ => value) (node 2) secondGuard rfl (reads value) (inputs value)
+  have hbinding := supported.resolvingBinding_law none 3 (fun _ => value) 1
+    deviator environment schedule (node 2)
+  rw [pending_copy_law] at hbinding
+  have hvalue := FinDist.mem_support_pure.mp
+    (hbinding ▸ (FinDist.mem_support_pure.mpr rfl))
+  simpa only [cast_eq, ← hvalue, Option.getD_some] using! hlaw
+
+end VegasTests.SealedSourceExtraction

@@ -87,6 +87,47 @@ theorem tracePolicies_firstRelease_cons [DecidableEq Principal]
   cases hrelease : release execution <;>
     simp [tracePolicies, PolicyTrace.firstRelease, hrelease, Function.comp_def]
 
+/-- Fixing all policy responses and native application draws makes the actual
+instrumented runner deterministic, including private actions and waits. -/
+theorem tracePolicies_pure [DecidableEq Principal]
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (hplayers : ∀ who history view, ∃ command, players who history view = FinDist.pure command)
+    (henvironment : ∀ history view, ∃ command, environment history view = FinDist.pure command)
+    (hnative : ∀ state command, ∃ next, app.environmentStep state command = FinDist.pure next)
+    (schedule : List (@Invocation Principal)) (execution : app.PolicyExecution) :
+    ∃ trace, app.tracePolicies players environment schedule execution = FinDist.pure trace := by
+  induction schedule generalizing execution with
+  | nil => exact ⟨.finish execution, rfl⟩
+  | cons invocation rest ih =>
+      have hinvoke : ∃ next, app.invoke players environment execution invocation =
+          FinDist.pure next := by
+        cases invocation with
+        | player who =>
+            obtain ⟨command, hcommand⟩ := hplayers who (execution.principalHistory who)
+              (State.observe app execution.native who)
+            simp only [invoke, hcommand, FinDist.pure_bind]
+            cases command <;>
+              simp only [playerStep, advance, PlayerCommand.toAction, MessageApplication.step,
+                FinDist.pure_bind] <;> exact ⟨_, rfl⟩
+        | environment =>
+            obtain ⟨command, hcommand⟩ := henvironment execution.environmentHistory
+              (State.environmentView app execution.native)
+            simp only [invoke, hcommand, FinDist.pure_bind]
+            cases command with
+            | application command =>
+                obtain ⟨next, hnext⟩ := hnative execution.native.application command
+                simp only [environmentPolicyStep, advance, EnvironmentPolicyCommand.toAction,
+                  MessageApplication.step, hnext, FinDist.map_pure, FinDist.pure_bind]
+                exact ⟨_, rfl⟩
+            | deliver | «include» | wait =>
+                simp only [environmentPolicyStep, advance, EnvironmentPolicyCommand.toAction,
+                  MessageApplication.step, FinDist.pure_bind]
+                exact ⟨_, rfl⟩
+      obtain ⟨next, hnext⟩ := hinvoke
+      obtain ⟨tail, htail⟩ := ih next
+      exact ⟨.step execution tail, by
+        simp only [tracePolicies, hnext, FinDist.pure_bind, htail, FinDist.map_pure]⟩
+
 /-- A selected snapshot lies on an actual invocation prefix, and the final
 snapshot is supported by the remaining suffix from that same selected state.
 Both segments use unchanged policies. No progress or monotonicity is assumed. -/

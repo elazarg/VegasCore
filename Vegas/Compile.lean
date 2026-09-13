@@ -11,6 +11,7 @@ import Vegas.Compile.SourceLaw
 import Vegas.Compile.DecisionSite
 import Vegas.Compile.SourcePolicy
 import Vegas.Compile.SourceBacktranslation
+import Vegas.Compile.SourceDisclosureReads
 import Vegas.Compile.SourceExecutionLaw
 import Vegas.Compile.SourceExecutionGraph
 import Vegas.Compile.SourceExecutionOutcome
@@ -28,6 +29,8 @@ import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedResolutionPrivacy
 import Vegas.Compile.SealedResolutionReadBound
+import Vegas.Compile.SealedResolutionReplay
+import Vegas.Compile.SealedSourceExtraction
 import Vegas.Compile.SealedReplay
 import Vegas.Compile.SealedPublication
 import Vegas.Compile.SealedPolicyKnowledge

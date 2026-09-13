@@ -12,6 +12,7 @@ import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedResolutionReadBound
+import Vegas.Compile.SealedSourceExtraction
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
 import Vegas.EventGraph.Confluence
@@ -180,6 +181,46 @@ theorem pending_binding_read_bound
         deviator environment schedule :=
   supported.resolvingBindingLaw_read_bound nullValue window focal decision guard
     hdecision leftValues rightValues hvalues deviator environment schedule
+
+/-- Fixed native responses give a legal written-source policy with the same
+local registration law at matching source disclosure inputs. -/
+theorem pending_source_choice_law
+    {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (focal : Player)
+    (deviator :
+      List
+        (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry →
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.View →
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerCommand)
+    (environment :
+      List (MessageApplication.EnvironmentEntry
+        (compilation.supported.resolvingRuntime nullValue window).messageApplication) →
+      MessageApplication.EnvironmentObservation
+        (compilation.supported.resolvingRuntime nullValue window).messageApplication →
+      MessageApplication.EnvironmentPolicyCommand
+        (compilation.supported.resolvingRuntime nullValue window).messageApplication)
+    (schedule : List (@MessageApplication.Invocation Player)) (fallback : L.Val ty)
+    (values : Fin (ToEventGraph.compile source.core).graph.nodeCount → L.Val ty)
+    (decision : Fin (ToEventGraph.compile source.core).graph.nodeCount) (guard : EventGuard L)
+    (hdecision : ((ToEventGraph.compile source.core).graph.nodeRow decision).sem =
+      .commit focal guard)
+    (reads : ReadEnv L guard.choiceReads)
+    (hinputs : compilation.disclosureInputs focal decision guard hdecision reads =
+      fun coordinate => values coordinate.val) :
+    (ToEventGraph.compileSourcePolicy source.core.prog source.core.fresh
+      (ToEventGraph.BuildState.fromInitial
+        (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx))
+      rfl focal
+      (compilation.extractedSourcePolicy nullValue window focal deviator environment schedule
+        fallback) decision guard hdecision reads).map
+          (fun value => cast
+            (congrArg L.Val (compilation.supported.commitType decision focal guard hdecision))
+            value.1) =
+      FinDist.pure ((compilation.supported.resolvingBinding nullValue window values focal
+        deviator environment schedule decision).getD fallback) :=
+  compilation.extractedSourcePolicy_law nullValue window focal deviator environment schedule
+    fallback values decision guard hdecision reads hinputs
 
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal
@@ -769,3 +810,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_binding_read_bound
+
+/-- info: 'Vegas.Paper.pending_source_choice_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_source_choice_law

@@ -59,10 +59,21 @@ The cutoff reads the first timeout snapshot after its tick, which preserves
 the private service. Absence of registration is separate from registration
 of the nullable source value.
 
-The theorem supplies the causal read bound for assigned-value replay. Source
-policy extraction, kernel agreement, and the source/native probability
-coupling remain open; equality of these registration marginals alone does not
-establish the joint law of dependent source decisions.
+The theorem supplies the causal read bound for assigned-value replay.
+`SealedFragment.resolvingReplay` fixes native deviator/environment responses
+and selects the unique trace of that same runner. `SealedCompilation.extractedSourcePolicy`
+uses one such pair of responses at all source decisions. Its inputs are actual
+declared-read source fields: the compiler proves that every earlier public
+graph output retains a public source binding. Recompilation recovers the
+extracted graph policy, and `extractedSourcePolicy_law` identifies its local
+action law with the replay registration when disclosure inputs agree.
+Absent registrations use an explicit legal fallback, which is separate from
+both registered nullable values and timeout settlement.
+
+The remaining probability argument must establish this input agreement along
+the coupled execution, predraw native responses consistently across honest
+assignments, and identify both whole-program marginals. Local kernel agreement
+alone does not establish the joint law of dependent source decisions.
 
 The backend admits homogeneous commit/reveal programs with unrestricted guards,
 including multistage choices whose information includes earlier public values

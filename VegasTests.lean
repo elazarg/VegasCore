@@ -30,6 +30,7 @@ import VegasTests.SealedReplay
 import VegasTests.SealedResolution
 import VegasTests.SealedResolutionPolicy
 import VegasTests.SealedResolutionReadBound
+import VegasTests.SealedSourceExtraction
 
 /-! # Regression tests for the active strict sealed-message tower
 

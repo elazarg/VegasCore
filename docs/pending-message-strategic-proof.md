@@ -688,6 +688,11 @@ The current repository has:
   `SealedFragment.resolvingBindingLaw_read_bound` allows arbitrary randomized
   native deviator and full-pool environment policies, and compares assigned
   honest values agreeing at source-earlier disclosures;
+- a fixed-response resolving replay and its causal action extraction, with one
+  native response pair shared across all source decisions;
+- `SealedCompilation.extractedSourcePolicy`, a legal written-source policy
+  reading the corresponding earlier public fields, and its exact local
+  registration law under matching disclosure inputs;
 - per-node readiness timestamps, nullable resolution, and continued native
   execution without overwriting the private service;
 - a shared-runner round model separating adaptive wire scheduling from the
@@ -708,9 +713,15 @@ relation carries the before-timeout binding invariant established under
 arbitrary native traffic. It cuts off at the focal registration or first
 timeout; the latter snapshot follows the tick, which leaves private service
 values unchanged. This gives the required equality of registration laws under
-changes to hidden future assignments. The deterministic replay function and
-its source-policy totalization still need to use this result. The theorem does
-not by itself identify the joint source/native probability law.
+changes to hidden future assignments. The deterministic replay function uses
+this result to fill undisclosed assignment coordinates with a fixed fallback.
+Compiler coverage of earlier public bindings turns that function into an
+ordinary declared-read graph policy; the exact graph-policy roundtrip supplies
+its written-source policy. The local action theorem requires agreement of
+those disclosure reads with replay's assigned values. Establishing that
+agreement in the whole-program coupling and identifying its joint probability
+law remain open. The fallback is only source-policy totalization, not an
+identification of runtime timeout with a source action.
 
 The remaining implementation work is specific:
 
@@ -723,9 +734,10 @@ The remaining implementation work is specific:
 3. Establish readiness/read invariants after defaults and instantiate the
    fair-service and termination arguments. Do not assume a bare expiration
    status is a source settlement.
-4. Use the checked registration read bound to extract legal source policies,
-   and prove the resolving-runner cylinder, kernel, and marginal laws. Retain
-   the dependence between honest draws and the shared environment randomness.
+4. Predraw native responses across honest assignments, and prove the
+   resolving-runner cylinder, coupled-input agreement, and marginal laws using
+   the extracted source policy. Retain the dependence between honest draws and
+   the shared environment randomness.
 5. Instantiate the existing `UtilitySimulation` under the explicit
    continuation condition, and audit the end-to-end theorem in `Paper.lean`.
 
