@@ -39,9 +39,12 @@ registration coordinates it records. This holds for every finite invocation
 schedule and thus for every invocation prefix. It concerns proof-facing records,
 including private commands; it does not expose those records to players. The
 support-transfer and registration-origin lemmas also allow randomized native
-deviator and environment policies. Read-boundedness under changes to already
-registered but unopened values, kernel agreement, and the probability coupling
-remain to be proved.
+deviator and environment policies. The knowledge-indexed native relation
+preserves public observations, pool operations, and validation receipts while
+allowing unknown registered values to differ. The compiled-policy comparison
+and submission barrier supply its local policy premises. Whole-run
+read-boundedness, kernel agreement, and the probability coupling remain to be
+proved.
 
 The backend admits homogeneous commit/reveal programs with unrestricted guards,
 including multistage choices whose information includes earlier public values
@@ -71,6 +74,11 @@ deviation is no better than a legal source deviation. The native fixed-opening
 utility bound is checked, but its whole-program continuation instance is not.
 The current timeout adapter supplies a final-failure status, not the source
 program's quit continuation; missing commitments also need a resolution rule.
+The mathematical note specifies one concrete resolving extension: per-node
+relative deadlines, nullable defaults, and continued execution of the same
+program outcome code. It gives service and termination bounds and constructs
+the source/native coupling for the nullable, unique-direct-reveal fragment.
+That extension and the whole-program proof are not implemented in Lean.
 Malformed messages are rejected without a source step. Fair deadline resolution
 must implement the programmer's quitting settlement; a rejected attempt alone
 does not do so. In particular, withholding a committed `some a` cannot be

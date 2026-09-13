@@ -86,6 +86,24 @@ def playerPolicy (supported : SealedFragment G ty) (who : Player)
     ((G.nodeOrder.findSome? (supported.nodeCommand? who policy history view)).getD
       (FinDist.pure .wait))
 
+/-- Whether a node is selected is determined by the public readiness and
+ownership checks. Private history and the choice kernel cannot change it. -/
+theorem nodeCommand?_none_iff (supported : SealedFragment G ty) (who : Player)
+    (left right : CommitPolicy G who)
+    (leftHistory rightHistory :
+      List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (node : Fin G.nodeCount) :
+    supported.nodeCommand? who left leftHistory view node = none ↔
+      supported.nodeCommand? who right rightHistory view node = none := by
+  unfold nodeCommand?
+  split
+  · split
+    · split <;> simp
+    · simp
+    · rfl
+  · rfl
+
 theorem commitCommand_cached (supported : SealedFragment G ty) (who : Player)
     (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)

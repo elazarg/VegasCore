@@ -26,6 +26,8 @@ import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedView
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedReplay
+import Vegas.Compile.SealedPublication
+import Vegas.Compile.SealedPolicyKnowledge
 import Vegas.Compile.SealedTimeoutRefinement
 
 /-!

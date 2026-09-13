@@ -27,21 +27,6 @@ def valuePolicy (supported : SealedFragment G ty)
     FinDist.pure ⟨cast (congrArg L.Val (supported.commitType node who guard hsem).symm)
       (values node), supported.commitGuard node who guard hsem _ reads⟩
 
-private theorem nodeCommand?_none_iff (supported : SealedFragment G ty) (who : Player)
-    (left right : CommitPolicy G who)
-    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
-    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
-    (node : Fin G.nodeCount) :
-    supported.nodeCommand? who left history view node = none ↔
-      supported.nodeCommand? who right history view node = none := by
-  unfold nodeCommand?
-  split
-  · split
-    · split <;> simp
-    · rfl
-    · rfl
-  · rfl
-
 private theorem commitCommand_valuePolicy_congr (supported : SealedFragment G ty)
     (left right : Fin G.nodeCount → L.Val ty) (who : Player)
     (node : Fin G.nodeCount) (guard : EventGuard L)
@@ -129,7 +114,7 @@ theorem playerPolicy_valuePolicy_congr (supported : SealedFragment G ty)
           (supported.nodeCommand? who (supported.valuePolicy right who) history view) = none := by
         apply List.findSome?_eq_none_iff.mpr
         intro node hnode
-        exact (supported.nodeCommand?_none_iff who _ _ history view node).mp
+        exact (supported.nodeCommand?_none_iff who _ _ history history view node).mp
           (List.findSome?_eq_none_iff.mp hselected node hnode)
       simp only [hnone, Option.getD_none, hcommand]
   | some law =>
@@ -144,7 +129,7 @@ theorem playerPolicy_valuePolicy_congr (supported : SealedFragment G ty)
         · exact supported.nodeCommand?_valuePolicy_congr left right who history view
             node law command hnode hcommand hagrees
         · intro prior hprior
-          exact (supported.nodeCommand?_none_iff who _ _ history view prior).mp
+          exact (supported.nodeCommand?_none_iff who _ _ history history view prior).mp
             (hfront prior hprior)
       simp only [hright, Option.getD_some]
 

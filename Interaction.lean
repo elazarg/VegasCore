@@ -50,6 +50,7 @@ import Interaction.SealedProgram
 import Interaction.SealedProgramLaws
 import Interaction.SealedExecution
 import Interaction.SealedApplication
+import Interaction.SealedKnowledge
 import Interaction.SealedApplicationPolicyLaws
 import Interaction.SealedApplicationHiding
 import Interaction.SealedExecutionLaws

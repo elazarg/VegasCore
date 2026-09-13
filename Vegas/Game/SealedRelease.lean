@@ -6,7 +6,7 @@ Authors: VegasCore contributors
 
 import Interaction.SealedController
 import Interaction.SealedPolicyBinding
-import Vegas.Compile.SealedRules
+import Vegas.Compile.SealedPublication
 
 /-! # Compiled opening release barrier
 
@@ -54,43 +54,6 @@ theorem openingCommand_prerequisites (supported : SealedFragment G ty)
 fixation. The proof reads the ideal service; neither the opening policy nor
 its public readiness test does so. -/
 
-/-- Before a compiled opening can be submitted, every earlier commitment
-has an immutable value, including commitments belonging to other players. -/
-theorem openingReady_prior_commit_lookup (supported : SealedFragment G ty)
-    [DecidableEq (L.Val ty)]
-    (owner : Player) (node prior : Fin G.nodeCount)
-    (state : (supported.compile.messageApplication (Value := L.Val ty)).State)
-    (invariant : SealedProgram.BindingInvariant supported.compile
-      (supported.compile.eraseReceipts state))
-    (hready : SealedProgram.openingReady supported.compile state.application.events
-      owner node.val = true)
-    (priorOwner : Player) (guard : EventGuard L)
-    (hprior : (G.nodeRow prior).sem = .commit priorOwner guard)
-    (hearlier : prior.val < node.val) :
-    ∃ value, state.application.service.lookup (priorOwner, prior.val) = some value := by
-  obtain ⟨source, requires, hrule, _hnotDone, hrequires, _haccepted⟩ :=
-    SealedProgram.openingReady_sound supported.compile state.application.events
-      owner node.val hready
-  obtain ⟨actual, producer, _guard, hactual, _hproducer, hsem, _hcommit⟩ :=
-    supported.ruleAt_reveal hrule rfl
-  have heq : actual = node := Fin.ext hactual
-  subst actual
-  have hdep : prior ∈ G.prereqs node :=
-    G.prior_commit_mem_prereqs_of_reveal (G.nodes_get?_nodeRow node)
-      (G.nodes_get?_nodeRow prior) hearlier hsem hprior
-  have hrequiresEq : G.messagePrerequisites node = requires :=
-    congrArg SealedRule.requires (Option.some.inj ((supported.compile_rule node).symm.trans hrule))
-  have hdone : SealedProgram.done state.application.events prior.val = true := by
-    apply List.all_eq_true.mp hrequires prior.val
-    rw [← hrequiresEq]
-    exact (G.mem_messagePrerequisites node prior).mpr hdep
-  have hpriorRule : supported.compile.rules[prior.val]? =
-      some ⟨.commit priorOwner, G.messagePrerequisites prior⟩ := by
-    rw [supported.compile_rule]
-    apply congrArg some
-    exact congrArg (fun kind => SealedRule.mk kind (G.messagePrerequisites prior))
-      (G.sealedRule_commit prior priorOwner guard hprior)
-  exact invariant.done_commit_lookup prior.val priorOwner _ hpriorRule hdone
 
 /-- On any actual policy trace, the first opening-ready checkpoint fixes all
 earlier commitments through the end of that same trace. The environment and

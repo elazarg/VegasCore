@@ -1,410 +1,647 @@
-# Pending-message strategic preservation: mathematical proof
+# Pending-message preservation: model and mathematical argument
 
-This is a working proof, not a statement of mechanized completion. The target
-is the actual principal-scoped message-policy execution, with visible pending
-payloads and separate sealing and opening. The mathematical construction below
-identifies the whole-program coupling to prove in Lean. Section 8 distinguishes
-the argument established here from its unimplemented operational premises.
+This note specifies a finite commit/reveal source, its compiled policies, and
+a resolving public-message runtime. It proves a causal coupling for the
+pre-resolution execution and derives a utility-specific end-to-end theorem.
+The coupling is constructed, not assumed as a theorem premise.
 
-## 1. Statement and scope
+The resolving runtime in Section 3 is a mathematical extension of the current
+sealed application. Its per-node deadlines and nullable continuation rules
+are not implemented by the current Lean timeout adapter. The whole argument
+has not been checked in Lean or independently reviewed. Section 8 gives the
+implementation boundary. In particular, this note is not evidence that the
+repository already proves pending-message Nash preservation.
 
-Write `S` for the written-order game of a checked source program, `C` for the
-playerwise compilation of source policies, and `R_E` for execution of its message
-application against a fixed environment policy `E`. The environment controls
-delivery and inclusion using its complete observable pool and history. It does
-not receive unopened service values or the honest players' private randomness.
-Its choices may depend on observed payload contents, including pending openings.
+## 1. Exact scope and conclusion
 
-The immediate executable fragment has finitely many source sites, homogeneous
-commitment values, unrestricted guards, and reveals of program-created
-commitments. Source policies may depend on all their declared reads. For this
-proof use finite value domains and a bounded native execution tree. This is a
-proof scope, not a claim that the existing source-to-graph theorem needs finite
-value domains. Samples, nontrivial validation, and heterogeneous encodings
-remain requirements for the broader compiler; they are not silently covered by
-the current sealed backend.
+Fix a finite player set and a checked source program with these properties:
 
-The desired inequality, for every source profile `sigma`, player `i`, and
-arbitrary native player policy `D`, is
+- It has finitely many commitment and reveal sites, and no chance sites.
+- Commitment values belong to a finite nonempty common domain
+  `D = Option A`. Write `bottom` for `none`.
+- Every commitment guard accepts every value in every typed source view.
+- Each commitment has exactly one later direct reveal. Initial sealed inputs
+  are not reveal targets. The initial environment is fixed.
+- A decision's source information contains earlier public fields and the
+  player's earlier private choices. The compiler retains exactly those reads.
+- Outcomes are computed from the terminal public environment by a total
+  function `O`. It can retain the entire public environment, evaluate the
+  program's payout expressions, or both. Utilities `u_i : Outcome -> Real`
+  are supplied separately.
 
-```text
-E[U_i(R_E(C(sigma_-i), D))]
-    <= sup_tau E[u_i(S(sigma_-i, tau))].                         (1)
-```
+These are backend admission conditions, not a weakening of source
+well-formedness. The broader compiler still needs heterogeneous values,
+nontrivial guards, samples, and other accounting forms.
 
-Here `u_i` measures source outcomes, and `U_i` measures actual runtime outcomes.
-Their agreement on successful compiled execution is proved by an outcome law.
-A quitting settlement has the meaning supplied by the program's resolution
-mechanism, not an arbitrary utility assigned to an unfinished prefix. Utilities
-in (1) exclude extra preferences for packet order, time, fees, and raw traces;
-those need an additional comparison at the relevant runtime edge.
+Let `S(sigma)` be the program outcome of written-order source execution.
+Let `C` translate each source policy to the native policy in Section 4.
+Let `R_E` be the resolving runtime in Section 3 with a fixed environment
+policy `E`. Native deviations
+are arbitrary observation-local policies, not restricted to compiler output.
 
-The current untimed application does not instantiate the resolving `R_E`
-required here. The coupling can first be proved for its actual bounded prefixes;
-Section 7 specifies what the resolution edge still has to implement.
-
-Together with the honest outcome law, (1) gives Nash and same-error epsilon-Nash
-preservation and reflection at compiled profiles. There is no claim about every
-runtime equilibrium, coalitional deviations, or every utility of an affected
-opponent. A bound on the deviator's utility alone does not transport an honest
-player's worst-case guarantee against adversaries with other preferences.
-
-## 2. Concrete compiled behavior and service assumptions
-
-The source-policy implementation is a mathematical strategy translation, not
-mandatory client code imposed on players. Unilateral replacements remain arbitrary.
-
-At each invocation a compiled policy selects the first owned unfinished ready
-node in source order. Readiness and this selection use public node metadata and
-event presence, not sealed values.
-
-* At a commit, recover exactly the site's declared source reads from initial
-  visible inputs, included public events, and the owner's accepted commitments.
-  If the slot is empty, draw once from the source kernel and privately register
-  that value. Otherwise submit the canonical opaque `(owner, node)` handle.
-  Repeated invocations reuse the registered value.
-* At a reveal, submit the opening of that same registered value only once its
-  public prerequisites are satisfied. Retransmission is allowed.
-* Ignore unrelated pending payloads, receipts, and delivery order when choosing
-  a source value. These remain visible to an arbitrary replacement policy.
-
-The proof uses the following operational facts, each with a concrete obligation:
-
-1. **Binding and ownership.** Only a principal can register its slots. The first
-   value is fixed. Inclusion validates the sender, endpoint, prerequisites, and
-   opening. Replays cannot overwrite an accepted source binding.
-2. **Value-independent hidden traffic.** Before publication, an honest value
-   affects neither packet contents nor control flow visible to `E` or `i`.
-   Registration is private; handle identities and retry rules do not encode the
-   value. Rejected attempts cannot test another owner's secret through a public
-   validation oracle. This last point uses ownership checks as well as hiding.
-3. **Publication barrier.** Before an honest opening at source position `r` is
-   submitted, every source-earlier commitment is already accepted and bound.
-   This is a submission condition, not just an inclusion check. A deviator may
-   publish its own values earlier; they are already known to that deviator.
-4. **Declared reads and recall.** An honest decision uses precisely its source
-   view at that site. Source views retain previous own choices and prior public
-   values, so a source strategy can reconstruct its simulated private memory.
-5. **Service and resolution.** The invocation/service assumptions give every
-   timely valid honest message an opportunity to be included before its relevant
-   timeout. Waiting does not keep the bounded execution unresolved indefinitely.
-   A failure invokes the program's specified quitting continuation. In particular,
-   arbitrary traffic does not consume the honest service guarantee by flooding.
-
-Fairness is an explicit hypothesis, not a theorem that a blockchain must be fair.
-It must hold uniformly over the unilateral policies quantified in (1), not just
-on the honest execution. An absolute deadline that can expire before its node
-becomes enabled does not satisfy this requirement merely because the environment
-is eventually fair. The currently fixed invocation list is also part of the
-service condition; an adaptive invocation scheduler would require its own
-observation-local instance.
-
-## 3. The coupling to construct
-
-Fix `sigma_-i`, `D`, and `E`. The target is a joint finite law of
+The theorem proves an honest outcome law and a deviation bound. Under the
+continuation incentive condition in Section 6, for every player `i` and
+native unilateral replacement `D_i`, there is a finite mixture `mu` of legal
+source policies, with unchanged opponents, such that
 
 ```text
-(X, Y, B, H),
+E[u_i(R_E(C(sigma_-i), D_i))] + delta * Pr(B)
+    <= sum_tau mu(tau) E[u_i(S(sigma_-i, tau))].               (1)
 ```
 
-with these properties:
+`B` is the event that at least one timeout resolution occurs. The comparison
+is made at the first such resolution; it concerns complete settlements, not
+an immediate transfer. Weak comparison (`delta = 0`) suffices for Nash and
+same-error epsilon-Nash preservation and reflection at compiled profiles.
+Strict comparison has the additional consequence stated in Section 6.
 
-* `X` has exactly the actual native execution law with deviator `D`.
-* There is a finite distribution `mu` of legal source policies for `i` such that
+A native utility may instead depend on the entire runtime record. The same
+argument applies if its honest values agree with the source utility and it
+satisfies the continuation comparison. Extra trace preferences are therefore
+an additional incentive obligation, not automatically preserved.
 
-  ```text
-  law(Y) = sum_tau mu(tau) * law(S(sigma_-i, tau)).              (2)
-  ```
+## 2. Source and graph semantics
 
-  Opponents' policies are unchanged. The mixture is chosen independently of
-  their private random draws; it may depend on their policy functions.
-* `B` says a runtime-only quitting resolution occurs. On `not B`, the actual
-  outcome of `X` is the observation of the complete source execution `Y`.
-* On `B`, `H` is the prefix at the first such resolution. The source execution
-  `Y` agrees with the compatible pre-resolution choices, accepted bindings, and
-  disclosed values. It then completes legally. It does not rewrite a commitment
-  that was already fixed on that prefix.
+Number all source events `0,...,n-1` in written order. Let `K` be the
+commitment sites. Each `c in K` has owner `owner(c)` and a unique reveal
+`r(c) > c`. A complete assignment is `a in D^K`.
 
-The last requirement is a counterfactual source completion, not a command that
-opens an expired runtime slot. A normal source execution can complete even when
-the coupled runtime execution refuses to do so. We need no executable runtime
-strategy that travels back to a missed deadline.
-
-Explicitly committing the legal source quit value is an ordinary source choice.
-It is not automatically classified as `B`. The flag concerns extra runtime
-resolution behavior, such as withholding a previously committed non-quit value.
-
-For the current untimed kernel, a useful precursor replaces `B` by failure to
-finish within the invocation horizon. It gives a coupling of a genuine native
-prefix to a source completion. It does not give that unfinished prefix a payout
-or identify it with a source quit. The resolution edge must supply those facts.
-
-## 4. Constructing the source policy without future information
-
-This is the substantive mathematical construction. The required Lean theorem
-is the joint law in Section 3, not another record assuming that law.
-
-### Fix only the deviator and environment randomness
-
-Predraw the random decisions of `D` and `E`, obtaining deterministic contingent
-policies indexed by a seed `w`. Do not fix the honest players' private random
-choices and give them to the extracted policy. The resulting `mu` averages the
-source policies constructed for the possible `w`.
-
-For finite domains and a finite horizon, the relevant interaction tree is
-finite: branch over honest source values and each fixed policy's finite-support
-commands, including the fallback continuations used below. Unbounded numeric
-packet identifiers do not require a distribution over all possible identifier
-tables. Only finitely many policy queries occur in this finite tree. Predrawing
-must share a draw at equal local policy inputs, rather than assigning inconsistent
-decisions to occurrences of the same information state.
-
-### Replay a symbolic native execution at each source decision
-
-At a source decision `c` of player `i`, the extracted policy receives the source
-view `v`. Replay the native machine from the initial state with seed `w`:
-
-* Execute `D` and `E` on their actual reconstructed observations.
-* Represent an honest registered value at node `d` by a private placeholder
-  labelled `d`. Its presence is known; its value is not supplied to `D` or `E`.
-  Do not evaluate the honest choice kernel inside this replay.
-* Honest private registration and opaque submission have value-independent
-  command shapes. Readiness, slot occupancy, message identifiers, and receipts
-  can therefore be replayed without evaluating those placeholders.
-* When an honest opening is submitted, substitute the corresponding published
-  value from `v`. Deliveries and inclusion then expose the actual payload, and
-  `D` and `E` may use its contents without restriction.
-* Return `i`'s first registered value for slot `c`. If resolution or the finite
-  horizon is reached first, use a fixed legal fallback at `c`.
-
-Returning at registration is useful: before that instant the slot cannot have
-been accepted, and every subsequent attempt has the same value. Registration
-for a future source site may occur early; replay reconstructs that private
-memory when the future source site is reached. No source strategy is given an
-extra memory argument.
-
-**Why an opening query is available in `v`.** Before returning the first
-registration for `c`, an honest opening at a position `r > c` cannot be submitted:
-the publication barrier would imply acceptance, hence prior registration, of
-`c`. Every honest opening encountered is therefore source-earlier than `c`, and
-its public value is present in `v`. The native scheduler may learn this value
-before inclusion; the source policy at `c` already knows it by source order.
-An early cleartext packet from `D` contains a value computed by `D`, not an oracle
-for a hidden honest value.
-
-This proves the replay does not need future source information. On arbitrary
-unreachable source views, a mismatch with earlier own choices can return the
-legal fallback. On reachable views, the induction below proves consistency.
-
-Here is a precise, nonrecursive definition behind that replay. Let `A` be the
-finite product of the value domains of all honest commitment sites. For a full
-assignment `a in A`, run the native machine with `D_w` and `E_w`, replacing each
-fresh honest choice draw at `d` by `a_d`. Keep all other native actions and all
-observations unchanged. Call this deterministic execution `R_w(a)`, stopped at
-the first extra resolution or at the invocation horizon. This is a proof-side
-evaluation of the same runner, not a strategy that reveals `a` to any player.
-
-Define `F_c(w,a)` as the first value registered for focal slot `c` in `R_w(a)`,
-or a fixed legal default if it never registers. There is no reference to an
-extracted source policy in this definition. In the admitted unrestricted-guard
-fragment the default can be fixed independently of the view.
-
-**Read-boundedness lemma.** Let `V_c` contain the honest sites whose source
-reveal precedes focal commitment `c`. If `a` and `a'` agree on `V_c`, then
-`F_c(w,a) = F_c(w,a')`.
-
-**Proof.** Pair the two native runs until the first registration for `c`, the
-first resolution, or the horizon. Honest private slots may have different
-values, but their occupancy and node labels agree. Focal and environment views
-agree. Their deterministic policies therefore choose the same commands. An
-honest invocation selects the same node and the same command shape: a fresh
-registration may differ only in its hidden value; opaque submissions agree.
-An honest opening at `r > c` is impossible before this stopping point by the
-publication barrier. For an opening at `r < c`, its producer is in `V_c`, so its
-payloads agree. There is no reveal at the commitment position `c` itself.
-Delivery and replay copy identical known messages. Inclusion tests either known
-focal data, correctly constructed honest messages, or rejects unauthorized
-attempts independently of hidden values. The paired relation is preserved at
-every step. Both runs stop in the same way with the same focal command or the
-same default. This finite induction proves the assertion.
-
-Consequently `F_c` factors through `a restricted to V_c`. The extracted source
-policy reads those values from the public part of its source view and applies
-that factor. On an inconsistent unreachable view it returns the legal default.
-No other player's unopened value or terminal outcome is an argument. Early
-registration for a later focal site causes no circularity: each `F_c` is already
-defined from `R_w`, and each of its honest-value arguments is source-earlier
-than `c`.
-
-In this fragment the construction does not inspect the numerical honest choice
-kernels: their value-substituted command shapes are fixed by the compiler.
-Taking the finite predraw tree over all honest assignments therefore makes the
-same family of extracted policies and mixture weights work for every honest
-opponent profile, with `D` and `E` fixed. Only the source law (7) changes with
-those opponents. No such uniformity is needed to take the expectation bound,
-but it is useful additional content of the causal construction.
-
-### Coupling invariant and induction
-
-Use one joint construction with the actual source runner and actual native
-runner. Its invariant records:
-
-1. matching source variables and native slots for the choices already coupled;
-2. matching included public fields, plus the identities of honest pending draws;
-3. the exact native pool, receipts, focal history, and environment history
-   produced by symbolic replay when its published placeholders are instantiated;
-4. honest draws have the joint law generated by their source kernels at the
-   corresponding source views. Conditioning on a shared disclosed value updates
-   the latent joint law identically on both sides, including the posterior of
-   values that remain unopened. No hidden value is resampled from its old prior.
-
-The last clause is a distributional invariant. Merely proving that some source
-completion exists for each native trace is insufficient.
-
-There is a direct finite-probability check for the two marginals. With `w`
-fixed, execute the source with its original honest kernels and the extracted
-focal policies. Let `q_w` be its distribution on complete honest assignments.
-It is an ordinary source law: read-boundedness makes every focal choice a
-function of strictly earlier source information. Equivalently,
+Written-order execution assigns a value at each commitment and copies that
+value at its reveal. Initial inputs and these choices determine the full
+source environment. Let `I_c(a)` be the visible source input before decision
+`c`. It depends only on source-earlier events; it contains no unopened value
+belonging to another player. A behavioral policy supplies a kernel
 
 ```text
-q_w(a) = product over honest sites d of
-           sigma_owner(d)(a_d | sourceView_d(a,F(w,a))).        (7)
+sigma_owner(c),c(- | I_c) in FinDist D.
 ```
 
-The product is generated in source order, not independently coordinate by
-coordinate. In particular, a factor may depend on earlier honest values and
-earlier focal decisions. Normalization follows by summing in reverse source
-order, since every kernel is normalized and every dependency points backwards.
+Write `O(a)` for applying the outcome function to the public terminal
+environment generated by assignment `a`. Every assignment is legal because
+guards are unrestricted. This fact is used both for source-policy totalization
+and for nullable resolution; it cannot be dropped merely because `bottom` is
+legal.
 
-Let `t` be a valid native command prefix, not extending beyond its first extra
-resolution. Include private registration commands in this proof-facing prefix,
-although they remain absent from opponent observations. Let `J(t)` be the honest
-sites freshly registered in `t`, and `b_d` their values. Its actual probability is
+Compilation assigns one graph node to each source event and emits:
+
+1. ownership and the source commitment referenced by each reveal;
+2. edges from every producer of a declared decision input to that decision;
+3. an edge from every source-earlier commitment to every reveal;
+4. any further dependency edges required by the existing graph compiler.
+
+All edges point backwards in source order. Graph execution writes immutable
+fields; its decision kernel reads precisely the source input. In particular,
+unrelated ready nodes may execute out of written order, but a decision cannot
+read a field whose producer has not completed.
+
+The existing source-to-graph law identifies written-order execution with the
+canonical declared-read graph policies. For this note it also follows directly
+by evaluating the same finite kernels in a topological order: exchanging
+independent steps leaves the product law unchanged. Dependencies are not
+treated as independent draws.
+
+## 3. A resolving public-message runtime
+
+### Native state, observations, and commands
+
+Keep the current message application's ideal write-once service and message
+pool. The service maps owner-scoped handles `(owner,slot)` to absent or
+registered values. Only that owner can register a slot. Registration is a
+private local operation; handles contain no value-dependent data.
+
+The pool has pending messages, an included ledger, recipient inboxes, and
+sender histories. An included message remains available as ledger data.
+Delivery and replay copy preexisting messages. They do not change the
+authenticated author or payload. Players see their own inbox/sent data, the
+public ledger and receipts, public application state, clock, and their own
+command history. The environment sees the entire pool, public application
+state, clock, and its own command history. Neither interface contains the
+ideal service table.
+
+The player command set includes arbitrary private registrations, submissions,
+replays, and waits. Payloads include commitments, openings, cleartext attempts,
+and malformed messages. Payloads for arbitrary numeric sites are permitted in
+the pool; validation determines whether they affect the application.
+
+A commitment at node `c` is accepted only for its owner, its canonical handle
+`(owner(c),c)`, an occupied service slot, satisfied dependencies, and a node
+not already completed. An opening at `r(c)` additionally requires that
+accepted handle and a claimed value equal to the registered value. Authentication
+is checked before any value comparison can affect a public result. An attempt
+to open another owner's handle is rejected independently of its hidden value.
+Cleartext and malformed application payloads are rejected.
+
+Acceptance, rejection, inclusion, and delivery are publicly observable as
+specified by the pool and receipts. The environment can adapt to their contents;
+it is not restricted to a schedule sampled independently of disclosed data.
+
+### Logical completion and nullable resolution
+
+Distinguish private registration from the program's public resolution:
+
+- A commitment is pending, accepted with its canonical handle, or defaulted.
+- A reveal is pending or published with a value in `D`.
+- A completed node never changes its public result.
+- Private service values are never overwritten, including on timeout.
+
+Registering `bottom` is an ordinary sealed source choice: the service contains
+`some bottom`, not an absent slot. Its compiled policy sends an opaque handle
+and later opens it normally. A public timeout default is a distinct event;
+the compiler does not replace an honest commitment to `bottom` by cleartext.
+
+A node is ready once every graph prerequisite is complete. Defaulted
+commitments count as complete. A ready reveal of a defaulted commitment
+automatically publishes `bottom`; no missing secret is needed to do so.
+
+When an unresolved ready commitment times out, mark that commitment defaulted.
+This does not insert a fake private registration. When a ready reveal of an
+accepted commitment times out, publish `bottom` at that reveal and record its
+failure. The original service value and acceptance record remain unchanged.
+Late messages cannot rewrite either result.
+
+Continue executing the same graph after a timeout. Honest policies see
+`bottom` through the appropriate public reveal field and keep using their
+declared source kernels. Arbitrary deviators remain arbitrary; a single
+timeout does not implicitly ban a player from future sites. This is per-site
+resolution, not the richer compiler's persistent per-role bail policy.
+
+Once all nodes are complete, evaluate the *same program outcome function*
+`O` on the final public environment. In particular, evaluate the same payout
+expressions; do not substitute a new default payout or ascribe utility to an
+unfinished prefix. All program reveal fields now have values of their original
+nullable types.
+
+This rule is a precise meaning of continuing with a missing value as `null`.
+It is not an implementation of arbitrary `||` subgames or quit handlers.
+Those need their own continuation semantics and compiler edge.
+
+**Settlement interpretation.** For a completed native run define its effective
+assignment `e_c` to be the published value at the unique reveal of `c`.
+The source execution with commitment assignment `e` is legal, and its final
+public environment equals the runtime's: each source reveal copies `e_c`,
+which is exactly the runtime field. Hence the runtime outcome is `O(e)`.
+
+This is a pointwise public-outcome statement. It neither backtranslates
+strategies nor equates all private histories. If a player registered `some x`
+and then withheld its opening, the effective assignment has `e_c = bottom`,
+whereas the actual private service still contains `some x`. The incentive
+proof retains that original locked choice in a *different*, counterfactual
+source execution.
+
+The unique-reveal and unrestricted-guard conditions matter here. Conflicting
+aliases or a later guard invalidated by replacing a value with `bottom`
+would invalidate this simple settlement interpretation.
+
+### Clock, service, and termination
+
+Here is one explicit bounded clock discipline. It is enough for the theorem;
+it is not a statement that every real network provides these bounds.
+
+Each round has one invocation opportunity for every principal in a fixed
+order and then a fixed finite number of environment command opportunities.
+The environment chooses deliveries, inclusions, or waits adaptively. The clock
+advances by one at the next round boundary. Readiness timestamps are recorded
+when nodes first become ready. Deterministic propagation of defaulted reveals
+is applied after changes to completion state. At a round boundary, expired
+ready nodes are resolved in increasing source order before further commands.
+
+Assume a finite service bound `b >= 0`: every submitted message is offered
+inclusion by the end of round `submissionRound + b`, or its application node
+has already completed. It suffices to require this for canonical messages
+emitted by compiled players, uniformly over all replacements of other policies.
+The stronger all-message service condition is independent of designating a
+player honest, and avoids needing to recognize hidden validity. It concerns
+inclusion attempts, not guaranteed acceptance of invalid payloads.
+
+There must be enough environment command opportunities to realize this
+condition. It is nonvacuous: each principal emits at most one pool operation
+per round, so an environment with enough inclusion slots can drain newly
+pending messages each round, with extra slots for deliveries. Arbitrary
+deviator traffic cannot revoke the assumed service bound. A capacity-constrained
+or censoring runtime requires a different bound or a different theorem.
+
+Set, conservatively,
 
 ```text
-p_w(t) = product over d in J(t) of sigma_owner(d)(b_d | v_d(t)). (6)
+L = n * (b + 3) + 2
+deadline(d) = firstReadyRound(d) + L.
 ```
 
-Every other transition is deterministic at fixed `w`. Each `v_d(t)` is already
-fixed by the prefix when registration happens. Readiness implies that any
-predecessor on which its kernel depends has already been supplied. The set
-`J(t)` need not be a prefix of written source order.
+The clock and relative deadlines are part of the runtime definition. A real
+ledger implementation must realize the clock and timeout checks, for example
+through included timeout transactions. Eventual fairness alone does not
+establish this finite service guarantee.
 
-**Prefix cylinder lemma.** Define the rectangular event
+**Service lemma.** No compiled player times out under the service bound,
+including after other players' defaults.
+
+To prove it, suppose a ready node `d` of a compiled player remains unfinished.
+Every subsequent invocation of that player selects an unfinished ready node
+`c <= d`. A commitment is privately registered at most once; the next selected
+invocation submits its handle. A reveal submits its cached opening at its
+first selected invocation. These packets are valid: the local cache and service
+agree, dependencies persist, and all declared reads are present. A reveal of
+a defaulted producer is propagated automatically.
+
+For each selected `c`, before its first submission there are at most two
+selected invocations, including registration. After that submission there are
+at most `b+1` further round opportunities before inclusion completes `c`.
+Interruptions by newly ready earlier nodes do not reset its service bound.
+A completed node cannot be selected again. Thus each of at most `n` possible
+selected nodes accounts for at most `b+3` rounds. Allow one initial round if
+`d` became ready after its owner's invocation. The chosen `L` is strictly
+larger than this bound.
+
+The required cache/read facts hold initially and are preserved by legitimate
+completions and nullable defaults: defaults supply typed public fields; own
+accepted commitments retain their cached values. Taking the first putative
+timeout of a compiled player makes this reasoning noncircular: its own earlier
+commitments have not defaulted, and earlier defaults of other players cannot
+remove its inputs. This contradicts that timeout. Consequently every failure
+in a unilateral-deviation run belongs to the deviator.
+
+**Termination lemma.** Every policy profile and every environment policy,
+even an unfair one, terminates under the clock/timeout mechanism within
+`n*(L+1)+1` rounds.
+
+Until termination, the least unfinished source node is ready, because all its
+prerequisites are earlier. If no node completes in the following `L+1` rounds,
+that node expires, contradicting the supposition. Each interval therefore
+completes a new node or the program has already terminated. There are `n`
+nodes. Deterministic default propagation only shortens execution. For `n=0`,
+return immediately.
+
+This supplies a finite horizon independently of the service hypothesis.
+Service is used to rule out honest failures, not to define payoff at a
+nonterminating execution.
+
+## 4. Actual compiled player behavior
+
+At each invocation, select the least owned unfinished ready source node.
+
+- At a commitment, if its private registration cache is empty, reconstruct
+  exactly the declared source input and draw from that source kernel. Privately
+  register the value. On subsequent invocations, submit the canonical opaque
+  handle without drawing again.
+- At a reveal of an accepted commitment, submit the cached opening only once
+  the public prerequisite check succeeds.
+- An automatically propagated reveal requires no player command.
+- With no eligible node, wait.
+
+The cache is computed from the owner's command history. Public source inputs
+come from immutable included application fields; own private inputs come from
+accepted own commitments and the cache. Unrelated wire contents, receipts,
+and clock values are not inputs to an honest source kernel. They remain visible
+to an arbitrary replacement policy.
+
+A registration for an unaccepted future site is not treated as an available
+source field merely because it occurs in the owner's private history.
+
+## 5. Constructing the whole-program coupling
+
+Fix an opponent source profile, a focal native deviator `D_i`, and environment
+policy `E`. This section constructs, rather than postulates, the source
+mixture and the joint law.
+
+### 5.1 Finite predrawing
+
+The preceding horizon and finite value domains give a finite reachable tree
+for the fixed native policies. Although numeric message identifiers are
+unbounded types, each queried policy has finite support and there are finitely
+many invocations. Take the union over all honest value assignments; it is
+still finite.
+
+Predraw only the deviator's and environment's responses at their reachable
+local policy inputs. A seed `w` specifies deterministic policies `D_w,E_w`.
+Its distribution is independent of the honest players' private draws.
+Equal local inputs in different hypothetical runs use the same table entry.
+Within one run an actor's local command history grows at every invocation,
+including waits, so a given local input is not queried repeatedly along that
+run. The table sampling therefore has the original behavioral law.
+
+Do not predraw the honest values into a tape accessible to the source
+deviator. Their kernels can depend on earlier private values and disclosures.
+
+### 5.2 Value-substituted replay and read-boundedness
+
+Let `H` be the honest commitment sites and let `a in D^H`. Run the actual
+native machine with `D_w,E_w`, replacing each fresh honest draw at site `d`
+by `a_d`. All other policy code, histories, pool operations, validations, and
+clock transitions are unchanged. Stop immediately before the first timeout
+resolution, or at successful completion. Denote this deterministic prefix by
+`T_w(a)`. This is a proof-side evaluation, not an extra runtime strategy.
+
+For each focal commitment `c`, let `F_c(w,a)` be its first correctly owned
+private registration in that prefix, or a fixed legal fallback `beta_c` if
+absent. Registrations at unrelated owner/slot pairs are ignored. Choose the
+fallbacks explicitly; they need not be `bottom`.
+
+Let `V_c` consist of honest commitment sites whose reveals precede `c` in
+written source order.
+
+**Read-boundedness.** If `a` and `a'` agree on `V_c`, then
+`F_c(w,a) = F_c(w,a')`, including agreement on whether that registration
+occurs before stopping.
+
+Here is the lockstep invariant up to the first focal registration at `c`:
+
+- equal pool, public events, receipts, clock, readiness timestamps, focal
+  command history, and environment command history;
+- equal service-slot occupancy everywhere;
+- equal service values at all focal handles and at honest handles in `V_c`;
+- at each honest owner, its cache agrees with its own service; the two
+  honest histories need not be equal;
+- every authenticated opening retained in the pool refers to one of the
+  handles whose values agree.
+
+It holds initially. The following cases preserve it.
+
+1. **Focal or environment invocation.** Their local inputs agree, so the fixed
+   policies choose the same command. A focal registration writes the same
+   value to its own slot. Its early cleartext or opening attempts may say
+   anything computable from that input, identically in both runs.
+2. **Honest node selection.** Completion, readiness, and ownership are public.
+   Cache occupancy and public events determine typed read availability;
+   replacing a present value by another value of the same type cannot change
+   that check. Thus the same node and command shape are selected.
+3. **Honest registration.** The same slot is queried. If its producer is in
+   `V_c`, the assigned values agree; otherwise only the private values may
+   differ. First-registration caches continue to match their services.
+4. **Honest opening.** An opening at `r > c` cannot be submitted: its
+   prerequisites include commitment `c`, hence acceptance and prior
+   registration of `c`. An opening cannot be at `c`, which is a commitment.
+   Thus any honest opening before this stopping point is at `r < c`; its
+   value is in `V_c` and the payloads agree.
+5. **Delivery and replay.** They copy identical known messages, preserving
+   authentication and the opening condition.
+6. **Inclusion.** Commit validation depends on occupancy. A correctly
+   authenticated opening checks a handle with equal values. An opening of
+   another owner's handle is rejected by ownership checks independently of
+   its claimed or hidden value. Consequently acceptance, rejection, and
+   their receipts agree, not just the successful application changes.
+7. **Clock and stopping.** Equal completion and timestamp data give equal
+   deadlines, automatic actions, and first-timeout decisions. There has
+   been no earlier default, because this is the first-resolution prefix.
+
+An honest history can contain different private values; the argument does not
+feed that history to the deviator. At the focal registration the commands
+agree, and if no registration occurs the fixed fallbacks agree. This proves
+read-boundedness by induction over the finite invocation prefix.
+
+Therefore each `F_c` factors through `a restricted to V_c`. Define a
+deterministic source policy `tau_w` using this factor and the corresponding
+values from its source view. Use a fixed extension of that partial assignment
+when evaluating the factor; read-boundedness makes the extension irrelevant.
+Every full assignment is legal. On unreachable inconsistent source views,
+totalize with the fixed fallback.
+
+This defines a *single policy family for all focal sites*. It is not a
+collection of source actions selected after inspecting terminal secrets.
+All arguments of `F_c` precede `c`; its definition never refers recursively
+to future source play. Early speculative focal registrations are reproduced
+at their own source sites by this same family.
+
+### 5.3 The source law and exact prefix cylinders
+
+Execute the source with `tau_w` and the unchanged honest policies. Let
+`q_w` be the resulting law of its honest assignment. Its mass is
 
 ```text
-C_t = { a : for every d in J(t), a_d = b_d }.
+q_w(a) = product over honest sites d in source order of
+           sigma_owner(d),d(a_d | I_d(a,F(w,a))).              (2)
 ```
 
-Then `R_w(a)` extends `t` exactly when `a in C_t`.
+The factors are causal, not independent: a factor can depend on earlier honest
+choices and earlier focal decisions. Read-boundedness makes every focal
+decision causal as well. Summing variables in reverse source order proves
+normalization.
 
-**Proof.** The forward implication reads the fresh registration commands in
-the trace. For the reverse implication, induct over `t`. In a value-substituted
-execution, the next fresh honest registration queries exactly one new coordinate
-`a_d`; its answer is fixed by `C_t`. All other operations use already registered
-values, public state, or the fixed deterministic policies. The entire current
-native state agrees, including its private values, so the next command agrees.
-This argument uses the full proof-facing prefix; it does not assert that a
-player can observe the coordinates constrained by `C_t`.
+Consider any supported full native prefix `t` before the first resolution,
+including private registration commands and the invocation records for waits.
+Let `J(t)` be its honest registration sites and `b_d` their values. An honest
+site is registered at most once: after registration its cache is occupied,
+all future invocations use the cached handle, and the cache never empties.
+Consequently the native prefix probability at fixed `w` is
 
-**Kernel agreement lemma.** For each `d in J(t)`, the `d`-th source factor in
-(7) is constant over `C_t` and equals the corresponding factor in (6).
+```text
+p_w(t) = product over d in J(t)
+           sigma_owner(d),d(b_d | nativeInput_d(t)).           (3)
+```
 
-**Proof.** At the native registration for `d`, all its declared read fields
-are available. Honest producers of these fields have already registered, so
-their values are constrained in `C_t`. A focal producer already accepted by
-that point has a first registration in the prefix. By the prefix cylinder
-lemma, that registration agrees in every `R_w(a)` for `a in C_t`; it is exactly
-`F_c(w,a)`, hence the source choice at its site. Included reveals copy these
-same values. Initial visible fields also agree. The declared-read correspondence
-therefore identifies the entire source input of the `d`-th kernel with its
-native input. This also handles an honest site executed ahead of earlier
-unrelated source sites: fields from those sites cannot be in its ready read set.
+There is no probability factor for deterministic messages, retries, rejection,
+clock advancement, or waiting.
 
-**Prefix mass lemma.** `q_w(C_t) = p_w(t)`.
+Define the rectangle
 
-**Proof.** Sum (7) over `C_t`. Pull out the factors for `d in J(t)` using kernel
-agreement; their product is (6). Sum the remaining variables in reverse source
-order. Each remaining factor is its normalized source kernel and contributes
-one. Fixed coordinates in `J(t)` pose no problem because their factors have
-already been removed. Causality of every `F_c` ensures there is no forward
-dependency left in a source kernel. This proves the equality without assuming
-independent honest choices or selecting a source strategy from a terminal trace.
+```text
+C_t = { a in D^H : a_d = b_d for every d in J(t) }.
+```
 
-The prefix mass lemma gives the native marginal. The source marginal is its
-actual runner by construction. On every coupled pair, focal registrations are
-the source's `F_c` values and honest registrations use the source's `a_d`
-values. This is the required binding compatibility, including speculative
-registrations. After a quitting resolution, generate the native suffix using
-its actual kernels; do not require its choices to agree with the counterfactual
-source completion. Integrating that normalized suffix does not change either
-established marginal. Finally average over `w` to obtain the finite mixture (2).
+**Cylinder lemma.** `T_w(a)` extends `t` if and only if `a in C_t`.
 
-Induct over the finite source sites, with the bounded native replay between
-sites. The cases are:
+The forward implication reads the private registrations in the trace. For the
+reverse implication, induct over `t`. At a fresh honest registration the
+queried coordinate is fixed by `C_t`. Every other command uses already
+registered data or the fixed policies. Hence the *entire* native state and
+histories are equal at each stage, including private values already used.
+Clock and stopping decisions are consequently equal too. This lemma is about
+a proof-facing prefix, not what a player can observe.
 
-* **Honest registration.** Source and runtime use the same kernel at equal
-  declared reads. Couple the draw once and remember its node identity. If native
-  registration precedes the source site's position, defer its value in symbolic
-  replay. Such deferral is valid because command shape and all intervening tests
-  ignore the value until its publication; its kernel depends only on source
-  predecessors. Independent draws can be exchanged; dependent draws retain
-  their predecessor order. This is repeated finite bind/map algebra, not a
-  claim that all honest draws are mutually independent.
-* **Focal registration.** Replay reaches the same command on the same local
-  input. The extracted source choice is its value. Previous own choices agree
-  by induction and source recall. A repeat registration changes neither side.
-* **Submission, delivery, inclusion, rejection, wait.** Replay preserves the
-  observable state and histories exactly. An honest handle contains no unresolved
-  placeholder. Validation either uses known focal data, a correctly constructed
-  honest message, or rejects an unauthorized attempt independently of the secret.
-  Accepted graph writes preserve the binding correspondence.
-* **Honest opening.** The barrier argument supplies its value from the relevant
-  source view. Pending delivery may disclose it immediately; the coupled replay
-  then exposes the same value. An opening of `i`'s own slot is already known.
-* **First extra resolution or exhausted prefix horizon.** Stop exact-prefix
-  matching. Preserve choices already bound on that prefix; use the extracted
-  policy's recorded choices or legal fallbacks at the remaining focal sites and
-  the unchanged honest source kernels at the others. Earlier speculative honest
-  draws remain coupled at their source sites. This completes a legal source run.
+**Kernel agreement.** For every `d in J(t)`, its factor in (2) is constant
+over `C_t` and equals its factor in (3).
 
-Returning at each first registration prevents later runtime observations from
-changing an earlier source decision. Replaying from the initial state makes the
-source policy a function of `v` and `w`, rather than a separately chosen action
-for each terminal trace. The source runner supplies the honest draws, giving
-(2); the paired native transitions give the other marginal. On completed runs
-with no extra resolution, every binding matches, hence so does the outcome.
+At that native registration, all producers of declared reads are complete.
+An honest producer has already registered, constraining its value in `C_t`.
+A focal producer has a first registration in the prefix. The cylinder lemma
+makes it identical in every replay in `C_t`; it is exactly the source value
+`F_c(w,a)`. Reveals copy those values, and fixed initial inputs agree.
+These are all the declared inputs, so the source and native kernel arguments
+agree. This also handles a native choice performed ahead of unrelated earlier
+source events: those events cannot be missing producers of its read set.
 
-For the honest-law instance, keep the focal compiled policy's draws as source
-kernel draws as well. Each first registration uses the specified kernel exactly
-once; value-independent scheduling cannot select or reroll its result. The
-same induction then has source marginal `S(sigma)`, not merely an unspecified
-mixture against `sigma_-i`. An arbitrary-deviation coupling alone would not
-establish this additional identification.
+**Prefix mass.** `q_w(C_t) = p_w(t)`.
 
-The read-boundedness and prefix cylinder lemmas remove the need for separate
-source policies chosen at successive stopping histories. One family `F_c`
-determines all focal choices, and the source law supplies every honest draw.
-Kernel agreement and reverse-order summation then preserve the dependent joint
-law. These are the concrete lemmas to formalize against the compiled policy;
-they are not yet a checked operational coupling.
+Sum (2) over the rectangle. Pull out the factors in `J(t)` by kernel
+agreement. Their product is (3). Sum the remaining coordinates in reverse
+source order. Each remaining kernel is normalized; no remaining factor
+depends on a later uneliminated variable. Fixed coordinates cause no problem,
+since their factors have already been removed. The remaining sum is one.
 
-The checked `SealedFragment.replay_law` identifies `R_w(a)` for the untimed
-bounded kernel with its actual shared policy runner. `replay_eq_iff` proves
-the cylinder characterization for any invocation prefix: two full replay
-records agree exactly when their assignments agree at the honest registration
-coordinates recorded in one of them. Its local substitution proof permits a
-fresh command to consult only its emitted coordinate; its converse reads the
-registration from the native trace. The general support-transfer and
-registration-origin results permit randomized deviator and environment policies.
-This establishes the cylinder step, not read-boundedness: changing a registered
-hidden value changes the full private record, even when focal observations
-remain the same. That latter comparison still needs the publication barrier.
+This step preserves dependent honest draws. It does not assume that a
+scheduler's public input is independent of every still-unopened value.
 
-### Worked multistage test: a disclosure correlated with an unopened value
+### 5.4 Both marginals and the continuation
 
-Consider this source order, with `B` the deviator and `A`'s policy fixed:
+Draw `a ~ q_w`. Let `s_w(a)` be the corresponding complete source assignment
+with `tau_w`, and let `Y = O(s_w(a))` be its program outcome. Retain the source
+assignment in the joint record. Let the native pre-resolution prefix be `T_w(a)`.
+The cylinder and mass lemmas identify its *entire* native prefix law, hence
+its stopped-prefix marginal, with the actual native runner at seed `w`.
+
+If it completes normally, its assignment is `s_w(a)` and its program outcome
+is `Y`. Otherwise, retain the first-timeout prefix `h`, execute its prescribed
+nullable default, and generate the remaining native execution from its actual
+kernels. Future honest choices on this native suffix need not agree with
+`s_w(a)`: they may see `bottom` where the counterfactual source continuation
+reveals the original committed value. Integrating this normalized suffix
+preserves the native-prefix marginal and gives the correct complete native
+marginal. Let `X` be its program outcome, retaining the native execution in
+the joint record as well.
+
+The complete source marginal remains its ordinary source law. It is not
+restarted or conditioned by choosing a new source policy at the timeout.
+Every source-site registration fixed before `h`, including speculative
+registrations, is retained in `s_w(a)`. There is no claim of post-timeout
+private binding equality.
+
+Finally average over `w`. If `mu` is the distribution of `tau_w`, this gives
+a joint law `(X,Y,B,H)` with:
+
+- the exact resolving-runtime outcome law as its `X` marginal;
+- `law(Y) = sum_tau mu(tau) law(S(sigma_-i,tau))`;
+- equal program outcomes on `not B`;
+- compatibility of the retained source assignment with every locked source
+  choice and public field before the first resolution.
+
+The source mixture is sampled independently of honest private draws. For
+this fragment the extraction ignores the numerical honest kernels entirely;
+with `D_i,E` fixed, the same predraw construction can be taken over all
+honest assignments. Thus the mixture can be uniform over opponent profiles.
+
+### 5.5 Honest outcome law
+
+For the all-compiled profile, predraw only `E`; retain every player's source
+kernel in the source law. The same cylinder and mass argument applies with
+no focal extraction. The service lemma rules out timeouts for every such
+profile, including profiles that honestly commit `bottom`. Every first
+registration samples exactly once at the correct declared input, and every
+reveal publishes that registered value. Therefore
+
+```text
+law(R_E(C(sigma))) = law(S(sigma)).                            (4)
+```
+
+This is a separate identification within the same coupling construction.
+An arbitrary-deviation mixture alone would not prove (4).
+
+## 6. The precise incentive premise and strategic theorem
+
+Let `J` describe the deviator's stopping information at the first timeout:
+its observations and remembered commands, without unopened opponents' values
+or an omniscient future random tape. Use the joint law constructed above.
+For each supported stopping information value `j`, require
+
+```text
+E[u_i(X) | B, J=j] + delta <= E[u_i(Y) | B, J=j], delta >= 0.  (5)
+```
+
+These are final program outcomes. The right side is the particular legal
+source-completion law already constructed. The condition must hold for the
+opponent profiles and replacements quantified by the desired preservation
+theorem. It is not an assumption that a native deviation already has the
+payoff of a source strategy.
+
+A stronger sufficient condition can be checked without posterior beliefs.
+For a first-timeout prefix `h`, let `K(h)` be all legal complete source
+assignments matching its first registrations at source-owned handles and
+its included public fields. This set is nonempty: values are typed, guards
+are unrestricted, and authenticated openings agree with their registrations.
+
+For every complete runtime continuation `z` after that prefix and every
+`y in K(h)`, require the following, writing `O(z)` for the same program outcome
+function evaluated on `z`'s terminal public environment:
+
+```text
+u_i(O(z)) + delta <= u_i(O(y)).                               (6)
+```
+
+Compatibility of the coupling makes (6) imply (5). This pointwise condition
+is deliberately stronger than necessary. A nonvacuous class satisfying its
+weak version has nonnegative source utilities and zero utility for a player
+whenever one of its own published choices is `bottom`: under fair service
+the first timeout defaults the deviator's own choice, so every runtime suffix
+gives that deviator zero. These utilities are program/analysis conditions,
+not features hard-coded into the runtime.
+
+**End-to-end theorem for the specified model.** For every admitted program,
+fair environment, source profile, focal player, and native deviation satisfying
+(5), inequality (1) holds.
+
+**Proof.** On `not B`, outcome utilities agree. On each `B and J=j`,
+multiply (5) by its probability and sum. This gives
+
+```text
+E[u_i(X)] + delta Pr(B) <= E[u_i(Y)].
+```
+
+Substitute the constructed source-mixture marginal. This proves (1).
+A finite mixture has a component attaining at least its average. Therefore
+there is a single legal source deviation with utility at least that of the
+native deviation; closure of the source class under mixtures is unnecessary.
+
+If (5) with `delta=0` holds for every unilateral native replacement at a
+source epsilon-Nash profile, every term in (1) is bounded by baseline source
+utility plus epsilon. Apply (4) to the baseline: its compilation is
+epsilon-Nash with the *same* error. Conversely, a profitable source deviation
+compiles to a profitable native deviation by (4), proving reflection at
+compiled profiles. There is no claimed bijection with all native equilibria.
+
+If `delta>0` and `Pr(B)>0`, a component of the source mixture has utility
+strictly larger than the native deviation. By (4) its compilation is a feasible
+ex-ante improvement against the same compiled opponents. Hence that native
+deviation is not a best response. This does not eliminate off-path quitting
+instructions or concern arbitrary noncompiled opponent policies.
+
+For an affected honest player `j != i`, the same coupling also transports a
+source worst-case lower bound when its own continuation inequality is reversed:
+`E[u_j(X) | B,J] >= E[u_j(Y) | B,J]`. Every component of the source mixture
+then clears the lower bound, irrespective of the deviator's utility. The
+deviator's inequality (5) alone does not provide that protection.
+
+Coalitions, correlated-equilibrium recommendations, computational commitment
+security, fees, and censorship are not covered by these unilateral ideal-model
+conclusions.
+
+## 7. Two checks on the argument
+
+### Source strict dominance alone does not suffice
+
+Use the following source, with no chance node:
+
+```text
+A commits Safe, Risky, or Quit
+B commits H, T, or Quit
+B reveals
+A reveals
+```
+
+Both domains are `Option Bool`, with Quit as `none`. A's utility is:
+
+| A | B: H | B: T | B: Quit |
+| --- | ---: | ---: | ---: |
+| Safe | 1 | 1 | 1 |
+| Risky | 3 | -1 | 1 |
+| Quit | 0 | 0 | 0 |
+
+B receives 1 for H or T and 0 for Quit, regardless of A. Thus Safe strictly
+dominates Quit for A, and H strictly dominates Quit for B, both against
+every opponent strategy. At the source, Safe against B's fair H/T mixture
+is Nash: A receives 1, Risky also yields 1, and B already receives its maximum.
+
+In the specified resolving runtime, A can commit Risky, open after H, and
+withhold after T. Its expected utility is `3/2 > 1`. The service can be
+completely fair; A withholds its own message. Binding and the publication
+barrier hold, and B is an ordinary strategic player using a randomized policy.
+
+On T, the locked source continuation pays -1 while the runtime's programmed
+Quit settlement pays 0. Condition (5) fails. The source's dominating Safe
+action cannot replace Risky after the commitment is locked. This gives an
+impossibility for a universal preservation theorem based only on ordinary
+source quit dominance, even in the nullable unrestricted-guard fragment.
+
+### A pending disclosure can be correlated with a still-hidden value
+
+Consider:
 
 ```text
 A commits X, uniformly in {0,1}
@@ -416,236 +653,55 @@ A reveals X
 B reveals b0 and b1
 ```
 
-`A` may read its own `X` when choosing `Y`. Its policy induces the joint law
+A's joint law is `P(0,0)=P(1,1)=3/8` and
+`P(0,1)=P(1,0)=1/8`. Pending Y can be delivered to B before inclusion, and
+E may use its value to choose service order. Conditional on Y, the still-hidden
+X equals Y with probability 3/4. The scheduler's signal is not unconditionally
+independent of X.
 
-| X | Y | Probability |
-| --- | --- | --- |
-| 0 | 0 | 3/8 |
-| 0 | 1 | 1/8 |
-| 1 | 0 | 1/8 |
-| 1 | 1 | 3/8 |
+Nevertheless b0 is already locked before Y can be submitted, and Y belongs
+to the source view at b1. Replay at b1 can therefore use Y without obtaining X.
+The joint source law (2) retains the correlation; independently resampling X
+after observing Y would give the wrong coupling.
 
-The environment can see the pending opening of `Y`, choose inclusion order from
-its value, and deliver it to `B` before inclusion. This conveys information about
-the still-sealed `X`: conditional on `Y`, the probability that `X = Y` is `3/4`.
-There is no unconditional "scheduler is independent of every unopened value"
-claim. Its visible input is legitimately correlated with `X`.
+## 8. Repository obligations and the next proof iteration
 
-Nevertheless, `b0` was bound before `Y` could be submitted. At the source choice
-of `b1`, the source view already includes `Y`. The extracted policy for `b1`
-can therefore replay all those value-dependent scheduler decisions without
-knowing `X`. The pending opening of `X` cannot be submitted until `b1` is bound.
+The mathematical model above supplies operational resolution rules and a
+coupling construction. Its theorem does not assume deviation simulation as
+an input. It still needs independent mathematical scrutiny and mechanization.
 
-For payoff `+1` when `b1 = X` and `-1` otherwise, choosing `b1 = Y` earns `1/2`
-at the source. Observing pending `Y` permits the same choice, not a better-informed
-one. If extra quitting pays `-2`, continuation is better by at least `1` on
-every complete outcome, so (5) applies to this disclosure decision. If extra
-quitting instead pays `0`, stopping only on a mismatch after observing `X` earns
-`3/4`; that fails the continuation comparison. This latter comparison concerns
-the fixed opponent policy, not strict dominance against every opponent strategy.
+The current repository has:
 
-The replay carries placeholders for `X` and `Y`, substitutes the source's `Y`
-when it is published, and later uses the same source draw of `X`. Independently
-resampling `X` after seeing `Y` would replace the displayed joint law and give
-the wrong answer. The coupling must preserve the whole dependency, not just
-the two marginal distributions. No native chance publisher is added here:
-`A`'s randomized source policy generates both choices.
+- the checked written-source to declared-read-graph strategic correspondence;
+- the actual sealed source-policy translation, own-history cache invariant,
+  and local source-kernel law;
+- the exact value-substituted replay cylinder for bounded untimed executions;
+- local knowledge-indexed native hiding and the compiled submission barrier;
+- generic utility-based Nash transport.
 
-## 5. Quitting comparison and its exact consequence
+The local knowledge proofs are included in the warning-free library build.
+Local laws do not constitute the whole-run read-boundedness theorem or the
+source/native probability coupling.
 
-Assume the coupling has been constructed. Put `Q_i(X) = U_i(X)` and
-`V_i(Y) = u_i(Y)`. On non-quitting runs these agree by the outcome law.
-Let `J` record the available stopping information on quitting runs. It includes
-the player's actual observations and remembered commands, not hidden service
-values or an omniscient future random tape. For each supported `j`, require
+The remaining implementation work is specific:
 
-```text
-E[Q_i(X) | B, J = j] + delta <= E[V_i(Y) | B, J = j],           (3)
-```
+1. Check backend admission for nullable values and direct unique reveals,
+   without changing source well-formedness.
+2. Implement per-node relative deadlines, defaulted commitment completion,
+   nullable reveal resolution, and continuation to the existing public
+   outcome evaluator. Distinguish service values from logical defaults.
+3. Establish readiness/read invariants after defaults and instantiate the
+   fair-service and termination arguments. Do not assume a bare expiration
+   status is a source settlement.
+4. Finish whole-run read-boundedness and the cylinder/kernel/marginal proof
+   for the actual policy runner, including the public clock observations.
+5. Instantiate the existing `UtilitySimulation` under the explicit
+   continuation condition, and audit the end-to-end theorem in `Paper.lean`.
 
-where `delta >= 0`. The right side is the specific legal source-completion law
-constructed above. It is not a choice of a new source action after seeing the
-terminal hidden state. Condition (3) concerns complete continuations, including
-later decisions and settlements; comparing only the immediate transfer is not
-enough. It must hold for the profiles and deviations quantified by the theorem.
-
-This is an inequality on first-resolution branches, not a claim that opening
-remains feasible after expiration. No decision at the expired state is used
-to establish the source marginal or the Nash improvement.
-
-**Theorem (coupling consequence).** Under the honest outcome law, the coupling,
-and (3),
-
-```text
-E[U_i(R_E(C(sigma_-i), D))] + delta * Pr(B)
-    <= sum_tau mu(tau) * E[u_i(S(sigma_-i, tau))].              (4)
-```
-
-**Proof.** Partition the finite joint probability space into `not B` and the
-events `B and J = j`. On `not B` the utility difference is zero. Multiply (3)
-by `Pr(B and J = j)` and sum. This gives
-`E[V_i(Y) - Q_i(X)] >= delta * Pr(B)`. Substitute marginal (2). This proves
-(4), including zero-probability and randomized stopping cases. No closure of
-source policies under mixtures is used. A component of a finite mixture attains
-at least its average, so some single legal source policy attains the right-hand
-bound needed in (1).
-
-For a source epsilon-Nash profile, each term on the right of (4) is at most the
-baseline source utility plus epsilon. Honest-law equality gives the same bound
-in the target. Conversely, compiling any profitable source deviation preserves
-its utility and the baseline, proving reflection at compiled profiles.
-
-If `delta > 0` and `Pr(B) > 0`, the extracted mixture has strictly greater
-utility than `D`; some component does too. Its compiled strategy is a feasible
-ex-ante improvement against the unchanged compiled opponents. Thus such `D`
-is not a best response against those opponents. This is not an assertion about
-arbitrary opponent runtime policies or about off-path quitting prescriptions.
-
-### A stronger, source-facing sufficient condition
-
-Condition (3) is less demanding than a pointwise comparison, but depends on the
-coupled continuation law. A simpler sufficient certificate for a mechanism is:
-for every possible first-resolution prefix `h`, every settlement `z` obtainable
-through its declared quitting continuation, and every legal complete source
-outcome `y` compatible with the locked choices and disclosed values of `h`,
-
-```text
-U_i(z) + delta <= u_i(y).                                     (5)
-```
-
-The coupling's compatibility invariant makes (5) imply (3). Deposits or bounded
-payoff ranges can make (5) provable without a prior over hidden values. Requiring
-it for every possible compatible completion is deliberately stronger than
-necessary. It is a usable sufficient condition, not a characterization of all
-implementable equilibria. Its runtime settlement must still be connected to
-the programmer's actual resolution code.
-
-## 6. Why ordinary strict dominance is not the complete condition
-
-The issue already arises without chance nodes, with both source quit actions
-strictly dominated against every opponent strategy. Consider two players and
-this source order:
-
-```text
-A commits Safe, Risky, or Quit
-B commits H, T, or Quit
-B reveals its choice
-A reveals its choice
-```
-
-Both commitments have unrestricted guards. Each three-element domain can be
-represented by the common type `Option Bool`, with `none` as Quit. `B` cannot
-observe `A`'s private commitment when choosing. Source reveals copy the values
-already committed; they are not additional decisions.
-
-`A`'s source utility is:
-
-| A's choice | B: H | B: T | B: Quit |
-| --- | ---: | ---: | ---: |
-| Safe | 1 | 1 | 1 |
-| Risky | 3 | -1 | 1 |
-| Quit | 0 | 0 | 0 |
-
-`B` receives 1 for either H or T and 0 for Quit, independently of `A`'s choice.
-Thus Safe strictly dominates Quit for `A`, and H strictly dominates Quit for
-`B`, each by a margin of 1 against every opponent strategy. This is genuine
-source strict dominance, not a comparison against only one opponent profile.
-
-Take the source profile where `A` chooses Safe and `B` mixes H/T equally.
-`A` receives 1; switching to Risky also yields 1 and switching to Quit yields
-0. `B` already receives its maximum of 1. The profile is Nash. Randomization
-comes from an ordinary player's policy; there is no chance publisher.
-
-Now suppose the runtime implements withholding of `A`'s opening by the
-program's Quit settlement, paying `A` zero. The native deviation "commit Risky;
-after B's reveal, open on H and withhold on T" has expected utility
-
-```text
-(1/2) * 3 + (1/2) * 0 = 3/2 > 1.
-```
-
-It violates neither commitment binding nor the publication barrier. `A` is
-committed before `B` publishes, and learns nothing earlier than in the source.
-The gain uses only the extra later quitting option. Timely inclusion can be
-fully fair; `A` withholds its own opening. The source Nash profile therefore
-is not preserved by this resolving runtime, despite both source quit actions
-being strictly dominated.
-
-The stronger continuation condition detects the failure. On the T branch,
-the locked legal source continuation is Risky, with utility -1. Quitting pays
-0, so (3) would require `0 <= -1`. The dominating Safe strategy cannot replace
-this continuation after Risky has already been committed. That distinction is
-why the comparison records locked choices, not merely a set of source outcomes
-whose average looks preferable before play.
-
-This is a complete mathematical counterexample to sufficiency of ordinary
-source quit dominance. Its source uses the admitted sealed fragment, but the
-current native timeout adapter does not yet execute the assumed general Quit
-settlement. No Lean theorem about that missing resolving runtime is claimed.
-
-With a mandatory fair public chance draw, an even smaller example needs only
-one player choosing Play or Quit: Play pays 3 on heads and -1 on tails, Quit
-pays zero. Play strictly dominates Quit ex ante, yet opening only on heads
-pays 3/2 instead of 1. The two-player example above avoids relying on chance
-support or a separate publisher.
-
-## 7. Runtime resolution must respect the source meaning
-
-The written core's `reveal` copies its existing sealed value. The nullable
-surface `yield` commits an optional value and reveals that same option. If it
-committed `some a`, expiration cannot produce a full source environment in which
-that very reveal instead copied `none`. Such an environment violates the source
-equation. This is independent of utility dominance.
-
-There are two distinct obligations:
-
-* Implement the programmer's intended quitting settlement, with its real output
-  and continuation. Recover that meaning from the program/compiler artifact;
-  do not manufacture a default payout or add an extra player choice to the source.
-* Compare that settlement with a legal committed source continuation using (3)
-  or a sufficient condition such as (5). Utility preservation does not require
-  falsely identifying the two full terminal environments.
-
-The source currently records nullable values and commitment-accounting
-obligations; the surface explicitly does not yet attach quit handlers. The
-timeout adapter sets a resolution status. Neither fact alone implements a
-general per-site quitting continuation. The connection to the richer compiler's
-timeout clauses is therefore an operational implementation obligation, not a
-missing probability lemma. The minimal core need not acquire the richer surface
-syntax to express the compiler-side resolution contract.
-
-## 8. What this settles, and the next iteration
-
-The finite coupling consequence (Section 5) is a complete mathematical argument.
-Section 4 defines the extracted policies without recursion through source play
-and proves their read-boundedness, prefix-cylinder characterization, kernel
-agreement, and prefix mass equality for the specified compiled behavior.
-The cylinder characterization is checked for the concrete policy and untimed
-runner. The Lean work must still establish read-boundedness, kernel agreement,
-and the two marginal laws, including that an honest source draw occurs at most
-once per commitment. The resolving runtime and its source-accounted settlement
-are still implementation obligations. No end-to-end Lean theorem is claimed here.
-
-The next work should directly serve the following two proofs:
-
-1. Construct the Section 3 coupling for the actual bounded sealed policy runner,
-   including arbitrary local deviations and pool-observing adaptive delivery.
-   Use the concrete `SealedCompilation.compilePolicy` and its history-based
-   local kernel law. Prove its honest law with the same coupling, not a second
-   independent whole-program proof.
-2. Supply source-accounted deadline resolution and discharge its compatibility
-   and incentive premises. Instantiate the existing `UtilitySimulation`; no new
-   generic strategic framework is needed.
-
-Before expanding the Lean support library, test the coupling on multistage
-programs with early future registrations, pending openings delivered before
-inclusion, value-dependent scheduling after disclosure, and dependent honest
-choices. A pointwise trace decoder, a source policy selected after observing a
-terminal secret, or a terminal-state completion argument without marginal (2)
-does not pass this test.
-
-The existing native binding and opening-barrier theorems support Section 2.
-The source-to-declared-read-graph certificate already supplies the written
-source correspondence. Local history reconstruction serves the concrete
-compiled policy; it is not a substitute for (2). The full pending-message
-strategic theorem remains the completion criterion.
+No persistent role-bail rule, subgame handler, raw Ethereum transaction format,
+or cryptographic verifier is silently included here. Further runtime features
+must preserve the information and service facts used above, or establish their
+appropriate weaker strategic bounds. Samples need a correctly realized chance
+kernel and a publication barrier; heterogeneous values need typed codecs;
+nontrivial guards need an account of invalid resolutions and legal
+counterfactual continuations. These remain part of the larger compiler goal.
