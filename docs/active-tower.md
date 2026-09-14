@@ -84,7 +84,8 @@ graph realization agrees with these replay selections, with arbitrary unchanged
 graph opponents and no assumed input equality. The exact joint
 prefix law through first timeout is proved below for fixed native response
 functions. The stopped-round coupling retains the same graph realization.
-First-timeout attribution and the incentive bound for fallback runs remain open.
+Periodic service attributes every timeout to an unprotected player. The
+graph-level incentive bound for fallback runs remains open.
 
 Generated policies satisfy `candidatePolicy_memory` under arbitrary opponent
 and environment policies: each honest owner's command cache agrees with its
@@ -193,12 +194,22 @@ with the registered host, as is the runtime default-propagation closure law.
 defaults a commitment and its disclosure, followed by preparation at the next
 decision whose reads include that defaulted public value.
 
-Exclusion of a first honest timeout still requires combining these facts in the
-bounded-polling argument: charge preparations once, bound repeated submissions
-using service checkpoints, and place enough polls before the deadline. The graph-level
-resolution utility comparison and its source transport also remain unproved for
-the candidate backend. Clock-driven completion and per-packet delivery alone do
-not establish honest success or attribute timeouts.
+`candidate_ready_poll_count_le` charges each preparation once and bounds repeated
+submissions by queue service. `candidate_runRounds_no_timeout` combines this bound
+with the actual driver's roster, clock, and periodic inclusion capacity. For a
+site of index `n`, a window of at least `(n + 1) * (period + 1) + 2` suffices.
+`candidate_runRounds_timeout_owner` consequently attributes every recorded
+timeout to an unprotected player, including after earlier defaults. Only protected
+players must use compiled policies and occur in the roster; other policies and
+unreserved wire choices are arbitrary. No public-prefix information condition
+or source realization is needed for these operational results.
+
+The clock, queue, and periodic-service-to-deadline argument are shared host laws.
+`VegasTests/SealedCandidateDeadline.lean` checks a two-player source with an
+arbitrary first-player native policy and delayed service. The second player meets
+both deadlines, and a supported completed execution exists for every such
+opponent and wire policy. The graph-level resolution utility comparison and its
+source transport remain unproved for the candidate backend.
 
 ## End-to-end target
 
@@ -213,9 +224,10 @@ graph-relative; source results delegate to it and transport outcomes.
 `exists_honest_candidate_round_graph_coupling` supplies the original graph law
 and normal public-field agreement under deadline-relative service for every
 graph profile, without the extra `PublicPrefixReadable` condition. Its source
-payout theorem delegates to the graph coupling. Deadline-relative exclusion of
-first honest timeout under arbitrary candidate deviations and the
-graph-level resolution utility condition remain required before the backend
+payout theorem delegates to the graph coupling. Honest-player timeout exclusion
+under arbitrary candidate deviations is also graph-relative and checked under
+periodic service. The graph-level resolution utility condition remains required
+before the backend
 can supply its own `UtilitySimulation` and the source theorem can follow by
 composition. The
 [compilation design](compilation-design.md#strategic-intermediate-representation)

@@ -111,6 +111,7 @@ import Interaction.SealedResolutionCompletion
 import Interaction.SealedResolutionDriver
 import Interaction.SealedResolutionService
 import Interaction.SealedResolutionPeriodicService
+import Interaction.SealedResolutionPolling
 import Interaction.SealedResolutionReservations
 import Interaction.SealedResolutionTermination
 import Interaction.SealedResolutionProvenance

@@ -37,6 +37,8 @@ import Vegas.Compile.SealedCandidateHost
 import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateProgress
 import Vegas.Compile.SealedCandidateReady
+import Vegas.Compile.SealedCandidateCount
+import Vegas.Compile.SealedCandidateDeadline
 import Vegas.Compile.SealedCandidateValues
 import Vegas.Compile.SealedCandidateCylinder
 import Vegas.Compile.SealedCandidateSourceLikelihood
@@ -142,6 +144,8 @@ law through first timeout for fixed focal/environment responses and arbitrary
 finite invocation schedules. `SealedCandidateRandomizedCoupling` retains the
 actual full native law, a finite source-deviation mixture, and pointwise public
 payout agreement on normal completion. `SealedTermination` proves candidate
-stopped-round completion under arbitrary policies. First-honest-timeout exclusion and the
-completed-round deviation utility comparison remain open.
+stopped-round completion under arbitrary policies. `SealedCandidateDeadline`
+excludes honest-player timeouts under periodic service, including after earlier
+defaults, and attributes each timeout to an unprotected player. The graph-level
+completed-round deviation utility comparison remains open.
 -/

@@ -37,9 +37,10 @@ independently of source syntax. Source results delegate to these graph/backend
 laws and transport source outcomes. The all-compiled honest law is also
 graph-relative in both commitment hosts: deadline-relative service yields normal
 completion and the original graph outcome on public fields. This honest law
-does not require the extra public-prefix information condition. The candidate
-timeout-service and
-utility arguments remain unfinished, so the backend does not yet supply the
+does not require the extra public-prefix information condition. Periodic service
+also excludes honest-player timeouts under arbitrary candidate deviations.
+The graph-level resolution and utility argument remains unfinished, so the
+backend does not yet supply the
 utility-simulation certificate required for end-to-end strategic composition.
 See [the factoring plan](docs/compilation-design.md#strategic-intermediate-representation).
 
@@ -69,9 +70,11 @@ complete native trace law and a mixture of source deviations with unchanged
 opponents. Normally completed pairs have the retained source realization's
 public payout. The candidate driver also completes within the compiled timeout
 bound under arbitrary policies, even without message service. The stopped-round
-coupling retains the actual stopping history, pool, and receipts. Excluding a
-first honest timeout under timely service
-and deriving the post-timeout incentive bound needed for Nash preservation remain open.
+coupling retains the actual stopping history, pool, and receipts. Under periodic
+inclusion capacity and a sufficient deadline window, every recorded timeout
+belongs to an unprotected player. This holds after earlier defaults as well as
+before the first timeout. The graph-level post-timeout incentive bound needed
+for Nash preservation remains open.
 Censorship resistance, concrete commitment cryptography, and EVM execution
 correctness remain open.
 

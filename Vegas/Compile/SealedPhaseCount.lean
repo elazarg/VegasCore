@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import GameTheoryExtensions.Math.Finset
 import Vegas.Compile.SealedPolicyProgress
 import Vegas.Compile.SealedResolutionClosure
 import Interaction.MessageApplicationCheckpoints
@@ -392,25 +393,14 @@ theorem submission_count_le (who : Player) (node : Fin G.nodeCount)
           (trace.drop checkpoint).first.native.application.visible = true ∨
         (trace.drop checkpoint).first.native.pool.pending = [])) :
     rounds.card ≤ delay + 1 := by
-  classical
-  by_cases hnonempty : rounds.Nonempty
-  · let first := rounds.min' hnonempty
-    have hfirst : first ∈ rounds := Finset.min'_mem rounds hnonempty
-    obtain ⟨checkpoint, hafter, hbefore, hserviced⟩ := hservice first hfirst
-    have hsubset : rounds ⊆ Finset.Icc first (first + delay) := by
-      intro round hround
-      refine Finset.mem_Icc.mpr ⟨Finset.min'_le rounds round hround, ?_⟩
-      by_contra hlate
-      have hlater : checkpoint ≤ position round :=
-        hbefore.trans (hposition.monotone (by omega))
-      exact supported.submissionAt_not_after_service nullValue window players environment
-        schedule trace htrace who node (position first) checkpoint (position round)
-        hafter hlater (hsubmissions first hfirst) (hsubmissions round hround) hserviced
-    have hcard := Finset.card_le_card hsubset
-    rw [Nat.card_Icc] at hcard
-    omega
-  · simpa only [Finset.not_nonempty_iff_eq_empty.mp hnonempty, Finset.card_empty] using
-      (Nat.zero_le (delay + 1))
+  apply Finset.card_le_of_bounded_span
+  intro left hleft right hright hle
+  by_contra hlate
+  obtain ⟨checkpoint, hafter, hbefore, hserviced⟩ := hservice left hleft
+  exact supported.submissionAt_not_after_service nullValue window players environment
+    schedule trace htrace who node (position left) checkpoint (position right)
+    hafter (hbefore.trans (hposition.monotone (by omega)))
+    (hsubmissions left hleft) (hsubmissions right hright) hserviced
 
 /-- Summing actual registration and submission charges over a finite source
 prefix bounds all designated polls. Sites may become ready out of order. -/
@@ -428,49 +418,36 @@ theorem phase_count_le (who : Player) (policy : CommitPolicy G who)
           (trace.drop checkpoint).first.native.application.visible = true ∨
         (trace.drop checkpoint).first.native.pool.pending = [])) :
     rounds.card ≤ (target.val + 1) * (delay + 2) := by
-  classical
   let runtime := supported.resolvingRuntime nullValue window
   let initial := PolicyExecution.initial runtime.messageApplication
     (State.initial runtime.messageApplication runtime.initial)
-  have hfiber : ∀ slot ∈ Finset.range (target.val + 1),
-      (rounds.filter (fun round => (selected round).val = slot)).card ≤ delay + 2 := by
-    intro slot hslot
-    let node : Fin G.nodeCount := ⟨slot, by have := Finset.mem_range.mp hslot; omega⟩
-    let fiber := rounds.filter (fun round => (selected round).val = slot)
-    let registered := fiber.filter (fun round =>
-      supported.RegistrationAt nullValue window trace who policy slot (position round))
-    let submitted := fiber.filter (fun round =>
-      ¬ supported.RegistrationAt nullValue window trace who policy slot (position round))
-    have hregistered : registered.card ≤ 1 := by
-      apply Finset.card_le_one.mpr
-      intro left hleft right hright
-      apply hposition.injective
-      exact supported.registrationAt_unique nullValue window players environment schedule
-        initial trace SealedResolution.RegistrationMemory.initial htrace who policy slot
-        (position left) (position right) (Finset.mem_filter.mp hleft).2
-        (Finset.mem_filter.mp hright).2
-    have hsubmitted : submitted.card ≤ delay + 1 := by
-      apply supported.submission_count_le nullValue window players environment schedule trace
-        htrace who node position hposition delay submitted
-      · intro round hround
-        obtain ⟨hfiber, hnotRegistration⟩ := Finset.mem_filter.mp hround
-        obtain ⟨hround, hselected⟩ := Finset.mem_filter.mp hfiber
-        have heq : selected round = node := Fin.ext hselected
-        rcases hphases round hround with hregistration | hsubmission
-        · exact (hnotRegistration (hselected ▸ hregistration)).elim
-        · exact heq ▸ hsubmission
-      · intro round hround
-        exact hservice round (Finset.mem_filter.mp (Finset.mem_filter.mp hround).1).1
-    have hsplit : registered.card + submitted.card = fiber.card :=
-      fiber.card_filter_add_card_filter_not _
-    change fiber.card ≤ delay + 2
+  apply Finset.card_le_of_bounded_charges rounds (fun round => (selected round).val)
+    (target.val + 1) delay
+    (fun slot round => supported.RegistrationAt nullValue window trace who policy
+      slot (position round))
+    (fun slot round => ∃ node : Fin G.nodeCount, node.val = slot ∧
+      supported.SubmissionAt nullValue window trace who node (position round))
+  · intro round hround
+    have := hbound round hround
     omega
-  have htotal := Finset.card_le_mul_card_image_of_maps_to
-    (f := fun round => (selected round).val) (s := rounds)
-    (t := Finset.range (target.val + 1))
-    (fun round hround => Finset.mem_range.mpr (by have := hbound round hround; omega))
-    (delay + 2) hfiber
-  simpa only [Finset.card_range, Nat.mul_comm] using htotal
+  · intro round hround
+    exact (hphases round hround).imp_right (fun h => ⟨selected round, rfl, h⟩)
+  · intro slot _ left _ right _ hleft hright
+    apply hposition.injective
+    exact supported.registrationAt_unique nullValue window players environment schedule
+      initial trace SealedResolution.RegistrationMemory.initial htrace who policy slot
+      (position left) (position right) hleft hright
+  · intro slot _ left hleft right hright hleftSubmission hrightSubmission hle
+    obtain ⟨node, hnode, hleftSubmission⟩ := hleftSubmission
+    obtain ⟨other, hother, hrightSubmission⟩ := hrightSubmission
+    have heq : other = node := Fin.ext (hother.trans hnode.symm)
+    subst other
+    by_contra hlate
+    obtain ⟨checkpoint, hafter, hbefore, hserviced⟩ := hservice left hleft
+    exact supported.submissionAt_not_after_service nullValue window players environment
+      schedule trace htrace who node (position left) checkpoint (position right)
+      hafter (hbefore.trans (hposition.monotone (by omega)))
+      hleftSubmission hrightSubmission hserviced
 
 /-- A ready unfinished owned target cannot persist across more than the
 source-prefix phase budget of actual compiled-player polls. All phase,
@@ -554,17 +531,11 @@ theorem completed_by_poll (who : Player) (policy : CommitPolicy G who)
       (trace.drop (position left)).first.native.application.visible.completed node = true →
       (trace.drop (position right)).first.native.application.visible.completed node = true := by
     intro left right hle node hcompleted
-    have hpositions := hposition.monotone hle
-    have hbetween := runtime.messageApplication.tracePolicies_between players environment
-      schedule initial trace htrace (position left) (position right - position left)
-    rw [Nat.add_sub_of_le hpositions] at hbetween
-    exact runtime.runPolicies_completed
+    exact runtime.tracePolicies_completed
       (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
-        (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
-      players environment
-      ((schedule.drop (position left)).take (position right - position left))
-      (trace.drop (position left)).first (trace.drop (position right)).first node
-      hcompleted hbetween
+        (service.sealValue owner slot value).state)
+      runtime.handle runtime.handle_records players environment schedule initial trace htrace
+      (position left) (position right) (hposition.monotone hle) node hcompleted
   cases hcompleted :
       (trace.drop (position (count - 1))).first.native.application.visible.completed target.val with
   | true => rfl

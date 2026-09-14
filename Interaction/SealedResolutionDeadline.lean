@@ -976,6 +976,50 @@ theorem runRounds_deadlineSound
     ((runtime.hostRoundDriver prepare applyMessage).environmentPolicy serviceSlots wire)
     front execution _ hsound hfront
 
+/-- A site completed before its retained deadline cannot time out at any
+later checkpoint. This depends on clock provenance and completion persistence,
+not on a particular commitment service or player strategy. -/
+theorem tracePolicies_no_timeout_of_timely_completion
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
+    (schedule : List (@Invocation Principal))
+    (execution : (runtime.host prepare applyMessage).PolicyExecution)
+    (trace : (runtime.host prepare applyMessage).PolicyTrace)
+    (hinitial : execution.native.application.visible.DeadlineSound runtime)
+    (htrace : trace ∈ ((runtime.host prepare applyMessage).tracePolicies
+      players environment schedule execution).support)
+    (node start serviced later : Nat) (hstart : start ≤ serviced) (hlater : serviced ≤ later)
+    (timestamp : Nat)
+    (hstamp : (trace.drop start).first.native.application.visible.firstReady? node = some timestamp)
+    (hcompleted : (trace.drop serviced).first.native.application.visible.completed node = true)
+    (hdeadline : (trace.drop serviced).first.native.application.visible.clock <
+      timestamp + runtime.window) :
+    node ∉ (trace.drop later).first.native.application.visible.timeouts := by
+  let app := runtime.host prepare applyMessage
+  have hbetween := app.tracePolicies_between players environment schedule execution trace
+    htrace start (serviced - start)
+  rw [Nat.add_sub_of_le hstart] at hbetween
+  have hretained := runtime.runPolicies_firstReady?_of_some prepare applyMessage hrecords
+    players environment ((schedule.drop start).take (serviced - start))
+    (trace.drop start).first (trace.drop serviced).first node timestamp hstamp hbetween
+  have hprefix := (app.tracePolicies_drop_support players environment schedule execution trace
+    htrace serviced).1
+  have hsound := runtime.runPolicies_deadlineSound prepare applyMessage hrecords players environment
+    (schedule.take serviced) execution (trace.drop serviced).first hinitial hprefix
+  have habsent : node ∉ (trace.drop serviced).first.native.application.visible.timeouts := by
+    intro htimeout
+    obtain ⟨rule, recorded, _, hrecorded, hexpired, _⟩ := hsound node htimeout
+    have heq : recorded = timestamp := Option.some.inj (hrecorded.symm.trans hretained)
+    subst recorded
+    omega
+  have hremaining := app.tracePolicies_between players environment schedule execution trace
+    htrace serviced (later - serviced)
+  rw [Nat.add_sub_of_le hlater] at hremaining
+  exact runtime.runPolicies_no_timeout_of_completed prepare applyMessage hrecords players
+    environment
+    ((schedule.drop serviced).take (later - serviced)) (trace.drop serviced).first
+    (trace.drop later).first node hcompleted habsent hremaining
+
 end Interaction.SealedResolution
 
 /-- info: 'Interaction.SealedResolution.invoke_firstReady?_of_none' depends on axioms:

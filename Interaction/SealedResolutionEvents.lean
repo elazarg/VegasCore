@@ -473,7 +473,9 @@ theorem runRounds_eventInvariant
         have hservicedInvariant := runtime.runPolicies_eventInvariant players
           (runtime.messageApplication.wireEnvironment environment) _ execution serviced
           hinvariant hserviced
-        have hmiddleNative := runtime.clockStep_native serviced middle hmiddle
+        have hmiddleNative := runtime.clockStep_native
+          (fun (service : IdealCommitments Principal Nat Value) owner slot value =>
+            (service.sealValue owner slot value).state) runtime.handle serviced middle hmiddle
         apply ih middle ?_ hnext
         rw [hmiddleNative]
         exact hservicedInvariant.tick

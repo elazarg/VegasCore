@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.MessageApplicationLaws
+import Interaction.MessageApplicationCheckpoints
 import Interaction.SealedResolutionEvents
 import Interaction.SealedResolutionProgress
 
@@ -315,6 +316,33 @@ theorem runPolicies_completed
       at hafter
     subst after
     exact tick_preserves_completed runtime application node hbefore
+
+omit [DecidableEq Value] in
+/-- Completion is monotone between checkpoints of the same supported policy
+trace, for every hosted commitment service. -/
+theorem tracePolicies_completed {Service : Type (max uPrincipal uValue)}
+    (runtime : SealedResolution Principal Value)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+        Option (ApplicationState Principal Value Service))
+    (hrecords : runtime.HandlerRecords applyMessage)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Principal))
+    (execution : (runtime.host prepare applyMessage).PolicyExecution)
+    (trace : (runtime.host prepare applyMessage).PolicyTrace)
+    (htrace : trace ∈ ((runtime.host prepare applyMessage).tracePolicies
+      players environment schedule execution).support)
+    (left right : Nat) (hle : left ≤ right) (node : Nat)
+    (hcompleted : (trace.drop left).first.native.application.visible.completed node = true) :
+    (trace.drop right).first.native.application.visible.completed node = true := by
+  have hbetween := (runtime.host prepare applyMessage).tracePolicies_between players environment
+    schedule execution trace htrace left (right - left)
+  rw [Nat.add_sub_of_le hle] at hbetween
+  exact runtime.runPolicies_completed prepare applyMessage hrecords players environment
+    ((schedule.drop left).take (right - left)) (trace.drop left).first (trace.drop right).first
+    node hcompleted hbetween
 
 private theorem handle_preserves_all_completed
     (runtime : SealedResolution Principal Value)

@@ -32,7 +32,8 @@
       "Vegas.Paper.pending_candidate_randomized_source_coupling",
       "Vegas.Paper.pending_candidate_round_graph_coupling",
       "Vegas.Paper.pending_candidate_round_source_coupling",
-      "Vegas.Paper.pending_candidate_honest_graph_law"
+      "Vegas.Paper.pending_candidate_honest_graph_law",
+      "Vegas.Paper.pending_candidate_timeout_owner"
     ]
   },
   "prose:pending-round-coupling": {

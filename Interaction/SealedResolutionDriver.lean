@@ -26,13 +26,13 @@ open MessageApplication
 universe uPrincipal uValue
 
 variable {Principal : Type uPrincipal} {Value : Type uValue}
-variable [DecidableEq Principal] [DecidableEq Value]
+variable [DecidableEq Principal]
 
 /-- A principal's actual private history and current observation at the first
 timeout, or at the end of the trace when no timeout occurs. On timeout-free
 traces this terminal information is intentionally arbitrary for consumers
 whose timeout branch is inactive. -/
-def firstTimeoutLocalInfo (runtime : SealedResolution Principal Value)
+def firstTimeoutLocalInfo [DecidableEq Value] (runtime : SealedResolution Principal Value)
     (principal : Principal) (trace : runtime.messageApplication.PolicyTrace) :
     List runtime.messageApplication.PlayerEntry × runtime.messageApplication.View :=
   let stop : runtime.messageApplication.PolicyExecution → Bool := fun execution =>
@@ -45,7 +45,8 @@ def firstTimeoutLocalInfo (runtime : SealedResolution Principal Value)
 by `firstTimeoutLocalInfo` comes from at or before that readout, never from
 the unused full-trace suffix. No assertion identifies this checkpoint with
 the principal's last opportunity to act before the deadline. -/
-theorem firstTimeout_before_roundReadout (runtime : SealedResolution Principal Value)
+theorem firstTimeout_before_roundReadout [DecidableEq Value]
+    (runtime : SealedResolution Principal Value)
     (trace : runtime.messageApplication.PolicyTrace)
     (principals : List Principal) (serviceSlots count : Nat)
     (htimeout : (trace.firstReleaseEvery (roundInvocations principals serviceSlots).length
@@ -67,16 +68,24 @@ theorem firstTimeout_before_roundReadout (runtime : SealedResolution Principal V
   rw [← hselected]
   simpa using htimeout
 
+variable {Service : Type (max uPrincipal uValue)}
+variable (runtime : SealedResolution Principal Value)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+      Option (ApplicationState Principal Value Service))
+
 /-- The shared invocation trace advances the clock exactly once per complete
 round. This counts recorded rounds before applying the stopping readout. -/
-theorem runPolicies_roundSchedule_clock (runtime : SealedResolution Principal Value)
+theorem runPolicies_roundSchedule_clock
+    (hrecords : runtime.HandlerRecords applyMessage)
     (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (wire : runtime.messageApplication.WirePolicy) (count : Nat)
-    (execution next : runtime.messageApplication.PolicyExecution)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (wire : (runtime.host prepare applyMessage).WirePolicy) (count : Nat)
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players
-      (runtime.roundDriver.environmentPolicy serviceSlots wire)
+    (hnext : next ∈ ((runtime.host prepare applyMessage).runPolicies players
+      ((runtime.hostRoundDriver prepare applyMessage).environmentPolicy serviceSlots wire)
       (roundSchedule principals serviceSlots count) execution).support) :
     next.native.application.visible.clock = execution.native.application.visible.clock + count ∧
       next.environmentHistory.length = execution.environmentHistory.length +
@@ -87,15 +96,18 @@ theorem runPolicies_roundSchedule_clock (runtime : SealedResolution Principal Va
       subst next
       simp
   | succ count ih =>
-      rw [roundSchedule, runtime.messageApplication.runPolicies_append] at hnext
+      rw [roundSchedule, (runtime.host prepare applyMessage).runPolicies_append] at hnext
       simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨middle, hmiddle, hnext⟩ := hnext
-      rw [← runtime.roundDriver.round_eq_runPolicies principals serviceSlots players wire
+      rw [← (runtime.hostRoundDriver prepare applyMessage).round_eq_runPolicies principals
+        serviceSlots players wire
         execution hphase]
         at hmiddle
-      have hclock := runtime.round_clock principals serviceSlots players wire execution middle
+      have hclock := runtime.round_clock prepare applyMessage hrecords principals serviceSlots
+        players wire execution middle
         hmiddle
-      have hhistory := runtime.roundDriver.round_environmentHistory_length principals
+      have hhistory := (runtime.hostRoundDriver prepare
+        applyMessage).round_environmentHistory_length principals
         serviceSlots players wire
         execution middle hmiddle
       have hmiddlePhase : middle.environmentHistory.length % (serviceSlots + 1) = 0 := by
@@ -109,40 +121,44 @@ theorem runPolicies_roundSchedule_clock (runtime : SealedResolution Principal Va
 
 /-- Every round-boundary snapshot of an actual shared trace has the expected
 clock and environment phase, including boundaries before early stopping. -/
-theorem tracePolicies_round_clock (runtime : SealedResolution Principal Value)
+theorem tracePolicies_round_clock
+    (hrecords : runtime.HandlerRecords applyMessage)
     (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (wire : runtime.messageApplication.WirePolicy) (total count : Nat)
-    (execution : runtime.messageApplication.PolicyExecution)
-    (trace : runtime.messageApplication.PolicyTrace)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (wire : (runtime.host prepare applyMessage).WirePolicy) (total count : Nat)
+    (execution : (runtime.host prepare applyMessage).PolicyExecution)
+    (trace : (runtime.host prepare applyMessage).PolicyTrace)
     (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
-    (htrace : trace ∈ (runtime.messageApplication.tracePolicies players
-      (runtime.roundDriver.environmentPolicy serviceSlots wire)
+    (htrace : trace ∈ ((runtime.host prepare applyMessage).tracePolicies players
+      ((runtime.hostRoundDriver prepare applyMessage).environmentPolicy serviceSlots wire)
       (roundSchedule principals serviceSlots total) execution).support)
     (hcount : count ≤ total) :
     let boundary := (trace.drop (count * (roundInvocations principals serviceSlots).length)).first
     boundary.native.application.visible.clock = execution.native.application.visible.clock + count ∧
       boundary.environmentHistory.length = execution.environmentHistory.length +
         count * (serviceSlots + 1) := by
-  have hprefix := (runtime.messageApplication.tracePolicies_drop_support players
-    (runtime.roundDriver.environmentPolicy serviceSlots wire) (roundSchedule principals
+  have hprefix := ((runtime.host prepare applyMessage).tracePolicies_drop_support players
+    ((runtime.hostRoundDriver prepare applyMessage).environmentPolicy serviceSlots wire)
+      (roundSchedule principals
       serviceSlots total)
     execution trace htrace (count * (roundInvocations principals serviceSlots).length)).1
   rw [roundSchedule_take principals serviceSlots total count hcount] at hprefix
-  exact runtime.runPolicies_roundSchedule_clock principals serviceSlots players wire count
+  exact runtime.runPolicies_roundSchedule_clock prepare applyMessage hrecords principals
+    serviceSlots players wire count
     execution _ hphase hprefix
 
 /-- At a player poll within a recorded round, neither the clock nor the
 environment-history phase has advanced beyond that round's boundary. -/
-theorem tracePolicies_poll_clock (runtime : SealedResolution Principal Value)
+theorem tracePolicies_poll_clock
+    (hrecords : runtime.HandlerRecords applyMessage)
     (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (wire : runtime.messageApplication.WirePolicy) (total round slot : Nat)
-    (execution : runtime.messageApplication.PolicyExecution)
-    (trace : runtime.messageApplication.PolicyTrace)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (wire : (runtime.host prepare applyMessage).WirePolicy) (total round slot : Nat)
+    (execution : (runtime.host prepare applyMessage).PolicyExecution)
+    (trace : (runtime.host prepare applyMessage).PolicyTrace)
     (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
-    (htrace : trace ∈ (runtime.messageApplication.tracePolicies players
-      (runtime.roundDriver.environmentPolicy serviceSlots wire)
+    (htrace : trace ∈ ((runtime.host prepare applyMessage).tracePolicies players
+      ((runtime.hostRoundDriver prepare applyMessage).environmentPolicy serviceSlots wire)
       (roundSchedule principals serviceSlots total) execution).support)
     (hround : round < total) (hslot : slot < principals.length) :
     let poll := (trace.drop
@@ -155,7 +171,8 @@ theorem tracePolicies_poll_clock (runtime : SealedResolution Principal Value)
   let boundaryIndex := round * blockLength
   let boundary := (trace.drop boundaryIndex).first
   let poll := (trace.drop (boundaryIndex + slot)).first
-  have hboundary := runtime.tracePolicies_round_clock principals serviceSlots players wire
+  have hboundary := runtime.tracePolicies_round_clock prepare applyMessage hrecords principals
+    serviceSlots players wire
     total round execution trace hphase htrace (Nat.le_of_lt hround)
   change boundary.native.application.visible.clock =
       execution.native.application.visible.clock + round ∧
@@ -177,22 +194,22 @@ theorem tracePolicies_poll_clock (runtime : SealedResolution Principal Value)
     induction xs with
     | nil => rfl
     | cons who rest ih => simp [Invocation.isEnvironment, ih]
-  have hbetween := runtime.messageApplication.tracePolicies_between players
-    (runtime.roundDriver.environmentPolicy serviceSlots wire)
+  have hbetween := (runtime.host prepare applyMessage).tracePolicies_between players
+    ((runtime.hostRoundDriver prepare applyMessage).environmentPolicy serviceSlots wire)
     (roundSchedule principals serviceSlots total) execution trace htrace boundaryIndex slot
   rw [hschedule] at hbetween
-  have hcongr := runtime.messageApplication.runPolicies_environment_congr players
-    (runtime.roundDriver.environmentPolicy serviceSlots wire)
-    (runtime.messageApplication.wireEnvironment wire)
+  have hcongr := (runtime.host prepare applyMessage).runPolicies_environment_congr players
+    ((runtime.hostRoundDriver prepare applyMessage).environmentPolicy serviceSlots wire)
+    ((runtime.host prepare applyMessage).wireEnvironment wire)
     ((principals.map Invocation.player).take slot) boundary
     (fun _ _ hlo hhi => by
       rw [hplayersCount, Nat.add_zero] at hhi
       omega)
   rw [hcongr] at hbetween
-  have hclock := runtime.runPolicies_wire_clock players wire
+  have hclock := runtime.runPolicies_wire_clock prepare applyMessage hrecords players wire
     ((principals.map Invocation.player).take slot) boundary poll hbetween
-  have hhistory := runtime.messageApplication.runPolicies_environmentHistory_length players
-    (runtime.messageApplication.wireEnvironment wire)
+  have hhistory := (runtime.host prepare applyMessage).runPolicies_environmentHistory_length players
+    ((runtime.host prepare applyMessage).wireEnvironment wire)
     ((principals.map Invocation.player).take slot) boundary poll hbetween
   change poll.native.application.visible.clock =
       execution.native.application.visible.clock + round ∧

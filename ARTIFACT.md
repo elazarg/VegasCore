@@ -120,8 +120,15 @@ with completion and no timeouts as conclusions. Both services instantiate the
 shared `MessageApplication.RoundDriver`; the honest embedding retains histories,
 receipts, and pending traffic. `VegasTests/SealedCandidates.lean` instantiates
 this law for arbitrary source profiles and adaptive unreserved wire choices,
-and separately tests selected and unopenable candidates. The arbitrary-deviation
-and Nash theorems still concern the registered-site host.
+and separately tests selected and unopenable candidates.
+`pending_candidate_timeout_owner` audits deadline protection under arbitrary
+candidate-player deviations: roster coverage, periodic inclusion capacity, and
+a sufficient window ensure that every timeout belongs to an unprotected player.
+`VegasTests/SealedCandidateDeadline.lean` instantiates this result for a
+two-player source with an arbitrary first-player policy and delayed service;
+the second player meets both deadlines and completed supported runs exist.
+The completed-game deviation utility bound and Nash theorem still concern the
+registered-site host; the corresponding candidate-host utility proof is open.
 
 At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
 sharper exact statement under declared-read locality and a single ready

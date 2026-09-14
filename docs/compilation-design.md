@@ -105,22 +105,19 @@ honest-policy host embedding. It retains the original graph marginal and proves
 agreement on all public fields. Source outcomes and payouts follow by compiler
 correspondence, not by repeating the native probability calculation.
 
+The candidate host's deadline protection is graph-relative. Actual generated
+submissions have stable admission data and complete their site when the queue
+drains. Honest-owner memory supplies one-time preparation and ready-player
+progress, including after defaults. Bounded polling and periodic inclusion
+capacity then exclude every protected player's timeout. This places no
+openability or preparation restriction on the other players. Clock, queue,
+deadline provenance, and the periodic-service argument are shared across the
+commitment hosts; player-specific completion is supplied by each host's checked
+polling theorem.
+
 The strategic factoring is incomplete. Some backend modules still transitively
-import mixed source/backend modules. More importantly, exclusion of a first
-honest timeout under deadline-relative service must be established for the
-candidate host under arbitrary deviations. Its packet-level delivery law is
-checked: actual generated submissions have stable admission data and complete
-their site whenever the pending pool drains. This uses the honest owner's cache
-and fixed candidate meanings, without constraining opponents' submissions or
-openability. Ready-player progress is also checked on actual initialized
-candidate runs, including after defaults: the graph selector uses only public
-event provenance and the generated owner's authenticated accepted-value cache.
-The same declared-read and selection proofs serve both commitment hosts.
-The remaining service work combines this progress with one-time preparation,
-packet drainage, and reserved-service checkpoints to bound the number of polls
-before an honest site's deadline. Deadline provenance, completion persistence,
-and default-propagation closure are shared host laws. Legal resolution defaults
-and the quitting utility bound need graph
+import mixed source/backend modules. Legal resolution defaults and the quitting
+utility bound need graph
 formulations with compiler certificates, rather than a hidden source-image
 premise. Only after those laws are proved can the candidate backend expose a
 `UtilitySimulation` and the source-to-runtime theorem delegate to composition.
@@ -286,10 +283,11 @@ public result. The graph fragment also certifies termination within
 to written-source deviations and normal settlement to the programmed payout.
 
 This supplies the probability part of the arbitrary-deviation argument, including
-actual post-timeout execution and native stopping. The candidate round driver
-still needs timely-service first-timeout attribution. The source settlement
-condition can then be applied to the actual
-completed native payout. Neither coupled marginal alone establishes that bound.
+actual post-timeout execution and native stopping. Periodic service and adequate
+windows attribute every timeout in the candidate round driver to an unprotected
+player. Applying a source settlement condition to the actual completed native
+payout still requires the graph-level resolution/utility certificate. Neither
+coupled marginal alone establishes that bound.
 
 Candidate handles are owner-scoped identifiers. A pending handle can acquire
 its private value until acceptance; an unprepared accepted handle becomes

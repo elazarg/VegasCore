@@ -17,6 +17,23 @@ variable {G : Graph Player L} {ty : L.Ty}
 
 namespace SealedFragment
 
+/-- Every admitted graph node is a player's commitment or a disclosure of
+that player's commitment. Sampling and disclosures of initial fields are
+excluded by the fragment certificate. -/
+theorem node_owner (supported : SealedFragment G ty) (node : Fin G.nodeCount) :
+    ∃ owner,
+      (∃ guard, (G.nodeRow node).sem = .commit owner guard) ∨
+      ∃ (producer : Fin G.nodeCount) (guard : EventGuard L),
+        (G.nodeRow node).sem = .reveal (G.nodeTarget producer) ∧
+        (G.nodeRow producer).sem = .commit owner guard := by
+  cases hsem : (G.nodeRow node).sem with
+  | sample dist => exact (supported.noSamples node dist hsem).elim
+  | commit owner guard => exact ⟨owner, Or.inl ⟨guard, rfl⟩⟩
+  | reveal source =>
+      obtain ⟨producer, owner, guard, hsource, hproducer⟩ :=
+        supported.revealSource node source hsem
+      exact ⟨owner, Or.inr ⟨producer, guard, by rw [hsource], hproducer⟩⟩
+
 /-- Every successfully indexed compiled rule comes from the graph node at that
 same numeric index. -/
 theorem ruleAt_exists_node (supported : SealedFragment G ty) {index : Nat}

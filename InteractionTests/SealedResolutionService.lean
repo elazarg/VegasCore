@@ -53,7 +53,9 @@ theorem arbitrary_players_have_nonempty_service_class
     (hnext : next ∈ (runtime.roundDriver.runRounds [false, true] 4 policies
       (runtime.messageApplication.reserveInclusion reserved base) 2 initial).support) :
     runtime.complete next.native.application.visible = true ∨ next.native.pool.pending = [] := by
-  exact runtime.runRounds_complete_or_pending_empty [false, true] 4 policies
+  exact runtime.runRounds_complete_or_pending_empty
+    (fun (service : IdealCommitments Bool Nat (Option Bool)) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle [false, true] 4 policies
     (runtime.messageApplication.reserveInclusion reserved base) reserved
     (runtime.messageApplication.reserveInclusion_service reserved base) 1 initial next
     (by decide) hnext

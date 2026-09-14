@@ -61,74 +61,6 @@ private theorem runPolicies_public_invariant (runtime : SealedResolution Princip
     subst final
     exact hrefresh true _ (hclock state.visible hstate)
 
-private theorem host_clockStep_native (runtime : SealedResolution Principal Value)
-    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
-    (hnext : next ∈ ((runtime.host prepare applyMessage).environmentPolicyStep execution
-      (.application ⟨()⟩)).support) :
-    next.native =
-      { execution.native with application := runtime.tick execution.native.application } := by
-  have hnative : next.native ∈
-      (((runtime.host prepare applyMessage).environmentPolicyStep execution
-        (.application ⟨()⟩)).map MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
-    exact ⟨next, hnext, rfl⟩
-  rw [MessageApplication.environmentStep_native] at hnative
-  simpa only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-    host, FinDist.map_pure, FinDist.mem_support_pure] using hnative
-
-private theorem round_clock_ge (runtime : SealedResolution Principal Value)
-    (hhandler : runtime.HandlerRecords applyMessage)
-    (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
-    (environment : (runtime.host prepare applyMessage).WirePolicy)
-    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
-    (hnext : next ∈ ((runtime.hostRoundDriver prepare applyMessage).round
-      principals serviceSlots players environment execution).support) :
-    execution.native.application.visible.clock + 1 ≤ next.native.application.visible.clock := by
-  simp only [MessageApplication.RoundDriver.round, FinDist.support_bind, Set.mem_iUnion] at hnext
-  obtain ⟨middle, hmiddle, hnext⟩ := hnext
-  have hclock := runtime.runPolicies_public_invariant hhandler
-    (fun state => execution.native.application.visible.clock ≤ state.clock)
-    (fun _ _ h => h)
-    (fun resolve state h => by rw [runtime.refresh_clock]; exact h)
-    (fun state h => Nat.le_trans h (Nat.le_succ state.clock))
-    players ((runtime.host prepare applyMessage).wireEnvironment environment)
-    _ execution middle (Nat.le_refl _) hmiddle
-  rw [runtime.host_clockStep_native middle next hnext]
-  change execution.native.application.visible.clock + 1 ≤
-    (runtime.refresh true { middle.native.application.visible with
-      clock := middle.native.application.visible.clock + 1 }).clock
-  rw [runtime.refresh_clock]
-  exact Nat.succ_le_succ hclock
-
-private theorem runRounds_clock_ge_of_incomplete (runtime : SealedResolution Principal Value)
-    (hhandler : runtime.HandlerRecords applyMessage)
-    (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
-    (environment : (runtime.host prepare applyMessage).WirePolicy)
-    (count : Nat) (execution next : (runtime.host prepare applyMessage).PolicyExecution)
-    (hnext : next ∈ ((runtime.hostRoundDriver prepare applyMessage).runRounds
-      principals serviceSlots players environment count execution).support)
-    (hincomplete : runtime.complete next.native.application.visible = false) :
-    execution.native.application.visible.clock + count ≤ next.native.application.visible.clock := by
-  induction count generalizing execution with
-  | zero =>
-      simp only [MessageApplication.RoundDriver.runRounds, FinDist.mem_support_pure] at hnext
-      subst next
-      omega
-  | succ count ih =>
-      simp only [MessageApplication.RoundDriver.runRounds] at hnext
-      split at hnext
-      · simp only [FinDist.mem_support_pure] at hnext
-        subst next
-        simp_all
-      · simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
-        obtain ⟨middle, hmiddle, hnext⟩ := hnext
-        have htail := ih middle hnext
-        have hround := runtime.round_clock_ge hhandler principals serviceSlots
-          players environment execution middle hmiddle
-        omega
-
 private theorem round_public_invariant (runtime : SealedResolution Principal Value)
     (hhandler : runtime.HandlerRecords applyMessage)
     (invariant : PublicState Principal Value → Prop)
@@ -150,7 +82,7 @@ private theorem round_public_invariant (runtime : SealedResolution Principal Val
     hrecord hrefresh hclock players
     ((runtime.host prepare applyMessage).wireEnvironment environment) _ execution middle
     hinitial hmiddle
-  rw [runtime.host_clockStep_native middle next hnext]
+  rw [runtime.clockStep_native prepare applyMessage middle next hnext]
   exact hrefresh true _ (hclock _ hmiddleInvariant)
 
 private theorem runRounds_public_invariant (runtime : SealedResolution Principal Value)
@@ -313,7 +245,7 @@ private theorem round_progress (runtime : SealedResolution Principal Value)
       (fun _ hstate => hstate) players
       ((runtime.host prepare applyMessage).wireEnvironment environment)
       _ execution middle (List.all_eq_true.mp hrequires prerequisite hprerequisite) hmiddle
-  rw [runtime.host_clockStep_native middle next hnext]
+  rw [runtime.clockStep_native prepare applyMessage middle next hnext]
   exact runtime.refresh_progress _ node rule hrule hkind hmiddleRequires
     (clockBounded_advance _ hmiddleBounded) hnode
 
@@ -402,7 +334,8 @@ theorem runRounds_ready_complete (runtime : SealedResolution Principal Value)
         players environment runtime.window middle next node hcomplete hnext)
     · have hpersist := runtime.runRounds_firstReady?_of_some hhandler principals serviceSlots
         players environment runtime.window middle next node timestamp htimestamp hnext
-      have hclock := runtime.runRounds_clock_ge_of_incomplete hhandler principals serviceSlots
+      have hclock := runtime.runRounds_clock_of_incomplete prepare applyMessage hhandler
+        principals serviceSlots
         players environment runtime.window middle next hnext hincomplete
       rw [hfinalTime] at hpersist
       have htime := Option.some.inj hpersist

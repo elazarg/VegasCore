@@ -7,7 +7,7 @@
 | `Interaction` | Native message pool, delivery, receipts, policies, and ideal commitment service |
 | `Vegas` | Sequential source language, event graph, compilation, and native adapters |
 | retained tests | Executable witnesses and regressions |
-| `Paper` | Direct theorem restatements and explicitly admitted targets in `Paper.lean` |
+| `Paper` | Direct checked theorem restatements and axiom pins in `Paper.lean` |
 
 Production libraries do not import tests or the paper audit. Generic
 game-theoretic results do not import Vegas. Interaction owns reusable message

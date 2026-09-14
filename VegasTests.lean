@@ -38,6 +38,7 @@ import VegasTests.SealedPublicSettlement
 import VegasTests.SealedPayout
 import VegasTests.SealedCandidates
 import VegasTests.SealedCandidateReady
+import VegasTests.SealedCandidateDeadline
 import VegasTests.SealedResolutionReadBound
 import VegasTests.SealedSourceExtraction
 import VegasTests.GraphPublicPrefix

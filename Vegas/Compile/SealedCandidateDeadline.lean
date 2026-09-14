@@ -1,19 +1,19 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedPhaseCount
-import Interaction.SealedResolutionDeadline
+import Vegas.Compile.SealedCandidateCount
 import Interaction.SealedResolutionPolling
 
-/-! # Timely polling excludes compiled-player timeouts
+/-! # Timely polling excludes candidate-player timeouts
 
 An actual readiness timestamp supplies the target's native prerequisites.
 Enough compiled-player polls and bounded queue service complete that target.
 If their endpoint precedes the timestamp's deadline, completion is not a
 timeout; no later native action can turn that completed site into a timeout.
 
-The periodic-service theorem derives the polling and service conditions from
-the actual round roster, clock window, and reserved inclusion capacity. All
-other players and all unreserved wire choices remain arbitrary.
+Polling and service are conditions on actual native checkpoints. Player
+traffic, candidate identities, and all intervening environment choices remain
+unrestricted. The periodic-service theorem derives the checkpoint conditions from the
+actual roster, reserved inclusion capacity, and deadline window.
 -/
 
 noncomputable section
@@ -26,22 +26,24 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
 /-- Timely service of enough actual compiled-player polls rules out this
-source site's timeout at every later checkpoint, under arbitrary intervening
+graph site's timeout at every later checkpoint, under arbitrary intervening
 player and environment policies. The original timestamp is never postponed. -/
-theorem no_timeout_of_poll_service (supported : SealedFragment G ty)
+theorem candidate_no_timeout_of_poll_service (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat)
     (players : Player →
-      (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
+      (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
     (environment :
-      (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentPolicy)
+      (supported.resolvingRuntime nullValue window).candidateApplication.EnvironmentPolicy)
     (schedule : List (@Invocation Player))
-    (trace : (supported.resolvingRuntime nullValue window).messageApplication.PolicyTrace)
+    (trace : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyTrace)
     (htrace : trace ∈
-      ((supported.resolvingRuntime nullValue window).messageApplication.tracePolicies
+      ((supported.resolvingRuntime nullValue window).candidateApplication.tracePolicies
         players environment schedule (PolicyExecution.initial _
-          (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support)
+          (State.initial _
+            (supported.resolvingRuntime nullValue window).candidateInitial))).support)
     (who : Player) (policy : CommitPolicy G who)
-    (hpolicy : players who = supported.resolvingPolicy nullValue window who policy)
+    (hpolicy : players who = (supported.resolvingRuntime nullValue window).candidatePlayerPolicy
+      (supported.resolvingPolicy nullValue window who policy))
     (target : Fin G.nodeCount)
     (howned :
       (∃ guard, (G.nodeRow target).sem = .commit who guard) ∨
@@ -64,14 +66,14 @@ theorem no_timeout_of_poll_service (supported : SealedFragment G ty)
     (later : Nat) (hlater : position (count - 1) ≤ later) :
     target.val ∉ (trace.drop later).first.native.application.visible.timeouts := by
   let runtime := supported.resolvingRuntime nullValue window
-  let initial := PolicyExecution.initial runtime.messageApplication
-    (State.initial runtime.messageApplication runtime.initial)
+  let initial := PolicyExecution.initial runtime.candidateApplication
+    (State.initial runtime.candidateApplication runtime.candidateInitial)
   let before := (trace.drop (position 0)).first
-  have hprefix := (runtime.messageApplication.tracePolicies_drop_support players environment
+  have hprefix := (runtime.candidateApplication.tracePolicies_drop_support players environment
     schedule initial trace htrace (position 0)).1
   have hreadySound := runtime.runPolicies_readySound
-    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
-      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    (fun (service : CommitmentCandidates Player Nat (L.Val ty)) owner slot value =>
+      service.prepare owner slot value) runtime.candidateHandle runtime.candidateHandle_records
     players environment
     (schedule.take (position 0)) initial before
     (SealedResolution.PublicState.ReadySound.initial runtime) hprefix
@@ -80,13 +82,15 @@ theorem no_timeout_of_poll_service (supported : SealedFragment G ty)
   rw [supported.compile_rule] at hrule
   have hruleEq := Option.some.inj hrule
   subst rule
-  have hcompleted := supported.completed_by_poll nullValue window players environment schedule
-    trace htrace who policy hpolicy target howned position hposition delay count hcount hcall
+  have hcompleted := supported.candidate_completed_by_poll nullValue window players environment
+    schedule trace htrace who policy hpolicy target howned position hposition delay count
+    hcount hcall
     hready hservice
   exact runtime.tracePolicies_no_timeout_of_timely_completion
-    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
-      (service.sealValue owner slot value).state)
-    runtime.handle runtime.handle_records players environment schedule initial trace
+    (fun (service : CommitmentCandidates Player Nat (L.Val ty)) owner slot value =>
+      service.prepare owner slot value)
+    runtime.candidateHandle runtime.candidateHandle_records players environment schedule
+    initial trace
     (SealedResolution.PublicState.DeadlineSound.initial runtime) htrace target.val
     (position 0) (position (count - 1)) later (hposition.monotone (Nat.zero_le (count - 1)))
     hlater timestamp hstamp hcompleted hdeadline
@@ -96,18 +100,19 @@ section PeriodicService
 variable (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
     (principals : List Player) (serviceSlots : Nat)
     (players : Player →
-      (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
-    (wire : (supported.resolvingRuntime nullValue window).messageApplication.WirePolicy)
+      (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
+    (wire : (supported.resolvingRuntime nullValue window).candidateApplication.WirePolicy)
     (reserved : Nat → Bool)
-    (hservice : (supported.resolvingRuntime nullValue window).messageApplication.InclusionService
+    (hservice : (supported.resolvingRuntime nullValue window).candidateApplication.InclusionService
       (fun turn => reserved turn = true)
-      ((supported.resolvingRuntime nullValue window).messageApplication.wireEnvironment wire))
+      ((supported.resolvingRuntime nullValue window).candidateApplication.wireEnvironment wire))
     (period : Nat) (hperiod : 0 < period)
     (hcapacity : ∀ block, period * principals.length ≤
       (List.range' (((block + 1) * period - 1) * (serviceSlots + 1))
         serviceSlots).countP reserved)
     (who : Player) (policy : CommitPolicy G who)
-    (hpolicy : players who = supported.resolvingPolicy nullValue window who policy)
+    (hpolicy : players who = (supported.resolvingRuntime nullValue window).candidatePlayerPolicy
+      (supported.resolvingPolicy nullValue window who policy))
     (target : Fin G.nodeCount)
     (howned :
       (∃ guard, (G.nodeRow target).sem = .commit who guard) ∨
@@ -123,22 +128,23 @@ include hservice hperiod hcapacity hpolicy howned hslot hwindow
 capacity and a sufficiently large clock window. This is uniform over all
 supported traces and all other native player policies, including arbitrary
 pending-message reactions. No execution-specific service witness is assumed. -/
-theorem tracePolicies_no_timeout (total : Nat) (hperiods : period ∣ total)
-    (trace : (supported.resolvingRuntime nullValue window).messageApplication.PolicyTrace)
+theorem candidate_tracePolicies_no_timeout (total : Nat) (hperiods : period ∣ total)
+    (trace : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyTrace)
     (htrace : trace ∈
-      ((supported.resolvingRuntime nullValue window).messageApplication.tracePolicies players
-        ((supported.resolvingRuntime nullValue window).roundDriver.environmentPolicy
+      ((supported.resolvingRuntime nullValue window).candidateApplication.tracePolicies players
+        ((supported.resolvingRuntime nullValue window).candidateRoundDriver.environmentPolicy
           serviceSlots wire)
         (MessageApplication.roundSchedule principals serviceSlots total)
         (PolicyExecution.initial _
-          (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support) :
+          (State.initial _ (supported.resolvingRuntime nullValue
+            window).candidateInitial))).support) :
     target.val ∉ trace.last.native.application.visible.timeouts := by
   let runtime := supported.resolvingRuntime nullValue window
-  let initial := PolicyExecution.initial runtime.messageApplication
-    (State.initial runtime.messageApplication runtime.initial)
+  let initial := PolicyExecution.initial runtime.candidateApplication
+    (State.initial runtime.candidateApplication runtime.candidateInitial)
   apply runtime.tracePolicies_no_timeout_of_periodic_service
-    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
-      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    (fun (service : CommitmentCandidates Player Nat (L.Val ty)) owner slot value =>
+      service.prepare owner slot value) runtime.candidateHandle runtime.candidateHandle_records
     principals serviceSlots players wire reserved hservice period hperiod hcapacity
     total hperiods initial trace htrace (runtime.refresh_clock false {}) rfl rfl
     (SealedResolution.PublicState.ReadySound.initial runtime)
@@ -154,8 +160,8 @@ theorem tracePolicies_no_timeout (total : Nat) (hperiods : period ∣ total)
       (target.val + 1) * (period + 1) + 1 := by
     rw [show period - 1 + 2 = period + 1 by omega]
     omega
-  have hcompleted := supported.completed_by_poll nullValue window players
-    (runtime.roundDriver.environmentPolicy serviceSlots wire)
+  have hcompleted := supported.candidate_completed_by_poll nullValue window players
+    (runtime.candidateRoundDriver.environmentPolicy serviceSlots wire)
     (roundSchedule principals serviceSlots total) trace htrace who policy hpolicy target howned
     position hposition (period - 1) ((target.val + 1) * (period + 1) + 1) hcount hcall
     hrequires (fun round hround => by
@@ -165,34 +171,36 @@ theorem tracePolicies_no_timeout (total : Nat) (hperiods : period ∣ total)
 
 /-- The same timeout exclusion holds at the actual early-stopping round
 readout. Later auxiliary trace execution cannot erase a recorded timeout. -/
-theorem runRounds_no_timeout (total : Nat) (hperiods : period ∣ total)
-    (next : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).roundDriver.runRounds
+theorem candidate_runRounds_no_timeout (total : Nat) (hperiods : period ∣ total)
+    (next : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution)
+    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).candidateRoundDriver.runRounds
       principals serviceSlots players wire total (PolicyExecution.initial _
-        (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support) :
+        (State.initial _ (supported.resolvingRuntime nullValue
+          window).candidateInitial))).support) :
     target.val ∉ next.native.application.visible.timeouts := by
   let runtime := supported.resolvingRuntime nullValue window
-  let initial := PolicyExecution.initial runtime.messageApplication
-    (State.initial runtime.messageApplication runtime.initial)
-  let environment := runtime.roundDriver.environmentPolicy serviceSlots wire
+  let initial := PolicyExecution.initial runtime.candidateApplication
+    (State.initial runtime.candidateApplication runtime.candidateInitial)
+  let environment := runtime.candidateRoundDriver.environmentPolicy serviceSlots wire
   let schedule := MessageApplication.roundSchedule principals serviceSlots total
   let width := (MessageApplication.roundInvocations principals serviceSlots).length
-  rw [runtime.roundDriver.runRounds_eq_tracePolicies principals serviceSlots players wire
+  rw [runtime.candidateRoundDriver.runRounds_eq_tracePolicies principals serviceSlots players wire
     total initial
     (by rfl), FinDist.support_map] at hnext
   obtain ⟨trace, htrace, rfl⟩ := hnext
-  have hclear := supported.tracePolicies_no_timeout nullValue window principals serviceSlots
+  have hclear := supported.candidate_tracePolicies_no_timeout nullValue window principals
+    serviceSlots
     players wire reserved hservice period hperiod hcapacity who policy hpolicy target howned
     slot hslot hwindow total hperiods trace htrace
   obtain ⟨front, suffix, hsplit, hfront, hsuffix⟩ :=
-    runtime.messageApplication.tracePolicies_firstReleaseEvery_split players environment width
+    runtime.candidateApplication.tracePolicies_firstReleaseEvery_split players environment width
       total (fun state => runtime.complete state.native.application.visible)
       (by simp [width, MessageApplication.roundInvocations]) schedule initial trace
       (by rw [MessageApplication.roundSchedule_length]) htrace
   intro htimeout
   exact hclear (runtime.runPolicies_timeout_mem
-    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
-      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    (fun (service : CommitmentCandidates Player Nat (L.Val ty)) owner slot value =>
+      service.prepare owner slot value) runtime.candidateHandle runtime.candidateHandle_records
     players environment suffix _ trace.last
     target.val htimeout hsuffix)
 
@@ -202,29 +210,30 @@ end PeriodicService
 Protected players use compiled policies and occur in the roster; all other
 players remain unrestricted. This operational statement makes no coalition
 equilibrium claim. -/
-theorem runRounds_timeout_owner (supported : SealedFragment G ty)
+theorem candidate_runRounds_timeout_owner (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat) (principals : List Player) (serviceSlots : Nat)
     (players : Player →
-      (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
-    (wire : (supported.resolvingRuntime nullValue window).messageApplication.WirePolicy)
+      (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
+    (wire : (supported.resolvingRuntime nullValue window).candidateApplication.WirePolicy)
     (reserved : Nat → Bool)
-    (hservice : (supported.resolvingRuntime nullValue window).messageApplication.InclusionService
+    (hservice : (supported.resolvingRuntime nullValue window).candidateApplication.InclusionService
       (fun turn => reserved turn = true)
-      ((supported.resolvingRuntime nullValue window).messageApplication.wireEnvironment wire))
+      ((supported.resolvingRuntime nullValue window).candidateApplication.wireEnvironment wire))
     (period : Nat) (hperiod : 0 < period)
     (hcapacity : ∀ block, period * principals.length ≤
       (List.range' (((block + 1) * period - 1) * (serviceSlots + 1))
         serviceSlots).countP reserved)
     (profile : ∀ who, CommitPolicy G who) (honest : Player → Prop)
     (hplayers : ∀ who, honest who →
-      players who = supported.resolvingPolicy nullValue window who (profile who))
+      players who = (supported.resolvingRuntime nullValue window).candidatePlayerPolicy
+        (supported.resolvingPolicy nullValue window who (profile who)))
     (hroster : ∀ who, honest who → who ∈ principals)
     (hwindow : G.nodeCount * (period + 1) + 2 ≤ window)
     (total : Nat) (hperiods : period ∣ total)
-    (next : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).roundDriver.runRounds
+    (next : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution)
+    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).candidateRoundDriver.runRounds
       principals serviceSlots players wire total (PolicyExecution.initial _
-        (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support)
+        (State.initial _ (supported.resolvingRuntime nullValue window).candidateInitial))).support)
     (index : Nat) (htimeout : index ∈ next.native.application.visible.timeouts) :
     ∃ (node : Fin G.nodeCount) (owner : Player), node.val = index ∧ ¬ honest owner ∧
       ((∃ guard, (G.nodeRow node).sem = .commit owner guard) ∨
@@ -232,11 +241,11 @@ theorem runRounds_timeout_owner (supported : SealedFragment G ty)
           (G.nodeRow node).sem = .reveal (G.nodeTarget producer) ∧
           (G.nodeRow producer).sem = .commit owner guard) := by
   let runtime := supported.resolvingRuntime nullValue window
-  let initial := PolicyExecution.initial runtime.messageApplication
-    (State.initial runtime.messageApplication runtime.initial)
+  let initial := PolicyExecution.initial runtime.candidateApplication
+    (State.initial runtime.candidateApplication runtime.candidateInitial)
   have hsound := runtime.runRounds_deadlineSound
-    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
-      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    (fun (service : CommitmentCandidates Player Nat (L.Val ty)) owner slot value =>
+      service.prepare owner slot value) runtime.candidateHandle runtime.candidateHandle_records
     principals serviceSlots players wire total
     initial next (by rfl) (SealedResolution.PublicState.DeadlineSound.initial runtime) hnext
   obtain ⟨rule, timestamp, hrule, hstamp, hdeadline, hready⟩ := hsound index htimeout
@@ -249,68 +258,30 @@ theorem runRounds_timeout_owner (supported : SealedFragment G ty)
     have hbound := Nat.mul_le_mul_right (period + 1) node.isLt
     change (node.val + 1) * (period + 1) ≤ G.nodeCount * (period + 1) at hbound
     omega
-  have hclear := supported.runRounds_no_timeout nullValue window principals serviceSlots
+  have hclear := supported.candidate_runRounds_no_timeout nullValue window principals serviceSlots
     players wire reserved hservice period hperiod hcapacity owner (profile owner)
     (hplayers owner hprotected) node howned slot hslot hnodeWindow total hperiods next hnext
   exact hclear (by simpa only [hindex] using htimeout)
 
-/-- With all players compiled and covered by the roster, the stopped execution
-contains no timeout records. Explicit null choices remain ordinary sealed
-choices; the result excludes operational defaults, not source-level quitting. -/
-theorem runRounds_timeouts_eq_nil (supported : SealedFragment G ty)
-    (nullValue : L.Val ty) (window : Nat) (principals : List Player) (serviceSlots : Nat)
-    (profile : ∀ who, CommitPolicy G who)
-    (wire : (supported.resolvingRuntime nullValue window).messageApplication.WirePolicy)
-    (reserved : Nat → Bool)
-    (hservice : (supported.resolvingRuntime nullValue window).messageApplication.InclusionService
-      (fun turn => reserved turn = true)
-      ((supported.resolvingRuntime nullValue window).messageApplication.wireEnvironment wire))
-    (period : Nat) (hperiod : 0 < period)
-    (hcapacity : ∀ block, period * principals.length ≤
-      (List.range' (((block + 1) * period - 1) * (serviceSlots + 1))
-        serviceSlots).countP reserved)
-    (hroster : ∀ who, who ∈ principals)
-    (hwindow : G.nodeCount * (period + 1) + 2 ≤ window)
-    (total : Nat) (hperiods : period ∣ total)
-    (next : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).roundDriver.runRounds
-      principals serviceSlots (fun who =>
-        supported.resolvingPolicy nullValue window who (profile who)) wire total
-      (PolicyExecution.initial _
-        (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support) :
-    next.native.application.visible.timeouts = [] := by
-  apply List.eq_nil_iff_forall_not_mem.mpr
-  intro index htimeout
-  obtain ⟨node, owner, hindex, hnotHonest, howned⟩ := supported.runRounds_timeout_owner
-    nullValue window principals serviceSlots (fun who =>
-      supported.resolvingPolicy nullValue window who (profile who)) wire reserved hservice
-    period hperiod hcapacity profile (fun _ => True) (fun _ _ => rfl)
-    (fun who _ => hroster who) hwindow total hperiods next hnext index htimeout
-  exact hnotHonest trivial
-
 end Vegas.EventGraph.SealedFragment
 
-/-- info: 'Vegas.EventGraph.SealedFragment.no_timeout_of_poll_service' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.EventGraph.SealedFragment.candidate_no_timeout_of_poll_service'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.no_timeout_of_poll_service
+#print axioms Vegas.EventGraph.SealedFragment.candidate_no_timeout_of_poll_service
 
-/-- info: 'Vegas.EventGraph.SealedFragment.tracePolicies_no_timeout' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.tracePolicies_no_timeout
 
-/-- info: 'Vegas.EventGraph.SealedFragment.runRounds_no_timeout' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.EventGraph.SealedFragment.candidate_tracePolicies_no_timeout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.runRounds_no_timeout
+#print axioms Vegas.EventGraph.SealedFragment.candidate_tracePolicies_no_timeout
 
-/-- info: 'Vegas.EventGraph.SealedFragment.runRounds_timeout_owner' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.EventGraph.SealedFragment.candidate_runRounds_no_timeout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.runRounds_timeout_owner
+#print axioms Vegas.EventGraph.SealedFragment.candidate_runRounds_no_timeout
 
-/-- info: 'Vegas.EventGraph.SealedFragment.runRounds_timeouts_eq_nil' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.EventGraph.SealedFragment.candidate_runRounds_timeout_owner'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.runRounds_timeouts_eq_nil
+#print axioms Vegas.EventGraph.SealedFragment.candidate_runRounds_timeout_owner

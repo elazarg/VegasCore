@@ -28,50 +28,60 @@ open MessageApplication GameTheory.Math.Probability
 universe uPrincipal uValue
 
 variable {Principal : Type uPrincipal} {Value : Type uValue}
-variable [DecidableEq Principal] [DecidableEq Value]
+variable [DecidableEq Principal]
+
+section Host
+
+variable {Service : Type (max uPrincipal uValue)}
+variable (runtime : SealedResolution Principal Value)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+      Option (ApplicationState Principal Value Service))
 
 /-- Arrival and service accounting for one round, including an initial backlog,
 arbitrary replays, and malformed submissions. This bound permits traffic to
 remain pending across player polls when a round has fewer reserved slots. -/
-theorem round_pending_bound (runtime : SealedResolution Principal Value)
+theorem round_pending_bound
     (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (wire : runtime.messageApplication.WirePolicy) (reserved : Nat → Bool)
-    (hservice : runtime.messageApplication.InclusionService
-      (fun turn => reserved turn = true) (runtime.messageApplication.wireEnvironment wire))
-    (execution next : runtime.messageApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.roundDriver.round
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (wire : (runtime.host prepare applyMessage).WirePolicy) (reserved : Nat → Bool)
+    (hservice : (runtime.host prepare applyMessage).InclusionService
+      (fun turn => reserved turn = true) ((runtime.host prepare applyMessage).wireEnvironment wire))
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
+    (hnext : next ∈ ((runtime.hostRoundDriver prepare applyMessage).round
       principals serviceSlots players wire execution).support) :
     next.native.pool.pending.length ≤ execution.native.pool.pending.length + principals.length -
       (List.range' execution.environmentHistory.length serviceSlots).countP reserved := by
   simp only [MessageApplication.RoundDriver.round, runPolicies_append, FinDist.support_bind,
     Set.mem_iUnion] at hnext
   obtain ⟨serviced, ⟨middle, hmiddle, hserviced⟩, hnext⟩ := hnext
-  have harrivals := runtime.messageApplication.runPolicies_pending_bound players
-    (runtime.messageApplication.wireEnvironment wire) (principals.map Invocation.player)
+  have harrivals := (runtime.host prepare applyMessage).runPolicies_pending_bound players
+    ((runtime.host prepare applyMessage).wireEnvironment wire) (principals.map Invocation.player)
     execution middle hmiddle
   simp [Function.comp_def, Invocation.isEnvironment] at harrivals
   have hhistory : middle.environmentHistory.length = execution.environmentHistory.length := by
     simpa [Function.comp_def, Invocation.isEnvironment] using
-      runtime.messageApplication.runPolicies_environmentHistory_length players
-        (runtime.messageApplication.wireEnvironment wire) (principals.map Invocation.player)
+      (runtime.host prepare applyMessage).runPolicies_environmentHistory_length players
+        ((runtime.host prepare applyMessage).wireEnvironment wire) (principals.map
+          Invocation.player)
         execution middle hmiddle
-  have hremaining := runtime.messageApplication.inclusion_phase_pending_bound players
-    reserved (runtime.messageApplication.wireEnvironment wire) hservice serviceSlots
+  have hremaining := (runtime.host prepare applyMessage).inclusion_phase_pending_bound players
+    reserved ((runtime.host prepare applyMessage).wireEnvironment wire) hservice serviceSlots
     middle serviced hserviced
   rw [hhistory] at hremaining
-  rw [runtime.clockStep_native serviced next hnext]
+  rw [runtime.clockStep_native prepare applyMessage serviced next hnext]
   dsimp only
   omega
 
 /-- Arrival and invocation accounting, with early stopping retained. -/
-private theorem runRounds_resource_bound (runtime : SealedResolution Principal Value)
+private theorem runRounds_resource_bound
     (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (wire : runtime.messageApplication.WirePolicy) (count : Nat)
-    (execution next : runtime.messageApplication.PolicyExecution)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (wire : (runtime.host prepare applyMessage).WirePolicy) (count : Nat)
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (hnext : next ∈
-      (runtime.roundDriver.runRounds
+      ((runtime.hostRoundDriver prepare applyMessage).runRounds
         principals serviceSlots players wire count execution).support) :
     next.native.pool.pending.length ≤ execution.native.pool.pending.length +
       count * principals.length ∧
@@ -94,9 +104,11 @@ private theorem runRounds_resource_bound (runtime : SealedResolution Principal V
         have htail := ih middle hnext
         have hround : middle.native.pool.pending.length ≤
             execution.native.pool.pending.length + principals.length := by
-          simpa using runtime.round_pending_bound principals serviceSlots players wire
+          simpa using runtime.round_pending_bound prepare applyMessage principals serviceSlots
+            players wire
             (fun _ => false) (by intro _ _ _ h; cases h) execution middle hmiddle
-        have hhistory := runtime.roundDriver.round_environmentHistory_length principals serviceSlots
+        have hhistory := (runtime.hostRoundDriver prepare
+          applyMessage).round_environmentHistory_length principals serviceSlots
           players wire execution middle hmiddle
         constructor
         · simp only [Nat.succ_mul]
@@ -109,40 +121,43 @@ private theorem runRounds_resource_bound (runtime : SealedResolution Principal V
 reserved capacity in its final wire phase drains every arrival since the
 block began, unless the driver has already stopped at application completion.
 All earlier wire opportunities remain unrestricted. -/
-theorem runRounds_complete_or_pending_empty (runtime : SealedResolution Principal Value)
+theorem runRounds_complete_or_pending_empty
     (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (wire : runtime.messageApplication.WirePolicy) (reserved : Nat → Bool)
-    (hservice : runtime.messageApplication.InclusionService
-      (fun turn => reserved turn = true) (runtime.messageApplication.wireEnvironment wire))
-    (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (wire : (runtime.host prepare applyMessage).WirePolicy) (reserved : Nat → Bool)
+    (hservice : (runtime.host prepare applyMessage).InclusionService
+      (fun turn => reserved turn = true) ((runtime.host prepare applyMessage).wireEnvironment wire))
+    (count : Nat) (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (hcapacity : execution.native.pool.pending.length + (count + 1) * principals.length ≤
       (List.range' (execution.environmentHistory.length + count * (serviceSlots + 1))
         serviceSlots).countP reserved)
     (hnext : next ∈
-      (runtime.roundDriver.runRounds
+      ((runtime.hostRoundDriver prepare applyMessage).runRounds
         principals serviceSlots players wire (count + 1) execution).support) :
     runtime.complete next.native.application.visible = true ∨ next.native.pool.pending = [] := by
-  rw [runtime.roundDriver.runRounds_add principals serviceSlots players wire count 1 execution]
+  rw [(runtime.hostRoundDriver prepare applyMessage).runRounds_add principals serviceSlots players
+    wire count 1 execution]
     at hnext
   simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
   obtain ⟨middle, hmiddle, hnext⟩ := hnext
   cases hcomplete : runtime.complete middle.native.application.visible with
   | true =>
-      rw [runtime.roundDriver.runRounds_of_complete
+      rw [(runtime.hostRoundDriver prepare applyMessage).runRounds_of_complete
         principals serviceSlots players wire 1 middle hcomplete,
         FinDist.mem_support_pure] at hnext
       subst next
       exact Or.inl hcomplete
   | false =>
-      have hresources := runtime.runRounds_resource_bound principals serviceSlots players wire
+      have hresources := runtime.runRounds_resource_bound prepare applyMessage principals
+        serviceSlots players wire
         count execution middle hmiddle
-      have hlast : next ∈ (runtime.roundDriver.round
+      have hlast : next ∈ ((runtime.hostRoundDriver prepare applyMessage).round
         principals serviceSlots players wire middle).support := by
         simpa only [MessageApplication.RoundDriver.runRounds, hcomplete,
           Bool.false_eq_true, ↓reduceIte,
           FinDist.bind_pure] using hnext
-      have hremaining := runtime.round_pending_bound principals serviceSlots players wire
+      have hremaining := runtime.round_pending_bound prepare applyMessage principals serviceSlots
+        players wire
         reserved hservice middle next hlast
       rw [hresources.2 hcomplete] at hremaining
       have hzero : next.native.pool.pending.length = 0 := by
@@ -153,19 +168,19 @@ theorem runRounds_complete_or_pending_empty (runtime : SealedResolution Principa
 /-- With per-round capacity, the queue is empty at every stopping boundary.
 Service may depend on the full public pool and its actual environment history;
 no restriction is placed on player policies. -/
-theorem runRounds_pending_empty (runtime : SealedResolution Principal Value)
+theorem runRounds_pending_empty
     (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (wire : runtime.messageApplication.WirePolicy) (reserved : Nat → Bool)
-    (hservice : runtime.messageApplication.InclusionService
-      (fun turn => reserved turn = true) (runtime.messageApplication.wireEnvironment wire))
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (wire : (runtime.host prepare applyMessage).WirePolicy) (reserved : Nat → Bool)
+    (hservice : (runtime.host prepare applyMessage).InclusionService
+      (fun turn => reserved turn = true) ((runtime.host prepare applyMessage).wireEnvironment wire))
     (hcapacity : ∀ turn, turn % (serviceSlots + 1) = 0 →
       principals.length ≤ (List.range' turn serviceSlots).countP reserved)
-    (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
+    (count : Nat) (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
     (hempty : execution.native.pool.pending = [])
     (hnext : next ∈
-      (runtime.roundDriver.runRounds
+      ((runtime.hostRoundDriver prepare applyMessage).runRounds
         principals serviceSlots players wire count execution).support) :
     next.native.pool.pending = [] := by
   induction count generalizing execution with
@@ -182,16 +197,22 @@ theorem runRounds_pending_empty (runtime : SealedResolution Principal Value)
       · simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
         obtain ⟨middle, hmiddle, hnext⟩ := hnext
         apply ih middle ?_ ?_ hnext
-        · rw [runtime.roundDriver.round_environmentHistory_length principals serviceSlots
+        · rw [(runtime.hostRoundDriver prepare applyMessage).round_environmentHistory_length
+          principals serviceSlots
             players wire
             execution middle hmiddle, Nat.add_mod, hphase]
           simp
-        · have hbound := runtime.round_pending_bound principals serviceSlots players wire reserved
+        · have hbound := runtime.round_pending_bound prepare applyMessage principals serviceSlots
+            players wire reserved
             hservice execution middle hmiddle
           rw [hempty, List.length_nil, Nat.zero_add] at hbound
           have hcap := hcapacity execution.environmentHistory.length hphase
           have hzero : middle.native.pool.pending.length = 0 := by omega
           simpa using hzero
+
+end Host
+
+variable [DecidableEq Value]
 
 private theorem runRounds_policy_prefix (runtime : SealedResolution Principal Value)
     (principals : List Principal) (serviceSlots : Nat)
@@ -240,7 +261,10 @@ theorem runRounds_ready_commitment_completed (runtime : SealedResolution Princip
       (runtime.roundDriver.runRounds
         principals serviceSlots players wire (count + 1) execution).support) :
     next.native.application.visible.completed node = true := by
-  rcases runtime.runRounds_complete_or_pending_empty principals serviceSlots players wire
+  rcases runtime.runRounds_complete_or_pending_empty
+      (fun (service : IdealCommitments Principal Nat Value) owner slot value =>
+        (service.sealValue owner slot value).state) runtime.handle principals serviceSlots players
+          wire
       reserved hservice count execution next hcapacity hnext with hcomplete | hempty
   · exact runtime.complete_node _ node hcomplete (List.getElem?_eq_some_iff.mp hrule).1
   · obtain ⟨schedule, hprefix⟩ := runtime.runRounds_policy_prefix principals serviceSlots
@@ -283,7 +307,10 @@ theorem runRounds_ready_opening_completed (runtime : SealedResolution Principal 
       (runtime.roundDriver.runRounds
         principals serviceSlots players wire (count + 1) execution).support) :
     next.native.application.visible.completed node = true := by
-  rcases runtime.runRounds_complete_or_pending_empty principals serviceSlots players wire
+  rcases runtime.runRounds_complete_or_pending_empty
+      (fun (service : IdealCommitments Principal Nat Value) owner slot value =>
+        (service.sealValue owner slot value).state) runtime.handle principals serviceSlots players
+          wire
       reserved hservice count execution next hcapacity hnext with hcomplete | hempty
   · exact runtime.complete_node _ node hcomplete (List.getElem?_eq_some_iff.mp hrule).1
   · obtain ⟨schedule, hprefix⟩ := runtime.runRounds_policy_prefix principals serviceSlots

@@ -14,6 +14,7 @@ import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedCandidateSettlement
+import Vegas.Compile.SealedCandidateDeadline
 import Interaction.SealedCandidateBinding
 import Vegas.Compile.SealedTermination
 import Vegas.Compile.SealedResolutionReadBound
@@ -1541,6 +1542,51 @@ theorem pending_candidate_termination
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_candidate_termination
+
+/-- Periodic inclusion capacity protects every compiled player from timeout
+in the candidate host, under arbitrary policies for the other players.
+Consequently, any recorded timeout belongs to an unprotected player. -/
+theorem pending_candidate_timeout_owner
+    {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat) (principals : List Player) (serviceSlots : Nat)
+    (players : Player →
+      (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
+    (wire : (supported.resolvingRuntime nullValue window).candidateApplication.WirePolicy)
+    (reserved : Nat → Bool)
+    (hservice : (supported.resolvingRuntime nullValue window).candidateApplication.InclusionService
+      (fun turn => reserved turn = true)
+      ((supported.resolvingRuntime nullValue window).candidateApplication.wireEnvironment wire))
+    (period : Nat) (hperiod : 0 < period)
+    (hcapacity : ∀ block, period * principals.length ≤
+      (List.range' (((block + 1) * period - 1) * (serviceSlots + 1))
+        serviceSlots).countP reserved)
+    (profile : ∀ who, CommitPolicy G who) (honest : Player → Prop)
+    (hplayers : ∀ who, honest who →
+      players who = (supported.resolvingRuntime nullValue window).candidatePlayerPolicy
+        (supported.resolvingPolicy nullValue window who (profile who)))
+    (hroster : ∀ who, honest who → who ∈ principals)
+    (hwindow : G.nodeCount * (period + 1) + 2 ≤ window)
+    (total : Nat) (hperiods : period ∣ total)
+    (next : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution)
+    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).candidateRoundDriver.runRounds
+      principals serviceSlots players wire total (MessageApplication.PolicyExecution.initial _
+        (MessageApplication.State.initial _ (supported.resolvingRuntime nullValue
+          window).candidateInitial))).support)
+    (index : Nat) (htimeout : index ∈ next.native.application.visible.timeouts) :
+    ∃ (node : Fin G.nodeCount) (owner : Player), node.val = index ∧ ¬ honest owner ∧
+      ((∃ guard, (G.nodeRow node).sem = .commit owner guard) ∨
+        ∃ (producer : Fin G.nodeCount) (guard : EventGuard L),
+          (G.nodeRow node).sem = .reveal (G.nodeTarget producer) ∧
+          (G.nodeRow producer).sem = .commit owner guard) :=
+  supported.candidate_runRounds_timeout_owner nullValue window principals serviceSlots
+    players wire reserved hservice period hperiod hcapacity profile honest hplayers hroster
+    hwindow total hperiods next hnext index htimeout
+
+/-- info: 'Vegas.Paper.pending_candidate_timeout_owner'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_timeout_owner
 
 section CandidateSettlement
 
