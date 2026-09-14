@@ -427,10 +427,9 @@ The checked source point-mass theorem is `Vegas.denoteSource_prob_eq_prod`,
 audited as `Vegas.Paper.source_point_probability`. It applies to the existing
 written-source denotation, with every binding retained in its terminal
 environment. The factors include sample probabilities, guarded commitment
-probabilities, and a final equality check. Specializing this to the honest
-assignment law in (2) still requires eliminating deterministic focal choices
-and projecting the retained environment; the general factorization alone does
-not establish (2) or the cylinder-mass identity below. The dependent-choice
+probabilities, and a final equality check. The cylinder calculation below works
+directly on these complete source environments; it does not need a separate
+point-mass formula for the projected honest assignment law in (2). The dependent-choice
 regression copies a first draw at a later source decision: its factors are
 `[law.prob value, 1, 1]`, including when `law.prob value = 0`.
 
@@ -489,11 +488,45 @@ source events: those events cannot be missing producers of its read set.
 
 **Prefix mass.** `q_w(C_t) = p_w(t)`.
 
-Sum (2) over the rectangle. Pull out the factors in `J(t)` by kernel
-agreement. Their product is (3). Sum the remaining coordinates in reverse
-source order. Each remaining kernel is normalized; no remaining factor
-depends on a later uneliminated variable. Fixed coordinates cause no problem,
-since their factors have already been removed. The remaining sum is one.
+Construct a source restriction `rho_t` that fixes each honest site in `J(t)`
+to its recorded value `b_d` and leaves every other source kernel unchanged,
+including the focal policy `tau_w`. These forced values are legal in the
+admitted unrestricted-guard fragment. Let `nu_t` be the ordinary normalized
+source execution under that restricted profile. This reference law is used
+only to calculate probabilities, not as the backtranslated deviation: the
+source marginal to be simulated still has the original opponents.
+
+For a complete source environment `s`, let `W_t(s)` be the product of the
+original conditional probabilities of the forced choices. The exact identity is
+
+```text
+1_{C_t}(s) * mu_w(s) = W_t(s) * nu_t(s),
+mu_w(C_t) = E_{s ~ nu_t}[W_t(s)].
+```
+
+Here `mu_w` is the original full source-environment law, whose honest-coordinate
+projection is `q_w`. The Lean theorem `denoteSource_restriction_density` proves
+the pointwise identity for general source restrictions, and
+`denoteSource_restriction_probability` sums it. It allows samples, guards, and
+restrictions selected at source policy inputs. `denoteSource_restriction_support`
+proves that all reference runs satisfy the restriction. No positive mass or
+conditional distribution is needed; a forced choice may have probability zero
+under the original policy.
+
+Kernel agreement gives `W_t(s) = p_w(t)` throughout the support of `nu_t`.
+The reference law is normalized, so
+`denoteSource_restriction_probability_of_constant` gives the required mass.
+Equivalently, the free-coordinate sums in (2) can be eliminated in reverse
+source order after pulling out the fixed factors. The reference-law proof
+uses the existing source denotation to perform that normalization directly.
+
+The general source identities are checked and audited in `Paper.lean`.
+Their compiler instantiation remains open: define the restriction from the
+recorded honest registrations, identify its event with the replay cylinder,
+and derive its constant weight from the all-assignment kernel agreement and
+the native invocation factors. In particular, positivity under `mu_w` cannot
+replace the all-assignment comparison: `nu_t` may support environments that
+have zero original probability.
 
 This step preserves dependent honest draws. It does not assume that a
 scheduler's public input is independent of every still-unopened value.

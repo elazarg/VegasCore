@@ -26,4 +26,19 @@ theorem prob_bind_of_unique_branch (law : FinDist α) (branch : α → FinDist �
   · rw [if_neg heq, prob_eq_zero_iff]
     exact fun hbranch => heq (hunique value hvalue hbranch).symm
 
+/-- A pointwise weighting identity computes an event mass using a normalized
+reference law. Neither positive event probability nor division is required. -/
+theorem probOf_eq_expect_of_weighting (law reference : FinDist α) (event : Set α)
+    [DecidablePred (· ∈ event)]
+    (weight : α → ℝ)
+    (hweight : ∀ outcome, (if outcome ∈ event then law.prob outcome else 0) =
+      weight outcome * reference.prob outcome) :
+    law.probOf event = reference.expect weight := by
+  classical
+  rw [← expect_indicator_eq_probOf, expect, expect]
+  apply tsum_congr
+  intro outcome
+  rw [mul_comm (reference.prob outcome), ← hweight]
+  split_ifs <;> simp only [mul_one, mul_zero]
+
 end GameTheory.Math.Probability.FinDist

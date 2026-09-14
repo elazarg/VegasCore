@@ -65,6 +65,23 @@ theorem denoteSource_bind_cons_prob {Γ : VCtx P L} {name : VarId} {binding : Bi
   rw [denoteSource_initialProjection tail profile (env.cons value) final hfinal,
     VEnv.cons_get_here]
 
+/-- A source commitment contributes the mass of its retained value. -/
+theorem denoteSource_prob_commit {Γ : VCtx P L} {name : VarId} {who : P} {ty : L.Ty}
+    (guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Γ)) L.bool)
+    (tail : VegasCore P L ((name, .sealed who ty) :: Γ))
+    (profile : SourceBehavioralProfile (.commit name who guard tail)) (env : VEnv L Γ)
+    (final : VEnv L (sourceTerminalCtx tail)) :
+    (denoteSource (.commit name who guard tail) profile env).prob final =
+      ((profile who (.here guard tail) (env.toView who).eraseEnv).map Subtype.val).prob
+          ((sourceInitialProjection tail final).get .here) *
+        (denoteSource tail profile.afterCommit
+          (env.cons ((sourceInitialProjection tail final).get .here))).prob final := by
+  have hbind := FinDist.bind_map Subtype.val
+    (profile who (.here guard tail) (env.toView who).eraseEnv)
+    (fun value => denoteSource tail profile.afterCommit (env.cons value))
+  exact (congrArg (fun law => law.prob final) hbind.symm).trans
+    (denoteSource_bind_cons_prob tail profile.afterCommit env _ final)
+
 /-- The exact point-mass factors of existing source execution. A sample or
 commitment contributes its conditional draw probability at the value retained
 by the queried final environment; reveals use their ordinary deterministic
@@ -101,16 +118,10 @@ theorem denoteSource_prob_eq_prod : {Γ : VCtx P L} → (prog : VegasCore P L Γ
           ((sourceInitialProjection tail final).get .here) * ·)
           (denoteSource_prob_eq_prod tail profile.afterSample _ final))
   | _, .commit _ who guard tail, profile, env, final => by
-      change ((profile who (.here guard tail) (env.toView who).eraseEnv).bind fun choice =>
-        denoteSource tail profile.afterCommit (env.cons choice.1)).prob final = _
-      have hbind := FinDist.bind_map Subtype.val
-        (profile who (.here guard tail) (env.toView who).eraseEnv)
-        (fun value => denoteSource tail profile.afterCommit (env.cons value))
-      exact (congrArg (fun law => law.prob final) hbind.symm).trans
-        ((denoteSource_bind_cons_prob tail profile.afterCommit env _ final).trans
+      exact (denoteSource_prob_commit guard tail profile env final).trans
         (congrArg (((profile who (.here guard tail) (env.toView who).eraseEnv).map
           Subtype.val).prob ((sourceInitialProjection tail final).get .here) * ·)
-          (denoteSource_prob_eq_prod tail profile.afterCommit _ final)))
+          (denoteSource_prob_eq_prod tail profile.afterCommit _ final))
   | _, .reveal _ _ _ _ tail, profile, env, final => by
       exact denoteSource_prob_eq_prod tail profile.afterReveal _ final
 

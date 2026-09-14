@@ -20,6 +20,7 @@ import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
 import Vegas.Core.SourceLikelihood
+import Vegas.Core.SourceRestriction
 import Vegas.EventGraph.Confluence
 import Vegas.EventGraph.Fence
 import Vegas.EventGraph.SourceOrder
@@ -63,6 +64,26 @@ theorem source_point_probability {Γ : VCtx Player L} (prog : VegasCore Player L
     (final : VEnv L (sourceTerminalCtx prog)) :
     (denoteSource prog profile env).prob final = (sourcePointFactors prog profile env final).prod :=
   denoteSource_prob_eq_prod prog profile env final
+
+/-- A normalized source execution with selected legal choices fixed computes
+the original event probability by likelihood weighting. -/
+theorem source_restriction_probability {Γ : VCtx Player L} (prog : VegasCore Player L Γ)
+    (profile : SourceBehavioralProfile prog) (restriction : SourceChoiceRestriction prog)
+    (env : VEnv L Γ) :
+    (denoteSource prog profile env).probOf {final | restriction.Allows env final} =
+      (denoteSource prog (restriction.apply profile) env).expect
+        (restriction.weight profile env) :=
+  denoteSource_restriction_probability prog profile restriction env
+
+/-- The source summation step. Instantiating its likelihood-constancy premise
+with pending-message replay is a separate compiler obligation. -/
+theorem source_restriction_probability_of_constant {Γ : VCtx Player L}
+    (prog : VegasCore Player L Γ) (profile : SourceBehavioralProfile prog)
+    (restriction : SourceChoiceRestriction prog) (env : VEnv L Γ) (mass : ℝ)
+    (hconstant : ∀ final ∈ (denoteSource prog (restriction.apply profile) env).support,
+      restriction.weight profile env final = mass) :
+    (denoteSource prog profile env).probOf {final | restriction.Allows env final} = mass :=
+  denoteSource_restriction_probability_of_constant prog profile restriction env mass hconstant
 
 /-- Exact native prefix probabilities, before any compiler-specific
 identification with source cylinder masses. -/
@@ -1044,3 +1065,13 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.native_prefix_probability
+
+/-- info: 'Vegas.Paper.source_restriction_probability' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_restriction_probability
+
+/-- info: 'Vegas.Paper.source_restriction_probability_of_constant' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_restriction_probability_of_constant

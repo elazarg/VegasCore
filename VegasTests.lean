@@ -25,6 +25,7 @@ import VegasTests.SealedCompiler
 import VegasTests.PendingDisclosureIncentive
 import VegasTests.PendingStages
 import VegasTests.SourceGraph
+import VegasTests.SourceRestriction
 import VegasTests.SealedPolicy
 import VegasTests.SealedReplay
 import VegasTests.SealedResolution
