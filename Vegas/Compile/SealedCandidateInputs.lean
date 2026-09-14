@@ -69,10 +69,10 @@ variable (nullValue : L.Val ty) (window : Nat)
 
 include hterminal
 
-/-- An actual successful opening has the source reveal value whenever its
-openable accepted candidate has the source commitment value. Openability of
+/-- An actual successful opening has the graph reveal value whenever its
+openable accepted candidate has the graph commitment value. Openability of
 other accepted candidates is neither assumed nor needed. -/
-theorem candidate_opened_source_value
+theorem candidate_opened_graph_value
     (state : (supported.resolvingRuntime nullValue window).candidateApplication.Application)
     (hopening : SealedResolution.CandidateOpeningInvariant
       (supported.resolvingRuntime nullValue window) state)
@@ -149,7 +149,7 @@ theorem candidate_registration_kernel
     erw [hprepared.memory node.val, hcache]
     rfl
   · apply cfg.sealedPlayerStore_reads_eq ty who _ execution.native.application.visible.events ?_
-      (supported.candidate_opened_source_value cfg hterminal nullValue window
+      (supported.candidate_opened_graph_value cfg hterminal nullValue window
         execution.native.application hopening hclear haccepted)
       guard.choiceReads reads (ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some hreads)
     intro index handle stored hmem howner hcache

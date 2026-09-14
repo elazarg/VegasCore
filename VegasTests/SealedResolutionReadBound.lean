@@ -4,7 +4,7 @@ import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedCandidateSourceExtraction
 import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateSourceLikelihood
-import Vegas.Compile.SealedCandidateSourceFactors
+import Vegas.Compile.SealedCandidateGraphFactors
 import Vegas.Compile.SealedCandidateNativeLikelihood
 import Vegas.Compile.SealedCandidateRandomizedCoupling
 import VegasTests.PendingSource
@@ -438,10 +438,10 @@ theorem candidate_correlated_cylinder (bits : FinDist Bool) (reference : Bool) :
   exact sealedFragment.candidateReplay_cylinder_probability none 3 1 selectCommand
     (fun _ _ => .include (1, 0)) schedule (fun _ => false) assignments (fun _ => some reference)
 
-/-- The source probability for competing-candidate traffic is a product of
+/-- The graph probability for competing-candidate traffic is a product of
 original honest preparation probabilities. The queried assignment need not
 have positive probability under this profile. -/
-theorem candidate_source_prefix_product (profile : SourceBehavioralProfile core)
+theorem candidate_graph_prefix_product (profile : CommitPolicyProfile graph)
     (reference : Fin graph.nodeCount → Value) :
     let schedule : List (@Invocation PendingSource.Player) :=
       [.player 0, .player 1, .player 1, .player 1, .environment]
@@ -449,15 +449,20 @@ theorem candidate_source_prefix_product (profile : SourceBehavioralProfile core)
       !execution.native.application.visible.timeouts.isEmpty
     let replay := fun values => (sealedFragment.candidateReplay none 3 values 1 selectCommand
       (fun _ _ => .include (1, 0)) schedule).prefixThrough stop
-    ((compilation.extractedCandidateSourceRun none 3 1 selectCommand
+    ((sealedFragment.candidateGraphRun
+      (Vegas.ToEventGraph.compile_publicPrefixReadable source.core)
+      (Vegas.ToEventGraph.compile_guardLive source.core source.legal) none 3 1 selectCommand
       (fun _ _ => .include (1, 0)) schedule none profile).map
         (fun cfg => replay (cfg.1.nodeValues none))).prob (replay reference) =
-      (core.decisionPositions.map fun slot =>
-        compilation.candidateReplayRegistrationFactor none 3 1 selectCommand
+      (graph.commitPositions.map fun slot =>
+        sealedFragment.candidateReplayRegistrationFactor none 3 1 selectCommand
           (fun _ _ => .include (1, 0)) schedule reference profile slot.1 slot.2).prod := by
   intro schedule stop replay
-  exact compilation.extractedCandidateSourceRun_replay_prob_eq_product none 3 1 selectCommand
-    (fun _ _ => .include (1, 0)) schedule none reference profile
+  exact (sealedFragment.candidateGraphRun_replay_prob_eq_product none 3 1 selectCommand
+    (fun _ _ => .include (1, 0)) schedule
+    (Vegas.ToEventGraph.compile_publicPrefixReadable source.core)
+    (Vegas.ToEventGraph.compile_guardLive source.core source.legal)
+    none reference profile).trans (graph.prod_commitPositions _).symm
 
 private def pendingReactiveCommand (history : List runtime.candidateApplication.PlayerEntry)
     (view : runtime.candidateApplication.View) : runtime.candidateApplication.PlayerCommand :=
@@ -515,7 +520,12 @@ theorem candidate_coupling_retains_timeout_suffix (profile : SourceBehavioralPro
       trace.last.native.application.service.lookup (1, 99),
       (trace.last.principalHistory 1).length)
   change coupled.map (project ∘ Prod.snd) = _
-  rw [← FinDist.map_comp, compilation.extractedCandidateSourceCoupling_native]
+  rw [← FinDist.map_comp]
+  change ((sealedFragment.candidateGraphCoupling
+    (Vegas.ToEventGraph.compile_publicPrefixReadable source.core)
+    (Vegas.ToEventGraph.compile_guardLive source.core source.legal)
+    _ _ _ _ _ _ _ _).map Prod.snd).map _ = _
+  rw [sealedFragment.candidateGraphCoupling_native]
   simp only [schedule, tracePolicies, invoke, GameTheory.Profile.update_same,
     environmentPolicyStep, playerStep, advance, EnvironmentPolicyCommand.toAction,
     PlayerCommand.toAction, MessageApplication.step, SealedResolution.candidateApplication,

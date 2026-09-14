@@ -32,12 +32,12 @@ The intended strategic proof factors through the graph as an independent
 intermediate representation. The source/graph simulation is checked. Backend
 extraction consumes an explicit graph information condition and returns graph
 policies directly; the source compiler certifies that condition. Graph choice
-restriction, accepted-value reconstruction, and preparation-kernel equality are
-checked independently of source syntax. The graph-side replay mass is a product
-of native checkpoint probabilities. Native invocation counting and the full-trace
-coupling still use source-specific proofs, so the
-independent graph/runtime strategic certificate and its end-to-end composition
-remain unfinished. See [the factoring plan](docs/compilation-design.md#strategic-intermediate-representation).
+restriction, native prefix laws, and randomized full-trace coupling are checked
+independently of source syntax. Source results delegate to these graph/backend
+laws and transport source outcomes. The candidate stopped-round timeout and
+utility arguments remain unfinished, so the backend does not yet supply the
+utility-simulation certificate required for end-to-end strategic composition.
+See [the factoring plan](docs/compilation-design.md#strategic-intermediate-representation).
 
 The former application-plan path is archived under `archive/fused/`. Its
 adjacent `commit; reveal` fusion emitted a value-bearing request without a

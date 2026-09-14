@@ -26,6 +26,12 @@
       "Vegas.Paper.pending_normal_completion"
     ]
   },
+  "prose:pending-candidate-graph-coupling": {
+    "theorems": [
+      "Vegas.Paper.pending_candidate_randomized_graph_coupling",
+      "Vegas.Paper.pending_candidate_randomized_source_coupling"
+    ]
+  },
   "prose:pending-round-coupling": {
     "theorems": [
       "Vegas.Paper.pending_randomized_round_source_coupling",

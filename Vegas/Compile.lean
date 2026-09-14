@@ -37,8 +37,6 @@ import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateValues
 import Vegas.Compile.SealedCandidateCylinder
 import Vegas.Compile.SealedCandidateSourceLikelihood
-import Vegas.Compile.SealedCandidateReferenceKernel
-import Vegas.Compile.SealedCandidateSourceFactors
 import Vegas.Compile.SealedCandidateNativeLikelihood
 import Vegas.Compile.SealedCandidateContinuation
 import Vegas.Compile.SealedCandidateRandomizedCoupling
@@ -49,6 +47,9 @@ import Vegas.Compile.SealedCandidateExtraction
 import Vegas.Compile.SealedCandidateRealization
 import Vegas.Compile.SealedCandidateGraphKernel
 import Vegas.Compile.SealedCandidateGraphFactors
+import Vegas.Compile.SealedCandidateGraphNative
+import Vegas.Compile.SealedCandidateGraphCoupling
+import Vegas.Compile.SealedCandidateGraphRandomized
 import Vegas.Compile.SealedCandidateGraphLikelihood
 import Vegas.Compile.SealedGraphRestriction
 import Vegas.Compile.SealedCandidateHonestRound

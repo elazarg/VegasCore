@@ -1,15 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedCandidateContinuation
-import Interaction.MessageApplicationPredraw
+import Vegas.Compile.SealedCandidateGraphRandomized
 
 /-! # Randomized pending-message deviation coupling
 
-Predrawing the focal policy and the environment preserves their complete native
-trace law. Applying the source/native coupling to each fixed pair of responses
-therefore preserves the joint law of the stopped prefix and complete trace.
-The retained source marginal is a finite mixture of ordinary source deviations
-against unchanged opponents.
+The graph/backend theorem supplies the joint native trace law and graph
+deviation mixture. Source/graph correspondence transports its graph marginal
+to ordinary written-source deviations against unchanged opponents. The
+compiler's public payoff-read certificate transports normal payout agreement.
 
 The pure focal and environment responses in the mixture may be correlated.
 Each response still uses its own declared history and observation; predrawing
@@ -91,35 +90,25 @@ theorem exists_randomized_candidate_source_coupling
         compilation.publicPayout? trace.last.native.application.visible.events =
           evalPayoffs? (compile source.core).payoffs cfg.1.store := by
   intro runtime players initial native stop PlayerResponse EnvironmentResponse
-  obtain ⟨responsePairs, responsePairs_trace⟩ :=
-    runtime.candidateApplication.exists_joint_response_mixture_tracePolicies players environment
-      focal schedule initial replacement
-  refine ⟨responsePairs, ?_, ?_, ?_, ?_⟩
-  · have h := congrArg (fun law => law.map
-      (fun trace : runtime.candidateApplication.PolicyTrace =>
-        (trace.prefixThrough stop, trace))) responsePairs_trace
-    rw [FinDist.map_bind] at h
-    refine Eq.trans ?_ h
+  obtain ⟨responsePairs, hjoint, hgraph, hnative, hpublic⟩ :=
+    compilation.supported.exists_randomized_candidate_graph_coupling
+      (compile_publicPrefixReadable source.core) (compile_guardLive source.core source.legal)
+      nullValue window focal environment schedule fallback
+      (fun who => compileSourcePolicy source.core.prog source.core.fresh
+        (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+        rfl who (profile who)) replacement
+  refine ⟨responsePairs, hjoint, ?_, hnative, ?_⟩
+  · have hsource := congrArg (fun law => law.map (observeSourceOutcome source.core)) hgraph
+    simp only [FinDist.map_comp, FinDist.map_bind, Function.comp_def] at hsource
+    rw [FinDist.map_bind]
+    refine hsource.trans ?_
     apply FinDist.bind_congr
     intro responses _
-    exact compilation.extractedCandidateSourceCoupling_prefix_native nullValue window focal
-      responses.1 responses.2 schedule fallback profile
-  · rw [FinDist.map_bind]
-    apply FinDist.bind_congr
-    intro responses _
-    exact compilation.extractedCandidateSourceCoupling_source nullValue window focal responses.1
-      responses.2 schedule fallback profile
-  · rw [FinDist.map_bind]
-    refine Eq.trans ?_ responsePairs_trace
-    apply FinDist.bind_congr
-    intro responses _
-    exact compilation.extractedCandidateSourceCoupling_native nullValue window focal responses.1
+    exact compilation.extractedCandidateSourceRun_source nullValue window focal responses.1
       responses.2 schedule fallback profile
   · intro cfg trace hpair hcomplete hclear
-    simp only [FinDist.support_bind, Set.mem_iUnion] at hpair
-    obtain ⟨responses, _, hpair⟩ := hpair
-    exact compilation.extractedCandidateSourceCoupling_payout_of_complete_clear nullValue window
-      focal responses.1 responses.2 schedule fallback profile cfg trace hpair hcomplete hclear
+    exact compilation.publicPayout?_eq_graph_of_public_store _ _
+      (hpublic cfg trace hpair hcomplete hclear)
 
 end Vegas.SealedCompilation
 

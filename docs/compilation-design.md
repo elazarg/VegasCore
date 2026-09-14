@@ -74,22 +74,29 @@ accepted value in pre-timeout replay from the complete graph realization.
 `candidateGraphRun_registration_kernel` and
 `restrictedCandidateGraphRun_registration_kernel` identify honest native
 preparations with arbitrary graph kernels at their declared reads, including
-throughout zero-mass reference cylinders. The source kernel adapter delegates
-to these results after transporting its profile restriction.
+throughout zero-mass reference cylinders.
 `candidateGraphRun_replay_prob_eq_product` evaluates the graph replay mass as
 a product of those native checkpoint probabilities, with unchanged graph
 opponents. The product is indexed by actual graph nodes; no source decision
 positions or source execution factorization occur in that proof.
 
-This factoring is incomplete. The native invocation-counting argument and
-the randomized full-trace deviation coupling still use source-specific
-interfaces. The existing source likelihood product uses the shared native
-factor definition but has not been replaced by the graph product theorem.
-Some backend modules also transitively import mixed source/backend modules.
-The next proof work is to identify the actual native trace mass with that graph
-product, then construct the graph/native coupling with arbitrary graph opponents. The
-candidate stopped-round and first-honest-timeout arguments must consume that
-coupling. Legal resolution defaults and the quitting utility bound need graph
+`Graph.commitPositions` indexes native preparation factors by actual graph
+commitments. `candidateReplay_registration_factor` compares each invocation
+with its replay checkpoint using the same graph site and declared reads.
+`candidateGraphRun_native_prefix_law` identifies the full native law through
+first timeout. `candidateGraphCoupling` attaches the actual native continuation,
+retains both marginals and their joint prefix/full-trace law, and proves
+public-field agreement on normal completion.
+`exists_randomized_candidate_graph_coupling` lifts this construction to arbitrary
+randomized player and environment policies with unchanged graph opponents.
+The source prefix and randomized-coupling results delegate to these backend
+theorems; source outcome and payout transport occur only in their source adapters.
+
+The strategic factoring is incomplete. Some backend modules still transitively
+import mixed source/backend modules. More importantly, candidate stopped-round
+coupling and exclusion of a first honest timeout under deadline-relative service
+must be established using the graph/native coupling. Legal resolution defaults
+and the quitting utility bound need graph
 formulations with compiler certificates, rather than a hidden source-image
 premise. Only after those laws are proved can the candidate backend expose a
 `UtilitySimulation` and the source-to-runtime theorem delegate to composition.
@@ -206,42 +213,43 @@ graph decisions. Generated honest submissions name their graph sites,
 and their actual caches retain their assigned graph values.
 `candidateGraphRun_registration_kernel` therefore identifies the
 fresh honest draw with the original graph kernel without an input-agreement
-premise. Source likelihood uses a host-independent `recordedChoiceRestriction`:
-a partial map of owner/site coordinates fixes selected choices, while all other
-kernels remain unchanged. The candidate catalog supplies its openable honest
-source slots to this map. This projection is only a source-event constraint;
+premise. Graph likelihood uses `CommitRestriction`: a partial map of owner/site
+coordinates fixes selected choices, while all other kernels remain unchanged.
+The candidate catalog supplies its openable honest graph slots to this map.
+This projection is only a graph-event constraint;
 fresh and unopenable candidates remain distinct in the native execution.
-`restrictedCandidateSourceRun_replay_prefix` proves that every normalized
+`restrictedCandidateGraphRun_replay_prefix` proves that every normalized
 reference realization reproduces the full candidate prefix.
-`extractedCandidateSourceRun_replay_likelihood` computes the source prefix mass
+`candidateReplay_graph_likelihood` computes the graph prefix mass
 as the expected forced-choice likelihood, including zero-mass cylinders and
-dependent honest choices. Both hosts use the same source probability transfer.
-`restrictedCandidateSourceRun_registration_probability` extends the original-kernel
+dependent honest choices.
+`restrictedCandidateGraphRun_registration_kernel` extends the original-kernel
 comparison throughout the reference law. The shared policy-checkpoint theorem
 uses actual invocation provenance to locate every opening's preparation strictly
-before the cutoff. `extractedCandidateSourceRun_replay_prob_eq_product` evaluates
-the source prefix mass as a finite product of those native preparation
+before the cutoff. `candidateGraphRun_replay_prob_eq_product` evaluates
+the graph prefix mass as a finite product of those native preparation
 probabilities. `candidateReplay_registration_factor` compares those checkpoint
-probabilities with actual invocation probabilities using the same source reads.
+probabilities with actual invocation probabilities using the same graph reads.
 The native likelihood calculation counts only openable tracked handles:
 successful fresh preparation multiplies the potential by one factor, while
 acceptance preserves it even when fixing an unopenable candidate. Both hosts
 share the finite-product algebra and stopped-trace likelihood induction.
 `candidateReplay_prefix_prob_eq_product` proves native trace mass equal to the
-source product. `extractedCandidateSourceRun_native_prefix_law` consequently
+graph product. `candidateGraphRun_native_prefix_law` consequently
 identifies the whole native prefix law through first timeout, with unchanged
-opponent source policies. Its fixed focal/environment functions may depend on
+opponent graph policies. Its fixed focal/environment functions may depend on
 their full declared histories and observations; no positive-mass or service
 premise is assumed. This is not a completed-outcome or Nash theorem.
 
 Continuation is a shared message-runner construction, `MessageApplication.couplePrefix`.
-It retains the source realization and runs the unused native invocation suffix from
+It retains the graph realization and runs the unused native invocation suffix from
 the selected prefix's complete state, preserving the exact joint prefix/full-trace
-law. The candidate instantiation proves pointwise public-field and payout agreement
-with that retained source on normal completion. Shared joint predrawing then lifts
+law. The candidate instantiation proves pointwise public-field agreement
+with that retained graph on normal completion. Shared joint predrawing then lifts
 the result to arbitrary randomized focal and environment policies in
-`exists_randomized_candidate_source_coupling`. Its source mixture is fixed before
-execution and retains every original opponent kernel. The same continuation and
+`exists_randomized_candidate_graph_coupling`. Its graph mixture is fixed before
+execution and retains every original opponent kernel. Source outcomes and
+public payout agreement are transported by the source adapter. The same continuation and
 joint-predrawing APIs are used by the registered host.
 
 This supplies the probability part of the arbitrary-deviation argument, including

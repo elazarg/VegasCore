@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.EventGraph.Basic
 import Vegas.EventGraph.Batch
 import Vegas.EventGraph.Build
+import Vegas.EventGraph.CommitPositions
 import Vegas.EventGraph.Confluence
 import Vegas.EventGraph.Execution
 import Vegas.EventGraph.Fence

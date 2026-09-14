@@ -1684,6 +1684,77 @@ theorem pending_candidate_source_native_prefix_law
   compilation.extractedCandidateSourceRun_native_prefix_law nullValue window focal deviator
     environment schedule fallback profile
 
+section CandidateGraphCoupling
+
+open MessageApplication
+
+variable [Fintype Player]
+variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+variable (supported : SealedFragment G ty) (hinfo : G.PublicPrefixReadable) (hguards : GuardLive G)
+variable (nullValue : L.Val ty) (window : Nat) (focal : Player)
+variable (environment :
+  (supported.resolvingRuntime nullValue window).candidateApplication.EnvironmentPolicy)
+variable (schedule : List (@Invocation Player)) (fallback : L.Val ty)
+
+/-- Arbitrary native deviations admit a full-trace coupling with a finite
+mixture of unilateral graph deviations and public-field agreement on normal
+completion. The graph opponents are arbitrary; no source-image premise occurs. -/
+theorem pending_candidate_randomized_graph_coupling
+    (profile : CommitPolicyProfile G)
+    (replacement :
+      (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy) :
+    let runtime := supported.resolvingRuntime nullValue window
+    let players := fun who =>
+      runtime.candidatePlayerPolicy (supported.resolvingPolicy nullValue window who (profile who))
+    let initial := PolicyExecution.initial runtime.candidateApplication
+      (State.initial _ runtime.candidateInitial)
+    let native := runtime.candidateApplication.tracePolicies
+      (Profile.update (sig := policySignature Player runtime.candidateApplication)
+        players focal replacement) environment schedule initial
+    let stop := fun execution : runtime.candidateApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    let PlayerResponse := List runtime.candidateApplication.PlayerEntry →
+      runtime.candidateApplication.View → runtime.candidateApplication.PlayerCommand
+    let EnvironmentResponse := List runtime.candidateApplication.EnvironmentEntry →
+      runtime.candidateApplication.EnvironmentObservation →
+        runtime.candidateApplication.EnvironmentPolicyCommand
+    ∃ responsePairs : FinDist (PlayerResponse × EnvironmentResponse),
+      (responsePairs.bind fun responses =>
+        (supported.candidateGraphCoupling hinfo hguards nullValue window focal responses.1
+          responses.2 schedule fallback profile).map (fun pair =>
+            ((supported.candidateReplay nullValue window (pair.1.1.nodeValues fallback)
+              focal responses.1 responses.2 schedule).prefixThrough stop, pair.2))) =
+          native.map (fun trace => (trace.prefixThrough stop, trace)) ∧
+      ((responsePairs.bind fun responses =>
+        supported.candidateGraphCoupling hinfo hguards nullValue window focal responses.1
+          responses.2 schedule fallback profile).map Prod.fst) =
+        responsePairs.bind (fun responses =>
+          supported.candidateGraphRun hinfo hguards nullValue window focal responses.1
+            responses.2 schedule fallback profile) ∧
+      ((responsePairs.bind fun responses =>
+        supported.candidateGraphCoupling hinfo hguards nullValue window focal responses.1
+          responses.2 schedule fallback profile).map Prod.snd) =
+        runtime.candidateApplication.tracePolicies
+          (Profile.update (sig := policySignature Player runtime.candidateApplication)
+            players focal replacement) environment schedule initial ∧
+      ∀ cfg trace, (cfg, trace) ∈ (responsePairs.bind fun responses =>
+        supported.candidateGraphCoupling hinfo hguards nullValue window focal responses.1
+          responses.2 schedule fallback profile).support →
+        runtime.complete trace.last.native.application.visible = true →
+        trace.last.native.application.visible.timeouts = [] →
+        ∀ ref : FieldRef L, G.fieldRefPublic ref →
+          Store.getAs (G.publicSealedStore ty trace.last.native.application.visible.events)
+            ref.field ref.ty = Store.getAs cfg.1.store ref.field ref.ty :=
+  supported.exists_randomized_candidate_graph_coupling hinfo hguards nullValue window focal
+    environment schedule fallback profile replacement
+
+end CandidateGraphCoupling
+
+/-- info: 'Vegas.Paper.pending_candidate_randomized_graph_coupling'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_randomized_graph_coupling
+
 section CandidateCoupling
 
 open ToEventGraph MessageApplication
