@@ -34,6 +34,7 @@ import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedCandidatePolicy
 import Vegas.Compile.SealedCandidateInputs
+import Vegas.Compile.SealedCandidateValues
 import Vegas.Compile.SealedCandidateReadBound
 import Vegas.Compile.SealedCandidateReplay
 import Vegas.Compile.SealedCandidateSourceExtraction

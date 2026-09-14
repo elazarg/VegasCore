@@ -2,6 +2,7 @@
 
 import Vegas.Compile.SealedCandidateReplay
 import Vegas.Compile.SealedDisclosureRun
+import Vegas.Compile.SealedCandidateValues
 
 /-! # Written-source policies extracted from accepted candidates
 
@@ -113,6 +114,163 @@ theorem extractedCandidateSourceRun_consistent (profile : SourceBehavioralProfil
     window (cfg.1.nodeValues fallback) focal deviator environment schedule decision guard
       hdecision fallback)
 
+/-- The complete legal source realization retains every openable focal
+candidate accepted by the common timeout checkpoint. Unaccepted preparations
+do not constrain the source choice. -/
+theorem extractedCandidateSourceRun_locked (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (hcfg : cfg ∈ (compilation.extractedCandidateSourceRun nullValue window focal deviator
+      environment schedule fallback profile).support)
+    (decision : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
+    (hdecision : ((compile source.core).graph.nodeRow decision).sem = .commit focal guard)
+    (slot : Nat) (value : L.Val ty)
+    (haccepted : SealedProgram.accepted?
+      (compilation.supported.candidateStop nullValue window (cfg.1.nodeValues fallback) focal
+        deviator environment schedule).native.application.visible.events decision.val =
+          some (focal, slot))
+    (hvalue : (compilation.supported.candidateStop nullValue window (cfg.1.nodeValues fallback)
+      focal deviator environment schedule).native.application.service.lookup (focal, slot) =
+        .openable value) : cfg.1.nodeValues fallback decision = value := by
+  have hchoice := compilation.extractedCandidateSourceRun_consistent nullValue window focal
+    deviator environment schedule fallback profile cfg hcfg decision guard hdecision
+  rw [SealedFragment.candidateSelection_eq_stop _ _ _ _ _ _ _ _ decision guard hdecision] at hchoice
+  simpa only [SealedFragment.selectedCandidate, haccepted, Option.bind_some, ↓reduceIte,
+    hvalue, SealedFragment.candidateValue] using hchoice
+
+/-- Every focal acceptance at a checkpoint of the pre-timeout replay has its
+complete source value whenever that candidate is openable. Arbitrary other
+preparations and permanently unopenable acceptances remain permitted. -/
+theorem extractedCandidateSourceRun_focal_accepted
+    (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (hcfg : cfg ∈ (compilation.extractedCandidateSourceRun nullValue window focal deviator
+      environment schedule fallback profile).support)
+    (release : (compilation.supported.resolvingRuntime
+      nullValue window).candidateApplication.PolicyExecution → Bool) :
+    let stopped := ((compilation.supported.candidateReplay nullValue window
+      (cfg.1.nodeValues fallback) focal deviator environment schedule).prefixThrough
+        (fun execution : (compilation.supported.resolvingRuntime
+          nullValue window).candidateApplication.PolicyExecution =>
+            !execution.native.application.visible.timeouts.isEmpty)).firstRelease release
+    ∀ index slot value,
+      SealedProgram.Event.accepted index (focal, slot) ∈
+        stopped.native.application.visible.events →
+      stopped.native.application.service.lookup (focal, slot) = .openable value →
+      cfg.1.store ((compile source.core).graph.nodeTarget index) =
+        some (⟨ty, value⟩ : TypedValue L) := by
+  intro stopped index slot value haccepted hvalue
+  let runtime := compilation.supported.resolvingRuntime nullValue window
+  obtain ⟨before, after, hbefore, hafter⟩ := compilation.supported.candidateReplay_prefix_support
+    nullValue window (cfg.1.nodeValues fallback) focal deviator environment schedule release
+  have hacceptance := runtime.runPolicies_candidate_acceptance _ _ before _ stopped
+    SealedResolution.CandidateAcceptanceInvariant.initial hbefore
+  obtain ⟨hselected, requires, hrule⟩ := hacceptance index (focal, slot) haccepted
+  obtain ⟨node, guard, rfl, hsem⟩ := compilation.supported.ruleAt_commit hrule rfl
+  have hsource := compilation.extractedCandidateSourceRun_locked nullValue window focal
+    deviator environment schedule fallback profile cfg hcfg node guard hsem slot value
+    (runtime.runPolicies_candidate_accepted? _ _ after stopped _ node.val (focal, slot)
+      hselected hafter)
+    ((runtime.runPolicies_candidate_lookup_of_not_fresh _ _ after stopped _ (focal, slot)
+      (by rw [hvalue]; simp) hafter).trans hvalue)
+  have hterminal := compilation.sourceRunOfDisclosures_terminal focal _ profile cfg hcfg
+  rw [cfg.1.store_nodeValues (reachable_storeCoherent compilation.supported.graphWF cfg.2)
+    fallback node (compilation.supported.rowType node) (hterminal node), hsource]
+
+/-- Every openable acceptance in a pre-timeout replay has its complete source
+value. Focal candidates use acceptance-time extraction; honest candidates use
+the unchanged generated policies and their actual retained-message provenance. -/
+theorem extractedCandidateSourceRun_accepted
+    (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (hcfg : cfg ∈ (compilation.extractedCandidateSourceRun nullValue window focal deviator
+      environment schedule fallback profile).support)
+    (release : (compilation.supported.resolvingRuntime
+      nullValue window).candidateApplication.PolicyExecution → Bool) :
+    let stopped := ((compilation.supported.candidateReplay nullValue window
+      (cfg.1.nodeValues fallback) focal deviator environment schedule).prefixThrough
+        (fun execution : (compilation.supported.resolvingRuntime
+          nullValue window).candidateApplication.PolicyExecution =>
+            !execution.native.application.visible.timeouts.isEmpty)).firstRelease release
+    ∀ index handle value,
+      SealedProgram.Event.accepted index handle ∈ stopped.native.application.visible.events →
+      stopped.native.application.service.lookup handle = .openable value →
+      cfg.1.store ((compile source.core).graph.nodeTarget index) =
+        some (⟨ty, value⟩ : TypedValue L) := by
+  intro stopped index handle value haccepted hvalue
+  by_cases howner : handle.1 = focal
+  · have hhandle : handle = (focal, handle.2) := Prod.ext howner rfl
+    rw [hhandle] at haccepted hvalue
+    exact compilation.extractedCandidateSourceRun_focal_accepted nullValue window focal
+      deviator environment schedule fallback profile cfg hcfg release index handle.2 value
+      haccepted hvalue
+  · let runtime := compilation.supported.resolvingRuntime nullValue window
+    obtain ⟨before, _after, hbefore, _hafter⟩ :=
+      compilation.supported.candidateReplay_prefix_support nullValue window
+        (cfg.1.nodeValues fallback) focal deviator environment schedule release
+    have hacceptance := runtime.runPolicies_candidate_acceptance _ _ before _ stopped
+      SealedResolution.CandidateAcceptanceInvariant.initial hbefore
+    obtain ⟨_hselected, requires, hrule⟩ := hacceptance index handle haccepted
+    obtain ⟨node, guard, rfl, _hsem⟩ := compilation.supported.ruleAt_commit hrule rfl
+    have hhandle := compilation.supported.candidatePolicy_accepted_slot nullValue window handle.1
+      (compilation.supported.valuePolicy (cfg.1.nodeValues fallback) handle.1) _ _
+      (by rw [SealedFragment.candidateValuePlayers, Profile.update_of_ne _ _ howner])
+      before stopped hbefore node.val handle haccepted rfl
+    rw [hhandle] at hvalue
+    have hsource := compilation.supported.runPolicies_candidateValues_lookup nullValue window
+      (cfg.1.nodeValues fallback) focal _ _ before stopped hbefore handle.1 howner node value hvalue
+    have hterminal := compilation.sourceRunOfDisclosures_terminal focal _ profile cfg hcfg
+    rw [cfg.1.store_nodeValues (reachable_storeCoherent compilation.supported.graphWF cfg.2)
+      fallback node (compilation.supported.rowType node) (hterminal node), ← hsource]
+
+/-- At every fresh honest preparation in pre-timeout replay, the original
+source policy is evaluated at its exact declared source inputs. No agreement
+of caches, accepted values, or local read environments is assumed by the caller. -/
+theorem extractedCandidateSourceRun_registration_kernel
+    (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (hcfg : cfg ∈ (compilation.extractedCandidateSourceRun nullValue window focal deviator
+      environment schedule fallback profile).support)
+    (release : (compilation.supported.resolvingRuntime
+      nullValue window).candidateApplication.PolicyExecution → Bool) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    let stopped := ((compilation.supported.candidateReplay nullValue window
+      (cfg.1.nodeValues fallback) focal deviator environment schedule).prefixThrough
+        (fun execution : runtime.candidateApplication.PolicyExecution =>
+          !execution.native.application.visible.timeouts.isEmpty)).firstRelease release
+    stopped.native.application.visible.timeouts = [] →
+    ∀ who, who ≠ focal → ∀ slot value,
+      .privateCommand ⟨(slot, value)⟩ ∈
+        (compilation.supported.candidateValuePlayers nullValue window (cfg.1.nodeValues fallback)
+          focal (fun history view => FinDist.pure (deviator history view)) who
+          (stopped.principalHistory who) (State.observe _ stopped.native who)).support →
+      ∀ policy : SourceBehavioralPolicy source.core.prog who,
+      ∃ (node : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
+        (hsem : ((compile source.core).graph.nodeRow node).sem = .commit who guard)
+        (reads : ReadEnv L guard.choiceReads),
+        slot = node.val ∧ stopped.native.application.service.lookup (who, node.val) = .fresh ∧
+        ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads ∧
+        compilation.compileCandidatePolicy nullValue window who policy
+          (stopped.principalHistory who) (State.observe _ stopped.native who) =
+          ((compileSourcePolicy source.core.prog source.core.fresh
+            (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+            rfl who policy) node guard hsem reads).map (fun choice =>
+              .privateCommand ⟨(node.val, cast (congrArg L.Val
+                (compilation.supported.commitType node who guard hsem)) choice.1)⟩) := by
+  intro runtime stopped hclear who hwho slot value hcommand policy
+  obtain ⟨before, _after, hbefore, _hafter⟩ := compilation.supported.candidateReplay_prefix_support
+    nullValue window (cfg.1.nodeValues fallback) focal deviator environment schedule release
+  have hplayer := Profile.update_of_ne
+    (sig := MessageApplication.policySignature Player runtime.candidateApplication)
+    (fun owner => runtime.candidatePlayerPolicy (compilation.supported.resolvingPolicy nullValue
+      window owner (compilation.supported.valuePolicy (cfg.1.nodeValues fallback) owner)))
+    (fun history view => FinDist.pure (deviator history view)) hwho
+  rw [SealedFragment.candidateValuePlayers, Profile.update_of_ne _ _ hwho] at hcommand
+  exact compilation.supported.candidate_registration_kernel cfg
+    (compilation.sourceRunOfDisclosures_terminal focal _ profile cfg hcfg) nullValue window
+    _ _ before stopped hbefore hclear who _ _ hplayer
+    (compilation.extractedCandidateSourceRun_accepted nullValue window focal deviator environment
+      schedule fallback profile cfg hcfg release) slot value hcommand
+
 end Vegas.SealedCompilation
 
 /-- info: 'Vegas.SealedCompilation.extractedCandidateSourcePolicy_law' depends on axioms:
@@ -129,3 +287,13 @@ end Vegas.SealedCompilation
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SealedCompilation.extractedCandidateSourceRun_consistent
+
+/-- info: 'Vegas.SealedCompilation.extractedCandidateSourceRun_focal_accepted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.extractedCandidateSourceRun_focal_accepted
+
+/-- info: 'Vegas.SealedCompilation.extractedCandidateSourceRun_registration_kernel'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.extractedCandidateSourceRun_registration_kernel

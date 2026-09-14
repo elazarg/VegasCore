@@ -102,9 +102,19 @@ from its generated submissions, while leaving other players unrestricted;
 retained-message safety includes the pool, ledger, inboxes, and sent history.
 `CandidateOpeningInvariant` ties successful pre-timeout openings to accepted
 handles. Together they discharge the runtime premises of
-`candidate_registration_kernel`. The accepted-value correspondence with the
-extracted source realization still needs to be established for every prefix;
-this local kernel theorem is not the whole-program probability law.
+`candidate_registration_kernel`. `extractedCandidateSourceRun_accepted` proves
+the accepted-value correspondence at every checkpoint in the pre-timeout
+replay. It uses one common first-timeout snapshot: public selection persists,
+and each accepted handle already has its immutable meaning. This retains the
+focal player's extracted choices without treating unaccepted preparations as
+source decisions. Generated honest submissions name their original source
+sites, and their actual caches retain their assigned source values.
+`extractedCandidateSourceRun_registration_kernel` therefore identifies the
+fresh honest draw with the original source kernel without an input-agreement
+premise. The remaining probability argument must extend this comparison to
+the normalized reference realizations used for summing cylinders, account for
+each honest draw once, and establish the actual native marginal. Kernel
+agreement alone is not that joint law.
 
 Candidate handles are owner-scoped identifiers. A pending handle can acquire
 its private value until acceptance; an unprepared accepted handle becomes

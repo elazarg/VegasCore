@@ -12,8 +12,9 @@ candidate. Agreement of openable accepted values and the honest player's cache
 with a source realization therefore gives exact declared-read kernel equality.
 Unopenable commitments are permitted, and no private table enters the policy.
 The generated policy establishes its own cache/catalog agreement even when
-all opponents deviate. The whole-program probability proof must still show
-that accepted values agree with its extracted source realization.
+all opponents deviate. `Vegas.Compile.SealedCandidateSourceExtraction`
+discharges the accepted-value premise for the extracted source's pre-timeout
+replays. Identifying their joint probability law is a separate step.
 -/
 
 noncomputable section

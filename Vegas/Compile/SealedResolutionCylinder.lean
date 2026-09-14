@@ -184,14 +184,10 @@ theorem resolvingReplay_prefix_support (values : Fin G.nodeCount → L.Val ty) :
         (PolicyExecution.initial _
           (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support := by
     rw [resolvingReplay_law, FinDist.mem_support_pure]
-  obtain ⟨front, _, _, hcut⟩ := MessageApplication.tracePolicies_prefixThrough_support _ _ _
+  exact MessageApplication.tracePolicies_prefixThrough_firstRelease_split _ _ _
     (fun execution : (supported.resolvingRuntime
         nullValue window).messageApplication.PolicyExecution =>
-      !execution.native.application.visible.timeouts.isEmpty) schedule _ _ hfull
-  obtain ⟨before, after, _, hbefore, hafter⟩ :=
-    MessageApplication.tracePolicies_firstRelease_split _ _ _ release front _ _ hcut
-  refine ⟨before, after, hbefore, ?_⟩
-  simpa only [trace, resolvingStop, PolicyTrace.prefixThrough_last] using hafter
+      !execution.native.application.visible.timeouts.isEmpty) release schedule _ _ hfull
 
 /-- Every occupied honest slot at the common timeout snapshot retains its
 assigned source value, even when the snapshot already contains public defaults. -/

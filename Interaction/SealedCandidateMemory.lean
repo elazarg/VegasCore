@@ -2,6 +2,7 @@
 
 import Interaction.SealedCandidatePolicyEmbedding
 import Interaction.SealedCandidateBinding
+import Interaction.SealedCandidateAcceptance
 
 /-! # Honest owner memory under arbitrary candidate traffic
 
@@ -39,27 +40,6 @@ private theorem OwnerPrepared.mono {who : Principal}
   rw [hfixed handle (h node handle hpayload howner)]
   exact h node handle hpayload howner
 
-private theorem candidateMessage?_commitment_sender (program : SealedProgram Principal)
-    (candidates : CommitmentCandidates Principal Nat Value)
-    (events : List (SealedProgram.Event Principal Value))
-    (message : Message Principal (SealedProgram.Payload Principal Value))
-    (node : Nat) (handle : CommitmentHandle Principal Nat) (result)
-    (hpayload : message.payload = .commitment node handle)
-    (hresult : program.candidateMessage? candidates events message = some result) :
-    message.sender = handle.1 := by
-  simp only [SealedProgram.candidateMessage?, hpayload] at hresult
-  cases hrule : program.rules[node]? with
-  | none => simp [hrule] at hresult
-  | some rule =>
-      simp only [hrule] at hresult
-      cases hkind : rule.kind with
-      | disabled | reveal => simp only [hkind] at hresult; contradiction
-      | commit owner =>
-          simp only [hkind] at hresult
-          split at hresult
-          next hchecks => exact hchecks.1.trans hchecks.2.1.symm
-          next => contradiction
-
 private theorem candidateHandle_owner_lookup
     (who : Principal)
     (state next : ApplicationState Principal Value (CommitmentCandidates Principal Nat Value))
@@ -80,8 +60,9 @@ private theorem candidateHandle_owner_lookup
             state.service state.visible.events message result hmessage with
           ⟨node, handle, hpayload, rfl⟩ | ⟨node, handle, value, _hpayload, rfl⟩
         · by_cases heq : (who, slot) = handle
-          · have hsender := candidateMessage?_commitment_sender _ _ _ _ node handle _
-              hpayload hmessage
+          · have hsender := ((runtime.program.discharge state.visible.timeouts
+              ).candidateMessage?_accepted_owner state.service _ state.visible.events
+                message node handle hmessage).2.2
             have howner : message.sender = who := by rw [← heq] at hsender; exact hsender
             exact state.service.lookup_accept_eq_of_not_fresh (who, slot) handle
               (heq ▸ hprepared node handle hpayload howner)

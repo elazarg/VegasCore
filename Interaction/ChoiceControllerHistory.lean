@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.ChoiceController
+import Interaction.MessageApplicationPolicyInvariant
 
 /-! # Actual-run history laws for sample-once choice controllers
 
@@ -163,6 +164,44 @@ theorem playerStep_cachedValue_of_some [DecidableEq Principal]
     encoding.cachedValue app (next.principalHistory who) = some value := by
   rw [playerStep_history_self app who execution command next hnext]
   exact encoding.cachedValue_append_of_some app _ _ value hcache
+
+/-- A cached value satisfies every predicate shared by the initial cache and
+the designated player's supported decoded commands. Other players and all
+environment actions are unrestricted. -/
+theorem runPolicies_cachedValue_property [DecidableEq Principal]
+    (encoding : ChoiceEncoding Value app.PlayerCommand) (who : Principal) (property : Value → Prop)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (hcommand : ∀ history view command value,
+      command ∈ (players who history view).support → encoding.decode command = some value →
+        property value)
+    (schedule : List (@Invocation Principal)) (execution next : app.PolicyExecution)
+    (hinitial : ∀ value, encoding.cachedValue app (execution.principalHistory who) = some value →
+      property value)
+    (hnext : next ∈ (app.runPolicies players environment schedule execution).support) :
+    ∀ value, encoding.cachedValue app (next.principalHistory who) = some value →
+      property value := by
+  apply app.runPolicies_execution_invariant
+    (fun current => ∀ value,
+      encoding.cachedValue app (current.principalHistory who) = some value → property value)
+    players environment ?_ ?_ schedule execution next hinitial hnext
+  · intro current actor command after hcurrent hchosen hafter value hcache
+    rw [encoding.playerStep_cachedValue app actor who current after command hafter] at hcache
+    by_cases hactor : who = actor
+    · subst actor
+      simp only [↓reduceIte] at hcache
+      cases hprior : encoding.cachedValue app (current.principalHistory who) with
+      | none =>
+          simp only [hprior, Option.orElse_none] at hcache
+          exact hcommand _ _ command value hchosen hcache
+      | some prior =>
+          simp only [hprior, Option.orElse_some, Option.some.injEq] at hcache
+          subst value
+          exact hcurrent prior hprior
+    · rw [if_neg hactor] at hcache
+      exact hcurrent value hcache
+  · intro current command after hcurrent _hchosen hafter value hcache
+    rw [congrFun (app.environmentStep_principalHistory current command after hafter) who] at hcache
+    exact hcurrent value hcache
 
 /-- Arbitrary later player and environment invocations cannot replace an
 endpoint's earliest cached value.  No settlement or liveness premise is used. -/

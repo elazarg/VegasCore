@@ -91,10 +91,19 @@ candidate catalog, including across delayed delivery, replay, and timeouts.
 Before timeout, `runPolicies_candidate_openings` ties every successful opening
 to its actual accepted handle and immutable value; acceptance alone need not
 imply openability. The shared event-value read reconstruction then supplies
-`candidate_registration_kernel`: an honest draw fills a fresh slot and uses
-the original source kernel, provided openable accepted values agree with the
-source realization. Establishing that accepted-value agreement at every replay
-prefix, and then the joint probability law, remains part of the deviation proof.
+`candidate_registration_kernel` identifies the local fresh-slot draw from
+event-value agreement. `extractedCandidateSourceRun_accepted` discharges that
+agreement at every checkpoint of the pre-timeout replay. The public log selects
+one authenticated handle per source site; its acceptance-time meaning equals
+its meaning at the common timeout checkpoint. Focal values therefore agree
+with the extracted source choice, while generated honest submissions retain
+their source-site identity and assigned values through delivery and replay.
+`extractedCandidateSourceRun_registration_kernel` consequently identifies each
+fresh honest draw with the original source kernel at the complete source
+realization's declared inputs. No cache, accepted-value, or read-environment
+agreement premise remains. This is a local kernel theorem on source-supported
+replay; the joint probability law with the actual native execution is still
+unproved.
 
 ## End-to-end target
 

@@ -265,6 +265,56 @@ theorem tracePolicies_firstRelease_split [DecidableEq Principal]
           · simpa only [PolicyTrace.firstRelease, hrelease, Bool.false_eq_true, ↓reduceIte,
               PolicyTrace.last] using hsuffix
 
+/-- A checkpoint within a stopped trace has supported execution both from
+initialization to it and from it to the stop. Both segments use the original
+policies; neither cut changes the operational runner. -/
+theorem tracePolicies_prefixThrough_firstRelease_split [DecidableEq Principal]
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (cutoff release : app.PolicyExecution → Bool)
+    (schedule : List (@Invocation Principal)) (initial : app.PolicyExecution)
+    (trace : app.PolicyTrace)
+    (htrace : trace ∈ (app.tracePolicies players environment schedule initial).support) :
+    ∃ before after,
+      (trace.prefixThrough cutoff).firstRelease release ∈
+        (app.runPolicies players environment before initial).support ∧
+      trace.firstRelease cutoff ∈ (app.runPolicies players environment after
+        ((trace.prefixThrough cutoff).firstRelease release)).support := by
+  obtain ⟨front, _, _, hfront⟩ := app.tracePolicies_prefixThrough_support players environment
+    cutoff schedule initial trace htrace
+  obtain ⟨before, after, _, hbefore, hafter⟩ := app.tracePolicies_firstRelease_split
+    players environment release front initial (trace.prefixThrough cutoff) hfront
+  exact ⟨before, after, hbefore, by simpa only [PolicyTrace.prefixThrough_last] using hafter⟩
+
+/-- Readout predicates that agree on reachable snapshots select the same
+snapshot. They need not agree on unreachable application states. -/
+theorem tracePolicies_firstRelease_congr [DecidableEq Principal]
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (left right : app.PolicyExecution → Bool)
+    (schedule : List (@Invocation Principal)) (initial : app.PolicyExecution)
+    (trace : app.PolicyTrace)
+    (htrace : trace ∈ (app.tracePolicies players environment schedule initial).support)
+    (hcut : ∀ front next, next ∈ (app.runPolicies players environment front initial).support →
+      left next = right next) :
+    trace.firstRelease left = trace.firstRelease right := by
+  induction schedule generalizing initial trace with
+  | nil =>
+      have heq : trace = .finish initial := by simpa [tracePolicies] using htrace
+      subst trace
+      rfl
+  | cons invocation rest ih =>
+      have hat := hcut [] initial (FinDist.mem_support_pure.mpr rfl)
+      simp only [tracePolicies, FinDist.support_bind, Set.mem_iUnion,
+        FinDist.support_map, Set.mem_image] at htrace
+      obtain ⟨next, hnext, tail, htail, rfl⟩ := htrace
+      simp only [PolicyTrace.firstRelease, hat]
+      split
+      · rfl
+      · apply ih next tail htail
+        intro front after hafter
+        apply hcut (invocation :: front) after
+        simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion]
+        exact ⟨next, hnext, hafter⟩
+
 /-- An immutable optional read can be taken when it first becomes present
 or at a common release checkpoint, with the same result. The persistence
 premise concerns supported executions of the unchanged native runner. -/

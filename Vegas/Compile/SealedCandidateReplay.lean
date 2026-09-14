@@ -2,6 +2,7 @@
 
 import Vegas.Compile.SealedCandidateReadBound
 import Interaction.SealedCandidateBinding
+import Interaction.SealedCandidateAcceptance
 
 /-! # Source-local selection from candidate acceptance
 
@@ -97,6 +98,102 @@ theorem candidateSelection_law (decision : Fin G.nodeCount) :
         deviator environment schedule decision) := by
   simp only [candidateAcceptanceLaw, candidateReplay_law, FinDist.map_pure]
   rfl
+
+/-- The common checkpoint immediately after first timeout, or the final
+snapshot when there is no timeout. Execution itself is not stopped here. -/
+def candidateStop :=
+  (supported.candidateReplay nullValue window values focal
+    deviator environment schedule).firstRelease (fun execution :
+      (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution =>
+        !execution.native.application.visible.timeouts.isEmpty)
+
+/-- Acceptance-time extraction can be read at a common checkpoint without
+changing the selected candidate, including an unopenable one. -/
+theorem candidateSelection_eq_stop (decision : Fin G.nodeCount) (guard : EventGuard L)
+    (hdecision : (G.nodeRow decision).sem = .commit focal guard) :
+    let stopped := supported.candidateStop nullValue window values focal
+      deviator environment schedule
+    supported.candidateSelection nullValue window values focal deviator environment schedule
+        decision =
+      selectedCandidate focal decision stopped.native.application.visible.events
+        (fun slot => stopped.native.application.service.lookup (focal, slot)) := by
+  intro stopped
+  let runtime := supported.resolvingRuntime nullValue window
+  let trace := supported.candidateReplay nullValue window values focal deviator environment schedule
+  have htrace : trace ∈ (runtime.candidateApplication.tracePolicies
+      (supported.candidateValuePlayers nullValue window values focal
+        (fun history view => FinDist.pure (deviator history view)))
+      (fun history view => FinDist.pure (environment history view)) schedule
+      (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial))).support := by
+    rw [candidateReplay_law, FinDist.mem_support_pure]
+  have hrule : runtime.program.rules[decision.val]? =
+      some ⟨.commit focal, G.messagePrerequisites decision⟩ := by
+    change supported.compile.rules[decision.val]? = _
+    rw [supported.compile_rule]
+    exact congrArg some (G.sealedRule_commit_eq decision focal guard hdecision)
+  obtain ⟨hread, hmeaning⟩ := runtime.tracePolicies_candidate_acceptance_checkpoint _ _
+    schedule trace htrace decision.val focal _ hrule
+  let selected := trace.firstRelease (supported.candidateAcceptanceCut nullValue window decision)
+  change SealedProgram.accepted? selected.native.application.visible.events decision.val =
+    SealedProgram.accepted? stopped.native.application.visible.events decision.val at hread
+  change ∀ handle, SealedProgram.accepted? selected.native.application.visible.events decision.val =
+    some handle → selected.native.application.service.lookup handle =
+      stopped.native.application.service.lookup handle at hmeaning
+  change selectedCandidate focal decision selected.native.application.visible.events
+    (fun slot => selected.native.application.service.lookup (focal, slot)) = _
+  unfold selectedCandidate
+  rw [hread]
+  cases haccepted : SealedProgram.accepted?
+      stopped.native.application.visible.events decision.val with
+  | none => rfl
+  | some handle =>
+      simp only [Option.bind_some]
+      split
+      next howner =>
+        apply congrArg some
+        have heq := hmeaning handle (hread.trans haccepted)
+        have hhandle : handle = (focal, handle.2) := Prod.ext howner rfl
+        rw [hhandle] at heq
+        exact heq
+      next => rfl
+
+/-- Each checkpoint of the pre-timeout replay has actual unchanged-policy
+execution both before it and from it to the common timeout checkpoint. -/
+theorem candidateReplay_prefix_support
+    (release : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution →
+      Bool) :
+    let trace := (supported.candidateReplay nullValue window values focal deviator environment
+      schedule).prefixThrough (fun execution :
+        (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution =>
+          !execution.native.application.visible.timeouts.isEmpty)
+    ∃ before after,
+      trace.firstRelease release ∈
+        ((supported.resolvingRuntime nullValue window).candidateApplication.runPolicies
+          (supported.candidateValuePlayers nullValue window values focal
+            (fun history view => FinDist.pure (deviator history view)))
+          (fun history view => FinDist.pure (environment history view)) before
+          (PolicyExecution.initial _ (State.initial _
+            (supported.resolvingRuntime nullValue window).candidateInitial))).support ∧
+      supported.candidateStop nullValue window values focal deviator environment schedule ∈
+        ((supported.resolvingRuntime nullValue window).candidateApplication.runPolicies
+          (supported.candidateValuePlayers nullValue window values focal
+            (fun history view => FinDist.pure (deviator history view)))
+          (fun history view => FinDist.pure (environment history view)) after
+          (trace.firstRelease release)).support := by
+  intro trace
+  have hfull : supported.candidateReplay nullValue window values focal
+      deviator environment schedule ∈
+      ((supported.resolvingRuntime nullValue window).candidateApplication.tracePolicies
+        (supported.candidateValuePlayers nullValue window values focal
+          (fun history view => FinDist.pure (deviator history view)))
+        (fun history view => FinDist.pure (environment history view)) schedule
+        (PolicyExecution.initial _ (State.initial _
+          (supported.resolvingRuntime nullValue window).candidateInitial))).support := by
+    rw [candidateReplay_law, FinDist.mem_support_pure]
+  exact MessageApplication.tracePolicies_prefixThrough_firstRelease_split _ _ _
+    (fun execution : (supported.resolvingRuntime
+        nullValue window).candidateApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty) release schedule _ _ hfull
 
 /-- Every selected candidate has a nonfresh meaning that persists to the end
 of this same native replay. In particular, extraction cannot select a fresh

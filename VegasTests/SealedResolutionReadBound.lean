@@ -335,6 +335,57 @@ theorem candidate_opening_uses_selected_handle
   rw [hhandle] at haccepted hvalue
   exact ⟨handle.2, haccepted, hvalue⟩
 
+/-- Competing candidates from player one cannot change the source-site
+identity of a commitment accepted from the generated player-zero policy. -/
+theorem candidate_compiled_acceptance_slot (profile : SourceBehavioralProfile core)
+    (deviator : runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation PendingSource.Player))
+    (next : runtime.candidateApplication.PolicyExecution)
+    (hnext : next ∈ (runtime.candidateApplication.runPolicies
+      (GameTheory.Profile.update
+        (sig := policySignature PendingSource.Player runtime.candidateApplication)
+        (fun who => compilation.compileCandidatePolicy none 3 who (profile who)) 1 deviator)
+      environment schedule
+      (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial))).support)
+    (index slot : Nat)
+    (haccepted : SealedProgram.Event.accepted index (0, slot) ∈
+      next.native.application.visible.events) : slot = index := by
+  let original := Vegas.ToEventGraph.compileSourcePolicy core source.core.fresh
+    (Vegas.ToEventGraph.BuildState.fromInitial
+      (Vegas.ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx))
+    rfl 0 (profile 0)
+  have hhandle := sealedFragment.candidatePolicy_accepted_slot none 3 0 original _ environment
+    (by rfl) schedule next hnext index (0, slot) haccepted rfl
+  exact congrArg Prod.snd hhandle
+
+/-- In this checked two-player source, every openable accepted candidate of
+either player has its extracted source value at every pre-timeout checkpoint.
+The native response functions and pending-message schedule are unrestricted. -/
+theorem candidate_replay_acceptances_match_source
+    (profile : SourceBehavioralProfile core)
+    (deviator : List runtime.candidateApplication.PlayerEntry →
+      runtime.candidateApplication.View → runtime.candidateApplication.PlayerCommand)
+    (environment : List runtime.candidateApplication.EnvironmentEntry →
+      runtime.candidateApplication.EnvironmentObservation →
+        runtime.candidateApplication.EnvironmentPolicyCommand)
+    (schedule : List (@Invocation PendingSource.Player))
+    (cfg : ReachableConfig graph)
+    (hcfg : cfg ∈ (compilation.extractedCandidateSourceRun none 3 1 deviator environment
+      schedule none profile).support)
+    (release : runtime.candidateApplication.PolicyExecution → Bool) :
+    let stopped := ((sealedFragment.candidateReplay none 3 (cfg.1.nodeValues none) 1
+      deviator environment schedule).prefixThrough
+        (fun execution : runtime.candidateApplication.PolicyExecution =>
+          !execution.native.application.visible.timeouts.isEmpty)).firstRelease release
+    ∀ index handle value,
+      SealedProgram.Event.accepted index handle ∈ stopped.native.application.visible.events →
+      stopped.native.application.service.lookup handle = .openable value →
+      cfg.1.store (graph.nodeTarget index) =
+        some (⟨.option .bool, value⟩ : TypedValue simpleExpr) :=
+  compilation.extractedCandidateSourceRun_accepted none 3 1 deviator environment schedule none
+    profile cfg hcfg release
+
 end VegasTests.SealedResolutionReadBound
 
 /-- info: 'VegasTests.SealedResolutionReadBound.hidden_first_choice' depends on axioms:
