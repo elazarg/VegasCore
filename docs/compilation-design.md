@@ -97,7 +97,10 @@ stopping boundary and transports normal public-field agreement to that boundary.
 The strategic factoring is incomplete. Some backend modules still transitively
 import mixed source/backend modules. More importantly, exclusion of a first
 honest timeout under deadline-relative service must be established for the
-candidate host. Legal resolution defaults
+candidate host. The all-compiled honest law must also be stated and proved
+for arbitrary graph profiles; its existing source-profile theorem and honest
+host embedding do not by themselves supply that independent backend law.
+Legal resolution defaults
 and the quitting utility bound need graph
 formulations with compiler certificates, rather than a hidden source-image
 premise. Only after those laws are proved can the candidate backend expose a

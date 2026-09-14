@@ -185,7 +185,9 @@ disclosure-based candidate backtranslation graph-local;
 opponents. The entire finite-schedule probability argument, through randomized
 full-trace and stopped-round coupling with normal public-field agreement, is
 graph-relative; source results delegate to it and transport outcomes.
-Deadline-relative exclusion of first honest timeout and the
+The all-compiled honest law still needs an arbitrary-graph-profile formulation;
+the existing candidate honest payout theorem is source-relative.
+That law, deadline-relative exclusion of first honest timeout, and the
 graph-level resolution utility condition remain required before the backend
 can supply its own `UtilitySimulation` and the source theorem can follow by
 composition. The
