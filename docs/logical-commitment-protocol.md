@@ -150,3 +150,9 @@ relative-information, cross-site, and quitting-utility obligations.
 public rejection, and selection among competing prepared handles. The module
 is built independently of the Vegas compiler: no active compiler theorem depends
 on it, and it is not an additional claimed compilation edge.
+
+The [native refinement assessment](logical-commitment-refinement-assessment.md)
+identifies admission and private-recall information missing from this kernel.
+The [gated single-site experiment](logical-commitment-gated-experiment.md) tests
+those additions against actual candidate-runtime transitions and distinguishes
+an operational projection from a strategic simulation.
