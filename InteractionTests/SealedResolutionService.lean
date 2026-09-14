@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Interaction.SealedResolutionService
+import Interaction.SealedResolutionReservations
 
 /-! # Reserved inclusion still permits reactions to pending packets -/
 
@@ -110,5 +110,13 @@ theorem pending_reaction_before_reserved_inclusion :
     MessagePool.includePending, MessagePool.removeFirst, malformed_rejected,
     SealedResolution.initial, IdealCommitments.empty, IdealCommitments.sealValue,
     IdealCommitments.lookup]
+
+/-- With period two, the first round remains unreserved and every service call
+of the second round is reserved. -/
+theorem period_two_delays_until_second_round :
+    SealedResolution.periodicFinalReservation 4 2 0 = false ∧
+      (List.range' 5 4).countP
+        (SealedResolution.periodicFinalReservation 4 2) = 4 := by
+  decide
 
 end InteractionTests.SealedResolutionService

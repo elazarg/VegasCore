@@ -11,10 +11,11 @@ The source-policy translation implements those completion checks and retains
 own private memory across nullable defaults; its before-timeout policy law is
 checked. The source/native execution coupling, including the actual timeout
 continuation and arbitrary randomized focal and environment policies, is checked.
-Finite termination and the exact source/native coupling are checked for the
-fixed-clock round driver, including decoding at normal completion. The general
-source-settlement edge, deadline-relative honest service, the all-compiled
-honest law, and the utility comparison remain Lean obligations.
+Finite termination, deadline-relative service excluding honest timeouts, and
+the exact source/native coupling are checked for the fixed-clock round driver,
+including decoding at normal completion. The general source-settlement edge,
+the all-compiled honest outcome law, and the utility comparison remain Lean
+obligations.
 The whole argument has not been checked in Lean or independently reviewed.
 Section 8 gives the implementation boundary. In particular, this note is not
 evidence that the repository already proves pending-message Nash preservation.
@@ -297,11 +298,20 @@ cannot be discharged by the later timeout.
 
 The required cache/read facts hold initially and are preserved by legitimate
 completions and nullable defaults: defaults supply typed public fields; own
-accepted commitments retain their cached values. Taking the first putative
-timeout of a compiled player makes this reasoning noncircular: its own earlier
-commitments have not defaulted, and earlier defaults of other players cannot
-remove its inputs. This contradicts that timeout. Consequently every failure
-in a unilateral-deviation run belongs to the deviator.
+registered commitments retain their cached values. The phase argument does
+not require absence of earlier defaults. Every putative honest timeout has a
+retained readiness timestamp, and the preceding polling interval forces that
+site to have completed before expiry. A completed site cannot subsequently
+acquire a timeout. Consequently every failure in a unilateral-deviation run
+belongs to the deviator.
+
+The checked periodic implementation reserves sufficient capacity at every
+block-final wire phase, maintaining empty queues at the block boundaries.
+Its finite invocation horizon contains whole service periods; a horizon that
+is a sufficiently large multiple of `b+1` also contains the termination bound.
+The actual round driver still stops at first application completion. This
+whole-period condition concerns the retained proof trace's service checkpoints,
+not additional actions after the runtime has stopped.
 
 **Termination lemma.** Every policy profile and every environment policy,
 even an unfair one, terminates under the clock/timeout mechanism within
@@ -1135,14 +1145,40 @@ actual compiled-player polls receive bounded service and their last pre-state
 is before the target's recorded deadline, that target never times out at any
 later checkpoint. Later arbitrary traffic cannot append a timeout for an
 already completed site whose timeout record is clear. No absence of earlier
-defaults or acceptance of honest submissions is assumed. This is a per-trace service theorem; its
-polling, service-checkpoint, and clock premises still require uniform scheduling
-witnesses. `roundSchedule_player` supplies roster calls, and
-`tracePolicies_round_clock` identifies the clocks at actual round boundaries.
-The remaining bridge must maintain empty periodic drain boundaries (or a
-suitable backlog bound), locate the first post-readiness owner poll, and derive
-the service checkpoints and pre-deadline endpoint from the configured window.
-Initial queue emptiness alone does not justify every later service window.
+defaults or acceptance of honest submissions is assumed. Its per-trace polling
+and service premises are instantiated uniformly by the periodic round results:
+
+- `tracePolicies_periodic_pending_empty` maintains empty queues at all
+  period boundaries, including the backlog invariant between successive drains.
+- `tracePolicies_periodic_service` supplies a real queue-drain checkpoint
+  within one period of every roster poll.
+- `periodicFinalReservation_range_count` and
+  `exists_periodicFinalReservation_service` witness the service class: reserve
+  the last round of each period, with enough slots for the period's roster
+  opportunities, and retain arbitrary adaptive wire choices elsewhere.
+- `tracePolicies_poll_clock` identifies each actual pre-player snapshot's
+  clock. `runPolicies_firstReady?_of_lt_clock` recovers an already-past
+  readiness timestamp at that snapshot; it cannot be created retroactively.
+- `SealedFragment.tracePolicies_no_timeout` derives timeout exclusion from
+  roster coverage, capacity, and the window. `runRounds_no_timeout` transports
+  it to the actual early-stopping readout, retaining all histories and traffic.
+- `runRounds_timeout_owner` identifies every failed site's source owner and
+  proves that it lies outside the set of roster-covered compiled players.
+  This permits arbitrary replacements outside that set; it is an operational
+  statement, not a coalition equilibrium theorem.
+- `runRounds_timeouts_eq_nil` excludes all operational defaults at an
+  all-compiled profile. The multistage checked-source regression uses arbitrary
+  original source kernels and arbitrary unreserved wire policies, a two-round
+  service period, and a sufficient window. It proves that a completed
+  execution with an empty timeout record exists, including for kernels that
+  choose source-level null values.
+
+For period `b+1`, the coarse sufficient window is `n*(b+2)+2`. These statements
+do not assume immediate inclusion: messages can remain pending across player
+calls. The finite trace horizon used by the periodic proof is a multiple of
+the period. Choosing it large enough supplies termination as well as service.
+No all-compiled source outcome-law equality follows merely from timeout
+exclusion; that probability-law obligation is still separate.
 
 The remaining implementation work is specific:
 
@@ -1153,17 +1189,11 @@ The remaining implementation work is specific:
    regression. Normal completed event decoding already recovers the exact
    coupled source realization. After timeout, service values and logical
    defaults remain distinct; equal private bindings are not the target claim.
-3. Instantiate `no_timeout_of_poll_service` uniformly for the stopped round
-   driver from roster coverage, maintained periodic drain capacity, and
-   `n*(b+2)+2 <= window`. The phase count, per-trace no-timeout theorem,
-   timestamp provenance, actual roster calls, and round-boundary clocks are
-   checked. The bounded early-stopping driver and its exact source/native
-   marginal connection are checked. A bare expiration status is not a source
-   settlement.
-4. Establish the all-compiled honest outcome law. The arbitrary-deviation
+3. Establish the all-compiled honest outcome law. The arbitrary-deviation
    mixture alone does not identify its source marginal with the original
-   all-honest source profile.
-5. Instantiate the existing `UtilitySimulation` under the explicit
+   all-honest source profile. Termination and absence of honest timeouts are
+   checked under the periodic service conditions above.
+4. Instantiate the existing `UtilitySimulation` under the explicit
    continuation condition, and audit the end-to-end theorem in `Paper.lean`.
 
 No persistent role-bail rule, subgame handler, raw Ethereum transaction format,

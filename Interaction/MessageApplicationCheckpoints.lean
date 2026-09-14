@@ -29,6 +29,12 @@ def PolicyTrace.drop : Nat → app.PolicyTrace → app.PolicyTrace
   | _ + 1, .finish execution => .finish execution
   | count + 1, .step _ tail => tail.drop count
 
+theorem PolicyTrace.drop_length (trace : app.PolicyTrace) :
+    trace.drop trace.length = .finish trace.last := by
+  induction trace with
+  | finish execution => rfl
+  | step execution tail ih => exact ih
+
 theorem PolicyTrace.drop_append_length (front tail : app.PolicyTrace) :
     (front.append tail).drop front.length = tail := by
   induction front with

@@ -31,6 +31,7 @@ import VegasTests.SealedReplay
 import VegasTests.SealedResolution
 import VegasTests.SealedResolutionPolicy
 import VegasTests.SealedPhaseCount
+import VegasTests.SealedPolicyDeadline
 import VegasTests.SealedResolutionReadBound
 import VegasTests.SealedSourceExtraction
 import VegasTests.SealedResolutionCylinder

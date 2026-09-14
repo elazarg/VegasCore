@@ -238,6 +238,78 @@ theorem tracePolicies_round_clock (runtime : SealedResolution Principal Value)
   exact runtime.runPolicies_roundSchedule_clock principals serviceSlots players wire count
     execution _ hphase hprefix
 
+/-- At a player poll within a recorded round, neither the clock nor the
+environment-history phase has advanced beyond that round's boundary. -/
+theorem tracePolicies_poll_clock (runtime : SealedResolution Principal Value)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (wire : runtime.messageApplication.WirePolicy) (total round slot : Nat)
+    (execution : runtime.messageApplication.PolicyExecution)
+    (trace : runtime.messageApplication.PolicyTrace)
+    (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
+    (htrace : trace ∈ (runtime.messageApplication.tracePolicies players
+      (runtime.roundEnvironment serviceSlots wire)
+      (roundSchedule principals serviceSlots total) execution).support)
+    (hround : round < total) (hslot : slot < principals.length) :
+    let poll := (trace.drop
+      (round * (roundInvocations principals serviceSlots).length + slot)).first
+    poll.native.application.visible.clock =
+        execution.native.application.visible.clock + round ∧
+      poll.environmentHistory.length = execution.environmentHistory.length +
+        round * (serviceSlots + 1) := by
+  let blockLength := (roundInvocations principals serviceSlots).length
+  let boundaryIndex := round * blockLength
+  let boundary := (trace.drop boundaryIndex).first
+  let poll := (trace.drop (boundaryIndex + slot)).first
+  have hboundary := runtime.tracePolicies_round_clock principals serviceSlots players wire
+    total round execution trace hphase htrace (Nat.le_of_lt hround)
+  change boundary.native.application.visible.clock =
+      execution.native.application.visible.clock + round ∧
+    boundary.environmentHistory.length = execution.environmentHistory.length +
+      round * (serviceSlots + 1) at hboundary
+  have hschedule :
+      ((roundSchedule principals serviceSlots total).drop boundaryIndex).take slot =
+        (principals.map Invocation.player).take slot := by
+    dsimp only [boundaryIndex, blockLength]
+    rw [roundSchedule_drop principals serviceSlots total round (Nat.le_of_lt hround)]
+    have hremaining : total - round = (total - round - 1) + 1 := by omega
+    rw [hremaining, roundSchedule]
+    simp [roundInvocations, List.take_append_of_le_length,
+      show slot ≤ principals.length by omega]
+  have hplayersCount :
+      ((principals.map Invocation.player).take slot).countP Invocation.isEnvironment = 0 := by
+    rw [← List.map_take]
+    generalize principals.take slot = xs
+    induction xs with
+    | nil => rfl
+    | cons who rest ih => simp [Invocation.isEnvironment, ih]
+  have hbetween := runtime.messageApplication.tracePolicies_between players
+    (runtime.roundEnvironment serviceSlots wire)
+    (roundSchedule principals serviceSlots total) execution trace htrace boundaryIndex slot
+  rw [hschedule] at hbetween
+  have hcongr := runtime.messageApplication.runPolicies_environment_congr players
+    (runtime.roundEnvironment serviceSlots wire)
+    (runtime.messageApplication.wireEnvironment wire)
+    ((principals.map Invocation.player).take slot) boundary
+    (fun _ _ hlo hhi => by
+      rw [hplayersCount, Nat.add_zero] at hhi
+      omega)
+  rw [hcongr] at hbetween
+  have hclock := runtime.runPolicies_wire_clock players wire
+    ((principals.map Invocation.player).take slot) boundary poll hbetween
+  have hhistory := runtime.messageApplication.runPolicies_environmentHistory_length players
+    (runtime.messageApplication.wireEnvironment wire)
+    ((principals.map Invocation.player).take slot) boundary poll hbetween
+  change poll.native.application.visible.clock =
+      execution.native.application.visible.clock + round ∧
+    poll.environmentHistory.length = execution.environmentHistory.length +
+      round * (serviceSlots + 1)
+  constructor
+  · exact hclock.trans hboundary.1
+  · rw [hhistory]
+    rw [hplayersCount, Nat.add_zero]
+    exact hboundary.2
+
 /-- Early stopping selects an actual round-boundary snapshot of the same
 native run. The equality retains all private and public execution data, not
 merely the completed application state. -/

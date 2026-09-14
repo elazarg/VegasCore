@@ -86,6 +86,8 @@ import Interaction.SealedResolutionRounds
 import Interaction.SealedResolutionCompletion
 import Interaction.SealedResolutionDriver
 import Interaction.SealedResolutionService
+import Interaction.SealedResolutionPeriodicService
+import Interaction.SealedResolutionReservations
 import Interaction.SealedResolutionTermination
 import Interaction.SealedResolutionProvenance
 import Interaction.SealedResolutionPolicy
