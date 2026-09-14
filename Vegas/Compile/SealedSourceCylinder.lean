@@ -356,8 +356,8 @@ theorem extractedSourceRun_replay_likelihood
 
 /-- Exact source probability of the native replay prefix through first timeout,
 as a product of original native registration probabilities. The reference
-expectation has been eliminated; equating this product with the original
-native runner's invocation product is a separate counting argument. -/
+expectation has been eliminated. `SealedCompilation.replay_prefix_prob_eq_product`
+identifies the same product with the original native runner's prefix mass. -/
 theorem extractedSourceRun_replay_prob_eq_product
     (reference : Fin (compile source.core).graph.nodeCount → L.Val ty)
     (profile : SourceBehavioralProfile source.core.prog) :

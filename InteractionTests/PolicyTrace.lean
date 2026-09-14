@@ -96,6 +96,21 @@ theorem stopped_before_random_draw :
     PolicyTrace.first, FinDist.prob_pure_self, List.prod_cons, List.prod_nil,
     hinvoke, mul_one]
 
+/-- The multiplicative-potential theorem accepts the identically zero
+potential; no positivity or cancellation premise is required. -/
+theorem stopped_trace_zero_potential
+    (release : lottery.PolicyExecution → Bool) (trace : lottery.PolicyTrace)
+    (htrace : trace ∈ ((lottery.tracePolicies waitingPlayers drawEnvironment
+      [.player 1, .environment] initialExecution).map
+        (PolicyTrace.prefixThrough release)).support) :
+    0 * ((lottery.tracePolicies waitingPlayers drawEnvironment
+      [.player 1, .environment] initialExecution).map
+        (PolicyTrace.prefixThrough release)).prob trace = 0 := by
+  exact lottery.tracePolicies_prefixThrough_prob_mul
+    waitingPlayers waitingPlayers drawEnvironment drawEnvironment release
+    (fun _ => 0) initialExecution [.player 1, .environment] trace htrace
+    (by intros; simp)
+
 end
 
 end InteractionTests.PolicyTrace

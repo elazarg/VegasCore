@@ -107,6 +107,92 @@ def VegasCore.decisionPositions : {Γ : VCtx P L} → VegasCore P L Γ → List 
       (who, 0) :: tail.decisionPositions.map fun slot => (slot.1, slot.2 + 1)
   | _, .reveal _ _ _ _ tail => tail.decisionPositions.map fun slot => (slot.1, slot.2 + 1)
 
+/-- A structural decision site occurs at its recorded owner and instruction position. -/
+theorem SourceDecisionSite.decisionPositions_mem {who : P} {Γ : VCtx P L}
+    {prog : VegasCore P L Γ} {Δ : VCtx P L} {x : VarId} {b : L.Ty}
+    {guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Δ)) L.bool}
+    (site : SourceDecisionSite who prog Δ x b guard) :
+    (who, site.depth) ∈ prog.decisionPositions := by
+  induction site with
+  | here => simp [VegasCore.decisionPositions, SourceDecisionSite.depth]
+  | sample site ih => simpa [VegasCore.decisionPositions, SourceDecisionSite.depth] using ih
+  | commit site ih => simpa [VegasCore.decisionPositions, SourceDecisionSite.depth] using ih
+  | reveal site ih => simpa [VegasCore.decisionPositions, SourceDecisionSite.depth] using ih
+
+/-- Membership in `decisionPositions` is exactly the existence of a structural
+decision site with that owner and instruction position. -/
+theorem VegasCore.mem_decisionPositions_iff {Γ : VCtx P L} (prog : VegasCore P L Γ)
+    (who : P) (slot : Nat) :
+    (who, slot) ∈ prog.decisionPositions ↔
+      ∃ (Δ : VCtx P L) (x : VarId) (b : L.Ty)
+        (guard : L.Expr ((x, b) :: eraseVCtx (viewVCtx who Δ)) L.bool),
+        ∃ site : SourceDecisionSite who prog Δ x b guard, site.depth = slot := by
+  constructor
+  · induction prog generalizing who slot with
+    | ret result => simp [VegasCore.decisionPositions]
+    | sample name dist tail ih =>
+        simp only [VegasCore.decisionPositions, List.mem_map] at *
+        rintro ⟨⟨positionWho, positionSlot⟩, hposition, hslot⟩
+        simp only [Prod.mk.injEq] at hslot
+        obtain ⟨rfl, rfl⟩ := hslot
+        obtain ⟨Δ, x, b, guard, site, hdepth⟩ := ih positionWho positionSlot hposition
+        refine ⟨Δ, x, b, guard, site.sample, ?_⟩
+        simpa [SourceDecisionSite.depth] using hdepth
+    | commit name actor guard tail ih =>
+        simp only [VegasCore.decisionPositions, List.mem_cons, List.mem_map] at *
+        intro hposition
+        rcases hposition with hhere | ⟨⟨positionWho, positionSlot⟩, hposition, hslot⟩
+        · have hwho := congrArg Prod.fst hhere
+          have hslot := congrArg Prod.snd hhere
+          simp only at hwho hslot
+          subst who
+          subst slot
+          exact ⟨_, _, _, _, .here guard tail, rfl⟩
+        · simp only [Prod.mk.injEq] at hslot
+          obtain ⟨rfl, rfl⟩ := hslot
+          obtain ⟨Δ, x, b, siteGuard, site, hdepth⟩ :=
+            ih positionWho positionSlot hposition
+          refine ⟨Δ, x, b, siteGuard, site.commit, ?_⟩
+          simpa [SourceDecisionSite.depth] using hdepth
+    | reveal name actor sealedName source tail ih =>
+        simp only [VegasCore.decisionPositions, List.mem_map] at *
+        rintro ⟨⟨positionWho, positionSlot⟩, hposition, hslot⟩
+        simp only [Prod.mk.injEq] at hslot
+        obtain ⟨rfl, rfl⟩ := hslot
+        obtain ⟨Δ, x, b, guard, site, hdepth⟩ := ih positionWho positionSlot hposition
+        refine ⟨Δ, x, b, guard, site.reveal, ?_⟩
+        simpa [SourceDecisionSite.depth] using hdepth
+  · rintro ⟨Δ, x, b, guard, site, rfl⟩
+    exact site.decisionPositions_mem
+
+/-- Written source decision positions do not repeat. -/
+theorem VegasCore.decisionPositions_nodup : {Γ : VCtx P L} →
+    (prog : VegasCore P L Γ) → prog.decisionPositions.Nodup
+  | _, .ret _ => by simp [VegasCore.decisionPositions]
+  | _, .sample _ _ tail => by
+      apply (decisionPositions_nodup tail).map
+      rintro ⟨firstWho, firstSlot⟩ ⟨secondWho, secondSlot⟩ heq
+      simp only [Prod.mk.injEq] at heq
+      obtain ⟨rfl, hslot⟩ := heq
+      rw [Nat.add_right_cancel hslot]
+  | _, .commit _ _ _ tail => by
+      rw [VegasCore.decisionPositions, List.nodup_cons]
+      constructor
+      · simp only [List.mem_map, Prod.mk.injEq, not_exists, not_and]
+        intro position _
+        omega
+      · apply (decisionPositions_nodup tail).map
+        rintro ⟨firstWho, firstSlot⟩ ⟨secondWho, secondSlot⟩ heq
+        simp only [Prod.mk.injEq] at heq
+        obtain ⟨rfl, hslot⟩ := heq
+        rw [Nat.add_right_cancel hslot]
+  | _, .reveal _ _ _ _ tail => by
+      apply (decisionPositions_nodup tail).map
+      rintro ⟨firstWho, firstSlot⟩ ⟨secondWho, secondSlot⟩ heq
+      simp only [Prod.mk.injEq] at heq
+      obtain ⟨rfl, hslot⟩ := heq
+      rw [Nat.add_right_cancel hslot]
+
 /-- The restriction likelihood is a product indexed by source decisions.
 Factors may be specified in another execution order: only their value at each
 recorded source input matters. The reference profile need not be the profile

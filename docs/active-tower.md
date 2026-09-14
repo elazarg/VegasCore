@@ -187,12 +187,20 @@ unoccupied source slots contribute one.
 therefore expresses the source cylinder mass as an explicit product of original
 native registration probabilities, with the reference expectation eliminated.
 
-The remaining fixed-response probability argument identifies this product with
-the actual native invocation product: each fresh honest registration occurs once,
-all other invocations contribute one, and the original kernel agrees between its
-selected checkpoint and its actual invocation. The compiler's source product and
-the general native factorization are checked; their equality is not.
-Randomized responses must also be predrawn
+`replay_registration_factor` identifies each actual fresh honest invocation
+with its selected checkpoint's original kernel. The two snapshots may differ;
+their successful reads agree with the same complete source realization.
+`replay_prefix_prob_eq_product` counts each tracked first registration once.
+Submissions, retries, delivery, inclusion, and ticks leave the product unchanged;
+focal registrations have unit weight. The calculation allows zero factors.
+`extractedSourceRun_native_prefix_law`, audited as
+`Vegas.Paper.pending_source_native_prefix_law`, proves equality of the complete
+native prefix laws through first timeout. Its other marginal is the ordinary
+written-source execution with the extracted focal policy and unchanged opponents.
+This is a whole-prefix probability theorem, including the pending pool and
+histories, for fixed deterministic focal and environment responses.
+
+Randomized responses must still be predrawn
 consistently across honest assignments, and the post-timeout native suffix must
 be attached with its actual continuation law. Pointwise choice agreement alone
 does not establish these probabilities for dependent source decisions.
@@ -257,8 +265,8 @@ same information boundary as the graph kernels.
 
 ## Deliberate non-claims
 
-The tower currently has no cryptographic reduction, authenticated identities,
-block-production/fairness theorem, public mempool scheduler theorem, EVM
+The tower currently has no cryptographic reduction, implementation of authenticated identities,
+block-production/fairness theorem, whole-run public-mempool Nash theorem, EVM
 execution/refinement theorem, or contract settlement theorem. Those are future
 runtime edges. The `archive/fused/` directory contains the former fused
 application-plan development as readable research material; its results are not

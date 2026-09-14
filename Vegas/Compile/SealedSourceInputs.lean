@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedPolicy
+import Vegas.Compile.SealedResolutionPolicy
 import Vegas.EventGraph.KernelRealization
 
 /-! # Complete source values determine native declared inputs
@@ -209,5 +209,52 @@ theorem commitCommand_source_kernel (who : Player) (policy : CommitPolicy G who)
     hregistered who _ hmemory _ reads
     (ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some hreads), ?_⟩
   simp only [commitCommand, hcache, hreads]
+
+omit hbinding hregistered in
+/-- At any compatible native snapshot before timeout, a fresh registration
+uses the complete source realization's declared input. This statement is
+independent of how the snapshot was selected from a trace. -/
+theorem resolving_registration_kernel (nullValue : L.Val ty) (window : Nat)
+    (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hclear : execution.native.application.visible.timeouts = [])
+    (hmemory : SealedResolution.RegistrationMemory
+      (supported.resolvingRuntime nullValue window) execution)
+    (hvalid : SealedProgram.BindingInvariant supported.compile
+      ⟨execution.native.application.service, execution.native.pool,
+        execution.native.application.visible.events⟩)
+    (hvalues : ∀ owner (node : Fin G.nodeCount) guard,
+      (G.nodeRow node).sem = .commit owner guard → ∀ value,
+        execution.native.application.service.lookup (owner, node.val) = some value →
+          cfg.1.nodeValues fallback node = value)
+    (who : Player) (original replacement : CommitPolicy G who) (slot : Nat) (value : L.Val ty)
+    (hcommand : .privateCommand ⟨(slot, value)⟩ ∈
+      (supported.resolvingPolicy nullValue window who original (execution.principalHistory who)
+        (MessageApplication.State.observe _ execution.native who)).support) :
+    ∃ (node : Fin G.nodeCount) (guard : EventGuard L)
+      (hsem : (G.nodeRow node).sem = .commit who guard) (reads : ReadEnv L guard.choiceReads),
+      slot = node.val ∧ execution.native.application.service.lookup (who, node.val) = none ∧
+      ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads ∧
+      supported.resolvingPolicy nullValue window who replacement (execution.principalHistory who)
+        (MessageApplication.State.observe _ execution.native who) =
+        (replacement node guard hsem reads).map (fun choice =>
+          .privateCommand ⟨(node.val,
+            cast (congrArg L.Val (supported.commitType node who guard hsem)) choice.1)⟩) := by
+  rw [supported.resolvingPolicy_no_timeout _ _ _ _ _ _ hclear] at hcommand
+  obtain ⟨node, guard, hsem, reads, hslot, hcache, hreads, hkernel⟩ :=
+    supported.selected_registration_kernel who [] original _ _ _ slot value hcommand
+  let runtime := supported.resolvingRuntime nullValue window
+  have hhistory : ∀ index,
+      (supported.compile.registrationEncoding index).cachedValue
+        (supported.compile.messageApplication (Value := L.Val ty))
+        (runtime.eventHistory (execution.principalHistory who)) =
+          execution.native.application.service.lookup (who, index) := by
+    intro index
+    exact (runtime.eventHistory_cache (runtime.program.registrationEncoding index)
+      (execution.principalHistory who)).trans (hmemory who index).symm
+  refine ⟨node, guard, hsem, reads, hslot, (hhistory node.val).symm.trans hcache, ?_, ?_⟩
+  · exact supported.sealedPlayerStore_source_reads cfg hterminal fallback _ hvalid hvalues who
+      _ hhistory _ reads (ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some hreads)
+  · rw [supported.resolvingPolicy_no_timeout _ _ _ _ _ _ hclear]
+    exact hkernel replacement
 
 end Vegas.EventGraph.SealedFragment

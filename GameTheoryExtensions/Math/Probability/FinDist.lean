@@ -20,6 +20,35 @@ theorem probOf_congr (law : FinDist α) {first second : Set α}
   intro outcome hmem
   simp only [hagrees outcome hmem]
 
+/-- Agreement on the support of one normalized finite law determines the
+other law everywhere. In particular, the other law cannot carry additional
+mass outside that support. -/
+theorem ext_of_prob_on_support {first second : FinDist α}
+    (h : ∀ x ∈ first.support, first.prob x = second.prob x) : first = second := by
+  classical
+  let onFirstSupport : α → ℝ := fun x => if x ∈ first.support then 1 else 0
+  have hexpect : second.expect onFirstSupport = 1 := by
+    unfold expect
+    rw [tsum_eq_sum (s := first.supportFinset)]
+    · simp only [onFirstSupport]
+      rw [Finset.sum_congr rfl fun x hx => by
+        rw [if_pos (mem_supportFinset.mp hx), ← h x (mem_supportFinset.mp hx)]]
+      simpa only [mul_one] using sum_prob_supportFinset first
+    · intro x hx
+      change second.prob x * (if x ∈ first.support then 1 else 0) = 0
+      rw [if_neg (fun hmem => hx (mem_supportFinset.mpr hmem)), mul_zero]
+  have hsupport : second.support ⊆ first.support := by
+    intro x hx
+    have hone := second.eq_of_expect_eq_of_le onFirstSupport 1
+      (fun y _ => by simp only [onFirstSupport]; split <;> norm_num) hexpect hx
+    by_contra hnot
+    simp only [onFirstSupport, if_neg hnot, zero_ne_one] at hone
+  apply ext_of_prob
+  intro x
+  by_cases hx : x ∈ first.support
+  · exact h x hx
+  · rw [prob_eq_zero_iff.mpr hx, prob_eq_zero_iff.mpr (fun hmem => hx (hsupport hmem))]
+
 /-- If an outcome identifies the first draw, its probability is the draw's
 mass times the conditional branch mass. The outcome may have probability zero. -/
 theorem prob_bind_of_unique_branch (law : FinDist α) (branch : α → FinDist β)

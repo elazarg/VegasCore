@@ -10,8 +10,8 @@ import Vegas.Compile.SourceCorrespondence
 The law below is the canonical graph realization of the written source, with
 only the focal player's policy replaced. Its source marginal is the existing
 written-order denotation. At each supported terminal realization, replay of
-its honest values recovers every focal source choice. Native marginal equality
-still requires the cylinder-mass argument for the unchanged honest kernels.
+its honest values recovers every focal source choice. The native marginal is
+identified by the cylinder-mass argument in `Vegas.Compile.SealedNativeLikelihood`.
 -/
 
 noncomputable section
@@ -230,10 +230,7 @@ theorem extractedSourceRun_registration_kernel
               .privateCommand ⟨(node.val, cast (congrArg L.Val
                 (compilation.supported.commitType node who guard hsem)) choice.1)⟩) := by
   intro runtime stopped hclear who hwho slot value hcommand policy
-  rw [EventGraph.SealedFragment.resolvingValuePlayers, Profile.update_of_ne _ _ hwho,
-    EventGraph.SealedFragment.resolvingPolicy_no_timeout _ _ _ _ _ _ _ hclear] at hcommand
-  obtain ⟨node, guard, hsem, reads, hslot, hcache, hreads, hkernel⟩ :=
-    compilation.supported.selected_registration_kernel who [] _ _ _ _ slot value hcommand
+  rw [EventGraph.SealedFragment.resolvingValuePlayers, Profile.update_of_ne _ _ hwho] at hcommand
   obtain ⟨before, after, hbefore, hafter⟩ := compilation.supported.resolvingReplay_prefix_support
     nullValue window focal deviator environment schedule release (cfg.1.nodeValues fallback)
   have hmemory := SealedResolution.RegistrationMemory.runPolicies _ _ before _ stopped
@@ -249,22 +246,10 @@ theorem extractedSourceRun_registration_kernel
       schedule fallback profile cfg hcfg owner decision guard hdecision registered
       (runtime.runPolicies_lookup_of_eq_some _ _ after stopped _ (owner, decision.val)
         registered hregistered hafter)
-  have hhistory : ∀ index,
-      (compilation.supported.compile.registrationEncoding index).cachedValue
-        (compilation.supported.compile.messageApplication (Value := L.Val ty))
-        (runtime.eventHistory (stopped.principalHistory who)) =
-          stopped.native.application.service.lookup (who, index) := by
-    intro index
-    exact (runtime.eventHistory_cache (runtime.program.registrationEncoding index)
-      (stopped.principalHistory who)).trans (hmemory who index).symm
-  refine ⟨node, guard, hsem, reads, hslot, (hhistory node.val).symm.trans hcache, ?_, ?_⟩
-  · exact compilation.supported.sealedPlayerStore_source_reads cfg
-      (compilation.extractedSourceRun_terminal nullValue window focal deviator environment schedule
-        fallback profile cfg hcfg) fallback _ hbinding hregistered who _ hhistory _ reads
-      (ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some hreads)
-  · rw [compileResolvingPolicy, EventGraph.SealedFragment.resolvingPolicy_no_timeout
-      _ _ _ _ _ _ _ hclear]
-    exact hkernel _
+  exact compilation.supported.resolving_registration_kernel cfg
+    (compilation.extractedSourceRun_terminal nullValue window focal deviator environment schedule
+      fallback profile cfg hcfg) fallback nullValue window stopped hclear hmemory
+    (hbinding.copy rfl rfl) hregistered who _ _ slot value hcommand
 
 end Vegas.SealedCompilation
 

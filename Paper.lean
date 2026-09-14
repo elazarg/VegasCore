@@ -18,6 +18,7 @@ import Vegas.Compile.SealedSourceRealization
 import Vegas.Compile.SealedSourceAssignment
 import Vegas.Compile.SealedSourceRestriction
 import Vegas.Compile.SealedSourceCylinder
+import Vegas.Compile.SealedNativeLikelihood
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
@@ -42,7 +43,8 @@ compiler simulation. Pending-message preservation still uses an explicit
 `StrategicCertificate`: the runtime must provide the honest law and the
 finite-mixture law for its considered unilateral deviations.
 
-The pending-message backtranslation for the concrete policy runtime is an open
+The fixed-response source/native prefix law through first timeout is checked.
+The full pending-message backtranslation for the concrete policy runtime is an open
 research obligation. It is not represented here as a theorem with an
 unjustified universal conclusion; the certificate interface records exactly
 what that proof must construct. If the eventual runtime edge has a target-only
@@ -351,8 +353,7 @@ theorem pending_extracted_source_law (profile : SourceBehavioralProfile source.c
     fallback profile
 
 /-- Every source-owned registration at the common first-timeout snapshot
-is retained by the complete source realization, for every player. Native marginal equality is
-a separate probability obligation. -/
+is retained by the complete source realization, for every player. -/
 theorem pending_locked_source_choices (profile : SourceBehavioralProfile source.core.prog)
     (cfg : ReachableConfig (ToEventGraph.compile source.core).graph)
     (hcfg : cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment
@@ -494,8 +495,7 @@ theorem pending_source_cylinder_likelihood
     schedule fallback reference release profile
 
 /-- The source prefix probability is a product of original native registration
-probabilities at fixed replay checkpoints. The source reference sum is fully
-discharged; the actual native invocation product remains to be identified. -/
+probabilities at fixed replay checkpoints. -/
 theorem pending_source_prefix_product
     (reference : Fin (ToEventGraph.compile source.core).graph.nodeCount → L.Val ty)
     (profile : SourceBehavioralProfile source.core.prog) :
@@ -514,9 +514,33 @@ theorem pending_source_prefix_product
   compilation.extractedSourceRun_replay_prob_eq_product nullValue window focal deviator environment
     schedule fallback reference profile
 
+/-- Exact native prefix law through the first timeout, from the ordinary source
+run against the extracted focal policy and unchanged opponents. Focal and
+environment responses are fixed functions; the post-timeout continuation and
+the utility comparison for informed quitting are separate obligations. -/
+theorem pending_source_native_prefix_law (profile : SourceBehavioralProfile source.core.prog) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    let players := Profile.update
+      (sig := MessageApplication.policySignature Player runtime.messageApplication)
+      (fun who => compilation.compileResolvingPolicy nullValue window who (profile who)) focal
+      (fun history view => FinDist.pure (deviator history view))
+    let stop := fun execution : runtime.messageApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    (compilation.extractedSourceRun nullValue window focal deviator environment schedule fallback
+      profile).map (fun cfg =>
+        (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback) focal
+          deviator environment schedule).prefixThrough stop) =
+      (runtime.messageApplication.tracePolicies players
+        (fun history view => FinDist.pure (environment history view)) schedule
+        (MessageApplication.PolicyExecution.initial _
+          (MessageApplication.State.initial _ runtime.initial))).map
+            (MessageApplication.PolicyTrace.prefixThrough stop) :=
+  compilation.extractedSourceRun_native_prefix_law nullValue window focal deviator environment
+    schedule fallback profile
+
 /-- Each fresh honest registration before timeout has exactly the original
 source decision probabilities at every reference realization's recorded view.
-This identifies individual factors, not the complete native prefix law. -/
+This identifies the individual probability factors used by the prefix law. -/
 theorem pending_registration_source_probability
     (reference : Fin (ToEventGraph.compile source.core).graph.nodeCount → L.Val ty)
     (profile : SourceBehavioralProfile source.core.prog)
@@ -1224,3 +1248,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_source_prefix_product
+
+/-- info: 'Vegas.Paper.pending_source_native_prefix_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_source_native_prefix_law

@@ -28,77 +28,6 @@ def valuePolicy (supported : SealedFragment G ty)
     FinDist.pure ⟨cast (congrArg L.Val (supported.commitType node who guard hsem).symm)
       (values node), supported.commitGuard node who guard hsem _ reads⟩
 
-private theorem commitCommand_valuePolicy_congr (supported : SealedFragment G ty)
-    (left right : Fin G.nodeCount → L.Val ty) (who : Player)
-    (node : Fin G.nodeCount) (guard : EventGuard L)
-    (hsem : (G.nodeRow node).sem = .commit who guard)
-    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
-    (store : Store L)
-    (command : (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (hcommand : command ∈
-      (supported.commitCommand who (supported.valuePolicy left who)
-        node guard hsem history store).support)
-    (hagrees : command = .privateCommand ⟨(node.val, left node)⟩ → left node = right node) :
-    supported.commitCommand who (supported.valuePolicy right who)
-      node guard hsem history store = FinDist.pure command := by
-  unfold commitCommand at hcommand ⊢
-  split at hcommand
-  · exact congrArg FinDist.pure (FinDist.mem_support_pure.mp hcommand).symm
-  · split at hcommand
-    · exact congrArg FinDist.pure (FinDist.mem_support_pure.mp hcommand).symm
-    · simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq] at hcommand ⊢
-      have heq := FinDist.mem_support_pure.mp hcommand
-      rw [← hagrees heq]
-      exact congrArg FinDist.pure heq.symm
-
-private theorem nodeCommand?_valuePolicy_congr (supported : SealedFragment G ty)
-    (left right : Fin G.nodeCount → L.Val ty) (who : Player) (completed : List Nat)
-    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
-    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
-    (store : Store L)
-    (node : Fin G.nodeCount)
-    (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (command : (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (hselected : supported.nodeCommand? who completed (supported.valuePolicy left who)
-      history view store node = some law)
-    (hcommand : command ∈ law.support)
-    (hagrees : ∀ index : Fin G.nodeCount,
-      command = .privateCommand ⟨(index.val, left index)⟩ → left index = right index) :
-    supported.nodeCommand? who completed (supported.valuePolicy right who) history view store node =
-      some (FinDist.pure command) := by
-  unfold nodeCommand? at hselected ⊢
-  split at hselected
-  · cases hselected
-  rename_i hcompleted
-  rw [if_neg hcompleted]
-  split at hselected
-  · rename_i hready
-    rw [if_pos hready]
-    split at hselected
-    · rename_i owner guard hsem
-      split at hselected
-      · rename_i howner
-        rw [dif_pos howner]
-        rw [← Option.some.inj hselected] at hcommand
-        rw [supported.commitCommand_valuePolicy_congr left right who node guard
-          (howner ▸ hsem) history store
-          command hcommand (hagrees node)]
-      · rename_i howner
-        contradiction
-    · rename_i source hsem
-      cases hhandle : (supported.compile.discharge completed).openingHandle?
-          view.application who node.val with
-      | none => simp only [hhandle, Option.map_none] at hselected; contradiction
-      | some handle =>
-          simp only [hhandle, Option.map_some] at hselected ⊢
-          split at hselected <;> rename_i hcache
-          all_goals
-            rw [← Option.some.inj hselected, FinDist.mem_support_pure] at hcommand
-            cases hcommand
-            rfl
-    · contradiction
-  · contradiction
-
 /-- The only assignment coordinate read by an invocation is its fresh private
 registration, if any. Cached submissions, openings, and waits ignore the rest
 of the assignment. The statement uses the actual compiled policy. -/
@@ -116,35 +45,22 @@ theorem selected_valuePolicy_congr (supported : SealedFragment G ty)
     (G.nodeOrder.findSome? (supported.nodeCommand? who completed
       (supported.valuePolicy right who) history view store)).getD (FinDist.pure .wait) =
       FinDist.pure command := by
-  cases hselected : G.nodeOrder.findSome?
-      (supported.nodeCommand? who completed (supported.valuePolicy left who)
-        history view store) with
-  | none =>
-      simp only [hselected, Option.getD_none, FinDist.mem_support_pure] at hcommand
-      have hnone : G.nodeOrder.findSome?
-          (supported.nodeCommand? who completed (supported.valuePolicy right who)
-            history view store) = none := by
-        apply List.findSome?_eq_none_iff.mpr
-        intro node hnode
-        exact (supported.nodeCommand?_none_iff who completed _ _ history history view _ _ node).mp
-          (List.findSome?_eq_none_iff.mp hselected node hnode)
-      simp only [hnone, Option.getD_none, hcommand]
-  | some law =>
-      simp only [hselected, Option.getD_some] at hcommand
-      obtain ⟨front, node, rest, hnodes, hnode, hfront⟩ :=
-        List.findSome?_eq_some_iff.mp hselected
-      have hright : G.nodeOrder.findSome?
-          (supported.nodeCommand? who completed (supported.valuePolicy right who)
-            history view store) =
-          some (FinDist.pure command) := by
-        apply List.findSome?_eq_some_iff.mpr
-        refine ⟨front, node, rest, hnodes, ?_, ?_⟩
-        · exact supported.nodeCommand?_valuePolicy_congr left right who completed history view
-            store node law command hnode hcommand hagrees
-        · intro prior hprior
-          exact (supported.nodeCommand?_none_iff who completed _ _ history history view
-            _ _ prior).mp (hfront prior hprior)
-      simp only [hright, Option.getD_some]
+  cases command with
+  | privateCommand request =>
+      obtain ⟨node, guard, hsem, reads, _, _, _, hkernel⟩ :=
+        supported.selected_registration_kernel who completed (supported.valuePolicy left who)
+          history view store request.down.1 request.down.2 hcommand
+      rw [hkernel (supported.valuePolicy left who)] at hcommand
+      simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq,
+        FinDist.mem_support_pure] at hcommand
+      have heq := hagrees node hcommand
+      rw [hkernel (supported.valuePolicy right who)]
+      simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq, ← heq]
+      exact congrArg FinDist.pure hcommand.symm
+  | submit payload | replay id | wait =>
+      exact supported.selected_nonregistration_law who completed
+        (supported.valuePolicy left who) (supported.valuePolicy right who) history view store
+        _ hcommand (fun _ h => by cases h)
 
 /-- Honest players use assigned source values; the focal principal retains
 its arbitrary native policy, including all pending-message observations. -/

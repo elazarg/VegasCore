@@ -229,6 +229,107 @@ theorem selected_registration_kernel (supported : SealedFragment G ty)
             history history view store store prior).mp (hfront prior hprior)⟩
       rw [hright, Option.getD_some]
 
+private theorem commitCommand_nonregistration_law (supported : SealedFragment G ty)
+    (who : Player) (original replacement : CommitPolicy G who)
+    (node : Fin G.nodeCount) (guard : EventGuard L)
+    (hsem : (G.nodeRow node).sem = .commit who guard)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (store : Store L)
+    (command : (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
+    (hcommand : command ∈
+      (supported.commitCommand who original node guard hsem history store).support)
+    (hnonregistration : ∀ request, command ≠ .privateCommand request) :
+    supported.commitCommand who replacement node guard hsem history store =
+      FinDist.pure command := by
+  unfold commitCommand at hcommand ⊢
+  split at hcommand
+  · exact congrArg FinDist.pure (FinDist.mem_support_pure.mp hcommand).symm
+  · split at hcommand
+    · exact congrArg FinDist.pure (FinDist.mem_support_pure.mp hcommand).symm
+    · rw [FinDist.support_map] at hcommand
+      obtain ⟨choice, _, heq⟩ := hcommand
+      exact False.elim (hnonregistration _ heq.symm)
+
+private theorem nodeCommand?_nonregistration_law (supported : SealedFragment G ty)
+    (who : Player) (completed : List Nat) (original replacement : CommitPolicy G who)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (store : Store L) (node : Fin G.nodeCount)
+    (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
+    (command : (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
+    (hselected : supported.nodeCommand? who completed original history view store node = some law)
+    (hcommand : command ∈ law.support)
+    (hnonregistration : ∀ request, command ≠ .privateCommand request) :
+    supported.nodeCommand? who completed replacement history view store node =
+      some (FinDist.pure command) := by
+  unfold nodeCommand? at hselected ⊢
+  split at hselected
+  · cases hselected
+  rename_i hcompleted
+  rw [if_neg hcompleted]
+  split at hselected
+  · rename_i hready
+    rw [if_pos hready]
+    split at hselected
+    · rename_i owner guard hsem
+      split at hselected
+      · rename_i howner
+        rw [dif_pos howner]
+        rw [← Option.some.inj hselected] at hcommand
+        rw [supported.commitCommand_nonregistration_law who original replacement node guard
+          (howner ▸ hsem) history store command hcommand hnonregistration]
+      · contradiction
+    · cases hhandle : (supported.compile.discharge completed).openingHandle?
+          view.application who node.val with
+      | none => simp only [hhandle, Option.map_none] at hselected; contradiction
+      | some handle =>
+          simp only [hhandle, Option.map_some] at hselected ⊢
+          split at hselected <;>
+            rw [← Option.some.inj hselected, FinDist.mem_support_pure] at hcommand <;>
+            cases hcommand <;> rfl
+    · contradiction
+  · contradiction
+
+/-- Outside a fresh registration, the actual selected command is deterministic
+and independent of the source decision kernel. This includes cached commitment
+submissions, openings, and waits, both before and after timeout. -/
+theorem selected_nonregistration_law (supported : SealedFragment G ty)
+    (who : Player) (completed : List Nat) (original replacement : CommitPolicy G who)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (store : Store L)
+    (command : (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
+    (hcommand : command ∈ ((G.nodeOrder.findSome?
+      (supported.nodeCommand? who completed original history view store)).getD
+        (FinDist.pure .wait)).support)
+    (hnonregistration : ∀ request, command ≠ .privateCommand request) :
+    (G.nodeOrder.findSome?
+      (supported.nodeCommand? who completed replacement history view store)).getD
+        (FinDist.pure .wait) = FinDist.pure command := by
+  cases hselected : G.nodeOrder.findSome?
+      (supported.nodeCommand? who completed original history view store) with
+  | none =>
+      simp only [hselected, Option.getD_none, FinDist.mem_support_pure] at hcommand
+      have hnone : G.nodeOrder.findSome?
+          (supported.nodeCommand? who completed replacement history view store) = none := by
+        apply List.findSome?_eq_none_iff.mpr
+        intro node hnode
+        exact (supported.nodeCommand?_none_iff who completed original replacement history history
+          view store store node).mp (List.findSome?_eq_none_iff.mp hselected node hnode)
+      simp only [hnone, Option.getD_none, hcommand]
+  | some law =>
+      simp only [hselected, Option.getD_some] at hcommand
+      obtain ⟨front, node, rest, hnodes, hnode, hfront⟩ :=
+        List.findSome?_eq_some_iff.mp hselected
+      have hright := List.findSome?_eq_some_iff.mpr
+        ⟨front, node, rest, hnodes,
+          supported.nodeCommand?_nonregistration_law who completed original replacement history
+            view store node law command hnode hcommand hnonregistration,
+          fun prior hprior =>
+            (supported.nodeCommand?_none_iff who completed original replacement history history
+              view store store prior).mp (hfront prior hprior)⟩
+      rw [hright, Option.getD_some]
+
 theorem commitCommand_cached (supported : SealedFragment G ty) (who : Player)
     (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)

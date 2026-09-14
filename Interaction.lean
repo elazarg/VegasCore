@@ -38,6 +38,7 @@ import Interaction.DependencyGateLaws
 import Interaction.Deadline
 import Interaction.Activation
 import Interaction.IdealCommitments
+import Interaction.IdealCommitmentWeight
 import Interaction.BindingDisposition
 import Interaction.ConditionalPublication
 import Interaction.BindingPublication
@@ -76,5 +77,6 @@ import Interaction.SealedResolutionBinding
 import Interaction.SealedResolutionRounds
 import Interaction.SealedResolutionProvenance
 import Interaction.SealedResolutionPolicy
+import Interaction.SealedResolutionLikelihood
 import Interaction.SealedResolutionKnowledge
 import Interaction.SealedResolutionCoupling

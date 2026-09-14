@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedSourceCylinder
+import Vegas.Compile.SealedNativeLikelihood
 
 /-! # A native pending disclosure becomes a legal source input
 
@@ -571,5 +571,42 @@ theorem zero_source_prefix_mass (fallback : Value) :
             (.step initial (.finish (registered none))) = 0 := by
   exact (first_registration_source_mass (compilation.valueSourceProfile (fun _ => some true))
     none fallback).trans (FinDist.prob_eq_zero_iff.mpr (zero_probability_assignment fallback).2)
+
+/-- The same first-registration mass holds in the original native runner,
+including when that mass is zero. -/
+theorem first_registration_native_mass (profile : SourceBehavioralProfile core) (value : Value) :
+    let players := GameTheory.Profile.update (sig := policySignature Player app)
+      (fun who => compilation.compileResolvingPolicy none 3 who (profile who)) 1
+      (fun history view => FinDist.pure (deviator history view))
+    let stop := fun execution : app.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    ((app.tracePolicies players (fun history view => FinDist.pure (environment history view))
+      [.player 0] initial).map (PolicyTrace.prefixThrough stop)).prob
+        (.step initial (.finish (registered value))) =
+      (compilation.compileResolvingPolicy none 3 0 (profile 0) []
+        (State.observe app initial.native 0)).prob (.privateCommand ⟨(0, value)⟩) := by
+  have hmass := compilation.replay_prefix_prob_eq_product none 3 1 deviator environment
+    [.player 0] (fun _ => value) profile
+  dsimp only at hmass
+  rw [first_replay] at hmass
+  simp only [PolicyTrace.prefixThrough] at hmass
+  exact hmass.trans (first_registration_factors profile value)
+
+/-- The full pending-opening/copy example has the original native prefix
+law, not just the same set of possible executions. Honest kernels are arbitrary. -/
+theorem pending_copy_native_prefix_law (profile : SourceBehavioralProfile core)
+    (fallback : Value) :
+    let players := GameTheory.Profile.update (sig := policySignature Player app)
+      (fun who => compilation.compileResolvingPolicy none 3 who (profile who)) 1
+      (fun history view => FinDist.pure (deviator history view))
+    let stop := fun execution : app.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    (compilation.extractedSourceRun none 3 1 deviator environment schedule fallback profile).map
+      (fun cfg => (supported.resolvingReplay none 3 (cfg.1.nodeValues fallback) 1 deviator
+        environment schedule).prefixThrough stop) =
+      (app.tracePolicies players (fun history view => FinDist.pure (environment history view))
+        schedule initial).map (PolicyTrace.prefixThrough stop) :=
+  compilation.extractedSourceRun_native_prefix_law none 3 1 deviator environment schedule
+    fallback profile
 
 end VegasTests.SealedSourceExtraction

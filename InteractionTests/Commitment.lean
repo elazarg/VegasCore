@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.IdealCommitments
+import Interaction.IdealCommitmentWeight
 import Interaction.MessagePool
 import GameTheory.Math.Probability.FinDist
 
@@ -172,5 +173,45 @@ theorem accepted_claim_eq (value claimed : Bool) (serial : Nat)
       ⟨(false, serial), .opening (false, ()) claimed⟩ = true) :
     claimed = value := by
   cases value <;> cases claimed <;> first | rfl | cases haccepted
+
+/-! ## First-registration weight regressions -/
+
+/-- A fresh tracked registration contributes its factor, including when that
+factor is zero. -/
+theorem fresh_tracked_registration_weight (factor : ℝ) :
+    (((IdealCommitments.empty : IdealCommitments Bool Unit Bool).sealValue false () true).state
+      ).registrationWeight {(false, ())} (fun _ => factor) = factor := by
+  rw [IdealCommitments.registrationWeight_sealValue]
+  simp
+
+/-- A second seal of an occupied handle does not contribute the factor again,
+even when it attempts to replace the stored value. -/
+theorem duplicate_changed_registration_weight (factor : ℝ) :
+    let first :=
+      ((IdealCommitments.empty : IdealCommitments Bool Unit Bool).sealValue false () false).state
+    (first.sealValue false () true).state.registrationWeight
+      {(false, ())} (fun _ => factor) = factor := by
+  dsimp only
+  rw [IdealCommitments.registrationWeight_sealValue]
+  have hlookup :
+      (((IdealCommitments.empty : IdealCommitments Bool Unit Bool).sealValue false () false).state
+        ).lookup (false, ()) = some false :=
+    (IdealCommitments.empty.seal_first false () false rfl).2
+  simp [hlookup, IdealCommitments.registrationWeight]
+
+/-- Registrations outside the tracked handle set leave the weight at one. -/
+theorem untracked_registration_weight (factor : ℝ) :
+    (((IdealCommitments.empty : IdealCommitments Bool Unit Bool).sealValue false () true).state
+      ).registrationWeight {(true, ())} (fun _ => factor) = 1 := by
+  rw [IdealCommitments.registrationWeight_sealValue]
+  simp
+
+/-- A stored nullable `none` is occupied data, rather than an absent
+registration, and therefore contributes its tracked factor. -/
+theorem nullable_none_registration_weight (factor : ℝ) :
+    ((IdealCommitments.empty : IdealCommitments Bool Unit (Option Bool)).sealValue
+        false () none).state.registrationWeight {(false, ())} (fun _ => factor) = factor := by
+  rw [IdealCommitments.registrationWeight_sealValue]
+  simp
 
 end InteractionTests.Commitment

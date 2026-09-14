@@ -485,8 +485,9 @@ It identifies the source occurrence by its instruction position and recovers
 the source view from terminal compiler-field agreement. Its equality covers
 all queried values, without assuming they have positive probability.
 `restrictedSourceRun_weight_eq_product` applies it to every occupied honest slot
-and proves the source likelihood constant. Equating the resulting product with
-the native invocation product remains a whole-prefix obligation.
+and proves the source likelihood constant. `replay_prefix_prob_eq_product`
+identifies the same product with the native prefix mass; the two equalities
+yield `extractedSourceRun_native_prefix_law`.
 
 At that native registration, all producers of declared reads are complete.
 An honest producer has already registered, constraining its value in `C_t`.
@@ -573,13 +574,23 @@ mass under `mu_w` is required. The theorem
 `Vegas.Paper.pending_source_prefix_product`, eliminates the expectation and
 identifies the source cylinder mass with this fixed product.
 
-The remaining fixed-response probability obligation is to identify that product
-with the actual native invocation product before first timeout. This requires
-counting each fresh honest registration exactly once and proving all remaining
-invocations contribute one. The selected checkpoint is the first snapshot where
-the replay policy can choose the registration; it need not be the invocation
-that executes it. Source-input agreement must identify their kernel probabilities,
-not assume equality of these two snapshots.
+`replay_registration_factor` proves that the selected checkpoint and the actual
+invocation have the same original kernel. Both reconstruct the declared reads
+of the same complete source realization; equality of snapshots is not assumed.
+`IdealCommitments.registrationWeight_sealValue` counts each tracked first
+registration once, and `SealedResolution.tracePolicies_prefixThrough_prob_eq_registrationWeight`
+identifies the resulting product with the original native stopped-trace mass
+under the local command-probability equations. The compiler discharges these
+equations in `replay_prefix_prob_eq_product`. All remaining invocations have
+unit factors, including repeated submissions and focal registrations.
+The proof multiplies equations without dividing, so zero factors are allowed.
+
+`extractedSourceRun_native_prefix_law`, audited as
+`Vegas.Paper.pending_source_native_prefix_law`, equates the entire prefix law
+with replay of the ordinary source execution against the extracted focal policy.
+Agreement of masses on the normalized source law's support also rules out extra
+native mass outside that support. Both marginals are therefore checked for fixed
+deterministic focal and environment responses, up to and including first timeout.
 
 This step preserves dependent honest draws. It does not assume that a
 scheduler's public input is independent of every still-unopened value.
@@ -814,6 +825,9 @@ The current repository has:
   expectation of original-choice likelihood under the normalized reference law;
 - constancy of that likelihood across the complete reference law, giving an
   explicit source cylinder product of original native registration probabilities;
+- equality with the original native invocation product and the complete native
+  prefix law through first timeout, including pending traffic, for fixed
+  deterministic focal and environment responses;
 - retention of all focal source-owned registrations at a common first-timeout
   snapshot, including speculative registrations;
 - private-registration provenance and agreement of all players' source-owned
@@ -886,12 +900,11 @@ inputs. The restriction event is exactly the replay cylinder on the original
 source law, and its probability is the expected original-choice likelihood under
 the restricted reference source law. That likelihood is proved constant, with
 one factor per source decision and unit factors for focal or unoccupied slots.
-Matching this product to the native invocation product remains open; it is needed
-for the original native marginal law.
-The existing proof of `extractedSourceRun_registration_kernel` already derives
-its local invariants from supported execution before and after the selected
-snapshot. For the native induction, those prefix/suffix witnesses can be supplied
-at each actual invocation; no additional operational model is needed.
+`replay_registration_factor` derives the same local invariants at each actual
+invocation from its supported prefix and suffix. The source decision index is
+duplicate-free; native write-once registration counts each occupied honest slot
+once. `replay_prefix_prob_eq_product` and the normalized-source support argument
+close the fixed-response native marginal in `extractedSourceRun_native_prefix_law`.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
 
@@ -906,11 +919,10 @@ The remaining implementation work is specific:
 3. Establish readiness/read invariants after defaults and instantiate the
    fair-service and termination arguments. Do not assume a bare expiration
    status is a source settlement.
-4. Predraw native responses across honest assignments, and prove source
-   cylinder masses and the actual stopped-native marginal. The source marginal,
-   registration/opening value agreement, and fresh honest source/native kernel
-   agreement throughout pre-timeout replay for every assignment are checked.
-   Attach the actual post-timeout
+4. Predraw native responses consistently across honest assignments. The exact
+   source marginal and stopped-native marginal for fixed responses, source
+   cylinder masses, registration/opening value agreement, and fresh honest
+   source/native kernel agreement are checked. Attach the actual post-timeout
    native continuation, retaining dependence between honest draws and the
    shared environment randomness.
 5. Instantiate the existing `UtilitySimulation` under the explicit
