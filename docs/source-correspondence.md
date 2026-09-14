@@ -39,8 +39,8 @@ signal. The separate behavioral-frontier presentation requires its own
 information-locality and single-ready-node correspondence; the concrete
 source certificate here does not assume or establish that correspondence.
 
-The active sealed-message edge does not yet claim a runtime-to-source strategy
-translation. `SealedCompilation.StrategicCertificate` states the missing edge
+The active sealed-message edge does not yet supply a complete strategic
+preservation instance. `SealedCompilation.StrategicCertificate` states the exact-law edge
 explicitly: a concrete runtime must supply the honest outcome law and represent
 each considered unilateral deviation by a finite mixture of source deviations.
 The generic GameTheory layer then proves the expected-utility guarantee and
@@ -60,7 +60,7 @@ the extracted written-source policy, exact honest-kernel probabilities, and
 trace-preserving focal and environment predrawing. For every randomized unilateral
 replacement and randomized environment policy, it constructs a finite
 mixture of source/native couplings with the ordinary source-mixture marginal
-and the complete native marginal. The joint stopped-prefix/final-native law
+and the complete native trace marginal. The joint stopped-prefix/full-trace law
 is exact, including the actual post-timeout continuation. The environment may
 adapt to its pending-pool view. Its predrawn response may be correlated with the
 focal response; the mixture may depend on the opponent profile.
@@ -75,7 +75,17 @@ driver, under arbitrary randomized player and wire policies. The fragment
 certificate proves that rules are enabled and prerequisites point backward.
 No roster coverage or message service is needed for termination by timeout.
 
-Connecting this early-stopping driver to the finite-invocation coupling,
-preventing honest timeouts under fair service, the all-compiled honest law,
+`SealedResolution.runRounds_eq_tracePolicies` identifies the early-stopping
+driver with a block-boundary projection of the same full invocation trace.
+`SealedCompilation.exists_randomized_round_source_coupling` applies this
+projection to the constructed coupling: its native marginal is exactly the
+driver's stopping execution, while its source marginal remains the same
+mixture of written-source deviations. Histories and pending traffic are
+retained at the stopping boundary, not at the end of unused clock calls.
+For a completed timeout-free boundary, decoding again returns the coupled
+source realization; the continuation beyond that boundary preserves the
+registrations used by its decoding and cannot introduce a timeout.
+
+Preventing honest timeouts under deadline-relative service, the all-compiled honest law,
 post-timeout settlement, and the informed-quitting utility bound remain
 separate obligations.

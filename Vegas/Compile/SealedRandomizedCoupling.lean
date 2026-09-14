@@ -7,7 +7,7 @@ import Interaction.MessageApplicationPredraw
 
 Predrawing the focal policy and the environment preserves their complete native
 trace law. Applying the source/native coupling to each fixed pair of responses
-therefore preserves the joint law of the stopped prefix and final execution.
+therefore preserves the joint law of the stopped prefix and complete trace.
 The retained source marginal is a finite mixture of ordinary source deviations
 against unchanged opponents.
 
@@ -34,7 +34,7 @@ variable (schedule : List (@Invocation Player)) (fallback : L.Val ty)
 
 /-- An arbitrary randomized focal replacement and randomized environment have
 a finite mixture of the constructed deterministic-response source/native
-couplings. It retains the exact joint stopped-prefix and final-native law, and
+couplings. It retains the exact joint stopped-prefix and full-native-trace law, and
 its source marginal is a mixture of legal written-source deviations. Honest
 policies and their dependent draws remain unchanged.
 
@@ -68,7 +68,7 @@ theorem exists_randomized_source_coupling
           schedule fallback profile).map (fun pair =>
             ((compilation.supported.resolvingReplay nullValue window (pair.1.1.nodeValues fallback)
               focal responses.1 responses.2 schedule).prefixThrough stop, pair.2))) =
-          native.map (fun trace => (trace.prefixThrough stop, trace.last)) ∧
+          native.map (fun trace => (trace.prefixThrough stop, trace)) ∧
       ((responsePairs.bind fun responses =>
         compilation.extractedSourceCoupling nullValue window focal responses.1 responses.2
           schedule fallback profile).map (fun pair => observeSourceOutcome source.core pair.1)) =
@@ -80,7 +80,7 @@ theorem exists_randomized_source_coupling
       ((responsePairs.bind fun responses =>
         compilation.extractedSourceCoupling nullValue window focal responses.1 responses.2
           schedule fallback profile).map Prod.snd) =
-        runtime.messageApplication.runPolicies
+        runtime.messageApplication.tracePolicies
           (Profile.update (sig := policySignature Player runtime.messageApplication)
             players focal replacement) environment schedule initial := by
   intro runtime players initial native stop PlayerResponse EnvironmentResponse
@@ -136,7 +136,7 @@ theorem exists_randomized_source_coupling
   refine ⟨responsePairs, ?_, ?_, ?_⟩
   · have h := congrArg (fun law => law.map
       (fun trace : runtime.messageApplication.PolicyTrace =>
-        (trace.prefixThrough stop, trace.last))) responsePairs_trace
+        (trace.prefixThrough stop, trace))) responsePairs_trace
     rw [FinDist.map_bind] at h
     refine Eq.trans ?_ h
     apply FinDist.bind_congr
@@ -148,13 +148,10 @@ theorem exists_randomized_source_coupling
     intro responses _
     exact compilation.extractedSourceCoupling_source nullValue window focal responses.1 responses.2
       schedule fallback profile
-  · have h := congrArg (fun law => law.map PolicyTrace.last) responsePairs_trace
-    rw [FinDist.map_bind, runtime.messageApplication.tracePolicies_last] at h
-    rw [FinDist.map_bind]
-    refine Eq.trans ?_ h
+  · rw [FinDist.map_bind]
+    refine Eq.trans ?_ responsePairs_trace
     apply FinDist.bind_congr
     intro responses _
-    rw [runtime.messageApplication.tracePolicies_last]
     exact compilation.extractedSourceCoupling_native nullValue window focal responses.1 responses.2
       schedule fallback profile
 
@@ -180,20 +177,20 @@ theorem mixtureSourceCoupling_decode_of_complete_clear
           (compilation.supported.resolvingRuntime nullValue
             window).messageApplication.EnvironmentPolicyCommand)))
     (cfg : ReachableConfig (compile source.core).graph)
-    (final :
-      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hpair : (cfg, final) ∈ (responsePairs.bind fun responses =>
+    (trace :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyTrace)
+    (hpair : (cfg, trace) ∈ (responsePairs.bind fun responses =>
       compilation.extractedSourceCoupling nullValue window focal responses.1 responses.2 schedule
         fallback profile).support)
     (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
-      final.native.application.visible = true)
-    (hclear : final.native.application.visible.timeouts = []) :
-    (compile source.core).graph.decodeSealedFrom ty final.native.application.service
-      (Config.initial _) final.native.application.visible.events = some cfg.1 := by
+      trace.last.native.application.visible = true)
+    (hclear : trace.last.native.application.visible.timeouts = []) :
+    (compile source.core).graph.decodeSealedFrom ty trace.last.native.application.service
+      (Config.initial _) trace.last.native.application.visible.events = some cfg.1 := by
   simp only [FinDist.support_bind, Set.mem_iUnion] at hpair
   obtain ⟨responses, _, hpair⟩ := hpair
   exact compilation.extractedSourceCoupling_decode_of_complete_clear nullValue window focal
-    responses.1 responses.2 schedule fallback profile cfg final hpair hcomplete hclear
+    responses.1 responses.2 schedule fallback profile cfg trace hpair hcomplete hclear
 
 end Vegas.SealedCompilation
 

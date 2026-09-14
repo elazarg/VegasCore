@@ -50,6 +50,7 @@ import Interaction.ChoiceEncodingRouting
 import Interaction.ChoiceControllerHistory
 import Interaction.MessageApplicationPredraw
 import Interaction.MessageApplicationContinuation
+import Interaction.MessageApplicationCheckpoints
 import Interaction.SealedProgram
 import Interaction.SealedProgramLaws
 import Interaction.SealedExecution
@@ -77,6 +78,8 @@ import Interaction.SealedResolutionLaws
 import Interaction.SealedResolutionProgress
 import Interaction.SealedResolutionBinding
 import Interaction.SealedResolutionRounds
+import Interaction.SealedResolutionCompletion
+import Interaction.SealedResolutionDriver
 import Interaction.SealedResolutionTermination
 import Interaction.SealedResolutionProvenance
 import Interaction.SealedResolutionPolicy

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedRandomizedCoupling
+import Vegas.Compile.SealedRoundCoupling
 
 /-! # A native pending disclosure becomes a legal source input
 
@@ -609,9 +609,9 @@ theorem pending_copy_native_prefix_law (profile : SourceBehavioralProfile core)
   compilation.extractedSourceRun_native_prefix_law none 3 1 deviator environment schedule
     fallback profile
 
-/-- The concrete pending-disclosure example has an exact complete native
+/-- The concrete pending-disclosure example has an exact complete native-trace
 marginal with arbitrary original honest kernels. This equality does not require
-the final native state to be settled. -/
+the last native state to be settled. -/
 theorem pending_copy_coupling_native (profile : SourceBehavioralProfile core)
     (fallback : Value) :
     let players := GameTheory.Profile.update (sig := policySignature Player app)
@@ -619,7 +619,7 @@ theorem pending_copy_coupling_native (profile : SourceBehavioralProfile core)
       (fun history view => FinDist.pure (deviator history view))
     (compilation.extractedSourceCoupling none 3 1 deviator environment schedule fallback
       profile).map Prod.snd =
-      app.runPolicies players (fun history view => FinDist.pure (environment history view))
+      app.tracePolicies players (fun history view => FinDist.pure (environment history view))
         schedule initial :=
   compilation.extractedSourceCoupling_native none 3 1 deviator environment schedule fallback
     profile
@@ -637,10 +637,49 @@ theorem randomized_pending_native_mixture (profile : SourceBehavioralProfile cor
           (List app.EnvironmentEntry → app.EnvironmentObservation → app.EnvironmentPolicyCommand)),
       (responsePairs.bind fun responses => compilation.extractedSourceCoupling none 3 1 responses.1
         responses.2 schedule fallback profile).map Prod.snd =
-        app.runPolicies players randomizedEnvironment schedule initial := by
+        app.tracePolicies players randomizedEnvironment schedule initial := by
   obtain ⟨responsePairs, _, _, hnative⟩ :=
     compilation.exists_randomized_source_coupling none 3 1 randomizedEnvironment schedule fallback
       profile replacement
   exact ⟨responsePairs, hnative⟩
+
+/-- The retained trace construction specializes to the actual periodic-clock
+round driver, rather than an independently chosen execution coupling. -/
+theorem randomized_pending_round_mixture (profile : SourceBehavioralProfile core)
+    (fallback : Value) (replacement : app.PlayerPolicy)
+    (wire : runtime.messageApplication.WirePolicy) :
+    let players := GameTheory.Profile.update (sig := policySignature Player app)
+      (fun who => compilation.compileResolvingPolicy none 3 who (profile who)) 1 replacement
+    ∃ responsePairs : FinDist
+        ((List app.PlayerEntry → app.View → app.PlayerCommand) ×
+          (List app.EnvironmentEntry → app.EnvironmentObservation →
+            app.EnvironmentPolicyCommand)),
+      (responsePairs.bind fun responses =>
+        compilation.extractedRoundSourceCoupling none 3 [0, 1] 1 2 1
+          responses.1 responses.2 fallback profile).map Prod.snd =
+        runtime.runRounds [0, 1] 1 players wire 2 initial := by
+  obtain ⟨responsePairs, _, hnative⟩ :=
+    compilation.exists_randomized_round_source_coupling none 3 [0, 1] 1 2 1 fallback
+      profile replacement wire
+  exact ⟨responsePairs, hnative⟩
+
+/-- Normal completion is decoded at the selected round boundary for every
+component of the concrete response mixture. -/
+theorem pending_round_normal_decode (profile : SourceBehavioralProfile core)
+    (fallback : Value)
+    (responsePairs : FinDist
+      ((List app.PlayerEntry → app.View → app.PlayerCommand) ×
+        (List app.EnvironmentEntry → app.EnvironmentObservation →
+          app.EnvironmentPolicyCommand)))
+    (cfg : ReachableConfig graph) (selected : app.PolicyExecution)
+    (hpair : (cfg, selected) ∈ (responsePairs.bind fun responses =>
+      compilation.extractedRoundSourceCoupling none 3 [0, 1] 1 2 1
+        responses.1 responses.2 fallback profile).support)
+    (hcomplete : runtime.complete selected.native.application.visible = true)
+    (hclear : selected.native.application.visible.timeouts = []) :
+    graph.decodeSealedFrom (.option .bool) selected.native.application.service
+      (Config.initial _) selected.native.application.visible.events = some cfg.1 :=
+  compilation.mixtureRoundSourceCoupling_decode_of_complete_clear none 3 [0, 1] 1 2 1
+    fallback profile responsePairs cfg selected hpair hcomplete hclear
 
 end VegasTests.SealedSourceExtraction

@@ -44,7 +44,7 @@ commands; private and environment histories are retained in its last state. -/
 def extractedSourceCoupling (profile : SourceBehavioralProfile source.core.prog) :
     FinDist (ReachableConfig (compile source.core).graph ×
       (compilation.supported.resolvingRuntime nullValue
-        window).messageApplication.PolicyExecution) :=
+        window).messageApplication.PolicyTrace) :=
   let runtime := compilation.supported.resolvingRuntime nullValue window
   let players := Profile.update (sig := policySignature Player runtime.messageApplication)
     (fun who => compilation.compileResolvingPolicy nullValue window who (profile who)) focal
@@ -55,9 +55,10 @@ def extractedSourceCoupling (profile : SourceBehavioralProfile source.core.prog)
     profile).bind fun cfg =>
       let stopped := (compilation.supported.resolvingReplay nullValue window
         (cfg.1.nodeValues fallback) focal deviator environment schedule).prefixThrough stop
-      (runtime.messageApplication.runPolicies players
+      (runtime.messageApplication.tracePolicies players
         (fun history view => FinDist.pure (environment history view))
-        (schedule.drop stopped.length) stopped.last).map fun final => (cfg, final)
+        (schedule.drop stopped.length) stopped.last).map fun suffix =>
+          (cfg, stopped.append suffix)
 
 /-- Attaching a normalized native suffix does not change the retained source
 realization, even when that suffix responds to a timeout settlement. -/
@@ -84,9 +85,9 @@ theorem extractedSourceCoupling_source (profile : SourceBehavioralProfile source
   exact compilation.extractedSourceRun_source nullValue window focal deviator environment schedule
     fallback profile
 
-/-- The coupling preserves the joint law of the stopped native prefix and
-the eventual execution. Thus it retains their dependence, not just the two
-separate marginal laws. -/
+/-- The coupling preserves the joint law of the stopped native prefix and the
+complete native trace. Thus it retains their dependence, not just separate
+marginal laws. -/
 theorem extractedSourceCoupling_prefix_native
     (profile : SourceBehavioralProfile source.core.prog) :
     let runtime := compilation.supported.resolvingRuntime nullValue window
@@ -102,20 +103,20 @@ theorem extractedSourceCoupling_prefix_native
       (runtime.messageApplication.tracePolicies players
         (fun history view => FinDist.pure (environment history view)) schedule
         (PolicyExecution.initial _ (State.initial _ runtime.initial))).map
-          (fun trace => (trace.prefixThrough stop, trace.last)) := by
+          (fun trace => (trace.prefixThrough stop, trace)) := by
   intro runtime players stop
   have hprefix := compilation.extractedSourceRun_native_prefix_law nullValue window focal deviator
     environment schedule fallback profile
-  rw [runtime.messageApplication.tracePolicies_prefix_last_law players
+  rw [runtime.messageApplication.tracePolicies_prefix_trace_law players
     (fun history view => FinDist.pure (environment history view)) stop]
   rw [← hprefix]
   simp only [extractedSourceCoupling, FinDist.map_bind, FinDist.map_comp, Function.comp_def,
     FinDist.bind_map]
   rfl
 
-/-- The other marginal is the complete native execution, including its actual
-post-timeout behavior. No settlement, fairness, or source/native utility premise
-is needed for this execution-law identity. -/
+/-- The other marginal is the complete native trace, including its actual
+post-timeout behavior. No settlement, fairness, or source/native utility
+premise is needed for this trace-law identity. -/
 theorem extractedSourceCoupling_native (profile : SourceBehavioralProfile source.core.prog) :
     let runtime := compilation.supported.resolvingRuntime nullValue window
     let players := Profile.update (sig := policySignature Player runtime.messageApplication)
@@ -123,7 +124,7 @@ theorem extractedSourceCoupling_native (profile : SourceBehavioralProfile source
       (fun history view => FinDist.pure (deviator history view))
     (compilation.extractedSourceCoupling nullValue window focal deviator environment schedule
       fallback profile).map Prod.snd =
-      runtime.messageApplication.runPolicies players
+      runtime.messageApplication.tracePolicies players
         (fun history view => FinDist.pure (environment history view)) schedule
         (PolicyExecution.initial _ (State.initial _ runtime.initial)) := by
   intro runtime players
@@ -132,40 +133,43 @@ theorem extractedSourceCoupling_native (profile : SourceBehavioralProfile source
       schedule fallback profile)
   simp only [FinDist.map_comp, Function.comp_def] at h
   change (compilation.extractedSourceCoupling nullValue window focal deviator environment schedule
-    fallback profile).map Prod.snd =
-      (runtime.messageApplication.tracePolicies players
-        (fun history view => FinDist.pure (environment history view)) schedule
-        (PolicyExecution.initial _ (State.initial _ runtime.initial))).map PolicyTrace.last at h
-  exact h.trans (runtime.messageApplication.tracePolicies_last ..)
+    fallback profile).map (fun pair => pair.2) = _
+  exact h.trans (FinDist.map_id _)
 
 /-- In the absence of timeout, no post-cutoff suffix was resampled: the actual
-final execution is the complete fixed-response replay of the retained source
+full trace is the complete fixed-response replay of the retained source
 realization. The statement concerns supported pairs in the constructed coupling,
 not a consequence inferred from its marginal equalities. -/
 theorem extractedSourceCoupling_clear
     (profile : SourceBehavioralProfile source.core.prog)
     (cfg : ReachableConfig (compile source.core).graph)
-    (final :
-      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hpair : (cfg, final) ∈ (compilation.extractedSourceCoupling nullValue window focal deviator
+    (trace :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyTrace)
+    (hpair : (cfg, trace) ∈ (compilation.extractedSourceCoupling nullValue window focal deviator
       environment schedule fallback profile).support)
-    (hclear : final.native.application.visible.timeouts = []) :
+    (hclear : trace.last.native.application.visible.timeouts = []) :
     cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
       fallback profile).support ∧
-    final = (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback)
-      focal deviator environment schedule).last ∧
-    final = compilation.supported.resolvingStop nullValue window (cfg.1.nodeValues fallback)
+    trace = compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback)
+      focal deviator environment schedule ∧
+    trace.last = compilation.supported.resolvingStop nullValue window (cfg.1.nodeValues fallback)
       focal deviator environment schedule := by
   simp only [extractedSourceCoupling, FinDist.support_bind, Set.mem_iUnion,
     FinDist.support_map, Set.mem_image, Prod.mk.injEq] at hpair
-  obtain ⟨realization, hrealization, result, hresult, rfl, rfl⟩ := hpair
+  obtain ⟨realization, hrealization, suffix, hsuffix, rfl, rfl⟩ := hpair
   refine ⟨hrealization, ?_⟩
   let runtime := compilation.supported.resolvingRuntime nullValue window
   let replayed := compilation.supported.resolvingReplay nullValue window
     (realization.1.nodeValues fallback) focal deviator environment schedule
   let stop := fun execution : runtime.messageApplication.PolicyExecution =>
     !execution.native.application.visible.timeouts.isEmpty
-  have hbefore := runtime.runPolicies_clear_before _ _ _ _ _ hresult hclear
+  have hsuffixLast : suffix.last.native.application.visible.timeouts = [] := by
+    simpa only [PolicyTrace.append_last] using hclear
+  have hbefore := runtime.runPolicies_clear_before _ _ _ _ _
+    (by
+      rw [← runtime.messageApplication.tracePolicies_last, FinDist.support_map]
+      exact ⟨suffix, hsuffix, rfl⟩)
+    hsuffixLast
   have hstopped : replayed.prefixThrough stop = replayed := by
     apply replayed.prefixThrough_eq_of_last_false stop
     change (!(replayed.prefixThrough stop).last.native.application.visible.timeouts.isEmpty) = false
@@ -179,14 +183,18 @@ theorem extractedSourceCoupling_clear
       (fun history view => FinDist.pure (environment history view)) schedule
       (PolicyExecution.initial _ (State.initial _ runtime.initial)) replayed
     rw [compilation.supported.resolvingReplay_law, FinDist.mem_support_pure]
-  change result ∈ (runtime.messageApplication.runPolicies _ _
+  change suffix ∈ (runtime.messageApplication.tracePolicies _ _
     (schedule.drop (replayed.prefixThrough stop).length)
-    (replayed.prefixThrough stop).last).support at hresult
-  rw [hstopped, hlength, List.drop_length, runPolicies, FinDist.mem_support_pure] at hresult
-  refine ⟨hresult, ?_⟩
-  change result = replayed.firstRelease stop
-  rw [← PolicyTrace.prefixThrough_last, hstopped]
-  exact hresult
+    (replayed.prefixThrough stop).last).support at hsuffix
+  rw [hstopped, hlength, List.drop_length, tracePolicies,
+    FinDist.mem_support_pure] at hsuffix
+  subst suffix
+  constructor
+  · rw [hstopped]
+    exact PolicyTrace.append_finish_last replayed
+  · rw [PolicyTrace.append_last]
+    change replayed.last = replayed.firstRelease stop
+    rw [← PolicyTrace.prefixThrough_last, hstopped]
 
 /-- A completed timeout-free native execution decodes to the exact retained
 source configuration. Together with the source marginal this identifies the
@@ -195,25 +203,40 @@ some source execution with the same accepted events. -/
 theorem extractedSourceCoupling_decode_of_complete_clear
     (profile : SourceBehavioralProfile source.core.prog)
     (cfg : ReachableConfig (compile source.core).graph)
-    (final :
-      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hpair : (cfg, final) ∈ (compilation.extractedSourceCoupling nullValue window focal deviator
+    (trace :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyTrace)
+    (hpair : (cfg, trace) ∈ (compilation.extractedSourceCoupling nullValue window focal deviator
       environment schedule fallback profile).support)
     (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
-      final.native.application.visible = true)
-    (hclear : final.native.application.visible.timeouts = []) :
-    (compile source.core).graph.decodeSealedFrom ty final.native.application.service
-      (Config.initial _) final.native.application.visible.events = some cfg.1 := by
+      trace.last.native.application.visible = true)
+    (hclear : trace.last.native.application.visible.timeouts = []) :
+    (compile source.core).graph.decodeSealedFrom ty trace.last.native.application.service
+      (Config.initial _) trace.last.native.application.visible.events = some cfg.1 := by
   let runtime := compilation.supported.resolvingRuntime nullValue window
+  let players := Profile.update (sig := policySignature Player runtime.messageApplication)
+    (fun who => compilation.compileResolvingPolicy nullValue window who (profile who)) focal
+    (fun history view => FinDist.pure (deviator history view))
+  let nativeEnvironment : runtime.messageApplication.EnvironmentPolicy :=
+    fun history view => FinDist.pure (environment history view)
+  let initial := PolicyExecution.initial runtime.messageApplication
+    (State.initial _ runtime.initial)
   obtain ⟨hcfg, _, hstop⟩ := compilation.extractedSourceCoupling_clear nullValue window focal
-    deviator environment schedule fallback profile cfg final hpair hclear
-  have hnative : final ∈ ((compilation.extractedSourceCoupling nullValue window focal deviator
+    deviator environment schedule fallback profile cfg trace hpair hclear
+  have hnative : trace ∈ ((compilation.extractedSourceCoupling nullValue window focal deviator
       environment schedule fallback profile).map Prod.snd).support := by
     rw [FinDist.support_map]
-    exact ⟨(cfg, final), hpair, rfl⟩
+    exact ⟨(cfg, trace), hpair, rfl⟩
   rw [compilation.extractedSourceCoupling_native] at hnative
-  have hbinding := runtime.runPolicies_beforeTimeoutBinding _ _ schedule _ final
-    SealedResolution.BeforeTimeoutBinding.initial hnative hclear
+  change trace ∈ (runtime.messageApplication.tracePolicies players nativeEnvironment
+    schedule initial).support at hnative
+  have hfinal : trace.last ∈
+      (runtime.messageApplication.runPolicies players nativeEnvironment schedule
+        initial).support := by
+    rw [← runtime.messageApplication.tracePolicies_last, FinDist.support_map]
+    exact ⟨trace, hnative, rfl⟩
+  have hbinding := runtime.runPolicies_beforeTimeoutBinding players nativeEnvironment schedule
+    initial trace.last
+    SealedResolution.BeforeTimeoutBinding.initial hfinal hclear
   apply compilation.supported.decodeSealed_eq_source cfg
     (compilation.extractedSourceRun_terminal nullValue window focal deviator environment schedule
       fallback profile cfg hcfg) fallback _ hbinding ?_ ?_

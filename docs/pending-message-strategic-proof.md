@@ -921,7 +921,10 @@ The current repository has:
 - generic utility-based Nash transport;
 - a fixed-clock round-driver termination bound of `n * (window + 1)` for
   enabled backward-dependency programs, instantiated for every compiled sealed
-  fragment from canonical initialization under arbitrary player and wire policies.
+  fragment from canonical initialization under arbitrary player and wire policies;
+- exact full-state identification of the early-stopping round driver with a
+  block-boundary readout of the shared invocation trace, and the resulting
+  source-mixture/native-round coupling for randomized focal and wire policies.
 
 The registration read bound is checked over the actual shared policy runner,
 including clock transitions and rejection receipts. The paired execution
@@ -978,10 +981,29 @@ duplicate-free; native write-once registration counts each occupied honest slot
 once. `replay_prefix_prob_eq_product` and the normalized-source support argument
 close the fixed-response native marginal in `extractedSourceRun_native_prefix_law`.
 `extractedSourceCoupling_prefix_native` attaches the original suffix using the
-retained state and histories; `exists_randomized_source_coupling` lifts the
-joint law to randomized focal and environment policies.
+retained state and histories, preserving the joint stopped-prefix/full-trace
+law; `exists_randomized_source_coupling` lifts that law to randomized focal
+and environment policies.
 `Vegas.Paper.pending_randomized_source_coupling`
 audits the joint law and both marginals by direct delegation.
+`SealedResolution.runRounds_eq_tracePolicies` identifies the actual round
+driver with the first complete block-boundary snapshot of that trace. The
+periodic environment performs wire actions at its service opportunities and
+the mandatory clock command at the boundary, using its own history length to
+select the phase. No memory is reset and no snapshot is given to a player.
+`exists_randomized_round_source_coupling` applies this readout to the same
+constructed coupling. The native marginal includes exactly the stopped
+histories, pool, receipts, and application state; the source marginal retains
+the same mixture of source deviations. Selecting the trace's final snapshot
+would be wrong for this purpose: later clock calls and histories need not
+freeze after application completion.
+`mixtureRoundSourceCoupling_decode_of_complete_clear` proves normal-completion
+agreement at the selected boundary. A supported
+prefix supplies its binding invariant; a supported suffix preserves occupied
+registrations and keeps the completed event log timeout-free. The retained
+source realization therefore agrees with the selected native decoding, not
+only with the final snapshot of the longer trace. No equality between a
+timeout default and a private registered value is used.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
 
@@ -994,11 +1016,10 @@ The remaining implementation work is specific:
    regression. Normal completed event decoding already recovers the exact
    coupled source realization. After timeout, service values and logical
    defaults remain distinct; equal private bindings are not the target claim.
-3. Connect the bounded early-stopping round driver to the finite-invocation
-   coupling, then establish readiness/read invariants after defaults and the
-   deadline-relative service theorem that rules out honest timeouts. The
-   independent termination bound is checked. Do not assume a bare expiration
-   status is a source settlement.
+3. Establish readiness/read invariants after defaults and the deadline-relative
+   service theorem that rules out honest timeouts. The bounded early-stopping
+   driver and its exact source/native marginal connection are checked. Do not
+   assume a bare expiration status is a source settlement.
 4. Establish the all-compiled honest outcome law. The arbitrary-deviation
    mixture alone does not identify its source marginal with the original
    all-honest source profile.

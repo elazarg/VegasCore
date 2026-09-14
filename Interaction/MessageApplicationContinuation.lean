@@ -26,6 +26,29 @@ def PolicyTrace.length : app.PolicyTrace → Nat
   | .finish _ => 0
   | .step _ tail => tail.length + 1
 
+/-- Replace a trace's final snapshot by a continuation trace. -/
+def PolicyTrace.append : app.PolicyTrace → app.PolicyTrace → app.PolicyTrace
+  | .finish _, suffix => suffix
+  | .step execution tail, suffix => .step execution (tail.append suffix)
+
+@[simp] theorem PolicyTrace.append_last (front suffix : app.PolicyTrace) :
+    (front.append suffix).last = suffix.last := by
+  induction front with
+  | finish => rfl
+  | step _ _ ih => exact ih
+
+@[simp] theorem PolicyTrace.append_finish_last (trace : app.PolicyTrace) :
+    trace.append (.finish trace.last) = trace := by
+  induction trace with
+  | finish => rfl
+  | step _ _ ih => simp only [append, last, ih]
+
+@[simp] theorem PolicyTrace.append_length (front suffix : app.PolicyTrace) :
+    (front.append suffix).length = front.length + suffix.length := by
+  induction front with
+  | finish => simp [append, length]
+  | step _ _ ih => simp only [append, length, ih]; omega
+
 /-- If the selected endpoint does not satisfy the cutoff, no earlier snapshot
 did either, so the selected prefix is the complete trace. -/
 theorem PolicyTrace.prefixThrough_eq_of_last_false (trace : app.PolicyTrace)
@@ -70,24 +93,24 @@ theorem tracePolicies_length (players : Principal → app.PlayerPolicy)
       obtain ⟨next, _, tail, htail, rfl⟩ := htrace
       exact congrArg (· + 1) (ih next tail htail)
 
-/-- Exact joint law of the selected prefix and the eventual final execution.
-Continuation uses the original policies and the original native kernels on the
-remaining invocation list. The cutoff may inspect any proof-facing state data;
-an information-flow or incentive theorem must justify its particular use. -/
-theorem tracePolicies_prefix_last_law
+/-- Exact joint law of the selected prefix and the complete execution trace.
+Continuation uses the original policies and native kernels on the unused
+invocation suffix. The stopped trace is reassembled with that continuation by
+replacing its final snapshot. -/
+theorem tracePolicies_prefix_trace_law
     (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
     (release : app.PolicyExecution → Bool) (schedule : List (@Invocation Principal))
     (initial : app.PolicyExecution) :
     (app.tracePolicies players environment schedule initial).map
-      (fun trace => (trace.prefixThrough release, trace.last)) =
+      (fun trace => (trace.prefixThrough release, trace)) =
       ((app.tracePolicies players environment schedule initial).map
         (PolicyTrace.prefixThrough release)).bind fun stopped =>
-          (app.runPolicies players environment (schedule.drop stopped.length) stopped.last).map
-            (fun final => (stopped, final)) := by
+          (app.tracePolicies players environment (schedule.drop stopped.length) stopped.last).map
+            (fun suffix => (stopped, stopped.append suffix)) := by
   induction schedule generalizing initial with
   | nil =>
       simp only [tracePolicies, FinDist.map_pure, PolicyTrace.prefixThrough,
-        PolicyTrace.last, List.drop_nil, runPolicies, FinDist.pure_bind]
+        List.drop_nil, FinDist.pure_bind, PolicyTrace.append, PolicyTrace.last]
   | cons invocation rest ih =>
       rw [app.tracePolicies_prefixThrough_cons]
       cases hrelease : release initial with
@@ -104,26 +127,59 @@ theorem tracePolicies_prefix_last_law
             simp only [PolicyTrace.prefixThrough, hrelease, ↓reduceIte]
           calc
             _ = (app.tracePolicies players environment (invocation :: rest) initial).map
-                  (fun trace => (PolicyTrace.finish initial, trace.last)) := by
+                  (fun trace => (PolicyTrace.finish initial, trace)) := by
                 apply FinDist.map_congr_of_eq_on_support
                 intro trace htrace
                 rw [hpref trace htrace]
             _ = _ := by
-                change (app.tracePolicies players environment (invocation :: rest) initial).map
-                  ((fun final => (PolicyTrace.finish initial, final)) ∘ PolicyTrace.last) = _
-                rw [← FinDist.map_comp, app.tracePolicies_last]
+                rfl
       | false =>
           simp only [Bool.false_eq_true, ↓reduceIte, tracePolicies,
             FinDist.map_bind, FinDist.map_comp, Function.comp_def, PolicyTrace.prefixThrough,
-            hrelease, Bool.false_eq_true, ↓reduceIte, PolicyTrace.last, FinDist.bind_bind,
-            FinDist.bind_map]
+            hrelease, Bool.false_eq_true, ↓reduceIte, FinDist.bind_bind, FinDist.bind_map]
           apply FinDist.bind_congr
           intro next _
           have htail := congrArg (fun law => law.map
-            (fun pair : app.PolicyTrace × app.PolicyExecution =>
-              (PolicyTrace.step initial pair.1, pair.2))) (ih next)
+            (fun pair : app.PolicyTrace × app.PolicyTrace =>
+              (PolicyTrace.step initial pair.1, PolicyTrace.step initial pair.2))) (ih next)
           simpa only [FinDist.map_comp, Function.comp_def, FinDist.map_bind, FinDist.bind_map,
-            PolicyTrace.length, PolicyTrace.last, List.drop_succ_cons] using htail
+            PolicyTrace.length, PolicyTrace.last, PolicyTrace.append,
+            List.drop_succ_cons] using htail
+
+/-- Exact joint law of the selected prefix and the eventual final execution.
+This is the final-state projection of `tracePolicies_prefix_trace_law`. -/
+theorem tracePolicies_prefix_last_law
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (release : app.PolicyExecution → Bool) (schedule : List (@Invocation Principal))
+    (initial : app.PolicyExecution) :
+    (app.tracePolicies players environment schedule initial).map
+      (fun trace => (trace.prefixThrough release, trace.last)) =
+      ((app.tracePolicies players environment schedule initial).map
+        (PolicyTrace.prefixThrough release)).bind fun stopped =>
+          (app.runPolicies players environment (schedule.drop stopped.length) stopped.last).map
+            (fun final => (stopped, final)) := by
+  let project : app.PolicyTrace × app.PolicyTrace → app.PolicyTrace × app.PolicyExecution :=
+    fun pair => (pair.1, pair.2.last)
+  calc
+    _ = ((app.tracePolicies players environment schedule initial).map
+          (fun trace => (trace.prefixThrough release, trace))).map project := by
+        rw [FinDist.map_comp]
+        rfl
+    _ = (((app.tracePolicies players environment schedule initial).map
+          (PolicyTrace.prefixThrough release)).bind fun stopped =>
+            (app.tracePolicies players environment (schedule.drop stopped.length)
+              stopped.last).map fun suffix =>
+                (stopped, stopped.append suffix)).map project := by
+        rw [app.tracePolicies_prefix_trace_law players environment release schedule initial]
+    _ = _ := by
+        rw [FinDist.map_bind]
+        apply FinDist.bind_congr
+        intro stopped _
+        have hlast := congrArg (fun law => law.map (fun final => (stopped, final)))
+          (app.tracePolicies_last players environment (schedule.drop stopped.length)
+            stopped.last)
+        simpa only [FinDist.map_comp, Function.comp_def, project, PolicyTrace.append_last]
+          using hlast
 
 /-- Forgetting the selected prefix in the joint law recovers the original
 final-state law. This retains all dependence through the stopped state and
@@ -144,6 +200,11 @@ theorem runPolicies_bind_prefixThrough
     app.tracePolicies_last] using h
 
 end Interaction.MessageApplication
+
+/-- info: 'Interaction.MessageApplication.tracePolicies_prefix_trace_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.MessageApplication.tracePolicies_prefix_trace_law
 
 /-- info: 'Interaction.MessageApplication.tracePolicies_prefix_last_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
