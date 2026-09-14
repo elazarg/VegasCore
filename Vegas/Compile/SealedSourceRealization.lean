@@ -190,6 +190,80 @@ theorem extractedSourceRun_opened (profile : SourceBehavioralProfile source.core
     ((compilation.supported.resolvingRuntime nullValue window).runPolicies_lookup_of_eq_some
       _ _ after stopped _ (owner, decision.val) registered hregistered hafter)
 
+/-- At every fresh honest registration in a pre-timeout replay, the original
+compiled policy draws its unchanged source kernel at the complete source's
+declared inputs. Freshness and input agreement follow from actual execution;
+neither cache correctness nor successful reads are assumed. -/
+theorem extractedSourceRun_registration_kernel
+    (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (hcfg : cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment
+      schedule fallback profile).support)
+    (release :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution →
+        Bool) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    let stopped := ((compilation.supported.resolvingReplay nullValue window
+      (cfg.1.nodeValues fallback) focal deviator environment schedule).prefixThrough
+        (fun execution : runtime.messageApplication.PolicyExecution =>
+          !execution.native.application.visible.timeouts.isEmpty)).firstRelease release
+    stopped.native.application.visible.timeouts = [] →
+    ∀ who, who ≠ focal → ∀ slot value,
+      .privateCommand ⟨(slot, value)⟩ ∈
+        (compilation.supported.resolvingValuePlayers nullValue window (cfg.1.nodeValues fallback)
+          focal (fun history view => FinDist.pure (deviator history view)) who
+          (stopped.principalHistory who)
+          (State.observe runtime.messageApplication stopped.native who)).support →
+      ∃ (node : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
+        (hsem : ((compile source.core).graph.nodeRow node).sem = .commit who guard)
+        (reads : ReadEnv L guard.choiceReads),
+        slot = node.val ∧ stopped.native.application.service.lookup (who, node.val) = none ∧
+        ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads ∧
+        compilation.compileResolvingPolicy nullValue window who (profile who)
+          (stopped.principalHistory who) (State.observe runtime.messageApplication stopped.native
+            who) =
+          ((compileSourcePolicy source.core.prog source.core.fresh
+            (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+            rfl who (profile who)) node guard hsem reads).map (fun choice =>
+              .privateCommand ⟨(node.val, cast (congrArg L.Val
+                (compilation.supported.commitType node who guard hsem)) choice.1)⟩) := by
+  intro runtime stopped hclear who hwho slot value hcommand
+  rw [EventGraph.SealedFragment.resolvingValuePlayers, Profile.update_of_ne _ _ hwho,
+    EventGraph.SealedFragment.resolvingPolicy_no_timeout _ _ _ _ _ _ _ hclear] at hcommand
+  obtain ⟨node, guard, hsem, reads, hslot, hcache, hreads, hkernel⟩ :=
+    compilation.supported.selected_registration_kernel who [] _ _ _ _ slot value hcommand
+  obtain ⟨before, after, hbefore, hafter⟩ := compilation.supported.resolvingReplay_prefix_support
+    nullValue window focal deviator environment schedule release (cfg.1.nodeValues fallback)
+  have hmemory := SealedResolution.RegistrationMemory.runPolicies _ _ before _ stopped
+    SealedResolution.RegistrationMemory.initial hbefore
+  have hbinding := runtime.runPolicies_beforeTimeoutBinding _ _ before _ stopped
+    SealedResolution.BeforeTimeoutBinding.initial hbefore hclear
+  have hregistered : ∀ owner (decision : Fin (compile source.core).graph.nodeCount) guard,
+      ((compile source.core).graph.nodeRow decision).sem = .commit owner guard → ∀ registered,
+      stopped.native.application.service.lookup (owner, decision.val) = some registered →
+        cfg.1.nodeValues fallback decision = registered := by
+    intro owner decision guard hdecision registered hregistered
+    exact compilation.extractedSourceRun_registered nullValue window focal deviator environment
+      schedule fallback profile cfg hcfg owner decision guard hdecision registered
+      (runtime.runPolicies_lookup_of_eq_some _ _ after stopped _ (owner, decision.val)
+        registered hregistered hafter)
+  have hhistory : ∀ index,
+      (compilation.supported.compile.registrationEncoding index).cachedValue
+        (compilation.supported.compile.messageApplication (Value := L.Val ty))
+        (runtime.eventHistory (stopped.principalHistory who)) =
+          stopped.native.application.service.lookup (who, index) := by
+    intro index
+    exact (runtime.eventHistory_cache (runtime.program.registrationEncoding index)
+      (stopped.principalHistory who)).trans (hmemory who index).symm
+  refine ⟨node, guard, hsem, reads, hslot, (hhistory node.val).symm.trans hcache, ?_, ?_⟩
+  · exact compilation.supported.sealedPlayerStore_source_reads cfg
+      (compilation.extractedSourceRun_terminal nullValue window focal deviator environment schedule
+        fallback profile cfg hcfg) fallback _ hbinding hregistered who _ hhistory _ reads
+      (ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some hreads)
+  · rw [compileResolvingPolicy, EventGraph.SealedFragment.resolvingPolicy_no_timeout
+      _ _ _ _ _ _ _ hclear]
+    exact hkernel _
+
 end Vegas.SealedCompilation
 
 /-- info: 'Vegas.SealedCompilation.extractedSourceRun_source' depends on axioms:
@@ -216,3 +290,8 @@ end Vegas.SealedCompilation
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SealedCompilation.extractedSourceRun_opened
+
+/-- info: 'Vegas.SealedCompilation.extractedSourceRun_registration_kernel' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.extractedSourceRun_registration_kernel

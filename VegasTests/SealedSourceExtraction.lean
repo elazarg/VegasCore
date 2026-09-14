@@ -152,11 +152,11 @@ private def delivered (value : Value) : app.PolicyExecution :=
       [⟨State.environmentView app (opened value).native, .deliver 1 (0, 1)⟩]
     nativeTrace := (opened value).nativeTrace ++ [.deliver 1 (0, 1)] }
 
-private theorem first_policy (value : Value) :
-    supported.resolvingPolicy none 3 0 (supported.valuePolicy (fun _ => value) 0)
+private theorem first_policy (values : Fin graph.nodeCount → Value) :
+    supported.resolvingPolicy none 3 0 (supported.valuePolicy values 0)
       [] (State.observe app initial.native 0) =
-        FinDist.pure (.privateCommand ⟨(0, value)⟩ : app.PlayerCommand) := by
-  change supported.commitCommand 0 (supported.valuePolicy (fun _ => value) 0)
+        FinDist.pure (.privateCommand ⟨(0, values (node 0))⟩ : app.PlayerCommand) := by
+  change supported.commitCommand 0 (supported.valuePolicy values 0)
     (node 0) _ rfl [] _ = _
   unfold SealedFragment.commitCommand
   simp only [ChoiceEncoding.cachedValue_nil]
@@ -219,7 +219,7 @@ theorem pending_copy_law (value : Value) :
   simp only [SealedFragment.resolvingBindingLaw, schedule, tracePolicies, invoke,
     SealedFragment.resolvingValuePlayers, GameTheory.Profile.update_same,
     GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)]
-  erw [first_policy value]
+  erw [first_policy (fun _ => value)]
   simp only [FinDist.pure_bind]
   erw [register_step value]
   simp only [FinDist.pure_bind]
@@ -310,5 +310,58 @@ theorem complete_source_copy_exists (profile : SourceBehavioralProfile core) (fa
   obtain ⟨cfg, hcfg⟩ := (compilation.extractedSourceRun none 3 1 deviator environment schedule
     fallback profile).support_nonempty
   exact ⟨cfg, hcfg, complete_source_copies profile fallback cfg hcfg⟩
+
+private theorem first_replay (values : Fin graph.nodeCount → Value) :
+    supported.resolvingReplay none 3 values 1 deviator environment [.player 0] =
+      .step initial (.finish (registered (values (node 0)))) := by
+  have hlaw := supported.resolvingReplay_law none 3 values 1 deviator environment [.player 0]
+  simp only [tracePolicies, invoke, SealedFragment.resolvingValuePlayers,
+    GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)] at hlaw
+  erw [first_policy values] at hlaw
+  simp only [FinDist.pure_bind] at hlaw
+  erw [register_step] at hlaw
+  simp only [FinDist.pure_bind, FinDist.map_pure] at hlaw
+  exact (FinDist.mem_support_pure.mp (hlaw ▸ FinDist.mem_support_pure.mpr rfl)).symm
+
+/-- The kernel theorem has a supported source realization and an actual
+fresh registration for every honest source profile. No cache/read premise is
+supplied by the fixture. -/
+theorem initial_registration_kernel_exists (profile : SourceBehavioralProfile core)
+    (fallback : Value) :
+    ∃ cfg ∈ (compilation.extractedSourceRun none 3 1 deviator environment [.player 0]
+      fallback profile).support,
+      ∃ (decision : Fin graph.nodeCount) (guard : EventGuard simpleExpr)
+        (hsem : (graph.nodeRow decision).sem = .commit 0 guard)
+        (input : ReadEnv simpleExpr guard.choiceReads),
+        decision.val = 0 ∧ ReadEnv.ofStore? cfg.1.store guard.choiceReads = some input ∧
+        compilation.compileResolvingPolicy none 3 0 (profile 0)
+          [] (State.observe app initial.native 0) =
+          ((compileSourcePolicy core source.core.fresh
+            (BuildState.fromInitial (initialState [] (VEnv.empty simpleExpr) (by simp)))
+            rfl 0 (profile 0)) decision guard hsem input).map (fun choice =>
+              (.privateCommand ⟨(decision.val,
+                cast (congrArg simpleExpr.Val (supported.commitType decision 0 guard hsem))
+                  choice.1)⟩ : app.PlayerCommand)) := by
+  obtain ⟨cfg, hcfg⟩ := (compilation.extractedSourceRun none 3 1 deviator environment
+    [.player 0] fallback profile).support_nonempty
+  have hkernel := compilation.extractedSourceRun_registration_kernel none 3 1 deviator environment
+    [.player 0] fallback profile cfg hcfg (fun _ => true)
+  change let stopped := ((supported.resolvingReplay none 3 (cfg.1.nodeValues fallback) 1
+    deviator environment [.player 0]).prefixThrough
+      (fun execution : app.PolicyExecution =>
+        !execution.native.application.visible.timeouts.isEmpty)).firstRelease (fun _ => true)
+    _ at hkernel
+  rw [first_replay] at hkernel
+  simp only [PolicyTrace.prefixThrough] at hkernel
+  have hcommand : .privateCommand ⟨(0, cfg.1.nodeValues fallback (node 0))⟩ ∈
+      (supported.resolvingValuePlayers none 3 (cfg.1.nodeValues fallback) 1
+        (fun history view => FinDist.pure (deviator history view)) 0
+        [] (State.observe app initial.native 0)).support := by
+    rw [SealedFragment.resolvingValuePlayers,
+      GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)]
+    rw [first_policy, FinDist.mem_support_pure]
+  obtain ⟨decision, guard, hsem, input, hindex, _, hreads, hlaw⟩ :=
+    hkernel rfl 0 (by decide) 0 _ hcommand
+  exact ⟨cfg, hcfg, decision, guard, hsem, input, hindex.symm, hreads, hlaw⟩
 
 end VegasTests.SealedSourceExtraction

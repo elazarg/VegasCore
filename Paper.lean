@@ -345,6 +345,45 @@ theorem pending_source_openings (profile : SourceBehavioralProfile source.core.p
   compilation.extractedSourceRun_opened nullValue window focal deviator environment schedule
     fallback profile cfg hcfg release
 
+/-- Fresh honest draws in any pre-timeout replay use the unchanged source
+kernel at its actual declared inputs. The native marginal law remains separate. -/
+theorem pending_honest_registration_kernel (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (ToEventGraph.compile source.core).graph)
+    (hcfg : cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment
+      schedule fallback profile).support)
+    (release :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution →
+        Bool) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    let stopped := ((compilation.supported.resolvingReplay nullValue window
+      (cfg.1.nodeValues fallback) focal deviator environment schedule).prefixThrough
+        (fun execution : runtime.messageApplication.PolicyExecution =>
+          !execution.native.application.visible.timeouts.isEmpty)).firstRelease release
+    stopped.native.application.visible.timeouts = [] →
+    ∀ who, who ≠ focal → ∀ slot value,
+      .privateCommand ⟨(slot, value)⟩ ∈
+        (compilation.supported.resolvingValuePlayers nullValue window (cfg.1.nodeValues fallback)
+          focal (fun history view => FinDist.pure (deviator history view)) who
+          (stopped.principalHistory who)
+          (MessageApplication.State.observe runtime.messageApplication
+            stopped.native who)).support →
+      ∃ (node : Fin (ToEventGraph.compile source.core).graph.nodeCount) (guard : EventGuard L)
+        (hsem : ((ToEventGraph.compile source.core).graph.nodeRow node).sem = .commit who guard)
+        (reads : ReadEnv L guard.choiceReads),
+        slot = node.val ∧ stopped.native.application.service.lookup (who, node.val) = none ∧
+        ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads ∧
+        compilation.compileResolvingPolicy nullValue window who (profile who)
+          (stopped.principalHistory who)
+          (MessageApplication.State.observe runtime.messageApplication stopped.native who) =
+          ((ToEventGraph.compileSourcePolicy source.core.prog source.core.fresh
+            (ToEventGraph.BuildState.fromInitial (ToEventGraph.initialState
+              source.core.Γ source.core.env source.core.wctx))
+            rfl who (profile who)) node guard hsem reads).map (fun choice =>
+              .privateCommand ⟨(node.val, cast (congrArg L.Val
+                (compilation.supported.commitType node who guard hsem)) choice.1)⟩) :=
+  compilation.extractedSourceRun_registration_kernel nullValue window focal deviator environment
+    schedule fallback profile cfg hcfg release
+
 end SourceRealization
 
 /-- The source surface has an explicit, always-legal nullable quit value. -/
@@ -965,3 +1004,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_registration_memory
+
+/-- info: 'Vegas.Paper.pending_honest_registration_kernel' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_honest_registration_kernel

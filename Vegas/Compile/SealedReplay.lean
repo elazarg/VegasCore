@@ -157,48 +157,6 @@ def valuePlayers (supported : SealedFragment G ty)
       (supported.compile.messageApplication (Value := L.Val ty)))
     (fun who => supported.playerPolicy who (supported.valuePolicy values who)) focal deviator
 
-private theorem nodeCommand?_valuePolicy_registration (supported : SealedFragment G ty)
-    (values : Fin G.nodeCount → L.Val ty) (who : Player) (completed : List Nat)
-    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
-    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
-    (store : Store L)
-    (node : Fin G.nodeCount)
-    (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (slot : Nat) (value : L.Val ty)
-    (hselected : supported.nodeCommand? who completed (supported.valuePolicy values who)
-      history view store node = some law)
-    (hcommand : .privateCommand ⟨(slot, value)⟩ ∈ law.support) :
-    slot = node.val ∧ value = values node := by
-  unfold nodeCommand? at hselected
-  split at hselected
-  · cases hselected
-  split at hselected
-  · split at hselected
-    · split at hselected
-      · rw [← Option.some.inj hselected] at hcommand
-        unfold commitCommand at hcommand
-        split at hcommand
-        · simp only [FinDist.mem_support_pure] at hcommand
-          cases hcommand
-        · split at hcommand
-          · simp only [FinDist.mem_support_pure] at hcommand
-            cases hcommand
-          · simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq,
-              FinDist.mem_support_pure, MessageInterface.PlayerCommand.privateCommand.injEq]
-              at hcommand
-            exact Prod.mk.inj (congrArg ULift.down hcommand)
-      · contradiction
-    · cases hhandle : (supported.compile.discharge completed).openingHandle?
-          view.application who node.val with
-      | none => simp only [hhandle, Option.map_none] at hselected; contradiction
-      | some handle =>
-          simp only [hhandle, Option.map_some] at hselected
-          split at hselected <;>
-            rw [← Option.some.inj hselected, FinDist.mem_support_pure] at hcommand <;>
-            cases hcommand
-    · contradiction
-  · contradiction
-
 /-- Every honest private registration carries precisely the substituted
 value of its source node. No other assignment coordinate is encoded there. -/
 theorem selected_valuePolicy_registration (supported : SealedFragment G ty)
@@ -212,17 +170,13 @@ theorem selected_valuePolicy_registration (supported : SealedFragment G ty)
         (supported.valuePolicy values who) history view store)).getD
           (FinDist.pure .wait)).support) :
     ∃ node : Fin G.nodeCount, slot = node.val ∧ value = values node := by
-  cases hselected : G.nodeOrder.findSome?
-      (supported.nodeCommand? who completed (supported.valuePolicy values who)
-        history view store) with
-  | none =>
-      simp only [hselected, Option.getD_none, FinDist.mem_support_pure] at hcommand
-      cases hcommand
-  | some law =>
-      simp only [hselected, Option.getD_some] at hcommand
-      obtain ⟨node, _, hnode⟩ := List.exists_of_findSome?_eq_some hselected
-      exact ⟨node, supported.nodeCommand?_valuePolicy_registration values who completed history view
-        store node law slot value hnode hcommand⟩
+  obtain ⟨node, guard, hsem, reads, hslot, _, _, hkernel⟩ :=
+    supported.selected_registration_kernel who completed (supported.valuePolicy values who)
+      history view store slot value hcommand
+  rw [hkernel (supported.valuePolicy values who)] at hcommand
+  simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq,
+    FinDist.mem_support_pure, MessageInterface.PlayerCommand.privateCommand.injEq] at hcommand
+  exact ⟨node, hslot, (Prod.mk.inj (congrArg ULift.down hcommand)).2⟩
 
 /-- Changing only unused honest assignment coordinates preserves an entire
 supported native execution, including private histories and the pending pool.

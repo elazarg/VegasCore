@@ -748,8 +748,20 @@ those registrations. No equality is asserted for public timeout defaults.
 own-cache/service agreement. The checked
 `SealedResolution.RegistrationMemory.runPolicies` supplies that invariant on
 resolving runs, and `eventHistory_cache` supplies its projected-history form.
-The whole-prefix argument still needs to apply the local kernel comparison
-at every recorded honest draw and establish the actual trace probabilities.
+`extractedSourceRun_registration_kernel` applies it at every selected pre-timeout
+replay checkpoint. An actual honest registration supplies its selected site,
+fresh cache, and successful reads; the original compiled policy then has exactly
+the source kernel at that realization's declared inputs. The theorem does not
+assume cache correctness, read availability, or equality of source/native inputs.
+Its regression has a supported source realization and a fresh native registration
+for every honest source profile. The actual trace probabilities still require
+the cylinder-mass calculation and accounting for deterministic invocations.
+For the finite-sum calculation, kernel constancy must cover the entire assignment
+cylinder, including assignments with zero mass under the original honest profile.
+The supported-realization theorem alone does not establish that statement. One
+route is to realize each assignment with deterministic honest value policies,
+retaining the same extracted focal policy, and compare the original kernels at
+those realizations' inputs before performing the sum.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
 
@@ -764,10 +776,10 @@ The remaining implementation work is specific:
 3. Establish readiness/read invariants after defaults and instantiate the
    fair-service and termination arguments. Do not assume a bare expiration
    status is a source settlement.
-4. Predraw native responses across honest assignments, and prove
-   agreement of honest source/native kernel inputs during replay, source
-   cylinder masses, and the actual stopped-native marginal. The source marginal
-   and registration/opening value agreement are checked. Attach the actual post-timeout
+4. Predraw native responses across honest assignments, and prove source
+   cylinder masses and the actual stopped-native marginal. The source marginal,
+   registration/opening value agreement, and fresh honest source/native kernel
+   agreement throughout pre-timeout replay are checked. Attach the actual post-timeout
    native continuation, retaining dependence between honest draws and the
    shared environment randomness.
 5. Instantiate the existing `UtilitySimulation` under the explicit

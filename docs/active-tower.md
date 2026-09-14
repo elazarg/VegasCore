@@ -94,9 +94,14 @@ own-cache/service agreement premises. `commitCommand_source_kernel` then
 identifies the fresh registration kernel at those source inputs.
 `SealedResolution.RegistrationMemory.runPolicies` proves own-cache/service
 agreement under arbitrary resolving-runtime policies, including post-timeout
-execution. The event/history projection preserves that cache. Applying these
-facts throughout replay and identifying the actual trace probabilities remain
-part of the whole-prefix honest-kernel argument.
+execution. The event/history projection preserves that cache.
+`extractedSourceRun_registration_kernel` applies these facts at every selected
+pre-timeout replay checkpoint: an actual fresh honest registration identifies
+its source node and successful declared reads, proves the private slot empty,
+and identifies the original compiled policy law with the unchanged source
+kernel at the complete source realization's inputs. No cache correctness or
+read-availability premise is left to the caller. The statement is audited by
+`Vegas.Paper.pending_honest_registration_kernel`.
 
 `SealedFragment.resolvingReplay_prefix_eq_iff` characterizes stopped resolving
 replays by their recorded honest registrations, including when the cutoff
@@ -107,8 +112,8 @@ stopped trace with its honest-registration cylinder mass under any joint
 assignment law. Independence of those coordinates is not assumed. This is
 a replay law, not yet the marginal law of the original honest kernels.
 
-The remaining probability argument must establish honest source/native kernel
-agreement along replay, compute the source cylinder masses, and identify the
+The remaining probability argument must compute the source cylinder masses
+using this fresh-kernel agreement, account for deterministic invocations, and identify the
 actual stopped-native marginal. The source law and its focal consistency are
 checked; the native marginal is not. Randomized responses must also be predrawn
 consistently across honest assignments, and the post-timeout native suffix must

@@ -116,6 +116,119 @@ theorem nodeCommand?_none_iff (supported : SealedFragment G ty) (who : Player)
     · rfl
   · rfl
 
+private theorem nodeCommand?_registration_kernel (supported : SealedFragment G ty)
+    (who : Player) (completed : List Nat) (original : CommitPolicy G who)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (store : Store L) (node : Fin G.nodeCount)
+    (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
+    (slot : Nat) (value : L.Val ty)
+    (hselected : supported.nodeCommand? who completed original history view store node = some law)
+    (hcommand : .privateCommand ⟨(slot, value)⟩ ∈ law.support) :
+    ∃ (guard : EventGuard L) (hsem : (G.nodeRow node).sem = .commit who guard)
+      (reads : ReadEnv L guard.choiceReads),
+      slot = node.val ∧
+      (supported.compile.registrationEncoding node.val).cachedValue
+        (supported.compile.messageApplication (Value := L.Val ty)) history = none ∧
+      ReadEnv.ofStoreExec? store guard.choiceReads = some reads ∧
+      ∀ policy : CommitPolicy G who,
+        supported.nodeCommand? who completed policy history view store node =
+          some ((policy node guard hsem reads).map (fun choice =>
+            .privateCommand ⟨(node.val,
+              cast (congrArg L.Val (supported.commitType node who guard hsem)) choice.1)⟩)) := by
+  unfold nodeCommand? at hselected
+  split at hselected
+  · contradiction
+  rename_i hcompleted
+  split at hselected
+  · rename_i hready
+    split at hselected
+    · rename_i owner guard hsem
+      split at hselected
+      · rename_i howner
+        subst owner
+        rw [← Option.some.inj hselected] at hcommand
+        unfold commitCommand at hcommand
+        split at hcommand
+        · simp only [FinDist.mem_support_pure] at hcommand
+          cases hcommand
+        · rename_i hcache
+          split at hcommand
+          · simp only [FinDist.mem_support_pure] at hcommand
+            cases hcommand
+          · rename_i reads hreads
+            rw [FinDist.support_map] at hcommand
+            obtain ⟨choice, _, heq⟩ := hcommand
+            have hslot : slot = node.val :=
+              (congrArg (fun command => match command with
+                | .privateCommand request => request.down.1
+                | _ => slot) heq).symm
+            refine ⟨guard, hsem, reads, hslot, hcache, hreads, ?_⟩
+            intro policy
+            simp only [nodeCommand?, if_neg hcompleted, if_pos hready]
+            split
+            · rename_i other otherGuard hother
+              obtain ⟨rfl, rfl⟩ := NodeSem.commit.inj (hsem.symm.trans hother)
+              simp only [↓reduceDIte, commitCommand, hcache, hreads]
+            · rename_i source hother
+              cases hsem.symm.trans hother
+            · rename_i dist hother
+              cases hsem.symm.trans hother
+      · contradiction
+    · cases hhandle : (supported.compile.discharge completed).openingHandle?
+          view.application who node.val with
+      | none => simp only [hhandle, Option.map_none] at hselected; contradiction
+      | some handle =>
+          simp only [hhandle, Option.map_some] at hselected
+          split at hselected <;>
+            rw [← Option.some.inj hselected, FinDist.mem_support_pure] at hcommand <;>
+            cases hcommand
+    · contradiction
+  · contradiction
+
+/-- An actual private registration identifies the selected commitment, fresh
+cache, and successful declared reads. Replacing its source policy changes only
+the draw kernel, not the selected site or its input. -/
+theorem selected_registration_kernel (supported : SealedFragment G ty)
+    (who : Player) (completed : List Nat) (original : CommitPolicy G who)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
+    (store : Store L) (slot : Nat) (value : L.Val ty)
+    (hcommand : .privateCommand ⟨(slot, value)⟩ ∈
+      ((G.nodeOrder.findSome? (supported.nodeCommand? who completed original
+        history view store)).getD (FinDist.pure .wait)).support) :
+    ∃ (node : Fin G.nodeCount) (guard : EventGuard L)
+      (hsem : (G.nodeRow node).sem = .commit who guard) (reads : ReadEnv L guard.choiceReads),
+      slot = node.val ∧
+      (supported.compile.registrationEncoding node.val).cachedValue
+        (supported.compile.messageApplication (Value := L.Val ty)) history = none ∧
+      ReadEnv.ofStoreExec? store guard.choiceReads = some reads ∧
+      ∀ policy : CommitPolicy G who,
+        (G.nodeOrder.findSome? (supported.nodeCommand? who completed policy
+          history view store)).getD (FinDist.pure .wait) =
+          (policy node guard hsem reads).map (fun choice =>
+            .privateCommand ⟨(node.val,
+              cast (congrArg L.Val (supported.commitType node who guard hsem)) choice.1)⟩) := by
+  cases hselected : G.nodeOrder.findSome?
+      (supported.nodeCommand? who completed original history view store) with
+  | none =>
+      simp only [hselected, Option.getD_none, FinDist.mem_support_pure] at hcommand
+      cases hcommand
+  | some law =>
+      simp only [hselected, Option.getD_some] at hcommand
+      obtain ⟨front, node, rest, hnodes, hnode, hfront⟩ :=
+        List.findSome?_eq_some_iff.mp hselected
+      obtain ⟨guard, hsem, reads, hslot, hcache, hreads, hkernel⟩ :=
+        supported.nodeCommand?_registration_kernel who completed original history view store
+          node law slot value hnode hcommand
+      refine ⟨node, guard, hsem, reads, hslot, hcache, hreads, ?_⟩
+      intro policy
+      have hright := List.findSome?_eq_some_iff.mpr
+        ⟨front, node, rest, hnodes, hkernel policy, fun prior hprior =>
+          (supported.nodeCommand?_none_iff who completed original policy
+            history history view store store prior).mp (hfront prior hprior)⟩
+      rw [hright, Option.getD_some]
+
 theorem commitCommand_cached (supported : SealedFragment G ty) (who : Player)
     (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
