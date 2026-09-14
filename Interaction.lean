@@ -1,4 +1,5 @@
 import Interaction.MessagePool
+import Interaction.LogicalCommitment
 import Interaction.MessagePoolFreshness
 import Interaction.MessageRouting
 import Interaction.MessageReplay

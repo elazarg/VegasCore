@@ -32,3 +32,10 @@ steps. GameTheoryExtensions owns reusable outcome simulation and equilibrium
 transport. A future ledger or VM library should own its independent execution
 model; Vegas integration should contain only lowering and correspondence for
 Vegas artifacts.
+
+`Interaction.LogicalCommitment` is an isolated semantic experiment with checked
+local transition laws and finite trace tests. It is included in the build, but
+no active compiler edge uses it. The
+[experiment note](logical-commitment-protocol.md) records the observation and
+transport conditions that must be settled before it can serve as a strategic
+intermediate representation.
