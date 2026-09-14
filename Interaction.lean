@@ -39,6 +39,7 @@ import Interaction.Deadline
 import Interaction.Activation
 import Interaction.IdealCommitments
 import Interaction.CommitmentCandidates
+import Interaction.CommitmentCandidateKnowledge
 import Interaction.IdealCommitmentWeight
 import Interaction.BindingDisposition
 import Interaction.ConditionalPublication
@@ -81,6 +82,8 @@ import Interaction.SealedPreparedPolicies
 import Interaction.SealedCandidatePolicyEmbedding
 import Interaction.SealedCandidateRounds
 import Interaction.SealedCandidateBinding
+import Interaction.SealedCandidateKnowledge
+import Interaction.SealedCandidateCoupling
 import Interaction.SealedCandidateEvents
 import Interaction.SealedCandidateSettlement
 import Interaction.SealedResolutionLaws

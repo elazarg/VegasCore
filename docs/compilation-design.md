@@ -78,9 +78,13 @@ deviation coupling remains to be established.
 The public acceptance/disclosure barrier is
 independent of private registration, but that information-flow fact and a
 source settlement witness alone do not provide the required strategy law.
-The next proof must extract the selected candidate, not the first private
-preparation at a canonical source slot, and must interpret an unopenable
-selection through the source failure condition.
+`SealedFragment.candidateAcceptanceLaw_read_bound` proves that the focal input
+and candidate catalog at first acceptance or timeout depend only on
+source-earlier honest disclosures. Both commitment services use the common
+policy-trace coupling lemma; the candidate relation does not equate hidden
+openability. The source backtranslation must now extract the selected candidate
+and establish the joint law against unchanged opponents. An unopenable
+selection must be interpreted through the source failure condition.
 
 Candidate handles are owner-scoped identifiers. A pending handle can acquire
 its private value until acceptance; an unprepared accepted handle becomes

@@ -33,6 +33,7 @@ import Vegas.Compile.SealedView
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedCandidatePolicy
+import Vegas.Compile.SealedCandidateReadBound
 import Vegas.Compile.SealedCandidateHonestRound
 import Vegas.Compile.SealedCandidateSettlement
 import Vegas.Compile.SealedResolutionClosure

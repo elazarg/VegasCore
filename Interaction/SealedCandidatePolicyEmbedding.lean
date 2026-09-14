@@ -62,15 +62,34 @@ def candidateExecution (runtime : SealedResolution Principal Value)
       runtime.candidateEnvironmentCommand entry.command⟩
   nativeTrace := execution.nativeTrace.map runtime.candidateAction
 
+def registeredPlayerView (runtime : SealedResolution Principal Value)
+    (view : runtime.candidateApplication.View) : runtime.messageApplication.View :=
+  ⟨view.messages, view.application, view.receipts⟩
+
+def registeredPlayerHistory (runtime : SealedResolution Principal Value)
+    (history : List runtime.candidateApplication.PlayerEntry) :
+    List runtime.messageApplication.PlayerEntry :=
+  history.map fun entry => ⟨runtime.registeredPlayerView entry.beforeView, entry.command⟩
+
+theorem registeredPlayerHistory_injective (runtime : SealedResolution Principal Value) :
+    Function.Injective runtime.registeredPlayerHistory := by
+  apply List.map_injective_iff.mpr
+  intro left right heq
+  cases left with
+  | mk leftView leftCommand =>
+      cases right with
+      | mk rightView rightCommand =>
+          cases leftView
+          cases rightView
+          simpa only [registeredPlayerView, MessageInterface.PlayerEntry.mk.injEq,
+            MessageInterface.View.mk.injEq] using heq
+
 /-- Retype only the policy interface; the player sees exactly the same data. -/
 def candidatePlayerPolicy (runtime : SealedResolution Principal Value)
     (policy : runtime.messageApplication.PlayerPolicy) :
     runtime.candidateApplication.PlayerPolicy :=
-  fun history view => policy
-    (history.map fun entry =>
-      ⟨⟨entry.beforeView.messages, entry.beforeView.application, entry.beforeView.receipts⟩,
-        entry.command⟩)
-    ⟨view.messages, view.application, view.receipts⟩
+  fun history view => policy (runtime.registeredPlayerHistory history)
+    (runtime.registeredPlayerView view)
 
 /-- Transport an adaptive environment policy without changing its observations
 or its selection of wire actions and clock commands. -/
@@ -235,7 +254,8 @@ private theorem candidate_invoke (runtime : SealedResolution Principal Value)
             entry.command⟩ : runtime.messageApplication.PlayerEntry) = entry := by
         intro ⟨⟨_, _, _⟩, _⟩
         rfl
-      simp only [invoke, candidatePlayerPolicy, candidateExecution, State.observe, candidateNative,
+      simp only [invoke, candidatePlayerPolicy, registeredPlayerHistory, registeredPlayerView,
+        candidateExecution, State.observe, candidateNative,
         candidateState, candidateApplication, messageApplication, List.map_map]
       simp only [Function.comp_def, hentry, List.map_id_fun', id_eq]
       rw [FinDist.map_bind]

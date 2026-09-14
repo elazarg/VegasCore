@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedResolutionReadBound
+import Vegas.Compile.SealedCandidateReadBound
 import VegasTests.PendingSource
 
 /-! # Native registration and acceptance hiding for a checked two-player source
@@ -140,6 +141,48 @@ theorem registration_after_pending_delivery :
   erw [hsecond]
   simp only [playerStep, environmentPolicyStep, advance, PlayerCommand.toAction,
     EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind, FinDist.map_pure]
+  rfl
+
+/-- The same checked source has the stronger acceptance read bound in the
+candidate host, without any preparation-discipline restriction on the deviator. -/
+theorem candidate_hidden_until_acceptance (leftValues rightValues : Fin graph.nodeCount → Value)
+    (deviator : runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation PendingSource.Player)) :
+    sealedFragment.candidateAcceptanceLaw none 3 leftValues 1 (node 1)
+        deviator environment schedule =
+      sealedFragment.candidateAcceptanceLaw none 3 rightValues 1 (node 1)
+        deviator environment schedule := by
+  obtain ⟨guard, hguard, _⟩ := node1_commit
+  apply sealedFragment.candidateAcceptanceLaw_read_bound none 3 1 (node 1) guard hguard
+    leftValues rightValues ?_ deviator environment schedule
+  intro who hwho index hknown
+  exact False.elim (no_honest_known_before_second who hwho index hknown)
+
+private def prepareThenSelect : runtime.candidateApplication.PlayerPolicy := fun history _ =>
+  FinDist.pure <| match history.length with
+  | 0 => .privateCommand ⟨(10, some false)⟩
+  | 1 => .privateCommand ⟨(11, some true)⟩
+  | 2 => .submit (.commitment 1 (1, 11))
+  | _ => .wait
+
+/-- The readout permits two preparations and selects the second candidate at
+public acceptance. It retains both preparations, the submission, the accepted
+handle, and the immutable meanings, rather than cutting at the first preparation. -/
+theorem candidate_acceptance_retains_selection :
+    (sealedFragment.candidateAcceptanceLaw none 3 (fun _ => some false) 1 (node 1)
+      prepareThenSelect (fun _ _ => FinDist.pure (.include (1, 0)))
+      [.player 1, .player 1, .player 1, .environment]).map
+        (fun input => (input.1.length, input.2.1.application.events,
+          input.2.2 10, input.2.2 11)) =
+      FinDist.pure (3, [.accepted 1 (1, 11)],
+        CommitmentCandidate.openable (some false), CommitmentCandidate.openable (some true)) := by
+  simp only [SealedFragment.candidateAcceptanceLaw, tracePolicies, invoke,
+    SealedFragment.candidateValuePlayers, GameTheory.Profile.update_same,
+    prepareThenSelect, playerStep, environmentPolicyStep, advance, PlayerCommand.toAction,
+    EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
+    FinDist.map_pure, PolicyExecution.initial, List.length_nil, List.length_append,
+    List.length_cons, List.nil_append, ↓reduceIte]
   rfl
 
 end VegasTests.SealedResolutionReadBound

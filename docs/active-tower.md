@@ -66,6 +66,16 @@ The payout is reconstructed from public initial fields and opening events.
 This honest law has no incentive hypothesis and does not establish candidate-host
 Nash preservation.
 
+`SealedFragment.candidateAcceptanceLaw_read_bound` proves a causal information
+bound for this host. With fixed assigned honest choices, an arbitrary randomized
+focal policy and full-pool environment have the same joint law of focal history,
+view, and owner-scoped candidate catalog through first acceptance or timeout
+when honest values agree on source-earlier disclosures. The cut permits multiple
+preparations and competing candidates; it does not stop at private preparation.
+The catalog is proof-facing data, not an extra player observation. This supplies
+the acceptance-time extraction input; the source-policy backtranslation and
+joint probability law against unchanged source opponents remain to be proved.
+
 ## End-to-end target
 
 The immediate unproved result is **source-to-candidate-message equilibrium

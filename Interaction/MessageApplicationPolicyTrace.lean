@@ -389,4 +389,119 @@ theorem tracePolicies_support_transfer [DecidableEq Principal]
 #guard_msgs (whitespace := lax) in
 #print axioms tracePolicies_firstRelease_split
 
+/-- A coupling of actual invocations preserves the law of a released
+observation. The local relation is required only before the readout selects
+its snapshot; the runtime itself still executes the entire invocation list. -/
+theorem tracePolicies_firstRelease_law [DecidableEq Principal] {Observation : Type*}
+    (leftPlayers rightPlayers : Principal → app.PlayerPolicy)
+    (environment : app.EnvironmentPolicy)
+    (Related : app.PolicyExecution → app.PolicyExecution → Prop)
+    (release : app.PolicyExecution → Bool) (observe : app.PolicyExecution → Observation)
+    (hrelease : ∀ left right, Related left right → release left = release right)
+    (hobserve : ∀ left right, Related left right → observe left = observe right)
+    (hinvoke : ∀ left right, Related left right → release left = false →
+      ∀ invocation, ∃ coupling : FinDist (app.PolicyExecution × app.PolicyExecution),
+        coupling.map Prod.fst = app.invoke leftPlayers environment left invocation ∧
+        coupling.map Prod.snd = app.invoke rightPlayers environment right invocation ∧
+        ∀ pair ∈ coupling.support, Related pair.1 pair.2)
+    (schedule : List (@Invocation Principal))
+    (left right : app.PolicyExecution) (related : Related left right) :
+    ((app.tracePolicies leftPlayers environment schedule left).map
+        (PolicyTrace.firstRelease release)).map observe =
+      ((app.tracePolicies rightPlayers environment schedule right).map
+        (PolicyTrace.firstRelease release)).map observe := by
+  induction schedule generalizing left right with
+  | nil => simp only [tracePolicies, FinDist.map_pure, PolicyTrace.firstRelease,
+      hobserve left right related]
+  | cons invocation rest ih =>
+      rw [tracePolicies_firstRelease_cons, tracePolicies_firstRelease_cons]
+      have heq := hrelease left right related
+      cases hl : release left with
+      | true => simp only [← heq, hl, ↓reduceIte, FinDist.map_pure,
+          hobserve left right related]
+      | false =>
+          simp only [← heq, hl, Bool.false_eq_true, ↓reduceIte, FinDist.map_bind]
+          obtain ⟨coupling, hleft, hright, hpairs⟩ := hinvoke left right related hl invocation
+          rw [← hleft, ← hright, FinDist.bind_map, FinDist.bind_map]
+          exact FinDist.bind_congr fun pair hpair => ih pair.1 pair.2 (hpairs pair hpair)
+
+/-- Command-level form of the release law. Coupled player commands must give
+related successor states; identical environment commands must do the same.
+Neither native determinism nor a separate execution interpreter is required. -/
+theorem tracePolicies_firstRelease_of_steps [DecidableEq Principal] {Observation : Type*}
+    (leftPlayers rightPlayers : Principal → app.PlayerPolicy)
+    (environment : app.EnvironmentPolicy)
+    (Related : app.PolicyExecution → app.PolicyExecution → Prop)
+    (release : app.PolicyExecution → Bool) (observe : app.PolicyExecution → Observation)
+    (hrelease : ∀ left right, Related left right → release left = release right)
+    (hobserve : ∀ left right, Related left right → observe left = observe right)
+    (henvironment : ∀ left right, Related left right →
+      left.environmentHistory = right.environmentHistory ∧
+        State.environmentView app left.native = State.environmentView app right.native)
+    (henvStep : ∀ left right, Related left right →
+      ∀ command nextLeft nextRight,
+        nextLeft ∈ (app.environmentPolicyStep left command).support →
+        nextRight ∈ (app.environmentPolicyStep right command).support → Related nextLeft nextRight)
+    (hplayers : ∀ left right, Related left right → release left = false → ∀ who,
+      ∃ commands : FinDist (app.PlayerCommand × app.PlayerCommand),
+        leftPlayers who (left.principalHistory who) (State.observe app left.native who) =
+          commands.map Prod.fst ∧
+        rightPlayers who (right.principalHistory who) (State.observe app right.native who) =
+          commands.map Prod.snd ∧
+        ∀ pair ∈ commands.support, ∀ nextLeft nextRight,
+          nextLeft ∈ (app.playerStep who left pair.1).support →
+          nextRight ∈ (app.playerStep who right pair.2).support → Related nextLeft nextRight)
+    (schedule : List (@Invocation Principal))
+    (left right : app.PolicyExecution) (related : Related left right) :
+    ((app.tracePolicies leftPlayers environment schedule left).map
+        (PolicyTrace.firstRelease release)).map observe =
+      ((app.tracePolicies rightPlayers environment schedule right).map
+        (PolicyTrace.firstRelease release)).map observe := by
+  apply app.tracePolicies_firstRelease_law leftPlayers rightPlayers environment Related
+    release observe hrelease hobserve ?_ schedule left right related
+  intro left right related hrelease invocation
+  cases invocation with
+  | player who =>
+      obtain ⟨commands, hleft, hright, hpairs⟩ := hplayers left right related hrelease who
+      let coupling := commands.bind fun pair =>
+        (app.playerStep who left pair.1).product (app.playerStep who right pair.2)
+      refine ⟨coupling, ?_, ?_, ?_⟩
+      · simp only [coupling, FinDist.map_bind, FinDist.map_fst_product, invoke,
+          hleft, FinDist.bind_map]
+      · simp only [coupling, FinDist.map_bind, FinDist.map_snd_product, invoke,
+          hright, FinDist.bind_map]
+      · intro pair hpair
+        simp only [coupling, FinDist.support_bind, Set.mem_iUnion] at hpair
+        obtain ⟨commands, hcommands, hpair⟩ := hpair
+        apply hpairs commands hcommands pair.1 pair.2
+        · rw [← FinDist.map_fst_product (app.playerStep who left commands.1)
+            (app.playerStep who right commands.2),
+            FinDist.support_map]
+          exact ⟨pair, hpair, rfl⟩
+        · rw [← FinDist.map_snd_product (app.playerStep who left commands.1)
+            (app.playerStep who right commands.2),
+            FinDist.support_map]
+          exact ⟨pair, hpair, rfl⟩
+  | environment =>
+      let commands := environment left.environmentHistory (State.environmentView app left.native)
+      let coupling := commands.bind fun command =>
+        (app.environmentPolicyStep left command).product (app.environmentPolicyStep right command)
+      obtain ⟨hhistory, hview⟩ := henvironment left right related
+      refine ⟨coupling, ?_, ?_, ?_⟩
+      · simp only [coupling, commands, FinDist.map_bind, FinDist.map_fst_product, invoke]
+      · simp only [coupling, commands, FinDist.map_bind, FinDist.map_snd_product, invoke,
+          hhistory, hview]
+      · intro pair hpair
+        simp only [coupling, FinDist.support_bind, Set.mem_iUnion] at hpair
+        obtain ⟨command, _, hpair⟩ := hpair
+        apply henvStep left right related command pair.1 pair.2
+        · rw [← FinDist.map_fst_product (app.environmentPolicyStep left command)
+            (app.environmentPolicyStep right command),
+            FinDist.support_map]
+          exact ⟨pair, hpair, rfl⟩
+        · rw [← FinDist.map_snd_product (app.environmentPolicyStep left command)
+            (app.environmentPolicyStep right command),
+            FinDist.support_map]
+          exact ⟨pair, hpair, rfl⟩
+
 end Interaction.MessageApplication
