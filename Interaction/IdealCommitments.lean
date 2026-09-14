@@ -160,6 +160,23 @@ theorem lookup_sealValue_of_eq_some (state : IdealCommitments Principal Slot Val
     · simp [hhandle]
       exact hstored
 
+/-- Sealing introduces only the submitted value at the authenticated handle;
+every other stored entry already existed. -/
+theorem lookup_sealValue_origin (state : IdealCommitments Principal Slot Value)
+    [DecidableEq Principal] [DecidableEq Slot]
+    (owner : Principal) (slot : Slot) (submitted : Value)
+    (handle : CommitmentHandle Principal Slot) (stored : Value)
+    (hlookup : (state.sealValue owner slot submitted).state.lookup handle = some stored) :
+    state.lookup handle = some stored ∨ handle = (owner, slot) ∧ stored = submitted := by
+  unfold sealValue at hlookup
+  split at hlookup
+  · exact Or.inl hlookup
+  · simp only [lookup] at hlookup
+    split at hlookup
+    · rename_i heq
+      exact Or.inr ⟨Prod.ext heq.1 heq.2, (Option.some.inj hlookup).symm⟩
+    · exact Or.inl hlookup
+
 /-- A claim is accepted exactly when that claimed value is stored at its
 owner-scoped handle. -/
 theorem verify_eq_true_iff (state : IdealCommitments Principal Slot Value)

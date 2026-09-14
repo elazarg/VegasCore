@@ -1,0 +1,213 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Compile.SealedPolicy
+import Vegas.EventGraph.KernelRealization
+
+/-! # Complete source values determine native declared inputs
+
+Before timeout, accepted commitments and included openings have the same values
+as a complete reachable source realization whenever their private registrations
+agree. Local read reconstruction then supplies that realization's exact kernel
+arguments. This compares values and kernels; equality of execution probabilities
+additionally requires the source cylinder-mass calculation.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraph.SealedFragment
+
+open Interaction GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
+variable {G : Graph Player L} {ty : L.Ty}
+variable (supported : SealedFragment G ty)
+variable (cfg : ReachableConfig G) (hterminal : Terminal G cfg.1) (fallback : L.Val ty)
+
+include supported hterminal
+
+private theorem terminal_reveal_store (node producer : Fin G.nodeCount)
+    (hsem : (G.nodeRow node).sem = .reveal (G.nodeTarget producer)) :
+    cfg.1.store (G.nodeTarget node) =
+      some (⟨ty, cfg.1.nodeValues fallback producer⟩ : TypedValue L) := by
+  obtain ⟨row, hrow, hvalid⟩ := reachable_validDoneValues supported.graphWF
+    cfg.2 node (hterminal node)
+  have hrowEq : row = G.nodeRow node :=
+    Option.some.inj (hrow.symm.trans (G.nodes_get?_nodeRow node))
+  subst row
+  rw [hsem] at hvalid
+  change ∃ value : L.Val (G.nodeRow node).ty,
+    Store.getAs cfg.1.store (G.nodeTarget node) (G.nodeRow node).ty = some value ∧
+    Store.getAs cfg.1.store (G.nodeTarget producer) (G.nodeRow node).ty = some value at hvalid
+  rw [supported.rowType node] at hvalid
+  obtain ⟨value, hnode, hproducer⟩ := hvalid
+  have heq : cfg.1.nodeValues fallback node = cfg.1.nodeValues fallback producer := by
+    simp only [Config.nodeValues, hnode, hproducer]
+  rw [cfg.1.store_nodeValues (reachable_storeCoherent supported.graphWF cfg.2)
+    fallback node (supported.rowType node) (hterminal node), heq]
+
+variable (state : SealedProgram.State Player (L.Val ty))
+variable (hbinding : SealedProgram.BindingInvariant supported.compile state)
+variable (hregistered : ∀ owner (node : Fin G.nodeCount) guard,
+  (G.nodeRow node).sem = .commit owner guard → ∀ value,
+    state.service.lookup (owner, node.val) = some value → cfg.1.nodeValues fallback node = value)
+
+include hbinding hregistered
+
+/-- Included public openings agree with the complete source even if they
+arrived in an order different from the written source order. -/
+theorem opened_source_value (index : Nat) (value : L.Val ty)
+    (hopened : .opened index value ∈ state.events) :
+    cfg.1.store (G.nodeTarget index) = some (⟨ty, value⟩ : TypedValue L) := by
+  obtain ⟨owner, producer, requires, hrule, hlookup⟩ := hbinding.opened index value hopened
+  obtain ⟨node, source, guard, rfl, rfl, hsem, hsource⟩ := supported.ruleAt_reveal hrule rfl
+  rw [supported.terminal_reveal_store cfg hterminal fallback node source hsem,
+    hregistered owner source guard hsource value hlookup]
+
+private theorem accepted_source_value (index : Nat) (handle : CommitmentHandle Player Nat)
+    (value : L.Val ty) (haccepted : .accepted index handle ∈ state.events)
+    (hlookup : state.service.lookup handle = some value) :
+    cfg.1.store (G.nodeTarget index) = some (⟨ty, value⟩ : TypedValue L) := by
+  obtain ⟨owner, requires, registered, hrule, hhandle, _⟩ :=
+    hbinding.accepted index handle haccepted
+  obtain ⟨node, guard, rfl, hsem⟩ := supported.ruleAt_commit hrule rfl
+  rw [hhandle] at hlookup
+  rw [cfg.1.store_nodeValues (reachable_storeCoherent supported.graphWF cfg.2)
+    fallback node (supported.rowType node) (hterminal node),
+    hregistered owner node guard hsem value hlookup]
+
+private theorem replaySealedView_source (who : Player) (memory : Nat → Option (L.Val ty))
+    (hmemory : ∀ slot, memory slot = state.service.lookup (who, slot))
+    (events : List (SealedProgram.Event Player (L.Val ty))) (hevents : events ⊆ state.events)
+    (store : Store L)
+    (hstore : ∀ field value, store field = some value → cfg.1.store field = some value) :
+    ∀ field value, G.replaySealedView ty who memory store events field = some value →
+      cfg.1.store field = some value := by
+  induction events generalizing store with
+  | nil => exact hstore
+  | cons event rest ih =>
+      apply ih (fun _ hmem => hevents (List.mem_cons_of_mem _ hmem))
+      intro field stored hstored
+      have hmem := hevents (List.mem_cons_self ..)
+      cases event with
+      | accepted index handle =>
+          by_cases howner : handle.1 = who
+          · dsimp only at hstored
+            rw [if_pos howner] at hstored
+            cases hcache : memory handle.2 with
+            | none =>
+                simp only [hcache] at hstored
+                exact hstore field stored hstored
+            | some value =>
+                simp only [hcache] at hstored
+                change (store.set (G.nodeTarget index) ⟨ty, value⟩) field = some stored at hstored
+                have hlookup : state.service.lookup handle = some value := by
+                  rw [hmemory, ← howner] at hcache
+                  exact hcache
+                have hsource := supported.accepted_source_value cfg hterminal fallback
+                  state hbinding hregistered index handle value hmem hlookup
+                by_cases heq : field = G.nodeTarget index
+                · subst field
+                  rw [Store.set_eq] at hstored
+                  exact hsource.trans hstored
+                · rw [Store.set_ne _ heq] at hstored
+                  exact hstore field stored hstored
+          · simp only [if_neg howner] at hstored
+            exact hstore field stored hstored
+      | opened index value =>
+          change (store.set (G.nodeTarget index) ⟨ty, value⟩) field = some stored at hstored
+          by_cases heq : field = G.nodeTarget index
+          · subst field
+            rw [Store.set_eq] at hstored
+            exact (supported.opened_source_value cfg hterminal fallback
+              state hbinding hregistered index value hmem).trans hstored
+          · rw [Store.set_ne _ heq] at hstored
+            exact hstore field stored hstored
+
+omit supported hterminal hbinding hregistered in
+private theorem initialStore_source (field : Nat) (value : TypedValue L)
+    (hinitial : G.initialStore field = some value) : cfg.1.store field = some value := by
+  rcases cfg with ⟨cfg, hreach⟩
+  induction hreach with
+  | initial => exact hinitial
+  | step hprior event hnext ih =>
+      obtain ⟨written, rfl⟩ := stepAvailableEvent_support_completeNode event hnext
+      have hne : field ≠ G.nodeTarget event.node := by
+        intro heq
+        obtain ⟨row, hrow⟩ := event.row_get
+        rw [heq, Graph.initialStore, G.field?_nodeTarget hrow] at hinitial
+        cases hinitial
+      exact (Store.set_ne _ hne written).trans ih
+
+/-- Every successfully reconstructed native local value is the value of the
+complete source realization. Missing native fields are allowed: this is prefix
+agreement, not equality with the complete store. -/
+theorem sealedPlayerStore_source (who : Player) (memory : Nat → Option (L.Val ty))
+    (hmemory : ∀ slot, memory slot = state.service.lookup (who, slot))
+    (field : Nat) (value : TypedValue L)
+    (hvalue : G.sealedPlayerStore ty who memory state.events field = some value) :
+    cfg.1.store field = some value := by
+  apply supported.replaySealedView_source cfg hterminal fallback state hbinding hregistered
+    who memory hmemory state.events (fun _ h => h) (G.initialPlayerStore who) ?_ field value hvalue
+  intro initialField initialValue hvalue
+  apply initialStore_source cfg initialField initialValue
+  unfold Graph.initialPlayerStore at hvalue
+  cases hfield : G.field? initialField with
+  | none => simp only [hfield] at hvalue; contradiction
+  | some spec =>
+      simp only [hfield] at hvalue
+      split at hvalue
+      · simpa only [Graph.initialStore, hfield] using hvalue
+      · contradiction
+
+/-- A successful native restriction to declared fields is exactly the same
+read environment in the complete source. Dependent honest kernels therefore
+receive the same arguments, not resampled or approximated arguments. -/
+theorem sealedPlayerStore_source_reads (who : Player) (memory : Nat → Option (L.Val ty))
+    (hmemory : ∀ slot, memory slot = state.service.lookup (who, slot))
+    (refs : Finset (FieldRef L)) (reads : ReadEnv L refs)
+    (hreads : ReadEnv.ofStore? (G.sealedPlayerStore ty who memory state.events) refs = some reads) :
+    ReadEnv.ofStore? cfg.1.store refs = some reads := by
+  apply ReadEnv.ofStore?_eq_of_getAs_eq hreads
+  intro ref href
+  have hread := ReadEnv.ofStore?_read hreads href
+  cases hstored : G.sealedPlayerStore ty who memory state.events ref.field with
+  | none => simp only [Store.getAs, hstored] at hread; contradiction
+  | some value =>
+      have hsource := supported.sealedPlayerStore_source cfg hterminal fallback state hbinding
+        hregistered who memory hmemory ref.field value hstored
+      simp only [Store.getAs, hstored, hsource]
+
+variable [DecidableEq (L.Val ty)]
+
+/-- A fresh native registration draws the original policy kernel at exactly
+the complete source's declared inputs. The premises describe successful native
+reads and local registration memory, not an assumed equality of source inputs. -/
+theorem commitCommand_source_kernel (who : Player) (policy : CommitPolicy G who)
+    (node : Fin G.nodeCount) (guard : EventGuard L)
+    (hsem : (G.nodeRow node).sem = .commit who guard)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (hmemory : ∀ slot, (supported.compile.registrationEncoding slot).cachedValue
+      (supported.compile.messageApplication (Value := L.Val ty)) history =
+        state.service.lookup (who, slot))
+    (hcache : (supported.compile.registrationEncoding node.val).cachedValue
+      (supported.compile.messageApplication (Value := L.Val ty)) history = none)
+    (havailable : (ReadEnv.ofStoreExec? (G.sealedPlayerStore ty who
+      (fun slot => (supported.compile.registrationEncoding slot).cachedValue
+        (supported.compile.messageApplication (Value := L.Val ty)) history) state.events)
+      guard.choiceReads).isSome) :
+    ∃ reads : ReadEnv L guard.choiceReads,
+      ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads ∧
+      supported.commitCommand who policy node guard hsem history
+        (G.sealedPlayerStore ty who (fun slot =>
+          (supported.compile.registrationEncoding slot).cachedValue
+            (supported.compile.messageApplication (Value := L.Val ty)) history) state.events) =
+        (policy node guard hsem reads).map (fun choice =>
+          .privateCommand ⟨(node.val,
+            cast (congrArg L.Val (supported.commitType node who guard hsem)) choice.1)⟩) := by
+  obtain ⟨reads, hreads⟩ := Option.isSome_iff_exists.mp havailable
+  refine ⟨reads, supported.sealedPlayerStore_source_reads cfg hterminal fallback state hbinding
+    hregistered who _ hmemory _ reads
+    (ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some hreads), ?_⟩
+  simp only [commitCommand, hcache, hreads]
+
+end Vegas.EventGraph.SealedFragment

@@ -73,6 +73,7 @@ import Interaction.SealedResolution
 import Interaction.SealedResolutionLaws
 import Interaction.SealedResolutionBinding
 import Interaction.SealedResolutionRounds
+import Interaction.SealedResolutionProvenance
 import Interaction.SealedResolutionPolicy
 import Interaction.SealedResolutionKnowledge
 import Interaction.SealedResolutionCoupling

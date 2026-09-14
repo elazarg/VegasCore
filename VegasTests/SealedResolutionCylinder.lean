@@ -115,4 +115,28 @@ theorem stopped_mass (assignments : FinDist (Fin graph.nodeCount → Value))
   rw [← FinDist.expect_indicator_eq_probOf]
   simp only [Set.mem_univ, ↓reduceIte, FinDist.expect_const]
 
+private def timeoutTraffic (value : Value) : List app.Action :=
+  [.privateCommand 0 ⟨(0, value)⟩, .privateCommand 0 ⟨(0, none)⟩,
+    .submit 1 .malformed, .include (1, 0),
+    .environment ⟨()⟩, .environment ⟨()⟩, .environment ⟨()⟩, .environment ⟨()⟩]
+
+/-- Retrying a private registration, submitting garbage, and expiring public
+nodes cannot create a private registration for the other player. The run has
+nonempty support, so the test also checks a real native execution. -/
+theorem timeout_does_not_fabricate_registration (value : Value) :
+    ∃ final ∈ (app.run (timeoutTraffic value) (State.initial app runtime.initial)).support,
+      final.application.service.lookup (1, 1) = none := by
+  obtain ⟨final, hfinal⟩ :=
+    (app.run (timeoutTraffic value) (State.initial app runtime.initial)).support_nonempty
+  refine ⟨final, hfinal, ?_⟩
+  cases hlookup : final.application.service.lookup (1, 1) with
+  | none => rfl
+  | some registered =>
+      rcases runtime.run_lookup_origin (timeoutTraffic value) _ final hfinal
+        1 1 registered hlookup with hprior | hrecorded
+      · cases hprior
+      · simp only [timeoutTraffic, List.mem_cons, List.not_mem_nil, or_false,
+          MessageInterface.Action.privateCommand.injEq, reduceCtorEq] at hrecorded
+        rcases hrecorded with ⟨howner, _⟩ | ⟨howner, _⟩ <;> cases howner
+
 end VegasTests.SealedResolutionCylinder

@@ -165,6 +165,36 @@ theorem tracePolicies_pure [DecidableEq Principal]
       exact ⟨.step execution tail, by
         simp only [tracePolicies, hnext, FinDist.pure_bind, htail, FinDist.map_pure]⟩
 
+/-- A stopped trace is itself supported by the same runner on an invocation
+prefix. No operational stop or replacement transition is introduced. -/
+theorem tracePolicies_prefixThrough_support [DecidableEq Principal]
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (release : app.PolicyExecution → Bool)
+    (schedule : List (@Invocation Principal)) (initial : app.PolicyExecution)
+    (trace : app.PolicyTrace)
+    (htrace : trace ∈ (app.tracePolicies players environment schedule initial).support) :
+    ∃ front suffix, schedule = front ++ suffix ∧
+      trace.prefixThrough release ∈
+        (app.tracePolicies players environment front initial).support := by
+  induction schedule generalizing initial trace with
+  | nil =>
+      simp only [tracePolicies, FinDist.mem_support_pure] at htrace
+      subst trace
+      exact ⟨[], [], rfl, FinDist.mem_support_pure.mpr rfl⟩
+  | cons invocation rest ih =>
+      simp only [tracePolicies, FinDist.support_bind, Set.mem_iUnion,
+        FinDist.support_map, Set.mem_image] at htrace
+      obtain ⟨next, hnext, tail, htail, rfl⟩ := htrace
+      by_cases hrelease : release initial = true
+      · refine ⟨[], invocation :: rest, rfl, ?_⟩
+        simp only [PolicyTrace.prefixThrough, hrelease, ↓reduceIte,
+          tracePolicies, FinDist.mem_support_pure]
+      · obtain ⟨front, suffix, heq, hfront⟩ := ih next tail htail
+        refine ⟨invocation :: front, suffix, by simp only [List.cons_append, heq], ?_⟩
+        simp only [PolicyTrace.prefixThrough, hrelease, tracePolicies,
+          FinDist.support_bind, Set.mem_iUnion, FinDist.support_map, Set.mem_image]
+        exact ⟨next, hnext, tail.prefixThrough release, hfront, rfl⟩
+
 /-- A selected snapshot lies on an actual invocation prefix, and the final
 snapshot is supported by the remaining suffix from that same selected state.
 Both segments use unchanged policies. No progress or monotonicity is assumed. -/

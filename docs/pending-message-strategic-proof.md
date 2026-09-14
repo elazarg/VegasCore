@@ -700,6 +700,11 @@ The current repository has:
   at every supported terminal realization;
 - retention of all focal source-owned registrations at a common first-timeout
   snapshot, including speculative registrations;
+- private-registration provenance and agreement of all players' source-owned
+  slots at that snapshot; agreement of included openings with complete source
+  values at every selected pre-timeout replay checkpoint;
+- transport of successful local reads and fresh registration kernels to the
+  complete source under an explicit own-cache/service agreement premise;
 - per-node readiness timestamps, nullable resolution, and continued native
   execution without overwriting the private service;
 - a shared-runner round model separating adaptive wire scheduling from the
@@ -732,7 +737,14 @@ the actual source law, not a postulated assignment distribution.
 `extractedSourceRun_locked` retains all focal registrations at the same
 first-timeout snapshot. That snapshot is after the tick, which preserves
 private service values but may have defaulted public fields. Agreement with
-the pre-resolution public prefix is a separate obligation.
+the pre-resolution public prefix is checked by `extractedSourceRun_opened`:
+selecting any checkpoint within the stopped replay retains actual supported
+execution on both sides, so its registrations persist to the common cutoff.
+The before-timeout binding invariant identifies its included openings with
+those registrations. No equality is asserted for public timeout defaults.
+`commitCommand_source_kernel` identifies successful local kernel inputs under
+own-cache/service agreement; discharging that memory invariant on resolving
+runs remains part of the whole-prefix kernel argument.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
 
@@ -750,7 +762,7 @@ The remaining implementation work is specific:
 4. Predraw native responses across honest assignments, and prove
    agreement of honest source/native kernel inputs during replay, source
    cylinder masses, and the actual stopped-native marginal. The source marginal
-   and focal-choice consistency are checked. Attach the actual post-timeout
+   and registration/opening value agreement are checked. Attach the actual post-timeout
    native continuation, retaining dependence between honest draws and the
    shared environment randomness.
 5. Instantiate the existing `UtilitySimulation` under the explicit

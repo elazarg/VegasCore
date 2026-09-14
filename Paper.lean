@@ -289,24 +289,46 @@ theorem pending_extracted_source_law (profile : SourceBehavioralProfile source.c
   compilation.extractedSourceRun_source nullValue window focal deviator environment schedule
     fallback profile
 
-/-- Every focal source-owned registration at the common first-timeout snapshot
-is retained by the complete source realization. Native marginal equality is
+/-- Every source-owned registration at the common first-timeout snapshot
+is retained by the complete source realization, for every player. Native marginal equality is
 a separate probability obligation. -/
 theorem pending_locked_source_choices (profile : SourceBehavioralProfile source.core.prog)
     (cfg : ReachableConfig (ToEventGraph.compile source.core).graph)
     (hcfg : cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment
       schedule fallback profile).support)
+    (owner : Player)
     (decision : Fin (ToEventGraph.compile source.core).graph.nodeCount) (guard : EventGuard L)
     (hdecision : ((ToEventGraph.compile source.core).graph.nodeRow decision).sem =
-      .commit focal guard)
+      .commit owner guard)
     (value : L.Val ty)
     (hregistered :
       (compilation.supported.resolvingStop nullValue window (cfg.1.nodeValues fallback) focal
-        deviator environment schedule).native.application.service.lookup (focal, decision.val) =
+        deviator environment schedule).native.application.service.lookup (owner, decision.val) =
           some value) :
     cfg.1.nodeValues fallback decision = value :=
-  compilation.extractedSourceRun_locked nullValue window focal deviator environment schedule
-    fallback profile cfg hcfg decision guard hdecision value hregistered
+  compilation.extractedSourceRun_registered nullValue window focal deviator environment schedule
+    fallback profile cfg hcfg owner decision guard hdecision value hregistered
+
+/-- Every included opening in a pre-timeout replay prefix has its complete
+source value. This remains a value theorem, not a native probability law. -/
+theorem pending_source_openings (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (ToEventGraph.compile source.core).graph)
+    (hcfg : cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment
+      schedule fallback profile).support)
+    (release :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution →
+        Bool) :
+    let stopped := ((compilation.supported.resolvingReplay nullValue window
+      (cfg.1.nodeValues fallback) focal deviator environment schedule).prefixThrough
+        (fun execution : (compilation.supported.resolvingRuntime
+            nullValue window).messageApplication.PolicyExecution =>
+          !execution.native.application.visible.timeouts.isEmpty)).firstRelease release
+    stopped.native.application.visible.timeouts = [] → ∀ node value,
+      SealedProgram.Event.opened node value ∈ stopped.native.application.visible.events →
+      cfg.1.store ((ToEventGraph.compile source.core).graph.nodeTarget node) =
+        some (⟨ty, value⟩ : TypedValue L) :=
+  compilation.extractedSourceRun_opened nullValue window focal deviator environment schedule
+    fallback profile cfg hcfg release
 
 end SourceRealization
 
@@ -918,3 +940,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_locked_source_choices
+
+/-- info: 'Vegas.Paper.pending_source_openings' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_source_openings

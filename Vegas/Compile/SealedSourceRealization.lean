@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedSourceExtraction
+import Vegas.Compile.SealedResolutionCylinder
+import Vegas.Compile.SealedSourceInputs
 import Vegas.Compile.SourceCorrespondence
 
 /-! # Source execution under the extracted native policy
@@ -132,6 +134,62 @@ theorem extractedSourceRun_locked (profile : SourceBehavioralProfile source.core
     Option.getD_some] at hchoice
   exact hchoice
 
+/-- Every source-owned private registration at the common checkpoint agrees
+with the complete source realization, for honest players and the deviator alike. -/
+theorem extractedSourceRun_registered (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (hcfg : cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment
+      schedule fallback profile).support)
+    (owner : Player) (decision : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
+    (hdecision : ((compile source.core).graph.nodeRow decision).sem = .commit owner guard)
+    (value : L.Val ty)
+    (hregistered :
+      (compilation.supported.resolvingStop nullValue window (cfg.1.nodeValues fallback) focal
+        deviator environment schedule).native.application.service.lookup (owner, decision.val) =
+          some value) : cfg.1.nodeValues fallback decision = value := by
+  by_cases howner : owner = focal
+  · subst owner
+    exact compilation.extractedSourceRun_locked nullValue window focal deviator environment
+      schedule fallback profile cfg hcfg decision guard hdecision value hregistered
+  · exact (compilation.supported.resolvingStop_honest_lookup nullValue window focal
+      deviator environment schedule (cfg.1.nodeValues fallback)
+      owner decision value howner hregistered).symm
+
+/-- At every selected checkpoint before the first timeout, included openings
+already have their complete source values. Arrival and inclusion order are
+unrestricted. The later execution may time out; the comparison stops before
+public defaults can replace the registered values. -/
+theorem extractedSourceRun_opened (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (hcfg : cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment
+      schedule fallback profile).support)
+    (release :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution →
+        Bool) :
+    let stopped := ((compilation.supported.resolvingReplay nullValue window
+      (cfg.1.nodeValues fallback) focal deviator environment schedule).prefixThrough
+        (fun execution : (compilation.supported.resolvingRuntime
+            nullValue window).messageApplication.PolicyExecution =>
+          !execution.native.application.visible.timeouts.isEmpty)).firstRelease release
+    stopped.native.application.visible.timeouts = [] → ∀ node value,
+      SealedProgram.Event.opened node value ∈ stopped.native.application.visible.events →
+      cfg.1.store ((compile source.core).graph.nodeTarget node) =
+        some (⟨ty, value⟩ : TypedValue L) := by
+  intro stopped hclear node value hopened
+  obtain ⟨before, after, hbefore, hafter⟩ := compilation.supported.resolvingReplay_prefix_support
+    nullValue window focal deviator environment schedule release (cfg.1.nodeValues fallback)
+  have hbinding := (compilation.supported.resolvingRuntime nullValue
+    window).runPolicies_beforeTimeoutBinding _ _ before _ stopped
+      SealedResolution.BeforeTimeoutBinding.initial hbefore hclear
+  apply compilation.supported.opened_source_value cfg
+    (compilation.extractedSourceRun_terminal nullValue window focal deviator environment schedule
+      fallback profile cfg hcfg) fallback _ hbinding ?_ node value hopened
+  intro owner decision guard hdecision registered hregistered
+  exact compilation.extractedSourceRun_registered nullValue window focal deviator environment
+    schedule fallback profile cfg hcfg owner decision guard hdecision registered
+    ((compilation.supported.resolvingRuntime nullValue window).runPolicies_lookup_of_eq_some
+      _ _ after stopped _ (owner, decision.val) registered hregistered hafter)
+
 end Vegas.SealedCompilation
 
 /-- info: 'Vegas.SealedCompilation.extractedSourceRun_source' depends on axioms:
@@ -148,3 +206,13 @@ end Vegas.SealedCompilation
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SealedCompilation.extractedSourceRun_locked
+
+/-- info: 'Vegas.SealedCompilation.extractedSourceRun_registered' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.extractedSourceRun_registered
+
+/-- info: 'Vegas.SealedCompilation.extractedSourceRun_opened' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.extractedSourceRun_opened

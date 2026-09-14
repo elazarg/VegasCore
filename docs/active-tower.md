@@ -81,6 +81,19 @@ agreement is derived from actual source reads and reveal semantics.
 present at the common first-timeout snapshot, including speculative ones.
 This concerns private bindings: the snapshot follows its timeout tick, so
 its newly defaulted public fields need not match those source values.
+`extractedSourceRun_registered` extends that agreement to every player's
+source-owned registrations. Honest slots retain assigned values; native
+registration provenance rules out private entries introduced by traffic or
+timeout defaults. `extractedSourceRun_opened` proves that every included
+opening at a selected pre-timeout replay checkpoint has its complete source
+value, including when a later part of the same run times out.
+
+`sealedPlayerStore_source_reads` transports every successful local read to
+the complete source realization under binding, registration-agreement, and
+own-cache/service agreement premises. `commitCommand_source_kernel` then
+identifies the fresh registration kernel at those source inputs. The resolving
+runner's own-cache/service invariant must still discharge the memory premise
+before this is a whole-prefix honest-kernel theorem.
 
 `SealedFragment.resolvingReplay_prefix_eq_iff` characterizes stopped resolving
 replays by their recorded honest registrations, including when the cutoff

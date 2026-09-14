@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedResolutionReplay
+import Interaction.SealedResolutionProvenance
 
 /-! # Exact assignment cylinders for resolving native execution
 
@@ -115,6 +116,25 @@ theorem runPolicies_resolvingValues_registration (values : Fin G.nodeCount → L
         false_implies, implies_true]) hfinal
   exact hproperty _ htrace owner node value howner rfl
 
+/-- The continuing private service retains exactly the assigned value at
+each occupied honest slot. This conclusion concerns the service itself,
+not merely the values appearing in emitted commands. -/
+theorem runPolicies_resolvingValues_lookup (values : Fin G.nodeCount → L.Val ty)
+    (schedule : List (@Invocation Player))
+    (final : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hfinal : final ∈
+      ((supported.resolvingRuntime nullValue window).messageApplication.runPolicies
+        (supported.resolvingValuePlayers nullValue window values focal deviator)
+        environment schedule (PolicyExecution.initial _
+          (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support)
+    (owner : Player) (node : Fin G.nodeCount) (value : L.Val ty) (howner : owner ≠ focal)
+    (hlookup : final.native.application.service.lookup (owner, node.val) = some value) :
+    value = values node := by
+  exact supported.runPolicies_resolvingValues_registration nullValue window focal
+    deviator environment values schedule final hfinal owner node value howner
+    ((supported.resolvingRuntime nullValue window).runPolicies_lookup_origin
+      _ _ schedule final hfinal owner node.val value hlookup)
+
 end Support
 
 variable (focal : Player)
@@ -129,6 +149,73 @@ variable (environment :
 variable (schedule : List (@Invocation Player))
 variable (release :
   (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution → Bool)
+
+/-- A checkpoint selected within the pre-resolution trace has actual policy
+execution on both sides: from initialization to it, and from it to the common
+timeout snapshot. The policies and assigned values are unchanged throughout. -/
+theorem resolvingReplay_prefix_support (values : Fin G.nodeCount → L.Val ty) :
+    let trace := (supported.resolvingReplay nullValue window values focal deviator environment
+      schedule).prefixThrough (fun execution :
+        (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution =>
+          !execution.native.application.visible.timeouts.isEmpty)
+    ∃ before after,
+      trace.firstRelease release ∈
+        ((supported.resolvingRuntime nullValue window).messageApplication.runPolicies
+          (supported.resolvingValuePlayers nullValue window values focal
+            (fun history view => FinDist.pure (deviator history view)))
+          (fun history view => FinDist.pure (environment history view)) before
+          (PolicyExecution.initial _
+            (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support ∧
+      supported.resolvingStop nullValue window values focal deviator environment schedule ∈
+        ((supported.resolvingRuntime nullValue window).messageApplication.runPolicies
+          (supported.resolvingValuePlayers nullValue window values focal
+            (fun history view => FinDist.pure (deviator history view)))
+          (fun history view => FinDist.pure (environment history view)) after
+          (trace.firstRelease release)).support := by
+  intro trace
+  have hfull : supported.resolvingReplay nullValue window values focal
+      deviator environment schedule ∈
+      ((supported.resolvingRuntime nullValue window).messageApplication.tracePolicies
+        (supported.resolvingValuePlayers nullValue window values focal
+          (fun history view => FinDist.pure (deviator history view)))
+        (fun history view => FinDist.pure (environment history view)) schedule
+        (PolicyExecution.initial _
+          (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support := by
+    rw [resolvingReplay_law, FinDist.mem_support_pure]
+  obtain ⟨front, _, _, hcut⟩ := MessageApplication.tracePolicies_prefixThrough_support _ _ _
+    (fun execution : (supported.resolvingRuntime
+        nullValue window).messageApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty) schedule _ _ hfull
+  obtain ⟨before, after, _, hbefore, hafter⟩ :=
+    MessageApplication.tracePolicies_firstRelease_split _ _ _ release front _ _ hcut
+  refine ⟨before, after, hbefore, ?_⟩
+  simpa only [trace, resolvingStop, PolicyTrace.prefixThrough_last] using hafter
+
+/-- Every occupied honest slot at the common timeout snapshot retains its
+assigned source value, even when the snapshot already contains public defaults. -/
+theorem resolvingStop_honest_lookup (values : Fin G.nodeCount → L.Val ty)
+    (owner : Player) (node : Fin G.nodeCount) (value : L.Val ty) (howner : owner ≠ focal)
+    (hlookup : (supported.resolvingStop nullValue window values focal
+      deviator environment schedule).native.application.service.lookup (owner, node.val) =
+        some value) : value = values node := by
+  have hfull : supported.resolvingReplay nullValue window values focal
+      deviator environment schedule ∈
+      ((supported.resolvingRuntime nullValue window).messageApplication.tracePolicies
+        (supported.resolvingValuePlayers nullValue window values focal
+          (fun history view => FinDist.pure (deviator history view)))
+        (fun history view => FinDist.pure (environment history view)) schedule
+        (PolicyExecution.initial _
+          (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support := by
+    rw [resolvingReplay_law, FinDist.mem_support_pure]
+  obtain ⟨front, _, _, hprefix, _⟩ :=
+    MessageApplication.tracePolicies_firstRelease_split _ _ _
+      (fun execution :
+          (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution =>
+        !execution.native.application.visible.timeouts.isEmpty) schedule _ _ hfull
+  exact supported.runPolicies_resolvingValues_lookup nullValue window focal
+    (fun history view => FinDist.pure (deviator history view))
+    (fun history view => FinDist.pure (environment history view)) values front _ hprefix
+    owner node value howner hlookup
 
 theorem resolvingReplay_registration (values : Fin G.nodeCount → L.Val ty)
     (owner : Player) (node : Fin G.nodeCount) (value : L.Val ty) (howner : owner ≠ focal)

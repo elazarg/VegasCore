@@ -26,6 +26,28 @@ def Config.nodeValues {ty : L.Ty} (cfg : Config G) (fallback : L.Val ty) :
     Fin G.nodeCount → L.Val ty :=
   fun node => (Store.getAs cfg.store (G.nodeTarget node) ty).getD fallback
 
+/-- At a completed, coherently typed node, totalization returns its actual
+stored value; the fallback has no effect. -/
+theorem Config.store_nodeValues (cfg : Config G) (hcoherent : StoreCoherent G cfg)
+    {ty : L.Ty} (fallback : L.Val ty) (node : Fin G.nodeCount)
+    (hty : (G.nodeRow node).ty = ty) (hdone : node ∈ cfg.done) :
+    cfg.store (G.nodeTarget node) = some (⟨ty, cfg.nodeValues fallback node⟩ : TypedValue L) := by
+  have hvalue := hcoherent (G.nodeTarget node) _
+    (G.field?_nodeTarget (G.nodes_get?_nodeRow node))
+    (Finset.mem_image.mpr ⟨node, hdone, rfl⟩)
+  change ∃ value : L.Val (G.nodeRow node).ty,
+    Store.getAs cfg.store (G.nodeTarget node) (G.nodeRow node).ty = some value at hvalue
+  rw [hty] at hvalue
+  obtain ⟨value, hvalue⟩ := hvalue
+  have hprojection : cfg.nodeValues fallback node = value := by
+    simp only [nodeValues, hvalue, Option.getD_some]
+  rw [hprojection]
+  cases hstored : cfg.store (G.nodeTarget node) with
+  | none => simp only [Store.getAs, hstored] at hvalue; contradiction
+  | some stored =>
+      simp only [Store.getAs, hstored] at hvalue
+      exact congrArg some (TypedValue.eq_mk_of_as?_eq_some stored ty value hvalue)
+
 /-- Every completed commitment has a supported policy choice at the declared
 inputs reconstructed from the current store. -/
 def CommitValuesSupported (policies : CommitPolicyProfile G) (cfg : Config G) : Prop :=
