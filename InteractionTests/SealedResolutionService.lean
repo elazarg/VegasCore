@@ -50,7 +50,7 @@ theorem arbitrary_players_have_nonempty_service_class
     (policies : Bool → runtime.messageApplication.PlayerPolicy)
     (base : runtime.messageApplication.WirePolicy)
     (next : runtime.messageApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.runRounds [false, true] 4 policies
+    (hnext : next ∈ (runtime.roundDriver.runRounds [false, true] 4 policies
       (runtime.messageApplication.reserveInclusion reserved base) 2 initial).support) :
     runtime.complete next.native.application.visible = true ∨ next.native.pool.pending = [] := by
   exact runtime.runRounds_complete_or_pending_empty [false, true] 4 policies
@@ -72,7 +72,7 @@ theorem delayed_service_completes_ready_commitment
     (policies : Bool → runtime.messageApplication.PlayerPolicy)
     (base : runtime.messageApplication.WirePolicy)
     (next : runtime.messageApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.runRounds [false, true] 5 policies
+    (hnext : next ∈ (runtime.roundDriver.runRounds [false, true] 5 policies
       (runtime.messageApplication.reserveInclusion (fun turn => decide (6 ≤ turn % 12)) base)
         2 prepared).support) :
     next.native.application.visible.completed 0 = true := by
@@ -86,14 +86,14 @@ theorem delayed_service_completes_ready_commitment
 /-- A player reacts in the second round to a packet delivered while the ledger
 is still empty. Reserved inclusion then drains both rounds' submissions. -/
 theorem pending_reaction_before_reserved_inclusion :
-    ((runtime.round [false, true] 4 players wire initial).bind
-      (runtime.round [false, true] 4 players wire)).map (fun execution =>
+    ((runtime.roundDriver.round [false, true] 4 players wire initial).bind
+      (runtime.roundDriver.round [false, true] 4 players wire)).map (fun execution =>
         (execution.native.pool.pending.length, execution.native.pool.ledger.length,
           (execution.principalHistory true).map (fun entry =>
             (entry.beforeView.messages.inbox.isEmpty, entry.beforeView.messages.ledger.isEmpty)),
           execution.native.application.service.lookup (true, 7))) =
       FinDist.pure (0, 2, [(true, true), (false, true)], some (some false)) := by
-  unfold SealedResolution.round
+  unfold MessageApplication.RoundDriver.round
   simp only [List.map_cons, List.map_nil,
     List.replicate_succ, List.replicate_zero, List.cons_append, List.nil_append,
     runPolicies, invoke, players, wire, wireEnvironment, reserveInclusion, reserved,

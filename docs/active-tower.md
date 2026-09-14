@@ -22,7 +22,7 @@ The ideal commitment service provides more than an abstract hiding-and-binding
 interface. For the compiled protocol, a source site is the numeric slot itself,
 so there is one canonical owner/slot handle. Its first authenticated private
 registration is permanent, and commitment validation requires that registration
-to exist. Thus the active model neither admits multiple competing candidates at
+to exist. Thus this registered-site host neither admits multiple competing candidates at
 one source site nor accepts a candidate that may later prove unopenable. A
 lower-level commitment protocol with either behavior needs a strategic
 refinement to this functionality; a codec or representation theorem alone is
@@ -43,7 +43,7 @@ supplies a legal written-source payout witness for every completed candidate
 policy run. `candidate_publicPayout_source_choice` supplies one witness recording
 the timeout owner's source default and matching the actual payout. Neither
 theorem fixes the opponents' source policies. Completion is an explicit premise;
-candidate-host termination, honest laws, and causal deviation coupling are not
+candidate-host termination and causal deviation coupling are not
 inferred from these safety results. The Nash theorem below still uses the
 registered-site service.
 
@@ -56,9 +56,15 @@ the pool preserves this fact through delivery, replay, and inclusion. No
 fairness or timeout-free premise is needed for this host equality. Retyping
 environment policies is surjective, so it excludes no adaptive candidate-host
 environment. The equality does not cover arbitrary candidate-player deviations.
-Transport to the stopped round driver's original source-outcome law remains
-to be connected; the finite execution law alone does not prove successful
-completion or candidate-host Nash preservation.
+Both hosts instantiate `MessageApplication.RoundDriver`, whose single bounded
+loop stops at completion. `candidateRounds_law` transports the full honest
+execution law through this stopping rule. Under roster coverage, periodic
+inclusion capacity, a sufficient window, and a whole-period termination budget,
+`candidate_honest_round_payout_law` proves that the actual candidate driver
+completes without timeouts and has exactly the written source payout law.
+The payout is reconstructed from public initial fields and opening events.
+This honest law has no incentive hypothesis and does not establish candidate-host
+Nash preservation.
 
 ## End-to-end target
 
@@ -83,9 +89,9 @@ Write `S` for the written-source game, `R` for that candidate-message round game
 `C` for the pointwise generated policy translation, and `pS` and `pR` for the
 source payout and actual public runtime payout. The intended result has two laws:
 
-1. **Honest execution:** every compiled profile completes without timeout and
+1. **Honest execution (proved):** every compiled profile completes without timeout and
    `Law(pR; R(C σ)) = Law(pS; S(σ))`.
-2. **Arbitrary deviations:** assuming the source-only `QuitPayoutBound`, for
+2. **Arbitrary deviations (unproved):** assuming the source-only `QuitPayoutBound`, for
    every source profile `σ`, player `i`, and randomized native replacement `τi`,
    there is a finite mixture `μ` of legal source replacements such that
    `E[uᵢ(pR); R((C σ)[i := τi])] ≤ E[sᵢ ∼ μ] E[uᵢ(pS); S(σ[i := sᵢ])]`.
@@ -105,9 +111,8 @@ proved laws, not accept them as caller obligations.
 
 The registered-site host already has the source-payout strategic result. The
 candidate host has immutable accepted meaning, completed public settlement
-witnesses, and the generated policies' exact finite-execution host embedding.
-Connecting the stopped driver to the source honest law and proving the
-candidate deviation law are the next proof tasks. More general source
+witnesses, and the original source payout law for honest stopped-round execution.
+The candidate deviation law is the next proof task. More general source
 continuation criteria, guarded choices, sampling, heterogeneous values, and
 cryptographic or ledger refinement are further scope requirements; their exact additional assumptions must be
 determined, not represented by guessed theorem signatures. An obstruction must
@@ -429,7 +434,7 @@ nodes, and guards certified to accept every value of that type. Arbitrary
 nontrivial validation guards, chance nodes, heterogeneous sealed values, and a
 strategic refinement from commitments with multiple or potentially unopenable
 candidates are not established by these results. The candidate host's checked
-binding and source-settlement laws do not discharge that strategic refinement.
+binding, source-settlement, and honest payout laws do not discharge that strategic refinement.
 
 ## Deliberate non-claims
 

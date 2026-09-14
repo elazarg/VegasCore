@@ -69,8 +69,12 @@ The compiled policies' complete finite-execution laws agree between hosts by
 `SealedCompilation.candidatePolicies_law`. The compiler supplies the preparation
 invariant needed for this embedding; the environment-policy retyping is
 surjective and erases no observations. This law also covers delayed and timed-out
-runs. Its connection to the stopped round driver's original source law and the
-candidate service's causal deviation coupling remain to be established.
+runs. Both hosts instantiate `MessageApplication.RoundDriver`; its completion
+test and bounded loop are shared, and `candidateRounds_law` transports the full
+honest execution law through early stopping. Under deadline-relative service,
+`candidate_honest_round_payout_law` proves normal completion and the original
+source payout law in the candidate driver. The candidate service's causal
+deviation coupling remains to be established.
 The public acceptance/disclosure barrier is
 independent of private registration, but that information-flow fact and a
 source settlement witness alone do not provide the required strategy law.

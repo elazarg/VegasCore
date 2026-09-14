@@ -658,7 +658,7 @@ theorem randomized_pending_round_mixture (profile : SourceBehavioralProfile core
       (responsePairs.bind fun responses =>
         compilation.extractedRoundSourceCoupling none 3 [0, 1] 1 2 1
           responses.1 responses.2 fallback profile).map Prod.snd =
-        runtime.runRounds [0, 1] 1 players wire 2 initial := by
+        runtime.roundDriver.runRounds [0, 1] 1 players wire 2 initial := by
   obtain ⟨responsePairs, _, hnative⟩ :=
     compilation.exists_randomized_round_source_coupling none 3 [0, 1] 1 2 1 fallback
       profile replacement wire

@@ -79,6 +79,7 @@ import Interaction.SealedCandidateResolution
 import Interaction.SealedCandidateEmbedding
 import Interaction.SealedPreparedPolicies
 import Interaction.SealedCandidatePolicyEmbedding
+import Interaction.SealedCandidateRounds
 import Interaction.SealedCandidateBinding
 import Interaction.SealedCandidateEvents
 import Interaction.SealedCandidateSettlement
@@ -92,6 +93,7 @@ import Interaction.SealedResolutionEvents
 import Interaction.SealedResolutionClosure
 import Interaction.SealedResolutionSubmission
 import Interaction.SealedResolutionRounds
+import Interaction.MessageApplicationRounds
 import Interaction.SealedResolutionCompletion
 import Interaction.SealedResolutionDriver
 import Interaction.SealedResolutionService

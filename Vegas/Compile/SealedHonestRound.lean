@@ -57,7 +57,7 @@ theorem exists_honest_round_source_coupling
       coupling.map (fun pair => observeSourceOutcome source.core pair.1) =
         (denoteSource source.core.prog profile source.core.env).map some ∧
       coupling.map Prod.snd =
-        runtime.runRounds principals serviceSlots
+        runtime.roundDriver.runRounds principals serviceSlots
           (fun who => compilation.compileResolvingPolicy nullValue window who (profile who))
           wire total (PolicyExecution.initial _ (State.initial _ runtime.initial)) ∧
       ∀ cfg next, (cfg, next) ∈ coupling.support →
@@ -83,13 +83,15 @@ theorem exists_honest_round_source_coupling
     total initial (by rfl)
   have hcomplete (next : runtime.messageApplication.PolicyExecution)
       (hnext : next ∈
-        (runtime.runRounds principals serviceSlots players wire total initial).support) :
+        (runtime.roundDriver.runRounds
+          principals serviceSlots players wire total initial).support) :
       runtime.complete next.native.application.visible = true :=
     compilation.resolvingRuntime_runRounds_complete nullValue window principals serviceSlots
       players wire total hbound next hnext
   have hclear (next : runtime.messageApplication.PolicyExecution)
       (hnext : next ∈
-        (runtime.runRounds principals serviceSlots players wire total initial).support) :
+        (runtime.roundDriver.runRounds
+          principals serviceSlots players wire total initial).support) :
       next.native.application.visible.timeouts = [] :=
     compilation.supported.runRounds_timeouts_eq_nil nullValue window principals serviceSlots
       graphProfile wire reserved hservice period hperiod hcapacity hroster hwindow total
@@ -99,7 +101,8 @@ theorem exists_honest_round_source_coupling
         (runtime.messageApplication.tracePolicies players environment schedule initial).support) :
       trace.last.native.application.visible.timeouts = [] := by
     have hselected : readout trace ∈
-        (runtime.runRounds principals serviceSlots players wire total initial).support := by
+        (runtime.roundDriver.runRounds
+          principals serviceSlots players wire total initial).support := by
       rw [hdriver, FinDist.support_map]
       exact ⟨trace, htrace, rfl⟩
     obtain ⟨front, suffix, _, _, hsuffix⟩ :=
@@ -120,7 +123,7 @@ theorem exists_honest_round_source_coupling
       FinDist.bind_const]
     exact FinDist.map_id _
   have hnative : coupling.map Prod.snd =
-      runtime.runRounds principals serviceSlots players wire total initial := by
+      runtime.roundDriver.runRounds principals serviceSlots players wire total initial := by
     rw [hdriver]
     have hmapped := congrArg (FinDist.map readout) hresponses
     simpa only [coupling, FinDist.map_bind, FinDist.map_comp, Function.comp_def] using hmapped
@@ -129,7 +132,8 @@ theorem exists_honest_round_source_coupling
     rw [← FinDist.map_comp, hsource, source.sourceRealization_source]
   · intro cfg next hpair
     have hnext : next ∈
-        (runtime.runRounds principals serviceSlots players wire total initial).support := by
+        (runtime.roundDriver.runRounds
+          principals serviceSlots players wire total initial).support := by
       rw [← hnative, FinDist.support_map]
       exact ⟨(cfg, next), hpair, rfl⟩
     refine ⟨hcomplete next hnext, hclear next hnext, ?_⟩

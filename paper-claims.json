@@ -61,7 +61,8 @@
     "theorems": [
       "Vegas.Paper.pending_candidate_binding",
       "Vegas.Paper.pending_candidate_public_payout",
-      "Vegas.Paper.pending_candidate_timeout_source_choice"
+      "Vegas.Paper.pending_candidate_timeout_source_choice",
+      "Vegas.Paper.pending_candidate_honest_payout_law"
     ]
   },
   "prose:pending-source-payout-incentives": {

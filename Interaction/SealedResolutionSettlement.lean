@@ -374,23 +374,24 @@ theorem runRounds_settlementInvariant
     (environment : runtime.messageApplication.WirePolicy)
     (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
     (hinitial : SettlementInvariant runtime execution.native.application.visible)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       count execution).support) :
     SettlementInvariant runtime next.native.application.visible := by
   induction count generalizing execution with
   | zero =>
-      simp only [runRounds, FinDist.mem_support_pure] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds, FinDist.mem_support_pure] at hnext
       subst next
       exact hinitial
   | succ count ih =>
-      simp only [runRounds] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds] at hnext
       split at hnext
       · simp only [FinDist.mem_support_pure] at hnext
         subst next
         exact hinitial
       · simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
         obtain ⟨middle, hmiddle, hnext⟩ := hnext
-        simp only [round, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+        simp only [MessageApplication.RoundDriver.round, FinDist.support_bind,
+          Set.mem_iUnion] at hmiddle
         obtain ⟨serviced, hserviced, hmiddle⟩ := hmiddle
         have hservicedInvariant := runtime.runPolicies_settlementInvariant players
           (runtime.messageApplication.wireEnvironment environment) _ execution serviced
@@ -408,7 +409,7 @@ theorem runRounds_initial_settlementInvariant
     (players : Principal → runtime.messageApplication.PlayerPolicy)
     (environment : runtime.messageApplication.WirePolicy)
     (count : Nat) (next : runtime.messageApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment count
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment count
       (MessageApplication.PolicyExecution.initial runtime.messageApplication
         (MessageApplication.State.initial runtime.messageApplication runtime.initial))).support) :
     SettlementInvariant runtime next.native.application.visible := by
@@ -423,7 +424,7 @@ theorem runRounds_opened_eq_null_of_timeout
     (players : Principal → runtime.messageApplication.PlayerPolicy)
     (environment : runtime.messageApplication.WirePolicy)
     (count : Nat) (next : runtime.messageApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment count
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment count
       (MessageApplication.PolicyExecution.initial runtime.messageApplication
         (MessageApplication.State.initial runtime.messageApplication runtime.initial))).support)
     (node : Nat) (owner : Principal) (source : Nat) (requires : List Nat)

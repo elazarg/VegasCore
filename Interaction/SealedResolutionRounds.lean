@@ -5,7 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.SealedResolutionLaws
-import Interaction.MessageApplicationWirePolicy
+import Interaction.MessageApplicationRounds
 import Interaction.MessageApplicationPolicyInvariant
 
 /-! # Public-message rounds with fixed clock boundaries
@@ -33,35 +33,16 @@ universe uPrincipal uValue
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 variable [DecidableEq Principal] [DecidableEq Value]
 
-def round (runtime : SealedResolution Principal Value)
-    (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.WirePolicy)
-    (execution : runtime.messageApplication.PolicyExecution) :
-    FinDist runtime.messageApplication.PolicyExecution :=
-  let app := runtime.messageApplication
-  (app.runPolicies players (app.wireEnvironment environment)
-    (principals.map MessageApplication.Invocation.player ++
-      List.replicate serviceSlots .environment) execution).bind fun next =>
-    app.environmentPolicyStep next (.application ⟨()⟩)
-
 def complete (runtime : SealedResolution Principal Value)
     (state : PublicState Principal Value) : Bool :=
   (List.range runtime.program.rules.length).all state.completed
 
-/-- Run at most the supplied number of rounds, stopping after application
-completion. The result retains actual histories, pending traffic, and receipts. -/
-def runRounds (runtime : SealedResolution Principal Value)
-    (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.WirePolicy) :
-    Nat → runtime.messageApplication.PolicyExecution →
-      FinDist runtime.messageApplication.PolicyExecution
-  | 0, execution => FinDist.pure execution
-  | count + 1, execution =>
-      if runtime.complete execution.native.application.visible then FinDist.pure execution
-      else (runtime.round principals serviceSlots players environment execution).bind
-        (runtime.runRounds principals serviceSlots players environment count)
+/-- The shared round driver instantiated with the registered commitment host's
+clock and public completion test. -/
+abbrev roundDriver (runtime : SealedResolution Principal Value) :
+    MessageApplication.RoundDriver runtime.messageApplication where
+  boundary := ⟨()⟩
+  complete state := runtime.complete state.visible
 
 private theorem playerStep_clock (runtime : SealedResolution Principal Value) (who : Principal)
     (execution next : runtime.messageApplication.PolicyExecution)
@@ -152,44 +133,13 @@ theorem round_clock (runtime : SealedResolution Principal Value)
     (players : Principal → runtime.messageApplication.PlayerPolicy)
     (environment : runtime.messageApplication.WirePolicy)
     (execution next : runtime.messageApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.round principals serviceSlots players environment execution).support) :
+    (hnext : next ∈ (runtime.roundDriver.round
+      principals serviceSlots players environment execution).support) :
     next.native.application.visible.clock = execution.native.application.visible.clock + 1 := by
-  simp only [round, FinDist.support_bind, Set.mem_iUnion] at hnext
+  simp only [MessageApplication.RoundDriver.round, FinDist.support_bind, Set.mem_iUnion] at hnext
   obtain ⟨middle, hmiddle, hnext⟩ := hnext
   rw [runtime.clockStep_native middle next hnext, runtime.tick_clock,
     runtime.runPolicies_wire_clock players environment _ execution middle hmiddle]
-
-/-- A completed application needs no further rounds, regardless of the budget. -/
-theorem runRounds_of_complete (runtime : SealedResolution Principal Value)
-    (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.WirePolicy)
-    (count : Nat) (execution : runtime.messageApplication.PolicyExecution)
-    (hcomplete : runtime.complete execution.native.application.visible = true) :
-    runtime.runRounds principals serviceSlots players environment count execution =
-      FinDist.pure execution := by
-  cases count <;> simp [runRounds, hcomplete]
-
-/-- Splitting the round budget preserves early stopping and the full execution law. -/
-theorem runRounds_add (runtime : SealedResolution Principal Value)
-    (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.WirePolicy)
-    (first rest : Nat) (execution : runtime.messageApplication.PolicyExecution) :
-    runtime.runRounds principals serviceSlots players environment (first + rest) execution =
-      (runtime.runRounds principals serviceSlots players environment first execution).bind
-        (runtime.runRounds principals serviceSlots players environment rest) := by
-  induction first generalizing execution with
-  | zero => simp [runRounds]
-  | succ first ih =>
-      by_cases hcomplete : runtime.complete execution.native.application.visible = true
-      · simp [runtime.runRounds_of_complete principals serviceSlots players environment _ _
-          hcomplete]
-      · simp only [Nat.succ_add, runRounds, hcomplete, Bool.false_eq_true, ↓reduceIte,
-          FinDist.bind_bind]
-        apply FinDist.bind_congr
-        intro middle _
-        exact ih middle
 
 /-- If a bounded round run is still incomplete, every round in its budget
 has advanced the clock once. No message-service premise is used. -/
@@ -198,17 +148,17 @@ theorem runRounds_clock_of_incomplete (runtime : SealedResolution Principal Valu
     (players : Principal → runtime.messageApplication.PlayerPolicy)
     (environment : runtime.messageApplication.WirePolicy)
     (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       count execution).support)
     (hincomplete : runtime.complete next.native.application.visible = false) :
     next.native.application.visible.clock = execution.native.application.visible.clock + count := by
   induction count generalizing execution with
   | zero =>
-      simp only [runRounds, FinDist.mem_support_pure] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds, FinDist.mem_support_pure] at hnext
       subst next
       omega
   | succ count ih =>
-      simp only [runRounds] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds] at hnext
       split at hnext
       · simp only [FinDist.mem_support_pure] at hnext
         subst next
@@ -265,16 +215,16 @@ theorem runRounds_lookup_of_eq_some (runtime : SealedResolution Principal Value)
     (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
     (handle : CommitmentHandle Principal Nat) (value : Value)
     (hlookup : execution.native.application.service.lookup handle = some value)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       count execution).support) :
     next.native.application.service.lookup handle = some value := by
   induction count generalizing execution with
   | zero =>
-      simp only [runRounds, FinDist.mem_support_pure] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds, FinDist.mem_support_pure] at hnext
       subst next
       exact hlookup
   | succ count ih =>
-      simp only [runRounds] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds] at hnext
       split at hnext
       · simp only [FinDist.mem_support_pure] at hnext
         subst next
@@ -282,7 +232,8 @@ theorem runRounds_lookup_of_eq_some (runtime : SealedResolution Principal Value)
       · simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
         obtain ⟨middle, hmiddle, hnext⟩ := hnext
         apply ih middle ?_ hnext
-        simp only [round, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+        simp only [MessageApplication.RoundDriver.round, FinDist.support_bind,
+          Set.mem_iUnion] at hmiddle
         obtain ⟨serviced, hserviced, hmiddle⟩ := hmiddle
         rw [runtime.clockStep_native serviced middle hmiddle, runtime.tick_service]
         exact runtime.runPolicies_lookup_of_eq_some players

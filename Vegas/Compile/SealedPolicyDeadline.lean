@@ -248,7 +248,7 @@ theorem tracePolicies_no_timeout (total : Nat) (hperiods : period ∣ total)
 readout. Later auxiliary trace execution cannot erase a recorded timeout. -/
 theorem runRounds_no_timeout (total : Nat) (hperiods : period ∣ total)
     (next : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).runRounds
+    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).roundDriver.runRounds
       principals serviceSlots players wire total (PolicyExecution.initial _
         (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support) :
     target.val ∉ next.native.application.visible.timeouts := by
@@ -299,7 +299,7 @@ theorem runRounds_timeout_owner (supported : SealedFragment G ty)
     (hwindow : G.nodeCount * (period + 1) + 2 ≤ window)
     (total : Nat) (hperiods : period ∣ total)
     (next : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).runRounds
+    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).roundDriver.runRounds
       principals serviceSlots players wire total (PolicyExecution.initial _
         (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support)
     (index : Nat) (htimeout : index ∈ next.native.application.visible.timeouts) :
@@ -359,7 +359,7 @@ theorem runRounds_timeouts_eq_nil (supported : SealedFragment G ty)
     (hwindow : G.nodeCount * (period + 1) + 2 ≤ window)
     (total : Nat) (hperiods : period ∣ total)
     (next : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).runRounds
+    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).roundDriver.runRounds
       principals serviceSlots (fun who =>
         supported.resolvingPolicy nullValue window who (profile who)) wire total
       (PolicyExecution.initial _

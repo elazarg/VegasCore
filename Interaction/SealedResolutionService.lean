@@ -40,10 +40,12 @@ theorem round_pending_bound (runtime : SealedResolution Principal Value)
     (hservice : runtime.messageApplication.InclusionService
       (fun turn => reserved turn = true) (runtime.messageApplication.wireEnvironment wire))
     (execution next : runtime.messageApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.round principals serviceSlots players wire execution).support) :
+    (hnext : next ∈ (runtime.roundDriver.round
+      principals serviceSlots players wire execution).support) :
     next.native.pool.pending.length ≤ execution.native.pool.pending.length + principals.length -
       (List.range' execution.environmentHistory.length serviceSlots).countP reserved := by
-  simp only [round, runPolicies_append, FinDist.support_bind, Set.mem_iUnion] at hnext
+  simp only [MessageApplication.RoundDriver.round, runPolicies_append, FinDist.support_bind,
+    Set.mem_iUnion] at hnext
   obtain ⟨serviced, ⟨middle, hmiddle, hserviced⟩, hnext⟩ := hnext
   have harrivals := runtime.messageApplication.runPolicies_pending_bound players
     (runtime.messageApplication.wireEnvironment wire) (principals.map Invocation.player)
@@ -69,7 +71,8 @@ private theorem runRounds_resource_bound (runtime : SealedResolution Principal V
     (wire : runtime.messageApplication.WirePolicy) (count : Nat)
     (execution next : runtime.messageApplication.PolicyExecution)
     (hnext : next ∈
-      (runtime.runRounds principals serviceSlots players wire count execution).support) :
+      (runtime.roundDriver.runRounds
+        principals serviceSlots players wire count execution).support) :
     next.native.pool.pending.length ≤ execution.native.pool.pending.length +
       count * principals.length ∧
     (runtime.complete next.native.application.visible = false →
@@ -77,11 +80,11 @@ private theorem runRounds_resource_bound (runtime : SealedResolution Principal V
         count * (serviceSlots + 1)) := by
   induction count generalizing execution with
   | zero =>
-      simp only [runRounds, FinDist.mem_support_pure] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds, FinDist.mem_support_pure] at hnext
       subst next
       simp
   | succ count ih =>
-      simp only [runRounds] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds] at hnext
       split at hnext
       · simp only [FinDist.mem_support_pure] at hnext
         subst next
@@ -117,22 +120,27 @@ theorem runRounds_complete_or_pending_empty (runtime : SealedResolution Principa
       (List.range' (execution.environmentHistory.length + count * (serviceSlots + 1))
         serviceSlots).countP reserved)
     (hnext : next ∈
-      (runtime.runRounds principals serviceSlots players wire (count + 1) execution).support) :
+      (runtime.roundDriver.runRounds
+        principals serviceSlots players wire (count + 1) execution).support) :
     runtime.complete next.native.application.visible = true ∨ next.native.pool.pending = [] := by
-  rw [runtime.runRounds_add principals serviceSlots players wire count 1 execution] at hnext
+  rw [runtime.roundDriver.runRounds_add principals serviceSlots players wire count 1 execution]
+    at hnext
   simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
   obtain ⟨middle, hmiddle, hnext⟩ := hnext
   cases hcomplete : runtime.complete middle.native.application.visible with
   | true =>
-      rw [runtime.runRounds_of_complete principals serviceSlots players wire 1 middle hcomplete,
+      rw [runtime.roundDriver.runRounds_of_complete
+        principals serviceSlots players wire 1 middle hcomplete,
         FinDist.mem_support_pure] at hnext
       subst next
       exact Or.inl hcomplete
   | false =>
       have hresources := runtime.runRounds_resource_bound principals serviceSlots players wire
         count execution middle hmiddle
-      have hlast : next ∈ (runtime.round principals serviceSlots players wire middle).support := by
-        simpa only [runRounds, hcomplete, Bool.false_eq_true, ↓reduceIte,
+      have hlast : next ∈ (runtime.roundDriver.round
+        principals serviceSlots players wire middle).support := by
+        simpa only [MessageApplication.RoundDriver.runRounds, hcomplete,
+          Bool.false_eq_true, ↓reduceIte,
           FinDist.bind_pure] using hnext
       have hremaining := runtime.round_pending_bound principals serviceSlots players wire
         reserved hservice middle next hlast
@@ -157,15 +165,16 @@ theorem runRounds_pending_empty (runtime : SealedResolution Principal Value)
     (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
     (hempty : execution.native.pool.pending = [])
     (hnext : next ∈
-      (runtime.runRounds principals serviceSlots players wire count execution).support) :
+      (runtime.roundDriver.runRounds
+        principals serviceSlots players wire count execution).support) :
     next.native.pool.pending = [] := by
   induction count generalizing execution with
   | zero =>
-      simp only [runRounds, FinDist.mem_support_pure] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds, FinDist.mem_support_pure] at hnext
       subst next
       exact hempty
   | succ count ih =>
-      simp only [runRounds] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds] at hnext
       split at hnext
       · simp only [FinDist.mem_support_pure] at hnext
         subst next
@@ -190,7 +199,8 @@ private theorem runRounds_policy_prefix (runtime : SealedResolution Principal Va
     (execution next : runtime.messageApplication.PolicyExecution)
     (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
     (hnext : next ∈
-      (runtime.runRounds principals serviceSlots players wire count execution).support) :
+      (runtime.roundDriver.runRounds
+        principals serviceSlots players wire count execution).support) :
     ∃ schedule, next ∈ (runtime.messageApplication.runPolicies players
       (runtime.roundEnvironment serviceSlots wire) schedule execution).support := by
   rw [runtime.runRounds_eq_tracePolicies principals serviceSlots players wire count
@@ -226,7 +236,8 @@ theorem runRounds_ready_commitment_completed (runtime : SealedResolution Princip
     (hstored : execution.native.application.service.lookup (owner, node) = some value)
     (hrequires : requires.all execution.native.application.visible.completed = true)
     (hnext : next ∈
-      (runtime.runRounds principals serviceSlots players wire (count + 1) execution).support) :
+      (runtime.roundDriver.runRounds
+        principals serviceSlots players wire (count + 1) execution).support) :
     next.native.application.visible.completed node = true := by
   rcases runtime.runRounds_complete_or_pending_empty principals serviceSlots players wire
       reserved hservice count execution next hcapacity hnext with hcomplete | hempty
@@ -267,7 +278,8 @@ theorem runRounds_ready_opening_completed (runtime : SealedResolution Principal 
     (hstored : execution.native.application.service.lookup (owner, source) = some value)
     (hrequires : requires.all execution.native.application.visible.completed = true)
     (hnext : next ∈
-      (runtime.runRounds principals serviceSlots players wire (count + 1) execution).support) :
+      (runtime.roundDriver.runRounds
+        principals serviceSlots players wire (count + 1) execution).support) :
     next.native.application.visible.completed node = true := by
   rcases runtime.runRounds_complete_or_pending_empty principals serviceSlots players wire
       reserved hservice count execution next hcapacity hnext with hcomplete | hempty

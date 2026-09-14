@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedResolutionPolicy
-import Interaction.SealedCandidatePolicyEmbedding
+import Interaction.SealedCandidateRounds
 
 /-! # Source policies hosted by the candidate commitment service
 
@@ -105,6 +105,34 @@ theorem candidatePolicies_law (compilation : SealedCompilation source ty)
     intro execution who payload hmemory hsubmit serial
     exact compilation.compileResolvingPolicy_prepared nullValue window who (profile who)
       execution hmemory payload hsubmit serial) schedule _
+    SealedResolution.PreparedExecution.initial
+
+/-- Exact honest execution law for the common stopped-round driver. The two
+hosts execute the same roster, wire opportunities, boundary clocks, and
+completion test. This equality does not require fairness or completion. -/
+theorem candidateRounds_law (compilation : SealedCompilation source ty)
+    (nullValue : L.Val ty) (window : Nat)
+    (principals : List Player) (serviceSlots : Nat)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (wire : MessageApplication.WirePolicy
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication)
+    (count : Nat) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    (runtime.roundDriver.runRounds principals serviceSlots
+        (fun who => compilation.compileResolvingPolicy nullValue window who (profile who))
+        wire count
+        (MessageApplication.PolicyExecution.initial _ (MessageApplication.State.initial _
+          runtime.initial))).map runtime.candidateExecution =
+      runtime.candidateRoundDriver.runRounds principals serviceSlots
+        (fun who => compilation.compileCandidatePolicy nullValue window who (profile who))
+        (runtime.candidateWirePolicy wire) count
+        (MessageApplication.PolicyExecution.initial _ (MessageApplication.State.initial _
+          runtime.candidateInitial)) := by
+  intro runtime
+  exact runtime.runRounds_candidates principals serviceSlots _ wire (by
+    intro execution who payload hmemory hsubmit serial
+    exact compilation.compileResolvingPolicy_prepared nullValue window who (profile who)
+      execution hmemory payload hsubmit serial) count _
     SealedResolution.PreparedExecution.initial
 
 end Vegas.SealedCompilation

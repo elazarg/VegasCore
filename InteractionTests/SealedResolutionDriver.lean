@@ -29,14 +29,14 @@ private def initial : runtime.messageApplication.PolicyExecution :=
 /-- The driver stops at the second clock call, not at its five-round budget.
 Its environment history stops there too. -/
 theorem stopping_retains_actual_history :
-    (runtime.runRounds [] 0 players wire 5 initial).map (fun execution =>
+    (runtime.roundDriver.runRounds [] 0 players wire 5 initial).map (fun execution =>
       (execution.native.application.visible.clock, execution.environmentHistory.length)) =
       FinDist.pure (2, 2) := by
   have hzero : runtime.complete initial.native.application.visible = false := rfl
   have hone : runtime.complete (runtime.tick initial.native.application).visible = false := rfl
   have htwo : runtime.complete
       (runtime.tick (runtime.tick initial.native.application)).visible = true := rfl
-  simp only [SealedResolution.runRounds, SealedResolution.round,
+  simp only [MessageApplication.RoundDriver.runRounds, MessageApplication.RoundDriver.round,
     List.map_nil, List.replicate_zero, List.nil_append,
     runPolicies, FinDist.pure_bind, environmentPolicyStep, advance,
     EnvironmentPolicyCommand.toAction, MessageApplication.step,

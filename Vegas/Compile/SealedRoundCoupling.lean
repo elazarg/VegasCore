@@ -238,7 +238,7 @@ theorem exists_randomized_round_source_coupling
       ((responsePairs.bind fun responses =>
         compilation.extractedRoundSourceCoupling nullValue window principals serviceSlots count
           focal responses.1 responses.2 fallback profile).map Prod.snd) =
-        runtime.runRounds principals serviceSlots
+        runtime.roundDriver.runRounds principals serviceSlots
           (Profile.update (sig := policySignature Player runtime.messageApplication)
             players focal replacement) wire count initial := by
   intro runtime players schedule initial PlayerResponse EnvironmentResponse

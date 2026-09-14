@@ -26,6 +26,7 @@ import Vegas.Compile.SealedNativeLikelihood
 import Vegas.Compile.SealedRandomizedCoupling
 import Vegas.Compile.SealedRoundCoupling
 import Vegas.Compile.SealedHonestRound
+import Vegas.Compile.SealedCandidateHonestRound
 import Vegas.Compile.SealedPublicOutcome
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
@@ -236,7 +237,7 @@ theorem compiled_resolution_terminates
     (next :
       (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
     (hnext : next ∈
-      ((compilation.supported.resolvingRuntime nullValue window).runRounds
+      ((compilation.supported.resolvingRuntime nullValue window).roundDriver.runRounds
         principals serviceSlots players environment
         ((ToEventGraph.compile source.core).graph.nodeCount * (window + 1))
         (MessageApplication.PolicyExecution.initial _
@@ -687,7 +688,7 @@ theorem pending_randomized_round_source_coupling
       ((responsePairs.bind fun responses =>
         compilation.extractedRoundSourceCoupling nullValue window principals serviceSlots count
           focal responses.1 responses.2 fallback profile).map Prod.snd) =
-        runtime.runRounds principals serviceSlots
+        runtime.roundDriver.runRounds principals serviceSlots
           (Profile.update
             (sig := MessageApplication.policySignature Player runtime.messageApplication)
             players focal replacement) wire count initial :=
@@ -834,7 +835,7 @@ theorem pending_honest_round_source_law
       coupling.map (fun pair => ToEventGraph.observeSourceOutcome source.core pair.1) =
         (denoteSource source.core.prog profile source.core.env).map some ∧
       coupling.map Prod.snd =
-        runtime.runRounds principals serviceSlots
+        runtime.roundDriver.runRounds principals serviceSlots
           (fun who => compilation.compileResolvingPolicy nullValue window who (profile who))
           wire total (MessageApplication.PolicyExecution.initial _
             (MessageApplication.State.initial _ runtime.initial)) ∧
@@ -1450,6 +1451,39 @@ open ToEventGraph MessageApplication
 variable [Finite Player] {source : WFProgram Player L} {ty : L.Ty}
 variable [DecidableEq (L.Val ty)]
 
+theorem pending_candidate_honest_payout_law
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (principals : List Player) (serviceSlots : Nat)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (wire : (compilation.supported.resolvingRuntime nullValue window).messageApplication.WirePolicy)
+    (reserved : Nat → Bool)
+    (hservice :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.InclusionService
+        (fun turn => reserved turn = true)
+        ((compilation.supported.resolvingRuntime nullValue
+          window).messageApplication.wireEnvironment wire))
+    (period : Nat) (hperiod : 0 < period)
+    (hcapacity : ∀ block, period * principals.length ≤
+      (List.range' (((block + 1) * period - 1) * (serviceSlots + 1))
+        serviceSlots).countP reserved)
+    (hroster : ∀ who, who ∈ principals)
+    (hwindow : (compile source.core).graph.nodeCount * (period + 1) + 2 ≤ window)
+    (total : Nat) (hperiods : period ∣ total)
+    (hbound : (compile source.core).graph.nodeCount * (window + 1) ≤ total) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    (runtime.candidateRoundDriver.runRounds principals serviceSlots
+        (fun who => compilation.compileCandidatePolicy nullValue window who (profile who))
+        (runtime.candidateWirePolicy wire) total
+        (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial))).map
+        (fun next => (runtime.complete next.native.application.visible,
+          next.native.application.visible.timeouts,
+          compilation.publicPayout? next.native.application.visible.events)) =
+      (denoteSource source.core.prog profile source.core.env).map
+        (fun final => (true, ([] : List Nat),
+          some (evalPayoffs (sourceTerminalPayoffs source.core.prog) final))) :=
+  compilation.candidate_honest_round_payout_law nullValue window principals serviceSlots
+    profile wire reserved hservice period hperiod hcapacity hroster hwindow total hperiods hbound
+
 theorem pending_candidate_public_payout
     (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
     (players : Player →
@@ -1551,6 +1585,11 @@ theorem pending_candidate_binding {Value : Type} [DecidableEq Value]
     execution next handle hfixed hnext
 
 end Vegas.Paper
+
+/-- info: 'Vegas.Paper.pending_candidate_honest_payout_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_honest_payout_law
 
 /-- info: 'Vegas.Paper.pending_candidate_binding' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

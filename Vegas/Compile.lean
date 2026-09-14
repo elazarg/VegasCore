@@ -33,6 +33,7 @@ import Vegas.Compile.SealedView
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedCandidatePolicy
+import Vegas.Compile.SealedCandidateHonestRound
 import Vegas.Compile.SealedCandidateSettlement
 import Vegas.Compile.SealedResolutionClosure
 import Vegas.Compile.SealedResolvedStore
@@ -99,4 +100,10 @@ program-specific incentive analysis remains an explicit obligation.
 after defaults, as the public values and payout of a legal source execution.
 That support witness may change private choices and does not replace the
 commitment-preserving witness in the strategic coupling.
+
+`SealedCandidateHonestRound` proves the written-source payout law for the
+candidate-service instantiation of the shared stopped driver. Completion and
+absence of timeouts follow from deadline-relative service. Arbitrary candidate
+selection and unopenable commitments are not covered by the unilateral coupling
+for the registered-site service.
 -/

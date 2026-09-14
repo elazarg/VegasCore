@@ -41,7 +41,7 @@ theorem resolvingRuntime_runRounds_complete
     (next :
       (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
     (hnext : next ∈
-      ((compilation.supported.resolvingRuntime nullValue window).runRounds
+      ((compilation.supported.resolvingRuntime nullValue window).roundDriver.runRounds
         principals serviceSlots players environment
         total
         (MessageApplication.PolicyExecution.initial _
@@ -52,7 +52,7 @@ theorem resolvingRuntime_runRounds_complete
   let runtime := compilation.supported.resolvingRuntime nullValue window
   let bound := (ToEventGraph.compile source.core).graph.nodeCount * (window + 1)
   have hsplit : total = bound + (total - bound) := by omega
-  rw [hsplit, runtime.runRounds_add] at hnext
+  rw [hsplit, runtime.roundDriver.runRounds_add] at hnext
   simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
   obtain ⟨middle, hmiddle, hnext⟩ := hnext
   have hcomplete : runtime.complete middle.native.application.visible = true := by
@@ -66,7 +66,7 @@ theorem resolvingRuntime_runRounds_complete
       (Interaction.SealedResolution.PublicState.ClockBounded.initial _)
     simpa [runtime, bound, SealedFragment.resolvingRuntime, SealedFragment.compile,
       EventGraph.Graph.nodeOrder] using hmiddle
-  rw [runtime.runRounds_of_complete principals serviceSlots players environment _ middle
+  rw [runtime.roundDriver.runRounds_of_complete principals serviceSlots players environment _ middle
     hcomplete, FinDist.mem_support_pure] at hnext
   simpa only [hnext] using hcomplete
 

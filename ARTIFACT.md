@@ -113,6 +113,16 @@ pending-message profile under arbitrary unreserved wire behavior. The native
 utility evaluates the actual public payout; it is not an independent timeout
 penalty supplied only to the test.
 
+The candidate-service host admits competing and potentially unopenable
+commitments. `pending_candidate_honest_payout_law` audits its original-source
+payout law for generated profiles under the same deadline-service conditions,
+with completion and no timeouts as conclusions. Both services instantiate the
+shared `MessageApplication.RoundDriver`; the honest embedding retains histories,
+receipts, and pending traffic. `VegasTests/SealedCandidates.lean` instantiates
+this law for arbitrary source profiles and adaptive unreserved wire choices,
+and separately tests selected and unopenable candidates. The arbitrary-deviation
+and Nash theorems still concern the registered-site host.
+
 At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
 sharper exact statement under declared-read locality and a single ready
 commitment per player: every canonical unilateral replacement is one behavioral

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedCandidatePolicy
+import Vegas.Compile.SealedCandidateHonestRound
 import Vegas.Compile.SealedCandidateSettlement
 import VegasTests.SealedPayout
 import Interaction.MessageApplicationLaws
@@ -210,5 +211,31 @@ theorem failed_opening_policy_has_source_quit :
     ((congrArg (fun status : Bool × List Nat => 1 ∈ status.2) hm).mpr (by simp))
     (Or.inr ⟨node 0, _, rfl, rfl⟩)
   exact ⟨next, hnext, final, hsource, hchoice, hpayout⟩
+
+/-- The candidate-host payout theorem has concrete service parameters for a
+checked, nonconstant-payout source. Source strategies and all unreserved wire
+choices are arbitrary; every second round supplies the reserved service. -/
+theorem honest_round_payouts (profile : SourceBehavioralProfile core)
+    (base : (supported.resolvingRuntime none 8).messageApplication.WirePolicy) :
+    let model := supported.resolvingRuntime none 8
+    let wire := model.messageApplication.reserveInclusion
+      (SealedResolution.periodicFinalReservation 2 2) base
+    (model.candidateRoundDriver.runRounds [0] 2
+        (fun who => compilation.compileCandidatePolicy none 8 who (profile who))
+        (model.candidateWirePolicy wire) 18
+        (PolicyExecution.initial _ (State.initial _ model.candidateInitial))).map
+        (fun next => (model.complete next.native.application.visible,
+          next.native.application.visible.timeouts,
+          compilation.publicPayout? next.native.application.visible.events)) =
+      (denoteSource core profile source.core.env).map
+        (fun final => (true, ([] : List Nat),
+          some (evalPayoffs (sourceTerminalPayoffs core) final))) := by
+  intro model wire
+  exact compilation.candidate_honest_round_payout_law none 8 [0] 2 profile wire
+    (SealedResolution.periodicFinalReservation 2 2)
+    (model.messageApplication.reserveInclusion_service _ base) 2 (by decide)
+    (fun block => SealedResolution.periodicFinalReservation_capacity [0] 2 2 block
+      (by decide) (by decide))
+    (by intro who; fin_cases who; simp) (by decide) 18 ⟨9, rfl⟩ (by decide)
 
 end VegasTests.SealedCandidates

@@ -38,7 +38,7 @@ private def wire (base : app.WirePolicy) : app.WirePolicy :=
 arbitrary adaptive wire choices in unreserved service phases. -/
 theorem every_site_meets_deadline (profile : SourceBehavioralProfile core)
     (base : app.WirePolicy) (periods : Nat) (next : app.PolicyExecution)
-    (hnext : next ∈ (runtime.runRounds [0] 2 (players profile) (wire base)
+    (hnext : next ∈ (runtime.roundDriver.runRounds [0] 2 (players profile) (wire base)
       (2 * periods) initial).support) (index : Fin 4) :
     (node index).val ∉ next.native.application.visible.timeouts := by
   let policy := compileSourcePolicy core source.core.fresh SealedPolicy.initialBuild rfl 0
@@ -65,11 +65,11 @@ theorem every_site_meets_deadline (profile : SourceBehavioralProfile core)
 profile and every unreserved wire policy; the deadline premises are inhabited. -/
 theorem exists_complete_without_timeouts (profile : SourceBehavioralProfile core)
     (base : app.WirePolicy) :
-    ∃ next ∈ (runtime.runRounds [0] 2 (players profile) (wire base) 60 initial).support,
+    ∃ next ∈ (runtime.roundDriver.runRounds [0] 2 (players profile) (wire base) 60 initial).support,
       runtime.complete next.native.application.visible = true ∧
         next.native.application.visible.timeouts = [] := by
   obtain ⟨next, hnext⟩ :=
-    (runtime.runRounds [0] 2 (players profile) (wire base) 60 initial).support_nonempty
+    (runtime.roundDriver.runRounds [0] 2 (players profile) (wire base) 60 initial).support_nonempty
   refine ⟨next, hnext, ?_, ?_⟩
   · exact SealedPolicy.compilation.resolvingRuntime_runRounds_complete none 14 [0] 2
       (players profile) (wire base) 60 (by decide) next hnext
@@ -89,7 +89,7 @@ theorem exists_exact_honest_round_coupling (profile : SourceBehavioralProfile co
       coupling.map (fun pair => observeSourceOutcome source.core pair.1) =
         (denoteSource core profile source.core.env).map some ∧
       coupling.map Prod.snd =
-        runtime.runRounds [0] 2 (players profile) (wire base) 60 initial ∧
+        runtime.roundDriver.runRounds [0] 2 (players profile) (wire base) 60 initial ∧
       ∀ cfg next, (cfg, next) ∈ coupling.support →
         runtime.complete next.native.application.visible = true ∧
         next.native.application.visible.timeouts = [] ∧

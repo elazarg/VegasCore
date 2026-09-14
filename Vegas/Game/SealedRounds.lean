@@ -66,7 +66,7 @@ def game (model : RoundModel compilation nullValue window) : GameForm Player whe
     (compilation.supported.resolvingRuntime nullValue window).messageApplication
   play players :=
     let runtime := compilation.supported.resolvingRuntime nullValue window
-    runtime.runRounds model.principals model.serviceSlots players model.wire model.total
+    runtime.roundDriver.runRounds model.principals model.serviceSlots players model.wire model.total
       (PolicyExecution.initial _ (State.initial _ runtime.initial))
 
 /-- Deadline-relative inclusion capacity. The unreserved wire opportunities

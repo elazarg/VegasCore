@@ -47,7 +47,7 @@ theorem arbitrary_policies_complete_without_service
     (environment : runtime.messageApplication.WirePolicy)
     (next : runtime.messageApplication.PolicyExecution)
     (hnext : next ∈
-      (runtime.runRounds [] 0 players environment 12
+      (runtime.roundDriver.runRounds [] 0 players environment 12
         (MessageApplication.PolicyExecution.initial _
           (MessageApplication.State.initial _ runtime.initial))).support) :
     runtime.complete next.native.application.visible = true := by

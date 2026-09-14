@@ -197,7 +197,7 @@ private theorem candidate_playerStep (runtime : SealedResolution Principal Value
   funext other
   by_cases hother : other = who <;> simp [hother]
 
-private theorem candidate_environmentStep (runtime : SealedResolution Principal Value)
+theorem environmentPolicyStep_candidates (runtime : SealedResolution Principal Value)
     (execution : runtime.messageApplication.PolicyExecution)
     (h : PreparedExecution runtime execution)
     (command : runtime.messageApplication.EnvironmentPolicyCommand) :
@@ -259,7 +259,7 @@ private theorem candidate_invoke (runtime : SealedResolution Principal Value)
       rw [FinDist.bind_map, FinDist.map_bind]
       apply FinDist.bind_congr
       intro command _
-      exact runtime.candidate_environmentStep execution h command
+      exact runtime.environmentPolicyStep_candidates execution h command
 
 /-- Exact complete finite execution law under the prepared-message discipline.
 The equality retains private preparations, public observations, histories,

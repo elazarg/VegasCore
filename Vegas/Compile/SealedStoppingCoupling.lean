@@ -234,7 +234,7 @@ theorem exists_randomized_stopping_round_source_coupling
             (fun trace =>
               (SealedResolution.firstTimeoutLocalInfo runtime focal trace, readout trace)) ∧
       coupling.map (fun pair => pair.2.2) =
-        runtime.runRounds principals serviceSlots
+        runtime.roundDriver.runRounds principals serviceSlots
           (Profile.update (sig := policySignature Player runtime.messageApplication)
             players focal replacement) wire count initial := by
   intro runtime players schedule initial readout PlayerResponse EnvironmentResponse

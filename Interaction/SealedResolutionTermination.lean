@@ -69,9 +69,10 @@ private theorem round_public_invariant (runtime : SealedResolution Principal Val
     (environment : runtime.messageApplication.WirePolicy)
     (execution next : runtime.messageApplication.PolicyExecution)
     (hinitial : invariant execution.native.application.visible)
-    (hnext : next ∈ (runtime.round principals serviceSlots players environment execution).support) :
+    (hnext : next ∈ (runtime.roundDriver.round
+      principals serviceSlots players environment execution).support) :
     invariant next.native.application.visible := by
-  simp only [round, FinDist.support_bind, Set.mem_iUnion] at hnext
+  simp only [MessageApplication.RoundDriver.round, FinDist.support_bind, Set.mem_iUnion] at hnext
   obtain ⟨middle, hmiddle, hnext⟩ := hnext
   have hmiddleInvariant := runtime.runPolicies_public_invariant invariant hrecord hrefresh hclock
     players (runtime.messageApplication.wireEnvironment environment) _ execution middle
@@ -90,15 +91,15 @@ private theorem runRounds_public_invariant (runtime : SealedResolution Principal
     (environment : runtime.messageApplication.WirePolicy)
     (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
     (hinitial : invariant execution.native.application.visible)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       count execution).support) : invariant next.native.application.visible := by
   induction count generalizing execution with
   | zero =>
-      simp only [runRounds, FinDist.mem_support_pure] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds, FinDist.mem_support_pure] at hnext
       subst next
       exact hinitial
   | succ count ih =>
-      simp only [runRounds] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds] at hnext
       split at hnext
       · simp only [FinDist.mem_support_pure] at hnext
         subst next
@@ -124,7 +125,7 @@ theorem runRounds_completed (runtime : SealedResolution Principal Value)
     (environment : runtime.messageApplication.WirePolicy)
     (count : Nat) (execution next : runtime.messageApplication.PolicyExecution) (node : Nat)
     (hinitial : execution.native.application.visible.completed node = true)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       count execution).support) : next.native.application.visible.completed node = true := by
   apply runtime.runRounds_public_invariant (fun state => state.completed node = true)
     (fun state event hstate => record_completed state event node hstate)
@@ -140,7 +141,7 @@ theorem runRounds_firstReady?_of_some (runtime : SealedResolution Principal Valu
     (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
     (node timestamp : Nat)
     (hinitial : execution.native.application.visible.firstReady? node = some timestamp)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       count execution).support) :
     next.native.application.visible.firstReady? node = some timestamp := by
   apply runtime.runRounds_public_invariant (fun state => state.firstReady? node = some timestamp)
@@ -164,7 +165,7 @@ theorem runRounds_clockBounded (runtime : SealedResolution Principal Value)
     (environment : runtime.messageApplication.WirePolicy)
     (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
     (hinitial : execution.native.application.visible.ClockBounded)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       count execution).support) : next.native.application.visible.ClockBounded := by
   apply runtime.runRounds_public_invariant PublicState.ClockBounded
     (fun _ _ hstate => hstate) (fun resolve _ hstate => hstate.refresh resolve)
@@ -184,7 +185,8 @@ private theorem round_requires (runtime : SealedResolution Principal Value)
     (environment : runtime.messageApplication.WirePolicy)
     (execution next : runtime.messageApplication.PolicyExecution) (requires : List Nat)
     (hinitial : requires.all execution.native.application.visible.completed = true)
-    (hnext : next ∈ (runtime.round principals serviceSlots players environment execution).support) :
+    (hnext : next ∈ (runtime.roundDriver.round
+      principals serviceSlots players environment execution).support) :
     requires.all next.native.application.visible.completed = true := by
   apply List.all_eq_true.mpr
   intro node hnode
@@ -204,12 +206,13 @@ private theorem round_progress (runtime : SealedResolution Principal Value)
     (hrequires : rule.requires.all execution.native.application.visible.completed = true)
     (hbounded : execution.native.application.visible.ClockBounded)
     (hnode : node < runtime.program.rules.length)
-    (hnext : next ∈ (runtime.round principals serviceSlots players environment execution).support) :
+    (hnext : next ∈ (runtime.roundDriver.round
+      principals serviceSlots players environment execution).support) :
     next.native.application.visible.completed node = true ∨
       ∃ timestamp, next.native.application.visible.firstReady? node = some timestamp ∧
         timestamp ≤ next.native.application.visible.clock ∧
         next.native.application.visible.clock < timestamp + runtime.window := by
-  simp only [round, FinDist.support_bind, Set.mem_iUnion] at hnext
+  simp only [MessageApplication.RoundDriver.round, FinDist.support_bind, Set.mem_iUnion] at hnext
   obtain ⟨middle, hmiddle, hnext⟩ := hnext
   have hmiddleBounded := runtime.runPolicies_public_invariant PublicState.ClockBounded
     (fun _ _ hstate => hstate) (fun resolve _ hstate => hstate.refresh resolve)
@@ -238,7 +241,7 @@ private theorem runRounds_ready_progress (runtime : SealedResolution Principal V
     (hrequires : rule.requires.all execution.native.application.visible.completed = true)
     (hbounded : execution.native.application.visible.ClockBounded)
     (hnode : node < runtime.program.rules.length) (hcount : 0 < count)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       count execution).support) :
     next.native.application.visible.completed node = true ∨
       ∃ timestamp, next.native.application.visible.firstReady? node = some timestamp ∧
@@ -247,7 +250,7 @@ private theorem runRounds_ready_progress (runtime : SealedResolution Principal V
   induction count generalizing execution with
   | zero => omega
   | succ count ih =>
-      simp only [runRounds] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds] at hnext
       split at hnext
       · simp only [FinDist.mem_support_pure] at hnext
         subst next
@@ -256,7 +259,7 @@ private theorem runRounds_ready_progress (runtime : SealedResolution Principal V
         obtain ⟨middle, hmiddle, hnext⟩ := hnext
         cases count with
         | zero =>
-            simp only [runRounds, FinDist.mem_support_pure] at hnext
+            simp only [MessageApplication.RoundDriver.runRounds, FinDist.mem_support_pure] at hnext
             subst next
             exact runtime.round_progress principals serviceSlots players environment execution
               middle node rule hrule hkind hrequires hbounded hnode hmiddle
@@ -282,7 +285,7 @@ theorem runRounds_ready_complete (runtime : SealedResolution Principal Value)
     (hrequires : rule.requires.all execution.native.application.visible.completed = true)
     (hbounded : execution.native.application.visible.ClockBounded)
     (hnode : node < runtime.program.rules.length)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       (runtime.window + 1) execution).support) :
     next.native.application.visible.completed node = true := by
   have hprogress := runtime.runRounds_ready_progress principals serviceSlots players environment
@@ -294,7 +297,7 @@ theorem runRounds_ready_complete (runtime : SealedResolution Principal Value)
   have hincomplete : runtime.complete next.native.application.visible = false := by
     apply Bool.eq_false_of_not_eq_true
     exact fun h => hnotComplete (runtime.complete_node _ node h hnode)
-  simp only [runRounds] at hnext
+  simp only [MessageApplication.RoundDriver.runRounds] at hnext
   split at hnext
   · simp only [FinDist.mem_support_pure] at hnext
     subst next
@@ -326,13 +329,13 @@ private theorem runRounds_prefix_completed (runtime : SealedResolution Principal
     (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
     (hcount : count ≤ runtime.program.rules.length)
     (hbounded : execution.native.application.visible.ClockBounded)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       (count * (runtime.window + 1)) execution).support) :
     ∀ node < count, next.native.application.visible.completed node = true := by
   induction count generalizing next with
   | zero => intro node hnode; omega
   | succ count ih =>
-      rw [Nat.succ_mul, runtime.runRounds_add] at hnext
+      rw [Nat.succ_mul, runtime.roundDriver.runRounds_add] at hnext
       simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨middle, hmiddle, hnext⟩ := hnext
       have hprefix := ih middle (by omega) hmiddle
@@ -372,7 +375,7 @@ theorem runRounds_complete (runtime : SealedResolution Principal Value)
     (environment : runtime.messageApplication.WirePolicy)
     (execution next : runtime.messageApplication.PolicyExecution)
     (hbounded : execution.native.application.visible.ClockBounded)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       (runtime.program.rules.length * (runtime.window + 1)) execution).support) :
     runtime.complete next.native.application.visible = true := by
   apply List.all_eq_true.mpr

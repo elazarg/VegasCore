@@ -176,7 +176,7 @@ theorem round_eq_runPolicies (runtime : SealedResolution Principal Value)
     (wire : runtime.messageApplication.WirePolicy)
     (execution : runtime.messageApplication.PolicyExecution)
     (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0) :
-    runtime.round principals serviceSlots players wire execution =
+    runtime.roundDriver.round principals serviceSlots players wire execution =
       runtime.messageApplication.runPolicies players (runtime.roundEnvironment serviceSlots wire)
         (roundInvocations principals serviceSlots) execution := by
   let app := runtime.messageApplication
@@ -187,7 +187,7 @@ theorem round_eq_runPolicies (runtime : SealedResolution Principal Value)
       rw [service_invocations_count] at hhi
       exact if_neg (service_phase _ _ _ hphase hlo hhi))
   rw [roundInvocations, app.runPolicies_append, hservice]
-  unfold round
+  unfold MessageApplication.RoundDriver.round
   apply FinDist.bind_congr
   intro next hnext
   have hlength := app.runPolicies_environmentHistory_length players (app.wireEnvironment wire)
@@ -205,9 +205,10 @@ theorem round_environmentHistory_length (runtime : SealedResolution Principal Va
     (players : Principal → runtime.messageApplication.PlayerPolicy)
     (wire : runtime.messageApplication.WirePolicy)
     (execution next : runtime.messageApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.round principals serviceSlots players wire execution).support) :
+    (hnext : next ∈ (runtime.roundDriver.round
+      principals serviceSlots players wire execution).support) :
     next.environmentHistory.length = execution.environmentHistory.length + (serviceSlots + 1) := by
-  simp only [round, FinDist.support_bind, Set.mem_iUnion] at hnext
+  simp only [MessageApplication.RoundDriver.round, FinDist.support_bind, Set.mem_iUnion] at hnext
   obtain ⟨middle, hmiddle, hnext⟩ := hnext
   have hlength := runtime.messageApplication.runPolicies_environmentHistory_length
     players (runtime.messageApplication.wireEnvironment wire) _ execution middle hmiddle
@@ -358,7 +359,7 @@ theorem runRounds_eq_tracePolicies (runtime : SealedResolution Principal Value)
     (wire : runtime.messageApplication.WirePolicy) (count : Nat)
     (execution : runtime.messageApplication.PolicyExecution)
     (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0) :
-    runtime.runRounds principals serviceSlots players wire count execution =
+    runtime.roundDriver.runRounds principals serviceSlots players wire count execution =
       (runtime.messageApplication.tracePolicies players (runtime.roundEnvironment serviceSlots wire)
         (roundSchedule principals serviceSlots count) execution).map
           (PolicyTrace.firstReleaseEvery (roundInvocations principals serviceSlots).length
@@ -366,13 +367,13 @@ theorem runRounds_eq_tracePolicies (runtime : SealedResolution Principal Value)
               runtime.complete state.native.application.visible) count) := by
   induction count generalizing execution with
   | zero =>
-      simp [runRounds, roundSchedule, tracePolicies,
+      simp [MessageApplication.RoundDriver.runRounds, roundSchedule, tracePolicies,
         PolicyTrace.firstReleaseEvery, PolicyTrace.last]
   | succ count ih =>
       rw [roundSchedule, runtime.messageApplication.tracePolicies_firstReleaseEvery_block
         players (runtime.roundEnvironment serviceSlots wire) _ _ execution _ count
         (by simp [roundInvocations])]
-      unfold runRounds
+      unfold MessageApplication.RoundDriver.runRounds
       split
       · rfl
       · rw [← runtime.round_eq_runPolicies principals serviceSlots players wire execution hphase]

@@ -46,7 +46,9 @@ The commitment service used by the strategic theorem binds each source site at
 its first private registration and rejects unregistered handles. A candidate
 host of the same program also permits competing candidates and accepts handles
 without openings. Its immutable binding and source-settlement laws are checked,
-including a legal source quitting witness after an owner's timeout. Extending
+including a legal source quitting witness after an owner's timeout. Under the
+deadline-service conditions, generated policies in this host complete without
+timeouts and have exactly the written source payout law. Extending
 the causal coupling and Nash theorem to that host remains open.
 Censorship resistance, concrete commitment cryptography, and EVM execution
 correctness remain open.

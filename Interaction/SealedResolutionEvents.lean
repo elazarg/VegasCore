@@ -391,22 +391,23 @@ theorem runRounds_eventInvariant
     (environment : runtime.messageApplication.WirePolicy)
     (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
     (hinvariant : EventInvariant runtime execution.native.application)
-    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+    (hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots players environment
       count execution).support) : EventInvariant runtime next.native.application := by
   induction count generalizing execution with
   | zero =>
-      simp only [runRounds, FinDist.mem_support_pure] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds, FinDist.mem_support_pure] at hnext
       subst next
       exact hinvariant
   | succ count ih =>
-      simp only [runRounds] at hnext
+      simp only [MessageApplication.RoundDriver.runRounds] at hnext
       split at hnext
       · simp only [FinDist.mem_support_pure] at hnext
         subst next
         exact hinvariant
       · simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
         obtain ⟨middle, hmiddle, hnext⟩ := hnext
-        simp only [round, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+        simp only [MessageApplication.RoundDriver.round, FinDist.support_bind,
+          Set.mem_iUnion] at hmiddle
         obtain ⟨serviced, hserviced, hmiddle⟩ := hmiddle
         have hservicedInvariant := runtime.runPolicies_eventInvariant players
           (runtime.messageApplication.wireEnvironment environment) _ execution serviced

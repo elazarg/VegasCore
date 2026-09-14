@@ -1019,7 +1019,8 @@ theorem runRounds_deadlineSound (runtime : SealedResolution Principal Value)
     (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
     (hsound : execution.native.application.visible.DeadlineSound runtime)
     (hnext : next ∈
-      (runtime.runRounds principals serviceSlots players wire total execution).support) :
+      (runtime.roundDriver.runRounds
+        principals serviceSlots players wire total execution).support) :
     next.native.application.visible.DeadlineSound runtime := by
   rw [runtime.runRounds_eq_tracePolicies principals serviceSlots players wire total execution
     hphase, FinDist.support_map] at hnext
