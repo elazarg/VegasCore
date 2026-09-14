@@ -58,6 +58,31 @@ theorem arbitrary_players_have_nonempty_service_class
     (runtime.messageApplication.reserveInclusion_service reserved base) 1 initial next
     (by decide) hnext
 
+private def prepared : runtime.messageApplication.PolicyExecution :=
+  { initial with native :=
+    { initial.native with
+      application.service := (initial.native.application.service.sealValue false 0
+        (some true)).state
+      pool := (initial.native.pool.submit false (.commitment 0 (false, 0))).2 } }
+
+/-- Five inclusions at the end of the second round cover the initial canonical
+packet and every possible arrival from two arbitrary roster polls. Earlier
+wire actions may deliver packets and players may react before inclusion. -/
+theorem delayed_service_completes_ready_commitment
+    (policies : Bool → runtime.messageApplication.PlayerPolicy)
+    (base : runtime.messageApplication.WirePolicy)
+    (next : runtime.messageApplication.PolicyExecution)
+    (hnext : next ∈ (runtime.runRounds [false, true] 5 policies
+      (runtime.messageApplication.reserveInclusion (fun turn => decide (6 ≤ turn % 12)) base)
+        2 prepared).support) :
+    next.native.application.visible.completed 0 = true := by
+  exact runtime.runRounds_ready_commitment_completed [false, true] 5 policies
+    (runtime.messageApplication.reserveInclusion (fun turn => decide (6 ≤ turn % 12)) base)
+    (fun turn => decide (6 ≤ turn % 12))
+    (runtime.messageApplication.reserveInclusion_service _ base)
+    1 prepared next (by decide) (by decide) false 0 0 [] (some true)
+    rfl List.mem_cons_self rfl rfl hnext
+
 /-- A player reacts in the second round to a packet delivered while the ledger
 is still empty. Reserved inclusion then drains both rounds' submissions. -/
 theorem pending_reaction_before_reserved_inclusion :

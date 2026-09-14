@@ -1,16 +1,17 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedResolutionPolicy
-import Vegas.Compile.SealedView
-import Vegas.EventGraph.SourceOrder
+import Vegas.Compile.SealedResolvedReads
+import Vegas.EventGraph.TopologicalOrder
+import Interaction.SealedResolutionClosure
+import Interaction.SealedResolutionSubmission
+import Interaction.SealedResolutionRounds
 
-/-! # Local progress of compiled sealed policies before timeout
+/-! # Protocol progress of compiled sealed policies
 
-At a decoded reachable snapshot, a selected honest node cannot silently wait.
-A fresh commitment has all declared reads, an occupied commitment publishes its
-opaque handle, and an enabled reveal has the owner's registered value.  These
-are local command facts; bounded inclusion and deadline-relative scheduling
-remain obligations of the service layer.
+At an invariant native snapshot, a selected honest node registers a fresh
+choice, submits its occupied commitment, or opens its cached value. Timeout
+defaults do not invalidate the declared reads. The exact finite selected node
+and cache phase are retained for deadline charging.
 -/
 
 noncomputable section
@@ -22,23 +23,79 @@ open Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
-/-- The protocol phases emitted by an honest compiled policy, indexed by the
-actual local history that determines its write-once cache.  Every phase retains
-its finite source site and ownership evidence. -/
+/-- An emitted registration uses an empty native slot, including after timeout
+resolution. This fact needs only exact own-command memory. -/
+theorem resolvingPolicy_registration_fresh (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
+    (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hmemory : SealedResolution.RegistrationMemory (supported.resolvingRuntime nullValue window)
+      execution)
+    (slot : Nat) (value : L.Val ty)
+    (hcommand : .privateCommand ⟨(slot, value)⟩ ∈
+      (supported.resolvingPolicy nullValue window who policy (execution.principalHistory who)
+        (MessageApplication.State.observe _ execution.native who)).support) :
+    execution.native.application.service.lookup (who, slot) = none := by
+  let runtime := supported.resolvingRuntime nullValue window
+  let history := runtime.eventHistory (execution.principalHistory who)
+  let view := runtime.eventView (MessageApplication.State.observe _ execution.native who)
+  let store := supported.resolvedPlayerStore who nullValue
+    execution.native.application.visible.timeouts history view
+  obtain ⟨node, guard, hsem, reads, hslot, hcache, _⟩ :=
+    supported.selected_registration_kernel who execution.native.application.visible.timeouts
+      policy history view store slot value hcommand
+  rw [hslot, hmemory who node.val]
+  exact (runtime.eventHistory_cache (runtime.program.registrationEncoding node.val)
+    (execution.principalHistory who)).symm.trans hcache
+
+/-- Once a slot is occupied, arbitrary intervening native policies cannot make
+the compiled policy register it again. This supplies the one-registration
+charge per source commitment without assuming a fixed selected node. -/
+theorem runPolicies_no_reregistration (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat)
+    (players : Player →
+      (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
+    (environment :
+      (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Player))
+    (execution next :
+      (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hmemory : SealedResolution.RegistrationMemory (supported.resolvingRuntime nullValue window)
+      execution)
+    (who : Player) (slot : Nat) (stored : L.Val ty)
+    (hlookup : execution.native.application.service.lookup (who, slot) = some stored)
+    (hnext : next ∈ ((supported.resolvingRuntime nullValue window).messageApplication.runPolicies
+      players environment schedule execution).support)
+    (policy : CommitPolicy G who) (value : L.Val ty) :
+    .privateCommand ⟨(slot, value)⟩ ∉
+      (supported.resolvingPolicy nullValue window who policy (next.principalHistory who)
+        (MessageApplication.State.observe _ next.native who)).support := by
+  let runtime := supported.resolvingRuntime nullValue window
+  have hretained := runtime.runPolicies_lookup_of_eq_some players environment schedule
+    execution next (who, slot) stored hlookup hnext
+  have hnextMemory := SealedResolution.RegistrationMemory.runPolicies players environment
+    schedule execution next hmemory hnext
+  intro hcommand
+  have hfresh := supported.resolvingPolicy_registration_fresh nullValue window who policy
+    next hnextMemory slot value hcommand
+  rw [hretained] at hfresh
+  contradiction
+
+/-- The three honest protocol phases at the exact selected source site. -/
 inductive ProgressCommand (supported : SealedFragment G ty) (who : Player)
     (history : List (supported.compile.messageApplication
       (Value := L.Val ty)).PlayerEntry) :
-    (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand → Prop where
+    Fin G.nodeCount →
+      (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand → Prop where
   | registration (node : Fin G.nodeCount) (guard : EventGuard L)
       (hsem : (G.nodeRow node).sem = .commit who guard) (value : L.Val ty)
       (hcache : (supported.compile.registrationEncoding node.val).cachedValue
         (supported.compile.messageApplication (Value := L.Val ty)) history = none) :
-      ProgressCommand supported who history (.privateCommand ⟨(node.val, value)⟩)
+      ProgressCommand supported who history node (.privateCommand ⟨(node.val, value)⟩)
   | commitment (node : Fin G.nodeCount) (guard : EventGuard L)
       (hsem : (G.nodeRow node).sem = .commit who guard) (value : L.Val ty)
       (hcache : (supported.compile.registrationEncoding node.val).cachedValue
         (supported.compile.messageApplication (Value := L.Val ty)) history = some value) :
-      ProgressCommand supported who history
+      ProgressCommand supported who history node
         (.submit (.commitment node.val (who, node.val)))
   | opening (node producer : Fin G.nodeCount) (guard : EventGuard L)
       (hnode : (G.nodeRow node).sem = .reveal (G.nodeTarget producer))
@@ -46,322 +103,305 @@ inductive ProgressCommand (supported : SealedFragment G ty) (who : Player)
       (value : L.Val ty)
       (hcache : (supported.compile.registrationEncoding producer.val).cachedValue
         (supported.compile.messageApplication (Value := L.Val ty)) history = some value) :
-      ProgressCommand supported who history
+      ProgressCommand supported who history node
         (.submit (.opening node.val (who, producer.val) value))
 
-private theorem selected_nodeCommand_progress
-    (supported : SealedFragment G ty) (who : Player) (policy : CommitPolicy G who)
-    (execution : (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution)
-    (hmemory : SealedProgram.RegistrationMemory supported.compile execution)
-    (hbinding : SealedProgram.BindingInvariant supported.compile
-      (supported.compile.eraseReceipts execution.native))
-    (cfg : ReachableConfig G)
-    (hdecode : G.decodeSealed ty (supported.compile.eraseReceipts execution.native) = some cfg.1)
+/-- A selected node performs a protocol phase at that same finite site.
+The statement also retains its public readiness, including after defaults. -/
+theorem nodeCommand_progress (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
+    (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hinvariant : SealedResolution.EventInvariant (supported.resolvingRuntime nullValue window)
+      execution.native.application)
+    (hmemory : SealedResolution.RegistrationMemory (supported.resolvingRuntime nullValue window)
+      execution)
     (node : Fin G.nodeCount)
     (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (hselected : supported.nodeCommand? who [] policy (execution.principalHistory who)
-      (MessageApplication.State.observe _ execution.native who)
-      (supported.playerStore who (execution.principalHistory who)
-        (MessageApplication.State.observe _ execution.native who)) node = some law) :
-    ∀ command ∈ law.support,
-      ProgressCommand supported who (execution.principalHistory who) command := by
-  let view := MessageApplication.State.observe
-    supported.compile.messageApplication execution.native who
-  change supported.nodeCommand? who [] policy (execution.principalHistory who) view
-    (supported.playerStore who (execution.principalHistory who) view) node = some law at hselected
-  have hview : view.application = execution.native.application.events := rfl
-  have hcompleted (query : Fin G.nodeCount) :
-      SealedProgram.done view.application query.val = true ↔
-        query ∈ cfg.1.done := by
-    rw [hview]
-    exact (Graph.mem_done_decodeSealed ty _ cfg.1 hdecode query).symm
-  simp only [nodeCommand?, List.contains_nil, Bool.false_eq_true, if_false,
-    SealedRule.discharge_nil, SealedProgram.discharge_nil] at hselected
+    (hselected : supported.nodeCommand? who execution.native.application.visible.timeouts policy
+      ((supported.resolvingRuntime nullValue window).eventHistory (execution.principalHistory who))
+      ((supported.resolvingRuntime nullValue window).eventView
+        (MessageApplication.State.observe _ execution.native who))
+      (supported.resolvedPlayerStore who nullValue execution.native.application.visible.timeouts
+        ((supported.resolvingRuntime nullValue window).eventHistory
+          (execution.principalHistory who))
+        ((supported.resolvingRuntime nullValue window).eventView
+          (MessageApplication.State.observe _ execution.native who))) node = some law) :
+    execution.native.application.visible.completed node.val = false ∧
+      (G.messagePrerequisites node).all execution.native.application.visible.completed = true ∧
+      ∀ command ∈ law.support,
+        ProgressCommand supported who
+          ((supported.resolvingRuntime nullValue window).eventHistory
+            (execution.principalHistory who)) node command := by
+  let runtime := supported.resolvingRuntime nullValue window
+  let history := runtime.eventHistory (execution.principalHistory who)
+  let view := runtime.eventView (MessageApplication.State.observe _ execution.native who)
+  let store := supported.resolvedPlayerStore who nullValue
+    execution.native.application.visible.timeouts history view
+  change supported.nodeCommand? who execution.native.application.visible.timeouts
+    policy history view store node = some law at hselected
+  change _ ∧ _ ∧ ∀ command ∈ law.support, ProgressCommand supported who history node command
+  unfold nodeCommand? at hselected
   split at hselected
-  next hreadyChecks =>
-    have hready : Ready G cfg.1 node :=
-      ready_of_messagePrerequisites view.application cfg.1 node hcompleted
-        hreadyChecks.1 (by simpa only [SealedProgram.prerequisitesDone,
-          Graph.sealedRule] using hreadyChecks.2)
+  · contradiction
+  next htimeout =>
     split at hselected
-    next owner guard hsem =>
-      split at hselected
-      next howner =>
-        subst owner
-        have hlaw : law = supported.commitCommand who policy node guard hsem
-            (execution.principalHistory who)
-            (supported.playerStore who (execution.principalHistory who)
-              (MessageApplication.State.observe _ execution.native who)) :=
-          Option.some.inj hselected |>.symm
-        rw [hlaw]
-        cases hcache : (supported.compile.registrationEncoding node.val).cachedValue
-            (supported.compile.messageApplication (Value := L.Val ty))
-            (execution.principalHistory who) with
-        | some value =>
-            intro command hcommand
-            have heq : command = .submit (.commitment node.val (who, node.val)) := by
-              simpa only [commitCommand, hcache, FinDist.mem_support_pure] using hcommand
-            subst command
-            exact .commitment node guard hsem value hcache
-        | none =>
-            have hnodeWF := supported.graphWF node (G.nodeRow node)
-              (G.nodes_get?_nodeRow node)
-            obtain ⟨reads, hreads⟩ :=
-              (reachable_storeCoherent supported.graphWF cfg.2).readEnvOfReady
-                supported.graphWF (G.nodes_get?_nodeRow node) hready
-                (fun ref href => by
-                  rw [hsem]
-                  exact Finset.mem_image.mpr ⟨ref, href, rfl⟩)
-                (fun ref href => by
-                  simp only [Graph.nodeWFAt, hsem] at hnodeWF
-                  obtain ⟨spec, hfield, hty, _⟩ := hnodeWF.2.2.2 ref href
-                  exact ⟨spec, hfield, hty⟩)
-            intro command hcommand
-            rw [supported.commitCommand_fresh who policy node guard hsem execution hmemory
-              hbinding cfg.1 hdecode reads hreads hcache, FinDist.support_map] at hcommand
-            obtain ⟨choice, _, rfl⟩ := hcommand
-            exact .registration node guard hsem _ hcache
-      next => contradiction
-    next source hsem =>
-      cases hhandle : supported.compile.openingHandle?
-          view.application who node.val with
-      | none => simp only [hhandle, Option.map_none] at hselected; contradiction
-      | some handle =>
-          obtain ⟨sourceSlot, rfl⟩ := SealedProgram.openingHandle?_eq_some_owner
-            supported.compile view.application who node.val handle hhandle
-          obtain ⟨requires, hrule, _, _, haccepted⟩ := SealedProgram.openingHandle?_sound
-            supported.compile view.application who node.val sourceSlot hhandle
-          obtain ⟨revealNode, producer, guard, hrevealIndex, hproducerIndex,
-              hreveal, hproducer⟩ := supported.ruleAt_reveal hrule rfl
-          have hrevealNode : revealNode = node := Fin.ext hrevealIndex
-          subst revealNode
-          have hacceptedMem : SealedProgram.Event.accepted sourceSlot (who, sourceSlot) ∈
-              execution.native.application.events := by
-            rw [← hview]
-            exact SealedProgram.accepted_mem_of_accepted?_eq_some haccepted
-          obtain ⟨owner, eventRequires, value, eventRule, hcanonical, hlookup⟩ :=
-            hbinding.accepted sourceSlot (who, sourceSlot) hacceptedMem
-          have howner : owner = who := by
-            exact congrArg Prod.fst hcanonical.symm
-          subst owner
-          have hcache : (supported.compile.registrationEncoding sourceSlot).cachedValue
-              (supported.compile.messageApplication (Value := L.Val ty))
-              (execution.principalHistory who) = some value := by
-            exact (hmemory who sourceSlot).symm.trans hlookup
-          intro command hcommand
-          rw [hhandle] at hselected
-          simp only [Option.map_some] at hselected
-          rw [hcache] at hselected
-          have hlaw : law = FinDist.pure
-              (.submit (.opening node.val (who, sourceSlot) value)) := by
-            have hsome : some (FinDist.pure
-                (.submit (.opening node.val (who, sourceSlot) value))) = some law := by
-              simpa only [hhandle, Option.map_some, hcache] using hselected
-            exact (Option.some.inj hsome).symm
-          rw [hlaw, FinDist.mem_support_pure] at hcommand
-          subst command
-          have hsourceSlot : producer.val = sourceSlot := hproducerIndex
-          subst sourceSlot
-          exact .opening node producer guard hreveal hproducer value hcache
-    next dist hsem => exact (supported.noSamples node dist hsem).elim
-  next => contradiction
+    next hready =>
+      have hdone : SealedProgram.done execution.native.application.visible.events
+          node.val = false := hready.1
+      have hrequires : (G.messagePrerequisites node).all
+          execution.native.application.visible.completed = true := by
+        have h := (execution.native.application.visible.prerequisitesDone_discharge
+          (G.sealedRule node)).symm.trans hready.2
+        simpa only [Graph.sealedRule] using h
+      refine ⟨?_, hrequires, ?_⟩
+      · exact Bool.or_eq_false_iff.mpr ⟨hdone, Bool.eq_false_of_not_eq_true htimeout⟩
+      · split at hselected
+        next owner guard hsem =>
+          split at hselected
+          next howner =>
+            subst owner
+            rw [← Option.some.inj hselected]
+            cases hcache : (supported.compile.registrationEncoding node.val).cachedValue
+                (supported.compile.messageApplication (Value := L.Val ty)) history with
+            | some value =>
+                intro command hcommand
+                have heq : command = .submit (.commitment node.val (who, node.val)) := by
+                  simpa only [commitCommand, hcache, FinDist.mem_support_pure] using hcommand
+                subst command
+                exact .commitment node guard hsem value hcache
+            | none =>
+                obtain ⟨reads, hreads⟩ := supported.resolvedPlayerStore_reads_of_ready
+                  nullValue window who execution hinvariant hmemory node guard hsem hrequires
+                change ReadEnv.ofStoreExec? store guard.choiceReads = some reads at hreads
+                intro command hcommand
+                rw [commitCommand, hcache, hreads, FinDist.support_map] at hcommand
+                obtain ⟨choice, _, rfl⟩ := hcommand
+                exact .registration node guard hsem _ hcache
+          next => contradiction
+        next source hsem =>
+          let discharged :=
+            supported.compile.discharge execution.native.application.visible.timeouts
+          change (discharged.openingHandle? view.application who node.val).map _ = some law
+            at hselected
+          cases hhandle : discharged.openingHandle? view.application who node.val with
+          | none => simp only [hhandle, Option.map_none] at hselected; contradiction
+          | some handle =>
+              obtain ⟨sourceSlot, rfl⟩ := SealedProgram.openingHandle?_eq_some_owner
+                discharged view.application who node.val handle hhandle
+              obtain ⟨requires, hrule, _, _, haccepted⟩ := SealedProgram.openingHandle?_sound
+                discharged view.application who node.val sourceSlot hhandle
+              have hkind : (G.sealedRule node).kind = .reveal who sourceSlot := by
+                change (supported.compile.discharge _).rules[node.val]? = _ at hrule
+                simp only [SealedProgram.discharge, List.getElem?_map, supported.compile_rule,
+                  Option.map_some, Option.some.injEq] at hrule
+                exact congrArg SealedRule.kind hrule
+              obtain ⟨revealNode, producer, guard, hrevealIndex, hproducerIndex,
+                  hreveal, hproducer⟩ :=
+                supported.ruleAt_reveal (supported.compile_rule node) hkind
+              have hrevealNode : revealNode = node := Fin.ext hrevealIndex
+              subst revealNode
+              have hacceptedMem : SealedProgram.Event.accepted sourceSlot (who, sourceSlot) ∈
+                  execution.native.application.visible.events :=
+                SealedProgram.accepted_mem_of_accepted?_eq_some haccepted
+              obtain ⟨_, value, _, _, _, _, hlookup⟩ :=
+                hinvariant.acceptedBinding.accepted sourceSlot (who, sourceSlot) hacceptedMem
+              have hcache : (supported.compile.registrationEncoding sourceSlot).cachedValue
+                  (supported.compile.messageApplication (Value := L.Val ty)) history = some value :=
+                (runtime.eventHistory_cache (runtime.program.registrationEncoding sourceSlot)
+                  (execution.principalHistory who)).trans
+                    ((hmemory who sourceSlot).symm.trans hlookup)
+              intro command hcommand
+              rw [hhandle] at hselected
+              simp only [Option.map_some, hcache] at hselected
+              rw [← Option.some.inj hselected, FinDist.mem_support_pure] at hcommand
+              subst command
+              have hsourceSlot : producer.val = sourceSlot := hproducerIndex
+              subst sourceSlot
+              exact .opening node producer guard hreveal hproducer value hcache
+        next dist hsem => exact (supported.noSamples node dist hsem).elim
+    next => contradiction
 
-private theorem source_ready_checks
-    (supported : SealedFragment G ty)
-    (execution : (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution)
-    (cfg : ReachableConfig G)
-    (hdecode : G.decodeSealed ty (supported.compile.eraseReceipts execution.native) = some cfg.1)
-    (node : Fin G.nodeCount) (hready : Ready G cfg.1 node) :
-    SealedProgram.done execution.native.application.events node.val = false ∧
-      SealedProgram.prerequisitesDone execution.native.application.events
-        (G.sealedRule node) = true := by
-  have hcompleted (query : Fin G.nodeCount) :
-      SealedProgram.done execution.native.application.events query.val = true ↔
-        query ∈ cfg.1.done :=
-    (Graph.mem_done_decodeSealed ty _ cfg.1 hdecode query).symm
-  constructor
-  · apply Bool.eq_false_of_not_eq_true
-    intro hdone
-    exact hready.1 ((hcompleted node).1 hdone)
-  · unfold SealedProgram.prerequisitesDone
-    apply List.all_eq_true.mpr
-    intro prior hprior
-    simp only [Graph.sealedRule, Graph.messagePrerequisites, List.mem_map,
-      List.mem_filter, Graph.mem_nodeOrder, true_and, decide_eq_true_eq] at hprior
-    obtain ⟨priorNode, hprereq, rfl⟩ := hprior
-    exact (hcompleted priorNode).2 (hready.2 hprereq)
-
-omit [DecidableEq Player] [DecidableEq (L.Val ty)] in
-private theorem accepted?_eq_some_of_mem_of_nodup
-    {events : List (SealedProgram.Event Player (L.Val ty))}
-    (hnodup : (events.map SealedProgram.Event.node).Nodup)
-    {node : Nat} {handle : CommitmentHandle Player Nat}
-    (hmem : SealedProgram.Event.accepted node handle ∈ events) :
-    SealedProgram.accepted? events node = some handle := by
-  classical
-  induction events with
-  | nil => simp at hmem
-  | cons event rest ih =>
-      have htailNodup := (List.nodup_cons.mp hnodup).2
-      rcases List.mem_cons.mp hmem with rfl | htail
-      · simp [SealedProgram.accepted?]
-      · have hnodeMem : node ∈ rest.map SealedProgram.Event.node :=
-          List.mem_map.mpr ⟨.accepted node handle, htail, rfl⟩
-        have hne : event.node ≠ node := fun heq =>
-          (List.nodup_cons.mp hnodup).1 (heq ▸ hnodeMem)
-        cases event with
-        | accepted eventNode eventHandle =>
-            change eventNode ≠ node at hne
-            simp only [SealedProgram.accepted?, List.findSome?_cons]
-            rw [if_neg (by simpa using hne)]
-            exact ih htailNodup htail
-        | opened eventNode value =>
-            simp only [SealedProgram.accepted?, List.findSome?_cons]
-            exact ih htailNodup htail
-
-private theorem source_ready_nodeCommand_some
-    (supported : SealedFragment G ty) (who : Player) (policy : CommitPolicy G who)
-    (execution : (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution)
-    (hbinding : SealedProgram.BindingInvariant supported.compile
-      (supported.compile.eraseReceipts execution.native))
-    (hnodup : (execution.native.application.events.map SealedProgram.Event.node).Nodup)
-    (cfg : ReachableConfig G)
-    (hdecode : G.decodeSealed ty (supported.compile.eraseReceipts execution.native) = some cfg.1)
-    (node : Fin G.nodeCount) (hready : Ready G cfg.1 node)
+private theorem nodeCommand_isSome_of_ready (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
+    (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hinvariant : SealedResolution.EventInvariant (supported.resolvingRuntime nullValue window)
+      execution.native.application)
+    (hclosed : execution.native.application.visible.ResolutionClosed
+      (supported.resolvingRuntime nullValue window))
+    (node : Fin G.nodeCount)
+    (hnotDone : execution.native.application.visible.completed node.val = false)
+    (hrequires : (G.messagePrerequisites node).all
+      execution.native.application.visible.completed = true)
     (howned :
       (∃ guard, (G.nodeRow node).sem = .commit who guard) ∨
       ∃ (producer : Fin G.nodeCount) (guard : EventGuard L),
         (G.nodeRow node).sem = .reveal (G.nodeTarget producer) ∧
         (G.nodeRow producer).sem = .commit who guard) :
-    (supported.nodeCommand? who [] policy (execution.principalHistory who)
-      (MessageApplication.State.observe _ execution.native who)
-      (supported.playerStore who (execution.principalHistory who)
-        (MessageApplication.State.observe _ execution.native who)) node).isSome := by
-  obtain ⟨hnotDone, hrequires⟩ :=
-    supported.source_ready_checks execution cfg hdecode node hready
-  let view := MessageApplication.State.observe
-    supported.compile.messageApplication execution.native who
-  change (supported.nodeCommand? who [] policy (execution.principalHistory who) view
-    (supported.playerStore who (execution.principalHistory who) view) node).isSome
-  have hview : view.application = execution.native.application.events := rfl
+    (supported.nodeCommand? who execution.native.application.visible.timeouts policy
+      ((supported.resolvingRuntime nullValue window).eventHistory (execution.principalHistory who))
+      ((supported.resolvingRuntime nullValue window).eventView
+        (MessageApplication.State.observe _ execution.native who))
+      (supported.resolvedPlayerStore who nullValue execution.native.application.visible.timeouts
+        ((supported.resolvingRuntime nullValue window).eventHistory
+          (execution.principalHistory who))
+        ((supported.resolvingRuntime nullValue window).eventView
+          (MessageApplication.State.observe _ execution.native who))) node).isSome := by
+  let runtime := supported.resolvingRuntime nullValue window
+  let state := execution.native.application.visible
+  have hchecks : SealedProgram.done state.events node.val = false ∧
+      state.timeouts.contains node.val = false := by
+    simpa only [SealedResolution.PublicState.completed, Bool.or_eq_false_iff] using hnotDone
+  have hrequires' : SealedProgram.prerequisitesDone state.events
+      ((G.sealedRule node).discharge state.timeouts) = true := by
+    rw [state.prerequisitesDone_discharge]
+    exact hrequires
   unfold nodeCommand?
-  simp only [List.contains_nil, Bool.false_eq_true, if_false, hview,
-    SealedRule.discharge_nil, hnotDone, hrequires, and_self, if_true]
+  change (if state.timeouts.contains node.val then none else
+    if SealedProgram.done state.events node.val = false ∧
+      SealedProgram.prerequisitesDone state.events
+        ((G.sealedRule node).discharge state.timeouts) = true then _ else none).isSome
+  simp only [hchecks.2, Bool.false_eq_true, ↓reduceIte]
+  have hready : SealedProgram.done state.events node.val = false ∧
+      SealedProgram.prerequisitesDone state.events
+        ((G.sealedRule node).discharge state.timeouts) = true := ⟨hchecks.1, hrequires'⟩
+  rw [if_pos hready]
   split
   next owner guard hsem =>
     have howner : owner = who := by
-      rcases howned with ⟨otherGuard, hother⟩ |
-          ⟨producer, otherGuard, hother, hproducer⟩
+      rcases howned with ⟨otherGuard, hother⟩ | ⟨producer, otherGuard, hother, _⟩
       · exact (NodeSem.commit.inj (hsem.symm.trans hother)).1
       · cases hsem.symm.trans hother
     subst owner
     simp
-  next source hnodeSem =>
-    rcases howned with ⟨otherGuard, hother⟩ |
-        ⟨producer, guard, hsem, hproducer⟩
-    · cases hnodeSem.symm.trans hother
-    have hsource : source = G.nodeTarget producer :=
-      NodeSem.reveal.inj (hnodeSem.symm.trans hsem)
+  next source hsem =>
+    rcases howned with ⟨otherGuard, hother⟩ | ⟨producer, guard, hreveal, hproducer⟩
+    · cases hsem.symm.trans hother
     have hlt : producer.val < node.val := by
       have hnodeWF := supported.graphWF node (G.nodeRow node) (G.nodes_get?_nodeRow node)
-      have havailable := hnodeWF.1 (G.nodeTarget producer) (by simp [hsem, NodeSem.reads])
+      have havailable := hnodeWF.1 (G.nodeTarget producer) (by simp [hreveal, NodeSem.reads])
       unfold Graph.fieldAvailableBefore at havailable
       rw [G.field?_nodeTarget (G.nodes_get?_nodeRow producer)] at havailable
       simpa using havailable
-    have hproducerDone : producer ∈ cfg.1.done :=
-      Ready.prior_commit_done_of_reveal G cfg.1 (G.nodes_get?_nodeRow node)
-        (G.nodes_get?_nodeRow producer) hlt hsem hproducer hready
-    have hproducerPublic :
-        SealedProgram.done execution.native.application.events producer.val = true :=
-      (Graph.mem_done_decodeSealed ty _ cfg.1 hdecode producer).mp hproducerDone
-    have hproducerRule : supported.compile.rules[producer.val]? =
+    have hprereq : producer ∈ G.prereqs node :=
+      G.nodeTarget_mem_prereqs_of_read (G.nodes_get?_nodeRow node)
+        (G.nodes_get?_nodeRow producer) hlt (by simp [hreveal, NodeSem.reads])
+    have hproducerComplete : state.completed producer.val = true :=
+      List.all_eq_true.mp hrequires producer.val ((G.mem_messagePrerequisites node producer).mpr
+        hprereq)
+    have hrevealRule : runtime.program.rules[node.val]? =
+        some ⟨.reveal who producer.val, G.messagePrerequisites node⟩ := by
+      change supported.compile.rules[node.val]? = _
+      rw [supported.compile_rule]
+      exact congrArg some (G.sealedRule_reveal_eq node producer who guard hreveal hproducer)
+    have hproducerNotTimeout : producer.val ∉ state.timeouts := by
+      intro htimeout
+      have hcomplete := hclosed node.val who producer.val (G.messagePrerequisites node)
+        hrevealRule hrequires htimeout
+      rw [hnotDone] at hcomplete
+      contradiction
+    have hproducerDone : SealedProgram.done state.events producer.val = true := by
+      simpa [SealedResolution.PublicState.completed, hproducerNotTimeout] using hproducerComplete
+    have hproducerRule : runtime.program.rules[producer.val]? =
         some ⟨.commit who, G.messagePrerequisites producer⟩ := by
+      change supported.compile.rules[producer.val]? = _
       rw [supported.compile_rule]
       exact congrArg some (G.sealedRule_commit_eq producer who guard hproducer)
-    have hacceptedMem := hbinding.accepted_mem_of_done_commit producer.val who
-      (G.messagePrerequisites producer) hproducerRule hproducerPublic
-    have haccepted := accepted?_eq_some_of_mem_of_nodup hnodup hacceptedMem
-    have hnodeRule : supported.compile.rules[node.val]? =
-        some ⟨.reveal who producer.val, G.messagePrerequisites node⟩ := by
-      rw [supported.compile_rule]
-      exact congrArg some (G.sealedRule_reveal_eq node producer who guard hsem hproducer)
-    have hrequires' : (G.messagePrerequisites node).all
-        (SealedProgram.done execution.native.application.events) = true := by
-      simpa only [SealedProgram.prerequisitesDone, Graph.sealedRule] using hrequires
-    have hhandle : supported.compile.openingHandle?
-        execution.native.application.events who node.val = some (who, producer.val) := by
-      simp only [SealedProgram.openingHandle?, hnodeRule, hnotDone,
-        SealedProgram.prerequisitesDone, hrequires', haccepted, and_self, if_true]
-    subst source
-    simp only [SealedProgram.discharge_nil, hhandle, Option.map_some,
-      Option.isSome_some]
+    have haccepted := hinvariant.accepted?_eq_some_of_done_commit producer.val who
+      (G.messagePrerequisites producer) hproducerRule hproducerDone
+    change SealedProgram.accepted? state.events producer.val = some (who, producer.val)
+      at haccepted
+    have hhandle : (supported.compile.discharge state.timeouts).openingHandle?
+        state.events who node.val = some (who, producer.val) := by
+      have hbase : supported.compile.rules[node.val]? =
+          some ⟨.reveal who producer.val, G.messagePrerequisites node⟩ := hrevealRule
+      have hremaining : ((G.messagePrerequisites node).filter
+          (fun prior => !state.timeouts.contains prior)).all
+          (SealedProgram.done state.events) = true := hrequires'
+      simp only [SealedProgram.openingHandle?, SealedProgram.discharge, List.getElem?_map,
+        hbase, Option.map_some, SealedRule.discharge, hchecks.1,
+        SealedProgram.prerequisitesDone, hremaining, haccepted, and_self, ↓reduceIte]
+    change ((supported.compile.discharge state.timeouts).openingHandle?
+      state.events who node.val |>.map _).isSome
+    simp only [hhandle, Option.map_some, Option.isSome_some]
   next dist hsem => exact (supported.noSamples node dist hsem).elim
 
-/-- Before any timeout, if the decoded source graph has an owned ready
-commitment or reveal, every possible command of the compiled resolving policy
-performs one of its three protocol phases.  An earlier ready owned node may be
-selected instead of the witness, but it also performs a phase. -/
+/-- An unfinished ready owned node forces a protocol phase at that node or
+an earlier owned site. This holds after defaults under the actual native
+invariants, without a decoded source state or an event-log uniqueness premise. -/
 theorem resolvingPolicy_progress_of_ready (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
     (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hclear : execution.native.application.visible.timeouts = [])
-    (hmemory : SealedResolution.RegistrationMemory
-      (supported.resolvingRuntime nullValue window) execution)
-    (hbinding : SealedProgram.BindingInvariant supported.compile
-      (supported.compile.eraseReceipts
-        ((supported.resolvingRuntime nullValue window).eventState execution.native)))
-    (hnodup : (execution.native.application.visible.events.map
-      SealedProgram.Event.node).Nodup)
-    (cfg : ReachableConfig G)
-    (hdecode : G.decodeSealed ty
-      (supported.compile.eraseReceipts
-        ((supported.resolvingRuntime nullValue window).eventState execution.native)) = some cfg.1)
-    (node : Fin G.nodeCount) (hready : Ready G cfg.1 node)
+    (hinvariant : SealedResolution.EventInvariant (supported.resolvingRuntime nullValue window)
+      execution.native.application)
+    (hmemory : SealedResolution.RegistrationMemory (supported.resolvingRuntime nullValue window)
+      execution)
+    (hclosed : execution.native.application.visible.ResolutionClosed
+      (supported.resolvingRuntime nullValue window))
+    (target : Fin G.nodeCount)
+    (hnotDone : execution.native.application.visible.completed target.val = false)
+    (hrequires : (G.messagePrerequisites target).all
+      execution.native.application.visible.completed = true)
     (howned :
-      (∃ guard, (G.nodeRow node).sem = .commit who guard) ∨
+      (∃ guard, (G.nodeRow target).sem = .commit who guard) ∨
       ∃ (producer : Fin G.nodeCount) (guard : EventGuard L),
-        (G.nodeRow node).sem = .reveal (G.nodeTarget producer) ∧
+        (G.nodeRow target).sem = .reveal (G.nodeTarget producer) ∧
         (G.nodeRow producer).sem = .commit who guard) :
     ∀ command ∈ (supported.resolvingPolicy nullValue window who policy
       (execution.principalHistory who)
       (MessageApplication.State.observe _ execution.native who)).support,
-      ProgressCommand supported who
-        ((supported.resolvingRuntime nullValue window).eventHistory
-          (execution.principalHistory who)) command := by
-  let projected : (supported.compile.messageApplication
-      (Value := L.Val ty)).PolicyExecution :=
-    { native := (supported.resolvingRuntime nullValue window).eventState execution.native
-      principalHistory := fun owner =>
-        (supported.resolvingRuntime nullValue window).eventHistory
-          (execution.principalHistory owner)
-      environmentHistory := []
-      nativeTrace := [] }
-  have hprojectedMemory : SealedProgram.RegistrationMemory supported.compile projected := by
-    intro owner slot
-    exact (hmemory owner slot).trans
-      ((supported.resolvingRuntime nullValue window).eventHistory_cache
-        ((supported.resolvingRuntime nullValue window).program.registrationEncoding slot)
-        (execution.principalHistory owner)).symm
-  have hcandidate := supported.source_ready_nodeCommand_some who policy projected hbinding
-    hnodup cfg hdecode node hready howned
-  rw [supported.resolvingPolicy_no_timeout nullValue window who policy _ _ hclear]
-  change ∀ command ∈ (supported.playerPolicy who policy (projected.principalHistory who)
-    (MessageApplication.State.observe _ projected.native who)).support,
-      ProgressCommand supported who (projected.principalHistory who) command
-  unfold playerPolicy
-  cases hselected : G.nodeOrder.findSome? (supported.nodeCommand? who [] policy
-      (projected.principalHistory who)
-      (MessageApplication.State.observe _ projected.native who)
-      (supported.playerStore who (projected.principalHistory who)
-        (MessageApplication.State.observe _ projected.native who))) with
+      ∃ selected : Fin G.nodeCount,
+        selected.val ≤ target.val ∧
+        execution.native.application.visible.completed selected.val = false ∧
+        (G.messagePrerequisites selected).all
+          execution.native.application.visible.completed = true ∧
+        ProgressCommand supported who
+          ((supported.resolvingRuntime nullValue window).eventHistory
+            (execution.principalHistory who)) selected command := by
+  let runtime := supported.resolvingRuntime nullValue window
+  let history := runtime.eventHistory (execution.principalHistory who)
+  let view := runtime.eventView (MessageApplication.State.observe _ execution.native who)
+  let commandAt := supported.nodeCommand? who execution.native.application.visible.timeouts
+    policy history view (supported.resolvedPlayerStore who nullValue
+      execution.native.application.visible.timeouts history view)
+  have htarget : (commandAt target).isSome := supported.nodeCommand_isSome_of_ready
+    nullValue window who policy execution hinvariant hclosed target hnotDone hrequires howned
+  change ∀ command ∈ ((G.nodeOrder.findSome? commandAt).getD (FinDist.pure .wait)).support, _
+  cases hselected : G.nodeOrder.findSome? commandAt with
   | none =>
-      have hnone := List.findSome?_eq_none_iff.mp hselected node (G.mem_nodeOrder node)
-      rw [hnone] at hcandidate
+      have hnone := List.findSome?_eq_none_iff.mp hselected target (G.mem_nodeOrder target)
+      rw [hnone] at htarget
       contradiction
   | some law =>
       simp only [Option.getD_some]
-      obtain ⟨selected, _, hnode⟩ := List.exists_of_findSome?_eq_some hselected
-      exact supported.selected_nodeCommand_progress who policy projected hprojectedMemory
-        hbinding cfg hdecode selected law hnode
+      obtain ⟨front, selected, rest, hnodes, hnode, hfront⟩ :=
+        List.findSome?_eq_some_iff.mp hselected
+      have hbound : selected.val ≤ target.val := by
+        have hmem := G.mem_nodeOrder target
+        rw [hnodes] at hmem
+        rcases List.mem_append.mp hmem with hbefore | hafter
+        · rw [hfront target hbefore] at htarget
+          contradiction
+        · rcases List.mem_cons.mp hafter with rfl | hrest
+          · rfl
+          · have hsorted : G.nodeOrder.Pairwise (fun left right => left < right) := by
+              simpa only [Graph.nodeOrder, List.sortedLT_iff_pairwise] using
+                List.sortedLT_finRange G.nodeCount
+            rw [hnodes] at hsorted
+            exact Nat.le_of_lt ((List.pairwise_cons.mp
+              (List.pairwise_append.mp hsorted).2.1).1 target hrest)
+      have hprogress := supported.nodeCommand_progress nullValue window who policy execution
+        hinvariant hmemory selected law hnode
+      intro command hcommand
+      exact ⟨selected, hbound, hprogress.1, hprogress.2.1, hprogress.2.2 command hcommand⟩
 
 end Vegas.EventGraph.SealedFragment
+
+/-- info: 'Vegas.EventGraph.SealedFragment.resolvingPolicy_progress_of_ready' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraph.SealedFragment.resolvingPolicy_progress_of_ready
+
+/-- info: 'Vegas.EventGraph.SealedFragment.runPolicies_no_reregistration' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraph.SealedFragment.runPolicies_no_reregistration

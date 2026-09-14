@@ -250,11 +250,13 @@ deadline(d) = firstReadyRound(d) + L.
 For an honest-owned target `d`, include `d` itself and all source-earlier sites
 owned by the same player. Charge each such commitment `b+2` rounds and each
 such reveal `b+1` rounds. If the resulting prefix charge is `W_b(d)`, a
-sufficient clock condition
-is `W_b(d) < window`; the uniform coarse condition is
-`n*(b+2) < window`. A timestamp may be recorded just after its owner's call,
+sufficient clock condition is `W_b(d) + 2 <= window`; the uniform coarse
+condition is `n*(b+2) + 2 <= window`. A timestamp may be recorded just after
+its owner's call,
 and expiration runs before the next round's player calls at clock
-`firstReadyRound(d) + window`, which is why the inequality is strict. The
+`firstReadyRound(d) + window`. In this worst placement there are only
+`window-1` designated owner polls before expiration. The condition supplies
+`W_b(d)+1` such polls, strictly more than their possible total charge. The
 displayed `L` is a deliberately looser bound. If there is no honest-owned
 node, the service statement is vacuous and no positive-window premise is
 needed.
@@ -275,14 +277,23 @@ first selected invocation. These packets are valid: the local cache and service
 agree, dependencies persist, and all declared reads are present. A reveal of
 a defaulted producer is propagated automatically.
 
-For each selected `c`, before its first submission there are at most two
-selected invocations, including registration. After that submission there are
-at most `b+1` further round opportunities before inclusion completes `c`.
-Interruptions by newly ready earlier nodes do not reset its service bound.
-A completed node cannot be selected again. Thus each of at most `n` possible
-selected nodes accounts for at most `b+3` rounds. Allow one initial round if
-`d` became ready after its owner's invocation. The chosen `L` is strictly
-larger than this bound.
+Designate the first invocation of that owner in each round and charge the
+round to its selected node. A commitment has at most one charged fresh
+registration. Every other charged invocation at that site submits its cached
+handle. If its first submission is in round `r0`, subsequent charged
+submission rounds lie in `r0,...,r0+b`, including the round whose service
+phase includes it. Thus a commitment receives at most `b+2` charges and a
+reveal at most `b+1`. The first submission need not occur at a designated
+poll: extra roster invocations or an earlier submission only shorten this
+interval. A completed node cannot be selected again.
+
+Sum these fiber bounds over the owned prefix through `d`. More than
+`W_b(d)` charged polls are impossible while `d` remains ready and incomplete.
+Other owners' completions can enable an earlier node and change the selector;
+this argument does not require a constant selector or an uninterrupted block
+of service to the same node. The chosen `L` supplies the required number of
+pre-expiry polls with slack. A missed service checkpoint earlier than expiry
+cannot be discharged by the later timeout.
 
 The required cache/read facts hold initially and are preserved by legitimate
 completions and nullable defaults: defaults supply typed public fields; own
@@ -1056,6 +1067,38 @@ cached value when present and supplies the configured null otherwise. Public
 reveal fields and initially visible inputs remain readable. This is a
 read-availability result, not equality with the locked source continuation.
 
+`SealedResolution.PublicState.ResolutionClosed` records automatic propagation:
+a ready reveal of a timed-out producer is already completed. A full ordered
+refresh establishes this invariant, and arbitrary native policy execution
+preserves it. The compiler discharges the ordering premises from graph
+well-formedness. Together with read availability, this proves
+`SealedFragment.resolvingPolicy_progress_of_ready`: every supported command
+when an owned node is ready and unfinished registers a fresh choice, submits
+an occupied commitment, or opens its cached value. The theorem retains the
+exact finite selected node, its readiness, and its index bound by the ready
+target. It does not assume that successive polls select the same node.
+`resolvingPolicy_registration_fresh` and `runPolicies_no_reregistration`
+establish the one-registration charge: an emitted registration uses an empty
+native slot, and arbitrary subsequent execution cannot make the compiled
+policy register an occupied slot again.
+
+`includePending_commitment_completed` and `includePending_opening_completed`
+prove that including the corresponding canonical pending envelope completes
+its node when its private slot and public prerequisites are ready. Already
+completed nodes remain completed when a late message is rejected. These are
+local inclusion laws. `runPolicies_commitment_pendingOrCompleted` and
+`runPolicies_opening_pendingOrCompleted` retain the exact pending envelope
+and its readiness under arbitrary intervening commands unless its node
+completes. Queue drainage therefore implies completion of that ready site.
+`runRounds_ready_commitment_completed` and
+`runRounds_ready_opening_completed` combine this invariant with delayed
+reserved capacity in the actual stopped round driver. They do not assume
+acceptance and permit player reactions before inclusion. Completion may still
+be through timeout; the finite phase count and clock bound must exclude that
+case for compiled players. The checked source regression
+continues to its next commitment after earlier defaults and includes that
+commitment and its opening through the actual pending-message interface.
+
 The remaining implementation work is specific:
 
 1. Check backend admission for nullable values and direct unique reveals,
@@ -1068,9 +1111,12 @@ The remaining implementation work is specific:
 3. Establish the deadline-relative service theorem that rules out honest
    timeouts: combine ready-node selection, finite cache/commit/opening phases,
    owner-roster coverage, and timely inclusion. Post-default read availability,
-   reserved capacity, the bounded early-stopping driver, and its exact
-   source/native marginal connection are checked. Do not assume a bare
-   expiration status is a source settlement.
+   exact selected-node progress, registration non-repetition, automatic
+   reveal-default propagation, canonical packet persistence, and delayed
+   capacity-to-completion are checked. The bounded early-stopping driver and
+   its exact source/native marginal connection are checked. The remaining
+   service step counts selected invocations before expiry; a bare expiration
+   status is not a source settlement.
 4. Establish the all-compiled honest outcome law. The arbitrary-deviation
    mixture alone does not identify its source marginal with the original
    all-honest source profile.

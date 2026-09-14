@@ -35,6 +35,30 @@ variable {Principal : Type uPrincipal} {Value : Type uValue}
   unfold PublicState.stamp
   split <;> rfl
 
+/-- Discharging timed-out prerequisites is exactly the same readiness test as
+checking the resolution state's combined event-or-timeout completion flag. -/
+@[simp] theorem PublicState.prerequisitesDone_discharge
+    (state : PublicState Principal Value) (rule : SealedRule Principal) :
+    SealedProgram.prerequisitesDone state.events (rule.discharge state.timeouts) =
+      rule.requires.all state.completed := by
+  cases rule with
+  | mk kind requires =>
+      change (requires.filter fun node => !state.timeouts.contains node).all
+          (SealedProgram.done state.events) =
+        requires.all fun node =>
+          SealedProgram.done state.events node || state.timeouts.contains node
+      induction requires with
+      | nil => rfl
+      | cons node rest ih =>
+          cases hcontains : state.timeouts.contains node with
+          | false =>
+              simp only [List.filter_cons, hcontains, Bool.not_false,
+                if_true, List.all_cons, Bool.or_false, ih]
+          | true =>
+              simp only [List.filter_cons, hcontains, Bool.not_true,
+                Bool.false_eq_true, if_false, List.all_cons, Bool.or_true,
+                Bool.true_and, ih]
+
 theorem visit_clock (runtime : SealedResolution Principal Value) (resolveExpired : Bool)
     (state : PublicState Principal Value) (node : Nat) :
     (runtime.visit resolveExpired state node).clock = state.clock := by

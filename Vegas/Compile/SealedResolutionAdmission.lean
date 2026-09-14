@@ -53,6 +53,23 @@ theorem compile_rule_requires_lt (supported : SealedFragment G ty)
   rcases hdependency with ⟨prior, hprior, rfl⟩
   exact (G.prereq_lt hprior).trans_le (Nat.le_of_eq hindex)
 
+/-- The commitment producer named by a compiled reveal strictly precedes the
+reveal rule in source order. -/
+theorem compile_reveal_source_lt (supported : SealedFragment G ty)
+    {index : Nat} {rule : SealedRule Player} {owner : Player} {source : Nat}
+    (hrule : supported.compile.rules[index]? = some rule)
+    (hkind : rule.kind = .reveal owner source) :
+    source < index := by
+  obtain ⟨node, producer, guard, hnode, hproducer, hreveal, hcommit⟩ :=
+    supported.ruleAt_reveal hrule hkind
+  have hread := (supported.graphWF node (G.nodeRow node)
+    (G.nodes_get?_nodeRow node)).1 (G.nodeTarget producer)
+      (by rw [hreveal]; simp [NodeSem.reads])
+  have hlt : producer.val < node.val := by
+    simpa only [Graph.fieldAvailableBefore,
+      G.field?_nodeTarget (G.nodes_get?_nodeRow producer), decide_eq_true_eq] using hread
+  omega
+
 end SealedFragment
 
 end Vegas.EventGraph

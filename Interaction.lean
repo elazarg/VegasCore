@@ -79,6 +79,8 @@ import Interaction.SealedResolutionProgress
 import Interaction.SealedResolutionBinding
 import Interaction.SealedResolutionAccepted
 import Interaction.SealedResolutionEvents
+import Interaction.SealedResolutionClosure
+import Interaction.SealedResolutionSubmission
 import Interaction.SealedResolutionRounds
 import Interaction.SealedResolutionCompletion
 import Interaction.SealedResolutionDriver

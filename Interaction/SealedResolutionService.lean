@@ -6,14 +6,17 @@ Authors: VegasCore contributors
 
 import Interaction.SealedResolutionDriver
 import Interaction.MessageApplicationService
+import Interaction.SealedResolutionSubmission
+import Interaction.SealedResolutionCompletion
 
-/-! # Inclusion capacity in the resolving round driver
+/-! # Inclusion capacity and ready-packet progress in the resolving round driver
 
 Reserved service calls consume pending envelopes regardless of their validity.
 Other wire calls can deliver, include, or wait adaptively. An adequate number
 of reserved calls drains the round's arrivals even under arbitrary player
-traffic. This is an operational capacity guarantee, not an assumption that
-submitted payloads are accepted or that honest players meet their deadlines.
+traffic. Persistent ready canonical packets then complete their nodes. These
+operational results do not assume acceptance of arbitrary payloads and do not
+yet prove that compiled players meet their deadlines.
 -/
 
 noncomputable section
@@ -180,6 +183,105 @@ theorem runRounds_pending_empty (runtime : SealedResolution Principal Value)
           have hzero : middle.native.pool.pending.length = 0 := by omega
           simpa using hzero
 
+private theorem runRounds_policy_prefix (runtime : SealedResolution Principal Value)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (wire : runtime.messageApplication.WirePolicy) (count : Nat)
+    (execution next : runtime.messageApplication.PolicyExecution)
+    (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
+    (hnext : next ∈
+      (runtime.runRounds principals serviceSlots players wire count execution).support) :
+    ∃ schedule, next ∈ (runtime.messageApplication.runPolicies players
+      (runtime.roundEnvironment serviceSlots wire) schedule execution).support := by
+  rw [runtime.runRounds_eq_tracePolicies principals serviceSlots players wire count
+    execution hphase, FinDist.support_map] at hnext
+  obtain ⟨trace, htrace, rfl⟩ := hnext
+  obtain ⟨front, suffix, _, hfront, _⟩ :=
+    runtime.messageApplication.tracePolicies_firstReleaseEvery_split players
+      (runtime.roundEnvironment serviceSlots wire)
+      (roundInvocations principals serviceSlots).length count
+      (fun state => runtime.complete state.native.application.visible)
+      (by simp [roundInvocations]) (roundSchedule principals serviceSlots count) execution trace
+      (by rw [roundSchedule_length]) htrace
+  exact ⟨front, hfront⟩
+
+/-- Delayed reserved capacity completes an already-ready pending commitment.
+All earlier service opportunities and all player policies remain unrestricted;
+the conclusion follows from native packet persistence, not an acceptance premise. -/
+theorem runRounds_ready_commitment_completed (runtime : SealedResolution Principal Value)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (wire : runtime.messageApplication.WirePolicy) (reserved : Nat → Bool)
+    (hservice : runtime.messageApplication.InclusionService
+      (fun turn => reserved turn = true) (runtime.messageApplication.wireEnvironment wire))
+    (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
+    (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
+    (hcapacity : execution.native.pool.pending.length + (count + 1) * principals.length ≤
+      (List.range' (execution.environmentHistory.length + count * (serviceSlots + 1))
+        serviceSlots).countP reserved)
+    (owner : Principal) (serial node : Nat) (requires : List Nat) (value : Value)
+    (hrule : runtime.program.rules[node]? = some { kind := .commit owner, requires })
+    (hpending : (⟨(owner, serial), .commitment node (owner, node)⟩ :
+      Message Principal (SealedProgram.Payload Principal Value)) ∈ execution.native.pool.pending)
+    (hstored : execution.native.application.service.lookup (owner, node) = some value)
+    (hrequires : requires.all execution.native.application.visible.completed = true)
+    (hnext : next ∈
+      (runtime.runRounds principals serviceSlots players wire (count + 1) execution).support) :
+    next.native.application.visible.completed node = true := by
+  rcases runtime.runRounds_complete_or_pending_empty principals serviceSlots players wire
+      reserved hservice count execution next hcapacity hnext with hcomplete | hempty
+  · exact runtime.complete_node _ node hcomplete (List.getElem?_eq_some_iff.mp hrule).1
+  · obtain ⟨schedule, hprefix⟩ := runtime.runRounds_policy_prefix principals serviceSlots
+      players wire (count + 1) execution next hphase hnext
+    have hretained := runtime.runPolicies_commitment_pendingOrCompleted players
+      (runtime.roundEnvironment serviceSlots wire) schedule execution next owner serial node
+      requires value hrule hpending hstored hrequires hprefix
+    rcases hretained with hdone | hpending
+    · exact hdone
+    · simp only [hempty, List.not_mem_nil, false_and] at hpending
+
+/-- Delayed reserved capacity also completes a ready pending opening, retaining
+its accepted source and private value across arbitrary intervening traffic. -/
+theorem runRounds_ready_opening_completed (runtime : SealedResolution Principal Value)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (wire : runtime.messageApplication.WirePolicy) (reserved : Nat → Bool)
+    (hservice : runtime.messageApplication.InclusionService
+      (fun turn => reserved turn = true) (runtime.messageApplication.wireEnvironment wire))
+    (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
+    (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
+    (hcapacity : execution.native.pool.pending.length + (count + 1) * principals.length ≤
+      (List.range' (execution.environmentHistory.length + count * (serviceSlots + 1))
+        serviceSlots).countP reserved)
+    (owner : Principal) (serial node source : Nat)
+    (requires sourceRequires : List Nat) (value : Value)
+    (hrule : runtime.program.rules[node]? =
+      some { kind := .reveal owner source, requires })
+    (hsourceRule : runtime.program.rules[source]? =
+      some { kind := .commit owner, requires := sourceRequires })
+    (hinvariant : EventInvariant runtime execution.native.application)
+    (hpending : (⟨(owner, serial), .opening node (owner, source) value⟩ :
+      Message Principal (SealedProgram.Payload Principal Value)) ∈ execution.native.pool.pending)
+    (haccepted : SealedProgram.accepted? execution.native.application.visible.events source =
+      some (owner, source))
+    (hstored : execution.native.application.service.lookup (owner, source) = some value)
+    (hrequires : requires.all execution.native.application.visible.completed = true)
+    (hnext : next ∈
+      (runtime.runRounds principals serviceSlots players wire (count + 1) execution).support) :
+    next.native.application.visible.completed node = true := by
+  rcases runtime.runRounds_complete_or_pending_empty principals serviceSlots players wire
+      reserved hservice count execution next hcapacity hnext with hcomplete | hempty
+  · exact runtime.complete_node _ node hcomplete (List.getElem?_eq_some_iff.mp hrule).1
+  · obtain ⟨schedule, hprefix⟩ := runtime.runRounds_policy_prefix principals serviceSlots
+      players wire (count + 1) execution next hphase hnext
+    have hretained := runtime.runPolicies_opening_pendingOrCompleted players
+      (runtime.roundEnvironment serviceSlots wire) schedule execution next owner serial node source
+      requires sourceRequires value hrule hsourceRule hinvariant hpending haccepted hstored
+      hrequires hprefix
+    rcases hretained with hdone | hpending
+    · exact hdone
+    · simp only [hempty, List.not_mem_nil, false_and] at hpending
+
 end Interaction.SealedResolution
 
 /-- info: 'Interaction.SealedResolution.runRounds_pending_empty' depends on axioms:
@@ -191,3 +293,8 @@ end Interaction.SealedResolution
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.SealedResolution.runRounds_complete_or_pending_empty
+
+/-- info: 'Interaction.SealedResolution.runRounds_ready_opening_completed' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.SealedResolution.runRounds_ready_opening_completed
