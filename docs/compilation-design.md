@@ -285,9 +285,17 @@ to written-source deviations and normal settlement to the programmed payout.
 This supplies the probability part of the arbitrary-deviation argument, including
 actual post-timeout execution and native stopping. Periodic service and adequate
 windows attribute every timeout in the candidate round driver to an unprotected
-player. Applying a source settlement condition to the actual completed native
-payout still requires the graph-level resolution/utility certificate. Neither
-coupled marginal alone establishes that bound.
+player. `Graph.UniqueReveals`, certified by source accounting, supplies the
+separate disclosure condition for graph settlement: every completed public
+store has a legal terminal graph realization, and an owned timeout records an
+owned default in that realization. `Graph.PublicUtility.QuitBound` expresses a
+uniform incentive condition solely over terminal graph realizations;
+`timeout_utility_le_graph` compares attributed settlement to the terminal graph
+realization retained by the coupling. The two realizations may differ: only the
+coupling retains the original opponents' policies. The remaining certificate
+must combine attribution, this pointwise bound, and the probability marginals,
+then obtain its graph utility condition from the source condition. Neither
+coupled marginal alone establishes the bound.
 
 Candidate handles are owner-scoped identifiers. A pending handle can acquire
 its private value until acceptance; an unprepared accepted handle becomes

@@ -208,8 +208,25 @@ The clock, queue, and periodic-service-to-deadline argument are shared host laws
 `VegasTests/SealedCandidateDeadline.lean` checks a two-player source with an
 arbitrary first-player native policy and delayed service. The second player meets
 both deadlines, and a supported completed execution exists for every such
-opponent and wire policy. The graph-level resolution utility comparison and its
-source transport remain unproved for the candidate backend.
+opponent and wire policy.
+
+Public settlement is graph-relative. `Graph.UniqueReveals` requires at most one
+direct reveal of each field; `WFProgram.compiled_uniqueReveals` derives it from
+source commitment accounting. It is separate from graph well-formedness and
+public-prefix readability. `public_store_graph_of_complete` constructs a terminal
+graph realization with the same typed public fields. On an owned timeout,
+`public_store_graph_choice_of_timeout` also records that owner's default at a
+commitment in the same realization. These witnesses need not retain the original
+opponents' policies.
+
+`Graph.PublicUtility` interprets public fields independently of payout encoding.
+Its `QuitBound` is a graph-only lower bound over legal terminal realizations,
+with a matching upper bound for realizations recording the player's default.
+`timeout_utility_le_graph` consequently bounds an attributed timeout's public
+utility by any legal terminal graph realization, including the different witness
+retained by the deviation coupling. Combining that pointwise bound with actual
+round attribution and the coupling marginals, and transporting the source
+quitting condition, remain necessary for the candidate `UtilitySimulation`.
 
 ## End-to-end target
 
@@ -226,10 +243,10 @@ and normal public-field agreement under deadline-relative service for every
 graph profile, without the extra `PublicPrefixReadable` condition. Its source
 payout theorem delegates to the graph coupling. Honest-player timeout exclusion
 under arbitrary candidate deviations is also graph-relative and checked under
-periodic service. The graph-level resolution utility condition remains required
-before the backend
-can supply its own `UtilitySimulation` and the source theorem can follow by
-composition. The
+periodic service. Graph-only settlement and a sufficient pointwise utility bound
+are checked separately. Their assembly with the actual round coupling remains
+required before the backend can supply its own `UtilitySimulation` and the source
+theorem can follow by composition. The
 [compilation design](compilation-design.md#strategic-intermediate-representation)
 states this boundary and the factoring work.
 

@@ -9,6 +9,7 @@ import Vegas.EventGraph.Batch
 import Vegas.EventGraph.Build
 import Vegas.EventGraph.CommitPositions
 import Vegas.EventGraph.Confluence
+import Vegas.EventGraph.Disclosure
 import Vegas.EventGraph.Execution
 import Vegas.EventGraph.Fence
 import Vegas.EventGraph.FiniteState
@@ -35,6 +36,7 @@ import Vegas.EventGraph.Linearization
 import Vegas.EventGraph.Protocol
 import Vegas.EventGraph.ProtocolOrder
 import Vegas.EventGraph.PublicPrefix
+import Vegas.EventGraph.PublicUtility
 import Vegas.EventGraph.PolicyLocalization
 import Vegas.EventGraph.PolicyRoundtrip
 import Vegas.EventGraph.Recall

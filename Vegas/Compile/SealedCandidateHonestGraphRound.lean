@@ -2,7 +2,7 @@
 
 import Vegas.Compile.SealedCandidateHost
 import Vegas.Compile.SealedHonestGraphRound
-import Vegas.Compile.SealedPublicOutcome
+import Vegas.Compile.SealedPublicStore
 
 /-! # Honest graph outcomes in the candidate stopped-round driver
 

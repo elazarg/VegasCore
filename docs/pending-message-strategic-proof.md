@@ -1281,8 +1281,9 @@ utilities are the payout interpretation of that source. Independently,
 data and opening events, ignoring opaque commitments; `publicPayout?` evaluates
 the compiled payout on that public store. `publicPayout?_eq_source_of_terminal`
 proves equality with the decoded written-source payout on normal runs.
-`public_store_source_of_complete` identifies every completed public store with
-the public projection of a legal source realization, including after defaults;
+`public_store_graph_of_complete` identifies every completed public store with
+the public projection of a legal terminal graph realization, including after
+defaults, under the independently stated `Graph.UniqueReveals` condition;
 `publicPayout?_eq_source_of_complete` supplies an actual written-source
 small-step execution and the same payout. `RoundModel.play_publicPayout_source`
 instantiates completion and event provenance for every supported outcome of

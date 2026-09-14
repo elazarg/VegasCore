@@ -4,6 +4,7 @@ import Vegas.Core.AccountingIntegrity
 import Vegas.Compile.FieldMap
 import Vegas.Compile.DecisionSite
 import Vegas.Compile.SourceOutcome
+import Vegas.EventGraph.Disclosure
 
 /-! # Accounting uniqueness for compiled reveal producers -/
 
@@ -241,11 +242,9 @@ open ToEventGraph EventGraph
 variable {P : Type} [DecidableEq P] {L : IExpr}
 
 /-- A checked compilation has at most one direct reveal of any source field. -/
-theorem compiled_reveal_source_injective (source : WFProgram P L)
-    (left right : Fin (compile source.core).graph.nodeCount) (field : Nat)
-    (hleft : ((compile source.core).graph.nodeRow left).sem = .reveal field)
-    (hright : ((compile source.core).graph.nodeRow right).sem = .reveal field) :
-    left = right := by
+theorem compiled_uniqueReveals (source : WFProgram P L) :
+    (compile source.core).graph.UniqueReveals := by
+  intro left right field hleft hright
   let state := BuildState.fromInitial
     (initialState source.core.Γ source.core.env source.core.wctx)
   obtain ⟨leftSite, hleftIndex, hleftField⟩ :=

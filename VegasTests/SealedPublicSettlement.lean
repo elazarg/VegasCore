@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedPublicOutcome
+import Vegas.Compile.SealedGraphUtility
 
 /-! # Public settlement after a sealed timeout
 
@@ -177,6 +178,55 @@ theorem timeout_settlement_has_source_execution :
     compilation.publicPayout?_eq_source_of_complete none 2 settled.visible
       hinvariant.publicEvents rfl
   exact ⟨terminalEnv, hsource, hpayout⟩
+
+/-- The same public field can be interpreted directly as a utility, without
+using the source payout evaluator or private commitment table. -/
+def publicUtility : graph.PublicUtility where
+  eval store _ := if ((Store.getAs store 1 (.option .bool)).getD none).isSome then 7 else -3
+  congr left right hagrees who := by
+    have hread := hagrees ⟨1, .option .bool⟩ ⟨_, rfl, rfl, rfl⟩
+    dsimp only at hread ⊢
+    rw [hread]
+
+/-- The nonconstant public utility satisfies the independent graph quitting
+condition: normal openings yield 7 and the designated default yields -3. -/
+theorem graph_quit_bound : publicUtility.QuitBound (ty := .option .bool) none (fun _ => -3) where
+  lower cfg _ who := by
+    change (-3 : ℝ) ≤ if _ then 7 else -3
+    split <;> norm_num
+  quitting cfg hterminal who producer guard hcommit hvalue := by
+    fin_cases producer
+    · change cfg.1.store (graph.nodeTarget (node 0)) =
+        some (⟨.option .bool, none⟩ : TypedValue simpleExpr) at hvalue
+      have hreveal := supported.terminal_reveal_store cfg hterminal (none : Value)
+        (node 1) (node 0) rfl
+      have hchoice : cfg.1.nodeValues (G := graph) (ty := .option .bool) none (node 0) = none := by
+        simp [Config.nodeValues, Store.getAs, hvalue, TypedValue.as?]
+      rw [hchoice] at hreveal
+      change (if ((Store.getAs cfg.1.store 1 (.option .bool)).getD none).isSome
+        then (7 : ℝ) else -3) ≤ -3
+      simp [Store.getAs, show cfg.1.store 1 = some (⟨.option .bool, none⟩ :
+        TypedValue simpleExpr) from hreveal, TypedValue.as?]
+    · cases hcommit
+
+/-- The graph utility theorem applies to the concrete timeout, even though
+its retained private registration contains a non-default value. The comparison
+graph realization is arbitrary and need not agree with that registration. -/
+theorem timeout_utility_bound (cfg : ReachableConfig graph) (hterminal : Terminal graph cfg.1) :
+    publicUtility.eval (graph.publicSealedStore (.option .bool) settled.visible.events) 0 ≤
+      publicUtility.eval cfg.1.store 0 := by
+  have hinvariant : SealedResolution.EventInvariant runtime settled :=
+    (((SealedResolution.EventInvariant.initial (runtime := runtime)).register
+      0 0 (some true)).handle _ acceptance).tick.tick
+  have hsettlement : SealedResolution.SettlementInvariant runtime settled.visible :=
+    (((show SealedResolution.SettlementInvariant runtime registered.visible from
+      SealedResolution.SettlementInvariant.initial runtime).handle _ acceptance).clock.refresh
+      true).clock.refresh true
+  exact supported.timeout_utility_le_graph
+    (ToEventGraph.compile_guardLive source.core source.legal) source.compiled_uniqueReveals
+    none 2 publicUtility (fun _ => -3) graph_quit_bound settled.visible
+    hinvariant.publicEvents hsettlement rfl (node 1) 0 (by decide)
+    (Or.inr ⟨node 0, _, rfl, rfl⟩) cfg hterminal
 
 end VegasTests.SealedPublicSettlement
 

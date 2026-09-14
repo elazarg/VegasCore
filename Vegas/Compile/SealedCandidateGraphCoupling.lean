@@ -2,7 +2,7 @@
 
 import Vegas.Compile.SealedCandidateGraphNative
 import Interaction.MessageApplicationContinuation
-import Vegas.Compile.SealedPublicOutcome
+import Vegas.Compile.SealedPublicStore
 import Interaction.SealedCandidateEvents
 
 /-! # Graph/native coupling with the actual timeout continuation

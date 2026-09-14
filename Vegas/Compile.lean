@@ -66,6 +66,9 @@ import Vegas.Compile.SealedResolutionClosure
 import Vegas.Compile.SealedResolvedStore
 import Vegas.Compile.SealedResolvedReads
 import Vegas.Compile.SealedPublicOutcome
+import Vegas.Compile.SealedPublicStore
+import Vegas.Compile.SealedGraphSettlement
+import Vegas.Compile.SealedGraphUtility
 import Vegas.Compile.SealedSettlement
 import Vegas.Compile.SealedPolicyProgress
 import Vegas.Compile.SealedPhaseCount
@@ -127,8 +130,11 @@ window. The unilateral coupling retains the exact source-mixture and native
 marginals. The round game's concrete utility simulation uses conditional
 timeout utility comparisons in addition to normal utility agreement; their
 program-specific incentive analysis remains an explicit obligation.
-`SealedPublicOutcome` reconstructs every completed public settlement, including
-after defaults, as the public values and payout of a legal source execution.
+`SealedGraphSettlement` reconstructs completed public settlement, including after
+defaults, as a legal terminal graph realization under unique direct disclosure.
+`SealedGraphUtility` compares attributed settlement with a terminal graph utility
+under a graph-only quitting bound. `SealedPublicOutcome` transports settlement
+to the programmed source payout.
 That support witness may change private choices and does not replace the
 commitment-preserving witness in the strategic coupling.
 
@@ -146,6 +152,7 @@ actual full native law, a finite source-deviation mixture, and pointwise public
 payout agreement on normal completion. `SealedTermination` proves candidate
 stopped-round completion under arbitrary policies. `SealedCandidateDeadline`
 excludes honest-player timeouts under periodic service, including after earlier
-defaults, and attributes each timeout to an unprotected player. The graph-level
-completed-round deviation utility comparison remains open.
+defaults, and attributes each timeout to an unprotected player. Assembly of the
+pointwise graph utility bound with the completed-round deviation coupling remains
+open.
 -/
