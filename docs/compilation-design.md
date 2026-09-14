@@ -73,8 +73,8 @@ runs. Both hosts instantiate `MessageApplication.RoundDriver`; its completion
 test and bounded loop are shared, and `candidateRounds_law` transports the full
 honest execution law through early stopping. Under deadline-relative service,
 `candidate_honest_round_payout_law` proves normal completion and the original
-source payout law in the candidate driver. The candidate service's causal
-deviation coupling remains to be established.
+source payout law in the candidate driver. The candidate service's completed-round
+deviation utility bound remains to be established.
 The public acceptance/disclosure barrier is
 independent of private registration, but that information-flow fact and a
 source settlement witness alone do not provide the required strategy law.
@@ -89,7 +89,8 @@ discharges input agreement at every supported complete source realization.
 The registered and candidate hosts share the source-disclosure policy and
 source-run constructors; they do not define separate source evaluators.
 Accepted candidate meanings remain fixed through arbitrary native suffixes.
-The joint law of replay with the original native execution remains unproved.
+The joint law through first timeout is proved for fixed native response functions;
+randomized stopping and completed-round coupling remain separate steps.
 The legal fallback used for an absent or unopenable selection still requires
 the source failure/incentive argument; constructing a source policy does not
 establish that strategic comparison.
@@ -126,9 +127,18 @@ comparison throughout the reference law. The shared policy-checkpoint theorem
 uses actual invocation provenance to locate every opening's preparation strictly
 before the cutoff. `extractedCandidateSourceRun_replay_prob_eq_product` evaluates
 the source prefix mass as a finite product of those native preparation
-probabilities. The remaining native argument must account for each honest
-preparation once and establish the actual native marginal; the source-product
-formula alone is not that joint law.
+probabilities. `candidateReplay_registration_factor` compares those checkpoint
+probabilities with actual invocation probabilities using the same source reads.
+The native likelihood calculation counts only openable tracked handles:
+successful fresh preparation multiplies the potential by one factor, while
+acceptance preserves it even when fixing an unopenable candidate. Both hosts
+share the finite-product algebra and stopped-trace likelihood induction.
+`candidateReplay_prefix_prob_eq_product` proves native trace mass equal to the
+source product. `extractedCandidateSourceRun_native_prefix_law` consequently
+identifies the whole native prefix law through first timeout, with unchanged
+opponent source policies. Its fixed focal/environment functions may depend on
+their full declared histories and observations; no positive-mass or service
+premise is assumed. This is not a completed-outcome or Nash theorem.
 
 Candidate handles are owner-scoped identifiers. A pending handle can acquire
 its private value until acceptance; an unprepared accepted handle becomes

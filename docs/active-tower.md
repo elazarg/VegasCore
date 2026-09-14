@@ -81,9 +81,10 @@ an openable source null value remains distinct from those cases. The actual
 selected meaning is nonfresh and persists through the rest of the native trace.
 `extractedCandidateSourceRun_consistent` proves that every supported complete
 source realization agrees with these replay selections, with unchanged
-opponent policies and no assumed source-input equality. The joint probability
-law identifying those replays with the original native execution remains
-unproved, as does the candidate-host incentive bound for fallback runs.
+opponent policies and no assumed source-input equality. The exact joint
+prefix law through first timeout is proved below for fixed native response
+functions. Candidate-host randomized stopping and the incentive bound for
+fallback runs remain open.
 
 Generated policies satisfy `candidatePolicy_memory` under arbitrary opponent
 and environment policies: each honest owner's command cache agrees with its
@@ -101,9 +102,8 @@ their source-site identity and assigned values through delivery and replay.
 `extractedCandidateSourceRun_registration_kernel` consequently identifies each
 fresh honest draw with the original source kernel at the complete source
 realization's declared inputs. No cache, accepted-value, or read-environment
-agreement premise remains. This is a local kernel theorem on source-supported
-replay; the joint probability law with the actual native execution is still
-unproved.
+agreement premise remains. This local kernel theorem supplies the
+original-probability comparison used in the joint native prefix law.
 
 `candidateReplay_prefix_eq_iff` characterizes a complete replay prefix by its
 recorded honest preparations, retaining pending traffic, competing candidates,
@@ -120,15 +120,28 @@ source decision probabilities throughout that reference law with native
 preparation probabilities. The checkpoint is a pre-timeout replay snapshot at
 which the policy supports that preparation, as proved by the shared
 `MessageApplication.commandCheckpoint_selected_of_new_fact` and candidate opening
-provenance. It need not be the snapshot of the actual preparation invocation;
-the native factor comparison must relate their probabilities.
+provenance. It need not be the snapshot of the actual preparation invocation.
 `extractedCandidateSourceRun_replay_prob_eq_product`
 then evaluates the source cylinder mass as a product of these fixed native
 preparation factors. Both hosts use the same source-product calculation.
-The remaining native argument must show that the runner counts each such
-factor exactly once and has that same trace mass. Candidate-round completion
-under arbitrary deviations must also be derived; the honest completion theorem
-does not supply it.
+`candidateReplay_registration_factor` proves that each actual honest preparation
+invocation has its checkpoint's probability, using their shared source occurrence
+and declared reads. `CommitmentCandidates.preparationWeight` counts openable
+tracked handles; acceptance of an unprepared handle leaves this product unchanged.
+The generic single-coordinate product calculation is shared with registered
+commitments. `candidateReplay_prefix_prob_eq_product` derives native trace mass
+from the shared message-runner likelihood theorem, including zero-probability
+prefixes. `extractedCandidateSourceRun_native_prefix_law`, audited as
+`pending_candidate_source_native_prefix_law` in `Paper.lean`, identifies the
+complete native prefix law through first timeout with the extracted source run's
+replay law. The original opponents' policies remain unchanged. Focal and
+environment responses are arbitrary fixed functions; invocation schedules are
+arbitrary finite lists. No service premise is needed for this prefix result.
+
+The remaining candidate steps are randomized response lifting, continuation and
+stopped-round coupling, arbitrary-deviation round completion, and the source-only
+utility comparison. The honest completion theorem does not supply termination
+for arbitrary candidate deviations.
 
 ## End-to-end target
 
@@ -176,7 +189,8 @@ proved laws, not accept them as caller obligations.
 The registered-site host already has the source-payout strategic result. The
 candidate host has immutable accepted meaning, completed public settlement
 witnesses, and the original source payout law for honest stopped-round execution.
-The candidate deviation law is the next proof task. More general source
+Its fixed-response source/native prefix law is also proved. The completed-round
+deviation utility bound is the next proof task. More general source
 continuation criteria, guarded choices, sampling, heterogeneous values, and
 cryptographic or ledger refinement are further scope requirements; their exact additional assumptions must be
 determined, not represented by guessed theorem signatures. An obstruction must
@@ -408,6 +422,16 @@ inbox, public ledger, sent messages, receipts, and local command history. The
 environment may use all pending payloads. Its randomized backtranslation
 preserves joint response dependence rather than independently resampling honest
 source choices after disclosure.
+
+Pending-message visibility is explicit dissemination: delivery copies a still-pending
+packet into a player's inbox without including it. A later player invocation can
+react before inclusion. Arbitrary invocation schedules admit submission, delivery,
+reaction, and inclusion interleaved in that order. The completed-round strategic
+theorem uses the more structured driver: all player calls, then wire-service calls,
+then a tick. A packet delivered in its service phase can be acted on next round
+while still pending. Neither interface gives players synchronous global access
+to the entire pool. The external wire policy is adaptive but fixed; player-builder
+coalitional control is not a unilateral player deviation in this game.
 
 An inclusion check alone cannot protect against observing a pending opening.
 The compiled policy checks the publication barrier **before submission**:

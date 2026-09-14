@@ -27,6 +27,7 @@ import Vegas.Compile.SealedRandomizedCoupling
 import Vegas.Compile.SealedRoundCoupling
 import Vegas.Compile.SealedHonestRound
 import Vegas.Compile.SealedCandidateHonestRound
+import Vegas.Compile.SealedCandidateNativeLikelihood
 import Vegas.Compile.SealedPublicOutcome
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
@@ -1549,6 +1550,46 @@ theorem pending_candidate_timeout_source_choice
 
 end CandidateSettlement
 
+/-- Exact whole-prefix law for candidate-host unilateral deviations with
+fixed native response functions. The cutoff is first timeout, not completed
+settlement; randomized stopping and the incentive comparison are separate. -/
+theorem pending_candidate_source_native_prefix_law
+    [Fintype Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (focal : Player)
+    (deviator :
+      List (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.PlayerEntry →
+      (compilation.supported.resolvingRuntime nullValue window).candidateApplication.View →
+      (compilation.supported.resolvingRuntime nullValue window).candidateApplication.PlayerCommand)
+    (environment :
+      List (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.EnvironmentEntry →
+      (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.EnvironmentObservation →
+      (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.EnvironmentPolicyCommand)
+    (schedule : List (@MessageApplication.Invocation Player)) (fallback : L.Val ty)
+    (profile : SourceBehavioralProfile source.core.prog) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    let players := Profile.update
+      (sig := MessageApplication.policySignature Player runtime.candidateApplication)
+      (fun who => compilation.compileCandidatePolicy nullValue window who (profile who)) focal
+      (fun history view => FinDist.pure (deviator history view))
+    let stop := fun execution : runtime.candidateApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    (compilation.extractedCandidateSourceRun nullValue window focal deviator environment schedule
+      fallback profile).map (fun cfg =>
+        (compilation.supported.candidateReplay nullValue window (cfg.1.nodeValues fallback) focal
+          deviator environment schedule).prefixThrough stop) =
+      (runtime.candidateApplication.tracePolicies players
+        (fun history view => FinDist.pure (environment history view)) schedule
+        (MessageApplication.PolicyExecution.initial _
+          (MessageApplication.State.initial _ runtime.candidateInitial))).map
+            (MessageApplication.PolicyTrace.prefixThrough stop) :=
+  compilation.extractedCandidateSourceRun_native_prefix_law nullValue window focal deviator
+    environment schedule fallback profile
+
 namespace Source
 
 theorem committed_binding_accounted (source : WFProgram Player L) (name : VarId)
@@ -1878,6 +1919,11 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_source_native_prefix_law
+
+/-- info: 'Vegas.Paper.pending_candidate_source_native_prefix_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_source_native_prefix_law
 
 /-- info: 'Vegas.Paper.pending_randomized_source_coupling' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

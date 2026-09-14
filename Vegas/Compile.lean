@@ -39,6 +39,7 @@ import Vegas.Compile.SealedCandidateCylinder
 import Vegas.Compile.SealedCandidateSourceLikelihood
 import Vegas.Compile.SealedCandidateReferenceKernel
 import Vegas.Compile.SealedCandidateSourceFactors
+import Vegas.Compile.SealedCandidateNativeLikelihood
 import Vegas.Compile.SealedCandidateReadBound
 import Vegas.Compile.SealedCandidateReplay
 import Vegas.Compile.SealedCandidateSourceExtraction
@@ -120,6 +121,8 @@ selection and unopenable commitments are not covered by the unilateral coupling
 for the registered-site service.
 `SealedCandidateSourceExtraction` constructs a written-source replacement from
 acceptance-time replay and proves consistency of its complete source runs.
-The joint law identifying these replays with the original native execution
-remains separate from that source-policy construction.
+`SealedCandidateNativeLikelihood` identifies the complete original native prefix
+law through first timeout for fixed focal/environment responses and arbitrary
+finite invocation schedules. Randomized stopping, arbitrary candidate-round
+completion, and the completed-round deviation utility comparison remain open.
 -/

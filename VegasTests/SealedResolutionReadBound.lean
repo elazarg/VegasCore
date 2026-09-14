@@ -5,6 +5,7 @@ import Vegas.Compile.SealedCandidateSourceExtraction
 import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateSourceLikelihood
 import Vegas.Compile.SealedCandidateSourceFactors
+import Vegas.Compile.SealedCandidateNativeLikelihood
 import VegasTests.PendingSource
 
 /-! # Native registration and acceptance hiding for a checked two-player source
@@ -448,6 +449,42 @@ theorem candidate_source_prefix_product (profile : SourceBehavioralProfile core)
   intro schedule stop replay
   exact compilation.extractedCandidateSourceRun_replay_prob_eq_product none 3 1 selectCommand
     (fun _ _ => .include (1, 0)) schedule none reference profile
+
+private def pendingReactiveCommand (history : List runtime.candidateApplication.PlayerEntry)
+    (view : runtime.candidateApplication.View) : runtime.candidateApplication.PlayerCommand :=
+  match history.length with
+  | 0 => .privateCommand ⟨(10, some false)⟩
+  | 1 => .privateCommand ⟨(11, some true)⟩
+  | 2 => .submit (.commitment 1 (1, if view.messages.inbox.isEmpty then 10 else 11))
+  | _ => .wait
+
+/-- The two-player native prefix law includes a deviator choosing between
+independently prepared candidates after receiving a still-pending commitment.
+The environment delivers the honest packet before permitting focal acceptance;
+the honest source policy remains arbitrary. -/
+theorem candidate_source_native_pending_reaction (profile : SourceBehavioralProfile core) :
+    let schedule : List (@Invocation PendingSource.Player) :=
+      [.player 0, .player 0, .environment, .player 1, .player 1, .player 1, .environment]
+    let environment := fun (history : List runtime.candidateApplication.EnvironmentEntry)
+        (_ : runtime.candidateApplication.EnvironmentObservation) =>
+      if history.isEmpty then .deliver 1 (0, 0) else .include (1, 0)
+    let stop := fun execution : runtime.candidateApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    let players := GameTheory.Profile.update
+      (sig := policySignature PendingSource.Player runtime.candidateApplication)
+      (fun who => compilation.compileCandidatePolicy none 3 who (profile who)) 1
+      (fun history view => FinDist.pure (pendingReactiveCommand history view))
+    (compilation.extractedCandidateSourceRun none 3 1 pendingReactiveCommand environment schedule
+      none profile).map (fun cfg =>
+        (sealedFragment.candidateReplay none 3 (cfg.1.nodeValues none) 1 pendingReactiveCommand
+          environment schedule).prefixThrough stop) =
+      (runtime.candidateApplication.tracePolicies players
+        (fun history view => FinDist.pure (environment history view)) schedule
+        (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial))).map
+          (PolicyTrace.prefixThrough stop) := by
+  intro schedule environment stop players
+  exact compilation.extractedCandidateSourceRun_native_prefix_law none 3 1 pendingReactiveCommand
+    environment schedule none profile
 
 end VegasTests.SealedResolutionReadBound
 

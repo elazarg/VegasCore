@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.IdealCommitments
+import GameTheoryExtensions.Math.Finset
 import GameTheory.Math.Probability.FinDist
 
 /-! # Products indexed by first registrations
@@ -58,22 +59,11 @@ theorem registrationWeight_sealValue (state : IdealCommitments Principal Slot Va
         by_cases howner : handle.1 = owner
         · exact Or.inr (fun hslot => hne (Prod.ext howner hslot))
         · exact Or.inl howner
-      by_cases hmem : (owner, slot) ∈ handles
-      · simp only [hmem, and_self, ↓reduceIte]
-        unfold registrationWeight
-        rw [← Finset.mul_prod_erase handles _ hmem,
-          ← Finset.mul_prod_erase handles
-            (fun handle => if (state.lookup handle).isSome then factor handle else 1) hmem]
-        simp only [hnew, Option.isSome_some, ↓reduceIte, hlookup,
-          Option.isSome_none, Bool.false_eq_true, one_mul]
-        rw [mul_comm]
-        congr 1
-        apply Finset.prod_congr rfl
-        intro handle hhandle
-        rw [hother handle (Finset.mem_erase.mp hhandle).1]
-      · simp only [hmem, false_and, ↓reduceIte, mul_one, registrationWeight]
-        apply Finset.prod_congr rfl
-        intro handle hhandle
-        rw [hother handle (fun heq => hmem (heq ▸ hhandle))]
+      simp only [and_true]
+      apply Finset.prod_ite_of_single_activation
+      · simp only [hlookup, Option.isSome_none]
+      · simp only [hnew, Option.isSome_some]
+      · intro handle hne
+        rw [hother handle hne]
 
 end Interaction.IdealCommitments

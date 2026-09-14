@@ -11,8 +11,10 @@ at every source decision. The compiler's declared source reads supply the
 earlier disclosed values used by acceptance replay. At matching source views,
 the action is exactly the selected candidate's opening, or the legal fallback
 if no opening is available. Complete source realizations discharge that
-input-agreement premise while retaining the original opponent policies. Their
-replayed native executions do not yet have a proved joint deviation law.
+input-agreement premise while retaining the original opponent policies.
+`Vegas.Compile.SealedCandidateNativeLikelihood` identifies their replay law
+with the actual native prefix through first timeout. Completed-round deviation
+utility comparison is a separate theorem obligation.
 -/
 
 noncomputable section
