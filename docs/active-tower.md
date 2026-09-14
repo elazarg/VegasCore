@@ -177,9 +177,20 @@ the checked source/graph law. `extractedSourceRun_replay_likelihood`, audited as
 forced-choice likelihood averaged over the normalized restricted source law.
 These equalities allow arbitrary cutoffs, dependent choices, and zero-mass events.
 
-The remaining fixed-response probability argument must prove this weight constant
-before first timeout using the fresh-kernel agreement, and identify that constant
-with the actual native invocation product. The compiler's source cylinder sum and
+`restrictedSourceRun_weight_eq_product` proves this weight constant throughout
+the reference source law. Each occupied honest slot has a pre-timeout registration
+checkpoint, supplied by the native provenance theorem
+`SealedResolution.registrationCheckpoint_selected`. At that checkpoint the
+original native kernel supplies the corresponding source factor. Focal and
+unoccupied source slots contribute one.
+`extractedSourceRun_replay_prob_eq_product`, audited as `pending_source_prefix_product`,
+therefore expresses the source cylinder mass as an explicit product of original
+native registration probabilities, with the reference expectation eliminated.
+
+The remaining fixed-response probability argument identifies this product with
+the actual native invocation product: each fresh honest registration occurs once,
+all other invocations contribute one, and the original kernel agrees between its
+selected checkpoint and its actual invocation. The compiler's source product and
 the general native factorization are checked; their equality is not.
 Randomized responses must also be predrawn
 consistently across honest assignments, and the post-timeout native suffix must

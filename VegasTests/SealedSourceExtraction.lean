@@ -497,4 +497,79 @@ theorem initial_source_probability (profile : SourceBehavioralProfile core)
   cases eq_of_heq hsite
   exact hprob chosen
 
+/-- The first native registration contributes its original kernel's mass;
+the source's later focal decision contributes no restriction factor. -/
+theorem first_registration_factors (profile : SourceBehavioralProfile core) (value : Value) :
+    (source.core.prog.decisionPositions.map fun slot =>
+      compilation.replayRegistrationFactor none 3 1 deviator environment [.player 0]
+        (fun _ => value) profile slot.1 slot.2).prod =
+      (compilation.compileResolvingPolicy none 3 0 (profile 0) []
+        (State.observe app initial.native 0)).prob (.privateCommand ⟨(0, value)⟩) := by
+  classical
+  have hpositions : source.core.prog.decisionPositions = [(0, 0), (1, 2)] := rfl
+  rw [hpositions]
+  simp only [List.map_cons, List.map_nil, List.prod_cons, List.prod_nil, mul_one]
+  have hfocal : compilation.replayRegistrationFactor none 3 1 deviator environment [.player 0]
+      (fun _ => value) profile 1 2 = 1 := by
+    simp only [SealedCompilation.replayRegistrationFactor, ↓reduceIte]
+  rw [hfocal, mul_one]
+  have hcommand : .privateCommand ⟨(0, value)⟩ ∈
+      (supported.resolvingValuePlayers none 3 (fun _ => value) 1
+        (fun history view => FinDist.pure (deviator history view)) 0
+        [] (State.observe app initial.native 0)).support := by
+    rw [SealedFragment.resolvingValuePlayers,
+      GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)]
+    rw [first_policy, FinDist.mem_support_pure]
+  unfold SealedCompilation.replayRegistrationFactor
+  rw [if_neg (show (0 : Player) ≠ 1 by decide), first_replay]
+  simp only [PolicyTrace.prefixThrough]
+  have hlookup : (registered value).native.application.service.lookup (0, 0) = some value := by
+    simp only [registered, IdealCommitments.lookup_sealValue, IdealCommitments.lookup_empty,
+      ↓reduceIte]
+    rfl
+  erw [hlookup]
+  simp only [SealedResolution.registrationCheckpoint]
+  have hstop : (!initial.native.application.visible.timeouts.isEmpty) = false := rfl
+  simp only [PolicyTrace.prefixThrough, hstop, Bool.false_eq_true, ↓reduceIte,
+    PolicyTrace.firstRelease, Bool.not_false]
+  have hselect : (true && decide (.privateCommand ⟨(0, value)⟩ ∈
+      (supported.resolvingValuePlayers none 3 (fun _ => value) 1
+        (fun history view => FinDist.pure (deviator history view)) 0
+        [] (State.observe app initial.native 0)).support)) = true := by
+    simp only [hcommand, decide_true, Bool.and_self]
+  erw [if_pos hselect]
+  rfl
+
+/-- The whole-source cylinder sum at the first native registration is its
+original command probability, without a positive-probability premise. -/
+theorem first_registration_source_mass (profile : SourceBehavioralProfile core)
+    (value fallback : Value) :
+    let stop := fun execution : app.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    ((compilation.extractedSourceRun none 3 1 deviator environment [.player 0] fallback profile).map
+      fun cfg => (supported.resolvingReplay none 3 (cfg.1.nodeValues fallback) 1 deviator
+        environment [.player 0]).prefixThrough stop).prob
+          (.step initial (.finish (registered value))) =
+      (compilation.compileResolvingPolicy none 3 0 (profile 0) []
+        (State.observe app initial.native 0)).prob (.privateCommand ⟨(0, value)⟩) := by
+  have hmass := compilation.extractedSourceRun_replay_prob_eq_product none 3 1 deviator environment
+    [.player 0] fallback (fun _ => value) profile
+  dsimp only at hmass
+  rw [first_replay] at hmass
+  simp only [PolicyTrace.prefixThrough] at hmass
+  exact hmass.trans (first_registration_factors profile value)
+
+/-- A replay assigning quit against a non-quitting original kernel has zero
+source prefix mass, although the normalized reference execution still exists. -/
+theorem zero_source_prefix_mass (fallback : Value) :
+    let stop := fun execution : app.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    ((compilation.extractedSourceRun none 3 1 deviator environment [.player 0] fallback
+      (compilation.valueSourceProfile (fun _ => some true))).map fun cfg =>
+        (supported.resolvingReplay none 3 (cfg.1.nodeValues fallback) 1 deviator environment
+          [.player 0]).prefixThrough stop).prob
+            (.step initial (.finish (registered none))) = 0 := by
+  exact (first_registration_source_mass (compilation.valueSourceProfile (fun _ => some true))
+    none fallback).trans (FinDist.prob_eq_zero_iff.mpr (zero_probability_assignment fallback).2)
+
 end VegasTests.SealedSourceExtraction

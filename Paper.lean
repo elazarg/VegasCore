@@ -493,6 +493,27 @@ theorem pending_source_cylinder_likelihood
   compilation.extractedSourceRun_replay_likelihood nullValue window focal deviator environment
     schedule fallback reference release profile
 
+/-- The source prefix probability is a product of original native registration
+probabilities at fixed replay checkpoints. The source reference sum is fully
+discharged; the actual native invocation product remains to be identified. -/
+theorem pending_source_prefix_product
+    (reference : Fin (ToEventGraph.compile source.core).graph.nodeCount → L.Val ty)
+    (profile : SourceBehavioralProfile source.core.prog) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    let stop := fun execution : runtime.messageApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    let stopped := (compilation.supported.resolvingReplay nullValue window reference focal
+      deviator environment schedule).prefixThrough stop
+    ((compilation.extractedSourceRun nullValue window focal deviator environment schedule fallback
+      profile).map fun cfg =>
+        (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback) focal
+          deviator environment schedule).prefixThrough stop).prob stopped =
+      (source.core.prog.decisionPositions.map fun slot =>
+        compilation.replayRegistrationFactor nullValue window focal deviator environment schedule
+          reference profile slot.1 slot.2).prod :=
+  compilation.extractedSourceRun_replay_prob_eq_product nullValue window focal deviator environment
+    schedule fallback reference profile
+
 /-- Each fresh honest registration before timeout has exactly the original
 source decision probabilities at every reference realization's recorded view.
 This identifies individual factors, not the complete native prefix law. -/
@@ -1198,3 +1219,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_registration_source_probability
+
+/-- info: 'Vegas.Paper.pending_source_prefix_product' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_source_prefix_product

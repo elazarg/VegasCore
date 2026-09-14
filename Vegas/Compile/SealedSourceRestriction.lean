@@ -82,6 +82,22 @@ def registrationRestriction (focal : Player)
       (service.lookup (who, site.depth)).map fun value =>
         compilation.sourceChoice value who site visible
 
+/-- The legal source choice selected by an occupied honest slot retains that
+slot's value and type, independently of the source view used to justify it. -/
+theorem registrationRestriction_fixed_value (focal : Player)
+    (service : IdealCommitments Player Nat (L.Val ty)) (who : Player) (hwho : who ≠ focal)
+    {Δ name choiceTy guard}
+    (site : SourceDecisionSite who source.core.prog Δ name choiceTy guard)
+    (visible : Env L.Val (eraseVCtx (viewVCtx who Δ)))
+    (value : L.Val ty) (hlookup : service.lookup (who, site.depth) = some value)
+    (fixed : {chosen : L.Val choiceTy // evalGuard guard chosen visible = true})
+    (hfixed : compilation.registrationRestriction focal service who site visible = some fixed) :
+    (⟨choiceTy, fixed.1⟩ : TypedValue L) = ⟨ty, value⟩ := by
+  simp only [registrationRestriction, if_neg hwho, hlookup, Option.map_some,
+    Option.some.injEq] at hfixed
+  subst fixed
+  exact compilation.sourceChoice_value value who site visible
+
 /-- A source outcome satisfies the native registration restriction exactly
 when its recorded honest source choices equal the occupied service values. -/
 theorem registrationRestriction_allows_iff_recorded (focal : Player)

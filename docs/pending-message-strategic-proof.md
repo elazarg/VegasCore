@@ -483,9 +483,10 @@ fresh registration before timeout, every reference source realization gives
 the same original written-source decision probabilities as that native input.
 It identifies the source occurrence by its instruction position and recovers
 the source view from terminal compiler-field agreement. Its equality covers
-all queried values, without assuming they have positive probability. Applying
-this identity at every recorded registration and equating the resulting source
-and native products remains a whole-prefix obligation.
+all queried values, without assuming they have positive probability.
+`restrictedSourceRun_weight_eq_product` applies it to every occupied honest slot
+and proves the source likelihood constant. Equating the resulting product with
+the native invocation product remains a whole-prefix obligation.
 
 At that native registration, all producers of declared reads are complete.
 An honest producer has already registered, constraining its value in `C_t`.
@@ -560,12 +561,25 @@ then instantiates the source restriction identity above: the replay cylinder
 mass is exactly the expectation of `W_t` under the ordinary reference source
 execution. `Vegas.Paper.pending_source_cylinder_likelihood` audits this formula.
 
-The remaining fixed-response probability obligation is to derive constant weight
-from the all-assignment kernel agreement and identify it with the actual native
-invocation product before first timeout.
-In particular, positivity under `mu_w` cannot
-replace the all-assignment comparison: `nu_t` may support environments that
-have zero original probability.
+`restrictedSourceRun_weight_eq_product` proves `W_t` constant throughout `nu_t`.
+`VegasCore.decisionPositions` enumerates the owners and source instruction
+positions; `SourceChoiceRestriction.weight_eq_decision_product` indexes the source
+likelihood by these positions. At every occupied honest slot, the native theorem
+`SealedResolution.registrationCheckpoint_selected` supplies a pre-timeout snapshot
+whose owner policy can select the recorded registration. The source/native
+decision identity supplies its factor at every reference realization. No positive
+mass under `mu_w` is required. The theorem
+`extractedSourceRun_replay_prob_eq_product`, audited as
+`Vegas.Paper.pending_source_prefix_product`, eliminates the expectation and
+identifies the source cylinder mass with this fixed product.
+
+The remaining fixed-response probability obligation is to identify that product
+with the actual native invocation product before first timeout. This requires
+counting each fresh honest registration exactly once and proving all remaining
+invocations contribute one. The selected checkpoint is the first snapshot where
+the replay policy can choose the registration; it need not be the invocation
+that executes it. Source-input agreement must identify their kernel probabilities,
+not assume equality of these two snapshots.
 
 This step preserves dependent honest draws. It does not assume that a
 scheduler's public input is independent of every still-unopened value.
@@ -798,6 +812,8 @@ The current repository has:
 - exact equivalence of the written-source restriction event and native replay
   cylinder, and the compiler-specific source cylinder probability as an
   expectation of original-choice likelihood under the normalized reference law;
+- constancy of that likelihood across the complete reference law, giving an
+  explicit source cylinder product of original native registration probabilities;
 - retention of all focal source-owned registrations at a common first-timeout
   snapshot, including speculative registrations;
 - private-registration provenance and agreement of all players' source-owned
@@ -868,9 +884,14 @@ reference restriction, proves exact prefix replay for its supported source
 realizations, and compares each original source kernel at their recorded native
 inputs. The restriction event is exactly the replay cylinder on the original
 source law, and its probability is the expected original-choice likelihood under
-the restricted reference source law. Matching that complete likelihood product
-to the native invocation product remains open; it is needed for the original
-native marginal law.
+the restricted reference source law. That likelihood is proved constant, with
+one factor per source decision and unit factors for focal or unoccupied slots.
+Matching this product to the native invocation product remains open; it is needed
+for the original native marginal law.
+The existing proof of `extractedSourceRun_registration_kernel` already derives
+its local invariants from supported execution before and after the selected
+snapshot. For the native induction, those prefix/suffix witnesses can be supplied
+at each actual invocation; no additional operational model is needed.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
 

@@ -98,6 +98,83 @@ def weight : {Γ : VCtx P L} → {prog : VegasCore P L Γ} → SourceChoiceRestr
 
 end SourceChoiceRestriction
 
+/-- Owners and instruction positions of source commitments, in written order.
+Samples and reveals advance the instruction position without adding a decision. -/
+def VegasCore.decisionPositions : {Γ : VCtx P L} → VegasCore P L Γ → List (P × Nat)
+  | _, .ret _ => []
+  | _, .sample _ _ tail => tail.decisionPositions.map fun slot => (slot.1, slot.2 + 1)
+  | _, .commit _ who _ tail =>
+      (who, 0) :: tail.decisionPositions.map fun slot => (slot.1, slot.2 + 1)
+  | _, .reveal _ _ _ _ tail => tail.decisionPositions.map fun slot => (slot.1, slot.2 + 1)
+
+/-- The restriction likelihood is a product indexed by source decisions.
+Factors may be specified in another execution order: only their value at each
+recorded source input matters. The reference profile need not be the profile
+whose probabilities supply the factors. -/
+theorem SourceChoiceRestriction.weight_eq_decision_product : {Γ : VCtx P L} →
+    (prog : VegasCore P L Γ) → (profile reference : SourceBehavioralProfile prog) →
+    (restriction : SourceChoiceRestriction prog) → (env : VEnv L Γ) →
+    (final : VEnv L (sourceTerminalCtx prog)) →
+    final ∈ (denoteSource prog reference env).support → (factor : P → Nat → ℝ) →
+    (∀ who {Δ name ty guard} (site : SourceDecisionSite who prog Δ name ty guard),
+      let visible := ((site.recorded final).tail.toView who).eraseEnv
+      (restriction who site visible = none → factor who site.depth = 1) ∧
+      (∀ fixed, restriction who site visible = some fixed →
+        factor who site.depth = ((profile who site visible).map Subtype.val).prob fixed.1)) →
+    restriction.weight profile env final =
+      (prog.decisionPositions.map fun slot => factor slot.1 slot.2).prod
+  | _, .ret _, _, _, _, _, _, _, _, _ => rfl
+  | _, .sample _ _ tail, profile, reference, restriction, env, final, hfinal, factor, hfactor => by
+      change VEnv L (sourceTerminalCtx tail) at final
+      simp only [denoteSource, FinDist.support_bind, Set.mem_iUnion] at hfinal
+      obtain ⟨value, _, htail⟩ := hfinal
+      change restriction.afterSample.weight profile.afterSample
+        (env.cons ((sourceInitialProjection tail final).get .here)) final = _
+      rw [denoteSource_initialProjection tail _ (env.cons value) final htail, VEnv.cons_get_here]
+      simp only [VegasCore.decisionPositions, List.map_map, Function.comp_def]
+      apply SourceChoiceRestriction.weight_eq_decision_product tail profile.afterSample
+        reference.afterSample restriction.afterSample (env.cons value) final htail
+        (fun who depth => factor who (depth + 1))
+      intro who Δ name ty guard site
+      exact hfactor who (.sample site)
+  | _, .commit _ actor sourceGuard tail, profile, reference, restriction, env, final,
+      hfinal, factor, hfactor => by
+      change VEnv L (sourceTerminalCtx tail) at final
+      simp only [denoteSource, FinDist.support_bind, Set.mem_iUnion] at hfinal
+      obtain ⟨choice, _, htail⟩ := hfinal
+      have hprojection := denoteSource_initialProjection tail _ (env.cons choice.1) final htail
+      change (match restriction actor (.here sourceGuard tail) (env.toView actor).eraseEnv with
+        | none => 1
+        | some fixed =>
+            ((profile actor (.here sourceGuard tail) (env.toView actor).eraseEnv).map
+              Subtype.val).prob fixed.1) *
+        restriction.afterCommit.weight profile.afterCommit
+          (env.cons ((sourceInitialProjection tail final).get .here)) final = _
+      rw [hprojection, VEnv.cons_get_here]
+      have hhead := hfactor actor (.here sourceGuard tail)
+      simp only [SourceDecisionSite.recorded] at hhead
+      erw [hprojection] at hhead
+      have htailFactors := SourceChoiceRestriction.weight_eq_decision_product tail
+        profile.afterCommit reference.afterCommit restriction.afterCommit (env.cons choice.1)
+        final htail (fun who depth => factor who (depth + 1))
+        (fun who _ _ _ _ site => hfactor who (.commit site))
+      rw [htailFactors]
+      simp only [VegasCore.decisionPositions, List.map_cons, List.map_map, Function.comp_def,
+        List.prod_cons]
+      congr 1
+      cases hfixed : restriction actor (.here sourceGuard tail) (env.toView actor).eraseEnv with
+      | none => exact (hhead.1 hfixed).symm
+      | some fixed => exact (hhead.2 fixed hfixed).symm
+  | _, .reveal _ actor name source tail, profile, reference, restriction, env, final,
+      hfinal, factor, hfactor => by
+      simp only [VegasCore.decisionPositions, List.map_map, Function.comp_def]
+      apply SourceChoiceRestriction.weight_eq_decision_product tail profile.afterReveal
+        reference.afterReveal restriction.afterReveal
+        (env.cons (@VEnv.get P L _ name (.sealed actor _) env source)) final hfinal
+        (fun who depth => factor who (depth + 1))
+      intro who Δ name ty guard site
+      exact hfactor who (.reveal site)
+
 /-- On an actual source outcome, restriction acceptance is exactly agreement
 at every selected decision occurrence. Its inputs and chosen values are read
 from that same terminal source environment. -/
