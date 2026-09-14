@@ -99,6 +99,7 @@ abbrev PolicyExecution (app : MessageApplication Principal) :=
 inductive Invocation where
   | player (who : Principal)
   | environment
+  deriving DecidableEq
 
 def Invocation.isEnvironment : @Invocation Principal → Bool
   | .player _ => false

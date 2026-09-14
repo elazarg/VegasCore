@@ -624,20 +624,23 @@ theorem pending_copy_coupling_native (profile : SourceBehavioralProfile core)
   compilation.extractedSourceCoupling_native none 3 1 deviator environment schedule fallback
     profile
 
-/-- A randomized observer of pending openings is covered by a finite mixture
-of the constructed source/native couplings; it is not restricted to the
-deterministic copying strategy used by the earlier regressions. -/
+/-- A randomized observer and randomized environment are covered jointly by a
+finite mixture of deterministic-response source/native couplings. The mixture
+may correlate their predrawn responses. -/
 theorem randomized_pending_native_mixture (profile : SourceBehavioralProfile core)
-    (fallback : Value) (replacement : app.PlayerPolicy) :
+    (fallback : Value) (replacement : app.PlayerPolicy)
+    (randomizedEnvironment : app.EnvironmentPolicy) :
     let players := GameTheory.Profile.update (sig := policySignature Player app)
       (fun who => compilation.compileResolvingPolicy none 3 who (profile who)) 1 replacement
-    ∃ responses : FinDist (List app.PlayerEntry → app.View → app.PlayerCommand),
-      (responses.bind fun response => compilation.extractedSourceCoupling none 3 1 response
-        environment schedule fallback profile).map Prod.snd =
-        app.runPolicies players (fun history view => FinDist.pure (environment history view))
-          schedule initial := by
-  obtain ⟨responses, _, _, hnative⟩ := compilation.exists_randomized_source_coupling none 3 1
-    environment schedule fallback profile replacement
-  exact ⟨responses, hnative⟩
+    ∃ responsePairs : FinDist
+        ((List app.PlayerEntry → app.View → app.PlayerCommand) ×
+          (List app.EnvironmentEntry → app.EnvironmentObservation → app.EnvironmentPolicyCommand)),
+      (responsePairs.bind fun responses => compilation.extractedSourceCoupling none 3 1 responses.1
+        responses.2 schedule fallback profile).map Prod.snd =
+        app.runPolicies players randomizedEnvironment schedule initial := by
+  obtain ⟨responsePairs, _, _, hnative⟩ :=
+    compilation.exists_randomized_source_coupling none 3 1 randomizedEnvironment schedule fallback
+      profile replacement
+  exact ⟨responsePairs, hnative⟩
 
 end VegasTests.SealedSourceExtraction

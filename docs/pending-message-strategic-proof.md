@@ -10,9 +10,8 @@ The operational resolution rules in Section 3 are implemented by
 The source-policy translation implements those completion checks and retains
 own private memory across nullable defaults; its before-timeout policy law is
 checked. The source/native execution coupling, including the actual timeout
-continuation and arbitrary randomized focal policies, is checked for fixed
-deterministic environment responses. The general source-settlement edge,
-service and termination bounds, randomized environment responses, and the
+continuation and arbitrary randomized focal and environment policies, is checked.
+The general source-settlement edge, service and termination bounds, and the
 utility comparison remain Lean obligations.
 The whole argument has not been checked in Lean or independently reviewed.
 Section 8 gives the implementation boundary. In particular, this note is not
@@ -332,12 +331,26 @@ Do not predraw the honest values into a tape accessible to the source
 deviator. Their kernels can depend on earlier private values and disclosures.
 
 The checked `MessageApplication.exists_native_response_mixture_tracePolicies`
-predraws the focal player only and preserves the entire invocation trace law,
-with arbitrary other player and environment policies unchanged. It needs neither
-finite native command types nor a uniform cover over all honest assignments.
-Its finite mixture may depend on the fixed opponent profile. The stronger
-common-seed construction across environments and opponent profiles described
-above is not claimed by that theorem.
+predraws the focal player with other policies unchanged;
+`exists_environment_response_mixture_tracePolicies` predraws the environment
+with every player policy unchanged. Both instantiate one shared proof for a
+selected native invocation and preserve the entire invocation trace law.
+Neither changes the environment's full-pool observation or the application's
+stochastic kernels. Selecting an environment invocation in the singleton
+analysis protocol does not add a strategic player to the runtime game.
+
+Composing these decompositions yields a finite joint mixture of deterministic
+focal and environment responses. The second mixture may depend on the first
+response; an independent product is not assumed. This is an analytical joint
+draw, not a runtime mechanism giving players access to shared randomness.
+The result needs neither finite native command types nor a uniform cover over
+all honest assignments.
+It may depend on the fixed opponent profile. The stronger common-seed
+construction across environments and opponent profiles described above is not
+claimed by these theorems. Exact trace preservation transports any almost-sure
+property of the actual executions; it does not claim that each deterministic
+environment obeys a service condition at unreachable histories or against all
+other profiles.
 
 ### 5.2 Value-substituted replay and read-boundedness
 
@@ -638,8 +651,9 @@ first-timeout snapshot already includes the clock transition that produced it;
 resumption does not repeat that transition. `SealedCompilation.extractedSourceCoupling`
 uses this identity, and its source and native marginals and joint stopped-prefix/
 final-native law are checked. `exists_randomized_source_coupling` averages these
-couplings using focal trace predrawing. It keeps the environment response function
-fixed and permits the mixture to depend on the opponent profile.
+couplings using a joint finite predrawing of the focal and environment responses.
+Both native policies can be randomized, and the mixture may depend on the
+opponent profile.
 `extractedSourceCoupling_clear` proves pointwise that a timeout-free final state
 is the full replay of the retained source realization: timeout records cannot
 be erased, so the cutoff retained the entire invocation list. If the native
@@ -861,9 +875,9 @@ The current repository has:
   deterministic focal and environment responses;
 - exact attachment of the actual post-timeout native continuation, preserving
   both the ordinary source marginal and the joint stopped-prefix/final-native law;
-- trace-preserving focal predrawing and the resulting source/native coupling
-  mixture for arbitrary randomized unilateral replacements, with a fixed
-  deterministic environment response function and unchanged opponent kernels;
+- trace-preserving predrawing of both focal and environment responses and the
+  resulting source/native coupling mixture for arbitrary randomized unilateral
+  replacements and randomized environments, with unchanged opponent kernels;
 - pointwise identification of a completed, timeout-free coupled native run
   with the retained source realization under event decoding, also for mixtures;
 - retention of all focal source-owned registrations at a common first-timeout
@@ -945,7 +959,8 @@ once. `replay_prefix_prob_eq_product` and the normalized-source support argument
 close the fixed-response native marginal in `extractedSourceRun_native_prefix_law`.
 `extractedSourceCoupling_prefix_native` attaches the original suffix using the
 retained state and histories; `exists_randomized_source_coupling` lifts the
-joint law to randomized focal policies. `Vegas.Paper.pending_randomized_source_coupling`
+joint law to randomized focal and environment policies.
+`Vegas.Paper.pending_randomized_source_coupling`
 audits the joint law and both marginals by direct delegation.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
@@ -962,11 +977,9 @@ The remaining implementation work is specific:
 3. Establish readiness/read invariants after defaults and instantiate the
    fair-service and termination arguments. Do not assume a bare expiration
    status is a source settlement.
-4. Extend trace-preserving predrawing to randomized environment responses. The
-   focal-player mixture and actual native continuation are checked, including
-   their joint stopped-prefix/final-state law. A mixture uniform across opponent
-   profiles would need a common finite cover; the checked profile-dependent
-   mixture suffices for the intended unilateral Nash bound.
+4. Establish the all-compiled honest outcome law. The arbitrary-deviation
+   mixture alone does not identify its source marginal with the original
+   all-honest source profile.
 5. Instantiate the existing `UtilitySimulation` under the explicit
    continuation condition, and audit the end-to-end theorem in `Paper.lean`.
 

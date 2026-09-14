@@ -57,15 +57,16 @@ first timeout, is unchanged when assigned honest values differ only at handles
 not disclosed before that source decision. This is an input to the causal
 backtranslation. `SealedCompilation.exists_randomized_source_coupling` combines
 the extracted written-source policy, exact honest-kernel probabilities, and
-trace-preserving focal predrawing. For every randomized unilateral replacement
-and fixed deterministic environment response function, it constructs a finite
+trace-preserving focal and environment predrawing. For every randomized unilateral
+replacement and randomized environment policy, it constructs a finite
 mixture of source/native couplings with the ordinary source-mixture marginal
 and the complete native marginal. The joint stopped-prefix/final-native law
 is exact, including the actual post-timeout continuation. The environment may
-adapt to its pending-pool view; the mixture may depend on the opponent profile.
+adapt to its pending-pool view. Its predrawn response may be correlated with the
+focal response; the mixture may depend on the opponent profile.
 For every normally completed supported pair,
 `mixtureSourceCoupling_decode_of_complete_clear` proves that native event decoding
 returns exactly the retained source realization, including its terminal store.
 This uses binding and registration agreement, not only marginal equalities.
-Randomized environments, fair-service completion, post-timeout settlement,
+Fair-service completion, the all-compiled honest law, post-timeout settlement,
 and the informed-quitting utility bound remain separate obligations.

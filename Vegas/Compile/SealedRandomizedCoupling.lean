@@ -5,15 +5,16 @@ import Interaction.MessageApplicationPredraw
 
 /-! # Randomized pending-message deviation coupling
 
-Predrawing the focal policy preserves its complete native trace law. Applying
-the source/native coupling to each fixed response therefore preserves the
-joint law of the stopped prefix and final execution. The retained source
-marginal is a finite mixture of ordinary source deviations against unchanged
-opponents. The environment is still a fixed observation-local response
-function; its commands may depend on pending messages and its own history.
+Predrawing the focal policy and the environment preserves their complete native
+trace law. Applying the source/native coupling to each fixed pair of responses
+therefore preserves the joint law of the stopped prefix and final execution.
+The retained source marginal is a finite mixture of ordinary source deviations
+against unchanged opponents.
 
-The mixture may depend on the original opponent profile. These laws do not
-identify post-timeout outcomes or supply the informed-quitting utility bound.
+The pure focal and environment responses in the mixture may be correlated. The
+environment remains a distinct participant and its response is still local to
+its own history and observation. These laws do not identify post-timeout
+outcomes or supply the informed-quitting utility bound.
 -/
 
 noncomputable section
@@ -28,22 +29,20 @@ variable {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 variable (compilation : SealedCompilation source ty)
 variable (nullValue : L.Val ty) (window : Nat) (focal : Player)
 variable (environment :
-  List
-    (compilation.supported.resolvingRuntime nullValue window).messageApplication.EnvironmentEntry →
-  EnvironmentObservation
-    (compilation.supported.resolvingRuntime nullValue window).messageApplication →
-  (compilation.supported.resolvingRuntime nullValue
-    window).messageApplication.EnvironmentPolicyCommand)
+  (compilation.supported.resolvingRuntime nullValue window).messageApplication.EnvironmentPolicy)
 variable (schedule : List (@Invocation Player)) (fallback : L.Val ty)
 
-/-- An arbitrary randomized native replacement has a finite mixture of the
-constructed source/native couplings. It retains the exact joint stopped-prefix
-and final-native law, and its source marginal is a mixture of legal written-source
-deviations. Honest policies and their dependent draws remain unchanged.
+/-- An arbitrary randomized focal replacement and randomized environment have
+a finite mixture of the constructed deterministic-response source/native
+couplings. It retains the exact joint stopped-prefix and final-native law, and
+its source marginal is a mixture of legal written-source deviations. Honest
+policies and their dependent draws remain unchanged.
 
-Completion and the utility comparison after informed quitting are separate
-strategic obligations. Normal completed runs have pointwise source agreement
-by `SealedCompilation.mixtureSourceCoupling_decode_of_complete_clear`. -/
+The two pure responses are drawn jointly: the mixture need not factor into
+independent focal and environment mixtures. Completion and the utility
+comparison after informed quitting are separate strategic obligations. Normal
+completed runs have pointwise source agreement by
+`SealedCompilation.mixtureSourceCoupling_decode_of_complete_clear`. -/
 theorem exists_randomized_source_coupling
     (profile : SourceBehavioralProfile source.core.prog)
     (replacement :
@@ -51,80 +50,140 @@ theorem exists_randomized_source_coupling
     let runtime := compilation.supported.resolvingRuntime nullValue window
     let players := fun who =>
       compilation.compileResolvingPolicy nullValue window who (profile who)
-    let env := fun history view => FinDist.pure (environment history view)
     let initial := PolicyExecution.initial runtime.messageApplication
       (State.initial _ runtime.initial)
     let native := runtime.messageApplication.tracePolicies
       (Profile.update (sig := policySignature Player runtime.messageApplication)
-        players focal replacement) env schedule initial
+        players focal replacement) environment schedule initial
     let stop := fun execution : runtime.messageApplication.PolicyExecution =>
       !execution.native.application.visible.timeouts.isEmpty
-    ∃ responses : FinDist (List runtime.messageApplication.PlayerEntry →
-        runtime.messageApplication.View → runtime.messageApplication.PlayerCommand),
-      (responses.bind fun response =>
-        (compilation.extractedSourceCoupling nullValue window focal response environment schedule
-          fallback profile).map (fun pair =>
+    let PlayerResponse := List runtime.messageApplication.PlayerEntry →
+      runtime.messageApplication.View → runtime.messageApplication.PlayerCommand
+    let EnvironmentResponse := List runtime.messageApplication.EnvironmentEntry →
+      runtime.messageApplication.EnvironmentObservation →
+        runtime.messageApplication.EnvironmentPolicyCommand
+    ∃ responsePairs : FinDist (PlayerResponse × EnvironmentResponse),
+      (responsePairs.bind fun responses =>
+        (compilation.extractedSourceCoupling nullValue window focal responses.1 responses.2
+          schedule fallback profile).map (fun pair =>
             ((compilation.supported.resolvingReplay nullValue window (pair.1.1.nodeValues fallback)
-              focal response environment schedule).prefixThrough stop, pair.2))) =
+              focal responses.1 responses.2 schedule).prefixThrough stop, pair.2))) =
           native.map (fun trace => (trace.prefixThrough stop, trace.last)) ∧
-      ((responses.bind fun response => compilation.extractedSourceCoupling nullValue window focal
-        response environment schedule fallback profile).map
-          (fun pair => observeSourceOutcome source.core pair.1)) =
-        responses.bind (fun response =>
+      ((responsePairs.bind fun responses =>
+        compilation.extractedSourceCoupling nullValue window focal responses.1 responses.2
+          schedule fallback profile).map (fun pair => observeSourceOutcome source.core pair.1)) =
+        responsePairs.bind (fun responses =>
           (denoteSource source.core.prog
             (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
-              (compilation.extractedSourcePolicy nullValue window focal response environment
+              (compilation.extractedSourcePolicy nullValue window focal responses.1 responses.2
                 schedule fallback)) source.core.env).map some) ∧
-      ((responses.bind fun response => compilation.extractedSourceCoupling nullValue window focal
-        response environment schedule fallback profile).map Prod.snd) =
+      ((responsePairs.bind fun responses =>
+        compilation.extractedSourceCoupling nullValue window focal responses.1 responses.2
+          schedule fallback profile).map Prod.snd) =
         runtime.messageApplication.runPolicies
           (Profile.update (sig := policySignature Player runtime.messageApplication)
-            players focal replacement) env schedule initial := by
-  intro runtime players env initial native stop
-  obtain ⟨responses, hresponses⟩ :=
-    runtime.messageApplication.exists_native_response_mixture_tracePolicies players env focal
-      schedule initial replacement
-  refine ⟨responses, ?_, ?_, ?_⟩
+            players focal replacement) environment schedule initial := by
+  intro runtime players initial native stop PlayerResponse EnvironmentResponse
+  obtain ⟨playerResponses, hplayerResponses⟩ :=
+    runtime.messageApplication.exists_native_response_mixture_tracePolicies players environment
+      focal schedule initial replacement
+  have environmentExists (playerResponse : PlayerResponse) :
+      ∃ mixture : FinDist EnvironmentResponse,
+        mixture.bind (fun environmentResponse =>
+          runtime.messageApplication.tracePolicies
+            (Profile.update (sig := policySignature Player runtime.messageApplication)
+              players focal (fun history view => FinDist.pure (playerResponse history view)))
+            (fun history view => FinDist.pure (environmentResponse history view))
+            schedule initial) =
+          runtime.messageApplication.tracePolicies
+            (Profile.update (sig := policySignature Player runtime.messageApplication)
+              players focal (fun history view => FinDist.pure (playerResponse history view)))
+            environment schedule initial :=
+    runtime.messageApplication.exists_environment_response_mixture_tracePolicies
+      (Profile.update (sig := policySignature Player runtime.messageApplication)
+        players focal (fun history view => FinDist.pure (playerResponse history view)))
+      environment schedule initial
+  let environmentResponses (playerResponse : PlayerResponse) : FinDist EnvironmentResponse :=
+    Classical.choose (environmentExists playerResponse)
+  have environmentResponses_law (playerResponse : PlayerResponse) :=
+    Classical.choose_spec (environmentExists playerResponse)
+  let responsePairs : FinDist (PlayerResponse × EnvironmentResponse) :=
+    playerResponses.bind fun playerResponse =>
+      (environmentResponses playerResponse).map fun environmentResponse =>
+        (playerResponse, environmentResponse)
+  have responsePairs_trace :
+      responsePairs.bind (fun responses =>
+        runtime.messageApplication.tracePolicies
+          (Profile.update (sig := policySignature Player runtime.messageApplication)
+            players focal (fun history view => FinDist.pure (responses.1 history view)))
+          (fun history view => FinDist.pure (responses.2 history view)) schedule initial) =
+        native := by
+    change (playerResponses.bind fun playerResponse =>
+      (environmentResponses playerResponse).map fun environmentResponse =>
+        (playerResponse, environmentResponse)).bind _ = _
+    rw [FinDist.bind_bind]
+    calc
+      _ = playerResponses.bind (fun playerResponse =>
+          runtime.messageApplication.tracePolicies
+            (Profile.update (sig := policySignature Player runtime.messageApplication)
+              players focal (fun history view => FinDist.pure (playerResponse history view)))
+            environment schedule initial) := by
+        apply FinDist.bind_congr
+        intro playerResponse _
+        rw [FinDist.bind_map]
+        exact environmentResponses_law playerResponse
+      _ = native := hplayerResponses
+  refine ⟨responsePairs, ?_, ?_, ?_⟩
   · have h := congrArg (fun law => law.map
       (fun trace : runtime.messageApplication.PolicyTrace =>
-        (trace.prefixThrough stop, trace.last))) hresponses
+        (trace.prefixThrough stop, trace.last))) responsePairs_trace
     rw [FinDist.map_bind] at h
     refine Eq.trans ?_ h
     apply FinDist.bind_congr
-    intro response _
-    exact compilation.extractedSourceCoupling_prefix_native nullValue window focal response
-      environment schedule fallback profile
+    intro responses _
+    exact compilation.extractedSourceCoupling_prefix_native nullValue window focal responses.1
+      responses.2 schedule fallback profile
   · rw [FinDist.map_bind]
     apply FinDist.bind_congr
-    intro response _
-    exact compilation.extractedSourceCoupling_source nullValue window focal response environment
+    intro responses _
+    exact compilation.extractedSourceCoupling_source nullValue window focal responses.1 responses.2
       schedule fallback profile
-  · have h := congrArg (fun law => law.map PolicyTrace.last) hresponses
+  · have h := congrArg (fun law => law.map PolicyTrace.last) responsePairs_trace
     rw [FinDist.map_bind, runtime.messageApplication.tracePolicies_last] at h
     rw [FinDist.map_bind]
     refine Eq.trans ?_ h
     apply FinDist.bind_congr
-    intro response _
+    intro responses _
     rw [runtime.messageApplication.tracePolicies_last]
-    exact compilation.extractedSourceCoupling_native nullValue window focal response environment
+    exact compilation.extractedSourceCoupling_native nullValue window focal responses.1 responses.2
       schedule fallback profile
 
 /-- Every supported normally completed pair in a mixture of the constructed
 couplings has exactly the retained source configuration as its native decoding.
-This applies in particular to the mixture for an arbitrary randomized deviation;
-the observation being compared is independent of its sampled response function. -/
+This applies in particular to the mixture for an arbitrary randomized focal
+policy and environment; the observation being compared is independent of the
+sampled response pair. -/
 theorem mixtureSourceCoupling_decode_of_complete_clear
     (profile : SourceBehavioralProfile source.core.prog)
-    (responses : FinDist
-      (List
-        (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry →
-        (compilation.supported.resolvingRuntime nullValue window).messageApplication.View →
-        (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerCommand))
+    (responsePairs : FinDist
+      ((List
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.PlayerEntry →
+          (compilation.supported.resolvingRuntime nullValue window).messageApplication.View →
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.PlayerCommand) ×
+        (List
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.EnvironmentEntry →
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.EnvironmentObservation →
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.EnvironmentPolicyCommand)))
     (cfg : ReachableConfig (compile source.core).graph)
     (final :
       (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hpair : (cfg, final) ∈ (responses.bind fun response =>
-      compilation.extractedSourceCoupling nullValue window focal response environment schedule
+    (hpair : (cfg, final) ∈ (responsePairs.bind fun responses =>
+      compilation.extractedSourceCoupling nullValue window focal responses.1 responses.2 schedule
         fallback profile).support)
     (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
       final.native.application.visible = true)
@@ -132,9 +191,9 @@ theorem mixtureSourceCoupling_decode_of_complete_clear
     (compile source.core).graph.decodeSealedFrom ty final.native.application.service
       (Config.initial _) final.native.application.visible.events = some cfg.1 := by
   simp only [FinDist.support_bind, Set.mem_iUnion] at hpair
-  obtain ⟨response, _, hpair⟩ := hpair
+  obtain ⟨responses, _, hpair⟩ := hpair
   exact compilation.extractedSourceCoupling_decode_of_complete_clear nullValue window focal
-    response environment schedule fallback profile cfg final hpair hcomplete hclear
+    responses.1 responses.2 schedule fallback profile cfg final hpair hcomplete hclear
 
 end Vegas.SealedCompilation
 

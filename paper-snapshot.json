@@ -26,7 +26,7 @@
     "sections/03-language-graph.tex": "f6d64b8ec09f4078ff564d14362f1b0c249cb8275a6ffec419f25d5930720119",
     "sections/04-strategic-semantics.tex": "6557a3bbeb7cd0b931b44cc2812fd4b8586cf4ecde5d0ae4cd68547f220ab51b",
     "sections/05-correctness.tex": "1a2a71caa385c5891f74a114e946c44a87a6ac7137c59c6515faae55fc1bc57c",
-    "sections/06-runtime.tex": "1fbab3acd544aeb301b535c9cf1e6c8e30147882498ed7168f7b5f19d572b374",
+    "sections/06-runtime.tex": "103f266aec07c819937bdb8c1a361d80a06d1ef3e05e32de2c4e7b4c134e5c15",
     "sections/07-application.tex": "d6a09dfd71a3c1466b3e5820fe7e7c3eb7235fdf9c0a6c154058d09be91037e2",
     "sections/07-artifacts.tex": "fe5730cfde2ed1243b68f3af65ec5d39b14f48e5bf43fcc1b72a5268e7effba1",
     "sections/08-related.tex": "a70d61ce6a2f4aab4afdc0dee4321d6e5768d19fbb3fcf9024d334bfbb97eee8",
@@ -34,5 +34,5 @@
     "sections/10-quitting.tex": "fe01ff789a3e1b18a8fb59df91b799746fd8102a97a89a4538d32b8f1d7fb251",
     "vegas-paper.bib": "3e6e2a487f6ab2f74ca82cdfc3c25da1814d0a68d78d4c4c898813ca4c068bdd"
   },
-  "revision": "f0783bd4c88ef0033e304090e83bdfd204082d2c"
+  "revision": "8097c14a8d4359361a5863e95c74d1279bef8196"
 }
