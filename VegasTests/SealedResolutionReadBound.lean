@@ -3,12 +3,14 @@
 import Vegas.Compile.SealedResolutionReadBound
 import VegasTests.PendingSource
 
-/-! # Native registration hiding for a checked two-player source
+/-! # Native registration and acceptance hiding for a checked two-player source
 
 The source's first two choices precede every disclosure. The second player's
 arbitrary randomized native policy therefore has the same stopped registration
 law for all assignments to the honest player's choice, under any randomized
-full-pool environment and finite invocation sequence.
+full-pool environment and finite invocation sequence. The same independence
+holds for its complete local input through public acceptance, including the
+interval after private registration.
 -/
 
 noncomputable section
@@ -22,6 +24,20 @@ abbrev Value := Option Bool
 abbrev runtime := sealedFragment.resolvingRuntime none 3
 abbrev app := runtime.messageApplication
 
+private theorem no_honest_known_before_second (who : PendingSource.Player) (hwho : who ≠ 1)
+    (index : Fin graph.nodeCount)
+    (hknown : sealedFragment.knownBefore 1 (node 1) (who, index.val)) :
+    False := by
+  rcases hknown with hwhoEq | ⟨opening, requires, hbefore, hrule⟩
+  · exact hwho hwhoEq
+  · have hopening : opening = 0 := by
+      change opening < 1 at hbefore
+      omega
+    subst opening
+    change some (SealedRule.mk (.commit 0) []) =
+      some (SealedRule.mk (.reveal who index.val) requires) at hrule
+    cases hrule
+
 theorem hidden_first_choice (leftValues rightValues : Fin graph.nodeCount → Value)
     (deviator : app.PlayerPolicy) (environment : app.EnvironmentPolicy)
     (schedule : List (@Invocation PendingSource.Player)) :
@@ -33,15 +49,53 @@ theorem hidden_first_choice (leftValues rightValues : Fin graph.nodeCount → Va
   apply sealedFragment.resolvingBindingLaw_read_bound none 3 1 (node 1) guard hguard
     leftValues rightValues ?_ deviator environment schedule
   intro who hwho index hknown
-  rcases hknown with hwhoEq | ⟨opening, requires, hbefore, hrule⟩
-  · exact False.elim (hwho hwhoEq)
-  · have hopening : opening = 0 := by
-      change opening < 1 at hbefore
-      omega
-    subst opening
-    change some (SealedRule.mk (.commit 0) []) =
-      some (SealedRule.mk (.reveal who index.val) requires) at hrule
-    cases hrule
+  exact False.elim (no_honest_known_before_second who hwho index hknown)
+
+/-- Independence holds through public acceptance, rather than ending at the
+focal player's private preparation. The observation includes its full history. -/
+theorem hidden_until_acceptance (leftValues rightValues : Fin graph.nodeCount → Value)
+    (deviator : app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation PendingSource.Player)) :
+    sealedFragment.resolvingAcceptanceLaw none 3 leftValues 1 (node 1)
+        deviator environment schedule =
+      sealedFragment.resolvingAcceptanceLaw none 3 rightValues 1 (node 1)
+        deviator environment schedule := by
+  obtain ⟨guard, hguard, _⟩ := node1_commit
+  apply sealedFragment.resolvingAcceptanceLaw_read_bound none 3 1 (node 1) guard hguard
+    leftValues rightValues ?_ deviator environment schedule
+  intro who hwho index hknown
+  exact False.elim (no_honest_known_before_second who hwho index hknown)
+
+/-- Private preparation does not close the acceptance cut or release a later
+opening. Public acceptance is a distinct transition. -/
+theorem registration_is_not_acceptance :
+    let initial := PolicyExecution.initial app (State.initial app runtime.initial)
+    let prepared : app.PolicyExecution := { initial with
+      native.application.service := (IdealCommitments.empty.sealValue 1 1 (some true)).state }
+    sealedFragment.bindingCut none 3 1 (node 1) prepared = true ∧
+      sealedFragment.acceptanceCut none 3 (node 1) prepared = false ∧
+      sealedFragment.compile.openingReady prepared.native.application.visible.events 0 2 = false :=
+  ⟨rfl, rfl, rfl⟩
+
+private def prepareThenSubmit : app.PlayerPolicy := fun history _ =>
+  FinDist.pure (if history.isEmpty then .privateCommand ⟨(1, some true)⟩
+    else .submit (.commitment 1 (1, 1)))
+
+/-- The cut actually waits past private preparation and pending submission,
+and retains the two commands and the accepted event in the player's input. -/
+theorem acceptance_retains_preparation_and_submission :
+    (sealedFragment.resolvingAcceptanceLaw none 3 (fun _ => some false) 1 (node 1)
+      prepareThenSubmit (fun _ _ => FinDist.pure (.include (1, 0)))
+      [.player 1, .player 1, .environment]).map
+        (fun input => (input.1.length, input.2.application.events)) =
+      FinDist.pure (2, [.accepted 1 (1, 1)]) := by
+  simp only [SealedFragment.resolvingAcceptanceLaw, tracePolicies, invoke,
+    SealedFragment.resolvingValuePlayers, GameTheory.Profile.update_same,
+    prepareThenSubmit, playerStep, environmentPolicyStep, advance, PlayerCommand.toAction,
+    EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
+    FinDist.map_pure, PolicyExecution.initial, List.isEmpty_nil, List.isEmpty_cons,
+    List.nil_append, ↓reduceIte, Bool.false_eq_true]
+  rfl
 
 /-- This witness actually submits and delivers an opaque pending commitment
 before the focal registration; there is no inclusion or opening in the trace. -/

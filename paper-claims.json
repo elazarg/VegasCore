@@ -1,7 +1,7 @@
 {
   "prose:source-graph-policy": ["Vegas.Paper.source_graph_honest_law", "Vegas.Paper.source_graph_deviation_law", "Vegas.Paper.source_graph_nash_iff", "Vegas.Paper.source_graph_approximate_nash_iff"],
   "prose:utility-simulation": ["Vegas.Paper.utility_approximate_nash_preservation"],
-  "prose:sealed-opening-barrier": ["Vegas.Paper.sealed_opening_barrier"],
+  "prose:sealed-opening-barrier": ["Vegas.Paper.sealed_opening_barrier", "Vegas.Paper.pending_acceptance_read_bound"],
   "prose:pending-source-prefix": ["Vegas.Paper.pending_extracted_source_law", "Vegas.Paper.pending_source_native_prefix_law", "Vegas.Paper.pending_randomized_source_coupling", "Vegas.Paper.pending_normal_completion"],
   "prose:pending-round-coupling": ["Vegas.Paper.pending_randomized_round_source_coupling", "Vegas.Paper.pending_round_normal_completion"],
   "prose:pending-honest-round": ["Vegas.Paper.pending_honest_round_source_law"],

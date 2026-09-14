@@ -17,8 +17,10 @@ commitment hiding or public in-flight-message results.
 Finite supported native runs,
 including replay of observed messages, decode to reachable graph prefixes.
 Terminal decoded prefixes reconstruct written-order source executions and
-matching decoded public results. Ideal hiding results concern the declared
-ideal service and observation boundary.
+matching decoded public results. This exact prefix decoding applies to the
+untimed runtime and before the first timeout in the resolving runtime.
+Post-timeout settlement instead uses public-result correspondence. Ideal
+hiding results concern the declared ideal service and observation boundary.
 
 ## Strategic results
 
@@ -28,14 +30,26 @@ exactly backtranslates arbitrary declared-read graph policies. Its Nash and
 epsilon-Nash corollaries are end-to-end to that graph runner, not to this
 message runtime. It supplies the source side of the pending-message proof.
 
-The actual pending-message round game has a constructed source/native coupling
-and same-error Nash preservation and reflection under timely service, normal
-utility agreement, and explicit conditional timeout-checkpoint comparisons.
-Those program-specific comparisons remain obligations. The generic GameTheory
-`MixtureSimulationOn` separately gives exact-law transport when a target
-supplies its honest and deviation-mixture fields; merely assuming that generic
-interface is not an instantiated sealed-compiler result. The old fixed-windowed
-theorem is archived and is not a theorem for the strict compiler edge.
+The actual pending-message round game has a constructed source/native coupling.
+Its native marginal is the actual round driver, while its source marginal is a
+finite mixture of legal unilateral source deviations against unchanged
+opponents. Under timely service, all-compiled play has the exact original source
+outcome law. For arbitrary unilateral native deviations, the strategic result
+is utility domination and same-error Nash preservation/reflection, not exact
+source/native outcome equality after timeout.
+
+`RoundModel.isεNash_iff_of_checkpointDominance` accepts normal utility agreement
+and comparisons at the actual first-timeout information. For programmed payout
+utilities, `RoundModel.isεNash_iff_of_sourcePayoutBound` derives those premises
+from timely service and a source-only `VegasCore.QuitPayoutBound`: every legal
+source outcome is at or above the player's bound and every legal outcome
+recording that player's configured default is at or below it. This theorem is
+currently for the homogeneous, no-sample sealed fragment whose guards accept
+every runtime value.
+It does not establish nontrivial guard validation, chance compilation,
+heterogeneous sealed values, or refinement of a commitment scheme with multiple
+or potentially unopenable candidates. The authoritative theorem inventory and
+remaining boundaries are in [the active tower](active-tower.md).
 
 ## Pending-message and timeout boundary
 
@@ -43,54 +57,46 @@ The active runtime retains pending messages, recipient-local polling, public
 receipts, delivery/inclusion choices, reactions, deadlines, and replay. The
 strict compiler's operational theorems cover arbitrary finite native actions
 through these mechanisms and reconstruct every terminal decoded prefix in the
-written-order source semantics. The timed sealed adapter adds a public clock
-and explicit expiration transitions while retaining the same source-prefix
-guarantee.
+written-order source semantics. The resolving adapter adds a public clock and
+explicit expiration transitions. It retains the exact source-prefix guarantee
+before timeout and supplies a legal source realization of completed public
+settlement after timeout; these need not be the same private source realization.
 
 The current delivery model deliberately exposes a recipient's delivered pool
-to its policy. This is not, on its own, a strategic leak. A delivered opening
-is still only a pending packet; the application cannot accept it until the
-graph prerequisites are included. The missing invariant is causal rather than
-syntactic: a policy may prepare a future message after inspecting a pending
-opening, and the backtranslation must show that the same action can be chosen
-at the corresponding source reveal point, while malformed or never-included
-openings produce no earlier source step. The environment already sees the
-pending pool and may base delivery and inclusion on its payloads. Its policy
-does not see the ideal service's hidden values. Backtranslation must handle
-the former observations; access to the latter would be a stronger information
-model and would require a separate argument or an impossibility theorem.
-Source-level quitting discharges a separate branch only after the runtime's
-resolution edge supplies a quit law. If the runtime permits selective quitting
-using extra information, its utility must be compared with feasible continuation
-with the existing commitments fixed, at that finer information. An ex ante
-comparison with always quitting is insufficient. The generic selective-stopping
-bound proves a loss of at least `margin * probability_of_quitting` when the
-continuation advantage is at least `margin` on every supported stopping state.
-If the action is instead an ordinary source deviation, its exact simulation
-requires no incentive assumption.
+to its policy, and the environment sees the full pending pool. Inclusion still
+checks graph prerequisites, and the ideal service table is not part of either
+observation. The checked causal backtranslation accounts for these public
+observations and retains already registered commitments in the legal source
+completion used at first timeout. A delivered or malformed packet does not by
+itself take a source step.
+
+`SealedResolution` supplies relative per-node deadlines, installs configured
+defaults, and continues executing later nodes. The fixed adaptive wire may make
+delivery and inclusion choices from its public observation. `RoundModel`'s
+finite total and budget ensure completion. Its `Timely` premise adds roster
+coverage, reserved periodic service capacity, a sufficient window, and a
+whole-period schedule to exclude honest timeouts. It is not a
+censorship-resistance result for an arbitrary scheduler.
 
 The native `SealedTimeout.resolved_policy_utility_bound` covers arbitrary
 randomized policy continuations of a locked disclosure checkpoint, assuming
 resolution. Its utility observes only the fixed opening or expiration. The
 compiled two-player regression gives an exact selective-withholding threshold
-in that actual runtime. Neither result constructs a whole-program source
-strategy or supplies settlement. In particular, the current timeout adapter
-freezes protocol acceptance and does not resolve a missing initial commitment.
+in that separate single-checkpoint adapter. That adapter freezes protocol
+acceptance and does not implement the continuing `SealedResolution` settlement.
 
 The compiled release barrier is stronger than checking the arriving opening:
-`SealedFragment.opening_barrier_trace` fixes every earlier commitment at the
-first opening-ready snapshot and preserves those values through the complete
-policy trace. Pending-message observations cannot rewrite those values.
+the public readiness test requires earlier commitments to be complete before
+an opening is submitted. `SealedFragment.resolvingAcceptanceLaw_read_bound`
+proves that future hidden values do not affect the focal player's local input
+through first acceptance or timeout. In the current registered-handle service,
+`SealedFragment.opening_barrier_trace` additionally fixes every earlier
+commitment at the opening-ready snapshot and preserves its value through the
+complete policy trace.
 
-Still open are whole-prefix extraction of a pure source deviation, linear
-extension to arbitrary randomized deviations, and the final whole-program
-honest/deviation laws. The intended endpoint is an
-arbitrary randomized unilateral deviation-mixture theorem, source guarantee,
-and same-epsilon Nash equivalence, followed by public adaptive scheduling under
-explicit information-flow and deadline-fairness assumptions.
-
-Local timeout and release handlers describe what happens when the relevant
-message is submitted and included. They do not prove adaptive service progress.
-Malformed traffic, withholding, and scheduling choices therefore remain part
-of the runtime behavior. Censorship tolerance, eventual inclusion, concrete
-cryptography, and blockchain realization require additional models and proofs.
+Local handler validity alone supplies no liveness. The resolving driver adds
+the explicit service assumptions above; malformed traffic, withholding, and
+wire choices remain part of the modeled behavior. Censorship tolerance beyond
+that service contract, concrete cryptography, and blockchain realization
+require additional models and proofs. See [the active tower](active-tower.md)
+for the exact current feature and theorem boundary.

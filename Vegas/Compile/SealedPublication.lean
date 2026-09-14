@@ -3,12 +3,12 @@
 import Vegas.Compile.SealedPolicy
 import Interaction.SealedKnowledge
 
-/-! # Source-order knowledge before a focal commitment is registered
+/-! # Source-order knowledge before public commitment acceptance
 
-A compiled opening submitted before the focal registration must be earlier
-in source order. All preceding commitments are prerequisites of that opening,
-and native binding makes those prerequisites evidence of occupied slots.
-This gives the known-handle predicate used by the causal replay proof.
+A compiled opening submitted before the focal commitment is complete must be
+earlier in source order. This follows from the public prerequisite log alone;
+it does not require the focal private registration slot to be empty. Native
+binding separately turns completed commitment prerequisites into stored values.
 -/
 
 namespace Vegas.EventGraph.SealedFragment
@@ -16,23 +16,21 @@ namespace Vegas.EventGraph.SealedFragment
 open Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
-variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+variable {G : Graph Player L} {ty : L.Ty}
 
-/-- Before a compiled opening can be submitted, every earlier commitment
-has an immutable value, including commitments belonging to other players. -/
-theorem openingReady_prior_commit_lookup (supported : SealedFragment G ty)
+/-- Before a compiled opening can be submitted, every earlier commitment is
+complete in the public log. No private service state or value invariant is used. -/
+theorem openingReady_prior_commit_done (supported : SealedFragment G ty)
     (owner : Player) (node prior : Fin G.nodeCount)
-    (state : (supported.compile.messageApplication (Value := L.Val ty)).State)
-    (invariant : SealedProgram.BindingInvariant supported.compile
-      (supported.compile.eraseReceipts state))
-    (hready : SealedProgram.openingReady supported.compile state.application.events
+    (events : List (SealedProgram.Event Player (L.Val ty)))
+    (hready : SealedProgram.openingReady supported.compile events
       owner node.val = true)
     (priorOwner : Player) (guard : EventGuard L)
     (hprior : (G.nodeRow prior).sem = .commit priorOwner guard)
     (hearlier : prior.val < node.val) :
-    ∃ value, state.application.service.lookup (priorOwner, prior.val) = some value := by
+    SealedProgram.done events prior.val = true := by
   obtain ⟨source, requires, hrule, _hnotDone, hrequires, _haccepted⟩ :=
-    SealedProgram.openingReady_sound supported.compile state.application.events
+    SealedProgram.openingReady_sound supported.compile events
       owner node.val hready
   obtain ⟨actual, producer, _guard, hactual, _hproducer, hsem, _hcommit⟩ :=
     supported.ruleAt_reveal hrule rfl
@@ -43,17 +41,47 @@ theorem openingReady_prior_commit_lookup (supported : SealedFragment G ty)
       (G.nodes_get?_nodeRow prior) hearlier hsem hprior
   have hrequiresEq : G.messagePrerequisites node = requires :=
     congrArg SealedRule.requires (Option.some.inj ((supported.compile_rule node).symm.trans hrule))
-  have hdone : SealedProgram.done state.application.events prior.val = true := by
-    apply List.all_eq_true.mp hrequires prior.val
-    rw [← hrequiresEq]
-    exact (G.mem_messagePrerequisites node prior).mpr hdep
-  have hpriorRule : supported.compile.rules[prior.val]? =
-      some ⟨.commit priorOwner, G.messagePrerequisites prior⟩ := by
-    rw [supported.compile_rule]
-    apply congrArg some
-    exact congrArg (fun kind => SealedRule.mk kind (G.messagePrerequisites prior))
-      (G.sealedRule_commit prior priorOwner guard hprior)
-  exact invariant.done_commit_lookup prior.val priorOwner _ hpriorRule hdone
+  apply List.all_eq_true.mp hrequires prior.val
+  rw [← hrequiresEq]
+  exact (G.mem_messagePrerequisites node prior).mpr hdep
+
+/-- The current registered-handle functionality turns public commitment
+completion into a stored value. This is separate from the publication barrier. -/
+theorem openingReady_prior_commit_lookup (supported : SealedFragment G ty)
+    [DecidableEq (L.Val ty)]
+    (owner : Player) (node prior : Fin G.nodeCount)
+    (state : (supported.compile.messageApplication (Value := L.Val ty)).State)
+    (invariant : SealedProgram.BindingInvariant supported.compile
+      (supported.compile.eraseReceipts state))
+    (hready : SealedProgram.openingReady supported.compile state.application.events
+      owner node.val = true)
+    (priorOwner : Player) (guard : EventGuard L)
+    (hprior : (G.nodeRow prior).sem = .commit priorOwner guard)
+    (hearlier : prior.val < node.val) :
+    ∃ value, state.application.service.lookup (priorOwner, prior.val) = some value := by
+  apply invariant.done_commit_lookup prior.val priorOwner (G.messagePrerequisites prior)
+  · rw [supported.compile_rule, G.sealedRule_commit_eq prior priorOwner guard hprior]
+  · exact supported.openingReady_prior_commit_done owner node prior state.application.events
+      hready priorOwner guard hprior hearlier
+
+/-- In the registered-handle functionality, absence of a private value rules
+out public completion of the corresponding commitment. -/
+theorem commit_not_done_of_lookup_none (supported : SealedFragment G ty)
+    (owner : Player) (node : Fin G.nodeCount) (guard : EventGuard L)
+    (hnode : (G.nodeRow node).sem = .commit owner guard)
+    (state : SealedProgram.State Player (L.Val ty))
+    (invariant : SealedProgram.BindingInvariant supported.compile state)
+    (hempty : state.service.lookup (owner, node.val) = none) :
+    SealedProgram.done state.events node.val = false := by
+  cases hdone : SealedProgram.done state.events node.val with
+  | false => rfl
+  | true =>
+      have hrule : supported.compile.rules[node.val]? =
+          some ⟨.commit owner, G.messagePrerequisites node⟩ := by
+        rw [supported.compile_rule, G.sealedRule_commit_eq node owner guard hnode]
+      obtain ⟨value, hvalue⟩ := invariant.done_commit_lookup node.val owner _ hrule hdone
+      rw [hempty] at hvalue
+      contradiction
 
 /-- The focal principal's own slots and values disclosed before this source
 decision. This predicate does not include future honest disclosures. -/
@@ -62,22 +90,21 @@ def knownBefore (supported : SealedFragment G ty) (focal : Player)
   handle.1 = focal ∨ ∃ opening requires, opening < decision.val ∧
     supported.compile.rules[opening]? = some ⟨.reveal handle.1 handle.2, requires⟩
 
-/-- Before the focal slot is registered, every opening allowed by the
-compiler is a source-earlier disclosure. This is a submission-time fact. -/
+/-- Before the focal commitment is publicly complete, every allowed opening
+is a source-earlier disclosure. Private registrations are unrestricted by this
+lemma. This is a submission-time fact, not merely an inclusion check. -/
 theorem openingHandle?_knownBefore (supported : SealedFragment G ty)
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
-    (state : (supported.compile.messageApplication (Value := L.Val ty)).State)
-    (hbinding : SealedProgram.BindingInvariant supported.compile
-      (supported.compile.eraseReceipts state))
-    (hempty : state.application.service.lookup (focal, decision.val) = none)
+    (events : List (SealedProgram.Event Player (L.Val ty)))
+    (hnotDone : SealedProgram.done events decision.val = false)
     (owner : Player) (opening : Nat) (handle : CommitmentHandle Player Nat)
-    (hhandle : supported.compile.openingHandle? state.application.events owner opening =
+    (hhandle : supported.compile.openingHandle? events owner opening =
       some handle) : supported.knownBefore focal decision handle := by
   obtain ⟨source, rfl⟩ := SealedProgram.openingHandle?_eq_some_owner
-    supported.compile state.application.events owner opening handle hhandle
+    supported.compile events owner opening handle hhandle
   obtain ⟨requires, hrule, _, _, _⟩ := SealedProgram.openingHandle?_sound
-    supported.compile state.application.events owner opening source hhandle
+    supported.compile events owner opening source hhandle
   obtain ⟨node, producer, producerGuard, hnode, _, hsem, _⟩ :=
     supported.ruleAt_reveal hrule rfl
   have hearlier : opening < decision.val := by
@@ -88,24 +115,23 @@ theorem openingHandle?_knownBefore (supported : SealedFragment G ty)
       rw [← hn, hdecision] at hsem
       cases hsem
     have hlt : decision.val < node.val := by omega
-    have hready : supported.compile.openingReady state.application.events
+    have hready : supported.compile.openingReady events
         owner node.val = true := by
       simp only [SealedProgram.openingReady, hnode, hhandle, Option.isSome_some]
-    obtain ⟨value, hvalue⟩ := supported.openingReady_prior_commit_lookup owner node decision
-      state hbinding hready focal guard hdecision hlt
-    rw [hempty] at hvalue
+    have hdone := supported.openingReady_prior_commit_done owner node decision
+      events hready focal guard hdecision hlt
+    rw [hnotDone] at hdone
     contradiction
   exact Or.inr ⟨opening, requires, hearlier, hrule⟩
 
-/-- Every packet emitted by a compiled policy before the focal registration
+/-- Every packet emitted by a compiled policy before the focal commitment completes
 meets the native knowledge relation's authenticated-opening condition. -/
 theorem playerPolicy_openings_known (supported : SealedFragment G ty)
+    [DecidableEq (L.Val ty)]
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
     (execution : (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution)
-    (hbinding : SealedProgram.BindingInvariant supported.compile
-      (supported.compile.eraseReceipts execution.native))
-    (hempty : execution.native.application.service.lookup (focal, decision.val) = none)
+    (hnotDone : SealedProgram.done execution.native.application.events decision.val = false)
     (owner : Player) (policy : CommitPolicy G owner)
     (payload : SealedProgram.Payload Player (L.Val ty))
     (hsubmit : .submit payload ∈ (supported.playerPolicy owner policy
@@ -118,7 +144,7 @@ theorem playerPolicy_openings_known (supported : SealedFragment G ty)
   · trivial
   · intro _
     exact supported.openingHandle?_knownBefore focal decision guard hdecision
-      execution.native hbinding hempty owner node handle hhandle
+      execution.native.application.events hnotDone owner node handle hhandle
 
 end Vegas.EventGraph.SealedFragment
 

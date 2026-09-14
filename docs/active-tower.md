@@ -28,7 +28,7 @@ lower-level commitment protocol with either behavior needs a strategic
 refinement to this functionality; a codec or representation theorem alone is
 insufficient.
 
-## Current strategic gap
+## Pending-message strategic boundary
 
 `SealedCompilation.compilePolicy` implements a written-source policy in the
 native principal-scoped interface. Local reconstruction reads only initial
@@ -43,10 +43,11 @@ The whole-program honest law is
 `SealedCompilation.exists_honest_round_source_coupling`: original source
 denotation, actual stopped native marginal, normal completion, and pointwise
 source decoding under the service conditions above. Unilateral native
-deviations have the checked source/native coupling described below, but their
-timeout settlements still require the whole-program utility comparison.
-The mathematical argument and remaining Lean obligations are described in
-[pending-message-strategic-proof.md](pending-message-strategic-proof.md).
+deviations have the checked source/native coupling described below. This gives
+a finite mixture of legal source deviations, not exact source/native outcome
+equality after timeout. General utilities use the checked timeout-checkpoint
+comparison; payout utilities can discharge it entirely from the source-only
+`QuitPayoutBound` described below.
 
 `SealedFragment.replay` evaluates the shared native runner with assigned honest
 values and fixed deterministic deviator/environment policies. Its checked
@@ -73,6 +74,17 @@ the compiled command premises are derived from it, not supplied by a caller.
 The cutoff reads the first timeout snapshot after its tick, which preserves
 the private service. Absence of registration is separate from registration
 of the nullable source value.
+
+`SealedFragment.resolvingAcceptanceLaw_read_bound` extends the information bound
+through public commitment acceptance, first timeout, or the finite horizon.
+It equates the focal player's entire local history and current view, including
+interaction after private registration. The local publication proof uses only
+the public prerequisite log: future honest openings cannot be submitted while
+the focal commitment remains incomplete. Private-value immutability is a
+separate property of the service. Both read bounds use the same native command
+coupling, and neither requires fair service. This strengthens the information
+boundary of the current functionality; it does not yet admit competing or
+unopenable candidates.
 
 The theorem supplies the causal read bound for assigned-value replay.
 `SealedFragment.resolvingReplay` fixes native deviator/environment responses
@@ -215,10 +227,14 @@ written-source execution with the extracted focal policy and unchanged opponents
 This is a whole-prefix probability theorem, including the pending pool and
 histories, for fixed deterministic focal and environment responses.
 
-Randomized responses must still be predrawn
-consistently across honest assignments, and the post-timeout native suffix must
-be attached with its actual continuation law. Pointwise choice agreement alone
-does not establish these probabilities for dependent source decisions.
+`exists_randomized_source_coupling` predraws the focal and environment response
+pair jointly, preserving their dependence, and retains the whole native policy
+trace. The continuation theorem attaches the actual post-timeout suffix from
+the selected checkpoint. `exists_randomized_stopping_round_source_coupling`
+therefore has the actual round driver's native marginal and a source marginal
+that is a finite mixture of legal unilateral source deviations against unchanged
+opponents. This coupling supports utility domination; it does not assert exact
+source/native outcome equality after a timeout.
 
 The backend admits homogeneous commit/reveal programs with unrestricted guards,
 including multistage choices whose information includes earlier public values
@@ -227,19 +243,18 @@ justified by the reachable-store invariant, not erased from the source.
 Samples, nontrivial validation guards, and disclosures of initial private
 fields still require further compiler support.
 
-The active code does **not** yet prove whole-program strategic preservation for
-the pending-message policy game. The immediate coupling must give the actual
-native execution marginal and a source marginal that is a finite mixture of
-legal source deviations, against unchanged opponents. The deviator may use its
-inbox, public ledger, sent messages, receipts, and local command history; the
-environment may use all pending payloads. Extraction must preserve the dependence
-between honest draws rather than resample them after disclosure.
+The coupling covers arbitrary native unilateral policies using the player's
+inbox, public ledger, sent messages, receipts, and local command history. The
+environment may use all pending payloads. Its randomized backtranslation
+preserves joint response dependence rather than independently resampling honest
+source choices after disclosure.
 
 An inclusion check alone cannot protect against observing a pending opening.
 The compiled policy checks the publication barrier **before submission**:
-every source-earlier commitment is already bound. Consequently, replay before
-the focal choice is bound can encounter only honest openings already available
-in that choice's source view. The needed whole-run read-boundedness theorem
+every source-earlier commitment is publicly complete, hence accepted on a
+pre-timeout run. Consequently, replay before the focal choice is accepted can
+encounter only honest openings already available
+in that choice's source view. The checked whole-run read-boundedness theorem
 connects this local barrier to the extracted source policy.
 
 For selective quitting, exact outcome-law simulation and Nash preservation
@@ -286,9 +301,10 @@ not the commitment-preserving witness in the strategic coupling.
 if a player owns a native timeout, the same legal source witness records that
 player choosing the configured default and yields the actual public payout.
 `VegasCore.QuitPayoutBound` is a sufficient condition over written-source
-executions alone. All legal outcomes give each player at least its bound;
-legal outcomes recording its default give it at most that bound. Arbitrary
-valuations of the programmed payout are allowed. In
+executions alone. It certifies the designated quitting payout as a global
+minimum for each player: all legal outcomes give that player at least its bound,
+while legal outcomes recording that player's configured default give it at most
+the same bound. Arbitrary valuations of the programmed payout are allowed. In
 `RoundModel.isεNash_iff_of_sourcePayoutBound`, the compiler derives normal utility
 agreement and every timeout comparison, leaving only the source certificate and
 deadline-relative service as premises. The statement uses the actual native
@@ -315,6 +331,13 @@ these pending-message obligations. Its full source-environment outcome law
 allows samples, validation guards, and heterogeneous fields. This does not
 extend the admitted fragment of the sealed backend or grant its policies the
 same information boundary as the graph kernels.
+
+The pending-message compiler and its source-only payout theorem currently apply
+to the admitted `SealedFragment`: one homogeneous runtime value type, no sample
+nodes, and guards certified to accept every value of that type. Arbitrary
+nontrivial validation guards, chance nodes, heterogeneous sealed values, and a
+refinement from commitments with multiple or potentially unopenable candidates
+are not established by these results.
 
 ## Deliberate non-claims
 

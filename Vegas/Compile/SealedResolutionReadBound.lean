@@ -2,13 +2,14 @@
 
 import Vegas.Compile.SealedResolutionPrivacy
 
-/-! # Whole-prefix read bound for a native focal registration
+/-! # Whole-prefix read bounds through commitment acceptance
 
 Execute the compiled resolving policies with assigned honest values, retaining
 an arbitrary native focal policy and adaptive full-pool environment. The law of
-the focal registration, cut off at the first timeout, depends only on honest
-values whose disclosures precede that source decision. The finite invocation
-list is unrestricted; no service or fairness assumption is used for hiding.
+the focal registration and the focal player's information through public
+acceptance, cut off at the first timeout, depend only on honest values whose
+disclosures precede that source decision. The finite invocation list is
+unrestricted; no service or fairness assumption is used for hiding.
 
 The cut is a proof readout of the actual trace, not a restriction on native
 commands. The first timeout snapshot follows its clock step, which cannot
@@ -81,10 +82,11 @@ def resolvingBindingLaw (supported : SealedFragment G ty)
       (PolicyTrace.firstRelease (supported.bindingCut nullValue window focal decision))).map
     fun execution => execution.native.application.service.lookup (focal, decision.val)
 
-/-- A native deviator cannot choose its registered value as a function
-of honest commitments disclosed only after the focal source choice. The
-environment may use arbitrary randomized policies over the entire pool. -/
-theorem resolvingBindingLaw_read_bound (supported : SealedFragment G ty)
+/-- The actual compiled opponents supply the local command coupling up to any
+cut that stops by focal completion or the first timeout. Readouts may retain
+native observations and histories; erased delivery steps are not assumed to be
+strategically silent. -/
+theorem resolvingValuePlayers_cut_law {Observation : Type*} (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat)
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
@@ -94,36 +96,36 @@ theorem resolvingBindingLaw_read_bound (supported : SealedFragment G ty)
     (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
     (environment :
       (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentPolicy)
-    (schedule : List (@Invocation Player)) :
-    supported.resolvingBindingLaw nullValue window leftValues focal decision
-        deviator environment schedule =
-      supported.resolvingBindingLaw nullValue window rightValues focal decision
-        deviator environment schedule := by
+    (schedule : List (@Invocation Player))
+    (cut : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution → Bool)
+    (observe : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution →
+      Observation)
+    (hcut : ∀ left right, SealedResolution.ExecutionRelated
+        (supported.resolvingRuntime nullValue window) (supported.knownBefore focal decision)
+        left right → cut left = cut right)
+    (hobserve : ∀ left right, SealedResolution.ExecutionRelated
+        (supported.resolvingRuntime nullValue window) (supported.knownBefore focal decision)
+        left right → observe left = observe right)
+    (hbefore : ∀ left right, SealedResolution.ExecutionRelated
+        (supported.resolvingRuntime nullValue window) (supported.knownBefore focal decision)
+        left right → cut left = false →
+      left.native.application.visible.timeouts = [] ∧
+      SealedProgram.done left.native.application.visible.events decision.val = false) :
+    let runtime := supported.resolvingRuntime nullValue window
+    let app := runtime.messageApplication
+    ((app.tracePolicies (supported.resolvingValuePlayers nullValue window leftValues focal deviator)
+      environment schedule (PolicyExecution.initial app (State.initial app runtime.initial))).map
+      (PolicyTrace.firstRelease cut)).map observe =
+    ((app.tracePolicies
+      (supported.resolvingValuePlayers nullValue window rightValues focal deviator)
+      environment schedule (PolicyExecution.initial app (State.initial app runtime.initial))).map
+      (PolicyTrace.firstRelease cut)).map observe := by
   apply SealedResolution.firstRelease_observation_law
     (known := supported.knownBefore focal decision)
-    _ _ environment (supported.bindingCut nullValue window focal decision)
-    (fun execution => execution.native.application.service.lookup (focal, decision.val))
-    ?_ ?_ ?_ schedule _ _ SealedResolution.ExecutionRelated.initial
-  · intro left right related
-    have hoccupied := related.native.sealed.occupied (focal, decision.val)
-    simpa only [bindingCut, SealedResolution.eventState,
-      related.native.publicState] using congrArg
-        (fun occupied => occupied || !right.native.application.visible.timeouts.isEmpty) hoccupied
-  · intro left right related
-    exact related.native.sealed.values (focal, decision.val) (Or.inl rfl)
-  · intro left right related hcut who
-    have hempty : left.native.application.service.lookup (focal, decision.val) = none := by
-      have hh : (left.native.application.service.lookup (focal, decision.val)).isSome = false :=
-        (Bool.or_eq_false_iff.mp hcut).1
-      cases hs : left.native.application.service.lookup (focal, decision.val) with
-      | none => rfl
-      | some value => simp only [hs, Option.isSome_some, Bool.true_eq_false] at hh
-    have hclear : left.native.application.visible.timeouts = [] := by
-      have hh := (Bool.or_eq_false_iff.mp hcut).2
-      cases ht : left.native.application.visible.timeouts with
-      | nil => rfl
-      | cons node rest =>
-          simp only [ht, List.isEmpty_cons, Bool.not_false, Bool.true_eq_false] at hh
+    _ _ environment cut observe hcut hobserve ?_ schedule _ _
+    SealedResolution.ExecutionRelated.initial
+  · intro left right related hstop who
+    obtain ⟨hclear, hnotDone⟩ := hbefore left right related hstop
     by_cases hwho : who = focal
     · subst who
       have hh := (related.histories focal).eq (fun _ => Or.inl rfl)
@@ -146,7 +148,7 @@ theorem resolvingBindingLaw_read_bound (supported : SealedFragment G ty)
         | opening node handle value => exact fun h => Or.inl h.symm
     · obtain ⟨lc, rc, hl, hr, hc, hopen⟩ :=
         supported.resolvingPolicy_before_focal nullValue window focal who decision guard
-          hdecision leftValues rightValues left right related hclear hempty (hvalues who hwho)
+          hdecision leftValues rightValues left right related hclear hnotDone (hvalues who hwho)
       refine ⟨FinDist.pure (lc, rc), ?_, ?_, ?_⟩
       · simpa only [resolvingValuePlayers, Profile.update_of_ne _ _ hwho,
           FinDist.map_pure] using hl
@@ -157,9 +159,126 @@ theorem resolvingBindingLaw_read_bound (supported : SealedFragment G ty)
         subst pair
         exact ⟨hc, hopen⟩
 
+/-- A native deviator cannot choose its registered value as a function
+of honest commitments disclosed only after the focal source choice. The
+environment may use arbitrary randomized policies over the entire pool. -/
+theorem resolvingBindingLaw_read_bound (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat)
+    (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
+    (hdecision : (G.nodeRow decision).sem = .commit focal guard)
+    (leftValues rightValues : Fin G.nodeCount → L.Val ty)
+    (hvalues : ∀ who, who ≠ focal → ∀ node,
+      supported.knownBefore focal decision (who, node.val) → leftValues node = rightValues node)
+    (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
+    (environment :
+      (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation Player)) :
+    supported.resolvingBindingLaw nullValue window leftValues focal decision
+        deviator environment schedule =
+      supported.resolvingBindingLaw nullValue window rightValues focal decision
+        deviator environment schedule := by
+  apply supported.resolvingValuePlayers_cut_law nullValue window focal decision guard hdecision
+    leftValues rightValues hvalues deviator environment schedule
+    (supported.bindingCut nullValue window focal decision)
+    (fun execution => execution.native.application.service.lookup (focal, decision.val))
+  · intro left right related
+    have hoccupied := related.native.sealed.occupied (focal, decision.val)
+    simpa only [bindingCut, SealedResolution.eventState,
+      related.native.publicState] using congrArg
+        (fun occupied => occupied || !right.native.application.visible.timeouts.isEmpty) hoccupied
+  · intro left right related
+    exact related.native.sealed.values (focal, decision.val) (Or.inl rfl)
+  · intro left right related hcut
+    have hempty : left.native.application.service.lookup (focal, decision.val) = none := by
+      have hh : (left.native.application.service.lookup (focal, decision.val)).isSome = false :=
+        (Bool.or_eq_false_iff.mp hcut).1
+      cases hs : left.native.application.service.lookup (focal, decision.val) with
+      | none => rfl
+      | some value => simp only [hs, Option.isSome_some, Bool.true_eq_false] at hh
+    have hclear : left.native.application.visible.timeouts = [] := by
+      have hh := (Bool.or_eq_false_iff.mp hcut).2
+      cases ht : left.native.application.visible.timeouts with
+      | nil => rfl
+      | cons node rest =>
+          simp only [ht, List.isEmpty_cons, Bool.not_false, Bool.true_eq_false] at hh
+    exact ⟨hclear, supported.commit_not_done_of_lookup_none focal decision guard
+      hdecision _ (related.bindingLeft hclear) hempty⟩
+
+/-- The first publicly completed focal commitment or the first timeout. Unlike
+the registration cut, this allows an arbitrary interval of native interaction
+after the focal player has privately prepared its value. -/
+def acceptanceCut (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat) (decision : Fin G.nodeCount)
+    (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution) :
+    Bool :=
+  SealedProgram.done execution.native.application.visible.events decision.val ||
+    !execution.native.application.visible.timeouts.isEmpty
+
+/-- The focal player's entire local input at first acceptance, timeout, or the
+finite horizon. Its history includes its private preparations and public
+commands; its view includes ledger events, sent/delivered messages, and receipts. -/
+def resolvingAcceptanceLaw (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat)
+    (values : Fin G.nodeCount → L.Val ty) (focal : Player) (decision : Fin G.nodeCount)
+    (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
+    (environment :
+      (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation Player)) :
+    FinDist (List (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry ×
+      (supported.resolvingRuntime nullValue window).messageApplication.View) :=
+  let runtime := supported.resolvingRuntime nullValue window
+  let app := runtime.messageApplication
+  ((app.tracePolicies (supported.resolvingValuePlayers nullValue window values focal deviator)
+      environment schedule (PolicyExecution.initial app (State.initial app runtime.initial))).map
+      (PolicyTrace.firstRelease (supported.acceptanceCut nullValue window decision))).map
+    fun execution => (execution.principalHistory focal, State.observe app execution.native focal)
+
+/-- Future hidden honest values do not affect even the focal player's full
+local information through public acceptance. The focal policy and full-pool
+environment are arbitrary and randomized. This covers native interaction after
+private registration; no service assumption or empty-slot premise is required. -/
+theorem resolvingAcceptanceLaw_read_bound (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat)
+    (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
+    (hdecision : (G.nodeRow decision).sem = .commit focal guard)
+    (leftValues rightValues : Fin G.nodeCount → L.Val ty)
+    (hvalues : ∀ who, who ≠ focal → ∀ node,
+      supported.knownBefore focal decision (who, node.val) → leftValues node = rightValues node)
+    (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
+    (environment :
+      (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation Player)) :
+    supported.resolvingAcceptanceLaw nullValue window leftValues focal decision
+        deviator environment schedule =
+      supported.resolvingAcceptanceLaw nullValue window rightValues focal decision
+        deviator environment schedule := by
+  apply supported.resolvingValuePlayers_cut_law nullValue window focal decision guard hdecision
+    leftValues rightValues hvalues deviator environment schedule
+    (supported.acceptanceCut nullValue window decision)
+    (fun execution => (execution.principalHistory focal,
+      State.observe _ execution.native focal))
+  · intro left right related
+    simp only [acceptanceCut, related.native.publicState]
+  · intro left right related
+    exact Prod.ext ((related.histories focal).eq (fun _ => Or.inl rfl))
+      (related.native.observe_eq focal)
+  · intro left _right _related hcut
+    have hdone := (Bool.or_eq_false_iff.mp hcut).1
+    have hh := (Bool.or_eq_false_iff.mp hcut).2
+    refine ⟨?_, hdone⟩
+    cases ht : left.native.application.visible.timeouts with
+    | nil => rfl
+    | cons node rest =>
+        simp only [ht, List.isEmpty_cons, Bool.not_false, Bool.true_eq_false] at hh
+
 end Vegas.EventGraph.SealedFragment
 
 /-- info: 'Vegas.EventGraph.SealedFragment.resolvingBindingLaw_read_bound' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraph.SealedFragment.resolvingBindingLaw_read_bound
+
+/-- info: 'Vegas.EventGraph.SealedFragment.resolvingAcceptanceLaw_read_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraph.SealedFragment.resolvingAcceptanceLaw_read_bound

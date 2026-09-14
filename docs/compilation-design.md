@@ -39,6 +39,31 @@ Probability tables denote exact finite laws. A concrete entropy mechanism,
 cryptographic commitment scheme, concrete delivery service, or blockchain
 backend would be a further artifact with its own proof edge.
 
+## Commitment capability boundary
+
+Source-site identity, candidate identity, and transported-message identity have
+different roles. The protocol binds a site to an immutable candidate through
+acceptance; a candidate may be prepared independently of that acceptance and
+submitted in several messages. A site-indexed accepted-handle map need not
+prohibit deliberate reuse of a candidate at compatible sites. Domain separation
+is a protocol policy, not an automatic consequence of binding.
+
+Acceptance need not certify that the sender can open a candidate. The opening
+verifier's meaning must nevertheless remain fixed: accepting a currently absent
+handle and later interpreting a new registration as its opening would permit
+late value selection. An unopenable candidate needs a legal source failure
+interpretation when it resolves. This does not license assuming extractability
+or a well-typed hidden value for every arbitrary target candidate. Site-specific
+typing and guard checks belong to authenticated opening validation, together
+with a proof of the source continuation used on failure.
+
+The current registered-handle service admits only canonical, pre-registered
+site handles. Extending it to competing and unopenable candidates must preserve
+the compiled honest law and re-establish the causal coupling and source payout
+theorem against arbitrary candidate preparation and selection. The public
+acceptance/disclosure barrier is independent of private registration, but that
+information-flow fact alone is not the required strategic refinement.
+
 ## Current boundary
 
 The direct mathematical argument for the pending-message strategic edge is in
@@ -76,17 +101,17 @@ observation. Supplying one remains an explicit proof obligation for any target;
 it is not an instantiated sealed-compiler theorem. The actual pending-message
 round game instead has the utility-specific conditional result described below.
 
-The active pending-message model has an explicit strategic proof obligation.
+The pending-message edge has an explicit causal information obligation.
 `deliver` places the selected packet in the recipient's pool, and the recipient
 policy sees that pool. This extra observation is not automatically a strategic
 counterexample: inclusion still checks the graph prerequisites, so a pending
-opening cannot produce its graph step early. The edge must prove a causal
-backtranslation showing that a message selected before inclusion is equivalent
-to the corresponding source action at the first source point where its value is
-observable. A runtime that lets an accepted action depend on a payload before
-that point, or a scheduler that uses private payload data to alter the source
-visible future, would require a stronger source observation or a separate
-impossibility result.
+opening cannot produce its graph step early. A strategic proof must also
+account for information obtained before inclusion. The compiled submission
+barrier and native-history read bound discharge this obligation for the
+admitted sealed fragment. A runtime that lets an accepted action depend on a
+payload unavailable at its source decision, or lets a scheduler inspect hidden
+service values, needs a stronger source observation or a separate argument
+about the resulting information and incentives.
 
 For quitting, two strategic interfaces serve different conclusions. An exact
 `MixtureSimulationOn` transports every utility of the chosen source observation.
@@ -110,8 +135,11 @@ not merely a payment associated with the current message.
 the actual native runner after a fixed commitment. It concerns the monitored
 disclosure result and assumes resolution. The adapter's expiration freezes
 protocol acceptance; it neither installs a source `none` nor runs a source
-continuation. Whole-program resolution, including missing commitments, and
-the corresponding source utility law remain to be implemented and proved.
+continuation. The continuing `SealedResolution` runtime separately implements
+missing-commitment and missing-opening resolution. Its public settlement has a
+legal source realization, and the source-only payout bound constructs its
+concrete utility simulation. More general conditional source continuation
+criteria remain separate obligations.
 
 The compiled opening barrier is checked independently of that resolution
 problem. `SealedFragment.opening_barrier_trace` proves that when the public

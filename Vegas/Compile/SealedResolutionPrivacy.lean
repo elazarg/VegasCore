@@ -59,9 +59,10 @@ theorem resolvingPolicy_knowledge (supported : SealedFragment G ty)
     erw [runtime.eventHistory_cache, runtime.eventHistory_cache]
     exact ((related.histories who).cache slot).2 hknown
 
-/-- At a valid pre-timeout prefix with the focal slot still empty, the actual
+/-- At a valid pre-timeout prefix before the focal commitment completes, the actual
 compiled policies meet the native lockstep theorem's command and opening
-premises. The assignment may differ at every source-future hidden value. -/
+premises. The focal slot may already be registered. The assignment may differ
+at every source-future hidden value. -/
 theorem resolvingPolicy_before_focal (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat)
     (focal who : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
@@ -71,7 +72,7 @@ theorem resolvingPolicy_before_focal (supported : SealedFragment G ty)
     (related : SealedResolution.ExecutionRelated (supported.resolvingRuntime nullValue window)
       (supported.knownBefore focal decision) left right)
     (hclear : left.native.application.visible.timeouts = [])
-    (hempty : left.native.application.service.lookup (focal, decision.val) = none)
+    (hnotDone : SealedProgram.done left.native.application.visible.events decision.val = false)
     (hvalues : ∀ node, supported.knownBefore focal decision (who, node.val) →
       leftValues node = rightValues node) :
     ∃ leftCommand rightCommand,
@@ -86,16 +87,12 @@ theorem resolvingPolicy_before_focal (supported : SealedFragment G ty)
       (∀ payload, leftCommand = .submit payload →
         SealedProgram.OpeningKnown (supported.knownBefore focal decision)
           ⟨(who, left.native.pool.nextSerial who), payload⟩) := by
-  have hbinding : SealedProgram.BindingInvariant supported.compile
-      (supported.compile.eraseReceipts
-        ((supported.resolvingRuntime nullValue window).eventState left.native)) :=
-    (related.bindingLeft hclear).copy rfl rfl
   have hopenings : ∀ (node : Fin G.nodeCount) handle,
       supported.compile.openingHandle? left.native.application.visible.events who node.val =
         some handle → supported.knownBefore focal decision handle := by
     intro node handle hhandle
-    exact supported.openingHandle?_knownBefore focal decision guard hdecision _ hbinding
-      hempty who node.val handle hhandle
+    exact supported.openingHandle?_knownBefore focal decision guard hdecision _
+      hnotDone who node.val handle hhandle
   obtain ⟨lc, rc, hl, hr, hc⟩ := supported.resolvingPolicy_knowledge nullValue window
     (supported.knownBefore focal decision) who leftValues rightValues left right related
     hclear hvalues hopenings
@@ -112,8 +109,8 @@ theorem resolvingPolicy_before_focal (supported : SealedFragment G ty)
   · simp only [MessageApplication.State.observe, SealedResolution.messageApplication,
       hclear, SealedProgram.discharge_nil] at hhandle
     intro _
-    exact supported.openingHandle?_knownBefore focal decision guard hdecision _ hbinding
-      hempty who node handle hhandle
+    exact supported.openingHandle?_knownBefore focal decision guard hdecision _
+      hnotDone who node handle hhandle
 
 end Vegas.EventGraph.SealedFragment
 

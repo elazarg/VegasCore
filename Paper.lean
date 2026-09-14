@@ -266,6 +266,28 @@ theorem pending_binding_read_bound
   supported.resolvingBindingLaw_read_bound nullValue window focal decision guard
     hdecision leftValues rightValues hvalues deviator environment schedule
 
+/-- The focal player's complete local input through public acceptance is
+independent of honest values disclosed later in source order. This includes
+interaction after private preparation and stops at the first timeout or horizon. -/
+theorem pending_acceptance_read_bound
+    {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
+    (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
+    (hdecision : (G.nodeRow decision).sem = .commit focal guard)
+    (leftValues rightValues : Fin G.nodeCount → L.Val ty)
+    (hvalues : ∀ who, who ≠ focal → ∀ node,
+      supported.knownBefore focal decision (who, node.val) → leftValues node = rightValues node)
+    (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
+    (environment :
+      (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Player)) :
+    supported.resolvingAcceptanceLaw nullValue window leftValues focal decision
+        deviator environment schedule =
+      supported.resolvingAcceptanceLaw nullValue window rightValues focal decision
+        deviator environment schedule :=
+  supported.resolvingAcceptanceLaw_read_bound nullValue window focal decision guard
+    hdecision leftValues rightValues hvalues deviator environment schedule
+
 /-- Replay probabilities are exact honest-registration cylinder masses,
 including stopped prefixes. This does not yet identify the assignment law
 with the original state-dependent source kernels. -/
@@ -1622,6 +1644,11 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_binding_read_bound
+
+/-- info: 'Vegas.Paper.pending_acceptance_read_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_acceptance_read_bound
 
 /-- info: 'Vegas.Paper.pending_source_choice_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
