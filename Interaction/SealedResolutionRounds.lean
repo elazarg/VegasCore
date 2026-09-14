@@ -16,9 +16,10 @@ the clock once. The wire policy cannot advance it in those opportunities.
 The clock command is an ordinary native action and is recorded by the shared
 policy runner, including its environment history entry.
 
-The roster and service-slot count are explicit model parameters. Liveness
-needs every player to occur and sufficient deadline-relative service. Neither
-that theorem nor a source payoff for an unfinished finite run is asserted here.
+The roster and service-slot count are explicit model parameters. Successful
+honest play needs roster coverage and deadline-relative service. Finite
+termination through defaults is proved separately in the termination module;
+it does not require either condition or assign payoffs to unfinished runs.
 -/
 
 noncomputable section
@@ -129,7 +130,8 @@ theorem runPolicies_wire_clock (runtime : SealedResolution Principal Value)
     rw [← hwire] at hfinal
     exact (runtime.wireStep_clock current final wire hfinal).trans hcurrent
 
-private theorem clockStep_native (runtime : SealedResolution Principal Value)
+/-- The round boundary performs exactly the application's clock transition. -/
+theorem clockStep_native (runtime : SealedResolution Principal Value)
     (execution next : runtime.messageApplication.PolicyExecution)
     (hnext : next ∈ (runtime.messageApplication.environmentPolicyStep execution
       (.application ⟨()⟩)).support) :
@@ -156,6 +158,66 @@ theorem round_clock (runtime : SealedResolution Principal Value)
   obtain ⟨middle, hmiddle, hnext⟩ := hnext
   rw [runtime.clockStep_native middle next hnext, runtime.tick_clock,
     runtime.runPolicies_wire_clock players environment _ execution middle hmiddle]
+
+/-- A completed application needs no further rounds, regardless of the budget. -/
+theorem runRounds_of_complete (runtime : SealedResolution Principal Value)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (environment : runtime.messageApplication.WirePolicy)
+    (count : Nat) (execution : runtime.messageApplication.PolicyExecution)
+    (hcomplete : runtime.complete execution.native.application.visible = true) :
+    runtime.runRounds principals serviceSlots players environment count execution =
+      FinDist.pure execution := by
+  cases count <;> simp [runRounds, hcomplete]
+
+/-- Splitting the round budget preserves early stopping and the full execution law. -/
+theorem runRounds_add (runtime : SealedResolution Principal Value)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (environment : runtime.messageApplication.WirePolicy)
+    (first rest : Nat) (execution : runtime.messageApplication.PolicyExecution) :
+    runtime.runRounds principals serviceSlots players environment (first + rest) execution =
+      (runtime.runRounds principals serviceSlots players environment first execution).bind
+        (runtime.runRounds principals serviceSlots players environment rest) := by
+  induction first generalizing execution with
+  | zero => simp [runRounds]
+  | succ first ih =>
+      by_cases hcomplete : runtime.complete execution.native.application.visible = true
+      · simp [runtime.runRounds_of_complete principals serviceSlots players environment _ _
+          hcomplete]
+      · simp only [Nat.succ_add, runRounds, hcomplete, Bool.false_eq_true, ↓reduceIte,
+          FinDist.bind_bind]
+        apply FinDist.bind_congr
+        intro middle _
+        exact ih middle
+
+/-- If a bounded round run is still incomplete, every round in its budget
+has advanced the clock once. No message-service premise is used. -/
+theorem runRounds_clock_of_incomplete (runtime : SealedResolution Principal Value)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (environment : runtime.messageApplication.WirePolicy)
+    (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
+    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+      count execution).support)
+    (hincomplete : runtime.complete next.native.application.visible = false) :
+    next.native.application.visible.clock = execution.native.application.visible.clock + count := by
+  induction count generalizing execution with
+  | zero =>
+      simp only [runRounds, FinDist.mem_support_pure] at hnext
+      subst next
+      omega
+  | succ count ih =>
+      simp only [runRounds] at hnext
+      split at hnext
+      · simp only [FinDist.mem_support_pure] at hnext
+        subst next
+        simp_all
+      · simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
+        obtain ⟨middle, hmiddle, hnext⟩ := hnext
+        rw [ih middle hnext,
+          runtime.round_clock principals serviceSlots players environment execution middle hmiddle]
+        omega
 
 /-- Immutable ideal registrations survive arbitrary native action sequences,
 including clock resolution and post-timeout traffic. -/

@@ -20,6 +20,7 @@ import Vegas.Compile.SealedMessages
 import Vegas.Compile.SealedDecode
 import Vegas.Compile.SealedExecution
 import Vegas.Compile.SealedRules
+import Vegas.Compile.SealedResolutionAdmission
 import Vegas.Compile.SealedDecodeLaws
 import Vegas.Compile.SealedRefinement
 import Vegas.Compile.SealedSource
@@ -27,6 +28,7 @@ import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedView
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
+import Vegas.Compile.SealedTermination
 import Vegas.Compile.SealedResolutionPrivacy
 import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedResolutionReplay

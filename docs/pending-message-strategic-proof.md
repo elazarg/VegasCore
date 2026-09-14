@@ -11,8 +11,10 @@ The source-policy translation implements those completion checks and retains
 own private memory across nullable defaults; its before-timeout policy law is
 checked. The source/native execution coupling, including the actual timeout
 continuation and arbitrary randomized focal and environment policies, is checked.
-The general source-settlement edge, service and termination bounds, and the
-utility comparison remain Lean obligations.
+Finite termination is checked for the fixed-clock round driver. Its connection
+to the finite-invocation coupling, the general source-settlement edge,
+deadline-relative honest service, and the utility comparison remain Lean
+obligations.
 The whole argument has not been checked in Lean or independently reviewed.
 Section 8 gives the implementation boundary. In particular, this note is not
 evidence that the repository already proves pending-message Nash preservation.
@@ -270,18 +272,29 @@ in a unilateral-deviation run belongs to the deviator.
 
 **Termination lemma.** Every policy profile and every environment policy,
 even an unfair one, terminates under the clock/timeout mechanism within
-`n*(L+1)+1` rounds.
+`n*(L+1)` rounds.
 
-Until termination, the least unfinished source node is ready, because all its
-prerequisites are earlier. If no node completes in the following `L+1` rounds,
-that node expires, contradicting the supposition. Each interval therefore
-completes a new node or the program has already terminated. There are `n`
-nodes. Deterministic default propagation only shortens execution. For `n=0`,
-return immediately.
+Once all prerequisites of a node are complete, the first following round either
+completes it or records a readiness timestamp no later than that round's clock.
+The timestamp persists. After `L` further rounds the node cannot remain
+unexpired. Induction over the source-ordered rules completes the first `k`
+nodes within `k*(L+1)` rounds; earlier completion ends the run immediately.
+For `n=0`, completion already holds without a round.
 
 This supplies a finite horizon independently of the service hypothesis.
 Service is used to rule out honest failures, not to define payoff at a
 nonterminating execution.
+
+The bound is checked by `SealedResolution.runRounds_complete` for any enabled
+backward-dependency rule list and initial state whose recorded timestamps are
+no later than its clock. `SealedCompilation.resolvingRuntime_runRounds_complete`
+discharges both rule conditions from the fragment certificate and the timestamp
+condition from canonical initialization. It permits arbitrary player and wire
+policies, including an empty roster and zero service slots. It does not identify
+the public settlement with a source outcome. The fixed-clock, early-stopping
+driver and the finite-invocation runner used by the coupling are executions of
+the same application; their observed-outcome connection still needs a checked
+driver law, including the clock commands and early completion.
 
 ## 4. Actual compiled player behavior
 
@@ -692,7 +705,11 @@ law(R_E(C(sigma))) = law(S(sigma)).                            (4)
 ```
 
 This is a separate identification within the same coupling construction.
-An arbitrary-deviation mixture alone would not prove (4).
+An arbitrary-deviation mixture alone would not prove (4). Finite default
+termination is also insufficient: an unpolled source decision can resolve by
+timeout, and the extracted policy uses a fallback at an unregistered site.
+The honest-law proof must identify the actual registration kernels with the
+original source profile, under the service guarantee excluding honest timeouts.
 
 ## 6. The precise incentive premise and strategic theorem
 
@@ -901,7 +918,10 @@ The current repository has:
   or opening, while retaining existing private values and reading public defaults;
 - a checked-source regression whose missing commitments resolve to the public
   values of a legal written-source execution;
-- generic utility-based Nash transport.
+- generic utility-based Nash transport;
+- a fixed-clock round-driver termination bound of `n * (window + 1)` for
+  enabled backward-dependency programs, instantiated for every compiled sealed
+  fragment from canonical initialization under arbitrary player and wire policies.
 
 The registration read bound is checked over the actual shared policy runner,
 including clock transitions and rejection receipts. The paired execution
@@ -974,8 +994,10 @@ The remaining implementation work is specific:
    regression. Normal completed event decoding already recovers the exact
    coupled source realization. After timeout, service values and logical
    defaults remain distinct; equal private bindings are not the target claim.
-3. Establish readiness/read invariants after defaults and instantiate the
-   fair-service and termination arguments. Do not assume a bare expiration
+3. Connect the bounded early-stopping round driver to the finite-invocation
+   coupling, then establish readiness/read invariants after defaults and the
+   deadline-relative service theorem that rules out honest timeouts. The
+   independent termination bound is checked. Do not assume a bare expiration
    status is a source settlement.
 4. Establish the all-compiled honest outcome law. The arbitrary-deviation
    mixture alone does not identify its source marginal with the original

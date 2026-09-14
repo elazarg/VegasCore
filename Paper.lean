@@ -12,6 +12,7 @@ import Vegas.Language.Nullable
 import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
+import Vegas.Compile.SealedTermination
 import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedSourceExtraction
 import Vegas.Compile.SealedSourceRealization
@@ -211,6 +212,30 @@ theorem compiled_resolving_policy_no_cleartext
     .submit (.cleartext node value) ∉
       (compilation.compileResolvingPolicy nullValue window who policy history view).support :=
   compilation.supported.resolvingPolicy_no_cleartext nullValue window who _ history view node value
+
+/-- Every compiled resolving runtime terminates within
+`nodeCount * (window + 1)` rounds, for arbitrary player and wire policies. -/
+theorem compiled_resolution_terminates
+    {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (principals : List Player) (serviceSlots : Nat)
+    (players : Player →
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
+    (environment :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.WirePolicy)
+    (next :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hnext : next ∈
+      ((compilation.supported.resolvingRuntime nullValue window).runRounds
+        principals serviceSlots players environment
+        ((ToEventGraph.compile source.core).graph.nodeCount * (window + 1))
+        (MessageApplication.PolicyExecution.initial _
+          (MessageApplication.State.initial _
+            (compilation.supported.resolvingRuntime nullValue window).initial))).support) :
+    (compilation.supported.resolvingRuntime nullValue window).complete
+      next.native.application.visible = true :=
+  compilation.resolvingRuntime_runRounds_complete nullValue window principals serviceSlots
+    players environment next hnext
 
 /-- Whole-prefix registration hiding with randomized native players and
 full-pool environment policies. Source-kernel coupling is a separate obligation. -/
@@ -1253,6 +1278,11 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.compiled_resolving_policy_no_cleartext
+
+/-- info: 'Vegas.Paper.compiled_resolution_terminates' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_resolution_terminates
 
 /-- info: 'Vegas.Paper.pending_binding_read_bound' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

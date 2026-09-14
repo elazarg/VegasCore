@@ -74,8 +74,10 @@ import Interaction.SealedTimeoutApplication
 import Interaction.SealedTimeoutDisclosure
 import Interaction.SealedResolution
 import Interaction.SealedResolutionLaws
+import Interaction.SealedResolutionProgress
 import Interaction.SealedResolutionBinding
 import Interaction.SealedResolutionRounds
+import Interaction.SealedResolutionTermination
 import Interaction.SealedResolutionProvenance
 import Interaction.SealedResolutionPolicy
 import Interaction.SealedResolutionLikelihood

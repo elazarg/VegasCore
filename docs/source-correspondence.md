@@ -68,5 +68,14 @@ For every normally completed supported pair,
 `mixtureSourceCoupling_decode_of_complete_clear` proves that native event decoding
 returns exactly the retained source realization, including its terminal store.
 This uses binding and registration agreement, not only marginal equalities.
-Fair-service completion, the all-compiled honest law, post-timeout settlement,
-and the informed-quitting utility bound remain separate obligations.
+`SealedCompilation.resolvingRuntime_runRounds_complete` separately proves a
+finite termination bound for the same resolving application: a compiled graph
+with `n` nodes completes within `n * (window + 1)` rounds of the fixed-clock
+driver, under arbitrary randomized player and wire policies. The fragment
+certificate proves that rules are enabled and prerequisites point backward.
+No roster coverage or message service is needed for termination by timeout.
+
+Connecting this early-stopping driver to the finite-invocation coupling,
+preventing honest timeouts under fair service, the all-compiled honest law,
+post-timeout settlement, and the informed-quitting utility bound remain
+separate obligations.
