@@ -15,11 +15,14 @@ Finite termination, deadline-relative service excluding honest timeouts, and
 the exact source/native coupling are checked for the fixed-clock round driver,
 including decoding at normal completion. The all-compiled honest outcome law
 is checked against the original written-source profile, under periodic service.
-The general source-settlement edge and the utility comparison remain Lean
-obligations.
-The whole argument has not been checked in Lean or independently reviewed.
-Section 8 gives the implementation boundary. In particular, this note is not
-evidence that the repository already proves pending-message Nash preservation.
+`SealedCompilation.RoundModel.utilitySimulation` proves end-to-end Nash and
+same-error epsilon-Nash preservation and reflection under a uniform utility
+cap on the deviator's own timeout settlement. Its quantitative version charges
+a uniform margin times the actual probability of timeout. It uses the constructed
+source/native coupling, not an assumed deviation bound.
+The general source-settlement edge and the weaker stopping-information comparison
+in Section 6 remain Lean obligations. Section 8 distinguishes these from the
+checked uniform-cap theorem; the entire conditional argument is not mechanized.
 
 ## 1. Exact scope and conclusion
 
@@ -1202,6 +1205,37 @@ instantiates all of these premises for arbitrary original source kernels and
 arbitrary unreserved wire policies. This is honest outcome preservation, not
 an equilibrium theorem.
 
+The concrete strategic edge is
+`SealedCompilation.RoundModel.utilitySimulation`. `RoundModel.game` is the
+actual driver with unrestricted native player policies and a fixed adaptive
+randomized wire policy. `Timely` packages the service, roster, window, and
+whole-period hypotheses above. `NormalUtilityAgreement` requires equal utility
+on completed, invariant-respecting native states decoding to a terminal source
+configuration. Source and native utilities remain separate parameters.
+
+For the checked sufficient condition, each player's entire native terminal
+utility is at most `b_i` when any of its own commitments or reveals times out,
+and every source outcome gives it at least `b_i`. Timely service proves that
+all timeouts under a unilateral replacement belong to the deviator. Normal
+branches use exact decoding; timeout branches use the cap. Finite averaging
+then yields one legal source deviation with at least the native deviation's
+utility. `RoundModel.isεNash_iff`, audited as
+`Vegas.Paper.pending_round_approximate_nash_iff`, combines this bound with the
+original honest law. A source lower bound `b_i + delta` yields the stronger
+`RoundModel.deviation_utility_margin_bound`, audited as
+`Vegas.Paper.pending_round_deviation_margin`: the source deviation's expected
+utility exceeds the native one by at least `delta * Pr(timeout)`.
+
+This global cap is stronger than (5). It allows zero-valued own defaults with
+nonnegative source utilities, but ordinary source quit dominance does not
+imply it. The concrete four-node regression instantiates the actual driver and
+Nash theorem with simple supplied utilities; it does not establish that those
+utilities are the payout interpretation of that source. Independently,
+`publicSealedStore_agrees` reconstructs typed public fields from public initial
+data and opening events, ignoring opaque commitments; `publicPayout?` evaluates
+the compiled payout on that public store. Totality and source-settlement
+identification after defaults remain separate obligations.
+
 The remaining implementation work is specific:
 
 1. Check backend admission for nullable values and direct unique reveals,
@@ -1211,8 +1245,10 @@ The remaining implementation work is specific:
    regression. Normal completed event decoding already recovers the exact
    coupled source realization. After timeout, service values and logical
    defaults remain distinct; equal private bindings are not the target claim.
-3. Instantiate the existing `UtilitySimulation` under the explicit
-   continuation condition, and audit the end-to-end theorem in `Paper.lean`.
+3. Weaken the checked uniform settlement cap to the explicit conditional
+   continuation condition (5), retaining the legal source continuation and the
+   deviator's actual first-timeout information. The generic finite-fiber
+   expectation bound is checked; its first-timeout compiler instance is not.
 
 No persistent role-bail rule, subgame handler, raw Ethereum transaction format,
 or cryptographic verifier is silently included here. Further runtime features

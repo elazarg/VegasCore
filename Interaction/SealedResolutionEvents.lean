@@ -364,9 +364,49 @@ theorem runPolicies_eventInvariant
     subst after
     exact hstate.tick
 
+/-- The public event invariant survives every supported bounded round run from
+an arbitrary invariant entry state.  In particular, the canonical run uses
+`EventInvariant.initial` as its entry witness. -/
+theorem runRounds_eventInvariant
+    (runtime : SealedResolution Principal Value)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (environment : runtime.messageApplication.WirePolicy)
+    (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
+    (hinvariant : EventInvariant runtime execution.native.application)
+    (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
+      count execution).support) : EventInvariant runtime next.native.application := by
+  induction count generalizing execution with
+  | zero =>
+      simp only [runRounds, FinDist.mem_support_pure] at hnext
+      subst next
+      exact hinvariant
+  | succ count ih =>
+      simp only [runRounds] at hnext
+      split at hnext
+      · simp only [FinDist.mem_support_pure] at hnext
+        subst next
+        exact hinvariant
+      · simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
+        obtain ⟨middle, hmiddle, hnext⟩ := hnext
+        simp only [round, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+        obtain ⟨serviced, hserviced, hmiddle⟩ := hmiddle
+        have hservicedInvariant := runtime.runPolicies_eventInvariant players
+          (runtime.messageApplication.wireEnvironment environment) _ execution serviced
+          hinvariant hserviced
+        have hmiddleNative := runtime.clockStep_native serviced middle hmiddle
+        apply ih middle ?_ hnext
+        rw [hmiddleNative]
+        exact hservicedInvariant.tick
+
 end Interaction.SealedResolution
 
 /-- info: 'Interaction.SealedResolution.runPolicies_eventInvariant' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.SealedResolution.runPolicies_eventInvariant
+
+/-- info: 'Interaction.SealedResolution.runRounds_eventInvariant' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.SealedResolution.runRounds_eventInvariant

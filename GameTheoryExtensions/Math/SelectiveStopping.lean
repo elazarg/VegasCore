@@ -17,6 +17,19 @@ namespace GameTheory.Math.Probability.FinDist
 
 variable {State Outcome : Type*}
 
+/-- Some supported outcome attains at least the expectation of any real
+observable under a finite distribution. -/
+theorem exists_expect_le_support {α : Type*} (law : FinDist α) (value : α → ℝ) :
+    ∃ a ∈ law.support, law.expect value ≤ value a := by
+  by_contra h
+  have hstrict : ∀ a ∈ law.support, value a < law.expect value := by
+    intro a ha
+    exact lt_of_not_ge (fun hle => h ⟨a, ha, hle⟩)
+  obtain ⟨a, ha⟩ := law.support_nonempty
+  exact (lt_irrefl _)
+    (law.expect_lt_of_mem_support value (law.expect value)
+      (fun b hb => (hstrict b hb).le) ha (hstrict a ha))
+
 /-- Branchwise continuation superiority survives arbitrary informed,
 randomized stopping. A uniform margin charges the probability of stopping.
 The premise is needed only at supported states where stopping is possible. -/
@@ -67,6 +80,124 @@ theorem selective_stopping_lt
   have hbound := selective_stopping_bound states stop quit proceed utility margin hmargin
   have hcost := mul_pos hpositive hstops
   linarith
+
+/-- Fiberwise utility comparison at the information available when stopping
+implies an unconditional comparison. The fiber hypotheses use unnormalized
+expectations, so zero-probability information values require no conditioning
+or division. Outside the stopping event, a pointwise weak comparison suffices. -/
+theorem stopping_information_fiber_bound {Information : Type*}
+    [DecidableEq Information]
+    (law : FinDist State) (stopped : State → Bool)
+    (information : State → Information)
+    (sourceValue targetValue : State → ℝ) (margin : ℝ)
+    (houtside : ∀ state ∈ law.support, stopped state = false →
+      targetValue state ≤ sourceValue state)
+    (hfiber : ∀ observed,
+      (∃ state ∈ law.support, stopped state = true ∧ information state = observed) →
+      law.expect (fun state =>
+          if stopped state && decide (information state = observed)
+          then targetValue state + margin else 0) ≤
+        law.expect (fun state =>
+          if stopped state && decide (information state = observed)
+          then sourceValue state else 0)) :
+    law.expect targetValue + margin * (law.map stopped).prob true ≤
+      law.expect sourceValue := by
+  classical
+  let fibers : Finset Information :=
+    (law.supportFinset.filter fun state => stopped state = true).image information
+  have hfibers :
+      (∑ observed : ↑fibers, law.expect (fun state =>
+          if stopped state && decide (information state = observed.1)
+          then targetValue state + margin else 0)) ≤
+        ∑ observed : ↑fibers, law.expect (fun state =>
+          if stopped state && decide (information state = observed.1)
+          then sourceValue state else 0) := by
+    apply Finset.sum_le_sum
+    intro observed _
+    apply hfiber observed.1
+    obtain ⟨state, hstate, hinfo⟩ := Finset.mem_image.mp observed.2
+    obtain ⟨hsupport, hstopped⟩ := Finset.mem_filter.mp hstate
+    exact ⟨state, mem_supportFinset.mp hsupport, hstopped, hinfo⟩
+  rw [expect_sum_comm, expect_sum_comm] at hfibers
+  have htargetFibers :
+      law.expect (fun state => ∑ observed : ↑fibers,
+          if stopped state && decide (information state = observed.1)
+          then targetValue state + margin else 0) =
+        law.expect (fun state =>
+          if stopped state then targetValue state + margin else 0) := by
+    apply expect_congr
+    intro state hstate
+    cases hstopped : stopped state with
+    | false => simp
+    | true =>
+        have hmem : information state ∈ fibers := by
+          apply Finset.mem_image.mpr
+          exact ⟨state, Finset.mem_filter.mpr
+            ⟨mem_supportFinset.mpr hstate, hstopped⟩, rfl⟩
+        simp only [Bool.true_and, decide_eq_true_eq, ↓reduceIte]
+        change (∑ observed ∈ fibers.attach,
+          if information state = observed.1 then targetValue state + margin else 0) = _
+        rw [Finset.sum_eq_single ⟨information state, hmem⟩
+          (fun observed _ hne => by
+            have hvalue : information state ≠ observed.1 := by
+              intro heq
+              apply hne
+              apply Subtype.ext
+              exact heq.symm
+            simp [hvalue])
+          (fun hnot => absurd (Finset.mem_attach _ _) hnot)]
+        simp
+  have hsourceFibers :
+      law.expect (fun state => ∑ observed : ↑fibers,
+          if stopped state && decide (information state = observed.1)
+          then sourceValue state else 0) =
+        law.expect (fun state => if stopped state then sourceValue state else 0) := by
+    apply expect_congr
+    intro state hstate
+    cases hstopped : stopped state with
+    | false => simp
+    | true =>
+        have hmem : information state ∈ fibers := by
+          apply Finset.mem_image.mpr
+          exact ⟨state, Finset.mem_filter.mpr
+            ⟨mem_supportFinset.mpr hstate, hstopped⟩, rfl⟩
+        simp only [Bool.true_and, decide_eq_true_eq, ↓reduceIte]
+        change (∑ observed ∈ fibers.attach,
+          if information state = observed.1 then sourceValue state else 0) = _
+        rw [Finset.sum_eq_single ⟨information state, hmem⟩
+          (fun observed _ hne => by
+            have hvalue : information state ≠ observed.1 := by
+              intro heq
+              apply hne
+              apply Subtype.ext
+              exact heq.symm
+            simp [hvalue])
+          (fun hnot => absurd (Finset.mem_attach _ _) hnot)]
+        simp
+  rw [htargetFibers, hsourceFibers] at hfibers
+  rw [prob_map, ← expect_smul, ← expect_add]
+  calc
+    law.expect (fun state =>
+        targetValue state + margin * (if true = stopped state then 1 else 0)) =
+        law.expect (fun state => if stopped state then targetValue state + margin else 0) +
+          law.expect (fun state => if stopped state then 0 else targetValue state) := by
+      rw [← expect_add]
+      apply expect_congr
+      intro state _
+      cases stopped state <;> simp
+    _ ≤ law.expect (fun state => if stopped state then sourceValue state else 0) +
+        law.expect (fun state => if stopped state then 0 else sourceValue state) := by
+      apply add_le_add hfibers
+      apply expect_mono
+      intro state hstate
+      cases hstopped : stopped state with
+      | false => simpa using houtside state hstate hstopped
+      | true => simp
+    _ = law.expect sourceValue := by
+      rw [← expect_add]
+      apply expect_congr
+      intro state _
+      cases stopped state <;> simp
 
 /-- The best fully informed stopping policy attains the pointwise maximum of
 the two continuation expectations. This identifies the exact value of the
@@ -124,6 +255,11 @@ end GameTheory.Math.Probability.FinDist
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Math.Probability.FinDist.selective_stopping_bound
+
+/-- info: 'GameTheory.Math.Probability.FinDist.stopping_information_fiber_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Math.Probability.FinDist.stopping_information_fiber_bound
 
 /-- info: 'GameTheory.Math.Probability.FinDist.selective_stopping_optimal' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

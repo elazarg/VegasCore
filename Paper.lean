@@ -36,6 +36,7 @@ import Vegas.EventGraph.Strategic
 import Vegas.Game.SealedMessages
 import Vegas.Game.SealedRelease
 import Vegas.Game.SealedStrategic
+import Vegas.Game.SealedRounds
 import Vegas.Game.SourceGraph
 
 /-! # Paper theorem audit
@@ -43,21 +44,17 @@ import Vegas.Game.SourceGraph
 This file is deliberately a thin audit surface. Every closed statement below
 delegates directly to a theorem in the active source, graph, or sealed-message
 tower. Source-to-declared-read-graph strategic preservation uses a concrete
-compiler simulation. Pending-message preservation still uses an explicit
-`StrategicCertificate`: the runtime must provide the honest law and the
-finite-mixture law for its considered unilateral deviations.
+compiler simulation. The pending-message round game has a concrete
+`UtilitySimulation` under timely service, normal utility agreement, and a
+uniform bound on the deviator's own timeout settlement.
 
 The fixed-response source/native prefix law through first timeout is checked.
 The original all-compiled source law is checked for the actual round driver
 under periodic service, with normal completion and timeout exclusion proved.
-The full pending-message backtranslation for the concrete policy runtime is an open
-research obligation. It is not represented here as a theorem with an
-unjustified universal conclusion; the certificate interface records exactly
-what that proof must construct. If the eventual runtime edge has a target-only
-early-resolution action, a Nash theorem may instead use utility domination.
-The comparison must concern feasible whole-program continuations with existing
-commitments fixed at the information available when quitting is chosen. The
-native disclosure bound below does not yet discharge that source-level law.
+The uniform settlement-cap theorem covers every unilateral native policy and
+preserves the same epsilon at compiled profiles. It does not assume that ordinary
+source quit dominance supplies this cap. Replacing the cap by the weaker
+stopping-information comparison for feasible locked continuations remains open.
 -/
 
 namespace Vegas.Paper
@@ -818,6 +815,58 @@ theorem pending_honest_round_source_law
   compilation.exists_honest_round_source_coupling nullValue window principals serviceSlots
     profile wire reserved hservice period hperiod hcapacity hroster hwindow total hperiods hbound
 
+/-- End-to-end epsilon-Nash correspondence under timely pending-message
+service and a uniform utility cap on each player's own timeout settlement. -/
+theorem pending_round_approximate_nash_iff
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    {compilation : SealedCompilation source ty} {nullValue : L.Val ty} {window : Nat}
+    (model : compilation.RoundModel nullValue window) (timely : model.Timely)
+    (sourceUtility : VEnv L (sourceTerminalCtx source.core.prog) → Player → ℝ)
+    (nativeUtility : model.game.sig.Outcome → Player → ℝ)
+    (hagrees : model.NormalUtilityAgreement sourceUtility nativeUtility)
+    (floor : Player → ℝ) (hsourceFloor : ∀ outcome who, floor who ≤ sourceUtility outcome who)
+    (htimeout : ∀ next : model.game.sig.Outcome,
+      (compilation.supported.resolvingRuntime nullValue window).complete
+        next.native.application.visible = true →
+      ∀ who, model.OwnTimeout who next → nativeUtility next who ≤ floor who)
+    (ε : ℝ) (profile : SourceBehavioralProfile source.core.prog) :
+    GameTheory.IsεNash model.game nativeUtility ε
+      (fun who => compilation.compileResolvingPolicy nullValue window who (profile who)) ↔
+        GameTheory.IsεNash (sourceGameForm source.core.prog source.core.env)
+          sourceUtility ε profile :=
+  model.isεNash_iff timely sourceUtility nativeUtility hagrees floor hsourceFloor htimeout ε profile
+
+/-- A uniform continuation margin charges the actual probability of timeout,
+while the dominating strategy remains a legal written-source deviation. -/
+theorem pending_round_deviation_margin
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    {compilation : SealedCompilation source ty} {nullValue : L.Val ty} {window : Nat}
+    (model : compilation.RoundModel nullValue window) (timely : model.Timely)
+    (sourceUtility : VEnv L (sourceTerminalCtx source.core.prog) → Player → ℝ)
+    (nativeUtility : model.game.sig.Outcome → Player → ℝ)
+    (hagrees : model.NormalUtilityAgreement sourceUtility nativeUtility)
+    (profile : SourceBehavioralProfile source.core.prog) (who : Player)
+    (replacement : model.game.sig.Strategy who) (floor margin : ℝ)
+    (hsourceFloor : ∀ outcome, floor + margin ≤ sourceUtility outcome who)
+    (htimeout : ∀ next : model.game.sig.Outcome,
+      (compilation.supported.resolvingRuntime nullValue window).complete
+        next.native.application.visible = true →
+      model.OwnTimeout who next → nativeUtility next who ≤ floor) :
+    ∃ alternative : SourceBehavioralPolicy source.core.prog who,
+      (model.game.play (GameTheory.Profile.update (fun player =>
+        compilation.compileResolvingPolicy nullValue window player (profile player))
+          who replacement)).expect (fun next => nativeUtility next who) +
+        margin * ((model.game.play (GameTheory.Profile.update (fun player =>
+          compilation.compileResolvingPolicy nullValue window player (profile player))
+            who replacement)).map (fun next =>
+              !next.native.application.visible.timeouts.isEmpty)).prob true ≤
+        (denoteSource source.core.prog
+          (GameTheory.Profile.update (sig := sourceGameSignature source.core.prog)
+            profile who alternative) source.core.env).expect
+              (fun outcome => sourceUtility outcome who) :=
+  model.deviation_utility_margin_bound timely sourceUtility nativeUtility hagrees profile who
+    replacement floor margin hsourceFloor htimeout
+
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal
     {Γ : VCtx Player simpleExpr} {secret : VarId} {b : BaseTy}
@@ -1521,3 +1570,13 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_honest_round_source_law
+
+/-- info: 'Vegas.Paper.pending_round_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_round_approximate_nash_iff
+
+/-- info: 'Vegas.Paper.pending_round_deviation_margin' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_round_deviation_margin

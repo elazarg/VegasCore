@@ -233,9 +233,13 @@ in that choice's source view. The needed whole-run read-boundedness theorem
 connects this local barrier to the extracted source policy.
 
 For selective quitting, exact outcome-law simulation and Nash preservation
-are separate targets. The latter can use `UtilitySimulation` if every runtime
-deviation is no better than a legal source deviation. The native fixed-opening
-utility bound is checked, but its whole-program continuation instance is not.
+are separate targets. `SealedCompilation.RoundModel.utilitySimulation` provides
+the latter for the actual pending-message round game under timely service,
+normal source/native utility agreement, and a uniform cap on a player's own
+timeout settlement below every source utility. Arbitrary native deviations are
+bounded by legal source deviations, with a margin times timeout probability in
+the quantitative theorem. The weaker information-conditional whole-program
+comparison remains open; ordinary source quit dominance does not imply the cap.
 `SealedResolution` supplies per-node relative deadlines and nullable defaults,
 then permits later application actions. Its round driver uses the shared
 message runner and separates adaptive wire choices from fixed clock ticks.
@@ -250,8 +254,11 @@ a missing commitment and a missing opening. Post-default read availability,
 finite termination, and periodic service excluding honest timeouts are checked.
 The honest outcome theorem counts every source player's conditional draws and
 uses only environment predrawing, retaining the original source profile.
-General nullable/direct-unique-reveal admission, the post-timeout outcome
-evaluator connection, and the informed continuation utility comparison remain
+Public initial data and opening events reconstruct the public store, with
+typed-field agreement on normally decoded runs; the public payout evaluator
+uses that store without reading the private commitment service.
+General nullable/direct-unique-reveal admission, total post-timeout source
+settlement identification, and the conditional continuation utility comparison remain
 open; the mathematical note states those obligations explicitly.
 Malformed messages are rejected without a source step. Fair deadline resolution
 must implement the programmer's quitting settlement; a rejected attempt alone
@@ -260,7 +267,7 @@ identified with a full source environment where its deterministic reveal copied
 `none`. The coupling must retain the locked source choice and compare its legal
 continuation with the runtime settlement. Ordinary ex-ante strict dominance of
 the source quit action does not establish this comparison at finer stopping
-information. The immediate final interface is the existing `UtilitySimulation`,
+information. The strategic interface is the instantiated `UtilitySimulation`,
 not an assumed exact-outcome `StrategicCertificate` for selective quitting.
 
 The source-to-declared-read-graph strategic edge is discharged independently of
@@ -272,7 +279,7 @@ same information boundary as the graph kernels.
 ## Deliberate non-claims
 
 The tower currently has no cryptographic reduction, implementation of authenticated identities,
-block-production/fairness theorem, whole-run public-mempool Nash theorem, EVM
+block-production/fairness theorem, unconditional public-mempool Nash theorem, EVM
 execution/refinement theorem, or contract settlement theorem. Those are future
 runtime edges. The `archive/fused/` directory contains the former fused
 application-plan development as readable research material; its results are not

@@ -39,15 +39,14 @@ signal. The separate behavioral-frontier presentation requires its own
 information-locality and single-ready-node correspondence; the concrete
 source certificate here does not assume or establish that correspondence.
 
-The active sealed-message edge does not yet supply a complete strategic
-preservation instance. `SealedCompilation.StrategicCertificate` states the exact-law edge
-explicitly: a concrete runtime must supply the honest outcome law and represent
-each considered unilateral deviation by a finite mixture of source deviations.
-The generic GameTheory layer then proves the expected-utility guarantee and
-same-error approximate-Nash equivalence. When informed quitting changes the
-outcome law, `UtilitySimulation` can instead prove Nash preservation through
-whole-program utility bounds. The concrete pending-message instance of either
-interface remains open.
+The sealed pending-message round driver supplies a concrete utility-preservation
+instance in `SealedCompilation.RoundModel.utilitySimulation`. Under timely
+service, normal source/native utility agreement, and a uniform cap on each
+player's own timeout settlement below every source utility, it preserves and
+reflects Nash and same-error epsilon-Nash at compiled profiles. Its player
+policies remain unrestricted. This utility-specific theorem does not claim exact
+outcome-law simulation after selective quitting. The weaker informed-continuation
+condition remains open; ordinary source quit dominance does not imply the cap.
 
 The resolving message runtime has a checked whole-prefix registration read
 bound, `SealedFragment.resolvingBindingLaw_read_bound`. It executes compiled
@@ -94,5 +93,7 @@ whole-period horizon at least the termination bound, the actual stopped
 driver completes without timeout and decodes to its paired source realization.
 The probability proof counts every player's original conditional draw and
 predraws only the environment; it does not infer the honest law from the
-unilateral-deviation mixture. Post-timeout settlement and the informed-quitting
-utility bound remain separate obligations.
+unilateral-deviation mixture. `RoundModel.deviation_utility_margin_bound` uses
+that mixture to charge a uniform continuation margin times the actual timeout
+probability. General post-timeout source settlement and the weaker
+information-conditional utility bound remain separate obligations.

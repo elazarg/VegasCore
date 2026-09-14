@@ -3,5 +3,6 @@ import GameTheoryExtensions.Core.MixtureSimulationComposition
 import GameTheoryExtensions.Core.QuitTransfer
 import GameTheoryExtensions.Core.MixtureSimulationTests
 import GameTheoryExtensions.Math.SelectiveStopping
+import GameTheoryExtensions.Math.SelectiveStoppingTests
 import GameTheoryExtensions.Math.Probability.FinDist
 import GameTheoryExtensions.Core.UtilitySimulation

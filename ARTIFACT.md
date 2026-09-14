@@ -30,7 +30,7 @@ a build optimization; the subsequent build checks the proof terms.
 | How is the event graph built? | `Vegas/Compile/Compiler.lean`, `Vegas/EventGraph/` |
 | How are source decisions and graph reads related? | `Vegas/Compile/Compiler.lean`, `SourceAdequacy.lean`, and the event-graph laws |
 | What executes public messages? | `Interaction/`, `Vegas/Compile/SealedSource.lean` |
-| Which active games use that runtime? | `Vegas/Game/SealedMessages.lean`, `SealedRelease.lean`, `SealedTimeoutApplication.lean`, and `SealedStrategic.lean` |
+| Which active games use that runtime? | `Vegas/Game/SealedRounds.lean`, `SealedMessages.lean`, `SealedRelease.lean`, and `SealedTimeoutApplication.lean` |
 | Which claims are paper-facing? | The single root audit, `Paper.lean` |
 
 Read the owning theorem and definitions, not only its paper-facing restatement.
@@ -69,13 +69,15 @@ Ideal-service hiding is proved separately. These results are operational and
 support-level; they do not identify an arbitrary runtime policy with a source
 policy.
 
-Strategic preservation is exposed by
-`Vegas.SealedCompilation.StrategicCertificate`. A concrete runtime must provide
-the honest outcome law and finite-mixture backtranslation for its considered
-unilateral deviations. The generic GameTheory layer then proves expected-
-utility guarantees and same-error approximate-Nash preservation and
-reflection. The pending-message certificate is the next open proof obligation;
-support refinement and hiding alone do not discharge it.
+`Vegas.SealedCompilation.RoundModel.utilitySimulation` is a concrete strategic
+edge to the actual pending-message round driver. It uses timely service,
+normal source/native utility agreement, and a uniform cap on the player's
+entire utility when its own commitment or reveal times out. The cap must lie
+below every source utility. The theorem covers all unilateral native policies;
+it derives the deviation bound from the constructed coupling. It preserves and
+reflects Nash and same-error epsilon-Nash at compiled profiles. A positive
+uniform margin charges the actual timeout probability. This utility theorem
+does not assert exact outcome-law simulation after selective withholding.
 
 For the resolving sealed backend, `pending_honest_round_source_law` in
 `Paper.lean` audits an exact coupling with the original written-source profile.
@@ -84,8 +86,11 @@ Roster coverage, periodic inclusion capacity, a sufficient relative timeout
 window, and a whole-period termination budget imply normal completion and
 exact decoding at every supported result. A multistage nullable-source test
 instantiates the assumptions with delayed service and arbitrary unreserved
-wire choices. The remaining strategic step is the whole-program utility
-comparison for unilateral timeout behavior, not the all-compiled honest law.
+wire choices. `pending_round_approximate_nash_iff` and
+`pending_round_deviation_margin` audit the uniform-cap strategic result.
+The weaker information-conditional continuation comparison and general
+source-settlement identification after defaults remain open. The strategic
+regression uses simple supplied utilities, not a proved source payout model.
 
 At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
 sharper exact statement under declared-read locality and a single ready

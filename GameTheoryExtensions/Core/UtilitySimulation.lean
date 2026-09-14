@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Core.MixtureSimulation
+import GameTheoryExtensions.Math.SelectiveStopping
 
 /-! # Strategic transfer by utility bounds
 
@@ -116,17 +117,6 @@ def trans {middle : GameForm.{uPlayer, uMiddle, uMiddleOutcome} Player}
 
 end UtilitySimulation
 
-private theorem exists_expect_le_support {α : Type*} (law : FinDist α) (value : α → ℝ) :
-    ∃ a ∈ law.support, law.expect value ≤ value a := by
-  by_contra h
-  have hstrict : ∀ a ∈ law.support, value a < law.expect value := by
-    intro a ha
-    exact lt_of_not_ge (fun hle => h ⟨a, ha, hle⟩)
-  obtain ⟨a, ha⟩ := law.support_nonempty
-  exact (lt_irrefl _)
-    (law.expect_lt_of_mem_support value (law.expect value)
-      (fun b hb => (hstrict b hb).le) ha (hstrict a ha))
-
 /-- Exact finite-mixture simulation supplies utility simulation for every
 chosen utility on the common observation. A finite mixture has a component
 whose utility is at least its mean; no closure assumption on strategies is needed. -/
@@ -148,7 +138,7 @@ def MixtureSimulationOn.toUtilitySimulation
       simulation.deviation_mixture profile who replacement (hall who replacement)
     have hexpect := congrArg (fun law => law.expect (fun obs => utility obs who)) hlaw
     simp only [FinDist.expect_map, FinDist.expect_bind] at hexpect
-    obtain ⟨alternative, _, hbound⟩ := exists_expect_le_support alternatives
+    obtain ⟨alternative, _, hbound⟩ := FinDist.exists_expect_le_support alternatives
       (fun alternative => (source.play (Profile.update profile who alternative)).expect
         (fun outcome => utility (sourceObserve outcome) who))
     exact ⟨alternative, hexpect.le.trans hbound⟩

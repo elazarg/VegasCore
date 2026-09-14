@@ -8,6 +8,7 @@ import Vegas.Game.SealedMessages
 import Vegas.Game.SealedRelease
 import Vegas.Game.SealedTimeoutApplication
 import Vegas.Game.SealedStrategic
+import Vegas.Game.SealedRounds
 import Vegas.Game.SourceGraph
 
 /-! # Native operational games and source correspondence -/

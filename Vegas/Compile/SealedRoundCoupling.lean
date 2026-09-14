@@ -61,6 +61,49 @@ def extractedRoundSourceCoupling
   (compilation.extractedSourceCoupling nullValue window focal deviator environment schedule
     fallback profile).map fun pair => (pair.1, readout pair.2)
 
+/-- Every source configuration retained by a round-readout coupling is a
+terminal realization of the compiled source graph.  Selecting an earlier
+native round boundary does not alter that source component. -/
+theorem extractedRoundSourceCoupling_terminal
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (principals : List Player) (serviceSlots count : Nat) (focal : Player)
+    (deviator :
+      List
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.PlayerEntry →
+        (compilation.supported.resolvingRuntime nullValue window).messageApplication.View →
+        (compilation.supported.resolvingRuntime nullValue
+          window).messageApplication.PlayerCommand)
+    (environment :
+      List
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.EnvironmentEntry →
+        (compilation.supported.resolvingRuntime nullValue
+          window).messageApplication.EnvironmentObservation →
+        (compilation.supported.resolvingRuntime nullValue
+          window).messageApplication.EnvironmentPolicyCommand)
+    (fallback : L.Val ty) (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (selected :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hpair : (cfg, selected) ∈
+      (compilation.extractedRoundSourceCoupling nullValue window principals serviceSlots count
+        focal deviator environment fallback profile).support) :
+    Terminal (compile source.core).graph cfg.1 := by
+  let schedule := SealedResolution.roundSchedule principals serviceSlots count
+  simp only [extractedRoundSourceCoupling, FinDist.support_map, Set.mem_image] at hpair
+  obtain ⟨⟨sourceCfg, trace⟩, hsource, heq⟩ := hpair
+  have hcfgEq : sourceCfg = cfg := congrArg Prod.fst heq
+  subst sourceCfg
+  have hcfg : cfg ∈
+      ((compilation.extractedSourceCoupling nullValue window focal deviator environment schedule
+        fallback profile).map Prod.fst).support := by
+    rw [FinDist.support_map]
+    exact ⟨(cfg, trace), hsource, rfl⟩
+  rw [compilation.extractedSourceCoupling_realization] at hcfg
+  exact compilation.extractedSourceRun_terminal nullValue window focal deviator environment
+    schedule fallback profile cfg hcfg
+
 /-- A normally completed timeout-free round readout decodes to the retained
 source realization. The full trace may contain later traffic, so the proof
 uses the supported continuation from the selected boundary and persistence of
@@ -218,6 +261,38 @@ theorem exists_randomized_round_source_coupling
     simpa only [extractedRoundSourceCoupling, FinDist.map_bind, FinDist.map_comp,
       Function.comp_def] using hreadout
 
+/-- Every pair supported by a finite mixture of the explicit round-readout
+couplings retains a terminal compiled source configuration. -/
+theorem mixtureRoundSourceCoupling_terminal
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (principals : List Player) (serviceSlots count : Nat) (focal : Player)
+    (fallback : L.Val ty) (profile : SourceBehavioralProfile source.core.prog)
+    (responsePairs : FinDist
+      ((List
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.PlayerEntry →
+          (compilation.supported.resolvingRuntime nullValue window).messageApplication.View →
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.PlayerCommand) ×
+        (List
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.EnvironmentEntry →
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.EnvironmentObservation →
+          (compilation.supported.resolvingRuntime nullValue
+            window).messageApplication.EnvironmentPolicyCommand)))
+    (cfg : ReachableConfig (compile source.core).graph)
+    (selected :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hpair : (cfg, selected) ∈ (responsePairs.bind fun responses ↦
+      compilation.extractedRoundSourceCoupling nullValue window principals serviceSlots count
+        focal responses.1 responses.2 fallback profile).support) :
+    Terminal (compile source.core).graph cfg.1 := by
+  simp only [FinDist.support_bind, Set.mem_iUnion] at hpair
+  obtain ⟨responses, _, hpair⟩ := hpair
+  exact compilation.extractedRoundSourceCoupling_terminal nullValue window principals
+    serviceSlots count focal responses.1 responses.2 fallback profile cfg selected hpair
+
 /-- Every normally completed timeout-free pair in a mixture of the explicit
 round-readout couplings decodes to its retained source realization. This
 applies directly to the response mixture constructed for randomized focal and
@@ -268,3 +343,8 @@ end Vegas.SealedCompilation
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SealedCompilation.mixtureRoundSourceCoupling_decode_of_complete_clear
+
+/-- info: 'Vegas.SealedCompilation.mixtureRoundSourceCoupling_terminal' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.mixtureRoundSourceCoupling_terminal
