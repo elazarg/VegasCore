@@ -37,6 +37,8 @@ import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateValues
 import Vegas.Compile.SealedCandidateCylinder
 import Vegas.Compile.SealedCandidateSourceLikelihood
+import Vegas.Compile.SealedCandidateReferenceKernel
+import Vegas.Compile.SealedCandidateSourceFactors
 import Vegas.Compile.SealedCandidateReadBound
 import Vegas.Compile.SealedCandidateReplay
 import Vegas.Compile.SealedCandidateSourceExtraction

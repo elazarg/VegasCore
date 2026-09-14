@@ -38,9 +38,9 @@ def assignedRegistrationFactor
   match (trace.prefixThrough stop).last.native.application.service.lookup (who, slot) with
   | none => 1
   | some value =>
-      let selected := runtime.registrationCheckpoint
+      let selected := runtime.messageApplication.commandCheckpoint
         (compilation.supported.resolvingAssignedPlayers nullValue window reference) trace stop
-        who slot value
+        who (.privateCommand ⟨(slot, value)⟩)
       (compilation.compileResolvingPolicy nullValue window who (profile who)
         (selected.principalHistory who)
         (State.observe runtime.messageApplication selected.native who)).prob
@@ -208,7 +208,7 @@ theorem assignedRestriction_weight_eq_product
           htrace stop who site.depth value (by intro h; cases h) hlookup
         have hclear :
             (stopped.firstRelease release).native.application.visible.timeouts = [] := by
-          simpa only [SealedResolution.registrationCheckpoint, stop,
+          simpa only [MessageApplication.commandCheckpoint, stop,
             Bool.not_eq_eq_eq_not, Bool.not_false, List.isEmpty_iff] using hselected.1
         obtain ⟨outcome, houtcome, ctx, label, actionTy, sourceGuard, actual, hdepth, hprob⟩ :=
           compilation.assignedReplay_registration_probability nullValue window environment

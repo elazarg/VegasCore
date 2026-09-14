@@ -361,6 +361,111 @@ theorem replay_probability_of_recorded_choices {Trace : Type*}
     simp only [event, Set.mem_preimage, Set.mem_ofPred_eq, Option.some.injEq,
       exists_eq_left']
 
+/-- Evaluate a recorded-choice likelihood from one fixed factor per source
+decision. The local probability premise uses typed source values, leaving
+native checkpoint selection and encoding entirely outside this calculation. -/
+theorem recordedChoiceRestriction_weight_eq_product
+    (selected : Player → Bool) (recorded : Player × Nat → Option (L.Val ty))
+    (profile : SourceBehavioralProfile source.core.prog) (factor : Player → Nat → ℝ)
+    (final : VEnv L (sourceTerminalCtx source.core.prog))
+    (hfinal : final ∈ (denoteSource source.core.prog
+      ((compilation.recordedChoiceRestriction selected recorded).apply profile)
+        source.core.env).support)
+    (hunit : ∀ who slot, selected who = false ∨ recorded (who, slot) = none →
+      factor who slot = 1)
+    (hprob : ∀ who {Δ name choiceTy guard}
+      (site : SourceDecisionSite who source.core.prog Δ name choiceTy guard),
+      selected who = true → ∀ value, recorded (who, site.depth) = some value →
+        factor who site.depth =
+          ((profile who site ((site.recorded final).tail.toView who).eraseEnv).map
+            (fun choice => (⟨choiceTy, choice.1⟩ : TypedValue L))).prob ⟨ty, value⟩) :
+    (compilation.recordedChoiceRestriction selected recorded).weight profile source.core.env final =
+      (source.core.prog.decisionPositions.map fun slot => factor slot.1 slot.2).prod := by
+  apply SourceChoiceRestriction.weight_eq_decision_product source.core.prog profile
+    ((compilation.recordedChoiceRestriction selected recorded).apply profile) _
+    source.core.env final hfinal
+  intro who Δ name choiceTy guard site
+  dsimp only
+  cases hselected : selected who with
+  | false =>
+      constructor
+      · intro _
+        exact hunit who site.depth (Or.inl hselected)
+      · intro fixed hfixed
+        simp only [recordedChoiceRestriction, hselected, Bool.false_eq_true, ↓reduceIte] at hfixed
+        cases hfixed
+  | true =>
+      cases hlookup : recorded (who, site.depth) with
+      | none =>
+          constructor
+          · intro _
+            exact hunit who site.depth (Or.inr hlookup)
+          · intro fixed hfixed
+            simp only [recordedChoiceRestriction, hselected, ↓reduceIte, hlookup,
+              Option.map_none] at hfixed
+            cases hfixed
+      | some value =>
+          constructor
+          · intro hnone
+            simp only [recordedChoiceRestriction, hselected, ↓reduceIte, hlookup,
+              Option.map_some] at hnone
+            cases hnone
+          · intro fixed hfixed
+            have hvalue := compilation.recordedChoiceRestriction_fixed_value selected recorded
+              who hselected site _ value hlookup fixed hfixed
+            have hmass := hprob who site hselected value hlookup
+            rw [← hvalue] at hmass
+            refine hmass.trans ?_
+            rw [FinDist.prob_map_eq_probOf_preimage_singleton,
+              FinDist.prob_map_eq_probOf_preimage_singleton]
+            apply FinDist.probOf_congr
+            intro choice _
+            simp only [Set.mem_preimage, Set.mem_singleton_iff, TypedValue.mk.injEq,
+              heq_eq_eq, true_and]
+
+/-- An injectively encoded compiled choice has exactly the probability of
+its written-source decision at the recorded declared view. This comparison is
+independent of the native host and includes queried values of probability zero. -/
+theorem sourcePolicy_encoded_probability {Command : Type*}
+    (encode : L.Val ty → Command) (hinjective : Function.Injective encode)
+    (who : Player) (policy : SourceBehavioralPolicy source.core.prog who)
+    (node : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
+    (hsem : ((compile source.core).graph.nodeRow node).sem = .commit who guard)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (hterminal : Terminal (compile source.core).graph cfg.1)
+    (reads : ReadEnv L guard.choiceReads)
+    (hreads : ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads) :
+    ∃ final, observeSourceOutcome source.core cfg = some final ∧
+      ∃ Δ name choiceTy sourceGuard, ∃ site :
+        SourceDecisionSite who source.core.prog Δ name choiceTy sourceGuard,
+        site.depth = node.val ∧ ∀ chosen,
+          ((compileSourcePolicy source.core.prog source.core.fresh
+            (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+            rfl who policy node guard hsem reads).map (fun choice => encode
+              (cast (congrArg L.Val (compilation.supported.commitType node who guard hsem))
+                choice.1))).prob (encode chosen) =
+            ((policy site ((site.recorded final).tail.toView who).eraseEnv).map
+              (fun choice => (⟨choiceTy, choice.1⟩ : TypedValue L))).prob ⟨ty, chosen⟩ := by
+  obtain ⟨Δ, name, choiceTy, sourceGuard, site, hdepth, hlaw⟩ :=
+    compileSourcePolicy_recorded_law source.core.prog source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+      rfl who policy node guard hsem cfg hterminal reads hreads
+  refine ⟨_, observeSourceOutcome_of_terminal source.core cfg hterminal,
+    Δ, name, choiceTy, sourceGuard, site, hdepth, ?_⟩
+  intro chosen
+  rw [← hlaw, FinDist.prob_map_eq_probOf_preimage_singleton,
+    FinDist.prob_map_eq_probOf_preimage_singleton]
+  apply FinDist.probOf_congr
+  intro choice _
+  have htyped {left right : L.Ty} (heq : left = right)
+      (selected : L.Val left) (queried : L.Val right) :
+      (⟨left, selected⟩ : TypedValue L) = ⟨right, queried⟩ ↔
+        cast (congrArg L.Val heq) selected = queried := by
+    cases heq
+    simp only [TypedValue.mk.injEq, heq_eq_eq, true_and, cast_eq]
+  simp only [Set.mem_preimage, Set.mem_singleton_iff, hinjective.eq_iff,
+    htyped (compilation.supported.commitType node who guard hsem)]
+
 end Vegas.SealedCompilation
 
 /-- info: 'Vegas.SealedCompilation.compile_recordedChoiceRestriction' depends on axioms:

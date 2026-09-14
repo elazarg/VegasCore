@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.SealedResolutionRounds
-import Interaction.MessageApplicationPolicyTrace
+import Interaction.MessageApplicationPolicyCheckpoint
 
 /-! # Registration provenance through continuing resolution
 
@@ -75,68 +75,13 @@ theorem invoke_lookup_origin
     initial.native.application.service.lookup (owner, slot) = some value ∨
       .privateCommand ⟨(slot, value)⟩ ∈
         (players owner (initial.principalHistory owner)
-          (State.observe runtime.messageApplication initial.native owner)).support := by
-  have hadvance (action : Option runtime.messageApplication.Action)
-      (advanced : runtime.messageApplication.State × List runtime.messageApplication.Action)
-      (hadvanced : advanced ∈ (runtime.messageApplication.advance initial action).support)
-      (hlookup : advanced.1.application.service.lookup (owner, slot) = some value) :
-      initial.native.application.service.lookup (owner, slot) = some value ∨
-        action = some (.privateCommand owner ⟨(slot, value)⟩) := by
-    cases action with
-    | none =>
-        simp only [advance, FinDist.mem_support_pure] at hadvanced
-        subst advanced
-        exact Or.inl hlookup
-    | some action =>
-        simp only [advance, FinDist.support_bind, Set.mem_iUnion,
-          FinDist.mem_support_pure] at hadvanced
-        obtain ⟨state, hstate, rfl⟩ := hadvanced
-        exact (runtime.step_lookup_origin initial.native state action hstate owner slot value
-          hlookup).imp_right (congrArg some)
-  cases invocation with
-  | player who =>
-      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
-      obtain ⟨command, hcommand, hstep⟩ := hnext
-      simp only [playerStep, FinDist.support_bind, Set.mem_iUnion,
-        FinDist.mem_support_pure] at hstep
-      obtain ⟨advanced, hadvanced, rfl⟩ := hstep
-      rcases hadvance _ advanced hadvanced hlookup with hprior | ha
-      · exact Or.inl hprior
-      · right
-        cases command with
-        | privateCommand request =>
-            simp only [PlayerCommand.toAction, Option.some.injEq,
-              MessageInterface.Action.privateCommand.injEq] at ha
-            obtain ⟨rfl, rfl⟩ := ha
-            exact hcommand
-        | submit | replay | wait =>
-            simp only [PlayerCommand.toAction, Option.some.injEq] at ha
-            cases ha
-  | environment =>
-      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
-      obtain ⟨command, _, hstep⟩ := hnext
-      simp only [environmentPolicyStep, FinDist.support_bind, Set.mem_iUnion,
-        FinDist.mem_support_pure] at hstep
-      obtain ⟨advanced, hadvanced, rfl⟩ := hstep
-      rcases hadvance _ advanced hadvanced hlookup with hprior | ha
-      · exact Or.inl hprior
-      · cases command <;>
-          simp only [EnvironmentPolicyCommand.toAction, Option.some.injEq] at ha <;> cases ha
-
-/-- Select the earliest pre-cutoff snapshot at which the owner's policy
-can register the queried value. This is a proof readout of the recorded run;
-it neither invokes the player nor reveals the private service to a policy. -/
-def registrationCheckpoint
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (trace : runtime.messageApplication.PolicyTrace)
-    (stop : runtime.messageApplication.PolicyExecution → Bool)
-    (owner : Principal) (slot : Nat) (value : Value) :
-    runtime.messageApplication.PolicyExecution := by
-  classical
-  exact (trace.prefixThrough stop).firstRelease fun execution =>
-    !stop execution && decide (.privateCommand ⟨(slot, value)⟩ ∈
-      (players owner (execution.principalHistory owner)
-        (State.observe runtime.messageApplication execution.native owner)).support)
+          (State.observe runtime.messageApplication initial.native owner)).support :=
+  runtime.messageApplication.invoke_privateCommand_origin
+    (fun state => state.application.service.lookup (owner, slot) = some value)
+    owner ⟨(slot, value)⟩
+    (fun before after action hstep hvalue =>
+      runtime.step_lookup_origin before after action hstep owner slot value hvalue)
+    players environment initial next invocation hnext hlookup
 
 /-- A new service entry present at the cutoff has a genuine registration
 checkpoint strictly before that cutoff. The owner policy may be arbitrary and
@@ -155,48 +100,18 @@ theorem registrationCheckpoint_selected
     (hinitial : initial.native.application.service.lookup (owner, slot) ≠ some value)
     (hlookup : (trace.prefixThrough stop).last.native.application.service.lookup (owner, slot) =
       some value) :
-    let selected := runtime.registrationCheckpoint players trace stop owner slot value
+    let selected := runtime.messageApplication.commandCheckpoint players trace stop owner
+      (.privateCommand ⟨(slot, value)⟩)
     stop selected = false ∧ .privateCommand ⟨(slot, value)⟩ ∈
       (players owner (selected.principalHistory owner)
-        (State.observe runtime.messageApplication selected.native owner)).support := by
-  classical
-  let select (execution : runtime.messageApplication.PolicyExecution) : Bool :=
-    !stop execution && decide (.privateCommand ⟨(slot, value)⟩ ∈
-      (players owner (execution.principalHistory owner)
-        (State.observe runtime.messageApplication execution.native owner)).support)
-  have hselected : select ((trace.prefixThrough stop).firstRelease select) = true := by
-    induction schedule generalizing initial trace with
-    | nil =>
-        simp only [tracePolicies, FinDist.mem_support_pure] at htrace
-        subst trace
-        exact False.elim (hinitial hlookup)
-    | cons invocation rest ih =>
-        simp only [tracePolicies, FinDist.support_bind, Set.mem_iUnion,
-          FinDist.support_map, Set.mem_image] at htrace
-        obtain ⟨next, hnext, tail, htail, rfl⟩ := htrace
-        by_cases hstop : stop initial = true
-        · simp only [PolicyTrace.prefixThrough, if_pos hstop, PolicyTrace.last] at hlookup
-          exact False.elim (hinitial hlookup)
-        · by_cases hselect : select initial = true
-          · simpa only [PolicyTrace.prefixThrough, if_neg hstop, PolicyTrace.firstRelease,
-              if_pos hselect] using hselect
-          · have hnextAbsent : next.native.application.service.lookup (owner, slot) ≠
-                some value := by
-              intro hnew
-              rcases runtime.invoke_lookup_origin players environment initial next invocation
-                hnext owner slot value hnew with hprior | hcommand
-              · exact hinitial hprior
-              · apply hselect
-                simp only [select, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true,
-                  decide_eq_true_eq]
-                exact ⟨Bool.eq_false_iff.mpr hstop, hcommand⟩
-            have hlast : (tail.prefixThrough stop).last.native.application.service.lookup
-                (owner, slot) = some value := by
-              simpa only [PolicyTrace.prefixThrough, if_neg hstop, PolicyTrace.last] using hlookup
-            simpa only [PolicyTrace.prefixThrough, if_neg hstop, PolicyTrace.firstRelease,
-              if_neg hselect] using ih next tail htail hnextAbsent hlast
-  simpa only [select, registrationCheckpoint, Bool.and_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true, decide_eq_true_eq] using hselected
+        (State.observe runtime.messageApplication selected.native owner)).support :=
+  runtime.messageApplication.commandCheckpoint_selected_of_new_fact players environment
+    (fun execution => execution.native.application.service.lookup (owner, slot) = some value)
+    owner (.privateCommand ⟨(slot, value)⟩)
+    (fun before after invocation hstep hvalue =>
+      runtime.invoke_lookup_origin players environment before after invocation hstep
+        owner slot value hvalue)
+    schedule initial trace htrace stop hinitial hlookup
 
 /-- Native private entries originate in the initial service or in an actual
 owner-authenticated registration in the supplied action sequence. -/

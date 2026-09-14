@@ -4,6 +4,7 @@ import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedCandidateSourceExtraction
 import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateSourceLikelihood
+import Vegas.Compile.SealedCandidateSourceFactors
 import VegasTests.PendingSource
 
 /-! # Native registration and acceptance hiding for a checked two-player source
@@ -426,6 +427,27 @@ theorem candidate_correlated_cylinder (bits : FinDist Bool) (reference : Bool) :
   intro schedule assignments replay
   exact sealedFragment.candidateReplay_cylinder_probability none 3 1 selectCommand
     (fun _ _ => .include (1, 0)) schedule (fun _ => false) assignments (fun _ => some reference)
+
+/-- The source probability for competing-candidate traffic is a product of
+original honest preparation probabilities. The queried assignment need not
+have positive probability under this profile. -/
+theorem candidate_source_prefix_product (profile : SourceBehavioralProfile core)
+    (reference : Fin graph.nodeCount → Value) :
+    let schedule : List (@Invocation PendingSource.Player) :=
+      [.player 0, .player 1, .player 1, .player 1, .environment]
+    let stop := fun execution : runtime.candidateApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    let replay := fun values => (sealedFragment.candidateReplay none 3 values 1 selectCommand
+      (fun _ _ => .include (1, 0)) schedule).prefixThrough stop
+    ((compilation.extractedCandidateSourceRun none 3 1 selectCommand
+      (fun _ _ => .include (1, 0)) schedule none profile).map
+        (fun cfg => replay (cfg.1.nodeValues none))).prob (replay reference) =
+      (core.decisionPositions.map fun slot =>
+        compilation.candidateReplayRegistrationFactor none 3 1 selectCommand
+          (fun _ _ => .include (1, 0)) schedule reference profile slot.1 slot.2).prod := by
+  intro schedule stop replay
+  exact compilation.extractedCandidateSourceRun_replay_prob_eq_product none 3 1 selectCommand
+    (fun _ _ => .include (1, 0)) schedule none reference profile
 
 end VegasTests.SealedResolutionReadBound
 

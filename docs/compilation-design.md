@@ -121,9 +121,14 @@ reference realization reproduces the full candidate prefix.
 `extractedCandidateSourceRun_replay_likelihood` computes the source prefix mass
 as the expected forced-choice likelihood, including zero-mass cylinders and
 dependent honest choices. Both hosts use the same source probability transfer.
-The remaining probability argument must identify each original source factor
-with the native draw factor, account for each honest preparation once, and
-establish the actual native marginal. Kernel agreement alone is not that joint law.
+`restrictedCandidateSourceRun_registration_probability` extends the original-kernel
+comparison throughout the reference law. The shared policy-checkpoint theorem
+uses actual invocation provenance to locate every opening's preparation strictly
+before the cutoff. `extractedCandidateSourceRun_replay_prob_eq_product` evaluates
+the source prefix mass as a finite product of those native preparation
+probabilities. The remaining native argument must account for each honest
+preparation once and establish the actual native marginal; the source-product
+formula alone is not that joint law.
 
 Candidate handles are owner-scoped identifiers. A pending handle can acquire
 its private value until acceptance; an unprepared accepted handle becomes

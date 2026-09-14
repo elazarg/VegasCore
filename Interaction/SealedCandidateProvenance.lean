@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.SealedCandidateBinding
+import Interaction.MessageApplicationPolicyCheckpoint
 
 /-! # Provenance of private candidate values
 
@@ -84,6 +85,57 @@ private theorem step_candidate_openable_origin (initial next : runtime.candidate
         FinDist.mem_support_pure] at hnext
       subst next
       exact Or.inl hlookup
+
+/-- A newly available opening originates at a genuine owner policy input.
+The environment cannot establish it through acceptance or failed openings. -/
+theorem invoke_candidate_openable_origin
+    (players : Principal → runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (initial next : runtime.candidateApplication.PolicyExecution)
+    (invocation : @Invocation Principal)
+    (hnext : next ∈ (runtime.candidateApplication.invoke players environment initial
+      invocation).support)
+    (owner : Principal) (slot : Nat) (value : Value)
+    (hlookup : next.native.application.service.lookup (owner, slot) = .openable value) :
+    initial.native.application.service.lookup (owner, slot) = .openable value ∨
+      .privateCommand ⟨(slot, value)⟩ ∈
+        (players owner (initial.principalHistory owner)
+          (State.observe runtime.candidateApplication initial.native owner)).support :=
+  runtime.candidateApplication.invoke_privateCommand_origin
+    (fun state => state.application.service.lookup (owner, slot) = .openable value)
+    owner ⟨(slot, value)⟩
+    (fun before after action hstep hvalue =>
+      runtime.step_candidate_openable_origin before after action hstep owner slot value hvalue)
+    players environment initial next invocation hnext hlookup
+
+/-- An opening first available by the cutoff has an actual pre-cutoff
+preparation checkpoint. Competing candidates and unopenable acceptances add
+no fictitious preparation opportunities. -/
+theorem candidateRegistrationCheckpoint_selected
+    (players : Principal → runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal))
+    (initial : runtime.candidateApplication.PolicyExecution)
+    (trace : runtime.candidateApplication.PolicyTrace)
+    (htrace : trace ∈ (runtime.candidateApplication.tracePolicies players environment schedule
+      initial).support)
+    (stop : runtime.candidateApplication.PolicyExecution → Bool)
+    (owner : Principal) (slot : Nat) (value : Value)
+    (hinitial : initial.native.application.service.lookup (owner, slot) ≠ .openable value)
+    (hlookup : (trace.prefixThrough stop).last.native.application.service.lookup (owner, slot) =
+      .openable value) :
+    let selected := runtime.candidateApplication.commandCheckpoint players trace stop owner
+      (.privateCommand ⟨(slot, value)⟩)
+    stop selected = false ∧ .privateCommand ⟨(slot, value)⟩ ∈
+      (players owner (selected.principalHistory owner)
+        (State.observe runtime.candidateApplication selected.native owner)).support :=
+  runtime.candidateApplication.commandCheckpoint_selected_of_new_fact players environment
+    (fun execution => execution.native.application.service.lookup (owner, slot) = .openable value)
+    owner (.privateCommand ⟨(slot, value)⟩)
+    (fun before after invocation hstep hvalue =>
+      runtime.invoke_candidate_openable_origin players environment before after invocation hstep
+        owner slot value hvalue)
+    schedule initial trace htrace stop hinitial hlookup
 
 /-- Any opening available after native execution was initially present or
 was supplied by a recorded owner preparation. -/

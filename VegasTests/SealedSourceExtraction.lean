@@ -529,7 +529,7 @@ theorem first_registration_factors (profile : SourceBehavioralProfile core) (val
       ↓reduceIte]
     rfl
   erw [hlookup]
-  simp only [SealedResolution.registrationCheckpoint]
+  simp only [MessageApplication.commandCheckpoint]
   have hstop : (!initial.native.application.visible.timeouts.isEmpty) = false := rfl
   simp only [PolicyTrace.prefixThrough, hstop, Bool.false_eq_true, ↓reduceIte,
     PolicyTrace.firstRelease, Bool.not_false]

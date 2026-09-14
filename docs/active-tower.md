@@ -115,9 +115,20 @@ execution. `restrictedCandidateSourceRun_replay_prefix` proves that every
 reference realization reproduces the prefix, including when the original
 profile assigns it probability zero. Both hosts use the same
 `recordedChoiceRestriction` and source event/probability calculation.
-The remaining comparison must identify this source likelihood with the actual
-native runner's probabilities. Candidate-round completion under arbitrary
-deviations must also be derived; the honest completion theorem does not supply it.
+`restrictedCandidateSourceRun_registration_probability` identifies the original
+source decision probabilities throughout that reference law with native
+preparation probabilities. The checkpoint is a pre-timeout replay snapshot at
+which the policy supports that preparation, as proved by the shared
+`MessageApplication.commandCheckpoint_selected_of_new_fact` and candidate opening
+provenance. It need not be the snapshot of the actual preparation invocation;
+the native factor comparison must relate their probabilities.
+`extractedCandidateSourceRun_replay_prob_eq_product`
+then evaluates the source cylinder mass as a product of these fixed native
+preparation factors. Both hosts use the same source-product calculation.
+The remaining native argument must show that the runner counts each such
+factor exactly once and has that same trace mass. Candidate-round completion
+under arbitrary deviations must also be derived; the honest completion theorem
+does not supply it.
 
 ## End-to-end target
 

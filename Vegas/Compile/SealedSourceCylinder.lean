@@ -52,9 +52,10 @@ def replayRegistrationFactor
     match (trace.prefixThrough stop).last.native.application.service.lookup (who, slot) with
     | none => 1
     | some value =>
-        let selected := runtime.registrationCheckpoint
+        let selected := runtime.messageApplication.commandCheckpoint
           (compilation.supported.resolvingValuePlayers nullValue window reference focal
-            (fun history view => FinDist.pure (deviator history view))) trace stop who slot value
+            (fun history view => FinDist.pure (deviator history view))) trace stop who
+            (.privateCommand ⟨(slot, value)⟩)
         (compilation.compileResolvingPolicy nullValue window who (profile who)
           (selected.principalHistory who)
           (State.observe runtime.messageApplication selected.native who)).prob
@@ -94,90 +95,54 @@ theorem restrictedSourceRun_weight_eq_product [Finite Player]
     exact ⟨final, hfinal, rfl⟩
   rw [← hrealization, FinDist.support_map] at hsome
   obtain ⟨cfg, hcfg, hobserve⟩ := hsome
-  apply SourceChoiceRestriction.weight_eq_decision_product source.core.prog original
-    (restriction.apply original) restriction source.core.env final hfinal
-  intro who Δ name choiceTy guard site
-  dsimp only
-  by_cases hwho : who = focal
-  · subst who
-    have hselected : decide (focal ≠ focal) = false := by simp
-    constructor
-    · intro _
-      simp [replayRegistrationFactor]
-    · intro fixed hfixed
-      simp only [restriction, recordedChoiceRestriction, hselected, Bool.false_eq_true,
-        ↓reduceIte] at hfixed
-      cases hfixed
-  · cases hlookup : stopped.last.native.application.service.lookup (who, site.depth) with
-    | none =>
-        have hselected : decide (who ≠ focal) = true := by simp [hwho]
-        constructor
-        · intro _
-          simp only [replayRegistrationFactor, if_neg hwho]
-          erw [hlookup]
-        · intro fixed hfixed
-          simp only [restriction, recordedChoiceRestriction, hselected, ↓reduceIte, hlookup,
-            Option.map_none] at hfixed
-          cases hfixed
-    | some value =>
-        have hselected : decide (who ≠ focal) = true := by simp [hwho]
-        constructor
-        · intro hnone
-          simp only [restriction, recordedChoiceRestriction, hselected, ↓reduceIte, hlookup,
-            Option.map_some] at hnone
-          cases hnone
-        · intro fixed hfixed
-          have hvalue := compilation.recordedChoiceRestriction_fixed_value
-            (fun owner => decide (owner ≠ focal)) stopped.last.native.application.service.lookup who
-            (by simp [hwho]) site _ value hlookup fixed hfixed
-          let trace := compilation.supported.resolvingReplay nullValue window reference focal
-            deviator environment schedule
-          let stop := fun execution : runtime.messageApplication.PolicyExecution =>
-            !execution.native.application.visible.timeouts.isEmpty
-          let players := compilation.supported.resolvingValuePlayers nullValue window reference
-            focal (fun history view => FinDist.pure (deviator history view))
-          let release := fun execution : runtime.messageApplication.PolicyExecution =>
-            !stop execution && decide (.privateCommand ⟨(site.depth, value)⟩ ∈
-              (players who (execution.principalHistory who)
-                (State.observe runtime.messageApplication execution.native who)).support)
-          have htrace : trace ∈ (runtime.messageApplication.tracePolicies players
-              (fun history view => FinDist.pure (environment history view)) schedule
-              (PolicyExecution.initial _ (State.initial _ runtime.initial))).support := by
-            rw [compilation.supported.resolvingReplay_law, FinDist.mem_support_pure]
-          have hselected := runtime.registrationCheckpoint_selected players
-            (fun history view => FinDist.pure (environment history view)) schedule _ trace
-            htrace stop who site.depth value (by intro h; cases h) hlookup
-          have hclear :
-              (stopped.firstRelease release).native.application.visible.timeouts = [] := by
-            have hstop := hselected.1
-            simpa only [SealedResolution.registrationCheckpoint, stop,
-              Bool.not_eq_eq_eq_not, Bool.not_false, List.isEmpty_iff] using hstop
-          obtain ⟨outcome, houtcome, ctx, label, actionTy, sourceGuard, actual, hdepth, hprob⟩ :=
-            compilation.restrictedSourceRun_registration_probability nullValue window focal
-              deviator environment schedule fallback reference profile release cfg hcfg hclear who
-              hwho site.depth value hselected.2 (profile who)
-          have heq : outcome = final := Option.some.inj (houtcome.symm.trans hobserve)
-          subst outcome
-          obtain ⟨rfl, rfl, rfl, hguard, hsite⟩ := actual.indices_eq_of_depth_eq site hdepth
-          cases eq_of_heq hguard
-          cases eq_of_heq hsite
-          have hmass : ((profile who actual ((actual.recorded final).tail.toView who).eraseEnv).map
-                (fun choice => (⟨actionTy, choice.1⟩ : TypedValue L))).prob ⟨actionTy, fixed.1⟩ =
-              ((profile who actual ((actual.recorded final).tail.toView who).eraseEnv).map
-                Subtype.val).prob fixed.1 := by
-            rw [FinDist.prob_map_eq_probOf_preimage_singleton,
-              FinDist.prob_map_eq_probOf_preimage_singleton]
-            apply FinDist.probOf_congr
-            intro choice _
-            simp only [Set.mem_preimage, Set.mem_singleton_iff, TypedValue.mk.injEq,
-              heq_eq_eq, true_and]
-          have hnative := hprob value
-          rw [← hvalue] at hnative
-          have hfactor := hnative.trans hmass
-          simp only [replayRegistrationFactor, if_neg hwho, original,
-            Profile.update_of_ne _ _ hwho]
-          erw [hlookup]
-          exact hfactor
+  apply compilation.recordedChoiceRestriction_weight_eq_product
+    (fun who => decide (who ≠ focal)) stopped.last.native.application.service.lookup
+      original _ final hfinal
+  · intro who slot hunit
+    by_cases hwho : who = focal
+    · simp only [replayRegistrationFactor, if_pos hwho]
+    · have hlookup : stopped.last.native.application.service.lookup (who, slot) = none := by
+        rcases hunit with hselected | hlookup
+        · simp [hwho] at hselected
+        · exact hlookup
+      simp only [replayRegistrationFactor, if_neg hwho]
+      erw [hlookup]
+  · intro who Δ name choiceTy guard site hselected value hlookup
+    have hwho : who ≠ focal := by simpa using hselected
+    let trace := compilation.supported.resolvingReplay nullValue window reference focal
+      deviator environment schedule
+    let stop := fun execution : runtime.messageApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    let players := compilation.supported.resolvingValuePlayers nullValue window reference focal
+      (fun history view => FinDist.pure (deviator history view))
+    let release := fun execution : runtime.messageApplication.PolicyExecution =>
+      !stop execution && decide (.privateCommand ⟨(site.depth, value)⟩ ∈
+        (players who (execution.principalHistory who)
+          (State.observe runtime.messageApplication execution.native who)).support)
+    have htrace : trace ∈ (runtime.messageApplication.tracePolicies players
+        (fun history view => FinDist.pure (environment history view)) schedule
+        (PolicyExecution.initial _ (State.initial _ runtime.initial))).support := by
+      rw [compilation.supported.resolvingReplay_law, FinDist.mem_support_pure]
+    have hselected := runtime.registrationCheckpoint_selected players
+      (fun history view => FinDist.pure (environment history view)) schedule _ trace htrace stop
+      who site.depth value (by intro h; cases h)
+      hlookup
+    have hclear : (stopped.firstRelease release).native.application.visible.timeouts = [] := by
+      simpa only [MessageApplication.commandCheckpoint, stop, Bool.not_eq_eq_eq_not,
+        Bool.not_false, List.isEmpty_iff] using hselected.1
+    obtain ⟨outcome, houtcome, ctx, label, actionTy, sourceGuard, actual, hdepth, hprob⟩ :=
+      compilation.restrictedSourceRun_registration_probability nullValue window focal
+        deviator environment schedule fallback reference profile release cfg hcfg hclear who
+        hwho site.depth value hselected.2 (profile who)
+    have heq : outcome = final := Option.some.inj (houtcome.symm.trans hobserve)
+    subst outcome
+    obtain ⟨rfl, rfl, rfl, hguard, hsite⟩ := actual.indices_eq_of_depth_eq site hdepth
+    cases eq_of_heq hguard
+    cases eq_of_heq hsite
+    simp only [replayRegistrationFactor, if_neg hwho, original,
+      Profile.update_of_ne _ _ hwho]
+    erw [hlookup]
+    exact hprob value
 
 /-- The native replay event and the written-source restriction event are
 equivalent on the original source law, with opponents unchanged. This is an

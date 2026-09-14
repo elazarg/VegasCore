@@ -123,7 +123,7 @@ theorem assigned_registration_factor
         (State.observe runtime.messageApplication execution.native who)).support)
   have hcheckpointClear :
       (stopped.firstRelease release).native.application.visible.timeouts = [] := by
-    simpa only [SealedResolution.registrationCheckpoint, stop, Bool.not_eq_eq_eq_not,
+    simpa only [MessageApplication.commandCheckpoint, stop, Bool.not_eq_eq_eq_not,
       Bool.not_false, List.isEmpty_iff] using hcheckpoint.1
   obtain ⟨otherFinal, hotherFinal, otherΔ, otherName, otherTy, otherGuard, otherSite,
       otherDepth, otherProb⟩ :=

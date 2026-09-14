@@ -219,31 +219,18 @@ theorem restrictedSourceRun_registration_probability
       slot value hcommand policy
   have hterminal := compilation.extractedSourceRun_terminal nullValue window focal deviator
     environment schedule fallback _ cfg hcfg
-  obtain ⟨Δ, name, choiceTy, sourceGuard, site, hdepth, hlaw⟩ :=
-    compileSourcePolicy_recorded_law source.core.prog source.core.fresh
-      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
-      rfl who policy node guard hsem cfg hterminal reads hreads
-  refine ⟨_, observeSourceOutcome_of_terminal source.core cfg hterminal,
-    Δ, name, choiceTy, sourceGuard, site, hdepth.trans hslot.symm, ?_⟩
+  obtain ⟨final, hobserve, Δ, name, choiceTy, sourceGuard, site, hdepth, hprob⟩ :=
+    compilation.sourcePolicy_encoded_probability
+      (fun chosen => (.privateCommand ⟨(slot, chosen)⟩ : runtime.messageApplication.PlayerCommand))
+      (by
+        intro left right h
+        exact congrArg (fun request => request.down.2)
+          (MessageInterface.PlayerCommand.privateCommand.inj h))
+      who policy node guard hsem cfg hterminal reads hreads
+  refine ⟨final, hobserve, Δ, name, choiceTy, sourceGuard, site, hdepth.trans hslot.symm, ?_⟩
   intro chosen
-  rw [hkernel, ← hlaw]
-  rw [FinDist.prob_map_eq_probOf_preimage_singleton,
-    FinDist.prob_map_eq_probOf_preimage_singleton]
-  apply FinDist.probOf_congr
-  intro choice _
-  have htyped {left right : L.Ty} (heq : left = right)
-      (selected : L.Val left) (queried : L.Val right) :
-      (⟨left, selected⟩ : TypedValue L) = ⟨right, queried⟩ ↔
-        cast (congrArg L.Val heq) selected = queried := by
-    cases heq
-    simp only [TypedValue.mk.injEq, heq_eq_eq, true_and, cast_eq]
-  simp only [Set.mem_preimage, Set.mem_singleton_iff,
-    MessageInterface.PlayerCommand.privateCommand.injEq, ← hslot,
-    htyped (compilation.supported.commitType node who guard hsem)]
-  constructor
-  · exact fun h => congrArg (fun request => request.down.2) h
-  · intro h
-    rw [h]
+  rw [hkernel]
+  simpa only [hslot] using hprob chosen
 
 end Vegas.SealedCompilation
 
