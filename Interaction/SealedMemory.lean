@@ -65,71 +65,32 @@ theorem initial : RegistrationMemory program
   intro owner slot
   rfl
 
-omit [DecidableEq Value] in
-private theorem seal_lookup (service : IdealCommitments Principal Nat Value)
-    (owner query : Principal) (slot target : Nat) (value : Value) :
-    (service.sealValue owner slot value).state.lookup (query, target) =
-      if query = owner then
-        (service.lookup (query, target)).orElse
-          (fun _ => if slot = target then some value else none)
-      else service.lookup (query, target) := by
-  by_cases howner : query = owner
-  · subst query
-    by_cases hslot : slot = target
-    · subst target
-      cases hlookup : service.table owner slot <;>
-        simp [IdealCommitments.sealValue, IdealCommitments.lookup, hlookup]
-    · cases hlookup : service.table owner slot <;>
-        cases htarget : service.table owner target <;>
-        simp [IdealCommitments.sealValue, IdealCommitments.lookup, hlookup,
-          hslot, Ne.symm hslot, htarget]
-  · cases hlookup : service.table owner slot <;>
-      simp [IdealCommitments.sealValue, IdealCommitments.lookup, hlookup, howner]
-
 theorem playerStep (execution next : (program.messageApplication (Value := Value)).PolicyExecution)
     (owner : Principal) (command : (program.messageApplication (Value := Value)).PlayerCommand)
     (hmemory : RegistrationMemory program execution)
     (hnext : next ∈ ((program.messageApplication (Value := Value)).playerStep
       owner execution command).support) : RegistrationMemory program next := by
+  intro query slot
+  rw [(program.registrationEncoding slot).playerStep_cachedValue _ owner query
+    execution next command hnext]
   cases command with
   | privateCommand command =>
       simp only [MessageApplication.playerStep, advance, PlayerCommand.toAction,
         MessageApplication.step, FinDist.pure_bind, FinDist.mem_support_pure] at hnext
       subst next
-      intro query slot
       change (execution.native.application.service.sealValue
         owner command.down.1 command.down.2).state.lookup (query, slot) = _
-      rw [seal_lookup]
-      by_cases howner : query = owner
-      · subst query
-        simp only [↓reduceIte, ChoiceEncoding.cachedValue_append,
-          ChoiceEncoding.cachedValue_cons, ChoiceEncoding.cachedValue_nil,
-          registrationEncoding]
-        rw [hmemory]
-        by_cases hslot : command.down.1 = slot <;> simp [hslot, registrationEncoding]
-      · simp only [if_neg howner]
-        exact hmemory query slot
+      rw [IdealCommitments.lookup_sealValue, hmemory query slot]
+      rfl
   | submit payload | replay id | wait =>
       simp only [MessageApplication.playerStep, advance, PlayerCommand.toAction,
         MessageApplication.step, FinDist.pure_bind, FinDist.mem_support_pure] at hnext
       subst next
-      intro query slot
-      by_cases howner : query = owner
-      · subst query
-        simp only [↓reduceIte, ChoiceEncoding.cachedValue_append,
-          ChoiceEncoding.cachedValue_cons, ChoiceEncoding.cachedValue_nil,
-          registrationEncoding]
-        exact (hmemory owner slot).trans (by
-          change (program.registrationEncoding slot).cachedValue
-            (program.messageApplication (Value := Value)) (execution.principalHistory owner) =
-            ((program.registrationEncoding slot).cachedValue
-              (program.messageApplication (Value := Value))
-              (execution.principalHistory owner)).orElse (fun _ => none)
-          cases (program.registrationEncoding slot).cachedValue
-            (program.messageApplication (Value := Value))
-            (execution.principalHistory owner) <;> rfl)
-      · simp only [if_neg howner]
-        exact hmemory query slot
+      rw [hmemory query slot]
+      split
+      · cases (program.registrationEncoding slot).cachedValue
+          (program.messageApplication (Value := Value)) (execution.principalHistory query) <;> rfl
+      · rfl
 
 private theorem include_service
     (state : (program.messageApplication (Value := Value)).State) (id : MessageId Principal) :

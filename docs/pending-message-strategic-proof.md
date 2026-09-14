@@ -705,6 +705,8 @@ The current repository has:
   values at every selected pre-timeout replay checkpoint;
 - transport of successful local reads and fresh registration kernels to the
   complete source under an explicit own-cache/service agreement premise;
+- own-cache/service agreement throughout arbitrary resolving-runtime policy
+  runs, including retries and execution after timeout;
 - per-node readiness timestamps, nullable resolution, and continued native
   execution without overwriting the private service;
 - a shared-runner round model separating adaptive wire scheduling from the
@@ -743,8 +745,11 @@ execution on both sides, so its registrations persist to the common cutoff.
 The before-timeout binding invariant identifies its included openings with
 those registrations. No equality is asserted for public timeout defaults.
 `commitCommand_source_kernel` identifies successful local kernel inputs under
-own-cache/service agreement; discharging that memory invariant on resolving
-runs remains part of the whole-prefix kernel argument.
+own-cache/service agreement. The checked
+`SealedResolution.RegistrationMemory.runPolicies` supplies that invariant on
+resolving runs, and `eventHistory_cache` supplies its projected-history form.
+The whole-prefix argument still needs to apply the local kernel comparison
+at every recorded honest draw and establish the actual trace probabilities.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
 

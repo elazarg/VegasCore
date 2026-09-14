@@ -94,6 +94,25 @@ end ChoiceController
 
 namespace ChoiceEncoding
 
+/-- The complete cache update equation for an arbitrary player command.
+Only the acting principal's history changes, retaining its first decoded value. -/
+theorem playerStep_cachedValue [DecidableEq Principal]
+    (encoding : ChoiceEncoding Value app.PlayerCommand) (actor query : Principal)
+    (execution next : app.PolicyExecution) (command : app.PlayerCommand)
+    (hnext : next ∈ (app.playerStep actor execution command).support) :
+    encoding.cachedValue app (next.principalHistory query) =
+      if query = actor then
+        (encoding.cachedValue app (execution.principalHistory query)).orElse
+          (fun _ => encoding.decode command)
+      else encoding.cachedValue app (execution.principalHistory query) := by
+  by_cases hquery : query = actor
+  · subst query
+    rw [app.playerStep_history_self actor execution command next hnext]
+    simp only [↓reduceIte, encoding.cachedValue_append, cachedValue_cons, cachedValue_nil]
+    cases encoding.decode command <;> rfl
+  · rw [app.playerStep_other_history actor query hquery execution command next hnext,
+      if_neg hquery]
+
 /-- The first encoded command records its value in the actual principal
 history, independently of the command's native application effect. -/
 theorem playerStep_cachedValue_of_none [DecidableEq Principal]

@@ -91,9 +91,12 @@ value, including when a later part of the same run times out.
 `sealedPlayerStore_source_reads` transports every successful local read to
 the complete source realization under binding, registration-agreement, and
 own-cache/service agreement premises. `commitCommand_source_kernel` then
-identifies the fresh registration kernel at those source inputs. The resolving
-runner's own-cache/service invariant must still discharge the memory premise
-before this is a whole-prefix honest-kernel theorem.
+identifies the fresh registration kernel at those source inputs.
+`SealedResolution.RegistrationMemory.runPolicies` proves own-cache/service
+agreement under arbitrary resolving-runtime policies, including post-timeout
+execution. The event/history projection preserves that cache. Applying these
+facts throughout replay and identifying the actual trace probabilities remain
+part of the whole-prefix honest-kernel argument.
 
 `SealedFragment.resolvingReplay_prefix_eq_iff` characterizes stopped resolving
 replays by their recorded honest registrations, including when the cutoff

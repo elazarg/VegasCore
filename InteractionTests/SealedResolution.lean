@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.SealedResolutionLaws
+import Interaction.SealedResolutionPolicy
 
 /-! # Nullable continuation and deadline boundary regressions
 
@@ -82,5 +83,30 @@ theorem sealed_null_is_occupied_not_absent :
     sealedNull.service.lookup (false, 0) = some none ∧
       (runtime.handle sealedNull ⟨(false, 0), .commitment 0 (false, 0)⟩).isSome = true ∧
       (runtime.handle sealedNull ⟨(false, 0), .cleartext 0 none⟩).isNone = true := by decide
+
+noncomputable section
+
+open MessageApplication GameTheory.Math.Probability
+
+private def retryPolicy : runtime.messageApplication.PlayerPolicy := fun history _ =>
+  FinDist.pure (.privateCommand ⟨(0, if history.isEmpty then none else some true)⟩)
+
+/-- The first registered null remains a populated private cache after public
+timeout resolution and a retry carrying a different value. -/
+theorem retry_after_timeout_retains_cache :
+    ((runtime.messageApplication.runPolicies (fun _ => retryPolicy)
+      (fun _ _ => FinDist.pure (.application ⟨()⟩))
+      [.player false, .environment, .environment, .player false]
+      (PolicyExecution.initial _ (State.initial _ runtime.initial))).map fun final =>
+        (final.native.application.service.lookup (false, 0),
+          (runtime.program.registrationEncoding 0).cachedValue runtime.messageApplication
+            (final.principalHistory false), final.native.application.visible.timeouts)) =
+      FinDist.pure (some none, some none, [0]) := by
+  simp only [runPolicies, invoke, retryPolicy, playerStep, environmentPolicyStep, advance,
+    PlayerCommand.toAction, EnvironmentPolicyCommand.toAction, MessageApplication.step,
+    SealedResolution.messageApplication, FinDist.pure_bind, FinDist.map_pure]
+  rfl
+
+end
 
 end InteractionTests.SealedResolution

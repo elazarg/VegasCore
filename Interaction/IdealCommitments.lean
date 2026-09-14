@@ -160,6 +160,27 @@ theorem lookup_sealValue_of_eq_some (state : IdealCommitments Principal Slot Val
     · simp [hhandle]
       exact hstored
 
+/-- A seal updates the acting owner's first-value cache at exactly its slot. -/
+theorem lookup_sealValue (service : IdealCommitments Principal Slot Value)
+    [DecidableEq Principal] [DecidableEq Slot]
+    (owner query : Principal) (slot target : Slot) (value : Value) :
+    (service.sealValue owner slot value).state.lookup (query, target) =
+      if query = owner then
+        (service.lookup (query, target)).orElse
+          (fun _ => if slot = target then some value else none)
+      else service.lookup (query, target) := by
+  by_cases howner : query = owner
+  · subst query
+    by_cases hslot : slot = target
+    · subst target
+      cases hlookup : service.table owner slot <;>
+        simp [sealValue, lookup, hlookup]
+    · cases hlookup : service.table owner slot <;>
+        cases htarget : service.table owner target <;>
+        simp [sealValue, lookup, hlookup, hslot, Ne.symm hslot, htarget]
+  · cases hlookup : service.table owner slot <;>
+      simp [sealValue, lookup, hlookup, howner]
+
 /-- Sealing introduces only the submitted value at the authenticated handle;
 every other stored entry already existed. -/
 theorem lookup_sealValue_origin (state : IdealCommitments Principal Slot Value)

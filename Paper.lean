@@ -259,6 +259,21 @@ theorem pending_source_choice_law
   compilation.extractedSourcePolicy_law nullValue window focal deviator environment schedule
     fallback values decision guard hdecision reads hinputs
 
+/-- Own command memory reconstructs private registered values throughout
+arbitrary resolving-runtime play, including execution after timeout. -/
+theorem pending_registration_memory {Value : Type} [DecidableEq Value]
+    (runtime : SealedResolution Player Value)
+    (players : Player → runtime.messageApplication.PlayerPolicy)
+    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Player))
+    (final : runtime.messageApplication.PolicyExecution)
+    (hfinal : final ∈ (runtime.messageApplication.runPolicies players environment schedule
+      (MessageApplication.PolicyExecution.initial _
+        (MessageApplication.State.initial _ runtime.initial))).support) :
+    SealedResolution.RegistrationMemory runtime final :=
+  SealedResolution.RegistrationMemory.runPolicies players environment schedule _ final
+    SealedResolution.RegistrationMemory.initial hfinal
+
 section SourceRealization
 
 variable [Fintype Player] {source : WFProgram Player L} {ty : L.Ty}
@@ -945,3 +960,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_source_openings
+
+/-- info: 'Vegas.Paper.pending_registration_memory' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_registration_memory
