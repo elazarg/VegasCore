@@ -78,22 +78,6 @@ private theorem Graph.replaySealedView_getAs_initial (G : Graph Player L)
       · rfl
       · exact Store.getAs_set_ne store (hfield event.node) _ fieldTy
 
-private theorem Graph.initial_field_ne_target (G : Graph Player L)
-    (field : Nat) (spec : FieldSpec Player L) (value : L.Val spec.ty)
-    (hfield : G.field? field = some spec) (hsource : spec.source = .initial value)
-    (node : Nat) : field ≠ G.nodeTarget node := by
-  intro heq
-  rw [heq] at hfield
-  have hnot : ¬G.initialFields.length + node < G.initialFields.length := by omega
-  simp only [Graph.field?, Graph.nodeTarget, hnot, ↓reduceDIte,
-    Nat.add_sub_cancel_left] at hfield
-  cases hrow : G.nodes[node]? with
-  | none => simp [hrow] at hfield
-  | some row =>
-      simp only [hrow, Option.some.injEq] at hfield
-      cases hfield
-      cases hsource
-
 namespace SealedFragment
 
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]

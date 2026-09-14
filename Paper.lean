@@ -58,8 +58,9 @@ preserves the same epsilon at compiled profiles. The weaker checkpoint
 comparison is instantiated on the actual native information and retains the
 player's registered commitments in its legal source completion. Proving this
 incentive condition for a particular program remains a separate obligation;
-ordinary source quit dominance does not suffice. General post-timeout source
-settlement identification remains open.
+ordinary source quit dominance does not suffice. Public settlement, including
+after timeouts, has the payout of a legal source execution; this support result
+does not identify the source deviation law or the private registrations.
 -/
 
 namespace Vegas.Paper
@@ -971,27 +972,23 @@ theorem pending_checkpoint_timeout_cost
 
 end PendingCheckpoints
 
-/-- A normally decoded terminal source run has the same payout when the
-native evaluator reads only public initial data and opening events. -/
+/-- Every supported outcome of the actual pending-message round game has
+the payout of a legal complete source execution, including after timeouts.
+The native evaluator reads only public initial data and opening events. -/
 theorem pending_public_payout
-    {source : WFProgram Player L} {ty : L.Ty}
-    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
-    (state : SealedResolution.ApplicationState Player (L.Val ty))
-    (hinvariant : SealedResolution.EventInvariant
-      (compilation.supported.resolvingRuntime nullValue window) state)
-    (cfg : ReachableConfig (ToEventGraph.compile source.core).graph)
-    (hterminal : Terminal (ToEventGraph.compile source.core).graph cfg.1)
-    (hdecode : (ToEventGraph.compile source.core).graph.decodeSealedFrom ty state.service
-      (Config.initial _) state.visible.events = some cfg.1) :
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    {compilation : SealedCompilation source ty} {nullValue : L.Val ty} {window : Nat}
+    (model : compilation.RoundModel nullValue window)
+    (players : Profile model.game.sig) (next : model.game.sig.Outcome)
+    (hnext : next ∈ (model.game.play players).support) :
     ∃ terminalEnv : VEnv L (ToEventGraph.compile source.core).terminalCtx,
       SmallStep.Star
         { ctx := source.core.Γ, env := source.core.env, cont := source.core.prog }
         { ctx := (ToEventGraph.compile source.core).terminalCtx, env := terminalEnv,
           cont := .ret (ToEventGraph.compile source.core).sourcePayoffs } ∧
-      compilation.publicPayout? state.visible.events =
+      compilation.publicPayout? next.native.application.visible.events =
         some (evalPayoffs (ToEventGraph.compile source.core).sourcePayoffs terminalEnv) :=
-  compilation.publicPayout?_eq_source_of_terminal nullValue window state hinvariant
-    cfg hterminal hdecode
+  model.play_publicPayout_source players next hnext
 
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal

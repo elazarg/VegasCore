@@ -801,6 +801,23 @@ theorem fieldRow_eq_of_field?_some (G : Graph Player L)
     omega
   simp [hnot, hget]
 
+/-- Event output fields are disjoint from the graph's initial fields. -/
+theorem initial_field_ne_target (G : Graph Player L)
+    (field : Nat) (spec : FieldSpec Player L) (value : L.Val spec.ty)
+    (hfield : G.field? field = some spec) (hsource : spec.source = .initial value)
+    (node : Nat) : field ≠ G.nodeTarget node := by
+  intro heq
+  rw [heq] at hfield
+  have hnot : ¬G.initialFields.length + node < G.initialFields.length := by omega
+  simp only [Graph.field?, Graph.nodeTarget, hnot, ↓reduceDIte,
+    Nat.add_sub_cancel_left] at hfield
+  cases hrow : G.nodes[node]? with
+  | none => simp [hrow] at hfield
+  | some row =>
+      simp only [hrow, Option.some.injEq] at hfield
+      cases hfield
+      cases hsource
+
 theorem field_eq_nodeTarget_of_event_source (G : Graph Player L)
     {field node : Nat} {spec : FieldSpec Player L}
     (hget : G.field? field = some spec)

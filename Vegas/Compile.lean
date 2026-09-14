@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Compile.Compiler
 import Vegas.Compile.FieldMap
+import Vegas.Compile.RevealAccounting
 import Vegas.Compile.SourceView
 import Vegas.Compile.SourceLaw
 import Vegas.Compile.DecisionSite
@@ -76,17 +77,20 @@ including malformed submissions, replay, delivery, inclusion, and withholding:
 every resulting prefix decodes to a reachable graph state, and a terminal state
 reconstructs a written-order source execution.
 
-The runtime policy game has the same support-level source guarantee. Exact
-strategic preservation is exposed through `SealedCompilation.StrategicCertificate`:
-the target runtime must supply its honest outcome law and finite-mixture
-backtranslation for considered unilateral deviations. Nash and epsilon-Nash
-transfer then follow by direct delegation to the runtime-independent
-GameTheory theorem. A concrete pending-message backtranslation remains an
-explicit research obligation rather than an implicit claim.
+The non-resolving runtime policy game has the same support-level source
+guarantee. `SealedCompilation.StrategicCertificate` expresses the stronger
+exact-outcome edge through an honest law and finite-mixture backtranslation
+for considered unilateral deviations. It is an interface, not a constructed
+exact post-timeout backtranslation.
 
 `SealedHonestRound` discharges the original all-compiled source law for the
 resolving pending-message driver under periodic service and the checked timeout
 window. The unilateral coupling retains the exact source-mixture and native
-marginals; selective timeout settlement still needs its whole-program utility
-comparison before the strategic certificate can be instantiated.
+marginals. The round game's concrete utility simulation uses conditional
+timeout utility comparisons in addition to normal utility agreement; their
+program-specific incentive analysis remains an explicit obligation.
+`SealedPublicOutcome` reconstructs every completed public settlement, including
+after defaults, as the public values and payout of a legal source execution.
+That support witness may change private choices and does not replace the
+commitment-preserving witness in the strategic coupling.
 -/

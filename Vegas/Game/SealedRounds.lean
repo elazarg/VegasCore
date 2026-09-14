@@ -3,6 +3,7 @@
 import Vegas.Compile.SealedHonestRound
 import Vegas.Compile.SealedRoundCoupling
 import Vegas.Compile.SealedStoppingCoupling
+import Vegas.Compile.SealedPublicOutcome
 import GameTheoryExtensions.Core.UtilitySimulation
 
 /-! # Strategic analysis of the pending-message round driver
@@ -162,6 +163,25 @@ theorem play_eventInvariant (model : RoundModel compilation nullValue window)
   apply (compilation.supported.resolvingRuntime nullValue window).runRounds_eventInvariant
     model.principals model.serviceSlots players model.wire model.total _ next
     SealedResolution.EventInvariant.initial hnext
+
+/-- Every outcome of the actual round game has the programmed payout of a
+legal complete source execution. Players and wire policies are unrestricted;
+the finite driver resolves missing moves without a service assumption. The
+source witness matches public settlement, not necessarily private registrations
+or fixed opponents' policies. -/
+theorem play_publicPayout_source [Finite Player]
+    (model : RoundModel compilation nullValue window)
+    (players : Profile model.game.sig) (next : model.game.sig.Outcome)
+    (hnext : next ∈ (model.game.play players).support) :
+    ∃ terminalEnv : VEnv L (compile source.core).terminalCtx,
+      SmallStep.Star
+        { ctx := source.core.Γ, env := source.core.env, cont := source.core.prog }
+        { ctx := (compile source.core).terminalCtx, env := terminalEnv,
+          cont := .ret (compile source.core).sourcePayoffs } ∧
+      compilation.publicPayout? next.native.application.visible.events =
+        some (evalPayoffs (compile source.core).sourcePayoffs terminalEnv) :=
+  compilation.publicPayout?_eq_source_of_complete nullValue window next.native.application
+    (model.play_eventInvariant players next hnext) (model.play_complete players next hnext)
 
 /-- Honest expected utilities follow from the original source outcome law,
 not from a putative backtranslation of the all-compiled profile. -/

@@ -247,7 +247,8 @@ private theorem decodeSealedFrom_store_eq_of_event_agreement
           exact hevents later (by simp [hlater]))
         hdecode
 
-private theorem reachable_store_eq_initial_of_not_nodeTarget
+/-- Graph execution leaves initial fields unchanged. -/
+theorem reachable_store_eq_initial_of_not_nodeTarget
     {G : Graph Player L} {cfg : Config G} (hreach : Reachable G cfg)
     (field : Nat) (hfield : ∀ node : Fin G.nodeCount,
       field ≠ G.nodeTarget node) :

@@ -21,8 +21,10 @@ the conditional utility comparisons of Section 6. Its quantitative version
 charges a margin times the actual probability of timeout. The compiler's joint
 law retains actual timeout-checkpoint information and a legal source completion
 with focal registrations fixed. A uniform cap on own timeout utility is a
-checked sufficient case. General post-timeout source-settlement identification
-and program-specific proofs of the incentive premise remain obligations.
+checked sufficient case. Every completed public settlement, including after
+timeouts, agrees with a legal source execution. That support theorem does not
+preserve private registrations or fixed source policies. Program-specific
+proofs of the incentive premise remain obligations.
 
 ## 1. Exact scope and conclusion
 
@@ -32,8 +34,9 @@ Fix a finite player set and a checked source program with these properties:
 - Commitment values belong to a finite nonempty common domain
   `D = Option A`. Write `bottom` for `none`.
 - Every commitment guard accepts every value in every typed source view.
-- Each commitment has exactly one later direct reveal. Initial sealed inputs
-  are not reveal targets. The initial environment is fixed.
+- Each reveal targets a source commitment, not an initial sealed input.
+  Source accounting implies at most one direct reveal per commitment. A
+  commitment need not have a direct reveal. The initial environment is fixed.
 - A decision's source information contains earlier public fields and the
   player's earlier private choices. The compiler retains exactly those reads.
 - Outcomes are computed from the terminal public environment by a total
@@ -41,9 +44,13 @@ Fix a finite player set and a checked source program with these properties:
   program's payout expressions, or both. Utilities `u_i : Outcome -> Real`
   are supplied separately.
 
-These are backend admission conditions, not a weakening of source
-well-formedness. The broader compiler still needs heterogeneous values,
-nontrivial guards, samples, and other accounting forms.
+The no-sample, common-type, unrestricted-guard, and reveal-origin conditions
+are backend admission conditions, not a weakening of source well-formedness.
+Direct-reveal uniqueness is derived from checked source accounting rather
+than required separately. The broader compiler still needs heterogeneous
+values, nontrivial guards, and samples. The Lean settlement theorem permits
+any common value type with a chosen default; the nullable type here gives that
+default its intended source-level quitting interpretation.
 
 Let `S(sigma)` be the program outcome of written-order source execution.
 Let `C` translate each source policy to the native policy in Section 4.
@@ -75,8 +82,9 @@ an additional incentive obligation, not automatically preserved.
 ## 2. Source and graph semantics
 
 Number all source events `0,...,n-1` in written order. Let `K` be the
-commitment sites. Each `c in K` has owner `owner(c)` and a unique reveal
-`r(c) > c`. A complete assignment is `a in D^K`.
+commitment sites. Each `c in K` has owner `owner(c)` and at most one direct
+reveal `r(c) > c`, when it has a direct reveal. A complete assignment is
+`a in D^K`.
 
 Written-order execution assigns a value at each commitment and copies that
 value at its reveal. Initial inputs and these choices determine the full
@@ -188,7 +196,8 @@ It is not an implementation of arbitrary `||` subgames or quit handlers.
 Those need their own continuation semantics and compiler edge.
 
 **Settlement interpretation.** For a completed native run define its effective
-assignment `e_c` to be the published value at the unique reveal of `c`.
+assignment `e_c` to be the published value at the unique direct reveal of `c`,
+or `bottom` if that commitment has no direct reveal.
 The source execution with commitment assignment `e` is legal, and its final
 public environment equals the runtime's: each source reveal copies `e_c`,
 which is exactly the runtime field. Hence the runtime outcome is `O(e)`.
@@ -200,9 +209,9 @@ whereas the actual private service still contains `some x`. The incentive
 proof retains that original locked choice in a *different*, counterfactual
 source execution.
 
-The unique-reveal and unrestricted-guard conditions matter here. Conflicting
-aliases or a later guard invalidated by replacing a value with `bottom`
-would invalidate this simple settlement interpretation.
+Source accounting rules out conflicting direct aliases. Unrestricted guards
+also matter: a later guard invalidated by replacing a value with `bottom`
+would invalidate this settlement interpretation.
 
 ### Clock, service, and termination
 
@@ -1267,25 +1276,36 @@ utilities are the payout interpretation of that source. Independently,
 `publicSealedStore_agrees` reconstructs typed public fields from public initial
 data and opening events, ignoring opaque commitments; `publicPayout?` evaluates
 the compiled payout on that public store. `publicPayout?_eq_source_of_terminal`
-proves equality with written-source terminal payout on normally decoded runs.
-Totality and source-settlement identification after defaults remain separate
-obligations. The finite-fiber regression also verifies a conditional comparison
+proves equality with the decoded written-source payout on normal runs.
+`public_store_source_of_complete` identifies every completed public store with
+the public projection of a legal source realization, including after defaults;
+`publicPayout?_eq_source_of_complete` supplies an actual written-source
+small-step execution and the same payout. `RoundModel.play_publicPayout_source`
+instantiates completion and event provenance for every supported outcome of
+the actual game, with arbitrary player and wire policies and no service
+assumption. Source accounting supplies reveal uniqueness. The timeout
+regression retains an accepted private `some true`, publishes `none` on expiry,
+and evaluates a public-value-dependent source payout to `-3` rather than `7`.
+The source settlement witness need not retain the locked private value and is
+distinct from the source witness used in the incentive coupling.
+The finite-fiber regression also verifies a conditional comparison
 that holds despite pointwise comparison failing; the native-driver regression
 instantiates the checkpoint-cap route and its positive timeout margin.
 
 The remaining implementation work is specific:
 
-1. Check backend admission for nullable values and direct unique reveals,
-   without changing source well-formedness.
-2. Connect post-timeout terminal public settlement to the program's outcome
-   evaluator for every admitted program, not only the concrete settlement
-   regression. Normal completed event decoding already recovers the exact
-   coupled source realization. After timeout, service values and logical
-   defaults remain distinct; equal private bindings are not the target claim.
-3. Prove (5), or its commitment-compatible cap condition, from the chosen
+1. Prove (5), or its commitment-compatible cap condition, from the chosen
    program's settlement and utility analysis. The first-timeout compiler
    instance and its conditional Nash transport are checked; their explicit
    incentive premise must not be mistaken for a discharged source analysis.
+   For utilities interpreting the programmed payout, the next concrete test
+   should derive normal utility agreement from source payoff evaluation and
+   prove the timeout cap from that same payout, rather than supply an unrelated
+   native utility. A commitment-compatible lower bound must retain the actual
+   registered values, even when the public-settlement witness replaces them.
+2. Extend admission and its proofs to further source features. The public
+   settlement construction currently relies on unrestricted guards and a
+   common value type, and the strategic coupling excludes samples.
 
 No persistent role-bail rule, subgame handler, raw Ethereum transaction format,
 or cryptographic verifier is silently included here. Further runtime features

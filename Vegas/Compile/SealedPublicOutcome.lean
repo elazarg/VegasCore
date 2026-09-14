@@ -1,6 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedResolutionPolicy
+import Vegas.Compile.SealedReadOrigin
+import Vegas.Compile.SealedSourceInputs
+import Vegas.Compile.SealedReplay
+import Vegas.Compile.RevealAccounting
 import Interaction.SealedResolutionEvents
 
 /-! # Public terminal reconstruction for sealed resolution
@@ -38,6 +42,77 @@ def publicSealedStore (G : Graph Player L) (ty : L.Ty)
     (events : List (SealedProgram.Event Player (L.Val ty))) : Store L :=
   G.replayPublicOpenings ty G.initialPublicStore events
 
+/-- Logical source choices used only to witness a public settlement. They may
+differ from private registrations after a publication defaults. -/
+private def revealAssignment (G : Graph Player L) {ty : L.Ty}
+    (fallback : L.Val ty) (store : Store L) : Fin G.nodeCount → L.Val ty := by
+  classical
+  exact fun producer =>
+    if found : ∃ node, (G.nodeRow node).sem = .reveal (G.nodeTarget producer) then
+      (Store.getAs store (G.nodeTarget (Classical.choose found).val) ty).getD fallback
+    else fallback
+
+private theorem replayPublicOpenings_available (G : Graph Player L)
+    (ty : L.Ty) (store : Store L) (events : List (SealedProgram.Event Player (L.Val ty)))
+    (field : Nat) (havailable : (Store.getAs store field ty).isSome) :
+    (Store.getAs (G.replayPublicOpenings ty store events) field ty).isSome := by
+  induction events generalizing store with
+  | nil => exact havailable
+  | cons event rest ih =>
+      cases event with
+      | accepted node handle => exact ih store havailable
+      | opened node value =>
+          apply ih
+          by_cases heq : field = G.nodeTarget node
+          · subst field
+            simp [Store.getAs, TypedValue.as?]
+          · rw [Store.getAs_set_ne store heq]
+            exact havailable
+
+/-- Any recorded opening makes its target field available to public outcome
+evaluation. Later openings have the same type and preserve availability. -/
+theorem publicSealedStore_available_of_opened (G : Graph Player L)
+    (ty : L.Ty) (events : List (SealedProgram.Event Player (L.Val ty)))
+    (node : Nat) (value : L.Val ty) (hopened : .opened node value ∈ events) :
+    (Store.getAs (G.publicSealedStore ty events) (G.nodeTarget node) ty).isSome := by
+  suffices ∀ store, (Store.getAs (G.replayPublicOpenings ty store events)
+      (G.nodeTarget node) ty).isSome from this G.initialPublicStore
+  induction events with
+  | nil => simp at hopened
+  | cons event rest ih =>
+      intro store
+      rcases List.mem_cons.mp hopened with rfl | htail
+      · rw [replayPublicOpenings]
+        apply G.replayPublicOpenings_available
+        simp [Store.getAs, TypedValue.as?]
+      · cases event <;> exact ih htail _
+
+private theorem replayPublicOpenings_getAs_initial (G : Graph Player L)
+    (ty : L.Ty) (store : Store L) (events : List (SealedProgram.Event Player (L.Val ty)))
+    (field : Nat) (fieldTy : L.Ty) (hfield : ∀ node, field ≠ G.nodeTarget node) :
+    Store.getAs (G.replayPublicOpenings ty store events) field fieldTy =
+      Store.getAs store field fieldTy := by
+  induction events generalizing store with
+  | nil => rfl
+  | cons event rest ih =>
+      cases event with
+      | accepted node handle => exact ih store
+      | opened node value =>
+          rw [replayPublicOpenings, ih, Store.getAs_set_ne store (hfield node)]
+
+/-- Public initial data survives replay unchanged; accepted handles supply no
+public values and opening targets are freshly allocated event fields. -/
+theorem publicSealedStore_getAs_initial (G : Graph Player L)
+    (ty : L.Ty) (events : List (SealedProgram.Event Player (L.Val ty)))
+    (field : Nat) (spec : FieldSpec Player L) (value : L.Val spec.ty)
+    (hfield : G.field? field = some spec) (hsource : spec.source = .initial value)
+    (hpublic : spec.owner = none) :
+    Store.getAs (G.publicSealedStore ty events) field spec.ty = some value := by
+  rw [publicSealedStore, G.replayPublicOpenings_getAs_initial ty _ events field spec.ty
+    (G.initial_field_ne_target field spec value hfield hsource)]
+  simp [Store.getAs, initialPublicStore, hfield, hpublic, FieldSpec.initialValue?,
+    hsource, TypedValue.as?]
+
 end Vegas.EventGraph.Graph
 
 namespace Vegas.EventGraph.SealedFragment
@@ -46,6 +121,40 @@ open Interaction
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+
+omit [DecidableEq (L.Val ty)] in
+/-- Every typed public field is available after completion, including runs
+with commitment and reveal defaults. No source decoding is assumed. -/
+theorem publicSealedStore_available_of_complete
+    (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
+    (state : SealedResolution.ApplicationState Player (L.Val ty))
+    (hinvariant : SealedResolution.EventInvariant
+      (supported.resolvingRuntime nullValue window) state)
+    (hcomplete : (supported.resolvingRuntime nullValue window).complete state.visible = true)
+    (ref : FieldRef L) (hpublic : G.fieldRefPublic ref) :
+    ∃ value, Store.getAs (G.publicSealedStore ty state.visible.events)
+      ref.field ref.ty = some value := by
+  rcases supported.publicField_origin ref hpublic with
+    ⟨spec, value, hfield, hsource, hty, howner⟩ |
+      ⟨node, producer, owner, guard, htarget, hrefty, hsem, hcommit⟩
+  · rw [← hty]
+    exact ⟨value, G.publicSealedStore_getAs_initial ty state.visible.events
+      ref.field spec value hfield hsource howner⟩
+  · have hcompleted : state.visible.completed node.val = true := by
+      apply List.all_eq_true.mp hcomplete node.val
+      have hlen : supported.compile.rules.length = G.nodeCount := by
+        simp [SealedFragment.compile, Graph.nodeOrder]
+      simpa only [List.mem_range, resolvingRuntime, hlen] using node.isLt
+    have hrule : supported.compile.rules[node.val]? =
+        some ⟨.reveal owner producer.val, G.messagePrerequisites node⟩ := by
+      rw [supported.compile_rule]
+      exact congrArg some (G.sealedRule_reveal_eq node producer owner guard hsem hcommit)
+    obtain ⟨value, hopened⟩ := hinvariant.opened_of_completed_reveal
+      node.val owner producer.val (G.messagePrerequisites node) hrule hcompleted
+    have havailable := G.publicSealedStore_available_of_opened ty
+      state.visible.events node.val value hopened
+    rw [htarget, hrefty]
+    exact Option.isSome_iff_exists.mp havailable
 
 omit [DecidableEq (L.Val ty)] in
 private theorem replayPublicOpenings_agrees
@@ -148,7 +257,7 @@ end Vegas.EventGraph.SealedFragment
 
 namespace Vegas.SealedCompilation
 
-open EventGraph Interaction
+open EventGraph Interaction ToEventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {source : WFProgram Player L} {ty : L.Ty}
@@ -160,6 +269,22 @@ def publicPayout? (_compilation : SealedCompilation source ty)
     (events : List (SealedProgram.Event Player (L.Val ty))) : Option (Payout Player) :=
   evalPayoffs? (ToEventGraph.compile source.core).payoffs
     ((ToEventGraph.compile source.core).graph.publicSealedStore ty events)
+
+/-- Public payout evaluation is total at every invariant completed native
+state, including after timeout defaults. -/
+theorem publicPayout?_isSome_of_complete
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (state : SealedResolution.ApplicationState Player (L.Val ty))
+    (hinvariant : SealedResolution.EventInvariant
+      (compilation.supported.resolvingRuntime nullValue window) state)
+    (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
+      state.visible = true) :
+    ∃ payout, compilation.publicPayout? state.visible.events = some payout := by
+  apply evalPayoffs?_isSome_of_available
+  intro payoff hpayoff ref href
+  exact compilation.supported.publicSealedStore_available_of_complete nullValue window
+    state hinvariant hcomplete ref
+    ((ToEventGraph.compile source.core).payoffsWF payoff hpayoff ref href).1
 
 private theorem evalPayoffEntries?_eq_of_getAs_eq
     (payoffs : List (Player × EventPayoff L)) (left right : Store L)
@@ -198,6 +323,25 @@ private theorem evalPayoffs?_eq_of_getAs_eq
   unfold evalPayoffs?
   rw [evalPayoffEntries?_eq_of_getAs_eq payoffs left right heq]
 
+private theorem payout_source_of_public_store
+    (store : Store L) (cfg : ReachableConfig (compile source.core).graph)
+    (hterminal : Terminal (compile source.core).graph cfg.1)
+    (hagrees : ∀ ref, (compile source.core).graph.fieldRefPublic ref →
+      Store.getAs store ref.field ref.ty = Store.getAs cfg.1.store ref.field ref.ty) :
+    ∃ terminalEnv : VEnv L (compile source.core).terminalCtx,
+      SmallStep.Star
+        { ctx := source.core.Γ, env := source.core.env, cont := source.core.prog }
+        { ctx := (compile source.core).terminalCtx, env := terminalEnv,
+          cont := .ret (compile source.core).sourcePayoffs } ∧
+      evalPayoffs? (compile source.core).payoffs store =
+        some (evalPayoffs (compile source.core).sourcePayoffs terminalEnv) := by
+  obtain ⟨terminalEnv, hstar, hcfgPayout, _hbindings⟩ :=
+    compile_sourceStar source.core cfg.1 cfg.2 hterminal
+  refine ⟨terminalEnv, hstar, ?_⟩
+  rw [evalPayoffs?_eq_of_getAs_eq (compile source.core).payoffs store cfg.1.store, hcfgPayout]
+  intro payoff hpayoff ref href
+  exact hagrees ref ((compile source.core).payoffsWF payoff hpayoff ref href).1
+
 /-- On every decoded terminal source realization, the payout loaded only from
 public initial fields and opening events is exactly the written source payout.
 The witness is supplied by source adequacy; no private commitment value is
@@ -219,18 +363,134 @@ theorem publicPayout?_eq_source_of_terminal
           cont := .ret (ToEventGraph.compile source.core).sourcePayoffs } ∧
       compilation.publicPayout? state.visible.events =
         some (evalPayoffs (ToEventGraph.compile source.core).sourcePayoffs terminalEnv) := by
-  obtain ⟨terminalEnv, hstar, hcfgPayout, _hbindings⟩ :=
-    ToEventGraph.compile_sourceStar source.core cfg.1 cfg.2 hterminal
-  refine ⟨terminalEnv, hstar, ?_⟩
-  unfold publicPayout?
-  rw [evalPayoffs?_eq_of_getAs_eq
-    (ToEventGraph.compile source.core).payoffs
-    ((ToEventGraph.compile source.core).graph.publicSealedStore ty state.visible.events)
-    cfg.1.store, hcfgPayout]
-  intro payoff hpayoff ref href
-  exact compilation.supported.publicSealedStore_agrees nullValue window state hinvariant
-    cfg.1 hdecode ref
-      ((ToEventGraph.compile source.core).payoffsWF payoff hpayoff ref href).1
+  exact payout_source_of_public_store _ cfg hterminal
+    (compilation.supported.publicSealedStore_agrees nullValue window state hinvariant cfg.1 hdecode)
+
+private theorem exists_terminal_values [Finite Player]
+    (compilation : SealedCompilation source ty) (fallback : L.Val ty)
+    (values : Fin (compile source.core).graph.nodeCount → L.Val ty) :
+    ∃ cfg : ReachableConfig (compile source.core).graph,
+      Terminal (compile source.core).graph cfg.1 ∧
+      ∀ node owner guard, ((compile source.core).graph.nodeRow node).sem = .commit owner guard →
+        cfg.1.nodeValues fallback node = values node := by
+  let : Fintype Player := Fintype.ofFinite Player
+  let graph := (compile source.core).graph
+  let policies := fun who => compilation.supported.valuePolicy values who
+  let initial : ReachableConfig graph := ⟨Config.initial graph, .initial⟩
+  let law := runPolicyNodes (compile source.core).graphWF
+    (compile_guardLive source.core source.legal) policies initial graph.nodeOrder
+  obtain ⟨cfg, hcfg⟩ := law.support_nonempty
+  have hterminal : Terminal graph cfg.1 := runPolicyNodes_terminal
+    (compile source.core).graphWF (compile_guardLive source.core source.legal)
+    policies initial graph.nodeOrder graph.nodeOrder_readyOrder
+    (fun node => Or.inr (by simp)) cfg hcfg
+  refine ⟨cfg, hterminal, ?_⟩
+  intro node owner guard hsem
+  have hchoices := runPolicyNodes_support_commitValues (compile source.core).graphWF
+    (compile_guardLive source.core source.legal) policies initial
+    (CommitValuesSupported.initial _) graph.nodeOrder cfg hcfg
+  obtain ⟨reads, _, choice, hchoice, hvalue⟩ := hchoices node (hterminal node) owner guard hsem
+  simp only [policies, SealedFragment.valuePolicy, FinDist.mem_support_pure] at hchoice
+  subst choice
+  change cfg.1.store (graph.nodeTarget node) =
+    some (⟨guard.ty, cast (congrArg L.Val
+      (compilation.supported.commitType node owner guard hsem).symm) (values node)⟩ : TypedValue L)
+    at hvalue
+  rw [Config.nodeValues, Store.getAs, hvalue]
+  simp only [TypedValue.as?, dif_pos (compilation.supported.commitType node owner guard hsem),
+    cast_cast, cast_eq, Option.getD_some]
+
+private theorem revealAssignment_reveal
+    (fallback : L.Val ty) (store : Store L)
+    (node producer : Fin (compile source.core).graph.nodeCount)
+    (hsem : ((compile source.core).graph.nodeRow node).sem =
+      .reveal ((compile source.core).graph.nodeTarget producer)) :
+    (compile source.core).graph.revealAssignment fallback store producer =
+      (Store.getAs store ((compile source.core).graph.nodeTarget node) ty).getD fallback := by
+  classical
+  have found : ∃ node, ((compile source.core).graph.nodeRow node).sem =
+      .reveal ((compile source.core).graph.nodeTarget producer) := ⟨node, hsem⟩
+  rw [Graph.revealAssignment, dif_pos found]
+  rw [source.compiled_reveal_source_injective _ node _ (Classical.choose_spec found) hsem]
+
+private theorem exists_terminal_public_store [Finite Player]
+    (compilation : SealedCompilation source ty) (fallback : L.Val ty)
+    (store : Store L)
+    (havailable : ∀ ref, (compile source.core).graph.fieldRefPublic ref →
+      ∃ value, Store.getAs store ref.field ref.ty = some value)
+    (hinitial : ∀ field (spec : FieldSpec Player L) (value : L.Val spec.ty),
+      (compile source.core).graph.field? field = some spec →
+      spec.source = .initial value → spec.owner = none →
+      Store.getAs store field spec.ty = some value) :
+    ∃ cfg : ReachableConfig (compile source.core).graph,
+      Terminal (compile source.core).graph cfg.1 ∧
+      ∀ ref, (compile source.core).graph.fieldRefPublic ref →
+        Store.getAs store ref.field ref.ty = Store.getAs cfg.1.store ref.field ref.ty := by
+  obtain ⟨cfg, hterminal, hvalues⟩ := compilation.exists_terminal_values fallback
+    ((compile source.core).graph.revealAssignment fallback store)
+  refine ⟨cfg, hterminal, ?_⟩
+  intro ref hpublic
+  rcases compilation.supported.publicField_origin ref hpublic with
+    ⟨spec, value, hfield, hsource, hty, howner⟩ |
+      ⟨node, producer, owner, guard, htarget, hrefty, hsem, hcommit⟩
+  · rw [← hty, hinitial ref.field spec value hfield hsource howner]
+    have hcfg := Graph.reachable_store_eq_initial_of_not_nodeTarget cfg.2 ref.field
+      (fun node => (compile source.core).graph.initial_field_ne_target
+        ref.field spec value hfield hsource node.val)
+    simp [Store.getAs, hcfg, Graph.initialStore, hfield, FieldSpec.initialValue?,
+      hsource, TypedValue.as?]
+  · have hav := havailable ref hpublic
+    rw [htarget, hrefty] at hav ⊢
+    obtain ⟨value, hvalue⟩ := hav
+    rw [hvalue, Store.getAs, compilation.supported.terminal_reveal_store cfg hterminal fallback
+      node producer hsem, hvalues producer owner guard hcommit,
+      revealAssignment_reveal fallback store node producer hsem,
+      hvalue]
+    simp [TypedValue.as?]
+
+/-- Every completed invariant native state has the public store of a legal
+terminal source realization, including after timeout defaults. Source accounting
+ensures direct reveals have distinct producers; it is not an extra admission
+premise. This support correspondence does not preserve private registrations or
+the laws of fixed source policies. -/
+theorem public_store_source_of_complete [Finite Player]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (state : SealedResolution.ApplicationState Player (L.Val ty))
+    (hinvariant : SealedResolution.EventInvariant
+      (compilation.supported.resolvingRuntime nullValue window) state)
+    (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
+      state.visible = true) :
+    ∃ cfg : ReachableConfig (compile source.core).graph,
+      Terminal (compile source.core).graph cfg.1 ∧
+      ∀ ref, (compile source.core).graph.fieldRefPublic ref →
+        Store.getAs ((compile source.core).graph.publicSealedStore ty state.visible.events)
+          ref.field ref.ty = Store.getAs cfg.1.store ref.field ref.ty := by
+  apply compilation.exists_terminal_public_store nullValue _
+  · exact compilation.supported.publicSealedStore_available_of_complete nullValue window
+      state hinvariant hcomplete
+  · exact (compile source.core).graph.publicSealedStore_getAs_initial ty state.visible.events
+
+/-- Public settlement after arbitrary native completion equals the written
+source payout of a legal source execution. This includes timeout defaults and
+requires neither successful private-state decoding nor timely message service.
+It is an existence statement, not a unilateral deviation-law backtranslation. -/
+theorem publicPayout?_eq_source_of_complete [Finite Player]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (state : SealedResolution.ApplicationState Player (L.Val ty))
+    (hinvariant : SealedResolution.EventInvariant
+      (compilation.supported.resolvingRuntime nullValue window) state)
+    (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
+      state.visible = true) :
+    ∃ terminalEnv : VEnv L (compile source.core).terminalCtx,
+      SmallStep.Star
+        { ctx := source.core.Γ, env := source.core.env, cont := source.core.prog }
+        { ctx := (compile source.core).terminalCtx, env := terminalEnv,
+          cont := .ret (compile source.core).sourcePayoffs } ∧
+      compilation.publicPayout? state.visible.events =
+        some (evalPayoffs (compile source.core).sourcePayoffs terminalEnv) := by
+  obtain ⟨cfg, hterminal, hagrees⟩ :=
+    compilation.public_store_source_of_complete nullValue window state hinvariant hcomplete
+  exact payout_source_of_public_store _ cfg hterminal hagrees
 
 end Vegas.SealedCompilation
 
@@ -238,3 +498,8 @@ end Vegas.SealedCompilation
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SealedCompilation.publicPayout?_eq_source_of_terminal
+
+/-- info: 'Vegas.SealedCompilation.publicPayout?_eq_source_of_complete' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.publicPayout?_eq_source_of_complete

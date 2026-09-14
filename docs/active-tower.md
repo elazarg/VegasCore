@@ -14,7 +14,7 @@ introducing a new edge and proving its own correspondence laws.
 | Graph compilation | `Vegas.Compile`, `Vegas.Game.SourceGraph` | canonical graph, declared-read policy runner, `WFProgram.sourceGraphSimulation` | Typed source compilation; exact whole-program terminal-environment law; uniform single-policy backtranslation of every unilateral declared-read graph deviation, with opponents unchanged. A concrete certificate proves Nash and same-error ε-Nash equivalence at compiled profiles for all checked core programs and finite player sets. |
 | Graph strategic presentation | `Vegas.EventGraph.Strategic` | behavioral frontier game and canonical declared-read policy game | Under `CommitInformationLocal` and one ready commitment per player, compiled canonical policies preserve the complete observed outcome law of every behavioral profile; every unilateral canonical replacement is exactly one behavioral graph deviation. This is an event-graph theorem, not yet a source-language or message-runtime theorem. |
 | Sealed native protocol | `Interaction` | message pool, ideal commitment service, `SealedProgram`, policy runner | Commit and reveal are separate protocol actions. Arbitrary finite native traffic—including malformed payloads, retries/replay, delivery, inclusion, and withholding—either stutters or takes a valid graph step. The environment sees the full pending pool; player views expose their own inbox/sent messages and the public ledger. Hiding is proved for protected pre-disclosure traffic. |
-| Resolving native protocol | `Interaction` | `SealedResolution`, shared policy-runner rounds | Per-node relative deadlines, nullable resolution, and continuing execution are implemented. Before the first timeout, validator/event projection is exact. Private bindings persist under arbitrary policies and resolution. Every round advances the clock once. Termination is checked without service; periodic inclusion capacity provides deadline-relative service. General source settlement remains open. The single-checkpoint `SealedTimeout` model instead records final failure and does not implement this continuation. |
+| Resolving native protocol | `Interaction` | `SealedResolution`, shared policy-runner rounds | Per-node relative deadlines, nullable resolution, and continuing execution are implemented. Before the first timeout, validator/event projection is exact. Private bindings persist under arbitrary policies and resolution. Every round advances the clock once. Termination is checked without service; periodic inclusion capacity provides deadline-relative service. For the admitted Vegas fragment, completed public settlement has a legal source realization even after defaults. The single-checkpoint `SealedTimeout` model instead records final failure and does not implement this continuation. |
 | Vegas compiler edge | `Vegas.Compile` | `SealedCompilation`, sealed decode/refinement/source modules | One sealed rule per graph node; native prefixes decode to reachable graph states; terminal prefixes reconstruct a written-order source run. Under roster coverage, periodic inclusion capacity, a sufficient window, and a whole-period termination budget, all-compiled play has the exact original written-source outcome law in the actual stopped pending-message driver. |
 | Pending-message strategic edge | `Vegas.Game` | `SealedCompilation.RoundModel` | Constructed source/native coupling, actual timeout-checkpoint information, retained focal registrations, and same-error Nash equivalence under timely service, normal utility agreement, and explicit conditional timeout utility comparisons. A uniform settlement cap is a checked sufficient case. |
 | Exact strategic adapter | `Vegas.Game` | `SealedCompilation.StrategicCertificate` | A concrete target game may supply an honest law and a finite-mixture backtranslation; generic transport then gives the Nash/ε-Nash theorems. Exact post-timeout outcome simulation is an explicit obligation, not implied by the round model's utility theorem. |
@@ -266,10 +266,15 @@ uses only environment predrawing, retaining the original source profile.
 Public initial data and opening events reconstruct the public store, with
 typed-field agreement on normally decoded runs. The public payout evaluator
 uses that store without reading the private commitment service, and
-`publicPayout?_eq_source_of_terminal` proves equality with a written-source
-terminal payout. General nullable/direct-unique-reveal admission, total
-post-timeout source settlement identification, and program-specific proofs of
-the conditional incentive premise remain open. The checkpoint is first
+`publicPayout?_eq_source_of_terminal` proves equality with the decoded source
+payout on normal runs. `publicPayout?_eq_source_of_complete` also supplies a
+legal written-source execution and equal payout after defaults, using reveal
+uniqueness derived from source accounting. `RoundModel.play_publicPayout_source`
+applies this to every supported outcome of the actual game without a service
+assumption. This public-settlement witness may change private choices and is
+not the commitment-preserving witness in the strategic coupling.
+Program-specific proofs of the conditional incentive premise remain open.
+The checkpoint is first
 timeout, not necessarily the last opportunity at which the player could avert it.
 Malformed messages are rejected without a source step. Fair deadline resolution
 must implement the programmer's quitting settlement; a rejected attempt alone

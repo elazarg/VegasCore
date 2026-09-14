@@ -48,10 +48,12 @@ unrestricted. The coupled legal source completion retains focal registrations
 from the actual checkpoint history; its source strategy is fixed ex ante.
 A uniform cap below every source utility is a checked sufficient condition,
 exported through `utilitySimulation`. This utility-specific theorem does not
-claim exact outcome-law simulation after selective quitting. General
-post-timeout source-settlement identification and proofs of the conditional
-premise from a program's incentives remain open. Ordinary source quit dominance
-does not suffice for that premise.
+claim exact outcome-law simulation after selective quitting. Public settlement
+after timeouts is the public projection of some legal source execution, with
+the same programmed payout; that witness may change private choices and does
+not retain fixed opponents' policies. Proofs of the conditional premise from
+a program's incentives remain open. Ordinary source quit dominance does not
+suffice for that premise.
 
 The resolving message runtime has a checked whole-prefix registration read
 bound, `SealedFragment.resolvingBindingLaw_read_bound`. It executes compiled
@@ -100,5 +102,9 @@ The probability proof counts every player's original conditional draw and
 predraws only the environment; it does not infer the honest law from the
 unilateral-deviation mixture. `RoundModel.deviation_utility_margin_bound` uses
 that mixture to charge a uniform continuation margin times the actual timeout
-probability. General post-timeout source settlement and the weaker
-information-conditional utility bound remain separate obligations.
+probability. The checkpoint-conditional theorem supports weaker comparisons
+on the actual timeout information. `RoundModel.play_publicPayout_source`
+separately derives a legal written-source execution with the same public
+payout for every supported native outcome, including after defaults and
+without a service assumption. Neither result discharges a program's
+conditional incentive analysis.

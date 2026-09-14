@@ -134,6 +134,26 @@ theorem resolvedSources_nodup {Γ : VCtx P L} {pending : Finset VarId}
   · simp only [if_neg hpending, zero_add]
     exact List.nodup_iff_count_le_one.mp hcommitted.1 name
 
+/-- Literal source reveals occur in the accounting discharge sequence.  An
+optional opening contributes its adjacent copy reveal while its original
+source is the additional disposition entry. -/
+theorem revealedSources_sublist_resolvedSources {Γ : VCtx P L}
+    {pending : Finset VarId} {prog : VegasCore P L Γ}
+    (plan : CommitmentAccounting pending prog) :
+    List.Sublist (RevealedSources prog) plan.resolvedSources := by
+  induction plan <;> simp_all [RevealedSources, resolvedSources]
+
+/-- Fresh accounted source programs never directly reveal one named sealed
+binding twice. Optional disposition sources do not create a second literal
+reveal. -/
+theorem revealedSources_nodup {Γ : VCtx P L} {pending : Finset VarId}
+    {prog : VegasCore P L Γ} (plan : CommitmentAccounting pending prog)
+    (fresh : FreshBindings prog)
+    (hscope : ∀ name ∈ pending, name ∈ Γ.map Prod.fst) :
+    (RevealedSources prog).Nodup :=
+  (plan.resolvedSources_nodup fresh hscope).sublist
+    plan.revealedSources_sublist_resolvedSources
+
 end CommitmentAccounting
 
 namespace WFProgram

@@ -26,7 +26,8 @@ variable (cfg : ReachableConfig G) (hterminal : Terminal G cfg.1) (fallback : L.
 
 include supported hterminal
 
-private theorem terminal_reveal_store (node producer : Fin G.nodeCount)
+/-- A completed source reveal contains its producer's committed value. -/
+theorem terminal_reveal_store (node producer : Fin G.nodeCount)
     (hsem : (G.nodeRow node).sem = .reveal (G.nodeTarget producer)) :
     cfg.1.store (G.nodeTarget node) =
       some (⟨ty, cfg.1.nodeValues fallback producer⟩ : TypedValue L) := by
