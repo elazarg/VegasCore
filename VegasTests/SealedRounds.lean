@@ -104,9 +104,52 @@ theorem compiled_profile_isεNash (base : app.WirePolicy) (ε : ℝ) (hε : 0 �
   simp only [GameTheory.expectedUtility, sourceUtility, FinDist.expect_const]
   linarith
 
+/-- The checkpoint interface is instantiated from independent settlement and
+terminal-source bounds, not by assuming the desired native deviation bound. -/
+private theorem checkpointDominance (base : app.WirePolicy)
+    (profile : SourceBehavioralProfile core) (who : PendingStages.Player)
+    (replacement : (model base).game.sig.Strategy who) :
+    (model base).TimeoutCheckpointDominance sourceUtility (nativeUtility base)
+      profile who replacement 1 := by
+  apply (model base).timeoutCheckpointDominance_of_locked_cap sourceUtility
+    (nativeUtility base) profile who replacement 1 (fun _ => 0)
+  · intro pair hpair hstop
+    have hnext : pair.2.2 ∈ ((model base).game.play (Profile.update (fun player =>
+        compilation.compileResolvingPolicy none 14 player (profile player))
+          who replacement)).support := by
+      rw [← (model base).stoppingCoupling_native profile who replacement, FinDist.support_map]
+      exact ⟨pair, hpair, rfl⟩
+    have hown := (model base).deviation_ownTimeout (timely base) profile who replacement
+      pair.2.2 hnext (by simpa using hstop)
+    simp [nativeUtility, hown]
+  · intro _ cfg hterminal _
+    rw [observeSourceOutcome_of_terminal source.core cfg hterminal]
+    simp [sourceUtility]
+
+/-- Every native deviation loses at least its actual timeout probability in
+this concrete utility model, under arbitrary unreserved adaptive wire choices. -/
+theorem concrete_deviation_timeout_cost (base : app.WirePolicy)
+    (profile : SourceBehavioralProfile core) (who : PendingStages.Player)
+    (replacement : (model base).game.sig.Strategy who) :
+    let native := (model base).game.play (Profile.update (fun player =>
+      compilation.compileResolvingPolicy none 14 player (profile player)) who replacement)
+    native.expect (fun next => nativeUtility base next who) +
+      (native.map (fun next =>
+        !next.native.application.visible.timeouts.isEmpty)).prob true ≤ 1 := by
+  obtain ⟨alternative, hbound⟩ :=
+    (model base).checkpoint_deviation_utility_bound sourceUtility (nativeUtility base)
+      (normalUtilityAgreement base) profile who replacement 1
+      (checkpointDominance base profile who replacement)
+  simpa only [one_mul, sourceUtility, FinDist.expect_const] using hbound
+
 end VegasTests.SealedRounds
 
 /-- info: 'VegasTests.SealedRounds.compiled_profile_isεNash' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.SealedRounds.compiled_profile_isεNash
+
+/-- info: 'VegasTests.SealedRounds.concrete_deviation_timeout_cost' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SealedRounds.concrete_deviation_timeout_cost

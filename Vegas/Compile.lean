@@ -57,6 +57,7 @@ import Vegas.Compile.SealedNativeLikelihood
 import Vegas.Compile.SealedContinuation
 import Vegas.Compile.SealedRandomizedCoupling
 import Vegas.Compile.SealedRoundCoupling
+import Vegas.Compile.SealedStoppingCoupling
 import Vegas.Compile.SealedSourceInputs
 import Vegas.Compile.SealedReplay
 import Vegas.Compile.SealedPublication

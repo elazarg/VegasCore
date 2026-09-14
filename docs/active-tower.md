@@ -16,7 +16,8 @@ introducing a new edge and proving its own correspondence laws.
 | Sealed native protocol | `Interaction` | message pool, ideal commitment service, `SealedProgram`, policy runner | Commit and reveal are separate protocol actions. Arbitrary finite native traffic—including malformed payloads, retries/replay, delivery, inclusion, and withholding—either stutters or takes a valid graph step. The environment sees the full pending pool; player views expose their own inbox/sent messages and the public ledger. Hiding is proved for protected pre-disclosure traffic. |
 | Resolving native protocol | `Interaction` | `SealedResolution`, shared policy-runner rounds | Per-node relative deadlines, nullable resolution, and continuing execution are implemented. Before the first timeout, validator/event projection is exact. Private bindings persist under arbitrary policies and resolution. Every round advances the clock once. Termination is checked without service; periodic inclusion capacity provides deadline-relative service. General source settlement remains open. The single-checkpoint `SealedTimeout` model instead records final failure and does not implement this continuation. |
 | Vegas compiler edge | `Vegas.Compile` | `SealedCompilation`, sealed decode/refinement/source modules | One sealed rule per graph node; native prefixes decode to reachable graph states; terminal prefixes reconstruct a written-order source run. Under roster coverage, periodic inclusion capacity, a sufficient window, and a whole-period termination budget, all-compiled play has the exact original written-source outcome law in the actual stopped pending-message driver. |
-| Strategic adapter | `Vegas.Game` | `SealedCompilation.StrategicCertificate` | A concrete target game may supply an honest law and a finite-mixture backtranslation; generic transport then gives the Nash/ε-Nash theorems. The certificate is an explicit obligation, not an automatic consequence of prefix refinement. |
+| Pending-message strategic edge | `Vegas.Game` | `SealedCompilation.RoundModel` | Constructed source/native coupling, actual timeout-checkpoint information, retained focal registrations, and same-error Nash equivalence under timely service, normal utility agreement, and explicit conditional timeout utility comparisons. A uniform settlement cap is a checked sufficient case. |
+| Exact strategic adapter | `Vegas.Game` | `SealedCompilation.StrategicCertificate` | A concrete target game may supply an honest law and a finite-mixture backtranslation; generic transport then gives the Nash/ε-Nash theorems. Exact post-timeout outcome simulation is an explicit obligation, not implied by the round model's utility theorem. |
 
 ## Current strategic gap
 
@@ -233,13 +234,21 @@ in that choice's source view. The needed whole-run read-boundedness theorem
 connects this local barrier to the extracted source policy.
 
 For selective quitting, exact outcome-law simulation and Nash preservation
-are separate targets. `SealedCompilation.RoundModel.utilitySimulation` provides
-the latter for the actual pending-message round game under timely service,
-normal source/native utility agreement, and a uniform cap on a player's own
-timeout settlement below every source utility. Arbitrary native deviations are
-bounded by legal source deviations, with a margin times timeout probability in
-the quantitative theorem. The weaker information-conditional whole-program
-comparison remains open; ordinary source quit dominance does not imply the cap.
+are separate targets. `SealedCompilation.RoundModel.isεNash_iff_of_checkpointDominance`
+provides the latter for the actual pending-message round game under timely
+service, normal source/native utility agreement, and a conditional comparison
+at each supported timeout-checkpoint observation. The coupling jointly retains
+the actual native result and local information; its legal source completion
+retains every focal registration in that history. Its source-policy mixture
+is fixed ex ante, not selected by the checkpoint observation. Arbitrary native
+deviations are bounded by legal source deviations, with a margin times timeout
+probability in the quantitative theorem. `timeoutCheckpointDominance_of_locked_cap`
+reduces the comparison to native caps and bounds over all commitment-compatible
+terminal source configurations. `checkpointUtilitySimulation` packages
+comparisons valid at every profile as a composable certificate. A uniform cap
+below every source utility yields `utilitySimulation` as a sufficient case.
+These incentive conditions still require proof for the program's chosen
+utilities; ordinary source quit dominance does not establish them.
 `SealedResolution` supplies per-node relative deadlines and nullable defaults,
 then permits later application actions. Its round driver uses the shared
 message runner and separates adaptive wire choices from fixed clock ticks.
@@ -255,11 +264,13 @@ finite termination, and periodic service excluding honest timeouts are checked.
 The honest outcome theorem counts every source player's conditional draws and
 uses only environment predrawing, retaining the original source profile.
 Public initial data and opening events reconstruct the public store, with
-typed-field agreement on normally decoded runs; the public payout evaluator
-uses that store without reading the private commitment service.
-General nullable/direct-unique-reveal admission, total post-timeout source
-settlement identification, and the conditional continuation utility comparison remain
-open; the mathematical note states those obligations explicitly.
+typed-field agreement on normally decoded runs. The public payout evaluator
+uses that store without reading the private commitment service, and
+`publicPayout?_eq_source_of_terminal` proves equality with a written-source
+terminal payout. General nullable/direct-unique-reveal admission, total
+post-timeout source settlement identification, and program-specific proofs of
+the conditional incentive premise remain open. The checkpoint is first
+timeout, not necessarily the last opportunity at which the player could avert it.
 Malformed messages are rejected without a source step. Fair deadline resolution
 must implement the programmer's quitting settlement; a rejected attempt alone
 does not do so. In particular, withholding a committed `some a` cannot be

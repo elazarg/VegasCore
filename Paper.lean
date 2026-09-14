@@ -23,6 +23,7 @@ import Vegas.Compile.SealedNativeLikelihood
 import Vegas.Compile.SealedRandomizedCoupling
 import Vegas.Compile.SealedRoundCoupling
 import Vegas.Compile.SealedHonestRound
+import Vegas.Compile.SealedPublicOutcome
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
@@ -45,16 +46,20 @@ This file is deliberately a thin audit surface. Every closed statement below
 delegates directly to a theorem in the active source, graph, or sealed-message
 tower. Source-to-declared-read-graph strategic preservation uses a concrete
 compiler simulation. The pending-message round game has a concrete
-`UtilitySimulation` under timely service, normal utility agreement, and a
-uniform bound on the deviator's own timeout settlement.
+`UtilitySimulation` under timely service, normal utility agreement, and
+timeout-checkpoint conditional utility comparisons. A uniform cap on own
+timeout settlement is a separately checked sufficient condition.
 
 The fixed-response source/native prefix law through first timeout is checked.
 The original all-compiled source law is checked for the actual round driver
 under periodic service, with normal completion and timeout exclusion proved.
 The uniform settlement-cap theorem covers every unilateral native policy and
-preserves the same epsilon at compiled profiles. It does not assume that ordinary
-source quit dominance supplies this cap. Replacing the cap by the weaker
-stopping-information comparison for feasible locked continuations remains open.
+preserves the same epsilon at compiled profiles. The weaker checkpoint
+comparison is instantiated on the actual native information and retains the
+player's registered commitments in its legal source completion. Proving this
+incentive condition for a particular program remains a separate obligation;
+ordinary source quit dominance does not suffice. General post-timeout source
+settlement identification remains open.
 -/
 
 namespace Vegas.Paper
@@ -867,6 +872,127 @@ theorem pending_round_deviation_margin
   model.deviation_utility_margin_bound timely sourceUtility nativeUtility hagrees profile who
     replacement floor margin hsourceFloor htimeout
 
+section PendingCheckpoints
+
+open ToEventGraph
+open Interaction.MessageApplication
+
+variable [Finite Player] {source : WFProgram Player L} {ty : L.Ty}
+variable [DecidableEq (L.Val ty)] {compilation : SealedCompilation source ty}
+variable {nullValue : L.Val ty} {window : Nat}
+
+theorem pending_checkpoint_information
+    (model : compilation.RoundModel nullValue window)
+    (profile : SourceBehavioralProfile source.core.prog) (who : Player)
+    (replacement : model.game.sig.Strategy who) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    (model.stoppingCoupling profile who replacement).map Prod.snd =
+      (runtime.messageApplication.tracePolicies
+        (Profile.update (sig := policySignature Player runtime.messageApplication)
+          (fun player => compilation.compileResolvingPolicy nullValue window player
+            (profile player)) who replacement)
+        (runtime.roundEnvironment model.serviceSlots model.wire)
+        (SealedResolution.roundSchedule model.principals model.serviceSlots model.total)
+        (PolicyExecution.initial _ (State.initial _ runtime.initial))).map fun trace =>
+          (runtime.firstTimeoutLocalInfo who trace,
+            trace.firstReleaseEvery
+              (SealedResolution.roundInvocations model.principals model.serviceSlots).length
+              (fun execution : runtime.messageApplication.PolicyExecution =>
+                runtime.complete execution.native.application.visible)
+              model.total) :=
+  model.stoppingCoupling_information profile who replacement
+
+theorem pending_checkpoint_locked
+    (model : compilation.RoundModel nullValue window)
+    (profile : SourceBehavioralProfile source.core.prog) (who : Player)
+    (replacement : model.game.sig.Strategy who)
+    (pair) (hpair : pair ∈ (model.stoppingCoupling profile who replacement).support) :
+    compilation.LockedAt nullValue window who pair.2.1.1 pair.1 :=
+  model.stoppingCoupling_locked profile who replacement pair hpair
+
+theorem pending_checkpoint_deviation_margin
+    (model : compilation.RoundModel nullValue window)
+    (sourceUtility : VEnv L (sourceTerminalCtx source.core.prog) → Player → ℝ)
+    (nativeUtility : model.game.sig.Outcome → Player → ℝ)
+    (hagrees : model.NormalUtilityAgreement sourceUtility nativeUtility)
+    (profile : SourceBehavioralProfile source.core.prog) (who : Player)
+    (replacement : model.game.sig.Strategy who) (margin : ℝ)
+    (hdominates : model.TimeoutCheckpointDominance sourceUtility nativeUtility
+      profile who replacement margin) :
+    ∃ alternative : SourceBehavioralPolicy source.core.prog who,
+      (model.game.play (Profile.update (fun player =>
+        compilation.compileResolvingPolicy nullValue window player (profile player))
+          who replacement)).expect (fun next => nativeUtility next who) +
+        margin * ((model.game.play (Profile.update (fun player =>
+          compilation.compileResolvingPolicy nullValue window player (profile player))
+            who replacement)).map (fun next =>
+              !next.native.application.visible.timeouts.isEmpty)).prob true ≤
+        (denoteSource source.core.prog
+          (Profile.update (sig := sourceGameSignature source.core.prog) profile who alternative)
+          source.core.env).expect (fun outcome => sourceUtility outcome who) :=
+  model.checkpoint_deviation_utility_bound sourceUtility nativeUtility hagrees
+    profile who replacement margin hdominates
+
+theorem pending_checkpoint_approximate_nash_iff
+    (model : compilation.RoundModel nullValue window) (timely : model.Timely)
+    (sourceUtility : VEnv L (sourceTerminalCtx source.core.prog) → Player → ℝ)
+    (nativeUtility : model.game.sig.Outcome → Player → ℝ)
+    (hagrees : model.NormalUtilityAgreement sourceUtility nativeUtility)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (hdominates : ∀ who replacement,
+      model.TimeoutCheckpointDominance sourceUtility nativeUtility profile who replacement 0)
+    (ε : ℝ) :
+    IsεNash model.game nativeUtility ε
+      (fun who => compilation.compileResolvingPolicy nullValue window who (profile who)) ↔
+        IsεNash (sourceGameForm source.core.prog source.core.env) sourceUtility ε profile :=
+  model.isεNash_iff_of_checkpointDominance timely sourceUtility nativeUtility hagrees
+    profile hdominates ε
+
+theorem pending_checkpoint_timeout_cost
+    (model : compilation.RoundModel nullValue window) (timely : model.Timely)
+    (sourceUtility : VEnv L (sourceTerminalCtx source.core.prog) → Player → ℝ)
+    (nativeUtility : model.game.sig.Outcome → Player → ℝ)
+    (hagrees : model.NormalUtilityAgreement sourceUtility nativeUtility)
+    (profile : SourceBehavioralProfile source.core.prog) (ε : ℝ)
+    (hnash : IsεNash (sourceGameForm source.core.prog source.core.env)
+      sourceUtility ε profile)
+    (who : Player) (replacement : model.game.sig.Strategy who) (margin : ℝ)
+    (hdominates : model.TimeoutCheckpointDominance sourceUtility nativeUtility
+      profile who replacement margin) :
+    let compiled := fun player =>
+      compilation.compileResolvingPolicy nullValue window player (profile player)
+    (model.game.play (Profile.update compiled who replacement)).expect
+        (fun next => nativeUtility next who) +
+      margin * ((model.game.play (Profile.update compiled who replacement)).map
+        (fun next => !next.native.application.visible.timeouts.isEmpty)).prob true ≤
+      (model.game.play compiled).expect (fun next => nativeUtility next who) + ε :=
+  model.deviation_timeout_cost timely sourceUtility nativeUtility hagrees
+    profile ε hnash who replacement margin hdominates
+
+end PendingCheckpoints
+
+/-- A normally decoded terminal source run has the same payout when the
+native evaluator reads only public initial data and opening events. -/
+theorem pending_public_payout
+    {source : WFProgram Player L} {ty : L.Ty}
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (state : SealedResolution.ApplicationState Player (L.Val ty))
+    (hinvariant : SealedResolution.EventInvariant
+      (compilation.supported.resolvingRuntime nullValue window) state)
+    (cfg : ReachableConfig (ToEventGraph.compile source.core).graph)
+    (hterminal : Terminal (ToEventGraph.compile source.core).graph cfg.1)
+    (hdecode : (ToEventGraph.compile source.core).graph.decodeSealedFrom ty state.service
+      (Config.initial _) state.visible.events = some cfg.1) :
+    ∃ terminalEnv : VEnv L (ToEventGraph.compile source.core).terminalCtx,
+      SmallStep.Star
+        { ctx := source.core.Γ, env := source.core.env, cont := source.core.prog }
+        { ctx := (ToEventGraph.compile source.core).terminalCtx, env := terminalEnv,
+          cont := .ret (ToEventGraph.compile source.core).sourcePayoffs } ∧
+      compilation.publicPayout? state.visible.events =
+        some (evalPayoffs (ToEventGraph.compile source.core).sourcePayoffs terminalEnv) :=
+  compilation.publicPayout?_eq_source_of_terminal nullValue window state hinvariant
+    cfg hterminal hdecode
+
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal
     {Γ : VCtx Player simpleExpr} {secret : VarId} {b : BaseTy}
@@ -1570,6 +1696,36 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_honest_round_source_law
+
+/-- info: 'Vegas.Paper.pending_checkpoint_information' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_checkpoint_information
+
+/-- info: 'Vegas.Paper.pending_public_payout' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_public_payout
+
+/-- info: 'Vegas.Paper.pending_checkpoint_locked' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_checkpoint_locked
+
+/-- info: 'Vegas.Paper.pending_checkpoint_deviation_margin' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_checkpoint_deviation_margin
+
+/-- info: 'Vegas.Paper.pending_checkpoint_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_checkpoint_approximate_nash_iff
+
+/-- info: 'Vegas.Paper.pending_checkpoint_timeout_cost' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_checkpoint_timeout_cost
 
 /-- info: 'Vegas.Paper.pending_round_approximate_nash_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

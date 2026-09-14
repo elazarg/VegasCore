@@ -42,6 +42,60 @@ structure UtilitySimulation
       (source.play (Profile.update profile who alternative)).expect
         (fun outcome => sourceUtility outcome who)
 
+variable {source : GameForm.{uPlayer, uSource, uSourceOutcome} Player}
+variable {target : GameForm.{uPlayer, uTarget, uTargetOutcome} Player}
+variable {sourceUtility : source.sig.Outcome → Player → ℝ}
+variable {targetUtility : target.sig.Outcome → Player → ℝ}
+
+/-- Utility equality for compiled source profiles and deviation bounds at one
+fixed profile suffice for same-error Nash equivalence at that profile. Unlike
+`UtilitySimulation`, this theorem does not require a reusable deviation bound
+at source profiles that are not under consideration. -/
+theorem isεNash_compileProfile_iff_of_utility_bounds
+    (compileStrategy : (who : Player) → source.sig.Strategy who → target.sig.Strategy who)
+    (honestUtility : ∀ profile who,
+      (target.play (fun player => compileStrategy player (profile player))).expect
+          (fun outcome => targetUtility outcome who) =
+        (source.play profile).expect (fun outcome => sourceUtility outcome who))
+    (profile : Profile source.sig)
+    (deviationBound : ∀ who replacement,
+      ∃ alternative : source.sig.Strategy who,
+        (target.play (Profile.update (fun player => compileStrategy player (profile player))
+          who replacement)).expect (fun outcome => targetUtility outcome who) ≤
+        (source.play (Profile.update profile who alternative)).expect
+          (fun outcome => sourceUtility outcome who))
+    (ε : ℝ) :
+    IsεNash target targetUtility ε
+        (fun player => compileStrategy player (profile player)) ↔
+      IsεNash source sourceUtility ε profile := by
+  rw [isεNash_iff, isεNash_iff]
+  constructor
+  · intro h who alternative
+    have hcompiled := h who (compileStrategy who alternative)
+    have hupdate :
+        Profile.update (fun player => compileStrategy player (profile player)) who
+            (compileStrategy who alternative) =
+          fun player => compileStrategy player
+            ((Profile.update profile who alternative) player) := by
+      funext player
+      by_cases hplayer : player = who
+      · subst player
+        simp
+      · simp [Profile.update_of_ne, hplayer]
+    rw [hupdate] at hcompiled
+    change (target.play (fun player => compileStrategy player
+        ((Profile.update profile who alternative) player))).expect
+        (fun outcome => targetUtility outcome who) ≤
+      (target.play (fun player => compileStrategy player (profile player))).expect
+        (fun outcome => targetUtility outcome who) + ε at hcompiled
+    rw [honestUtility, honestUtility] at hcompiled
+    exact hcompiled
+  · intro h who replacement
+    obtain ⟨alternative, hbound⟩ := deviationBound who replacement
+    exact hbound.trans (by
+      rw [expectedUtility, honestUtility]
+      exact h who alternative)
+
 namespace UtilitySimulation
 
 variable {source : GameForm.{uPlayer, uSource, uSourceOutcome} Player}
@@ -71,26 +125,8 @@ theorem isεNash_compileProfile_iff
     (ε : ℝ) (profile : Profile source.sig) :
     IsεNash target targetUtility ε (simulation.compileProfile profile) ↔
       IsεNash source sourceUtility ε profile := by
-  rw [isεNash_iff, isεNash_iff]
-  constructor
-  · intro h who alternative
-    have hcompiled := h who (simulation.compileStrategy who alternative)
-    rw [simulation.compileProfile_update] at hcompiled
-    change (target.play (fun player => simulation.compileStrategy player
-        ((Profile.update profile who alternative) player))).expect
-        (fun outcome => targetUtility outcome who) ≤
-      (target.play (fun player => simulation.compileStrategy player (profile player))).expect
-        (fun outcome => targetUtility outcome who) + ε at hcompiled
-    rw [simulation.honest_utility, simulation.honest_utility] at hcompiled
-    exact hcompiled
-  · intro h who replacement
-    obtain ⟨alternative, hbound⟩ := simulation.deviation_bound profile who replacement
-    have hbase := simulation.honest_utility profile who
-    change (target.play (simulation.compileProfile profile)).expect
-        (fun outcome => targetUtility outcome who) = _ at hbase
-    exact hbound.trans (by
-      rw [expectedUtility, hbase]
-      exact h who alternative)
+  exact isεNash_compileProfile_iff_of_utility_bounds simulation.compileStrategy
+    simulation.honest_utility profile (simulation.deviation_bound profile) ε
 
 theorem isNash_compileProfile_iff
     (simulation : UtilitySimulation source target sourceUtility targetUtility)

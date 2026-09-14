@@ -6,6 +6,8 @@
   "prose:pending-round-coupling": ["Vegas.Paper.pending_randomized_round_source_coupling", "Vegas.Paper.pending_round_normal_completion"],
   "prose:pending-honest-round": ["Vegas.Paper.pending_honest_round_source_law"],
   "prose:pending-round-incentives": ["Vegas.Paper.pending_round_approximate_nash_iff", "Vegas.Paper.pending_round_deviation_margin"],
+  "prose:pending-checkpoint-incentives": ["Vegas.Paper.pending_checkpoint_information", "Vegas.Paper.pending_checkpoint_locked", "Vegas.Paper.pending_checkpoint_deviation_margin", "Vegas.Paper.pending_checkpoint_approximate_nash_iff", "Vegas.Paper.pending_checkpoint_timeout_cost"],
+  "prose:pending-public-payout": ["Vegas.Paper.pending_public_payout"],
   "prose:pending-termination": ["Vegas.Paper.compiled_resolution_terminates"],
   "prose:selective-quitting-margin": ["Vegas.Paper.selective_quitting_bound"],
   "prose:pending-disclosure-margin": ["Vegas.Paper.sealed_disclosure_utility_bound"],

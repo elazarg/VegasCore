@@ -39,14 +39,19 @@ signal. The separate behavioral-frontier presentation requires its own
 information-locality and single-ready-node correspondence; the concrete
 source certificate here does not assume or establish that correspondence.
 
-The sealed pending-message round driver supplies a concrete utility-preservation
-instance in `SealedCompilation.RoundModel.utilitySimulation`. Under timely
-service, normal source/native utility agreement, and a uniform cap on each
-player's own timeout settlement below every source utility, it preserves and
-reflects Nash and same-error epsilon-Nash at compiled profiles. Its player
-policies remain unrestricted. This utility-specific theorem does not claim exact
-outcome-law simulation after selective quitting. The weaker informed-continuation
-condition remains open; ordinary source quit dominance does not imply the cap.
+The sealed pending-message round driver supplies concrete utility preservation
+in `SealedCompilation.RoundModel.isεNash_iff_of_checkpointDominance`. Under timely
+service, normal source/native utility agreement, and conditional utility
+comparison at actual timeout checkpoints, it preserves and reflects Nash and
+same-error epsilon-Nash at compiled profiles. Its player policies remain
+unrestricted. The coupled legal source completion retains focal registrations
+from the actual checkpoint history; its source strategy is fixed ex ante.
+A uniform cap below every source utility is a checked sufficient condition,
+exported through `utilitySimulation`. This utility-specific theorem does not
+claim exact outcome-law simulation after selective quitting. General
+post-timeout source-settlement identification and proofs of the conditional
+premise from a program's incentives remain open. Ordinary source quit dominance
+does not suffice for that premise.
 
 The resolving message runtime has a checked whole-prefix registration read
 bound, `SealedFragment.resolvingBindingLaw_read_bound`. It executes compiled

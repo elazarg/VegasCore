@@ -37,13 +37,13 @@ Read the owning theorem and definitions, not only its paper-facing restatement.
 The audit pins theorem axioms; it does not prove that prose and formal
 statements agree.
 
-The separate manuscript checkout still contains the earlier claim registry and
-is not synchronized with this migration. The active audit therefore records
-only the strict sealed edge and the generic strategic interface below; archived
-fused claims are not silently presented as current results. Until the manuscript
-is rewritten, the paper-claim checker is not a completion gate for the active
-tower. `--allow-missing-paper` only omits prose/snapshot validation; it does not
-turn an unproved theorem into a proof.
+The separate manuscript checkout includes broader target claims recorded in
+`paper-obligations.json`; those are not current verified results.
+`python scripts/check-paper-claims.py --allow-open-obligations` checks progress
+against both the direct Lean audit and the pinned manuscript snapshot. The
+strict checker remains a completion gate and fails while these obligations
+are open. `--allow-missing-paper` permits a clone without the separate paper
+checkout; it does not turn an unproved theorem into a proof.
 
 ## Trust and scope
 
@@ -69,15 +69,18 @@ Ideal-service hiding is proved separately. These results are operational and
 support-level; they do not identify an arbitrary runtime policy with a source
 policy.
 
-`Vegas.SealedCompilation.RoundModel.utilitySimulation` is a concrete strategic
-edge to the actual pending-message round driver. It uses timely service,
-normal source/native utility agreement, and a uniform cap on the player's
-entire utility when its own commitment or reveal times out. The cap must lie
-below every source utility. The theorem covers all unilateral native policies;
-it derives the deviation bound from the constructed coupling. It preserves and
-reflects Nash and same-error epsilon-Nash at compiled profiles. A positive
-uniform margin charges the actual timeout probability. This utility theorem
-does not assert exact outcome-law simulation after selective withholding.
+`Vegas.SealedCompilation.RoundModel.isεNash_iff_of_checkpointDominance` is a
+concrete strategic edge to the actual pending-message round driver. It uses
+timely service, normal source/native utility agreement, and conditional
+comparisons at the player's actual timeout-checkpoint information. The legal
+source completion retains that player's registered choices. The theorem covers
+all unilateral native policies and derives its bound from the constructed
+coupling. It preserves and reflects Nash and same-error epsilon-Nash at
+compiled profiles; a positive margin charges the actual timeout probability.
+`checkpointUtilitySimulation` packages profile-uniform comparisons for
+composition. A uniform cap on own timeout utility below every source utility
+supplies `utilitySimulation` as a sufficient case. These utility theorems do
+not assert exact outcome-law simulation after selective withholding.
 
 For the resolving sealed backend, `pending_honest_round_source_law` in
 `Paper.lean` audits an exact coupling with the original written-source profile.
@@ -88,9 +91,13 @@ exact decoding at every supported result. A multistage nullable-source test
 instantiates the assumptions with delayed service and arbitrary unreserved
 wire choices. `pending_round_approximate_nash_iff` and
 `pending_round_deviation_margin` audit the uniform-cap strategic result.
-The weaker information-conditional continuation comparison and general
-source-settlement identification after defaults remain open. The strategic
-regression uses simple supplied utilities, not a proved source payout model.
+The `pending_checkpoint_*` theorems audit the conditional result, actual local
+information, and retained commitments. Program-specific proofs of the
+conditional incentive premise and general source-settlement identification
+after defaults remain open. The strategic regression uses simple supplied
+utilities, not a proved source payout model. Independently,
+`pending_public_payout` verifies public-only payout reconstruction on normally
+decoded terminal source executions.
 
 At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
 sharper exact statement under declared-read locality and a single ready

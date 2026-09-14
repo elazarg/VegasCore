@@ -50,6 +50,46 @@ theorem PolicyTrace.drop_add (trace : app.PolicyTrace) (first second : Nat) :
       | finish execution => cases second <;> rfl
       | step execution tail => simpa only [drop, Nat.succ_add] using ih tail
 
+private theorem PolicyTrace.length_drop (trace : app.PolicyTrace) (count : Nat) :
+    (trace.drop count).length = trace.length - count := by
+  induction count generalizing trace with
+  | zero => simp only [drop, Nat.sub_zero]
+  | succ count ih =>
+      cases trace with
+      | finish execution => simp only [drop, length, Nat.zero_sub]
+      | step execution tail =>
+          simp only [drop, length]
+          rw [ih]
+          omega
+
+private theorem PolicyTrace.drop_eq_finish_of_length_le (trace : app.PolicyTrace) (count : Nat)
+    (hcount : trace.length ≤ count) :
+    trace.drop count = .finish trace.last := by
+  obtain ⟨extra, rfl⟩ := Nat.exists_eq_add_of_le hcount
+  rw [← trace.drop_add trace.length extra, trace.drop_length]
+  cases extra <;> rfl
+
+/-- If an indexed snapshot satisfies a release condition, the trace's first
+such snapshot occurs no later than that index. -/
+theorem PolicyTrace.prefixThrough_length_le_of_drop_first (trace : app.PolicyTrace)
+    (release : app.PolicyExecution → Bool) (index : Nat)
+    (hrelease : release (trace.drop index).first = true) :
+    (trace.prefixThrough release).length ≤ index := by
+  induction index generalizing trace with
+  | zero =>
+      cases trace <;> simp_all only [drop, first, prefixThrough, length, Nat.le_refl,
+        ↓reduceIte]
+  | succ index ih =>
+      cases trace with
+      | finish execution => simp only [prefixThrough, length, Nat.zero_le]
+      | step execution tail =>
+          cases hfirst : release execution with
+          | true => simp only [prefixThrough, hfirst, ↓reduceIte, length, Nat.zero_le]
+          | false =>
+              have htail := ih tail (by simpa only [drop] using hrelease)
+              simpa only [prefixThrough, hfirst, Bool.false_eq_true, ↓reduceIte, length]
+                using Nat.succ_le_succ htail
+
 /-- Every indexed checkpoint lies on the actual prefix, and its remaining
 record is supported by the unchanged policies on the remaining invocation list.
 Indices beyond the end retain the final snapshot. -/
@@ -126,6 +166,62 @@ def PolicyTrace.firstReleaseEvery (width : Nat) (release : app.PolicyExecution �
   | count + 1, trace =>
       if release trace.first then trace.first
       else firstReleaseEvery width release count (trace.drop width)
+
+private theorem PolicyTrace.firstReleaseEvery_finish (execution : app.PolicyExecution)
+    (width : Nat) (release : app.PolicyExecution → Bool) (count : Nat) :
+    (PolicyTrace.finish execution).firstReleaseEvery width release count = execution := by
+  induction count with
+  | zero => rfl
+  | succ count ih =>
+      have hdrop : (PolicyTrace.finish execution).drop width = .finish execution := by
+        cases width <;> rfl
+      rw [firstReleaseEvery]
+      by_cases hrelease : release execution = true
+      · simp only [first, hrelease, ↓reduceIte]
+      · simp only [first, hrelease, Bool.false_eq_true, ↓reduceIte, hdrop, ih]
+
+/-- A fixed-width release readout is an actual snapshot of the supplied trace.
+When that snapshot satisfies the release condition, the trace's first release
+occurred at or before its index. -/
+theorem PolicyTrace.firstReleaseEvery_indexed (trace : app.PolicyTrace) (width : Nat)
+    (release : app.PolicyExecution → Bool) (count : Nat) :
+    ∃ index ≤ trace.length,
+      trace.firstReleaseEvery width release count = (trace.drop index).first ∧
+        (release (trace.firstReleaseEvery width release count) = true →
+          (trace.prefixThrough release).length ≤ index) := by
+  induction count generalizing trace with
+  | zero =>
+      refine ⟨trace.length, Nat.le_refl _, ?_, ?_⟩
+      · simp only [firstReleaseEvery, drop_length, first]
+      · intro hrelease
+        exact trace.prefixThrough_length_le release
+  | succ count ih =>
+      simp only [firstReleaseEvery]
+      by_cases hrelease : release trace.first = true
+      · refine ⟨0, Nat.zero_le _, ?_, ?_⟩
+        · simp only [hrelease, ↓reduceIte, drop]
+        · intro _
+          cases trace <;> simp_all only [first, prefixThrough, length, Nat.le_refl,
+            ↓reduceIte]
+      · rw [if_neg hrelease]
+        by_cases hwidth : width ≤ trace.length
+        · obtain ⟨index, hindex, heq, _⟩ := ih (trace.drop width)
+          refine ⟨width + index, ?_, ?_, ?_⟩
+          · rw [PolicyTrace.length_drop] at hindex
+            omega
+          · rw [← trace.drop_add]
+            exact heq
+          · intro hselected
+            apply trace.prefixThrough_length_le_of_drop_first release (width + index)
+            rw [← trace.drop_add, ← heq]
+            exact hselected
+        · have hdrop : trace.drop width = .finish trace.last :=
+            trace.drop_eq_finish_of_length_le width (by omega)
+          refine ⟨trace.length, Nat.le_refl _, ?_, ?_⟩
+          · rw [hdrop, PolicyTrace.firstReleaseEvery_finish, trace.drop_length]
+            rfl
+          · intro _
+            exact trace.prefixThrough_length_le release
 
 theorem PolicyTrace.firstReleaseEvery_append (front tail : app.PolicyTrace)
     (width count : Nat) (release : app.PolicyExecution → Bool)

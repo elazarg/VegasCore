@@ -29,11 +29,50 @@ universe uPrincipal uValue
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 variable [DecidableEq Principal] [DecidableEq Value]
 
+/-- A principal's actual private history and current observation at the first
+timeout, or at the end of the trace when no timeout occurs. On timeout-free
+traces this terminal information is intentionally arbitrary for consumers
+whose timeout branch is inactive. -/
+def firstTimeoutLocalInfo (runtime : SealedResolution Principal Value)
+    (principal : Principal) (trace : runtime.messageApplication.PolicyTrace) :
+    List runtime.messageApplication.PlayerEntry × runtime.messageApplication.View :=
+  let stop : runtime.messageApplication.PolicyExecution → Bool := fun execution =>
+    !execution.native.application.visible.timeouts.isEmpty
+  let stopped := trace.prefixThrough stop
+  (stopped.last.principalHistory principal,
+    State.observe runtime.messageApplication stopped.last.native principal)
+
 /-- Player opportunities, wire-service opportunities, then one clock call. -/
 def roundInvocations (principals : List Principal) (serviceSlots : Nat) :
     List (@Invocation Principal) :=
   (principals.map Invocation.player ++ List.replicate serviceSlots .environment) ++
     [.environment]
+
+/-- If the completed-round readout contains a timeout, the information used
+by `firstTimeoutLocalInfo` comes from at or before that readout, never from
+the unused full-trace suffix. No assertion identifies this checkpoint with
+the principal's last opportunity to act before the deadline. -/
+theorem firstTimeout_before_roundReadout (runtime : SealedResolution Principal Value)
+    (trace : runtime.messageApplication.PolicyTrace)
+    (principals : List Principal) (serviceSlots count : Nat)
+    (htimeout : (trace.firstReleaseEvery (roundInvocations principals serviceSlots).length
+      (fun execution : runtime.messageApplication.PolicyExecution =>
+        runtime.complete execution.native.application.visible)
+      count).native.application.visible.timeouts ≠ []) :
+    ∃ index ≤ trace.length,
+      trace.firstReleaseEvery (roundInvocations principals serviceSlots).length
+          (fun execution : runtime.messageApplication.PolicyExecution =>
+            runtime.complete execution.native.application.visible) count =
+        (trace.drop index).first ∧
+      (trace.prefixThrough (fun execution : runtime.messageApplication.PolicyExecution =>
+        !execution.native.application.visible.timeouts.isEmpty)).length ≤ index := by
+  obtain ⟨index, hindex, hselected, _⟩ := trace.firstReleaseEvery_indexed
+    (roundInvocations principals serviceSlots).length
+    (fun execution => runtime.complete execution.native.application.visible) count
+  refine ⟨index, hindex, hselected, ?_⟩
+  apply trace.prefixThrough_length_le_of_drop_first _ index
+  rw [← hselected]
+  simpa using htimeout
 
 /-- A bounded invocation schedule, before selecting its stopping boundary. -/
 def roundSchedule (principals : List Principal) (serviceSlots : Nat) :

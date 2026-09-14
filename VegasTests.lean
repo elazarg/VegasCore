@@ -33,6 +33,7 @@ import VegasTests.SealedResolutionPolicy
 import VegasTests.SealedPhaseCount
 import VegasTests.SealedPolicyDeadline
 import VegasTests.SealedRounds
+import VegasTests.SealedPublicOutcome
 import VegasTests.SealedResolutionReadBound
 import VegasTests.SealedSourceExtraction
 import VegasTests.SealedResolutionCylinder

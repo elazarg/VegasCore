@@ -15,14 +15,14 @@ Finite termination, deadline-relative service excluding honest timeouts, and
 the exact source/native coupling are checked for the fixed-clock round driver,
 including decoding at normal completion. The all-compiled honest outcome law
 is checked against the original written-source profile, under periodic service.
-`SealedCompilation.RoundModel.utilitySimulation` proves end-to-end Nash and
-same-error epsilon-Nash preservation and reflection under a uniform utility
-cap on the deviator's own timeout settlement. Its quantitative version charges
-a uniform margin times the actual probability of timeout. It uses the constructed
-source/native coupling, not an assumed deviation bound.
-The general source-settlement edge and the weaker stopping-information comparison
-in Section 6 remain Lean obligations. Section 8 distinguishes these from the
-checked uniform-cap theorem; the entire conditional argument is not mechanized.
+`SealedCompilation.RoundModel.isεNash_iff_of_checkpointDominance` proves
+end-to-end Nash and same-error epsilon-Nash preservation and reflection under
+the conditional utility comparisons of Section 6. Its quantitative version
+charges a margin times the actual probability of timeout. The compiler's joint
+law retains actual timeout-checkpoint information and a legal source completion
+with focal registrations fixed. A uniform cap on own timeout utility is a
+checked sufficient case. General post-timeout source-settlement identification
+and program-specific proofs of the incentive premise remain obligations.
 
 ## 1. Exact scope and conclusion
 
@@ -723,8 +723,9 @@ program is complete as well, `extractedSourceCoupling_decode_of_complete_clear`
 recovers exactly that realization through the native event decoder. Its
 finite-mixture version is audited as `Vegas.Paper.pending_normal_completion`.
 The proof uses the actual binding invariant and retained registrations, rather
-than deriving outcome equality from marginal identities. Completion itself
-and the post-timeout settlement and utility comparisons remain open.
+than deriving outcome equality from marginal identities. The round driver
+below separately establishes completion. Post-timeout settlement identification
+still requires a program-outcome argument.
 
 Finally average over `w`. If `mu` is the distribution of `tau_w`, this gives
 a joint law `(X,Y,B,H)` with:
@@ -762,9 +763,11 @@ original source profile, under the service guarantee excluding honest timeouts.
 
 ## 6. The precise incentive premise and strategic theorem
 
-Let `J` describe the deviator's stopping information at the first timeout:
+Let `J` describe the deviator's local information at the first timeout:
 its observations and remembered commands, without unopened opponents' values
 or an omniscient future random tape. Use the joint law constructed above.
+This is the first-timeout checkpoint, which can follow the player's last
+opportunity to avert timeout. It need not coincide with a decision point.
 For each supported stopping information value `j`, require
 
 ```text
@@ -1226,15 +1229,49 @@ original honest law. A source lower bound `b_i + delta` yields the stronger
 `Vegas.Paper.pending_round_deviation_margin`: the source deviation's expected
 utility exceeds the native one by at least `delta * Pr(timeout)`.
 
-This global cap is stronger than (5). It allows zero-valued own defaults with
+`RoundModel.stoppingCoupling` retains `(source configuration, J, native result)`.
+`stoppingCoupling_information` identifies the joint `(J, native result)` law
+with the actual shared-runner trace readout. On a timeout branch,
+`SealedResolution.firstTimeout_before_roundReadout` places that checkpoint no
+later than the selected round result; it is not taken from an unused suffix.
+`stoppingCoupling_source` has the ordinary legal source-deviation mixture as
+its marginal. `stoppingCoupling_locked` proves that every focal registration
+in the actual local history is retained by its paired source configuration.
+Neither the source policy nor its ex-ante mixture is selected using `J`.
+
+`TimeoutCheckpointDominance` states (5) in unnormalized form, with separate
+source and native utilities. `checkpoint_deviation_utility_bound` integrates
+it and selects a legal source alternative attaining at least the mixture's
+mean. `isεNash_iff_of_checkpointDominance` needs comparisons only against the
+profile under analysis. `checkpointUtilitySimulation` provides a composable
+certificate if they hold at every profile. `deviation_timeout_cost` bounds a
+native deviation's payoff plus `delta * Pr(timeout)` by the compiled payoff
+plus the source equilibrium error. These are checked compiler instances, not
+just generic expectation lemmas.
+
+The conditional hypothesis is a substantive remaining incentive obligation,
+not a proof of program-specific quitting incentives. One sufficient test,
+`timeoutCheckpointDominance_of_locked_cap`, separates a native cap `b(J)`
+from a source lower bound `b(J)+delta` on **all** terminal reachable source
+configurations satisfying `LockedAt`. That predicate uses only the focal
+player's cached registrations, so it describes a larger set than `K(h)` in
+(6). The source-bound premise does not mention the constructed coupling.
+Compatibility with that larger set is checked by the compiler. Native
+settlement still needs its independent cap proof.
+
+The global cap is stronger than (5). It allows zero-valued own defaults with
 nonnegative source utilities, but ordinary source quit dominance does not
 imply it. The concrete four-node regression instantiates the actual driver and
 Nash theorem with simple supplied utilities; it does not establish that those
 utilities are the payout interpretation of that source. Independently,
 `publicSealedStore_agrees` reconstructs typed public fields from public initial
 data and opening events, ignoring opaque commitments; `publicPayout?` evaluates
-the compiled payout on that public store. Totality and source-settlement
-identification after defaults remain separate obligations.
+the compiled payout on that public store. `publicPayout?_eq_source_of_terminal`
+proves equality with written-source terminal payout on normally decoded runs.
+Totality and source-settlement identification after defaults remain separate
+obligations. The finite-fiber regression also verifies a conditional comparison
+that holds despite pointwise comparison failing; the native-driver regression
+instantiates the checkpoint-cap route and its positive timeout margin.
 
 The remaining implementation work is specific:
 
@@ -1245,10 +1282,10 @@ The remaining implementation work is specific:
    regression. Normal completed event decoding already recovers the exact
    coupled source realization. After timeout, service values and logical
    defaults remain distinct; equal private bindings are not the target claim.
-3. Weaken the checked uniform settlement cap to the explicit conditional
-   continuation condition (5), retaining the legal source continuation and the
-   deviator's actual first-timeout information. The generic finite-fiber
-   expectation bound is checked; its first-timeout compiler instance is not.
+3. Prove (5), or its commitment-compatible cap condition, from the chosen
+   program's settlement and utility analysis. The first-timeout compiler
+   instance and its conditional Nash transport are checked; their explicit
+   incentive premise must not be mistaken for a discharged source analysis.
 
 No persistent role-bail rule, subgame handler, raw Ethereum transaction format,
 or cryptographic verifier is silently included here. Further runtime features

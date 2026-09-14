@@ -161,4 +161,80 @@ def publicPayout? (_compilation : SealedCompilation source ty)
   evalPayoffs? (ToEventGraph.compile source.core).payoffs
     ((ToEventGraph.compile source.core).graph.publicSealedStore ty events)
 
+private theorem evalPayoffEntries?_eq_of_getAs_eq
+    (payoffs : List (Player × EventPayoff L)) (left right : Store L)
+    (heq : ∀ payoff, payoff ∈ payoffs → ∀ ref, ref ∈ payoff.2.reads →
+      Store.getAs left ref.field ref.ty = Store.getAs right ref.field ref.ty) :
+    evalPayoffEntries? payoffs left = evalPayoffEntries? payoffs right := by
+  induction payoffs with
+  | nil => rfl
+  | cons payoff rest ih =>
+      have hhead : ∀ ref, ref ∈ payoff.2.reads →
+          Store.getAs left ref.field ref.ty = Store.getAs right ref.field ref.ty := by
+        intro ref href
+        exact heq payoff (by simp) ref href
+      have htail : evalPayoffEntries? rest left = evalPayoffEntries? rest right :=
+        ih (by
+          intro tailPayoff htailPayoff ref href
+          exact heq tailPayoff (by simp [htailPayoff]) ref href)
+      cases hleft : ReadEnv.ofStore? left payoff.2.reads with
+      | none =>
+          cases hright : ReadEnv.ofStore? right payoff.2.reads with
+          | none => simp [evalPayoffEntries?, hleft, hright]
+          | some rightEnv =>
+              have hback := ReadEnv.ofStore?_eq_of_getAs_eq hright
+                (fun ref href ↦ (hhead ref href).symm)
+              rw [hleft] at hback
+              contradiction
+      | some leftEnv =>
+          have hright := ReadEnv.ofStore?_eq_of_getAs_eq hleft hhead
+          simp [evalPayoffEntries?, hleft, hright, htail]
+
+private theorem evalPayoffs?_eq_of_getAs_eq
+    (payoffs : List (Player × EventPayoff L)) (left right : Store L)
+    (heq : ∀ payoff, payoff ∈ payoffs → ∀ ref, ref ∈ payoff.2.reads →
+      Store.getAs left ref.field ref.ty = Store.getAs right ref.field ref.ty) :
+    evalPayoffs? payoffs left = evalPayoffs? payoffs right := by
+  unfold evalPayoffs?
+  rw [evalPayoffEntries?_eq_of_getAs_eq payoffs left right heq]
+
+/-- On every decoded terminal source realization, the payout loaded only from
+public initial fields and opening events is exactly the written source payout.
+The witness is supplied by source adequacy; no private commitment value is
+read during public reconstruction. -/
+theorem publicPayout?_eq_source_of_terminal
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (state : SealedResolution.ApplicationState Player (L.Val ty))
+    (hinvariant : SealedResolution.EventInvariant
+      (compilation.supported.resolvingRuntime nullValue window) state)
+    (cfg : ReachableConfig (ToEventGraph.compile source.core).graph)
+    (hterminal : Terminal (ToEventGraph.compile source.core).graph cfg.1)
+    (hdecode : (ToEventGraph.compile source.core).graph.decodeSealedFrom ty state.service
+      (Config.initial _) state.visible.events = some cfg.1) :
+    ∃ terminalEnv : VEnv L (ToEventGraph.compile source.core).terminalCtx,
+      SmallStep.Star
+        { ctx := source.core.Γ, env := source.core.env, cont := source.core.prog }
+        { ctx := (ToEventGraph.compile source.core).terminalCtx,
+          env := terminalEnv,
+          cont := .ret (ToEventGraph.compile source.core).sourcePayoffs } ∧
+      compilation.publicPayout? state.visible.events =
+        some (evalPayoffs (ToEventGraph.compile source.core).sourcePayoffs terminalEnv) := by
+  obtain ⟨terminalEnv, hstar, hcfgPayout, _hbindings⟩ :=
+    ToEventGraph.compile_sourceStar source.core cfg.1 cfg.2 hterminal
+  refine ⟨terminalEnv, hstar, ?_⟩
+  unfold publicPayout?
+  rw [evalPayoffs?_eq_of_getAs_eq
+    (ToEventGraph.compile source.core).payoffs
+    ((ToEventGraph.compile source.core).graph.publicSealedStore ty state.visible.events)
+    cfg.1.store, hcfgPayout]
+  intro payoff hpayoff ref href
+  exact compilation.supported.publicSealedStore_agrees nullValue window state hinvariant
+    cfg.1 hdecode ref
+      ((ToEventGraph.compile source.core).payoffsWF payoff hpayoff ref href).1
+
 end Vegas.SealedCompilation
+
+/-- info: 'Vegas.SealedCompilation.publicPayout?_eq_source_of_terminal' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.publicPayout?_eq_source_of_terminal
