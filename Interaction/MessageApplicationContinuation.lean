@@ -238,6 +238,57 @@ theorem runPolicies_bind_prefixThrough
   simpa only [FinDist.map_comp, Function.comp_def, FinDist.map_bind, hid,
     app.tracePolicies_last] using h
 
+/-- Retain an auxiliary realization and continue its selected native prefix
+using the original policies. The realization may contain source information;
+it is never supplied as an input to the native continuation policies. -/
+def couplePrefix {α : Type*}
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (source : FinDist α)
+    (prefixOf : α → app.PolicyTrace) : FinDist (α × app.PolicyTrace) :=
+  source.bind fun value =>
+    (app.tracePolicies players environment (schedule.drop (prefixOf value).length)
+      (prefixOf value).last).map fun suffix => (value, (prefixOf value).append suffix)
+
+/-- A normalized continuation preserves the retained realization law. -/
+theorem couplePrefix_fst {α : Type*}
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (source : FinDist α)
+    (prefixOf : α → app.PolicyTrace) :
+    (app.couplePrefix players environment schedule source prefixOf).map Prod.fst = source := by
+  simp only [couplePrefix, FinDist.map_bind, FinDist.map_comp, Function.comp_def,
+    FinDist.map_const, FinDist.bind_pure]
+
+/-- Equality of prefix laws gives the exact joint prefix/full-trace law after
+continuation. Separate marginal equalities are not assumed sufficient. -/
+theorem couplePrefix_prefix_native {α : Type*}
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (release : app.PolicyExecution → Bool) (schedule : List (@Invocation Principal))
+    (initial : app.PolicyExecution) (source : FinDist α) (prefixOf : α → app.PolicyTrace)
+    (hprefix : source.map prefixOf = (app.tracePolicies players environment schedule initial).map
+      (PolicyTrace.prefixThrough release)) :
+    (app.couplePrefix players environment schedule source prefixOf).map
+        (fun pair => (prefixOf pair.1, pair.2)) =
+      (app.tracePolicies players environment schedule initial).map
+        (fun trace => (trace.prefixThrough release, trace)) := by
+  rw [app.tracePolicies_prefix_trace_law players environment release, ← hprefix]
+  simp only [couplePrefix, FinDist.map_bind, FinDist.map_comp, Function.comp_def, FinDist.bind_map]
+
+/-- The native marginal is the original full execution law, including any
+post-cutoff behavior and its dependence on the selected prefix. -/
+theorem couplePrefix_native {α : Type*}
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (release : app.PolicyExecution → Bool) (schedule : List (@Invocation Principal))
+    (initial : app.PolicyExecution) (source : FinDist α) (prefixOf : α → app.PolicyTrace)
+    (hprefix : source.map prefixOf = (app.tracePolicies players environment schedule initial).map
+      (PolicyTrace.prefixThrough release)) :
+    (app.couplePrefix players environment schedule source prefixOf).map Prod.snd =
+      app.tracePolicies players environment schedule initial := by
+  have hlaw := congrArg (fun law => law.map Prod.snd)
+    (app.couplePrefix_prefix_native players environment release schedule initial
+      source prefixOf hprefix)
+  simp only [FinDist.map_comp, Function.comp_def] at hlaw
+  exact hlaw.trans (FinDist.map_id _)
+
 end Interaction.MessageApplication
 
 /-- info: 'Interaction.MessageApplication.tracePolicies_prefix_trace_law' depends on axioms:
@@ -254,3 +305,8 @@ end Interaction.MessageApplication
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.MessageApplication.runPolicies_bind_prefixThrough
+
+/-- info: 'Interaction.MessageApplication.couplePrefix_prefix_native' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.MessageApplication.couplePrefix_prefix_native

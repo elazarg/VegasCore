@@ -28,6 +28,7 @@ import Vegas.Compile.SealedRoundCoupling
 import Vegas.Compile.SealedHonestRound
 import Vegas.Compile.SealedCandidateHonestRound
 import Vegas.Compile.SealedCandidateNativeLikelihood
+import Vegas.Compile.SealedCandidateRandomizedCoupling
 import Vegas.Compile.SealedPublicOutcome
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
@@ -1590,6 +1591,74 @@ theorem pending_candidate_source_native_prefix_law
   compilation.extractedCandidateSourceRun_native_prefix_law nullValue window focal deviator
     environment schedule fallback profile
 
+section CandidateCoupling
+
+open ToEventGraph MessageApplication
+
+variable [Fintype Player]
+variable {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+variable (compilation : SealedCompilation source ty)
+variable (nullValue : L.Val ty) (window : Nat) (focal : Player)
+variable (environment :
+  (compilation.supported.resolvingRuntime nullValue window).candidateApplication.EnvironmentPolicy)
+variable (schedule : List (@Invocation Player)) (fallback : L.Val ty)
+
+/-- The candidate runtime's randomized deviation coupling retains the complete
+native law, an ex-ante mixture of source deviations with unchanged opponents,
+and pointwise public payout agreement on normal completion. -/
+theorem pending_candidate_randomized_source_coupling
+    (profile : SourceBehavioralProfile source.core.prog)
+    (replacement :
+      (compilation.supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    let players := fun who =>
+      compilation.compileCandidatePolicy nullValue window who (profile who)
+    let initial := PolicyExecution.initial runtime.candidateApplication
+      (State.initial _ runtime.candidateInitial)
+    let native := runtime.candidateApplication.tracePolicies
+      (Profile.update (sig := policySignature Player runtime.candidateApplication)
+        players focal replacement) environment schedule initial
+    let stop := fun execution : runtime.candidateApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    let PlayerResponse := List runtime.candidateApplication.PlayerEntry →
+      runtime.candidateApplication.View → runtime.candidateApplication.PlayerCommand
+    let EnvironmentResponse := List runtime.candidateApplication.EnvironmentEntry →
+      runtime.candidateApplication.EnvironmentObservation →
+        runtime.candidateApplication.EnvironmentPolicyCommand
+    ∃ responsePairs : FinDist (PlayerResponse × EnvironmentResponse),
+      (responsePairs.bind fun responses =>
+        (compilation.extractedCandidateSourceCoupling nullValue window focal responses.1
+          responses.2 schedule fallback profile).map (fun pair =>
+            ((compilation.supported.candidateReplay nullValue window (pair.1.1.nodeValues fallback)
+              focal responses.1 responses.2 schedule).prefixThrough stop, pair.2))) =
+          native.map (fun trace => (trace.prefixThrough stop, trace)) ∧
+      ((responsePairs.bind fun responses =>
+        compilation.extractedCandidateSourceCoupling nullValue window focal responses.1
+          responses.2 schedule fallback profile).map (fun pair => observeSourceOutcome
+            source.core pair.1)) =
+        responsePairs.bind (fun responses =>
+          (denoteSource source.core.prog
+            (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
+              (compilation.extractedCandidateSourcePolicy nullValue window focal responses.1
+                responses.2 schedule fallback)) source.core.env).map some) ∧
+      ((responsePairs.bind fun responses =>
+        compilation.extractedCandidateSourceCoupling nullValue window focal responses.1
+          responses.2 schedule fallback profile).map Prod.snd) =
+        runtime.candidateApplication.tracePolicies
+          (Profile.update (sig := policySignature Player runtime.candidateApplication)
+            players focal replacement) environment schedule initial ∧
+      ∀ cfg trace, (cfg, trace) ∈ (responsePairs.bind fun responses =>
+        compilation.extractedCandidateSourceCoupling nullValue window focal responses.1
+          responses.2 schedule fallback profile).support →
+        runtime.complete trace.last.native.application.visible = true →
+        trace.last.native.application.visible.timeouts = [] →
+        compilation.publicPayout? trace.last.native.application.visible.events =
+          evalPayoffs? (compile source.core).payoffs cfg.1.store :=
+  compilation.exists_randomized_candidate_source_coupling nullValue window focal environment
+    schedule fallback profile replacement
+
+end CandidateCoupling
+
 namespace Source
 
 theorem committed_binding_accounted (source : WFProgram Player L) (name : VarId)
@@ -1924,6 +1993,11 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_candidate_source_native_prefix_law
+
+/-- info: 'Vegas.Paper.pending_candidate_randomized_source_coupling' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_randomized_source_coupling
 
 /-- info: 'Vegas.Paper.pending_randomized_source_coupling' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

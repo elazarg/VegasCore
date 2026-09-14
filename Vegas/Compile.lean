@@ -40,6 +40,8 @@ import Vegas.Compile.SealedCandidateSourceLikelihood
 import Vegas.Compile.SealedCandidateReferenceKernel
 import Vegas.Compile.SealedCandidateSourceFactors
 import Vegas.Compile.SealedCandidateNativeLikelihood
+import Vegas.Compile.SealedCandidateContinuation
+import Vegas.Compile.SealedCandidateRandomizedCoupling
 import Vegas.Compile.SealedCandidateReadBound
 import Vegas.Compile.SealedCandidateReplay
 import Vegas.Compile.SealedCandidateSourceExtraction
@@ -123,6 +125,8 @@ for the registered-site service.
 acceptance-time replay and proves consistency of its complete source runs.
 `SealedCandidateNativeLikelihood` identifies the complete original native prefix
 law through first timeout for fixed focal/environment responses and arbitrary
-finite invocation schedules. Randomized stopping, arbitrary candidate-round
-completion, and the completed-round deviation utility comparison remain open.
+finite invocation schedules. `SealedCandidateRandomizedCoupling` retains the
+actual full native law, a finite source-deviation mixture, and pointwise public
+payout agreement on normal completion. Candidate stopped-round progress and the
+completed-round deviation utility comparison remain open.
 -/

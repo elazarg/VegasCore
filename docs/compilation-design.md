@@ -89,8 +89,8 @@ discharges input agreement at every supported complete source realization.
 The registered and candidate hosts share the source-disclosure policy and
 source-run constructors; they do not define separate source evaluators.
 Accepted candidate meanings remain fixed through arbitrary native suffixes.
-The joint law through first timeout is proved for fixed native response functions;
-randomized stopping and completed-round coupling remain separate steps.
+The prefix law extends to the randomized full-trace coupling described below;
+completed-round incentive comparison remains a separate step.
 The legal fallback used for an absent or unopenable selection still requires
 the source failure/incentive argument; constructing a source policy does not
 establish that strategic comparison.
@@ -139,6 +139,22 @@ identifies the whole native prefix law through first timeout, with unchanged
 opponent source policies. Its fixed focal/environment functions may depend on
 their full declared histories and observations; no positive-mass or service
 premise is assumed. This is not a completed-outcome or Nash theorem.
+
+Continuation is a shared message-runner construction, `MessageApplication.couplePrefix`.
+It retains the source realization and runs the unused native invocation suffix from
+the selected prefix's complete state, preserving the exact joint prefix/full-trace
+law. The candidate instantiation proves pointwise public-field and payout agreement
+with that retained source on normal completion. Shared joint predrawing then lifts
+the result to arbitrary randomized focal and environment policies in
+`exists_randomized_candidate_source_coupling`. Its source mixture is fixed before
+execution and retains every original opponent kernel. The same continuation and
+joint-predrawing APIs are used by the registered host.
+
+This supplies the probability part of the arbitrary-deviation argument, including
+actual post-timeout execution. The candidate round driver still needs its stopped
+coupling, termination for arbitrary deviations, and timely-service first-timeout
+attribution. The source settlement condition can then be applied to the actual
+completed native payout. Neither coupled marginal alone establishes that bound.
 
 Candidate handles are owner-scoped identifiers. A pending handle can acquire
 its private value until acceptance; an unprepared accepted handle becomes

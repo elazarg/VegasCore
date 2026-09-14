@@ -48,11 +48,12 @@ host of the same program also permits competing candidates and accepts handles
 without openings. Its immutable binding and source-settlement laws are checked,
 including a legal source quitting witness after an owner's timeout. Under the
 deadline-service conditions, generated policies in this host complete without
-timeouts and have exactly the written source payout law. For fixed focal and
-environment responses, the candidate host also has the exact source/native
-prefix law through first timeout, including pending-message reactions and
-unchanged opponent source policies. Randomized stopping, arbitrary-deviation
-round completion, and the candidate-host Nash theorem remain open.
+timeouts and have exactly the written source payout law. Arbitrary randomized
+focal and environment policies also have a constructed coupling retaining the
+complete native trace law and a mixture of source deviations with unchanged
+opponents. Normally completed pairs have the retained source realization's
+public payout. Candidate stopped-round progress and the post-timeout incentive
+bound needed for Nash preservation remain open.
 Censorship resistance, concrete commitment cryptography, and EVM execution
 correctness remain open.
 

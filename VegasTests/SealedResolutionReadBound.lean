@@ -6,6 +6,7 @@ import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateSourceLikelihood
 import Vegas.Compile.SealedCandidateSourceFactors
 import Vegas.Compile.SealedCandidateNativeLikelihood
+import Vegas.Compile.SealedCandidateRandomizedCoupling
 import VegasTests.PendingSource
 
 /-! # Native registration and acceptance hiding for a checked two-player source
@@ -485,6 +486,56 @@ theorem candidate_source_native_pending_reaction (profile : SourceBehavioralProf
   intro schedule environment stop players
   exact compilation.extractedCandidateSourceRun_native_prefix_law none 3 1 pendingReactiveCommand
     environment schedule none profile
+
+/-- After both commitments time out, the actual native suffix still executes
+the focal player's unrelated preparation. The retained source realization does
+not replace this suffix with a replay of its assigned choices. -/
+theorem candidate_coupling_retains_timeout_suffix (profile : SourceBehavioralProfile core) :
+    let schedule : List (@Invocation PendingSource.Player) :=
+      [.environment, .environment, .environment, .player 1]
+    let coupled := compilation.extractedCandidateSourceCoupling none 3 1
+      (fun _ _ => .privateCommand ⟨(99, some true)⟩) (fun _ _ => .application ⟨()⟩)
+      schedule none profile
+    coupled.map (fun pair =>
+      (pair.2.last.native.application.visible.timeouts,
+        pair.2.last.native.application.service.lookup (1, 99),
+        (pair.2.last.principalHistory 1).length)) =
+      FinDist.pure ([0, 1], CommitmentCandidate.openable (some true), 1) := by
+  intro schedule coupled
+  let project := fun trace : runtime.candidateApplication.PolicyTrace =>
+    (trace.last.native.application.visible.timeouts,
+      trace.last.native.application.service.lookup (1, 99),
+      (trace.last.principalHistory 1).length)
+  change coupled.map (project ∘ Prod.snd) = _
+  rw [← FinDist.map_comp, compilation.extractedCandidateSourceCoupling_native]
+  simp only [schedule, tracePolicies, invoke, GameTheory.Profile.update_same,
+    environmentPolicyStep, playerStep, advance, EnvironmentPolicyCommand.toAction,
+    PlayerCommand.toAction, MessageApplication.step, SealedResolution.candidateApplication,
+    SealedResolution.host, FinDist.pure_bind, FinDist.map_pure]
+  rfl
+
+/-- Arbitrary randomized focal behavior and randomized pending-message delivery
+admit a single ex-ante response mixture with the complete native law. -/
+theorem candidate_randomized_native_mixture (profile : SourceBehavioralProfile core)
+    (replacement : runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation PendingSource.Player)) :
+    let players := GameTheory.Profile.update
+      (sig := policySignature PendingSource.Player runtime.candidateApplication)
+      (fun who => compilation.compileCandidatePolicy none 3 who (profile who)) 1 replacement
+    ∃ responsePairs : FinDist
+        ((List runtime.candidateApplication.PlayerEntry → runtime.candidateApplication.View →
+            runtime.candidateApplication.PlayerCommand) ×
+          (List runtime.candidateApplication.EnvironmentEntry →
+            runtime.candidateApplication.EnvironmentObservation →
+            runtime.candidateApplication.EnvironmentPolicyCommand)),
+      (responsePairs.bind fun responses => compilation.extractedCandidateSourceCoupling none 3 1
+        responses.1 responses.2 schedule none profile).map Prod.snd =
+        runtime.candidateApplication.tracePolicies players environment schedule
+          (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial)) := by
+  obtain ⟨responses, _, _, hnative, _⟩ := compilation.exists_randomized_candidate_source_coupling
+    none 3 1 environment schedule none profile replacement
+  exact ⟨responses, hnative⟩
 
 end VegasTests.SealedResolutionReadBound
 

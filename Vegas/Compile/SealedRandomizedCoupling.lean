@@ -84,55 +84,9 @@ theorem exists_randomized_source_coupling
           (Profile.update (sig := policySignature Player runtime.messageApplication)
             players focal replacement) environment schedule initial := by
   intro runtime players initial native stop PlayerResponse EnvironmentResponse
-  obtain ⟨playerResponses, hplayerResponses⟩ :=
-    runtime.messageApplication.exists_native_response_mixture_tracePolicies players environment
+  obtain ⟨responsePairs, responsePairs_trace⟩ :=
+    runtime.messageApplication.exists_joint_response_mixture_tracePolicies players environment
       focal schedule initial replacement
-  have environmentExists (playerResponse : PlayerResponse) :
-      ∃ mixture : FinDist EnvironmentResponse,
-        mixture.bind (fun environmentResponse =>
-          runtime.messageApplication.tracePolicies
-            (Profile.update (sig := policySignature Player runtime.messageApplication)
-              players focal (fun history view => FinDist.pure (playerResponse history view)))
-            (fun history view => FinDist.pure (environmentResponse history view))
-            schedule initial) =
-          runtime.messageApplication.tracePolicies
-            (Profile.update (sig := policySignature Player runtime.messageApplication)
-              players focal (fun history view => FinDist.pure (playerResponse history view)))
-            environment schedule initial :=
-    runtime.messageApplication.exists_environment_response_mixture_tracePolicies
-      (Profile.update (sig := policySignature Player runtime.messageApplication)
-        players focal (fun history view => FinDist.pure (playerResponse history view)))
-      environment schedule initial
-  let environmentResponses (playerResponse : PlayerResponse) : FinDist EnvironmentResponse :=
-    Classical.choose (environmentExists playerResponse)
-  have environmentResponses_law (playerResponse : PlayerResponse) :=
-    Classical.choose_spec (environmentExists playerResponse)
-  let responsePairs : FinDist (PlayerResponse × EnvironmentResponse) :=
-    playerResponses.bind fun playerResponse =>
-      (environmentResponses playerResponse).map fun environmentResponse =>
-        (playerResponse, environmentResponse)
-  have responsePairs_trace :
-      responsePairs.bind (fun responses =>
-        runtime.messageApplication.tracePolicies
-          (Profile.update (sig := policySignature Player runtime.messageApplication)
-            players focal (fun history view => FinDist.pure (responses.1 history view)))
-          (fun history view => FinDist.pure (responses.2 history view)) schedule initial) =
-        native := by
-    change (playerResponses.bind fun playerResponse =>
-      (environmentResponses playerResponse).map fun environmentResponse =>
-        (playerResponse, environmentResponse)).bind _ = _
-    rw [FinDist.bind_bind]
-    calc
-      _ = playerResponses.bind (fun playerResponse =>
-          runtime.messageApplication.tracePolicies
-            (Profile.update (sig := policySignature Player runtime.messageApplication)
-              players focal (fun history view => FinDist.pure (playerResponse history view)))
-            environment schedule initial) := by
-        apply FinDist.bind_congr
-        intro playerResponse _
-        rw [FinDist.bind_map]
-        exact environmentResponses_law playerResponse
-      _ = native := hplayerResponses
   refine ⟨responsePairs, ?_, ?_, ?_⟩
   · have h := congrArg (fun law => law.map
       (fun trace : runtime.messageApplication.PolicyTrace =>

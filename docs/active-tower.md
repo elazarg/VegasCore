@@ -83,7 +83,7 @@ selected meaning is nonfresh and persists through the rest of the native trace.
 source realization agrees with these replay selections, with unchanged
 opponent policies and no assumed source-input equality. The exact joint
 prefix law through first timeout is proved below for fixed native response
-functions. Candidate-host randomized stopping and the incentive bound for
+functions. Candidate-host stopped-round coupling and the incentive bound for
 fallback runs remain open.
 
 Generated policies satisfy `candidatePolicy_memory` under arbitrary opponent
@@ -138,10 +138,28 @@ replay law. The original opponents' policies remain unchanged. Focal and
 environment responses are arbitrary fixed functions; invocation schedules are
 arbitrary finite lists. No service premise is needed for this prefix result.
 
-The remaining candidate steps are randomized response lifting, continuation and
-stopped-round coupling, arbitrary-deviation round completion, and the source-only
-utility comparison. The honest completion theorem does not supply termination
-for arbitrary candidate deviations.
+`extractedCandidateSourceCoupling` attaches the actual native continuation to
+that prefix using the shared `MessageApplication.couplePrefix` construction.
+It preserves the source realization and the joint prefix/full-trace law,
+including all post-timeout behavior. The continuation reads the retained native
+histories, not the source realization. On supported timeout-free completed pairs,
+`extractedCandidateSourceCoupling_public_store` proves agreement on every typed
+public field with that exact source realization; the payout agreement follows
+without a private-service decoder or a separately chosen settlement witness.
+
+`exists_randomized_candidate_source_coupling`, audited as
+`pending_candidate_randomized_source_coupling` in `Paper.lean`, predraws arbitrary
+focal and environment policies through the shared joint-response theorem. Its
+finite response-pair mixture is fixed ex ante and may be correlated. The resulting
+coupling has the actual complete native trace law, a source marginal that is a
+finite mixture of legal focal replacements with unchanged opponents, and
+pointwise public payout agreement on normal completion. This is a finite-schedule
+coupling theorem, not a completed-game payoff bound after timeout.
+
+The remaining candidate steps are stopped-round coupling, arbitrary-deviation
+round completion, exclusion of a first honest timeout under deadline-relative
+service, and the source-only utility comparison. The honest completion theorem
+does not supply these arbitrary-deviation progress guarantees.
 
 ## End-to-end target
 
@@ -189,8 +207,9 @@ proved laws, not accept them as caller obligations.
 The registered-site host already has the source-payout strategic result. The
 candidate host has immutable accepted meaning, completed public settlement
 witnesses, and the original source payout law for honest stopped-round execution.
-Its fixed-response source/native prefix law is also proved. The completed-round
-deviation utility bound is the next proof task. More general source
+Its randomized full-trace coupling and pointwise normal payout agreement are
+also proved. The completed-round deviation utility bound is the next proof task.
+More general source
 continuation criteria, guarded choices, sampling, heterogeneous values, and
 cryptographic or ledger refinement are further scope requirements; their exact additional assumptions must be
 determined, not represented by guessed theorem signatures. An obstruction must

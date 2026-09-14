@@ -3,6 +3,7 @@
 import Interaction.SealedCandidateResolution
 import Interaction.MessageApplicationPolicyTrace
 import Interaction.SealedResolutionAccepted
+import Interaction.SealedResolutionBinding
 
 /-! # Candidate binding in arbitrary policy runs
 
@@ -184,6 +185,43 @@ theorem runPolicies_candidate_lookup_of_not_fresh
     players environment schedule execution next hnext
   exact runtime.run_candidate_lookup_of_not_fresh actions execution.native next.native
     handle hfixed hnative
+
+/-- A timeout-free final candidate execution cannot have resumed from a
+timed-out state. Arbitrary candidate preparation, traffic, and ticks preserve
+this fact; no service or completion premise is needed. -/
+theorem runPolicies_candidate_clear_before
+    (runtime : SealedResolution Principal Value)
+    (players : Principal → runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Principal))
+    (execution next : runtime.candidateApplication.PolicyExecution)
+    (hnext : next ∈ (runtime.candidateApplication.runPolicies players environment
+      schedule execution).support)
+    (hclear : next.native.application.visible.timeouts = []) :
+    execution.native.application.visible.timeouts = [] := by
+  have h := runtime.candidateApplication.runPolicies_application_invariant
+    (fun state => state.visible.timeouts = [] → execution.native.application.visible.timeouts = [])
+    ?_ ?_ ?_ players environment schedule execution next (fun h => h) hnext
+  · exact h hclear
+  · intro state who command hstate
+    exact hstate
+  · intro state message after hstate hafter hclear
+    change runtime.candidateHandle state message = some after at hafter
+    unfold candidateHandle at hafter
+    split at hafter
+    · contradiction
+    · cases hmessage : (runtime.program.discharge state.visible.timeouts).candidateMessage?
+          state.service state.visible.events message with
+      | none => simp [hmessage] at hafter
+      | some result =>
+          simp only [hmessage, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hafter
+          subst after
+          exact hstate (runtime.refresh_clear false _ hclear).1
+  · intro state command after hstate hafter hclear
+    simp only [candidateApplication, host, GameTheory.Math.Probability.FinDist.mem_support_pure]
+      at hafter
+    subst after
+    exact hstate (runtime.refresh_clear true _ hclear).1
 
 /-- Consequently every claimed-value verification result is fixed throughout
 the same arbitrary policy-run suffix. -/

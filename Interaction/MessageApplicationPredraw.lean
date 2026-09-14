@@ -810,6 +810,57 @@ theorem exists_environment_response_mixture_tracePolicies (app : MessageApplicat
   rw [FinDist.bind_map]
   exact hlaw
 
+/-- Predraw a focal policy and the environment jointly, preserving the full
+trace law and all opponent kernels. The finite response-pair mixture need not
+factor into independent mixtures; neither response gains new observations. -/
+theorem exists_joint_response_mixture_tracePolicies (app : MessageApplication Principal)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (who : Principal) (schedule : List (@Invocation Principal))
+    (initial : app.PolicyExecution) (replacement : app.PlayerPolicy) :
+    ∃ mixture : FinDist
+        ((List app.PlayerEntry → app.View → app.PlayerCommand) ×
+          (List app.EnvironmentEntry → app.EnvironmentObservation → app.EnvironmentPolicyCommand)),
+      mixture.bind (fun responses => app.tracePolicies
+        (Profile.update (sig := policySignature Principal app)
+          players who (fun history view => FinDist.pure (responses.1 history view)))
+        (fun history view => FinDist.pure (responses.2 history view)) schedule initial) =
+      app.tracePolicies (Profile.update (sig := policySignature Principal app)
+        players who replacement) environment schedule initial := by
+  obtain ⟨playerResponses, hplayerResponses⟩ := app.exists_native_response_mixture_tracePolicies
+    players environment who schedule initial replacement
+  let PlayerResponse := List app.PlayerEntry → app.View → app.PlayerCommand
+  let EnvironmentResponse :=
+    List app.EnvironmentEntry → app.EnvironmentObservation → app.EnvironmentPolicyCommand
+  have environmentExists (response : PlayerResponse) :
+      ∃ mixture : FinDist EnvironmentResponse,
+        mixture.bind (fun environmentResponse => app.tracePolicies
+          (Profile.update (sig := policySignature Principal app)
+            players who (fun history view => FinDist.pure (response history view)))
+          (fun history view => FinDist.pure (environmentResponse history view)) schedule initial) =
+        app.tracePolicies (Profile.update (sig := policySignature Principal app)
+          players who (fun history view => FinDist.pure (response history view)))
+          environment schedule initial :=
+    app.exists_environment_response_mixture_tracePolicies
+      (Profile.update (sig := policySignature Principal app)
+        players who (fun history view => FinDist.pure (response history view)))
+      environment schedule initial
+  let environmentResponses (response : PlayerResponse) :=
+    Classical.choose (environmentExists response)
+  refine ⟨playerResponses.bind (fun response =>
+    (environmentResponses response).map fun environmentResponse =>
+      (response, environmentResponse)), ?_⟩
+  rw [FinDist.bind_bind]
+  calc
+    _ = playerResponses.bind (fun response => app.tracePolicies
+        (Profile.update (sig := policySignature Principal app)
+          players who (fun history view => FinDist.pure (response history view)))
+        environment schedule initial) := by
+      apply FinDist.bind_congr
+      intro response _
+      rw [FinDist.bind_map]
+      exact Classical.choose_spec (environmentExists response)
+    _ = _ := hplayerResponses
+
 end Interaction.MessageApplication
 
 /-- info: 'Interaction.MessageApplication.exists_native_response_mixture_tracePolicies' depends on axioms:
@@ -821,3 +872,8 @@ end Interaction.MessageApplication
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.MessageApplication.exists_environment_response_mixture_tracePolicies
+
+/-- info: 'Interaction.MessageApplication.exists_joint_response_mixture_tracePolicies'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.MessageApplication.exists_joint_response_mixture_tracePolicies

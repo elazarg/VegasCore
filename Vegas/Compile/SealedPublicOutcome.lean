@@ -207,6 +207,52 @@ theorem publicSealedStore_available_of_complete
     exact Option.isSome_iff_exists.mp havailable
 
 omit [DecidableEq (L.Val ty)] in
+/-- Public values of a completed log agree with a specified reachable source
+realization whenever every opening has that realization's value. The statement
+uses public event provenance, not a particular commitment catalog or decoder. -/
+theorem publicSealedStore_agrees_of_opened_values
+    (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
+    (state : SealedResolution.PublicState Player (L.Val ty))
+    (hinvariant : SealedResolution.PublicEventInvariant
+      (supported.resolvingRuntime nullValue window) state)
+    (hcomplete : (supported.resolvingRuntime nullValue window).complete state = true)
+    (cfg : ReachableConfig G)
+    (hvalues : ∀ index value, .opened index value ∈ state.events →
+      cfg.1.store (G.nodeTarget index) = some (⟨ty, value⟩ : TypedValue L))
+    (ref : FieldRef L) (hpublic : G.fieldRefPublic ref) :
+    Store.getAs (G.publicSealedStore ty state.events) ref.field ref.ty =
+      Store.getAs cfg.1.store ref.field ref.ty := by
+  rcases supported.publicField_origin ref hpublic with
+    ⟨spec, value, hfield, hsource, hty, howner⟩ |
+      ⟨node, producer, owner, guard, htarget, hrefty, hsem, hcommit⟩
+  · rw [← hty, G.publicSealedStore_getAs_initial ty state.events
+      ref.field spec value hfield hsource howner]
+    have hcfg := Graph.reachable_store_eq_initial_of_not_nodeTarget cfg.2 ref.field
+      (fun node => G.initial_field_ne_target ref.field spec value hfield hsource node.val)
+    simp [Store.getAs, hcfg, Graph.initialStore, hfield, FieldSpec.initialValue?,
+      hsource, TypedValue.as?]
+  · have hcompleted : state.completed node.val = true := by
+      apply List.all_eq_true.mp hcomplete node.val
+      have hlen : supported.compile.rules.length = G.nodeCount := by
+        simp [SealedFragment.compile, Graph.nodeOrder]
+      simpa only [List.mem_range, resolvingRuntime, hlen] using node.isLt
+    have hrule : supported.compile.rules[node.val]? =
+        some ⟨.reveal owner producer.val, G.messagePrerequisites node⟩ := by
+      rw [supported.compile_rule]
+      exact congrArg some (G.sealedRule_reveal_eq node producer owner guard hsem hcommit)
+    obtain ⟨value, hopened⟩ := hinvariant.opened_of_completed_reveal
+      node.val owner producer.val (G.messagePrerequisites node) hrule hcompleted
+    have hsame : ∀ other, .opened node.val other ∈ state.events → other = value := by
+      intro other hother
+      have heq := Option.some.inj ((hvalues node.val other hother).symm.trans
+        (hvalues node.val value hopened))
+      have htyped := congrArg (fun entry : TypedValue L => entry.as? ty) heq
+      simpa [TypedValue.as?] using htyped
+    rw [htarget, hrefty, G.publicSealedStore_getAs_of_opened ty state.events node.val value
+      hopened hsame]
+    simp [Store.getAs, hvalues node.val value hopened, TypedValue.as?]
+
+omit [DecidableEq (L.Val ty)] in
 private theorem replayPublicOpenings_agrees
     (supported : SealedFragment G ty)
     (service : IdealCommitments Player Nat (L.Val ty))
