@@ -1201,16 +1201,18 @@ canonical graph execution, with its exact written-source law.
 `resolvingAssignedReplay` is the existing native runner with every choice
 fixed by that realization; it is proof data, not another runtime. Selected-owner
 registration restrictions characterize its cylinders, and
-`sourceRealization_replay_prob_eq_product` counts every original source draw.
-`sourceRealization_native_prefix_law` identifies the same cylinder product
-with the actual native prefix law through first timeout.
+`graphRun_assignedReplay_prob_eq_product` counts every original graph draw.
+`graphRun_native_prefix_law` identifies the same cylinder product with the
+actual native prefix law through first timeout. These backend results accept
+arbitrary graph profiles; the source law is transported by compiler correspondence.
 
 For honest play only the environment is predrawn. Its response mixture retains
 the same original source marginal in every term. Under actual timeout
 exclusion, `exists_honest_replay_mixture` identifies the full native trace law.
-`exists_honest_round_source_coupling` then has the original written-source
-denotation as its source marginal and the actual early-stopping driver as its
-native marginal. Every supported pair completes without timeout and native
+`exists_honest_round_graph_coupling` has the original graph law and the actual
+early-stopping driver as its marginals. `exists_honest_round_source_coupling`
+transports its graph marginal to the original written-source denotation.
+Every supported pair completes without timeout and native
 event decoding recovers its retained source realization. Roster coverage,
 periodic capacity, the sufficient window, and a whole-period horizon at least
 `n*(window+1)` discharge completion and timeout exclusion; these are not

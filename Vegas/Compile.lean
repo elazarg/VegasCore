@@ -33,6 +33,7 @@ import Vegas.Compile.SealedView
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedCandidatePolicy
+import Vegas.Compile.SealedCandidateHost
 import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateValues
 import Vegas.Compile.SealedCandidateCylinder
@@ -55,6 +56,7 @@ import Vegas.Compile.SealedCandidateRoundCoupling
 import Vegas.Compile.SealedCandidateGraphLikelihood
 import Vegas.Compile.SealedGraphRestriction
 import Vegas.Compile.SealedCandidateHonestRound
+import Vegas.Compile.SealedCandidateHonestGraphRound
 import Vegas.Compile.SealedCandidateSettlement
 import Vegas.Compile.SealedResolutionClosure
 import Vegas.Compile.SealedResolvedStore
@@ -78,11 +80,11 @@ import Vegas.Compile.SealedSourceRealization
 import Vegas.Compile.SealedSourceChoices
 import Vegas.Compile.SealedSourceAssignment
 import Vegas.Compile.SealedSourceRestriction
-import Vegas.Compile.SealedHonestSource
 import Vegas.Compile.SealedHonestCylinder
 import Vegas.Compile.SealedHonestLikelihood
 import Vegas.Compile.SealedHonestNative
 import Vegas.Compile.SealedHonestRound
+import Vegas.Compile.SealedHonestGraphRound
 import Vegas.Compile.SealedSourceCylinder
 import Vegas.Compile.SealedNativeLikelihood
 import Vegas.Compile.SealedContinuation

@@ -34,7 +34,11 @@ extraction consumes an explicit graph information condition and returns graph
 policies directly; the source compiler certifies that condition. Graph choice
 restriction, native prefix laws, and randomized full-trace and stopped-round couplings are checked
 independently of source syntax. Source results delegate to these graph/backend
-laws and transport source outcomes. The candidate timeout-service and
+laws and transport source outcomes. The all-compiled honest law is also
+graph-relative in both commitment hosts: deadline-relative service yields normal
+completion and the original graph outcome on public fields. This honest law
+does not require the extra public-prefix information condition. The candidate
+timeout-service and
 utility arguments remain unfinished, so the backend does not yet supply the
 utility-simulation certificate required for end-to-end strategic composition.
 See [the factoring plan](docs/compilation-design.md#strategic-intermediate-representation).

@@ -185,9 +185,11 @@ disclosure-based candidate backtranslation graph-local;
 opponents. The entire finite-schedule probability argument, through randomized
 full-trace and stopped-round coupling with normal public-field agreement, is
 graph-relative; source results delegate to it and transport outcomes.
-The all-compiled honest law still needs an arbitrary-graph-profile formulation;
-the existing candidate honest payout theorem is source-relative.
-That law, deadline-relative exclusion of first honest timeout, and the
+`exists_honest_candidate_round_graph_coupling` supplies the original graph law
+and normal public-field agreement under deadline-relative service for every
+graph profile, without the extra `PublicPrefixReadable` condition. Its source
+payout theorem delegates to the graph coupling. Deadline-relative exclusion of
+first honest timeout under arbitrary candidate deviations and the
 graph-level resolution utility condition remain required before the backend
 can supply its own `UtilitySimulation` and the source theorem can follow by
 composition. The
@@ -199,6 +201,15 @@ preservation**, not a collection of intermediate theorem names. It must concern
 the actual `candidateApplication` and the generated `compileCandidatePolicy`,
 with arbitrary native unilateral policies. Candidate binding and completed
 settlement correspondence alone do not establish it.
+
+The all-compiled graph/native probability argument uses graph restrictions and
+actual native registration factors. It predraws only the environment; it does
+not infer the original honest law from a deviation mixture. The registered-host
+round coupling derives completion and timeout exclusion from periodic service,
+then the checked honest-policy host embedding transfers that coupling to the
+candidate runtime. `VegasTests.GraphPublicPrefix` instantiates this result for
+an independently specified graph that fails the deviation theorem's public-prefix
+condition, with arbitrary graph profiles and concrete periodic service capacity.
 
 Fix a checked source with an admitted `SealedCompilation`, its initial
 environment, configured default, and payout valuation. Keep the current

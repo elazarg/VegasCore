@@ -1,13 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedCandidatePolicy
-import Vegas.Compile.SealedHonestRound
+import Vegas.Compile.SealedCandidateHonestGraphRound
 import Vegas.Compile.SealedPublicOutcome
 
 /-! # Written-source payouts in the candidate-message round driver
 
-The honest host embedding transports the original source coupling through the
-same stopped operational driver. The observable law includes completion and
+Source/graph correspondence transports the graph/backend honest coupling to
+the written-source law at the actual stopped operational driver. The observable
+law includes completion and
 the timeout list, so it does not assume successful settlement. Its payout is
 computed from public initial fields and opening events, not private service
 state. No utility function or incentive hypothesis is needed for this law.
@@ -59,47 +60,48 @@ theorem candidate_honest_round_payout_law
         (fun final => (true, ([] : List Nat),
           some (evalPayoffs (sourceTerminalPayoffs source.core.prog) final))) := by
   classical
+  let : Fintype Player := Fintype.ofFinite Player
   intro runtime
-  obtain ⟨coupling, hsource, hnative, hpairs⟩ :=
-    compilation.exists_honest_round_source_coupling nullValue window principals serviceSlots
-      profile wire reserved hservice period hperiod hcapacity hroster hwindow total hperiods hbound
+  let graphProfile := fun who => compileSourcePolicy source.core.prog source.core.fresh
+    (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+    rfl who (profile who)
+  obtain ⟨coupling, hgraph, hnative, hpairs⟩ :=
+    compilation.supported.exists_honest_candidate_round_graph_coupling
+      (compile_guardLive source.core source.legal) nullValue window principals serviceSlots
+      graphProfile wire reserved hservice period hperiod hcapacity hroster hwindow total
+      hperiods hbound
+  have hsource : coupling.map (fun pair => observeSourceOutcome source.core pair.1) =
+      (denoteSource source.core.prog profile source.core.env).map some := by
+    have hmapped := congrArg (FinDist.map (observeSourceOutcome source.core)) hgraph
+    exact (FinDist.map_comp _ _ _).symm.trans
+      (hmapped.trans (source.sourceRealization_source profile))
   let summarize := fun outcome : Option (VEnv L (sourceTerminalCtx source.core.prog)) =>
     (true, ([] : List Nat), outcome.map (evalPayoffs (sourceTerminalPayoffs source.core.prog)))
-  rw [← compilation.candidateRounds_law nullValue window principals serviceSlots profile wire total,
-    FinDist.map_comp, ← hnative, FinDist.map_comp]
+  refine (congrArg (FinDist.map (fun next : runtime.candidateApplication.PolicyExecution =>
+    (runtime.complete next.native.application.visible, next.native.application.visible.timeouts,
+      compilation.publicPayout? next.native.application.visible.events))) hnative).symm.trans ?_
+  rw [FinDist.map_comp]
   calc
     _ = coupling.map (fun pair => summarize (observeSourceOutcome source.core pair.1)) := by
       apply FinDist.map_congr_of_eq_on_support
       intro ⟨cfg, next⟩ hpair
-      obtain ⟨hcomplete, hclear, hdecode⟩ := hpairs cfg next hpair
-      have hnext : next ∈ (runtime.roundDriver.runRounds principals serviceSlots
-          (fun who => compilation.compileResolvingPolicy nullValue window who (profile who))
-          wire total (PolicyExecution.initial _ (State.initial _ runtime.initial))).support := by
-        rw [← hnative, FinDist.support_map]
-        exact ⟨(cfg, next), hpair, rfl⟩
-      have hinvariant := runtime.runRounds_eventInvariant principals serviceSlots _ wire total
-        _ next SealedResolution.EventInvariant.initial hnext
-      have hobservable : observeSourceOutcome source.core cfg ∈
-          ((denoteSource source.core.prog profile source.core.env).map some).support := by
-        rw [← hsource, FinDist.support_map]
-        exact ⟨(cfg, next), hpair, rfl⟩
-      rw [FinDist.support_map] at hobservable
-      obtain ⟨final, _, hfinal⟩ := hobservable
-      have hterminal : Terminal (compile source.core).graph cfg.1 := by
-        by_contra hnot
-        rw [(observeSourceOutcome_eq_none_iff source.core cfg).mpr hnot] at hfinal
-        exact Option.some_ne_none _ hfinal
-      have hpayout := evalPayoffs?_eq_decodedSourceOutcome source.core.prog source.core.fresh
-        (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
-        cfg hterminal
+      obtain ⟨hterminal, hcomplete, hclear, hpublic⟩ := hpairs cfg next hpair
       change (runtime.complete next.native.application.visible,
         next.native.application.visible.timeouts,
         compilation.publicPayout? next.native.application.visible.events) =
           summarize (observeSourceOutcome source.core cfg)
-      rw [hcomplete, hclear, compilation.publicPayout?_eq_graph_of_decode nullValue window
-        next.native.application hinvariant cfg.1 hdecode,
-        observeSourceOutcome_of_terminal source.core cfg hterminal]
-      exact congrArg (fun payout => (true, ([] : List Nat), payout)) hpayout
+      have hnormal : (runtime.complete next.native.application.visible,
+          next.native.application.visible.timeouts,
+          compilation.publicPayout? next.native.application.visible.events) =
+            (true, ([] : List Nat), evalPayoffs? (compile source.core).payoffs cfg.1.store) :=
+        Prod.ext hcomplete (Prod.ext hclear
+          (compilation.publicPayout?_eq_graph_of_public_store _ _ hpublic))
+      refine hnormal.trans ?_
+      have hpayout := evalPayoffs?_eq_decodedSourceOutcome source.core.prog source.core.fresh
+        (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+        cfg hterminal
+      exact (congrArg (fun payout => (true, ([] : List Nat), payout)) hpayout).trans
+        (congrArg summarize (observeSourceOutcome_of_terminal source.core cfg hterminal)).symm
     _ = _ := by
       have hmapped := congrArg (FinDist.map summarize) hsource
       simpa only [FinDist.map_comp, Function.comp_def, summarize, Option.map_some] using hmapped

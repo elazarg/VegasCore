@@ -111,9 +111,14 @@ roster, periodic inclusion capacity must drain each period's possible traffic,
 and the relative window must exceed the checked polling bound. At a
 whole-period horizon at least the termination bound, the actual stopped
 driver completes without timeout and decodes to its paired source realization.
-The probability proof counts every player's original conditional draw and
-predraws only the environment; it does not infer the honest law from the
-unilateral-deviation mixture. `RoundModel.deviation_utility_margin_bound` uses
+This source theorem delegates to the arbitrary-profile graph honest coupling.
+The probability proof counts every original graph kernel and predraws only
+the environment; it does not infer the honest law from the unilateral-deviation
+mixture. The candidate-host graph coupling is transported through the checked
+honest-policy host embedding, and its source payout theorem follows from
+source/graph correspondence and public-field interpretation. These honest laws
+do not need `PublicPrefixReadable`.
+`RoundModel.deviation_utility_margin_bound` uses
 that mixture to charge a uniform continuation margin times the actual timeout
 probability. The checkpoint-conditional theorem supports weaker comparisons
 on the actual timeout information. `RoundModel.play_publicPayout_source`

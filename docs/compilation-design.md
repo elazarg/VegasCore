@@ -94,13 +94,21 @@ theorems; source outcome and payout transport occur only in their source adapter
 The stopped-round graph coupling preserves these marginals at the actual native
 stopping boundary and transports normal public-field agreement to that boundary.
 
+The all-compiled honest calculation is also graph-relative.
+`assignedReplay_graph_likelihood` and `graphRun_native_prefix_law` count the
+same original graph-kernel probabilities, with no focal replacement and no
+`PublicPrefixReadable` premise. Only the environment is predrawn.
+`exists_honest_round_graph_coupling` combines this law with deadline-relative
+service, yielding normal completion in the registered host.
+`exists_honest_candidate_round_graph_coupling` transports it through the checked
+honest-policy host embedding. It retains the original graph marginal and proves
+agreement on all public fields. Source outcomes and payouts follow by compiler
+correspondence, not by repeating the native probability calculation.
+
 The strategic factoring is incomplete. Some backend modules still transitively
 import mixed source/backend modules. More importantly, exclusion of a first
 honest timeout under deadline-relative service must be established for the
-candidate host. The all-compiled honest law must also be stated and proved
-for arbitrary graph profiles; its existing source-profile theorem and honest
-host embedding do not by themselves supply that independent backend law.
-Legal resolution defaults
+candidate host under arbitrary deviations. Legal resolution defaults
 and the quitting utility bound need graph
 formulations with compiler certificates, rather than a hidden source-image
 premise. Only after those laws are proved can the candidate backend expose a
