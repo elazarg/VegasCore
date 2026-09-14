@@ -68,6 +68,10 @@ theorem compilation : SealedCompilation source (.option .bool) := ⟨supported�
 abbrev runtime := supported.resolvingRuntime none 3
 abbrev app := runtime.messageApplication
 
+def firstSite : SourceDecisionSite (L := simpleExpr) 0 core []
+    0 (.option .bool) (Expr.nullableCommitGuard (Expr.constBool true)) :=
+  .here _ _
+
 def secondSite : SourceDecisionSite (L := simpleExpr) 1 core
     [(1, .pub (.option .bool)), (0, .sealed 0 (.option .bool))]
     2 (.option .bool) (Expr.nullableCommitGuard (Expr.constBool true)) :=
@@ -462,5 +466,35 @@ theorem first_registration_source_event (profile : SourceBehavioralProfile core)
   · intro h
     apply hevent.mp
     rw [h]
+
+/-- The probability bridge specializes to the original source kernel, not
+the forced reference kernel. Both the reference and queried values are arbitrary. -/
+theorem initial_source_probability (profile : SourceBehavioralProfile core)
+    (policy : SourceBehavioralPolicy core 0) (reference chosen fallback : Value) :
+    (compilation.compileResolvingPolicy none 3 0 policy []
+      (State.observe app initial.native 0)).prob (.privateCommand ⟨(0, chosen)⟩) =
+        ((policy firstSite
+          (Env.empty simpleExpr.Val)).map
+            (fun choice => (⟨BaseTy.option .bool, choice.1⟩ : TypedValue simpleExpr))).prob
+          ⟨BaseTy.option .bool, chosen⟩ := by
+  obtain ⟨cfg, hcfg, _, _⟩ := first_registration_reference_exists profile reference fallback
+  have hprob := compilation.restrictedSourceRun_registration_probability none 3 1 deviator
+    environment [.player 0] fallback (fun _ => reference) profile (fun _ => true)
+  dsimp only at hprob
+  rw [first_replay] at hprob
+  simp only [PolicyTrace.prefixThrough] at hprob
+  have hcommand : .privateCommand ⟨(0, reference)⟩ ∈
+      (supported.resolvingValuePlayers none 3 (fun _ => reference) 1
+        (fun history view => FinDist.pure (deviator history view)) 0
+        [] (State.observe app initial.native 0)).support := by
+    rw [SealedFragment.resolvingValuePlayers,
+      GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)]
+    rw [first_policy, FinDist.mem_support_pure]
+  obtain ⟨final, _, Δ, name, choiceTy, guard, site, hdepth, hprob⟩ :=
+    hprob cfg hcfg rfl 0 (by decide) 0 reference hcommand policy
+  obtain ⟨rfl, rfl, rfl, hguard, hsite⟩ := site.indices_eq_of_depth_eq firstSite hdepth
+  cases eq_of_heq hguard
+  cases eq_of_heq hsite
+  exact hprob chosen
 
 end VegasTests.SealedSourceExtraction

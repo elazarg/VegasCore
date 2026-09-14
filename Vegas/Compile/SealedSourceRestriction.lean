@@ -329,6 +329,76 @@ theorem restrictedSourceRun_registration_kernel
       (State.observe runtime.messageApplication stopped.native who) slot value hcommand
   exact hkernel hclear who hwho slot assigned hassigned policy
 
+/-- Every fresh registration factor before first timeout is the original
+written-source decision probability at the reference run's recorded view.
+The equality covers every queried value, including values of probability zero;
+the compared policy is independent of the profile generating the reference. -/
+theorem restrictedSourceRun_registration_probability
+    (reference : Fin (compile source.core).graph.nodeCount → L.Val ty)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (release :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution →
+        Bool) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    let tracePrefix := (compilation.supported.resolvingReplay nullValue window reference focal
+      deviator environment schedule).prefixThrough (fun execution :
+        runtime.messageApplication.PolicyExecution =>
+          !execution.native.application.visible.timeouts.isEmpty)
+    ∀ cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
+      fallback ((compilation.registrationRestriction focal
+        tracePrefix.last.native.application.service).apply profile)).support,
+    let stopped := tracePrefix.firstRelease release
+    stopped.native.application.visible.timeouts = [] →
+    ∀ who, who ≠ focal → ∀ slot value,
+      .privateCommand ⟨(slot, value)⟩ ∈
+        (compilation.supported.resolvingValuePlayers nullValue window reference focal
+          (fun history view => FinDist.pure (deviator history view)) who
+          (stopped.principalHistory who)
+          (State.observe runtime.messageApplication stopped.native who)).support →
+    ∀ policy : SourceBehavioralPolicy source.core.prog who,
+    ∃ final, observeSourceOutcome source.core cfg = some final ∧
+      ∃ Δ name choiceTy guard, ∃ site :
+        SourceDecisionSite who source.core.prog Δ name choiceTy guard,
+        site.depth = slot ∧ ∀ chosen,
+          (compilation.compileResolvingPolicy nullValue window who policy
+            (stopped.principalHistory who)
+            (State.observe runtime.messageApplication stopped.native who)).prob
+              (.privateCommand ⟨(slot, chosen)⟩) =
+            ((policy site ((site.recorded final).tail.toView who).eraseEnv).map
+              (fun choice => (⟨choiceTy, choice.1⟩ : TypedValue L))).prob ⟨ty, chosen⟩ := by
+  intro runtime tracePrefix cfg hcfg stopped hclear who hwho slot value hcommand policy
+  obtain ⟨node, guard, hsem, reads, hslot, _, hreads, hkernel⟩ :=
+    compilation.restrictedSourceRun_registration_kernel nullValue window focal deviator
+      environment schedule fallback reference profile release cfg hcfg hclear who hwho
+      slot value hcommand policy
+  have hterminal := compilation.extractedSourceRun_terminal nullValue window focal deviator
+    environment schedule fallback _ cfg hcfg
+  obtain ⟨Δ, name, choiceTy, sourceGuard, site, hdepth, hlaw⟩ :=
+    compileSourcePolicy_recorded_law source.core.prog source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+      rfl who policy node guard hsem cfg hterminal reads hreads
+  refine ⟨_, observeSourceOutcome_of_terminal source.core cfg hterminal,
+    Δ, name, choiceTy, sourceGuard, site, hdepth.trans hslot.symm, ?_⟩
+  intro chosen
+  rw [hkernel, ← hlaw]
+  rw [FinDist.prob_map_eq_probOf_preimage_singleton,
+    FinDist.prob_map_eq_probOf_preimage_singleton]
+  apply FinDist.probOf_congr
+  intro choice _
+  have htyped {left right : L.Ty} (heq : left = right)
+      (selected : L.Val left) (queried : L.Val right) :
+      (⟨left, selected⟩ : TypedValue L) = ⟨right, queried⟩ ↔
+        cast (congrArg L.Val heq) selected = queried := by
+    cases heq
+    simp only [TypedValue.mk.injEq, heq_eq_eq, true_and, cast_eq]
+  simp only [Set.mem_preimage, Set.mem_singleton_iff,
+    MessageInterface.PlayerCommand.privateCommand.injEq, ← hslot,
+    htyped (compilation.supported.commitType node who guard hsem)]
+  constructor
+  · exact fun h => congrArg (fun request => request.down.2) h
+  · intro h
+    rw [h]
+
 end Vegas.SealedCompilation
 
 /-- info: 'Vegas.SealedCompilation.compile_registrationRestriction' depends on axioms:
@@ -350,3 +420,8 @@ end Vegas.SealedCompilation
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SealedCompilation.restrictedSourceRun_registration_kernel
+
+/-- info: 'Vegas.SealedCompilation.restrictedSourceRun_registration_probability'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.restrictedSourceRun_registration_probability

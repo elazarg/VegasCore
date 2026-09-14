@@ -160,6 +160,13 @@ those with zero original probability. Changing the assigned honest values leaves
 the selected registration slot unchanged; its draw law still comes from the
 original source policy.
 
+`restrictedSourceRun_registration_probability` identifies each such factor with
+the probability assigned by the written-source policy at its recorded source
+view. It covers every queried value, including zero-mass choices, and permits
+the compared policy to differ from the profile generating the reference law.
+The compiler supplies the source occurrence and its view through terminal field
+agreement. The paper audit is `pending_registration_source_probability`.
+
 `extractedSourceRun_replay_iff_restriction` identifies the restriction event with
 the exact replay cylinder on the original source law. The proof projects recorded
 choices from the terminal source environment and identifies their compiler fields;

@@ -493,6 +493,46 @@ theorem pending_source_cylinder_likelihood
   compilation.extractedSourceRun_replay_likelihood nullValue window focal deviator environment
     schedule fallback reference release profile
 
+/-- Each fresh honest registration before timeout has exactly the original
+source decision probabilities at every reference realization's recorded view.
+This identifies individual factors, not the complete native prefix law. -/
+theorem pending_registration_source_probability
+    (reference : Fin (ToEventGraph.compile source.core).graph.nodeCount → L.Val ty)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (release :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution →
+        Bool) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    let tracePrefix := (compilation.supported.resolvingReplay nullValue window reference focal
+      deviator environment schedule).prefixThrough (fun execution :
+        runtime.messageApplication.PolicyExecution =>
+          !execution.native.application.visible.timeouts.isEmpty)
+    ∀ cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
+      fallback ((compilation.registrationRestriction focal
+        tracePrefix.last.native.application.service).apply profile)).support,
+    let stopped := tracePrefix.firstRelease release
+    stopped.native.application.visible.timeouts = [] →
+    ∀ who, who ≠ focal → ∀ slot value,
+      .privateCommand ⟨(slot, value)⟩ ∈
+        (compilation.supported.resolvingValuePlayers nullValue window reference focal
+          (fun history view => FinDist.pure (deviator history view)) who
+          (stopped.principalHistory who)
+          (MessageApplication.State.observe runtime.messageApplication
+            stopped.native who)).support →
+    ∀ policy : SourceBehavioralPolicy source.core.prog who,
+    ∃ final, ToEventGraph.observeSourceOutcome source.core cfg = some final ∧
+      ∃ Δ name choiceTy guard, ∃ site :
+        SourceDecisionSite who source.core.prog Δ name choiceTy guard,
+        site.depth = slot ∧ ∀ chosen,
+          (compilation.compileResolvingPolicy nullValue window who policy
+            (stopped.principalHistory who)
+            (MessageApplication.State.observe runtime.messageApplication stopped.native who)).prob
+              (.privateCommand ⟨(slot, chosen)⟩) =
+            ((policy site ((site.recorded final).tail.toView who).eraseEnv).map
+              (fun choice => (⟨choiceTy, choice.1⟩ : TypedValue L))).prob ⟨ty, chosen⟩ :=
+  compilation.restrictedSourceRun_registration_probability nullValue window focal deviator
+    environment schedule fallback reference profile release
+
 end SourceRealization
 
 /-- The source surface has an explicit, always-legal nullable quit value. -/
@@ -1153,3 +1193,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_source_cylinder_likelihood
+
+/-- info: 'Vegas.Paper.pending_registration_source_probability' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_registration_source_probability

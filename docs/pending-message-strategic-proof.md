@@ -477,6 +477,16 @@ a proof-facing prefix, not what a player can observe.
 **Kernel agreement.** For every `d in J(t)`, its factor in (2) is constant
 over `C_t` and equals its factor in (3).
 
+The checked local probability identity is
+`SealedCompilation.restrictedSourceRun_registration_probability`: at a selected
+fresh registration before timeout, every reference source realization gives
+the same original written-source decision probabilities as that native input.
+It identifies the source occurrence by its instruction position and recovers
+the source view from terminal compiler-field agreement. Its equality covers
+all queried values, without assuming they have positive probability. Applying
+this identity at every recorded registration and equating the resulting source
+and native products remains a whole-prefix obligation.
+
 At that native registration, all producers of declared reads are complete.
 An honest producer has already registered, constraining its value in `C_t`.
 A focal producer has a first registration in the prefix. The cylinder lemma

@@ -4,8 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Compile.SourceLaw
-import Vegas.Compile.DecisionSite
+import Vegas.Compile.SourcePolicy
 import Vegas.Core.SourceLikelihood
 
 /-! # Terminal source outcomes of compiled programs -/
@@ -151,5 +150,47 @@ theorem decisionSite_recorded_value {who : P} {Γ Δ : VCtx P L}
   | some stored =>
       simp only [Store.getAs, hstored] at hread
       exact congrArg some (stored.eq_mk_of_as?_eq_some _ _ hread)
+
+/-- At a terminal realization, each compiled commitment kernel is its source
+kernel evaluated at the recorded source view. The compared policy need not
+give this realization positive probability. Type tags retain the statement
+across the compiler's dependent source and graph value carriers. -/
+theorem compileSourcePolicy_recorded_law {Γ : VCtx P L} (prog : VegasCore P L Γ)
+    (fresh : FreshBindings prog) (state : BuildState P L Γ) (hempty : state.nodes = [])
+    (who : P) (policy : SourceBehavioralPolicy prog who)
+    (node : Fin (compileCore prog fresh state).graph.nodeCount) (guard : EventGuard L)
+    (hsem : ((compileCore prog fresh state).graph.nodeRow node).sem = .commit who guard)
+    (cfg : ReachableConfig (compileCore prog fresh state).graph)
+    (hterminal : Terminal (compileCore prog fresh state).graph cfg.1)
+    (reads : ReadEnv L guard.choiceReads)
+    (hreads : ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads) :
+    ∃ Δ name choiceTy sourceGuard, ∃ site : SourceDecisionSite who prog Δ name choiceTy sourceGuard,
+      site.depth = node.val ∧
+      ((compileSourcePolicy prog fresh state hempty who policy node guard hsem reads).map
+          (fun choice => (⟨guard.ty, choice.1⟩ : TypedValue L))) =
+        (policy site ((site.recorded (decodeSourceOutcome prog fresh state cfg hterminal)).tail
+          |>.toView who |>.eraseEnv)).map
+            (fun choice => (⟨choiceTy, choice.1⟩ : TypedValue L)) := by
+  obtain ⟨actor, Δ, name, choiceTy, sourceGuard, site, hindex, hrow⟩ :=
+    compileCore_commitNode_covered prog fresh state node (by simp [hempty])
+      ⟨_, who, guard, (compileCore prog fresh state).graph.nodes_get?_nodeRow node, hsem⟩
+  have hrowEq := Option.some.inj
+    (((compileCore prog fresh state).graph.nodes_get?_nodeRow node).symm.trans hrow)
+  have hcommit := NodeSem.commit.inj (hsem.symm.trans (congrArg EventNode.sem hrowEq))
+  obtain ⟨rfl, rfl⟩ := hcommit
+  refine ⟨Δ, name, choiceTy, sourceGuard, site, ?_, ?_⟩
+  · simpa only [decisionSiteState_nodes_length, hempty, List.length_nil, Nat.zero_add]
+      using hindex.symm
+  · rw [compileSourcePolicy_at prog fresh state hempty who policy sourceGuard site node
+      hindex hrow]
+    have hagrees : (decisionSiteState site fresh state).Agrees cfg.1.store
+        (site.recorded (decodeSourceOutcome prog fresh state cfg hterminal)).tail := by
+      intro query bindTy binding
+      exact decisionSite_recorded_agrees site fresh state cfg hterminal (.there binding)
+    have hlaw := congrArg (GameTheory.Math.Probability.FinDist.map
+      (fun value => (⟨choiceTy, value⟩ : TypedValue L)))
+      (compileSourceDecision_law (decisionSiteState site fresh state) who sourceGuard
+        (policy site) cfg.1.store _ (hagrees.view who) reads hreads)
+    simpa only [GameTheory.Math.Probability.FinDist.map_comp, Function.comp_def] using! hlaw
 
 end Vegas.ToEventGraph
