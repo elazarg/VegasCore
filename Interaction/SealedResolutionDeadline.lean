@@ -13,6 +13,10 @@ import Interaction.SealedResolutionDriver
 Readiness timestamps are created only by a scan of an actual ready rule, at
 the scan's current clock.  A timeout therefore carries both a genuine retained
 timestamp and a deadline that has elapsed on the public clock.
+
+The policy-runner laws apply to every hosted commitment service whose message
+handler records an event and refreshes readiness. They impose no preparation,
+openability, or fairness condition on player traffic.
 -/
 
 noncomputable section
@@ -547,32 +551,13 @@ private theorem PublicState.DeadlineSound.record
   exact completed_record state event prerequisite
     (List.all_eq_true.mp hrequires prerequisite hprerequisite)
 
-variable [DecidableEq Principal] [DecidableEq Value]
+variable {Service : Type (max uPrincipal uValue)}
 
 namespace PublicState.ReadySound
 
 variable {runtime : SealedResolution Principal Value}
-variable {state next : ApplicationState Principal Value}
+variable {state : ApplicationState Principal Value Service}
 
-omit [DecidableEq Value] in
-theorem register (sound : state.visible.ReadySound runtime)
-    (owner : Principal) (slot : Nat) (value : Value) :
-    ({ state with service := (state.service.sealValue owner slot value).state } :
-      ApplicationState Principal Value).visible.ReadySound runtime := sound
-
-theorem handle (sound : state.visible.ReadySound runtime)
-    (message : Message Principal (SealedProgram.Payload Principal Value))
-    (hnext : runtime.handle state message = some next) :
-    next.visible.ReadySound runtime := by
-  unfold SealedResolution.handle at hnext
-  cases hvalid : runtime.validateMessage? state message with
-  | none => simp [hvalid] at hnext
-  | some event =>
-      simp only [hvalid, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hnext
-      subst next
-      exact (sound.record event).refresh false
-
-omit [DecidableEq Principal] [DecidableEq Value] in
 theorem tick (sound : state.visible.ReadySound runtime) :
     (runtime.tick state).visible.ReadySound runtime := by
   unfold SealedResolution.tick
@@ -584,27 +569,8 @@ end PublicState.ReadySound
 namespace PublicState.DeadlineSound
 
 variable {runtime : SealedResolution Principal Value}
-variable {state next : ApplicationState Principal Value}
+variable {state : ApplicationState Principal Value Service}
 
-omit [DecidableEq Value] in
-theorem register (sound : state.visible.DeadlineSound runtime)
-    (owner : Principal) (slot : Nat) (value : Value) :
-    ({ state with service := (state.service.sealValue owner slot value).state } :
-      ApplicationState Principal Value).visible.DeadlineSound runtime := sound
-
-theorem handle (sound : state.visible.DeadlineSound runtime)
-    (message : Message Principal (SealedProgram.Payload Principal Value))
-    (hnext : runtime.handle state message = some next) :
-    next.visible.DeadlineSound runtime := by
-  unfold SealedResolution.handle at hnext
-  cases hvalid : runtime.validateMessage? state message with
-  | none => simp [hvalid] at hnext
-  | some event =>
-      simp only [hvalid, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hnext
-      subst next
-      exact (sound.record event).refresh false
-
-omit [DecidableEq Principal] [DecidableEq Value] in
 theorem clock (sound : state.visible.DeadlineSound runtime) :
     ({ state.visible with clock := state.visible.clock + 1 } :
       PublicState Principal Value).DeadlineSound runtime := by
@@ -614,7 +580,6 @@ theorem clock (sound : state.visible.DeadlineSound runtime) :
   exact ⟨rule, timestamp, hrule, by simpa [PublicState.firstReady?] using hready,
     Nat.le_trans hdeadline (Nat.le_succ _), hrequires⟩
 
-omit [DecidableEq Principal] [DecidableEq Value] in
 theorem tick (sound : state.visible.DeadlineSound runtime) :
     (runtime.tick state).visible.DeadlineSound runtime := by
   unfold SealedResolution.tick
@@ -622,47 +587,59 @@ theorem tick (sound : state.visible.DeadlineSound runtime) :
 
 end PublicState.DeadlineSound
 
+variable [DecidableEq Principal]
+variable (runtime : SealedResolution Principal Value)
+variable (prepare : Service → Principal → Nat → Value → Service)
+variable (applyMessage : ApplicationState Principal Value Service →
+  Message Principal (SealedProgram.Payload Principal Value) →
+    Option (ApplicationState Principal Value Service))
+variable (hrecords : runtime.HandlerRecords applyMessage)
+
+include hrecords
+
 theorem runPolicies_readySound
-    (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
-    (execution next : runtime.messageApplication.PolicyExecution)
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (hinitial : execution.native.application.visible.ReadySound runtime)
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+    (hnext : next ∈ ((runtime.host prepare applyMessage).runPolicies players environment
       schedule execution).support) :
     next.native.application.visible.ReadySound runtime := by
-  apply runtime.messageApplication.runPolicies_application_invariant
+  apply (runtime.host prepare applyMessage).runPolicies_application_invariant
     (fun state => state.visible.ReadySound runtime) ?_ ?_ ?_
       players environment schedule execution next hinitial hnext
   · intro state owner command sound
-    exact sound.register owner command.down.1 command.down.2
+    exact sound
   · intro state message after sound hafter
-    exact sound.handle message hafter
+    obtain ⟨event, heffect⟩ := hrecords state message after hafter
+    rw [heffect]
+    exact (sound.record event).refresh false
   · intro state command after sound hafter
-    simp only [messageApplication, FinDist.mem_support_pure] at hafter
+    simp only [host, FinDist.mem_support_pure] at hafter
     subst after
     exact sound.tick
 
 theorem runPolicies_deadlineSound
-    (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
-    (execution next : runtime.messageApplication.PolicyExecution)
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (hinitial : execution.native.application.visible.DeadlineSound runtime)
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+    (hnext : next ∈ ((runtime.host prepare applyMessage).runPolicies players environment
       schedule execution).support) :
     next.native.application.visible.DeadlineSound runtime := by
-  apply runtime.messageApplication.runPolicies_application_invariant
+  apply (runtime.host prepare applyMessage).runPolicies_application_invariant
     (fun state => state.visible.DeadlineSound runtime) ?_ ?_ ?_
       players environment schedule execution next hinitial hnext
   · intro state owner command sound
-    exact sound.register owner command.down.1 command.down.2
+    exact sound
   · intro state message after sound hafter
-    exact sound.handle message hafter
+    obtain ⟨event, heffect⟩ := hrecords state message after hafter
+    rw [heffect]
+    exact (sound.record event).refresh false
   · intro state command after sound hafter
-    simp only [messageApplication, FinDist.mem_support_pure] at hafter
+    simp only [host, FinDist.mem_support_pure] at hafter
     subst after
     exact sound.tick
 
@@ -670,26 +647,25 @@ theorem runPolicies_deadlineSound
 run. Player traffic preserves it, while application environment calls advance
 it by one. -/
 theorem runPolicies_clock_mono
-    (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
-    (execution next : runtime.messageApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
+    (hnext : next ∈ ((runtime.host prepare applyMessage).runPolicies players environment
       schedule execution).support) :
     execution.native.application.visible.clock ≤
       next.native.application.visible.clock := by
-  apply runtime.messageApplication.runPolicies_application_invariant
+  apply (runtime.host prepare applyMessage).runPolicies_application_invariant
     (fun state => execution.native.application.visible.clock ≤ state.visible.clock)
       ?_ ?_ ?_ players environment schedule execution next (Nat.le_refl _) hnext
   · intro state owner command hbefore
-    simpa [messageApplication] using hbefore
+    exact hbefore
   · intro state message after hbefore hafter
-    change runtime.handle state message = some after at hafter
-    rw [runtime.handle_clock state after message hafter]
+    obtain ⟨event, heffect⟩ := hrecords state message after hafter
+    rw [heffect, runtime.refresh_clock]
     exact hbefore
   · intro state command after hbefore hafter
-    simp only [messageApplication, FinDist.mem_support_pure] at hafter
+    simp only [host, FinDist.mem_support_pure] at hafter
     subst after
     rw [runtime.tick_clock]
     exact Nat.le_trans hbefore (Nat.le_succ _)
@@ -697,145 +673,106 @@ theorem runPolicies_clock_mono
 /-- Once recorded, a timeout remains present through every supported finite
 native policy run. -/
 theorem runPolicies_timeout_mem
-    (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
-    (execution next : runtime.messageApplication.PolicyExecution)
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (node : Nat) (htimeout : node ∈ execution.native.application.visible.timeouts)
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+    (hnext : next ∈ ((runtime.host prepare applyMessage).runPolicies players environment
       schedule execution).support) :
     node ∈ next.native.application.visible.timeouts := by
-  apply runtime.messageApplication.runPolicies_application_invariant
+  apply (runtime.host prepare applyMessage).runPolicies_application_invariant
     (fun state => node ∈ state.visible.timeouts) ?_ ?_ ?_
       players environment schedule execution next htimeout hnext
   · intro state owner command hbefore
-    simpa [messageApplication] using hbefore
+    exact hbefore
   · intro state message after hbefore hafter
-    change runtime.handle state message = some after at hafter
-    rw [runtime.handle_timeouts state after message hafter]
+    obtain ⟨event, heffect⟩ := hrecords state message after hafter
+    rw [heffect, runtime.refresh_false_timeouts]
     exact hbefore
   · intro state command after hbefore hafter
-    simp only [messageApplication, FinDist.mem_support_pure] at hafter
+    simp only [host, FinDist.mem_support_pure] at hafter
     subst after
-    unfold SealedResolution.tick
-    apply refresh_timeout_of_mem runtime true
-    change node ∈ state.visible.timeouts
-    exact hbefore
+    exact refresh_timeout_of_mem runtime true _ node hbefore
 
 /-- An existing readiness timestamp survives every supported finite policy
 run, including arbitrary native message traffic and clock invocations. -/
 theorem runPolicies_firstReady?_of_some
-    (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
-    (execution next : runtime.messageApplication.PolicyExecution)
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (node timestamp : Nat)
     (hready : execution.native.application.visible.firstReady? node = some timestamp)
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+    (hnext : next ∈ ((runtime.host prepare applyMessage).runPolicies players environment
       schedule execution).support) :
     next.native.application.visible.firstReady? node = some timestamp := by
-  apply runtime.messageApplication.runPolicies_application_invariant
+  apply (runtime.host prepare applyMessage).runPolicies_application_invariant
     (fun state => state.visible.firstReady? node = some timestamp) ?_ ?_ ?_
       players environment schedule execution next hready hnext
   · intro state owner command hbefore
-    simpa [messageApplication] using hbefore
+    exact hbefore
   · intro state message after hbefore hafter
-    change runtime.handle state message = some after at hafter
-    unfold SealedResolution.handle at hafter
-    cases hvalid : runtime.validateMessage? state message with
-    | none => simp [hvalid] at hafter
-    | some event =>
-        simp only [hvalid, Option.bind_eq_bind, Option.bind_some,
-          Option.some.injEq] at hafter
-        subst after
-        apply runtime.refresh_firstReady?_of_some false _ node timestamp
-        simpa [PublicState.firstReady?] using hbefore
+    obtain ⟨event, heffect⟩ := hrecords state message after hafter
+    rw [heffect]
+    apply runtime.refresh_firstReady?_of_some false _ node timestamp
+    exact hbefore
   · intro state command after hbefore hafter
-    simp only [messageApplication, FinDist.mem_support_pure] at hafter
+    simp only [host, FinDist.mem_support_pure] at hafter
     subst after
-    unfold SealedResolution.tick
-    apply runtime.refresh_firstReady?_of_some true _ node timestamp
-    simpa [PublicState.firstReady?] using hbefore
+    exact runtime.refresh_firstReady?_of_some true _ node timestamp hbefore
 
 /-- Once a node has completed without timing out, arbitrary later policies
 cannot retroactively add that node to the timeout record. -/
 theorem runPolicies_no_timeout_of_completed
-    (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
-    (execution next : runtime.messageApplication.PolicyExecution)
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (node : Nat)
     (hcompleted : execution.native.application.visible.completed node = true)
     (habsent : node ∉ execution.native.application.visible.timeouts)
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+    (hnext : next ∈ ((runtime.host prepare applyMessage).runPolicies players environment
       schedule execution).support) :
     node ∉ next.native.application.visible.timeouts := by
   have hinvariant :
       next.native.application.visible.completed node = true ∧
         node ∉ next.native.application.visible.timeouts := by
-    apply runtime.messageApplication.runPolicies_application_invariant
-      (fun state => state.visible.completed node = true ∧
-        node ∉ state.visible.timeouts) ?_ ?_ ?_
-        players environment schedule execution next ⟨hcompleted, habsent⟩ hnext
+    apply (runtime.host prepare applyMessage).runPolicies_application_invariant
+      (fun state => state.visible.completed node = true ∧ node ∉ state.visible.timeouts)
+        ?_ ?_ ?_ players environment schedule execution next ⟨hcompleted, habsent⟩ hnext
     · intro state owner command hbefore
-      simpa [messageApplication] using hbefore
+      exact hbefore
     · intro state message after hbefore hafter
-      change runtime.handle state message = some after at hafter
-      unfold SealedResolution.handle at hafter
-      cases hvalid : runtime.validateMessage? state message with
-      | none => simp [hvalid] at hafter
-      | some event =>
-          simp only [hvalid, Option.bind_eq_bind, Option.bind_some,
-            Option.some.injEq] at hafter
-          subst after
-          have hrecorded :
-              ({ state.visible with events := state.visible.events ++ [event] } :
-                PublicState Principal Value).completed node = true :=
-            completed_record state.visible event node hbefore.1
-          exact ⟨runtime.refresh_completed false _ node hrecorded,
-            refresh_no_timeout_of_completed runtime false _ node hrecorded
-              (by simpa using hbefore.2)⟩
+      obtain ⟨event, heffect⟩ := hrecords state message after hafter
+      rw [heffect]
+      have hrecorded := completed_record state.visible event node hbefore.1
+      exact ⟨runtime.refresh_completed false _ node hrecorded,
+        refresh_no_timeout_of_completed runtime false _ node hrecorded hbefore.2⟩
     · intro state command after hbefore hafter
-      simp only [messageApplication, FinDist.mem_support_pure] at hafter
+      simp only [host, FinDist.mem_support_pure] at hafter
       subst after
-      unfold SealedResolution.tick
-      have hclocked :
-          ({ state.visible with clock := state.visible.clock + 1 } :
-            PublicState Principal Value).completed node = true := by
-        change state.visible.completed node = true
-        exact hbefore.1
-      exact ⟨runtime.refresh_completed true _ node hclocked,
-        refresh_no_timeout_of_completed runtime true _ node hclocked
-          (by
-            change node ∉ state.visible.timeouts
-            exact hbefore.2)⟩
+      exact ⟨runtime.refresh_completed true _ node hbefore.1,
+        refresh_no_timeout_of_completed runtime true _ node hbefore.1 hbefore.2⟩
   exact hinvariant.2
 
+omit [DecidableEq Principal] in
 private theorem handle_firstReady?_of_none
-    (runtime : SealedResolution Principal Value)
-    (state next : ApplicationState Principal Value)
+    (state next : ApplicationState Principal Value Service)
     (message : Message Principal (SealedProgram.Payload Principal Value))
-    (node timestamp : Nat) (hnext : runtime.handle state message = some next)
+    (node timestamp : Nat) (hnext : applyMessage state message = some next)
     (hnone : state.visible.firstReady? node = none)
     (hready : next.visible.firstReady? node = some timestamp) :
     timestamp = next.visible.clock ∧
       ∃ rule, runtime.program.rules[node]? = some rule ∧
         rule.requires.all next.visible.completed = true := by
-  unfold SealedResolution.handle at hnext
-  cases hvalid : runtime.validateMessage? state message with
-  | none => simp [hvalid] at hnext
-  | some event =>
-      simp only [hvalid, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hnext
-      subst next
-      exact runtime.refresh_firstReady?_of_none false _ node timestamp
-        (by simpa [PublicState.firstReady?] using hnone) hready
+  obtain ⟨event, heffect⟩ := hrecords state message next hnext
+  rw [heffect] at hready ⊢
+  exact runtime.refresh_firstReady?_of_none false _ node timestamp hnone hready
 
-omit [DecidableEq Principal] [DecidableEq Value] in
+omit [DecidableEq Principal] hrecords in
 private theorem tick_firstReady?_of_none
-    (runtime : SealedResolution Principal Value) (state : ApplicationState Principal Value)
+    (runtime : SealedResolution Principal Value) (state : ApplicationState Principal Value Service)
     (node timestamp : Nat) (hnone : state.visible.firstReady? node = none)
     (hready : (runtime.tick state).visible.firstReady? node = some timestamp) :
     timestamp = (runtime.tick state).visible.clock ∧
@@ -846,16 +783,15 @@ private theorem tick_firstReady?_of_none
     (by simpa [PublicState.firstReady?] using hnone) hready
 
 private theorem step_firstReady?_clock_of_none
-    (runtime : SealedResolution Principal Value)
-    (state next : runtime.messageApplication.State)
-    (action : runtime.messageApplication.Action) (node timestamp : Nat)
-    (hnext : next ∈ (runtime.messageApplication.step state action).support)
+    (state next : (runtime.host prepare applyMessage).State)
+    (action : (runtime.host prepare applyMessage).Action) (node timestamp : Nat)
+    (hnext : next ∈ ((runtime.host prepare applyMessage).step state action).support)
     (hnone : state.application.visible.firstReady? node = none)
     (hready : next.application.visible.firstReady? node = some timestamp) :
     timestamp = next.application.visible.clock := by
   cases action with
   | privateCommand owner command =>
-      simp only [MessageApplication.step, messageApplication,
+      simp only [MessageApplication.step, host,
         FinDist.mem_support_pure] at hnext
       subst next
       rw [hnone] at hready
@@ -870,34 +806,35 @@ private theorem step_firstReady?_clock_of_none
       subst next
       cases hlookup : state.pool.lookup id with
       | none =>
-          rw [runtime.messageApplication.includePending_missing state id hlookup] at hready
+          rw [(runtime.host prepare applyMessage).includePending_missing state id hlookup] at hready
           rw [hnone] at hready
           contradiction
       | some message =>
-          cases hhandle : runtime.handle state.application message with
+          cases hhandle : applyMessage state.application message with
           | none =>
-              rw [runtime.messageApplication.includePending_reject state id message hlookup
+              rw [(runtime.host prepare applyMessage).includePending_reject state id message hlookup
                 hhandle] at hready
               rw [hnone] at hready
               contradiction
           | some application =>
-              rw [runtime.messageApplication.includePending_accept state id message application
+              rw [(runtime.host prepare applyMessage).includePending_accept state id message
+                application
                 hlookup hhandle] at hready ⊢
-              exact (runtime.handle_firstReady?_of_none state.application application message
+              exact (runtime.handle_firstReady?_of_none applyMessage hrecords state.application
+                application message
                 node timestamp hhandle hnone hready).1
   | environment command =>
-      simp only [MessageApplication.step, messageApplication, FinDist.map_pure,
+      simp only [MessageApplication.step, host, FinDist.map_pure,
         FinDist.mem_support_pure] at hnext
       subst next
       exact (runtime.tick_firstReady?_of_none state.application node timestamp hnone hready).1
 
 private theorem invoke_firstReady?_clock_of_none
-    (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
-    (before after : runtime.messageApplication.PolicyExecution)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
+    (before after : (runtime.host prepare applyMessage).PolicyExecution)
     (invocation : @MessageApplication.Invocation Principal) (node timestamp : Nat)
-    (hnext : after ∈ (runtime.messageApplication.invoke players environment before
+    (hnext : after ∈ ((runtime.host prepare applyMessage).invoke players environment before
       invocation).support)
     (hnone : before.native.application.visible.firstReady? node = none)
     (hready : after.native.application.visible.firstReady? node = some timestamp) :
@@ -907,51 +844,52 @@ private theorem invoke_firstReady?_clock_of_none
       simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨command, hcommand, hstep⟩ := hnext
       have hnative : after.native ∈
-          ((runtime.messageApplication.playerStep who before command).map
+          (((runtime.host prepare applyMessage).playerStep who before command).map
             MessageInterface.PolicyExecution.native).support := by
         rw [FinDist.support_map]
         exact ⟨after, hstep, rfl⟩
-      rw [runtime.messageApplication.playerStep_native] at hnative
+      rw [(runtime.host prepare applyMessage).playerStep_native] at hnative
       cases haction : MessageApplication.PlayerCommand.toAction
-          runtime.messageApplication who command with
+          (runtime.host prepare applyMessage) who command with
       | none =>
           simp only [haction, FinDist.mem_support_pure] at hnative
           rw [hnative] at hready
           rw [hnone] at hready
           contradiction
       | some action =>
-          exact runtime.step_firstReady?_clock_of_none before.native after.native action
+          exact runtime.step_firstReady?_clock_of_none prepare applyMessage hrecords
+            before.native after.native action
             node timestamp (by simpa [haction] using hnative) hnone hready
   | environment =>
       simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨command, hcommand, hstep⟩ := hnext
       have hnative : after.native ∈
-          ((runtime.messageApplication.environmentPolicyStep before command).map
+          (((runtime.host prepare applyMessage).environmentPolicyStep before command).map
             MessageInterface.PolicyExecution.native).support := by
         rw [FinDist.support_map]
         exact ⟨after, hstep, rfl⟩
-      rw [runtime.messageApplication.environmentStep_native] at hnative
+      rw [(runtime.host prepare applyMessage).environmentStep_native] at hnative
       cases haction : MessageApplication.EnvironmentPolicyCommand.toAction
-          runtime.messageApplication command with
+          (runtime.host prepare applyMessage) command with
       | none =>
           simp only [haction, FinDist.mem_support_pure] at hnative
           rw [hnative] at hready
           rw [hnone] at hready
           contradiction
       | some action =>
-          exact runtime.step_firstReady?_clock_of_none before.native after.native action
+          exact runtime.step_firstReady?_clock_of_none prepare applyMessage hrecords
+            before.native after.native action
             node timestamp (by simpa [haction] using hnative) hnone hready
 
 /-- At a supported single policy invocation, a newly observed timestamp equals
 that invocation's resulting clock and certifies actual rule readiness. -/
 theorem invoke_firstReady?_of_none
-    (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
-    (before after : runtime.messageApplication.PolicyExecution)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
+    (before after : (runtime.host prepare applyMessage).PolicyExecution)
     (invocation : @MessageApplication.Invocation Principal) (node timestamp : Nat)
     (hsound : before.native.application.visible.ReadySound runtime)
-    (hnext : after ∈ (runtime.messageApplication.invoke players environment before
+    (hnext : after ∈ ((runtime.host prepare applyMessage).invoke players environment before
       invocation).support)
     (hnone : before.native.application.visible.firstReady? node = none)
     (hready : after.native.application.visible.firstReady? node = some timestamp) :
@@ -959,21 +897,22 @@ theorem invoke_firstReady?_of_none
       ∃ rule, runtime.program.rules[node]? = some rule ∧
         rule.requires.all after.native.application.visible.completed = true := by
   have hafterSound : after.native.application.visible.ReadySound runtime := by
-    apply runtime.runPolicies_readySound players environment [invocation] before after hsound
+    apply runtime.runPolicies_readySound prepare applyMessage hrecords players environment
+      [invocation] before after hsound
     simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using hnext
-  exact ⟨runtime.invoke_firstReady?_clock_of_none players environment before after
+  exact ⟨runtime.invoke_firstReady?_clock_of_none prepare applyMessage hrecords players
+    environment before after
     invocation node timestamp hnext hnone hready, hafterSound node timestamp hready⟩
 
 /-- A timestamp strictly older than the starting clock cannot have been
 created during the run, so the exact timestamp was already present initially. -/
 theorem runPolicies_firstReady?_of_lt_clock
-    (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
-    (execution next : runtime.messageApplication.PolicyExecution)
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (node timestamp : Nat)
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+    (hnext : next ∈ ((runtime.host prepare applyMessage).runPolicies players environment
       schedule execution).support)
     (hready : next.native.application.visible.firstReady? node = some timestamp)
     (hbeforeClock : timestamp < execution.native.application.visible.clock) :
@@ -987,54 +926,54 @@ theorem runPolicies_firstReady?_of_lt_clock
       simp only [MessageApplication.runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨middle, hmiddle, hnext⟩ := hnext
       have hsingle : middle ∈
-          (runtime.messageApplication.runPolicies players environment [invocation]
+          ((runtime.host prepare applyMessage).runPolicies players environment [invocation]
             execution).support := by
         simpa only [MessageApplication.runPolicies, FinDist.bind_pure] using hmiddle
-      have hclockMono := runtime.runPolicies_clock_mono players environment [invocation]
-        execution middle hsingle
+      have hclockMono := runtime.runPolicies_clock_mono prepare applyMessage hrecords players
+        environment [invocation] execution middle hsingle
       have hmiddleClock :
           timestamp < middle.native.application.visible.clock :=
         Nat.lt_of_lt_of_le hbeforeClock hclockMono
       have hmiddleReady := ih middle hnext hmiddleClock
       cases hprior : execution.native.application.visible.firstReady? node with
       | none =>
-          have hfresh := runtime.invoke_firstReady?_clock_of_none players environment
-            execution middle invocation node timestamp hmiddle hprior hmiddleReady
+          have hfresh := runtime.invoke_firstReady?_clock_of_none prepare applyMessage hrecords
+            players environment execution middle invocation node timestamp
+            hmiddle hprior hmiddleReady
           rw [hfresh] at hmiddleClock
           exact False.elim (Nat.lt_irrefl _ hmiddleClock)
       | some recorded =>
-          have hpersist := runtime.runPolicies_firstReady?_of_some players environment
-            [invocation] execution middle node recorded hprior hsingle
+          have hpersist := runtime.runPolicies_firstReady?_of_some prepare applyMessage hrecords
+            players environment [invocation] execution middle node recorded hprior hsingle
           have heq : recorded = timestamp :=
             Option.some.inj (hpersist.symm.trans hmiddleReady)
           simp [heq]
 
 /-- The stopped round readout retains genuine elapsed deadlines. It is a
 supported prefix of the same native invocation trace, not a separate run. -/
-theorem runRounds_deadlineSound (runtime : SealedResolution Principal Value)
+theorem runRounds_deadlineSound
     (principals : List Principal) (serviceSlots : Nat)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (wire : runtime.messageApplication.WirePolicy) (total : Nat)
-    (execution next : runtime.messageApplication.PolicyExecution)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (wire : (runtime.host prepare applyMessage).WirePolicy) (total : Nat)
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
     (hsound : execution.native.application.visible.DeadlineSound runtime)
     (hnext : next ∈
-      (runtime.roundDriver.runRounds
+      ((runtime.hostRoundDriver prepare applyMessage).runRounds
         principals serviceSlots players wire total execution).support) :
     next.native.application.visible.DeadlineSound runtime := by
-  rw [runtime.roundDriver.runRounds_eq_tracePolicies principals serviceSlots players wire
-    total execution
-    hphase, FinDist.support_map] at hnext
+  rw [(runtime.hostRoundDriver prepare applyMessage).runRounds_eq_tracePolicies principals
+    serviceSlots players wire total execution hphase, FinDist.support_map] at hnext
   obtain ⟨trace, htrace, rfl⟩ := hnext
   obtain ⟨front, suffix, hsplit, hfront, hsuffix⟩ :=
-    runtime.messageApplication.tracePolicies_firstReleaseEvery_split players
-      (runtime.roundDriver.environmentPolicy serviceSlots wire) (roundInvocations principals
-        serviceSlots).length
+    (runtime.host prepare applyMessage).tracePolicies_firstReleaseEvery_split players
+      ((runtime.hostRoundDriver prepare applyMessage).environmentPolicy serviceSlots wire)
+      (roundInvocations principals serviceSlots).length
       total (fun state => runtime.complete state.native.application.visible)
       (by simp [roundInvocations]) (roundSchedule principals serviceSlots total) execution trace
       (by rw [roundSchedule_length]) htrace
-  exact runtime.runPolicies_deadlineSound players (runtime.roundDriver.environmentPolicy
-    serviceSlots wire)
+  exact runtime.runPolicies_deadlineSound prepare applyMessage hrecords players
+    ((runtime.hostRoundDriver prepare applyMessage).environmentPolicy serviceSlots wire)
     front execution _ hsound hfront
 
 end Interaction.SealedResolution

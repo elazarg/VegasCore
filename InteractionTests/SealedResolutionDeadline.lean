@@ -92,7 +92,10 @@ theorem actual_invoke_stamps_newly_ready_rule :
     exact SealedResolution.PublicState.ReadySound.initial runtime
   have hnone : before.native.application.visible.firstReady? 1 = none := by decide
   have hready : included.native.application.visible.firstReady? 1 = some 0 := by decide
-  have horigin := runtime.invoke_firstReady?_of_none players environment before included
+  have horigin := runtime.invoke_firstReady?_of_none
+    (fun (service : IdealCommitments Bool Nat (Option Bool)) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    players environment before included
     .environment 1 0 hsound hsupported hnone hready
   refine ⟨included, hsupported, ?_, horigin.2⟩
   rwa [horigin.1] at hready

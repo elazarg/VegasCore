@@ -108,7 +108,13 @@ correspondence, not by repeating the native probability calculation.
 The strategic factoring is incomplete. Some backend modules still transitively
 import mixed source/backend modules. More importantly, exclusion of a first
 honest timeout under deadline-relative service must be established for the
-candidate host under arbitrary deviations. Legal resolution defaults
+candidate host under arbitrary deviations. Its packet-level delivery law is
+checked: actual generated submissions have stable admission data and complete
+their site whenever the pending pool drains. This uses the honest owner's cache
+and fixed candidate meanings, without constraining opponents' submissions or
+openability. The remaining service work is the bound on progress polls, not
+admission of already generated packets. Deadline provenance and completion
+persistence are shared host laws. Legal resolution defaults
 and the quitting utility bound need graph
 formulations with compiler certificates, rather than a hidden source-image
 premise. Only after those laws are proved can the candidate backend expose a

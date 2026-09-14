@@ -55,24 +55,24 @@ theorem EventInvariant.accepted?_eq_some_of_done_commit
 
 variable [DecidableEq Principal] [DecidableEq Value]
 
-private theorem handle_preserves_completed
+omit [DecidableEq Principal] [DecidableEq Value] in
+theorem handle_preserves_completed {Service : Type (max uPrincipal uValue)}
     (runtime : SealedResolution Principal Value)
-    (state next : ApplicationState Principal Value)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+        Option (ApplicationState Principal Value Service))
+    (hrecords : runtime.HandlerRecords applyMessage)
+    (state next : ApplicationState Principal Value Service)
     (message : Message Principal (SealedProgram.Payload Principal Value))
     (node : Nat) (hcompleted : state.visible.completed node = true)
-    (hhandle : runtime.handle state message = some next) :
+    (hhandle : applyMessage state message = some next) :
     next.visible.completed node = true := by
-  unfold SealedResolution.handle at hhandle
-  cases hvalid : runtime.validateMessage? state message with
-  | none => simp [hvalid] at hhandle
-  | some event =>
-      simp only [hvalid, Option.bind_eq_bind, Option.bind_some,
-        Option.some.injEq] at hhandle
-      subst next
-      apply runtime.refresh_completed false _ node
-      unfold PublicState.completed SealedProgram.done at hcompleted ⊢
-      cases hevents : state.visible.events.any (fun event => event.node == node) <;>
-        cases htimeouts : state.visible.timeouts.contains node <;> simp_all
+  obtain ⟨event, heffect⟩ := hrecords state message next hhandle
+  rw [heffect]
+  apply runtime.refresh_completed false _ node
+  unfold PublicState.completed SealedProgram.done at hcompleted ⊢
+  cases hevents : state.visible.events.any (fun event => event.node == node) <;>
+    cases htimeouts : state.visible.timeouts.contains node <;> simp_all
 
 private theorem handle_completed_of_valid
     (runtime : SealedResolution Principal Value)
@@ -192,7 +192,8 @@ theorem includePending_commitment_completed
       exact runtime.messageApplication.includePending_application_invariant
         (fun application => application.visible.completed node = true)
         (fun application message next hbefore hhandle =>
-          handle_preserves_completed runtime application next message node hbefore hhandle)
+          handle_preserves_completed runtime runtime.handle runtime.handle_records
+            application next message node hbefore hhandle)
         state (owner, serial) hcompleted
   | false =>
       have hvalid := validateMessage?_commitment runtime state.application owner serial node
@@ -225,7 +226,8 @@ theorem includePending_opening_completed
       exact runtime.messageApplication.includePending_application_invariant
         (fun application => application.visible.completed node = true)
         (fun application message next hbefore hhandle =>
-          handle_preserves_completed runtime application next message node hbefore hhandle)
+          handle_preserves_completed runtime runtime.handle runtime.handle_records
+            application next message node hbefore hhandle)
         state (owner, serial) hcompleted
   | false =>
       have hvalid := validateMessage?_opening runtime state.application owner serial node source
@@ -237,48 +239,63 @@ theorem includePending_opening_completed
       exact hnext
 
 omit [DecidableEq Principal] [DecidableEq Value] in
-private theorem tick_preserves_completed
+private theorem tick_preserves_completed {Service : Type (max uPrincipal uValue)}
     (runtime : SealedResolution Principal Value)
-    (state : ApplicationState Principal Value) (node : Nat)
+    (state : ApplicationState Principal Value Service) (node : Nat)
     (hcompleted : state.visible.completed node = true) :
     (runtime.tick state).visible.completed node = true := by
   apply runtime.refresh_completed true _ node
   exact hcompleted
 
+omit [DecidableEq Value] in
 /-- Every supported native action preserves completion of an already completed
 node, independently of which principal or environment policy selected it. -/
 theorem step_completed
+    {Service : Type (max uPrincipal uValue)}
     (runtime : SealedResolution Principal Value)
-    (state next : runtime.messageApplication.State)
-    (action : runtime.messageApplication.Action) (node : Nat)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+        Option (ApplicationState Principal Value Service))
+    (hrecords : runtime.HandlerRecords applyMessage)
+    (state next : (runtime.host prepare applyMessage).State)
+    (action : (runtime.host prepare applyMessage).Action) (node : Nat)
     (hcompleted : state.application.visible.completed node = true)
-    (hnext : next ∈ (runtime.messageApplication.step state action).support) :
+    (hnext : next ∈ ((runtime.host prepare applyMessage).step state action).support) :
     next.application.visible.completed node = true := by
-  apply runtime.messageApplication.step_application_invariant
+  apply (runtime.host prepare applyMessage).step_application_invariant
     (fun application => application.visible.completed node = true) ?_ ?_ ?_
       state next action hcompleted hnext
   · intro application owner command hbefore
-    simpa [messageApplication] using hbefore
+    simpa [host] using hbefore
   · intro application message after hbefore hhandle
-    exact handle_preserves_completed runtime application after message node hbefore hhandle
+    exact handle_preserves_completed runtime applyMessage hrecords application after message
+      node hbefore hhandle
   · intro application command after hbefore hafter
-    simp only [messageApplication, GameTheory.Math.Probability.FinDist.mem_support_pure]
+    simp only [host, GameTheory.Math.Probability.FinDist.mem_support_pure]
       at hafter
     subst after
     exact tick_preserves_completed runtime application node hbefore
 
+omit [DecidableEq Value] in
 /-- Executing the optional action selected by one policy call preserves
 completion in every supported native result. -/
 theorem advance_completed
+    {Service : Type (max uPrincipal uValue)}
     (runtime : SealedResolution Principal Value)
-    (execution : runtime.messageApplication.PolicyExecution)
-    (action : Option runtime.messageApplication.Action)
-    (advanced : runtime.messageApplication.State ×
-      List runtime.messageApplication.Action)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+        Option (ApplicationState Principal Value Service))
+    (hrecords : runtime.HandlerRecords applyMessage)
+    (execution : (runtime.host prepare applyMessage).PolicyExecution)
+    (action : Option (runtime.host prepare applyMessage).Action)
+    (advanced : (runtime.host prepare applyMessage).State ×
+      List (runtime.host prepare applyMessage).Action)
     (node : Nat)
     (hcompleted : execution.native.application.visible.completed node = true)
     (hadvanced : advanced ∈
-      (runtime.messageApplication.advance execution action).support) :
+      ((runtime.host prepare applyMessage).advance execution action).support) :
     advanced.1.application.visible.completed node = true := by
   cases action with
   | none =>
@@ -291,30 +308,39 @@ theorem advance_completed
         GameTheory.Math.Probability.FinDist.support_bind, Set.mem_iUnion,
         GameTheory.Math.Probability.FinDist.mem_support_pure] at hadvanced
       obtain ⟨next, hnext, rfl⟩ := hadvanced
-      exact runtime.step_completed execution.native next action node hcompleted hnext
+      exact runtime.step_completed prepare applyMessage hrecords execution.native next action
+        node hcompleted hnext
 
+omit [DecidableEq Value] in
 /-- Arbitrary randomized player and environment policies cannot undo a node's
 completion during a finite invocation schedule. -/
 theorem runPolicies_completed
+    {Service : Type (max uPrincipal uValue)}
     (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+        Option (ApplicationState Principal Value Service))
+    (hrecords : runtime.HandlerRecords applyMessage)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
-    (execution next : runtime.messageApplication.PolicyExecution)
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (node : Nat)
     (hcompleted : execution.native.application.visible.completed node = true)
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+    (hnext : next ∈ ((runtime.host prepare applyMessage).runPolicies players environment
       schedule execution).support) :
     next.native.application.visible.completed node = true := by
-  apply runtime.messageApplication.runPolicies_application_invariant
+  apply (runtime.host prepare applyMessage).runPolicies_application_invariant
     (fun application => application.visible.completed node = true) ?_ ?_ ?_
       players environment schedule execution next hcompleted hnext
   · intro application owner command hbefore
-    simpa [messageApplication] using hbefore
+    simpa [host] using hbefore
   · intro application message after hbefore hhandle
-    exact handle_preserves_completed runtime application after message node hbefore hhandle
+    exact handle_preserves_completed runtime applyMessage hrecords application after message
+      node hbefore hhandle
   · intro application command after hbefore hafter
-    simp only [messageApplication, GameTheory.Math.Probability.FinDist.mem_support_pure]
+    simp only [host, GameTheory.Math.Probability.FinDist.mem_support_pure]
       at hafter
     subst after
     exact tick_preserves_completed runtime application node hbefore
@@ -328,7 +354,8 @@ private theorem handle_preserves_all_completed
     nodes.all next.visible.completed = true := by
   apply List.all_eq_true.mpr
   intro node hnode
-  exact handle_preserves_completed runtime state next message node
+  exact handle_preserves_completed runtime runtime.handle runtime.handle_records
+    state next message node
     (List.all_eq_true.mp hcompleted node hnode) hhandle
 
 omit [DecidableEq Principal] [DecidableEq Value] in
@@ -381,29 +408,37 @@ private theorem accepted_done
   rw [List.any_eq_true]
   exact ⟨.accepted node handle, haccepted, by simp [SealedProgram.Event.node]⟩
 
+omit [DecidableEq Value] in
 private theorem step_pendingReadyOrCompleted
+    {Service : Type (max uPrincipal uValue)}
     (runtime : SealedResolution Principal Value)
-    (ready : ApplicationState Principal Value → Prop)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+        Option (ApplicationState Principal Value Service))
+    (hrecords : runtime.HandlerRecords applyMessage)
+    (ready : ApplicationState Principal Value Service → Prop)
     (target : Message Principal (SealedProgram.Payload Principal Value))
     (node : Nat)
     (hprivate : ∀ application actor command, ready application →
-      ready (runtime.messageApplication.privateStep application actor command))
+      ready ((runtime.host prepare applyMessage).privateStep application actor command))
     (hhandler : ∀ application message next, ready application →
-      runtime.handle application message = some next → ready next)
+      applyMessage application message = some next → ready next)
     (htick : ∀ application, ready application → ready (runtime.tick application))
     (hresolve : ∀ state id, ready state.application →
       state.pool.lookup id = some target →
-      (runtime.messageApplication.includePending state id).application.visible.completed
+      ((runtime.host prepare applyMessage).includePending state id).application.visible.completed
         node = true)
-    (state next : runtime.messageApplication.State)
-    (action : runtime.messageApplication.Action)
+    (state next : (runtime.host prepare applyMessage).State)
+    (action : (runtime.host prepare applyMessage).Action)
     (hstate : state.application.visible.completed node = true ∨
       (target ∈ state.pool.pending ∧ ready state.application))
-    (hnext : next ∈ (runtime.messageApplication.step state action).support) :
+    (hnext : next ∈ ((runtime.host prepare applyMessage).step state action).support) :
     next.application.visible.completed node = true ∨
       (target ∈ next.pool.pending ∧ ready next.application) := by
   rcases hstate with hcompleted | ⟨hpending, hready⟩
-  · exact Or.inl (runtime.step_completed state next action node hcompleted hnext)
+  · exact Or.inl (runtime.step_completed prepare applyMessage hrecords state next action node
+    hcompleted hnext)
   · cases action with
     | privateCommand actor command =>
         simp only [MessageApplication.step, GameTheory.Math.Probability.FinDist.mem_support_pure]
@@ -441,35 +476,45 @@ private theorem step_pendingReadyOrCompleted
         · right
           constructor
           · simpa only [MessageApplication.includePending_pool] using hretained
-          · exact runtime.messageApplication.includePending_application_invariant ready
+          · exact (runtime.host prepare applyMessage).includePending_application_invariant ready
               hhandler state id hready
         · exact Or.inl (hresolve state id hready hselected)
     | environment command =>
-        simp only [MessageApplication.step, messageApplication,
+        simp only [MessageApplication.step, host,
           GameTheory.Math.Probability.FinDist.map_pure,
           GameTheory.Math.Probability.FinDist.mem_support_pure] at hnext
         subst next
         exact Or.inr ⟨hpending, htick state.application hready⟩
 
-private theorem run_pendingReadyOrCompleted
+omit [DecidableEq Value] in
+/-- A submitted packet remains pending until its site completes whenever its
+readiness is stable and inclusion completes that site. The commitment service
+and all intervening native actions are arbitrary. -/
+theorem run_pending_or_completed
+    {Service : Type (max uPrincipal uValue)}
     (runtime : SealedResolution Principal Value)
-    (ready : ApplicationState Principal Value → Prop)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+        Option (ApplicationState Principal Value Service))
+    (hrecords : runtime.HandlerRecords applyMessage)
+    (ready : ApplicationState Principal Value Service → Prop)
     (target : Message Principal (SealedProgram.Payload Principal Value))
     (node : Nat)
     (hprivate : ∀ application actor command, ready application →
-      ready (runtime.messageApplication.privateStep application actor command))
+      ready ((runtime.host prepare applyMessage).privateStep application actor command))
     (hhandler : ∀ application message next, ready application →
-      runtime.handle application message = some next → ready next)
+      applyMessage application message = some next → ready next)
     (htick : ∀ application, ready application → ready (runtime.tick application))
     (hresolve : ∀ state id, ready state.application →
       state.pool.lookup id = some target →
-      (runtime.messageApplication.includePending state id).application.visible.completed
+      ((runtime.host prepare applyMessage).includePending state id).application.visible.completed
         node = true)
-    (actions : List runtime.messageApplication.Action)
-    (state next : runtime.messageApplication.State)
+    (actions : List (runtime.host prepare applyMessage).Action)
+    (state next : (runtime.host prepare applyMessage).State)
     (hstate : state.application.visible.completed node = true ∨
       (target ∈ state.pool.pending ∧ ready state.application))
-    (hnext : next ∈ (runtime.messageApplication.run actions state).support) :
+    (hnext : next ∈ ((runtime.host prepare applyMessage).run actions state).support) :
     next.application.visible.completed node = true ∨
       (target ∈ next.pool.pending ∧ ready next.application) := by
   induction actions generalizing state with
@@ -483,7 +528,8 @@ private theorem run_pendingReadyOrCompleted
         GameTheory.Math.Probability.FinDist.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨middle, hmiddle, hnext⟩ := hnext
       exact ih middle
-        (step_pendingReadyOrCompleted runtime ready target node hprivate hhandler htick
+        (step_pendingReadyOrCompleted runtime prepare applyMessage hrecords ready target node
+          hprivate hhandler htick
           hresolve state middle action hstate hmiddle) hnext
 
 /-- A ready canonical commitment remains as that exact pending envelope under
@@ -517,7 +563,10 @@ theorem runPolicies_commitment_pendingOrCompleted
     ⟨(owner, serial), .commitment node (owner, node)⟩
   obtain ⟨actions, _, hrun⟩ := runtime.messageApplication.runPolicies_native_support
     players environment schedule execution next hnext
-  have hresult := run_pendingReadyOrCompleted runtime ready target node
+  have hresult := run_pending_or_completed runtime
+    (fun (service : IdealCommitments Principal Nat Value) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records ready
+        target node
     (fun state actor command hready => ⟨
       IdealCommitments.lookup_sealValue_of_eq_some state.service actor command.down.1
         command.down.2 (owner, node) value hready.1,
@@ -585,7 +634,10 @@ theorem runPolicies_opening_pendingOrCompleted
     ⟨(owner, serial), .opening node (owner, source) value⟩
   obtain ⟨actions, _, hrun⟩ := runtime.messageApplication.runPolicies_native_support
     players environment schedule execution next hnext
-  have hresult := run_pendingReadyOrCompleted runtime ready target node
+  have hresult := run_pending_or_completed runtime
+    (fun (service : IdealCommitments Principal Nat Value) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records ready
+        target node
     (fun state actor command hready => ⟨
       hready.1.register actor command.down.1 command.down.2,
       IdealCommitments.lookup_sealValue_of_eq_some state.service actor command.down.1

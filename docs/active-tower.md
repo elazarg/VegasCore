@@ -170,10 +170,24 @@ completion may use defaults. Both commitment hosts instantiate one termination
 proof over the shared public clock and each handler's checked event-recording
 effect.
 
-The remaining candidate steps are exclusion of a first honest timeout under
-deadline-relative service and the source-only utility
-comparison. Clock-driven completion does not establish honest success or
-attribute a timeout to a deviating player.
+The candidate delivery proof applies to every actual generated submission.
+`candidatePolicy_submission_ready` derives stable admission data from the graph
+policy and its owner's native cache, under arbitrary opponent and environment
+policies. `candidatePolicy_submission_completed_of_drained` proves that draining
+the pending pool completes that submitted packet's site. These laws also hold
+after defaults. The runtime proof accepts unopenable commitment packets; an
+opening requires only its own selected candidate to be openable. Deadline
+provenance and completion persistence are shared across the two commitment hosts.
+`candidatePolicy_registration_fresh` and `candidatePolicy_no_reregistration`
+establish the one-preparation-per-site discipline from actual owner memory,
+without a fixed-selector premise.
+
+Exclusion of a first honest timeout still requires the bounded-polling argument:
+ready honest players must issue progress commands, each preparation is charged
+once, and submissions complete within the reserved-service bound. The graph-level
+resolution utility comparison and its source transport also remain unproved for
+the candidate backend. Clock-driven completion and per-packet delivery alone do
+not establish honest success or attribute timeouts.
 
 ## End-to-end target
 

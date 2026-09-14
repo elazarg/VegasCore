@@ -135,8 +135,9 @@ theorem refresh_false_events (runtime : SealedResolution Principal Value)
     (state : ApplicationState Principal Value) :
     (runtime.tick state).service = state.service := rfl
 
-@[simp] theorem tick_clock (runtime : SealedResolution Principal Value)
-    (state : ApplicationState Principal Value) :
+@[simp] theorem tick_clock {Service : Type (max uPrincipal uValue)}
+    (runtime : SealedResolution Principal Value)
+    (state : ApplicationState Principal Value Service) :
     (runtime.tick state).visible.clock = state.visible.clock + 1 :=
   runtime.refresh_clock true _
 

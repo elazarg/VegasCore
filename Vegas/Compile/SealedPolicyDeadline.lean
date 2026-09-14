@@ -70,7 +70,10 @@ theorem no_timeout_of_poll_service (supported : SealedFragment G ty)
   let serviced := (trace.drop (position (count - 1))).first
   have hprefix := (runtime.messageApplication.tracePolicies_drop_support players environment
     schedule initial trace htrace (position 0)).1
-  have hreadySound := runtime.runPolicies_readySound players environment
+  have hreadySound := runtime.runPolicies_readySound
+    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    players environment
     (schedule.take (position 0)) initial before
     (SealedResolution.PublicState.ReadySound.initial runtime) hprefix
   obtain ⟨rule, hrule, hready⟩ := hreadySound target.val timestamp hstamp
@@ -84,12 +87,18 @@ theorem no_timeout_of_poll_service (supported : SealedFragment G ty)
   have hbetween := runtime.messageApplication.tracePolicies_between players environment
     schedule initial trace htrace (position 0) (position (count - 1) - position 0)
   rw [Nat.add_sub_of_le (hposition.monotone (Nat.zero_le (count - 1)))] at hbetween
-  have hstampServiced := runtime.runPolicies_firstReady?_of_some players environment
+  have hstampServiced := runtime.runPolicies_firstReady?_of_some
+    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    players environment
     ((schedule.drop (position 0)).take (position (count - 1) - position 0)) before serviced
     target.val timestamp hstamp hbetween
   have hservicedPrefix := (runtime.messageApplication.tracePolicies_drop_support players environment
     schedule initial trace htrace (position (count - 1))).1
-  have hdeadlineSound := runtime.runPolicies_deadlineSound players environment
+  have hdeadlineSound := runtime.runPolicies_deadlineSound
+    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    players environment
     (schedule.take (position (count - 1))) initial serviced
     (SealedResolution.PublicState.DeadlineSound.initial runtime) hservicedPrefix
   have hnoTimeout : target.val ∉ serviced.native.application.visible.timeouts := by
@@ -104,7 +113,10 @@ theorem no_timeout_of_poll_service (supported : SealedFragment G ty)
   have hremaining := runtime.messageApplication.tracePolicies_between players environment
     schedule initial trace htrace (position (count - 1)) (later - position (count - 1))
   rw [Nat.add_sub_of_le hlater] at hremaining
-  exact runtime.runPolicies_no_timeout_of_completed players environment
+  exact runtime.runPolicies_no_timeout_of_completed
+    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    players environment
     ((schedule.drop (position (count - 1))).take (later - position (count - 1))) serviced
     (trace.drop later).first target.val hcompleted hnoTimeout hremaining
 
@@ -167,7 +179,10 @@ theorem tracePolicies_no_timeout (total : Nat) (hperiods : period ∣ total)
   have hrun := (runtime.messageApplication.tracePolicies_drop_support players environment schedule
     initial trace htrace (total * width)).1
   rw [hlast] at hrun
-  have hsound := runtime.runPolicies_deadlineSound players environment
+  have hsound := runtime.runPolicies_deadlineSound
+    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    players environment
     (schedule.take (total * width)) initial trace.last
     (SealedResolution.PublicState.DeadlineSound.initial runtime) hrun
   have hfinalClock := (runtime.tracePolicies_round_clock principals serviceSlots players wire
@@ -208,7 +223,10 @@ theorem tracePolicies_no_timeout (total : Nat) (hperiods : period ∣ total)
   have hsuffix := runtime.messageApplication.tracePolicies_between players environment schedule
     initial trace htrace (position 0) (total * width - position 0)
   rw [Nat.add_sub_of_le hfirstLe, hlast] at hsuffix
-  have hstamp := runtime.runPolicies_firstReady?_of_lt_clock players environment
+  have hstamp := runtime.runPolicies_firstReady?_of_lt_clock
+    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    players environment
     ((schedule.drop (position 0)).take (total * width - position 0))
     (trace.drop (position 0)).first trace.last target.val timestamp hsuffix hstampFinal
     (by rw [hpollClock 0 (by omega)]; omega)
@@ -272,7 +290,10 @@ theorem runRounds_no_timeout (total : Nat) (hperiods : period ∣ total)
       (by simp [width, MessageApplication.roundInvocations]) schedule initial trace
       (by rw [MessageApplication.roundSchedule_length]) htrace
   intro htimeout
-  exact hclear (runtime.runPolicies_timeout_mem players environment suffix _ trace.last
+  exact hclear (runtime.runPolicies_timeout_mem
+    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    players environment suffix _ trace.last
     target.val htimeout hsuffix)
 
 end PeriodicService
@@ -313,7 +334,10 @@ theorem runRounds_timeout_owner (supported : SealedFragment G ty)
   let runtime := supported.resolvingRuntime nullValue window
   let initial := PolicyExecution.initial runtime.messageApplication
     (State.initial runtime.messageApplication runtime.initial)
-  have hsound := runtime.runRounds_deadlineSound principals serviceSlots players wire total
+  have hsound := runtime.runRounds_deadlineSound
+    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    principals serviceSlots players wire total
     initial next (by rfl) (SealedResolution.PublicState.DeadlineSound.initial runtime) hnext
   obtain ⟨rule, timestamp, hrule, hstamp, hdeadline, hready⟩ := hsound index htimeout
   obtain ⟨node, hindex, _⟩ := supported.ruleAt_exists_node hrule

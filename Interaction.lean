@@ -89,6 +89,7 @@ import Interaction.SealedCandidateProvenance
 import Interaction.SealedCandidateLikelihood
 import Interaction.SealedCandidateOpening
 import Interaction.SealedCandidateAcceptance
+import Interaction.SealedCandidateSubmission
 import Interaction.SealedCandidateMemory
 import Interaction.SealedCandidateKnowledge
 import Interaction.SealedCandidateCoupling

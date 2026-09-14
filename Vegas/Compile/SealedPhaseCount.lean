@@ -365,7 +365,10 @@ theorem submissionAt_not_after_service (who : Player) (node : Fin G.nodeCount)
   have hbetween := runtime.messageApplication.tracePolicies_between players environment
     schedule initial trace htrace checkpoint (later - checkpoint)
   rw [Nat.add_sub_of_le hbefore] at hbetween
-  have hretained := runtime.runPolicies_completed players environment
+  have hretained := runtime.runPolicies_completed
+    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+      (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+    players environment
     ((schedule.drop checkpoint).take (later - checkpoint)) serviced (trace.drop later).first
     node.val hdone hbetween
   rw [hlater.1] at hretained
@@ -551,7 +554,10 @@ theorem completed_by_poll (who : Player) (policy : CommitPolicy G who)
     have hbetween := runtime.messageApplication.tracePolicies_between players environment
       schedule initial trace htrace (position left) (position right - position left)
     rw [Nat.add_sub_of_le hpositions] at hbetween
-    exact runtime.runPolicies_completed players environment
+    exact runtime.runPolicies_completed
+      (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+        (service.sealValue owner slot value).state) runtime.handle runtime.handle_records
+      players environment
       ((schedule.drop (position left)).take (position right - position left))
       (trace.drop (position left)).first (trace.drop (position right)).first node
       hcompleted hbetween

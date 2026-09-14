@@ -373,7 +373,7 @@ theorem commitCommand_fresh (supported : SealedFragment G ty) (who : Player)
         node guard hsem reads hreads)
   simp only [commitCommand, hcache, hlocal]
 
-private theorem commitCommand_submission (supported : SealedFragment G ty) (who : Player)
+theorem commitCommand_submission (supported : SealedFragment G ty) (who : Player)
     (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
