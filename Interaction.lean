@@ -82,6 +82,8 @@ import Interaction.SealedPreparedPolicies
 import Interaction.SealedCandidatePolicyEmbedding
 import Interaction.SealedCandidateRounds
 import Interaction.SealedCandidateBinding
+import Interaction.SealedCandidateOpening
+import Interaction.SealedCandidateMemory
 import Interaction.SealedCandidateKnowledge
 import Interaction.SealedCandidateCoupling
 import Interaction.SealedCandidateEvents

@@ -33,6 +33,7 @@ import Vegas.Compile.SealedView
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedCandidatePolicy
+import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateReadBound
 import Vegas.Compile.SealedCandidateReplay
 import Vegas.Compile.SealedCandidateSourceExtraction
@@ -70,6 +71,7 @@ import Vegas.Compile.SealedRandomizedCoupling
 import Vegas.Compile.SealedRoundCoupling
 import Vegas.Compile.SealedStoppingCoupling
 import Vegas.Compile.SealedSourceInputs
+import Vegas.Compile.SealedViewAgreement
 import Vegas.Compile.SealedReplay
 import Vegas.Compile.SealedPublication
 import Vegas.Compile.SealedPolicyKnowledge

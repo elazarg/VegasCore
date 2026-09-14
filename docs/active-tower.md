@@ -85,6 +85,17 @@ opponent policies and no assumed source-input equality. The joint probability
 law identifying those replays with the original native execution remains
 unproved, as does the candidate-host incentive bound for fallback runs.
 
+Generated policies satisfy `candidatePolicy_memory` under arbitrary opponent
+and environment policies: each honest owner's command cache agrees with its
+candidate catalog, including across delayed delivery, replay, and timeouts.
+Before timeout, `runPolicies_candidate_openings` ties every successful opening
+to its actual accepted handle and immutable value; acceptance alone need not
+imply openability. The shared event-value read reconstruction then supplies
+`candidate_registration_kernel`: an honest draw fills a fresh slot and uses
+the original source kernel, provided openable accepted values agree with the
+source realization. Establishing that accepted-value agreement at every replay
+prefix, and then the joint probability law, remains part of the deviation proof.
+
 ## End-to-end target
 
 The immediate unproved result is **source-to-candidate-message equilibrium

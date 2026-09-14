@@ -84,6 +84,20 @@ theorem registeredPlayerHistory_injective (runtime : SealedResolution Principal 
           simpa only [registeredPlayerView, MessageInterface.PlayerEntry.mk.injEq,
             MessageInterface.View.mk.injEq] using heq
 
+/-- Lossless history retyping preserves every command-based first-value cache. -/
+theorem registeredPlayerHistory_cache (runtime : SealedResolution Principal Value)
+    (encoding : ChoiceEncoding Value runtime.candidateApplication.PlayerCommand)
+    (history : List runtime.candidateApplication.PlayerEntry) :
+    encoding.cachedValue runtime.messageApplication (runtime.registeredPlayerHistory history) =
+      encoding.cachedValue runtime.candidateApplication history := by
+  induction history with
+  | nil => rfl
+  | cons entry rest ih =>
+      simp only [registeredPlayerHistory, List.map_cons, ChoiceEncoding.cachedValue]
+      cases encoding.decode entry.command
+      · exact ih
+      · rfl
+
 /-- Retype only the policy interface; the player sees exactly the same data. -/
 def candidatePlayerPolicy (runtime : SealedResolution Principal Value)
     (policy : runtime.messageApplication.PlayerPolicy) :

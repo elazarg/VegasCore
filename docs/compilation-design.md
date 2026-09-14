@@ -94,6 +94,18 @@ The legal fallback used for an absent or unopenable selection still requires
 the source failure/incentive argument; constructing a source policy does not
 establish that strategic comparison.
 
+The kernel comparison uses only the values that contribute to player-side
+store reconstruction: included openings and own cached values at accepted
+handles. It does not require every accepted candidate to be openable.
+`PreparedCandidateOwner` derives an honest owner's cache/catalog agreement
+from its generated submissions, while leaving other players unrestricted;
+retained-message safety includes the pool, ledger, inboxes, and sent history.
+`CandidateOpeningInvariant` ties successful pre-timeout openings to accepted
+handles. Together they discharge the runtime premises of
+`candidate_registration_kernel`. The accepted-value correspondence with the
+extracted source realization still needs to be established for every prefix;
+this local kernel theorem is not the whole-program probability law.
+
 Candidate handles are owner-scoped identifiers. A pending handle can acquire
 its private value until acceptance; an unprepared accepted handle becomes
 permanently unopenable. A concrete service must justify its embedding into

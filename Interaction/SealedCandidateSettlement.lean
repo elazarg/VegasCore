@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.SealedCandidateEvents
+import Interaction.SealedCandidateOpening
 import Interaction.SealedResolutionSettlement
 
 /-! # Source-site timeout settlement with arbitrary commitment candidates
@@ -21,41 +22,6 @@ universe uPrincipal uValue
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 variable [DecidableEq Principal] [DecidableEq Value]
 
-private theorem candidateMessage_opened_source
-    (program : SealedProgram Principal)
-    (candidates next : CommitmentCandidates Principal Nat Value)
-    (events : List (SealedProgram.Event Principal Value))
-    (message : Message Principal (SealedProgram.Payload Principal Value))
-    (node : Nat) (value : Value)
-    (hvalid : program.candidateMessage? candidates events message =
-      some (next, .opened node value)) :
-    ∃ owner source requires handle,
-      program.rules[node]? = some { kind := .reveal owner source, requires } ∧
-        .accepted source handle ∈ events := by
-  rcases program.candidateMessage?_effect candidates events message _ hvalid with
-    ⟨index, handle, _hpayload, heq⟩ | ⟨index, handle, claimed, hpayload, heq⟩
-  · cases heq
-  · cases heq
-    simp only [SealedProgram.candidateMessage?, hpayload] at hvalid
-    cases hrule : program.rules[node]? with
-    | none => simp [hrule] at hvalid
-    | some rule =>
-        simp only [hrule] at hvalid
-        cases hkind : rule.kind with
-        | commit | disabled => simp only [hkind] at hvalid; contradiction
-        | reveal owner source =>
-            simp only [hkind] at hvalid
-            split at hvalid
-            next hchecks =>
-              refine ⟨owner, source, rule.requires, handle, ?_, ?_⟩
-              · have hshape : rule =
-                    ({ kind := .reveal owner source, requires := rule.requires } :
-                      SealedRule Principal) := by
-                  cases rule
-                  simp_all
-                exact congrArg some hshape
-              · exact SealedProgram.accepted_mem_of_accepted?_eq_some hchecks.2.2.2.2.1
-            next => contradiction
 
 /-- Candidate admission supplies the shared public settlement contract. A
 rejected malformed or failed opening has no effect; expiration remains the
@@ -87,10 +53,11 @@ theorem SettlementInvariant.candidateHandle
           intro htimeout
           simp [hpayload, htimeout] at hgate
         · intro node value hevent
-          obtain ⟨owner, source, requires, handle, hrule, haccepted⟩ :=
-            candidateMessage_opened_source (runtime.program.discharge state.visible.timeouts)
+          obtain ⟨owner, source, requires, handle, hrule, hselected, _howner, _hvalue⟩ :=
+            (runtime.program.discharge state.visible.timeouts).candidateMessage?_opening_sound
               state.service result.1 state.visible.events message node value
               (by simpa only [← hevent] using hmessage)
+          have haccepted := SealedProgram.accepted_mem_of_accepted?_eq_some hselected
           simp only [SealedProgram.discharge, List.getElem?_map] at hrule
           cases horiginal : runtime.program.rules[node]? with
           | none => simp [horiginal] at hrule

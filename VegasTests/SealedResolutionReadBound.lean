@@ -2,6 +2,7 @@
 
 import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedCandidateSourceExtraction
+import Vegas.Compile.SealedCandidateInputs
 import VegasTests.PendingSource
 
 /-! # Native registration and acceptance hiding for a checked two-player source
@@ -281,6 +282,58 @@ theorem candidate_source_unopenable_defaults (profile : SourceBehavioralProfile 
     [.player 1, .environment] none profile cfg hcfg (node 1) guard hguard
   rw [candidate_selection_unopenable] at hchoice
   exact hchoice
+
+/-- The source compiler supplies the preparation discipline for player zero;
+the other player's entire native policy and the environment remain arbitrary. -/
+theorem candidate_compiled_memory (profile : SourceBehavioralProfile core)
+    (deviator : runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation PendingSource.Player))
+    (next : runtime.candidateApplication.PolicyExecution)
+    (hnext : next ∈ (runtime.candidateApplication.runPolicies
+      (GameTheory.Profile.update
+        (sig := policySignature PendingSource.Player runtime.candidateApplication)
+        (fun who => compilation.compileCandidatePolicy none 3 who (profile who)) 1 deviator)
+      environment schedule
+      (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial))).support)
+    (slot : Nat) :
+    next.native.application.service.lookup (0, slot) =
+      ((sealedFragment.compile.registrationEncoding slot).cachedValue runtime.candidateApplication
+        (next.principalHistory 0) |>.map CommitmentCandidate.openable).getD .fresh := by
+  have hmemory : SealedResolution.PreparedCandidateOwner runtime 0 next := by
+    let original := Vegas.ToEventGraph.compileSourcePolicy core source.core.fresh
+      (Vegas.ToEventGraph.BuildState.fromInitial
+        (Vegas.ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx))
+      rfl 0 (profile 0)
+    exact sealedFragment.candidatePolicy_memory none 3 0 original _ environment
+      (by rfl) schedule next hnext
+  exact hmemory.memory slot
+
+/-- A normal second-player opening in this checked source always uses its
+actually accepted candidate, even for completely arbitrary native policies. -/
+theorem candidate_opening_uses_selected_handle
+    (players : PendingSource.Player → runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation PendingSource.Player))
+    (next : runtime.candidateApplication.PolicyExecution)
+    (hnext : next ∈ (runtime.candidateApplication.runPolicies players environment schedule
+      (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial))).support)
+    (hclear : next.native.application.visible.timeouts = []) (value : Value)
+    (hopened : SealedProgram.Event.opened 3 value ∈ next.native.application.visible.events) :
+    ∃ slot, SealedProgram.accepted? next.native.application.visible.events 1 = some (1, slot) ∧
+      next.native.application.service.lookup (1, slot) = .openable value := by
+  have hvalid := SealedResolution.runPolicies_candidate_openings players environment schedule
+    _ next SealedResolution.CandidateOpeningInvariant.initial hnext
+  obtain ⟨owner, sourceSlot, requires, handle, hrule, haccepted, howner, hvalue⟩ :=
+    hvalid hclear 3 value hopened
+  have hkind := congrArg (Option.map SealedRule.kind) hrule
+  change some (SealedRuleKind.reveal (1 : PendingSource.Player) 1) =
+    some (.reveal owner sourceSlot) at hkind
+  simp only [Option.some.injEq, SealedRuleKind.reveal.injEq] at hkind
+  obtain ⟨rfl, rfl⟩ := hkind
+  have hhandle : handle = (1, handle.2) := Prod.ext howner rfl
+  rw [hhandle] at haccepted hvalue
+  exact ⟨handle.2, haccepted, hvalue⟩
 
 end VegasTests.SealedResolutionReadBound
 
