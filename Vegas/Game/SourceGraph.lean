@@ -2,6 +2,8 @@
 
 import Vegas.Compile.SourceCorrespondence
 import Vegas.EventGraph.Strategic
+import Vegas.Compile.SourceUtility
+import GameTheoryExtensions.Core.UtilitySimulation
 
 /-! # Strategic preservation from written source to declared-read graph execution
 
@@ -37,6 +39,32 @@ def sourceGraphSimulation (source : WFProgram P L) :
     refine ⟨FinDist.pure (backtranslateCommitPolicy source.core who replacement), ?_⟩
     rw [FinDist.pure_bind]
     exact runPolicyNodes_source_deviation source.core source.legal profile who replacement
+
+/-- The source-to-graph certificate with utilities evaluated from public
+compiled payouts. Nonterminal graph states may have a different utility
+extension; the independently proved terminal-support theorem discharges that
+difference before composition with a message backend. -/
+def sourceGraphPayoutSimulation (source : WFProgram P L)
+    (valuation : Payout P → P → ℝ) (missing : P → ℝ) :
+    UtilitySimulation (sourceGameForm source.core.prog source.core.env)
+      (policyGame (compile source.core).graph (compile source.core).graphWF
+        (compile_guardLive source.core source.legal))
+      (fun final who => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
+      (fun cfg => (source.graphPayoutUtility valuation missing).eval cfg.1.store) :=
+  (source.sourceGraphSimulation.toUtilitySimulation
+    (fun outcome who => outcome.elim (missing who)
+      (fun final => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who))
+    (fun _ _ => trivial)).congrUtilities _ _ (fun _ _ => rfl) (by
+      intro profile who
+      apply FinDist.expect_congr
+      intro cfg hcfg
+      have hterminal := runPolicyNodes_terminal (compile source.core).graphWF
+        (compile_guardLive source.core source.legal) profile
+        ⟨Config.initial _, .initial⟩ (compile source.core).graph.nodeOrder
+        (compile source.core).graph.nodeOrder_readyOrder
+        (fun node => Or.inr (by simp)) cfg hcfg
+      rw [observeSourceOutcome_of_terminal source.core cfg hterminal]
+      exact (source.graphPayoutUtility_terminal valuation missing cfg hterminal who).symm)
 
 /-- All source-outcome utilities have the same approximate Nash equilibria
 at compiled graph profiles, with the same additive error. `none` is unreachable

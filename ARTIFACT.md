@@ -31,7 +31,7 @@ a build optimization; the subsequent build checks the proof terms.
 | How are source decisions and graph reads related? | `Vegas/Compile/Compiler.lean`, `SourceAdequacy.lean`, and the event-graph laws |
 | What executes public messages? | `Interaction/`, `Vegas/Compile/SealedSource.lean` |
 | Which active games use that runtime? | `Vegas/Game/SealedRounds.lean`, `SealedMessages.lean`, `SealedRelease.lean`, and `SealedTimeoutApplication.lean` |
-| Where do source payout bounds imply native incentives? | `Vegas/Core/Settlement.lean`, `Vegas/Game/SealedPayoutBounds.lean`, and the one-player integration test `VegasTests/SealedPayout.lean` |
+| Where do source payout bounds imply native incentives? | `Vegas/Core/Settlement.lean`, `Vegas/Game/SourceCandidate.lean`, `Vegas/Game/SealedCandidate.lean`, and `VegasTests/SealedPayout.lean` |
 | Which claims are paper-facing? | The single root audit, `Paper.lean` |
 
 Read the owning theorem and definitions, not only its paper-facing restatement.
@@ -47,7 +47,7 @@ fails on any unverified claim or admitted audit declaration. Neither mode reads
 reference code or derives obligations from it. `--allow-missing-paper` permits
 a clone without the separate manuscript; prose coverage is then unchecked.
 The concrete end-to-end target is specified in
-[the active tower](docs/active-tower.md#end-to-end-target).
+[the active tower](docs/active-tower.md#end-to-end-candidate-theorem).
 
 ## Trust and scope
 
@@ -127,8 +127,14 @@ a sufficient window ensure that every timeout belongs to an unprotected player.
 `VegasTests/SealedCandidateDeadline.lean` instantiates this result for a
 two-player source with an arbitrary first-player policy and delayed service;
 the second player meets both deadlines and completed supported runs exist.
-The completed-game deviation utility bound and Nash theorem still concern the
-registered-site host; the corresponding candidate-host utility proof is open.
+`pending_candidate_source_payout_deviation_bound` and
+`pending_candidate_source_payout_nash_iff` audit the candidate host's end-to-end
+utility simulation and same-error equilibrium correspondence. The proof composes
+`sourceGraphPayoutSimulation` with `CandidateRoundModel.utilitySimulation` through
+`UtilitySimulation.trans`. The compiler derives graph information, disclosure,
+and quitting certificates from the source; no native incentive inequality is a
+premise. `VegasTests/SealedPayout.lean` also instantiates these candidate results
+for the nonconstant payout above and arbitrary unreserved candidate wire policies.
 
 At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
 sharper exact statement under declared-read locality and a single ready

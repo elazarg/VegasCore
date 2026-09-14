@@ -3,6 +3,7 @@
 import Interaction.SealedCandidateEvents
 import Interaction.SealedCandidateOpening
 import Interaction.SealedResolutionSettlement
+import Interaction.SealedCandidateRounds
 
 /-! # Source-site timeout settlement with arbitrary commitment candidates
 
@@ -94,5 +95,32 @@ theorem runPolicies_candidate_settlementInvariant
     simp only [candidateApplication, host, FinDist.mem_support_pure] at hresult
     subst result
     exact hstate.clock.refresh true
+
+/-- Public provenance and settlement hold for every outcome of the actual
+candidate stopped driver, under arbitrary players and adaptive wire policies. -/
+theorem runRounds_candidate_publicInvariant
+    (runtime : SealedResolution Principal Value)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → runtime.candidateApplication.PlayerPolicy)
+    (wire : runtime.candidateApplication.WirePolicy) (count : Nat)
+    (execution next : runtime.candidateApplication.PolicyExecution)
+    (hinitial : PublicEventInvariant runtime execution.native.application.visible ∧
+      SettlementInvariant runtime execution.native.application.visible)
+    (hnext : next ∈ (runtime.candidateRoundDriver.runRounds principals serviceSlots
+      players wire count execution).support) :
+    PublicEventInvariant runtime next.native.application.visible ∧
+      SettlementInvariant runtime next.native.application.visible := by
+  apply runtime.candidateRoundDriver.runRounds_application_invariant
+    (fun state => PublicEventInvariant runtime state.visible ∧
+      SettlementInvariant runtime state.visible) ?_ ?_ ?_
+    principals serviceSlots players wire count execution next hinitial hnext
+  · intro state owner command hstate
+    exact hstate
+  · intro state message result hstate hresult
+    exact ⟨hstate.1.candidateHandle message hresult, hstate.2.candidateHandle message hresult⟩
+  · intro state command result hstate hresult
+    simp only [candidateApplication, host, FinDist.mem_support_pure] at hresult
+    subst result
+    exact ⟨hstate.1.clock.refresh true, hstate.2.clock.refresh true⟩
 
 end Interaction.SealedResolution

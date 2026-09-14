@@ -194,8 +194,8 @@ runs. Both hosts instantiate `MessageApplication.RoundDriver`; its completion
 test and bounded loop are shared, and `candidateRounds_law` transports the full
 honest execution law through early stopping. Under deadline-relative service,
 `candidate_honest_round_payout_law` proves normal completion and the original
-source payout law in the candidate driver. The candidate service's completed-round
-deviation utility bound remains to be established.
+source payout law in the candidate driver. Its completed-round deviation bound
+is constructed by `CandidateRoundModel.utilitySimulation` below.
 The public acceptance/disclosure barrier is
 independent of private registration, but that information-flow fact and a
 source settlement witness alone do not provide the required strategy law.
@@ -292,10 +292,16 @@ owned default in that realization. `Graph.PublicUtility.QuitBound` expresses a
 uniform incentive condition solely over terminal graph realizations;
 `timeout_utility_le_graph` compares attributed settlement to the terminal graph
 realization retained by the coupling. The two realizations may differ: only the
-coupling retains the original opponents' policies. The remaining certificate
-must combine attribution, this pointwise bound, and the probability marginals,
-then obtain its graph utility condition from the source condition. Neither
-coupled marginal alone establishes the bound.
+coupling retains the original opponents' policies.
+`CandidateRoundModel.deviation_bound` combines attribution, this pointwise bound,
+and the probability marginals. A finite mixture has a component at least as good
+as its mean, so the exported witness is one legal graph policy.
+`CandidateRoundModel.utilitySimulation` packages the honest and deviation utility
+laws. `WFProgram.graphQuitBound_of_source` derives its incentive condition from
+the written-source bound. `SealedCompilation.candidatePayoutSimulation` composes
+the source-to-graph and graph-to-candidate certificates with
+`UtilitySimulation.trans`; the actual generated source policies are its strategy
+translation. Neither coupled marginal alone establishes this bound.
 
 Candidate handles are owner-scoped identifiers. A pending handle can acquire
 its private value until acceptance; an unprepared accepted handle becomes

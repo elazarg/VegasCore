@@ -49,13 +49,17 @@ import Vegas.Game.SealedRelease
 import Vegas.Game.SealedRounds
 import Vegas.Game.SealedPayoutBounds
 import Vegas.Game.SourceGraph
+import Vegas.Game.SourceCandidate
 
 /-! # Paper theorem audit
 
 This file is deliberately a thin audit surface. Every closed statement below
 delegates directly to a theorem in the active source, graph, or sealed-message
 tower. Source-to-declared-read-graph strategic preservation uses a concrete
-compiler simulation. The pending-message round game has a concrete
+compiler simulation. The candidate pending-message round game composes that
+certificate with an independent graph-to-native utility simulation. For payout
+valuations, the written-source uniform quitting bound supplies its incentive
+condition; native policies remain unrestricted. The registered-site game also has a
 `UtilitySimulation` under timely service, normal utility agreement, and
 timeout-checkpoint conditional utility comparisons. A uniform cap on own
 timeout settlement is a separately checked sufficient condition.
@@ -1109,6 +1113,57 @@ theorem pending_source_payout_nash_iff
     IsεNash (sourceGameForm source.core.prog source.core.env)
       (SealedCompilation.sourcePayoutUtility (source := source) valuation) ε profile :=
   model.isεNash_iff_of_sourcePayoutBound timely valuation missing bound hbound ε profile
+
+/-- The graph-composed certificate bounds every native candidate deviation
+by one legal written-source deviation, with the other players unchanged. -/
+theorem pending_candidate_source_payout_deviation_bound
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
+    (valuation : Payout Player → Player → ℝ) (missing bound : Player → ℝ)
+    (hbound : source.core.prog.QuitPayoutBound source.core.env nullValue valuation bound)
+    (profile : SourceBehavioralProfile source.core.prog) (who : Player)
+    (replacement : model.game.sig.Strategy who) :
+    ∃ alternative : SourceBehavioralPolicy source.core.prog who,
+      (model.game.play (Profile.update
+        (fun player => compilation.compileCandidatePolicy nullValue window player (profile player))
+        who replacement)).expect (fun next =>
+          (compilation.publicPayout? next.native.application.visible.events).elim
+            (missing who) (fun payout => valuation payout who)) ≤
+      ((sourceGameForm source.core.prog source.core.env).play
+        (Profile.update profile who alternative)).expect (fun final =>
+          valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who) :=
+  compilation.candidate_deviation_bound nullValue window model timely valuation missing bound
+    hbound profile who replacement
+
+/-- The source-only quitting condition gives same-error Nash correspondence
+for the actual candidate-message driver and original generated source policies. -/
+theorem pending_candidate_source_payout_nash_iff
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
+    (valuation : Payout Player → Player → ℝ) (missing bound : Player → ℝ)
+    (hbound : source.core.prog.QuitPayoutBound source.core.env nullValue valuation bound)
+    (ε : ℝ) (profile : SourceBehavioralProfile source.core.prog) :
+    IsεNash model.game
+      (fun next who => (compilation.publicPayout? next.native.application.visible.events).elim
+        (missing who) (fun payout => valuation payout who)) ε
+      (fun who => compilation.compileCandidatePolicy nullValue window who (profile who)) ↔
+    IsεNash (sourceGameForm source.core.prog source.core.env)
+      (fun final who => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
+      ε profile :=
+  compilation.candidate_approximate_nash_iff nullValue window model timely valuation missing bound
+    hbound ε profile
+
+/-- info: 'Vegas.Paper.pending_candidate_source_payout_deviation_bound'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_source_payout_deviation_bound
+
+/-- info: 'Vegas.Paper.pending_candidate_source_payout_nash_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_source_payout_nash_iff
 
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal

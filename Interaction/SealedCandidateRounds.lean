@@ -2,6 +2,7 @@
 
 import Interaction.SealedCandidatePolicyEmbedding
 import Interaction.SealedResolutionRounds
+import Interaction.MessageApplicationService
 
 /-! # Candidate commitments in the shared stopped round driver
 
@@ -68,6 +69,50 @@ private theorem candidate_wireEnvironment (runtime : SealedResolution Principal 
   congr 1
   funext command
   cases command <;> rfl
+
+/-- Retyping the environment preserves the deadline service obligation. This
+direction lets an arbitrary candidate wire use the honest embedding theorem;
+surjectivity of wire retyping does not restrict its observations or choices. -/
+theorem inclusionService_of_candidateWirePolicy (runtime : SealedResolution Principal Value)
+    (wire : runtime.messageApplication.WirePolicy) (during : Nat → Prop)
+    (hservice : runtime.candidateApplication.InclusionService during
+      (runtime.candidateApplication.wireEnvironment (runtime.candidateWirePolicy wire))) :
+    runtime.messageApplication.InclusionService during
+      (runtime.messageApplication.wireEnvironment wire) := by
+  intro history view command hduring hcommand
+  let targetHistory : List runtime.candidateApplication.EnvironmentEntry := history.map fun entry =>
+    ⟨⟨entry.beforeView.pool, entry.beforeView.application, entry.beforeView.receipts⟩,
+      runtime.candidateEnvironmentCommand entry.command⟩
+  let targetView : runtime.candidateApplication.EnvironmentObservation :=
+    ⟨view.pool, view.application, view.receipts⟩
+  have hentry : ∀ entry : runtime.messageApplication.EnvironmentEntry,
+      (⟨⟨entry.beforeView.pool, entry.beforeView.application, entry.beforeView.receipts⟩,
+        runtime.registeredEnvironmentCommand (runtime.candidateEnvironmentCommand entry.command)⟩ :
+          runtime.messageApplication.EnvironmentEntry) = entry := by
+    intro ⟨⟨pool, application, receipts⟩, cmd⟩
+    cases cmd <;> rfl
+  have hlaw : runtime.candidateWirePolicy wire targetHistory targetView = wire history view := by
+    simp only [candidateWirePolicy, targetHistory, targetView, List.map_map, Function.comp_def,
+      hentry, List.map_id_fun', id_eq]
+  simp only [wireEnvironment, FinDist.support_map, Set.mem_image] at hcommand
+  obtain ⟨cmd, hcmd, rfl⟩ := hcommand
+  have htarget := hservice targetHistory targetView
+    (WireCommand.toEnvironmentCommand runtime.candidateApplication cmd)
+    (by simpa only [targetHistory, List.length_map] using hduring)
+    (by
+      simp only [wireEnvironment, FinDist.support_map, Set.mem_image]
+      exact ⟨cmd, hlaw.symm ▸ hcmd, rfl⟩)
+  cases hpending : view.pool.pending with
+  | nil =>
+      simp only [targetView, hpending] at htarget ⊢
+      have hsame := congrArg runtime.registeredEnvironmentCommand htarget
+      cases cmd <;> exact hsame
+  | cons first rest =>
+      simp only [targetView, hpending] at htarget ⊢
+      obtain ⟨id, message, hlookup, heq⟩ := htarget
+      refine ⟨id, message, hlookup, ?_⟩
+      have hsame := congrArg runtime.registeredEnvironmentCommand heq
+      cases cmd <;> exact hsame
 
 private theorem round_candidates (runtime : SealedResolution Principal Value)
     (principals : List Principal) (serviceSlots : Nat)

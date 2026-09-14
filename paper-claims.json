@@ -81,6 +81,12 @@
       "Vegas.Paper.pending_source_payout_nash_iff"
     ]
   },
+  "prose:pending-candidate-incentives": {
+    "theorems": [
+      "Vegas.Paper.pending_candidate_source_payout_deviation_bound",
+      "Vegas.Paper.pending_candidate_source_payout_nash_iff"
+    ]
+  },
   "prose:pending-termination": {
     "theorems": [
       "Vegas.Paper.compiled_resolution_terminates"

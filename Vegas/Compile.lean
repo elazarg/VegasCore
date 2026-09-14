@@ -19,6 +19,7 @@ import Vegas.Compile.SourceExecutionGraph
 import Vegas.Compile.SourceExecutionOutcome
 import Vegas.Compile.SourceOutcomeExecution
 import Vegas.Compile.SourceCorrespondence
+import Vegas.Compile.SourceUtility
 import Vegas.Compile.SealedMessages
 import Vegas.Compile.SealedReadOrigin
 import Vegas.Compile.SealedDecode
@@ -152,7 +153,8 @@ actual full native law, a finite source-deviation mixture, and pointwise public
 payout agreement on normal completion. `SealedTermination` proves candidate
 stopped-round completion under arbitrary policies. `SealedCandidateDeadline`
 excludes honest-player timeouts under periodic service, including after earlier
-defaults, and attributes each timeout to an unprotected player. Assembly of the
-pointwise graph utility bound with the completed-round deviation coupling remains
-open.
+defaults, and attributes each timeout to an unprotected player. The game layer
+assembles these results into a graph-to-candidate utility simulation and composes
+it with the source-to-graph certificate. `SourceUtility` transports the uniform
+source quitting condition without assuming a native incentive comparison.
 -/

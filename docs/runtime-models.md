@@ -46,15 +46,18 @@ source outcome is at or above the player's bound and every legal outcome
 recording that player's configured default is at or below it. This theorem is
 currently for the homogeneous, no-sample sealed fragment whose guards accept
 every runtime value.
-It does not establish nontrivial guard validation, chance compilation,
-heterogeneous sealed values, or refinement of a commitment scheme with multiple
-or potentially unopenable candidates. A candidate-service instantiation has
-checked immutable binding and source-defined public settlement after completion,
-including a source quitting witness for a player-owned timeout. Its honest
-stopped-round execution completes without timeouts and has the written source
-payout law under deadline-relative service. The candidate host's whole-program
-deviation coupling and equilibrium theorem remain open. The authoritative inventory and
-remaining boundaries are in [the active tower](active-tower.md).
+The candidate-service host also has end-to-end utility simulation and same-error
+equilibrium correspondence under the source-only uniform bound.
+`SealedCompilation.candidatePayoutSimulation` composes the independently proved
+source/graph and graph/candidate edges. Its native policies admit competing and
+unopenable commitments, malformed traffic, and arbitrary withholding. The
+graph-level certificate supports public-field utilities; the source composition
+values the programmed payout. The registered host's finer conditional incentive
+criteria have not been transferred to the candidate host.
+Neither theorem establishes nontrivial guard validation, chance compilation,
+heterogeneous sealed values, or concrete cryptographic/ledger refinement.
+The authoritative inventory and remaining boundaries are in
+[the active tower](active-tower.md).
 
 ## Pending-message and timeout boundary
 

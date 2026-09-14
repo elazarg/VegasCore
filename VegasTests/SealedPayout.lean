@@ -2,6 +2,7 @@
 
 import Interaction.SealedResolutionReservations
 import Vegas.Game.SealedPayoutBounds
+import Vegas.Game.SourceCandidate
 import VegasTests.SealedPublicSettlement
 
 /-! # Source-defined sealed payout bounds
@@ -226,7 +227,58 @@ theorem compiled_alwaysTrue_isNash (base : app.WirePolicy) :
       (sourceGameForm core source.core.env)
       (sourcePayoutUtility (source := source) valuation)).mp alwaysTrue_source_isNash)
 
+private def candidateModel (base : runtime.candidateApplication.WirePolicy) :
+    supported.CandidateRoundModel none 8 where
+  principals := [0]
+  serviceSlots := 2
+  total := 18
+  wire := runtime.candidateApplication.reserveInclusion (periodicFinalReservation 2 2) base
+  budget := by decide
+
+private def candidateTimely (base : runtime.candidateApplication.WirePolicy) :
+    (candidateModel base).Timely where
+  reserved := periodicFinalReservation 2 2
+  service := runtime.candidateApplication.reserveInclusion_service _ base
+  period := 2
+  positive := by decide
+  capacity := fun block => periodicFinalReservation_capacity [0] 2 2 block
+    (by decide) (by decide)
+  roster := by intro who; fin_cases who; simp [candidateModel]
+  windowBound := by decide
+  wholePeriods := ⟨9, rfl⟩
+
+/-- A nonconstant written-source game retains its equilibrium in the actual
+candidate host, for every adaptive unreserved wire policy. -/
+theorem candidate_nash_preservation (base : runtime.candidateApplication.WirePolicy) :
+    IsNash (candidateModel base).game
+      (euPreference (fun next who =>
+        (compilation.publicPayout? next.native.application.visible.events).elim
+          (0 : ℝ) (fun payout => valuation payout who)))
+      (fun who => compilation.compileCandidatePolicy none 8 who (alwaysTrueProfile who)) :=
+  (compilation.candidate_nash_iff none 8 (candidateModel base) (candidateTimely base)
+    valuation (fun _ => 0) bound concrete_quit_payout_bound alwaysTrueProfile).2
+      alwaysTrue_source_isNash
+
+/-- Competing candidates, unopenable selections, malformed traffic, and
+withholding are all included in the unrestricted replacement quantified here. -/
+theorem candidate_arbitrary_deviation_bound (base : runtime.candidateApplication.WirePolicy)
+    (replacement : (candidateModel base).game.sig.Strategy 0) :
+    ((candidateModel base).game.play (Profile.update
+      (fun who => compilation.compileCandidatePolicy none 8 who (alwaysTrueProfile who))
+      0 replacement)).expect (fun next =>
+        (compilation.publicPayout? next.native.application.visible.events).elim
+          (0 : ℝ) (fun payout => valuation payout 0)) ≤ 7 := by
+  obtain ⟨alternative, hbound⟩ := (compilation.candidatePayoutSimulation none 8
+    (candidateModel base) (candidateTimely base) valuation (fun _ => 0) bound
+    concrete_quit_payout_bound).deviation_bound alwaysTrueProfile 0 replacement
+  exact hbound.trans (source_payout_le_seven _ 0)
+
 end VegasTests.SealedPayout
+
+/-- info: 'VegasTests.SealedPayout.candidate_arbitrary_deviation_bound'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SealedPayout.candidate_arbitrary_deviation_bound
 
 /-- info: 'VegasTests.SealedPayout.compiled_alwaysTrue_isNash' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

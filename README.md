@@ -15,68 +15,44 @@ Compilation retains typed fields, dependencies, guards, probability tables,
 and payoff code in an event graph. The native endpoint uses the shared
 `Interaction` message pool and explicit commitment service.
 
-The checked results include source execution and event-graph correspondence,
-support-level reconstruction of native executions, and a constructed coupling
-between source deviations and the actual pending-message round game. The
-round-game theorem gives same-error Nash and epsilon-Nash equivalence under
-timely service, normal source/native utility agreement, and an explicit
-conditional comparison at each supported timeout checkpoint. A uniform
-settlement cap is a checked sufficient case. For utilities valuing the programmed
-payout, a source-only certificate also suffices: all legal source executions
-give each player at least a bound, and executions recording that player's
-designated quitting value give it at most that bound. The compiler derives
-normal utility agreement and the runtime timeout comparison from this certificate.
-More general source continuation conditions remain open.
+The source-to-graph certificate preserves the source outcome law and exactly
+backtranslates arbitrary unilateral graph policies. The pending-message backend
+has an independent graph-to-candidate utility simulation. Their composition,
+`SealedCompilation.candidatePayoutSimulation`, bounds every randomized native
+unilateral deviation by a legal written-source deviation against unchanged
+opponents. Nash and same-error epsilon-Nash are preserved and reflected at the
+actual generated profiles.
 
-The intended strategic proof factors through the graph as an independent
-intermediate representation. The source/graph simulation is checked. Backend
-extraction consumes an explicit graph information condition and returns graph
-policies directly; the source compiler certifies that condition. Graph choice
-restriction, native prefix laws, and randomized full-trace and stopped-round couplings are checked
-independently of source syntax. Source results delegate to these graph/backend
-laws and transport source outcomes. The all-compiled honest law is also
-graph-relative in both commitment hosts: deadline-relative service yields normal
-completion and the original graph outcome on public fields. This honest law
-does not require the extra public-prefix information condition. Periodic service
-also excludes honest-player timeouts under arbitrary candidate deviations.
-The graph-level resolution and utility argument remains unfinished, so the
-backend does not yet supply the
-utility-simulation certificate required for end-to-end strategic composition.
-See [the factoring plan](docs/compilation-design.md#strategic-intermediate-representation).
+The candidate runtime admits competing commitments, unopenable accepted handles,
+malformed traffic, retries, replay, pending-message observations, and withholding.
+Its adaptive wire policy sees the pending pool, but not the private candidate
+table. Periodic inclusion capacity, roster coverage, and sufficiently large
+timeout windows protect unchanged players. Withholding resolves to the programmed
+default; the theorem assumes a source-only uniform quitting bound: every legal
+source execution gives the player at least a bound, and executions recording its
+designated quitting value give it at most that bound. This is stronger than
+ordinary ex-ante dominance of quitting.
 
-The former application-plan path is archived under `archive/fused/`. Its
-adjacent `commit; reveal` fusion emitted a value-bearing request without a
-prior opaque commitment, so it was not a commitment implementation and is not
-part of the active compiler or its claims.
+The proof factors through the graph as an independently usable strategic
+intermediate representation. The compiler certifies public-prefix readability,
+unique direct disclosures, and the public payout interpretation. The backend
+constructs its own deviation coupling and proves the timeout utility comparison;
+it does not assume a source-image witness or a desired native incentive law.
+The all-compiled honest law preserves the original public outcome distribution.
+The graph theorem supports arbitrary utilities of typed public fields; the
+end-to-end source theorem applies a supplied valuation to the programmed payout.
+See [the composition design](docs/compilation-design.md#strategic-intermediate-representation).
 
-The pending-message target is represented by the active message pool and timed
-sealed adapter. Whole-prefix deviation extraction, randomized source/native
-coupling, finite completion, and the conditional strategic composition above
-are checked. Every invariant completed state also has a legal written-source
-execution whose payout equals the payout reconstructed solely from public
-initial data and opening events, including after timeout defaults; this applies
-to supported outcomes of the actual round game without a service assumption.
-That public-settlement witness need not preserve private committed choices and
-therefore does not by itself discharge the timeout incentive condition.
-The commitment service used by the strategic theorem binds each source site at
-its first private registration and rejects unregistered handles. A candidate
-host of the same program also permits competing candidates and accepts handles
-without openings. Its immutable binding and source-settlement laws are checked,
-including a legal source quitting witness after an owner's timeout. Under the
-deadline-service conditions, generated policies in this host complete without
-timeouts and have exactly the written source payout law. Arbitrary randomized
-focal and environment policies also have a constructed coupling retaining the
-complete native trace law and a mixture of source deviations with unchanged
-opponents. Normally completed pairs have the retained source realization's
-public payout. The candidate driver also completes within the compiled timeout
-bound under arbitrary policies, even without message service. The stopped-round
-coupling retains the actual stopping history, pool, and receipts. Under periodic
-inclusion capacity and a sufficient deadline window, every recorded timeout
-belongs to an unprotected player. This holds after earlier defaults as well as
-before the first timeout. The graph-level post-timeout incentive bound needed
-for Nash preservation remains open.
-Censorship resistance, concrete commitment cryptography, and EVM execution
-correctness remain open.
+The candidate theorem covers homogeneous commit/reveal graphs with universally
+accepting guards, no samples, and no initially private disclosure. The registered-site
+host additionally has finer conditional timeout-checkpoint incentive results;
+transporting such source conditions to the candidate host remains open. Nontrivial
+guard validation, chance compilation, heterogeneous sealed values, concrete
+commitment cryptography, and ledger/EVM refinement remain further work. Service
+is an explicit operational assumption, not a proved censorship-resistance result.
+
+The former fused application path is passive reference material under
+`archive/fused/`; it is not an active compiler edge or evidence for these results.
 
 The active libraries are `GameTheoryExtensions`, `Interaction`, `Vegas`,
 the retained tests, and the source/native paper audit. See

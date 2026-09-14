@@ -17,6 +17,7 @@ introducing a new edge and proving its own correspondence laws.
 | Resolving native protocol | `Interaction` | `SealedResolution`, shared policy-runner rounds | Per-node relative deadlines, nullable resolution, and continuing execution are implemented. Before the first timeout, validator/event projection is exact. Private bindings persist under arbitrary policies and resolution. Every round advances the clock once. Termination is checked without service; periodic inclusion capacity provides deadline-relative service. For the admitted Vegas fragment, completed public settlement has a legal source realization even after defaults. The single-checkpoint `SealedTimeout` model instead records final failure and does not implement this continuation. |
 | Vegas compiler edge | `Vegas.Compile` | `SealedCompilation`, sealed decode/refinement/source modules | One sealed rule per graph node; native prefixes decode to reachable graph states; terminal prefixes reconstruct a written-order source run. Under roster coverage, periodic inclusion capacity, a sufficient window, and a whole-period termination budget, all-compiled play has the exact original written-source outcome law in the actual stopped pending-message driver. |
 | Pending-message strategic edge | `Vegas.Game` | `SealedCompilation.RoundModel` | Constructed source/native coupling, actual timeout-checkpoint information, retained focal registrations, and same-error Nash equivalence under timely service, normal utility agreement, and explicit conditional timeout utility comparisons. For payout-valued utilities, a source-only `VegasCore.QuitPayoutBound` supplies both utility premises. |
+| Candidate-message strategic edge | `Vegas.Game` | `SealedFragment.CandidateRoundModel` | Independent graph utility simulation and composition to written source. Arbitrary randomized candidate deviations are bounded by legal source deviations under timely service and the source-only uniform quitting bound; same-error Nash holds at generated profiles. |
 
 The ideal commitment service provides more than an abstract hiding-and-binding
 interface. For the compiled protocol, a source site is the numeric slot itself,
@@ -44,8 +45,8 @@ policy run. `candidate_publicPayout_source_choice` supplies one witness recordin
 the timeout owner's source default and matching the actual payout. Neither
 theorem fixes the opponents' source policies. Completion is an explicit premise;
 candidate-host termination and causal deviation coupling are not
-inferred from these safety results. The Nash theorem below still uses the
-registered-site service.
+inferred from these safety results. The candidate utility simulation combines
+them with independent termination, coupling, and deadline-service theorems.
 
 `SealedCompilation.candidatePolicies_law` separately proves exact equality of
 the two hosts' complete finite execution laws for the generated source policies.
@@ -85,7 +86,8 @@ graph opponents and no assumed input equality. The exact joint
 prefix law through first timeout is proved below for fixed native response
 functions. The stopped-round coupling retains the same graph realization.
 Periodic service attributes every timeout to an unprotected player. The
-graph-level incentive bound for fallback runs remains open.
+graph-level uniform quitting bound then compares each fallback utility with
+the coupled graph realization, retaining the original opponents' policies.
 
 Generated policies satisfy `candidatePolicy_memory` under arbitrary opponent
 and environment policies: each honest owner's command cache agrees with its
@@ -224,101 +226,77 @@ Its `QuitBound` is a graph-only lower bound over legal terminal realizations,
 with a matching upper bound for realizations recording the player's default.
 `timeout_utility_le_graph` consequently bounds an attributed timeout's public
 utility by any legal terminal graph realization, including the different witness
-retained by the deviation coupling. Combining that pointwise bound with actual
-round attribution and the coupling marginals, and transporting the source
-quitting condition, remain necessary for the candidate `UtilitySimulation`.
+retained by the deviation coupling. `CandidateRoundModel.deviation_bound`
+combines this pointwise comparison with actual round attribution and the
+coupling marginals. `graphQuitBound_of_source` supplies the graph condition
+from the written-source condition before the strategic certificates compose.
 
-## End-to-end target
+## End-to-end candidate theorem
 
-The theorem must factor as source → certified graph → candidate runtime.
-`WFProgram.sourceGraphSimulation` supplies the first strategic edge.
-`Graph.PublicPrefixReadable`, certified for compiler outputs, makes the
-disclosure-based candidate backtranslation graph-local;
-`SealedFragment.runOfDisclosures_consistent` covers arbitrary unchanged graph
-opponents. The entire finite-schedule probability argument, through randomized
-full-trace and stopped-round coupling with normal public-field agreement, is
-graph-relative; source results delegate to it and transport outcomes.
-`exists_honest_candidate_round_graph_coupling` supplies the original graph law
-and normal public-field agreement under deadline-relative service for every
-graph profile, without the extra `PublicPrefixReadable` condition. Its source
-payout theorem delegates to the graph coupling. Honest-player timeout exclusion
-under arbitrary candidate deviations is also graph-relative and checked under
-periodic service. Graph-only settlement and a sufficient pointwise utility bound
-are checked separately. Their assembly with the actual round coupling remains
-required before the backend can supply its own `UtilitySimulation` and the source
-theorem can follow by composition. The
-[compilation design](compilation-design.md#strategic-intermediate-representation)
-states this boundary and the factoring work.
+The checked strategic composition is source → certified graph → candidate
+runtime. `WFProgram.sourceGraphSimulation` supplies the exact first edge.
+`sourceGraphPayoutSimulation` interprets its outcomes through public compiled
+payouts, with terminal-support agreement proved independently.
+`CandidateRoundModel.utilitySimulation` supplies the graph-to-native utility
+edge. `SealedCompilation.candidatePayoutSimulation` composes them using
+`UtilitySimulation.trans`; its translation is the existing `compileCandidatePolicy`.
 
-The immediate unproved result is **source-to-candidate-message equilibrium
-preservation**, not a collection of intermediate theorem names. It must concern
-the actual `candidateApplication` and the generated `compileCandidatePolicy`,
-with arbitrary native unilateral policies. Candidate binding and completed
-settlement correspondence alone do not establish it.
-
-The all-compiled graph/native probability argument uses graph restrictions and
-actual native registration factors. It predraws only the environment; it does
-not infer the original honest law from a deviation mixture. The registered-host
-round coupling derives completion and timeout exclusion from periodic service,
-then the checked honest-policy host embedding transfers that coupling to the
-candidate runtime. `VegasTests.GraphPublicPrefix` instantiates this result for
-an independently specified graph that fails the deviation theorem's public-prefix
-condition, with arbitrary graph profiles and concrete periodic service capacity.
+The source compiler certifies `Graph.PublicPrefixReadable`, `Graph.UniqueReveals`,
+and `graphQuitBound_of_source`. The backend consumes these graph conditions
+without assuming that its graph is a compiler output. Its coupling retains
+arbitrary unchanged graph policies; normal public outcomes agree, and timeout
+attribution plus graph settlement proves the utility inequality.
 
 Fix a checked source with an admitted `SealedCompilation`, its initial
-environment, configured default, and payout valuation. Keep the current
-fragment explicit: homogeneous values, universally accepting guards, no
-sampling, and no initially private binding requiring publication. Fix a finite
-player set and a round driver with roster coverage, sufficient timeout windows
-and termination budget, and deadline-relative timely service for unchanged
-players. The environment may adapt its unreserved wire actions to its actual
-view, including the pending pool, but has no private candidate-table access.
-Candidate ownership and immutable accepted meaning are properties of this ideal
-host, not cryptographic conclusions.
+environment, designated default, and payout valuation. The fragment has
+homogeneous values, universally accepting guards, no samples, and no initially
+private disclosure. Players form a finite type. The stopped driver has roster
+coverage, periodic inclusion capacity, sufficiently large timeout windows, and
+a whole-period completion budget. Unreserved wire actions may adapt to the
+pending pool and public history, but not the private candidate table. The target
+admits unrestricted randomized player policies, competing and unopenable
+candidates, malformed traffic, replay, and withholding.
 
-Write `S` for the written-source game, `R` for that candidate-message round game,
-`C` for the pointwise generated policy translation, and `pS` and `pR` for the
-source payout and actual public runtime payout. The intended result has two laws:
+Write `S` for written-source play, `R` for candidate round play, `C` for the
+generated policy translation, and `pS` and `pR` for the payout evaluations.
+Two checked laws establish the result:
 
-1. **Honest execution (proved):** every compiled profile completes without timeout and
+1. **Honest law:** every compiled profile completes without timeout and
    `Law(pR; R(C σ)) = Law(pS; S(σ))`.
-2. **Arbitrary deviations (unproved):** assuming the source-only `QuitPayoutBound`, for
-   every source profile `σ`, player `i`, and randomized native replacement `τi`,
-   there is a finite mixture `μ` of legal source replacements such that
-   `E[uᵢ(pR); R((C σ)[i := τi])] ≤ E[sᵢ ∼ μ] E[uᵢ(pS); S(σ[i := sᵢ])]`.
-   All other players retain their original source policies in every mixture
-   component. No runtime incentive comparison or desired simulation is supplied
-   as a premise.
+2. **Deviation bound:** under the source-only `QuitPayoutBound`, for every
+   source profile `σ`, player `i`, and randomized native replacement `τi`,
+   there is a legal source replacement `sᵢ` with
+   `E[uᵢ(pR); R((C σ)[i := τi])] ≤ E[uᵢ(pS); S(σ[i := sᵢ])]`.
+   Opponents retain their original policies. The proof constructs a finite
+   mixture, then selects a component at least as good as its mean. It does not
+   claim equality of deviation outcome laws.
 
-These laws give Nash and same-error ε-Nash preservation and reflection at
-compiled profiles. The inequality, rather than exact deviation-outcome equality,
-allows selective withholding subject to the stated source settlement condition.
-`QuitPayoutBound` requires each player's designated quitting settlement to be a
-global minimum over legal source executions; it is stronger than ordinary
-ex-ante quit dominance. The proof must derive completion, acceptance-time source
-decisions, and the unchanged-opponents law from the actual driver and compiler.
-Its concrete composition certificate and paper audit should delegate to those
-proved laws, not accept them as caller obligations.
+`candidate_approximate_nash_iff` and `candidate_nash_iff` give preservation and
+reflection at compiled profiles. `Paper.lean` directly audits the source
+deviation bound and same-error equilibrium theorem. `VegasTests/SealedPayout.lean`
+instantiates candidate Nash and an arbitrary-native-deviation bound for a
+nonconstant written-source game and arbitrary unreserved wire behavior.
 
-The registered-site host already has the source-payout strategic result. The
-candidate host has immutable accepted meaning, completed public settlement
-witnesses, and the original source payout law for honest stopped-round execution.
-Its randomized full-trace coupling, pointwise normal payout agreement, and
-arbitrary-policy stopped-round completion are also proved. The completed-round
-deviation utility bound is the next proof task.
-More general source
-continuation criteria, guarded choices, sampling, heterogeneous values, and
-cryptographic or ledger refinement are further scope requirements; their exact additional assumptions must be
-determined, not represented by guessed theorem signatures. An obstruction must
-be stated against a specific model and guarantee.
+`QuitPayoutBound` makes each player's designated quitting settlement a global
+minimum over legal source executions. It is stronger than ordinary ex-ante quit
+dominance. The graph certificate supports arbitrary utilities of typed public
+fields; the source specialization values the programmed payout. Additional
+runtime trace preferences are not covered automatically. Service and ideal
+binding are assumptions of the model, not cryptographic or censorship-resistance
+results.
 
-`paper-claims.json` is a manuscript coverage inventory, not this proof plan.
-Unverified entries keep unsupported prose visible without prescribing a proof
-architecture or restoring inactive interfaces. Reference code is only reading
-material and contributes nothing to the audit. The paper's broader scope remains
-the goal; the candidate-message theorem is the next concrete milestone.
+The honest graph law does not require `PublicPrefixReadable`.
+`VegasTests.GraphPublicPrefix` instantiates it for an independent graph that
+violates this deviation-extraction condition. More general source continuation
+criteria, nontrivial guards, sampling, heterogeneous values, and cryptographic
+or ledger refinement remain further scope requirements. Their assumptions and
+obstructions must be established for the particular model and guarantee. The
+present theorem does not establish the paper's entire scope.
 
-## Pending-message strategic boundary
+`paper-claims.json` is a manuscript coverage inventory. Unverified entries
+remain visible; passive reference material contributes nothing to the audit.
+
+## Registered-host conditional strategic boundary
 
 `SealedCompilation.compilePolicy` implements a written-source policy in the
 native principal-scoped interface. Local reconstruction reads only initial

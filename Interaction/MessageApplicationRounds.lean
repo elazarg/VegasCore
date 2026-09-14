@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.MessageApplicationWirePolicy
+import Interaction.MessageApplicationPolicyLaws
 
 /-! # Bounded rounds of the shared message interpreter
 
@@ -55,6 +56,50 @@ theorem runRounds_of_complete (driver : RoundDriver app)
     driver.runRounds principals serviceSlots players environment count execution =
       FinDist.pure execution := by
   cases count <;> simp [runRounds, hcomplete]
+
+/-- Native application invariants survive the actual early-stopping driver,
+including its fixed boundary commands and arbitrary wire/player policies. -/
+theorem runRounds_application_invariant (driver : RoundDriver app)
+    (invariant : app.Application → Prop)
+    (hprivate : ∀ application who command, invariant application →
+      invariant (app.privateStep application who command))
+    (hhandler : ∀ application message next, invariant application →
+      app.handle application message = some next → invariant next)
+    (henvironment : ∀ application command next, invariant application →
+      next ∈ (app.environmentStep application command).support → invariant next)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → app.PlayerPolicy) (environment : app.WirePolicy)
+    (count : Nat) (execution next : app.PolicyExecution)
+    (hinitial : invariant execution.native.application)
+    (hnext : next ∈ (driver.runRounds principals serviceSlots players environment
+      count execution).support) : invariant next.native.application := by
+  induction count generalizing execution with
+  | zero =>
+      simp only [runRounds, FinDist.mem_support_pure] at hnext
+      subst next
+      exact hinitial
+  | succ count ih =>
+      simp only [runRounds] at hnext
+      split at hnext
+      · simp only [FinDist.mem_support_pure] at hnext
+        subst next
+        exact hinitial
+      · simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
+        obtain ⟨middle, hmiddle, hnext⟩ := hnext
+        simp only [round, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+        obtain ⟨serviced, hserviced, hmiddle⟩ := hmiddle
+        have hservicedInvariant := app.runPolicies_application_invariant
+          invariant hprivate hhandler henvironment players (app.wireEnvironment environment)
+          _ execution serviced hinitial hserviced
+        have hnative : middle.native ∈ ((app.environmentPolicyStep serviced
+            (.application driver.boundary)).map
+              MessageInterface.PolicyExecution.native).support := by
+          rw [FinDist.support_map]
+          exact ⟨middle, hmiddle, rfl⟩
+        rw [app.environmentStep_native] at hnative
+        apply ih middle ?_ hnext
+        exact app.step_application_invariant invariant hprivate hhandler henvironment
+          serviced.native middle.native (.environment driver.boundary) hservicedInvariant hnative
 
 /-- Splitting the budget preserves actual early stopping and its execution law. -/
 theorem runRounds_add (driver : RoundDriver app)

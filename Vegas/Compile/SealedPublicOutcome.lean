@@ -2,6 +2,7 @@
 
 import Vegas.Compile.SealedGraphSettlement
 import Vegas.Compile.RevealAccounting
+import Vegas.EventGraph.Payoff
 
 /-! # Source outcomes obtained from public graph settlement
 
@@ -43,42 +44,6 @@ theorem publicPayout?_isSome_of_complete
     state hinvariant hcomplete ref
     ((ToEventGraph.compile source.core).payoffsWF payoff hpayoff ref href).1
 
-private theorem evalPayoffEntries?_eq_of_getAs_eq
-    (payoffs : List (Player × EventPayoff L)) (left right : Store L)
-    (heq : ∀ payoff, payoff ∈ payoffs → ∀ ref, ref ∈ payoff.2.reads →
-      Store.getAs left ref.field ref.ty = Store.getAs right ref.field ref.ty) :
-    evalPayoffEntries? payoffs left = evalPayoffEntries? payoffs right := by
-  induction payoffs with
-  | nil => rfl
-  | cons payoff rest ih =>
-      have hhead : ∀ ref, ref ∈ payoff.2.reads →
-          Store.getAs left ref.field ref.ty = Store.getAs right ref.field ref.ty := by
-        intro ref href
-        exact heq payoff (by simp) ref href
-      have htail : evalPayoffEntries? rest left = evalPayoffEntries? rest right :=
-        ih (by
-          intro tailPayoff htailPayoff ref href
-          exact heq tailPayoff (by simp [htailPayoff]) ref href)
-      cases hleft : ReadEnv.ofStore? left payoff.2.reads with
-      | none =>
-          cases hright : ReadEnv.ofStore? right payoff.2.reads with
-          | none => simp [evalPayoffEntries?, hleft, hright]
-          | some rightEnv =>
-              have hback := ReadEnv.ofStore?_eq_of_getAs_eq hright
-                (fun ref href ↦ (hhead ref href).symm)
-              rw [hleft] at hback
-              contradiction
-      | some leftEnv =>
-          have hright := ReadEnv.ofStore?_eq_of_getAs_eq hleft hhead
-          simp [evalPayoffEntries?, hleft, hright, htail]
-
-private theorem evalPayoffs?_eq_of_getAs_eq
-    (payoffs : List (Player × EventPayoff L)) (left right : Store L)
-    (heq : ∀ payoff, payoff ∈ payoffs → ∀ ref, ref ∈ payoff.2.reads →
-      Store.getAs left ref.field ref.ty = Store.getAs right ref.field ref.ty) :
-    evalPayoffs? payoffs left = evalPayoffs? payoffs right := by
-  unfold evalPayoffs?
-  rw [evalPayoffEntries?_eq_of_getAs_eq payoffs left right heq]
 
 /-- Agreement on typed public reads suffices to identify the programmed
 payout. No commitment-service or private-store agreement is required. -/

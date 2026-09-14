@@ -34,6 +34,7 @@ import Vegas.EventGraph.KernelRound
 import Vegas.EventGraph.KernelSchedule
 import Vegas.EventGraph.Linearization
 import Vegas.EventGraph.Protocol
+import Vegas.EventGraph.Payoff
 import Vegas.EventGraph.ProtocolOrder
 import Vegas.EventGraph.PublicPrefix
 import Vegas.EventGraph.PublicUtility

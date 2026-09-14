@@ -135,6 +135,27 @@ theorem isNash_compileProfile_iff
       IsNash source (euPreference sourceUtility) profile := by
   simpa only [isNash_iff_isεNash_zero] using simulation.isεNash_compileProfile_iff 0 profile
 
+/-- A simulation is unchanged by utility interpretations with the same
+expectation at every game profile. Values at unreachable outcomes can differ;
+the strategy translation is retained exactly. -/
+def congrUtilities
+    (simulation : UtilitySimulation source target sourceUtility targetUtility)
+    (sourceValue : source.sig.Outcome → Player → ℝ)
+    (targetValue : target.sig.Outcome → Player → ℝ)
+    (hsource : ∀ profile who,
+      (source.play profile).expect (fun outcome => sourceUtility outcome who) =
+        (source.play profile).expect (fun outcome => sourceValue outcome who))
+    (htarget : ∀ profile who,
+      (target.play profile).expect (fun outcome => targetUtility outcome who) =
+        (target.play profile).expect (fun outcome => targetValue outcome who)) :
+    UtilitySimulation source target sourceValue targetValue where
+  compileStrategy := simulation.compileStrategy
+  honest_utility profile who :=
+    (htarget _ who).symm.trans ((simulation.honest_utility profile who).trans (hsource profile who))
+  deviation_bound profile who replacement := by
+    obtain ⟨alternative, hbound⟩ := simulation.deviation_bound profile who replacement
+    exact ⟨alternative, (htarget _ who).symm.le.trans (hbound.trans (hsource _ who).le)⟩
+
 /-- Utility comparisons compose through independently verified target layers. -/
 def trans {middle : GameForm.{uPlayer, uMiddle, uMiddleOutcome} Player}
     {middleUtility : middle.sig.Outcome → Player → ℝ}

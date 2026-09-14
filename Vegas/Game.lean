@@ -10,6 +10,8 @@ import Vegas.Game.SealedTimeoutApplication
 import Vegas.Game.SealedRounds
 import Vegas.Game.SealedPayout
 import Vegas.Game.SealedPayoutBounds
+import Vegas.Game.SealedCandidate
+import Vegas.Game.SourceCandidate
 import Vegas.Game.SourceGraph
 
 /-! # Native operational games and source correspondence -/
