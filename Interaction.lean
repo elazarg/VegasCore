@@ -76,6 +76,9 @@ import Interaction.SealedTimeoutApplication
 import Interaction.SealedTimeoutDisclosure
 import Interaction.SealedResolution
 import Interaction.SealedCandidateResolution
+import Interaction.SealedCandidateEmbedding
+import Interaction.SealedPreparedPolicies
+import Interaction.SealedCandidatePolicyEmbedding
 import Interaction.SealedCandidateBinding
 import Interaction.SealedCandidateEvents
 import Interaction.SealedCandidateSettlement

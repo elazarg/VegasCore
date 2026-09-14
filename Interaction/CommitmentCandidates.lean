@@ -230,4 +230,55 @@ theorem lookup_prepare_accept_of_fresh [DecidableEq Principal] [DecidableEq Slot
 
 end CommitmentCandidates
 
+namespace IdealCommitments
+
+variable {Principal : Type uPrincipal} {Slot : Type uSlot} {Value : Type uValue}
+
+/-- Embed a preparation table into the candidate catalog. Unoccupied handles
+are fresh, not accepted as unopenable. -/
+def candidates (state : IdealCommitments Principal Slot Value) :
+    CommitmentCandidates Principal Slot Value where
+  table owner slot := (state.table owner slot).elim .fresh .openable
+
+@[simp] theorem candidates_lookup (state : IdealCommitments Principal Slot Value)
+    (handle : CommitmentHandle Principal Slot) :
+    state.candidates.lookup handle = (state.lookup handle).elim .fresh .openable := rfl
+
+/-- Preparing the same owner-scoped handle commutes with the embedding,
+including repeated preparations. -/
+theorem candidates_sealValue [DecidableEq Principal] [DecidableEq Slot]
+    (state : IdealCommitments Principal Slot Value)
+    (owner : Principal) (slot : Slot) (value : Value) :
+    (state.sealValue owner slot value).state.candidates =
+      state.candidates.prepare owner slot value := by
+  cases hlookup : state.table owner slot with
+  | some stored => simp [sealValue, CommitmentCandidates.prepare, hlookup, candidates,
+      CommitmentCandidates.lookup]
+  | none =>
+      simp only [sealValue, hlookup, CommitmentCandidates.prepare, candidates_lookup,
+        lookup, Option.elim_none]
+      unfold candidates
+      congr 1
+      funext otherOwner otherSlot
+      by_cases hsame : otherOwner = owner ∧ otherSlot = slot <;> simp [hsame]
+
+/-- A prepared candidate needs no further catalog update at acceptance. -/
+theorem candidates_accept [DecidableEq Principal] [DecidableEq Slot]
+    (state : IdealCommitments Principal Slot Value)
+    (handle : CommitmentHandle Principal Slot) (hprepared : (state.lookup handle).isSome) :
+    state.candidates.accept handle = state.candidates := by
+  cases hlookup : state.lookup handle with
+  | none => simp [hlookup] at hprepared
+  | some value => simp [CommitmentCandidates.accept, hlookup]
+
+@[simp] theorem candidates_verify [DecidableEq Value]
+    (state : IdealCommitments Principal Slot Value)
+    (handle : CommitmentHandle Principal Slot) (claimed : Value) :
+    state.candidates.verify handle claimed = state.verify ⟨handle, claimed⟩ := by
+  apply Bool.eq_iff_iff.mpr
+  cases hlookup : state.lookup handle <;>
+    simp [CommitmentCandidates.verify, IdealCommitments.verify, hlookup]
+
+end IdealCommitments
+
 end Interaction

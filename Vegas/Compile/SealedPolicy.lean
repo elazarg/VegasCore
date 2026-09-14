@@ -381,11 +381,15 @@ private theorem commitCommand_submission (supported : SealedFragment G ty) (who 
     (payload : SealedProgram.Payload Player (L.Val ty))
     (hsubmit : .submit payload ∈
       (supported.commitCommand who policy node guard hsem history store).support) :
-    payload = .commitment node.val (who, node.val) := by
+    payload = .commitment node.val (who, node.val) ∧
+      ((supported.compile.registrationEncoding node.val).cachedValue
+        (supported.compile.messageApplication (Value := L.Val ty)) history).isSome = true := by
   unfold commitCommand at hsubmit
   split at hsubmit
-  · simpa only [FinDist.mem_support_pure, MessageInterface.PlayerCommand.submit.injEq]
-      using hsubmit
+  · rename_i value hcache
+    exact ⟨by simpa only [FinDist.mem_support_pure,
+      MessageInterface.PlayerCommand.submit.injEq] using hsubmit,
+      by simp only [hcache, Option.isSome_some]⟩
   · split at hsubmit
     · simp only [FinDist.mem_support_pure] at hsubmit
       cases hsubmit
@@ -404,7 +408,9 @@ theorem nodeCommand?_submission (supported : SealedFragment G ty) (who : Player)
     (hselected : supported.nodeCommand? who completed policy history view store node = some law)
     (payload : SealedProgram.Payload Player (L.Val ty))
     (hsubmit : .submit payload ∈ law.support) :
-    payload = .commitment node.val (who, node.val) ∨
+    (payload = .commitment node.val (who, node.val) ∧
+      ((supported.compile.registrationEncoding node.val).cachedValue
+        (supported.compile.messageApplication (Value := L.Val ty)) history).isSome = true) ∨
       ∃ handle value, payload = .opening node.val handle value ∧
         (supported.compile.discharge completed).openingHandle?
           view.application who node.val = some handle := by
@@ -458,7 +464,7 @@ theorem playerPolicy_submission (supported : SealedFragment G ty) (who : Player)
       obtain ⟨node, _, hnode⟩ := List.exists_of_findSome?_eq_some hselected
       rcases supported.nodeCommand?_submission who [] policy history view
         (supported.playerStore who history view) node law hnode
-        payload hsubmit with hcommit | ⟨handle, value, hopen, hready⟩
+        payload hsubmit with ⟨hcommit, _⟩ | ⟨handle, value, hopen, hready⟩
       · exact Or.inl ⟨node.val, hcommit⟩
       · exact Or.inr ⟨node.val, handle, value, hopen, by simpa using hready⟩
 

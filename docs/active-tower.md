@@ -47,6 +47,19 @@ candidate-host termination, honest laws, and causal deviation coupling are not
 inferred from these safety results. The Nash theorem below still uses the
 registered-site service.
 
+`SealedCompilation.candidatePolicies_law` separately proves exact equality of
+the two hosts' complete finite execution laws for the generated source policies.
+The embedding retains the public pool, receipts, clock, timeouts, local histories,
+and native trace; it represents registered values as openable candidates. The
+compiler proves that every commitment it submits was privately prepared, and
+the pool preserves this fact through delivery, replay, and inclusion. No
+fairness or timeout-free premise is needed for this host equality. Retyping
+environment policies is surjective, so it excludes no adaptive candidate-host
+environment. The equality does not cover arbitrary candidate-player deviations.
+Transport to the stopped round driver's original source-outcome law remains
+to be connected; the finite execution law alone does not prove successful
+completion or candidate-host Nash preservation.
+
 ## End-to-end target
 
 The immediate unproved result is **source-to-candidate-message equilibrium
@@ -91,11 +104,12 @@ Its concrete composition certificate and paper audit should delegate to those
 proved laws, not accept them as caller obligations.
 
 The registered-site host already has the source-payout strategic result. The
-candidate host currently has immutable accepted meaning and completed public
-settlement witnesses, but not these honest and deviation laws. Extending those
-laws is the next proof task. More general source continuation criteria, guarded
-choices, sampling, heterogeneous values, and cryptographic or ledger refinement
-are further scope requirements; their exact additional assumptions must be
+candidate host has immutable accepted meaning, completed public settlement
+witnesses, and the generated policies' exact finite-execution host embedding.
+Connecting the stopped driver to the source honest law and proving the
+candidate deviation law are the next proof tasks. More general source
+continuation criteria, guarded choices, sampling, heterogeneous values, and
+cryptographic or ledger refinement are further scope requirements; their exact additional assumptions must be
 determined, not represented by guessed theorem signatures. An obstruction must
 be stated against a specific model and guarantee.
 

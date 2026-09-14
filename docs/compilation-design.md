@@ -65,8 +65,13 @@ event provenance and timeout-settlement invariants. Source public-settlement
 reconstruction consumes these public invariants without a service parameter.
 Private candidate immutability is a separate arbitrary-policy theorem.
 
-The candidate service must still preserve the compiled honest law and support
-the causal deviation coupling. The public acceptance/disclosure barrier is
+The compiled policies' complete finite-execution laws agree between hosts by
+`SealedCompilation.candidatePolicies_law`. The compiler supplies the preparation
+invariant needed for this embedding; the environment-policy retyping is
+surjective and erases no observations. This law also covers delayed and timed-out
+runs. Its connection to the stopped round driver's original source law and the
+candidate service's causal deviation coupling remain to be established.
+The public acceptance/disclosure barrier is
 independent of private registration, but that information-flow fact and a
 source settlement witness alone do not provide the required strategy law.
 The next proof must extract the selected candidate, not the first private

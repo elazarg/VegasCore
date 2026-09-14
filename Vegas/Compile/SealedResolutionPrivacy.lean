@@ -104,7 +104,7 @@ theorem resolvingPolicy_before_focal (supported : SealedFragment G ty)
         (MessageApplication.State.observe _ left.native who)).support := by
     rw [hl, hp, FinDist.mem_support_pure]
   rcases supported.resolvingPolicy_submission nullValue window who _ _ _ payload hsubmit with
-    ⟨node, rfl⟩ | ⟨node, handle, value, rfl, hhandle⟩
+    ⟨node, rfl, _⟩ | ⟨node, handle, value, rfl, hhandle⟩
   · trivial
   · simp only [MessageApplication.State.observe, SealedResolution.messageApplication,
       hclear, SealedProgram.discharge_nil] at hhandle

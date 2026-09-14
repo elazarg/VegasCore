@@ -123,6 +123,34 @@ theorem compiled_policy_prepares :
     VegasCore.commit.noConfusion, id_eq, FinDist.map_pure]
   rfl
 
+/-- A concrete checked source instantiates the full honest execution law for
+every adaptive candidate environment and finite invocation schedule. No
+preparation or message-safety hypothesis is supplied by the test. -/
+theorem compiled_policy_host_law (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation SealedPublicSettlement.Player)) :
+    ∃ reference : runtime.messageApplication.EnvironmentPolicy,
+      app.runPolicies
+        (fun who => compilation.compileCandidatePolicy none 2 who
+          (SealedPayout.alwaysTrueProfile who)) environment schedule
+        (PolicyExecution.initial app initial) =
+      (runtime.messageApplication.runPolicies
+        (fun who => compilation.compileResolvingPolicy none 2 who
+          (SealedPayout.alwaysTrueProfile who)) reference schedule
+        (PolicyExecution.initial _ (State.initial _ runtime.initial))).map
+          runtime.candidateExecution := by
+  obtain ⟨reference, rfl⟩ := runtime.candidateEnvironmentPolicy_surjective environment
+  exact ⟨reference,
+    (compilation.candidatePolicies_law none 2 SealedPayout.alwaysTrueProfile
+      reference schedule).symm⟩
+
+/-- Honest-host equality must not be generalized to arbitrary submissions:
+even a canonical handle is accepted unprepared only in the candidate host. -/
+theorem unprepared_host_difference :
+    (runtime.candidateHandle runtime.candidateInitial
+      ⟨(0, 0), .commitment 0 (0, 0)⟩).isSome = true ∧
+    runtime.handle runtime.initial ⟨(0, 0), .commitment 0 (0, 0)⟩ = none := by
+  decide
+
 private def failedOpeningPlayers : SealedPublicSettlement.Player → app.PlayerPolicy :=
   fun _ history _ =>
   FinDist.pure <| match history.length with

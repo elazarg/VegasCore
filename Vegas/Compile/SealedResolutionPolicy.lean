@@ -87,7 +87,9 @@ theorem resolvingPolicy_submission (supported : SealedFragment G ty)
     (payload : SealedProgram.Payload Player (L.Val ty))
     (hsubmit : .submit payload ∈
       (supported.resolvingPolicy nullValue window who policy history view).support) :
-    (∃ node, payload = .commitment node (who, node)) ∨
+    (∃ node, payload = .commitment node (who, node) ∧
+      ((supported.compile.registrationEncoding node).cachedValue
+        (supported.resolvingRuntime nullValue window).messageApplication history).isSome = true) ∨
       ∃ node handle value, payload = .opening node handle value ∧
         (supported.compile.discharge view.application.timeouts).openingHandle?
           view.application.events who node = some handle := by
@@ -98,8 +100,11 @@ theorem resolvingPolicy_submission (supported : SealedFragment G ty)
   · rename_i law hselected
     obtain ⟨node, _, hnode⟩ := List.exists_of_findSome?_eq_some hselected
     rcases supported.nodeCommand?_submission who view.application.timeouts policy _ _ _
-      node law hnode payload hsubmit with hcommit | ⟨handle, value, hopen, hready⟩
-    · exact Or.inl ⟨node.val, hcommit⟩
+      node law hnode payload hsubmit with ⟨hcommit, hcache⟩ | ⟨handle, value, hopen, hready⟩
+    · refine Or.inl ⟨node.val, hcommit, ?_⟩
+      exact (congrArg Option.isSome
+        ((supported.resolvingRuntime nullValue window).eventHistory_cache
+          (supported.compile.registrationEncoding node.val) history)).symm.trans hcache
     · exact Or.inr ⟨node.val, handle, value, hopen, hready⟩
   · simp only [FinDist.mem_support_pure] at hsubmit
     cases hsubmit
@@ -114,7 +119,7 @@ theorem resolvingPolicy_no_cleartext (supported : SealedFragment G ty)
       (supported.resolvingPolicy nullValue window who policy history view).support := by
   intro hsubmit
   rcases supported.resolvingPolicy_submission nullValue window who policy history view _
-    hsubmit with ⟨_, h⟩ | ⟨_, _, _, h, _⟩ <;> cases h
+    hsubmit with ⟨_, h, _⟩ | ⟨_, _, _, h, _⟩ <;> cases h
 
 end Vegas.EventGraph.SealedFragment
 
