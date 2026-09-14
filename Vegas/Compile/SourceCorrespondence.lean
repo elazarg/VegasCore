@@ -3,6 +3,7 @@
 import Vegas.Compile.SourceExecutionLaw
 import Vegas.Compile.SourceExecutionOutcome
 import Vegas.Compile.SourceBacktranslation
+import Vegas.EventGraph.KernelSchedule
 
 /-! # Whole-program source and graph policy laws
 
@@ -97,3 +98,43 @@ theorem runPolicyNodes_source_deviation
   exact runPolicyNodes_compileSourcePolicy_source program legal _
 
 end Vegas.ToEventGraph
+
+namespace Vegas.WFProgram
+
+open EventGraph ToEventGraph GameTheory.Math.Probability
+
+variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
+
+/-- The canonical graph realization of the original source profile. This is
+the existing declared-read execution in written node order; no native policy
+or extracted replacement is used. Its graph state retains the source bindings
+needed to couple later operational executions. -/
+def sourceRealization (source : WFProgram P L)
+    (profile : SourceBehavioralProfile source.core.prog) :
+    FinDist (ReachableConfig (compile source.core).graph) :=
+  runPolicyNodes (compile source.core).graphWF (compile_guardLive source.core source.legal)
+    (fun who => compileSourcePolicy source.core.prog source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+      rfl who (profile who))
+    ⟨Config.initial (compile source.core).graph, .initial⟩ (compile source.core).graph.nodeOrder
+
+/-- Decoding the canonical graph realization gives exactly the original
+written-source law, including its full terminal environment. -/
+theorem sourceRealization_source (source : WFProgram P L)
+    (profile : SourceBehavioralProfile source.core.prog) :
+    (source.sourceRealization profile).map (observeSourceOutcome source.core) =
+      (denoteSource source.core.prog profile source.core.env).map some :=
+  runPolicyNodes_compileSourcePolicy_source source.core source.legal profile
+
+/-- Every supported realization has executed every source node. -/
+theorem sourceRealization_terminal (source : WFProgram P L)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (hcfg : cfg ∈ (source.sourceRealization profile).support) :
+    Terminal (compile source.core).graph cfg.1 :=
+  runPolicyNodes_terminal (compile source.core).graphWF
+    (compile_guardLive source.core source.legal) _
+    ⟨Config.initial (compile source.core).graph, .initial⟩ (compile source.core).graph.nodeOrder
+    (compile source.core).graph.nodeOrder_readyOrder (fun node => Or.inr (by simp)) cfg hcfg
+
+end Vegas.WFProgram

@@ -40,10 +40,17 @@ import Vegas.Compile.SealedResolutionPrivacy
 import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedResolutionReplay
 import Vegas.Compile.SealedResolutionCylinder
+import Vegas.Compile.SealedAssignedReplay
+import Vegas.Compile.SealedHonestCompletion
 import Vegas.Compile.SealedSourceExtraction
 import Vegas.Compile.SealedSourceRealization
 import Vegas.Compile.SealedSourceAssignment
 import Vegas.Compile.SealedSourceRestriction
+import Vegas.Compile.SealedHonestSource
+import Vegas.Compile.SealedHonestCylinder
+import Vegas.Compile.SealedHonestLikelihood
+import Vegas.Compile.SealedHonestNative
+import Vegas.Compile.SealedHonestRound
 import Vegas.Compile.SealedSourceCylinder
 import Vegas.Compile.SealedNativeLikelihood
 import Vegas.Compile.SealedContinuation
@@ -74,4 +81,10 @@ backtranslation for considered unilateral deviations. Nash and epsilon-Nash
 transfer then follow by direct delegation to the runtime-independent
 GameTheory theorem. A concrete pending-message backtranslation remains an
 explicit research obligation rather than an implicit claim.
+
+`SealedHonestRound` discharges the original all-compiled source law for the
+resolving pending-message driver under periodic service and the checked timeout
+window. The unilateral coupling retains the exact source-mixture and native
+marginals; selective timeout settlement still needs its whole-program utility
+comparison before the strategic certificate can be instantiated.
 -/

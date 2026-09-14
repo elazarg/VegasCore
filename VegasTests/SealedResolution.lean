@@ -52,7 +52,7 @@ theorem arbitrary_policies_complete_without_service
           (MessageApplication.State.initial _ runtime.initial))).support) :
     runtime.complete next.native.application.visible = true := by
   exact compilation.resolvingRuntime_runRounds_complete none 2 [] 0
-    players environment next hnext
+    players environment 12 (by decide) next hnext
 
 end
 

@@ -75,6 +75,45 @@ theorem PolicyTrace.prefixThrough_length_le (trace : app.PolicyTrace)
       cases hrelease : release execution <;>
         simp only [prefixThrough, hrelease, Bool.false_eq_true, ↓reduceIte, length] <;> omega
 
+/-- Equality after stopping is equality of the original trace laws when the
+right law never reaches the stopping condition. The mapped-law equality
+transfers that fact to the left law as well. -/
+theorem PolicyTrace.law_eq_of_prefixThrough_eq
+    (left right : FinDist app.PolicyTrace) (release : app.PolicyExecution → Bool)
+    (hmap : left.map (PolicyTrace.prefixThrough release) =
+      right.map (PolicyTrace.prefixThrough release))
+    (hclear : ∀ trace ∈ right.support,
+      release (trace.prefixThrough release).last = false) :
+    left = right := by
+  have hleftClear : ∀ trace ∈ left.support,
+      release (trace.prefixThrough release).last = false := by
+    intro trace htrace
+    have hmapped : trace.prefixThrough release ∈
+        (left.map (PolicyTrace.prefixThrough release)).support := by
+      rw [FinDist.support_map]
+      exact ⟨trace, htrace, rfl⟩
+    rw [hmap, FinDist.support_map] at hmapped
+    obtain ⟨other, hother, heq⟩ := hmapped
+    rw [← heq]
+    exact hclear other hother
+  have hleft : left.map (PolicyTrace.prefixThrough release) = left := by
+    calc
+      _ = left.map id := by
+        apply FinDist.map_congr_of_eq_on_support
+        intro trace htrace
+        simpa only [id_eq] using trace.prefixThrough_eq_of_last_false release
+          (hleftClear trace htrace)
+      _ = left := FinDist.map_id left
+  have hright : right.map (PolicyTrace.prefixThrough release) = right := by
+    calc
+      _ = right.map id := by
+        apply FinDist.map_congr_of_eq_on_support
+        intro trace htrace
+        simpa only [id_eq] using trace.prefixThrough_eq_of_last_false release
+          (hclear trace htrace)
+      _ = right := FinDist.map_id right
+  exact hleft.symm.trans (hmap.trans hright)
+
 variable (app) [DecidableEq Principal]
 
 theorem tracePolicies_length (players : Principal → app.PlayerPolicy)

@@ -2,6 +2,7 @@
 
 import Vegas.Compile.SealedPolicyDeadline
 import Vegas.Compile.SealedTermination
+import Vegas.Compile.SealedHonestRound
 import Interaction.SealedResolutionReservations
 import VegasTests.SealedPolicy
 
@@ -71,7 +72,7 @@ theorem exists_complete_without_timeouts (profile : SourceBehavioralProfile core
     (runtime.runRounds [0] 2 (players profile) (wire base) 60 initial).support_nonempty
   refine ⟨next, hnext, ?_, ?_⟩
   · exact SealedPolicy.compilation.resolvingRuntime_runRounds_complete none 14 [0] 2
-      (players profile) (wire base) next hnext
+      (players profile) (wire base) 60 (by decide) next hnext
   · let graphProfile := fun who => compileSourcePolicy core source.core.fresh
       SealedPolicy.initialBuild rfl who (profile who)
     exact supported.runRounds_timeouts_eq_nil none 14 [0] 2 graphProfile (wire base)
@@ -79,5 +80,26 @@ theorem exists_complete_without_timeouts (profile : SourceBehavioralProfile core
       2 (by decide) (fun block => SealedResolution.periodicFinalReservation_capacity [0] 2 2
         block (by decide) (by decide))
       (by intro who; fin_cases who; simp) (by decide) 60 ⟨30, rfl⟩ next hnext
+
+/-- The concrete delayed-service runtime admits the full original-source/native
+coupling, not merely a timeout-free supported execution. -/
+theorem exists_exact_honest_round_coupling (profile : SourceBehavioralProfile core)
+    (base : app.WirePolicy) :
+    ∃ coupling : FinDist (ReachableConfig graph × app.PolicyExecution),
+      coupling.map (fun pair => observeSourceOutcome source.core pair.1) =
+        (denoteSource core profile source.core.env).map some ∧
+      coupling.map Prod.snd =
+        runtime.runRounds [0] 2 (players profile) (wire base) 60 initial ∧
+      ∀ cfg next, (cfg, next) ∈ coupling.support →
+        runtime.complete next.native.application.visible = true ∧
+        next.native.application.visible.timeouts = [] ∧
+        graph.decodeSealedFrom (.option .bool) next.native.application.service
+          (Config.initial graph) next.native.application.visible.events = some cfg.1 := by
+  exact SealedPolicy.compilation.exists_honest_round_source_coupling none 14 [0] 2 profile
+    (wire base) (SealedResolution.periodicFinalReservation 2 2)
+    (app.reserveInclusion_service _ base) 2 (by decide)
+    (fun block => SealedResolution.periodicFinalReservation_capacity [0] 2 2 block
+      (by decide) (by decide))
+    (by intro who; fin_cases who; simp) (by decide) 60 ⟨30, rfl⟩ (by decide)
 
 end VegasTests.SealedPolicyDeadline

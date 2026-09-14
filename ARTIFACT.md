@@ -77,6 +77,16 @@ utility guarantees and same-error approximate-Nash preservation and
 reflection. The pending-message certificate is the next open proof obligation;
 support refinement and hiding alone do not discharge it.
 
+For the resolving sealed backend, `pending_honest_round_source_law` in
+`Paper.lean` audits an exact coupling with the original written-source profile.
+The native marginal is the actual early-stopping pending-message driver.
+Roster coverage, periodic inclusion capacity, a sufficient relative timeout
+window, and a whole-period termination budget imply normal completion and
+exact decoding at every supported result. A multistage nullable-source test
+instantiates the assumptions with delayed service and arbitrary unreserved
+wire choices. The remaining strategic step is the whole-program utility
+comparison for unilateral timeout behavior, not the all-compiled honest law.
+
 At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
 sharper exact statement under declared-read locality and a single ready
 commitment per player: every canonical unilateral replacement is one behavioral

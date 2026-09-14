@@ -86,6 +86,13 @@ For a completed timeout-free boundary, decoding again returns the coupled
 source realization; the continuation beyond that boundary preserves the
 registrations used by its decoding and cannot introduce a timeout.
 
-Preventing honest timeouts under deadline-relative service, the all-compiled honest law,
-post-timeout settlement, and the informed-quitting utility bound remain
-separate obligations.
+`SealedCompilation.exists_honest_round_source_coupling` supplies the original
+written-source law at all-compiled profiles. Every player must occur in the
+roster, periodic inclusion capacity must drain each period's possible traffic,
+and the relative window must exceed the checked polling bound. At a
+whole-period horizon at least the termination bound, the actual stopped
+driver completes without timeout and decodes to its paired source realization.
+The probability proof counts every player's original conditional draw and
+predraws only the environment; it does not infer the honest law from the
+unilateral-deviation mixture. Post-timeout settlement and the informed-quitting
+utility bound remain separate obligations.

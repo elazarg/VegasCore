@@ -13,8 +13,9 @@ checked. The source/native execution coupling, including the actual timeout
 continuation and arbitrary randomized focal and environment policies, is checked.
 Finite termination, deadline-relative service excluding honest timeouts, and
 the exact source/native coupling are checked for the fixed-clock round driver,
-including decoding at normal completion. The general source-settlement edge,
-the all-compiled honest outcome law, and the utility comparison remain Lean
+including decoding at normal completion. The all-compiled honest outcome law
+is checked against the original written-source profile, under periodic service.
+The general source-settlement edge and the utility comparison remain Lean
 obligations.
 The whole argument has not been checked in Lean or independently reviewed.
 Section 8 gives the implementation boundary. In particular, this note is not
@@ -1177,8 +1178,29 @@ For period `b+1`, the coarse sufficient window is `n*(b+2)+2`. These statements
 do not assume immediate inclusion: messages can remain pending across player
 calls. The finite trace horizon used by the periodic proof is a multiple of
 the period. Choosing it large enough supplies termination as well as service.
-No all-compiled source outcome-law equality follows merely from timeout
-exclusion; that probability-law obligation is still separate.
+The all-compiled probability law uses a separate all-player calculation.
+`WFProgram.sourceRealization` retains the original source profile in the
+canonical graph execution, with its exact written-source law.
+`resolvingAssignedReplay` is the existing native runner with every choice
+fixed by that realization; it is proof data, not another runtime. Selected-owner
+registration restrictions characterize its cylinders, and
+`sourceRealization_replay_prob_eq_product` counts every original source draw.
+`sourceRealization_native_prefix_law` identifies the same cylinder product
+with the actual native prefix law through first timeout.
+
+For honest play only the environment is predrawn. Its response mixture retains
+the same original source marginal in every term. Under actual timeout
+exclusion, `exists_honest_replay_mixture` identifies the full native trace law.
+`exists_honest_round_source_coupling` then has the original written-source
+denotation as its source marginal and the actual early-stopping driver as its
+native marginal. Every supported pair completes without timeout and native
+event decoding recovers its retained source realization. Roster coverage,
+periodic capacity, the sufficient window, and a whole-period horizon at least
+`n*(window+1)` discharge completion and timeout exclusion; these are not
+assumed in the coupling's conclusion. The checked multistage regression
+instantiates all of these premises for arbitrary original source kernels and
+arbitrary unreserved wire policies. This is honest outcome preservation, not
+an equilibrium theorem.
 
 The remaining implementation work is specific:
 
@@ -1189,11 +1211,7 @@ The remaining implementation work is specific:
    regression. Normal completed event decoding already recovers the exact
    coupled source realization. After timeout, service values and logical
    defaults remain distinct; equal private bindings are not the target claim.
-3. Establish the all-compiled honest outcome law. The arbitrary-deviation
-   mixture alone does not identify its source marginal with the original
-   all-honest source profile. Termination and absence of honest timeouts are
-   checked under the periodic service conditions above.
-4. Instantiate the existing `UtilitySimulation` under the explicit
+3. Instantiate the existing `UtilitySimulation` under the explicit
    continuation condition, and audit the end-to-end theorem in `Paper.lean`.
 
 No persistent role-bail rule, subgame handler, raw Ethereum transaction format,

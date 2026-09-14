@@ -24,7 +24,7 @@ variable (compilation : SealedCompilation source ty)
 /-- Source restriction acceptance is exactly equality at occupied honest
 commitment fields of its decoded graph realization. The source support premise
 ensures the queried terminal environment follows the source semantics. -/
-theorem registrationRestriction_allows_iff_store (focal : Player)
+theorem registrationRestriction_allows_iff_store (selected : Player → Bool)
     (service : IdealCommitments Player Nat (L.Val ty))
     (profile : SourceBehavioralProfile source.core.prog)
     (cfg : ReachableConfig (compile source.core).graph)
@@ -33,18 +33,20 @@ theorem registrationRestriction_allows_iff_store (focal : Player)
       (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
       cfg hterminal
     final ∈ (denoteSource source.core.prog profile source.core.env).support →
-    ((compilation.registrationRestriction focal service).Allows source.core.env final ↔
+    ((compilation.registrationRestriction selected service).Allows source.core.env final ↔
       ∀ who (node : Fin (compile source.core).graph.nodeCount) guard,
-        ((compile source.core).graph.nodeRow node).sem = .commit who guard → who ≠ focal →
+        ((compile source.core).graph.nodeRow node).sem = .commit who guard →
+        selected who = true →
         ∀ value, service.lookup (who, node.val) = some value →
           cfg.1.store ((compile source.core).graph.nodeTarget node) =
             some (⟨ty, value⟩ : TypedValue L)) := by
   intro final hfinal
-  rw [compilation.registrationRestriction_allows_iff_recorded focal service profile final hfinal]
+  rw [compilation.registrationRestriction_allows_iff_recorded
+    selected service profile final hfinal]
   let state := BuildState.fromInitial
     (initialState source.core.Γ source.core.env source.core.wctx)
   constructor
-  · intro h who node guard hsem hwho value hlookup
+  · intro h who node guard hsem hselected value hlookup
     obtain ⟨actor, Δ, name, choiceTy, sourceGuard, site, hindex, hrow⟩ :=
       compileCore_commitNode_covered source.core.prog source.core.fresh state node (by simp [state])
         ⟨_, who, guard, (compile source.core).graph.nodes_get?_nodeRow node, hsem⟩
@@ -55,18 +57,18 @@ theorem registrationRestriction_allows_iff_store (focal : Player)
     have hdepth : site.depth = node.val := by
       simpa only [decisionSiteState_nodes_length,
         show state.nodes.length = 0 from rfl, Nat.zero_add] using hindex.symm
-    have hvalue := h who site hwho value (by rw [hdepth]; exact hlookup)
+    have hvalue := h who site hselected value (by rw [hdepth]; exact hlookup)
     have hrecord := decisionSite_recorded_value site source.core.fresh state cfg hterminal
     rw [← decisionSite_nodeTarget site source.core.fresh state node hindex] at hrecord
     exact hrecord.trans (congrArg some hvalue)
-  · intro h who Δ name choiceTy guard site hwho value hlookup
+  · intro h who Δ name choiceTy guard site hselected value hlookup
     obtain ⟨node, hindex, hrow⟩ := decisionSite_compiledRow site source.core.fresh state
     have hsem := congrArg EventNode.sem (Option.some.inj
       (((compile source.core).graph.nodes_get?_nodeRow node).symm.trans hrow))
     have hdepth : site.depth = node.val := by
       simpa only [decisionSiteState_nodes_length,
         show state.nodes.length = 0 from rfl, Nat.zero_add] using hindex.symm
-    have hstored := h who node _ hsem hwho value (by rwa [hdepth] at hlookup)
+    have hstored := h who node _ hsem hselected value (by rwa [hdepth] at hlookup)
     have hrecord := decisionSite_recorded_value site source.core.fresh state cfg hterminal
     rw [← decisionSite_nodeTarget site source.core.fresh state node hindex] at hrecord
     exact Option.some.inj (hrecord.symm.trans hstored)
@@ -122,7 +124,7 @@ theorem restrictedSourceRun_weight_eq_product [Finite Player]
       deviator environment schedule).prefixThrough (fun execution :
         runtime.messageApplication.PolicyExecution =>
           !execution.native.application.visible.timeouts.isEmpty)
-    let restriction := compilation.registrationRestriction focal
+    let restriction := compilation.registrationRestriction (fun who => decide (who ≠ focal))
       stopped.last.native.application.service
     let original : SourceBehavioralProfile source.core.prog :=
       Profile.update (sig := sourceGameSignature source.core.prog) profile focal
@@ -150,22 +152,36 @@ theorem restrictedSourceRun_weight_eq_product [Finite Player]
   dsimp only
   by_cases hwho : who = focal
   · subst who
-    simp only [restriction, registrationRestriction, ↓reduceIte, replayRegistrationFactor,
-      reduceCtorEq, false_implies, implies_true, and_self]
+    have hselected : decide (focal ≠ focal) = false := by simp
+    constructor
+    · intro _
+      simp [replayRegistrationFactor]
+    · intro fixed hfixed
+      simp only [restriction, registrationRestriction, hselected, Bool.false_eq_true,
+        ↓reduceIte] at hfixed
+      cases hfixed
   · cases hlookup : stopped.last.native.application.service.lookup (who, site.depth) with
     | none =>
-        simp only [restriction, registrationRestriction, if_neg hwho, hlookup, Option.map_none,
-          reduceCtorEq, false_implies, implies_true, and_true]
-        intro _
-        simp only [replayRegistrationFactor, if_neg hwho]
-        erw [hlookup]
-    | some value =>
+        have hselected : decide (who ≠ focal) = true := by simp [hwho]
         constructor
-        · simp only [restriction, registrationRestriction, if_neg hwho, hlookup, Option.map_some,
-            reduceCtorEq, false_implies]
+        · intro _
+          simp only [replayRegistrationFactor, if_neg hwho]
+          erw [hlookup]
         · intro fixed hfixed
-          have hvalue := compilation.registrationRestriction_fixed_value focal
-            stopped.last.native.application.service who hwho site _ value hlookup fixed hfixed
+          simp only [restriction, registrationRestriction, hselected, ↓reduceIte, hlookup,
+            Option.map_none] at hfixed
+          cases hfixed
+    | some value =>
+        have hselected : decide (who ≠ focal) = true := by simp [hwho]
+        constructor
+        · intro hnone
+          simp only [restriction, registrationRestriction, hselected, ↓reduceIte, hlookup,
+            Option.map_some] at hnone
+          cases hnone
+        · intro fixed hfixed
+          have hvalue := compilation.registrationRestriction_fixed_value
+            (fun owner => decide (owner ≠ focal)) stopped.last.native.application.service who
+            (by simp [hwho]) site _ value hlookup fixed hfixed
           let trace := compilation.supported.resolvingReplay nullValue window reference focal
             deviator environment schedule
           let stop := fun execution : runtime.messageApplication.PolicyExecution =>
@@ -232,7 +248,8 @@ theorem extractedSourceRun_replay_iff_restriction
     (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback) focal
       deviator environment schedule).prefixThrough release = stopped ↔
       ∃ final, observeSourceOutcome source.core cfg = some final ∧
-        (compilation.registrationRestriction focal stopped.last.native.application.service).Allows
+        (compilation.registrationRestriction (fun who => decide (who ≠ focal))
+          stopped.last.native.application.service).Allows
           source.core.env final := by
   intro stopped
   have hterminal := compilation.extractedSourceRun_terminal nullValue window focal deviator
@@ -255,9 +272,11 @@ theorem extractedSourceRun_replay_iff_restriction
     exact Option.some.inj heq ▸ hactual
   have hallow :
       (∃ outcome, observeSourceOutcome source.core cfg = some outcome ∧
-        (compilation.registrationRestriction focal stopped.last.native.application.service).Allows
+        (compilation.registrationRestriction (fun who => decide (who ≠ focal))
+          stopped.last.native.application.service).Allows
           source.core.env outcome) ↔
-      (compilation.registrationRestriction focal stopped.last.native.application.service).Allows
+      (compilation.registrationRestriction (fun who => decide (who ≠ focal))
+        stopped.last.native.application.service).Allows
         source.core.env final := by
     constructor
     · rintro ⟨outcome, houtcome, h⟩
@@ -265,19 +284,21 @@ theorem extractedSourceRun_replay_iff_restriction
       cases Option.some.inj houtcome
       exact h
     · exact fun h => ⟨final, hobserve, h⟩
-  have hfields := compilation.registrationRestriction_allows_iff_store focal
-    stopped.last.native.application.service _ cfg hterminal hsource
+  have hfields := compilation.registrationRestriction_allows_iff_store
+    (fun who => decide (who ≠ focal)) stopped.last.native.application.service _ cfg hterminal
+    hsource
   have hreplay := compilation.supported.resolvingReplay_prefix_eq_iff_lookup nullValue window
     focal deviator environment schedule release reference (cfg.1.nodeValues fallback)
   refine (hfields.trans (Iff.trans ?_ (eq_comm.trans hreplay).symm)).symm.trans hallow.symm
   constructor
   · intro h who node guard hsem hwho value hlookup
-    have hstored := h who node guard hsem hwho value hlookup
+    have hstored := h who node guard hsem (by simp [hwho]) value hlookup
     rw [cfg.1.store_nodeValues
       (reachable_storeCoherent compilation.supported.graphWF cfg.2) fallback node
       (compilation.supported.rowType node) (hterminal node)] at hstored
     exact eq_of_heq (TypedValue.mk.inj (Option.some.inj hstored)).2
-  · intro h who node guard hsem hwho value hlookup
+  · intro h who node guard hsem hselected value hlookup
+    have hwho : who ≠ focal := by simpa using hselected
     rw [cfg.1.store_nodeValues
       (reachable_storeCoherent compilation.supported.graphWF cfg.2) fallback node
       (compilation.supported.rowType node) (hterminal node),
@@ -302,12 +323,13 @@ theorem extractedSourceRun_replay_probability
         (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
           (compilation.extractedSourcePolicy nullValue window focal deviator environment schedule
             fallback)) source.core.env).probOf
-        {final | (compilation.registrationRestriction focal
+        {final | (compilation.registrationRestriction (fun who => decide (who ≠ focal))
           stopped.last.native.application.service).Allows source.core.env final} := by
   intro stopped
   let event : Set (Option (VEnv L (sourceTerminalCtx source.core.prog))) :=
     {outcome | ∃ final, outcome = some final ∧
-      (compilation.registrationRestriction focal stopped.last.native.application.service).Allows
+      (compilation.registrationRestriction (fun who => decide (who ≠ focal))
+        stopped.last.native.application.service).Allows
         source.core.env final}
   have hsource := congrArg (fun law => law.probOf event)
     (compilation.extractedSourceRun_source nullValue window focal deviator environment schedule
@@ -341,7 +363,7 @@ theorem extractedSourceRun_replay_likelihood
       Profile.update (sig := sourceGameSignature source.core.prog) profile focal
         (compilation.extractedSourcePolicy nullValue window focal deviator environment schedule
           fallback)
-    let restriction := compilation.registrationRestriction focal
+    let restriction := compilation.registrationRestriction (fun who => decide (who ≠ focal))
       stopped.last.native.application.service
     ((compilation.extractedSourceRun nullValue window focal deviator environment schedule fallback
       profile).map fun cfg =>

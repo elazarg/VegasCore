@@ -4,6 +4,7 @@
   "prose:sealed-opening-barrier": ["Vegas.Paper.sealed_opening_barrier"],
   "prose:pending-source-prefix": ["Vegas.Paper.pending_extracted_source_law", "Vegas.Paper.pending_source_native_prefix_law", "Vegas.Paper.pending_randomized_source_coupling", "Vegas.Paper.pending_normal_completion"],
   "prose:pending-round-coupling": ["Vegas.Paper.pending_randomized_round_source_coupling", "Vegas.Paper.pending_round_normal_completion"],
+  "prose:pending-honest-round": ["Vegas.Paper.pending_honest_round_source_law"],
   "prose:pending-termination": ["Vegas.Paper.compiled_resolution_terminates"],
   "prose:selective-quitting-margin": ["Vegas.Paper.selective_quitting_bound"],
   "prose:pending-disclosure-margin": ["Vegas.Paper.sealed_disclosure_utility_bound"],

@@ -22,6 +22,7 @@ import Vegas.Compile.SealedSourceCylinder
 import Vegas.Compile.SealedNativeLikelihood
 import Vegas.Compile.SealedRandomizedCoupling
 import Vegas.Compile.SealedRoundCoupling
+import Vegas.Compile.SealedHonestRound
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
@@ -47,6 +48,8 @@ compiler simulation. Pending-message preservation still uses an explicit
 finite-mixture law for its considered unilateral deviations.
 
 The fixed-response source/native prefix law through first timeout is checked.
+The original all-compiled source law is checked for the actual round driver
+under periodic service, with normal completion and timeout exclusion proved.
 The full pending-message backtranslation for the concrete policy runtime is an open
 research obligation. It is not represented here as a theorem with an
 unjustified universal conclusion; the certificate interface records exactly
@@ -236,7 +239,7 @@ theorem compiled_resolution_terminates
     (compilation.supported.resolvingRuntime nullValue window).complete
       next.native.application.visible = true :=
   compilation.resolvingRuntime_runRounds_complete nullValue window principals serviceSlots
-    players environment next hnext
+    players environment _ (Nat.le_refl _) next hnext
 
 /-- Whole-prefix registration hiding with randomized native players and
 full-pool environment policies. Source-kernel coupling is a separate obligation. -/
@@ -466,10 +469,11 @@ theorem pending_reference_source_law
     (service : IdealCommitments Player Nat (L.Val ty))
     (profile : SourceBehavioralProfile source.core.prog) :
     (compilation.extractedSourceRun nullValue window focal deviator environment schedule fallback
-      ((compilation.registrationRestriction focal service).apply profile)).map
+      ((compilation.registrationRestriction (fun who => decide (who ≠ focal)) service).apply
+        profile)).map
         (ToEventGraph.observeSourceOutcome source.core) =
       (denoteSource source.core.prog
-        ((compilation.registrationRestriction focal service).apply
+        ((compilation.registrationRestriction (fun who => decide (who ≠ focal)) service).apply
           (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
             (compilation.extractedSourcePolicy nullValue window focal deviator environment
               schedule fallback))) source.core.env).map some :=
@@ -488,7 +492,7 @@ theorem pending_reference_replay_prefix
     let stopped := (compilation.supported.resolvingReplay nullValue window reference focal
       deviator environment schedule).prefixThrough release
     ∀ cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
-      fallback ((compilation.registrationRestriction focal
+      fallback ((compilation.registrationRestriction (fun who => decide (who ≠ focal))
         stopped.last.native.application.service).apply profile)).support,
       (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback) focal
         deviator environment schedule).prefixThrough release = stopped :=
@@ -510,7 +514,7 @@ theorem pending_source_cylinder_likelihood
       Profile.update (sig := sourceGameSignature source.core.prog) profile focal
         (compilation.extractedSourcePolicy nullValue window focal deviator environment schedule
           fallback)
-    let restriction := compilation.registrationRestriction focal
+    let restriction := compilation.registrationRestriction (fun who => decide (who ≠ focal))
       stopped.last.native.application.service
     ((compilation.extractedSourceRun nullValue window focal deviator environment schedule fallback
       profile).map fun cfg =>
@@ -747,7 +751,7 @@ theorem pending_registration_source_probability
         runtime.messageApplication.PolicyExecution =>
           !execution.native.application.visible.timeouts.isEmpty)
     ∀ cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
-      fallback ((compilation.registrationRestriction focal
+      fallback ((compilation.registrationRestriction (fun who => decide (who ≠ focal))
         tracePrefix.last.native.application.service).apply profile)).support,
     let stopped := tracePrefix.firstRelease release
     stopped.native.application.visible.timeouts = [] →
@@ -773,6 +777,46 @@ theorem pending_registration_source_probability
     environment schedule fallback reference profile release
 
 end SourceRealization
+
+/-- Original written-source outcomes in the actual pending-message round
+driver, with completion and honest timeout exclusion derived from service. -/
+theorem pending_honest_round_source_law
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (principals : List Player) (serviceSlots : Nat)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (wire : (compilation.supported.resolvingRuntime nullValue window).messageApplication.WirePolicy)
+    (reserved : Nat → Bool)
+    (hservice :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.InclusionService
+        (fun turn => reserved turn = true)
+        ((compilation.supported.resolvingRuntime nullValue
+          window).messageApplication.wireEnvironment wire))
+    (period : Nat) (hperiod : 0 < period)
+    (hcapacity : ∀ block, period * principals.length ≤
+      (List.range' (((block + 1) * period - 1) * (serviceSlots + 1))
+        serviceSlots).countP reserved)
+    (hroster : ∀ who, who ∈ principals)
+    (hwindow : (ToEventGraph.compile source.core).graph.nodeCount * (period + 1) + 2 ≤ window)
+    (total : Nat) (hperiods : period ∣ total)
+    (hbound : (ToEventGraph.compile source.core).graph.nodeCount * (window + 1) ≤ total) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    ∃ coupling : FinDist (ReachableConfig (ToEventGraph.compile source.core).graph ×
+        runtime.messageApplication.PolicyExecution),
+      coupling.map (fun pair => ToEventGraph.observeSourceOutcome source.core pair.1) =
+        (denoteSource source.core.prog profile source.core.env).map some ∧
+      coupling.map Prod.snd =
+        runtime.runRounds principals serviceSlots
+          (fun who => compilation.compileResolvingPolicy nullValue window who (profile who))
+          wire total (MessageApplication.PolicyExecution.initial _
+            (MessageApplication.State.initial _ runtime.initial)) ∧
+      ∀ cfg next, (cfg, next) ∈ coupling.support →
+        runtime.complete next.native.application.visible = true ∧
+        next.native.application.visible.timeouts = [] ∧
+        (ToEventGraph.compile source.core).graph.decodeSealedFrom ty next.native.application.service
+          (Config.initial _) next.native.application.visible.events = some cfg.1 :=
+  compilation.exists_honest_round_source_coupling nullValue window principals serviceSlots
+    profile wire reserved hservice period hperiod hcapacity hroster hwindow total hperiods hbound
 
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal
@@ -1472,3 +1516,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_normal_completion
+
+/-- info: 'Vegas.Paper.pending_honest_round_source_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_honest_round_source_law
