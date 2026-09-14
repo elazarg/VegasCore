@@ -82,9 +82,17 @@ source settlement witness alone do not provide the required strategy law.
 and candidate catalog at first acceptance or timeout depend only on
 source-earlier honest disclosures. Both commitment services use the common
 policy-trace coupling lemma; the candidate relation does not equate hidden
-openability. The source backtranslation must now extract the selected candidate
-and establish the joint law against unchanged opponents. An unopenable
-selection must be interpreted through the source failure condition.
+openability. Fixed-response replay extracts the selected candidate's opening
+through declared source reads. `extractedCandidateSourcePolicy` is a legal
+written-source replacement, and `extractedCandidateSourceRun_consistent`
+discharges input agreement at every supported complete source realization.
+The registered and candidate hosts share the source-disclosure policy and
+source-run constructors; they do not define separate source evaluators.
+Accepted candidate meanings remain fixed through arbitrary native suffixes.
+The joint law of replay with the original native execution remains unproved.
+The legal fallback used for an absent or unopenable selection still requires
+the source failure/incentive argument; constructing a source policy does not
+establish that strategic comparison.
 
 Candidate handles are owner-scoped identifiers. A pending handle can acquire
 its private value until acceptance; an unprepared accepted handle becomes

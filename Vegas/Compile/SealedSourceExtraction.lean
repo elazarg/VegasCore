@@ -4,12 +4,12 @@ import Vegas.Compile.SealedResolutionReplay
 import Vegas.Compile.SourceDisclosureReads
 import Vegas.EventGraph.KernelRealization
 
-/-! # Source-local extraction of native registrations
+/-! # Source policies from earlier disclosed choices
 
-For fixed deterministic native responses, replay yields a choice function of
-source-earlier honest disclosures. Every such disclosure is a declared read
-of the compiled source decision. Reading those fields produces a legal graph
-policy, and the existing policy roundtrip gives a legal written-source policy.
+Every source-earlier honest disclosure is a declared read of the compiled
+source decision. Any function of those disclosed values therefore produces a
+legal graph policy, and the exact policy roundtrip gives a legal written-source
+policy. This constructor is independent of the native commitment host.
 
 The local agreement theorem identifies its action with the replay registration
 when its disclosure inputs agree with the assigned values. For a complete
@@ -114,6 +114,34 @@ theorem disclosureInputs_eq_nodeValues (focal : Player)
         ((compile source.core).graph.nodeTarget coordinate.val) ty).getD fallback
   rw [hproducer, Option.getD_some, hvalue]
 
+/-- Build a legal graph policy from functions of source-earlier honest
+disclosures. The admitted fragment's guards accept every resulting value. -/
+def commitPolicyOfDisclosures (focal : Player)
+    (choose : (decision : Fin (compile source.core).graph.nodeCount) →
+      (compilation.supported.priorHonestCoordinates focal decision → L.Val ty) → L.Val ty) :
+    CommitPolicy (compile source.core).graph focal :=
+  fun decision guard hdecision reads => FinDist.pure
+    ⟨cast (congrArg L.Val (compilation.supported.commitType decision focal guard hdecision).symm)
+      (choose decision (compilation.disclosureInputs focal decision guard hdecision reads)),
+      compilation.supported.commitGuard decision focal guard hdecision _ reads⟩
+
+/-- Source-local disclosed-value functions inhabit the original source
+strategy type, not an enlarged strategy space with runtime observations. -/
+def sourcePolicyOfDisclosures (focal : Player)
+    (choose : (decision : Fin (compile source.core).graph.nodeCount) →
+      (compilation.supported.priorHonestCoordinates focal decision → L.Val ty) → L.Val ty) :
+    SourceBehavioralPolicy source.core.prog focal :=
+  backtranslateCommitPolicy source.core focal (compilation.commitPolicyOfDisclosures focal choose)
+
+theorem compile_sourcePolicyOfDisclosures (focal : Player)
+    (choose : (decision : Fin (compile source.core).graph.nodeCount) →
+      (compilation.supported.priorHonestCoordinates focal decision → L.Val ty) → L.Val ty) :
+    compileSourcePolicy source.core.prog source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+      rfl focal (compilation.sourcePolicyOfDisclosures focal choose) =
+      compilation.commitPolicyOfDisclosures focal choose :=
+  compile_backtranslateCommitPolicy source.core focal _
+
 variable [DecidableEq (L.Val ty)] (nullValue : L.Val ty) (window : Nat) (focal : Player)
 variable (deviator :
   List (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry →
@@ -132,17 +160,15 @@ variable (schedule : List (@Invocation Player)) (fallback : L.Val ty)
 the same native response functions. Unrestricted backend guards make the
 fallback legal, including at source views not reached by native replay. -/
 def extractedCommitPolicy : CommitPolicy (compile source.core).graph focal :=
-  fun decision guard hdecision reads => FinDist.pure
-    ⟨cast (congrArg L.Val (compilation.supported.commitType decision focal guard hdecision).symm)
-      (compilation.supported.extractedChoice nullValue window focal deviator environment schedule
-        decision (compilation.disclosureInputs focal decision guard hdecision reads) fallback),
-      compilation.supported.commitGuard decision focal guard hdecision _ reads⟩
+  compilation.commitPolicyOfDisclosures focal fun decision visible =>
+    compilation.supported.extractedChoice nullValue window focal deviator environment schedule
+      decision visible fallback
 
 /-- The extraction inhabits the existing written-source strategy type. -/
 def extractedSourcePolicy : SourceBehavioralPolicy source.core.prog focal :=
-  backtranslateCommitPolicy source.core focal
-    (compilation.extractedCommitPolicy nullValue window focal deviator environment schedule
-      fallback)
+  compilation.sourcePolicyOfDisclosures focal fun decision visible =>
+    compilation.supported.extractedChoice nullValue window focal deviator environment schedule
+      decision visible fallback
 
 theorem compile_extractedSourcePolicy :
     compileSourcePolicy source.core.prog source.core.fresh
@@ -171,7 +197,8 @@ theorem extractedCommitPolicy_law
           value.1) =
       FinDist.pure ((compilation.supported.resolvingBinding nullValue window values focal
         deviator environment schedule decision).getD fallback) := by
-  simp only [extractedCommitPolicy, FinDist.map_pure, cast_cast, cast_eq, hinputs]
+  simp only [extractedCommitPolicy, commitPolicyOfDisclosures, FinDist.map_pure,
+    cast_cast, cast_eq, hinputs]
   rw [compilation.supported.extractedChoice_eq_binding nullValue window values focal
     deviator environment schedule decision guard hdecision fallback]
 

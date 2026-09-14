@@ -72,9 +72,18 @@ focal policy and full-pool environment have the same joint law of focal history,
 view, and owner-scoped candidate catalog through first acceptance or timeout
 when honest values agree on source-earlier disclosures. The cut permits multiple
 preparations and competing candidates; it does not stop at private preparation.
-The catalog is proof-facing data, not an extra player observation. This supplies
-the acceptance-time extraction input; the source-policy backtranslation and
-joint probability law against unchanged source opponents remain to be proved.
+The catalog is proof-facing data, not an extra player observation.
+`extractedCandidateSourcePolicy` uses this bound to construct a legal
+written-source replacement from fixed native response functions, shared across
+all source decisions. It selects the accepted candidate's opening, not the
+first preparation. Absent or unopenable selections use a legal fallback;
+an openable source null value remains distinct from those cases. The actual
+selected meaning is nonfresh and persists through the rest of the native trace.
+`extractedCandidateSourceRun_consistent` proves that every supported complete
+source realization agrees with these replay selections, with unchanged
+opponent policies and no assumed source-input equality. The joint probability
+law identifying those replays with the original native execution remains
+unproved, as does the candidate-host incentive bound for fallback runs.
 
 ## End-to-end target
 

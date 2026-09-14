@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.SealedCandidateResolution
-import Interaction.MessageApplicationPolicyLaws
+import Interaction.MessageApplicationPolicyTrace
+import Interaction.SealedResolutionAccepted
 
 /-! # Candidate binding in arbitrary policy runs
 
@@ -187,6 +188,98 @@ theorem runPolicies_candidate_verify
   unfold CommitmentCandidates.verify
   rw [runtime.runPolicies_candidate_lookup_of_not_fresh players environment schedule
     execution next handle hfixed hnext]
+
+/-- Every accepted candidate has a fixed meaning in every supported policy
+run. Timeout resolution adds no acceptance events, and neither preparation nor
+later messages can restore freshness. No player follows a prescribed policy. -/
+theorem runPolicies_candidate_accepted_not_fresh
+    (runtime : SealedResolution Principal Value)
+    (players : Principal → runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal))
+    (execution next : runtime.candidateApplication.PolicyExecution)
+    (hinitial : ∀ node handle,
+      SealedProgram.Event.accepted node handle ∈ execution.native.application.visible.events →
+      execution.native.application.service.lookup handle ≠ .fresh)
+    (hnext : next ∈ (runtime.candidateApplication.runPolicies
+      players environment schedule execution).support) :
+    ∀ node handle, SealedProgram.Event.accepted node handle ∈
+      next.native.application.visible.events →
+      next.native.application.service.lookup handle ≠ .fresh := by
+  let invariant := fun state : ApplicationState Principal Value
+      (CommitmentCandidates Principal Nat Value) => ∀ node handle,
+    SealedProgram.Event.accepted node handle ∈ state.visible.events →
+      state.service.lookup handle ≠ .fresh
+  apply runtime.candidateApplication.runPolicies_application_invariant invariant ?_ ?_ ?_
+    players environment schedule execution next hinitial hnext
+  · intro state owner command hstate node handle haccepted
+    change (state.service.prepare owner command.down.1 command.down.2).lookup handle ≠ .fresh
+    rw [state.service.lookup_prepare_eq_of_not_fresh handle owner command.down.1 command.down.2
+      (hstate node handle haccepted)]
+    exact hstate node handle haccepted
+  · intro state message result hstate hresult
+    change runtime.candidateHandle state message = some result at hresult
+    unfold candidateHandle at hresult
+    split at hresult
+    · contradiction
+    · cases hmessage : (runtime.program.discharge state.visible.timeouts).candidateMessage?
+          state.service state.visible.events message with
+      | none => simp [hmessage] at hresult
+      | some admitted =>
+          simp only [hmessage, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hresult
+          subst result
+          intro node handle haccepted
+          have hmem := (runtime.refresh_accepted_iff false
+            { state.visible with events := state.visible.events ++ [admitted.2] }
+            node handle).mp haccepted
+          simp only [List.mem_append, List.mem_singleton] at hmem
+          rcases hmem with hprior | hnew
+          · change admitted.1.lookup handle ≠ .fresh
+            rw [candidateMessage?_lookup_eq_of_not_fresh
+              (runtime.program.discharge state.visible.timeouts) state.service state.visible.events
+              message admitted handle (hstate node handle hprior) hmessage]
+            exact hstate node handle hprior
+          · apply candidateMessage?_accepted_fixed
+              (runtime.program.discharge state.visible.timeouts) state.service state.visible.events
+              message admitted.1 node handle
+            simpa only [hnew] using hmessage
+  · intro state command result hstate hresult
+    simp only [candidateApplication, host, GameTheory.Math.Probability.FinDist.mem_support_pure]
+      at hresult
+    subst result
+    intro node handle haccepted
+    exact hstate node handle ((runtime.refresh_accepted_iff true
+      { state.visible with clock := state.visible.clock + 1 } node handle).mp haccepted)
+
+/-- At any selected snapshot of an actual trace, a publicly accepted handle
+already has its final immutable meaning. This covers arbitrary randomized
+policies, arbitrary cuts, and suffixes that execute after timeouts. -/
+theorem tracePolicies_candidate_accepted_frozen
+    (runtime : SealedResolution Principal Value)
+    (players : Principal → runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal))
+    (trace : runtime.candidateApplication.PolicyTrace)
+    (htrace : trace ∈ (runtime.candidateApplication.tracePolicies players environment schedule
+      (PolicyExecution.initial _ (MessageApplication.State.initial _
+        runtime.candidateInitial))).support)
+    (release : runtime.candidateApplication.PolicyExecution → Bool)
+    (node : Nat) (handle : CommitmentHandle Principal Nat)
+    (haccepted : SealedProgram.accepted?
+      (trace.firstRelease release).native.application.visible.events node = some handle) :
+    (trace.firstRelease release).native.application.service.lookup handle ≠ .fresh ∧
+      trace.last.native.application.service.lookup handle =
+        (trace.firstRelease release).native.application.service.lookup handle := by
+  obtain ⟨front, suffix, _hsplit, hfront, hsuffix⟩ :=
+    runtime.candidateApplication.tracePolicies_firstRelease_split players environment release
+      schedule _ trace htrace
+  have hfixed := runtime.runPolicies_candidate_accepted_not_fresh players environment front
+    _ _ (fun index selected hmem => ?_) hfront node handle
+      (SealedProgram.accepted_mem_of_accepted?_eq_some haccepted)
+  · exact ⟨hfixed, runtime.runPolicies_candidate_lookup_of_not_fresh players environment suffix
+      _ _ handle hfixed hsuffix⟩
+  · have hempty := (runtime.refresh_accepted_iff false {} index selected).mp hmem
+    exact False.elim (List.not_mem_nil hempty)
 
 end Interaction.SealedResolution
 

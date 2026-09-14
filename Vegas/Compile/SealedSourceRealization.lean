@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedSourceExtraction
+import Vegas.Compile.SealedDisclosureRun
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SealedSourceInputs
 import Vegas.Compile.SourceCorrespondence
@@ -43,15 +43,9 @@ with the extracted policy replacing only the focal player. Honest kernels are
 unchanged and may depend on all their declared public and private inputs. -/
 def extractedSourceRun (profile : SourceBehavioralProfile source.core.prog) :
     FinDist (ReachableConfig (compile source.core).graph) :=
-  runPolicyNodes (compile source.core).graphWF (compile_guardLive source.core source.legal)
-    (Profile.update (sig := ⟨CommitPolicy (compile source.core).graph,
-      ReachableConfig (compile source.core).graph⟩)
-      (fun who => compileSourcePolicy source.core.prog source.core.fresh
-        (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
-        rfl who (profile who)) focal
-      (compilation.extractedCommitPolicy nullValue window focal deviator environment schedule
-        fallback))
-    ⟨Config.initial (compile source.core).graph, .initial⟩ (compile source.core).graph.nodeOrder
+  compilation.sourceRunOfDisclosures focal
+    (fun decision visible => compilation.supported.extractedChoice nullValue window focal
+      deviator environment schedule decision visible fallback) profile
 
 /-- This is the exact written-source law against unchanged opponents, not a
 new source evaluator or a chosen law postulated to match native execution. -/
@@ -68,10 +62,7 @@ theorem extractedSourceRun_terminal (profile : SourceBehavioralProfile source.co
     (cfg : ReachableConfig (compile source.core).graph)
     (hcfg : cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment
       schedule fallback profile).support) : Terminal (compile source.core).graph cfg.1 := by
-  exact runPolicyNodes_terminal (compile source.core).graphWF
-    (compile_guardLive source.core source.legal) _
-    ⟨Config.initial (compile source.core).graph, .initial⟩ (compile source.core).graph.nodeOrder
-    (compile source.core).graph.nodeOrder_readyOrder (fun node => Or.inr (by simp)) cfg hcfg
+  exact compilation.sourceRunOfDisclosures_terminal focal _ profile cfg hcfg
 
 /-- In every supported complete source realization, all focal choices equal
 the first native registrations extracted from replay of that realization's
@@ -86,32 +77,13 @@ theorem extractedSourceRun_consistent (profile : SourceBehavioralProfile source.
     cfg.1.nodeValues fallback decision =
       (compilation.supported.resolvingBinding nullValue window (cfg.1.nodeValues fallback) focal
         deviator environment schedule decision).getD fallback := by
-  have hterminal := compilation.extractedSourceRun_terminal nullValue window focal
-    deviator environment schedule fallback profile cfg hcfg
-  have hchoices := runPolicyNodes_support_commitValues (compile source.core).graphWF
-    (compile_guardLive source.core source.legal) _ _ (CommitValuesSupported.initial _)
-    (compile source.core).graph.nodeOrder cfg hcfg
-  obtain ⟨reads, hreads, choice, hchoice, hvalue⟩ :=
-    hchoices decision (hterminal decision) focal guard hdecision
-  rw [Profile.update_same] at hchoice
-  have hinputs := compilation.disclosureInputs_eq_nodeValues focal decision guard hdecision
-    cfg hterminal reads hreads fallback
-  have hlaw := compilation.extractedCommitPolicy_law nullValue window focal deviator environment
-    schedule fallback (cfg.1.nodeValues fallback) decision guard hdecision reads hinputs
-  have hselected : cast (congrArg L.Val
-      (compilation.supported.commitType decision focal guard hdecision)) choice.1 ∈
-      (((compilation.extractedCommitPolicy nullValue window focal deviator environment schedule
-        fallback) decision guard hdecision reads).map (fun value => cast (congrArg L.Val
-          (compilation.supported.commitType decision focal guard hdecision)) value.1)).support := by
-    rw [FinDist.support_map]
-    exact ⟨choice, hchoice, rfl⟩
-  rw [hlaw, FinDist.mem_support_pure] at hselected
-  change cfg.1.store ((compile source.core).graph.nodeTarget decision) =
-    some (⟨guard.ty, choice.1⟩ : TypedValue L) at hvalue
-  rw [Config.nodeValues, Store.getAs, hvalue]
-  simpa only [TypedValue.as?,
-    dif_pos (compilation.supported.commitType decision focal guard hdecision), Option.getD_some]
-    using hselected
+  have hchoice := compilation.sourceRunOfDisclosures_consistent focal
+    (fun index visible => compilation.supported.extractedChoice nullValue window focal
+      deviator environment schedule index visible fallback)
+    profile fallback cfg hcfg decision guard hdecision
+  exact hchoice.trans (compilation.supported.extractedChoice_eq_binding nullValue window
+    (cfg.1.nodeValues fallback) focal deviator environment schedule decision guard
+      hdecision fallback)
 
 /-- All focal source-owned registrations at the same first-timeout checkpoint
 are retained in the complete source realization, including registrations made

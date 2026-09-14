@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedResolutionReadBound
-import Vegas.Compile.SealedCandidateReadBound
+import Vegas.Compile.SealedCandidateSourceExtraction
 import VegasTests.PendingSource
 
 /-! # Native registration and acceptance hiding for a checked two-player source
@@ -159,12 +159,16 @@ theorem candidate_hidden_until_acceptance (leftValues rightValues : Fin graph.no
   intro who hwho index hknown
   exact False.elim (no_honest_known_before_second who hwho index hknown)
 
-private def prepareThenSelect : runtime.candidateApplication.PlayerPolicy := fun history _ =>
-  FinDist.pure <| match history.length with
+private def selectCommand (history : List runtime.candidateApplication.PlayerEntry)
+    (_view : runtime.candidateApplication.View) : runtime.candidateApplication.PlayerCommand :=
+  match history.length with
   | 0 => .privateCommand ⟨(10, some false)⟩
   | 1 => .privateCommand ⟨(11, some true)⟩
   | 2 => .submit (.commitment 1 (1, 11))
   | _ => .wait
+
+private def prepareThenSelect : runtime.candidateApplication.PlayerPolicy :=
+  fun history view => FinDist.pure (selectCommand history view)
 
 /-- The readout permits two preparations and selects the second candidate at
 public acceptance. It retains both preparations, the submission, the accepted
@@ -179,11 +183,104 @@ theorem candidate_acceptance_retains_selection :
         CommitmentCandidate.openable (some false), CommitmentCandidate.openable (some true)) := by
   simp only [SealedFragment.candidateAcceptanceLaw, tracePolicies, invoke,
     SealedFragment.candidateValuePlayers, GameTheory.Profile.update_same,
-    prepareThenSelect, playerStep, environmentPolicyStep, advance, PlayerCommand.toAction,
+    prepareThenSelect, selectCommand, playerStep, environmentPolicyStep, advance,
+    PlayerCommand.toAction,
     EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
     FinDist.map_pure, PolicyExecution.initial, List.length_nil, List.length_append,
     List.length_cons, List.nil_append, ↓reduceIte]
   rfl
+
+/-- Extraction selects the second candidate, even though the first preparation
+has a different value and neither candidate identifier equals the source site. -/
+theorem candidate_selection_second (values : Fin graph.nodeCount → Value) :
+    sealedFragment.candidateSelection none 3 values 1 selectCommand
+      (fun _ _ => .include (1, 0))
+      [.player 1, .player 1, .player 1, .environment] (node 1) =
+        some (.openable (some true)) := by
+  have hlaw := sealedFragment.candidateSelection_law none 3 values 1 selectCommand
+    (fun _ _ => .include (1, 0)) [.player 1, .player 1, .player 1, .environment] (node 1)
+  have hcomputed : (sealedFragment.candidateAcceptanceLaw none 3 values 1 (node 1)
+      (fun history view => FinDist.pure (selectCommand history view))
+      (fun _ _ => FinDist.pure (.include (1, 0)))
+      [.player 1, .player 1, .player 1, .environment]).map
+        (fun input => SealedFragment.selectedCandidate 1 (node 1)
+          input.2.1.application.events input.2.2) =
+      FinDist.pure (some (.openable (some true))) := by
+    simp only [SealedFragment.candidateAcceptanceLaw, tracePolicies, invoke,
+      SealedFragment.candidateValuePlayers, GameTheory.Profile.update_same,
+      selectCommand, playerStep, environmentPolicyStep, advance, PlayerCommand.toAction,
+      EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
+      FinDist.map_pure, PolicyExecution.initial, List.length_nil, List.length_append,
+      List.length_cons, List.nil_append, ↓reduceIte]
+    rfl
+  rw [hcomputed] at hlaw
+  exact FinDist.mem_support_pure.mp (hlaw ▸ FinDist.mem_support_pure.mpr rfl)
+
+/-- An accepted never-prepared handle is retained as unopenable rather than
+confused with an absent commitment or an openable source decline value. -/
+theorem candidate_selection_unopenable (values : Fin graph.nodeCount → Value) :
+    sealedFragment.candidateSelection none 3 values 1
+      (fun _ _ => .submit (.commitment 1 (1, 23))) (fun _ _ => .include (1, 0))
+      [.player 1, .environment] (node 1) = some .unopenable := by
+  have hlaw := sealedFragment.candidateSelection_law none 3 values 1
+    (fun _ _ => .submit (.commitment 1 (1, 23))) (fun _ _ => .include (1, 0))
+    [.player 1, .environment] (node 1)
+  have hcomputed : (sealedFragment.candidateAcceptanceLaw none 3 values 1 (node 1)
+      (fun _ _ => FinDist.pure (.submit (.commitment 1 (1, 23))))
+      (fun _ _ => FinDist.pure (.include (1, 0))) [.player 1, .environment]).map
+        (fun input => SealedFragment.selectedCandidate 1 (node 1)
+          input.2.1.application.events input.2.2) = FinDist.pure (some .unopenable) := by
+    simp only [SealedFragment.candidateAcceptanceLaw, tracePolicies, invoke,
+      SealedFragment.candidateValuePlayers, GameTheory.Profile.update_same,
+      playerStep, environmentPolicyStep, advance, PlayerCommand.toAction,
+      EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
+      FinDist.map_pure, PolicyExecution.initial]
+    rfl
+  rw [hcomputed] at hlaw
+  exact FinDist.mem_support_pure.mp (hlaw ▸ FinDist.mem_support_pure.mpr rfl)
+
+private theorem compilation : SealedCompilation source (.option .bool) := ⟨sealedFragment⟩
+
+/-- The selected second candidate inhabits the original source strategy type.
+The source decision has no honest disclosed inputs; that premise is discharged. -/
+theorem candidate_source_selects_second (guard : EventGuard simpleExpr)
+    (hguard : (graph.nodeRow (node 1)).sem = .commit 1 guard)
+    (reads : ReadEnv simpleExpr guard.choiceReads) (fallback : Value) :
+    (Vegas.ToEventGraph.compileSourcePolicy core source.core.fresh
+      (Vegas.ToEventGraph.BuildState.fromInitial
+        (Vegas.ToEventGraph.initialState [] (VEnv.empty simpleExpr) (by simp))) rfl 1
+      (compilation.extractedCandidateSourcePolicy none 3 1 selectCommand
+        (fun _ _ => .include (1, 0)) [.player 1, .player 1, .player 1, .environment] fallback)
+      (node 1) guard hguard reads).map
+        (fun choice => cast (congrArg simpleExpr.Val
+          (sealedFragment.commitType (node 1) 1 guard hguard)) choice.val) =
+      FinDist.pure (some true) := by
+  have hinputs : compilation.disclosureInputs 1 (node 1) guard hguard reads =
+      fun _ => (none : Value) := by
+    funext coordinate
+    obtain ⟨who, hwho, hknown⟩ := coordinate.property
+    exact (no_honest_known_before_second who hwho coordinate.val hknown).elim
+  have hlaw := compilation.extractedCandidateSourcePolicy_law none 3 1 selectCommand
+    (fun _ _ => .include (1, 0)) [.player 1, .player 1, .player 1, .environment] fallback
+    (fun _ => none) (node 1) guard hguard reads hinputs
+  rw [candidate_selection_second] at hlaw
+  exact hlaw
+
+/-- With an accepted unopenable candidate, every complete source realization
+of the extracted replacement chooses the explicit nullable fallback. Opponent
+source policies remain arbitrary, and source-input agreement is not assumed. -/
+theorem candidate_source_unopenable_defaults (profile : SourceBehavioralProfile core)
+    (cfg : ReachableConfig graph)
+    (hcfg : cfg ∈ (compilation.extractedCandidateSourceRun none 3 1
+      (fun _ _ => .submit (.commitment 1 (1, 23))) (fun _ _ => .include (1, 0))
+      [.player 1, .environment] none profile).support) :
+    cfg.1.nodeValues (L := simpleExpr) (ty := .option .bool) none (node 1) = none := by
+  obtain ⟨guard, hguard, _⟩ := node1_commit
+  have hchoice := compilation.extractedCandidateSourceRun_consistent none 3 1
+    (fun _ _ => .submit (.commitment 1 (1, 23))) (fun _ _ => .include (1, 0))
+    [.player 1, .environment] none profile cfg hcfg (node 1) guard hguard
+  rw [candidate_selection_unopenable] at hchoice
+  exact hchoice
 
 end VegasTests.SealedResolutionReadBound
 

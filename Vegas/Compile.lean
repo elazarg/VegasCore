@@ -34,6 +34,8 @@ import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedCandidatePolicy
 import Vegas.Compile.SealedCandidateReadBound
+import Vegas.Compile.SealedCandidateReplay
+import Vegas.Compile.SealedCandidateSourceExtraction
 import Vegas.Compile.SealedCandidateHonestRound
 import Vegas.Compile.SealedCandidateSettlement
 import Vegas.Compile.SealedResolutionClosure
@@ -52,6 +54,7 @@ import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SealedAssignedReplay
 import Vegas.Compile.SealedHonestCompletion
 import Vegas.Compile.SealedSourceExtraction
+import Vegas.Compile.SealedDisclosureRun
 import Vegas.Compile.SealedSourceRealization
 import Vegas.Compile.SealedSourceAssignment
 import Vegas.Compile.SealedSourceRestriction
@@ -107,4 +110,8 @@ candidate-service instantiation of the shared stopped driver. Completion and
 absence of timeouts follow from deadline-relative service. Arbitrary candidate
 selection and unopenable commitments are not covered by the unilateral coupling
 for the registered-site service.
+`SealedCandidateSourceExtraction` constructs a written-source replacement from
+acceptance-time replay and proves consistency of its complete source runs.
+The joint law identifying these replays with the original native execution
+remains separate from that source-policy construction.
 -/
