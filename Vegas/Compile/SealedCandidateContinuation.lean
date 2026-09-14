@@ -236,8 +236,9 @@ theorem extractedCandidateSourceCoupling_public_store
     schedule initial trace.last (SealedResolution.PublicEventInvariant.initial _) hfinal
   have hopening := runtime.runPolicies_candidate_openings players nativeEnvironment schedule
     initial trace.last SealedResolution.CandidateOpeningInvariant.initial hfinal
-  have haccepted := compilation.extractedCandidateSourceRun_accepted nullValue window focal
-    deviator environment schedule fallback profile cfg hcfg (fun _ => false)
+  have haccepted := compilation.supported.candidateGraphRun_accepted
+    (compile_publicPrefixReadable source.core) (compile_guardLive source.core source.legal)
+    nullValue window focal deviator environment schedule fallback _ cfg hcfg (fun _ => false)
   dsimp only at haccepted
   simp only [PolicyTrace.firstRelease_false_eq_last, PolicyTrace.prefixThrough_last] at haccepted
   dsimp only [SealedFragment.candidateStop] at hstop

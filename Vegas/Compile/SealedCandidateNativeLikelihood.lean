@@ -103,8 +103,9 @@ theorem candidateReplay_registration_factor
       initial stopped.last index handle (hacceptance index handle haccepted).1 hrest
     have hfixed := runtime.runPolicies_candidate_lookup_of_not_fresh players env
       (.player who :: after) initial stopped.last handle (by simp [hlookup]) hrest
-    have hsource := compilation.extractedCandidateSourceRun_accepted nullValue window focal
-      deviator environment schedule fallback restricted cfg hcfg (fun _ => false)
+    have hsource := compilation.supported.candidateGraphRun_accepted
+      (compile_publicPrefixReadable source.core) (compile_guardLive source.core source.legal)
+      nullValue window focal deviator environment schedule fallback _ cfg hcfg (fun _ => false)
     dsimp only at hsource
     rw [hreplay, PolicyTrace.firstRelease_false_eq_last] at hsource
     exact hsource index handle stored
@@ -163,7 +164,8 @@ theorem candidateReplay_registration_factor
   refine ⟨?_, hfresh, ?_⟩
   · rw [← hdepth.trans hslot.symm]
     exact site.decisionPositions_mem
-  · simp only [candidateReplayRegistrationFactor, if_neg hwho]
+  · simp only [candidateReplayRegistrationFactor,
+      SealedFragment.candidateReplayRegistrationFactor, if_neg hwho]
     erw [hlookup]
     change (compilation.compileCandidatePolicy nullValue window who (profile who)
         (initial.principalHistory who)
@@ -236,7 +238,8 @@ theorem candidateReplay_prefix_prob_eq_product
       simp only [players, Profile.update_same, ← hcommand, FinDist.prob_pure_self]
       cases command <;>
         simp only [SealedResolution.candidatePreparationFactor, factor,
-          candidateReplayRegistrationFactor, if_pos rfl, ite_self]
+          candidateReplayRegistrationFactor,
+          SealedFragment.candidateReplayRegistrationFactor, if_pos rfl, ite_self]
     · simp only [players, Profile.update_of_ne _ _ hwho]
       cases command with
       | privateCommand request =>
@@ -277,8 +280,10 @@ theorem candidateReplay_prefix_prob_eq_product
     | none =>
         simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte]
         by_cases hwho : handle.1 = focal
-        · simp only [factor, candidateReplayRegistrationFactor, if_pos hwho]
-        · simp only [factor, candidateReplayRegistrationFactor, if_neg hwho]
+        · simp only [factor, candidateReplayRegistrationFactor,
+            SealedFragment.candidateReplayRegistrationFactor, if_pos hwho]
+        · simp only [factor, candidateReplayRegistrationFactor,
+            SealedFragment.candidateReplayRegistrationFactor, if_neg hwho]
           erw [hlookup]
   rw [Finset.prod_congr rfl hweight]
   exact List.prod_toFinset factor source.core.prog.decisionPositions_nodup

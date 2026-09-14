@@ -5,15 +5,15 @@ import Vegas.Compile.SealedCandidatePolicy
 import Interaction.SealedCandidateOpening
 import Interaction.SealedCandidateMemory
 
-/-! # Candidate-host draws at the original source inputs
+/-! # Candidate-host draws at declared graph inputs
 
 Before timeout, actual opening admission supplies the value of its accepted
 candidate. Agreement of openable accepted values and the honest player's cache
-with a source realization therefore gives exact declared-read kernel equality.
+with a graph realization therefore gives exact declared-read kernel equality.
 Unopenable commitments are permitted, and no private table enters the policy.
 The generated policy establishes its own cache/catalog agreement even when
-all opponents deviate. `Vegas.Compile.SealedCandidateSourceExtraction`
-discharges the accepted-value premise for the extracted source's pre-timeout
+all opponents deviate. `Vegas.Compile.SealedCandidateRealization`
+discharges the accepted-value premise for the extracted graph's pre-timeout
 replays. Identifying their joint probability law is a separate step.
 -/
 

@@ -32,9 +32,10 @@ The intended strategic proof factors through the graph as an independent
 intermediate representation. The source/graph simulation is checked. Backend
 extraction consumes an explicit graph information condition and returns graph
 policies directly; the source compiler certifies that condition. Graph choice
-restriction and candidate replay-prefix probabilities are checked independently
-of source syntax. Their comparison with actual native policy probabilities still
-uses source-specific proofs, so the
+restriction, accepted-value reconstruction, and preparation-kernel equality are
+checked independently of source syntax. The graph-side replay mass is a product
+of native checkpoint probabilities. Native invocation counting and the full-trace
+coupling still use source-specific proofs, so the
 independent graph/runtime strategic certificate and its end-to-end composition
 remain unfinished. See [the factoring plan](docs/compilation-design.md#strategic-intermediate-representation).
 

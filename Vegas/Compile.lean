@@ -46,6 +46,9 @@ import Vegas.Compile.SealedCandidateReadBound
 import Vegas.Compile.SealedCandidateReplay
 import Vegas.Compile.SealedCandidateSourceExtraction
 import Vegas.Compile.SealedCandidateExtraction
+import Vegas.Compile.SealedCandidateRealization
+import Vegas.Compile.SealedCandidateGraphKernel
+import Vegas.Compile.SealedCandidateGraphFactors
 import Vegas.Compile.SealedCandidateGraphLikelihood
 import Vegas.Compile.SealedGraphRestriction
 import Vegas.Compile.SealedCandidateHonestRound

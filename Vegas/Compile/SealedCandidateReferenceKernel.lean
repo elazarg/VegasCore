@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedCandidateSourceLikelihood
+import Vegas.Compile.SealedCandidateGraphKernel
 
 /-! # Original source probabilities throughout a candidate replay cylinder
 
@@ -73,31 +74,16 @@ theorem restrictedCandidateSourceRun_registration_kernel
               .privateCommand ⟨(node.val, cast (congrArg L.Val
                 (compilation.supported.commitType node who guard hsem)) choice.1)⟩) := by
   intro runtime tracePrefix cfg hcfg stopped hclear who hwho slot value hcommand policy
-  have hreplay := compilation.restrictedCandidateSourceRun_replay_prefix nullValue window focal
-    deviator environment schedule fallback reference
-    (fun execution : runtime.candidateApplication.PolicyExecution =>
-      !execution.native.application.visible.timeouts.isEmpty) profile cfg hcfg
-  have hkernel := compilation.extractedCandidateSourceRun_registration_kernel nullValue window
-    focal deviator environment schedule fallback _ cfg hcfg release
-  dsimp only at hkernel
-  rw [hreplay] at hkernel
-  rw [SealedFragment.candidateValuePlayers, Profile.update_of_ne _ _ hwho] at hcommand
-  obtain ⟨node, guard, hsem, reads, hslot, _, _, hselected⟩ :=
-    compilation.supported.selected_registration_kernel who
-      stopped.native.application.visible.timeouts
-      (compilation.supported.valuePolicy reference who)
-      (runtime.eventHistory (runtime.registeredPlayerHistory (stopped.principalHistory who)))
-      (runtime.eventView (runtime.registeredPlayerView
-        (State.observe runtime.candidateApplication stopped.native who))) _ slot value hcommand
-  have hlaw := hselected (compilation.supported.valuePolicy (cfg.1.nodeValues fallback) who)
-  change runtime.candidatePlayerPolicy (compilation.supported.resolvingPolicy nullValue window
-    who (compilation.supported.valuePolicy (cfg.1.nodeValues fallback) who))
-      (stopped.principalHistory who) (State.observe runtime.candidateApplication stopped.native who)
-        = _ at hlaw
-  apply hkernel hclear who hwho slot (cfg.1.nodeValues fallback node) ?_ policy
-  rw [SealedFragment.candidateValuePlayers, Profile.update_of_ne _ _ hwho, hlaw]
-  simp only [SealedFragment.valuePolicy, FinDist.map_pure, cast_cast, cast_eq, hslot,
-    FinDist.mem_support_pure]
+  have hgraph := hcfg
+  unfold extractedCandidateSourceRun sourceRunOfDisclosures at hgraph
+  rw [compilation.compile_recordedChoiceRestriction_profile] at hgraph
+  exact compilation.supported.restrictedCandidateGraphRun_registration_kernel
+    (compile_publicPrefixReadable source.core) (compile_guardLive source.core source.legal)
+    nullValue window focal deviator environment schedule fallback reference _ release cfg hgraph
+    hclear who hwho slot value hcommand
+    (compileSourcePolicy source.core.prog source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+      rfl who policy)
 
 /-- Native preparation probabilities equal the original written-source
 decision probabilities at every reference realization's recorded view. -/

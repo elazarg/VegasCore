@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedCandidateReferenceKernel
+import Vegas.Compile.SealedCandidateGraphFactors
 
 /-! # Candidate source cylinders as native preparation products
 
@@ -39,24 +40,11 @@ at the preparation checkpoint. Focal, fresh, and unopenable slots contribute one
 def candidateReplayRegistrationFactor
     (reference : Fin (compile source.core).graph.nodeCount → L.Val ty)
     (profile : SourceBehavioralProfile source.core.prog) (who : Player) (slot : Nat) : ℝ :=
-  let runtime := compilation.supported.resolvingRuntime nullValue window
-  let trace := compilation.supported.candidateReplay nullValue window reference focal
-    deviator environment schedule
-  let stop := fun execution : runtime.candidateApplication.PolicyExecution =>
-    !execution.native.application.visible.timeouts.isEmpty
-  if who = focal then 1 else
-    match ((trace.prefixThrough stop).last.native.application.service.lookup (who, slot)).opening?
-        with
-    | none => 1
-    | some value =>
-        let selected := runtime.candidateApplication.commandCheckpoint
-          (compilation.supported.candidateValuePlayers nullValue window reference focal
-            (fun history view => FinDist.pure (deviator history view))) trace stop who
-              (.privateCommand ⟨(slot, value)⟩)
-        (compilation.compileCandidatePolicy nullValue window who (profile who)
-          (selected.principalHistory who)
-          (State.observe runtime.candidateApplication selected.native who)).prob
-            (.privateCommand ⟨(slot, value)⟩)
+  compilation.supported.candidateReplayRegistrationFactor nullValue window focal deviator
+    environment schedule reference
+    (fun owner => compileSourcePolicy source.core.prog source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+      rfl owner (profile owner)) who slot
 
 variable (fallback : L.Val ty)
 
@@ -99,12 +87,14 @@ theorem restrictedCandidateSourceRun_weight_eq_product [Finite Player]
     (fun who => decide (who ≠ focal)) recorded original _ final hfinal
   · intro who slot hunit
     by_cases hwho : who = focal
-    · simp only [candidateReplayRegistrationFactor, if_pos hwho]
+    · simp only [candidateReplayRegistrationFactor,
+        SealedFragment.candidateReplayRegistrationFactor, if_pos hwho]
     · have hlookup : recorded (who, slot) = none := by
         rcases hunit with hselected | hlookup
         · simp [hwho] at hselected
         · exact hlookup
-      simp only [candidateReplayRegistrationFactor, if_neg hwho]
+      simp only [candidateReplayRegistrationFactor,
+        SealedFragment.candidateReplayRegistrationFactor, if_neg hwho]
       dsimp only [recorded, stopped] at hlookup
       erw [hlookup]
   · intro who Δ name choiceTy guard site hselected value hlookup
@@ -139,7 +129,8 @@ theorem restrictedCandidateSourceRun_weight_eq_product [Finite Player]
     obtain ⟨rfl, rfl, rfl, hguard, hsite⟩ := actual.indices_eq_of_depth_eq site hdepth
     cases eq_of_heq hguard
     cases eq_of_heq hsite
-    simp only [candidateReplayRegistrationFactor, if_neg hwho, original,
+    simp only [candidateReplayRegistrationFactor,
+      SealedFragment.candidateReplayRegistrationFactor, if_neg hwho, original,
       Profile.update_of_ne _ _ hwho]
     dsimp only [recorded, stopped] at hlookup
     erw [hlookup]

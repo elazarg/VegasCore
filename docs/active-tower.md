@@ -79,9 +79,9 @@ all source decisions. It selects the accepted candidate's opening, not the
 first preparation. Absent or unopenable selections use a legal fallback;
 an openable source null value remains distinct from those cases. The actual
 selected meaning is nonfresh and persists through the rest of the native trace.
-`extractedCandidateSourceRun_consistent` proves that every supported complete
-source realization agrees with these replay selections, with unchanged
-opponent policies and no assumed source-input equality. The exact joint
+`candidateGraphRun_consistent` proves that every supported complete
+graph realization agrees with these replay selections, with arbitrary unchanged
+graph opponents and no assumed input equality. The exact joint
 prefix law through first timeout is proved below for fixed native response
 functions. Candidate-host stopped-round coupling and the incentive bound for
 fallback runs remain open.
@@ -93,14 +93,14 @@ Before timeout, `runPolicies_candidate_openings` ties every successful opening
 to its actual accepted handle and immutable value; acceptance alone need not
 imply openability. Shared event-value read reconstruction lets
 `candidate_registration_kernel` identify the local fresh-slot draw from
-event-value agreement. `extractedCandidateSourceRun_accepted` discharges that
+event-value agreement. `candidateGraphRun_accepted` discharges that
 agreement at every checkpoint of the pre-timeout replay. The public log selects
-one authenticated handle per source site; its acceptance-time meaning equals
+one authenticated handle per graph site; its acceptance-time meaning equals
 its meaning at the common timeout checkpoint. Focal values therefore agree
-with the extracted source choice, while generated honest submissions retain
-their source-site identity and assigned values through delivery and replay.
-`extractedCandidateSourceRun_registration_kernel` consequently identifies each
-fresh honest draw with the original source kernel at the complete source
+with the extracted graph choice, while generated honest submissions retain
+their graph-site identity and assigned values through delivery and replay.
+`candidateGraphRun_registration_kernel` consequently identifies each
+fresh honest draw with the original graph kernel at the complete graph
 realization's declared inputs. No cache, accepted-value, or read-environment
 agreement premise remains. This local kernel theorem supplies the
 original-probability comparison used in the joint native prefix law.
@@ -176,11 +176,14 @@ The theorem must factor as source → certified graph → candidate runtime.
 `Graph.PublicPrefixReadable`, certified for compiler outputs, makes the
 disclosure-based candidate backtranslation graph-local;
 `SealedFragment.runOfDisclosures_consistent` covers arbitrary unchanged graph
-opponents. Graph restriction likelihood and complete candidate replay-prefix mass
-are checked independently of source syntax; the source reference-prefix theorem
-delegates to the graph theorem. Identifying these likelihoods with actual native
-policy probabilities remains source-relative. That comparison, the resulting
-deviation coupling, and the graph-level resolution utility condition
+opponents. Graph restriction likelihood, accepted-value reconstruction, and
+preparation-kernel equality are checked independently of source syntax.
+`candidateGraphRun_replay_prob_eq_product` evaluates the graph replay mass
+as a product of native preparation-checkpoint probabilities; the source kernel
+adapter delegates to the graph result. Identifying that product with the actual
+native runner's mass still uses source-specific invocation counting.
+That comparison, the resulting deviation coupling, and the graph-level
+resolution utility condition
 are required before the backend can supply its own `UtilitySimulation` and the
 source theorem can follow by composition. The
 [compilation design](compilation-design.md#strategic-intermediate-representation)

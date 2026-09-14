@@ -273,19 +273,23 @@ theorem candidate_source_selects_second (guard : EventGuard simpleExpr)
   rw [candidate_selection_second] at hlaw
   exact hlaw
 
-/-- With an accepted unopenable candidate, every complete source realization
-of the extracted replacement chooses the explicit nullable fallback. Opponent
-source policies remain arbitrary, and source-input agreement is not assumed. -/
-theorem candidate_source_unopenable_defaults (profile : SourceBehavioralProfile core)
+/-- With an accepted unopenable candidate, every complete graph realization
+of the extracted replacement chooses the explicit nullable fallback. Opponents
+may use arbitrary graph policies, not just compiled source policies. -/
+theorem candidate_graph_unopenable_defaults (profile : CommitPolicyProfile graph)
     (cfg : ReachableConfig graph)
-    (hcfg : cfg ∈ (compilation.extractedCandidateSourceRun none 3 1
+    (hcfg : cfg ∈ (sealedFragment.candidateGraphRun
+      (Vegas.ToEventGraph.compile_publicPrefixReadable source.core)
+      (Vegas.ToEventGraph.compile_guardLive source.core source.legal) none 3 1
       (fun _ _ => .submit (.commitment 1 (1, 23))) (fun _ _ => .include (1, 0))
       [.player 1, .environment] none profile).support) :
     cfg.1.nodeValues (L := simpleExpr) (ty := .option .bool) none (node 1) = none := by
   obtain ⟨guard, hguard, _⟩ := node1_commit
-  have hchoice := compilation.extractedCandidateSourceRun_consistent none 3 1
+  have hchoice := compilation.supported.candidateGraphRun_consistent
+    (Vegas.ToEventGraph.compile_publicPrefixReadable source.core)
+    (Vegas.ToEventGraph.compile_guardLive source.core source.legal) none 3 1
     (fun _ _ => .submit (.commitment 1 (1, 23))) (fun _ _ => .include (1, 0))
-    [.player 1, .environment] none profile cfg hcfg (node 1) guard hguard
+    [.player 1, .environment] none _ cfg hcfg (node 1) guard hguard
   rw [candidate_selection_unopenable] at hchoice
   exact hchoice
 
@@ -389,8 +393,10 @@ theorem candidate_replay_acceptances_match_source
       stopped.native.application.service.lookup handle = .openable value →
       cfg.1.store (graph.nodeTarget index) =
         some (⟨.option .bool, value⟩ : TypedValue simpleExpr) :=
-  compilation.extractedCandidateSourceRun_accepted none 3 1 deviator environment schedule none
-    profile cfg hcfg release
+  compilation.supported.candidateGraphRun_accepted
+    (Vegas.ToEventGraph.compile_publicPrefixReadable source.core)
+    (Vegas.ToEventGraph.compile_guardLive source.core source.legal)
+    none 3 1 deviator environment schedule none _ cfg hcfg release
 
 /-- A reference realization exists even when its forced honest value had zero
 probability under the original profile. The focal traffic prepares competing

@@ -69,12 +69,25 @@ realization reproduces the full native replay prefix, including zero-mass cases.
 The source compiler certifies that recorded-choice restriction commutes with
 policy compilation; its reference-prefix theorem delegates to the graph result.
 
-This factoring is incomplete. The comparison of these graph-side likelihoods
-with actual native policy probabilities and the randomized deviation coupling
-still use source-specific kernel reconstruction and product calculations.
+`SealedFragment.candidateGraphRun_accepted` reconstructs every openable
+accepted value in pre-timeout replay from the complete graph realization.
+`candidateGraphRun_registration_kernel` and
+`restrictedCandidateGraphRun_registration_kernel` identify honest native
+preparations with arbitrary graph kernels at their declared reads, including
+throughout zero-mass reference cylinders. The source kernel adapter delegates
+to these results after transporting its profile restriction.
+`candidateGraphRun_replay_prob_eq_product` evaluates the graph replay mass as
+a product of those native checkpoint probabilities, with unchanged graph
+opponents. The product is indexed by actual graph nodes; no source decision
+positions or source execution factorization occur in that proof.
+
+This factoring is incomplete. The native invocation-counting argument and
+the randomized full-trace deviation coupling still use source-specific
+interfaces. The existing source likelihood product uses the shared native
+factor definition but has not been replaced by the graph product theorem.
 Some backend modules also transitively import mixed source/backend modules.
-The next proof work is to make that native-kernel/factor identification graph-relative,
-then construct the graph/native coupling with arbitrary graph opponents. The
+The next proof work is to identify the actual native trace mass with that graph
+product, then construct the graph/native coupling with arbitrary graph opponents. The
 candidate stopped-round and first-honest-timeout arguments must consume that
 coupling. Legal resolution defaults and the quitting utility bound need graph
 formulations with compiler certificates, rather than a hidden source-image
@@ -164,9 +177,9 @@ source-earlier honest disclosures. Both commitment services use the common
 policy-trace coupling lemma; the candidate relation does not equate hidden
 openability. Fixed-response replay extracts the selected candidate's opening
 through declared graph reads under `PublicPrefixReadable`.
-`extractedCandidateSourcePolicy` is the legal source adapter to that graph policy,
-and `extractedCandidateSourceRun_consistent`
-discharges input agreement at every supported complete source realization.
+`extractedCandidateSourcePolicy` is the legal source adapter to that graph policy.
+`candidateGraphRun_consistent` discharges input agreement at every supported
+complete graph realization, including compiled source profiles.
 The registered and candidate hosts share graph-disclosure policy and execution
 constructors, with source law adapters; they do not define separate evaluators.
 Accepted candidate meanings remain fixed through arbitrary native suffixes.
@@ -184,15 +197,15 @@ from its generated submissions, while leaving other players unrestricted;
 retained-message safety includes the pool, ledger, inboxes, and sent history.
 `CandidateOpeningInvariant` ties successful pre-timeout openings to accepted
 handles. Together they discharge the runtime premises of
-`candidate_registration_kernel`. `extractedCandidateSourceRun_accepted` proves
+`candidate_registration_kernel`. `candidateGraphRun_accepted` proves
 the accepted-value correspondence at every checkpoint in the pre-timeout
 replay. It uses one common first-timeout snapshot: public selection persists,
 and each accepted handle already has its immutable meaning. This retains the
 focal player's extracted choices without treating unaccepted preparations as
-source decisions. Generated honest submissions name their original source
-sites, and their actual caches retain their assigned source values.
-`extractedCandidateSourceRun_registration_kernel` therefore identifies the
-fresh honest draw with the original source kernel without an input-agreement
+graph decisions. Generated honest submissions name their graph sites,
+and their actual caches retain their assigned graph values.
+`candidateGraphRun_registration_kernel` therefore identifies the
+fresh honest draw with the original graph kernel without an input-agreement
 premise. Source likelihood uses a host-independent `recordedChoiceRestriction`:
 a partial map of owner/site coordinates fixes selected choices, while all other
 kernels remain unchanged. The candidate catalog supplies its openable honest
