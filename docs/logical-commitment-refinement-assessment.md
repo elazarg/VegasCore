@@ -172,7 +172,7 @@ either a projected command history or an equivalent first-preparation cache,
 is therefore necessary. This conclusion is independent of whether public
 clock and identifier observations are later retained or erased.
 
-## Why conditional randomization does not rescue this boundary
+## What conditional randomization would require
 
 Pointwise constancy of the abstract next-command law on every logical-view
 fiber would be sufficient for a uniform policy-local backtranslation, but it
@@ -192,25 +192,38 @@ one-binding quotient is a sufficient smaller statistic, especially when other
 graph sites can place distinguishable traffic in the same player view. This is
 an evidence-based uncertainty, not a proof that no smaller statistic exists.
 
-## One minimal falsifiable follow-up
+## Relation to the strategic theorem
 
-If a logical intermediate is still desirable, the next experiment should be
-one paper-level, single-site transition table before adding Lean code. Extend
-the state only with (a) graph-supplied `selectEnabled`/`openEnabled` gates and
-(b) owner-local first-preparation recall. Fix the existing compiled honest
-opponents and wire response construction, leave message identifiers and the
-absolute clock erased, and test every candidate action around this site:
-private prepare, submit, replay, delivery, accepted/rejected inclusion,
-commitment timeout, reveal timeout, and propagated default.
+These failures concern particular operational and observation interfaces. They
+do not rule out a fixed-profile expected-utility bound. That bound asks for a
+legal graph deviation whose expected utility is at least the native deviation's;
+it does not ask a logical policy to reproduce every native command.
+`CandidateRoundModel.deviation_bound_of_support_floor` in
+`Vegas/Game/SealedCandidate.lean` proves this weaker statement using the full
+native-information coupling. Normal completed pairs agree on public utility;
+timeout pairs satisfy the graph quitting cap and the fixed-opponent graph
+support floor. The source theorem in `Vegas/Game/SourceCandidate.lean`
+transports those conditions through the separate source/graph edge.
 
-The falsifiable criterion is: conditioned on the extended logical state and
-the predrawn response used by the existing coupling, every such native step
-has a well-defined logical transition and matching projected receipt/result
-law. One counterexample in which two prefixes have the same extended logical
-state and predrawn response but different next projected laws because of an
-erased identifier or clock stops this design. Passing the table would justify
-implementing that specific fixed-opponent refinement; it would still not prove
-a uniform simulation for all native policies.
+A logical intermediate game remains a possible factoring of that argument,
+but its missing strategic certificate must not be confused with a missing
+source-to-candidate payoff theorem.
+
+## Criterion for further implementation
+
+The [gated single-site analysis](logical-commitment-gated-experiment.md)
+contains the transition table for graph admission, owner recall, exposure,
+selection, rejection, and defaults. It identifies a local operational
+projection with certified gate and settlement events; it does not establish an
+autonomous logical game. Gates plus recall do not determine deadline progress.
+
+Implementing that projection is worthwhile only with a concrete proof consumer:
+name the existing native proof it will replace, the smaller interface it will
+provide, and the observation law still required by the strategic argument.
+A certified event projection that merely repeats the native handler's result
+would establish state bookkeeping without simplifying policy extraction or
+probability laws. There is currently no demonstrated replacement of those
+parts of the active proof by this kernel.
 
 ## Decision
 
@@ -231,5 +244,5 @@ logical openings.
 
 Accordingly, do not promote the current object unchanged. Keep it as a small
 runtime-general safety model. A broader logical-protocol approach remains open,
-but should proceed only if the single gated/recall experiment above shows an
-actual simplification under the intended fixed-opponent preservation theorem.
+but further implementation should require a demonstrated simplification under
+the intended fixed-opponent preservation theorem.

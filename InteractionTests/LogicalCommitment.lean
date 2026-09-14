@@ -60,4 +60,27 @@ theorem competing_first_selection_wins :
           (.open false false 11, false), (.open false true 22, true)] := by
   decide
 
+def unopenableTrace : List (Action Bool Bool Nat) :=
+  [.submit false (.select false false),
+    .include (.select false false),
+    .prepare false false 11,
+    .submit false (.malformed false),
+    .include (.malformed false),
+    .submit false (.open false false 11),
+    .include (.open false false 11),
+    .settleQuit false]
+
+/-- Accepting an unprepared handle fixes it as unopenable. Later preparation
+and opening cannot repair it; malformed traffic remains publicly rejected,
+and an attributed fallback leaves the selected handle intact. -/
+theorem unopenable_resolves_by_fallback :
+    let final := protocol.run State.empty unopenableTrace
+    final.result = .quit ∧
+      final.selected = some false ∧
+      final.meanings false = .unopenable ∧
+      final.receipts =
+        [(.select false false, true), (.malformed false, false),
+          (.open false false 11, false)] := by
+  decide
+
 end InteractionTests.LogicalCommitment

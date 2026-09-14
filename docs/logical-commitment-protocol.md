@@ -43,6 +43,7 @@ A prepared opening trace can abstract as
 prepare(owner, h, v)
 submit(owner, open(owner, h, v))
 expose(observer, open(owner, h, v))
+submit(owner, select(owner, h))
 include(select(owner, h))       -- accepted
 include(open(owner, h, v))      -- accepted, result = opened(v)
 ```
@@ -147,7 +148,8 @@ mechanics from the binding kernel while leaving precisely stated transport,
 relative-information, cross-site, and quitting-utility obligations.
 
 `InteractionTests/LogicalCommitment.lean` checks early-opening visibility with
-public rejection, and selection among competing prepared handles. The module
+public rejection, selection among competing prepared handles, and attributed
+fallback after acceptance of an unopenable handle and rejected traffic. The module
 is built independently of the Vegas compiler: no active compiler theorem depends
 on it, and it is not an additional claimed compilation edge.
 

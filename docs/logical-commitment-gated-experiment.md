@@ -302,10 +302,10 @@ Filtering other-site traffic is especially significant because the fixed
 honest opponents and environment may react to it even when this site's
 semantic state is unchanged.
 
-## Exact next proof
+## Candidate proof and adoption condition
 
-One proof is warranted before any strategic API work: a **single-site
-stuttering operational projection** for reachable candidate executions.
+The smallest operational refinement would be a **single-site stuttering
+projection** for reachable candidate executions.
 Fix `c`, `r`, `p`, their rule shapes, and the existing candidate acceptance,
 opening, settlement, and owner-memory invariants. Define the gated/recall
 projection above and an effect-dependent event projection from each native
@@ -327,3 +327,11 @@ boundary has failed its intended simplification. If it passes, it establishes
 only the semantic factorization. Strategic sufficiency should remain with the
 existing full-information stopped coupling until a separate conditional-law
 theorem is proved.
+
+This is a candidate proof, not a prerequisite for the existing end-to-end
+utility theorem. Before implementing it, identify an active proof that will
+consume it and lose native bookkeeping as a result. In particular, the
+per-profile candidate deviation bound already handles the full native
+observations; failure of a smaller stepwise abstraction does not refute that
+bound. Without a concrete simplification, retain this table as the design test
+and do not add a second policy/game interpreter.
