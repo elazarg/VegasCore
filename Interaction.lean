@@ -49,6 +49,7 @@ import Interaction.ChoiceController
 import Interaction.ChoiceEncodingRouting
 import Interaction.ChoiceControllerHistory
 import Interaction.MessageApplicationPredraw
+import Interaction.MessageApplicationContinuation
 import Interaction.SealedProgram
 import Interaction.SealedProgramLaws
 import Interaction.SealedExecution

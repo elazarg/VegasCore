@@ -19,6 +19,7 @@ import Vegas.Compile.SealedSourceAssignment
 import Vegas.Compile.SealedSourceRestriction
 import Vegas.Compile.SealedSourceCylinder
 import Vegas.Compile.SealedNativeLikelihood
+import Vegas.Compile.SealedRandomizedCoupling
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
@@ -516,8 +517,8 @@ theorem pending_source_prefix_product
 
 /-- Exact native prefix law through the first timeout, from the ordinary source
 run against the extracted focal policy and unchanged opponents. Focal and
-environment responses are fixed functions; the post-timeout continuation and
-the utility comparison for informed quitting are separate obligations. -/
+environment responses are fixed functions; the utility comparison for informed
+quitting is a separate obligation. -/
 theorem pending_source_native_prefix_law (profile : SourceBehavioralProfile source.core.prog) :
     let runtime := compilation.supported.resolvingRuntime nullValue window
     let players := Profile.update
@@ -537,6 +538,51 @@ theorem pending_source_native_prefix_law (profile : SourceBehavioralProfile sour
             (MessageApplication.PolicyTrace.prefixThrough stop) :=
   compilation.extractedSourceRun_native_prefix_law nullValue window focal deviator environment
     schedule fallback profile
+
+/-- Arbitrary randomized unilateral pending-message deviations admit a finite
+mixture of constructed source/native couplings. Both marginals and the joint
+stopped-prefix/final-native law are exact, including the actual timeout suffix.
+The environment is a fixed response function. Final outcome equality,
+termination, and the informed-quitting utility comparison are not asserted. -/
+theorem pending_randomized_source_coupling
+    (profile : SourceBehavioralProfile source.core.prog)
+    (replacement :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    let players := fun who =>
+      compilation.compileResolvingPolicy nullValue window who (profile who)
+    let env := fun history view => FinDist.pure (environment history view)
+    let initial := MessageApplication.PolicyExecution.initial runtime.messageApplication
+      (MessageApplication.State.initial _ runtime.initial)
+    let native := runtime.messageApplication.tracePolicies
+      (Profile.update (sig := MessageApplication.policySignature Player runtime.messageApplication)
+        players focal replacement) env schedule initial
+    let stop := fun execution : runtime.messageApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    ∃ responses : FinDist (List runtime.messageApplication.PlayerEntry →
+        runtime.messageApplication.View → runtime.messageApplication.PlayerCommand),
+      (responses.bind fun response =>
+        (compilation.extractedSourceCoupling nullValue window focal response environment schedule
+          fallback profile).map (fun pair =>
+            ((compilation.supported.resolvingReplay nullValue window (pair.1.1.nodeValues fallback)
+              focal response environment schedule).prefixThrough stop, pair.2))) =
+          native.map (fun trace => (trace.prefixThrough stop, trace.last)) ∧
+      ((responses.bind fun response => compilation.extractedSourceCoupling nullValue window focal
+        response environment schedule fallback profile).map
+          (fun pair => ToEventGraph.observeSourceOutcome source.core pair.1)) =
+        responses.bind (fun response =>
+          (denoteSource source.core.prog
+            (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
+              (compilation.extractedSourcePolicy nullValue window focal response environment
+                schedule fallback)) source.core.env).map some) ∧
+      ((responses.bind fun response => compilation.extractedSourceCoupling nullValue window focal
+        response environment schedule fallback profile).map Prod.snd) =
+        runtime.messageApplication.runPolicies
+          (Profile.update
+            (sig := MessageApplication.policySignature Player runtime.messageApplication)
+            players focal replacement) env schedule initial :=
+  compilation.exists_randomized_source_coupling nullValue window focal environment schedule fallback
+    profile replacement
 
 /-- Each fresh honest registration before timeout has exactly the original
 source decision probabilities at every reference realization's recorded view.
@@ -1253,3 +1299,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_source_native_prefix_law
+
+/-- info: 'Vegas.Paper.pending_randomized_source_coupling' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_randomized_source_coupling

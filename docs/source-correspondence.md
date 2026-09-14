@@ -55,5 +55,13 @@ opponents with assigned source values against an arbitrary randomized native
 deviator and full-pool environment. The focal registration law, stopped at the
 first timeout, is unchanged when assigned honest values differ only at handles
 not disclosed before that source decision. This is an input to the causal
-backtranslation; the honest-kernel and joint-distribution correspondence remain
-separate obligations.
+backtranslation. `SealedCompilation.exists_randomized_source_coupling` combines
+the extracted written-source policy, exact honest-kernel probabilities, and
+trace-preserving focal predrawing. For every randomized unilateral replacement
+and fixed deterministic environment response function, it constructs a finite
+mixture of source/native couplings with the ordinary source-mixture marginal
+and the complete native marginal. The joint stopped-prefix/final-native law
+is exact, including the actual post-timeout continuation. The environment may
+adapt to its pending-pool view; the mixture may depend on the opponent profile.
+Randomized environments, fair-service completion, final outcome identification,
+and the informed-quitting utility bound remain separate obligations.

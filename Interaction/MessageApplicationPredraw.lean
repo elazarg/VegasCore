@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Interaction.MessageApplicationPolicies
+import Interaction.MessageApplicationPolicyTrace
 import GameTheory.Protocol.Strategic
 
 /-! # Finite predrawing of one message-application policy
@@ -452,6 +452,54 @@ theorem focal_actsOnceWhereItMatters (app : MessageApplication Principal)
     (M := app.focalInformation players environment who schedule initial)
     (app.focal_actsOnceAtEachInfoState players environment who schedule initial)
 
+/-- Prior native snapshots in reverse chronological order. Folding this list
+around a suffix trace restores the already-recorded execution prefix. -/
+def focalPriorSnapshots (app : MessageApplication Principal)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (who : Principal) (schedule : List (@Invocation Principal))
+    (initial : app.PolicyExecution) :
+    {state : app.FocalState} →
+      (app.focalProtocol players environment who schedule initial).Trace state →
+        List app.PolicyExecution
+  | _, .start => []
+  | _, .extend (source := source) prior _ _ _ => source.execution ::
+      app.focalPriorSnapshots players environment who schedule initial prior
+
+/-- Attach the protocol history's already-recorded snapshots to a native trace
+starting at the history's current execution. -/
+def focalRecordedTrace (app : MessageApplication Principal)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (who : Principal) (schedule : List (@Invocation Principal))
+    (initial : app.PolicyExecution)
+    (history : (app.focalProtocol players environment who schedule initial).History)
+    (suffix : app.PolicyTrace) : app.PolicyTrace :=
+  (app.focalPriorSnapshots players environment who schedule initial history.trace).foldl
+    (fun trace snapshot => .step snapshot trace) suffix
+
+@[simp] theorem focalRecordedTrace_init (app : MessageApplication Principal)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (who : Principal) (schedule : List (@Invocation Principal))
+    (initial : app.PolicyExecution) (suffix : app.PolicyTrace) :
+    app.focalRecordedTrace players environment who schedule initial
+      (app.focalProtocol players environment who schedule initial).initHistory suffix =
+        suffix := rfl
+
+@[simp] theorem focalRecordedTrace_extend (app : MessageApplication Principal)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (who : Principal) (schedule : List (@Invocation Principal))
+    (initial : app.PolicyExecution)
+    (history : (app.focalProtocol players environment who schedule initial).History)
+    (joint : Unit → Option app.PlayerCommand)
+    (legal : (app.focalProtocol players environment who schedule initial).Legal history.state joint)
+    (next : app.FocalState)
+    (realized : next ∈ ((app.focalProtocol players environment who schedule initial).step
+      history.state ⟨joint, legal⟩).support)
+    (suffix : app.PolicyTrace) :
+    app.focalRecordedTrace players environment who schedule initial
+        (history.extend legal realized) suffix =
+      app.focalRecordedTrace players environment who schedule initial history
+        (.step history.state.execution suffix) := rfl
+
 
 /-- Behavioral execution of the scheduled presentation is exactly the shared
 policy runner with only the selected principal replaced.  The statement starts
@@ -465,14 +513,16 @@ theorem focal_runBehavioralFrom (app : MessageApplication Principal)
     ((app.focalInformation players environment who schedule initial).runBehavioralFrom
       (fun _ => app.focalBehavioral players environment who schedule initial replacement)
       history.state.remaining.length history).map
-        (fun result => result.state.execution) =
-      app.runPolicies
+        (fun result => app.focalRecordedTrace players environment who schedule initial result
+          (.finish result.state.execution)) =
+      (app.tracePolicies
         (Profile.update (sig := MessageApplication.policySignature Principal app)
           players who replacement)
-        environment history.state.remaining history.state.execution := by
+        environment history.state.remaining history.state.execution).map
+          (app.focalRecordedTrace players environment who schedule initial history) := by
   induction hremaining : history.state.remaining generalizing history with
   | nil =>
-      simp [hremaining, InformationModel.runBehavioralFrom, runPolicies]
+      simp [hremaining, InformationModel.runBehavioralFrom, tracePolicies, focalRecordedTrace]
   | cons invocation rest ih =>
       have hterm : ¬(app.focalProtocol players environment who schedule initial).terminal
           history.state := by simp [focalProtocol, hremaining]
@@ -518,56 +568,82 @@ theorem focal_runBehavioralFrom (app : MessageApplication Principal)
             rw [hpolicy]
             simp only [Set.ofPred_eq_eq_singleton, FinDist.map_comp, FinDist.bind_map,
               Function.comp_apply, FinDist.map_bind, FinDist.map_bindOnSupport]
-            simp only [runPolicies]
+            simp only [tracePolicies]
             simp only [invoke, Profile.update_same]
             rw [FinDist.bind_bind]
+            rw [FinDist.map_bind]
             apply FinDist.bind_congr
             intro command hcommand
             calc
               _ = (app.focalTransition players environment who history.state
                     (some command)).bindOnSupport fun state _ =>
-                    app.runPolicies (@Profile.update Principal
+                    (app.tracePolicies (@Profile.update Principal
                       (policySignature Principal app) _ players who replacement)
-                      environment rest state.execution := by
+                      environment rest state.execution).map fun suffix =>
+                        app.focalRecordedTrace players environment who schedule initial history
+                          (.step history.state.execution suffix) := by
                   apply FinDist.bindOnSupport_congr
                   intro nextState hnextState
-                  exact ih (history.extend _ hnextState)
+                  rw [ih (history.extend _ hnextState)
                     (app.focalTransition_focal_remaining players environment who history.state
-                      nextState rest command hremaining hnextState)
+                      nextState rest command hremaining hnextState)]
+                  rfl
               _ = (app.focalTransition players environment who history.state
                     (some command)).bind fun state =>
-                    app.runPolicies (@Profile.update Principal
+                    (app.tracePolicies (@Profile.update Principal
                       (policySignature Principal app) _ players who replacement)
-                      environment rest state.execution :=
+                      environment rest state.execution).map fun suffix =>
+                        app.focalRecordedTrace players environment who schedule initial history
+                          (.step history.state.execution suffix) :=
                   FinDist.bindOnSupport_eq_bind _ _
               _ = _ := by
                   rw [app.focalTransition_focal players environment who history.state rest
-                    command hremaining, FinDist.bind_map]
+                    command hremaining, FinDist.bind_map, FinDist.map_bind]
+                  apply FinDist.bind_congr
+                  intro nextExecution _
+                  rw [FinDist.map_comp]
+                  rfl
           · rw [InformationModel.behavioralJoint_eq_pure_of_no_active
               (M := app.focalInformation players environment who schedule initial)
               _ history.trace hterm
                 (fun _ => by simp [focalProtocol, hremaining, hnext])]
             simp only [FinDist.pure_bind]
             rw [FinDist.map_bindOnSupport]
-            simp only [runPolicies]
-            simp only [invoke, Profile.update_of_ne _ _ hnext]
+            simp only [tracePolicies]
+            rw [FinDist.map_bind]
             calc
               _ = (app.focalTransition players environment who history.state none).bindOnSupport
-                    fun state _ => app.runPolicies (@Profile.update Principal
+                    fun state _ => (app.tracePolicies (@Profile.update Principal
                       (policySignature Principal app) _ players who replacement)
-                      environment rest state.execution := by
+                      environment rest state.execution).map fun suffix =>
+                        app.focalRecordedTrace players environment who schedule initial history
+                          (.step history.state.execution suffix) := by
                   apply FinDist.bindOnSupport_congr
                   intro nextState hnextState
-                  exact ih (history.extend _ hnextState)
+                  rw [ih (history.extend _ hnextState)
                     (app.focalTransition_other_remaining players environment who next history.state
-                      nextState rest hremaining hnext hnextState)
+                      nextState rest hremaining hnext hnextState)]
+                  rfl
               _ = (app.focalTransition players environment who history.state none).bind
-                    fun state => app.runPolicies (@Profile.update Principal
+                    fun state => (app.tracePolicies (@Profile.update Principal
                       (policySignature Principal app) _ players who replacement)
-                      environment rest state.execution := FinDist.bindOnSupport_eq_bind _ _
+                      environment rest state.execution).map fun suffix =>
+                        app.focalRecordedTrace players environment who schedule initial history
+                          (.step history.state.execution suffix) :=
+                  FinDist.bindOnSupport_eq_bind _ _
               _ = _ := by
                   rw [app.focalTransition_other players environment who next history.state rest
                     hremaining hnext, FinDist.bind_map]
+                  have hinvoke :
+                      app.invoke (@Profile.update Principal (policySignature Principal app) _
+                        players who replacement) environment history.state.execution
+                          (.player next) =
+                        app.invoke players environment history.state.execution (.player next) := by
+                    simp only [invoke, Profile.update_of_ne _ _ hnext]
+                  rw [hinvoke]
+                  apply FinDist.bind_congr
+                  intro nextExecution _
+                  rw [FinDist.map_comp]
                   rfl
       | environment =>
           rw [InformationModel.behavioralJoint_eq_pure_of_no_active
@@ -576,24 +652,38 @@ theorem focal_runBehavioralFrom (app : MessageApplication Principal)
               (fun _ => by simp [focalProtocol, hremaining])]
           simp only [FinDist.pure_bind]
           rw [FinDist.map_bindOnSupport]
-          simp only [runPolicies]
+          simp only [tracePolicies]
+          rw [FinDist.map_bind]
           calc
             _ = (app.focalTransition players environment who history.state none).bindOnSupport
-                  fun state _ => app.runPolicies (@Profile.update Principal
+                  fun state _ => (app.tracePolicies (@Profile.update Principal
                     (policySignature Principal app) _ players who replacement)
-                    environment rest state.execution := by
+                    environment rest state.execution).map fun suffix =>
+                      app.focalRecordedTrace players environment who schedule initial history
+                        (.step history.state.execution suffix) := by
                 apply FinDist.bindOnSupport_congr
                 intro nextState hnextState
-                exact ih (history.extend _ hnextState)
+                rw [ih (history.extend _ hnextState)
                   (app.focalTransition_environment_remaining players environment who history.state
-                    nextState rest hremaining hnextState)
+                    nextState rest hremaining hnextState)]
+                rfl
             _ = (app.focalTransition players environment who history.state none).bind
-                  fun state => app.runPolicies (@Profile.update Principal
+                  fun state => (app.tracePolicies (@Profile.update Principal
                     (policySignature Principal app) _ players who replacement)
-                    environment rest state.execution := FinDist.bindOnSupport_eq_bind _ _
+                    environment rest state.execution).map fun suffix =>
+                      app.focalRecordedTrace players environment who schedule initial history
+                        (.step history.state.execution suffix) := FinDist.bindOnSupport_eq_bind _ _
             _ = _ := by
                 rw [app.focalTransition_environment players environment who history.state rest
                   hremaining, FinDist.bind_map]
+                have hinvoke :
+                    app.invoke (@Profile.update Principal (policySignature Principal app) _
+                      players who replacement) environment history.state.execution .environment =
+                      app.invoke players environment history.state.execution .environment := rfl
+                rw [hinvoke]
+                apply FinDist.bind_congr
+                intro nextExecution _
+                rw [FinDist.map_comp]
                 rfl
 
 theorem focal_runPureFrom (app : MessageApplication Principal)
@@ -604,11 +694,14 @@ theorem focal_runPureFrom (app : MessageApplication Principal)
       (app.focalInformation players environment who schedule initial).Policy i)
     (history : (app.focalProtocol players environment who schedule initial).History) :
     ((app.focalInformation players environment who schedule initial).runFrom pureProfile
-      history.state.remaining.length history).map (fun result => result.state.execution) =
-      app.runPolicies
+      history.state.remaining.length history).map
+        (fun result => app.focalRecordedTrace players environment who schedule initial result
+          (.finish result.state.execution)) =
+      (app.tracePolicies
         (Profile.update (sig := MessageApplication.policySignature Principal app) players who
           (app.focalPolicyOfPure players environment who schedule initial (pureProfile ())))
-        environment history.state.remaining history.state.execution := by
+        environment history.state.remaining history.state.execution).map
+          (app.focalRecordedTrace players environment who schedule initial history) := by
   rw [← InformationModel.runBehavioralFrom_toBehavioral]
   have hprofile :
       (fun i => (pureProfile i).toBehavioral) =
@@ -624,7 +717,7 @@ theorem focal_runPureFrom (app : MessageApplication Principal)
 /-- Once non-revisitation has been established for the focal adapter, its
 behavioral replacement can be drawn once as a finite law of deterministic
 policies without changing the native execution law. -/
-theorem exists_focal_mixed_runPolicies (app : MessageApplication Principal)
+theorem exists_focal_mixed_tracePolicies (app : MessageApplication Principal)
     (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
     (who : Principal) (schedule : List (@Invocation Principal))
     (initial : app.PolicyExecution) (replacement : app.PlayerPolicy)
@@ -632,11 +725,14 @@ theorem exists_focal_mixed_runPolicies (app : MessageApplication Principal)
     ∃ mixed : (i : Unit) →
         (app.focalInformation players environment who schedule initial).MixedPolicy i,
       ((app.focalInformation players environment who schedule initial).runMixedFrom mixed
-        history.state.remaining.length history).map (fun result => result.state.execution) =
-        app.runPolicies
+        history.state.remaining.length history).map
+          (fun result => app.focalRecordedTrace players environment who schedule initial result
+            (.finish result.state.execution)) =
+        (app.tracePolicies
           (Profile.update (sig := MessageApplication.policySignature Principal app)
             players who replacement)
-          environment history.state.remaining history.state.execution := by
+          environment history.state.remaining history.state.execution).map
+            (app.focalRecordedTrace players environment who schedule initial history) := by
   obtain ⟨mixed, hmixed⟩ :=
     InformationModel.exists_mixed_runMixedFrom_eq_runBehavioralFrom
       (M := app.focalInformation players environment who schedule initial)
@@ -651,21 +747,24 @@ theorem exists_focal_mixed_runPolicies (app : MessageApplication Principal)
 def IsPurePlayerPolicy (app : MessageApplication Principal) (policy : app.PlayerPolicy) : Prop :=
   ∀ history view, ∃ command, policy history view = FinDist.pure command
 
-private theorem exists_native_policy_mixture_runPoliciesFrom (app : MessageApplication Principal)
+private theorem exists_native_policy_mixture_tracePoliciesFrom
+    (app : MessageApplication Principal)
     (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
     (who : Principal) (schedule : List (@Invocation Principal))
     (initial : app.PolicyExecution) (replacement : app.PlayerPolicy)
     (history : (app.focalProtocol players environment who schedule initial).History) :
     ∃ mixture : FinDist app.PlayerPolicy,
       (∀ purePolicy ∈ mixture.support, app.IsPurePlayerPolicy purePolicy) ∧
-        mixture.bind (fun purePolicy => app.runPolicies
+        mixture.bind (fun purePolicy => (app.tracePolicies
           (Profile.update (sig := MessageApplication.policySignature Principal app)
             players who purePolicy)
-          environment history.state.remaining history.state.execution) =
-        app.runPolicies
+          environment history.state.remaining history.state.execution).map
+            (app.focalRecordedTrace players environment who schedule initial history)) =
+        (app.tracePolicies
           (Profile.update (sig := MessageApplication.policySignature Principal app)
             players who replacement)
-          environment history.state.remaining history.state.execution := by
+          environment history.state.remaining history.state.execution).map
+            (app.focalRecordedTrace players environment who schedule initial history) := by
   let behavioral : (i : Unit) →
       (app.focalInformation players environment who schedule initial).BehavioralPolicy i :=
     fun _ => app.focalBehavioral players environment who schedule initial replacement
@@ -688,7 +787,9 @@ private theorem exists_native_policy_mixture_runPoliciesFrom (app : MessageAppli
   rw [FinDist.bind_map]
   calc
     _ = ((app.focalInformation players environment who schedule initial).runMixedFrom mixed
-          history.state.remaining.length history).map (fun result => result.state.execution) := by
+          history.state.remaining.length history).map
+            (fun result => app.focalRecordedTrace players environment who schedule initial result
+              (.finish result.state.execution)) := by
         rw [InformationModel.runMixedFrom, FinDist.map_bind]
         apply FinDist.bind_congr
         intro pureProfile hpureProfile
@@ -696,34 +797,87 @@ private theorem exists_native_policy_mixture_runPoliciesFrom (app : MessageAppli
           history).symm
     _ = ((app.focalInformation players environment who schedule initial).runBehavioralFrom
           behavioral history.state.remaining.length history).map
-          (fun result => result.state.execution) := by rw [hmixed]
+          (fun result => app.focalRecordedTrace players environment who schedule initial result
+            (.finish result.state.execution)) := by rw [hmixed]
     _ = _ :=
       app.focal_runBehavioralFrom players environment who schedule initial replacement history
 
 /-- Every randomized unilateral native policy on a fixed finite schedule is a
 finite mixture of pure native policies, with the complete execution law and all
 other policies unchanged. -/
-theorem exists_native_policy_mixture_runPolicies (app : MessageApplication Principal)
+private theorem exists_native_policy_mixture_tracePolicies (app : MessageApplication Principal)
     (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
     (who : Principal) (schedule : List (@Invocation Principal))
     (initial : app.PolicyExecution) (replacement : app.PlayerPolicy) :
     ∃ mixture : FinDist app.PlayerPolicy,
       (∀ purePolicy ∈ mixture.support, app.IsPurePlayerPolicy purePolicy) ∧
-        mixture.bind (fun purePolicy => app.runPolicies
+        mixture.bind (fun purePolicy => app.tracePolicies
           (Profile.update (sig := MessageApplication.policySignature Principal app)
             players who purePolicy) environment schedule initial) =
-        app.runPolicies
+        app.tracePolicies
           (Profile.update (sig := MessageApplication.policySignature Principal app)
             players who replacement) environment schedule initial := by
-  simpa [GameTheory.Protocol.ExecutionProtocol.initHistory] using
-    app.exists_native_policy_mixture_runPoliciesFrom players environment who schedule initial
+  have hprefix :
+      app.focalRecordedTrace players environment who schedule initial
+        (app.focalProtocol players environment who schedule initial).initHistory = id := by
+    funext suffix
+    exact app.focalRecordedTrace_init players environment who schedule initial suffix
+  simpa only [hprefix, FinDist.map_id, ExecutionProtocol.initHistory_state] using
+    app.exists_native_policy_mixture_tracePoliciesFrom players environment who schedule initial
       replacement
       (app.focalProtocol players environment who schedule initial).initHistory
+
+/-- Extract the command selected by a globally deterministic native policy.
+The fallback makes this total away from the pure policies used by predrawing. -/
+noncomputable def deterministicResponse (app : MessageApplication Principal)
+    (policy : app.PlayerPolicy) : List app.PlayerEntry → app.View → app.PlayerCommand := by
+  classical
+  exact if hpure : app.IsPurePlayerPolicy policy then
+      fun history view => Classical.choose (hpure history view)
+    else fun _ _ => .wait
+
+omit [DecidableEq Principal] in
+theorem deterministicResponse_eq (app : MessageApplication Principal)
+    (policy : app.PlayerPolicy) (hpure : app.IsPurePlayerPolicy policy) :
+    (fun history view => FinDist.pure (app.deterministicResponse policy history view)) =
+      policy := by
+  funext history view
+  rw [deterministicResponse, dif_pos hpure]
+  exact (Classical.choose_spec (hpure history view)).symm
+
+/-- Every randomized unilateral policy on a fixed finite schedule is a finite
+mixture of total deterministic command functions, with the complete native
+trace law and every other policy and the environment unchanged. -/
+theorem exists_native_response_mixture_tracePolicies (app : MessageApplication Principal)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (who : Principal) (schedule : List (@Invocation Principal))
+    (initial : app.PolicyExecution) (replacement : app.PlayerPolicy) :
+    ∃ mixture : FinDist (List app.PlayerEntry → app.View → app.PlayerCommand),
+      mixture.bind (fun response => app.tracePolicies
+        (Profile.update (sig := MessageApplication.policySignature Principal app)
+          players who (fun history view => FinDist.pure (response history view)))
+        environment schedule initial) =
+      app.tracePolicies
+        (Profile.update (sig := MessageApplication.policySignature Principal app)
+          players who replacement) environment schedule initial := by
+  obtain ⟨policies, hpure, hlaw⟩ :=
+    app.exists_native_policy_mixture_tracePolicies players environment who schedule initial
+      replacement
+  refine ⟨policies.map app.deterministicResponse, ?_⟩
+  rw [FinDist.bind_map]
+  calc
+    _ = policies.bind (fun policy => app.tracePolicies
+          (Profile.update (sig := MessageApplication.policySignature Principal app)
+            players who policy) environment schedule initial) := by
+        apply FinDist.bind_congr
+        intro policy hpolicy
+        rw [app.deterministicResponse_eq policy (hpure policy hpolicy)]
+    _ = _ := hlaw
 
 
 end Interaction.MessageApplication
 
-/-- info: 'Interaction.MessageApplication.exists_native_policy_mixture_runPolicies' depends on axioms:
+/-- info: 'Interaction.MessageApplication.exists_native_response_mixture_tracePolicies' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.exists_native_policy_mixture_runPolicies
+#print axioms Interaction.MessageApplication.exists_native_response_mixture_tracePolicies

@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.MessageApplicationTraceLikelihood
+import Interaction.MessageApplicationContinuation
 import InteractionTests.MessageApplication
 
 /-! # Policy trace regressions for stochastic applications -/
@@ -110,6 +111,30 @@ theorem stopped_trace_zero_potential
     waitingPlayers waitingPlayers drawEnvironment drawEnvironment release
     (fun _ => 0) initialExecution [.player 1, .environment] trace htrace
     (by intros; simp)
+
+/-- A cutoff immediately before a random application step retains its original
+fair outcome law when resumed from the recorded state and histories. -/
+theorem resumed_random_draw_is_fair :
+    let release := fun execution : lottery.PolicyExecution =>
+      !((execution.principalHistory 1).isEmpty)
+    (((lottery.tracePolicies waitingPlayers drawEnvironment [.player 1, .environment]
+      initialExecution).map (PolicyTrace.prefixThrough release)).bind fun stopped =>
+        lottery.runPolicies waitingPlayers drawEnvironment
+          ([.player 1, .environment].drop stopped.length) stopped.last).map
+            (fun execution => execution.native.application.outcome) = fair.map some := by
+  intro release
+  rw [← lottery.runPolicies_bind_prefixThrough]
+  simp only [runPolicies, invoke, waitingPlayers, drawEnvironment, FinDist.pure_bind,
+    player_wait_transition, FinDist.bind_pure]
+  have hlast := lottery.environmentStep_native afterWait (.application .draw)
+  change (lottery.environmentPolicyStep afterWait (.application .draw)).map
+    ((fun state : lottery.State => state.application.outcome) ∘
+      MessageInterface.PolicyExecution.native) = _
+  rw [← FinDist.map_comp, hlast]
+  change (lottery.step s4 (.environment .draw)).map
+    (fun state => state.application.outcome) = _
+  rw [accepted_draw_law, FinDist.map_comp]
+  rfl
 
 end
 

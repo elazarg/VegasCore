@@ -37,6 +37,8 @@ import Vegas.Compile.SealedSourceAssignment
 import Vegas.Compile.SealedSourceRestriction
 import Vegas.Compile.SealedSourceCylinder
 import Vegas.Compile.SealedNativeLikelihood
+import Vegas.Compile.SealedContinuation
+import Vegas.Compile.SealedRandomizedCoupling
 import Vegas.Compile.SealedSourceInputs
 import Vegas.Compile.SealedReplay
 import Vegas.Compile.SealedPublication

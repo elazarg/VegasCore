@@ -9,8 +9,11 @@ The operational resolution rules in Section 3 are implemented by
 `Interaction.SealedResolution`, with a shared policy-runner round driver.
 The source-policy translation implements those completion checks and retains
 own private memory across nullable defaults; its before-timeout policy law is
-checked. The general source-settlement edge, service and termination bounds,
-and whole-program coupling are still Lean obligations.
+checked. The source/native execution coupling, including the actual timeout
+continuation and arbitrary randomized focal policies, is checked for fixed
+deterministic environment responses. The general source-settlement edge,
+service and termination bounds, randomized environment responses, and the
+utility comparison remain Lean obligations.
 The whole argument has not been checked in Lean or independently reviewed.
 Section 8 gives the implementation boundary. In particular, this note is not
 evidence that the repository already proves pending-message Nash preservation.
@@ -328,6 +331,14 @@ run. The table sampling therefore has the original behavioral law.
 Do not predraw the honest values into a tape accessible to the source
 deviator. Their kernels can depend on earlier private values and disclosures.
 
+The checked `MessageApplication.exists_native_response_mixture_tracePolicies`
+predraws the focal player only and preserves the entire invocation trace law,
+with arbitrary other player and environment policies unchanged. It needs neither
+finite native command types nor a uniform cover over all honest assignments.
+Its finite mixture may depend on the fixed opponent profile. The stronger
+common-seed construction across environments and opponent profiles described
+above is not claimed by that theorem.
+
 ### 5.2 Value-substituted replay and read-boundedness
 
 Let `H` be the honest commitment sites and let `a in D^H`. Run the actual
@@ -619,6 +630,19 @@ Every source-site registration fixed before `h`, including speculative
 registrations, is retained in `s_w(a)`. There is no claim of post-timeout
 private binding equality.
 
+The actual suffix attachment is checked by
+`MessageApplication.tracePolicies_prefix_last_law`: a stopped prefix of length
+`k` resumes the original policies on `schedule.drop k` from its last complete
+state, including all private and environment histories. In particular, the
+first-timeout snapshot already includes the clock transition that produced it;
+resumption does not repeat that transition. `SealedCompilation.extractedSourceCoupling`
+uses this identity, and its source and native marginals and joint stopped-prefix/
+final-native law are checked. `exists_randomized_source_coupling` averages these
+couplings using focal trace predrawing. It keeps the environment response function
+fixed and permits the mixture to depend on the opponent profile. Completion and
+equal outcomes when no timeout occurs are additional claims, not consequences
+of the marginal identities alone.
+
 Finally average over `w`. If `mu` is the distribution of `tau_w`, this gives
 a joint law `(X,Y,B,H)` with:
 
@@ -828,6 +852,11 @@ The current repository has:
 - equality with the original native invocation product and the complete native
   prefix law through first timeout, including pending traffic, for fixed
   deterministic focal and environment responses;
+- exact attachment of the actual post-timeout native continuation, preserving
+  both the ordinary source marginal and the joint stopped-prefix/final-native law;
+- trace-preserving focal predrawing and the resulting source/native coupling
+  mixture for arbitrary randomized unilateral replacements, with a fixed
+  deterministic environment response function and unchanged opponent kernels;
 - retention of all focal source-owned registrations at a common first-timeout
   snapshot, including speculative registrations;
 - private-registration provenance and agreement of all players' source-owned
@@ -905,6 +934,10 @@ invocation from its supported prefix and suffix. The source decision index is
 duplicate-free; native write-once registration counts each occupied honest slot
 once. `replay_prefix_prob_eq_product` and the normalized-source support argument
 close the fixed-response native marginal in `extractedSourceRun_native_prefix_law`.
+`extractedSourceCoupling_prefix_native` attaches the original suffix using the
+retained state and histories; `exists_randomized_source_coupling` lifts the
+joint law to randomized focal policies. `Vegas.Paper.pending_randomized_source_coupling`
+audits the joint law and both marginals by direct delegation.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
 
@@ -919,12 +952,11 @@ The remaining implementation work is specific:
 3. Establish readiness/read invariants after defaults and instantiate the
    fair-service and termination arguments. Do not assume a bare expiration
    status is a source settlement.
-4. Predraw native responses consistently across honest assignments. The exact
-   source marginal and stopped-native marginal for fixed responses, source
-   cylinder masses, registration/opening value agreement, and fresh honest
-   source/native kernel agreement are checked. Attach the actual post-timeout
-   native continuation, retaining dependence between honest draws and the
-   shared environment randomness.
+4. Extend trace-preserving predrawing to randomized environment responses. The
+   focal-player mixture and actual native continuation are checked, including
+   their joint stopped-prefix/final-state law. A mixture uniform across opponent
+   profiles would need a common finite cover; the checked profile-dependent
+   mixture suffices for the intended unilateral Nash bound.
 5. Instantiate the existing `UtilitySimulation` under the explicit
    continuation condition, and audit the end-to-end theorem in `Paper.lean`.
 
