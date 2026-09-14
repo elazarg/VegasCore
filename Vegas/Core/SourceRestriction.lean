@@ -98,6 +98,101 @@ def weight : {Γ : VCtx P L} → {prog : VegasCore P L Γ} → SourceChoiceRestr
 
 end SourceChoiceRestriction
 
+/-- On an actual source outcome, restriction acceptance is exactly agreement
+at every selected decision occurrence. Its inputs and chosen values are read
+from that same terminal source environment. -/
+theorem SourceChoiceRestriction.allows_iff_recorded : {Γ : VCtx P L} →
+    (prog : VegasCore P L Γ) → (profile : SourceBehavioralProfile prog) →
+    (restriction : SourceChoiceRestriction prog) → (env : VEnv L Γ) →
+    (final : VEnv L (sourceTerminalCtx prog)) →
+    final ∈ (denoteSource prog profile env).support →
+    (restriction.Allows env final ↔ ∀ who {Δ name ty guard}
+      (site : SourceDecisionSite who prog Δ name ty guard) fixed,
+      restriction who site ((site.recorded final).tail.toView who).eraseEnv = some fixed →
+        (site.recorded final).get .here = fixed.1)
+  | _, .ret _, _, _, _, _, _ => by
+      constructor
+      · intro _ who Δ name ty guard site
+        cases site
+      · intro _
+        trivial
+  | _, .sample _ _ tail, profile, restriction, env, final, hfinal => by
+      change VEnv L (sourceTerminalCtx tail) at final
+      simp only [denoteSource, FinDist.support_bind, Set.mem_iUnion] at hfinal
+      obtain ⟨value, _, htail⟩ := hfinal
+      change restriction.afterSample.Allows
+        (env.cons ((sourceInitialProjection tail final).get .here)) final ↔ _
+      rw [denoteSource_initialProjection tail _ (env.cons value) final htail, VEnv.cons_get_here]
+      have ih := SourceChoiceRestriction.allows_iff_recorded tail profile.afterSample
+        restriction.afterSample (env.cons value) final htail
+      constructor
+      · intro h who Δ name ty guard site
+        cases site with
+        | sample site =>
+            simpa only [SourceChoiceRestriction.afterSample, SourceDecisionSite.recorded]
+              using ih.mp h who site
+      · intro h
+        apply ih.mpr
+        intro who Δ name ty guard site
+        simpa only [SourceChoiceRestriction.afterSample, SourceDecisionSite.recorded]
+          using h who (.sample site)
+  | _, .commit _ actor sourceGuard tail, profile, restriction, env, final, hfinal => by
+      change VEnv L (sourceTerminalCtx tail) at final
+      simp only [denoteSource, FinDist.support_bind, Set.mem_iUnion] at hfinal
+      obtain ⟨choice, _, htail⟩ := hfinal
+      have hprojection := denoteSource_initialProjection tail _ (env.cons choice.1) final htail
+      change (match restriction actor (.here sourceGuard tail) (env.toView actor).eraseEnv with
+        | none => True
+        | some fixed => (sourceInitialProjection tail final).get .here = fixed.1) ∧
+          restriction.afterCommit.Allows
+            (env.cons ((sourceInitialProjection tail final).get .here)) final ↔ _
+      rw [hprojection, VEnv.cons_get_here]
+      have hhead :
+          (match restriction actor (.here sourceGuard tail) (env.toView actor).eraseEnv with
+          | none => True
+          | some fixed => choice.1 = fixed.1) ↔
+          ∀ fixed, restriction actor (.here sourceGuard tail) (env.toView actor).eraseEnv =
+            some fixed → choice.1 = fixed.1 := by
+        cases restriction actor (.here sourceGuard tail) (env.toView actor).eraseEnv <;> simp
+      rw [hhead]
+      have ih := SourceChoiceRestriction.allows_iff_recorded tail profile.afterCommit
+        restriction.afterCommit (env.cons choice.1) final htail
+      constructor
+      · intro h who Δ name ty guard site
+        cases site with
+        | here =>
+            simp only [SourceDecisionSite.recorded]
+            erw [hprojection]
+            exact h.1
+        | commit site =>
+            simpa only [SourceChoiceRestriction.afterCommit, SourceDecisionSite.recorded]
+              using ih.mp h.2 who site
+      · intro h
+        constructor
+        · have hcurrent := h actor (.here sourceGuard tail)
+          simp only [SourceDecisionSite.recorded] at hcurrent
+          erw [hprojection] at hcurrent
+          exact hcurrent
+        · apply ih.mpr
+          intro who Δ name ty guard site
+          simpa only [SourceChoiceRestriction.afterCommit, SourceDecisionSite.recorded]
+            using h who (.commit site)
+  | _, .reveal _ actor name source tail, profile, restriction, env, final, hfinal => by
+      have ih := SourceChoiceRestriction.allows_iff_recorded tail profile.afterReveal
+        restriction.afterReveal
+        (env.cons (@VEnv.get P L _ name (.sealed actor _) env source)) final hfinal
+      constructor
+      · intro h who Δ name ty guard site
+        cases site with
+        | reveal site =>
+            simpa only [SourceChoiceRestriction.afterReveal, SourceDecisionSite.recorded]
+              using ih.mp h who site
+      · intro h
+        apply ih.mpr
+        intro who Δ name ty guard site
+        simpa only [SourceChoiceRestriction.afterReveal, SourceDecisionSite.recorded]
+          using h who (.reveal site)
+
 /-- Every run of the restricted profile satisfies the selected choices,
 irrespective of whether those choices have positive mass in the original profile. -/
 theorem denoteSource_restriction_support : {Γ : VCtx P L} → (prog : VegasCore P L Γ) →

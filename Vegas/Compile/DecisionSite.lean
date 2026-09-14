@@ -145,6 +145,20 @@ theorem decisionSite_compiledRow
   | reveal site ih =>
       simpa [decisionSiteState, compileCore] using (ih fresh.2 _)
 
+/-- A decision's source field allocation is its node's output field in the
+complete graph, including when compilation starts with an existing prefix. -/
+theorem decisionSite_nodeTarget {who : P} {Γ Δ : VCtx P L}
+    {prog : VegasCore P L Γ} {name : VarId} {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool}
+    (site : SourceDecisionSite who prog Δ name ty guard)
+    (fresh : FreshBindings prog) (state : BuildState P L Γ)
+    (node : Fin (compileCore prog fresh state).graph.nodeCount)
+    (hindex : node.val = (decisionSiteState site fresh state).nodes.length) :
+    (compileCore prog fresh state).graph.nodeTarget node =
+      (decisionSiteState site fresh state).nextField := by
+  simp only [Graph.nodeTarget, BuildResult.graph, compileCore_initialFields,
+    BuildState.nextField, BuildState.nextNode, decisionSiteState_initialFields, hindex]
+
 /-- Field lookup before a decision site agrees with lookup in the final
 compiled graph. -/
 theorem decisionSiteState_field?_eq_compileCore

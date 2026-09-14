@@ -10,6 +10,16 @@ namespace GameTheory.Math.Probability.FinDist
 
 variable {α β : Type*}
 
+/-- Events that agree on a law's support have the same probability. -/
+theorem probOf_congr (law : FinDist α) {first second : Set α}
+    (hagrees : ∀ outcome ∈ law.support, outcome ∈ first ↔ outcome ∈ second) :
+    law.probOf first = law.probOf second := by
+  classical
+  rw [← expect_indicator_eq_probOf, ← expect_indicator_eq_probOf]
+  apply expect_congr
+  intro outcome hmem
+  simp only [hagrees outcome hmem]
+
 /-- If an outcome identifies the first draw, its probability is the draw's
 mass times the conditional branch mass. The outcome may have probability zero. -/
 theorem prob_bind_of_unique_branch (law : FinDist α) (branch : α → FinDist β)

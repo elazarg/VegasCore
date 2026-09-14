@@ -540,9 +540,19 @@ mass under the original profile. Reassignment changes a registration's value,
 not its selected slot, so the comparison uses the same native input for every
 reference realization.
 
-The remaining compiler probability obligations are to identify the restriction
-event with the replay cylinder, and derive its constant weight from the
-all-assignment kernel agreement and native invocation factors.
+`extractedSourceRun_replay_iff_restriction` identifies the restriction event with
+the exact replay cylinder on every supported original source outcome. It uses
+the recorded decision values in the terminal source environment, their compiler
+field correspondence, and the occupied native honest slots.
+`extractedSourceRun_replay_probability` transports this event probability through
+the checked whole-program source law. `extractedSourceRun_replay_likelihood`
+then instantiates the source restriction identity above: the replay cylinder
+mass is exactly the expectation of `W_t` under the ordinary reference source
+execution. `Vegas.Paper.pending_source_cylinder_likelihood` audits this formula.
+
+The remaining fixed-response probability obligation is to derive constant weight
+from the all-assignment kernel agreement and identify it with the actual native
+invocation product before first timeout.
 In particular, positivity under `mu_w` cannot
 replace the all-assignment comparison: `nu_t` may support environments that
 have zero original probability.
@@ -775,6 +785,9 @@ The current repository has:
   factorization; the reference profile constructed from occupied honest slots
   reproduces the full recorded prefix, with original-kernel agreement throughout
   its pre-timeout reference support;
+- exact equivalence of the written-source restriction event and native replay
+  cylinder, and the compiler-specific source cylinder probability as an
+  expectation of original-choice likelihood under the normalized reference law;
 - retention of all focal source-owned registrations at a common first-timeout
   snapshot, including speculative registrations;
 - private-registration provenance and agreement of all players' source-owned
@@ -843,9 +856,11 @@ The general source factorization, restriction likelihood and summation laws,
 and native stopped-trace factorization are checked. The compiler constructs the
 reference restriction, proves exact prefix replay for its supported source
 realizations, and compares each original source kernel at their recorded native
-inputs. Identifying the restriction event with the replay cylinder and matching
-the complete source likelihood product to the native invocation product remain
-open. These equalities are needed for the original native marginal law.
+inputs. The restriction event is exactly the replay cylinder on the original
+source law, and its probability is the expected original-choice likelihood under
+the restricted reference source law. Matching that complete likelihood product
+to the native invocation product remains open; it is needed for the original
+native marginal law.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
 

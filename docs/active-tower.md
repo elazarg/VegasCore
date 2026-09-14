@@ -160,11 +160,21 @@ those with zero original probability. Changing the assigned honest values leaves
 the selected registration slot unchanged; its draw law still comes from the
 original source policy.
 
-The remaining probability argument must identify the restriction's event with
-the replay cylinder and prove its weight constant using the fresh-kernel agreement.
-That constant must equal the actual native prefix product. The general
-source summation and native factorization are checked; this compiler-specific
-equality is not. Randomized responses must also be predrawn
+`extractedSourceRun_replay_iff_restriction` identifies the restriction event with
+the exact replay cylinder on the original source law. The proof projects recorded
+choices from the terminal source environment and identifies their compiler fields;
+the native service fixes exactly the same honest source slots.
+`extractedSourceRun_replay_probability` transports the cylinder probability through
+the checked source/graph law. `extractedSourceRun_replay_likelihood`, audited as
+`Vegas.Paper.pending_source_cylinder_likelihood`, computes that mass as the original
+forced-choice likelihood averaged over the normalized restricted source law.
+These equalities allow arbitrary cutoffs, dependent choices, and zero-mass events.
+
+The remaining fixed-response probability argument must prove this weight constant
+before first timeout using the fresh-kernel agreement, and identify that constant
+with the actual native invocation product. The compiler's source cylinder sum and
+the general native factorization are checked; their equality is not.
+Randomized responses must also be predrawn
 consistently across honest assignments, and the post-timeout native suffix must
 be attached with its actual continuation law. Pointwise choice agreement alone
 does not establish these probabilities for dependent source decisions.

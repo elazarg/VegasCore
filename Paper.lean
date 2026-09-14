@@ -17,6 +17,7 @@ import Vegas.Compile.SealedSourceExtraction
 import Vegas.Compile.SealedSourceRealization
 import Vegas.Compile.SealedSourceAssignment
 import Vegas.Compile.SealedSourceRestriction
+import Vegas.Compile.SealedSourceCylinder
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
@@ -464,6 +465,32 @@ theorem pending_reference_replay_prefix
       (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback) focal
         deviator environment schedule).prefixThrough release = stopped :=
   compilation.restrictedSourceRun_replay_prefix nullValue window focal deviator environment
+    schedule fallback reference release profile
+
+/-- Exact source-side mass of a stopped pending-message replay. The reference
+law performs the cylinder sum without independence or a positive-mass premise;
+identification with the original native execution law remains separate. -/
+theorem pending_source_cylinder_likelihood
+    (reference : Fin (ToEventGraph.compile source.core).graph.nodeCount → L.Val ty)
+    (release :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution →
+        Bool)
+    (profile : SourceBehavioralProfile source.core.prog) :
+    let stopped := (compilation.supported.resolvingReplay nullValue window reference focal
+      deviator environment schedule).prefixThrough release
+    let original : SourceBehavioralProfile source.core.prog :=
+      Profile.update (sig := sourceGameSignature source.core.prog) profile focal
+        (compilation.extractedSourcePolicy nullValue window focal deviator environment schedule
+          fallback)
+    let restriction := compilation.registrationRestriction focal
+      stopped.last.native.application.service
+    ((compilation.extractedSourceRun nullValue window focal deviator environment schedule fallback
+      profile).map fun cfg =>
+        (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback) focal
+          deviator environment schedule).prefixThrough release).prob stopped =
+      (denoteSource source.core.prog (restriction.apply original) source.core.env).expect
+        (restriction.weight original source.core.env) :=
+  compilation.extractedSourceRun_replay_likelihood nullValue window focal deviator environment
     schedule fallback reference release profile
 
 end SourceRealization
@@ -1121,3 +1148,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_reference_replay_prefix
+
+/-- info: 'Vegas.Paper.pending_source_cylinder_likelihood' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_source_cylinder_likelihood

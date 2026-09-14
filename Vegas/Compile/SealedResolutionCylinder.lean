@@ -286,6 +286,20 @@ theorem resolvingReplay_registration_lookup (values : Fin G.nodeCount → L.Val 
     owner node value howner htrace
   exact ⟨hvalue ▸ hstored, hregistered.2⟩
 
+theorem resolvingReplay_lookup_origin (values : Fin G.nodeCount → L.Val ty)
+    (owner : Player) (slot : Nat) (value : L.Val ty)
+    (hlookup : (supported.resolvingReplay nullValue window values focal
+      deviator environment schedule |>.prefixThrough release).last.native.application.service.lookup
+        (owner, slot) = some value) :
+    (.privateCommand owner ⟨(slot, value)⟩ :
+      (supported.resolvingRuntime nullValue window).messageApplication.Action) ∈
+        (supported.resolvingReplay nullValue window values focal
+          deviator environment schedule |>.prefixThrough release).last.nativeTrace := by
+  obtain ⟨front, _, _, hprefix⟩ := supported.resolvingReplay_prefix_run_support
+    nullValue window focal deviator environment schedule release values
+  exact (supported.resolvingRuntime nullValue window).runPolicies_lookup_origin
+    _ _ front _ hprefix owner slot value hlookup
+
 /-- Exact replay equivalence, retaining every local history, pool snapshot,
 clock transition, and receipt. Agreement is needed only at the honest values
 registered by the left replay, not at every potential source decision. -/
@@ -323,6 +337,33 @@ theorem resolvingReplay_prefix_eq_iff (left right : Fin G.nodeCount → L.Val ty
       (fun history view => FinDist.pure (environment history view)) left right release schedule _ _
       hleft hagrees
     rwa [resolvingReplay_law, FinDist.map_pure, FinDist.mem_support_pure] at hright
+
+/-- A stopped replay is determined exactly by its occupied honest source
+slots. Out-of-program and focal registrations add no assignment constraints. -/
+theorem resolvingReplay_prefix_eq_iff_lookup (left right : Fin G.nodeCount → L.Val ty) :
+    (supported.resolvingReplay nullValue window left focal
+      deviator environment schedule).prefixThrough release =
+      (supported.resolvingReplay nullValue window right focal
+        deviator environment schedule).prefixThrough release ↔
+      ∀ owner (node : Fin G.nodeCount) guard,
+        (G.nodeRow node).sem = .commit owner guard → owner ≠ focal → ∀ value,
+        (supported.resolvingReplay nullValue window left focal deviator environment schedule
+          |>.prefixThrough release).last.native.application.service.lookup
+          (owner, node.val) = some value → right node = value := by
+  rw [supported.resolvingReplay_prefix_eq_iff nullValue window focal deviator environment
+    schedule release left right]
+  constructor
+  · intro h owner node _ _ howner value hlookup
+    have htrace := supported.resolvingReplay_lookup_origin nullValue window focal deviator
+      environment schedule release left owner node.val value hlookup
+    have hvalue := supported.resolvingReplay_registration nullValue window focal deviator
+      environment schedule release left owner node value howner htrace
+    exact (h owner node value howner htrace).symm.trans hvalue.symm
+  · intro h owner node value howner htrace
+    obtain ⟨hlookup, guard, hsem⟩ := supported.resolvingReplay_registration_lookup
+      nullValue window focal deviator environment schedule release left owner node value
+        howner htrace
+    exact (h owner node guard hsem howner (left node) hlookup).symm
 
 /-- For any joint assignment law, the mass of a stopped replay is the mass
 of its honest-registration cylinder. No independence of assignment coordinates

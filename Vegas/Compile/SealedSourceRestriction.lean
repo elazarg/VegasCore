@@ -48,6 +48,29 @@ private theorem sourceChoice_law (value : L.Val ty) (who : Player)
       compilation.valueSourceProfile (fun _ => value) who site visible :=
   (Classical.choose_spec (compilation.valueSourceProfile_pure value who site visible)).symm
 
+private theorem sourceChoice_value (value : L.Val ty) (who : Player)
+    {Δ name choiceTy guard}
+    (site : SourceDecisionSite who source.core.prog Δ name choiceTy guard)
+    (visible : Env L.Val (eraseVCtx (viewVCtx who Δ))) :
+    (⟨choiceTy, (compilation.sourceChoice value who site visible).1⟩ : TypedValue L) =
+      ⟨ty, value⟩ := by
+  have hlaw := congrArg (FinDist.map fun choice => (⟨choiceTy, choice.1⟩ : TypedValue L))
+    (compilation.sourceChoice_law value who site visible)
+  simp only [valueSourceProfile, backtranslateCommitPolicy, backtranslateSourceDecision,
+    SealedFragment.valuePolicy, FinDist.map_pure] at hlaw
+  have heq := FinDist.mem_support_pure.mp (hlaw ▸ FinDist.mem_support_pure.mpr rfl)
+  have hcast {left right : L.Ty} (hty : left = right) (chosen : L.Val right) :
+      (⟨left, cast (congrArg L.Val hty.symm) chosen⟩ : TypedValue L) = ⟨right, chosen⟩ := by
+    cases hty
+    rfl
+  let state := BuildState.fromInitial
+    (initialState source.core.Γ source.core.env source.core.wctx)
+  obtain ⟨node, _, hrow⟩ := decisionSite_compiledRow site source.core.fresh state
+  have hsem := congrArg EventNode.sem (Option.some.inj
+    (((compile source.core).graph.nodes_get?_nodeRow node).symm.trans hrow))
+  exact heq.trans (hcast (compilation.supported.commitType node who
+    (eventGuardOf (decisionSiteState site source.core.fresh state) who guard) hsem) value)
+
 /-- Fix exactly the occupied honest source slots. Out-of-program slots and
 slots owned by another principal cannot constrain a source decision. The
 service is proof-facing snapshot data, not an observation supplied to a player. -/
@@ -58,6 +81,43 @@ def registrationRestriction (focal : Player)
     if who = focal then none else
       (service.lookup (who, site.depth)).map fun value =>
         compilation.sourceChoice value who site visible
+
+/-- A source outcome satisfies the native registration restriction exactly
+when its recorded honest source choices equal the occupied service values. -/
+theorem registrationRestriction_allows_iff_recorded (focal : Player)
+    (service : IdealCommitments Player Nat (L.Val ty))
+    (profile : SourceBehavioralProfile source.core.prog)
+    (final : VEnv L (sourceTerminalCtx source.core.prog))
+    (hfinal : final ∈ (denoteSource source.core.prog profile source.core.env).support) :
+    (compilation.registrationRestriction focal service).Allows source.core.env final ↔
+      ∀ who {Δ name choiceTy guard}
+        (site : SourceDecisionSite who source.core.prog Δ name choiceTy guard), who ≠ focal →
+        ∀ value, service.lookup (who, site.depth) = some value →
+          (⟨choiceTy, (site.recorded final).get .here⟩ : TypedValue L) = ⟨ty, value⟩ := by
+  rw [SourceChoiceRestriction.allows_iff_recorded source.core.prog profile _ _ _ hfinal]
+  constructor
+  · intro h who Δ name choiceTy guard site hwho value hlookup
+    have hchoice := h who site
+      (compilation.sourceChoice value who site ((site.recorded final).tail.toView who).eraseEnv)
+      (by simp only [registrationRestriction, if_neg hwho, hlookup, Option.map_some])
+    exact (congrArg (fun chosen => (⟨choiceTy, chosen⟩ : TypedValue L)) hchoice).trans
+      (compilation.sourceChoice_value value who site _)
+  · intro h who Δ name choiceTy guard site fixed hfixed
+    by_cases hwho : who = focal
+    · simp only [registrationRestriction, if_pos hwho] at hfixed
+      cases hfixed
+    · cases hlookup : service.lookup (who, site.depth) with
+      | none =>
+          simp only [registrationRestriction, if_neg hwho, hlookup, Option.map_none] at hfixed
+          cases hfixed
+      | some value =>
+          simp only [registrationRestriction, if_neg hwho, hlookup, Option.map_some,
+            Option.some.injEq] at hfixed
+          subst fixed
+          have heq := (h who site hwho value hlookup).trans
+            (compilation.sourceChoice_value value who site
+              ((site.recorded final).tail.toView who).eraseEnv).symm
+          exact eq_of_heq (TypedValue.mk.inj heq).2
 
 /-- Applying the reference restriction commutes with replacing the focal
 policy. In particular it never alters the extracted source deviator. -/

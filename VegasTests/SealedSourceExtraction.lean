@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedSourceRestriction
+import Vegas.Compile.SealedSourceCylinder
 
 /-! # A native pending disclosure becomes a legal source input
 
@@ -435,5 +435,32 @@ theorem pending_copy_reference (profile : SourceBehavioralProfile core)
   dsimp only at hprefix
   simp only [PolicyTrace.prefixThrough_false] at hprefix
   exact hprefix cfg hcfg
+
+/-- The written-source event for the actual first native registration
+constrains exactly its honest value. It adds no condition on the focal source
+choice or the remaining source continuation. -/
+theorem first_registration_source_event (profile : SourceBehavioralProfile core)
+    (value fallback : Value) (cfg : ReachableConfig graph)
+    (hcfg : cfg ∈ (compilation.extractedSourceRun none 3 1 deviator environment [.player 0]
+      fallback profile).support) :
+    (∃ final, observeSourceOutcome source.core cfg = some final ∧
+      (compilation.registrationRestriction 1 (registered value).native.application.service).Allows
+        source.core.env final) ↔
+      cfg.1.nodeValues (ty := BaseTy.option .bool) fallback (node 0) = value := by
+  have hevent := compilation.extractedSourceRun_replay_iff_restriction none 3 1 deviator
+    environment [.player 0] fallback (fun _ => value) (fun _ => false) profile cfg hcfg
+  dsimp only at hevent
+  simp only [PolicyTrace.prefixThrough_false] at hevent
+  rw [first_replay, first_replay] at hevent
+  simp only [PolicyTrace.last] at hevent
+  constructor
+  · intro h
+    have heq := congrArg (fun trace : app.PolicyTrace => trace.last.nativeTrace) (hevent.mpr h)
+    simp only [PolicyTrace.last, registered, List.cons.injEq,
+      MessageInterface.Action.privateCommand.injEq, true_and, and_true] at heq
+    exact congrArg (fun request => request.down.2) heq
+  · intro h
+    apply hevent.mp
+    rw [h]
 
 end VegasTests.SealedSourceExtraction

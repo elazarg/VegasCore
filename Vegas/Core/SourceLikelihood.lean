@@ -28,6 +28,19 @@ def sourceInitialProjection : {Γ : VCtx P L} → (prog : VegasCore P L Γ) →
   | _, .commit _ _ _ tail, final => (sourceInitialProjection tail final).tail
   | _, .reveal _ _ _ _ tail, final => (sourceInitialProjection tail final).tail
 
+/-- Project the bindings retained immediately after a source decision from
+the terminal environment. This reads recorded source values; it supplies no
+additional information to a policy and does not execute a continuation. -/
+def SourceDecisionSite.recorded {who : P} {Γ : VCtx P L} {prog : VegasCore P L Γ}
+    {Δ : VCtx P L} {name : VarId} {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool} :
+    SourceDecisionSite who prog Δ name ty guard → VEnv L (sourceTerminalCtx prog) →
+      VEnv L ((name, .sealed who ty) :: Δ)
+  | .here _ tail, final => sourceInitialProjection tail final
+  | .sample site, final => site.recorded final
+  | .commit site, final => site.recorded final
+  | .reveal site, final => site.recorded final
+
 /-- Source execution preserves its initial bindings in the terminal result. -/
 theorem denoteSource_initialProjection : {Γ : VCtx P L} → (prog : VegasCore P L Γ) →
     (profile : SourceBehavioralProfile prog) → (env : VEnv L Γ) →
