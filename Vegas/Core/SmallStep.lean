@@ -136,6 +136,17 @@ theorem Star.trans {a b c : SourceConfig P L}
   | refl => exact hab
   | tail _ hstep ih => exact .tail ih hstep
 
+/-- A run is empty or starts with one step followed by a run. -/
+theorem Star.eq_or_head {first last : SourceConfig P L} (steps : Star first last) :
+    first = last ∨ ∃ middle, SmallStep first middle ∧ Star middle last := by
+  induction steps with
+  | refl => exact Or.inl rfl
+  | tail _ hstep ih =>
+      rcases ih with heq | ⟨middle, hhead, rest⟩
+      · cases heq
+        exact Or.inr ⟨_, hstep, .refl _⟩
+      · exact Or.inr ⟨middle, hhead, .tail rest hstep⟩
+
 end SmallStep
 
 /-! ## Labels (instrumentation)

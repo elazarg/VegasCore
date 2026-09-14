@@ -222,11 +222,11 @@ theorem timeout_utility_bound (cfg : ReachableConfig graph) (hterminal : Termina
     (((show SealedResolution.SettlementInvariant runtime registered.visible from
       SealedResolution.SettlementInvariant.initial runtime).handle _ acceptance).clock.refresh
       true).clock.refresh true
-  exact supported.timeout_utility_le_graph
+  exact (supported.timeout_utility_le_cap
     (ToEventGraph.compile_guardLive source.core source.legal) source.compiled_uniqueReveals
-    none 2 publicUtility (fun _ => -3) graph_quit_bound settled.visible
+    none 2 publicUtility (fun _ => -3) graph_quit_bound.quitting settled.visible
     hinvariant.publicEvents hsettlement rfl (node 1) 0 (by decide)
-    (Or.inr ⟨node 0, _, rfl, rfl⟩) cfg hterminal
+    (Or.inr ⟨node 0, _, rfl, rfl⟩)).trans (graph_quit_bound.lower cfg hterminal 0)
 
 end VegasTests.SealedPublicSettlement
 

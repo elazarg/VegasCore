@@ -47,6 +47,18 @@ theorem graphPayoutUtility_terminal (source : WFProgram Player L)
 
 /-- The source-only quitting condition certifies the backend's graph-only
 condition. No native utility comparison is an assumption. -/
+theorem graphQuitCap_of_source (source : WFProgram Player L) {ty : L.Ty}
+    (nullValue : L.Val ty) (valuation : Payout Player → Player → ℝ)
+    (missing bound : Player → ℝ)
+    (hcap : source.core.prog.QuitPayoutCap source.core.env nullValue valuation bound) :
+    (source.graphPayoutUtility valuation missing).QuitCap nullValue bound := by
+  intro cfg hterminal who producer guard hcommit hvalue
+  rw [source.graphPayoutUtility_terminal valuation missing cfg hterminal who]
+  exact hcap _ (decodeSourceOutcome_reachable source.core cfg hterminal) who
+    (source.source_chooses_of_commit_store cfg hterminal producer who guard hcommit
+      nullValue hvalue)
+
+/-- A uniform source floor and quitting cap supply the uniform graph bound. -/
 theorem graphQuitBound_of_source (source : WFProgram Player L) {ty : L.Ty}
     (nullValue : L.Val ty) (valuation : Payout Player → Player → ℝ)
     (missing bound : Player → ℝ)
@@ -55,10 +67,6 @@ theorem graphQuitBound_of_source (source : WFProgram Player L) {ty : L.Ty}
   lower cfg hterminal who := by
     rw [source.graphPayoutUtility_terminal valuation missing cfg hterminal who]
     exact hbound.lower _ (decodeSourceOutcome_reachable source.core cfg hterminal) who
-  quitting cfg hterminal who producer guard hcommit hvalue := by
-    rw [source.graphPayoutUtility_terminal valuation missing cfg hterminal who]
-    exact hbound.quit_upper _ (decodeSourceOutcome_reachable source.core cfg hterminal) who
-      (source.source_chooses_of_commit_store cfg hterminal producer who guard hcommit
-        nullValue hvalue)
+  quitting := source.graphQuitCap_of_source nullValue valuation missing bound hbound.quit_upper
 
 end Vegas.WFProgram

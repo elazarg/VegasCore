@@ -40,6 +40,39 @@ def sourceGraphSimulation (source : WFProgram P L) :
     rw [FinDist.pure_bind]
     exact runPolicyNodes_source_deviation source.core source.legal profile who replacement
 
+/-- Pointwise source utility floors transport to graph deviations against the
+same compiled opponents. No bound is required for different opponent policies. -/
+theorem graphPayout_floor_of_source_deviations (source : WFProgram P L)
+    (valuation : Payout P → P → ℝ) (missing : P → ℝ)
+    (profile : SourceBehavioralProfile source.core.prog) (who : P) (floor : ℝ)
+    (hlower : ∀ (alternative : SourceBehavioralPolicy source.core.prog who) final,
+      final ∈ (denoteSource source.core.prog (Profile.update
+        (sig := sourceGameSignature source.core.prog) profile who alternative)
+        source.core.env).support →
+      floor ≤ valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
+    (alternative : CommitPolicy (compile source.core).graph who)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (hcfg : cfg ∈ ((policyGame (compile source.core).graph (compile source.core).graphWF
+      (compile_guardLive source.core source.legal)).play
+        (Profile.update (source.sourceGraphSimulation.compileProfile profile) who
+          alternative)).support) :
+    floor ≤ (source.graphPayoutUtility valuation missing).eval cfg.1.store who := by
+  have hterminal := runPolicyNodes_terminal (compile source.core).graphWF
+    (compile_guardLive source.core source.legal) _ ⟨Config.initial _, .initial⟩
+    (compile source.core).graph.nodeOrder (compile source.core).graph.nodeOrder_readyOrder
+    (fun node => Or.inr (by simp)) cfg hcfg
+  have hobservation : observeSourceOutcome source.core cfg ∈
+      ((denoteSource source.core.prog (Profile.update (sig := sourceGameSignature source.core.prog)
+        profile who (backtranslateCommitPolicy source.core who alternative))
+          source.core.env).map some).support :=
+    (runPolicyNodes_source_deviation source.core source.legal profile who alternative) ▸
+      ((FinDist.support_map _ _).symm ▸ ⟨cfg, hcfg, rfl⟩)
+  rw [observeSourceOutcome_of_terminal source.core cfg hterminal] at hobservation
+  simp only [FinDist.support_map, Set.mem_image, Option.some.injEq] at hobservation
+  obtain ⟨final, hfinal, heq⟩ := hobservation
+  rw [source.graphPayoutUtility_terminal valuation missing cfg hterminal who, ← heq]
+  exact hlower _ final hfinal
+
 /-- The source-to-graph certificate with utilities evaluated from public
 compiled payouts. Nonterminal graph states may have a different utility
 extension; the independently proved terminal-support theorem discharges that

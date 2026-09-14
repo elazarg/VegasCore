@@ -129,12 +129,20 @@ two-player source with an arbitrary first-player policy and delayed service;
 the second player meets both deadlines and completed supported runs exist.
 `pending_candidate_source_payout_deviation_bound` and
 `pending_candidate_source_payout_nash_iff` audit the candidate host's end-to-end
-utility simulation and same-error equilibrium correspondence. The proof composes
+deviation bound and same-error equilibrium correspondence. Their source floor
+need hold only on the supports of unilateral deviations against the fixed
+opponents; the quitting cap still ranges over all legal source settlements.
+The uniform special case composes
 `sourceGraphPayoutSimulation` with `CandidateRoundModel.utilitySimulation` through
 `UtilitySimulation.trans`. The compiler derives graph information, disclosure,
 and quitting certificates from the source; no native incentive inequality is a
 premise. `VegasTests/SealedPayout.lean` also instantiates these candidate results
 for the nonconstant payout above and arbitrary unreserved candidate wire policies.
+`VegasTests/SealedProfilePayout.lean` separates the two incentive conditions with
+a two-player source: it proves the fixed-opponent condition at a source Nash
+profile, proves that no uniform source bound exists, and transports that profile
+to the actual candidate game. Its native deviation bound covers an arbitrary
+replacement policy and arbitrary unreserved wire behavior.
 
 At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
 sharper exact statement under declared-read locality and a single ready

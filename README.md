@@ -18,20 +18,23 @@ and payoff code in an event graph. The native endpoint uses the shared
 The source-to-graph certificate preserves the source outcome law and exactly
 backtranslates arbitrary unilateral graph policies. The pending-message backend
 has an independent graph-to-candidate utility simulation. Their composition,
-`SealedCompilation.candidatePayoutSimulation`, bounds every randomized native
-unilateral deviation by a legal written-source deviation against unchanged
-opponents. Nash and same-error epsilon-Nash are preserved and reflected at the
-actual generated profiles.
+`SealedCompilation.candidate_deviation_bound_of_source_floor`, bounds every
+randomized native unilateral deviation by a legal written-source deviation
+against unchanged opponents. Nash and same-error epsilon-Nash are preserved and
+reflected at the actual generated profiles.
 
 The candidate runtime admits competing commitments, unopenable accepted handles,
 malformed traffic, retries, replay, pending-message observations, and withholding.
 Its adaptive wire policy sees the pending pool, but not the private candidate
 table. Periodic inclusion capacity, roster coverage, and sufficiently large
 timeout windows protect unchanged players. Withholding resolves to the programmed
-default; the theorem assumes a source-only uniform quitting bound: every legal
-source execution gives the player at least a bound, and executions recording its
-designated quitting value give it at most that bound. This is stronger than
-ordinary ex-ante dominance of quitting.
+default. The theorem assumes a source-only quitting condition: every outcome
+possible under a unilateral source deviation against the fixed opponents gives
+the deviator at least a bound, and every legal source execution recording its
+designated quitting value gives it at most that bound. The floor is pointwise
+on each deviation's support, not merely an expected-payoff comparison. A global
+floor over all legal executions is a stronger sufficient condition and supplies
+the reusable `candidatePayoutSimulation` certificate.
 
 The proof factors through the graph as an independently usable strategic
 intermediate representation. The compiler certifies public-prefix readability,

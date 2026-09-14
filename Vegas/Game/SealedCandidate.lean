@@ -13,9 +13,10 @@ import GameTheoryExtensions.Core.UtilitySimulation
 The target is the actual stopped candidate driver, with unrestricted native
 player policies and an adaptive wire policy. Deadline-relative service protects
 unchanged players. The deviation coupling preserves their graph kernels;
-independent graph settlement and a uniform graph quitting bound supply the
-utility comparison after timeout. No source-image or runtime incentive premise
-occurs in this backend certificate.
+independent graph settlement supplies a quitting cap, while the comparison floor
+need only cover graph deviations against the fixed opponents. A uniform graph
+floor yields a whole-game utility simulation. These backend results have no
+source-image or runtime incentive premise.
 -/
 
 noncomputable section
@@ -149,14 +150,18 @@ theorem honest_utility (model : CandidateRoundModel supported nullValue window)
   intro pair hpair
   exact utility.congr _ _ (hpairs pair.1 pair.2 hpair).2.2.2 who
 
-/-- Every unrestricted randomized candidate deviation is bounded by one legal
-graph deviation against the unchanged graph opponents. The finite response
-mixture is constructed from the native runner, not supplied by the caller. -/
-theorem deviation_bound (model : CandidateRoundModel supported nullValue window)
+/-- The floor need hold only on legal deviations against these fixed graph
+opponents. The quitting cap remains uniform over legal graph settlements.
+The native response mixture is constructed from the actual runner. -/
+theorem deviation_bound_of_support_floor (model : CandidateRoundModel supported nullValue window)
     (timely : model.Timely) (hinfo : G.PublicPrefixReadable) (hguards : GuardLive G)
     (hunique : G.UniqueReveals) (utility : G.PublicUtility) (bound : Player → ℝ)
-    (hbound : utility.QuitBound nullValue bound) (profile : CommitPolicyProfile G)
-    (who : Player) (replacement : model.game.sig.Strategy who) :
+    (hcap : utility.QuitCap nullValue bound) (profile : CommitPolicyProfile G) (who : Player)
+    (hlower : ∀ (alternative : CommitPolicy G who) (cfg : ReachableConfig G),
+      cfg ∈ ((policyGame G supported.graphWF hguards).play
+        (Profile.update profile who alternative)).support →
+      bound who ≤ utility.eval cfg.1.store who)
+    (replacement : model.game.sig.Strategy who) :
     ∃ alternative : CommitPolicy G who,
       (model.game.play (Profile.update (model.compileProfile profile) who replacement)).expect
           (fun next => model.nativeUtility utility next who) ≤
@@ -186,9 +191,20 @@ theorem deviation_bound (model : CandidateRoundModel supported nullValue window)
       obtain ⟨node, htimeout, howned⟩ :=
         model.deviation_timeout_owner timely profile who replacement pair.2 hnext hclear
       obtain ⟨hevents, hsettlement⟩ := model.play_publicInvariant _ pair.2 hnext
-      exact supported.timeout_utility_le_graph hguards hunique nullValue window utility bound
-        hbound pair.2.native.application.visible hevents hsettlement hdone
-        node who htimeout howned pair.1 hterminal
+      have hgraphSupport : pair.1 ∈ (responses.bind fun commands =>
+          supported.candidateGraphRun hinfo hguards nullValue window who commands.1 commands.2
+            (roundSchedule model.principals model.serviceSlots model.total) nullValue
+            profile).support := by
+        rw [← hgraph, FinDist.support_map]
+        exact ⟨pair, hpair, rfl⟩
+      simp only [FinDist.support_bind, Set.mem_iUnion] at hgraphSupport
+      obtain ⟨commands, _, hcfg⟩ := hgraphSupport
+      have hfloor := hlower
+        (supported.extractedCandidateCommitPolicy hinfo nullValue window who commands.1 commands.2
+          (roundSchedule model.principals model.serviceSlots model.total) nullValue) pair.1 hcfg
+      exact (supported.timeout_utility_le_cap hguards hunique nullValue window utility bound
+        hcap pair.2.native.application.visible hevents hsettlement hdone
+        node who htimeout howned).trans hfloor
   have hnativeExpect := congrArg
     (fun law => law.expect (fun next => model.nativeUtility utility next who)) hnative
   simp only [FinDist.expect_map] at hnativeExpect
@@ -206,6 +222,24 @@ theorem deviation_bound (model : CandidateRoundModel supported nullValue window)
   convert hgraphExpect.le.trans hmean using 1
   · exact FinDist.expect_bind _ _ _
   · rfl
+
+/-- A uniform graph floor supplies the profile-local deviation bound at every
+profile, yielding a reusable whole-game simulation. -/
+theorem deviation_bound (model : CandidateRoundModel supported nullValue window)
+    (timely : model.Timely) (hinfo : G.PublicPrefixReadable) (hguards : GuardLive G)
+    (hunique : G.UniqueReveals) (utility : G.PublicUtility) (bound : Player → ℝ)
+    (hbound : utility.QuitBound nullValue bound) (profile : CommitPolicyProfile G)
+    (who : Player) (replacement : model.game.sig.Strategy who) :
+    ∃ alternative : CommitPolicy G who,
+      (model.game.play (Profile.update (model.compileProfile profile) who replacement)).expect
+          (fun next => model.nativeUtility utility next who) ≤
+        ((policyGame G supported.graphWF hguards).play
+          (Profile.update profile who alternative)).expect
+            (fun cfg => utility.eval cfg.1.store who) :=
+  model.deviation_bound_of_support_floor timely hinfo hguards hunique utility bound
+    hbound.quitting profile who (fun alternative cfg hcfg => hbound.lower cfg
+      (runPolicyNodes_terminal supported.graphWF hguards _ ⟨Config.initial _, .initial⟩
+        G.nodeOrder G.nodeOrder_readyOrder (fun node => Or.inr (by simp)) cfg hcfg) who) replacement
 
 /-- A composable graph-to-candidate strategic edge for public-outcome
 utilities satisfying the graph-only uniform quitting bound. -/

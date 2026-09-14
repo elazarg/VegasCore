@@ -17,7 +17,7 @@ introducing a new edge and proving its own correspondence laws.
 | Resolving native protocol | `Interaction` | `SealedResolution`, shared policy-runner rounds | Per-node relative deadlines, nullable resolution, and continuing execution are implemented. Before the first timeout, validator/event projection is exact. Private bindings persist under arbitrary policies and resolution. Every round advances the clock once. Termination is checked without service; periodic inclusion capacity provides deadline-relative service. For the admitted Vegas fragment, completed public settlement has a legal source realization even after defaults. The single-checkpoint `SealedTimeout` model instead records final failure and does not implement this continuation. |
 | Vegas compiler edge | `Vegas.Compile` | `SealedCompilation`, sealed decode/refinement/source modules | One sealed rule per graph node; native prefixes decode to reachable graph states; terminal prefixes reconstruct a written-order source run. Under roster coverage, periodic inclusion capacity, a sufficient window, and a whole-period termination budget, all-compiled play has the exact original written-source outcome law in the actual stopped pending-message driver. |
 | Pending-message strategic edge | `Vegas.Game` | `SealedCompilation.RoundModel` | Constructed source/native coupling, actual timeout-checkpoint information, retained focal registrations, and same-error Nash equivalence under timely service, normal utility agreement, and explicit conditional timeout utility comparisons. For payout-valued utilities, a source-only `VegasCore.QuitPayoutBound` supplies both utility premises. |
-| Candidate-message strategic edge | `Vegas.Game` | `SealedFragment.CandidateRoundModel` | Independent graph utility simulation and composition to written source. Arbitrary randomized candidate deviations are bounded by legal source deviations under timely service and the source-only uniform quitting bound; same-error Nash holds at generated profiles. |
+| Candidate-message strategic edge | `Vegas.Game` | `SealedFragment.CandidateRoundModel` | Independent graph utility comparison and composition to written source. Arbitrary randomized candidate deviations are bounded by legal source deviations under timely service, a source quitting cap, and a pointwise source floor against the fixed opponents. Same-error Nash holds at the analyzed generated profile; a uniform floor supplies a whole-game simulation. |
 
 The ideal commitment service provides more than an abstract hiding-and-binding
 interface. For the compiled protocol, a source site is the numeric slot itself,
@@ -86,8 +86,9 @@ graph opponents and no assumed input equality. The exact joint
 prefix law through first timeout is proved below for fixed native response
 functions. The stopped-round coupling retains the same graph realization.
 Periodic service attributes every timeout to an unprotected player. The
-graph-level uniform quitting bound then compares each fallback utility with
-the coupled graph realization, retaining the original opponents' policies.
+graph-level quitting cap and the fixed-opponent support floor compare each
+fallback utility with the coupled graph realization, retaining the original
+opponents' policies.
 
 Generated policies satisfy `candidatePolicy_memory` under arbitrary opponent
 and environment policies: each honest owner's command cache agrees with its
@@ -224,12 +225,13 @@ opponents' policies.
 `Graph.PublicUtility` interprets public fields independently of payout encoding.
 Its `QuitBound` is a graph-only lower bound over legal terminal realizations,
 with a matching upper bound for realizations recording the player's default.
-`timeout_utility_le_graph` consequently bounds an attributed timeout's public
-utility by any legal terminal graph realization, including the different witness
-retained by the deviation coupling. `CandidateRoundModel.deviation_bound`
-combines this pointwise comparison with actual round attribution and the
-coupling marginals. `graphQuitBound_of_source` supplies the graph condition
-from the written-source condition before the strategic certificates compose.
+`timeout_utility_le_cap` transfers the quitting cap to the attributed native
+timeout. The comparison graph realization comes from a unilateral deviation
+against the original opponents, so its floor need hold only on that support.
+`CandidateRoundModel.deviation_bound_of_support_floor` combines this pointwise
+comparison with actual round attribution and the coupling marginals.
+`graphPayout_floor_of_source_deviations` transports the source support floor;
+`graphQuitCap_of_source` separately certifies the graph quitting cap.
 
 ## End-to-end candidate theorem
 
@@ -263,7 +265,7 @@ Two checked laws establish the result:
 
 1. **Honest law:** every compiled profile completes without timeout and
    `Law(pR; R(C σ)) = Law(pS; S(σ))`.
-2. **Deviation bound:** under the source-only `QuitPayoutBound`, for every
+2. **Deviation bound:** under the source-only `QuitPayoutBoundAgainst` at `σ`, for every
    source profile `σ`, player `i`, and randomized native replacement `τi`,
    there is a legal source replacement `sᵢ` with
    `E[uᵢ(pR); R((C σ)[i := τi])] ≤ E[uᵢ(pS); S(σ[i := sᵢ])]`.
@@ -271,16 +273,25 @@ Two checked laws establish the result:
    mixture, then selects a component at least as good as its mean. It does not
    claim equality of deviation outcome laws.
 
-`candidate_approximate_nash_iff` and `candidate_nash_iff` give preservation and
-reflection at compiled profiles. `Paper.lean` directly audits the source
+`candidate_approximate_nash_iff_of_source_floor` gives preservation and
+reflection at the analyzed compiled profile, including ordinary Nash at zero
+error. `Paper.lean` directly audits this source
 deviation bound and same-error equilibrium theorem. `VegasTests/SealedPayout.lean`
 instantiates candidate Nash and an arbitrary-native-deviation bound for a
 nonconstant written-source game and arbitrary unreserved wire behavior.
+`VegasTests/SealedProfilePayout.lean` supplies a two-player separation example:
+the fixed-opponent condition holds at its source Nash profile, although no
+uniform source bound exists. The same profile compiles to a candidate Nash
+equilibrium for arbitrary unreserved wire behavior.
 
-`QuitPayoutBound` makes each player's designated quitting settlement a global
-minimum over legal source executions. It is stronger than ordinary ex-ante quit
-dominance. The graph certificate supports arbitrary utilities of typed public
-fields; the source specialization values the programmed payout. Additional
+`QuitPayoutBoundAgainst` retains a global cap over legal own-quitting settlements,
+but its source floor ranges only over unilateral deviations against the fixed
+opponents. The floor is pointwise on their supports, not merely an expectation
+or equilibrium-support condition. `QuitPayoutBound` supplies it uniformly at
+every profile, yielding the composable whole-game certificate above. Both are
+stronger than ordinary ex-ante quit dominance. The graph certificate supports
+arbitrary utilities of typed public fields; the source specialization values
+the programmed payout. Additional
 runtime trace preferences are not covered automatically. Service and ideal
 binding are assumptions of the model, not cryptographic or censorship-resistance
 results.

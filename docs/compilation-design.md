@@ -288,12 +288,13 @@ windows attribute every timeout in the candidate round driver to an unprotected
 player. `Graph.UniqueReveals`, certified by source accounting, supplies the
 separate disclosure condition for graph settlement: every completed public
 store has a legal terminal graph realization, and an owned timeout records an
-owned default in that realization. `Graph.PublicUtility.QuitBound` expresses a
-uniform incentive condition solely over terminal graph realizations;
-`timeout_utility_le_graph` compares attributed settlement to the terminal graph
-realization retained by the coupling. The two realizations may differ: only the
-coupling retains the original opponents' policies.
-`CandidateRoundModel.deviation_bound` combines attribution, this pointwise bound,
+owned default in that realization. `Graph.PublicUtility.QuitCap` bounds legal
+quitting settlements; `timeout_utility_le_cap` transfers that cap to an attributed
+native timeout. The comparison graph realization comes from the coupling, which
+retains the original opponents' policies. Its lower bound therefore need hold
+only on outcomes of unilateral graph deviations against those fixed opponents,
+not on every legal graph execution.
+`CandidateRoundModel.deviation_bound_of_support_floor` combines attribution, this bound,
 and the probability marginals. A finite mixture has a component at least as good
 as its mean, so the exported witness is one legal graph policy.
 `CandidateRoundModel.utilitySimulation` packages the honest and deviation utility

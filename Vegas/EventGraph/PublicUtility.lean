@@ -6,8 +6,9 @@ import Vegas.EventGraph.Execution
 
 A utility evaluates a store and depends only on the graph's declared public
 fields. It need not be a payout or a valuation in any particular currency.
-The quitting condition below is a uniform sufficient incentive condition over
-legal terminal graph realizations, stronger than ex-ante dominance of quitting.
+The quitting cap bounds legal terminal realizations recording a default. Pairing
+it with a uniform floor gives a sufficient incentive condition stronger than
+ex-ante dominance of quitting; a deviation proof may use a narrower support floor.
 -/
 
 namespace Vegas.EventGraph
@@ -26,6 +27,16 @@ namespace Graph.PublicUtility
 
 variable {G : Graph Player L}
 
+/-- Uniform upper bound for legal graph settlements recording a player's quit.
+This part does not impose a lower bound on other legal executions. -/
+def QuitCap (utility : G.PublicUtility) {ty : L.Ty}
+    (nullValue : L.Val ty) (bound : Player → ℝ) : Prop :=
+  ∀ cfg : ReachableConfig G, Terminal G cfg.1 →
+    ∀ (who : Player) (producer : Fin G.nodeCount) (guard : EventGuard L),
+      (G.nodeRow producer).sem = .commit who guard →
+      cfg.1.store (G.nodeTarget producer) = some (⟨ty, nullValue⟩ : TypedValue L) →
+      utility.eval cfg.1.store who ≤ bound who
+
 /-- Every legal terminal realization has utility at least the bound; a
 realization recording the player's designated default has utility at most the
 same bound. The condition quantifies over executions, not just equilibrium
@@ -34,11 +45,7 @@ structure QuitBound (utility : G.PublicUtility) {ty : L.Ty}
     (nullValue : L.Val ty) (bound : Player → ℝ) : Prop where
   lower : ∀ cfg : ReachableConfig G, Terminal G cfg.1 →
     ∀ who, bound who ≤ utility.eval cfg.1.store who
-  quitting : ∀ cfg : ReachableConfig G, Terminal G cfg.1 →
-    ∀ (who : Player) (producer : Fin G.nodeCount) (guard : EventGuard L),
-      (G.nodeRow producer).sem = .commit who guard →
-      cfg.1.store (G.nodeTarget producer) = some (⟨ty, nullValue⟩ : TypedValue L) →
-      utility.eval cfg.1.store who ≤ bound who
+  quitting : utility.QuitCap nullValue bound
 
 end Graph.PublicUtility
 
