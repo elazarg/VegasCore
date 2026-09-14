@@ -164,7 +164,8 @@ theorem resolvedPlayerStore_reads_of_ready (supported : SealedFragment G ty)
           rw [supported.compile_rule]
           exact congrArg some (G.sealedRule_reveal_eq prior producer owner producerGuard
             (hsource ▸ hreveal) hcommit)
-        obtain ⟨value, hopened⟩ := hinvariant.opened_of_completed_reveal prior.val owner
+        obtain ⟨value, hopened⟩ := hinvariant.publicEvents.opened_of_completed_reveal
+          prior.val owner
           producer.val (G.messagePrerequisites prior) hrule hcompleted
         apply supported.resolvedPlayerStore_available
         exact G.replaySealedView_available_of_event ty who memory _ _

@@ -57,8 +57,9 @@ structure PublicState (Principal : Type uPrincipal) (Value : Type uValue) where
   readyAt : List (Nat × Nat) := []
   clock : Nat := 0
 
-structure ApplicationState (Principal : Type uPrincipal) (Value : Type uValue) where
-  service : IdealCommitments Principal Nat Value
+structure ApplicationState (Principal : Type uPrincipal) (Value : Type uValue)
+    (Service : Type (max uPrincipal uValue) := IdealCommitments Principal Nat Value) where
+  service : Service
   visible : PublicState Principal Value
 
 def PublicState.completed (state : PublicState Principal Value) (node : Nat) : Bool :=
@@ -124,8 +125,9 @@ def initial (runtime : SealedResolution Principal Value) : ApplicationState Prin
   ⟨IdealCommitments.empty, runtime.refresh false {}⟩
 
 /-- A clock boundary resolves expired nodes; inclusion alone never advances it. -/
-def tick (runtime : SealedResolution Principal Value)
-    (state : ApplicationState Principal Value) : ApplicationState Principal Value :=
+def tick {Service : Type (max uPrincipal uValue)} (runtime : SealedResolution Principal Value)
+    (state : ApplicationState Principal Value Service) :
+    ApplicationState Principal Value Service :=
   let visible := runtime.refresh true { state.visible with clock := state.visible.clock + 1 }
   { state with visible }
 
@@ -148,22 +150,36 @@ def handle [DecidableEq Principal] [DecidableEq Value]
     { state.visible with events := state.visible.events ++ [event] }
   some { state with visible }
 
-/-- The ordinary shared runner supplies all wire actions and policy histories.
-Only the public state is exposed; the private table is absent from both views. -/
-noncomputable def messageApplication [DecidableEq Principal] [DecidableEq Value]
-    (runtime : SealedResolution Principal Value) : MessageApplication Principal where
-  Application := ApplicationState Principal Value
+/-- Host one commitment service under the same public clock, timeout rules,
+message transport, and policy interface. Only preparation and authenticated
+message application depend on the service. No service state enters a view. -/
+noncomputable abbrev host
+    {Service : Type (max uPrincipal uValue)}
+    (runtime : SealedResolution Principal Value)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+      Option (ApplicationState Principal Value Service)) : MessageApplication Principal where
+  Application := ApplicationState Principal Value Service
   Payload := SealedProgram.Payload Principal Value
   PrivateCommand := ULift.{uPrincipal} (Nat × Value)
   EnvironmentCommand := ULift.{max uPrincipal uValue} Unit
   PlayerView := PublicState Principal Value
   EnvironmentView := PublicState Principal Value
   privateStep state owner command :=
-    { state with service := (state.service.sealValue owner command.down.1 command.down.2).state }
+    { state with service := prepare state.service owner command.down.1 command.down.2 }
   environmentStep state _ := GameTheory.Math.Probability.FinDist.pure (runtime.tick state)
-  handle := runtime.handle
+  handle := applyMessage
   observePlayer state _ := state.visible
   observeEnvironment state := state.visible
+
+/-- The registered-site commitment service hosted by the shared runner.
+Its acceptance requires an already registered canonical source-site handle. -/
+noncomputable def messageApplication [DecidableEq Principal] [DecidableEq Value]
+    (runtime : SealedResolution Principal Value) : MessageApplication Principal :=
+  runtime.host (Service := IdealCommitments Principal Nat Value)
+    (fun state owner slot value => (state.sealValue owner slot value).state)
+    runtime.handle
 
 end SealedResolution
 end Interaction

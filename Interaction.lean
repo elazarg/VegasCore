@@ -38,6 +38,7 @@ import Interaction.DependencyGateLaws
 import Interaction.Deadline
 import Interaction.Activation
 import Interaction.IdealCommitments
+import Interaction.CommitmentCandidates
 import Interaction.IdealCommitmentWeight
 import Interaction.BindingDisposition
 import Interaction.ConditionalPublication
@@ -74,6 +75,10 @@ import Interaction.SealedTimeoutPolicyLaws
 import Interaction.SealedTimeoutApplication
 import Interaction.SealedTimeoutDisclosure
 import Interaction.SealedResolution
+import Interaction.SealedCandidateResolution
+import Interaction.SealedCandidateBinding
+import Interaction.SealedCandidateEvents
+import Interaction.SealedCandidateSettlement
 import Interaction.SealedResolutionLaws
 import Interaction.SealedResolutionProgress
 import Interaction.SealedResolutionDeadline

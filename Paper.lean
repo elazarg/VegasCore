@@ -13,6 +13,8 @@ import Vegas.Language.Nullable
 import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
+import Vegas.Compile.SealedCandidateSettlement
+import Interaction.SealedCandidateBinding
 import Vegas.Compile.SealedTermination
 import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedSourceExtraction
@@ -1441,6 +1443,77 @@ theorem ready_reveal_fence
     prior ∈ cfg.done :=
   Ready.prior_commit_done_of_reveal G cfg hnode hprior hlt hreveal hcommit hready
 
+section CandidateSettlement
+
+open ToEventGraph MessageApplication
+
+variable [Finite Player] {source : WFProgram Player L} {ty : L.Ty}
+variable [DecidableEq (L.Val ty)]
+
+theorem pending_candidate_public_payout
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (players : Player →
+      (compilation.supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
+    (environment :
+      (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation Player))
+    (next :
+      (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.PolicyExecution)
+    (hnext : next ∈
+      ((compilation.supported.resolvingRuntime nullValue window).candidateApplication.runPolicies
+        players environment schedule
+        (PolicyExecution.initial _ (State.initial _
+          (compilation.supported.resolvingRuntime nullValue window).candidateInitial))).support)
+    (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
+      next.native.application.visible = true) :
+    ∃ terminalEnv : VEnv L (compile source.core).terminalCtx,
+      SmallStep.Star
+        { ctx := source.core.Γ, env := source.core.env, cont := source.core.prog }
+        { ctx := (compile source.core).terminalCtx, env := terminalEnv,
+          cont := .ret (compile source.core).sourcePayoffs } ∧
+      compilation.publicPayout? next.native.application.visible.events =
+        some (evalPayoffs (compile source.core).sourcePayoffs terminalEnv) :=
+  compilation.candidate_publicPayout_source nullValue window players environment schedule
+    next hnext hcomplete
+
+theorem pending_candidate_timeout_source_choice
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (players : Player →
+      (compilation.supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
+    (environment :
+      (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation Player))
+    (next :
+      (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.PolicyExecution)
+    (hnext : next ∈
+      ((compilation.supported.resolvingRuntime nullValue window).candidateApplication.runPolicies
+        players environment schedule
+        (PolicyExecution.initial _ (State.initial _
+          (compilation.supported.resolvingRuntime nullValue window).candidateInitial))).support)
+    (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
+      next.native.application.visible = true)
+    (node : Fin (compile source.core).graph.nodeCount) (who : Player)
+    (htimeout : node.val ∈ next.native.application.visible.timeouts)
+    (howned : (∃ guard, ((compile source.core).graph.nodeRow node).sem = .commit who guard) ∨
+      ∃ (producer : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L),
+        ((compile source.core).graph.nodeRow node).sem =
+          .reveal ((compile source.core).graph.nodeTarget producer) ∧
+        ((compile source.core).graph.nodeRow producer).sem = .commit who guard) :
+    ∃ final : VEnv L (sourceTerminalCtx source.core.prog),
+      SmallStep.Star ⟨source.core.Γ, source.core.env, source.core.prog⟩
+        ⟨sourceTerminalCtx source.core.prog, final, .ret (sourceTerminalPayoffs source.core.prog)⟩ ∧
+      source.core.prog.Chooses who nullValue final ∧
+      compilation.publicPayout? next.native.application.visible.events =
+        some (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) :=
+  compilation.candidate_publicPayout_source_choice nullValue window players environment schedule
+    next hnext hcomplete node who htimeout howned
+
+end CandidateSettlement
+
 namespace Source
 
 theorem committed_binding_accounted (source : WFProgram Player L) (name : VarId)
@@ -1461,7 +1534,38 @@ theorem binding_resolutions_nodup (source : WFProgram Player L) :
 
 end Source
 
+/-- Accepted candidate meanings remain fixed under arbitrary native policies. -/
+theorem pending_candidate_binding {Value : Type} [DecidableEq Value]
+    (runtime : SealedResolution Player Value)
+    (players : Player → runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Player))
+    (execution next : runtime.candidateApplication.PolicyExecution)
+    (handle : CommitmentHandle Player Nat)
+    (hfixed : execution.native.application.service.lookup handle ≠ .fresh)
+    (hnext : next ∈ (runtime.candidateApplication.runPolicies
+      players environment schedule execution).support) :
+    next.native.application.service.lookup handle =
+      execution.native.application.service.lookup handle :=
+  runtime.runPolicies_candidate_lookup_of_not_fresh players environment schedule
+    execution next handle hfixed hnext
+
 end Vegas.Paper
+
+/-- info: 'Vegas.Paper.pending_candidate_binding' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_binding
+
+/-- info: 'Vegas.Paper.pending_candidate_public_payout' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_public_payout
+
+/-- info: 'Vegas.Paper.pending_candidate_timeout_source_choice' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_timeout_source_choice
 
 /-- info: 'Vegas.Paper.source_strategy_support' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

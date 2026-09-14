@@ -36,6 +36,7 @@ import VegasTests.SealedRounds
 import VegasTests.SealedPublicOutcome
 import VegasTests.SealedPublicSettlement
 import VegasTests.SealedPayout
+import VegasTests.SealedCandidates
 import VegasTests.SealedResolutionReadBound
 import VegasTests.SealedSourceExtraction
 import VegasTests.SealedResolutionCylinder

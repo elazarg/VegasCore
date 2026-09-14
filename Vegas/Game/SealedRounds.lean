@@ -180,8 +180,9 @@ theorem play_publicPayout_source [Finite Player]
           cont := .ret (compile source.core).sourcePayoffs } ∧
       compilation.publicPayout? next.native.application.visible.events =
         some (evalPayoffs (compile source.core).sourcePayoffs terminalEnv) :=
-  compilation.publicPayout?_eq_source_of_complete nullValue window next.native.application
-    (model.play_eventInvariant players next hnext) (model.play_complete players next hnext)
+  compilation.publicPayout?_eq_source_of_complete nullValue window next.native.application.visible
+    (model.play_eventInvariant players next hnext).publicEvents
+    (model.play_complete players next hnext)
 
 /-- Honest expected utilities follow from the original source outcome law,
 not from a putative backtranslation of the all-compiled profile. -/

@@ -200,23 +200,23 @@ private theorem validateMessage?_event_not_timeout
   rw [hvalid] at hnone
   contradiction
 
-/-- Accepted commitments remain disjoint from timeouts.  A non-null opening
-retains both an unexpired reveal node and its canonical accepted source. -/
+/-- Public settlement safety is independent of the private commitment service.
+Accepted sites cannot time out; non-null openings name an accepted source site.
+The selected candidate need not be a canonical source-slot handle. -/
 structure SettlementInvariant (runtime : SealedResolution Principal Value)
-    (state : ApplicationState Principal Value) : Prop where
+    (state : PublicState Principal Value) : Prop where
   accepted_not_timeout : ∀ node handle,
-    .accepted node handle ∈ state.visible.events → node ∉ state.visible.timeouts
+    .accepted node handle ∈ state.events → node ∉ state.timeouts
   nonNullOpened : ∀ node owner source requires value,
     runtime.program.rules[node]? =
         some { kind := .reveal owner source, requires } →
-      .opened node value ∈ state.visible.events → value ≠ runtime.nullValue →
-      node ∉ state.visible.timeouts ∧
-        .accepted source (owner, source) ∈ state.visible.events
+      .opened node value ∈ state.events → value ≠ runtime.nullValue →
+      node ∉ state.timeouts ∧ ∃ handle, .accepted source handle ∈ state.events
 
 namespace SettlementInvariant
 
 variable {runtime : SealedResolution Principal Value}
-variable {state next : ApplicationState Principal Value}
+variable {state : PublicState Principal Value}
 
 private theorem completed_of_event
     (visible : PublicState Principal Value)
@@ -236,18 +236,18 @@ theorem opened_eq_null_of_timeout
     (value : Value)
     (hrule : runtime.program.rules[node]? =
       some { kind := .reveal owner source, requires })
-    (hopened : .opened node value ∈ state.visible.events)
-    (htimeout : node ∈ state.visible.timeouts ∨ source ∈ state.visible.timeouts) :
+    (hopened : .opened node value ∈ state.events)
+    (htimeout : node ∈ state.timeouts ∨ source ∈ state.timeouts) :
     value = runtime.nullValue := by
   by_contra hvalue
-  obtain ⟨hnode, haccepted⟩ :=
+  obtain ⟨hnode, handle, haccepted⟩ :=
     invariant.nonNullOpened node owner source requires value hrule hopened hvalue
   rcases htimeout with htimeout | htimeout
   · exact hnode htimeout
-  · exact invariant.accepted_not_timeout source (owner, source) haccepted htimeout
+  · exact invariant.accepted_not_timeout source handle haccepted htimeout
 
 theorem initial (runtime : SealedResolution Principal Value) :
-    SettlementInvariant runtime runtime.initial := by
+    SettlementInvariant runtime runtime.initial.visible := by
   have hevents : runtime.initial.visible.events = [] := by
     unfold SealedResolution.initial
     exact runtime.refresh_false_events {} rfl
@@ -259,96 +259,84 @@ theorem initial (runtime : SealedResolution Principal Value) :
     rw [hevents] at hopened
     simp at hopened
 
-theorem register [DecidableEq Principal]
-    (invariant : SettlementInvariant runtime state)
-    (owner : Principal) (slot : Nat) (value : Value) :
-    SettlementInvariant runtime
-      { state with service := (state.service.sealValue owner slot value).state } := by
-  exact ⟨invariant.accepted_not_timeout, invariant.nonNullOpened⟩
-
 theorem clock (invariant : SettlementInvariant runtime state) :
-    SettlementInvariant runtime
-      { state with visible := { state.visible with clock := state.visible.clock + 1 } } := by
-  exact ⟨invariant.accepted_not_timeout, invariant.nonNullOpened⟩
+    SettlementInvariant runtime { state with clock := state.clock + 1 } :=
+  ⟨invariant.accepted_not_timeout, invariant.nonNullOpened⟩
 
 theorem refresh (invariant : SettlementInvariant runtime state)
     (resolveExpired : Bool) :
-    SettlementInvariant runtime
-      { state with visible := runtime.refresh resolveExpired state.visible } := by
+    SettlementInvariant runtime (runtime.refresh resolveExpired state) := by
   constructor
   · intro node handle haccepted
-    have hprior := (runtime.refresh_accepted_iff resolveExpired state.visible
-      node handle).mp haccepted
-    exact refresh_no_timeout_of_completed runtime resolveExpired state.visible node
-      (completed_of_event state.visible (.accepted node handle) hprior)
+    have hprior := (runtime.refresh_accepted_iff resolveExpired state node handle).mp haccepted
+    exact refresh_no_timeout_of_completed runtime resolveExpired state node
+      (completed_of_event state (.accepted node handle) hprior)
       (invariant.accepted_not_timeout node handle hprior)
   · intro node owner source requires value hrule hopened hvalue
-    have hprior := (runtime.refresh_opened_iff_of_ne resolveExpired state.visible
+    have hprior := (runtime.refresh_opened_iff_of_ne resolveExpired state
       node value hvalue).mp hopened
-    obtain ⟨hnode, haccepted⟩ :=
+    obtain ⟨hnode, handle, haccepted⟩ :=
       invariant.nonNullOpened node owner source requires value hrule hprior hvalue
-    exact ⟨refresh_no_timeout_of_completed runtime resolveExpired state.visible node
-        (completed_of_event state.visible (.opened node value) hprior) hnode,
-      (runtime.refresh_accepted_iff resolveExpired state.visible source
-        (owner, source)).mpr haccepted⟩
+    exact ⟨refresh_no_timeout_of_completed runtime resolveExpired state node
+        (completed_of_event state (.opened node value) hprior) hnode,
+      handle, (runtime.refresh_accepted_iff resolveExpired state source handle).mpr haccepted⟩
 
-theorem tick (invariant : SettlementInvariant runtime state) :
-    SettlementInvariant runtime (runtime.tick state) := by
-  unfold SealedResolution.tick
-  exact invariant.clock.refresh true
-
-variable [DecidableEq Principal] [DecidableEq Value]
-
-private theorem record
-    (invariant : SettlementInvariant runtime state)
-    (message : Message Principal (SealedProgram.Payload Principal Value))
+/-- Public event admission is the only host-specific obligation needed to
+preserve timeout settlement. The clock and source-settlement proofs use this
+same contract for both registered and candidate commitment services. -/
+theorem record (invariant : SettlementInvariant runtime state)
     (event : SealedProgram.Event Principal Value)
-    (hvalid : runtime.validateMessage? state message = some event) :
-    SettlementInvariant runtime
-      { state with visible := { state.visible with
-          events := state.visible.events ++ [event] } } := by
+    (hnotTimeout : event.node ∉ state.timeouts)
+    (hsource : ∀ node value, event = .opened node value →
+      ∃ owner source requires handle,
+        runtime.program.rules[node]? = some { kind := .reveal owner source, requires } ∧
+          .accepted source handle ∈ state.events) :
+    SettlementInvariant runtime { state with events := state.events ++ [event] } := by
   constructor
   · intro node handle haccepted
     simp only [List.mem_append, List.mem_singleton] at haccepted
     rcases haccepted with hprior | hnew
     · exact invariant.accepted_not_timeout node handle hprior
     · subst event
-      exact runtime.validateMessage?_event_not_timeout state message
-        (.accepted node handle) hvalid
+      exact hnotTimeout
   · intro node owner source requires value hrule hopened hvalue
     simp only [List.mem_append, List.mem_singleton] at hopened
     rcases hopened with hprior | hnew
-    · obtain ⟨hnode, haccepted⟩ :=
+    · obtain ⟨hnode, handle, haccepted⟩ :=
         invariant.nonNullOpened node owner source requires value hrule hprior hvalue
-      exact ⟨hnode, List.mem_append_left [event] haccepted⟩
+      exact ⟨hnode, handle, List.mem_append_left [event] haccepted⟩
     · subst event
-      obtain ⟨eventOwner, eventSource, eventRequires, heventRule, haccepted⟩ :=
-        runtime.validateMessage?_opened_source_accepted state message node value hvalid
-      have hrules :
-          ({ kind := .reveal eventOwner eventSource, requires := eventRequires } :
-              SealedRule Principal) =
-            { kind := .reveal owner source, requires } :=
-        Option.some.inj (heventRule.symm.trans hrule)
-      have hkinds := congrArg SealedRule.kind hrules
-      simp only [SealedRuleKind.reveal.injEq] at hkinds
+      obtain ⟨eventOwner, eventSource, eventRequires, handle, heventRule, haccepted⟩ :=
+        hsource node value rfl
+      have hkinds := congrArg (fun found => found.map SealedRule.kind)
+        (heventRule.symm.trans hrule)
+      simp only [Option.map_some, Option.some.injEq, SealedRuleKind.reveal.injEq] at hkinds
       obtain ⟨rfl, rfl⟩ := hkinds
-      exact ⟨runtime.validateMessage?_event_not_timeout state message
-          (.opened node value) hvalid,
-        List.mem_append_left [.opened node value]
-          (SealedProgram.accepted_mem_of_accepted?_eq_some haccepted)⟩
+      exact ⟨hnotTimeout, handle, List.mem_append_left [.opened node value] haccepted⟩
+
+variable [DecidableEq Principal] [DecidableEq Value]
 
 theorem handle
-    (invariant : SettlementInvariant runtime state)
+    {before next : ApplicationState Principal Value}
+    (invariant : SettlementInvariant runtime before.visible)
     (message : Message Principal (SealedProgram.Payload Principal Value))
-    (hnext : runtime.handle state message = some next) :
-    SettlementInvariant runtime next := by
+    (hnext : runtime.handle before message = some next) :
+    SettlementInvariant runtime next.visible := by
   unfold SealedResolution.handle at hnext
-  cases hvalid : runtime.validateMessage? state message with
+  cases hvalid : runtime.validateMessage? before message with
   | none => simp [hvalid] at hnext
   | some event =>
       simp only [hvalid, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hnext
       subst next
-      exact (invariant.record message event hvalid).refresh false
+      apply SettlementInvariant.refresh (resolveExpired := false)
+      apply invariant.record event
+        (runtime.validateMessage?_event_not_timeout before message event hvalid)
+      intro node value hevent
+      subst event
+      obtain ⟨owner, source, requires, hrule, haccepted⟩ :=
+        runtime.validateMessage?_opened_source_accepted before message node value hvalid
+      exact ⟨owner, source, requires, (owner, source), hrule,
+        SealedProgram.accepted_mem_of_accepted?_eq_some haccepted⟩
 
 end SettlementInvariant
 
@@ -362,21 +350,21 @@ theorem runPolicies_settlementInvariant
     (environment : runtime.messageApplication.EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
     (execution next : runtime.messageApplication.PolicyExecution)
-    (hinitial : SettlementInvariant runtime execution.native.application)
+    (hinitial : SettlementInvariant runtime execution.native.application.visible)
     (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
       schedule execution).support) :
-    SettlementInvariant runtime next.native.application := by
+    SettlementInvariant runtime next.native.application.visible := by
   apply runtime.messageApplication.runPolicies_application_invariant
-    (SettlementInvariant runtime) ?_ ?_ ?_
+    (fun state => SettlementInvariant runtime state.visible) ?_ ?_ ?_
       players environment schedule execution next hinitial hnext
   · intro state owner command hstate
-    exact hstate.register owner command.down.1 command.down.2
+    exact hstate
   · intro state message after hstate hafter
     exact hstate.handle message hafter
   · intro state command after hstate hafter
     simp only [messageApplication, FinDist.mem_support_pure] at hafter
     subst after
-    exact hstate.tick
+    exact hstate.clock.refresh true
 
 /-- Settlement validity survives bounded rounds from any valid entry state. -/
 theorem runRounds_settlementInvariant
@@ -385,10 +373,10 @@ theorem runRounds_settlementInvariant
     (players : Principal → runtime.messageApplication.PlayerPolicy)
     (environment : runtime.messageApplication.WirePolicy)
     (count : Nat) (execution next : runtime.messageApplication.PolicyExecution)
-    (hinitial : SettlementInvariant runtime execution.native.application)
+    (hinitial : SettlementInvariant runtime execution.native.application.visible)
     (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment
       count execution).support) :
-    SettlementInvariant runtime next.native.application := by
+    SettlementInvariant runtime next.native.application.visible := by
   induction count generalizing execution with
   | zero =>
       simp only [runRounds, FinDist.mem_support_pure] at hnext
@@ -410,7 +398,7 @@ theorem runRounds_settlementInvariant
         have hmiddleNative := runtime.clockStep_native serviced middle hmiddle
         apply ih middle ?_ hnext
         rw [hmiddleNative]
-        exact hservicedInvariant.tick
+        exact hservicedInvariant.clock.refresh true
 
 /-- Every bounded round outcome from the canonical empty runtime satisfies the
 settlement invariant, without restrictions on players or wire scheduling. -/
@@ -423,7 +411,7 @@ theorem runRounds_initial_settlementInvariant
     (hnext : next ∈ (runtime.runRounds principals serviceSlots players environment count
       (MessageApplication.PolicyExecution.initial runtime.messageApplication
         (MessageApplication.State.initial runtime.messageApplication runtime.initial))).support) :
-    SettlementInvariant runtime next.native.application := by
+    SettlementInvariant runtime next.native.application.visible := by
   exact runtime.runRounds_settlementInvariant principals serviceSlots players environment count
     _ next (SettlementInvariant.initial runtime) hnext
 

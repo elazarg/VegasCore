@@ -57,12 +57,27 @@ or a well-typed hidden value for every arbitrary target candidate. Site-specific
 typing and guard checks belong to authenticated opening validation, together
 with a proof of the source continuation used on failure.
 
-The current registered-handle service admits only canonical, pre-registered
-site handles. Extending it to competing and unopenable candidates must preserve
-the compiled honest law and re-establish the causal coupling and source payout
-theorem against arbitrary candidate preparation and selection. The public
-acceptance/disclosure barrier is independent of private registration, but that
-information-flow fact alone is not the required strategic refinement.
+`SealedResolution.host` keeps the program rules, transport, clock, and policy
+interface fixed while instantiating preparation and message admission. The
+registered service admits canonical pre-registered site handles; the candidate
+service admits competing and unopenable candidates. Both instantiate public
+event provenance and timeout-settlement invariants. Source public-settlement
+reconstruction consumes these public invariants without a service parameter.
+Private candidate immutability is a separate arbitrary-policy theorem.
+
+The candidate service must still preserve the compiled honest law and support
+the causal deviation coupling. The public acceptance/disclosure barrier is
+independent of private registration, but that information-flow fact and a
+source settlement witness alone do not provide the required strategy law.
+The next proof must extract the selected candidate, not the first private
+preparation at a canonical source slot, and must interpret an unopenable
+selection through the source failure condition.
+
+Candidate handles are owner-scoped identifiers. A pending handle can acquire
+its private value until acceptance; an unprepared accepted handle becomes
+permanently unopenable. A concrete service must justify its embedding into
+these semantics, including owner scoping and the binding point. No trace
+equivalence with immutable payloads fixed at submission is claimed.
 
 ## Current boundary
 

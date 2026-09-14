@@ -42,9 +42,12 @@ initial data and opening events, including after timeout defaults; this applies
 to supported outcomes of the actual round game without a service assumption.
 That public-settlement witness need not preserve private committed choices and
 therefore does not by itself discharge the timeout incentive condition.
-The current commitment service binds each source site at its first private
-registration and rejects unregistered handles. Competing candidates and accepted
-but unopenable commitments require a further strategic refinement.
+The commitment service used by the strategic theorem binds each source site at
+its first private registration and rejects unregistered handles. A candidate
+host of the same program also permits competing candidates and accepts handles
+without openings. Its immutable binding and source-settlement laws are checked,
+including a legal source quitting witness after an owner's timeout. Extending
+the causal coupling and Nash theorem to that host remains open.
 Censorship resistance, concrete commitment cryptography, and EVM execution
 correctness remain open.
 

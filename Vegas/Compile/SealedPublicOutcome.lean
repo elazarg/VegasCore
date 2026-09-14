@@ -177,20 +177,20 @@ omit [DecidableEq (L.Val ty)] in
 with commitment and reveal defaults. No source decoding is assumed. -/
 theorem publicSealedStore_available_of_complete
     (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
-    (state : SealedResolution.ApplicationState Player (L.Val ty))
-    (hinvariant : SealedResolution.EventInvariant
+    (state : SealedResolution.PublicState Player (L.Val ty))
+    (hinvariant : SealedResolution.PublicEventInvariant
       (supported.resolvingRuntime nullValue window) state)
-    (hcomplete : (supported.resolvingRuntime nullValue window).complete state.visible = true)
+    (hcomplete : (supported.resolvingRuntime nullValue window).complete state = true)
     (ref : FieldRef L) (hpublic : G.fieldRefPublic ref) :
-    ∃ value, Store.getAs (G.publicSealedStore ty state.visible.events)
+    ∃ value, Store.getAs (G.publicSealedStore ty state.events)
       ref.field ref.ty = some value := by
   rcases supported.publicField_origin ref hpublic with
     ⟨spec, value, hfield, hsource, hty, howner⟩ |
       ⟨node, producer, owner, guard, htarget, hrefty, hsem, hcommit⟩
   · rw [← hty]
-    exact ⟨value, G.publicSealedStore_getAs_initial ty state.visible.events
+    exact ⟨value, G.publicSealedStore_getAs_initial ty state.events
       ref.field spec value hfield hsource howner⟩
-  · have hcompleted : state.visible.completed node.val = true := by
+  · have hcompleted : state.completed node.val = true := by
       apply List.all_eq_true.mp hcomplete node.val
       have hlen : supported.compile.rules.length = G.nodeCount := by
         simp [SealedFragment.compile, Graph.nodeOrder]
@@ -202,7 +202,7 @@ theorem publicSealedStore_available_of_complete
     obtain ⟨value, hopened⟩ := hinvariant.opened_of_completed_reveal
       node.val owner producer.val (G.messagePrerequisites node) hrule hcompleted
     have havailable := G.publicSealedStore_available_of_opened ty
-      state.visible.events node.val value hopened
+      state.events node.val value hopened
     rw [htarget, hrefty]
     exact Option.isSome_iff_exists.mp havailable
 
@@ -324,12 +324,12 @@ def publicPayout? (_compilation : SealedCompilation source ty)
 state, including after timeout defaults. -/
 theorem publicPayout?_isSome_of_complete
     (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
-    (state : SealedResolution.ApplicationState Player (L.Val ty))
-    (hinvariant : SealedResolution.EventInvariant
+    (state : SealedResolution.PublicState Player (L.Val ty))
+    (hinvariant : SealedResolution.PublicEventInvariant
       (compilation.supported.resolvingRuntime nullValue window) state)
     (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
-      state.visible = true) :
-    ∃ payout, compilation.publicPayout? state.visible.events = some payout := by
+      state = true) :
+    ∃ payout, compilation.publicPayout? state.events = some payout := by
   apply evalPayoffs?_isSome_of_available
   intro payoff hpayoff ref href
   exact compilation.supported.publicSealedStore_available_of_complete nullValue window
@@ -539,27 +539,27 @@ direct reveal. Source accounting supplies direct-reveal uniqueness. Actual
 private registrations and fixed source policy laws need not be preserved. -/
 theorem public_store_source_of_complete [Finite Player]
     (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
-    (state : SealedResolution.ApplicationState Player (L.Val ty))
-    (hinvariant : SealedResolution.EventInvariant
+    (state : SealedResolution.PublicState Player (L.Val ty))
+    (hinvariant : SealedResolution.PublicEventInvariant
       (compilation.supported.resolvingRuntime nullValue window) state)
     (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
-      state.visible = true) :
+      state = true) :
     ∃ cfg : ReachableConfig (compile source.core).graph,
       Terminal (compile source.core).graph cfg.1 ∧
       (∀ ref, (compile source.core).graph.fieldRefPublic ref →
-        Store.getAs ((compile source.core).graph.publicSealedStore ty state.visible.events)
+        Store.getAs ((compile source.core).graph.publicSealedStore ty state.events)
           ref.field ref.ty = Store.getAs cfg.1.store ref.field ref.ty) ∧
       ∀ node owner guard, ((compile source.core).graph.nodeRow node).sem = .commit owner guard →
         (∀ reveal, ((compile source.core).graph.nodeRow reveal).sem =
             .reveal ((compile source.core).graph.nodeTarget node) →
-          Store.getAs ((compile source.core).graph.publicSealedStore ty state.visible.events)
+          Store.getAs ((compile source.core).graph.publicSealedStore ty state.events)
             ((compile source.core).graph.nodeTarget reveal) ty = some nullValue) →
         cfg.1.nodeValues nullValue node = nullValue := by
   classical
   obtain ⟨cfg, hterminal, hagrees, hvalues⟩ := compilation.exists_terminal_public_store nullValue _
     (compilation.supported.publicSealedStore_available_of_complete nullValue window
       state hinvariant hcomplete)
-    ((compile source.core).graph.publicSealedStore_getAs_initial ty state.visible.events)
+    ((compile source.core).graph.publicSealedStore_getAs_initial ty state.events)
   refine ⟨cfg, hterminal, hagrees, ?_⟩
   intro node owner guard hsem hdefault
   rw [hvalues node owner guard hsem, Graph.revealAssignment]
@@ -575,17 +575,17 @@ requires neither successful private-state decoding nor timely message service.
 It is an existence statement, not a unilateral deviation-law backtranslation. -/
 theorem publicPayout?_eq_source_of_complete [Finite Player]
     (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
-    (state : SealedResolution.ApplicationState Player (L.Val ty))
-    (hinvariant : SealedResolution.EventInvariant
+    (state : SealedResolution.PublicState Player (L.Val ty))
+    (hinvariant : SealedResolution.PublicEventInvariant
       (compilation.supported.resolvingRuntime nullValue window) state)
     (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
-      state.visible = true) :
+      state = true) :
     ∃ terminalEnv : VEnv L (compile source.core).terminalCtx,
       SmallStep.Star
         { ctx := source.core.Γ, env := source.core.env, cont := source.core.prog }
         { ctx := (compile source.core).terminalCtx, env := terminalEnv,
           cont := .ret (compile source.core).sourcePayoffs } ∧
-      compilation.publicPayout? state.visible.events =
+      compilation.publicPayout? state.events =
         some (evalPayoffs (compile source.core).sourcePayoffs terminalEnv) := by
   obtain ⟨cfg, hterminal, hagrees, _⟩ :=
     compilation.public_store_source_of_complete nullValue window state hinvariant hcomplete

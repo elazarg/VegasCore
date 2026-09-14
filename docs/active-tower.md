@@ -28,6 +28,25 @@ lower-level commitment protocol with either behavior needs a strategic
 refinement to this functionality; a codec or representation theorem alone is
 insufficient.
 
+The same sealed rules and shared message runner also have a candidate-service
+instantiation, `SealedResolution.candidateApplication`. Source-site, candidate,
+and message identities are distinct. A player may prepare several candidates;
+the first eligible acceptance selects the site's handle. An unprepared handle
+is accepted as permanently unopenable, and failed opening attempts leave
+deadline resolution responsible for the programmed default.
+
+`runPolicies_candidate_lookup_of_not_fresh` proves immutable candidate meaning
+under arbitrary player and environment policies. The source settlement APIs
+use only public event provenance and public timeout safety; they have no private
+service parameter. `SealedCompilation.candidate_publicPayout_source` therefore
+supplies a legal written-source payout witness for every completed candidate
+policy run. `candidate_publicPayout_source_choice` supplies one witness recording
+the timeout owner's source default and matching the actual payout. Neither
+theorem fixes the opponents' source policies. Completion is an explicit premise;
+candidate-host termination, honest laws, and causal deviation coupling are not
+inferred from these safety results. The Nash theorem below still uses the
+registered-site service.
+
 ## Pending-message strategic boundary
 
 `SealedCompilation.compilePolicy` implements a written-source policy in the
@@ -336,8 +355,9 @@ The pending-message compiler and its source-only payout theorem currently apply
 to the admitted `SealedFragment`: one homogeneous runtime value type, no sample
 nodes, and guards certified to accept every value of that type. Arbitrary
 nontrivial validation guards, chance nodes, heterogeneous sealed values, and a
-refinement from commitments with multiple or potentially unopenable candidates
-are not established by these results.
+strategic refinement from commitments with multiple or potentially unopenable
+candidates are not established by these results. The candidate host's checked
+binding and source-settlement laws do not discharge that strategic refinement.
 
 ## Deliberate non-claims
 

@@ -92,31 +92,31 @@ theorem concrete_timeout_settlement :
       runtime.complete settled.visible = true := by
   exact ⟨rfl, rfl, rfl, rfl⟩
 
-private theorem public_store_default :
-    Store.getAs (graph.publicSealedStore (.option .bool) settled.visible.events)
-      1 (.option .bool) = some none := by
-  have hevents : settled.visible.events = [.accepted 0 (0, 0), .opened 1 none] := rfl
+private theorem public_store_opening (value : Value) :
+    Store.getAs (graph.publicSealedStore (.option .bool) [.accepted 0 (0, 0), .opened 1 value])
+      1 (.option .bool) = some value := by
   have htarget : graph.nodeTarget 1 = 1 := rfl
-  rw [hevents]
   simp [Graph.publicSealedStore, Graph.replayPublicOpenings, Store.getAs, Store.set,
     TypedValue.as?, htarget]
 
-private def defaultTerminalEnv : VEnv simpleExpr compiled.terminalCtx :=
-  VEnv.cons none (VEnv.cons (some true) (VEnv.empty simpleExpr))
+private def payoutTerminalEnv (value : Value) : VEnv simpleExpr compiled.terminalCtx :=
+  VEnv.cons value (VEnv.cons (some true) (VEnv.empty simpleExpr))
 
-/-- The public evaluator follows the opened default, not the retained private
-registration, and selects the programmed `-3` branch. -/
-theorem public_payout_uses_default :
-    (compilation.publicPayout? settled.visible.events).map (fun payout => payout 0) =
-      some (-3) := by
-  let store := graph.publicSealedStore (.option .bool) settled.visible.events
-  have hinvariant : SealedResolution.EventInvariant runtime settled :=
-    (((SealedResolution.EventInvariant.initial (runtime := runtime)).register
-      0 0 (some true)).handle _ acceptance).tick.tick
-  have hcomplete : runtime.complete settled.visible = true := rfl
+/-- The public evaluator follows the revealed value, independently of private
+candidate preparation or the accepted handle's identity. -/
+theorem public_payout_after_opening (value : Value) :
+    (compilation.publicPayout? [.accepted 0 (0, 0), .opened 1 value]).map (fun payout => payout 0) =
+      some (if value.isSome then 7 else -3) := by
+  let store := graph.publicSealedStore (.option .bool) [.accepted 0 (0, 0), .opened 1 value]
+  let visible : SealedResolution.PublicState Player Value :=
+    { runtime.initial.visible with events := [.accepted 0 (0, 0), .opened 1 value] }
+  have hinvariant : SealedResolution.PublicEventInvariant runtime visible :=
+    ((SealedResolution.PublicEventInvariant.initial runtime).appendAccepted
+      0 (0, 0) 0 ⟨.commit 0, []⟩ rfl rfl).appendOpened 1 value 0 0 [0] rfl
+  have hcomplete : runtime.complete visible = true := rfl
   have hpayoff :
       evalPayoffs? compiled.payoffs store =
-        some (evalPayoffs compiled.sourcePayoffs defaultTerminalEnv) := by
+        some (evalPayoffs compiled.sourcePayoffs (payoutTerminalEnv value)) := by
     rw [compiled.payoffs_eq]
     apply ToEventGraph.evalPayoffs?_compilePayoffs_eq_source
     intro entry hentry
@@ -132,8 +132,8 @@ theorem public_payout_uses_default :
     have available : ∀ ref, ref ∈ eventPayoff.reads →
         ∃ value, Store.getAs store ref.field ref.ty = some value := by
       intro ref href
-      exact supported.publicSealedStore_available_of_complete none 2 settled hinvariant
-        hcomplete ref (compiled.payoffsWF (0, eventPayoff) hmem ref href).1
+      exact supported.publicSealedStore_available_of_complete none 2 visible
+        hinvariant hcomplete ref (compiled.payoffsWF (0, eventPayoff) hmem ref href).1
     let readEnv := ReadEnv.ofStore store eventPayoff.reads available
     refine ⟨readEnv, ?_, ?_⟩
     · unfold ReadEnv.ofStore?
@@ -145,13 +145,20 @@ theorem public_payout_uses_default :
             (ToEventGraph.exprReadRefs_mem compiled.terminalState payoff .here hdependency)
           change Store.getAs store 1 (.option .bool) = some
             (ToEventGraph.sourceValuePub compiled.terminalState readEnv .here _) at hread
-          change ToEventGraph.sourceValuePub compiled.terminalState readEnv .here _ = none
-          exact Option.some.inj (hread.symm.trans public_store_default)
+          change ToEventGraph.sourceValuePub compiled.terminalState readEnv .here _ = value
+          exact Option.some.inj (hread.symm.trans (public_store_opening value))
       | there htail => cases htail
   unfold SealedCompilation.publicPayout?
   change Option.map (fun payout => payout 0) (evalPayoffs? compiled.payoffs store) = _
   rw [hpayoff]
-  rfl
+  cases value <;> rfl
+
+/-- Timeout settlement uses the programmed public default rather than the
+retained private registration. -/
+theorem public_payout_uses_default :
+    (compilation.publicPayout? settled.visible.events).map (fun payout => payout 0) =
+      some (-3) :=
+  public_payout_after_opening none
 
 /-- Public timeout settlement is the payout of a legal written-source run,
 without asking settlement to decode the retained private registration. -/
@@ -167,7 +174,8 @@ theorem timeout_settlement_has_source_execution :
     (((SealedResolution.EventInvariant.initial (runtime := runtime)).register
       0 0 (some true)).handle _ acceptance).tick.tick
   obtain ⟨terminalEnv, hsource, hpayout⟩ :=
-    compilation.publicPayout?_eq_source_of_complete none 2 settled hinvariant rfl
+    compilation.publicPayout?_eq_source_of_complete none 2 settled.visible
+      hinvariant.publicEvents rfl
   exact ⟨terminalEnv, hsource, hpayout⟩
 
 end VegasTests.SealedPublicSettlement

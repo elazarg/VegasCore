@@ -48,7 +48,10 @@ currently for the homogeneous, no-sample sealed fragment whose guards accept
 every runtime value.
 It does not establish nontrivial guard validation, chance compilation,
 heterogeneous sealed values, or refinement of a commitment scheme with multiple
-or potentially unopenable candidates. The authoritative theorem inventory and
+or potentially unopenable candidates. A candidate-service instantiation has
+checked immutable binding and source-defined public settlement after completion,
+including a source quitting witness for a player-owned timeout. Its whole-program
+deviation coupling and equilibrium theorem remain open. The authoritative inventory and
 remaining boundaries are in [the active tower](active-tower.md).
 
 ## Pending-message and timeout boundary

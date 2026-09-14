@@ -27,8 +27,8 @@ universe uPrincipal uValue
 
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 
-/-- Public openings have reveal-rule provenance, and every timed-out reveal has
-an opening witness.  No private-value claim is made for that witness. -/
+/-- Public events have rule provenance, and every timed-out reveal has an
+opening witness. No candidate identity or private-value claim is required. -/
 structure PublicEventInvariant (runtime : SealedResolution Principal Value)
     (state : PublicState Principal Value) : Prop where
   opened : ∀ node value, .opened node value ∈ state.events →
@@ -38,6 +38,8 @@ structure PublicEventInvariant (runtime : SealedResolution Principal Value)
     node ∈ state.timeouts →
     runtime.program.rules[node]? = some { kind := .reveal owner source, requires } →
     ∃ value, .opened node value ∈ state.events
+  accepted : ∀ node handle, .accepted node handle ∈ state.events →
+    ∃ owner rule, runtime.program.rules[node]? = some rule ∧ rule.kind = .commit owner
 
 namespace PublicEventInvariant
 
@@ -49,11 +51,11 @@ theorem stamp (invariant : PublicEventInvariant runtime state) (node : Nat) :
   unfold PublicState.stamp
   split
   · exact invariant
-  · exact ⟨invariant.opened, invariant.timeoutOpened⟩
+  · exact ⟨invariant.opened, invariant.timeoutOpened, invariant.accepted⟩
 
 theorem clock (invariant : PublicEventInvariant runtime state) :
     PublicEventInvariant runtime { state with clock := state.clock + 1 } :=
-  ⟨invariant.opened, invariant.timeoutOpened⟩
+  ⟨invariant.opened, invariant.timeoutOpened, invariant.accepted⟩
 
 theorem appendOpened (invariant : PublicEventInvariant runtime state)
     (node : Nat) (value : Value) (owner : Principal) (source : Nat) (requires : List Nat)
@@ -72,9 +74,16 @@ theorem appendOpened (invariant : PublicEventInvariant runtime state)
     obtain ⟨openedValue, hopened⟩ :=
       invariant.timeoutOpened target eventOwner eventSource eventRequires htimeout htarget
     exact ⟨openedValue, List.mem_append_left _ hopened⟩
+  · intro target handle haccepted
+    simp only [List.mem_append, List.mem_singleton] at haccepted
+    rcases haccepted with hprior | himpossible
+    · exact invariant.accepted target handle hprior
+    · contradiction
 
 theorem appendAccepted (invariant : PublicEventInvariant runtime state)
-    (node : Nat) (handle : CommitmentHandle Principal Nat) :
+    (node : Nat) (handle : CommitmentHandle Principal Nat)
+    (owner : Principal) (rule : SealedRule Principal)
+    (hrule : runtime.program.rules[node]? = some rule) (hkind : rule.kind = .commit owner) :
     PublicEventInvariant runtime
       { state with events := state.events ++ [.accepted node handle] } := by
   constructor
@@ -87,6 +96,12 @@ theorem appendAccepted (invariant : PublicEventInvariant runtime state)
     obtain ⟨value, hopened⟩ :=
       invariant.timeoutOpened target owner source requires htimeout hrule
     exact ⟨value, List.mem_append_left _ hopened⟩
+  · intro target targetHandle haccepted
+    simp only [List.mem_append, List.mem_singleton] at haccepted
+    rcases haccepted with hprior | heq
+    · exact invariant.accepted target targetHandle hprior
+    · cases heq
+      exact ⟨owner, rule, hrule, hkind⟩
 
 theorem expire (invariant : PublicEventInvariant runtime state)
     (node : Nat) (rule : SealedRule Principal)
@@ -105,6 +120,7 @@ theorem expire (invariant : PublicEventInvariant runtime state)
         · rw [hrule] at htarget
           have hkinds := congrArg (fun found => found.map SealedRule.kind) htarget
           simp [hkind] at hkinds
+      · exact invariant.accepted
   | reveal owner source =>
       have happended := invariant.appendOpened node runtime.nullValue owner source rule.requires
         (by
@@ -125,6 +141,7 @@ theorem expire (invariant : PublicEventInvariant runtime state)
             List.mem_append_right state.events
               (show SealedProgram.Event.opened target runtime.nullValue ∈
                 [SealedProgram.Event.opened target runtime.nullValue] by simp)⟩
+      · exact happended.accepted
 
 theorem visit (invariant : PublicEventInvariant runtime state)
     (resolveExpired : Bool) (node : Nat) :
@@ -174,6 +191,36 @@ theorem initial (runtime : SealedResolution Principal Value) :
     PublicEventInvariant runtime runtime.initial.visible := by
   apply (show PublicEventInvariant runtime ({} : PublicState Principal Value) by
     constructor <;> simp).refresh false
+
+/-- A completed reveal has a public opening. The proof needs only public rule
+provenance, not successful registration or an openable accepted commitment. -/
+theorem opened_of_completed_reveal (invariant : PublicEventInvariant runtime state)
+    (node : Nat) (owner : Principal) (source : Nat) (requires : List Nat)
+    (hrule : runtime.program.rules[node]? =
+      some { kind := .reveal owner source, requires })
+    (hcompleted : state.completed node = true) :
+    ∃ value, .opened node value ∈ state.events := by
+  unfold PublicState.completed at hcompleted
+  simp only [Bool.or_eq_true] at hcompleted
+  rcases hcompleted with hdone | htimeout
+  · unfold SealedProgram.done at hdone
+    rw [List.any_eq_true] at hdone
+    obtain ⟨event, hevent, hnode⟩ := hdone
+    have heq : event.node = node := by simpa using hnode
+    cases event with
+    | accepted eventNode handle =>
+        simp only [SealedProgram.Event.node] at heq
+        subst eventNode
+        obtain ⟨eventOwner, rule, heventRule, hkind⟩ := invariant.accepted node handle hevent
+        rw [hrule] at heventRule
+        have hkinds := congrArg SealedRule.kind (Option.some.inj heventRule)
+        simp [hkind] at hkinds
+    | opened eventNode value =>
+        simp only [SealedProgram.Event.node] at heq
+        subst eventNode
+        exact ⟨value, hevent⟩
+  · exact invariant.timeoutOpened node owner source requires
+      (by simpa using htimeout) hrule
 
 end PublicEventInvariant
 
@@ -260,7 +307,9 @@ theorem handle (invariant : EventInvariant runtime state)
       have hpublic : PublicEventInvariant runtime recorded.visible := by
         cases event with
         | accepted node handle =>
-            exact invariant.publicEvents.appendAccepted node handle
+            obtain ⟨owner, value, rule, hrule, hkind, _⟩ :=
+              runtime.validateMessage?_accepted_sound state message node handle hvalid
+            exact invariant.publicEvents.appendAccepted node handle owner rule hrule hkind
         | opened node value =>
             obtain ⟨owner, source, requires, hrule⟩ :=
               runtime.validateMessage?_opened_sound state message node value hvalid
@@ -274,38 +323,6 @@ theorem tick (invariant : EventInvariant runtime state) :
     EventInvariant runtime (runtime.tick state) := by
   unfold SealedResolution.tick
   exact invariant.clock.refresh true
-
-omit [DecidableEq Principal] [DecidableEq Value] in
-/-- A completed reveal has a public opening whether completion was ordinary or
-was introduced by a timeout. -/
-theorem opened_of_completed_reveal (invariant : EventInvariant runtime state)
-    (node : Nat) (owner : Principal) (source : Nat) (requires : List Nat)
-    (hrule : runtime.program.rules[node]? =
-      some { kind := .reveal owner source, requires })
-    (hcompleted : state.visible.completed node = true) :
-    ∃ value, .opened node value ∈ state.visible.events := by
-  unfold PublicState.completed at hcompleted
-  simp only [Bool.or_eq_true] at hcompleted
-  rcases hcompleted with hdone | htimeout
-  · unfold SealedProgram.done at hdone
-    rw [List.any_eq_true] at hdone
-    obtain ⟨event, hevent, hnode⟩ := hdone
-    have heq : event.node = node := by simpa using hnode
-    cases event with
-    | accepted eventNode handle =>
-        simp only [SealedProgram.Event.node] at heq
-        subst eventNode
-        obtain ⟨eventOwner, value, rule, heventRule, hkind, hhandle, hlookup⟩ :=
-          invariant.acceptedBinding.accepted node handle hevent
-        rw [hrule] at heventRule
-        have hkinds := congrArg SealedRule.kind (Option.some.inj heventRule)
-        simp [hkind] at hkinds
-    | opened eventNode value =>
-        simp only [SealedProgram.Event.node] at heq
-        subst eventNode
-        exact ⟨value, hevent⟩
-  · exact invariant.publicEvents.timeoutOpened node owner source requires
-      (by simpa using htimeout) hrule
 
 omit [DecidableEq Principal] [DecidableEq Value] in
 /-- Ordinary event-log completion of a commit node is its canonical acceptance

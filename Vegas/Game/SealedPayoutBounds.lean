@@ -43,8 +43,9 @@ theorem play_publicPayout_source_choice
     (compilation.supported.resolvingRuntime nullValue window)
     model.principals model.serviceSlots players model.wire model.total next hnext
   obtain ⟨cfg, hterminal, hchoice, hpayout⟩ :=
-    compilation.publicPayout_source_choice_of_timeout nullValue window next.native.application
-      (model.play_eventInvariant players next hnext) hsettlement
+    compilation.publicPayout_source_choice_of_timeout nullValue window
+      next.native.application.visible
+      (model.play_eventInvariant players next hnext).publicEvents hsettlement
       (model.play_complete players next hnext) node who htimeout howned
   exact ⟨_, decodeSourceOutcome_reachable source.core cfg hterminal, hchoice, hpayout⟩
 

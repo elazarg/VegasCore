@@ -8,6 +8,7 @@
   "prose:pending-round-incentives": ["Vegas.Paper.pending_round_approximate_nash_iff", "Vegas.Paper.pending_round_deviation_margin"],
   "prose:pending-checkpoint-incentives": ["Vegas.Paper.pending_checkpoint_information", "Vegas.Paper.pending_checkpoint_locked", "Vegas.Paper.pending_checkpoint_deviation_margin", "Vegas.Paper.pending_checkpoint_approximate_nash_iff", "Vegas.Paper.pending_checkpoint_timeout_cost"],
   "prose:pending-public-payout": ["Vegas.Paper.pending_public_payout"],
+  "prose:pending-candidate-settlement": ["Vegas.Paper.pending_candidate_binding", "Vegas.Paper.pending_candidate_public_payout", "Vegas.Paper.pending_candidate_timeout_source_choice"],
   "prose:pending-source-payout-incentives": ["Vegas.Paper.pending_timeout_source_choice", "Vegas.Paper.pending_source_payout_nash_iff"],
   "prose:pending-termination": ["Vegas.Paper.compiled_resolution_terminates"],
   "prose:selective-quitting-margin": ["Vegas.Paper.selective_quitting_bound"],
