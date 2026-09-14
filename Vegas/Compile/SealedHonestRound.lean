@@ -87,8 +87,8 @@ theorem exists_honest_round_source_coupling
         (runtime.roundDriver.runRounds
           principals serviceSlots players wire total initial).support) :
       runtime.complete next.native.application.visible = true :=
-    compilation.resolvingRuntime_runRounds_complete nullValue window principals serviceSlots
-      players wire total hbound next hnext
+    compilation.supported.resolvingRuntime_runRounds_complete nullValue window principals
+      serviceSlots players wire total hbound next hnext
   have hclear (next : runtime.messageApplication.PolicyExecution)
       (hnext : next ∈
         (runtime.roundDriver.runRounds
@@ -110,7 +110,11 @@ theorem exists_honest_round_source_coupling
       runtime.messageApplication.tracePolicies_firstReleaseEvery_split players environment
         width total release (by simp [width, MessageApplication.roundInvocations]) schedule initial
         trace (by simp [schedule, width, MessageApplication.roundSchedule_length]) htrace
-    exact (runtime.runPolicies_complete_clear players environment suffix (readout trace) trace.last
+    exact (runtime.runPolicies_complete_clear
+      (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+        (service.sealValue owner slot value).state) runtime.handle
+      runtime.handle_eq_none_of_complete_clear
+      players environment suffix (readout trace) trace.last
       (hcomplete _ hselected) (hclear _ hselected) hsuffix).2.1
   obtain ⟨responses, hresponses⟩ := compilation.exists_honest_replay_mixture nullValue window
     schedule nullValue profile environment htraceClear

@@ -91,11 +91,13 @@ public-field agreement on normal completion.
 randomized player and environment policies with unchanged graph opponents.
 The source prefix and randomized-coupling results delegate to these backend
 theorems; source outcome and payout transport occur only in their source adapters.
+The stopped-round graph coupling preserves these marginals at the actual native
+stopping boundary and transports normal public-field agreement to that boundary.
 
 The strategic factoring is incomplete. Some backend modules still transitively
-import mixed source/backend modules. More importantly, candidate stopped-round
-coupling and exclusion of a first honest timeout under deadline-relative service
-must be established using the graph/native coupling. Legal resolution defaults
+import mixed source/backend modules. More importantly, exclusion of a first
+honest timeout under deadline-relative service must be established for the
+candidate host. Legal resolution defaults
 and the quitting utility bound need graph
 formulations with compiler certificates, rather than a hidden source-image
 premise. Only after those laws are proved can the candidate backend expose a
@@ -252,10 +254,19 @@ execution and retains every original opponent kernel. Source outcomes and
 public payout agreement are transported by the source adapter. The same continuation and
 joint-predrawing APIs are used by the registered host.
 
+`exists_randomized_candidate_round_graph_coupling` reads this same coupling at
+the driver's first completed round boundary, or at budget exhaustion. Its native
+marginal is the actual stopped driver; its graph marginal is unchanged. Shared
+host persistence proves that unused traffic cannot change a normally completed
+public result. The graph fragment also certifies termination within
+`nodeCount * (window + 1)` rounds, without service. The source adapter
+`exists_randomized_candidate_round_source_coupling` transports the graph marginal
+to written-source deviations and normal settlement to the programmed payout.
+
 This supplies the probability part of the arbitrary-deviation argument, including
-actual post-timeout execution. The candidate round driver still needs its stopped
-coupling and timely-service first-timeout
-attribution. The source settlement condition can then be applied to the actual
+actual post-timeout execution and native stopping. The candidate round driver
+still needs timely-service first-timeout attribution. The source settlement
+condition can then be applied to the actual
 completed native payout. Neither coupled marginal alone establishes that bound.
 
 Candidate handles are owner-scoped identifiers. A pending handle can acquire

@@ -83,6 +83,7 @@ import Interaction.SealedCandidateEmbedding
 import Interaction.SealedPreparedPolicies
 import Interaction.SealedCandidatePolicyEmbedding
 import Interaction.SealedCandidateRounds
+import Interaction.SealedCandidateCompletion
 import Interaction.SealedCandidateBinding
 import Interaction.SealedCandidateProvenance
 import Interaction.SealedCandidateLikelihood

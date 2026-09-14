@@ -57,8 +57,9 @@ theorem refresh_of_complete (runtime : SealedResolution Principal Value) (resolv
       rw [runtime.visit_of_completed resolveExpired state node hnode]
       exact ih hrest
 
-theorem tick_visible_of_complete (runtime : SealedResolution Principal Value)
-    (state : ApplicationState Principal Value) (hcomplete : runtime.complete state.visible = true) :
+theorem tick_visible_of_complete {Service : Type (max uPrincipal uValue)}
+    (runtime : SealedResolution Principal Value) (state : ApplicationState Principal Value Service)
+    (hcomplete : runtime.complete state.visible = true) :
     (runtime.tick state).visible = { state.visible with clock := state.visible.clock + 1 } := by
   unfold tick
   apply runtime.refresh_of_complete
@@ -111,34 +112,42 @@ theorem handle_eq_none_of_complete_clear
     runtime.handle state message = none := by
   simp [handle, runtime.validateMessage?_eq_none_of_complete_clear state hcomplete hclear message]
 
+omit [DecidableEq Value] in
 /-- Arbitrary later policies preserve a normally completed public result.
 They may advance the clock, update histories and receipts, or register unused
 private slots. -/
 theorem runPolicies_complete_clear
+    {Service : Type (max uPrincipal uValue)}
     (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+        Option (ApplicationState Principal Value Service))
+    (hreject : ∀ state, runtime.complete state.visible = true → state.visible.timeouts = [] →
+      ∀ message, applyMessage state message = none)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
-    (initial next : runtime.messageApplication.PolicyExecution)
+    (initial next : (runtime.host prepare applyMessage).PolicyExecution)
     (hcomplete : runtime.complete initial.native.application.visible = true)
     (hclear : initial.native.application.visible.timeouts = [])
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment schedule
+    (hnext : next ∈ ((runtime.host prepare applyMessage).runPolicies players environment schedule
       initial).support) :
     next.native.application.visible.events = initial.native.application.visible.events ∧
       next.native.application.visible.timeouts = [] ∧
       runtime.complete next.native.application.visible = true := by
-  apply runtime.messageApplication.runPolicies_application_invariant
+  apply (runtime.host prepare applyMessage).runPolicies_application_invariant
     (fun state => state.visible.events = initial.native.application.visible.events ∧
       state.visible.timeouts = [] ∧ runtime.complete state.visible = true)
     ?_ ?_ ?_ players environment schedule initial next ⟨rfl, hclear, hcomplete⟩ hnext
   · intro state who command hstate
     exact hstate
   · intro state message after hstate hafter
-    change runtime.handle state message = some after at hafter
-    rw [runtime.handle_eq_none_of_complete_clear state hstate.2.2 hstate.2.1 message] at hafter
+    change applyMessage state message = some after at hafter
+    rw [hreject state hstate.2.2 hstate.2.1 message] at hafter
     contradiction
   · intro state command after hstate hafter
-    simp only [messageApplication, FinDist.mem_support_pure] at hafter
+    simp only [host, FinDist.mem_support_pure] at hafter
     subst after
     rw [runtime.tick_visible_of_complete state hstate.2.2]
     exact ⟨hstate.1, hstate.2.1, hstate.2.2⟩

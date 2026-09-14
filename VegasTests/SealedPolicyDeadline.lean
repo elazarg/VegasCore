@@ -71,7 +71,7 @@ theorem exists_complete_without_timeouts (profile : SourceBehavioralProfile core
   obtain ⟨next, hnext⟩ :=
     (runtime.roundDriver.runRounds [0] 2 (players profile) (wire base) 60 initial).support_nonempty
   refine ⟨next, hnext, ?_, ?_⟩
-  · exact SealedPolicy.compilation.resolvingRuntime_runRounds_complete none 14 [0] 2
+  · exact SealedPolicy.compilation.supported.resolvingRuntime_runRounds_complete none 14 [0] 2
       (players profile) (wire base) 60 (by decide) next hnext
   · let graphProfile := fun who => compileSourcePolicy core source.core.fresh
       SealedPolicy.initialBuild rfl who (profile who)

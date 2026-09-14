@@ -29,7 +29,9 @@
   "prose:pending-candidate-graph-coupling": {
     "theorems": [
       "Vegas.Paper.pending_candidate_randomized_graph_coupling",
-      "Vegas.Paper.pending_candidate_randomized_source_coupling"
+      "Vegas.Paper.pending_candidate_randomized_source_coupling",
+      "Vegas.Paper.pending_candidate_round_graph_coupling",
+      "Vegas.Paper.pending_candidate_round_source_coupling"
     ]
   },
   "prose:pending-round-coupling": {

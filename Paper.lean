@@ -29,6 +29,7 @@ import Vegas.Compile.SealedHonestRound
 import Vegas.Compile.SealedCandidateHonestRound
 import Vegas.Compile.SealedCandidateNativeLikelihood
 import Vegas.Compile.SealedCandidateRandomizedCoupling
+import Vegas.Compile.SealedCandidateRoundCoupling
 import Vegas.Compile.SealedCandidateGraphLikelihood
 import Vegas.Compile.SealedPublicOutcome
 import Vegas.Compile.SealedResolutionCylinder
@@ -301,7 +302,7 @@ theorem compiled_resolution_terminates
             (compilation.supported.resolvingRuntime nullValue window).initial))).support) :
     (compilation.supported.resolvingRuntime nullValue window).complete
       next.native.application.visible = true :=
-  compilation.resolvingRuntime_runRounds_complete nullValue window principals serviceSlots
+  compilation.supported.resolvingRuntime_runRounds_complete nullValue window principals serviceSlots
     players environment _ (Nat.le_refl _) next hnext
 
 /-- Whole-prefix registration hiding with randomized native players and
@@ -1532,7 +1533,7 @@ theorem pending_candidate_termination
             (compilation.supported.resolvingRuntime nullValue window).candidateInitial))).support) :
     (compilation.supported.resolvingRuntime nullValue window).complete
       next.native.application.visible = true :=
-  compilation.candidateRuntime_runRounds_complete nullValue window principals serviceSlots
+  compilation.supported.candidateRuntime_runRounds_complete nullValue window principals serviceSlots
     players environment total hbound next hnext
 
 /-- info: 'Vegas.Paper.pending_candidate_termination'
@@ -1748,7 +1749,59 @@ theorem pending_candidate_randomized_graph_coupling
   supported.exists_randomized_candidate_graph_coupling hinfo hguards nullValue window focal
     environment schedule fallback profile replacement
 
+omit environment schedule in
+/-- The graph coupling also covers the actual stopped-round execution, with
+completion at the finite budget and public-field agreement on normal completion. -/
+theorem pending_candidate_round_graph_coupling
+    (principals : List Player) (serviceSlots count : Nat)
+    (profile : CommitPolicyProfile G)
+    (replacement :
+      (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
+    (wire : (supported.resolvingRuntime nullValue window).candidateApplication.WirePolicy) :
+    let runtime := supported.resolvingRuntime nullValue window
+    let players := fun who =>
+      runtime.candidatePlayerPolicy (supported.resolvingPolicy nullValue window who (profile who))
+    let schedule := roundSchedule principals serviceSlots count
+    let initial := PolicyExecution.initial runtime.candidateApplication
+      (State.initial _ runtime.candidateInitial)
+    let PlayerResponse := List runtime.candidateApplication.PlayerEntry →
+      runtime.candidateApplication.View → runtime.candidateApplication.PlayerCommand
+    let EnvironmentResponse := List runtime.candidateApplication.EnvironmentEntry →
+      runtime.candidateApplication.EnvironmentObservation →
+        runtime.candidateApplication.EnvironmentPolicyCommand
+    ∃ responsePairs : FinDist (PlayerResponse × EnvironmentResponse),
+      ((responsePairs.bind fun responses =>
+        supported.candidateGraphRoundCoupling hinfo hguards nullValue window principals serviceSlots
+          count focal responses.1 responses.2 fallback profile).map Prod.fst) =
+        responsePairs.bind (fun responses =>
+          supported.candidateGraphRun hinfo hguards nullValue window focal responses.1 responses.2
+            schedule fallback profile) ∧
+      ((responsePairs.bind fun responses =>
+        supported.candidateGraphRoundCoupling hinfo hguards nullValue window principals serviceSlots
+          count focal responses.1 responses.2 fallback profile).map Prod.snd) =
+        runtime.candidateRoundDriver.runRounds principals serviceSlots
+          (Profile.update (sig := policySignature Player runtime.candidateApplication)
+            players focal replacement) wire count initial ∧
+      ∀ cfg selected, (cfg, selected) ∈ (responsePairs.bind fun responses =>
+        supported.candidateGraphRoundCoupling hinfo hguards nullValue window principals serviceSlots
+          count focal responses.1 responses.2 fallback profile).support →
+        Terminal G cfg.1 ∧
+        (G.nodeCount * (window + 1) ≤ count →
+          runtime.complete selected.native.application.visible = true) ∧
+        (runtime.complete selected.native.application.visible = true →
+          selected.native.application.visible.timeouts = [] →
+          ∀ ref : FieldRef L, G.fieldRefPublic ref →
+            Store.getAs (G.publicSealedStore ty selected.native.application.visible.events)
+              ref.field ref.ty = Store.getAs cfg.1.store ref.field ref.ty) :=
+  supported.exists_randomized_candidate_round_graph_coupling hinfo hguards nullValue window
+    principals serviceSlots count focal fallback profile replacement wire
+
 end CandidateGraphCoupling
+
+/-- info: 'Vegas.Paper.pending_candidate_round_graph_coupling'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_round_graph_coupling
 
 /-- info: 'Vegas.Paper.pending_candidate_randomized_graph_coupling'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -1822,6 +1875,48 @@ theorem pending_candidate_randomized_source_coupling
     schedule fallback profile replacement
 
 end CandidateCoupling
+
+/-- Source/graph composition transports the candidate stopped-round coupling
+to written-source deviations and the programmer's payout interpretation. -/
+theorem pending_candidate_round_source_coupling [Finite Player]
+    {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (principals : List Player) (serviceSlots count : Nat) (focal : Player)
+    (fallback : L.Val ty) (profile : SourceBehavioralProfile source.core.prog)
+    (replacement :
+      (compilation.supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
+    (wire :
+      (compilation.supported.resolvingRuntime nullValue window).candidateApplication.WirePolicy) :
+    let runtime := compilation.supported.resolvingRuntime nullValue window
+    ∃ deviations : FinDist (SourceBehavioralPolicy source.core.prog focal),
+    ∃ coupling : FinDist (Option (VEnv L (sourceTerminalCtx source.core.prog)) ×
+        runtime.candidateApplication.PolicyExecution),
+      coupling.map Prod.fst = deviations.bind (fun policy =>
+        (denoteSource source.core.prog
+          (Profile.update (sig := sourceGameSignature source.core.prog) profile focal policy)
+          source.core.env).map some) ∧
+      coupling.map Prod.snd = runtime.candidateRoundDriver.runRounds principals serviceSlots
+        (Profile.update
+          (sig := MessageApplication.policySignature Player runtime.candidateApplication)
+          (fun who => compilation.compileCandidatePolicy nullValue window who (profile who))
+          focal replacement) wire count
+        (MessageApplication.PolicyExecution.initial _
+          (MessageApplication.State.initial _ runtime.candidateInitial)) ∧
+      ∀ outcome next, (outcome, next) ∈ coupling.support →
+        (∃ final, outcome = some final) ∧
+        ((ToEventGraph.compile source.core).graph.nodeCount * (window + 1) ≤ count →
+          runtime.complete next.native.application.visible = true) ∧
+        (runtime.complete next.native.application.visible = true →
+          next.native.application.visible.timeouts = [] →
+          compilation.publicPayout? next.native.application.visible.events =
+            outcome.map (evalPayoffs (sourceTerminalPayoffs source.core.prog))) :=
+  compilation.exists_randomized_candidate_round_source_coupling nullValue window principals
+    serviceSlots count focal fallback profile replacement wire
+
+/-- info: 'Vegas.Paper.pending_candidate_round_source_coupling'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_round_source_coupling
 
 namespace Source
 

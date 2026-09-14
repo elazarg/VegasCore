@@ -50,6 +50,8 @@ import Vegas.Compile.SealedCandidateGraphFactors
 import Vegas.Compile.SealedCandidateGraphNative
 import Vegas.Compile.SealedCandidateGraphCoupling
 import Vegas.Compile.SealedCandidateGraphRandomized
+import Vegas.Compile.SealedCandidateGraphRounds
+import Vegas.Compile.SealedCandidateRoundCoupling
 import Vegas.Compile.SealedCandidateGraphLikelihood
 import Vegas.Compile.SealedGraphRestriction
 import Vegas.Compile.SealedCandidateHonestRound

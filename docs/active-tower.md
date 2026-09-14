@@ -83,8 +83,8 @@ selected meaning is nonfresh and persists through the rest of the native trace.
 graph realization agrees with these replay selections, with arbitrary unchanged
 graph opponents and no assumed input equality. The exact joint
 prefix law through first timeout is proved below for fixed native response
-functions. Candidate-host stopped-round coupling and the incentive bound for
-fallback runs remain open.
+functions. The stopped-round coupling retains the same graph realization.
+First-timeout attribution and the incentive bound for fallback runs remain open.
 
 Generated policies satisfy `candidatePolicy_memory` under arbitrary opponent
 and environment policies: each honest owner's command cache agrees with its
@@ -154,8 +154,13 @@ pointwise public-field agreement on normal completion.
 `exists_randomized_candidate_source_coupling` delegates to it, transporting the
 source marginal through source/graph correspondence and deriving payout agreement
 from the compiler's public payoff-read certificate. Both forms have direct
-`Paper.lean` audits. This is a finite-schedule
-coupling theorem, not a completed-game payoff bound after timeout.
+`Paper.lean` audits.
+`exists_randomized_candidate_round_graph_coupling` projects this joint law to
+the actual stopped-round result, preserving the graph marginal and normal
+public-field agreement. The source adapter
+`exists_randomized_candidate_round_source_coupling` supplies a mixture of
+ordinary source deviations and normal payout agreement, again by source/graph
+transport. Neither coupling theorem gives a completed-game payoff bound after timeout.
 
 `candidateRuntime_runRounds_complete`, audited as `pending_candidate_termination`,
 proves completion of the actual stopped candidate driver under arbitrary player
@@ -165,8 +170,8 @@ completion may use defaults. Both commitment hosts instantiate one termination
 proof over the shared public clock and each handler's checked event-recording
 effect.
 
-The remaining candidate steps are stopped-round coupling, exclusion of a first
-honest timeout under deadline-relative service, and the source-only utility
+The remaining candidate steps are exclusion of a first honest timeout under
+deadline-relative service and the source-only utility
 comparison. Clock-driven completion does not establish honest success or
 attribute a timeout to a deviating player.
 
@@ -178,9 +183,9 @@ The theorem must factor as source → certified graph → candidate runtime.
 disclosure-based candidate backtranslation graph-local;
 `SealedFragment.runOfDisclosures_consistent` covers arbitrary unchanged graph
 opponents. The entire finite-schedule probability argument, through randomized
-full-trace coupling and normal public-field agreement, is graph-relative;
-source results delegate to it and transport outcomes. Candidate stopped-round
-coupling, deadline-relative exclusion of first honest timeout, and the
+full-trace and stopped-round coupling with normal public-field agreement, is
+graph-relative; source results delegate to it and transport outcomes.
+Deadline-relative exclusion of first honest timeout and the
 graph-level resolution utility condition remain required before the backend
 can supply its own `UtilitySimulation` and the source theorem can follow by
 composition. The

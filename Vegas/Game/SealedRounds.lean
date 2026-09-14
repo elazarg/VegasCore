@@ -152,7 +152,7 @@ theorem play_complete (model : RoundModel compilation nullValue window)
     (hnext : next ∈ (model.game.play players).support) :
     (compilation.supported.resolvingRuntime nullValue window).complete
       next.native.application.visible = true :=
-  compilation.resolvingRuntime_runRounds_complete nullValue window model.principals
+  compilation.supported.resolvingRuntime_runRounds_complete nullValue window model.principals
     model.serviceSlots players model.wire model.total model.budget next hnext
 
 theorem play_eventInvariant (model : RoundModel compilation nullValue window)

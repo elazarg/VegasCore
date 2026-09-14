@@ -51,7 +51,7 @@ theorem arbitrary_policies_complete_without_service
         (MessageApplication.PolicyExecution.initial _
           (MessageApplication.State.initial _ runtime.initial))).support) :
     runtime.complete next.native.application.visible = true := by
-  exact compilation.resolvingRuntime_runRounds_complete none 2 [] 0
+  exact compilation.supported.resolvingRuntime_runRounds_complete none 2 [] 0
     players environment 12 (by decide) next hnext
 
 /-- Competing candidates, malformed traffic, and arbitrary service decisions
@@ -66,7 +66,7 @@ theorem arbitrary_candidate_policies_complete
         (MessageApplication.PolicyExecution.initial _
           (MessageApplication.State.initial _ runtime.candidateInitial))).support) :
     runtime.complete next.native.application.visible = true := by
-  exact compilation.candidateRuntime_runRounds_complete none 2 principals serviceSlots
+  exact compilation.supported.candidateRuntime_runRounds_complete none 2 principals serviceSlots
     players environment 12 (by decide) next hnext
 
 end

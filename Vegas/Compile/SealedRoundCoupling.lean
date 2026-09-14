@@ -173,7 +173,11 @@ private theorem extractedRoundSourceCoupling_decode_of_complete_clear
           simp [schedule, width, MessageApplication.roundSchedule_length]) hnative
   rw [hselectedEq] at hselected hsuffix
   obtain ⟨_hevents, hfinalClear, _hfinalComplete⟩ :=
-    runtime.runPolicies_complete_clear players nativeEnvironment suffix
+    runtime.runPolicies_complete_clear
+      (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+        (service.sealValue owner slot value).state) runtime.handle
+      runtime.handle_eq_none_of_complete_clear
+      players nativeEnvironment suffix
       selected trace.last hcomplete hclear hsuffix
   obtain ⟨hcfg, _htrace, hstop⟩ :=
     compilation.extractedSourceCoupling_clear nullValue window focal deviator environment

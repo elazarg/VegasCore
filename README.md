@@ -32,9 +32,9 @@ The intended strategic proof factors through the graph as an independent
 intermediate representation. The source/graph simulation is checked. Backend
 extraction consumes an explicit graph information condition and returns graph
 policies directly; the source compiler certifies that condition. Graph choice
-restriction, native prefix laws, and randomized full-trace coupling are checked
+restriction, native prefix laws, and randomized full-trace and stopped-round couplings are checked
 independently of source syntax. Source results delegate to these graph/backend
-laws and transport source outcomes. The candidate stopped-round timeout and
+laws and transport source outcomes. The candidate timeout-service and
 utility arguments remain unfinished, so the backend does not yet supply the
 utility-simulation certificate required for end-to-end strategic composition.
 See [the factoring plan](docs/compilation-design.md#strategic-intermediate-representation).
@@ -64,8 +64,9 @@ focal and environment policies also have a constructed coupling retaining the
 complete native trace law and a mixture of source deviations with unchanged
 opponents. Normally completed pairs have the retained source realization's
 public payout. The candidate driver also completes within the compiled timeout
-bound under arbitrary policies, even without message service. Connecting the
-coupling to stopped rounds, excluding a first honest timeout under timely service,
+bound under arbitrary policies, even without message service. The stopped-round
+coupling retains the actual stopping history, pool, and receipts. Excluding a
+first honest timeout under timely service
 and deriving the post-timeout incentive bound needed for Nash preservation remain open.
 Censorship resistance, concrete commitment cryptography, and EVM execution
 correctness remain open.

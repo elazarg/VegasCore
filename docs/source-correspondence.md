@@ -74,7 +74,7 @@ For every normally completed supported pair,
 `mixtureSourceCoupling_decode_of_complete_clear` proves that native event decoding
 returns exactly the retained source realization, including its terminal store.
 This uses binding and registration agreement, not only marginal equalities.
-`SealedCompilation.resolvingRuntime_runRounds_complete` separately proves a
+`SealedFragment.resolvingRuntime_runRounds_complete` separately proves a
 finite termination bound for the same resolving application: a compiled graph
 with `n` nodes completes within `n * (window + 1)` rounds of the fixed-clock
 driver, under arbitrary randomized player and wire policies. The fragment
@@ -91,6 +91,19 @@ retained at the stopping boundary, not at the end of unused clock calls.
 For a completed timeout-free boundary, decoding again returns the coupled
 source realization; the continuation beyond that boundary preserves the
 registrations used by its decoding and cannot introduce a timeout.
+
+The candidate host has an independently graph-relative stopped-round coupling,
+`SealedFragment.exists_randomized_candidate_round_graph_coupling`, for arbitrary
+unchanged graph policies under `PublicPrefixReadable`. It retains terminal
+graph configurations and agrees on public fields when the native result
+completes without timeout. The source adapter
+`SealedCompilation.exists_randomized_candidate_round_source_coupling` transports
+the graph marginal and public payout interpretation: its joint distribution
+contains source outcomes and actual stopping executions, with a finite mixture
+of written-source unilateral deviations as the source marginal. The native
+state retains histories, pending messages, and receipts. The same graph-based
+termination bound applies. Neither the stopping projection nor termination
+attributes timeouts to deviators or proves an incentive bound for their settlements.
 
 `SealedCompilation.exists_honest_round_source_coupling` supplies the original
 written-source law at all-compiled profiles. Every player must occur in the

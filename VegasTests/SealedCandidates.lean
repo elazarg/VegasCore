@@ -3,6 +3,7 @@
 import Vegas.Compile.SealedCandidatePolicy
 import Vegas.Compile.SealedCandidateHonestRound
 import Vegas.Compile.SealedCandidateSettlement
+import Interaction.SealedCandidateCompletion
 import VegasTests.SealedPayout
 import Interaction.MessageApplicationLaws
 
@@ -68,6 +69,28 @@ theorem selected_candidate_payout :
   simp only [MessageApplication.run, MessageApplication.step,
     FinDist.pure_bind, FinDist.map_pure]
   exact congrArg FinDist.pure (public_payout_after_opening (some true))
+
+private def completedState : app.State :=
+  { selectedState with application :=
+      ⟨selectedState.application.service, runtime.refresh false
+        { selectedState.application.visible with
+            events := [.accepted 0 (0, 11), .opened 1 (some true)] }⟩ }
+
+/-- After successful settlement, arbitrary later native policies cannot alter
+the public event log or introduce a timeout. This also covers fresh candidate
+preparations, retries, malformed payloads, and further clock calls. -/
+theorem completed_result_persists
+    (players : SealedPublicSettlement.Player → app.PlayerPolicy)
+    (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation SealedPublicSettlement.Player))
+    (next : app.PolicyExecution)
+    (hnext : next ∈ (app.runPolicies players environment schedule
+      (PolicyExecution.initial app completedState)).support) :
+    next.native.application.visible.events = [.accepted 0 (0, 11), .opened 1 (some true)] ∧
+      next.native.application.visible.timeouts = [] ∧
+      runtime.complete next.native.application.visible = true := by
+  exact runtime.runPolicies_complete_clear _ _ runtime.candidateHandle_eq_none_of_complete_clear
+    players environment schedule (PolicyExecution.initial app completedState) next rfl rfl hnext
 
 private def unopenableState : app.State :=
   { initial with

@@ -345,7 +345,7 @@ nonterminating execution.
 
 The bound is checked by `SealedResolution.runRounds_complete` for any enabled
 backward-dependency rule list and initial state whose recorded timestamps are
-no later than its clock. `SealedCompilation.resolvingRuntime_runRounds_complete`
+no later than its clock. `SealedFragment.resolvingRuntime_runRounds_complete`
 discharges both rule conditions from the fragment certificate and the timestamp
 condition from canonical initialization. It permits arbitrary player and wire
 policies, including an empty roster and zero service slots. It does not identify
