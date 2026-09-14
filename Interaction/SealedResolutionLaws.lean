@@ -168,6 +168,28 @@ theorem handle_service [DecidableEq Principal] [DecidableEq Value]
   subst next
   rfl
 
+/-- A successful message adds one public event and refreshes readiness without
+advancing the clock. Private service updates are unrestricted by this property. -/
+def HandlerRecords {Service : Type (max uPrincipal uValue)}
+    (runtime : SealedResolution Principal Value)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+      Option (ApplicationState Principal Value Service)) : Prop :=
+  ∀ state message next, applyMessage state message = some next →
+    ∃ event, next.visible = runtime.refresh false
+      { state.visible with events := state.visible.events ++ [event] }
+
+theorem handle_records [DecidableEq Principal] [DecidableEq Value]
+    (runtime : SealedResolution Principal Value) : runtime.HandlerRecords runtime.handle := by
+  intro state message next hnext
+  unfold handle at hnext
+  cases hvalid : runtime.validateMessage? state message with
+  | none => simp only [hvalid, Option.bind_eq_bind, Option.bind_none, reduceCtorEq] at hnext
+  | some event =>
+      simp only [hvalid, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hnext
+      subst next
+      exact ⟨event, rfl⟩
+
 theorem handle_clock [DecidableEq Principal] [DecidableEq Value]
     (runtime : SealedResolution Principal Value)
     (state next : ApplicationState Principal Value)

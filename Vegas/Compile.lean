@@ -127,6 +127,7 @@ acceptance-time replay and proves consistency of its complete source runs.
 law through first timeout for fixed focal/environment responses and arbitrary
 finite invocation schedules. `SealedCandidateRandomizedCoupling` retains the
 actual full native law, a finite source-deviation mixture, and pointwise public
-payout agreement on normal completion. Candidate stopped-round progress and the
+payout agreement on normal completion. `SealedTermination` proves candidate
+stopped-round completion under arbitrary policies. First-honest-timeout exclusion and the
 completed-round deviation utility comparison remain open.
 -/

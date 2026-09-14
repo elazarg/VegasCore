@@ -23,9 +23,9 @@ variable [DecidableEq Principal] [DecidableEq Value]
 
 /-- The same operational driver instantiated with the candidate service. -/
 abbrev candidateRoundDriver (runtime : SealedResolution Principal Value) :
-    RoundDriver runtime.candidateApplication where
-  boundary := ⟨()⟩
-  complete state := runtime.complete state.visible
+    RoundDriver runtime.candidateApplication :=
+  runtime.hostRoundDriver (Service := CommitmentCandidates Principal Nat Value)
+    (fun state owner slot value => state.prepare owner slot value) runtime.candidateHandle
 
 def candidateWirePolicy (runtime : SealedResolution Principal Value)
     (wire : runtime.messageApplication.WirePolicy) : runtime.candidateApplication.WirePolicy :=

@@ -156,10 +156,18 @@ finite mixture of legal focal replacements with unchanged opponents, and
 pointwise public payout agreement on normal completion. This is a finite-schedule
 coupling theorem, not a completed-game payoff bound after timeout.
 
-The remaining candidate steps are stopped-round coupling, arbitrary-deviation
-round completion, exclusion of a first honest timeout under deadline-relative
-service, and the source-only utility comparison. The honest completion theorem
-does not supply these arbitrary-deviation progress guarantees.
+`candidateRuntime_runRounds_complete`, audited as `pending_candidate_termination`,
+proves completion of the actual stopped candidate driver under arbitrary player
+and wire policies within `nodeCount * (window + 1)` rounds. No roster coverage,
+message service, preparation discipline, or openability assumption is required;
+completion may use defaults. Both commitment hosts instantiate one termination
+proof over the shared public clock and each handler's checked event-recording
+effect.
+
+The remaining candidate steps are stopped-round coupling, exclusion of a first
+honest timeout under deadline-relative service, and the source-only utility
+comparison. Clock-driven completion does not establish honest success or
+attribute a timeout to a deviating player.
 
 ## End-to-end target
 
@@ -207,8 +215,9 @@ proved laws, not accept them as caller obligations.
 The registered-site host already has the source-payout strategic result. The
 candidate host has immutable accepted meaning, completed public settlement
 witnesses, and the original source payout law for honest stopped-round execution.
-Its randomized full-trace coupling and pointwise normal payout agreement are
-also proved. The completed-round deviation utility bound is the next proof task.
+Its randomized full-trace coupling, pointwise normal payout agreement, and
+arbitrary-policy stopped-round completion are also proved. The completed-round
+deviation utility bound is the next proof task.
 More general source
 continuation criteria, guarded choices, sampling, heterogeneous values, and
 cryptographic or ledger refinement are further scope requirements; their exact additional assumptions must be

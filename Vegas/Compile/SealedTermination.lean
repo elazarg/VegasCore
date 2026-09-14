@@ -5,6 +5,8 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.SealedResolutionTermination
+import Interaction.SealedCandidateRounds
+import Interaction.SealedCandidateBinding
 import Vegas.Compile.SealedResolutionAdmission
 import Vegas.Compile.SealedResolutionPolicy
 
@@ -50,24 +52,57 @@ theorem resolvingRuntime_runRounds_complete
     (compilation.supported.resolvingRuntime nullValue window).complete
       next.native.application.visible = true := by
   let runtime := compilation.supported.resolvingRuntime nullValue window
-  let bound := (ToEventGraph.compile source.core).graph.nodeCount * (window + 1)
-  have hsplit : total = bound + (total - bound) := by omega
-  rw [hsplit, runtime.roundDriver.runRounds_add] at hnext
-  simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
-  obtain ⟨middle, hmiddle, hnext⟩ := hnext
-  have hcomplete : runtime.complete middle.native.application.visible = true := by
-    apply runtime.runRounds_complete
-      (fun node rule hrule => compilation.supported.compile_rule_kind_ne_disabled hrule)
-      (fun node rule hrule prerequisite hprerequisite =>
-        compilation.supported.compile_rule_requires_lt hrule hprerequisite)
-      principals serviceSlots players environment
-      (MessageApplication.PolicyExecution.initial _
-        (MessageApplication.State.initial _ runtime.initial)) middle
-      (Interaction.SealedResolution.PublicState.ClockBounded.initial _)
-    simpa [runtime, bound, SealedFragment.resolvingRuntime, SealedFragment.compile,
-      EventGraph.Graph.nodeOrder] using hmiddle
-  rw [runtime.roundDriver.runRounds_of_complete principals serviceSlots players environment _ middle
-    hcomplete, FinDist.mem_support_pure] at hnext
-  simpa only [hnext] using hcomplete
+  apply runtime.runRounds_complete runtime.handle_records
+    (fun node rule hrule => compilation.supported.compile_rule_kind_ne_disabled hrule)
+    (fun node rule hrule prerequisite hprerequisite =>
+      compilation.supported.compile_rule_requires_lt hrule hprerequisite)
+    principals serviceSlots players environment total ?_
+    (MessageApplication.PolicyExecution.initial _
+      (MessageApplication.State.initial _ runtime.initial)) next
+    (SealedResolution.PublicState.ClockBounded.initial _) hnext
+  simpa [runtime, SealedFragment.resolvingRuntime, SealedFragment.compile,
+    EventGraph.Graph.nodeOrder] using hbound
+
+/-- The candidate runtime for a checked compiled source completes at every
+budget of at least `nodeCount * (window + 1)` rounds, under arbitrary policies.
+Extra budget preserves the same early-stopping result. -/
+theorem candidateRuntime_runRounds_complete
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (principals : List Player) (serviceSlots : Nat)
+    (players : Player →
+      (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.PlayerPolicy)
+    (environment :
+      (compilation.supported.resolvingRuntime nullValue window).candidateApplication.WirePolicy)
+    (total : Nat)
+    (hbound : (ToEventGraph.compile source.core).graph.nodeCount * (window + 1) ≤ total)
+    (next :
+      (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.PolicyExecution)
+    (hnext : next ∈
+      ((compilation.supported.resolvingRuntime nullValue window).candidateRoundDriver.runRounds
+        principals serviceSlots players environment
+        total
+        (MessageApplication.PolicyExecution.initial _
+          (MessageApplication.State.initial _
+            (compilation.supported.resolvingRuntime nullValue window).candidateInitial))).support) :
+    (compilation.supported.resolvingRuntime nullValue window).complete
+      next.native.application.visible = true := by
+  let runtime := compilation.supported.resolvingRuntime nullValue window
+  apply runtime.runRounds_complete runtime.candidateHandle_records
+    (fun node rule hrule => compilation.supported.compile_rule_kind_ne_disabled hrule)
+    (fun node rule hrule prerequisite hprerequisite =>
+      compilation.supported.compile_rule_requires_lt hrule hprerequisite)
+    principals serviceSlots players environment total ?_
+    (MessageApplication.PolicyExecution.initial _
+      (MessageApplication.State.initial _ runtime.candidateInitial)) next
+    (SealedResolution.PublicState.ClockBounded.initial _) hnext
+  simpa [runtime, SealedFragment.resolvingRuntime, SealedFragment.compile,
+    EventGraph.Graph.nodeOrder] using hbound
 
 end Vegas.SealedCompilation
+
+/-- info: 'Vegas.SealedCompilation.candidateRuntime_runRounds_complete'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.candidateRuntime_runRounds_complete

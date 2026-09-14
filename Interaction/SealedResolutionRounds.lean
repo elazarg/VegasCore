@@ -37,12 +37,23 @@ def complete (runtime : SealedResolution Principal Value)
     (state : PublicState Principal Value) : Bool :=
   (List.range runtime.program.rules.length).all state.completed
 
-/-- The shared round driver instantiated with the registered commitment host's
-clock and public completion test. -/
-abbrev roundDriver (runtime : SealedResolution Principal Value) :
-    MessageApplication.RoundDriver runtime.messageApplication where
+/-- The clock and completion test depend only on the public resolution state,
+for any hosted commitment service. -/
+abbrev hostRoundDriver {Service : Type (max uPrincipal uValue)}
+    (runtime : SealedResolution Principal Value)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+      Option (ApplicationState Principal Value Service)) :
+    MessageApplication.RoundDriver (runtime.host prepare applyMessage) where
   boundary := ⟨()⟩
   complete state := runtime.complete state.visible
+
+/-- The shared round driver instantiated with the registered commitment host. -/
+abbrev roundDriver (runtime : SealedResolution Principal Value) :
+    MessageApplication.RoundDriver runtime.messageApplication :=
+  runtime.hostRoundDriver (Service := IdealCommitments Principal Nat Value)
+    (fun state owner slot value => (state.sealValue owner slot value).state) runtime.handle
 
 private theorem playerStep_clock (runtime : SealedResolution Principal Value) (who : Principal)
     (execution next : runtime.messageApplication.PolicyExecution)

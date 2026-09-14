@@ -24,6 +24,22 @@ universe uPrincipal uValue
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 variable [DecidableEq Principal] [DecidableEq Value]
 
+/-- Candidate acceptance may change the private catalog, but its public effect
+has the same event-and-readiness shape as every hosted resolution message. -/
+theorem candidateHandle_records (runtime : SealedResolution Principal Value) :
+    runtime.HandlerRecords runtime.candidateHandle := by
+  intro state message next hnext
+  unfold candidateHandle at hnext
+  split at hnext
+  · contradiction
+  · cases hmessage : (runtime.program.discharge state.visible.timeouts).candidateMessage?
+        state.service state.visible.events message with
+    | none => simp [hmessage] at hnext
+    | some result =>
+        simp only [hmessage, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hnext
+        subst next
+        exact ⟨result.2, rfl⟩
+
 /-- Any successfully handled candidate message preserves an already fixed
 handle, whether or not the message mentions that handle. -/
 theorem candidateMessage?_lookup_eq_of_not_fresh

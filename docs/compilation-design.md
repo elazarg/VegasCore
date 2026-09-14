@@ -65,6 +65,17 @@ event provenance and timeout-settlement invariants. Source public-settlement
 reconstruction consumes these public invariants without a service parameter.
 Private candidate immutability is a separate arbitrary-policy theorem.
 
+`SealedResolution.hostRoundDriver` supplies the same clock boundary and public
+completion test to both hosts. `HandlerRecords` states the handler's successful
+public effect: one event followed by a readiness refresh, with private catalog
+updates unrestricted. Both handlers satisfy it. The shared `runRounds_complete`
+proof therefore gives clock-driven termination under arbitrary policies in both
+hosts, with no message service or preparation premise. The source compiler
+discharges the enabled-rule and backward-dependency conditions, yielding
+`candidateRuntime_runRounds_complete` at every sufficient round budget. This
+result permits defaults; timely service is needed separately to exclude an
+honest player's first timeout.
+
 The compiled policies' complete finite-execution laws agree between hosts by
 `SealedCompilation.candidatePolicies_law`. The compiler supplies the preparation
 invariant needed for this embedding; the environment-policy retyping is

@@ -54,6 +54,21 @@ theorem arbitrary_policies_complete_without_service
   exact compilation.resolvingRuntime_runRounds_complete none 2 [] 0
     players environment 12 (by decide) next hnext
 
+/-- Competing candidates, malformed traffic, and arbitrary service decisions
+cannot prevent clock-driven completion of the compiled four-node program. -/
+theorem arbitrary_candidate_policies_complete
+    (principals : List PendingSource.Player) (serviceSlots : Nat)
+    (players : PendingSource.Player → runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.WirePolicy)
+    (next : runtime.candidateApplication.PolicyExecution)
+    (hnext : next ∈
+      (runtime.candidateRoundDriver.runRounds principals serviceSlots players environment 12
+        (MessageApplication.PolicyExecution.initial _
+          (MessageApplication.State.initial _ runtime.candidateInitial))).support) :
+    runtime.complete next.native.application.visible = true := by
+  exact compilation.candidateRuntime_runRounds_complete none 2 principals serviceSlots
+    players environment 12 (by decide) next hnext
+
 end
 
 theorem resolved_public_values_have_source_execution :

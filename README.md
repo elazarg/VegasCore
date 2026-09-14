@@ -52,8 +52,10 @@ timeouts and have exactly the written source payout law. Arbitrary randomized
 focal and environment policies also have a constructed coupling retaining the
 complete native trace law and a mixture of source deviations with unchanged
 opponents. Normally completed pairs have the retained source realization's
-public payout. Candidate stopped-round progress and the post-timeout incentive
-bound needed for Nash preservation remain open.
+public payout. The candidate driver also completes within the compiled timeout
+bound under arbitrary policies, even without message service. Connecting the
+coupling to stopped rounds, excluding a first honest timeout under timely service,
+and deriving the post-timeout incentive bound needed for Nash preservation remain open.
 Censorship resistance, concrete commitment cryptography, and EVM execution
 correctness remain open.
 

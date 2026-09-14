@@ -1447,6 +1447,38 @@ theorem ready_reveal_fence
     prior ∈ cfg.done :=
   Ready.prior_commit_done_of_reveal G cfg hnode hprior hlt hreveal hcommit hready
 
+/-- Actual candidate-host round execution completes under arbitrary policies,
+including with no message service. Completion can use source defaults. -/
+theorem pending_candidate_termination
+    {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (principals : List Player) (serviceSlots : Nat)
+    (players : Player →
+      (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.PlayerPolicy)
+    (environment :
+      (compilation.supported.resolvingRuntime nullValue window).candidateApplication.WirePolicy)
+    (total : Nat)
+    (hbound : (ToEventGraph.compile source.core).graph.nodeCount * (window + 1) ≤ total)
+    (next :
+      (compilation.supported.resolvingRuntime
+        nullValue window).candidateApplication.PolicyExecution)
+    (hnext : next ∈
+      ((compilation.supported.resolvingRuntime nullValue window).candidateRoundDriver.runRounds
+        principals serviceSlots players environment total
+        (MessageApplication.PolicyExecution.initial _
+          (MessageApplication.State.initial _
+            (compilation.supported.resolvingRuntime nullValue window).candidateInitial))).support) :
+    (compilation.supported.resolvingRuntime nullValue window).complete
+      next.native.application.visible = true :=
+  compilation.candidateRuntime_runRounds_complete nullValue window principals serviceSlots
+    players environment total hbound next hnext
+
+/-- info: 'Vegas.Paper.pending_candidate_termination'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_termination
+
 section CandidateSettlement
 
 open ToEventGraph MessageApplication
