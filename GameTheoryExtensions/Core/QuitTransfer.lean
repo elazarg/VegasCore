@@ -5,11 +5,15 @@ import GameTheoryExtensions.Core.MixtureSimulation
 /-! # Strategic transfer for a source-level quit
 
 This file isolates the mechanism-design step used when a runtime has an
-additional action that is intended to mean “quit”.  The runtime action is not
-identified with a source strategy by its name.  Instead, the caller supplies a
-law showing that every source strategy in the deviation mixture is the source
-quit.  Under that checked law, any strict source improvement over quit remains
-a strict target improvement at the compiled profile.
+additional action that is intended to mean “quit”. The runtime action is not
+identified with a source strategy by its name. One theorem derives its utility
+law by requiring every source strategy in the simulated deviation mixture to
+be the source quit. A more general theorem accepts the weaker condition that
+the relevant target/source quit utilities are equal directly; this avoids
+identifying observationally equivalent source policies that differ only at
+unreachable choices. Under either checked condition, a strict source
+improvement over quit remains a strict target improvement at the compiled
+profile.
 -/
 
 noncomputable section
@@ -28,6 +32,66 @@ variable {sourceObserve : source.sig.Outcome → Observation}
 variable {targetObserve : target.sig.Outcome → Observation}
 variable {Considered : (who : Player) → target.sig.Strategy who → Prop}
 variable (simulation : MixtureSimulationOn source target sourceObserve targetObserve Considered)
+
+/-- A target quit profile with the same utility as a source quit cannot be a
+Nash equilibrium when another compiled source strategy is strictly better.
+The caller supplies the relevant quit utility equality directly; no uniqueness
+claim about a deviation mixture or unreachable source-policy choices is
+required. -/
+theorem compiled_quit_profile_not_isNash_of_quit_law
+    (value : Observation → Player → ℝ)
+    (profile : Profile source.sig) (who : Player)
+    (quit preferred : source.sig.Strategy who)
+    (quitTarget : target.sig.Strategy who)
+    (hquit :
+      (target.play (Profile.update (simulation.compileProfile profile)
+        who quitTarget)).expect
+          (fun outcome => value (targetObserve outcome) who) =
+      (source.play (Profile.update profile who quit)).expect
+          (fun outcome => value (sourceObserve outcome) who))
+    (hstrict :
+      (source.play (Profile.update profile who quit)).expect
+          (fun outcome => value (sourceObserve outcome) who) <
+      (source.play (Profile.update profile who preferred)).expect
+          (fun outcome => value (sourceObserve outcome) who)) :
+    ¬ IsNash target
+      (euPreference (fun outcome player => value (targetObserve outcome) player))
+      (Profile.update (simulation.compileProfile profile) who quitTarget) := by
+  intro hnash
+  have htargetNash :=
+    (isNash_iff (F := target) (weaklyPrefers :=
+      euPreference (fun outcome player => value (targetObserve outcome) player))
+      (Profile.update (simulation.compileProfile profile) who quitTarget)).1 hnash
+  have hpreferredTarget :
+      (target.play (Profile.update (simulation.compileProfile profile)
+        who (simulation.compileStrategy who preferred))).expect
+          (fun outcome => value (targetObserve outcome) who) =
+        (source.play (Profile.update profile who preferred)).expect
+          (fun outcome => value (sourceObserve outcome) who) := by
+    rw [simulation.compileProfile_update profile who preferred]
+    exact simulation.expect_compile (Profile.update profile who preferred)
+      (fun observation => value observation who)
+  have htargetStrict :
+      (target.play (Profile.update (simulation.compileProfile profile)
+        who quitTarget)).expect
+          (fun outcome => value (targetObserve outcome) who) <
+      (target.play (Profile.update (simulation.compileProfile profile)
+        who (simulation.compileStrategy who preferred))).expect
+          (fun outcome => value (targetObserve outcome) who) := by
+    rw [hquit, hpreferredTarget]
+    exact hstrict
+  have htargetWeak := htargetNash who (simulation.compileStrategy who preferred)
+  rw [Profile.update_idem] at htargetWeak
+  rw [euPreference_apply] at htargetWeak
+  have htargetWeak' :
+      (target.play (Profile.update (simulation.compileProfile profile)
+        who (simulation.compileStrategy who preferred))).expect
+          (fun outcome => value (targetObserve outcome) who) ≤
+      (target.play (Profile.update (simulation.compileProfile profile)
+        who quitTarget)).expect
+          (fun outcome => value (targetObserve outcome) who) := by
+    simpa only [expectedUtility] using htargetWeak
+  exact (not_lt_of_ge htargetWeak') htargetStrict
 
 /-- A runtime quit whose deviation law is supported entirely on the source quit
 cannot occur in a compiled Nash equilibrium when a source strategy is strictly
@@ -57,14 +121,9 @@ theorem compiled_quit_profile_not_isNash
     ¬ IsNash target
       (euPreference (fun outcome player => value (targetObserve outcome) player))
       (Profile.update (simulation.compileProfile profile) who quitTarget) := by
-  intro hnash
   obtain ⟨alternatives, hlaw⟩ :=
     simulation.deviation_mixture profile who quitTarget hconsidered
   have halternatives := hquit alternatives hlaw
-  have htargetNash :=
-    (isNash_iff (F := target) (weaklyPrefers :=
-      euPreference (fun outcome player => value (targetObserve outcome) player))
-      (Profile.update (simulation.compileProfile profile) who quitTarget)).1 hnash
   have hquitLaw := congrArg
       (fun law => law.expect (fun observation => value observation who)) hlaw
   simp only [FinDist.expect_map, FinDist.expect_bind] at hquitLaw
@@ -82,37 +141,11 @@ theorem compiled_quit_profile_not_isNash
   have hquitTarget :
       (target.play (Profile.update (simulation.compileProfile profile) who quitTarget)).expect
           (fun outcome => value (targetObserve outcome) who) =
-        (source.play (Profile.update profile who quit)).expect
+      (source.play (Profile.update profile who quit)).expect
           (fun outcome => value (sourceObserve outcome) who) := by
     exact hquitLaw.trans hquitSupport
-  have hpreferredTarget :
-      (target.play (Profile.update (simulation.compileProfile profile) who
-        (simulation.compileStrategy who preferred))).expect
-          (fun outcome => value (targetObserve outcome) who) =
-        (source.play (Profile.update profile who preferred)).expect
-          (fun outcome => value (sourceObserve outcome) who) := by
-    rw [simulation.compileProfile_update profile who preferred]
-    exact simulation.expect_compile (Profile.update profile who preferred)
-      (fun observation => value observation who)
-  have htargetStrict :
-      (target.play (Profile.update (simulation.compileProfile profile) who quitTarget)).expect
-          (fun outcome => value (targetObserve outcome) who) <
-        (target.play (Profile.update (simulation.compileProfile profile) who
-          (simulation.compileStrategy who preferred))).expect
-          (fun outcome => value (targetObserve outcome) who) := by
-    rw [hquitTarget, hpreferredTarget]
-    exact hstrict
-  have htargetWeak := htargetNash who (simulation.compileStrategy who preferred)
-  rw [Profile.update_idem] at htargetWeak
-  rw [euPreference_apply] at htargetWeak
-  have htargetWeak' :
-      (target.play (Profile.update (simulation.compileProfile profile) who
-        (simulation.compileStrategy who preferred))).expect
-          (fun outcome => value (targetObserve outcome) who) ≤
-        (target.play (Profile.update (simulation.compileProfile profile) who quitTarget)).expect
-          (fun outcome => value (targetObserve outcome) who) := by
-    simpa only [expectedUtility] using htargetWeak
-  exact (not_lt_of_ge htargetWeak') htargetStrict
+  exact simulation.compiled_quit_profile_not_isNash_of_quit_law value profile who
+    quit preferred quitTarget hquitTarget hstrict
 
 /-- The same transfer stated with the standard strict-dominance predicate.
 Strict dominance is quantified over all source profiles, so its instance at
@@ -148,6 +181,12 @@ end GameTheory.GameForm.MixtureSimulationOn
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash
+
+/-- info: 'GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash_of_quit_law'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash_of_quit_law
 
 /-- info: 'GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash_of_strictlyDominates'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/

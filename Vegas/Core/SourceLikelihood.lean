@@ -41,6 +41,14 @@ def SourceDecisionSite.recorded {who : P} {Γ : VCtx P L} {prog : VegasCore P L 
   | .commit site, final => site.recorded final
   | .reveal site, final => site.recorded final
 
+/-- The terminal record contains `value` at a commitment belonging to `who`.
+This describes recorded source choices, not the observations available to a
+policy. Legality of the complete record is a separate execution property. -/
+def VegasCore.Chooses {Γ : VCtx P L} (prog : VegasCore P L Γ) (who : P)
+    {ty : L.Ty} (value : L.Val ty) (final : VEnv L (sourceTerminalCtx prog)) : Prop :=
+  ∃ Δ name guard, ∃ site : SourceDecisionSite who prog Δ name ty guard,
+    (site.recorded final).get .here = value
+
 /-- Source execution preserves its initial bindings in the terminal result. -/
 theorem denoteSource_initialProjection : {Γ : VCtx P L} → (prog : VegasCore P L Γ) →
     (profile : SourceBehavioralProfile prog) → (env : VEnv L Γ) →

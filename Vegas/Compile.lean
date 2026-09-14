@@ -8,6 +8,7 @@ import Vegas.Compile.Compiler
 import Vegas.Compile.FieldMap
 import Vegas.Compile.RevealAccounting
 import Vegas.Compile.SourceView
+import Vegas.Compile.SourceChoice
 import Vegas.Compile.SourceLaw
 import Vegas.Compile.DecisionSite
 import Vegas.Compile.SourcePolicy
@@ -16,6 +17,7 @@ import Vegas.Compile.SourceDisclosureReads
 import Vegas.Compile.SourceExecutionLaw
 import Vegas.Compile.SourceExecutionGraph
 import Vegas.Compile.SourceExecutionOutcome
+import Vegas.Compile.SourceOutcomeExecution
 import Vegas.Compile.SourceCorrespondence
 import Vegas.Compile.SealedMessages
 import Vegas.Compile.SealedReadOrigin
@@ -34,6 +36,7 @@ import Vegas.Compile.SealedResolutionClosure
 import Vegas.Compile.SealedResolvedStore
 import Vegas.Compile.SealedResolvedReads
 import Vegas.Compile.SealedPublicOutcome
+import Vegas.Compile.SealedSettlement
 import Vegas.Compile.SealedPolicyProgress
 import Vegas.Compile.SealedPhaseCount
 import Vegas.Compile.SealedPolicyDeadline
@@ -78,10 +81,11 @@ every resulting prefix decodes to a reachable graph state, and a terminal state
 reconstructs a written-order source execution.
 
 The non-resolving runtime policy game has the same support-level source
-guarantee. `SealedCompilation.StrategicCertificate` expresses the stronger
-exact-outcome edge through an honest law and finite-mixture backtranslation
-for considered unilateral deviations. It is an interface, not a constructed
-exact post-timeout backtranslation.
+guarantee. The generic GameTheory `MixtureSimulationOn` interface expresses a
+stronger exact-outcome edge through an honest law and finite-mixture
+backtranslation for considered unilateral deviations; it is not by itself an
+instantiated compiler result or a constructed exact post-timeout
+backtranslation.
 
 `SealedHonestRound` discharges the original all-compiled source law for the
 resolving pending-message driver under periodic service and the checked timeout

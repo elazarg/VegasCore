@@ -77,6 +77,7 @@ import Interaction.SealedResolution
 import Interaction.SealedResolutionLaws
 import Interaction.SealedResolutionProgress
 import Interaction.SealedResolutionDeadline
+import Interaction.SealedResolutionSettlement
 import Interaction.SealedResolutionBinding
 import Interaction.SealedResolutionAccepted
 import Interaction.SealedResolutionEvents

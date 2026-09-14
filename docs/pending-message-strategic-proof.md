@@ -23,8 +23,10 @@ law retains actual timeout-checkpoint information and a legal source completion
 with focal registrations fixed. A uniform cap on own timeout utility is a
 checked sufficient case. Every completed public settlement, including after
 timeouts, agrees with a legal source execution. That support theorem does not
-preserve private registrations or fixed source policies. Program-specific
-proofs of the incentive premise remain obligations.
+preserve private registrations or fixed source policies. For utilities valuing
+the programmed payout, `RoundModel.isεNash_iff_of_sourcePayoutBound` discharges
+the incentive premise from a uniform bound over legal source executions.
+More general source continuation tests remain obligations.
 
 ## 1. Exact scope and conclusion
 
@@ -1288,21 +1290,33 @@ regression retains an accepted private `some true`, publishes `none` on expiry,
 and evaluates a public-value-dependent source payout to `-3` rather than `7`.
 The source settlement witness need not retain the locked private value and is
 distinct from the source witness used in the incentive coupling.
+`publicPayout_source_choice_of_timeout` also proves that a timeout owned by `i`
+has a settlement witness recording a default at one of `i`'s actual source
+decisions. The runtime settlement invariant makes every associated public
+opening equal to that default; source accounting ensures reveal uniqueness.
+
+For any valuation of the written payout, `VegasCore.QuitPayoutBound` asks that
+every legal source outcome give `i` at least `b_i`, and every legal source
+outcome recording `i`'s default give it at most `b_i`. On a native timeout,
+the settlement witness gives the upper bound. The causal coupling's different,
+commitment-preserving completion gives the lower bound. These pointwise bounds
+imply (5) on every information fiber. Normal utility agreement follows from
+the compiled payout evaluator and independent written-source execution.
+`RoundModel.isεNash_iff_of_sourcePayoutBound` therefore has only the source
+certificate and timely-service premises; no native utility inequality is
+supplied. This uniform test is sufficient, not necessary, and stronger than
+an ex-ante comparison of quitting with continuation.
 The finite-fiber regression also verifies a conditional comparison
 that holds despite pointwise comparison failing; the native-driver regression
 instantiates the checkpoint-cap route and its positive timeout margin.
 
 The remaining implementation work is specific:
 
-1. Prove (5), or its commitment-compatible cap condition, from the chosen
-   program's settlement and utility analysis. The first-timeout compiler
-   instance and its conditional Nash transport are checked; their explicit
-   incentive premise must not be mistaken for a discharged source analysis.
-   For utilities interpreting the programmed payout, the next concrete test
-   should derive normal utility agreement from source payoff evaluation and
-   prove the timeout cap from that same payout, rather than supply an unrelated
-   native utility. A commitment-compatible lower bound must retain the actual
-   registered values, even when the public-settlement witness replaces them.
+1. Derive less restrictive, commitment-dependent or conditional source tests
+   for (5). The uniform payout-bound theorem discharges one source-only case,
+   not arbitrary source incentive analysis. A commitment-compatible lower
+   bound must retain actual registered values, even when the public-settlement
+   witness replaces them.
 2. Extend admission and its proofs to further source features. The public
    settlement construction currently relies on unrestricted guards and a
    common value type, and the strategic coupling excludes samples.

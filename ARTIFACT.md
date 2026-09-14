@@ -31,6 +31,7 @@ a build optimization; the subsequent build checks the proof terms.
 | How are source decisions and graph reads related? | `Vegas/Compile/Compiler.lean`, `SourceAdequacy.lean`, and the event-graph laws |
 | What executes public messages? | `Interaction/`, `Vegas/Compile/SealedSource.lean` |
 | Which active games use that runtime? | `Vegas/Game/SealedRounds.lean`, `SealedMessages.lean`, `SealedRelease.lean`, and `SealedTimeoutApplication.lean` |
+| Where do source payout bounds imply native incentives? | `Vegas/Core/Settlement.lean`, `Vegas/Game/SealedPayoutBounds.lean`, and the one-player integration test `VegasTests/SealedPayout.lean` |
 | Which claims are paper-facing? | The single root audit, `Paper.lean` |
 
 Read the owning theorem and definitions, not only its paper-facing restatement.
@@ -92,12 +93,22 @@ instantiates the assumptions with delayed service and arbitrary unreserved
 wire choices. `pending_round_approximate_nash_iff` and
 `pending_round_deviation_margin` audit the uniform-cap strategic result.
 The `pending_checkpoint_*` theorems audit the conditional result, actual local
-information, and retained commitments. Program-specific proofs of the
-conditional incentive premise and general source-settlement identification
-after defaults remain open. The strategic regression uses simple supplied
-utilities, not a proved source payout model. Independently,
-`pending_public_payout` verifies public-only payout reconstruction on normally
-decoded terminal source executions.
+information, and retained commitments. `pending_public_payout` verifies that
+every supported completed native outcome has the public payout of a legal
+source execution, including after defaults. `pending_timeout_source_choice`
+additionally identifies the responsible player's designated source choice in
+the same settlement witness. For utilities valuing the programmed payout,
+`pending_source_payout_nash_iff` derives the incentive premise from
+`VegasCore.QuitPayoutBound`: a lower bound on all legal source executions and
+the same upper bound when the player quits. The separate conditional interface
+allows finer comparisons; deriving commitment-dependent and conditional
+continuation tests entirely from source semantics remains open.
+The payout integration test pays `7` after a nonempty Boolean choice and `-3`
+after `none`. It proves the quitting bound from legal source execution, proves
+the always-`some true` source profile Nash, and derives Nash for its compiled
+pending-message profile under arbitrary unreserved wire behavior. The native
+utility evaluates the actual public payout; it is not an independent timeout
+penalty supplied only to the test.
 
 At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
 sharper exact statement under declared-read locality and a single ready

@@ -13,6 +13,14 @@ adapter must authenticate the opening before checking it against the private
 table; exposing the check as an unrestricted oracle would disclose guesses'
 correctness before opening.
 
+The first authenticated registration at an owner/slot pair permanently fixes
+the sole value for that handle. This is stronger than a bare hiding-and-binding
+interface: the functionality does not represent multiple candidate commitments
+for one slot, and applications can require registration before accepting the
+handle. Refining a protocol that admits competing candidates or accepts an
+unopenable candidate requires a strategic argument, not only a codec between
+representations.
+
 This model is not software cryptography or deployable public storage. It gives
 no liveness, forced-opening, delivery, or release-barrier guarantee.
 Its table and verification functions are specification operations. This file
@@ -24,7 +32,8 @@ namespace Interaction
 
 universe uPrincipal uSlot uValue
 
-/-- An owner-scoped commitment handle. -/
+/-- The canonical handle for an owner-scoped registration slot. Applications
+may identify the slot with a source site. -/
 abbrev CommitmentHandle (Principal : Type uPrincipal) (Slot : Type uSlot) :=
   Principal × Slot
 
@@ -72,7 +81,8 @@ structure SealResult where
   accepted : Bool
   state : IdealCommitments Principal Slot Value
 
-/-- Privately register a value once at an authenticated owner-scoped slot. -/
+/-- Privately register the first and only value at an authenticated
+owner-scoped slot. Later registrations are rejected without changing it. -/
 def sealValue (state : IdealCommitments Principal Slot Value)
     [DecidableEq Principal] [DecidableEq Slot]
     (owner : Principal) (slot : Slot) (value : Value) :

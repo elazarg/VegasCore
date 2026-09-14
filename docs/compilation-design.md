@@ -36,16 +36,18 @@ experiment, not a commitment-preserving lowering. Its source and proofs are
 archived outside the build roots; it is outside the active compiler claims.
 
 Probability tables denote exact finite laws. A concrete entropy mechanism,
-cryptographic commitment scheme, adaptive delivery service, or blockchain
+cryptographic commitment scheme, concrete delivery service, or blockchain
 backend would be a further artifact with its own proof edge.
 
 ## Current boundary
 
 The direct mathematical argument for the pending-message strategic edge is in
 [pending-message-strategic-proof.md](pending-message-strategic-proof.md).
-It targets a causal coupling with a legal source completion, followed by an
-informed-quitting utility bound. The note distinguishes the proved coupling
-consequence from the operational coupling and resolution still to implement.
+It constructs a causal coupling with a legal source completion, followed by an
+informed-quitting utility bound. Current theorem scope is recorded in
+[active-tower.md](active-tower.md). For payout-valued utilities, the uniform
+source-only `QuitPayoutBound` discharges the runtime comparison; more general
+source continuation criteria still need corresponding proofs.
 
 The written-source-to-declared-read-graph edge has a concrete strategic
 certificate, `WFProgram.sourceGraphSimulation`. Its honest law compares the
@@ -68,11 +70,11 @@ graph-level. Its hypotheses still need to be connected to checked compilation
 to extend the concrete source certificate to arbitrary behavioral-frontier
 policies. Neither graph theorem instantiates a message runtime.
 
-The strict sealed-message edge has checked whole-run source reconstruction and
-ideal-service hiding laws. Its whole-program strategic preservation theorem is
-not yet proved. `SealedCompilation.StrategicCertificate` packages the exact
-honest-law and finite-mixture obligations needed for the Nash transfer; no
-runtime is granted that certificate by construction.
+The generic GameTheory `MixtureSimulationOn` packages exact honest-law and
+finite-mixture obligations and transports all utilities of the chosen
+observation. Supplying one remains an explicit proof obligation for any target;
+it is not an instantiated sealed-compiler theorem. The actual pending-message
+round game instead has the utility-specific conditional result described below.
 
 The active pending-message model has an explicit strategic proof obligation.
 `deliver` places the selected packet in the recipient's pool, and the recipient

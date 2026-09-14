@@ -16,10 +16,17 @@ and payoff code in an event graph. The native endpoint uses the shared
 `Interaction` message pool and explicit commitment service.
 
 The checked results include source execution and event-graph correspondence,
-support-level reconstruction of native executions, and focused laws for the
-strict sealed-message application. Strategic preservation for the strict
-pending-message compiler edge is still open and is exposed as an explicit
-`SealedCompilation.StrategicCertificate` obligation.
+support-level reconstruction of native executions, and a constructed coupling
+between source deviations and the actual pending-message round game. The
+round-game theorem gives same-error Nash and epsilon-Nash equivalence under
+timely service, normal source/native utility agreement, and an explicit
+conditional comparison at each supported timeout checkpoint. A uniform
+settlement cap is a checked sufficient case. For utilities valuing the programmed
+payout, a source-only certificate also suffices: all legal source executions
+give each player at least a bound, and executions recording that player's
+designated quitting value give it at most that bound. The compiler derives
+normal utility agreement and the runtime timeout comparison from this certificate.
+More general source continuation conditions remain open.
 
 The former application-plan path is archived under `archive/fused/`. Its
 adjacent `commit; reveal` fusion emitted a value-bearing request without a
@@ -27,10 +34,19 @@ prior opaque commitment, so it was not a commitment implementation and is not
 part of the active compiler or its claims.
 
 The pending-message target is represented by the active message pool and timed
-sealed adapter. Prefix refinement and ideal-service hiding are checked, but the
-whole-prefix deviation extraction and whole-program strategic composition are
-still open. Adaptive public scheduling, censorship resistance, concrete
-commitment cryptography, and EVM execution correctness also remain open.
+sealed adapter. Whole-prefix deviation extraction, randomized source/native
+coupling, finite completion, and the conditional strategic composition above
+are checked. Every invariant completed state also has a legal written-source
+execution whose payout equals the payout reconstructed solely from public
+initial data and opening events, including after timeout defaults; this applies
+to supported outcomes of the actual round game without a service assumption.
+That public-settlement witness need not preserve private committed choices and
+therefore does not by itself discharge the timeout incentive condition.
+The current commitment service binds each source site at its first private
+registration and rejects unregistered handles. Competing candidates and accepted
+but unopenable commitments require a further strategic refinement.
+Censorship resistance, concrete commitment cryptography, and EVM execution
+correctness remain open.
 
 The active libraries are `GameTheoryExtensions`, `Interaction`, `Vegas`,
 the retained tests, and the source/native paper audit. See
@@ -55,12 +71,11 @@ the source language, event-graph compiler, and its native integration.
 
 ## Paper target and proof status
 
-The manuscript in the separate `overleaf/` repository still describes the
-earlier split and must be revised against the active tower. The single active
-`Paper.lean` audit contains only direct delegations to proved repository
-theorems; it has no admissions and does not count archived claims. The exact
-active layering and the remaining pending-message strategic obligation are
-listed in [the active tower](docs/active-tower.md).
+The single active `Paper.lean` audit contains only direct delegations to proved
+repository theorems; it has no admissions and does not count archived claims.
+The exact active layering, conditional pending-message theorem, and remaining
+program-specific incentive obligation are listed in
+[the active tower](docs/active-tower.md).
 
 A successful Lean build checks the active proof terms. It is not evidence that
 the separate manuscript's prose or claim registry has caught up with this

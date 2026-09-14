@@ -40,10 +40,12 @@ unconnected backend component.
 ## Current proof inventory
 
 The fixed-windowed and delivery proof material is archived for reference. The
-active strict edge currently closes native prefix refinement, terminal source
-reconstruction, and ideal-service hiding. The next strategic milestone is to
-instantiate `SealedCompilation.StrategicCertificate` for the concrete pending
-message policy game.
+active strict edge closes native prefix refinement, terminal source
+reconstruction, ideal-service hiding, and a constructed coupling for the
+concrete pending-message round game. Its Nash theorem is conditional on
+timeout-checkpoint utility comparisons. Discharging those comparisons from a
+program's source settlement and continuation analysis is the next strategic
+milestone; an assumed generic `MixtureSimulationOn` is not a compiler result.
 
 The active runtime model already includes opaque commitments, cleartext
 rejection, pending messages, recipient-local delivery, inclusion, replay, and

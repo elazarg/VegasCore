@@ -28,13 +28,14 @@ exactly backtranslates arbitrary declared-read graph policies. Its Nash and
 epsilon-Nash corollaries are end-to-end to that graph runner, not to this
 message runtime. It supplies the source side of the pending-message proof.
 
-The strict sealed-message edge currently has support-level source
-reconstruction and ideal-service hiding laws. Strategic preservation for
-pending messages and public scheduling is not yet proved. The active strategic
-interface is `SealedCompilation.StrategicCertificate`; once a runtime supplies
-its honest and deviation-mixture fields, the generic GameTheory theorem gives
-same-error Nash preservation and reflection. The old fixed-windowed theorem is
-archived and is not a theorem for the strict compiler edge.
+The actual pending-message round game has a constructed source/native coupling
+and same-error Nash preservation and reflection under timely service, normal
+utility agreement, and explicit conditional timeout-checkpoint comparisons.
+Those program-specific comparisons remain obligations. The generic GameTheory
+`MixtureSimulationOn` separately gives exact-law transport when a target
+supplies its honest and deviation-mixture fields; merely assuming that generic
+interface is not an instantiated sealed-compiler result. The old fixed-windowed
+theorem is archived and is not a theorem for the strict compiler edge.
 
 ## Pending-message and timeout boundary
 

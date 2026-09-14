@@ -503,7 +503,9 @@ private theorem visit_no_timeout_of_completed
     · exact habsent hprior
     · exact heq hnew.symm
 
-private theorem refresh_no_timeout_of_completed
+/-- A completed node that has not timed out remains absent from the timeout
+record after either kind of full resolution scan. -/
+theorem refresh_no_timeout_of_completed
     (runtime : SealedResolution Principal Value) (resolveExpired : Bool)
     (state : PublicState Principal Value) (node : Nat)
     (hcompleted : state.completed node = true) (habsent : node ∉ state.timeouts) :

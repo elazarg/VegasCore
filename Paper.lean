@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import GameTheoryExtensions.Core.MixtureSimulation
+import GameTheoryExtensions.Core.QuitTransfer
 import GameTheoryExtensions.Core.UtilitySimulation
 import Interaction.SealedTimeoutDisclosure
 import Interaction.MessageApplicationTraceLikelihood
@@ -36,8 +37,8 @@ import Vegas.Compile.SealedTimeoutRefinement
 import Vegas.EventGraph.Strategic
 import Vegas.Game.SealedMessages
 import Vegas.Game.SealedRelease
-import Vegas.Game.SealedStrategic
 import Vegas.Game.SealedRounds
+import Vegas.Game.SealedPayoutBounds
 import Vegas.Game.SourceGraph
 
 /-! # Paper theorem audit
@@ -990,6 +991,38 @@ theorem pending_public_payout
         some (evalPayoffs (ToEventGraph.compile source.core).sourcePayoffs terminalEnv) :=
   model.play_publicPayout_source players next hnext
 
+/-- A player's native timeout has the programmed payout of one legal source
+execution recording that player's designated default. -/
+theorem pending_timeout_source_choice
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    {compilation : SealedCompilation source ty} {nullValue : L.Val ty} {window : Nat}
+    (model : compilation.RoundModel nullValue window)
+    (players : Profile model.game.sig) (next : model.game.sig.Outcome)
+    (hnext : next ∈ (model.game.play players).support)
+    (who : Player) (hown : model.OwnTimeout who next) :
+    ∃ final : VEnv L (sourceTerminalCtx source.core.prog),
+      SmallStep.Star ⟨source.core.Γ, source.core.env, source.core.prog⟩
+        ⟨sourceTerminalCtx source.core.prog, final, .ret (sourceTerminalPayoffs source.core.prog)⟩ ∧
+      source.core.prog.Chooses who nullValue final ∧
+      compilation.publicPayout? next.native.application.visible.events =
+        some (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) :=
+  model.play_publicPayout_source_choice players next hnext who hown
+
+/-- The source-only uniform quitting bound suffices for same-error Nash
+correspondence of payout-valued utilities in the actual pending-message game. -/
+theorem pending_source_payout_nash_iff
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    {compilation : SealedCompilation source ty} {nullValue : L.Val ty} {window : Nat}
+    (model : compilation.RoundModel nullValue window) (timely : model.Timely)
+    (valuation : Payout Player → Player → ℝ) (missing bound : Player → ℝ)
+    (hbound : source.core.prog.QuitPayoutBound source.core.env nullValue valuation bound)
+    (ε : ℝ) (profile : SourceBehavioralProfile source.core.prog) :
+    IsεNash model.game (SealedCompilation.nativePayoutUtility model valuation missing) ε
+      (fun who => compilation.compileResolvingPolicy nullValue window who (profile who)) ↔
+    IsεNash (sourceGameForm source.core.prog source.core.env)
+      (SealedCompilation.sourcePayoutUtility (source := source) valuation) ε profile :=
+  model.isεNash_iff_of_sourcePayoutBound timely valuation missing bound hbound ε profile
+
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal
     {Γ : VCtx Player simpleExpr} {secret : VarId} {b : BaseTy}
@@ -1093,42 +1126,48 @@ theorem utility_approximate_nash_preservation
       IsεNash source sourceUtility ε profile :=
   simulation.isεNash_compileProfile_iff ε profile
 
-theorem sealed_nash_preservation
-    {source : WFProgram Player L} {ty : L.Ty}
-    (compilation : SealedCompilation source ty)
+/-- Generic exact-law transport; this assumes a `MixtureSimulationOn` and does
+not instantiate one for sealed compilation. -/
+theorem mixture_simulation_nash_preservation
+    {source : WFProgram Player L}
     {Observation : Type}
     {target : GameForm Player}
     (sourceObserve :
       (Vegas.sourceGameForm source.core.prog source.core.env).sig.Outcome → Observation)
     (targetObserve : target.sig.Outcome → Observation)
     (Considered : (who : Player) → target.sig.Strategy who → Prop)
-    (certificate : compilation.StrategicCertificate target sourceObserve targetObserve Considered)
+    (simulation : GameTheory.GameForm.MixtureSimulationOn
+      (Vegas.sourceGameForm source.core.prog source.core.env) target
+      sourceObserve targetObserve Considered)
     (value : Observation → Player → ℝ) (ε : ℝ)
     (profile : Profile (Vegas.sourceGameForm source.core.prog source.core.env).sig)
     (hall : ∀ who strategy, Considered who strategy) :
     IsεNash target (fun outcome who => value (targetObserve outcome) who) ε
-        (certificate.simulation.compileProfile profile) ↔
+        (simulation.compileProfile profile) ↔
       IsεNash (Vegas.sourceGameForm source.core.prog source.core.env)
         (fun outcome who => value (sourceObserve outcome) who) ε profile :=
-  certificate.isεNash_compileProfile_iff value ε profile hall
+  simulation.isεNash_compileProfile_iff value ε profile hall
 
-theorem sealed_quit_dominance_transfer
-    {source : WFProgram Player L} {ty : L.Ty}
-    (compilation : SealedCompilation source ty)
+/-- Generic quit transfer from a supplied target/source quit utility law. This
+does not instantiate the simulation or quit law for sealed compilation. -/
+theorem mixture_simulation_quit_transfer
+    {source : WFProgram Player L}
     {Observation : Type}
     {target : GameForm Player}
     (sourceObserve :
       (Vegas.sourceGameForm source.core.prog source.core.env).sig.Outcome → Observation)
     (targetObserve : target.sig.Outcome → Observation)
     (Considered : (who : Player) → target.sig.Strategy who → Prop)
-    (certificate : compilation.StrategicCertificate target sourceObserve targetObserve Considered)
+    (simulation : GameTheory.GameForm.MixtureSimulationOn
+      (Vegas.sourceGameForm source.core.prog source.core.env) target
+      sourceObserve targetObserve Considered)
     (value : Observation → Player → ℝ)
     (profile : Profile (Vegas.sourceGameForm source.core.prog source.core.env).sig)
     (who : Player)
     (quit preferred : SourceBehavioralPolicy source.core.prog who)
     (quitTarget : target.sig.Strategy who)
     (hquit :
-      (target.play (Profile.update (certificate.simulation.compileProfile profile)
+      (target.play (Profile.update (simulation.compileProfile profile)
         who quitTarget)).expect
           (fun outcome => value (targetObserve outcome) who) =
       ((Vegas.sourceGameForm source.core.prog source.core.env).play
@@ -1143,9 +1182,9 @@ theorem sealed_quit_dominance_transfer
           (fun outcome => value (sourceObserve outcome) who)) :
     ¬ IsNash target
       (euPreference (fun outcome player => value (targetObserve outcome) player))
-      (Profile.update (certificate.simulation.compileProfile profile)
+      (Profile.update (simulation.compileProfile profile)
         who quitTarget) :=
-  certificate.compiled_quit_profile_not_isNash_of_quit_law
+  simulation.compiled_quit_profile_not_isNash_of_quit_law
     value profile who quit preferred quitTarget hquit hstrict
 
 /-! The graph-level strategic edge is complete under its explicit information
@@ -1541,13 +1580,13 @@ end Vegas.Paper
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.utility_approximate_nash_preservation
 
-/-- info: 'Vegas.Paper.sealed_nash_preservation' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.Paper.mixture_simulation_nash_preservation' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.sealed_nash_preservation
+#print axioms Vegas.Paper.mixture_simulation_nash_preservation
 
-/-- info: 'Vegas.Paper.sealed_quit_dominance_transfer' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.Paper.mixture_simulation_quit_transfer' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.sealed_quit_dominance_transfer
+#print axioms Vegas.Paper.mixture_simulation_quit_transfer
 
 /-- info: 'Vegas.Paper.graph_approximate_nash_preservation' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -1703,6 +1742,16 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_public_payout
+
+/-- info: 'Vegas.Paper.pending_timeout_source_choice' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_timeout_source_choice
+
+/-- info: 'Vegas.Paper.pending_source_payout_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_source_payout_nash_iff
 
 /-- info: 'Vegas.Paper.pending_checkpoint_locked' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

@@ -31,6 +31,24 @@ theorem compileCore_terminalCtx_eq_sourceTerminalCtx :
   | _, .reveal _ _ _ _ tail, fresh, state => by
       exact compileCore_terminalCtx_eq_sourceTerminalCtx tail fresh.2 _
 
+/-- The compiler retains the payoff expressions written at the source
+program's terminal return, modulo its dependent terminal-context equality. -/
+theorem compileCore_sourcePayoffs_heq :
+    {Γ : VCtx P L} → (prog : VegasCore P L Γ) →
+      (fresh : FreshBindings prog) → (state : BuildState P L Γ) →
+      HEq (compileCore prog fresh state).sourcePayoffs
+        (sourceTerminalPayoffs prog)
+  | _, .ret _, _, _ => HEq.rfl
+  | _, .sample name dist tail, fresh, state =>
+      compileCore_sourcePayoffs_heq tail fresh.2
+        (state.addSampleEvent name dist fresh.1).1
+  | _, .commit name who guard tail, fresh, state =>
+      compileCore_sourcePayoffs_heq tail fresh.2
+        (state.addCommitEvent name who guard fresh.1).1
+  | _, .reveal name who _ source tail, fresh, state =>
+      compileCore_sourcePayoffs_heq tail fresh.2
+        (state.addRevealEvent name who source fresh.1).1
+
 /-- Every binding in the compiler's terminal field map can be read from a
 reachable terminal configuration. -/
 theorem BuildResult.terminalBindingAvailable (result : BuildResult P L)
@@ -78,6 +96,28 @@ def decodeSourceOutcome {Γ : VCtx P L} (prog : VegasCore P L Γ)
     VEnv L (sourceTerminalCtx prog) := by
   rw [← compileCore_terminalCtx_eq_sourceTerminalCtx prog fresh state]
   exact (compileCore prog fresh state).decodeTerminalSource cfg hterminal
+
+/-- A terminal compiled store evaluates the payout expressions written at the
+source program's terminal return on its decoded source outcome. -/
+theorem evalPayoffs?_eq_decodedSourceOutcome {Γ : VCtx P L}
+    (prog : VegasCore P L Γ) (fresh : FreshBindings prog)
+    (state : BuildState P L Γ)
+    (cfg : ReachableConfig (compileCore prog fresh state).graph)
+    (hterminal : Terminal (compileCore prog fresh state).graph cfg.1) :
+    evalPayoffs? (compileCore prog fresh state).payoffs cfg.1.store =
+      some (evalPayoffs (sourceTerminalPayoffs prog)
+        (decodeSourceOutcome prog fresh state cfg hterminal)) := by
+  induction prog with
+  | ret payoffs =>
+      exact CompiledProgram.evalPayoffs_eq_sourceEnvOfStore
+        (compileCore (.ret payoffs) fresh state) cfg.1.store
+        ((compileCore (.ret payoffs) fresh state).terminalBindingAvailable cfg hterminal)
+  | sample name dist tail ih =>
+      exact ih fresh.2 (state.addSampleEvent name dist fresh.1).1 cfg hterminal
+  | commit name who guard tail ih =>
+      exact ih fresh.2 (state.addCommitEvent name who guard fresh.1).1 cfg hterminal
+  | reveal name who sourceName source tail ih =>
+      exact ih fresh.2 (state.addRevealEvent name who source fresh.1).1 cfg hterminal
 
 /-- Projecting a decoded terminal outcome to an earlier source context retains
 exact agreement with that context's compiler field map. -/

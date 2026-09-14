@@ -18,6 +18,14 @@ principal-scoped policy interface. The public view
 contains the message-pool view and accepted application events, but never the
 service table or unopened values.
 
+For a commitment node, the node number is both the compiled source site and
+the private registration slot, and `(owner, node)` is its canonical handle.
+The first private registration fixes the only stored value at that site.
+Commitment validation rejects a noncanonical or unregistered handle. This
+capability rules out multiple competing candidates and commitments whose
+openability has not been established; implementing a lower-level protocol that
+allows either requires strategic refinement, not merely payload encoding.
+
 Inclusion has no liveness, timeout, or forced-opening guarantee. Cleartext and
 malformed messages may enter the public ledger, but the application rejects
 them. Rejection is an operational stutter, not a claim that the programmer's
@@ -119,9 +127,9 @@ def prerequisitesDone (events : List (Event Principal Value))
     (rule : SealedRule Principal) : Bool :=
   rule.requires.all (done events)
 
-/-- Seal privately, then submit only the owner-scoped opaque handle. A repeat
-submission is still admitted to the message pool; the ideal table retains the
-first registered value. -/
+/-- Privately register a source-site value, then submit its canonical
+`(owner, node)` opaque handle. A repeat submission is still admitted to the
+message pool; the ideal table retains the first registered value. -/
 def submitCommit [DecidableEq Principal] (state : State Principal Value)
     (owner : Principal) (node : Nat) (value : Value) :
     MessageId Principal × State Principal Value :=
@@ -168,8 +176,9 @@ def submitOpening? [DecidableEq Principal] (program : SealedProgram Principal)
     (submitted.1, { state with pool := submitted.2 })
 
 /-- Validate one application message using only the ideal service and public
-application events. Message-pool ownership and inclusion are deliberately
-outside this kernel. -/
+application events. A commitment must carry its rule owner's canonical
+`(owner, node)` handle and that handle must already have a private registration.
+Message-pool ownership and inclusion are deliberately outside this kernel. -/
 def validateMessage? [DecidableEq Principal] [DecidableEq Value]
     (program : SealedProgram Principal) (service : IdealCommitments Principal Nat Value)
     (events : List (Event Principal Value))
