@@ -190,10 +190,11 @@ theorem extractedSourceRun_opened (profile : SourceBehavioralProfile source.core
     ((compilation.supported.resolvingRuntime nullValue window).runPolicies_lookup_of_eq_some
       _ _ after stopped _ (owner, decision.val) registered hregistered hafter)
 
-/-- At every fresh honest registration in a pre-timeout replay, the original
-compiled policy draws its unchanged source kernel at the complete source's
+/-- At every fresh honest registration in a pre-timeout replay, a compiled
+source policy draws its unchanged kernel at the complete source's
 declared inputs. Freshness and input agreement follow from actual execution;
-neither cache correctness nor successful reads are assumed. -/
+neither cache correctness nor successful reads are assumed. The policy whose
+kernel is compared need not generate the source realization. -/
 theorem extractedSourceRun_registration_kernel
     (profile : SourceBehavioralProfile source.core.prog)
     (cfg : ReachableConfig (compile source.core).graph)
@@ -214,20 +215,21 @@ theorem extractedSourceRun_registration_kernel
           focal (fun history view => FinDist.pure (deviator history view)) who
           (stopped.principalHistory who)
           (State.observe runtime.messageApplication stopped.native who)).support →
+      ∀ policy : SourceBehavioralPolicy source.core.prog who,
       ∃ (node : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
         (hsem : ((compile source.core).graph.nodeRow node).sem = .commit who guard)
         (reads : ReadEnv L guard.choiceReads),
         slot = node.val ∧ stopped.native.application.service.lookup (who, node.val) = none ∧
         ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads ∧
-        compilation.compileResolvingPolicy nullValue window who (profile who)
+        compilation.compileResolvingPolicy nullValue window who policy
           (stopped.principalHistory who) (State.observe runtime.messageApplication stopped.native
             who) =
           ((compileSourcePolicy source.core.prog source.core.fresh
             (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
-            rfl who (profile who)) node guard hsem reads).map (fun choice =>
+            rfl who policy) node guard hsem reads).map (fun choice =>
               .privateCommand ⟨(node.val, cast (congrArg L.Val
                 (compilation.supported.commitType node who guard hsem)) choice.1)⟩) := by
-  intro runtime stopped hclear who hwho slot value hcommand
+  intro runtime stopped hclear who hwho slot value hcommand policy
   rw [EventGraph.SealedFragment.resolvingValuePlayers, Profile.update_of_ne _ _ hwho,
     EventGraph.SealedFragment.resolvingPolicy_no_timeout _ _ _ _ _ _ _ hclear] at hcommand
   obtain ⟨node, guard, hsem, reads, hslot, hcache, hreads, hkernel⟩ :=

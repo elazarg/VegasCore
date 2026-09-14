@@ -38,6 +38,26 @@ def resolvingValuePlayers (supported : SealedFragment G ty)
     (fun who => supported.resolvingPolicy nullValue window who (supported.valuePolicy values who))
     focal deviator
 
+/-- Only honest commitment coordinates are queried by the substituted
+policies. Focal and non-commitment assignment coordinates have no effect. -/
+theorem resolvingValuePlayers_congr (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat) (left right : Fin G.nodeCount → L.Val ty)
+    (focal : Player)
+    (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
+    (hagrees : ∀ who, who ≠ focal → ∀ node guard,
+      (G.nodeRow node).sem = .commit who guard → left node = right node) :
+    supported.resolvingValuePlayers nullValue window left focal deviator =
+      supported.resolvingValuePlayers nullValue window right focal deviator := by
+  funext who
+  by_cases hwho : who = focal
+  · subst who
+    simp only [resolvingValuePlayers, Profile.update_same]
+  · simp only [resolvingValuePlayers, Profile.update_of_ne _ _ hwho]
+    have hpolicy : supported.valuePolicy left who = supported.valuePolicy right who := by
+      funext node guard hsem reads
+      simp only [valuePolicy, hagrees who hwho node guard hsem]
+    rw [hpolicy]
+
 def bindingCut (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat) (focal : Player) (decision : Fin G.nodeCount)
     (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution) :

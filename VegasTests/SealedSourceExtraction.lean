@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedSourceRealization
+import Vegas.Compile.SealedSourceAssignment
 
 /-! # A native pending disclosure becomes a legal source input
 
@@ -323,45 +323,58 @@ private theorem first_replay (values : Fin graph.nodeCount → Value) :
   simp only [FinDist.pure_bind, FinDist.map_pure] at hlaw
   exact (FinDist.mem_support_pure.mp (hlaw ▸ FinDist.mem_support_pure.mpr rfl)).symm
 
-/-- The kernel theorem has a supported source realization and an actual
-fresh registration for every honest source profile. No cache/read premise is
-supplied by the fixture. -/
-theorem initial_registration_kernel_exists (profile : SourceBehavioralProfile core)
-    (fallback : Value) :
-    ∃ cfg ∈ (compilation.extractedSourceRun none 3 1 deviator environment [.player 0]
-      fallback profile).support,
-      ∃ (decision : Fin graph.nodeCount) (guard : EventGuard simpleExpr)
+/-- Every assignment has a fresh replay registration and the selected source
+policy's kernel, without requiring that policy to choose the assigned value. -/
+theorem initial_registration_kernel (values : Fin graph.nodeCount → Value)
+    (policy : SourceBehavioralPolicy core 0) (fallback : Value) :
+    let cfg := compilation.assignmentRealization none 3 1 deviator environment [.player 0]
+      fallback values
+    ∃ (decision : Fin graph.nodeCount) (guard : EventGuard simpleExpr)
         (hsem : (graph.nodeRow decision).sem = .commit 0 guard)
         (input : ReadEnv simpleExpr guard.choiceReads),
         decision.val = 0 ∧ ReadEnv.ofStore? cfg.1.store guard.choiceReads = some input ∧
-        compilation.compileResolvingPolicy none 3 0 (profile 0)
+        compilation.compileResolvingPolicy none 3 0 policy
           [] (State.observe app initial.native 0) =
           ((compileSourcePolicy core source.core.fresh
             (BuildState.fromInitial (initialState [] (VEnv.empty simpleExpr) (by simp)))
-            rfl 0 (profile 0)) decision guard hsem input).map (fun choice =>
+            rfl 0 policy) decision guard hsem input).map (fun choice =>
               (.privateCommand ⟨(decision.val,
                 cast (congrArg simpleExpr.Val (supported.commitType decision 0 guard hsem))
                   choice.1)⟩ : app.PlayerCommand)) := by
-  obtain ⟨cfg, hcfg⟩ := (compilation.extractedSourceRun none 3 1 deviator environment
-    [.player 0] fallback profile).support_nonempty
-  have hkernel := compilation.extractedSourceRun_registration_kernel none 3 1 deviator environment
-    [.player 0] fallback profile cfg hcfg (fun _ => true)
-  change let stopped := ((supported.resolvingReplay none 3 (cfg.1.nodeValues fallback) 1
-    deviator environment [.player 0]).prefixThrough
-      (fun execution : app.PolicyExecution =>
-        !execution.native.application.visible.timeouts.isEmpty)).firstRelease (fun _ => true)
-    _ at hkernel
+  intro cfg
+  have hkernel := compilation.assignmentRealization_registration_kernel none 3 1 deviator
+    environment [.player 0] fallback values (fun _ => true)
+  dsimp only at hkernel
   rw [first_replay] at hkernel
   simp only [PolicyTrace.prefixThrough] at hkernel
-  have hcommand : .privateCommand ⟨(0, cfg.1.nodeValues fallback (node 0))⟩ ∈
-      (supported.resolvingValuePlayers none 3 (cfg.1.nodeValues fallback) 1
+  have hcommand : .privateCommand ⟨(0, values (node 0))⟩ ∈
+      (supported.resolvingValuePlayers none 3 values 1
         (fun history view => FinDist.pure (deviator history view)) 0
         [] (State.observe app initial.native 0)).support := by
     rw [SealedFragment.resolvingValuePlayers,
       GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)]
     rw [first_policy, FinDist.mem_support_pure]
   obtain ⟨decision, guard, hsem, input, hindex, _, hreads, hlaw⟩ :=
-    hkernel rfl 0 (by decide) 0 _ hcommand
-  exact ⟨cfg, hcfg, decision, guard, hsem, input, hindex.symm, hreads, hlaw⟩
+    hkernel rfl 0 (by decide) 0 _ hcommand policy
+  exact ⟨decision, guard, hsem, input, hindex.symm, hreads, hlaw⟩
+
+/-- An assigned nullable quit is realized even when the compared source
+policy deterministically chooses a non-quit. Kernel agreement must retain
+the resulting zero probability, not infer support from replay alone. -/
+theorem zero_probability_assignment (fallback : Value) :
+    (compilation.assignmentRealization none 3 1 deviator environment [.player 0]
+      fallback (fun _ => none)).1.nodeValues (ty := BaseTy.option .bool) fallback (node 0) = none ∧
+    (.privateCommand ⟨(0, none)⟩ : app.PlayerCommand) ∉
+      (compilation.compileResolvingPolicy none 3 0
+        (compilation.valueSourceProfile (fun _ => some true) 0)
+        [] (State.observe app initial.native 0)).support := by
+  constructor
+  · exact compilation.assignmentRealization_honest none 3 1 deviator environment [.player 0]
+      fallback (fun _ => none) 0 (by decide) (node 0) _ rfl
+  · simp only [SealedCompilation.compileResolvingPolicy, SealedCompilation.valueSourceProfile,
+      compile_backtranslateCommitPolicy]
+    rw [first_policy, FinDist.mem_support_pure]
+    intro heq
+    cases heq
 
 end VegasTests.SealedSourceExtraction

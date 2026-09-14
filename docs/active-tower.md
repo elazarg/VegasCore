@@ -98,10 +98,19 @@ execution. The event/history projection preserves that cache.
 `extractedSourceRun_registration_kernel` applies these facts at every selected
 pre-timeout replay checkpoint: an actual fresh honest registration identifies
 its source node and successful declared reads, proves the private slot empty,
-and identifies the original compiled policy law with the unchanged source
-kernel at the complete source realization's inputs. No cache correctness or
-read-availability premise is left to the caller. The statement is audited by
-`Vegas.Paper.pending_honest_registration_kernel`.
+and identifies a compiled source policy's law with its kernel at the complete
+source realization's inputs. The compared policy need not generate that
+realization. No cache correctness or read-availability premise is left to the caller.
+
+`assignmentRealization` realizes every honest assignment using legal deterministic
+source policies and the same extracted focal policy. Its honest commitment values
+are the assigned values, and replay of its node values is exactly replay of the
+original assignment, including post-timeout snapshots. This is a choice of a
+supported result of the existing source execution, not an additional evaluator.
+`assignmentRealization_registration_kernel` therefore covers every assignment,
+including assignments having zero mass under the compared source policy. Its
+audit is `Vegas.Paper.pending_honest_registration_kernel`; the zero-probability
+regression distinguishes realization from support under the compared policy.
 
 `SealedFragment.resolvingReplay_prefix_eq_iff` characterizes stopped resolving
 replays by their recorded honest registrations, including when the cutoff

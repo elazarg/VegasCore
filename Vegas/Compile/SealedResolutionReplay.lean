@@ -92,6 +92,20 @@ theorem resolvingReplay_law :
   Classical.choose_spec (supported.resolvingReplay_exists nullValue window values focal
     deviator environment schedule)
 
+/-- Full native replay depends only on values at honest commitment sites,
+including after timeouts. Other coordinates never supply a native draw. -/
+theorem resolvingReplay_congr (right : Fin G.nodeCount → L.Val ty)
+    (hagrees : ∀ who, who ≠ focal → ∀ node guard,
+      (G.nodeRow node).sem = .commit who guard → values node = right node) :
+    supported.resolvingReplay nullValue window values focal deviator environment schedule =
+      supported.resolvingReplay nullValue window right focal deviator environment schedule := by
+  have hlaw := supported.resolvingReplay_law nullValue window values focal deviator environment
+    schedule
+  rw [supported.resolvingValuePlayers_congr nullValue window values right focal _ hagrees,
+    supported.resolvingReplay_law nullValue window right focal deviator environment schedule]
+    at hlaw
+  exact (FinDist.mem_support_pure.mp (hlaw ▸ FinDist.mem_support_pure.mpr rfl)).symm
+
 /-- The first timeout snapshot, or the last snapshot at the finite horizon.
 This is a proof readout of the complete native replay, not a runtime stop. -/
 def resolvingStop :

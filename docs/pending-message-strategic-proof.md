@@ -753,15 +753,17 @@ replay checkpoint. An actual honest registration supplies its selected site,
 fresh cache, and successful reads; the original compiled policy then has exactly
 the source kernel at that realization's declared inputs. The theorem does not
 assume cache correctness, read availability, or equality of source/native inputs.
-Its regression has a supported source realization and a fresh native registration
-for every honest source profile. The actual trace probabilities still require
-the cylinder-mass calculation and accounting for deterministic invocations.
 For the finite-sum calculation, kernel constancy must cover the entire assignment
 cylinder, including assignments with zero mass under the original honest profile.
-The supported-realization theorem alone does not establish that statement. One
-route is to realize each assignment with deterministic honest value policies,
-retaining the same extracted focal policy, and compare the original kernels at
-those realizations' inputs before performing the sum.
+`assignmentRealization` realizes every assignment using deterministic honest
+source policies while retaining the same extracted focal policy. Its honest
+values equal the assignment, and its entire native replay is unchanged.
+`assignmentRealization_registration_kernel` compares any original source policy's
+kernel at those source inputs, without requiring the assignment to have positive
+probability under that policy. The regression exhibits a realized nullable quit
+whose probability is zero under the compared non-quitting policy.
+The source factorization, finite cylinder sum, deterministic invocation factors,
+and actual native trace probabilities remain to be checked.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
 
@@ -779,7 +781,8 @@ The remaining implementation work is specific:
 4. Predraw native responses across honest assignments, and prove source
    cylinder masses and the actual stopped-native marginal. The source marginal,
    registration/opening value agreement, and fresh honest source/native kernel
-   agreement throughout pre-timeout replay are checked. Attach the actual post-timeout
+   agreement throughout pre-timeout replay for every assignment are checked.
+   Attach the actual post-timeout
    native continuation, retaining dependence between honest draws and the
    shared environment randomness.
 5. Instantiate the existing `UtilitySimulation` under the explicit

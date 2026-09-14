@@ -14,6 +14,7 @@ import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedSourceExtraction
 import Vegas.Compile.SealedSourceRealization
+import Vegas.Compile.SealedSourceAssignment
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
@@ -345,44 +346,46 @@ theorem pending_source_openings (profile : SourceBehavioralProfile source.core.p
   compilation.extractedSourceRun_opened nullValue window focal deviator environment schedule
     fallback profile cfg hcfg release
 
-/-- Fresh honest draws in any pre-timeout replay use the unchanged source
-kernel at its actual declared inputs. The native marginal law remains separate. -/
-theorem pending_honest_registration_kernel (profile : SourceBehavioralProfile source.core.prog)
-    (cfg : ReachableConfig (ToEventGraph.compile source.core).graph)
-    (hcfg : cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment
-      schedule fallback profile).support)
+/-- Every assignment supplies the selected source kernel's exact inputs at
+fresh honest replay registrations, including assignments of probability zero.
+The native marginal law remains separate. -/
+theorem pending_honest_registration_kernel
+    (values : Fin (ToEventGraph.compile source.core).graph.nodeCount → L.Val ty)
     (release :
       (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution →
         Bool) :
+    let cfg := compilation.assignmentRealization nullValue window focal deviator environment
+      schedule fallback values
     let runtime := compilation.supported.resolvingRuntime nullValue window
-    let stopped := ((compilation.supported.resolvingReplay nullValue window
-      (cfg.1.nodeValues fallback) focal deviator environment schedule).prefixThrough
+    let stopped := ((compilation.supported.resolvingReplay nullValue window values focal
+      deviator environment schedule).prefixThrough
         (fun execution : runtime.messageApplication.PolicyExecution =>
           !execution.native.application.visible.timeouts.isEmpty)).firstRelease release
     stopped.native.application.visible.timeouts = [] →
     ∀ who, who ≠ focal → ∀ slot value,
       .privateCommand ⟨(slot, value)⟩ ∈
-        (compilation.supported.resolvingValuePlayers nullValue window (cfg.1.nodeValues fallback)
-          focal (fun history view => FinDist.pure (deviator history view)) who
+        (compilation.supported.resolvingValuePlayers nullValue window values focal
+          (fun history view => FinDist.pure (deviator history view)) who
           (stopped.principalHistory who)
           (MessageApplication.State.observe runtime.messageApplication
             stopped.native who)).support →
+      ∀ policy : SourceBehavioralPolicy source.core.prog who,
       ∃ (node : Fin (ToEventGraph.compile source.core).graph.nodeCount) (guard : EventGuard L)
         (hsem : ((ToEventGraph.compile source.core).graph.nodeRow node).sem = .commit who guard)
         (reads : ReadEnv L guard.choiceReads),
         slot = node.val ∧ stopped.native.application.service.lookup (who, node.val) = none ∧
         ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads ∧
-        compilation.compileResolvingPolicy nullValue window who (profile who)
+        compilation.compileResolvingPolicy nullValue window who policy
           (stopped.principalHistory who)
           (MessageApplication.State.observe runtime.messageApplication stopped.native who) =
           ((ToEventGraph.compileSourcePolicy source.core.prog source.core.fresh
             (ToEventGraph.BuildState.fromInitial (ToEventGraph.initialState
               source.core.Γ source.core.env source.core.wctx))
-            rfl who (profile who)) node guard hsem reads).map (fun choice =>
+            rfl who policy) node guard hsem reads).map (fun choice =>
               .privateCommand ⟨(node.val, cast (congrArg L.Val
                 (compilation.supported.commitType node who guard hsem)) choice.1)⟩) :=
-  compilation.extractedSourceRun_registration_kernel nullValue window focal deviator environment
-    schedule fallback profile cfg hcfg release
+  compilation.assignmentRealization_registration_kernel nullValue window focal deviator environment
+    schedule fallback values release
 
 end SourceRealization
 
