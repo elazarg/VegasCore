@@ -17,6 +17,7 @@ import Vegas.Compile.SourceExecutionGraph
 import Vegas.Compile.SourceExecutionOutcome
 import Vegas.Compile.SourceCorrespondence
 import Vegas.Compile.SealedMessages
+import Vegas.Compile.SealedReadOrigin
 import Vegas.Compile.SealedDecode
 import Vegas.Compile.SealedExecution
 import Vegas.Compile.SealedRules
@@ -28,6 +29,9 @@ import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedView
 import Vegas.Compile.SealedPolicy
 import Vegas.Compile.SealedResolutionPolicy
+import Vegas.Compile.SealedResolvedStore
+import Vegas.Compile.SealedResolvedReads
+import Vegas.Compile.SealedPolicyProgress
 import Vegas.Compile.SealedTermination
 import Vegas.Compile.SealedResolutionPrivacy
 import Vegas.Compile.SealedResolutionReadBound

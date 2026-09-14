@@ -11,10 +11,10 @@ The source-policy translation implements those completion checks and retains
 own private memory across nullable defaults; its before-timeout policy law is
 checked. The source/native execution coupling, including the actual timeout
 continuation and arbitrary randomized focal and environment policies, is checked.
-Finite termination is checked for the fixed-clock round driver. Its connection
-to the finite-invocation coupling, the general source-settlement edge,
-deadline-relative honest service, and the utility comparison remain Lean
-obligations.
+Finite termination and the exact source/native coupling are checked for the
+fixed-clock round driver, including decoding at normal completion. The general
+source-settlement edge, deadline-relative honest service, the all-compiled
+honest law, and the utility comparison remain Lean obligations.
 The whole argument has not been checked in Lean or independently reviewed.
 Section 8 gives the implementation boundary. In particular, this note is not
 evidence that the repository already proves pending-message Nash preservation.
@@ -215,20 +215,30 @@ Completion is tested at round boundaries. If the last node completes during
 a round, the remaining wire opportunities still occur; completed program
 fields cannot change. The round then ends and the driver stops.
 
-Assume a finite service bound `b >= 0`: every submitted message is offered
-inclusion by the end of round `submissionRound + b`, or its application node
-has already completed. It suffices to require this for canonical messages
-emitted by compiled players, uniformly over all replacements of other policies.
-The stronger all-message service condition is independent of designating a
-player honest, and avoids needing to recognize hidden validity. It concerns
-inclusion attempts, not guaranteed acceptance of invalid payloads.
+Assume that every nondeviating rule owner occurs in the fixed roster at least
+once per round, and assume a finite service bound `b`: every canonical message
+submitted in round `r` is offered inclusion by the end of round `r+b`, unless
+its application node has already completed by that service checkpoint. The
+checkpoint qualification matters: a later deadline timeout cannot discharge
+the service premise retroactively. The bound is uniform over all replacements
+of the other policies. A stronger all-message service condition is independent
+of designating a player honest and avoids needing to recognize hidden validity:
+each envelope is included by its service checkpoint unless the whole application
+has already completed by then. It concerns inclusion attempts, not guaranteed
+acceptance of invalid payloads. Early termination does not erase a missed
+service deadline earlier in the run.
 
 There must be enough environment command opportunities to realize this
-condition. It is nonvacuous: each principal emits at most one pool operation
-per round, so an environment with enough inclusion slots can drain newly
-pending messages each round, with extra slots for deliveries. Arbitrary
-deviator traffic cannot revoke the assumed service bound. A capacity-constrained
-or censoring runtime requires a different bound or a different theorem.
+condition. It is nonvacuous without forcing immediate service. Let `m` be the
+roster length, counting duplicate invocations. During any block of `b+1`
+rounds, at most `(b+1)*m` new pending copies can arrive, even under arbitrary
+deviator traffic. Starting from an empty queue at the previous drain, reserving
+that many inclusion opportunities at the end of the block empties the queue;
+all other opportunities may still be used adaptively for deliveries,
+inclusions, or waits. Thus every submission is included within `b` rounds
+unless the driver has already terminated by that checkpoint.
+A capacity-constrained or censoring runtime requires a different bound or a
+different theorem.
 
 Set, conservatively,
 
@@ -236,6 +246,18 @@ Set, conservatively,
 L = n * (b + 3) + 2
 deadline(d) = firstReadyRound(d) + L.
 ```
+
+For an honest-owned target `d`, include `d` itself and all source-earlier sites
+owned by the same player. Charge each such commitment `b+2` rounds and each
+such reveal `b+1` rounds. If the resulting prefix charge is `W_b(d)`, a
+sufficient clock condition
+is `W_b(d) < window`; the uniform coarse condition is
+`n*(b+2) < window`. A timestamp may be recorded just after its owner's call,
+and expiration runs before the next round's player calls at clock
+`firstReadyRound(d) + window`, which is why the inequality is strict. The
+displayed `L` is a deliberately looser bound. If there is no honest-owned
+node, the service statement is vacuous and no positive-window premise is
+needed.
 
 The clock and relative deadlines are part of the runtime definition. A real
 ledger implementation must realize the clock and timeout checks, for example
@@ -293,8 +315,10 @@ condition from canonical initialization. It permits arbitrary player and wire
 policies, including an empty roster and zero service slots. It does not identify
 the public settlement with a source outcome. The fixed-clock, early-stopping
 driver and the finite-invocation runner used by the coupling are executions of
-the same application; their observed-outcome connection still needs a checked
-driver law, including the clock commands and early completion.
+the same application. `SealedResolution.runRounds_eq_tracePolicies` accounts
+for the clock commands and early completion, and
+`SealedCompilation.exists_randomized_round_source_coupling` supplies the
+resulting exact source-mixture/native-round marginal laws.
 
 ## 4. Actual compiled player behavior
 
@@ -491,9 +515,9 @@ trace projection, including zero-mass and inconsistent trace queries. It
 integrates the unrecorded suffix, without stopping or changing the runner.
 `invoke_player_prob_of_step` reduces a player's invocation factor to its command
 probability; recorded histories distinguish commands with identical native
-effects. These results are runtime-general. Reducing that product to precisely
+effects. These results are runtime-general. The compiler reduction to precisely
 the fresh honest registrations in (3), with the same source inputs and fixed
-native responses, remains part of the compiler probability argument.
+native responses, is established by `replay_prefix_prob_eq_product` below.
 
 Define the rectangle
 
@@ -1007,6 +1031,31 @@ timeout default and a private registered value is used.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
 
+The operational service accounting in `Interaction.SealedResolutionService`
+permits messages to remain pending across player polls.
+`round_pending_bound` counts all arrivals, including replays and malformed
+submissions, and subtracts reserved inclusion opportunities. The block theorem
+`runRounds_complete_or_pending_empty` permits unrestricted earlier wire phases:
+enough reserved capacity in the final phase drains the block's arrivals unless
+the application has already completed. `reserveInclusion` witnesses the local
+service predicate while retaining the supplied adaptive wire policy at every
+unreserved opportunity. A two-round regression checks an actual player reaction
+to a delivered packet while the ledger is still empty. Queue clearance does
+not itself prove acceptance or exclude honest timeouts.
+
+`SealedResolution.EventInvariant` is preserved by arbitrary native policy
+execution, including timeout resolution. Ordinary commit completion supplies
+its canonical accepted handle and occupied private slot; every completed reveal
+supplies a public opening, including defaulted reveals. Combined with retained
+registration memory, the compiler theorem
+`SealedFragment.resolvedPlayerStore_reads_of_ready` proves that every declared
+read of a ready commitment is available after defaults. Its proof uses source
+read provenance and the actual local-store reconstruction, without a decoded
+post-timeout source configuration. An own timed-out commitment retains its
+cached value when present and supplies the configured null otherwise. Public
+reveal fields and initially visible inputs remain readable. This is a
+read-availability result, not equality with the locked source continuation.
+
 The remaining implementation work is specific:
 
 1. Check backend admission for nullable values and direct unique reveals,
@@ -1016,10 +1065,12 @@ The remaining implementation work is specific:
    regression. Normal completed event decoding already recovers the exact
    coupled source realization. After timeout, service values and logical
    defaults remain distinct; equal private bindings are not the target claim.
-3. Establish readiness/read invariants after defaults and the deadline-relative
-   service theorem that rules out honest timeouts. The bounded early-stopping
-   driver and its exact source/native marginal connection are checked. Do not
-   assume a bare expiration status is a source settlement.
+3. Establish the deadline-relative service theorem that rules out honest
+   timeouts: combine ready-node selection, finite cache/commit/opening phases,
+   owner-roster coverage, and timely inclusion. Post-default read availability,
+   reserved capacity, the bounded early-stopping driver, and its exact
+   source/native marginal connection are checked. Do not assume a bare
+   expiration status is a source settlement.
 4. Establish the all-compiled honest outcome law. The arbitrary-deviation
    mixture alone does not identify its source marginal with the original
    all-honest source profile.

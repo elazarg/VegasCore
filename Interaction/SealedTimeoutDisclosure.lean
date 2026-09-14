@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.SealedTimeoutPolicyLaws
+import Interaction.SealedProgramLaws
 import GameTheoryExtensions.Math.SelectiveStopping
 
 /-! # Bound values at timed disclosure checkpoints
@@ -46,39 +47,6 @@ theorem openedValue?_eq_of_unique (node : Nat) (events : List (Event Principal V
             rcases hmem with ⟨heq, _⟩ | hmem
             · exact (hnode heq.symm).elim
             · exact hmem
-
-/-- An accepted opening identifies its rule and verifies against the ideal
-service. This is a handler fact, independent of who submitted the packet. -/
-theorem validateMessage?_opened_sound (program : SealedProgram Principal)
-    (service : IdealCommitments Principal Nat Value) (events : List (Event Principal Value))
-    (message : Message Principal (Payload Principal Value)) (node : Nat) (value : Value)
-    (hvalid : program.validateMessage? service events message = some (.opened node value)) :
-    ∃ owner source requires,
-      program.rules[node]? = some ⟨.reveal owner source, requires⟩ ∧
-      service.lookup (owner, source) = some value := by
-  cases message with
-  | mk id payload =>
-      cases payload with
-      | cleartext | malformed => cases hvalid
-      | commitment index handle =>
-          simp only [validateMessage?] at hvalid
-          split at hvalid <;> try contradiction
-          split at hvalid <;> try contradiction
-          split at hvalid <;> cases hvalid
-      | opening index handle claimed =>
-          simp only [validateMessage?] at hvalid
-          split at hvalid <;> try contradiction
-          rename_i rule hrule
-          split at hvalid <;> try contradiction
-          rename_i owner source hkind
-          split at hvalid <;> try contradiction
-          rename_i hchecks
-          cases hvalid
-          refine ⟨owner, source, rule.requires, ?_, ?_⟩
-          · cases rule
-            simp_all
-          · have hlookup := (IdealCommitments.verify_eq_true_iff service _).mp hchecks.2.2.2.2.2
-            simpa [hchecks.2.1] using hlookup
 
 end Interaction.SealedProgram
 

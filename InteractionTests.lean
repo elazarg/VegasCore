@@ -11,4 +11,5 @@ import InteractionTests.TimeoutGate
 import InteractionTests.SealedTimeout
 import InteractionTests.SealedResolution
 import InteractionTests.SealedResolutionDriver
+import InteractionTests.SealedResolutionService
 import InteractionTests.SealedResolutionKnowledge

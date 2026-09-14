@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.SealedPersistence
+import Interaction.SealedProgramLaws
 
 /-! # Binding invariants for native sealed execution -/
 
@@ -54,84 +55,25 @@ theorem BindingInvariant.copy (invariant : BindingInvariant program state)
 theorem BindingInvariant.handle_preserved (invariant : BindingInvariant program state)
     (message : Message Principal (Payload Principal Value)) :
     BindingInvariant program (handle program state message) := by
-  rcases message with ⟨id, payload⟩
-  cases payload with
-  | commitment node commitmentHandle =>
-      cases hrule : program.rules[node]? with
-      | none => simpa [SealedProgram.handle, SealedProgram.validateMessage?, hrule] using invariant
-      | some rule =>
-          cases hkind : rule.kind with
-          | reveal owner source => simpa [SealedProgram.handle, SealedProgram.validateMessage?, hrule, hkind] using invariant
-          | disabled => simpa [SealedProgram.handle, SealedProgram.validateMessage?, hrule, hkind] using invariant
-          | commit owner =>
-              simp only [SealedProgram.handle, SealedProgram.validateMessage?, hrule, hkind]
-              split
-              next hvalid =>
-                split at hvalid <;> try contradiction
-                rename_i hchecks
-                cases hvalid
-                constructor
-                · intro eventNode eventHandle hevent
-                  simp only [List.mem_append, List.mem_singleton] at hevent
-                  rcases hevent with hevent | hevent
-                  · exact invariant.accepted eventNode eventHandle hevent
-                  · cases hevent
-                    have hoccupied := hchecks.2.2.2.2
-                    cases hlookup : state.service.lookup commitmentHandle with
-                    | none => simp [hlookup] at hoccupied
-                    | some value =>
-                        refine ⟨owner, rule.requires, value, ?_, hchecks.2.1, rfl⟩
-                        have hruleShape :
-                            rule = ({ kind := .commit owner, requires := rule.requires } :
-                              SealedRule Principal) := by
-                          cases rule
-                          simp_all
-                        rwa [← hruleShape]
-                · intro eventNode value hevent
-                  simp only [List.mem_append, List.mem_singleton] at hevent
-                  rcases hevent with hevent | hevent
-                  · exact invariant.opened eventNode value hevent
-                  · contradiction
-              next => exact invariant
-  | opening node commitmentHandle claimed =>
-      cases hrule : program.rules[node]? with
-      | none => simpa [SealedProgram.handle, SealedProgram.validateMessage?, hrule] using invariant
-      | some rule =>
-          cases hkind : rule.kind with
-          | commit owner => simpa [SealedProgram.handle, SealedProgram.validateMessage?, hrule, hkind] using invariant
-          | disabled => simpa [SealedProgram.handle, SealedProgram.validateMessage?, hrule, hkind] using invariant
-          | reveal owner source =>
-              simp only [SealedProgram.handle, SealedProgram.validateMessage?, hrule, hkind]
-              split
-              next hvalid =>
-                split at hvalid <;> try contradiction
-                rename_i hchecks
-                cases hvalid
-                constructor
-                · intro eventNode eventHandle hevent
-                  simp only [List.mem_append, List.mem_singleton] at hevent
-                  rcases hevent with hevent | hevent
-                  · exact invariant.accepted eventNode eventHandle hevent
-                  · contradiction
-                · intro eventNode value hevent
-                  simp only [List.mem_append, List.mem_singleton] at hevent
-                  rcases hevent with hevent | hevent
-                  · exact invariant.opened eventNode value hevent
-                  · cases hevent
-                    refine ⟨owner, source, rule.requires, ?_, ?_⟩
-                    · have hruleShape :
-                          rule = ({ kind := .reveal owner source, requires := rule.requires } :
-                            SealedRule Principal) := by
-                        cases rule
-                        simp_all
-                      rwa [← hruleShape]
-                    · have hstored :=
-                        (IdealCommitments.verify_eq_true_iff state.service _).mp
-                          hchecks.2.2.2.2.2
-                      simpa [hchecks.2.1] using hstored
-              next => exact invariant
-  | cleartext node value => simpa [SealedProgram.handle, SealedProgram.validateMessage?] using invariant
-  | malformed => simpa [SealedProgram.handle, SealedProgram.validateMessage?] using invariant
+  unfold handle
+  cases hvalid : validateMessage? program state.service state.events message with
+  | none => exact invariant
+  | some event =>
+      constructor
+      · intro node handle hevent
+        simp only [List.mem_append, List.mem_singleton] at hevent
+        rcases hevent with hprior | hnew
+        · exact invariant.accepted node handle hprior
+        · subst event
+          exact validateMessage?_accepted_sound program state.service state.events
+            message node handle hvalid
+      · intro node value hevent
+        simp only [List.mem_append, List.mem_singleton] at hevent
+        rcases hevent with hprior | hnew
+        · exact invariant.opened node value hprior
+        · subst event
+          exact validateMessage?_opened_sound program state.service state.events
+            message node value hvalid
 
 theorem BindingInvariant.step (invariant : BindingInvariant program state)
     (action : Action Principal Value) :

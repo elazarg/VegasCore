@@ -29,21 +29,28 @@ def resolvingRuntime (supported : SealedFragment G ty) (nullValue : L.Val ty)
     (window : Nat) : SealedResolution Player (L.Val ty) :=
   ⟨supported.compile, nullValue, window⟩
 
+/-- Complete one owned timed-out commitment field in a local store. -/
+def resolvedPlayerStoreStep (supported : SealedFragment G ty) (who : Player)
+    (nullValue : L.Val ty)
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
+    (store : Store L) (node : Nat) : Store L :=
+  match G.node? node with
+  | some (.commit owner _) =>
+      if owner = who then
+        let memory := (supported.compile.registrationEncoding node).cachedValue
+          (supported.compile.messageApplication (Value := L.Val ty)) history
+        store.set (G.nodeTarget node) ⟨ty, memory.getD nullValue⟩
+      else store
+  | _ => store
+
 /-- Complete only the owner's timed-out commitment fields in the local store.
 No private registration is fabricated and no existing private value is erased. -/
 def resolvedPlayerStore (supported : SealedFragment G ty) (who : Player)
     (nullValue : L.Val ty) (completed : List Nat)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View) : Store L :=
-  completed.foldl (fun store node =>
-    match G.node? node with
-    | some (.commit owner _) =>
-        if owner = who then
-          let memory := (supported.compile.registrationEncoding node).cachedValue
-            (supported.compile.messageApplication (Value := L.Val ty)) history
-          store.set (G.nodeTarget node) ⟨ty, memory.getD nullValue⟩
-        else store
-    | _ => store) (supported.playerStore who history view)
+  completed.foldl (supported.resolvedPlayerStoreStep who nullValue history)
+    (supported.playerStore who history view)
 
 def resolvingPolicy (supported : SealedFragment G ty) (nullValue : L.Val ty)
     (window : Nat) (who : Player) (policy : CommitPolicy G who) :

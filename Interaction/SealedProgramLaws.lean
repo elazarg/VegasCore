@@ -29,6 +29,85 @@ theorem validateMessage?_cleartext_none [DecidableEq Principal] [DecidableEq Val
       ⟨id, .cleartext node value⟩ = none := by
   rfl
 
+/-- A successful acceptance identifies the rule owner, canonical handle, and
+the value already stored in that handle. -/
+theorem validateMessage?_accepted_sound [DecidableEq Principal] [DecidableEq Value]
+    (program : SealedProgram Principal) (service : IdealCommitments Principal Nat Value)
+    (events : List (Event Principal Value))
+    (message : Message Principal (Payload Principal Value)) (node : Nat)
+    (handle : CommitmentHandle Principal Nat)
+    (hvalid : program.validateMessage? service events message = some (.accepted node handle)) :
+    ∃ owner requires value,
+      program.rules[node]? = some { kind := .commit owner, requires } ∧
+        handle = (owner, node) ∧ service.lookup handle = some value := by
+  rcases message with ⟨id, payload⟩
+  cases payload with
+  | commitment submittedNode submittedHandle =>
+      cases hrule : program.rules[submittedNode]? with
+      | none => simp [validateMessage?, hrule] at hvalid
+      | some rule =>
+          cases hkind : rule.kind with
+          | reveal owner source => simp [validateMessage?, hrule, hkind] at hvalid
+          | disabled => simp [validateMessage?, hrule, hkind] at hvalid
+          | commit owner =>
+              simp only [validateMessage?, hrule, hkind] at hvalid
+              split at hvalid
+              · rename_i hchecks
+                cases hvalid
+                cases hlookup : service.lookup handle with
+                | none => simp [hlookup] at hchecks
+                | some value =>
+                    refine ⟨owner, rule.requires, value, ?_, hchecks.2.1, rfl⟩
+                    have hruleShape :
+                        rule = ({ kind := .commit owner, requires := rule.requires } :
+                          SealedRule Principal) := by
+                      cases rule
+                      simp_all
+                    rwa [← hruleShape]
+              · contradiction
+  | opening submittedNode submittedHandle claimed =>
+      cases hrule : program.rules[submittedNode]? with
+      | none => simp [validateMessage?, hrule] at hvalid
+      | some rule =>
+          cases hkind : rule.kind <;> simp [validateMessage?, hrule, hkind] at hvalid
+  | cleartext submittedNode value => simp [validateMessage?] at hvalid
+  | malformed => simp [validateMessage?] at hvalid
+
+/-- A successful opening identifies its reveal rule and the verified private
+value. This is a validator fact, independent of who submitted the packet. -/
+theorem validateMessage?_opened_sound [DecidableEq Principal] [DecidableEq Value]
+    (program : SealedProgram Principal) (service : IdealCommitments Principal Nat Value)
+    (events : List (Event Principal Value))
+    (message : Message Principal (Payload Principal Value)) (node : Nat) (value : Value)
+    (hvalid : program.validateMessage? service events message = some (.opened node value)) :
+    ∃ owner source requires,
+      program.rules[node]? = some { kind := .reveal owner source, requires } ∧
+        service.lookup (owner, source) = some value := by
+  cases message with
+  | mk id payload =>
+      cases payload with
+      | cleartext | malformed => cases hvalid
+      | commitment index handle =>
+          simp only [validateMessage?] at hvalid
+          split at hvalid <;> try contradiction
+          split at hvalid <;> try contradiction
+          split at hvalid <;> cases hvalid
+      | opening index handle claimed =>
+          simp only [validateMessage?] at hvalid
+          split at hvalid <;> try contradiction
+          rename_i rule hrule
+          split at hvalid <;> try contradiction
+          rename_i owner source hkind
+          split at hvalid <;> try contradiction
+          rename_i hchecks
+          cases hvalid
+          refine ⟨owner, source, rule.requires, ?_, ?_⟩
+          · cases rule
+            simp_all
+          · have hlookup :=
+              (IdealCommitments.verify_eq_true_iff service _).mp hchecks.2.2.2.2.2
+            simpa [hchecks.2.1] using hlookup
+
 theorem validateMessage?_opening_none_of_not_accepted
     [DecidableEq Principal] [DecidableEq Value]
     (program : SealedProgram Principal) (state : State Principal Value)

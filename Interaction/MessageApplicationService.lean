@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.MessageApplicationPolicyLaws
+import Interaction.MessageApplicationWirePolicy
 
 /-! # Bounded inclusion service for message applications
 
@@ -47,6 +48,30 @@ theorem includeFirst_service (during : Nat → Prop) :
     app.InclusionService during app.includeFirst := by
   intro history view command _ hcommand
   simp only [includeFirst, FinDist.mem_support_pure] at hcommand
+  subst command
+  cases hpending : view.pool.pending with
+  | nil => rfl
+  | cons message rest =>
+      refine ⟨message.id, message, ?_, rfl⟩
+      simp [MessagePool.lookup, hpending]
+
+/-- One concrete realization of reserved service. The supplied adaptive wire
+policy retains every unreserved opportunity, its actual history, and its view.
+The service predicate also admits non-FIFO choices at reserved opportunities. -/
+def reserveInclusion (reserved : Nat → Bool) (wire : app.WirePolicy) : app.WirePolicy :=
+  fun history view =>
+    if reserved history.length then
+      FinDist.pure (match view.pool.pending with
+        | [] => .wait
+        | message :: _ => .include message.id)
+    else wire history view
+
+theorem reserveInclusion_service (reserved : Nat → Bool) (wire : app.WirePolicy) :
+    app.InclusionService (fun turn => reserved turn = true)
+      (app.wireEnvironment (app.reserveInclusion reserved wire)) := by
+  intro history view command hreserved hcommand
+  simp only [wireEnvironment, reserveInclusion, hreserved, ↓reduceIte,
+    FinDist.map_pure, FinDist.mem_support_pure] at hcommand
   subst command
   cases hpending : view.pool.pending with
   | nil => rfl
@@ -229,6 +254,47 @@ theorem runPolicies_pending_bound (players : Principal → app.PlayerPolicy)
           have hbound := app.environment_step_pending_bound execution middle command hstep
           simp only [List.countP_cons, Invocation.isEnvironment, Bool.not_true,
             Bool.false_eq_true, ↓reduceIte]
+          omega
+
+/-- Count only reserved inclusion opportunities. Other environment calls may
+deliver, include, wait, or run application commands; none can enlarge the
+pending pool. The reservation is indexed by actual environment history. -/
+theorem inclusion_phase_pending_bound (players : Principal → app.PlayerPolicy)
+    (reserved : Nat → Bool) (environment : app.EnvironmentPolicy)
+    (hservice : app.InclusionService (fun turn => reserved turn = true) environment)
+    (count : Nat) (execution next : app.PolicyExecution)
+    (hnext : next ∈ (app.runPolicies players environment
+      (List.replicate count .environment) execution).support) :
+    next.native.pool.pending.length ≤ execution.native.pool.pending.length -
+      (List.range' execution.environmentHistory.length count).countP reserved := by
+  induction count generalizing execution with
+  | zero =>
+      simp only [List.replicate_zero, runPolicies, FinDist.mem_support_pure] at hnext
+      subst next
+      simp
+  | succ count ih =>
+      simp only [List.replicate_succ, runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
+      obtain ⟨middle, hmiddle, hnext⟩ := hnext
+      have hlength := app.runPolicies_environmentHistory_length players environment
+        [.environment] execution middle (by simpa [runPolicies] using hmiddle)
+      simp only [List.countP_cons, List.countP_nil, Invocation.isEnvironment, ↓reduceIte,
+        Nat.zero_add] at hlength
+      have htail := ih middle hnext
+      rw [hlength] at htail
+      simp only [List.range'_succ, List.countP_cons]
+      cases hreserved : reserved execution.environmentHistory.length with
+      | true =>
+          have hstep := app.inclusion_step_length players _ environment hservice
+            execution middle hreserved hmiddle
+          simp only [↓reduceIte]
+          omega
+      | false =>
+          have hstep : middle.native.pool.pending.length ≤
+              execution.native.pool.pending.length := by
+            simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+            obtain ⟨command, _, hstep⟩ := hmiddle
+            exact app.environment_step_pending_bound execution middle command hstep
+          simp only [Bool.false_eq_true, ↓reduceIte]
           omega
 
 end Interaction.MessageApplication

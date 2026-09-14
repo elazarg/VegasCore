@@ -77,9 +77,12 @@ import Interaction.SealedResolution
 import Interaction.SealedResolutionLaws
 import Interaction.SealedResolutionProgress
 import Interaction.SealedResolutionBinding
+import Interaction.SealedResolutionAccepted
+import Interaction.SealedResolutionEvents
 import Interaction.SealedResolutionRounds
 import Interaction.SealedResolutionCompletion
 import Interaction.SealedResolutionDriver
+import Interaction.SealedResolutionService
 import Interaction.SealedResolutionTermination
 import Interaction.SealedResolutionProvenance
 import Interaction.SealedResolutionPolicy

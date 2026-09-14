@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedResolutionPolicy
+import Vegas.Compile.SealedResolvedReads
 import VegasTests.SealedPolicy
 
 /-! # Compiled policies continue after nullable resolution
@@ -59,6 +60,23 @@ def secondBuild := decisionSiteState secondSite source.core.fresh SealedPolicy.i
 def secondGuard : EventGuard simpleExpr :=
   eventGuardOf secondBuild 0
     (Expr.nullableCommitGuard (x := 2) (b := .bool) (Expr.constBool true))
+
+/-- The general native-invariant theorem applies to a checked source after
+its first commitment and public reveal have defaulted. No source decoding is
+assumed at this state. -/
+theorem missing_commit_reads_available :
+    ∃ reads, ReadEnv.ofStoreExec?
+      (supported.resolvedPlayerStore 0 none missingCommit.visible.timeouts []
+        (runtime.eventView (view missingCommit))) secondGuard.choiceReads = some reads := by
+  let execution := MessageApplication.PolicyExecution.initial app
+    (MessageApplication.State.initial app missingCommit)
+  have hinvariant : runtime.EventInvariant execution.native.application :=
+    (SealedResolution.EventInvariant.initial (runtime := runtime)).tick.tick
+  have hmemory : runtime.RegistrationMemory execution := by
+    intro owner slot
+    rfl
+  exact supported.resolvedPlayerStore_reads_of_ready none 2 0 execution hinvariant hmemory
+    (node 2) secondGuard rfl (by decide)
 
 private theorem second_kernel (law : FinDist Value)
     (reads : ReadEnv simpleExpr secondGuard.choiceReads) :
