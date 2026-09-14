@@ -111,10 +111,19 @@ source decisions. Generated honest submissions name their original source
 sites, and their actual caches retain their assigned source values.
 `extractedCandidateSourceRun_registration_kernel` therefore identifies the
 fresh honest draw with the original source kernel without an input-agreement
-premise. The remaining probability argument must extend this comparison to
-the normalized reference realizations used for summing cylinders, account for
-each honest draw once, and establish the actual native marginal. Kernel
-agreement alone is not that joint law.
+premise. Source likelihood uses a host-independent `recordedChoiceRestriction`:
+a partial map of owner/site coordinates fixes selected choices, while all other
+kernels remain unchanged. The candidate catalog supplies its openable honest
+source slots to this map. This projection is only a source-event constraint;
+fresh and unopenable candidates remain distinct in the native execution.
+`restrictedCandidateSourceRun_replay_prefix` proves that every normalized
+reference realization reproduces the full candidate prefix.
+`extractedCandidateSourceRun_replay_likelihood` computes the source prefix mass
+as the expected forced-choice likelihood, including zero-mass cylinders and
+dependent honest choices. Both hosts use the same source probability transfer.
+The remaining probability argument must identify each original source factor
+with the native draw factor, account for each honest preparation once, and
+establish the actual native marginal. Kernel agreement alone is not that joint law.
 
 Candidate handles are owner-scoped identifiers. A pending handle can acquire
 its private value until acceptance; an unprepared accepted handle becomes

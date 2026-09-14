@@ -132,28 +132,23 @@ theorem candidateHandle_commitment_fixed
         · rw [hpayload] at hopening
           contradiction
 
-/-- Arbitrary player and environment policies preserve the exact meaning of a
-handle that was fixed at the start of the supplied policy-run suffix. -/
-theorem runPolicies_candidate_lookup_of_not_fresh
+/-- Every native action suffix preserves an already fixed candidate meaning. -/
+theorem run_candidate_lookup_of_not_fresh
     (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.candidateApplication.PlayerPolicy)
-    (environment : runtime.candidateApplication.EnvironmentPolicy)
-    (schedule : List (@Invocation Principal))
-    (execution next : runtime.candidateApplication.PolicyExecution)
+    (actions : List runtime.candidateApplication.Action)
+    (initial next : runtime.candidateApplication.State)
     (handle : CommitmentHandle Principal Nat)
-    (hfixed : execution.native.application.service.lookup handle ≠ .fresh)
-    (hnext : next ∈ (runtime.candidateApplication.runPolicies
-      players environment schedule execution).support) :
-    next.native.application.service.lookup handle =
-      execution.native.application.service.lookup handle := by
-  let original := execution.native.application.service.lookup handle
+    (hfixed : initial.application.service.lookup handle ≠ .fresh)
+    (hnext : next ∈ (runtime.candidateApplication.run actions initial).support) :
+    next.application.service.lookup handle = initial.application.service.lookup handle := by
+  let original := initial.application.service.lookup handle
   let invariant := fun state : ApplicationState Principal Value
       (CommitmentCandidates Principal Nat Value) => state.service.lookup handle = original
-  apply runtime.candidateApplication.runPolicies_application_invariant invariant
+  apply runtime.candidateApplication.run_application_invariant invariant
     (fun state owner command hinvariant => ?_)
     (fun state message result hinvariant hresult => ?_)
     (fun state command result hinvariant hresult => ?_)
-    players environment schedule execution next rfl hnext
+    initial next actions rfl hnext
   · change (state.service.prepare owner command.down.1 command.down.2).lookup handle = original
     rw [state.service.lookup_prepare_eq_of_not_fresh handle owner command.down.1 command.down.2]
     · exact hinvariant
@@ -170,6 +165,25 @@ theorem runPolicies_candidate_lookup_of_not_fresh
       at hresult
     subst result
     exact hinvariant
+
+/-- Arbitrary player and environment policies preserve the exact meaning of a
+handle that was fixed at the start of the supplied policy-run suffix. -/
+theorem runPolicies_candidate_lookup_of_not_fresh
+    (runtime : SealedResolution Principal Value)
+    (players : Principal → runtime.candidateApplication.PlayerPolicy)
+    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal))
+    (execution next : runtime.candidateApplication.PolicyExecution)
+    (handle : CommitmentHandle Principal Nat)
+    (hfixed : execution.native.application.service.lookup handle ≠ .fresh)
+    (hnext : next ∈ (runtime.candidateApplication.runPolicies
+      players environment schedule execution).support) :
+    next.native.application.service.lookup handle =
+      execution.native.application.service.lookup handle := by
+  obtain ⟨actions, _htrace, hnative⟩ := runtime.candidateApplication.runPolicies_native_support
+    players environment schedule execution next hnext
+  exact runtime.run_candidate_lookup_of_not_fresh actions execution.native next.native
+    handle hfixed hnative
 
 /-- Consequently every claimed-value verification result is fixed throughout
 the same arbitrary policy-run suffix. -/

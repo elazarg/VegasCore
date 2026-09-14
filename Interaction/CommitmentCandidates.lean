@@ -29,6 +29,17 @@ inductive CommitmentCandidate (Value : Type uValue) where
   | unopenable
   deriving DecidableEq
 
+/-- Extract an opening for proof-facing value constraints. Absence here does
+not identify fresh and unopenable candidates operationally. -/
+def CommitmentCandidate.opening? {Value : Type uValue} : CommitmentCandidate Value → Option Value
+  | .openable value => some value
+  | .fresh | .unopenable => none
+
+@[simp] theorem CommitmentCandidate.opening?_eq_some_iff {Value : Type uValue}
+    (candidate : CommitmentCandidate Value) (value : Value) :
+    candidate.opening? = some value ↔ candidate = .openable value := by
+  cases candidate <;> simp [opening?]
+
 /-- Owner/slot-indexed meanings for commitment candidates. -/
 structure CommitmentCandidates (Principal : Type uPrincipal) (Slot : Type uSlot)
     (Value : Type uValue) where
@@ -180,6 +191,40 @@ theorem verify_accept [DecidableEq Principal] [DecidableEq Slot] [DecidableEq Va
   · subst queried
     cases hlookup : state.lookup accepted <;>
       simp [lookup_accept_self, hlookup]
+  · rw [state.lookup_accept_other accepted queried heq]
+
+/-- An openable value after preparation was either already present or was
+supplied by this exact owner/slot preparation. -/
+theorem lookup_prepare_openable_origin [DecidableEq Principal] [DecidableEq Slot]
+    (state : CommitmentCandidates Principal Slot Value)
+    (owner : Principal) (slot : Slot) (submitted : Value)
+    (handle : CommitmentHandle Principal Slot) (value : Value)
+    (hlookup : (state.prepare owner slot submitted).lookup handle = .openable value) :
+    state.lookup handle = .openable value ∨ handle = (owner, slot) ∧ submitted = value := by
+  by_cases heq : handle = (owner, slot)
+  · subst handle
+    rw [lookup_prepare_self] at hlookup
+    cases hprior : state.lookup (owner, slot) with
+    | fresh =>
+        simp only [hprior, CommitmentCandidate.openable.injEq] at hlookup
+        exact Or.inr ⟨rfl, hlookup⟩
+    | openable prior =>
+        simp only [hprior, CommitmentCandidate.openable.injEq] at hlookup
+        exact Or.inl (congrArg CommitmentCandidate.openable hlookup)
+    | unopenable => simp only [hprior] at hlookup; contradiction
+  · exact Or.inl ((state.lookup_prepare_other owner slot submitted handle heq).symm.trans hlookup)
+
+/-- Acceptance creates no opening, including when it makes a fresh candidate
+permanently unopenable. -/
+theorem lookup_accept_openable_iff [DecidableEq Principal] [DecidableEq Slot]
+    (state : CommitmentCandidates Principal Slot Value)
+    (accepted queried : CommitmentHandle Principal Slot) (value : Value) :
+    (state.accept accepted).lookup queried = .openable value ↔
+      state.lookup queried = .openable value := by
+  by_cases heq : queried = accepted
+  · subst queried
+    rw [lookup_accept_self]
+    cases state.lookup accepted <;> simp
   · rw [state.lookup_accept_other accepted queried heq]
 
 /-- Preparing a fresh handle and then accepting it retains its opening. -/

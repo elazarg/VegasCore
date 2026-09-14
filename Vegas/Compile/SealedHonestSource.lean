@@ -31,7 +31,7 @@ theorem sourceRealization_registered (selected : Player → Bool)
     (profile : SourceBehavioralProfile source.core.prog) (fallback : L.Val ty)
     (cfg : ReachableConfig (compile source.core).graph)
     (hcfg : cfg ∈ (source.sourceRealization
-      ((compilation.registrationRestriction selected service).apply profile)).support)
+      ((compilation.recordedChoiceRestriction selected service.lookup).apply profile)).support)
     (who : Player) (hselected : selected who = true)
     (node : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
     (hsem : ((compile source.core).graph.nodeRow node).sem = .commit who guard)
@@ -45,9 +45,9 @@ theorem sourceRealization_registered (selected : Player → Bool)
   change choice ∈
     (compileSourcePolicy source.core.prog source.core.fresh
       (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
-      _ who ((compilation.registrationRestriction selected service).apply profile who)
+      _ who ((compilation.recordedChoiceRestriction selected service.lookup).apply profile who)
       node guard hsem reads).support at hchoice
-  rw [compilation.compile_registrationRestriction selected service profile who node guard
+  rw [compilation.compile_recordedChoiceRestriction selected service.lookup profile who node guard
     hsem reads, if_pos hselected, hlookup] at hchoice
   simp only [SealedFragment.valuePolicy, FinDist.mem_support_pure] at hchoice
   subst choice

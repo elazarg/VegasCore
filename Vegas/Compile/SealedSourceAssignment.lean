@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedSourceRealization
+import Vegas.Compile.SealedSourceChoices
 
 /-! # Source realizations of every honest assignment
 
@@ -21,13 +22,6 @@ open GameTheory GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 variable {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 variable (compilation : SealedCompilation source ty)
-
-/-- Legal source policies that choose the specified value at each commitment.
-The assignment is proof data, not an input to the compiled native adversary. -/
-def valueSourceProfile (values : Fin (compile source.core).graph.nodeCount → L.Val ty) :
-    SourceBehavioralProfile source.core.prog :=
-  fun who => backtranslateCommitPolicy source.core who
-    (compilation.supported.valuePolicy values who)
 
 variable (nullValue : L.Val ty) (window : Nat) (focal : Player)
 variable (deviator :

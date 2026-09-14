@@ -90,8 +90,8 @@ and environment policies: each honest owner's command cache agrees with its
 candidate catalog, including across delayed delivery, replay, and timeouts.
 Before timeout, `runPolicies_candidate_openings` ties every successful opening
 to its actual accepted handle and immutable value; acceptance alone need not
-imply openability. The shared event-value read reconstruction then supplies
-`candidate_registration_kernel` identifies the local fresh-slot draw from
+imply openability. Shared event-value read reconstruction lets
+`candidate_registration_kernel` identify the local fresh-slot draw from
 event-value agreement. `extractedCandidateSourceRun_accepted` discharges that
 agreement at every checkpoint of the pre-timeout replay. The public log selects
 one authenticated handle per source site; its acceptance-time meaning equals
@@ -104,6 +104,20 @@ realization's declared inputs. No cache, accepted-value, or read-environment
 agreement premise remains. This is a local kernel theorem on source-supported
 replay; the joint probability law with the actual native execution is still
 unproved.
+
+`candidateReplay_prefix_eq_iff` characterizes a complete replay prefix by its
+recorded honest preparations, retaining pending traffic, competing candidates,
+and unopenable acceptances. `candidateReplay_cylinder_probability` computes
+its mass under any correlated assignment law. On the written-source side,
+`extractedCandidateSourceRun_replay_likelihood` expresses that prefix's mass
+as the expected original-choice likelihood under a normalized reference source
+execution. `restrictedCandidateSourceRun_replay_prefix` proves that every
+reference realization reproduces the prefix, including when the original
+profile assigns it probability zero. Both hosts use the same
+`recordedChoiceRestriction` and source event/probability calculation.
+The remaining comparison must identify this source likelihood with the actual
+native runner's probabilities. Candidate-round completion under arbitrary
+deviations must also be derived; the honest completion theorem does not supply it.
 
 ## End-to-end target
 
@@ -304,7 +318,7 @@ ordinary source profiles and probability queries, not new source constructs
 or runtime layers. The reference changes honest kernels for the summation
 only; it is not the source deviation or the source marginal of the coupling.
 
-`SealedCompilation.registrationRestriction` constructs this reference profile
+`SealedCompilation.recordedChoiceRestriction` constructs this reference profile
 from the prefix's private commitment service, fixing only occupied honest source
 slots. Unoccupied slots retain their original kernels, the focal policy is
 unchanged, and recompilation gives precisely the corresponding graph kernels.

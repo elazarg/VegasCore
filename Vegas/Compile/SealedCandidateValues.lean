@@ -3,6 +3,7 @@
 import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateReadBound
 import Interaction.SealedCandidateAcceptance
+import Interaction.SealedCandidateProvenance
 
 /-! # Honest candidate values under arbitrary native deviations
 
@@ -62,6 +63,54 @@ variable (deviator :
 variable (environment : MessageApplication.EnvironmentPolicy
   (supported.resolvingRuntime nullValue window).candidateApplication)
 
+/-- Recorded honest preparations carry the assigned value at a real source
+commitment node. Rejected traffic and candidate acceptance cannot manufacture
+these proof-facing private-command records. -/
+theorem runPolicies_candidateValues_registration
+    (schedule : List (@Invocation Player))
+    (execution : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution)
+    (hactual : execution ∈
+      ((supported.resolvingRuntime nullValue window).candidateApplication.runPolicies
+        (supported.candidateValuePlayers nullValue window values focal deviator)
+        environment schedule (PolicyExecution.initial _ (State.initial _
+          (supported.resolvingRuntime nullValue window).candidateInitial))).support)
+    (who : Player) (hwho : who ≠ focal) (node : Fin G.nodeCount) (value : L.Val ty)
+    (hrecord : (.privateCommand who ⟨(node.val, value)⟩ :
+      (supported.resolvingRuntime nullValue window).candidateApplication.Action) ∈
+        execution.nativeTrace) :
+    value = values node ∧ ∃ guard, (G.nodeRow node).sem = .commit who guard := by
+  let runtime := supported.resolvingRuntime nullValue window
+  have hproperty := runtime.candidateApplication.runPolicies_action_property
+    (fun action => ∀ owner (index : Fin G.nodeCount) (registered : L.Val ty), owner ≠ focal →
+      action = .privateCommand owner ⟨(index.val, registered)⟩ →
+        registered = values index ∧ ∃ guard, (G.nodeRow index).sem = .commit owner guard)
+    (supported.candidateValuePlayers nullValue window values focal deviator) environment (by
+      intro actor history view command hchosen action ha owner index registered howner heq
+      rw [heq] at ha
+      cases command with
+      | privateCommand request =>
+          simp only [PlayerCommand.toAction, Option.some.injEq,
+            MessageInterface.Action.privateCommand.injEq] at ha
+          obtain ⟨rfl, rfl⟩ := ha
+          rw [candidateValuePlayers, Profile.update_of_ne _ _ howner] at hchosen
+          obtain ⟨actual, hindex, hvalue, guard, hsem⟩ :=
+            supported.selected_valuePolicy_registration values actor view.application.timeouts
+              (runtime.eventHistory (runtime.registeredPlayerHistory history))
+              (runtime.eventView (runtime.registeredPlayerView view)) _ index.val registered hchosen
+          have hactual : actual = index := Fin.ext hindex.symm
+          exact ⟨by simpa only [hactual] using hvalue,
+            guard, by simpa only [hactual] using hsem⟩
+      | submit payload | replay id | wait =>
+          simp only [PlayerCommand.toAction, Option.some.injEq] at ha
+          cases ha) (by
+      intro history view command _hchosen action ha owner index registered _howner heq
+      rw [heq] at ha
+      cases command <;>
+        simp only [EnvironmentPolicyCommand.toAction, Option.some.injEq] at ha <;> cases ha)
+    schedule _ execution (by simp only [PolicyExecution.initial, List.not_mem_nil,
+      false_implies, implies_true]) hactual
+  exact hproperty _ hrecord who node value hwho rfl
+
 /-- The actual assigned-value policy leaves only its assigned value in each
 honest candidate slot. This includes execution after earlier timeouts. -/
 theorem runPolicies_candidateValues_lookup
@@ -109,6 +158,44 @@ theorem runPolicies_candidateValues_lookup
       (runtime.eventView (runtime.registeredPlayerView view)) _ node.val stored hchosen
   have hnode : actual = node := Fin.ext hindex.symm
   simpa only [hnode] using hvalue
+
+/-- Each honest preparation recorded by a prefix leaves its assigned opening
+in that prefix's catalog. Freshness is impossible after preparation, while
+the generated owner's memory excludes an unopenable result. -/
+theorem runPolicies_candidateValues_registration_lookup
+    (schedule : List (@Invocation Player))
+    (execution : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution)
+    (hactual : execution ∈
+      ((supported.resolvingRuntime nullValue window).candidateApplication.runPolicies
+        (supported.candidateValuePlayers nullValue window values focal deviator)
+        environment schedule (PolicyExecution.initial _ (State.initial _
+          (supported.resolvingRuntime nullValue window).candidateInitial))).support)
+    (who : Player) (hwho : who ≠ focal) (node : Fin G.nodeCount) (value : L.Val ty)
+    (hrecord : (.privateCommand who ⟨(node.val, value)⟩ :
+      (supported.resolvingRuntime nullValue window).candidateApplication.Action) ∈
+        execution.nativeTrace) :
+    execution.native.application.service.lookup (who, node.val) = .openable (values node) ∧
+      ∃ guard, (G.nodeRow node).sem = .commit who guard := by
+  let runtime := supported.resolvingRuntime nullValue window
+  have hfixed := runtime.runPolicies_candidate_preparation_fixed _ _ schedule execution
+    hactual who node.val value hrecord
+  have hmemory := supported.candidatePolicy_memory nullValue window who
+    (supported.valuePolicy values who)
+    (supported.candidateValuePlayers nullValue window values focal deviator) environment
+    (by rw [candidateValuePlayers, Profile.update_of_ne _ _ hwho]) schedule execution hactual
+  have hslot := hmemory.memory node.val
+  generalize (runtime.program.registrationEncoding node.val).cachedValue
+    runtime.candidateApplication (execution.principalHistory who) = cached at hslot
+  cases cached with
+  | none =>
+      simp only [Option.map_none, Option.getD_none] at hslot
+      exact (hfixed hslot).elim
+  | some stored =>
+      simp only [Option.map_some, Option.getD_some] at hslot
+      have hvalue := supported.runPolicies_candidateValues_lookup nullValue window values focal
+        deviator environment schedule execution hactual who hwho node stored hslot
+      exact ⟨hvalue ▸ hslot, (supported.runPolicies_candidateValues_registration nullValue window
+        values focal deviator environment schedule execution hactual who hwho node value hrecord).2⟩
 
 end Vegas.EventGraph.SealedFragment
 

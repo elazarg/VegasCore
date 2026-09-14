@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedSourceAssignment
-import Vegas.Core.SourceRestriction
+import Vegas.Compile.SealedSourceChoices
 
 /-! # Source restrictions from occupied native commitment slots
 
@@ -22,195 +22,6 @@ open GameTheory GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {source : WFProgram Player L} {ty : L.Ty}
 variable (compilation : SealedCompilation source ty)
-
-private theorem valueSourceProfile_pure (value : L.Val ty) (who : Player)
-    {Δ name choiceTy guard}
-    (site : SourceDecisionSite who source.core.prog Δ name choiceTy guard)
-    (visible : Env L.Val (eraseVCtx (viewVCtx who Δ))) :
-    ∃ choice, compilation.valueSourceProfile (fun _ => value) who site visible =
-      FinDist.pure choice := by
-  simp only [valueSourceProfile, backtranslateCommitPolicy, backtranslateSourceDecision,
-    SealedFragment.valuePolicy, FinDist.map_pure]
-  exact ⟨_, rfl⟩
-
-private def sourceChoice (value : L.Val ty) (who : Player)
-    {Δ name choiceTy guard}
-    (site : SourceDecisionSite who source.core.prog Δ name choiceTy guard)
-    (visible : Env L.Val (eraseVCtx (viewVCtx who Δ))) :
-    {chosen : L.Val choiceTy // evalGuard guard chosen visible = true} :=
-  Classical.choose (compilation.valueSourceProfile_pure value who site visible)
-
-private theorem sourceChoice_law (value : L.Val ty) (who : Player)
-    {Δ name choiceTy guard}
-    (site : SourceDecisionSite who source.core.prog Δ name choiceTy guard)
-    (visible : Env L.Val (eraseVCtx (viewVCtx who Δ))) :
-    FinDist.pure (compilation.sourceChoice value who site visible) =
-      compilation.valueSourceProfile (fun _ => value) who site visible :=
-  (Classical.choose_spec (compilation.valueSourceProfile_pure value who site visible)).symm
-
-private theorem sourceChoice_value (value : L.Val ty) (who : Player)
-    {Δ name choiceTy guard}
-    (site : SourceDecisionSite who source.core.prog Δ name choiceTy guard)
-    (visible : Env L.Val (eraseVCtx (viewVCtx who Δ))) :
-    (⟨choiceTy, (compilation.sourceChoice value who site visible).1⟩ : TypedValue L) =
-      ⟨ty, value⟩ := by
-  have hlaw := congrArg (FinDist.map fun choice => (⟨choiceTy, choice.1⟩ : TypedValue L))
-    (compilation.sourceChoice_law value who site visible)
-  simp only [valueSourceProfile, backtranslateCommitPolicy, backtranslateSourceDecision,
-    SealedFragment.valuePolicy, FinDist.map_pure] at hlaw
-  have heq := FinDist.mem_support_pure.mp (hlaw ▸ FinDist.mem_support_pure.mpr rfl)
-  have hcast {left right : L.Ty} (hty : left = right) (chosen : L.Val right) :
-      (⟨left, cast (congrArg L.Val hty.symm) chosen⟩ : TypedValue L) = ⟨right, chosen⟩ := by
-    cases hty
-    rfl
-  let state := BuildState.fromInitial
-    (initialState source.core.Γ source.core.env source.core.wctx)
-  obtain ⟨node, _, hrow⟩ := decisionSite_compiledRow site source.core.fresh state
-  have hsem := congrArg EventNode.sem (Option.some.inj
-    (((compile source.core).graph.nodes_get?_nodeRow node).symm.trans hrow))
-  exact heq.trans (hcast (compilation.supported.commitType node who
-    (eventGuardOf (decisionSiteState site source.core.fresh state) who guard) hsem) value)
-
-/-- Fix exactly the occupied source slots belonging to selected owners.
-Out-of-program slots and unselected owners cannot constrain a source decision.
-The service is proof-facing snapshot data, not an observation supplied to a player. -/
-def registrationRestriction (selected : Player → Bool)
-    (service : IdealCommitments Player Nat (L.Val ty)) :
-    SourceChoiceRestriction source.core.prog :=
-  fun who _ _ _ _ site visible =>
-    if selected who then
-      (service.lookup (who, site.depth)).map fun value =>
-        compilation.sourceChoice value who site visible
-    else none
-
-/-- The legal source choice selected by an occupied honest slot retains that
-slot's value and type, independently of the source view used to justify it. -/
-theorem registrationRestriction_fixed_value (selected : Player → Bool)
-    (service : IdealCommitments Player Nat (L.Val ty)) (who : Player)
-    (hselected : selected who = true)
-    {Δ name choiceTy guard}
-    (site : SourceDecisionSite who source.core.prog Δ name choiceTy guard)
-    (visible : Env L.Val (eraseVCtx (viewVCtx who Δ)))
-    (value : L.Val ty) (hlookup : service.lookup (who, site.depth) = some value)
-    (fixed : {chosen : L.Val choiceTy // evalGuard guard chosen visible = true})
-    (hfixed : compilation.registrationRestriction selected service who site visible = some fixed) :
-    (⟨choiceTy, fixed.1⟩ : TypedValue L) = ⟨ty, value⟩ := by
-  simp only [registrationRestriction, hselected, ↓reduceIte, hlookup, Option.map_some,
-    Option.some.injEq] at hfixed
-  subst fixed
-  exact compilation.sourceChoice_value value who site visible
-
-/-- A source outcome satisfies the native registration restriction exactly
-when its recorded honest source choices equal the occupied service values. -/
-theorem registrationRestriction_allows_iff_recorded (selected : Player → Bool)
-    (service : IdealCommitments Player Nat (L.Val ty))
-    (profile : SourceBehavioralProfile source.core.prog)
-    (final : VEnv L (sourceTerminalCtx source.core.prog))
-    (hfinal : final ∈ (denoteSource source.core.prog profile source.core.env).support) :
-    (compilation.registrationRestriction selected service).Allows source.core.env final ↔
-      ∀ who {Δ name choiceTy guard}
-        (site : SourceDecisionSite who source.core.prog Δ name choiceTy guard),
-        selected who = true →
-        ∀ value, service.lookup (who, site.depth) = some value →
-          (⟨choiceTy, (site.recorded final).get .here⟩ : TypedValue L) = ⟨ty, value⟩ := by
-  rw [SourceChoiceRestriction.allows_iff_recorded source.core.prog profile _ _ _ hfinal]
-  constructor
-  · intro h who Δ name choiceTy guard site hselected value hlookup
-    have hchoice := h who site
-      (compilation.sourceChoice value who site ((site.recorded final).tail.toView who).eraseEnv)
-      (by simp only [registrationRestriction, hselected, ↓reduceIte, hlookup, Option.map_some])
-    exact (congrArg (fun chosen => (⟨choiceTy, chosen⟩ : TypedValue L)) hchoice).trans
-      (compilation.sourceChoice_value value who site _)
-  · intro h who Δ name choiceTy guard site fixed hfixed
-    cases hselected : selected who with
-    | false =>
-      simp only [registrationRestriction, hselected, Bool.false_eq_true, ↓reduceIte] at hfixed
-      cases hfixed
-    | true =>
-      cases hlookup : service.lookup (who, site.depth) with
-      | none =>
-          simp only [registrationRestriction, hselected, ↓reduceIte, hlookup,
-            Option.map_none] at hfixed
-          cases hfixed
-      | some value =>
-          simp only [registrationRestriction, hselected, ↓reduceIte, hlookup, Option.map_some,
-            Option.some.injEq] at hfixed
-          subst fixed
-          have heq := (h who site hselected value hlookup).trans
-            (compilation.sourceChoice_value value who site
-              ((site.recorded final).tail.toView who).eraseEnv).symm
-          exact eq_of_heq (TypedValue.mk.inj heq).2
-
-/-- Applying the reference restriction commutes with replacing the focal
-policy. In particular it never alters the extracted source deviator. -/
-theorem registrationRestriction_apply_update (selected : Player → Bool) (focal : Player)
-    (hunselected : selected focal = false)
-    (service : IdealCommitments Player Nat (L.Val ty))
-    (profile : SourceBehavioralProfile source.core.prog)
-    (replacement : SourceBehavioralPolicy source.core.prog focal) :
-    (compilation.registrationRestriction selected service).apply
-        (Profile.update (sig := sourceGameSignature source.core.prog) profile focal replacement) =
-      Profile.update (sig := sourceGameSignature source.core.prog)
-        ((compilation.registrationRestriction selected service).apply profile) focal
-        replacement := by
-  funext who Δ name choiceTy guard site visible
-  by_cases hwho : who = focal
-  · subst who
-    simp only [SourceChoiceRestriction.apply, registrationRestriction, hunselected,
-      Bool.false_eq_true, ↓reduceIte, Profile.update_same]
-  · simp only [SourceChoiceRestriction.apply, registrationRestriction,
-      Profile.update_of_ne _ _ hwho]
-
-/-- The reference source profile recompiles to the original graph kernel at
-unoccupied or focal slots, and to the recorded value at occupied honest slots. -/
-theorem compile_registrationRestriction (selected : Player → Bool)
-    (service : IdealCommitments Player Nat (L.Val ty))
-    (profile : SourceBehavioralProfile source.core.prog) (who : Player)
-    (node : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
-    (hsem : ((compile source.core).graph.nodeRow node).sem = .commit who guard)
-    (reads : ReadEnv L guard.choiceReads) :
-    compileSourcePolicy source.core.prog source.core.fresh
-        (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
-        rfl who ((compilation.registrationRestriction selected service).apply profile who)
-        node guard hsem reads =
-      match (if selected who then service.lookup (who, node.val) else none) with
-      | none => compileSourcePolicy source.core.prog source.core.fresh
-          (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
-          rfl who (profile who) node guard hsem reads
-      | some value =>
-          compilation.supported.valuePolicy (fun _ => value) who node guard hsem reads := by
-  cases hselected : selected who with
-  | false =>
-    simp only [Bool.false_eq_true, ↓reduceIte]
-    apply compileSourcePolicy_congr_at_depth
-    intro Δ name choiceTy sourceGuard site _
-    funext visible
-    simp only [SourceChoiceRestriction.apply, registrationRestriction, hselected,
-      Bool.false_eq_true, ↓reduceIte]
-  | true =>
-    simp only [↓reduceIte]
-    cases hlookup : service.lookup (who, node.val) with
-    | none =>
-        apply compileSourcePolicy_congr_at_depth
-        intro Δ name choiceTy sourceGuard site hdepth
-        funext visible
-        simp only [SourceChoiceRestriction.apply, registrationRestriction, hselected, ↓reduceIte,
-          hdepth, hlookup, Option.map_none]
-    | some value =>
-        have hpolicy := compileSourcePolicy_congr_at_depth source.core.prog source.core.fresh
-          (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
-          rfl who ((compilation.registrationRestriction selected service).apply profile who)
-          (compilation.valueSourceProfile (fun _ => value) who) node guard hsem reads
-          (by
-            intro Δ name choiceTy sourceGuard site hdepth
-            funext visible
-            simp only [SourceChoiceRestriction.apply, registrationRestriction, hselected,
-              ↓reduceIte,
-              hdepth, hlookup, Option.map_some]
-            exact compilation.sourceChoice_law value who site visible)
-        exact hpolicy.trans (congrFun (congrFun (congrFun (congrFun
-          (compile_backtranslateCommitPolicy source.core who
-            (compilation.supported.valuePolicy (fun _ => value) who)) node) guard) hsem) reads)
 
 variable [DecidableEq (L.Val ty)] [Fintype Player]
 variable (nullValue : L.Val ty) (window : Nat) (focal : Player)
@@ -233,16 +44,17 @@ theorem restrictedSourceRun_source
     (service : IdealCommitments Player Nat (L.Val ty))
     (profile : SourceBehavioralProfile source.core.prog) :
     (compilation.extractedSourceRun nullValue window focal deviator environment schedule fallback
-      ((compilation.registrationRestriction (fun who => decide (who ≠ focal)) service).apply
-        profile)).map
+      ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+        service.lookup).apply profile)).map
         (observeSourceOutcome source.core) =
       (denoteSource source.core.prog
-        ((compilation.registrationRestriction (fun who => decide (who ≠ focal)) service).apply
+        ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+          service.lookup).apply
           (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
             (compilation.extractedSourcePolicy nullValue window focal deviator environment
               schedule fallback))) source.core.env).map some := by
   rw [compilation.extractedSourceRun_source,
-    compilation.registrationRestriction_apply_update _ focal (by simp)]
+    compilation.recordedChoiceRestriction_apply_update _ focal (by simp)]
 
 /-- Every reference source run retains all occupied honest source slots from
 the specified native service. Unrecorded honest choices remain probabilistic. -/
@@ -252,8 +64,8 @@ theorem restrictedSourceRun_registered
     (cfg : ReachableConfig (compile source.core).graph)
     (hcfg : cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment
       schedule fallback
-        ((compilation.registrationRestriction (fun who => decide (who ≠ focal)) service).apply
-          profile)).support)
+        ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+          service.lookup).apply profile)).support)
     (who : Player) (hwho : who ≠ focal)
     (node : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
     (hsem : ((compile source.core).graph.nodeRow node).sem = .commit who guard)
@@ -266,7 +78,8 @@ theorem restrictedSourceRun_registered
     (compile source.core).graph.nodeOrder cfg hcfg
   obtain ⟨reads, _, choice, hchoice, hvalue⟩ := hchoices node (hterminal node) who guard hsem
   rw [Profile.update_of_ne _ _ hwho,
-    compilation.compile_registrationRestriction (fun owner => decide (owner ≠ focal)) service
+    compilation.compile_recordedChoiceRestriction (fun owner => decide (owner ≠ focal))
+      service.lookup
       profile who node guard hsem reads] at hchoice
   have hselected : decide (who ≠ focal) = true := by simp [hwho]
   rw [hselected] at hchoice
@@ -291,8 +104,8 @@ theorem restrictedSourceRun_replay_prefix
     let stopped := (compilation.supported.resolvingReplay nullValue window reference focal
       deviator environment schedule).prefixThrough release
     ∀ cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
-      fallback ((compilation.registrationRestriction (fun who => decide (who ≠ focal))
-        stopped.last.native.application.service).apply profile)).support,
+      fallback ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+        stopped.last.native.application.service.lookup).apply profile)).support,
       (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback) focal
         deviator environment schedule).prefixThrough release = stopped := by
   intro stopped cfg hcfg
@@ -322,8 +135,8 @@ theorem restrictedSourceRun_registration_kernel
         runtime.messageApplication.PolicyExecution =>
           !execution.native.application.visible.timeouts.isEmpty)
     ∀ cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
-      fallback ((compilation.registrationRestriction (fun who => decide (who ≠ focal))
-        tracePrefix.last.native.application.service).apply profile)).support,
+      fallback ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+        tracePrefix.last.native.application.service.lookup).apply profile)).support,
     let stopped := tracePrefix.firstRelease release
     stopped.native.application.visible.timeouts = [] →
     ∀ who, who ≠ focal → ∀ slot value,
@@ -378,8 +191,8 @@ theorem restrictedSourceRun_registration_probability
         runtime.messageApplication.PolicyExecution =>
           !execution.native.application.visible.timeouts.isEmpty)
     ∀ cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
-      fallback ((compilation.registrationRestriction (fun who => decide (who ≠ focal))
-        tracePrefix.last.native.application.service).apply profile)).support,
+      fallback ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+        tracePrefix.last.native.application.service.lookup).apply profile)).support,
     let stopped := tracePrefix.firstRelease release
     stopped.native.application.visible.timeouts = [] →
     ∀ who, who ≠ focal → ∀ slot value,
@@ -433,11 +246,6 @@ theorem restrictedSourceRun_registration_probability
     rw [h]
 
 end Vegas.SealedCompilation
-
-/-- info: 'Vegas.SealedCompilation.compile_registrationRestriction' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.SealedCompilation.compile_registrationRestriction
 
 /-- info: 'Vegas.SealedCompilation.restrictedSourceRun_registered' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

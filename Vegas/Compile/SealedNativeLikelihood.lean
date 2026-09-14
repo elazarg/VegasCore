@@ -77,8 +77,8 @@ theorem replay_registration_factor
   let fallback := nullValue
   intro runtime players env stop trace stopped before initial who slot value next after
     hwho hbefore hcommand hnext hafter hstop
-  let restricted := (compilation.registrationRestriction (fun who => decide (who ≠ focal))
-    stopped.last.native.application.service).apply profile
+  let restricted := (compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+    stopped.last.native.application.service.lookup).apply profile
   obtain ⟨cfg, hcfg⟩ := (compilation.extractedSourceRun nullValue window focal deviator environment
     schedule fallback restricted).support_nonempty
   have hterminal := compilation.extractedSourceRun_terminal nullValue window focal deviator

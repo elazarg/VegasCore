@@ -73,8 +73,8 @@ theorem assigned_registration_factor
   let fallback := nullValue
   intro runtime players env stop trace stopped before initial who slot value next after
     hbefore hcommand hnext hafter hstop
-  let restricted := (compilation.registrationRestriction (fun _ => true)
-    stopped.last.native.application.service).apply profile
+  let restricted := (compilation.recordedChoiceRestriction (fun _ => true)
+    stopped.last.native.application.service.lookup).apply profile
   obtain ⟨cfg, hcfg⟩ := (source.sourceRealization restricted).support_nonempty
   have hterminal := source.sourceRealization_terminal restricted cfg hcfg
   have hclear : initial.native.application.visible.timeouts = [] := by

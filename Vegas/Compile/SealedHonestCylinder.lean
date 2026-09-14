@@ -43,8 +43,8 @@ theorem sourceRealization_restricted_replay
     let stopped := (compilation.supported.resolvingAssignedReplay nullValue window reference
       environment schedule).prefixThrough release
     ∀ cfg ∈ (source.sourceRealization
-      ((compilation.registrationRestriction (fun _ => true)
-        stopped.last.native.application.service).apply profile)).support,
+      ((compilation.recordedChoiceRestriction (fun _ => true)
+        stopped.last.native.application.service.lookup).apply profile)).support,
       (compilation.supported.resolvingAssignedReplay nullValue window (cfg.1.nodeValues fallback)
         environment schedule).prefixThrough release = stopped := by
   intro stopped cfg hcfg
@@ -71,8 +71,8 @@ theorem sourceRealization_replay_iff_restriction
     (compilation.supported.resolvingAssignedReplay nullValue window (cfg.1.nodeValues fallback)
       environment schedule).prefixThrough release = stopped ↔
       ∃ final, observeSourceOutcome source.core cfg = some final ∧
-        (compilation.registrationRestriction (fun _ => true)
-          stopped.last.native.application.service).Allows source.core.env final := by
+        (compilation.recordedChoiceRestriction (fun _ => true)
+          stopped.last.native.application.service.lookup).Allows source.core.env final := by
   intro stopped
   have hterminal := source.sourceRealization_terminal profile cfg hcfg
   let final := decodeSourceOutcome source.core.prog source.core.fresh
@@ -88,14 +88,14 @@ theorem sourceRealization_replay_iff_restriction
     rw [source.sourceRealization_source, FinDist.support_map] at hmapped
     obtain ⟨actual, hactual, heq⟩ := hmapped
     exact Option.some.inj heq ▸ hactual
-  have hfields := compilation.registrationRestriction_allows_iff_store (fun _ => true)
-    stopped.last.native.application.service profile cfg hterminal hsource
+  have hfields := compilation.recordedChoiceRestriction_allows_iff_store (fun _ => true)
+    stopped.last.native.application.service.lookup profile cfg hterminal hsource
   have hallow :
       (∃ outcome, observeSourceOutcome source.core cfg = some outcome ∧
-        (compilation.registrationRestriction (fun _ => true)
-          stopped.last.native.application.service).Allows source.core.env outcome) ↔
-      (compilation.registrationRestriction (fun _ => true)
-        stopped.last.native.application.service).Allows source.core.env final := by
+        (compilation.recordedChoiceRestriction (fun _ => true)
+          stopped.last.native.application.service.lookup).Allows source.core.env outcome) ↔
+      (compilation.recordedChoiceRestriction (fun _ => true)
+        stopped.last.native.application.service.lookup).Allows source.core.env final := by
     constructor
     · rintro ⟨outcome, houtcome, h⟩
       rw [hobserve] at houtcome
@@ -129,13 +129,13 @@ theorem sourceRealization_replay_probability
       (compilation.supported.resolvingAssignedReplay nullValue window (cfg.1.nodeValues fallback)
         environment schedule).prefixThrough release).prob stopped =
       (denoteSource source.core.prog profile source.core.env).probOf
-        {final | (compilation.registrationRestriction (fun _ => true)
-          stopped.last.native.application.service).Allows source.core.env final} := by
+        {final | (compilation.recordedChoiceRestriction (fun _ => true)
+          stopped.last.native.application.service.lookup).Allows source.core.env final} := by
   intro stopped
   let event : Set (Option (VEnv L (sourceTerminalCtx source.core.prog))) :=
     {outcome | ∃ final, outcome = some final ∧
-      (compilation.registrationRestriction (fun _ => true)
-        stopped.last.native.application.service).Allows source.core.env final}
+      (compilation.recordedChoiceRestriction (fun _ => true)
+        stopped.last.native.application.service.lookup).Allows source.core.env final}
   have hsource := congrArg (fun law => law.probOf event)
     (source.sourceRealization_source profile)
   rw [FinDist.probOf_map, FinDist.probOf_map] at hsource

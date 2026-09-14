@@ -386,25 +386,25 @@ reference source profile. The same extracted focal policy will be used. -/
 theorem restriction_keeps_focal
     (service : IdealCommitments Player Nat Value) (profile : SourceBehavioralProfile core) :
     @Eq (SourceBehavioralPolicy core 1)
-      ((compilation.registrationRestriction (fun who => decide (who ≠ 1)) service).apply
+      ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ 1)) service.lookup).apply
         profile 1) (profile 1) := by
   funext Δ name choiceTy guard site visible
-  simp [SourceChoiceRestriction.apply, SealedCompilation.registrationRestriction]
+  simp [SourceChoiceRestriction.apply, SealedCompilation.recordedChoiceRestriction]
 
 /-- Even an assignment with zero original mass has a nonempty reference law
 reproducing the actual first registration, with only that honest slot fixed. -/
 theorem first_registration_reference_exists (profile : SourceBehavioralProfile core)
     (value fallback : Value) :
     ∃ cfg ∈ (compilation.extractedSourceRun none 3 1 deviator environment [.player 0] fallback
-      ((compilation.registrationRestriction (fun who => decide (who ≠ 1))
-        (registered value).native.application.service).apply profile)).support,
+      ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ 1))
+        (registered value).native.application.service.lookup).apply profile)).support,
       cfg.1.nodeValues (ty := BaseTy.option .bool) fallback (node 0) = value ∧
       supported.resolvingReplay none 3 (cfg.1.nodeValues fallback) 1 deviator environment
         [.player 0] = .step initial (.finish (registered value)) := by
   obtain ⟨cfg, hcfg⟩ := (compilation.extractedSourceRun none 3 1 deviator environment
     [.player 0] fallback
-    ((compilation.registrationRestriction (fun who => decide (who ≠ 1))
-      (registered value).native.application.service).apply profile)).support_nonempty
+    ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ 1))
+      (registered value).native.application.service.lookup).apply profile)).support_nonempty
   refine ⟨cfg, hcfg, ?_, ?_⟩
   · exact compilation.restrictedSourceRun_registered none 3 1 deviator environment [.player 0]
       fallback (registered value).native.application.service profile cfg hcfg 0 (by decide)
@@ -418,9 +418,9 @@ theorem first_registration_reference_exists (profile : SourceBehavioralProfile c
 
 private def copyReferenceProfile (profile : SourceBehavioralProfile core) (value : Value) :
     SourceBehavioralProfile core :=
-  (compilation.registrationRestriction (fun who => decide (who ≠ 1))
+  (compilation.recordedChoiceRestriction (fun who => decide (who ≠ 1))
     (supported.resolvingReplay none 3 (fun _ => value) 1 deviator environment schedule
-      |>.last.native.application.service)).apply profile
+      |>.last.native.application.service.lookup)).apply profile
 
 /-- The reference construction also applies to the full delivery/copy example,
 where the honest opening is pending and the focal player has acted on it. -/
@@ -448,8 +448,8 @@ theorem first_registration_source_event (profile : SourceBehavioralProfile core)
     (hcfg : cfg ∈ (compilation.extractedSourceRun none 3 1 deviator environment [.player 0]
       fallback profile).support) :
     (∃ final, observeSourceOutcome source.core cfg = some final ∧
-      (compilation.registrationRestriction (fun who => decide (who ≠ 1))
-        (registered value).native.application.service).Allows
+      (compilation.recordedChoiceRestriction (fun who => decide (who ≠ 1))
+        (registered value).native.application.service.lookup).Allows
         source.core.env final) ↔
       cfg.1.nodeValues (ty := BaseTy.option .bool) fallback (node 0) = value := by
   have hevent := compilation.extractedSourceRun_replay_iff_restriction none 3 1 deviator

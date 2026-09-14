@@ -70,8 +70,8 @@ theorem assignedReplay_registration_probability
         (fun execution : runtime.messageApplication.PolicyExecution =>
           !execution.native.application.visible.timeouts.isEmpty)
     ∀ cfg ∈ (source.sourceRealization
-      ((compilation.registrationRestriction (fun _ => true)
-        tracePrefix.last.native.application.service).apply profile)).support,
+      ((compilation.recordedChoiceRestriction (fun _ => true)
+        tracePrefix.last.native.application.service.lookup).apply profile)).support,
     let stopped := tracePrefix.firstRelease release
     stopped.native.application.visible.timeouts = [] →
     ∀ who slot value,
@@ -148,8 +148,8 @@ theorem assignedRestriction_weight_eq_product
       environment schedule).prefixThrough
         (fun execution : runtime.messageApplication.PolicyExecution =>
           !execution.native.application.visible.timeouts.isEmpty)
-    let restriction := compilation.registrationRestriction (fun _ => true)
-      stopped.last.native.application.service
+    let restriction := compilation.recordedChoiceRestriction (fun _ => true)
+      stopped.last.native.application.service.lookup
     ∀ final ∈ (denoteSource source.core.prog (restriction.apply profile)
       source.core.env).support,
       restriction.weight profile source.core.env final =
@@ -178,18 +178,18 @@ theorem assignedRestriction_weight_eq_product
         simp only [assignedRegistrationFactor]
         erw [hlookup]
       · intro fixed hfixed
-        simp only [restriction, registrationRestriction, ↓reduceIte, hlookup,
+        simp only [restriction, recordedChoiceRestriction, ↓reduceIte, hlookup,
           Option.map_none] at hfixed
         cases hfixed
   | some value =>
       constructor
       · intro hnone
-        simp only [restriction, registrationRestriction, ↓reduceIte, hlookup,
+        simp only [restriction, recordedChoiceRestriction, ↓reduceIte, hlookup,
           Option.map_some] at hnone
         cases hnone
       · intro fixed hfixed
-        have hvalue := compilation.registrationRestriction_fixed_value (fun _ => true)
-          stopped.last.native.application.service who rfl site _ value hlookup fixed hfixed
+        have hvalue := compilation.recordedChoiceRestriction_fixed_value (fun _ => true)
+          stopped.last.native.application.service.lookup who rfl site _ value hlookup fixed hfixed
         let trace := compilation.supported.resolvingAssignedReplay nullValue window reference
           environment schedule
         let stop := fun execution : runtime.messageApplication.PolicyExecution =>

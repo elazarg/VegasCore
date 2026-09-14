@@ -3,6 +3,7 @@
 import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedCandidateSourceExtraction
 import Vegas.Compile.SealedCandidateInputs
+import Vegas.Compile.SealedCandidateSourceLikelihood
 import VegasTests.PendingSource
 
 /-! # Native registration and acceptance hiding for a checked two-player source
@@ -385,6 +386,46 @@ theorem candidate_replay_acceptances_match_source
         some (⟨.option .bool, value⟩ : TypedValue simpleExpr) :=
   compilation.extractedCandidateSourceRun_accepted none 3 1 deviator environment schedule none
     profile cfg hcfg release
+
+/-- A reference realization exists even when its forced honest value had zero
+probability under the original profile. The focal traffic prepares competing
+candidates and selects the second, exactly as in the acceptance regression. -/
+theorem candidate_reference_exists (profile : SourceBehavioralProfile core)
+    (reference : Fin graph.nodeCount → Value) :
+    let schedule : List (@Invocation PendingSource.Player) :=
+      [.player 0, .player 1, .player 1, .player 1, .environment]
+    let stopped := (sealedFragment.candidateReplay none 3 reference 1 selectCommand
+      (fun _ _ => .include (1, 0)) schedule).prefixThrough (fun _ => false)
+    let restriction := compilation.recordedChoiceRestriction (fun who => decide (who ≠ 1))
+      (fun handle => (stopped.last.native.application.service.lookup handle).opening?)
+    ∃ cfg ∈ (compilation.extractedCandidateSourceRun none 3 1 selectCommand
+      (fun _ _ => .include (1, 0)) schedule none (restriction.apply profile)).support,
+      (sealedFragment.candidateReplay none 3 (cfg.1.nodeValues none) 1 selectCommand
+        (fun _ _ => .include (1, 0)) schedule).prefixThrough (fun _ => false) = stopped := by
+  intro schedule stopped restriction
+  obtain ⟨cfg, hcfg⟩ := (compilation.extractedCandidateSourceRun none 3 1 selectCommand
+    (fun _ _ => .include (1, 0)) schedule none (restriction.apply profile)).support_nonempty
+  exact ⟨cfg, hcfg, compilation.restrictedCandidateSourceRun_replay_prefix none 3 1 selectCommand
+    (fun _ _ => .include (1, 0)) schedule none reference (fun _ => false) profile cfg hcfg⟩
+
+/-- Correlating every assigned coordinate is permitted even with competing
+focal preparations and a pending commitment. Only recorded honest preparation
+coordinates constrain this replay event. -/
+theorem candidate_correlated_cylinder (bits : FinDist Bool) (reference : Bool) :
+    let schedule : List (@Invocation PendingSource.Player) :=
+      [.player 0, .player 1, .player 1, .player 1, .environment]
+    let assignments := bits.map (fun bit => fun _ : Fin graph.nodeCount => some bit)
+    let replay := fun values => (sealedFragment.candidateReplay none 3 values 1 selectCommand
+      (fun _ _ => .include (1, 0)) schedule).prefixThrough (fun _ => false)
+    (assignments.map replay).prob (replay (fun _ => some reference)) =
+      assignments.probOf {values | ∀ who (index : Fin graph.nodeCount) (value : Value),
+        who ≠ 1 →
+          (.privateCommand who ⟨(index.val, value)⟩ : runtime.candidateApplication.Action) ∈
+            (replay (fun _ => some reference)).last.nativeTrace →
+              some reference = values index} := by
+  intro schedule assignments replay
+  exact sealedFragment.candidateReplay_cylinder_probability none 3 1 selectCommand
+    (fun _ _ => .include (1, 0)) schedule (fun _ => false) assignments (fun _ => some reference)
 
 end VegasTests.SealedResolutionReadBound
 

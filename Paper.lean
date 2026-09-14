@@ -498,11 +498,12 @@ theorem pending_reference_source_law
     (service : IdealCommitments Player Nat (L.Val ty))
     (profile : SourceBehavioralProfile source.core.prog) :
     (compilation.extractedSourceRun nullValue window focal deviator environment schedule fallback
-      ((compilation.registrationRestriction (fun who => decide (who ≠ focal)) service).apply
-        profile)).map
+      ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+        service.lookup).apply profile)).map
         (ToEventGraph.observeSourceOutcome source.core) =
       (denoteSource source.core.prog
-        ((compilation.registrationRestriction (fun who => decide (who ≠ focal)) service).apply
+        ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+          service.lookup).apply
           (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
             (compilation.extractedSourcePolicy nullValue window focal deviator environment
               schedule fallback))) source.core.env).map some :=
@@ -521,8 +522,8 @@ theorem pending_reference_replay_prefix
     let stopped := (compilation.supported.resolvingReplay nullValue window reference focal
       deviator environment schedule).prefixThrough release
     ∀ cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
-      fallback ((compilation.registrationRestriction (fun who => decide (who ≠ focal))
-        stopped.last.native.application.service).apply profile)).support,
+      fallback ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+        stopped.last.native.application.service.lookup).apply profile)).support,
       (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback) focal
         deviator environment schedule).prefixThrough release = stopped :=
   compilation.restrictedSourceRun_replay_prefix nullValue window focal deviator environment
@@ -543,8 +544,8 @@ theorem pending_source_cylinder_likelihood
       Profile.update (sig := sourceGameSignature source.core.prog) profile focal
         (compilation.extractedSourcePolicy nullValue window focal deviator environment schedule
           fallback)
-    let restriction := compilation.registrationRestriction (fun who => decide (who ≠ focal))
-      stopped.last.native.application.service
+    let restriction := compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+      stopped.last.native.application.service.lookup
     ((compilation.extractedSourceRun nullValue window focal deviator environment schedule fallback
       profile).map fun cfg =>
         (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback) focal
@@ -780,8 +781,8 @@ theorem pending_registration_source_probability
         runtime.messageApplication.PolicyExecution =>
           !execution.native.application.visible.timeouts.isEmpty)
     ∀ cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
-      fallback ((compilation.registrationRestriction (fun who => decide (who ≠ focal))
-        tracePrefix.last.native.application.service).apply profile)).support,
+      fallback ((compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+        tracePrefix.last.native.application.service.lookup).apply profile)).support,
     let stopped := tracePrefix.firstRelease release
     stopped.native.application.visible.timeouts = [] →
     ∀ who, who ≠ focal → ∀ slot value,

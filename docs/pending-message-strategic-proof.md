@@ -630,7 +630,7 @@ source order after pulling out the fixed factors. The reference-law proof
 uses the existing source denotation to perform that normalization directly.
 
 The general source identities are checked and audited in `Paper.lean`.
-`SealedCompilation.registrationRestriction` constructs `rho_t` from the
+`SealedCompilation.recordedChoiceRestriction` constructs `rho_t` from the
 private service in the recorded prefix. Only occupied slots at honest source
 decisions are fixed; the extracted focal policy and unoccupied honest kernels
 remain unchanged. The compiler proves that these source choices recompile to

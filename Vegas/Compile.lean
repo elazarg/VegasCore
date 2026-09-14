@@ -35,6 +35,8 @@ import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedCandidatePolicy
 import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateValues
+import Vegas.Compile.SealedCandidateCylinder
+import Vegas.Compile.SealedCandidateSourceLikelihood
 import Vegas.Compile.SealedCandidateReadBound
 import Vegas.Compile.SealedCandidateReplay
 import Vegas.Compile.SealedCandidateSourceExtraction
@@ -58,6 +60,7 @@ import Vegas.Compile.SealedHonestCompletion
 import Vegas.Compile.SealedSourceExtraction
 import Vegas.Compile.SealedDisclosureRun
 import Vegas.Compile.SealedSourceRealization
+import Vegas.Compile.SealedSourceChoices
 import Vegas.Compile.SealedSourceAssignment
 import Vegas.Compile.SealedSourceRestriction
 import Vegas.Compile.SealedHonestSource
