@@ -7,17 +7,22 @@ Run these tools from the repository root.
   module and sibling-directory dependency graphs, and the
   interaction/core/backend/test/audit dependency directions. Cycle reports include witness
   imports; acyclicity supplements rather than replaces the direction rules.
+  Reference material under `archive/` is not indexed or checked.
 
 - `lake --wfail build Paper` checks the single paper audit in root `Paper.lean`.
-  It contains statement-only restatements with direct delegations, plus explicit
-  admitted declarations for open targets. Every audit theorem has an axiom pin.
-  A Lean build accepts those admissions; it is therefore not the paper-completion
-  gate.
+  Its proved statements delegate directly to repository theorems. Every audit
+  theorem has an axiom pin. Precisely stated prospective end-to-end declarations
+  may be admitted, but no such declaration counts as a proof. A Lean build alone
+  is not the paper-completion gate.
 - `python scripts/check-paper-claims.py --paper-dir PATH` checks the supplied
   manuscript's `main.tex`
   and its inputs against `paper-claims.json`. Every numbered mathematical
-  statement needs a label and a mapping; unnumbered results use a
-  `% lean-claim: ID` comment. Add or update the corresponding Lean statements
+  statement needs a label and a registry entry; unnumbered results use a
+  `% lean-claim: ID` comment. Each entry has exactly one of
+  `{"theorems": ["Vegas.Paper.example"]}` or
+  `{"unverified": "What the manuscript claims that the active audit does not establish."}`.
+  The latter identifies a coverage gap, not an agreed theorem statement or
+  implementation task. Add or update the corresponding Lean statements
   and axiom pins when editing a claim, review their mathematical agreement,
   then run this check and the warning-free build before committing both repos.
   The checker verifies structural coverage, not equivalence of English and
@@ -31,9 +36,9 @@ Run these tools from the repository root.
   Active bibliography databases must be in the snapshot. Unqualified database
   filenames must also be unique across it, including archived directories, so
   recursive BibTeX lookup cannot silently select a different bibliography.
-  Strict mode rejects both archived obligations and admitted audit theorems.
-  `--allow-open-obligations` is a progress-only mode: it validates and reports
-  them but never describes an admitted declaration as a checked proof.
+  Strict mode rejects unverified claims and admitted audit declarations.
+  `--allow-unverified` checks coverage during development, not proof completion.
+  No reference-code declarations, files, or counts participate in either mode.
 - `python -m unittest discover -s scripts -p 'test_*.py'` checks the maintenance
   tooling, including missing claims, stale mappings, missing axiom pins, and
   active-paper input discovery.
@@ -63,5 +68,6 @@ Run these tools from the repository root.
   inline code and relative `.md`/`.lean` links. Abbreviated paths, link anchors,
   and external resources are outside this check; it is not a full Markdown
   parser or a line-number accuracy audit.
+  Markdown under `archive/` and links into that reference material are excluded.
   A non-Git export explicitly reports that the tracked Markdown inventory is
   unavailable; a Git inventory failure in a checkout is an error.

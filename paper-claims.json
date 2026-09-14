@@ -1,58 +1,231 @@
 {
-  "prose:source-graph-policy": ["Vegas.Paper.source_graph_honest_law", "Vegas.Paper.source_graph_deviation_law", "Vegas.Paper.source_graph_nash_iff", "Vegas.Paper.source_graph_approximate_nash_iff"],
-  "prose:utility-simulation": ["Vegas.Paper.utility_approximate_nash_preservation"],
-  "prose:sealed-opening-barrier": ["Vegas.Paper.sealed_opening_barrier", "Vegas.Paper.pending_acceptance_read_bound"],
-  "prose:pending-source-prefix": ["Vegas.Paper.pending_extracted_source_law", "Vegas.Paper.pending_source_native_prefix_law", "Vegas.Paper.pending_randomized_source_coupling", "Vegas.Paper.pending_normal_completion"],
-  "prose:pending-round-coupling": ["Vegas.Paper.pending_randomized_round_source_coupling", "Vegas.Paper.pending_round_normal_completion"],
-  "prose:pending-honest-round": ["Vegas.Paper.pending_honest_round_source_law"],
-  "prose:pending-round-incentives": ["Vegas.Paper.pending_round_approximate_nash_iff", "Vegas.Paper.pending_round_deviation_margin"],
-  "prose:pending-checkpoint-incentives": ["Vegas.Paper.pending_checkpoint_information", "Vegas.Paper.pending_checkpoint_locked", "Vegas.Paper.pending_checkpoint_deviation_margin", "Vegas.Paper.pending_checkpoint_approximate_nash_iff", "Vegas.Paper.pending_checkpoint_timeout_cost"],
-  "prose:pending-public-payout": ["Vegas.Paper.pending_public_payout"],
-  "prose:pending-candidate-settlement": ["Vegas.Paper.pending_candidate_binding", "Vegas.Paper.pending_candidate_public_payout", "Vegas.Paper.pending_candidate_timeout_source_choice"],
-  "prose:pending-source-payout-incentives": ["Vegas.Paper.pending_timeout_source_choice", "Vegas.Paper.pending_source_payout_nash_iff"],
-  "prose:pending-termination": ["Vegas.Paper.compiled_resolution_terminates"],
-  "prose:selective-quitting-margin": ["Vegas.Paper.selective_quitting_bound"],
-  "prose:pending-disclosure-margin": ["Vegas.Paper.sealed_disclosure_utility_bound"],
-  "prose:source-decisions": ["Vegas.Paper.source_strategy_support", "Vegas.Paper.source_decision_information", "Vegas.Paper.source_publication_barrier", "Vegas.Paper.source_decision_roundtrip", "Vegas.Paper.graph_decision_roundtrip"],
-  "prose:commitment-accounting": ["Vegas.Paper.Source.committed_binding_accounted", "Vegas.Paper.Source.initial_binding_accounted", "Vegas.Paper.Source.binding_resolutions_nodup"],
-  "prose:public-application-support": ["Vegas.Paper.Source.public_application_outcome", "Vegas.Paper.Source.public_application_policy_outcome", "Vegas.Paper.Source.public_application_windowed_outcome"],
-  "prose:public-application-forward": ["Vegas.Paper.Source.public_application_reference_law", "Vegas.Paper.Source.public_application_ordered_reference_law", "Vegas.Paper.Source.public_application_windowed_reference_law"],
-  "prose:public-application-windowed-deviation": ["Vegas.Paper.Source.public_application_windowed_game_honest_law", "Vegas.Paper.Source.public_application_windowed_deviation_mixture", "Vegas.Paper.Source.public_application_windowed_game_guarantee", "Vegas.Paper.Source.public_application_windowed_game_nash_iff", "Vegas.Paper.Source.public_application_windowed_game_approximate_nash_iff"],
-  "prose:public-application-resolution": ["Vegas.Paper.Source.public_application_withholding", "Vegas.Paper.Source.public_application_conditional_phase", "Vegas.Paper.Source.public_application_conditional_continuation", "Vegas.Paper.Source.public_application_conditional_expiry", "Vegas.Paper.Source.public_application_choice_expiry", "Vegas.Paper.Source.public_application_binding_expiry"],
-  "prose:correlated-transport": ["Vegas.Paper.correlated_transport", "Vegas.Paper.coarse_correlated_transport", "Vegas.Paper.correlated_correspondence", "Vegas.Paper.Source.native_correlated_preservation", "Vegas.Paper.Source.native_coarse_correlated_iff"],
-  "thm:source-correspondence": ["Vegas.Paper.Source.native_honest_law", "Vegas.Paper.Source.native_unilateral_law", "Vegas.Paper.Source.native_nash_iff", "Vegas.Paper.Source.native_approximate_nash_iff"],
-  "thm:trace-utility": ["Vegas.Paper.Valuation.decoder_boundary", "Vegas.Paper.Valuation.trace_incentive", "Vegas.Paper.Valuation.trace_regret"],
-  "thm:adversarial-valuation": ["Vegas.Paper.Valuation.adversarial_bound", "Vegas.Paper.Valuation.context_bound", "Vegas.Paper.Valuation.trace_counterexample", "Vegas.Paper.Valuation.trace_harm"],
-  "prose:utility-parametric": ["Vegas.Paper.Valuation.nash_for_every_valuation", "Vegas.Paper.Valuation.serialized_valuation"],
-  "thm:disclosure-correspondence": ["Vegas.Paper.Disclosure.policy_roundtrip", "Vegas.Paper.Disclosure.outcome_law", "Vegas.Paper.Disclosure.expected_payoffs", "Vegas.Paper.Disclosure.nash_correspondence"],
-  "thm:sealed-offer": ["Vegas.Paper.Offer.source_nash", "Vegas.Paper.Offer.source_values", "Vegas.Paper.Offer.source_buyer_guarantee", "Vegas.Paper.Offer.source_buyer_best_response", "Vegas.Paper.Offer.source_seller_bound", "Vegas.Paper.Offer.runtime_nash", "Vegas.Paper.Offer.runtime_buyer_guarantee", "Vegas.Paper.Offer.disclosure_timeout"],
-  "thm:source-adequacy": ["Vegas.Paper.source_payoff_adequacy"],
-  "thm:confluence": ["Vegas.Paper.execution_diamond", "Vegas.Paper.schedule_confluence", "Vegas.Paper.schedule_observation_confluence"],
-  "thm:fence": ["Vegas.Paper.commit_reveal_barrier", "Vegas.Paper.ready_reveal_fence"],
-  "thm:kuhn": ["Vegas.Paper.kuhn_behavioral_to_mixedPure", "Vegas.Paper.kuhn_mixedPure_to_behavioral"],
-  "lem:expected-utility": ["Vegas.Paper.utility_preservation_honest", "Vegas.Paper.utility_preservation_deviation"],
-  "thm:nash-equivalence": ["Vegas.Paper.nash_equivalence"],
-  "thm:public-serialization": ["Vegas.Paper.Source.scheduled_honest_law", "Vegas.Paper.Source.scheduled_deviation_mixture"],
-  "thm:public-submission": ["Vegas.Paper.public_submission_winning_deviation", "Vegas.Paper.public_submission_not_nash", "Vegas.Paper.public_submission_approximation_lower_bound", "Vegas.Paper.public_submission_no_adequacy"],
-  "cor:no-public-compiler": ["Vegas.Paper.no_universal_public_submission_compiler"],
-  "thm:observed-quitting": ["Vegas.Paper.observed_abort_value_bound_iff", "Vegas.Paper.observed_abort_optimal_rule", "Vegas.Paper.observed_abort_support_iff", "Vegas.Paper.observed_abort_information_mono"],
-  "thm:quitting-nash": ["Vegas.Paper.observed_abort_nash_iff"],
-  "thm:constant-signal": ["Vegas.Paper.constant_signal_deviation_law", "Vegas.Paper.constant_signal_approximate_nash_iff"],
-  "prose:dominated-quit-signal": ["Vegas.Paper.constant_signal_dominated_quit"],
-  "thm:quitting-causal": ["Vegas.Paper.observed_abort_causal_law"],
-  "thm:request-compiler": ["Vegas.Paper.request_compiler_law", "Vegas.Paper.request_compiler_mixed_law", "Vegas.Paper.request_compiler_silence", "Vegas.Paper.checked_request_nash_iff"],
-  "cor:scheduled-requests": ["Vegas.Paper.Source.scheduled_request_honest_law", "Vegas.Paper.Source.scheduled_request_deviation_mixture", "Vegas.Paper.Source.scheduled_request_guarantee", "Vegas.Paper.Source.scheduled_request_nash_iff", "Vegas.Paper.Source.scheduled_request_approximate_nash_iff"],
-  "prose:frontier-structure": ["Vegas.Paper.compiled_perfect_recall", "Vegas.Paper.compiled_bounded_horizon"],
-  "prose:serialization-corollaries": ["Vegas.Paper.compiled_serialized_loss_bound_iff", "Vegas.Paper.compiled_serialized_approximate_nash_iff"],
-  "prose:matching-serialization": ["Vegas.Paper.Matching.fair_nash", "Vegas.Paper.Matching.serialized_nash", "Vegas.Paper.Matching.serialized_adversarial_payoff"],
-  "prose:matching-quitting": ["Vegas.Paper.Matching.refund_value", "Vegas.Paper.Matching.quitting_threshold"],
-  "prose:window": ["Vegas.Paper.disclosure_window_rule_exact", "Vegas.Paper.disclosure_window_adequacy", "Vegas.Paper.disclosure_window_nash_iff"],
-  "prose:information-extremes": ["Vegas.Paper.observed_abort_no_information", "Vegas.Paper.observed_abort_payoff_information", "Vegas.Paper.selective_abort_support_iff"],
-  "prose:kernel-equilibrium": ["Vegas.Paper.Kernel.fair_nash"],
-  "prose:kernel-information-values": ["Vegas.Paper.Kernel.own_choice_value", "Vegas.Paper.Kernel.public_signal_value", "Vegas.Paper.Kernel.payoff_information_value"],
-  "prose:kernel-quitting": ["Vegas.Paper.Kernel.quitting_value", "Vegas.Paper.Kernel.causal_threshold", "Vegas.Paper.Kernel.realized_loss", "Vegas.Paper.Kernel.own_choice_nash"],
-  "prose:staged-source": ["Vegas.Paper.Staged.outcome_law", "Vegas.Paper.Staged.strategy_lift", "Vegas.Paper.Staged.nash_correspondence", "Vegas.Paper.Staged.serialized_nash", "Vegas.Paper.Staged.serialized_adversarial_payoff"],
-  "prose:staged-information": ["Vegas.Paper.Staged.checkpoint_law", "Vegas.Paper.Staged.checkpoint_information"],
-  "prose:staged-quitting": ["Vegas.Paper.Staged.causal_quitting_law", "Vegas.Paper.Staged.quitting_adequacy"],
-  "prose:staged-window": ["Vegas.Paper.Staged.window_adequacy", "Vegas.Paper.Staged.window_threshold"]
+  "prose:source-graph-policy": {
+    "theorems": [
+      "Vegas.Paper.source_graph_honest_law",
+      "Vegas.Paper.source_graph_deviation_law",
+      "Vegas.Paper.source_graph_nash_iff",
+      "Vegas.Paper.source_graph_approximate_nash_iff"
+    ]
+  },
+  "prose:utility-simulation": {
+    "theorems": [
+      "Vegas.Paper.utility_approximate_nash_preservation"
+    ]
+  },
+  "prose:sealed-opening-barrier": {
+    "theorems": [
+      "Vegas.Paper.sealed_opening_barrier",
+      "Vegas.Paper.pending_acceptance_read_bound"
+    ]
+  },
+  "prose:pending-source-prefix": {
+    "theorems": [
+      "Vegas.Paper.pending_extracted_source_law",
+      "Vegas.Paper.pending_source_native_prefix_law",
+      "Vegas.Paper.pending_randomized_source_coupling",
+      "Vegas.Paper.pending_normal_completion"
+    ]
+  },
+  "prose:pending-round-coupling": {
+    "theorems": [
+      "Vegas.Paper.pending_randomized_round_source_coupling",
+      "Vegas.Paper.pending_round_normal_completion"
+    ]
+  },
+  "prose:pending-honest-round": {
+    "theorems": [
+      "Vegas.Paper.pending_honest_round_source_law"
+    ]
+  },
+  "prose:pending-round-incentives": {
+    "theorems": [
+      "Vegas.Paper.pending_round_approximate_nash_iff",
+      "Vegas.Paper.pending_round_deviation_margin"
+    ]
+  },
+  "prose:pending-checkpoint-incentives": {
+    "theorems": [
+      "Vegas.Paper.pending_checkpoint_information",
+      "Vegas.Paper.pending_checkpoint_locked",
+      "Vegas.Paper.pending_checkpoint_deviation_margin",
+      "Vegas.Paper.pending_checkpoint_approximate_nash_iff",
+      "Vegas.Paper.pending_checkpoint_timeout_cost"
+    ]
+  },
+  "prose:pending-public-payout": {
+    "theorems": [
+      "Vegas.Paper.pending_public_payout"
+    ]
+  },
+  "prose:pending-candidate-settlement": {
+    "theorems": [
+      "Vegas.Paper.pending_candidate_binding",
+      "Vegas.Paper.pending_candidate_public_payout",
+      "Vegas.Paper.pending_candidate_timeout_source_choice"
+    ]
+  },
+  "prose:pending-source-payout-incentives": {
+    "theorems": [
+      "Vegas.Paper.pending_timeout_source_choice",
+      "Vegas.Paper.pending_source_payout_nash_iff"
+    ]
+  },
+  "prose:pending-termination": {
+    "theorems": [
+      "Vegas.Paper.compiled_resolution_terminates"
+    ]
+  },
+  "prose:selective-quitting-margin": {
+    "theorems": [
+      "Vegas.Paper.selective_quitting_bound"
+    ]
+  },
+  "prose:pending-disclosure-margin": {
+    "theorems": [
+      "Vegas.Paper.sealed_disclosure_utility_bound"
+    ]
+  },
+  "prose:source-decisions": {
+    "theorems": [
+      "Vegas.Paper.source_strategy_support",
+      "Vegas.Paper.source_decision_information",
+      "Vegas.Paper.source_publication_barrier",
+      "Vegas.Paper.source_decision_roundtrip",
+      "Vegas.Paper.graph_decision_roundtrip"
+    ]
+  },
+  "prose:commitment-accounting": {
+    "theorems": [
+      "Vegas.Paper.Source.committed_binding_accounted",
+      "Vegas.Paper.Source.initial_binding_accounted",
+      "Vegas.Paper.Source.binding_resolutions_nodup"
+    ]
+  },
+  "prose:public-application-support": {
+    "unverified": "The manuscript's ApplicationPlan interface is not active. Its whole-program public-output support claim must be stated for the sealed compiler; current settlement theorems have their own fragment and completion premises."
+  },
+  "prose:public-application-forward": {
+    "unverified": "The manuscript's reference-service and ordered-application laws are not active audit results. The sealed round honest law is checked separately under its stated service and fragment assumptions."
+  },
+  "prose:public-application-windowed-deviation": {
+    "unverified": "The manuscript's exact deviation-mixture law for public application plans is not established for the sealed pending-message game. Current utility-specific Nash preservation does not imply that exact law or arbitrary-observable bounds."
+  },
+  "prose:public-application-resolution": {
+    "unverified": "The manuscript's optional expiry annotations and fused public-choice resolution are not active compiler interfaces. Sealed timeout settlement is checked separately; no proof correspondence to these interfaces is claimed."
+  },
+  "prose:correlated-transport": {
+    "unverified": "Correlated and coarse-correlated transport, and the stated native frontier-game instantiations, have no current paper audit. They require the indicated uniform backtranslation, not only profile-local utility witnesses."
+  },
+  "thm:source-correspondence": {
+    "unverified": "Uniform source-to-native frontier-game outcome and deviation correspondence is not audited. The proved source-to-declared-read-kernel correspondence is a different, explicitly identified boundary."
+  },
+  "thm:trace-utility": {
+    "unverified": "The decoder-fibre characterization and trace-bonus regret criterion have no current paper audit."
+  },
+  "thm:adversarial-valuation": {
+    "unverified": "The stated arbitrary-observable adversarial bounds, opponent-context extension, and trace-preference counterexample have no current paper audit. UtilitySimulation alone does not give bounds for another player's observable."
+  },
+  "prose:utility-parametric": {
+    "unverified": "The manuscript's utility-independent certificate and its serialized-runtime valuation instance are not audited as stated."
+  },
+  "thm:disclosure-correspondence": {
+    "unverified": "The application's disclosure-policy roundtrip, full outcome law, and equilibrium correspondence have no current paper audit."
+  },
+  "thm:sealed-offer": {
+    "unverified": "The two-player offer's source values, best responses, adversarial bounds, and compiled-runtime guarantees have no current paper audit. The checked one-player payout example is not this application."
+  },
+  "thm:source-adequacy": {
+    "unverified": "The manuscript's terminal-machine source-payoff adequacy statement has no current paper audit. The active graph and sealed-source results must not be substituted without matching its execution model and premises."
+  },
+  "thm:confluence": {
+    "theorems": [
+      "Vegas.Paper.execution_diamond",
+      "Vegas.Paper.schedule_confluence",
+      "Vegas.Paper.schedule_observation_confluence"
+    ]
+  },
+  "thm:fence": {
+    "theorems": [
+      "Vegas.Paper.commit_reveal_barrier",
+      "Vegas.Paper.ready_reveal_fence"
+    ]
+  },
+  "thm:kuhn": {
+    "unverified": "The compiled frontier game's behavioral/mixed-pure equivalence has no current paper audit. Availability of general GameTheory results does not establish this instantiation."
+  },
+  "lem:expected-utility": {
+    "unverified": "The manuscript's exact honest and unilateral expected-utility equalities under its outcome-simulation interface have no current paper audit."
+  },
+  "thm:nash-equivalence": {
+    "unverified": "Nash equivalence for the manuscript's exact outcome-simulation interface has no current paper audit. The active utility-specific transport theorem is audited separately."
+  },
+  "thm:public-serialization": {
+    "unverified": "Whole-source honest and unilateral finite-mixture laws for the stated public-data frontier serializer have no current paper audit. The pending-message round game has a different operational and utility boundary."
+  },
+  "thm:public-submission": {
+    "unverified": "The sequential-cleartext counterexample and its quantitative impossibility bound have no current paper audit."
+  },
+  "cor:no-public-compiler": {
+    "unverified": "The universal-compiler impossibility corollary for sequential cleartext submissions has no current paper audit."
+  },
+  "thm:observed-quitting": {
+    "unverified": "The exact optimal quitting envelope, attaining rule, support criterion, and information monotonicity have no current paper audit. The checked selective-quitting bound is a separate result."
+  },
+  "thm:quitting-nash": {
+    "unverified": "The full observed-quitting game's Nash criterion, including combined upstream and quitting deviations, has no current paper audit."
+  },
+  "thm:constant-signal": {
+    "unverified": "The one-shot constant-on-support signal theorem and same-error Nash equivalence have no current paper audit. This is not a theorem about every adaptive message scheduler."
+  },
+  "prose:dominated-quit-signal": {
+    "unverified": "The Boolean early-quit signal instance has no current paper audit. It is distinct from conditional continuation comparisons for pending-message withholding."
+  },
+  "thm:quitting-causal": {
+    "unverified": "The equality between causal checkpoint execution and the prospective tagged quitting law has no current paper audit."
+  },
+  "thm:request-compiler": {
+    "unverified": "The manuscript's bounded private-request compiler is not an active tower edge. Its outcome and strategic claims are not evidence about public in-flight messages."
+  },
+  "cor:scheduled-requests": {
+    "unverified": "The manuscript's source/private-request/serializer composition is not an active tower edge. A pending-message end-to-end theorem must use the actual public-message game instead."
+  },
+  "prose:frontier-structure": {
+    "unverified": "Perfect recall and bounded horizon for the compiler's specific frontier presentation have no current paper audit."
+  },
+  "prose:serialization-corollaries": {
+    "unverified": "Loss-bound equivalence and same-error Nash correspondence for the manuscript's frontier serializer have no current paper audit."
+  },
+  "prose:matching-serialization": {
+    "unverified": "The hidden matching-pennies source equilibrium and its serialized adversarial-payoff instance have no current paper audit."
+  },
+  "prose:matching-quitting": {
+    "unverified": "The matching-pennies refund value and exact quitting threshold have no current paper audit."
+  },
+  "prose:window": {
+    "unverified": "The manuscript's fixed-information disclosure-window outcome and deviation correspondence has no current paper audit. This private-window model does not establish a public-message compiler theorem."
+  },
+  "prose:information-extremes": {
+    "unverified": "The no-information and payoff-information specializations of the quitting envelope have no current paper audit."
+  },
+  "prose:kernel-equilibrium": {
+    "unverified": "The hidden-choice/two-coin kernel's fair equilibrium has no current paper audit."
+  },
+  "prose:kernel-information-values": {
+    "unverified": "The kernel's three information-dependent optimal quitting values have no current paper audit."
+  },
+  "prose:kernel-quitting": {
+    "unverified": "The kernel's conditional quitting formula and equilibrium thresholds under combined deviations have no current paper audit."
+  },
+  "prose:staged-source": {
+    "unverified": "The staged chance example's full behavioral law, policy lift, Nash correspondence, and serialized bounds have no current paper audit."
+  },
+  "prose:staged-information": {
+    "unverified": "The staged example's exact checkpoint information law and observation equivalence have no current paper audit."
+  },
+  "prose:staged-quitting": {
+    "unverified": "The staged example's causal tagged-outcome law and combined-deviation correspondence have no current paper audit."
+  },
+  "prose:staged-window": {
+    "unverified": "The staged example's disclosure-window adequacy and exact quitting threshold have no current paper audit."
+  }
 }

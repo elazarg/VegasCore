@@ -34,10 +34,9 @@ class PaperClaimsTests(unittest.TestCase):
             "end Vegas.Paper\n", encoding="utf-8"
         )
         self.registry = self.root / "paper-claims.json"
-        self.registry.write_text(json.dumps({"thm:witness": ["Vegas.Paper.witness"]}),
-                                 encoding="utf-8")
-        self.obligations = self.root / CHECKER.OBLIGATIONS_FILE
-        self.obligations.write_text("{}", encoding="utf-8")
+        self.registry.write_text(json.dumps({
+            "thm:witness": {"theorems": ["Vegas.Paper.witness"]}
+        }), encoding="utf-8")
         self.main = self.paper / "main.tex"
         self.main.write_text(
             r"\begin{theorem}\label{thm:witness}Claim.\end{theorem}", encoding="utf-8"
@@ -74,7 +73,7 @@ class PaperClaimsTests(unittest.TestCase):
             "#print axioms Vegas.Paper.witness\n"
             "end Vegas.Paper\n", encoding="utf-8"
         )
-        self.assertTrue(any("Admitted audit theorem is an open obligation" in error
+        self.assertTrue(any("Unproved audit declaration" in error
                             for error in self.check()))
 
     def test_progress_mode_accepts_pinned_admitted_audit_theorem(self):
@@ -86,7 +85,7 @@ class PaperClaimsTests(unittest.TestCase):
             "end Vegas.Paper\n", encoding="utf-8"
         )
         self.assertEqual(CHECKER.check(self.root, self.paper,
-                                       allow_open_obligations=True), [])
+                                       allow_unverified=True), [])
 
     def test_sorry_in_comment_does_not_mark_theorem_open(self):
         self.audit.write_text(
@@ -127,7 +126,7 @@ class PaperClaimsTests(unittest.TestCase):
     def test_numbered_claim_requires_mapping(self):
         with self.main.open("a", encoding="utf-8") as stream:
             stream.write(r"\begin{lemma}\label{lem:new}New.\end{lemma}")
-        self.assertTrue(any("no Lean mapping: lem:new" in error for error in self.check()))
+        self.assertTrue(any("no registry entry: lem:new" in error for error in self.check()))
 
     def test_numbered_claim_requires_label(self):
         self.main.write_text(r"\begin{theorem}Unlabeled.\end{theorem}", encoding="utf-8")
@@ -141,64 +140,68 @@ class PaperClaimsTests(unittest.TestCase):
         self.audit.write_text("", encoding="utf-8")
         self.assertTrue(any("no audit theorem" in error for error in self.check()))
 
-    def make_open_obligation(self, reference="archive/Paper.lean.txt",
-                             reason="awaiting port"):
-        archived = self.root / reference
-        archived.parent.mkdir(parents=True, exist_ok=True)
-        archived.write_text(self.audit.read_text(encoding="utf-8"), encoding="utf-8")
-        self.audit.write_text("", encoding="utf-8")
-        self.obligations.write_text(json.dumps({
-            "Vegas.Paper.witness": {"reason": reason, "reference": reference}
+    def make_unverified_claim(self, reason="The manuscript's outcome law is not audited."):
+        self.registry.write_text(json.dumps({
+            "thm:witness": {"unverified": reason}
         }), encoding="utf-8")
 
-    def test_strict_mode_rejects_explicit_open_obligation(self):
-        self.make_open_obligation()
-        self.assertTrue(any("Open paper obligation: Vegas.Paper.witness" in error
+    def test_strict_mode_rejects_unverified_claim(self):
+        self.make_unverified_claim()
+        self.assertTrue(any("Unverified paper claim: thm:witness" in error
                             for error in self.check()))
 
-    def test_progress_mode_accepts_explained_archival_reference(self):
-        self.make_open_obligation()
+    def test_coverage_mode_accepts_explained_unverified_claim(self):
+        self.make_unverified_claim()
+        self.audit.write_text("", encoding="utf-8")
         self.assertEqual(CHECKER.check(self.root, self.paper,
-                                       allow_open_obligations=True), [])
+                                       allow_unverified=True), [])
 
-    def test_progress_mode_rejects_missing_unlisted_theorem(self):
+    def test_coverage_mode_rejects_missing_theorem(self):
         self.audit.write_text("", encoding="utf-8")
         self.assertTrue(any("no audit theorem" in error for error in
                             CHECKER.check(self.root, self.paper,
-                                          allow_open_obligations=True)))
+                                          allow_unverified=True)))
 
-    def test_stale_obligation_with_active_proof_is_rejected(self):
-        archived = self.root / "archive/Paper.lean.txt"
+    def test_unverified_claim_needs_an_explanation(self):
+        self.make_unverified_claim(" ")
+        self.assertTrue(any("needs a nonempty explanation" in error for error in
+                            CHECKER.check(self.root, self.paper, allow_unverified=True)))
+
+    def test_theorem_and_unverified_status_cannot_be_combined(self):
+        self.registry.write_text(json.dumps({
+            "thm:witness": {"theorems": ["Vegas.Paper.witness"], "unverified": "Missing law"}
+        }), encoding="utf-8")
+        self.assertTrue(any("expected exactly one" in error for error in
+                            CHECKER.check(self.root, self.paper, allow_unverified=True)))
+
+    def test_malformed_theorem_names_are_rejected(self):
+        for references in ([], "Vegas.Paper.witness", [None], [{}], [" "]):
+            with self.subTest(references=references):
+                self.registry.write_text(json.dumps({
+                    "thm:witness": {"theorems": references}
+                }), encoding="utf-8")
+                self.assertTrue(any("expected a nonempty list" in error for error in self.check()))
+
+    def test_archived_declaration_cannot_supply_a_proof(self):
+        archived = self.root / "archive" / "Paper.lean.txt"
         archived.parent.mkdir()
         archived.write_text(self.audit.read_text(encoding="utf-8"), encoding="utf-8")
-        self.obligations.write_text(json.dumps({
-            "Vegas.Paper.witness": {
-                "reason": "awaiting port", "reference": "archive/Paper.lean.txt"
-            }
-        }), encoding="utf-8")
-        self.assertTrue(any("has an active proof" in error for error in
-                            CHECKER.check(self.root, self.paper,
-                                          allow_open_obligations=True)))
-
-    def test_obligation_reference_must_declare_exact_name(self):
-        self.make_open_obligation()
-        (self.root / "archive/Paper.lean.txt").write_text(
-            "namespace Vegas.Paper\ntheorem typo : True := True.intro\nend Vegas.Paper\n",
-            encoding="utf-8")
-        self.assertTrue(any("does not declare Vegas.Paper.witness" in error for error in
-                            CHECKER.check(self.root, self.paper,
-                                          allow_open_obligations=True)))
-
-    def test_obligation_reference_must_exist(self):
         self.audit.write_text("", encoding="utf-8")
-        self.obligations.write_text(json.dumps({
-            "Vegas.Paper.witness": {
-                "reason": "awaiting port", "reference": "archive/missing.lean.txt"
-            }
-        }), encoding="utf-8")
-        self.assertTrue(any("Missing paper obligation reference" in error for error in
-                            CHECKER.check(self.root, self.paper,
-                                          allow_open_obligations=True)))
+        self.assertTrue(any("no audit theorem Vegas.Paper.witness" in error for error in
+                            CHECKER.check(self.root, self.paper, allow_unverified=True)))
+
+    def test_archive_contents_and_presence_do_not_affect_audit(self):
+        archived = self.root / "archive" / "Paper.lean.txt"
+        archived.parent.mkdir()
+        archived.write_bytes(b"\xff\xfe invalid UTF-8; not Lean")
+        self.assertEqual(self.check(), [])
+        self.make_unverified_claim()
+        expected = self.check()
+        self.assertEqual(CHECKER.check(self.root, self.paper, allow_unverified=True), [])
+        archived.unlink()
+        archived.parent.rmdir()
+        self.assertEqual(self.check(), expected)
+        self.assertEqual(CHECKER.check(self.root, self.paper, allow_unverified=True), [])
 
     def test_missing_pin(self):
         self.audit.write_text("namespace Vegas.Paper\ntheorem witness : True := True.intro\n",
@@ -222,7 +225,7 @@ class PaperClaimsTests(unittest.TestCase):
     def test_prose_tags_are_checked(self):
         with self.main.open("a", encoding="utf-8") as stream:
             stream.write("\n% lean-claim: prose:new\n")
-        self.assertTrue(any("no Lean mapping: prose:new" in error for error in self.check()))
+        self.assertTrue(any("no registry entry: prose:new" in error for error in self.check()))
 
     def test_duplicate_claim(self):
         with self.main.open("a", encoding="utf-8") as stream:

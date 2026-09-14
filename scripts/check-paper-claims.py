@@ -3,14 +3,13 @@
 
 Numbered theorem/lemma/corollary/proposition environments require labels and
 registry entries. Unnumbered results are tagged with '% lean-claim: ID'. Every
-entry must name an axiom-pinned theorem in the paper audit modules. Only files
-reachable through the active main.tex inputs are checked, not archived drafts.
+entry either names axiom-pinned theorems in Paper.lean or explicitly describes
+an unverified manuscript claim. Only files reachable through the active
+main.tex inputs are checked. Reference code is never read or indexed.
 
-Code validation and paper completion are separate gates. Entries in
-paper-obligations.json retain unchanged paper targets whose former audit
-declarations are only readable in the split archive. Strict mode rejects open
-obligations; --allow-open-obligations is an explicit progress mode that still
-validates their names and archival references, plus all active proofs and pins.
+Strict mode rejects unverified claims and admitted audit declarations.
+--allow-unverified checks coverage during development, not proof completion.
+Unverified entries record manuscript coverage gaps, not a theorem work plan.
 """
 
 from __future__ import annotations
@@ -27,7 +26,6 @@ import sys
 
 AUDIT_FILES = ("Paper.lean",)
 SNAPSHOT_FILE = "paper-snapshot.json"
-OBLIGATIONS_FILE = "paper-obligations.json"
 THEOREM = re.compile(
     r"\\begin\{(theorem|lemma|corollary|proposition)\}(.*?)\\end\{\1\}", re.S
 )
@@ -225,9 +223,10 @@ def validate_snapshot(root: Path, paper: Path) -> tuple[dict[str, str], list[str
 
 
 def check(root: Path, paper: Path, allow_missing: bool = False,
-          allow_open_obligations: bool = False) -> list[str]:
+          allow_unverified: bool = False) -> list[str]:
     registry = json.loads((root / "paper-claims.json").read_text(encoding="utf-8"))
-    obligations = json.loads((root / OBLIGATIONS_FILE).read_text(encoding="utf-8"))
+    if not isinstance(registry, dict):
+        return ["Malformed paper-claims.json: expected an object"]
     names, pins, admitted = set(), set(), set()
     for filename in AUDIT_FILES:
         declared, pinned, open_theorems = audit_names(
@@ -237,64 +236,32 @@ def check(root: Path, paper: Path, allow_missing: bool = False,
         pins.update(pinned)
         admitted.update(open_theorems)
     failures = []
-    registry_names = {
-        name for references in registry.values() if isinstance(references, list)
-        for name in references if isinstance(name, str)
-    }
-    valid_open = set()
-    if not isinstance(obligations, dict):
-        failures.append(f"Malformed {OBLIGATIONS_FILE}: expected an object")
-        obligations = {}
-    for name, details in obligations.items():
-        if name not in registry_names:
-            failures.append(f"Stale paper obligation not named by registry: {name}")
+    for claim, entry in registry.items():
+        if not isinstance(entry, dict) or set(entry) not in ({"theorems"}, {"unverified"}):
+            failures.append(f"{claim}: expected exactly one of 'theorems' or 'unverified'")
             continue
-        if name in names and name not in admitted:
-            failures.append(f"Stale paper obligation has an active proof: {name}")
+        if "unverified" in entry:
+            reason = entry["unverified"]
+            if not isinstance(reason, str) or not reason.strip():
+                failures.append(f"{claim}: unverified claim needs a nonempty explanation")
+            elif not allow_unverified:
+                failures.append(f"Unverified paper claim: {claim} ({reason.strip()})")
             continue
-        if not isinstance(details, dict):
-            failures.append(f"Malformed paper obligation for {name}: expected an object")
-            continue
-        reason, reference = details.get("reason"), details.get("reference")
-        if not isinstance(reason, str) or not reason.strip():
-            failures.append(f"Malformed paper obligation for {name}: missing reason")
-            continue
-        if not isinstance(reference, str) or not reference.strip():
-            failures.append(f"Malformed paper obligation for {name}: missing reference")
-            continue
-        relative = Path(reference)
-        archive = (root / relative).resolve()
-        if (relative.is_absolute() or ".." in relative.parts
-                or not archive.is_relative_to(root.resolve())):
-            failures.append(f"Invalid paper obligation reference for {name}: {reference}")
-            continue
-        if not archive.is_file():
-            failures.append(f"Missing paper obligation reference for {name}: {reference}")
-            continue
-        archived_names, _, _ = audit_names(archive.read_text(encoding="utf-8"))
-        if name not in archived_names:
-            failures.append(
-                f"Paper obligation reference does not declare {name}: {reference}"
-            )
-            continue
-        valid_open.add(name)
-        if not allow_open_obligations:
-            failures.append(f"Open paper obligation: {name} ({reason.strip()}; {reference})")
-    for claim, references in registry.items():
-        if not references or not isinstance(references, list):
-            failures.append(f"{claim}: expected a nonempty list of Lean theorems")
+        references = entry["theorems"]
+        if (not isinstance(references, list) or not references
+                or any(not isinstance(name, str) or not name.strip() for name in references)):
+            failures.append(f"{claim}: expected a nonempty list of Lean theorem names")
             continue
         for name in references:
             if name not in names:
-                if name not in valid_open:
-                    failures.append(f"{claim}: no audit theorem {name}")
+                failures.append(f"{claim}: no audit theorem {name}")
             elif name not in pins:
                 failures.append(f"{claim}: no guarded axiom pin for {name}")
     for name in sorted(names - pins):
         failures.append(f"Audit theorem has no guarded axiom pin: {name}")
-    if not allow_open_obligations:
+    if not allow_unverified:
         for name in sorted(admitted):
-            failures.append(f"Admitted audit theorem is an open obligation: {name}")
+            failures.append(f"Unproved audit declaration: {name}")
     if not (paper / "main.tex").is_file():
         if allow_missing:
             print("Paper checkout absent: checking Lean registry only, not prose coverage.")
@@ -340,7 +307,7 @@ def check(root: Path, paper: Path, allow_missing: bool = False,
         if count != 1:
             failures.append(f"Duplicate paper claim: {claim}")
         if claim not in registry:
-            failures.append(f"Paper claim has no Lean mapping: {claim}")
+            failures.append(f"Paper claim has no registry entry: {claim}")
     for claim in registry.keys() - counts.keys():
         failures.append(f"Stale registry entry absent from active paper: {claim}")
     return failures
@@ -351,8 +318,8 @@ def main() -> int:
     parser.add_argument("--paper-dir", type=Path)
     parser.add_argument("--allow-missing-paper", action="store_true",
                         help="CI without the separate Overleaf checkout checks only the Lean registry")
-    parser.add_argument("--allow-open-obligations", action="store_true",
-                        help="progress audit: permit validated archived obligations")
+    parser.add_argument("--allow-unverified", action="store_true",
+                        help="coverage audit only: permit explicitly unverified claims and admissions")
     parser.add_argument("--refresh-snapshot", action="store_true",
                         help=f"replace {SNAPSHOT_FILE} from a clean manuscript Git checkout")
     args = parser.parse_args()
@@ -372,17 +339,15 @@ def main() -> int:
         return 0
     try:
         failures = check(root, paper, args.allow_missing_paper,
-                         args.allow_open_obligations)
+                         args.allow_unverified)
     except (OSError, ValueError) as error:
         failures = [str(error)]
     if failures:
         print("\n".join(failures))
         return 1
-    obligations = json.loads((root / OBLIGATIONS_FILE).read_text(encoding="utf-8"))
-    if args.allow_open_obligations:
-        _, _, admitted = audit_names((root / "Paper.lean").read_text(encoding="utf-8"))
-        open_count = len(set(obligations) | admitted)
-        print(f"Paper progress audit passed with {open_count} open obligations remaining.")
+    if args.allow_unverified:
+        print("Paper coverage audit passed; unverified claims are permitted in this mode. "
+              "This is not a proof-completion check.")
     else:
         print("Paper claim registry checks passed. Prose/Lean semantic agreement requires review.")
     return 0

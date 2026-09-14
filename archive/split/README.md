@@ -3,8 +3,7 @@
 This directory preserves readable sources for reuse. It is not a Lean library,
 is not on the import path, and supplies no active compiler theorem. Source files
 have a `.lean.txt` suffix so neither Lake nor documentation generation treats
-them as modules. The module-boundary checker rejects imports of archived-only
-modules, including imports that a stale compiled artifact might otherwise allow.
+them as modules. Reference files do not supply active imports.
 
 The complete checked reference checkout is VegasCore commit
 `82cc606`; its manuscript checkout is
@@ -28,6 +27,5 @@ that layer. In particular, private request windows cannot stand in for
 observable in-flight messages, and a graph-state refinement cannot stand in
 for a strategic theorem about a ledger or VM.
 
-The active manuscript and its target claim registry remain unchanged. Explicit
-open obligations identify missing active replacements; this archive does not
-satisfy the paper's proof-completion gate.
+This material is outside all proof, coverage, and documentation audits. Its
+declarations are neither current results nor obligations to restore.

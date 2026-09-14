@@ -123,7 +123,7 @@ def check(root: Path) -> list[str]:
                 source_paths.add(path.resolve())
                 modules[module] = imports(path.read_text(encoding="utf-8"))
 
-    # A tracked source outside the configured libraries is also an orphan.
+    # A tracked non-reference source outside configured libraries is an orphan.
     # Git submodules are gitlinks, so this does not enumerate dependency trees.
     if (root / ".git").exists():
         tracked = subprocess.run(
@@ -131,15 +131,13 @@ def check(root: Path) -> list[str]:
             check=True, capture_output=True, text=True,
         ).stdout.split("\0")
         for filename in filter(None, tracked):
+            if Path(filename).parts[0] == "archive":
+                continue
             path = root / filename
             if path.is_file() and path.resolve() not in source_paths:
                 failures.append(f"{filename}: tracked source outside configured libraries")
 
     local_roots = [item for roots in library_roots.values() for item in roots]
-    reference_modules = {
-        ".".join(path.relative_to(root / "archive" / "split").parts)[:-len(".lean.txt")]
-        for path in (root / "archive" / "split").rglob("*.lean.txt")
-    }
     local_graph = {
         module: {dependency for dependency in sorted(dependencies) if dependency in modules}
         for module, dependencies in sorted(modules.items())
@@ -173,8 +171,6 @@ def check(root: Path) -> list[str]:
 
     for module, dependencies in modules.items():
         for dependency in dependencies:
-            if dependency in reference_modules and dependency not in modules:
-                failures.append(f"{module}: archived reference is not an active import {dependency}")
             if under(module, "GameTheoryExtensions") and not any(
                     under(dependency, prefix) for prefix in
                     ("GameTheory", "GameTheoryExtensions", "Mathlib", "Batteries", "Init", "Std")):

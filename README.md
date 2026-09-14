@@ -76,13 +76,15 @@ the source language, event-graph compiler, and its native integration.
 
 The single active `Paper.lean` audit contains only direct delegations to proved
 repository theorems; it has no admissions and does not count archived claims.
-The exact active layering, conditional pending-message theorem, and remaining
-program-specific incentive obligation are listed in
+The exact active layering, source-payout pending-message theorem, and next
+end-to-end target are listed in
 [the active tower](docs/active-tower.md).
 
 A successful Lean build checks the active proof terms. It is not evidence that
-the separate manuscript's prose or claim registry has caught up with this
-migration.
+the separate manuscript's claims are all established. `paper-claims.json`
+distinguishes active audit mappings from explicitly unverified manuscript
+claims. The latter are coverage gaps, not a count or a worklist of missing
+theorems. Reference material supplies neither proofs nor audit obligations.
 
 Readable source material for porting is preserved in the
 [proof reference archive](archive/fused/README.md), outside all active libraries.

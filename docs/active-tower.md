@@ -47,6 +47,64 @@ candidate-host termination, honest laws, and causal deviation coupling are not
 inferred from these safety results. The Nash theorem below still uses the
 registered-site service.
 
+## End-to-end target
+
+The immediate unproved result is **source-to-candidate-message equilibrium
+preservation**, not a collection of intermediate theorem names. It must concern
+the actual `candidateApplication` and the generated `compileCandidatePolicy`,
+with arbitrary native unilateral policies. Candidate binding and completed
+settlement correspondence alone do not establish it.
+
+Fix a checked source with an admitted `SealedCompilation`, its initial
+environment, configured default, and payout valuation. Keep the current
+fragment explicit: homogeneous values, universally accepting guards, no
+sampling, and no initially private binding requiring publication. Fix a finite
+player set and a round driver with roster coverage, sufficient timeout windows
+and termination budget, and deadline-relative timely service for unchanged
+players. The environment may adapt its unreserved wire actions to its actual
+view, including the pending pool, but has no private candidate-table access.
+Candidate ownership and immutable accepted meaning are properties of this ideal
+host, not cryptographic conclusions.
+
+Write `S` for the written-source game, `R` for that candidate-message round game,
+`C` for the pointwise generated policy translation, and `pS` and `pR` for the
+source payout and actual public runtime payout. The intended result has two laws:
+
+1. **Honest execution:** every compiled profile completes without timeout and
+   `Law(pR; R(C σ)) = Law(pS; S(σ))`.
+2. **Arbitrary deviations:** assuming the source-only `QuitPayoutBound`, for
+   every source profile `σ`, player `i`, and randomized native replacement `τi`,
+   there is a finite mixture `μ` of legal source replacements such that
+   `E[uᵢ(pR); R((C σ)[i := τi])] ≤ E[sᵢ ∼ μ] E[uᵢ(pS); S(σ[i := sᵢ])]`.
+   All other players retain their original source policies in every mixture
+   component. No runtime incentive comparison or desired simulation is supplied
+   as a premise.
+
+These laws give Nash and same-error ε-Nash preservation and reflection at
+compiled profiles. The inequality, rather than exact deviation-outcome equality,
+allows selective withholding subject to the stated source settlement condition.
+`QuitPayoutBound` requires each player's designated quitting settlement to be a
+global minimum over legal source executions; it is stronger than ordinary
+ex-ante quit dominance. The proof must derive completion, acceptance-time source
+decisions, and the unchanged-opponents law from the actual driver and compiler.
+Its concrete composition certificate and paper audit should delegate to those
+proved laws, not accept them as caller obligations.
+
+The registered-site host already has the source-payout strategic result. The
+candidate host currently has immutable accepted meaning and completed public
+settlement witnesses, but not these honest and deviation laws. Extending those
+laws is the next proof task. More general source continuation criteria, guarded
+choices, sampling, heterogeneous values, and cryptographic or ledger refinement
+are further scope requirements; their exact additional assumptions must be
+determined, not represented by guessed theorem signatures. An obstruction must
+be stated against a specific model and guarantee.
+
+`paper-claims.json` is a manuscript coverage inventory, not this proof plan.
+Unverified entries keep unsupported prose visible without prescribing a proof
+architecture or restoring inactive interfaces. Reference code is only reading
+material and contributes nothing to the audit. The paper's broader scope remains
+the goal; the candidate-message theorem is the next concrete milestone.
+
 ## Pending-message strategic boundary
 
 `SealedCompilation.compilePolicy` implements a written-source policy in the

@@ -38,13 +38,16 @@ Read the owning theorem and definitions, not only its paper-facing restatement.
 The audit pins theorem axioms; it does not prove that prose and formal
 statements agree.
 
-The separate manuscript checkout includes broader target claims recorded in
-`paper-obligations.json`; those are not current verified results.
-`python scripts/check-paper-claims.py --allow-open-obligations` checks progress
-against both the direct Lean audit and the pinned manuscript snapshot. The
-strict checker remains a completion gate and fails while these obligations
-are open. `--allow-missing-paper` permits a clone without the separate paper
-checkout; it does not turn an unproved theorem into a proof.
+`paper-claims.json` records each manuscript claim either with active audit
+theorems or an explicit explanation of what is unverified. These explanations
+identify coverage gaps, not a list of theorem statements to implement.
+`python scripts/check-paper-claims.py --allow-unverified` checks this inventory
+against the direct Lean audit and the pinned manuscript snapshot. Strict mode
+fails on any unverified claim or admitted audit declaration. Neither mode reads
+reference code or derives obligations from it. `--allow-missing-paper` permits
+a clone without the separate manuscript; prose coverage is then unchecked.
+The concrete end-to-end target is specified in
+[the active tower](docs/active-tower.md#end-to-end-target).
 
 ## Trust and scope
 

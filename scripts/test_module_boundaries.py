@@ -54,14 +54,17 @@ class ModuleBoundaryTests(unittest.TestCase):
             self.assertTrue(any("missing local import Vegas.Missing" in error
                                 for error in CHECKER.check(root)))
 
-    def test_archived_library_cannot_be_imported(self):
+    def test_reference_files_cannot_supply_a_missing_local_module(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = self.fixture(directory, {"Vegas": "import Detached.Backend"})
-            archive = root / "archive" / "split" / "Detached"
+            root = self.fixture(directory, {"Vegas": "import Vegas.Backend"})
+            archive = root / "archive" / "split" / "Vegas"
             archive.mkdir(parents=True)
-            (archive / "Backend.lean.txt").write_text("", encoding="utf-8")
-            self.assertTrue(any("archived reference is not an active import Detached.Backend"
-                                in error for error in CHECKER.check(root)))
+            reference = archive / "Backend.lean.txt"
+            reference.write_bytes(b"\xff\xfe not a Lean module")
+            errors = CHECKER.check(root)
+            self.assertTrue(any("missing local import Vegas.Backend" in error for error in errors))
+            reference.unlink()
+            self.assertEqual(CHECKER.check(root), errors)
 
     def test_archived_original_does_not_shadow_active_module(self):
         with tempfile.TemporaryDirectory() as directory:

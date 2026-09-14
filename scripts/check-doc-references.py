@@ -101,7 +101,7 @@ def dangling(names):
 
 
 def markdown_paths(root):
-    """Check exact local paths cited by tracked Markdown, never fuzzy names."""
+    """Check active tracked Markdown; reference archives are outside the audit."""
     if not (root / ".git").exists():
         return [], False
     try:
@@ -114,6 +114,8 @@ def markdown_paths(root):
     findings = []
     for encoded in sorted(filter(None, tracked)):
         relative_source = encoded.decode("utf-8")
+        if Path(relative_source).parts[0] == "archive":
+            continue
         source = root / relative_source
         if not source.is_file():
             continue
@@ -129,6 +131,8 @@ def markdown_paths(root):
                 if Path(destination).suffix.lower() not in (".md", ".lean"):
                     continue
                 target = (source.parent / destination).resolve()
+                if target.is_relative_to((root / "archive").resolve()):
+                    continue
                 if not target.is_relative_to(root.resolve()) or not target.is_file():
                     findings.append((relative_source, number, destination))
     return findings, True
