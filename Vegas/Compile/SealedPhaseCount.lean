@@ -99,8 +99,10 @@ theorem trace_ready_progress (supported : SealedFragment G ty)
   obtain ⟨command, hcommand, hstep⟩ := hinvoke
   rw [hpolicy] at hcommand
   obtain ⟨selected, hbound, hselected, hready, hphase⟩ :=
-    supported.resolvingPolicy_progress_of_ready nullValue window who policy before
-      hinvariant hmemory hclosed target hnotDone hrequires howned command hcommand
+    supported.resolvingPolicy_progress_of_ready nullValue window who policy
+      (before.principalHistory who) (State.observe _ before.native who) hinvariant.publicEvents
+      (supported.ownCommitCache_of_registered nullValue window who before hinvariant hmemory)
+      hclosed target hnotDone hrequires howned command hcommand
   exact ⟨selected, command, hbound, hselected, hready, hphase, hcommand, hstep⟩
 
 /-- A submitted compiled protocol phase completes its selected source site
@@ -176,8 +178,10 @@ theorem ProgressCommand.submission_completed_of_drained (supported : SealedFragm
           some ⟨.commit who, G.messagePrerequisites producer⟩ := by
         change supported.compile.rules[producer.val]? = _
         rw [supported.compile_rule, G.sealedRule_commit_eq producer who guard hproducer]
-      have haccepted := supported.ready_reveal_source_accepted nullValue window execution
-        hinvariant hclosed node producer who guard hreveal hproducer hnotDone hrequires
+      have haccepted := supported.ready_reveal_source_accepted nullValue window who
+        (execution.principalHistory who) (State.observe _ execution.native who)
+        (supported.ownCommitCache_of_registered nullValue window who execution hinvariant hmemory)
+        hclosed node producer guard hreveal hproducer hnotDone hrequires
       have hlookup : execution.native.application.service.lookup (who, producer.val) =
           some value := (hmemory who producer.val).trans
         ((runtime.eventHistory_cache (runtime.program.registrationEncoding producer.val)

@@ -19,20 +19,6 @@ namespace Interaction.SealedProgram
 universe uPrincipal uValue
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 
-theorem done_of_accepted (events : List (Event Principal Value))
-    (node : Nat) (handle : CommitmentHandle Principal Nat)
-    (hmem : .accepted node handle ∈ events) : done events node = true := by
-  exact List.any_eq_true.mpr ⟨.accepted node handle, hmem, by simp [Event.node]⟩
-
-theorem accepted?_none_of_not_done (events : List (Event Principal Value))
-    (node : Nat) (hnot : done events node = false) : accepted? events node = none := by
-  cases hread : accepted? events node with
-  | none => rfl
-  | some handle =>
-      have hdone := done_of_accepted events node handle (accepted_mem_of_accepted?_eq_some hread)
-      rw [hnot] at hdone
-      contradiction
-
 variable [DecidableEq Principal] [DecidableEq Value]
 
 theorem candidateMessage?_accepted_owner (program : SealedProgram Principal)
@@ -75,36 +61,6 @@ open MessageApplication GameTheory.Math.Probability
 universe uPrincipal uValue
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 variable (runtime : SealedResolution Principal Value)
-
-/-- At a commitment rule, public completion means acceptance, not an opening
-event or a timeout. Timeouts are recorded separately from this predicate. -/
-theorem PublicEventInvariant.done_eq_accepted_isSome
-    {state : PublicState Principal Value} (invariant : PublicEventInvariant runtime state)
-    (node : Nat) (owner : Principal) (requires : List Nat)
-    (hrule : runtime.program.rules[node]? = some ⟨.commit owner, requires⟩) :
-    SealedProgram.done state.events node = (SealedProgram.accepted? state.events node).isSome := by
-  cases hread : SealedProgram.accepted? state.events node with
-  | some handle =>
-      exact SealedProgram.done_of_accepted _ node handle
-        (SealedProgram.accepted_mem_of_accepted?_eq_some hread)
-  | none =>
-      cases hdone : SealedProgram.done state.events node with
-      | false => rfl
-      | true =>
-          obtain ⟨event, hmem, hnode⟩ := List.any_eq_true.mp hdone
-          have heq : event.node = node := by simpa using hnode
-          cases event with
-          | accepted index handle =>
-              change index = node at heq
-              subst index
-              have hnone := List.findSome?_eq_none_iff.mp hread (.accepted node handle) hmem
-              simp at hnone
-          | opened index value =>
-              change index = node at heq
-              subst index
-              obtain ⟨eventOwner, source, eventRequires, hopen⟩ := invariant.opened node value hmem
-              rw [hrule] at hopen
-              cases hopen
 
 private theorem accepted?_stamp (state : PublicState Principal Value) (visited node : Nat) :
     SealedProgram.accepted? (state.stamp visited).events node =

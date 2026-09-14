@@ -41,6 +41,37 @@ structure PublicEventInvariant (runtime : SealedResolution Principal Value)
   accepted : ∀ node handle, .accepted node handle ∈ state.events →
     ∃ owner rule, runtime.program.rules[node]? = some rule ∧ rule.kind = .commit owner
 
+/-- At a commitment rule, public completion means acceptance, not an opening
+event or a timeout. Timeouts are recorded separately from this predicate. -/
+theorem PublicEventInvariant.done_eq_accepted_isSome
+    (runtime : SealedResolution Principal Value)
+    {state : PublicState Principal Value} (invariant : PublicEventInvariant runtime state)
+    (node : Nat) (owner : Principal) (requires : List Nat)
+    (hrule : runtime.program.rules[node]? = some ⟨.commit owner, requires⟩) :
+    SealedProgram.done state.events node = (SealedProgram.accepted? state.events node).isSome := by
+  cases hread : SealedProgram.accepted? state.events node with
+  | some handle =>
+      exact SealedProgram.done_of_accepted _ node handle
+        (SealedProgram.accepted_mem_of_accepted?_eq_some hread)
+  | none =>
+      cases hdone : SealedProgram.done state.events node with
+      | false => rfl
+      | true =>
+          obtain ⟨event, hmem, hnode⟩ := List.any_eq_true.mp hdone
+          have heq : event.node = node := by simpa using hnode
+          cases event with
+          | accepted index handle =>
+              change index = node at heq
+              subst index
+              have hnone := List.findSome?_eq_none_iff.mp hread (.accepted node handle) hmem
+              simp at hnone
+          | opened index value =>
+              change index = node at heq
+              subst index
+              obtain ⟨eventOwner, source, eventRequires, hopen⟩ := invariant.opened node value hmem
+              rw [hrule] at hopen
+              cases hopen
+
 namespace PublicEventInvariant
 
 variable {runtime : SealedResolution Principal Value}
@@ -358,6 +389,36 @@ theorem accepted_of_done_commit (invariant : EventInvariant runtime state)
       simp at heventRule
 
 end EventInvariant
+
+omit [DecidableEq Principal] [DecidableEq Value] in
+/-- A completed commit event determines the canonical public handle without a
+global event-node uniqueness assumption. -/
+theorem EventInvariant.accepted?_eq_some_of_done_commit
+    {runtime : SealedResolution Principal Value}
+    {state : ApplicationState Principal Value}
+    (invariant : EventInvariant runtime state)
+    (node : Nat) (owner : Principal) (requires : List Nat)
+    (hrule : runtime.program.rules[node]? =
+      some { kind := .commit owner, requires })
+    (hdone : SealedProgram.done state.visible.events node = true) :
+    SealedProgram.accepted? state.visible.events node = some (owner, node) := by
+  have hcanonical := invariant.accepted_of_done_commit node owner requires hrule hdone
+  cases hfound : SealedProgram.accepted? state.visible.events node with
+  | none =>
+      unfold SealedProgram.accepted? at hfound
+      have himpossible := List.findSome?_eq_none_iff.mp hfound _ hcanonical
+      simp at himpossible
+  | some handle =>
+      have hmem := SealedProgram.accepted_mem_of_accepted?_eq_some hfound
+      obtain ⟨eventOwner, value, rule, heventRule, hkind, hhandle, hlookup⟩ :=
+        invariant.acceptedBinding.accepted node handle hmem
+      rw [hrule] at heventRule
+      have hrules := Option.some.inj heventRule
+      have hkinds := congrArg SealedRule.kind hrules
+      simp only [hkind, SealedRuleKind.commit.injEq] at hkinds
+      subst eventOwner
+      subst handle
+      rfl
 
 /-- The native event invariant survives arbitrary randomized player and
 environment policies, including resolving clock commands and timeouts. -/

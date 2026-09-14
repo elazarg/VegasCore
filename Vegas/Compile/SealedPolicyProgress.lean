@@ -8,9 +8,10 @@ import Interaction.SealedResolutionRounds
 
 /-! # Protocol progress of compiled sealed policies
 
-At an invariant native snapshot, a selected honest node registers a fresh
-choice, submits its occupied commitment, or opens its cached value. Timeout
-defaults do not invalidate the declared reads. The exact finite selected node
+At a snapshot with public event provenance and the owner's accepted-value
+cache, a selected honest node prepares a choice, submits its commitment, or
+opens its cached value. Timeout defaults do not invalidate the declared reads.
+Both commitment hosts use this selector proof. The exact finite selected node
 and cache phase are retained for deadline charging.
 -/
 
@@ -80,7 +81,7 @@ theorem runPolicies_no_reregistration (supported : SealedFragment G ty)
   rw [hretained] at hfresh
   contradiction
 
-/-- The three honest protocol phases at the exact selected source site. -/
+/-- The three honest protocol phases at the exact selected graph site. -/
 inductive ProgressCommand (supported : SealedFragment G ty) (who : Player)
     (history : List (supported.compile.messageApplication
       (Value := L.Val ty)).PlayerEntry) :
@@ -110,34 +111,36 @@ inductive ProgressCommand (supported : SealedFragment G ty) (who : Player)
 The statement also retains its public readiness, including after defaults. -/
 theorem nodeCommand_progress (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
-    (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hinvariant : SealedResolution.EventInvariant (supported.resolvingRuntime nullValue window)
-      execution.native.application)
-    (hmemory : SealedResolution.RegistrationMemory (supported.resolvingRuntime nullValue window)
-      execution)
+    (nativeHistory : List
+      (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
+    (nativeView : (supported.resolvingRuntime nullValue window).messageApplication.View)
+    (hpublic : SealedResolution.PublicEventInvariant (supported.resolvingRuntime nullValue window)
+      nativeView.application)
+    (hownCache : supported.OwnCommitCache who nativeView.application.events
+      ((supported.resolvingRuntime nullValue window).eventHistory nativeHistory))
     (node : Fin G.nodeCount)
     (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (hselected : supported.nodeCommand? who execution.native.application.visible.timeouts policy
-      ((supported.resolvingRuntime nullValue window).eventHistory (execution.principalHistory who))
+    (hselected : supported.nodeCommand? who nativeView.application.timeouts policy
+      ((supported.resolvingRuntime nullValue window).eventHistory nativeHistory)
       ((supported.resolvingRuntime nullValue window).eventView
-        (MessageApplication.State.observe _ execution.native who))
-      (supported.resolvedPlayerStore who nullValue execution.native.application.visible.timeouts
+        nativeView)
+      (supported.resolvedPlayerStore who nullValue nativeView.application.timeouts
         ((supported.resolvingRuntime nullValue window).eventHistory
-          (execution.principalHistory who))
+          nativeHistory)
         ((supported.resolvingRuntime nullValue window).eventView
-          (MessageApplication.State.observe _ execution.native who))) node = some law) :
-    execution.native.application.visible.completed node.val = false ∧
-      (G.messagePrerequisites node).all execution.native.application.visible.completed = true ∧
+          nativeView)) node = some law) :
+    nativeView.application.completed node.val = false ∧
+      (G.messagePrerequisites node).all nativeView.application.completed = true ∧
       ∀ command ∈ law.support,
         ProgressCommand supported who
           ((supported.resolvingRuntime nullValue window).eventHistory
-            (execution.principalHistory who)) node command := by
+            nativeHistory) node command := by
   let runtime := supported.resolvingRuntime nullValue window
-  let history := runtime.eventHistory (execution.principalHistory who)
-  let view := runtime.eventView (MessageApplication.State.observe _ execution.native who)
+  let history := runtime.eventHistory nativeHistory
+  let view := runtime.eventView nativeView
   let store := supported.resolvedPlayerStore who nullValue
-    execution.native.application.visible.timeouts history view
-  change supported.nodeCommand? who execution.native.application.visible.timeouts
+    nativeView.application.timeouts history view
+  change supported.nodeCommand? who nativeView.application.timeouts
     policy history view store node = some law at hselected
   change _ ∧ _ ∧ ∀ command ∈ law.support, ProgressCommand supported who history node command
   unfold nodeCommand? at hselected
@@ -146,11 +149,11 @@ theorem nodeCommand_progress (supported : SealedFragment G ty)
   next htimeout =>
     split at hselected
     next hready =>
-      have hdone : SealedProgram.done execution.native.application.visible.events
+      have hdone : SealedProgram.done nativeView.application.events
           node.val = false := hready.1
       have hrequires : (G.messagePrerequisites node).all
-          execution.native.application.visible.completed = true := by
-        have h := (execution.native.application.visible.prerequisitesDone_discharge
+          nativeView.application.completed = true := by
+        have h := (nativeView.application.prerequisitesDone_discharge
           (G.sealedRule node)).symm.trans hready.2
         simpa only [Graph.sealedRule] using h
       refine ⟨?_, hrequires, ?_⟩
@@ -171,7 +174,8 @@ theorem nodeCommand_progress (supported : SealedFragment G ty)
                 exact .commitment node guard hsem value hcache
             | none =>
                 obtain ⟨reads, hreads⟩ := supported.resolvedPlayerStore_reads_of_ready
-                  nullValue window who execution hinvariant hmemory node guard hsem hrequires
+                  nullValue window who nativeHistory nativeView hpublic hownCache node guard
+                  hsem hrequires
                 change ReadEnv.ofStoreExec? store guard.choiceReads = some reads at hreads
                 intro command hcommand
                 rw [commitCommand, hcache, hreads, FinDist.support_map] at hcommand
@@ -180,7 +184,7 @@ theorem nodeCommand_progress (supported : SealedFragment G ty)
           next => contradiction
         next source hsem =>
           let discharged :=
-            supported.compile.discharge execution.native.application.visible.timeouts
+            supported.compile.discharge nativeView.application.timeouts
           change (discharged.openingHandle? view.application who node.val).map _ = some law
             at hselected
           cases hhandle : discharged.openingHandle? view.application who node.val with
@@ -200,16 +204,14 @@ theorem nodeCommand_progress (supported : SealedFragment G ty)
                 supported.ruleAt_reveal (supported.compile_rule node) hkind
               have hrevealNode : revealNode = node := Fin.ext hrevealIndex
               subst revealNode
-              have hacceptedMem : SealedProgram.Event.accepted sourceSlot (who, sourceSlot) ∈
-                  execution.native.application.visible.events :=
-                SealedProgram.accepted_mem_of_accepted?_eq_some haccepted
-              obtain ⟨_, value, _, _, _, _, hlookup⟩ :=
-                hinvariant.acceptedBinding.accepted sourceSlot (who, sourceSlot) hacceptedMem
-              have hcache : (supported.compile.registrationEncoding sourceSlot).cachedValue
-                  (supported.compile.messageApplication (Value := L.Val ty)) history = some value :=
-                (runtime.eventHistory_cache (runtime.program.registrationEncoding sourceSlot)
-                  (execution.principalHistory who)).trans
-                    ((hmemory who sourceSlot).symm.trans hlookup)
+              have hdone : SealedProgram.done nativeView.application.events producer.val = true :=
+                hproducerIndex.symm ▸ SealedProgram.done_of_accepted _ sourceSlot (who, sourceSlot)
+                  (SealedProgram.accepted_mem_of_accepted?_eq_some haccepted)
+              obtain ⟨value, _, hcache⟩ := hownCache producer guard hproducer hdone
+              rw [hproducerIndex] at hcache
+              change (supported.compile.registrationEncoding sourceSlot).cachedValue
+                (supported.compile.messageApplication (Value := L.Val ty)) history = some value
+                at hcache
               intro command hcommand
               rw [hhandle] at hselected
               simp only [Option.map_some, hcache] at hselected
@@ -224,22 +226,24 @@ theorem nodeCommand_progress (supported : SealedFragment G ty)
 /-- A ready unfinished reveal uses an actually accepted producer. If the
 producer had defaulted instead, propagation would already complete the reveal. -/
 theorem ready_reveal_source_accepted (supported : SealedFragment G ty)
-    (nullValue : L.Val ty) (window : Nat)
-    (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hinvariant : SealedResolution.EventInvariant (supported.resolvingRuntime nullValue window)
-      execution.native.application)
-    (hclosed : execution.native.application.visible.ResolutionClosed
+    (nullValue : L.Val ty) (window : Nat) (who : Player)
+    (nativeHistory : List
+      (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
+    (nativeView : (supported.resolvingRuntime nullValue window).messageApplication.View)
+    (hownCache : supported.OwnCommitCache who nativeView.application.events
+      ((supported.resolvingRuntime nullValue window).eventHistory nativeHistory))
+    (hclosed : nativeView.application.ResolutionClosed
       (supported.resolvingRuntime nullValue window))
-    (node producer : Fin G.nodeCount) (who : Player) (guard : EventGuard L)
+    (node producer : Fin G.nodeCount) (guard : EventGuard L)
     (hreveal : (G.nodeRow node).sem = .reveal (G.nodeTarget producer))
     (hproducer : (G.nodeRow producer).sem = .commit who guard)
-    (hnotDone : execution.native.application.visible.completed node.val = false)
+    (hnotDone : nativeView.application.completed node.val = false)
     (hrequires : (G.messagePrerequisites node).all
-      execution.native.application.visible.completed = true) :
-    SealedProgram.accepted? execution.native.application.visible.events producer.val =
+      nativeView.application.completed = true) :
+    SealedProgram.accepted? nativeView.application.events producer.val =
       some (who, producer.val) := by
   let runtime := supported.resolvingRuntime nullValue window
-  let state := execution.native.application.visible
+  let state := nativeView.application
   have hlt : producer.val < node.val := by
     have hnodeWF := supported.graphWF node (G.nodeRow node) (G.nodes_get?_nodeRow node)
     have havailable := hnodeWF.1 (G.nodeTarget producer) (by simp [hreveal, NodeSem.reads])
@@ -265,41 +269,37 @@ theorem ready_reveal_source_accepted (supported : SealedFragment G ty)
     contradiction
   have hproducerDone : SealedProgram.done state.events producer.val = true := by
     simpa [SealedResolution.PublicState.completed, hproducerNotTimeout] using hproducerComplete
-  have hproducerRule : runtime.program.rules[producer.val]? =
-      some ⟨.commit who, G.messagePrerequisites producer⟩ := by
-    change supported.compile.rules[producer.val]? = _
-    rw [supported.compile_rule]
-    exact congrArg some (G.sealedRule_commit_eq producer who guard hproducer)
-  exact hinvariant.accepted?_eq_some_of_done_commit producer.val who
-    (G.messagePrerequisites producer) hproducerRule hproducerDone
+  exact (hownCache producer guard hproducer hproducerDone).choose_spec.1
 
 private theorem nodeCommand_isSome_of_ready (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
-    (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hinvariant : SealedResolution.EventInvariant (supported.resolvingRuntime nullValue window)
-      execution.native.application)
-    (hclosed : execution.native.application.visible.ResolutionClosed
+    (nativeHistory : List
+      (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
+    (nativeView : (supported.resolvingRuntime nullValue window).messageApplication.View)
+    (hownCache : supported.OwnCommitCache who nativeView.application.events
+      ((supported.resolvingRuntime nullValue window).eventHistory nativeHistory))
+    (hclosed : nativeView.application.ResolutionClosed
       (supported.resolvingRuntime nullValue window))
     (node : Fin G.nodeCount)
-    (hnotDone : execution.native.application.visible.completed node.val = false)
+    (hnotDone : nativeView.application.completed node.val = false)
     (hrequires : (G.messagePrerequisites node).all
-      execution.native.application.visible.completed = true)
+      nativeView.application.completed = true)
     (howned :
       (∃ guard, (G.nodeRow node).sem = .commit who guard) ∨
       ∃ (producer : Fin G.nodeCount) (guard : EventGuard L),
         (G.nodeRow node).sem = .reveal (G.nodeTarget producer) ∧
         (G.nodeRow producer).sem = .commit who guard) :
-    (supported.nodeCommand? who execution.native.application.visible.timeouts policy
-      ((supported.resolvingRuntime nullValue window).eventHistory (execution.principalHistory who))
+    (supported.nodeCommand? who nativeView.application.timeouts policy
+      ((supported.resolvingRuntime nullValue window).eventHistory nativeHistory)
       ((supported.resolvingRuntime nullValue window).eventView
-        (MessageApplication.State.observe _ execution.native who))
-      (supported.resolvedPlayerStore who nullValue execution.native.application.visible.timeouts
+        nativeView)
+      (supported.resolvedPlayerStore who nullValue nativeView.application.timeouts
         ((supported.resolvingRuntime nullValue window).eventHistory
-          (execution.principalHistory who))
+          nativeHistory)
         ((supported.resolvingRuntime nullValue window).eventView
-          (MessageApplication.State.observe _ execution.native who))) node).isSome := by
+          nativeView)) node).isSome := by
   let runtime := supported.resolvingRuntime nullValue window
-  let state := execution.native.application.visible
+  let state := nativeView.application
   have hchecks : SealedProgram.done state.events node.val = false ∧
       state.timeouts.contains node.val = false := by
     simpa only [SealedResolution.PublicState.completed, Bool.or_eq_false_iff] using hnotDone
@@ -333,8 +333,9 @@ private theorem nodeCommand_isSome_of_ready (supported : SealedFragment G ty)
       change supported.compile.rules[node.val]? = _
       rw [supported.compile_rule]
       exact congrArg some (G.sealedRule_reveal_eq node producer who guard hreveal hproducer)
-    have haccepted := supported.ready_reveal_source_accepted nullValue window execution
-      hinvariant hclosed node producer who guard hreveal hproducer hnotDone hrequires
+    have haccepted := supported.ready_reveal_source_accepted nullValue window who
+      nativeHistory nativeView hownCache hclosed node producer guard hreveal hproducer
+      hnotDone hrequires
     change SealedProgram.accepted? state.events producer.val = some (who, producer.val)
       at haccepted
     have hhandle : (supported.compile.discharge state.timeouts).openingHandle?
@@ -357,41 +358,44 @@ an earlier owned site. This holds after defaults under the actual native
 invariants, without a decoded source state or an event-log uniqueness premise. -/
 theorem resolvingPolicy_progress_of_ready (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
-    (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
-    (hinvariant : SealedResolution.EventInvariant (supported.resolvingRuntime nullValue window)
-      execution.native.application)
-    (hmemory : SealedResolution.RegistrationMemory (supported.resolvingRuntime nullValue window)
-      execution)
-    (hclosed : execution.native.application.visible.ResolutionClosed
+    (nativeHistory : List
+      (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
+    (nativeView : (supported.resolvingRuntime nullValue window).messageApplication.View)
+    (hpublic : SealedResolution.PublicEventInvariant (supported.resolvingRuntime nullValue window)
+      nativeView.application)
+    (hownCache : supported.OwnCommitCache who nativeView.application.events
+      ((supported.resolvingRuntime nullValue window).eventHistory nativeHistory))
+    (hclosed : nativeView.application.ResolutionClosed
       (supported.resolvingRuntime nullValue window))
     (target : Fin G.nodeCount)
-    (hnotDone : execution.native.application.visible.completed target.val = false)
+    (hnotDone : nativeView.application.completed target.val = false)
     (hrequires : (G.messagePrerequisites target).all
-      execution.native.application.visible.completed = true)
+      nativeView.application.completed = true)
     (howned :
       (∃ guard, (G.nodeRow target).sem = .commit who guard) ∨
       ∃ (producer : Fin G.nodeCount) (guard : EventGuard L),
         (G.nodeRow target).sem = .reveal (G.nodeTarget producer) ∧
         (G.nodeRow producer).sem = .commit who guard) :
     ∀ command ∈ (supported.resolvingPolicy nullValue window who policy
-      (execution.principalHistory who)
-      (MessageApplication.State.observe _ execution.native who)).support,
+      nativeHistory
+      nativeView).support,
       ∃ selected : Fin G.nodeCount,
         selected.val ≤ target.val ∧
-        execution.native.application.visible.completed selected.val = false ∧
+        nativeView.application.completed selected.val = false ∧
         (G.messagePrerequisites selected).all
-          execution.native.application.visible.completed = true ∧
+          nativeView.application.completed = true ∧
         ProgressCommand supported who
           ((supported.resolvingRuntime nullValue window).eventHistory
-            (execution.principalHistory who)) selected command := by
+            nativeHistory) selected command := by
   let runtime := supported.resolvingRuntime nullValue window
-  let history := runtime.eventHistory (execution.principalHistory who)
-  let view := runtime.eventView (MessageApplication.State.observe _ execution.native who)
-  let commandAt := supported.nodeCommand? who execution.native.application.visible.timeouts
+  let history := runtime.eventHistory nativeHistory
+  let view := runtime.eventView nativeView
+  let commandAt := supported.nodeCommand? who nativeView.application.timeouts
     policy history view (supported.resolvedPlayerStore who nullValue
-      execution.native.application.visible.timeouts history view)
+      nativeView.application.timeouts history view)
   have htarget : (commandAt target).isSome := supported.nodeCommand_isSome_of_ready
-    nullValue window who policy execution hinvariant hclosed target hnotDone hrequires howned
+    nullValue window who policy nativeHistory nativeView hownCache hclosed target
+      hnotDone hrequires howned
   change ∀ command ∈ ((G.nodeOrder.findSome? commandAt).getD (FinDist.pure .wait)).support, _
   cases hselected : G.nodeOrder.findSome? commandAt with
   | none =>
@@ -416,8 +420,8 @@ theorem resolvingPolicy_progress_of_ready (supported : SealedFragment G ty)
             rw [hnodes] at hsorted
             exact Nat.le_of_lt ((List.pairwise_cons.mp
               (List.pairwise_append.mp hsorted).2.1).1 target hrest)
-      have hprogress := supported.nodeCommand_progress nullValue window who policy execution
-        hinvariant hmemory selected law hnode
+      have hprogress := supported.nodeCommand_progress nullValue window who policy
+        nativeHistory nativeView hpublic hownCache selected law hnode
       intro command hcommand
       exact ⟨selected, hbound, hprogress.1, hprogress.2.1, hprogress.2.2 command hcommand⟩
 

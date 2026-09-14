@@ -182,9 +182,20 @@ provenance and completion persistence are shared across the two commitment hosts
 establish the one-preparation-per-site discipline from actual owner memory,
 without a fixed-selector premise.
 
-Exclusion of a first honest timeout still requires the bounded-polling argument:
-ready honest players must issue progress commands, each preparation is charged
-once, and submissions complete within the reserved-service bound. The graph-level
+`candidatePolicy_progress_of_ready` proves that every ready honest poll selects
+a preparation, commitment, or opening at an unfinished ready graph site no later
+than the target. It applies to actual initialized candidate runs, including after
+defaults. Its `OwnCommitCache` premise is derived from authenticated acceptance
+and owner memory; no opponent openability, source realization, or timeout-free
+prefix is assumed. Declared-read availability and the selector proof are shared
+with the registered host, as is the runtime default-propagation closure law.
+`VegasTests/SealedCandidateReady.lean` checks a supported clock-only prefix that
+defaults a commitment and its disclosure, followed by preparation at the next
+decision whose reads include that defaulted public value.
+
+Exclusion of a first honest timeout still requires combining these facts in the
+bounded-polling argument: charge preparations once, bound repeated submissions
+using service checkpoints, and place enough polls before the deadline. The graph-level
 resolution utility comparison and its source transport also remain unproved for
 the candidate backend. Clock-driven completion and per-packet delivery alone do
 not establish honest success or attribute timeouts.

@@ -186,14 +186,15 @@ theorem refresh_resolutionClosed
   apply hthrough node ?_ owner source requires hrule
   exact (List.getElem?_eq_some_iff.mp hrule).1
 
-variable [DecidableEq Principal] [DecidableEq Value]
+variable {Service : Type (max uPrincipal uValue)}
+variable [DecidableEq Principal]
 
 namespace PublicState.ResolutionClosed
 
 variable {runtime : SealedResolution Principal Value}
-variable {state next : ApplicationState Principal Value}
+variable {state : ApplicationState Principal Value Service}
 
-omit [DecidableEq Principal] [DecidableEq Value] in
+omit [DecidableEq Principal] in
 theorem initial
     (hbackward : ∀ (node : Nat) (rule : SealedRule Principal),
       runtime.program.rules[node]? = some rule →
@@ -204,32 +205,7 @@ theorem initial
     runtime.initial.visible.ResolutionClosed runtime :=
   runtime.refresh_resolutionClosed hbackward hsource false {}
 
-omit [DecidableEq Value] in
-theorem register (closed : state.visible.ResolutionClosed runtime)
-    (owner : Principal) (slot : Nat) (value : Value) :
-    ({ state with service := (state.service.sealValue owner slot value).state } :
-      ApplicationState Principal Value).visible.ResolutionClosed runtime :=
-  closed
-
-theorem handle
-    (hbackward : ∀ (node : Nat) (rule : SealedRule Principal),
-      runtime.program.rules[node]? = some rule →
-      ∀ prerequisite ∈ rule.requires, prerequisite < node)
-    (hsource : ∀ (node : Nat) (owner : Principal) (source : Nat) (requires : List Nat),
-      runtime.program.rules[node]? = some { kind := .reveal owner source, requires } →
-      source < node)
-    (message : Message Principal (SealedProgram.Payload Principal Value))
-    (hnext : runtime.handle state message = some next) :
-    next.visible.ResolutionClosed runtime := by
-  unfold SealedResolution.handle at hnext
-  cases hvalid : runtime.validateMessage? state message with
-  | none => simp [hvalid] at hnext
-  | some event =>
-      simp only [hvalid, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hnext
-      subst next
-      exact runtime.refresh_resolutionClosed hbackward hsource false _
-
-omit [DecidableEq Principal] [DecidableEq Value] in
+omit [DecidableEq Principal] in
 theorem tick
     (hbackward : ∀ (node : Nat) (rule : SealedRule Principal),
       runtime.program.rules[node]? = some rule →
@@ -248,29 +224,36 @@ holds initially; every handler and clock transition re-establishes it by a full
 source-ordered refresh. -/
 theorem runPolicies_resolutionClosed
     (runtime : SealedResolution Principal Value)
+    (prepare : Service → Principal → Nat → Value → Service)
+    (applyMessage : ApplicationState Principal Value Service →
+      Message Principal (SealedProgram.Payload Principal Value) →
+        Option (ApplicationState Principal Value Service))
+    (hrecords : runtime.HandlerRecords applyMessage)
     (hbackward : ∀ (node : Nat) (rule : SealedRule Principal),
       runtime.program.rules[node]? = some rule →
       ∀ prerequisite ∈ rule.requires, prerequisite < node)
     (hsource : ∀ (node : Nat) (owner : Principal) (source : Nat) (requires : List Nat),
       runtime.program.rules[node]? = some { kind := .reveal owner source, requires } →
       source < node)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (players : Principal → (runtime.host prepare applyMessage).PlayerPolicy)
+    (environment : (runtime.host prepare applyMessage).EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
-    (execution next : runtime.messageApplication.PolicyExecution)
+    (execution next : (runtime.host prepare applyMessage).PolicyExecution)
     (hinitial : execution.native.application.visible.ResolutionClosed runtime)
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+    (hnext : next ∈ ((runtime.host prepare applyMessage).runPolicies players environment
       schedule execution).support) :
     next.native.application.visible.ResolutionClosed runtime := by
-  apply runtime.messageApplication.runPolicies_application_invariant
+  apply (runtime.host prepare applyMessage).runPolicies_application_invariant
     (fun state => state.visible.ResolutionClosed runtime) ?_ ?_ ?_
       players environment schedule execution next hinitial hnext
   · intro state owner command hclosed
-    exact PublicState.ResolutionClosed.register hclosed owner command.down.1 command.down.2
-  · intro state message after hclosed hafter
-    exact PublicState.ResolutionClosed.handle hbackward hsource message hafter
-  · intro state command after hclosed hafter
-    simp only [messageApplication, FinDist.mem_support_pure] at hafter
+    exact hclosed
+  · intro state message after _hclosed hafter
+    obtain ⟨event, hvisible⟩ := hrecords state message after hafter
+    rw [hvisible]
+    exact runtime.refresh_resolutionClosed hbackward hsource false _
+  · intro state command after _hclosed hafter
+    simp only [host, FinDist.mem_support_pure] at hafter
     subst after
     exact PublicState.ResolutionClosed.tick hbackward hsource
 

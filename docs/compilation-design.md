@@ -112,9 +112,14 @@ candidate host under arbitrary deviations. Its packet-level delivery law is
 checked: actual generated submissions have stable admission data and complete
 their site whenever the pending pool drains. This uses the honest owner's cache
 and fixed candidate meanings, without constraining opponents' submissions or
-openability. The remaining service work is the bound on progress polls, not
-admission of already generated packets. Deadline provenance and completion
-persistence are shared host laws. Legal resolution defaults
+openability. Ready-player progress is also checked on actual initialized
+candidate runs, including after defaults: the graph selector uses only public
+event provenance and the generated owner's authenticated accepted-value cache.
+The same declared-read and selection proofs serve both commitment hosts.
+The remaining service work combines this progress with one-time preparation,
+packet drainage, and reserved-service checkpoints to bound the number of polls
+before an honest site's deadline. Deadline provenance, completion persistence,
+and default-propagation closure are shared host laws. Legal resolution defaults
 and the quitting utility bound need graph
 formulations with compiler certificates, rather than a hidden source-image
 premise. Only after those laws are proved can the candidate backend expose a

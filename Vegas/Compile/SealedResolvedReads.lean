@@ -4,7 +4,7 @@ import Vegas.Compile.SealedReadOrigin
 import Vegas.Compile.SealedResolvedStore
 import Interaction.SealedResolutionEvents
 
-/-! # Declared source reads after nullable resolution
+/-! # Declared graph reads after nullable resolution
 
 Completed public reveals supply public values, including timeout defaults.
 Completed own commitments supply their registered value or the configured
@@ -82,80 +82,108 @@ namespace SealedFragment
 
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
-/-- Every declared read of a ready commitment is available in the actual
-player-side store, including after other commitments or reveals have defaulted.
-The hypotheses are native invariants and prerequisite completion, not a
-post-timeout decoded source state or the desired progress conclusion. -/
-theorem resolvedPlayerStore_reads_of_ready (supported : SealedFragment G ty)
+/-- The generated owner's accepted commitments retain their canonical handles
+and locally cached values. This is a player-local observation invariant: it
+places no condition on another owner's commitments or private service table. -/
+def OwnCommitCache (supported : SealedFragment G ty) (who : Player)
+    (events : List (SealedProgram.Event Player (L.Val ty)))
+    (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry) :
+    Prop :=
+  ∀ (node : Fin G.nodeCount) (guard : EventGuard L),
+    (G.nodeRow node).sem = .commit who guard →
+    SealedProgram.done events node.val = true →
+    ∃ value, SealedProgram.accepted? events node.val = some (who, node.val) ∧
+      (supported.compile.registrationEncoding node.val).cachedValue
+        (supported.compile.messageApplication (Value := L.Val ty)) history = some value
+
+/-- Registered-host invariants supply the player's local accepted-value cache. -/
+theorem ownCommitCache_of_registered (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat) (who : Player)
     (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
     (hinvariant : SealedResolution.EventInvariant (supported.resolvingRuntime nullValue window)
       execution.native.application)
     (hmemory : SealedResolution.RegistrationMemory (supported.resolvingRuntime nullValue window)
-      execution)
+      execution) :
+    supported.OwnCommitCache who execution.native.application.visible.events
+      ((supported.resolvingRuntime nullValue window).eventHistory
+        (execution.principalHistory who)) := by
+  let runtime := supported.resolvingRuntime nullValue window
+  intro node guard hsem hdone
+  have hrule : runtime.program.rules[node.val]? =
+      some ⟨.commit who, G.messagePrerequisites node⟩ := by
+    change supported.compile.rules[node.val]? = _
+    rw [supported.compile_rule, G.sealedRule_commit_eq node who guard hsem]
+  have haccepted := hinvariant.accepted_of_done_commit node.val who
+    (G.messagePrerequisites node) hrule hdone
+  obtain ⟨_, value, _, _, _, _, hlookup⟩ :=
+    hinvariant.acceptedBinding.accepted node.val (who, node.val) haccepted
+  exact ⟨value, hinvariant.accepted?_eq_some_of_done_commit node.val who
+    (G.messagePrerequisites node) hrule hdone,
+    (runtime.eventHistory_cache (runtime.program.registrationEncoding node.val)
+      (execution.principalHistory who)).trans ((hmemory who node.val).symm.trans hlookup)⟩
+
+/-- Every declared read of a ready commitment is available in the actual
+player-side store, including after other commitments or reveals have defaulted.
+Only public event provenance, the owner's accepted-value cache, and prerequisite
+completion are needed. Other owners' private service entries are unrestricted. -/
+theorem resolvedPlayerStore_reads_of_ready (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat) (who : Player)
+    (history : List
+      (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
+    (view : (supported.resolvingRuntime nullValue window).messageApplication.View)
+    (hpublic : SealedResolution.PublicEventInvariant (supported.resolvingRuntime nullValue window)
+      view.application)
+    (hcache : supported.OwnCommitCache who view.application.events
+      ((supported.resolvingRuntime nullValue window).eventHistory history))
     (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (hrequires : (G.messagePrerequisites node).all
-      execution.native.application.visible.completed = true) :
+      view.application.completed = true) :
     ∃ reads, ReadEnv.ofStoreExec?
-      (supported.resolvedPlayerStore who nullValue execution.native.application.visible.timeouts
-        ((supported.resolvingRuntime nullValue window).eventHistory
-          (execution.principalHistory who))
-        ((supported.resolvingRuntime nullValue window).eventView
-          (MessageApplication.State.observe _ execution.native who))) guard.choiceReads =
+      (supported.resolvedPlayerStore who nullValue view.application.timeouts
+        ((supported.resolvingRuntime nullValue window).eventHistory history)
+        ((supported.resolvingRuntime nullValue window).eventView view)) guard.choiceReads =
       some reads := by
   let runtime := supported.resolvingRuntime nullValue window
-  let history := runtime.eventHistory (execution.principalHistory who)
-  let view := runtime.eventView (MessageApplication.State.observe _ execution.native who)
+  let localHistory := runtime.eventHistory history
+  let localView := runtime.eventView view
   let memory := fun slot => (supported.compile.registrationEncoding slot).cachedValue
-    (supported.compile.messageApplication (Value := L.Val ty)) history
-  have hcache (slot : Nat) :
-      execution.native.application.service.lookup (who, slot) = memory slot :=
-    (hmemory who slot).trans (runtime.eventHistory_cache
-      (runtime.program.registrationEncoding slot) (execution.principalHistory who)).symm
+    (supported.compile.messageApplication (Value := L.Val ty)) localHistory
   change ∃ reads, ReadEnv.ofStoreExec?
-    (supported.resolvedPlayerStore who nullValue execution.native.application.visible.timeouts
-      history view) guard.choiceReads = some reads
+    (supported.resolvedPlayerStore who nullValue view.application.timeouts
+      localHistory localView) guard.choiceReads = some reads
   have havailable : ∀ ref, ref ∈ guard.choiceReads →
       (Store.getAs (supported.resolvedPlayerStore who nullValue
-        execution.native.application.visible.timeouts history view) ref.field ref.ty).isSome := by
+        view.application.timeouts localHistory localView) ref.field ref.ty).isSome := by
     intro ref href
     have horigin := supported.choiceRead_origin_of_prereqs_completed
-      (fun prior => execution.native.application.visible.completed prior.val = true)
+      (fun prior => view.application.completed prior.val = true)
       node who guard hsem (fun prior hprior => List.all_eq_true.mp hrequires prior.val
         ((G.mem_messagePrerequisites node prior).mpr hprior)) ref href
     rcases horigin with ⟨spec, value, hfield, hsource, hty, howner⟩ |
         ⟨prior, htarget, hrefty, hcompleted, hproducer⟩
     · have hne := G.initial_field_ne_target ref.field spec value hfield hsource
       rw [supported.resolvedPlayerStore_getAs_of_not_owned_timeout_target who nullValue
-        _ history view ref.field ref.ty (fun index _ _ _ => hne index)]
+        _ localHistory localView ref.field ref.ty (fun index _ _ _ => hne index)]
       change (Store.getAs (G.replaySealedView ty who memory (G.initialPlayerStore who)
-        view.application) ref.field ref.ty).isSome
+        localView.application) ref.field ref.ty).isSome
       rw [G.replaySealedView_getAs_initial ty who memory _ _ ref.field ref.ty hne]
       simp [Store.getAs, Graph.initialPlayerStore, hfield, howner,
         FieldSpec.initialValue?, hsource, hty, TypedValue.as?]
     · rw [htarget, hrefty]
       rcases hproducer with ⟨priorGuard, hcommit⟩ | ⟨source, hreveal, _⟩
-      · by_cases htimeout : prior.val ∈ execution.native.application.visible.timeouts
-        · rw [supported.resolvedPlayerStore_getAs_timeout_commit who nullValue _ history view
-            prior priorGuard hcommit htimeout]
+      · by_cases htimeout : prior.val ∈ view.application.timeouts
+        · rw [supported.resolvedPlayerStore_getAs_timeout_commit who nullValue _
+            localHistory localView prior priorGuard hcommit htimeout]
           rfl
-        · have hdone : SealedProgram.done execution.native.application.visible.events
+        · have hdone : SealedProgram.done view.application.events
               prior.val = true := by
             simpa [SealedResolution.PublicState.completed, htimeout] using hcompleted
-          have hrule : runtime.program.rules[prior.val]? =
-              some ⟨.commit who, G.messagePrerequisites prior⟩ := by
-            change supported.compile.rules[prior.val]? = _
-            rw [supported.compile_rule]
-            exact congrArg some (G.sealedRule_commit_eq prior who priorGuard hcommit)
-          have haccepted := hinvariant.accepted_of_done_commit prior.val who
-            (G.messagePrerequisites prior) hrule hdone
-          obtain ⟨_, stored, _, _, _, _, hlookup⟩ :=
-            hinvariant.acceptedBinding.accepted prior.val (who, prior.val) haccepted
-          have hstored : memory prior.val = some stored := (hcache prior.val).symm.trans hlookup
+          obtain ⟨stored, haccepted, hstored⟩ := hcache prior priorGuard hcommit hdone
+          have hacceptedMem := SealedProgram.accepted_mem_of_accepted?_eq_some haccepted
           apply supported.resolvedPlayerStore_available
           exact G.replaySealedView_available_of_event ty who memory _ _
-            (.accepted prior.val (who, prior.val)) stored (by simpa using hstored) haccepted
+            (.accepted prior.val (who, prior.val)) stored (by simpa using hstored) hacceptedMem
       · obtain ⟨producer, owner, producerGuard, hsource, hcommit⟩ :=
           supported.revealSource prior source hreveal
         have hrule : runtime.program.rules[prior.val]? =
@@ -164,7 +192,7 @@ theorem resolvedPlayerStore_reads_of_ready (supported : SealedFragment G ty)
           rw [supported.compile_rule]
           exact congrArg some (G.sealedRule_reveal_eq prior producer owner producerGuard
             (hsource ▸ hreveal) hcommit)
-        obtain ⟨value, hopened⟩ := hinvariant.publicEvents.opened_of_completed_reveal
+        obtain ⟨value, hopened⟩ := hpublic.opened_of_completed_reveal
           prior.val owner
           producer.val (G.messagePrerequisites prior) hrule hcompleted
         apply supported.resolvedPlayerStore_available

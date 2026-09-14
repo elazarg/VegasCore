@@ -54,7 +54,10 @@ theorem resolvingRuntime_runPolicies_resolutionClosed
       source < node := by
     intro node owner source requires hrule
     exact supported.compile_reveal_source_lt hrule rfl
-  apply runtime.runPolicies_resolutionClosed hbackward hsource players environment schedule
+  apply runtime.runPolicies_resolutionClosed
+    (fun (service : IdealCommitments Player Nat (L.Val ty)) owner slot value =>
+      (service.sealValue owner slot value).state)
+    runtime.handle runtime.handle_records hbackward hsource players environment schedule
     (MessageApplication.PolicyExecution.initial _
       (MessageApplication.State.initial _ runtime.initial)) next
     (Interaction.SealedResolution.PublicState.ResolutionClosed.initial hbackward hsource)

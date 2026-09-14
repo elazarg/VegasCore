@@ -509,4 +509,18 @@ theorem includePending_eventNodes_nodup [DecidableEq Principal] [DecidableEq Val
       simp only [hmessage]
       exact hnodup
 
+theorem done_of_accepted (events : List (Event Principal Value))
+    (node : Nat) (handle : CommitmentHandle Principal Nat)
+    (hmem : .accepted node handle ∈ events) : done events node = true := by
+  exact List.any_eq_true.mpr ⟨.accepted node handle, hmem, by simp [Event.node]⟩
+
+theorem accepted?_none_of_not_done (events : List (Event Principal Value))
+    (node : Nat) (hnot : done events node = false) : accepted? events node = none := by
+  cases hread : accepted? events node with
+  | none => rfl
+  | some handle =>
+      have hdone := done_of_accepted events node handle (accepted_mem_of_accepted?_eq_some hread)
+      rw [hnot] at hdone
+      contradiction
+
 end Interaction.SealedProgram

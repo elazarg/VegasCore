@@ -77,7 +77,9 @@ theorem missing_commit_reads_available :
   have hmemory : runtime.RegistrationMemory execution := by
     intro owner slot
     rfl
-  exact supported.resolvedPlayerStore_reads_of_ready none 2 0 execution hinvariant hmemory
+  exact supported.resolvedPlayerStore_reads_of_ready none 2 0 [] (view missingCommit)
+    hinvariant.publicEvents
+    (supported.ownCommitCache_of_registered none 2 0 execution hinvariant hmemory)
     (node 2) secondGuard rfl (by decide)
 
 /-- The general progress theorem selects the next real source site after the
@@ -99,8 +101,10 @@ theorem missing_commit_progress (policy : CommitPolicy graph 0) :
       (fun _ _ _ _ hrule => supported.compile_reveal_source_lt hrule rfl)
   intro command hcommand
   obtain ⟨selected, hbound, hnotDone, _, hprogress⟩ :=
-    supported.resolvingPolicy_progress_of_ready none 2 0 policy execution
-      hinvariant hmemory hclosed (node 2) (by decide) (by decide)
+    supported.resolvingPolicy_progress_of_ready none 2 0 policy [] (view missingCommit)
+      hinvariant.publicEvents
+      (supported.ownCommitCache_of_registered none 2 0 execution hinvariant hmemory)
+      hclosed (node 2) (by decide) (by decide)
       (Or.inl ⟨secondGuard, rfl⟩) command hcommand
   have hselected : selected = node 2 := by
     apply Fin.ext

@@ -24,35 +24,6 @@ universe uPrincipal uValue
 
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 
-/-- A completed commit event determines the canonical public handle without a
-global event-node uniqueness assumption. -/
-theorem EventInvariant.accepted?_eq_some_of_done_commit
-    {runtime : SealedResolution Principal Value}
-    {state : ApplicationState Principal Value}
-    (invariant : EventInvariant runtime state)
-    (node : Nat) (owner : Principal) (requires : List Nat)
-    (hrule : runtime.program.rules[node]? =
-      some { kind := .commit owner, requires })
-    (hdone : SealedProgram.done state.visible.events node = true) :
-    SealedProgram.accepted? state.visible.events node = some (owner, node) := by
-  have hcanonical := invariant.accepted_of_done_commit node owner requires hrule hdone
-  cases hfound : SealedProgram.accepted? state.visible.events node with
-  | none =>
-      unfold SealedProgram.accepted? at hfound
-      have himpossible := List.findSome?_eq_none_iff.mp hfound _ hcanonical
-      simp at himpossible
-  | some handle =>
-      have hmem := SealedProgram.accepted_mem_of_accepted?_eq_some hfound
-      obtain ⟨eventOwner, value, rule, heventRule, hkind, hhandle, hlookup⟩ :=
-        invariant.acceptedBinding.accepted node handle hmem
-      rw [hrule] at heventRule
-      have hrules := Option.some.inj heventRule
-      have hkinds := congrArg SealedRule.kind hrules
-      simp only [hkind, SealedRuleKind.commit.injEq] at hkinds
-      subst eventOwner
-      subst handle
-      rfl
-
 variable [DecidableEq Principal] [DecidableEq Value]
 
 omit [DecidableEq Principal] [DecidableEq Value] in

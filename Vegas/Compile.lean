@@ -36,6 +36,7 @@ import Vegas.Compile.SealedCandidatePolicy
 import Vegas.Compile.SealedCandidateHost
 import Vegas.Compile.SealedCandidateInputs
 import Vegas.Compile.SealedCandidateProgress
+import Vegas.Compile.SealedCandidateReady
 import Vegas.Compile.SealedCandidateValues
 import Vegas.Compile.SealedCandidateCylinder
 import Vegas.Compile.SealedCandidateSourceLikelihood
