@@ -30,6 +30,32 @@ theorem exists_expect_le_support {α : Type*} (law : FinDist α) (value : α →
     (law.expect_lt_of_mem_support value (law.expect value)
       (fun b hb => (hstrict b hb).le) ha (hstrict a ha))
 
+/-- A pointwise discrepancy confined to an event costs at most its size times
+the event's probability. The discrepancy may have either sign. -/
+theorem expect_le_add_event_gap
+    (law : FinDist State) (event : State → Bool)
+    (sourceValue targetValue : State → ℝ) (gap : ℝ)
+    (houtside : ∀ state ∈ law.support, event state = false →
+      targetValue state ≤ sourceValue state)
+    (hinside : ∀ state ∈ law.support, event state = true →
+      targetValue state ≤ sourceValue state + gap) :
+    law.expect targetValue ≤ law.expect sourceValue + gap * (law.map event).prob true := by
+  have hpointwise : law.expect targetValue ≤
+      law.expect (fun state => sourceValue state + if event state then gap else 0) := by
+    apply expect_mono
+    intro state hstate
+    cases hevent : event state with
+    | false => simpa using houtside state hstate hevent
+    | true => simpa using hinside state hstate hevent
+  have hindicator :
+      law.expect (fun state => if event state then gap else 0) =
+        gap * (law.map event).prob true := by
+    rw [mul_comm, ← expect_ite_eq, expect_map]
+    apply expect_congr
+    intro state _
+    cases event state <;> rfl
+  simpa only [expect_add, hindicator] using hpointwise
+
 /-- Branchwise continuation superiority survives arbitrary informed,
 randomized stopping. A uniform margin charges the probability of stopping.
 The premise is needed only at supported states where stopping is possible. -/

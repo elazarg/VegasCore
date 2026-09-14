@@ -84,7 +84,10 @@
   "prose:pending-candidate-incentives": {
     "theorems": [
       "Vegas.Paper.pending_candidate_source_payout_deviation_bound",
-      "Vegas.Paper.pending_candidate_source_payout_nash_iff"
+      "Vegas.Paper.pending_candidate_source_payout_nash_iff",
+      "Vegas.Paper.pending_candidate_source_quit_gap",
+      "Vegas.Paper.pending_candidate_approximate_nash_with_gap",
+      "Vegas.Paper.pending_candidate_approximate_nash_reflection"
     ]
   },
   "prose:pending-termination": {

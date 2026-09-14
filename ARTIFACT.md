@@ -143,6 +143,13 @@ a two-player source: it proves the fixed-opponent condition at a source Nash
 profile, proves that no uniform source bound exists, and transports that profile
 to the actual candidate game. Its native deviation bound covers an arbitrary
 replacement policy and arbitrary unreserved wire behavior.
+The same test also supplies a source Nash profile for which no equal cap/floor
+certificate exists, and derives a candidate `1`-Nash guarantee from separate
+source bounds. `pending_candidate_source_quit_gap` audits the sharper bound
+weighted by the actual native timeout probability;
+`pending_candidate_approximate_nash_with_gap` audits its unconditional error
+corollary. `pending_candidate_approximate_nash_reflection` uses honest payout
+agreement alone and does not assume any quitting incentive condition.
 
 At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
 sharper exact statement under declared-read locality and a single ready

@@ -1170,6 +1170,83 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_candidate_source_payout_nash_iff
 
+/-- A source-defined utility gap is charged only on actual native timeouts. -/
+theorem pending_candidate_source_quit_gap
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
+    (valuation : Payout Player → Player → ℝ) (missing cap floor : Player → ℝ)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (hcap : source.core.prog.QuitPayoutCap source.core.env nullValue valuation cap)
+    (hfloor : source.core.prog.PayoutFloorAgainst source.core.env valuation floor profile)
+    (who : Player) (replacement : model.game.sig.Strategy who) :
+    ∃ alternative : SourceBehavioralPolicy source.core.prog who,
+      (model.game.play (Profile.update
+        (fun player => compilation.compileCandidatePolicy nullValue window player (profile player))
+        who replacement)).expect (fun next =>
+          (compilation.publicPayout? next.native.application.visible.events).elim
+            (missing who) (fun payout => valuation payout who)) ≤
+      ((sourceGameForm source.core.prog source.core.env).play
+        (Profile.update profile who alternative)).expect (fun final =>
+          valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who) +
+        (cap who - floor who) * ((model.game.play (Profile.update
+          (fun player => compilation.compileCandidatePolicy nullValue window player
+            (profile player)) who replacement)).map
+              (fun next => !next.native.application.visible.timeouts.isEmpty)).prob true :=
+  compilation.candidate_deviation_bound_with_quit_gap nullValue window model timely valuation
+    missing cap floor profile hcap hfloor who replacement
+
+/-- Source cap/floor gaps give a quantified approximate-Nash guarantee. -/
+theorem pending_candidate_approximate_nash_with_gap
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
+    (valuation : Payout Player → Player → ℝ) (missing cap floor : Player → ℝ)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (hcap : source.core.prog.QuitPayoutCap source.core.env nullValue valuation cap)
+    (hfloor : source.core.prog.PayoutFloorAgainst source.core.env valuation floor profile)
+    (ε δ : ℝ) (hnash : IsεNash (sourceGameForm source.core.prog source.core.env)
+      (fun final who => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
+      ε profile) (hδ : 0 ≤ δ) (hgap : ∀ who, cap who - floor who ≤ δ) :
+    IsεNash model.game
+      (fun next who => (compilation.publicPayout? next.native.application.visible.events).elim
+        (missing who) (fun payout => valuation payout who)) (ε + δ)
+      (fun who => compilation.compileCandidatePolicy nullValue window who (profile who)) :=
+  compilation.candidate_approximate_nash_of_source_gap nullValue window model timely valuation
+    missing cap floor profile hcap hfloor ε δ hnash hδ hgap
+
+/-- Honest payout agreement reflects Nash without a quitting incentive premise. -/
+theorem pending_candidate_approximate_nash_reflection
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
+    (valuation : Payout Player → Player → ℝ) (missing : Player → ℝ)
+    (profile : SourceBehavioralProfile source.core.prog) (ε : ℝ)
+    (hnash : IsεNash model.game
+      (fun next who => (compilation.publicPayout? next.native.application.visible.events).elim
+        (missing who) (fun payout => valuation payout who)) ε
+      (fun who => compilation.compileCandidatePolicy nullValue window who (profile who))) :
+    IsεNash (sourceGameForm source.core.prog source.core.env)
+      (fun final who => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
+      ε profile :=
+  compilation.candidate_approximate_nash_reflect nullValue window model timely valuation missing
+    profile ε hnash
+
+/-- info: 'Vegas.Paper.pending_candidate_source_quit_gap'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_source_quit_gap
+
+/-- info: 'Vegas.Paper.pending_candidate_approximate_nash_with_gap'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_approximate_nash_with_gap
+
+/-- info: 'Vegas.Paper.pending_candidate_approximate_nash_reflection'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_approximate_nash_reflection
+
 /-- The source surface has an explicit, always-legal nullable quit value. -/
 theorem nullable_quit_is_legal
     {Γ : VCtx Player simpleExpr} {secret : VarId} {b : BaseTy}

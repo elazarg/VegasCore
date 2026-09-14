@@ -36,6 +36,13 @@ on each deviation's support, not merely an expected-payoff comparison. A global
 floor over all legal executions is a stronger sufficient condition and supplies
 the reusable `candidatePayoutSimulation` certificate.
 
+Separate source quitting caps and supported-outcome floors give a quantitative
+version: every native deviation is bounded by a legal source deviation plus the
+gap times that native deviation's actual timeout probability. A source epsilon-Nash profile
+therefore compiles to an `(epsilon + delta)`-Nash profile when every player's gap
+is at most `delta >= 0`. Reflection at compiled profiles needs no quitting
+condition; it follows from honest payout agreement under the service assumptions.
+
 The proof factors through the graph as an independently usable strategic
 intermediate representation. The compiler certifies public-prefix readability,
 unique direct disclosures, and the public payout interpretation. The backend

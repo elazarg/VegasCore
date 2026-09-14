@@ -40,17 +40,24 @@ structure QuitPayoutBound (prog : VegasCore P L Γ) (initial : VEnv L Γ)
   quit_upper : prog.QuitPayoutCap initial quit valuation bound
 
 /-- The source floor need hold only against the fixed opponents under analysis.
+It bounds every outcome supported by any unilateral source deviation. -/
+def PayoutFloorAgainst (prog : VegasCore P L Γ) (initial : VEnv L Γ)
+    (valuation : Payout P → P → ℝ) (floor : P → ℝ)
+    (profile : SourceBehavioralProfile prog) : Prop :=
+  ∀ who (alternative : SourceBehavioralPolicy prog who)
+    (final : VEnv L (sourceTerminalCtx prog)),
+    final ∈ (denoteSource prog (GameTheory.Profile.update (sig := sourceGameSignature prog)
+      profile who alternative) initial).support →
+      floor who ≤ valuation (evalPayoffs (sourceTerminalPayoffs prog) final) who
+
+/-- The source floor need hold only against the fixed opponents under analysis.
 It is pointwise on every unilateral deviation's support, not merely an expected
 payoff bound or a condition on equilibrium play. Quitting settlements still
 require the global cap because their source witnesses need not retain opponents. -/
 structure QuitPayoutBoundAgainst (prog : VegasCore P L Γ) (initial : VEnv L Γ)
     {ty : L.Ty} (quit : L.Val ty) (valuation : Payout P → P → ℝ)
     (bound : P → ℝ) (profile : SourceBehavioralProfile prog) : Prop where
-  lower : ∀ who (alternative : SourceBehavioralPolicy prog who)
-    (final : VEnv L (sourceTerminalCtx prog)),
-    final ∈ (denoteSource prog (GameTheory.Profile.update (sig := sourceGameSignature prog)
-      profile who alternative) initial).support →
-      bound who ≤ valuation (evalPayoffs (sourceTerminalPayoffs prog) final) who
+  lower : prog.PayoutFloorAgainst initial valuation bound profile
   quit_upper : prog.QuitPayoutCap initial quit valuation bound
 
 /-- A global source floor supplies the fixed-opponent condition at any profile. -/

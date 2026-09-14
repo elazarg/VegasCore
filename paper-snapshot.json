@@ -26,13 +26,13 @@
     "sections/03-language-graph.tex": "f6d64b8ec09f4078ff564d14362f1b0c249cb8275a6ffec419f25d5930720119",
     "sections/04-strategic-semantics.tex": "6557a3bbeb7cd0b931b44cc2812fd4b8586cf4ecde5d0ae4cd68547f220ab51b",
     "sections/05-correctness.tex": "1a2a71caa385c5891f74a114e946c44a87a6ac7137c59c6515faae55fc1bc57c",
-    "sections/06-runtime.tex": "4b99d2592fd2f3a16994750f2c2ff1f0b5a6e1023bbee084f3c82a58d30b11fc",
+    "sections/06-runtime.tex": "7eedc54a637978e49a9d18653a4c663e26e2485017b856d4020ee933f42ad91b",
     "sections/07-application.tex": "d6a09dfd71a3c1466b3e5820fe7e7c3eb7235fdf9c0a6c154058d09be91037e2",
-    "sections/07-artifacts.tex": "950b87938538105fd92bdcdf2c638b6a49ae33ac6d14f72bdf2704008bfe7b51",
+    "sections/07-artifacts.tex": "92d4f20aa15b957f8aa420754d5586cf0566cc331723b41b3e76788663c630ec",
     "sections/08-related.tex": "a70d61ce6a2f4aab4afdc0dee4321d6e5768d19fbb3fcf9024d334bfbb97eee8",
     "sections/09-conclusion.tex": "1127746ce28763c779aea5f09cb31b4b5bd809e7b1d06ce61b4be3fdfa99d5da",
     "sections/10-quitting.tex": "fe01ff789a3e1b18a8fb59df91b799746fd8102a97a89a4538d32b8f1d7fb251",
     "vegas-paper.bib": "3e6e2a487f6ab2f74ca82cdfc3c25da1814d0a68d78d4c4c898813ca4c068bdd"
   },
-  "revision": "ce385ddc0b194ab0fcc868cc100a321e00f1f792"
+  "revision": "628f225a08ebbd97da95691855df4eae610c1381"
 }

@@ -16,7 +16,8 @@ unchanged players. The deviation coupling preserves their graph kernels;
 independent graph settlement supplies a quitting cap, while the comparison floor
 need only cover graph deviations against the fixed opponents. A uniform graph
 floor yields a whole-game utility simulation. These backend results have no
-source-image or runtime incentive premise.
+source-image or runtime incentive premise. Separate cap and floor values give
+a quantitative bound charging their gap only on actual timeout outcomes.
 -/
 
 noncomputable section
@@ -150,24 +151,28 @@ theorem honest_utility (model : CandidateRoundModel supported nullValue window)
   intro pair hpair
   exact utility.congr _ _ (hpairs pair.1 pair.2 hpair).2.2.2 who
 
-/-- The floor need hold only on legal deviations against these fixed graph
-opponents. The quitting cap remains uniform over legal graph settlements.
-The native response mixture is constructed from the actual runner. -/
-theorem deviation_bound_of_support_floor (model : CandidateRoundModel supported nullValue window)
+/-- Any gap between the quitting cap and the fixed-opponent source floor is
+charged only on actual timeout outcomes. The response mixture and timeout
+probability come from unrestricted play of the native driver. -/
+theorem deviation_bound_with_quit_gap (model : CandidateRoundModel supported nullValue window)
     (timely : model.Timely) (hinfo : G.PublicPrefixReadable) (hguards : GuardLive G)
-    (hunique : G.UniqueReveals) (utility : G.PublicUtility) (bound : Player → ℝ)
-    (hcap : utility.QuitCap nullValue bound) (profile : CommitPolicyProfile G) (who : Player)
+    (hunique : G.UniqueReveals) (utility : G.PublicUtility) (cap : Player → ℝ)
+    (hcap : utility.QuitCap nullValue cap) (profile : CommitPolicyProfile G) (who : Player)
+    (floor : ℝ)
     (hlower : ∀ (alternative : CommitPolicy G who) (cfg : ReachableConfig G),
       cfg ∈ ((policyGame G supported.graphWF hguards).play
         (Profile.update profile who alternative)).support →
-      bound who ≤ utility.eval cfg.1.store who)
+      floor ≤ utility.eval cfg.1.store who)
     (replacement : model.game.sig.Strategy who) :
     ∃ alternative : CommitPolicy G who,
       (model.game.play (Profile.update (model.compileProfile profile) who replacement)).expect
           (fun next => model.nativeUtility utility next who) ≤
         ((policyGame G supported.graphWF hguards).play
           (Profile.update profile who alternative)).expect
-            (fun cfg => utility.eval cfg.1.store who) := by
+            (fun cfg => utility.eval cfg.1.store who) +
+          (cap who - floor) * ((model.game.play
+            (Profile.update (model.compileProfile profile) who replacement)).map
+              (fun next => !next.native.application.visible.timeouts.isEmpty)).prob true := by
   obtain ⟨responses, hgraph, hnative, hpairs⟩ :=
     supported.exists_randomized_candidate_round_graph_coupling hinfo hguards nullValue window
       model.principals model.serviceSlots model.total who nullValue profile replacement model.wire
@@ -177,14 +182,18 @@ theorem deviation_bound_of_support_floor (model : CandidateRoundModel supported 
   change coupling.map Prod.snd = model.game.play
     (Profile.update (model.compileProfile profile) who replacement) at hnative
   have hpointwise : coupling.expect (fun pair => model.nativeUtility utility pair.2 who) ≤
-      coupling.expect (fun pair => utility.eval pair.1.1.store who) := by
-    apply FinDist.expect_mono
-    intro pair hpair
-    obtain ⟨hterminal, hcomplete, hagrees⟩ := hpairs pair.1 pair.2 hpair
-    have hdone := hcomplete model.budget
-    by_cases hclear : pair.2.native.application.visible.timeouts = []
-    · exact (utility.congr _ _ (hagrees hdone hclear) who).le
-    · have hnext : pair.2 ∈ (model.game.play
+      coupling.expect (fun pair => utility.eval pair.1.1.store who) +
+        (cap who - floor) * (coupling.map
+          (fun pair => !pair.2.native.application.visible.timeouts.isEmpty)).prob true := by
+    apply FinDist.expect_le_add_event_gap
+    · intro pair hpair hclear
+      have hdone := (hpairs pair.1 pair.2 hpair).2.1 model.budget
+      have hagrees := (hpairs pair.1 pair.2 hpair).2.2 hdone (by simpa using hclear)
+      exact (utility.congr _ _ hagrees who).le
+    · intro pair hpair hstop
+      have hdone := (hpairs pair.1 pair.2 hpair).2.1 model.budget
+      have hclear : pair.2.native.application.visible.timeouts ≠ [] := by simpa using hstop
+      have hnext : pair.2 ∈ (model.game.play
           (Profile.update (model.compileProfile profile) who replacement)).support := by
         rw [← hnative, FinDist.support_map]
         exact ⟨pair, hpair, rfl⟩
@@ -202,9 +211,12 @@ theorem deviation_bound_of_support_floor (model : CandidateRoundModel supported 
       have hfloor := hlower
         (supported.extractedCandidateCommitPolicy hinfo nullValue window who commands.1 commands.2
           (roundSchedule model.principals model.serviceSlots model.total) nullValue) pair.1 hcfg
-      exact (supported.timeout_utility_le_cap hguards hunique nullValue window utility bound
+      have hquit := supported.timeout_utility_le_cap hguards hunique nullValue window utility cap
         hcap pair.2.native.application.visible hevents hsettlement hdone
-        node who htimeout howned).trans hfloor
+        node who htimeout howned
+      change utility.eval (G.publicSealedStore ty pair.2.native.application.visible.events) who ≤
+        utility.eval pair.1.1.store who + (cap who - floor)
+      linarith
   have hnativeExpect := congrArg
     (fun law => law.expect (fun next => model.nativeUtility utility next who)) hnative
   simp only [FinDist.expect_map] at hnativeExpect
@@ -217,11 +229,38 @@ theorem deviation_bound_of_support_floor (model : CandidateRoundModel supported 
       nullValue profile).expect (fun cfg => utility.eval cfg.1.store who))
   refine ⟨supported.extractedCandidateCommitPolicy hinfo nullValue window who commands.1
     commands.2 (roundSchedule model.principals model.serviceSlots model.total) nullValue, ?_⟩
+  have htimeout := congrArg
+    (fun law => (law.map (fun next => !next.native.application.visible.timeouts.isEmpty)).prob true)
+    hnative
+  simp only [FinDist.map_comp, Function.comp_def] at htimeout
   apply hnativeExpect.symm.le.trans
   apply hpointwise.trans
-  convert hgraphExpect.le.trans hmean using 1
-  · exact FinDist.expect_bind _ _ _
-  · rfl
+  apply add_le_add
+  · convert hgraphExpect.le.trans hmean using 1
+    · exact FinDist.expect_bind _ _ _
+    · rfl
+  · exact (congrArg (fun probability => (cap who - floor) * probability) htimeout).le
+
+/-- Coincident quitting cap and support floor give exact utility preservation
+against fixed graph opponents. Native deviations remain unrestricted. -/
+theorem deviation_bound_of_support_floor (model : CandidateRoundModel supported nullValue window)
+    (timely : model.Timely) (hinfo : G.PublicPrefixReadable) (hguards : GuardLive G)
+    (hunique : G.UniqueReveals) (utility : G.PublicUtility) (bound : Player → ℝ)
+    (hcap : utility.QuitCap nullValue bound) (profile : CommitPolicyProfile G) (who : Player)
+    (hlower : ∀ (alternative : CommitPolicy G who) (cfg : ReachableConfig G),
+      cfg ∈ ((policyGame G supported.graphWF hguards).play
+        (Profile.update profile who alternative)).support →
+      bound who ≤ utility.eval cfg.1.store who)
+    (replacement : model.game.sig.Strategy who) :
+    ∃ alternative : CommitPolicy G who,
+      (model.game.play (Profile.update (model.compileProfile profile) who replacement)).expect
+          (fun next => model.nativeUtility utility next who) ≤
+        ((policyGame G supported.graphWF hguards).play
+          (Profile.update profile who alternative)).expect
+            (fun cfg => utility.eval cfg.1.store who) := by
+  simpa only [sub_self, zero_mul, add_zero] using
+    model.deviation_bound_with_quit_gap timely hinfo hguards hunique utility bound hcap profile
+      who (bound who) hlower replacement
 
 /-- A uniform graph floor supplies the profile-local deviation bound at every
 profile, yielding a reusable whole-game simulation. -/

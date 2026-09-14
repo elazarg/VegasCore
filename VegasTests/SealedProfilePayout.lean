@@ -98,6 +98,10 @@ private def bound : Player → ℝ
   | 0 => -1
   | 1 => 0
 
+private def globalFloor : Player → ℝ
+  | 0 => -2
+  | 1 => 0
+
 private def terminalEnv (left right : Value) :
     VEnv simpleExpr (sourceTerminalCtx core) :=
   VEnv.cons (x := 3) (τ := (⟨.option .bool, .pub⟩ : BindTy Player simpleExpr)) right
@@ -277,6 +281,9 @@ private def fixedProfile (left right : Value) : SourceBehavioralProfile core :=
 def profile : SourceBehavioralProfile core :=
   fixedProfile (some true) (some true)
 
+def quitProfile : SourceBehavioralProfile core :=
+  fixedProfile none none
+
 private theorem fixed_source_law (left right : Value) :
     denoteSource core (fixedProfile left right) source.core.env =
       FinDist.pure (terminalEnv left right) := by
@@ -286,6 +293,11 @@ private theorem fixed_source_law (left right : Value) :
 private theorem profile_source_law :
     denoteSource core profile source.core.env =
       FinDist.pure (terminalEnv (some true) (some true)) := by
+  exact fixed_source_law _ _
+
+private theorem quit_profile_source_law :
+    denoteSource core quitProfile source.core.env =
+      FinDist.pure (terminalEnv none none) := by
   exact fixed_source_law _ _
 
 private theorem fixed_source_star (left right : Value) :
@@ -354,6 +366,70 @@ private theorem update_zero_source_law
     terminalEnv]
   rfl
 
+private theorem update_zero_quit_source_law
+    (alternative : SourceBehavioralPolicy core 0) :
+    denoteSource core
+      (Profile.update (sig := sourceGameSignature core) quitProfile 0 alternative)
+      source.core.env =
+      (alternative firstSite (Env.empty simpleExpr.Val)).bind fun choice =>
+        FinDist.pure (terminalEnv choice.1 none) := by
+  simp [source, core, quitProfile, fixedOnePolicy, denoteSource,
+    SourceBehavioralProfile.afterCommit, SourceBehavioralProfile.afterReveal, firstSite,
+    terminalEnv]
+  rfl
+
+private theorem source_utility_le_neg_one_against_quit_profile
+    (alternative : SourceBehavioralPolicy core 0) :
+    ((sourceGameForm core source.core.env).play
+      (Profile.update quitProfile 0 alternative)).expect
+        (fun final => sourceUtility final 0) ≤ -1 := by
+  rw [sourceGameForm_play, update_zero_quit_source_law]
+  apply FinDist.expect_le_of_forall
+  intro final hfinal
+  simp only [FinDist.support_bind, Set.mem_iUnion] at hfinal
+  obtain ⟨choice, _hchoice, hterminal⟩ := hfinal
+  rw [FinDist.mem_support_pure] at hterminal
+  subst final
+  rw [(terminal_utility choice.1 none).1]
+  cases choice.1 with
+  | none => simp
+  | some value => cases value <;> simp
+
+/-- Choosing the public quitting outcome is a source Nash profile: player zero
+would receive `-2` from either non-null choice against player one's `none`. -/
+theorem quit_profile_isNash :
+    IsNash (sourceGameForm core source.core.env)
+      (euPreference sourceUtility) quitProfile := by
+  rw [GameTheory.isNash_iff_isεNash_zero, GameTheory.isεNash_iff]
+  intro who alternative
+  have hcases : who = 0 ∨ who = 1 := by fin_cases who <;> simp
+  rcases hcases with hwho | hwho
+  · subst who
+    calc
+      expectedUtility sourceUtility 0
+          ((sourceGameForm core source.core.env).play
+            (Profile.update quitProfile 0 alternative)) ≤ -1 :=
+        source_utility_le_neg_one_against_quit_profile alternative
+      _ = expectedUtility sourceUtility 0
+          ((sourceGameForm core source.core.env).play quitProfile) + 0 := by
+        rw [sourceGameForm_play, quit_profile_source_law]
+        rw [expectedUtility, FinDist.expect_pure, (terminal_utility none none).1]
+        norm_num
+  · subst who
+    calc
+      expectedUtility sourceUtility 1
+          ((sourceGameForm core source.core.env).play
+            (Profile.update quitProfile 1 alternative)) = 0 := by
+        rw [expectedUtility]
+        exact (FinDist.expect_congr (fun final _ => (source_utility_eq final).2)).trans
+          (FinDist.expect_const _ _)
+      _ = expectedUtility sourceUtility 1
+          ((sourceGameForm core source.core.env).play quitProfile) + 0 := by
+        rw [sourceGameForm_play, quit_profile_source_law]
+        rw [expectedUtility, FinDist.expect_pure, (terminal_utility none none).2]
+        norm_num
+      _ ≤ _ := le_rfl
+
 /-- Every supported unilateral source deviation against the fixed opponents
 stays above that deviator's quitting settlement. -/
 theorem source_floor_against_profile :
@@ -398,6 +474,29 @@ theorem source_quitting_cap :
     core.QuitPayoutCap (ty := .option .bool) source.core.env (none : Value) valuation bound :=
   source_floor_against_profile.quit_upper
 
+/-- Every written-source outcome is bounded below independently of the
+profile. The lower bound is separated from the strictly larger quitting cap. -/
+theorem source_global_floor (sourceProfile : SourceBehavioralProfile core) :
+    core.PayoutFloorAgainst source.core.env valuation globalFloor sourceProfile := by
+  intro who alternative final _hfinal
+  have hcases : who = 0 ∨ who = 1 := by fin_cases who <;> simp
+  rcases hcases with hwho | hwho
+  · subst who
+    change globalFloor 0 ≤ sourceUtility final 0
+    rw [(source_utility_eq final).1]
+    cases leftPublic final with
+    | none => norm_num [globalFloor]
+    | some left =>
+        cases rightPublic final with
+        | none =>
+            rw [if_neg (show (none : Value) ≠ some true by decide)]
+            norm_num [globalFloor]
+        | some right => cases right <;> norm_num [globalFloor]
+  · subst who
+    change globalFloor 1 ≤ sourceUtility final 1
+    rw [(source_utility_eq final).2]
+    rfl
+
 /-- No player-indexed bound can simultaneously be a global source floor and a
 global quitting cap for this source. -/
 theorem no_uniform_quit_payout_bound :
@@ -413,6 +512,30 @@ theorem no_uniform_quit_payout_bound :
   change sourceUtility (terminalEnv none (some true)) 0 ≤ uniform 0 at hupper
   rw [(terminal_utility (some true) none).1] at hlower
   rw [(terminal_utility none (some true)).1] at hupper
+  simp at hlower hupper
+  linarith
+
+/-- Even profile-local equal cap/floor bounds do not admit the quitting Nash
+profile: a player-zero deviation can realize `-2`, while quitting pays `-1`. -/
+theorem no_equal_quit_bound_against_quit_profile :
+    ¬ ∃ uniform : Player → ℝ,
+      core.QuitPayoutBoundAgainst (ty := .option .bool) source.core.env
+        (none : Value) valuation uniform quitProfile := by
+  rintro ⟨uniform, huniform⟩
+  have hsupport : terminalEnv (some true) none ∈
+      (denoteSource core
+        (Profile.update (sig := sourceGameSignature core) quitProfile 0
+          (fixedZeroPolicy (some true))) source.core.env).support := by
+    rw [update_zero_quit_source_law]
+    simp [fixedZeroPolicy, firstSite]
+  have hlower := huniform.lower 0 (fixedZeroPolicy (some true))
+    (terminalEnv (some true) none) hsupport
+  have hupper := huniform.quit_upper (terminalEnv none none)
+    (fixed_source_star none none) 0 (terminal_chooses_zero none none)
+  change uniform 0 ≤ sourceUtility (terminalEnv (some true) none) 0 at hlower
+  change sourceUtility (terminalEnv none none) 0 ≤ uniform 0 at hupper
+  rw [(terminal_utility (some true) none).1] at hlower
+  rw [(terminal_utility none none).1] at hupper
   simp at hlower hupper
   linarith
 
@@ -438,6 +561,51 @@ private def candidateTimely (base : app.WirePolicy) :
   roster := by intro who; fin_cases who <;> simp [candidateModel]
   windowBound := by decide
   wholePeriods := ⟨30, rfl⟩
+
+/-- The source cap/floor gap controls every observation-local native deviation
+at every source profile and for every unreserved wire policy. The unit gap is
+charged only on executions that actually time out. -/
+theorem candidate_arbitrary_deviation_with_quit_gap (base : app.WirePolicy)
+    (sourceProfile : SourceBehavioralProfile core) (who : Player)
+    (replacement : (candidateModel base).game.sig.Strategy who) :
+    ∃ alternative : SourceBehavioralPolicy core who,
+      ((candidateModel base).game.play (Profile.update
+        (fun player => compilation.compileCandidatePolicy none 14 player
+          (sourceProfile player)) who replacement)).expect (fun next =>
+          (compilation.publicPayout? next.native.application.visible.events).elim
+            (0 : ℝ) (fun payout => valuation payout who)) ≤
+        ((sourceGameForm core source.core.env).play
+          (Profile.update sourceProfile who alternative)).expect (fun final =>
+            valuation (evalPayoffs (sourceTerminalPayoffs core) final) who) +
+          (bound who - globalFloor who) *
+            (((candidateModel base).game.play (Profile.update
+              (fun player => compilation.compileCandidatePolicy none 14 player
+                (sourceProfile player)) who replacement)).map
+              (fun next => !next.native.application.visible.timeouts.isEmpty)).prob true := by
+  exact compilation.candidate_deviation_bound_with_quit_gap none 14
+    (candidateModel base) (candidateTimely base) valuation (fun _ => 0) bound globalFloor
+    sourceProfile source_quitting_cap (source_global_floor sourceProfile) who replacement
+
+/-- The source Nash profile whose honest outcome is quitting compiles to a
+one-approximate Nash profile in the actual candidate-message game. This uses
+the separated source cap `-1` and floor `-2` for player zero. -/
+theorem candidate_quit_profile_isOneNash (base : app.WirePolicy) :
+    IsεNash (candidateModel base).game
+      (fun next who =>
+        (compilation.publicPayout? next.native.application.visible.events).elim
+          (0 : ℝ) (fun payout => valuation payout who)) 1
+      (fun who => compilation.compileCandidatePolicy none 14 who (quitProfile who)) := by
+  have hnash : IsεNash (sourceGameForm core source.core.env) sourceUtility 0 quitProfile :=
+    (GameTheory.isNash_iff_isεNash_zero
+      (sourceGameForm core source.core.env) sourceUtility).mp quit_profile_isNash
+  have hgap : ∀ who, bound who - globalFloor who ≤ (1 : ℝ) := by
+    intro who
+    fin_cases who <;> norm_num [bound, globalFloor]
+  simpa only [zero_add] using
+    compilation.candidate_approximate_nash_of_source_gap none 14
+      (candidateModel base) (candidateTimely base) valuation (fun _ => 0) bound globalFloor
+      quitProfile source_quitting_cap (source_global_floor quitProfile) 0 1 hnash
+      (by norm_num) hgap
 
 /-- The profile-relative source theorem applies to the actual candidate-message
 round game, with an arbitrary adaptive policy for unreserved wire actions. -/
@@ -487,3 +655,13 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.SealedProfilePayout.candidate_arbitrary_zero_deviation_bound
+
+/-- info: 'VegasTests.SealedProfilePayout.candidate_arbitrary_deviation_with_quit_gap'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SealedProfilePayout.candidate_arbitrary_deviation_with_quit_gap
+
+/-- info: 'VegasTests.SealedProfilePayout.candidate_quit_profile_isOneNash'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SealedProfilePayout.candidate_quit_profile_isOneNash

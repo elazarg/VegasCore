@@ -284,6 +284,24 @@ the fixed-opponent condition holds at its source Nash profile, although no
 uniform source bound exists. The same profile compiles to a candidate Nash
 equilibrium for arbitrary unreserved wire behavior.
 
+With separate source quitting cap `c` and fixed-opponent support floor `f`,
+`candidate_deviation_bound_with_quit_gap` proves the quantitative bound
+
+```text
+E[u_i; native deviation] ≤ E[u_i; source alternative]
+  + (c_i - f_i) * Pr[actual native timeout].
+```
+
+The source alternative retains the original opponents. At a source epsilon-Nash
+profile this bounds each native deviation's gain by `epsilon` plus its own
+timeout-weighted gap. `candidate_approximate_nash_of_source_gap` consequently
+gives an `(epsilon + delta)`-Nash guarantee for any nonnegative `delta` bounding
+all players' gaps. `candidate_approximate_nash_reflect` requires no source
+incentive premise: honest payout agreement and service suffice for same-error
+reflection at compiled profiles. These results have direct `Paper.lean` audits.
+The two-player regression also checks a source Nash profile excluded by every
+equal cap/floor certificate, but covered by the gap theorem with `delta = 1`.
+
 `QuitPayoutBoundAgainst` retains a global cap over legal own-quitting settlements,
 but its source floor ranges only over unilateral deviations against the fixed
 opponents. The floor is pointwise on their supports, not merely an expectation
@@ -303,6 +321,11 @@ criteria, nontrivial guards, sampling, heterogeneous values, and cryptographic
 or ledger refinement remain further scope requirements. Their assumptions and
 obstructions must be established for the particular model and guarantee. The
 present theorem does not establish the paper's entire scope.
+
+The proposed stronger source-only continuation criterion and its missing
+first-timeout correspondence proofs are specified in
+[source quitting continuations](source-quit-continuations.md). No prefix-dependent
+source theorem is inferred from the checked cap/floor or gap results.
 
 `paper-claims.json` is a manuscript coverage inventory. Unverified entries
 remain visible; passive reference material contributes nothing to the audit.
