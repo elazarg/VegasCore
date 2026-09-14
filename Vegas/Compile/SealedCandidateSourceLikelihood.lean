@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedCandidateCylinder
+import Vegas.Compile.SealedCandidateGraphLikelihood
 import Vegas.Compile.SealedCandidateSourceExtraction
 import Vegas.Compile.SealedSourceChoices
 
@@ -70,41 +71,24 @@ theorem restrictedCandidateSourceRun_replay_prefix
       (compilation.supported.candidateReplay nullValue window (cfg.1.nodeValues fallback) focal
         deviator environment schedule).prefixThrough release = stopped := by
   intro stopped recorded cfg hcfg
-  let restriction := compilation.recordedChoiceRestriction (fun who => decide (who ≠ focal))
-    recorded
-  let original : SourceBehavioralProfile source.core.prog :=
-    Profile.update (sig := sourceGameSignature source.core.prog) profile focal
-      (compilation.extractedCandidateSourcePolicy nullValue window focal deviator environment
+  let graphProfile : CommitPolicyProfile (compile source.core).graph :=
+    Profile.update (sig := ⟨CommitPolicy (compile source.core).graph,
+      ReachableConfig (compile source.core).graph⟩)
+      (fun who => compileSourcePolicy source.core.prog source.core.fresh
+        (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+        rfl who (profile who)) focal
+      (compilation.supported.extractedCandidateCommitPolicy
+        (compile_publicPrefixReadable source.core) nullValue window focal deviator environment
         schedule fallback)
-  have hterminal := compilation.sourceRunOfDisclosures_terminal focal _
-    (restriction.apply profile) cfg hcfg
-  let final := decodeSourceOutcome source.core.prog source.core.fresh
-    (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
-    cfg hterminal
-  have hobserve : observeSourceOutcome source.core cfg = some final :=
-    observeSourceOutcome_of_terminal source.core cfg hterminal
-  have hfinal : final ∈
-      (denoteSource source.core.prog (restriction.apply original) source.core.env).support := by
-    have hmapped : some final ∈
-        ((compilation.extractedCandidateSourceRun nullValue window focal deviator environment
-          schedule fallback (restriction.apply profile)).map
-            (observeSourceOutcome source.core)).support := by
-      rw [FinDist.support_map]
-      exact ⟨cfg, hcfg, hobserve⟩
-    rw [compilation.restrictedCandidateSourceRun_source, FinDist.support_map] at hmapped
-    obtain ⟨actual, hactual, heq⟩ := hmapped
-    exact Option.some.inj heq ▸ hactual
-  have hallowed := denoteSource_restriction_support source.core.prog original restriction
-    source.core.env final hfinal
-  have hvalues := (compilation.recordedChoiceRestriction_allows_iff_nodeValues
-    (fun who => decide (who ≠ focal)) recorded (restriction.apply original) fallback cfg
-      hterminal hfinal).mp hallowed
-  apply Eq.symm
-  apply (compilation.supported.candidateReplay_prefix_eq_iff_lookup nullValue window focal
-    deviator environment schedule release reference (cfg.1.nodeValues fallback)).mpr
-  intro who node guard hsem hwho value hlookup
-  exact hvalues who node guard hsem (by simp [hwho]) value
-    (CommitmentCandidate.opening?_eq_some_iff _ _ |>.mpr hlookup)
+  apply compilation.supported.restrictedGraphRun_candidateReplay_prefix nullValue window focal
+    deviator environment schedule (compile_guardLive source.core source.legal)
+    reference release fallback graphProfile cfg
+  rw [SealedFragment.recordedChoiceRestriction_apply_update _ _ focal (by simp)]
+  change cfg ∈ (runPolicyNodes compilation.supported.graphWF
+    (compile_guardLive source.core source.legal) _ _ _).support
+  unfold extractedCandidateSourceRun sourceRunOfDisclosures SealedFragment.runOfDisclosures at hcfg
+  rw [compilation.compile_recordedChoiceRestriction_profile] at hcfg
+  exact hcfg
 
 /-- Exact source probability of a stopped candidate replay, expressed as a
 written-source recorded-choice event. This is not yet a native marginal law. -/

@@ -29,6 +29,7 @@ import Vegas.Compile.SealedHonestRound
 import Vegas.Compile.SealedCandidateHonestRound
 import Vegas.Compile.SealedCandidateNativeLikelihood
 import Vegas.Compile.SealedCandidateRandomizedCoupling
+import Vegas.Compile.SealedCandidateGraphLikelihood
 import Vegas.Compile.SealedPublicOutcome
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
@@ -103,6 +104,59 @@ theorem source_restriction_probability_of_constant {Γ : VCtx Player L}
       restriction.weight profile env final = mass) :
     (denoteSource prog profile env).probOf {final | restriction.Allows env final} = mass :=
   denoteSource_restriction_probability_of_constant prog profile restriction env mass hconstant
+
+/-- Graph-choice event mass under a normalized legal restriction, independent
+of source syntax and allowing dependent or zero-probability choices. -/
+theorem graph_restriction_probability [Fintype Player] {G : Graph Player L}
+    (hwf : G.WF) (hguards : GuardLive G) (profile : CommitPolicyProfile G)
+    (restriction : CommitRestriction G) (state : ReachableConfig G)
+    (order : List (Fin G.nodeCount)) (horder : G.ReadyOrder state.1.done order) :
+    (runPolicyNodes hwf hguards profile state order).probOf
+        {final | restriction.Allows order final.1} =
+      (runPolicyNodes hwf hguards (restriction.apply profile) state order).expect
+        (fun final => restriction.weight profile order final.1) :=
+  runPolicyNodes_restriction_probability hwf hguards profile restriction state order horder
+
+/-- Complete candidate replay-prefix mass under an arbitrary graph profile.
+Identifying this replay law with native randomized execution is a separate step. -/
+theorem pending_candidate_graph_replay_likelihood [Fintype Player]
+    {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat) (focal : Player)
+    (deviator :
+      List (supported.resolvingRuntime nullValue window).candidateApplication.PlayerEntry →
+      (supported.resolvingRuntime nullValue window).candidateApplication.View →
+      (supported.resolvingRuntime nullValue window).candidateApplication.PlayerCommand)
+    (environment :
+      List (supported.resolvingRuntime nullValue window).candidateApplication.EnvironmentEntry →
+      (supported.resolvingRuntime nullValue window).candidateApplication.EnvironmentObservation →
+      (supported.resolvingRuntime nullValue window).candidateApplication.EnvironmentPolicyCommand)
+    (schedule : List (@MessageApplication.Invocation Player)) (hguards : GuardLive G)
+    (reference : Fin G.nodeCount → L.Val ty)
+    (release : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution →
+      Bool) (fallback : L.Val ty) (profile : CommitPolicyProfile G) :
+    let stopped := (supported.candidateReplay nullValue window reference focal
+      deviator environment schedule).prefixThrough release
+    let restriction := supported.recordedChoiceRestriction (fun who => decide (who ≠ focal))
+      (fun handle => (stopped.last.native.application.service.lookup handle).opening?)
+    ((runPolicyNodes supported.graphWF hguards profile ⟨Config.initial G, .initial⟩
+      G.nodeOrder).map fun cfg =>
+        (supported.candidateReplay nullValue window (cfg.1.nodeValues fallback) focal
+          deviator environment schedule).prefixThrough release).prob stopped =
+      (runPolicyNodes supported.graphWF hguards (restriction.apply profile)
+        ⟨Config.initial G, .initial⟩ G.nodeOrder).expect
+          (fun cfg => restriction.weight profile G.nodeOrder cfg.1) :=
+  supported.candidateReplay_graph_likelihood nullValue window focal deviator environment schedule
+    hguards reference release fallback profile
+
+/-- info: 'Vegas.Paper.graph_restriction_probability'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.graph_restriction_probability
+
+/-- info: 'Vegas.Paper.pending_candidate_graph_replay_likelihood'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_graph_replay_likelihood
 
 /-- Exact native prefix probabilities, before any compiler-specific
 identification with source cylinder masses. -/

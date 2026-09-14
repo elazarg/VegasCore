@@ -54,12 +54,27 @@ choices against arbitrary unchanged graph opponents. Candidate extraction in
 policy and proves its local accepted-opening law. The source adapters delegate
 to these constructions and certify the information premise.
 
-This factoring is incomplete. The whole-prefix probability calculation and
-randomized source/native coupling still use source decision restrictions and
-source execution likelihood. Some backend modules also transitively import
-mixed source/backend modules. The next proof work is to establish the
-corresponding restriction/likelihood law for canonical graph policy execution,
-then use it for a graph/native coupling with arbitrary graph opponents. The
+`CommitRestriction` supplies optional legal choices at declared graph inputs.
+`runPolicyNodes_restriction_expect` proves an exact change-of-law identity for
+the actual graph executor under any ready node order, including samples,
+dependent policies, and restrictions of zero original probability. The reference
+profile leaves unselected kernels unchanged; weighting its normalized execution
+by the original forced-choice probabilities computes the restriction event mass.
+No second evaluator or source reconstruction is used.
+
+`SealedFragment.candidateReplay_graph_likelihood` applies this identity to
+recorded candidate preparations and arbitrary graph profiles.
+`restrictedGraphRun_candidateReplay_prefix` proves that every reference graph
+realization reproduces the full native replay prefix, including zero-mass cases.
+The source compiler certifies that recorded-choice restriction commutes with
+policy compilation; its reference-prefix theorem delegates to the graph result.
+
+This factoring is incomplete. The comparison of these graph-side likelihoods
+with actual native policy probabilities and the randomized deviation coupling
+still use source-specific kernel reconstruction and product calculations.
+Some backend modules also transitively import mixed source/backend modules.
+The next proof work is to make that native-kernel/factor identification graph-relative,
+then construct the graph/native coupling with arbitrary graph opponents. The
 candidate stopped-round and first-honest-timeout arguments must consume that
 coupling. Legal resolution defaults and the quitting utility bound need graph
 formulations with compiler certificates, rather than a hidden source-image

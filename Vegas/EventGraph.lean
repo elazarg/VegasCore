@@ -24,6 +24,8 @@ import Vegas.EventGraph.KernelNative
 import Vegas.EventGraph.KernelProduct
 import Vegas.EventGraph.KernelSupport
 import Vegas.EventGraph.KernelRealization
+import Vegas.EventGraph.KernelRestriction
+import Vegas.EventGraph.KernelRestrictionLaw
 import Vegas.EventGraph.KernelPolicy
 import Vegas.EventGraph.KernelPlan
 import Vegas.EventGraph.KernelRound

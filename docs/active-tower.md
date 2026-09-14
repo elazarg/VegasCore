@@ -176,8 +176,11 @@ The theorem must factor as source → certified graph → candidate runtime.
 `Graph.PublicPrefixReadable`, certified for compiler outputs, makes the
 disclosure-based candidate backtranslation graph-local;
 `SealedFragment.runOfDisclosures_consistent` covers arbitrary unchanged graph
-opponents. The global probability proof remains source-relative. Its graph
-restriction/likelihood analogue and the graph-level resolution utility condition
+opponents. Graph restriction likelihood and complete candidate replay-prefix mass
+are checked independently of source syntax; the source reference-prefix theorem
+delegates to the graph theorem. Identifying these likelihoods with actual native
+policy probabilities remains source-relative. That comparison, the resulting
+deviation coupling, and the graph-level resolution utility condition
 are required before the backend can supply its own `UtilitySimulation` and the
 source theorem can follow by composition. The
 [compilation design](compilation-design.md#strategic-intermediate-representation)

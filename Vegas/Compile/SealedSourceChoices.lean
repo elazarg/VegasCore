@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedCompiler
+import Vegas.Compile.SealedGraphRestriction
 import Vegas.Compile.SealedReplay
 import Vegas.Compile.SourceBacktranslation
 import Vegas.Compile.SourceOutcome
@@ -222,6 +223,26 @@ theorem compile_recordedChoiceRestriction (selected : Player → Bool)
         exact hpolicy.trans (congrFun (congrFun (congrFun (congrFun
           (compile_backtranslateCommitPolicy source.core who
             (compilation.supported.valuePolicy (fun _ => value) who)) node) guard) hsem) reads)
+
+/-- Applying recorded-choice restrictions commutes with source-to-graph
+policy compilation. This is an outer compiler certificate; the graph
+restriction and its probability law do not invoke source semantics. -/
+theorem compile_recordedChoiceRestriction_profile (selected : Player → Bool)
+    (recorded : Player × Nat → Option (L.Val ty))
+    (profile : SourceBehavioralProfile source.core.prog) :
+    (fun who => compileSourcePolicy source.core.prog source.core.fresh
+      (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+      rfl who ((compilation.recordedChoiceRestriction selected recorded).apply profile who)) =
+      (compilation.supported.recordedChoiceRestriction selected recorded).apply
+        (fun who => compileSourcePolicy source.core.prog source.core.fresh
+          (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+          rfl who (profile who)) := by
+  funext who node guard hsem reads
+  rw [compilation.compile_recordedChoiceRestriction selected recorded profile who node guard
+    hsem reads]
+  simp only [CommitRestriction.apply, SealedFragment.recordedChoiceRestriction]
+  cases selected who <;> simp only [Bool.false_eq_true, ↓reduceIte]
+  cases recorded (who, node.val) <;> rfl
 
 /-- Source restriction acceptance is exactly equality at occupied honest
 commitment fields of its decoded graph realization. The source support premise

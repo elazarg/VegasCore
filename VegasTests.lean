@@ -40,6 +40,7 @@ import VegasTests.SealedCandidates
 import VegasTests.SealedResolutionReadBound
 import VegasTests.SealedSourceExtraction
 import VegasTests.GraphPublicPrefix
+import VegasTests.GraphRestriction
 import VegasTests.SealedResolutionCylinder
 
 /-! # Regression tests for the active strict sealed-message tower

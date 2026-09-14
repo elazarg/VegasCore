@@ -31,8 +31,10 @@ More general source continuation conditions remain open.
 The intended strategic proof factors through the graph as an independent
 intermediate representation. The source/graph simulation is checked. Backend
 extraction consumes an explicit graph information condition and returns graph
-policies directly; the source compiler certifies that condition. The global
-backend probability proof still uses source execution machinery, so the
+policies directly; the source compiler certifies that condition. Graph choice
+restriction and candidate replay-prefix probabilities are checked independently
+of source syntax. Their comparison with actual native policy probabilities still
+uses source-specific proofs, so the
 independent graph/runtime strategic certificate and its end-to-end composition
 remain unfinished. See [the factoring plan](docs/compilation-design.md#strategic-intermediate-representation).
 
