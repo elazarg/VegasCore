@@ -351,7 +351,7 @@ condition from canonical initialization. It permits arbitrary player and wire
 policies, including an empty roster and zero service slots. It does not identify
 the public settlement with a source outcome. The fixed-clock, early-stopping
 driver and the finite-invocation runner used by the coupling are executions of
-the same application. `SealedResolution.runRounds_eq_tracePolicies` accounts
+the same application. `MessageApplication.RoundDriver.runRounds_eq_tracePolicies` accounts
 for the clock commands and early completion, and
 `SealedCompilation.exists_randomized_round_source_coupling` supplies the
 resulting exact source-mixture/native-round marginal laws.
@@ -1049,7 +1049,7 @@ law; `exists_randomized_source_coupling` lifts that law to randomized focal
 and environment policies.
 `Vegas.Paper.pending_randomized_source_coupling`
 audits the joint law and both marginals by direct delegation.
-`SealedResolution.runRounds_eq_tracePolicies` identifies the actual round
+`MessageApplication.RoundDriver.runRounds_eq_tracePolicies` identifies the actual round
 driver with the first complete block-boundary snapshot of that trace. The
 periodic environment performs wire actions at its service opportunities and
 the mandatory clock command at the boundary, using its own history length to

@@ -19,7 +19,7 @@ noncomputable section
 
 namespace Interaction.SealedResolution
 
-open GameTheory.Math.Probability
+open GameTheory.Math.Probability MessageApplication
 
 universe uPrincipal uValue
 
@@ -1022,16 +1022,19 @@ theorem runRounds_deadlineSound (runtime : SealedResolution Principal Value)
       (runtime.roundDriver.runRounds
         principals serviceSlots players wire total execution).support) :
     next.native.application.visible.DeadlineSound runtime := by
-  rw [runtime.runRounds_eq_tracePolicies principals serviceSlots players wire total execution
+  rw [runtime.roundDriver.runRounds_eq_tracePolicies principals serviceSlots players wire
+    total execution
     hphase, FinDist.support_map] at hnext
   obtain ⟨trace, htrace, rfl⟩ := hnext
   obtain ⟨front, suffix, hsplit, hfront, hsuffix⟩ :=
     runtime.messageApplication.tracePolicies_firstReleaseEvery_split players
-      (runtime.roundEnvironment serviceSlots wire) (roundInvocations principals serviceSlots).length
+      (runtime.roundDriver.environmentPolicy serviceSlots wire) (roundInvocations principals
+        serviceSlots).length
       total (fun state => runtime.complete state.native.application.visible)
       (by simp [roundInvocations]) (roundSchedule principals serviceSlots total) execution trace
       (by rw [roundSchedule_length]) htrace
-  exact runtime.runPolicies_deadlineSound players (runtime.roundEnvironment serviceSlots wire)
+  exact runtime.runPolicies_deadlineSound players (runtime.roundDriver.environmentPolicy
+    serviceSlots wire)
     front execution _ hsound hfront
 
 end Interaction.SealedResolution

@@ -31,6 +31,7 @@ import Vegas.EventGraph.KernelSchedule
 import Vegas.EventGraph.Linearization
 import Vegas.EventGraph.Protocol
 import Vegas.EventGraph.ProtocolOrder
+import Vegas.EventGraph.PublicPrefix
 import Vegas.EventGraph.PolicyLocalization
 import Vegas.EventGraph.PolicyRoundtrip
 import Vegas.EventGraph.Recall

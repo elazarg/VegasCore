@@ -45,6 +45,7 @@ import Vegas.Compile.SealedCandidateRandomizedCoupling
 import Vegas.Compile.SealedCandidateReadBound
 import Vegas.Compile.SealedCandidateReplay
 import Vegas.Compile.SealedCandidateSourceExtraction
+import Vegas.Compile.SealedCandidateExtraction
 import Vegas.Compile.SealedCandidateHonestRound
 import Vegas.Compile.SealedCandidateSettlement
 import Vegas.Compile.SealedResolutionClosure
@@ -63,6 +64,7 @@ import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SealedAssignedReplay
 import Vegas.Compile.SealedHonestCompletion
 import Vegas.Compile.SealedSourceExtraction
+import Vegas.Compile.SealedDisclosurePolicy
 import Vegas.Compile.SealedDisclosureRun
 import Vegas.Compile.SealedSourceRealization
 import Vegas.Compile.SealedSourceChoices

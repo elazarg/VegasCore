@@ -71,15 +71,16 @@ theorem exists_honest_round_source_coupling
     (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
     rfl who (profile who)
   let players := fun who => compilation.compileResolvingPolicy nullValue window who (profile who)
-  let environment := runtime.roundEnvironment serviceSlots wire
-  let schedule := SealedResolution.roundSchedule principals serviceSlots total
+  let environment := runtime.roundDriver.environmentPolicy serviceSlots wire
+  let schedule := MessageApplication.roundSchedule principals serviceSlots total
   let initial := PolicyExecution.initial runtime.messageApplication
     (State.initial runtime.messageApplication runtime.initial)
-  let width := (SealedResolution.roundInvocations principals serviceSlots).length
+  let width := (MessageApplication.roundInvocations principals serviceSlots).length
   let release := fun execution : runtime.messageApplication.PolicyExecution =>
     runtime.complete execution.native.application.visible
   let readout := PolicyTrace.firstReleaseEvery width release total
-  have hdriver := runtime.runRounds_eq_tracePolicies principals serviceSlots players wire
+  have hdriver := runtime.roundDriver.runRounds_eq_tracePolicies principals serviceSlots
+    players wire
     total initial (by rfl)
   have hcomplete (next : runtime.messageApplication.PolicyExecution)
       (hnext : next ∈
@@ -107,8 +108,8 @@ theorem exists_honest_round_source_coupling
       exact ⟨trace, htrace, rfl⟩
     obtain ⟨front, suffix, _, _, hsuffix⟩ :=
       runtime.messageApplication.tracePolicies_firstReleaseEvery_split players environment
-        width total release (by simp [width, SealedResolution.roundInvocations]) schedule initial
-        trace (by simp [schedule, width, SealedResolution.roundSchedule_length]) htrace
+        width total release (by simp [width, MessageApplication.roundInvocations]) schedule initial
+        trace (by simp [schedule, width, MessageApplication.roundSchedule_length]) htrace
     exact (runtime.runPolicies_complete_clear players environment suffix (readout trace) trace.last
       (hcomplete _ hselected) (hclear _ hselected) hsuffix).2.1
   obtain ⟨responses, hresponses⟩ := compilation.exists_honest_replay_mixture nullValue window

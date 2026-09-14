@@ -104,6 +104,7 @@ import Interaction.SealedResolutionClosure
 import Interaction.SealedResolutionSubmission
 import Interaction.SealedResolutionRounds
 import Interaction.MessageApplicationRounds
+import Interaction.MessageApplicationRoundTrace
 import Interaction.SealedResolutionCompletion
 import Interaction.SealedResolutionDriver
 import Interaction.SealedResolutionService

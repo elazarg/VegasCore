@@ -352,7 +352,9 @@ theorem pending_source_choice_law
     (hdecision : ((ToEventGraph.compile source.core).graph.nodeRow decision).sem =
       .commit focal guard)
     (reads : ReadEnv L guard.choiceReads)
-    (hinputs : compilation.disclosureInputs focal decision guard hdecision reads =
+    (hinputs : compilation.supported.disclosureInputs
+      (ToEventGraph.compile_publicPrefixReadable source.core)
+      focal decision guard hdecision reads =
       fun coordinate => values coordinate.val) :
     (ToEventGraph.compileSourcePolicy source.core.prog source.core.fresh
       (ToEventGraph.BuildState.fromInitial
@@ -669,7 +671,7 @@ theorem pending_randomized_round_source_coupling
     let runtime := compilation.supported.resolvingRuntime nullValue window
     let players := fun who =>
       compilation.compileResolvingPolicy nullValue window who (profile who)
-    let roundSchedule := Interaction.SealedResolution.roundSchedule
+    let roundSchedule := Interaction.MessageApplication.roundSchedule
       principals serviceSlots count
     let initial := MessageApplication.PolicyExecution.initial runtime.messageApplication
       (MessageApplication.State.initial _ runtime.initial)
@@ -921,12 +923,12 @@ theorem pending_checkpoint_information
         (Profile.update (sig := policySignature Player runtime.messageApplication)
           (fun player => compilation.compileResolvingPolicy nullValue window player
             (profile player)) who replacement)
-        (runtime.roundEnvironment model.serviceSlots model.wire)
-        (SealedResolution.roundSchedule model.principals model.serviceSlots model.total)
+        (runtime.roundDriver.environmentPolicy model.serviceSlots model.wire)
+        (MessageApplication.roundSchedule model.principals model.serviceSlots model.total)
         (PolicyExecution.initial _ (State.initial _ runtime.initial))).map fun trace =>
           (runtime.firstTimeoutLocalInfo who trace,
             trace.firstReleaseEvery
-              (SealedResolution.roundInvocations model.principals model.serviceSlots).length
+              (MessageApplication.roundInvocations model.principals model.serviceSlots).length
               (fun execution : runtime.messageApplication.PolicyExecution =>
                 runtime.complete execution.native.application.visible)
               model.total) :=
@@ -1280,6 +1282,11 @@ theorem graph_exact_deviation
           (Profile.update profile who sourceReplacement)).map
           (EventGraph.Strategic.behavioralObserve G hwf hguards) :=
   EventGraph.Strategic.deviation_law G hwf hguards hlocal hsingle profile who replacement
+
+/-- Compiler outputs supply the public reads needed by backend extraction. -/
+theorem compiled_public_prefix_readable (program : GraphProgram Player L) :
+    (ToEventGraph.compile program).graph.PublicPrefixReadable :=
+  ToEventGraph.compile_publicPrefixReadable program
 
 /-- Whole-program equality for the actual graph policy runner. -/
 theorem source_graph_honest_law [Fintype Player] (source : WFProgram Player L)
@@ -1753,6 +1760,11 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_strategy_support
+
+/-- info: 'Vegas.Paper.compiled_public_prefix_readable' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.compiled_public_prefix_readable
 
 /-- info: 'Vegas.Paper.source_graph_honest_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

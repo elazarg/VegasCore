@@ -81,7 +81,7 @@ driver, under arbitrary randomized player and wire policies. The fragment
 certificate proves that rules are enabled and prerequisites point backward.
 No roster coverage or message service is needed for termination by timeout.
 
-`SealedResolution.runRounds_eq_tracePolicies` identifies the early-stopping
+`MessageApplication.RoundDriver.runRounds_eq_tracePolicies` identifies the early-stopping
 driver with a block-boundary projection of the same full invocation trace.
 `SealedCompilation.exists_randomized_round_source_coupling` applies this
 projection to the constructed coupling: its native marginal is exactly the

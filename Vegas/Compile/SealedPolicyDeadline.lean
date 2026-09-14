@@ -144,23 +144,24 @@ theorem tracePolicies_no_timeout (total : Nat) (hperiods : period ∣ total)
     (trace : (supported.resolvingRuntime nullValue window).messageApplication.PolicyTrace)
     (htrace : trace ∈
       ((supported.resolvingRuntime nullValue window).messageApplication.tracePolicies players
-        ((supported.resolvingRuntime nullValue window).roundEnvironment serviceSlots wire)
-        (SealedResolution.roundSchedule principals serviceSlots total)
+        ((supported.resolvingRuntime nullValue window).roundDriver.environmentPolicy
+          serviceSlots wire)
+        (MessageApplication.roundSchedule principals serviceSlots total)
         (PolicyExecution.initial _
           (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support) :
     target.val ∉ trace.last.native.application.visible.timeouts := by
   let runtime := supported.resolvingRuntime nullValue window
   let initial := PolicyExecution.initial runtime.messageApplication
     (State.initial runtime.messageApplication runtime.initial)
-  let environment := runtime.roundEnvironment serviceSlots wire
-  let schedule := SealedResolution.roundSchedule principals serviceSlots total
-  let width := (SealedResolution.roundInvocations principals serviceSlots).length
+  let environment := runtime.roundDriver.environmentPolicy serviceSlots wire
+  let schedule := MessageApplication.roundSchedule principals serviceSlots total
+  let width := (MessageApplication.roundInvocations principals serviceSlots).length
   have hinitialClock : initial.native.application.visible.clock = 0 :=
     runtime.refresh_clock false {}
   have hlast : (trace.drop (total * width)).first = trace.last := by
     have hlength := runtime.messageApplication.tracePolicies_length players environment schedule
       initial trace htrace
-    rw [SealedResolution.roundSchedule_length] at hlength
+    rw [MessageApplication.roundSchedule_length] at hlength
     rw [← hlength, PolicyTrace.drop_length]
     rfl
   have hrun := (runtime.messageApplication.tracePolicies_drop_support players environment schedule
@@ -179,9 +180,9 @@ theorem tracePolicies_no_timeout (total : Nat) (hperiods : period ∣ total)
   let budget := (target.val + 1) * (period + 1)
   let position := fun round => (timestamp + 1 + round) * width + slot
   have hslotLength : slot < principals.length := (List.getElem?_eq_some_iff.mp hslot).1
-  have hwidth : 0 < width := by simp [width, SealedResolution.roundInvocations]
+  have hwidth : 0 < width := by simp [width, MessageApplication.roundInvocations]
   have hslotWidth : slot < width := by
-    dsimp [width, SealedResolution.roundInvocations]
+    dsimp [width, MessageApplication.roundInvocations]
     simp only [List.length_append, List.length_map, List.length_replicate, List.length_singleton]
     omega
   have hposition : StrictMono position := by
@@ -217,7 +218,7 @@ theorem tracePolicies_no_timeout (total : Nat) (hperiods : period ∣ total)
       have heq : period - 1 + 2 = period + 1 := by omega
       rw [heq]
       exact Nat.lt_succ_self budget)
-    (fun round hround => SealedResolution.roundSchedule_player principals serviceSlots total
+    (fun round hround => MessageApplication.roundSchedule_player principals serviceSlots total
       (timestamp + 1 + round) slot who (hwithin round hround) hslot)
     timestamp hstamp (by
       rw [Nat.add_sub_cancel_right, hpollClock budget (Nat.lt_succ_self budget)]
@@ -255,10 +256,11 @@ theorem runRounds_no_timeout (total : Nat) (hperiods : period ∣ total)
   let runtime := supported.resolvingRuntime nullValue window
   let initial := PolicyExecution.initial runtime.messageApplication
     (State.initial runtime.messageApplication runtime.initial)
-  let environment := runtime.roundEnvironment serviceSlots wire
-  let schedule := SealedResolution.roundSchedule principals serviceSlots total
-  let width := (SealedResolution.roundInvocations principals serviceSlots).length
-  rw [runtime.runRounds_eq_tracePolicies principals serviceSlots players wire total initial
+  let environment := runtime.roundDriver.environmentPolicy serviceSlots wire
+  let schedule := MessageApplication.roundSchedule principals serviceSlots total
+  let width := (MessageApplication.roundInvocations principals serviceSlots).length
+  rw [runtime.roundDriver.runRounds_eq_tracePolicies principals serviceSlots players wire
+    total initial
     (by rfl), FinDist.support_map] at hnext
   obtain ⟨trace, htrace, rfl⟩ := hnext
   have hclear := supported.tracePolicies_no_timeout nullValue window principals serviceSlots
@@ -267,8 +269,8 @@ theorem runRounds_no_timeout (total : Nat) (hperiods : period ∣ total)
   obtain ⟨front, suffix, hsplit, hfront, hsuffix⟩ :=
     runtime.messageApplication.tracePolicies_firstReleaseEvery_split players environment width
       total (fun state => runtime.complete state.native.application.visible)
-      (by simp [width, SealedResolution.roundInvocations]) schedule initial trace
-      (by rw [SealedResolution.roundSchedule_length]) htrace
+      (by simp [width, MessageApplication.roundInvocations]) schedule initial trace
+      (by rw [MessageApplication.roundSchedule_length]) htrace
   intro htimeout
   exact hclear (runtime.runPolicies_timeout_mem players environment suffix _ trace.last
     target.val htimeout hsuffix)

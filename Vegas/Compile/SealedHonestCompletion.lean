@@ -81,8 +81,8 @@ theorem resolvingAssignedReplay_firstCompleteEvery_decode
     (hselected : selected =
       ((supported.resolvingAssignedReplay nullValue window (cfg.1.nodeValues fallback)
         environment
-          (SealedResolution.roundSchedule principals serviceSlots count)).firstReleaseEvery
-          (SealedResolution.roundInvocations principals serviceSlots).length
+          (MessageApplication.roundSchedule principals serviceSlots count)).firstReleaseEvery
+          (MessageApplication.roundInvocations principals serviceSlots).length
           (fun execution :
               (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution =>
             (supported.resolvingRuntime nullValue window).complete
@@ -97,8 +97,8 @@ theorem resolvingAssignedReplay_firstCompleteEvery_decode
     (cfg.1.nodeValues fallback)
   let nativeEnvironment : runtime.messageApplication.EnvironmentPolicy :=
     fun history view => FinDist.pure (environment history view)
-  let schedule := SealedResolution.roundSchedule principals serviceSlots count
-  let width := (SealedResolution.roundInvocations principals serviceSlots).length
+  let schedule := MessageApplication.roundSchedule principals serviceSlots count
+  let width := (MessageApplication.roundInvocations principals serviceSlots).length
   let release := fun execution : runtime.messageApplication.PolicyExecution =>
     runtime.complete execution.native.application.visible
   let initial := PolicyExecution.initial runtime.messageApplication
@@ -111,8 +111,8 @@ theorem resolvingAssignedReplay_firstCompleteEvery_decode
     rw [supported.resolvingAssignedReplay_law, FinDist.mem_support_pure]
   obtain ⟨front, _suffix, _hschedule, hfront, _hsuffix⟩ :=
     runtime.messageApplication.tracePolicies_firstReleaseEvery_split players nativeEnvironment
-      width count release (by simp [width, SealedResolution.roundInvocations]) schedule initial
-      trace (by simp [schedule, width, SealedResolution.roundSchedule_length]) htrace
+      width count release (by simp [width, MessageApplication.roundInvocations]) schedule initial
+      trace (by simp [schedule, width, MessageApplication.roundSchedule_length]) htrace
   have hselectedRun : selected ∈
       (runtime.messageApplication.runPolicies players nativeEnvironment front initial).support := by
     rw [hselected]

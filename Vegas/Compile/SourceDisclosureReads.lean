@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SourceBacktranslation
+import Vegas.EventGraph.PublicPrefix
 
 /-! # Source bindings for public graph-prefix fields
 
@@ -145,5 +146,11 @@ theorem compile_commit_prior_public_read (program : GraphProgram P L)
   simpa only [eventGuardOf, Graph.nodeTarget, BuildResult.graph,
     compile, compileCore_initialFields, decisionSiteState_initialFields, siteState,
     result] using hmem
+
+/-- The source compiler certifies the graph information condition used by
+disclosure-based backend extraction. No commitment-service assumption is needed. -/
+theorem compile_publicPrefixReadable (program : GraphProgram P L) :
+    (compile program).graph.PublicPrefixReadable :=
+  compile_commit_prior_public_read program
 
 end Vegas.ToEventGraph

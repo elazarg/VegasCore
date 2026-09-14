@@ -45,9 +45,9 @@ def extractedStoppingRoundSourceCoupling
       ((List runtime.messageApplication.PlayerEntry × runtime.messageApplication.View) ×
         runtime.messageApplication.PolicyExecution)) :=
   let runtime := compilation.supported.resolvingRuntime nullValue window
-  let schedule := SealedResolution.roundSchedule principals serviceSlots count
+  let schedule := MessageApplication.roundSchedule principals serviceSlots count
   let readout := PolicyTrace.firstReleaseEvery
-    (SealedResolution.roundInvocations principals serviceSlots).length
+    (MessageApplication.roundInvocations principals serviceSlots).length
     (fun execution : runtime.messageApplication.PolicyExecution =>
       runtime.complete execution.native.application.visible) count
   (compilation.extractedSourceCoupling nullValue window focal deviator environment schedule
@@ -122,7 +122,7 @@ theorem extractedStoppingRoundSourceCoupling_locked
         some value) :
     cfg.1.nodeValues fallback decision = value := by
   let runtime := compilation.supported.resolvingRuntime nullValue window
-  let schedule := SealedResolution.roundSchedule principals serviceSlots count
+  let schedule := MessageApplication.roundSchedule principals serviceSlots count
   let players := Profile.update (sig := policySignature Player runtime.messageApplication)
     (fun who => compilation.compileResolvingPolicy nullValue window who (profile who)) focal
     (fun history view => FinDist.pure (deviator history view))
@@ -204,11 +204,11 @@ theorem exists_randomized_stopping_round_source_coupling
     let runtime := compilation.supported.resolvingRuntime nullValue window
     let players := fun who =>
       compilation.compileResolvingPolicy nullValue window who (profile who)
-    let schedule := SealedResolution.roundSchedule principals serviceSlots count
+    let schedule := MessageApplication.roundSchedule principals serviceSlots count
     let initial := PolicyExecution.initial runtime.messageApplication
       (State.initial _ runtime.initial)
     let readout := PolicyTrace.firstReleaseEvery
-      (SealedResolution.roundInvocations principals serviceSlots).length
+      (MessageApplication.roundInvocations principals serviceSlots).length
       (fun execution : runtime.messageApplication.PolicyExecution =>
         runtime.complete execution.native.application.visible) count
     let PlayerResponse := List runtime.messageApplication.PlayerEntry →
@@ -230,7 +230,7 @@ theorem exists_randomized_stopping_round_source_coupling
         (runtime.messageApplication.tracePolicies
           (Profile.update (sig := policySignature Player runtime.messageApplication)
             players focal replacement)
-          (runtime.roundEnvironment serviceSlots wire) schedule initial).map
+          (runtime.roundDriver.environmentPolicy serviceSlots wire) schedule initial).map
             (fun trace =>
               (SealedResolution.firstTimeoutLocalInfo runtime focal trace, readout trace)) ∧
       coupling.map (fun pair => pair.2.2) =
@@ -240,7 +240,8 @@ theorem exists_randomized_stopping_round_source_coupling
   intro runtime players schedule initial readout PlayerResponse EnvironmentResponse
   obtain ⟨responsePairs, _hprefix, hsource, htrace⟩ :=
     compilation.exists_randomized_source_coupling nullValue window focal
-      (runtime.roundEnvironment serviceSlots wire) schedule fallback profile replacement
+      (runtime.roundDriver.environmentPolicy serviceSlots wire) schedule fallback profile
+        replacement
   refine ⟨responsePairs, ?_, ?_, ?_⟩
   · simpa only [extractedStoppingRoundSourceCoupling, FinDist.map_bind,
       FinDist.map_comp, Function.comp_def] using hsource
@@ -251,7 +252,7 @@ theorem exists_randomized_stopping_round_source_coupling
       FinDist.map_comp, Function.comp_def] using h
   · have hreadout := congrArg (FinDist.map readout) htrace
     rw [FinDist.map_bind] at hreadout
-    have hdriver := runtime.runRounds_eq_tracePolicies principals serviceSlots
+    have hdriver := runtime.roundDriver.runRounds_eq_tracePolicies principals serviceSlots
       (Profile.update (sig := policySignature Player runtime.messageApplication)
         players focal replacement) wire count initial (by rfl)
     rw [hdriver]

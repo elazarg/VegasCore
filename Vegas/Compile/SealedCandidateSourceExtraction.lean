@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedCandidateReplay
+import Vegas.Compile.SealedCandidateExtraction
 import Vegas.Compile.SealedDisclosureRun
 import Vegas.Compile.SealedCandidateValues
 
@@ -44,9 +44,10 @@ variable (schedule : List (@Invocation Player)) (fallback : L.Val ty)
 /-- A legal written-source replacement constructed from acceptance replay.
 Native histories, clocks, and pending pools are not source-policy inputs. -/
 def extractedCandidateSourcePolicy : SourceBehavioralPolicy source.core.prog focal :=
-  compilation.sourcePolicyOfDisclosures focal fun decision visible =>
-    compilation.supported.extractedCandidateChoice nullValue window focal deviator environment
-      schedule decision visible fallback
+  backtranslateCommitPolicy source.core focal
+    (compilation.supported.extractedCandidateCommitPolicy
+      (compile_publicPrefixReadable source.core) nullValue window focal deviator environment
+      schedule fallback)
 
 /-- At matching declared source observations, the compiled source replacement
 chooses the opening of the candidate actually selected at acceptance. Missing
@@ -57,7 +58,8 @@ theorem extractedCandidateSourcePolicy_law
     (decision : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
     (hdecision : ((compile source.core).graph.nodeRow decision).sem = .commit focal guard)
     (reads : ReadEnv L guard.choiceReads)
-    (hinputs : compilation.disclosureInputs focal decision guard hdecision reads =
+    (hinputs : compilation.supported.disclosureInputs (compile_publicPrefixReadable source.core)
+      focal decision guard hdecision reads =
       fun coordinate => values coordinate.val) :
     (compileSourcePolicy source.core.prog source.core.fresh
       (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
@@ -71,10 +73,10 @@ theorem extractedCandidateSourcePolicy_law
         (compilation.supported.candidateSelection nullValue window values focal
           deviator environment schedule decision) fallback) := by
   unfold extractedCandidateSourcePolicy
-  rw [compile_sourcePolicyOfDisclosures]
-  simp only [commitPolicyOfDisclosures, FinDist.map_pure, cast_cast, cast_eq, hinputs]
-  rw [compilation.supported.extractedCandidateChoice_eq_selection nullValue window values focal
-    deviator environment schedule decision guard hdecision fallback]
+  rw [compile_backtranslateCommitPolicy]
+  exact compilation.supported.extractedCandidateCommitPolicy_law
+    (compile_publicPrefixReadable source.core) nullValue window focal deviator environment
+    schedule fallback values decision guard hdecision reads hinputs
 
 variable [Fintype Player]
 

@@ -96,7 +96,7 @@ private theorem runRounds_resource_bound (runtime : SealedResolution Principal V
             execution.native.pool.pending.length + principals.length := by
           simpa using runtime.round_pending_bound principals serviceSlots players wire
             (fun _ => false) (by intro _ _ _ h; cases h) execution middle hmiddle
-        have hhistory := runtime.round_environmentHistory_length principals serviceSlots
+        have hhistory := runtime.roundDriver.round_environmentHistory_length principals serviceSlots
           players wire execution middle hmiddle
         constructor
         · simp only [Nat.succ_mul]
@@ -182,7 +182,8 @@ theorem runRounds_pending_empty (runtime : SealedResolution Principal Value)
       · simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
         obtain ⟨middle, hmiddle, hnext⟩ := hnext
         apply ih middle ?_ ?_ hnext
-        · rw [runtime.round_environmentHistory_length principals serviceSlots players wire
+        · rw [runtime.roundDriver.round_environmentHistory_length principals serviceSlots
+            players wire
             execution middle hmiddle, Nat.add_mod, hphase]
           simp
         · have hbound := runtime.round_pending_bound principals serviceSlots players wire reserved
@@ -202,13 +203,13 @@ private theorem runRounds_policy_prefix (runtime : SealedResolution Principal Va
       (runtime.roundDriver.runRounds
         principals serviceSlots players wire count execution).support) :
     ∃ schedule, next ∈ (runtime.messageApplication.runPolicies players
-      (runtime.roundEnvironment serviceSlots wire) schedule execution).support := by
-  rw [runtime.runRounds_eq_tracePolicies principals serviceSlots players wire count
+      (runtime.roundDriver.environmentPolicy serviceSlots wire) schedule execution).support := by
+  rw [runtime.roundDriver.runRounds_eq_tracePolicies principals serviceSlots players wire count
     execution hphase, FinDist.support_map] at hnext
   obtain ⟨trace, htrace, rfl⟩ := hnext
   obtain ⟨front, suffix, _, hfront, _⟩ :=
     runtime.messageApplication.tracePolicies_firstReleaseEvery_split players
-      (runtime.roundEnvironment serviceSlots wire)
+      (runtime.roundDriver.environmentPolicy serviceSlots wire)
       (roundInvocations principals serviceSlots).length count
       (fun state => runtime.complete state.native.application.visible)
       (by simp [roundInvocations]) (roundSchedule principals serviceSlots count) execution trace
@@ -245,7 +246,8 @@ theorem runRounds_ready_commitment_completed (runtime : SealedResolution Princip
   · obtain ⟨schedule, hprefix⟩ := runtime.runRounds_policy_prefix principals serviceSlots
       players wire (count + 1) execution next hphase hnext
     have hretained := runtime.runPolicies_commitment_pendingOrCompleted players
-      (runtime.roundEnvironment serviceSlots wire) schedule execution next owner serial node
+      (runtime.roundDriver.environmentPolicy serviceSlots wire) schedule execution next owner
+        serial node
       requires value hrule hpending hstored hrequires hprefix
     rcases hretained with hdone | hpending
     · exact hdone
@@ -287,7 +289,8 @@ theorem runRounds_ready_opening_completed (runtime : SealedResolution Principal 
   · obtain ⟨schedule, hprefix⟩ := runtime.runRounds_policy_prefix principals serviceSlots
       players wire (count + 1) execution next hphase hnext
     have hretained := runtime.runPolicies_opening_pendingOrCompleted players
-      (runtime.roundEnvironment serviceSlots wire) schedule execution next owner serial node source
+      (runtime.roundDriver.environmentPolicy serviceSlots wire) schedule execution next owner
+        serial node source
       requires sourceRequires value hrule hsourceRule hinvariant hpending haccepted hstored
       hrequires hprefix
     rcases hretained with hdone | hpending

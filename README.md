@@ -28,6 +28,14 @@ designated quitting value give it at most that bound. The compiler derives
 normal utility agreement and the runtime timeout comparison from this certificate.
 More general source continuation conditions remain open.
 
+The intended strategic proof factors through the graph as an independent
+intermediate representation. The source/graph simulation is checked. Backend
+extraction consumes an explicit graph information condition and returns graph
+policies directly; the source compiler certifies that condition. The global
+backend probability proof still uses source execution machinery, so the
+independent graph/runtime strategic certificate and its end-to-end composition
+remain unfinished. See [the factoring plan](docs/compilation-design.md#strategic-intermediate-representation).
+
 The former application-plan path is archived under `archive/fused/`. Its
 adjacent `commit; reveal` fusion emitted a value-bearing request without a
 prior opaque commitment, so it was not a commitment implementation and is not

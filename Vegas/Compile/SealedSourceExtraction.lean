@@ -1,8 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedResolutionReplay
+import Vegas.Compile.SealedDisclosurePolicy
 import Vegas.Compile.SourceDisclosureReads
-import Vegas.EventGraph.KernelRealization
 
 /-! # Source policies from earlier disclosed choices
 
@@ -30,108 +29,15 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {source : WFProgram Player L} {ty : L.Ty}
 variable (compilation : SealedCompilation source ty)
 
-private def priorOpening (focal : Player)
-    (decision : Fin (compile source.core).graph.nodeCount)
-    (coordinate : compilation.supported.priorHonestCoordinates focal decision) :
-    Fin (compile source.core).graph.nodeCount :=
-  Classical.choose (compilation.supported.priorHonestCoordinates_opening focal
-    decision coordinate.val coordinate.property)
-
-private theorem priorOpening_spec (focal : Player)
-    (decision : Fin (compile source.core).graph.nodeCount)
-    (coordinate : compilation.supported.priorHonestCoordinates focal decision) :
-    (compilation.priorOpening focal decision coordinate).val < decision.val ∧
-      ((compile source.core).graph.nodeRow
-        (compilation.priorOpening focal decision coordinate)).sem =
-          .reveal ((compile source.core).graph.nodeTarget coordinate.val) :=
-  Classical.choose_spec (compilation.supported.priorHonestCoordinates_opening focal
-    decision coordinate.val coordinate.property)
-
-private theorem priorOpening_mem_reads (focal : Player)
-    (decision : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
-    (hdecision : ((compile source.core).graph.nodeRow decision).sem = .commit focal guard)
-    (coordinate : compilation.supported.priorHonestCoordinates focal decision) :
-    { field := (compile source.core).graph.nodeTarget
-        (compilation.priorOpening focal decision coordinate), ty := ty } ∈ guard.choiceReads := by
-  let opening := compilation.priorOpening focal decision coordinate
-  have hspec := compilation.priorOpening_spec focal decision coordinate
-  have hwf := compilation.supported.graphWF opening _
-    ((compile source.core).graph.nodes_get?_nodeRow opening)
-  simp only [Graph.nodeWFAt, opening, hspec.2] at hwf
-  obtain ⟨_, _, _, _, hpublic⟩ := hwf.2
-  have hread := compile_commit_prior_public_read source.core focal decision opening guard
-    hdecision hspec.1 hpublic
-  simpa only [compilation.supported.rowType] using hread
-
-/-- Read one earlier public opening for each honest assignment coordinate
-needed by replay. The compiler proves these fields are in the source choice's
-declared information; no runtime history is an input to this function. -/
-def disclosureInputs (focal : Player)
-    (decision : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
-    (hdecision : ((compile source.core).graph.nodeRow decision).sem = .commit focal guard)
-    (reads : ReadEnv L guard.choiceReads) :
-    compilation.supported.priorHonestCoordinates focal decision → L.Val ty :=
-  fun coordinate => reads.read _
-    (compilation.priorOpening_mem_reads focal decision guard hdecision coordinate)
-
-/-- In a complete reachable source graph, the extracted policy's actual
-disclosure inputs are the corresponding commitment values. This follows from
-the graph's reveal semantics, not an assumed source/native input equation. -/
-theorem disclosureInputs_eq_nodeValues (focal : Player)
-    (decision : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
-    (hdecision : ((compile source.core).graph.nodeRow decision).sem = .commit focal guard)
-    (cfg : ReachableConfig (compile source.core).graph)
-    (hterminal : Terminal (compile source.core).graph cfg.1)
-    (reads : ReadEnv L guard.choiceReads)
-    (hreads : ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads)
-    (fallback : L.Val ty) :
-    compilation.disclosureInputs focal decision guard hdecision reads =
-      fun coordinate => cfg.1.nodeValues fallback coordinate.val := by
-  funext coordinate
-  let opening := compilation.priorOpening focal decision coordinate
-  have hspec := compilation.priorOpening_spec focal decision coordinate
-  have hread := ReadEnv.ofStore?_read hreads
-    (compilation.priorOpening_mem_reads focal decision guard hdecision coordinate)
-  obtain ⟨row, hrow, hvalid⟩ := reachable_validDoneValues compilation.supported.graphWF
-    cfg.2 opening (hterminal opening)
-  have hrowEq : row = (compile source.core).graph.nodeRow opening :=
-    Option.some.inj (hrow.symm.trans ((compile source.core).graph.nodes_get?_nodeRow opening))
-  subst row
-  rw [hspec.2] at hvalid
-  change ∃ value : L.Val ((compile source.core).graph.nodeRow opening).ty,
-    Store.getAs cfg.1.store ((compile source.core).graph.nodeTarget opening)
-        ((compile source.core).graph.nodeRow opening).ty = some value ∧
-      Store.getAs cfg.1.store ((compile source.core).graph.nodeTarget coordinate.val)
-        ((compile source.core).graph.nodeRow opening).ty = some value at hvalid
-  rw [compilation.supported.rowType opening] at hvalid
-  obtain ⟨value, htarget, hproducer⟩ := hvalid
-  have hvalue : reads.read _
-      (compilation.priorOpening_mem_reads focal decision guard hdecision coordinate) = value :=
-    Option.some.inj (hread.symm.trans htarget)
-  change reads.read _
-    (compilation.priorOpening_mem_reads focal decision guard hdecision coordinate) =
-      (Store.getAs cfg.1.store
-        ((compile source.core).graph.nodeTarget coordinate.val) ty).getD fallback
-  rw [hproducer, Option.getD_some, hvalue]
-
-/-- Build a legal graph policy from functions of source-earlier honest
-disclosures. The admitted fragment's guards accept every resulting value. -/
-def commitPolicyOfDisclosures (focal : Player)
-    (choose : (decision : Fin (compile source.core).graph.nodeCount) →
-      (compilation.supported.priorHonestCoordinates focal decision → L.Val ty) → L.Val ty) :
-    CommitPolicy (compile source.core).graph focal :=
-  fun decision guard hdecision reads => FinDist.pure
-    ⟨cast (congrArg L.Val (compilation.supported.commitType decision focal guard hdecision).symm)
-      (choose decision (compilation.disclosureInputs focal decision guard hdecision reads)),
-      compilation.supported.commitGuard decision focal guard hdecision _ reads⟩
-
 /-- Source-local disclosed-value functions inhabit the original source
 strategy type, not an enlarged strategy space with runtime observations. -/
 def sourcePolicyOfDisclosures (focal : Player)
     (choose : (decision : Fin (compile source.core).graph.nodeCount) →
       (compilation.supported.priorHonestCoordinates focal decision → L.Val ty) → L.Val ty) :
     SourceBehavioralPolicy source.core.prog focal :=
-  backtranslateCommitPolicy source.core focal (compilation.commitPolicyOfDisclosures focal choose)
+  backtranslateCommitPolicy source.core focal
+    (compilation.supported.commitPolicyOfDisclosures (compile_publicPrefixReadable source.core)
+      focal choose)
 
 theorem compile_sourcePolicyOfDisclosures (focal : Player)
     (choose : (decision : Fin (compile source.core).graph.nodeCount) →
@@ -139,7 +45,8 @@ theorem compile_sourcePolicyOfDisclosures (focal : Player)
     compileSourcePolicy source.core.prog source.core.fresh
       (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
       rfl focal (compilation.sourcePolicyOfDisclosures focal choose) =
-      compilation.commitPolicyOfDisclosures focal choose :=
+      compilation.supported.commitPolicyOfDisclosures (compile_publicPrefixReadable source.core)
+        focal choose :=
   compile_backtranslateCommitPolicy source.core focal _
 
 variable [DecidableEq (L.Val ty)] (nullValue : L.Val ty) (window : Nat) (focal : Player)
@@ -160,9 +67,10 @@ variable (schedule : List (@Invocation Player)) (fallback : L.Val ty)
 the same native response functions. Unrestricted backend guards make the
 fallback legal, including at source views not reached by native replay. -/
 def extractedCommitPolicy : CommitPolicy (compile source.core).graph focal :=
-  compilation.commitPolicyOfDisclosures focal fun decision visible =>
-    compilation.supported.extractedChoice nullValue window focal deviator environment schedule
-      decision visible fallback
+  compilation.supported.commitPolicyOfDisclosures (compile_publicPrefixReadable source.core)
+    focal fun decision visible =>
+      compilation.supported.extractedChoice nullValue window focal deviator environment schedule
+        decision visible fallback
 
 /-- The extraction inhabits the existing written-source strategy type. -/
 def extractedSourcePolicy : SourceBehavioralPolicy source.core.prog focal :=
@@ -188,7 +96,8 @@ theorem extractedCommitPolicy_law
     (decision : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
     (hdecision : ((compile source.core).graph.nodeRow decision).sem = .commit focal guard)
     (reads : ReadEnv L guard.choiceReads)
-    (hinputs : compilation.disclosureInputs focal decision guard hdecision reads =
+    (hinputs : compilation.supported.disclosureInputs (compile_publicPrefixReadable source.core)
+      focal decision guard hdecision reads =
       fun coordinate => values coordinate.val) :
     ((compilation.extractedCommitPolicy nullValue window focal deviator environment schedule
       fallback) decision guard hdecision reads).map
@@ -197,7 +106,7 @@ theorem extractedCommitPolicy_law
           value.1) =
       FinDist.pure ((compilation.supported.resolvingBinding nullValue window values focal
         deviator environment schedule decision).getD fallback) := by
-  simp only [extractedCommitPolicy, commitPolicyOfDisclosures, FinDist.map_pure,
+  simp only [extractedCommitPolicy, SealedFragment.commitPolicyOfDisclosures, FinDist.map_pure,
     cast_cast, cast_eq, hinputs]
   rw [compilation.supported.extractedChoice_eq_binding nullValue window values focal
     deviator environment schedule decision guard hdecision fallback]
@@ -210,7 +119,8 @@ theorem extractedSourcePolicy_law
     (decision : Fin (compile source.core).graph.nodeCount) (guard : EventGuard L)
     (hdecision : ((compile source.core).graph.nodeRow decision).sem = .commit focal guard)
     (reads : ReadEnv L guard.choiceReads)
-    (hinputs : compilation.disclosureInputs focal decision guard hdecision reads =
+    (hinputs : compilation.supported.disclosureInputs (compile_publicPrefixReadable source.core)
+      focal decision guard hdecision reads =
       fun coordinate => values coordinate.val) :
     (compileSourcePolicy source.core.prog source.core.fresh
       (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))

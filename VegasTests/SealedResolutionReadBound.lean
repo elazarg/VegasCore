@@ -260,7 +260,9 @@ theorem candidate_source_selects_second (guard : EventGuard simpleExpr)
         (fun choice => cast (congrArg simpleExpr.Val
           (sealedFragment.commitType (node 1) 1 guard hguard)) choice.val) =
       FinDist.pure (some true) := by
-  have hinputs : compilation.disclosureInputs 1 (node 1) guard hguard reads =
+  have hinputs : compilation.supported.disclosureInputs
+      (Vegas.ToEventGraph.compile_publicPrefixReadable source.core)
+      1 (node 1) guard hguard reads =
       fun _ => (none : Value) := by
     funext coordinate
     obtain ⟨who, hwho, hknown⟩ := coordinate.property

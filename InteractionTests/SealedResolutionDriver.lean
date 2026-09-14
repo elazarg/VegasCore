@@ -47,13 +47,13 @@ theorem stopping_retains_actual_history :
 /-- Running the whole invocation list would retain five clock calls. The
 checkpoint projection, rather than the last trace snapshot, is essential. -/
 theorem full_trace_keeps_later_clock_calls :
-    (runtime.messageApplication.runPolicies players (runtime.roundEnvironment 0 wire)
-      (SealedResolution.roundSchedule [] 0 5) initial).map (fun execution =>
+    (runtime.messageApplication.runPolicies players (runtime.roundDriver.environmentPolicy 0 wire)
+      (MessageApplication.roundSchedule [] 0 5) initial).map (fun execution =>
         (execution.native.application.visible.clock, execution.environmentHistory.length)) =
       FinDist.pure (5, 5) := by
-  simp only [SealedResolution.roundSchedule, SealedResolution.roundInvocations,
+  simp only [MessageApplication.roundSchedule, MessageApplication.roundInvocations,
     List.map_nil, List.replicate_zero, List.nil_append, List.singleton_append,
-    runPolicies, invoke, SealedResolution.roundEnvironment,
+    runPolicies, invoke, MessageApplication.RoundDriver.environmentPolicy,
     Nat.zero_add, Nat.mod_one, ↓reduceIte, FinDist.pure_bind,
     environmentPolicyStep, advance, EnvironmentPolicyCommand.toAction,
     MessageApplication.step, SealedResolution.messageApplication, FinDist.map_pure]

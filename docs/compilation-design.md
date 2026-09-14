@@ -21,6 +21,53 @@ obligations distinct:
 An edge may prove only a subset. Support preservation is not progress, and
 conformance tests are not refinement.
 
+## Strategic intermediate representation
+
+The end-to-end strategic theorem must compose two independently usable edges:
+
+```text
+checked source --strategic correspondence + graph certificates--> event graph
+event graph   --native deviation simulation + resolution bounds--> message runtime
+```
+
+The backend consumes a graph and explicit structural, information, and resolution
+conditions, not a source program or a proof that the graph is a compiler image.
+Its unchanged opponents are arbitrary declared-read graph policies. Native
+deviations are translated directly to graph policies; source backtranslation
+belongs to the outer composition. Outcome interpretation and utility bounds must
+also cross that boundary explicitly. `UtilitySimulation.trans` supplies the
+generic composition; exact source/graph mixture simulation supplies its first
+edge through `MixtureSimulationOn.toUtilitySimulation`.
+
+One checked graph information condition is `Graph.PublicPrefixReadable`: every
+commit decision declares the public node outputs preceding it in canonical graph
+order. `ToEventGraph.compile_publicPrefixReadable` proves this for source compiler
+outputs. Ordinary graph well-formedness only validates declared reads and does
+not imply this condition, as `VegasTests.GraphPublicPrefix` demonstrates. This
+condition is sufficient for the present disclosure-based extraction, not a claim
+that every possible backend must require it.
+
+`SealedFragment.commitPolicyOfDisclosures` consumes that condition directly.
+`runOfDisclosures_consistent` proves its realizations agree with the extracted
+choices against arbitrary unchanged graph opponents. Candidate extraction in
+`SealedFragment.extractedCandidateCommitPolicy` returns this ordinary graph
+policy and proves its local accepted-opening law. The source adapters delegate
+to these constructions and certify the information premise.
+
+This factoring is incomplete. The whole-prefix probability calculation and
+randomized source/native coupling still use source decision restrictions and
+source execution likelihood. Some backend modules also transitively import
+mixed source/backend modules. The next proof work is to establish the
+corresponding restriction/likelihood law for canonical graph policy execution,
+then use it for a graph/native coupling with arbitrary graph opponents. The
+candidate stopped-round and first-honest-timeout arguments must consume that
+coupling. Legal resolution defaults and the quitting utility bound need graph
+formulations with compiler certificates, rather than a hidden source-image
+premise. Only after those laws are proved can the candidate backend expose a
+`UtilitySimulation` and the source-to-runtime theorem delegate to composition.
+The existing source-relative results remain checked; they do not establish this
+independent graph/backend certificate.
+
 ## Active lowering
 
 The event graph is the shared dispatch artifact. The strict native edge in
@@ -76,6 +123,13 @@ discharges the enabled-rule and backward-dependency conditions, yielding
 result permits defaults; timely service is needed separately to exclude an
 honest player's first timeout.
 
+`MessageApplication.RoundDriver.runRounds_eq_tracePolicies` identifies stopped
+rounds with the first completed boundary of the full native trace, or the budget
+boundary if no earlier boundary completes. This shared readout theorem applies
+to any message application and round driver; it has no
+clock, service, or completion-persistence assumption. Both sealed hosts use this
+same interface.
+
 The compiled policies' complete finite-execution laws agree between hosts by
 `SealedCompilation.candidatePolicies_law`. The compiler supplies the preparation
 invariant needed for this embedding; the environment-policy retyping is
@@ -94,11 +148,12 @@ and candidate catalog at first acceptance or timeout depend only on
 source-earlier honest disclosures. Both commitment services use the common
 policy-trace coupling lemma; the candidate relation does not equate hidden
 openability. Fixed-response replay extracts the selected candidate's opening
-through declared source reads. `extractedCandidateSourcePolicy` is a legal
-written-source replacement, and `extractedCandidateSourceRun_consistent`
+through declared graph reads under `PublicPrefixReadable`.
+`extractedCandidateSourcePolicy` is the legal source adapter to that graph policy,
+and `extractedCandidateSourceRun_consistent`
 discharges input agreement at every supported complete source realization.
-The registered and candidate hosts share the source-disclosure policy and
-source-run constructors; they do not define separate source evaluators.
+The registered and candidate hosts share graph-disclosure policy and execution
+constructors, with source law adapters; they do not define separate evaluators.
 Accepted candidate meanings remain fixed through arbitrary native suffixes.
 The prefix law extends to the randomized full-trace coupling described below;
 completed-round incentive comparison remains a separate step.
@@ -163,7 +218,7 @@ joint-predrawing APIs are used by the registered host.
 
 This supplies the probability part of the arbitrary-deviation argument, including
 actual post-timeout execution. The candidate round driver still needs its stopped
-coupling, termination for arbitrary deviations, and timely-service first-timeout
+coupling and timely-service first-timeout
 attribution. The source settlement condition can then be applied to the actual
 completed native payout. Neither coupled marginal alone establishes that bound.
 

@@ -90,10 +90,11 @@ def reads (value : Value) : ReadEnv simpleExpr secondGuard.choiceReads where
     exact cast (congrArg simpleExpr.Val htype.symm) value
 
 theorem inputs (value : Value) :
-    compilation.disclosureInputs 1 (node 2) secondGuard rfl (reads value) =
+    compilation.supported.disclosureInputs (compile_publicPrefixReadable source.core)
+      1 (node 2) secondGuard rfl (reads value) =
       fun _ => value := by
   funext coordinate
-  simp only [SealedCompilation.disclosureInputs, reads, cast_eq]
+  simp only [SealedFragment.disclosureInputs, reads, cast_eq]
 
 def deviator (_history : List app.PlayerEntry) (view : app.View) : app.PlayerCommand :=
   match view.messages.inbox with

@@ -31,7 +31,7 @@ variable (runtime : SealedResolution Principal Value)
     (trace : runtime.messageApplication.PolicyTrace)
     (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
     (htrace : trace ∈ (runtime.messageApplication.tracePolicies players
-      (runtime.roundEnvironment serviceSlots wire)
+      (runtime.roundDriver.environmentPolicy serviceSlots wire)
       (roundSchedule principals serviceSlots total) execution).support)
 
 include hphase htrace
@@ -52,7 +52,8 @@ theorem tracePolicies_round_pending_bound (reserved : Nat → Bool)
   let before := (trace.drop (round * width)).first
   let after := (trace.drop ((round + 1) * width)).first
   have hbetween := runtime.messageApplication.tracePolicies_between players
-    (runtime.roundEnvironment serviceSlots wire) (roundSchedule principals serviceSlots total)
+    (runtime.roundDriver.environmentPolicy serviceSlots wire) (roundSchedule principals
+      serviceSlots total)
     execution trace htrace (round * width) width
   rw [show round * width + width = (round + 1) * width by
     rw [Nat.add_mul, Nat.one_mul]] at hbetween
@@ -69,7 +70,8 @@ theorem tracePolicies_round_pending_bound (reserved : Nat → Bool)
   have hbeforePhase : before.environmentHistory.length % (serviceSlots + 1) = 0 := by
     rw [hhistory, Nat.add_mod, hphase]
     simp
-  rw [← runtime.round_eq_runPolicies principals serviceSlots players wire before hbeforePhase]
+  rw [← runtime.roundDriver.round_eq_runPolicies principals serviceSlots players wire before
+    hbeforePhase]
     at hbetween
   have hbound := runtime.round_pending_bound principals serviceSlots players wire reserved hservice
     before after hbetween
@@ -114,7 +116,8 @@ theorem tracePolicies_periodic_pending_empty (reserved : Nat → Bool)
   induction blocks with
   | zero =>
       have hfirst := runtime.messageApplication.tracePolicies_first players
-        (runtime.roundEnvironment serviceSlots wire) (roundSchedule principals serviceSlots total)
+        (runtime.roundDriver.environmentPolicy serviceSlots wire) (roundSchedule principals
+          serviceSlots total)
         execution trace htrace
       simpa only [Nat.zero_mul, PolicyTrace.drop, hfirst] using hempty
   | succ blocks ih =>

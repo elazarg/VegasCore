@@ -53,9 +53,9 @@ def extractedRoundSourceCoupling
       (compilation.supported.resolvingRuntime nullValue
         window).messageApplication.PolicyExecution) :=
   let runtime := compilation.supported.resolvingRuntime nullValue window
-  let schedule := SealedResolution.roundSchedule principals serviceSlots count
+  let schedule := MessageApplication.roundSchedule principals serviceSlots count
   let readout := PolicyTrace.firstReleaseEvery
-    (SealedResolution.roundInvocations principals serviceSlots).length
+    (MessageApplication.roundInvocations principals serviceSlots).length
     (fun execution : runtime.messageApplication.PolicyExecution =>
       runtime.complete execution.native.application.visible) count
   (compilation.extractedSourceCoupling nullValue window focal deviator environment schedule
@@ -90,7 +90,7 @@ theorem extractedRoundSourceCoupling_terminal
       (compilation.extractedRoundSourceCoupling nullValue window principals serviceSlots count
         focal deviator environment fallback profile).support) :
     Terminal (compile source.core).graph cfg.1 := by
-  let schedule := SealedResolution.roundSchedule principals serviceSlots count
+  let schedule := MessageApplication.roundSchedule principals serviceSlots count
   simp only [extractedRoundSourceCoupling, FinDist.support_map, Set.mem_image] at hpair
   obtain ⟨⟨sourceCfg, trace⟩, hsource, heq⟩ := hpair
   have hcfgEq : sourceCfg = cfg := congrArg Prod.fst heq
@@ -144,8 +144,8 @@ private theorem extractedRoundSourceCoupling_decode_of_complete_clear
     (fun history view => FinDist.pure (deviator history view))
   let nativeEnvironment : runtime.messageApplication.EnvironmentPolicy :=
     fun history view => FinDist.pure (environment history view)
-  let schedule := SealedResolution.roundSchedule principals serviceSlots count
-  let width := (SealedResolution.roundInvocations principals serviceSlots).length
+  let schedule := MessageApplication.roundSchedule principals serviceSlots count
+  let width := (MessageApplication.roundInvocations principals serviceSlots).length
   let release := fun execution : runtime.messageApplication.PolicyExecution =>
     runtime.complete execution.native.application.visible
   let initial := PolicyExecution.initial runtime.messageApplication
@@ -169,8 +169,8 @@ private theorem extractedRoundSourceCoupling_decode_of_complete_clear
   obtain ⟨front, suffix, _hschedule, hselected, hsuffix⟩ :=
     runtime.messageApplication.tracePolicies_firstReleaseEvery_split
       players nativeEnvironment width count release (by
-        simp [width, SealedResolution.roundInvocations]) schedule initial trace (by
-          simp [schedule, width, SealedResolution.roundSchedule_length]) hnative
+        simp [width, MessageApplication.roundInvocations]) schedule initial trace (by
+          simp [schedule, width, MessageApplication.roundSchedule_length]) hnative
   rw [hselectedEq] at hselected hsuffix
   obtain ⟨_hevents, hfinalClear, _hfinalComplete⟩ :=
     runtime.runPolicies_complete_clear players nativeEnvironment suffix
@@ -217,7 +217,7 @@ theorem exists_randomized_round_source_coupling
     let runtime := compilation.supported.resolvingRuntime nullValue window
     let players := fun who =>
       compilation.compileResolvingPolicy nullValue window who (profile who)
-    let schedule := SealedResolution.roundSchedule principals serviceSlots count
+    let schedule := MessageApplication.roundSchedule principals serviceSlots count
     let initial := PolicyExecution.initial runtime.messageApplication
       (State.initial _ runtime.initial)
     let PlayerResponse := List runtime.messageApplication.PlayerEntry →
@@ -244,17 +244,18 @@ theorem exists_randomized_round_source_coupling
   intro runtime players schedule initial PlayerResponse EnvironmentResponse
   obtain ⟨responsePairs, _, hsource, htrace⟩ :=
     compilation.exists_randomized_source_coupling nullValue window focal
-      (runtime.roundEnvironment serviceSlots wire) schedule fallback profile replacement
+      (runtime.roundDriver.environmentPolicy serviceSlots wire) schedule fallback profile
+        replacement
   refine ⟨responsePairs, ?_, ?_⟩
   · simpa only [extractedRoundSourceCoupling, FinDist.map_bind, FinDist.map_comp,
       Function.comp_def] using hsource
   · let readout := PolicyTrace.firstReleaseEvery
-      (SealedResolution.roundInvocations principals serviceSlots).length
+      (MessageApplication.roundInvocations principals serviceSlots).length
       (fun execution : runtime.messageApplication.PolicyExecution =>
         runtime.complete execution.native.application.visible) count
     have hreadout := congrArg (fun law => law.map readout) htrace
     rw [FinDist.map_bind] at hreadout
-    have hdriver := runtime.runRounds_eq_tracePolicies principals serviceSlots
+    have hdriver := runtime.roundDriver.runRounds_eq_tracePolicies principals serviceSlots
       (Profile.update (sig := policySignature Player runtime.messageApplication)
         players focal replacement) wire count initial (by rfl)
     rw [hdriver]

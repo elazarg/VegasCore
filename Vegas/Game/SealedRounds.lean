@@ -268,7 +268,7 @@ def sourceDeviationMixture [Finite Player]
     FinDist (SourceBehavioralPolicy source.core.prog who) :=
   (model.responseLaw profile who replacement).map fun response =>
     compilation.extractedSourcePolicy nullValue window who response.1 response.2
-      (SealedResolution.roundSchedule model.principals model.serviceSlots model.total) nullValue
+      (MessageApplication.roundSchedule model.principals model.serviceSlots model.total) nullValue
 
 theorem stoppingCoupling_native [Finite Player]
     (model : RoundModel compilation nullValue window)
@@ -312,12 +312,12 @@ theorem stoppingCoupling_information [Finite Player]
         (Profile.update (sig := policySignature Player runtime.messageApplication)
           (fun player => compilation.compileResolvingPolicy nullValue window player
             (profile player)) who replacement)
-        (runtime.roundEnvironment model.serviceSlots model.wire)
-        (SealedResolution.roundSchedule model.principals model.serviceSlots model.total)
+        (runtime.roundDriver.environmentPolicy model.serviceSlots model.wire)
+        (MessageApplication.roundSchedule model.principals model.serviceSlots model.total)
         (PolicyExecution.initial _ (State.initial _ runtime.initial))).map fun trace =>
           (runtime.firstTimeoutLocalInfo who trace,
             trace.firstReleaseEvery
-              (SealedResolution.roundInvocations model.principals model.serviceSlots).length
+              (MessageApplication.roundInvocations model.principals model.serviceSlots).length
               (fun execution : runtime.messageApplication.PolicyExecution =>
                 runtime.complete execution.native.application.visible)
               model.total) := by

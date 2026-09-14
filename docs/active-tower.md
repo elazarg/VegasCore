@@ -171,6 +171,18 @@ attribute a timeout to a deviating player.
 
 ## End-to-end target
 
+The theorem must factor as source → certified graph → candidate runtime.
+`WFProgram.sourceGraphSimulation` supplies the first strategic edge.
+`Graph.PublicPrefixReadable`, certified for compiler outputs, makes the
+disclosure-based candidate backtranslation graph-local;
+`SealedFragment.runOfDisclosures_consistent` covers arbitrary unchanged graph
+opponents. The global probability proof remains source-relative. Its graph
+restriction/likelihood analogue and the graph-level resolution utility condition
+are required before the backend can supply its own `UtilitySimulation` and the
+source theorem can follow by composition. The
+[compilation design](compilation-design.md#strategic-intermediate-representation)
+states this boundary and the factoring work.
+
 The immediate unproved result is **source-to-candidate-message equilibrium
 preservation**, not a collection of intermediate theorem names. It must concern
 the actual `candidateApplication` and the generated `compileCandidatePolicy`,
