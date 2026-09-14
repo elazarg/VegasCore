@@ -41,8 +41,9 @@ constructed source/native couplings. It retains the exact joint stopped-prefix
 and final-native law, and its source marginal is a mixture of legal written-source
 deviations. Honest policies and their dependent draws remain unchanged.
 
-This couples executions, not equal final outcomes. Completion and the utility
-comparison after informed quitting are separate strategic obligations. -/
+Completion and the utility comparison after informed quitting are separate
+strategic obligations. Normal completed runs have pointwise source agreement
+by `SealedCompilation.mixtureSourceCoupling_decode_of_complete_clear`. -/
 theorem exists_randomized_source_coupling
     (profile : SourceBehavioralProfile source.core.prog)
     (replacement :
@@ -108,9 +109,41 @@ theorem exists_randomized_source_coupling
     exact compilation.extractedSourceCoupling_native nullValue window focal response environment
       schedule fallback profile
 
+/-- Every supported normally completed pair in a mixture of the constructed
+couplings has exactly the retained source configuration as its native decoding.
+This applies in particular to the mixture for an arbitrary randomized deviation;
+the observation being compared is independent of its sampled response function. -/
+theorem mixtureSourceCoupling_decode_of_complete_clear
+    (profile : SourceBehavioralProfile source.core.prog)
+    (responses : FinDist
+      (List
+        (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry →
+        (compilation.supported.resolvingRuntime nullValue window).messageApplication.View →
+        (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerCommand))
+    (cfg : ReachableConfig (compile source.core).graph)
+    (final :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hpair : (cfg, final) ∈ (responses.bind fun response =>
+      compilation.extractedSourceCoupling nullValue window focal response environment schedule
+        fallback profile).support)
+    (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
+      final.native.application.visible = true)
+    (hclear : final.native.application.visible.timeouts = []) :
+    (compile source.core).graph.decodeSealedFrom ty final.native.application.service
+      (Config.initial _) final.native.application.visible.events = some cfg.1 := by
+  simp only [FinDist.support_bind, Set.mem_iUnion] at hpair
+  obtain ⟨response, _, hpair⟩ := hpair
+  exact compilation.extractedSourceCoupling_decode_of_complete_clear nullValue window focal
+    response environment schedule fallback profile cfg final hpair hcomplete hclear
+
 end Vegas.SealedCompilation
 
 /-- info: 'Vegas.SealedCompilation.exists_randomized_source_coupling' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SealedCompilation.exists_randomized_source_coupling
+
+/-- info: 'Vegas.SealedCompilation.mixtureSourceCoupling_decode_of_complete_clear' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.mixtureSourceCoupling_decode_of_complete_clear

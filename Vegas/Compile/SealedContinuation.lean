@@ -138,6 +138,97 @@ theorem extractedSourceCoupling_native (profile : SourceBehavioralProfile source
         (PolicyExecution.initial _ (State.initial _ runtime.initial))).map PolicyTrace.last at h
   exact h.trans (runtime.messageApplication.tracePolicies_last ..)
 
+/-- In the absence of timeout, no post-cutoff suffix was resampled: the actual
+final execution is the complete fixed-response replay of the retained source
+realization. The statement concerns supported pairs in the constructed coupling,
+not a consequence inferred from its marginal equalities. -/
+theorem extractedSourceCoupling_clear
+    (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (final :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hpair : (cfg, final) ∈ (compilation.extractedSourceCoupling nullValue window focal deviator
+      environment schedule fallback profile).support)
+    (hclear : final.native.application.visible.timeouts = []) :
+    cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
+      fallback profile).support ∧
+    final = (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback)
+      focal deviator environment schedule).last ∧
+    final = compilation.supported.resolvingStop nullValue window (cfg.1.nodeValues fallback)
+      focal deviator environment schedule := by
+  simp only [extractedSourceCoupling, FinDist.support_bind, Set.mem_iUnion,
+    FinDist.support_map, Set.mem_image, Prod.mk.injEq] at hpair
+  obtain ⟨realization, hrealization, result, hresult, rfl, rfl⟩ := hpair
+  refine ⟨hrealization, ?_⟩
+  let runtime := compilation.supported.resolvingRuntime nullValue window
+  let replayed := compilation.supported.resolvingReplay nullValue window
+    (realization.1.nodeValues fallback) focal deviator environment schedule
+  let stop := fun execution : runtime.messageApplication.PolicyExecution =>
+    !execution.native.application.visible.timeouts.isEmpty
+  have hbefore := runtime.runPolicies_clear_before _ _ _ _ _ hresult hclear
+  have hstopped : replayed.prefixThrough stop = replayed := by
+    apply replayed.prefixThrough_eq_of_last_false stop
+    change (!(replayed.prefixThrough stop).last.native.application.visible.timeouts.isEmpty) = false
+    rw [hbefore]
+    rfl
+  have hlength : replayed.length = schedule.length := by
+    apply runtime.messageApplication.tracePolicies_length
+      (compilation.supported.resolvingValuePlayers nullValue window
+        (realization.1.nodeValues fallback) focal
+        (fun history view => FinDist.pure (deviator history view)))
+      (fun history view => FinDist.pure (environment history view)) schedule
+      (PolicyExecution.initial _ (State.initial _ runtime.initial)) replayed
+    rw [compilation.supported.resolvingReplay_law, FinDist.mem_support_pure]
+  change result ∈ (runtime.messageApplication.runPolicies _ _
+    (schedule.drop (replayed.prefixThrough stop).length)
+    (replayed.prefixThrough stop).last).support at hresult
+  rw [hstopped, hlength, List.drop_length, runPolicies, FinDist.mem_support_pure] at hresult
+  refine ⟨hresult, ?_⟩
+  change result = replayed.firstRelease stop
+  rw [← PolicyTrace.prefixThrough_last, hstopped]
+  exact hresult
+
+/-- A completed timeout-free native execution decodes to the exact retained
+source configuration. Together with the source marginal this identifies the
+source outcome on normal completion; it is stronger than merely exhibiting
+some source execution with the same accepted events. -/
+theorem extractedSourceCoupling_decode_of_complete_clear
+    (profile : SourceBehavioralProfile source.core.prog)
+    (cfg : ReachableConfig (compile source.core).graph)
+    (final :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hpair : (cfg, final) ∈ (compilation.extractedSourceCoupling nullValue window focal deviator
+      environment schedule fallback profile).support)
+    (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
+      final.native.application.visible = true)
+    (hclear : final.native.application.visible.timeouts = []) :
+    (compile source.core).graph.decodeSealedFrom ty final.native.application.service
+      (Config.initial _) final.native.application.visible.events = some cfg.1 := by
+  let runtime := compilation.supported.resolvingRuntime nullValue window
+  obtain ⟨hcfg, _, hstop⟩ := compilation.extractedSourceCoupling_clear nullValue window focal
+    deviator environment schedule fallback profile cfg final hpair hclear
+  have hnative : final ∈ ((compilation.extractedSourceCoupling nullValue window focal deviator
+      environment schedule fallback profile).map Prod.snd).support := by
+    rw [FinDist.support_map]
+    exact ⟨(cfg, final), hpair, rfl⟩
+  rw [compilation.extractedSourceCoupling_native] at hnative
+  have hbinding := runtime.runPolicies_beforeTimeoutBinding _ _ schedule _ final
+    SealedResolution.BeforeTimeoutBinding.initial hnative hclear
+  apply compilation.supported.decodeSealed_eq_source cfg
+    (compilation.extractedSourceRun_terminal nullValue window focal deviator environment schedule
+      fallback profile cfg hcfg) fallback _ hbinding ?_ ?_
+  · intro owner node guard hnode value hvalue
+    exact compilation.extractedSourceRun_registered nullValue window focal deviator environment
+      schedule fallback profile cfg hcfg owner node guard hnode value (by rwa [← hstop])
+  · intro node
+    have hindex : node.val < runtime.program.rules.length := by
+      change node.val < compilation.program.rules.length
+      rw [compilation.program_rule_count]
+      exact node.isLt
+    have hdone := List.all_eq_true.mp hcomplete node.val (List.mem_range.mpr hindex)
+    simpa only [SealedResolution.PublicState.completed, hclear, List.contains_nil,
+      Bool.or_false] using hdone
+
 end Vegas.SealedCompilation
 
 /-- info: 'Vegas.SealedCompilation.extractedSourceCoupling_source' depends on axioms:
@@ -154,3 +245,13 @@ end Vegas.SealedCompilation
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SealedCompilation.extractedSourceCoupling_native
+
+/-- info: 'Vegas.SealedCompilation.extractedSourceCoupling_clear' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.extractedSourceCoupling_clear
+
+/-- info: 'Vegas.SealedCompilation.extractedSourceCoupling_decode_of_complete_clear' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.extractedSourceCoupling_decode_of_complete_clear

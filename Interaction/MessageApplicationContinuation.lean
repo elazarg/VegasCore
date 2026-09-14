@@ -26,6 +26,23 @@ def PolicyTrace.length : app.PolicyTrace → Nat
   | .finish _ => 0
   | .step _ tail => tail.length + 1
 
+/-- If the selected endpoint does not satisfy the cutoff, no earlier snapshot
+did either, so the selected prefix is the complete trace. -/
+theorem PolicyTrace.prefixThrough_eq_of_last_false (trace : app.PolicyTrace)
+    (release : app.PolicyExecution → Bool)
+    (hclear : release (trace.prefixThrough release).last = false) :
+    trace.prefixThrough release = trace := by
+  induction trace with
+  | finish => rfl
+  | step execution tail ih =>
+      cases hrelease : release execution with
+      | true =>
+          simp only [prefixThrough, hrelease, ↓reduceIte, last] at hclear
+          contradiction
+      | false =>
+          simp only [prefixThrough, hrelease, Bool.false_eq_true, ↓reduceIte, last] at hclear ⊢
+          exact congrArg (PolicyTrace.step execution) (ih hclear)
+
 theorem PolicyTrace.prefixThrough_length_le (trace : app.PolicyTrace)
     (release : app.PolicyExecution → Bool) :
     (trace.prefixThrough release).length ≤ trace.length := by

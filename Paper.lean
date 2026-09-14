@@ -543,7 +543,8 @@ theorem pending_source_native_prefix_law (profile : SourceBehavioralProfile sour
 mixture of constructed source/native couplings. Both marginals and the joint
 stopped-prefix/final-native law are exact, including the actual timeout suffix.
 The environment is a fixed response function. Final outcome equality,
-termination, and the informed-quitting utility comparison are not asserted. -/
+termination, and the informed-quitting utility comparison are not asserted by
+this marginal-law theorem. Normal completion is identified separately. -/
 theorem pending_randomized_source_coupling
     (profile : SourceBehavioralProfile source.core.prog)
     (replacement :
@@ -583,6 +584,31 @@ theorem pending_randomized_source_coupling
             players focal replacement) env schedule initial :=
   compilation.exists_randomized_source_coupling nullValue window focal environment schedule fallback
     profile replacement
+
+/-- A normally completed pair from any mixture of the constructed couplings
+decodes to that exact source realization. This includes the mixture obtained
+for an arbitrary randomized unilateral replacement. Completion itself and
+source/native agreement after timeout are not assumed to follow from this law. -/
+theorem pending_normal_completion
+    (profile : SourceBehavioralProfile source.core.prog)
+    (responses : FinDist
+      (List
+        (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry →
+        (compilation.supported.resolvingRuntime nullValue window).messageApplication.View →
+        (compilation.supported.resolvingRuntime nullValue window).messageApplication.PlayerCommand))
+    (cfg : ReachableConfig (ToEventGraph.compile source.core).graph)
+    (final :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hpair : (cfg, final) ∈ (responses.bind fun response =>
+      compilation.extractedSourceCoupling nullValue window focal response environment schedule
+        fallback profile).support)
+    (hcomplete : (compilation.supported.resolvingRuntime nullValue window).complete
+      final.native.application.visible = true)
+    (hclear : final.native.application.visible.timeouts = []) :
+    (ToEventGraph.compile source.core).graph.decodeSealedFrom ty final.native.application.service
+      (Config.initial _) final.native.application.visible.events = some cfg.1 :=
+  compilation.mixtureSourceCoupling_decode_of_complete_clear nullValue window focal environment
+    schedule fallback profile responses cfg final hpair hcomplete hclear
 
 /-- Each fresh honest registration before timeout has exactly the original
 source decision probabilities at every reference realization's recorded view.
@@ -1304,3 +1330,8 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_randomized_source_coupling
+
+/-- info: 'Vegas.Paper.pending_normal_completion' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_normal_completion

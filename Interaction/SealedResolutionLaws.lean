@@ -158,6 +158,21 @@ theorem handle_clock [DecidableEq Principal] [DecidableEq Value]
       subst next
       exact runtime.refresh_clock false _
 
+/-- Inclusion retains all existing timeout records and creates no new one. -/
+theorem handle_timeouts [DecidableEq Principal] [DecidableEq Value]
+    (runtime : SealedResolution Principal Value)
+    (state next : ApplicationState Principal Value)
+    (message : Message Principal (SealedProgram.Payload Principal Value))
+    (hnext : runtime.handle state message = some next) :
+    next.visible.timeouts = state.visible.timeouts := by
+  unfold handle at hnext
+  cases hvalid : runtime.validateMessage? state message with
+  | none => simp only [hvalid, Option.bind_eq_bind, Option.bind_none, reduceCtorEq] at hnext
+  | some event =>
+      simp only [hvalid, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hnext
+      subst next
+      exact runtime.refresh_false_timeouts _
+
 /-- With no previous timeout, erasing clock and readiness data from an accepted
 inclusion gives precisely the original sealed validator's event update. -/
 theorem handle_no_timeout [DecidableEq Principal] [DecidableEq Value]

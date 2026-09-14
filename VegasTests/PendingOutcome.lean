@@ -98,6 +98,44 @@ theorem honestRun_terminal (left right : Value) (reverse : Bool) :
   exact ⟨expected left right, decode_honestRun left right reverse,
     hreachable, expected_terminal left right⟩
 
+/-- Terminal agreement suffices even for a proof-side event list with a
+repeated matching write. This tests the decoder lemma without assuming the
+native validator's stronger distinct-node invariant. -/
+theorem repeated_matching_write_decodes (left right : Value) :
+    graph.decodeSealedFrom (.option .bool) (honestRun left right false).service
+      (Config.initial graph)
+      [.accepted 0 (0, 0), .accepted 1 (1, 1), .opened 2 left, .opened 3 right,
+        .opened 2 left] = some (expected left right) := by
+  obtain ⟨cfg, hdecode, hreachable, _⟩ := honestRun_terminal left right false
+  have hcfg : cfg = expected left right :=
+    Option.some.inj (hdecode.symm.trans (decode_honestRun left right false))
+  subst cfg
+  apply Graph.decodeSealedFrom_eq_of_terminal_agreement (G := graph) (L := simpleExpr)
+    (.option .bool)
+    (honestRun left right false).service ⟨expected left right, hreachable⟩ _
+    (expected_terminal left right)
+  · intro event hevent
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hevent
+    rcases hevent with rfl | rfl | rfl | rfl | rfl
+    · refine ⟨(node 0, ⟨.option .bool, left⟩), ?_, rfl⟩
+      have h := graph.decodeSealedEvent_accepted (.option .bool)
+        (honestRun left right false).service (node 0) (0, 0)
+      rw [honest_service_left] at h
+      exact h
+    · refine ⟨(node 1, ⟨.option .bool, right⟩), ?_, rfl⟩
+      have h := graph.decodeSealedEvent_accepted (.option .bool)
+        (honestRun left right false).service (node 1) (1, 1)
+      rw [honest_service_right] at h
+      exact h
+    · exact ⟨(node 2, ⟨.option .bool, left⟩),
+        graph.decodeSealedEvent_opened (.option .bool) _ (node 2) left, rfl⟩
+    · exact ⟨(node 3, ⟨.option .bool, right⟩),
+        graph.decodeSealedEvent_opened (.option .bool) _ (node 3) right, rfl⟩
+    · exact ⟨(node 2, ⟨.option .bool, left⟩),
+        graph.decodeSealedEvent_opened (.option .bool) _ (node 2) left, rfl⟩
+  · intro candidate
+    fin_cases candidate <;> rfl
+
 /-- The executable transcript reaches the written source semantics, with all
 terminal bindings preserved. This does not identify withholding with a source
 nullable choice: the transcript submits and opens each chosen value. -/

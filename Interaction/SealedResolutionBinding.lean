@@ -111,6 +111,31 @@ theorem BeforeTimeoutBinding.handle {state next : ApplicationState Principal Val
 
 noncomputable section
 
+/-- A timeout-free final execution cannot have resumed from a timed-out state.
+This is a property of the actual application steps, for arbitrary policies and
+finite invocation lists; it requires no fairness premise. -/
+theorem runPolicies_clear_before
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Principal))
+    (execution next : runtime.messageApplication.PolicyExecution)
+    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+      schedule execution).support)
+    (hclear : next.native.application.visible.timeouts = []) :
+    execution.native.application.visible.timeouts = [] := by
+  have h := runtime.messageApplication.runPolicies_application_invariant
+    (fun state => state.visible.timeouts = [] → execution.native.application.visible.timeouts = [])
+    ?_ ?_ ?_ players environment schedule execution next (fun h => h) hnext
+  · exact h hclear
+  · intro state who command hstate
+    exact hstate
+  · intro state message after hstate hafter hclear
+    exact hstate ((runtime.handle_timeouts state after message hafter).symm.trans hclear)
+  · intro state command after hstate hafter hclear
+    simp only [messageApplication, FinDist.mem_support_pure] at hafter
+    subst after
+    exact hstate (runtime.refresh_clear true _ hclear).1
+
 /-- The invariant is conditional on the actual runtime log, not a fairness
 assumption. Arbitrary policy traffic and arbitrary clock triggers preserve it. -/
 theorem runPolicies_beforeTimeoutBinding

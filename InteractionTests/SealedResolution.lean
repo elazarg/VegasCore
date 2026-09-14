@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Interaction.SealedResolutionLaws
 import Interaction.SealedResolutionPolicy
+import Interaction.SealedResolutionBinding
 
 /-! # Nullable continuation and deadline boundary regressions
 
@@ -39,6 +40,25 @@ theorem missing_commit_resolves_without_registration :
       SealedProgram.accepted? missedCommit.visible.events 0 = none ∧
       missedCommit.visible.published? 1 = some none ∧
       missedCommit.visible.firstReady? 2 = some 2 := by decide
+
+/-- Even arbitrary subsequent commands cannot make an execution that has
+already timed out look timeout-free. -/
+theorem timeout_cannot_be_erased
+    (players : Bool → runtime.messageApplication.PlayerPolicy)
+    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Bool))
+    (final : runtime.messageApplication.PolicyExecution)
+    (hfinal : final ∈ (runtime.messageApplication.runPolicies players environment schedule
+      (MessageApplication.PolicyExecution.initial _
+        (MessageApplication.State.initial _ missedCommit))).support) :
+    final.native.application.visible.timeouts ≠ [] := by
+  intro hclear
+  have hbefore := runtime.runPolicies_clear_before players environment schedule _ final
+    hfinal hclear
+  have hrecorded : missedCommit.visible.timeouts = [0] := rfl
+  change missedCommit.visible.timeouts = [] at hbefore
+  rw [hrecorded] at hbefore
+  contradiction
 
 private def registerLater : SealedResolution.ApplicationState Bool (Option Bool) :=
   { missedCommit with service := (missedCommit.service.sealValue true 2 (some true)).state }

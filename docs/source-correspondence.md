@@ -63,5 +63,9 @@ mixture of source/native couplings with the ordinary source-mixture marginal
 and the complete native marginal. The joint stopped-prefix/final-native law
 is exact, including the actual post-timeout continuation. The environment may
 adapt to its pending-pool view; the mixture may depend on the opponent profile.
-Randomized environments, fair-service completion, final outcome identification,
+For every normally completed supported pair,
+`mixtureSourceCoupling_decode_of_complete_clear` proves that native event decoding
+returns exactly the retained source realization, including its terminal store.
+This uses binding and registration agreement, not only marginal equalities.
+Randomized environments, fair-service completion, post-timeout settlement,
 and the informed-quitting utility bound remain separate obligations.

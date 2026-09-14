@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedResolutionPolicy
+import Vegas.Compile.SealedDecodeLaws
 import Vegas.EventGraph.KernelRealization
 
 /-! # Complete source values determine native declared inputs
@@ -74,6 +75,32 @@ private theorem accepted_source_value (index : Nat) (handle : CommitmentHandle P
   rw [cfg.1.store_nodeValues (reachable_storeCoherent supported.graphWF cfg.2)
     fallback node (supported.rowType node) (hterminal node),
     hregistered owner node guard hsem value hlookup]
+
+/-- When every graph node has completed normally, native event decoding
+recovers this very source realization. Accepted handles and openings are checked
+through binding and registration agreement; no node-order or distinctness
+premise is needed in addition. -/
+theorem decodeSealed_eq_source
+    (hcomplete : ∀ node : Fin G.nodeCount, SealedProgram.done state.events node.val = true) :
+    G.decodeSealed ty state = some cfg.1 := by
+  apply Graph.decodeSealedFrom_eq_of_terminal_agreement ty state.service cfg state.events
+    hterminal ?_ hcomplete
+  intro event hevent
+  cases event with
+  | accepted index handle =>
+      obtain ⟨owner, requires, value, hrule, _, hlookup⟩ :=
+        hbinding.accepted index handle hevent
+      obtain ⟨node, guard, rfl, _⟩ := supported.ruleAt_commit hrule rfl
+      refine ⟨(node, ⟨ty, value⟩), ?_, ?_⟩
+      · rw [Graph.decodeSealedEvent_accepted, hlookup, Option.map_some]
+      · exact supported.accepted_source_value cfg hterminal fallback state hbinding hregistered
+          node.val handle value hevent hlookup
+  | opened index value =>
+      obtain ⟨owner, source, requires, hrule, _⟩ := hbinding.opened index value hevent
+      obtain ⟨node, producer, guard, rfl, _, _, _⟩ := supported.ruleAt_reveal hrule rfl
+      exact ⟨(node, ⟨ty, value⟩), G.decodeSealedEvent_opened ty state.service node value,
+        supported.opened_source_value cfg hterminal fallback state hbinding hregistered
+          node.val value hevent⟩
 
 private theorem replaySealedView_source (who : Player) (memory : Nat → Option (L.Val ty))
     (hmemory : ∀ slot, memory slot = state.service.lookup (who, slot))

@@ -639,9 +639,16 @@ resumption does not repeat that transition. `SealedCompilation.extractedSourceCo
 uses this identity, and its source and native marginals and joint stopped-prefix/
 final-native law are checked. `exists_randomized_source_coupling` averages these
 couplings using focal trace predrawing. It keeps the environment response function
-fixed and permits the mixture to depend on the opponent profile. Completion and
-equal outcomes when no timeout occurs are additional claims, not consequences
-of the marginal identities alone.
+fixed and permits the mixture to depend on the opponent profile.
+`extractedSourceCoupling_clear` proves pointwise that a timeout-free final state
+is the full replay of the retained source realization: timeout records cannot
+be erased, so the cutoff retained the entire invocation list. If the native
+program is complete as well, `extractedSourceCoupling_decode_of_complete_clear`
+recovers exactly that realization through the native event decoder. Its
+finite-mixture version is audited as `Vegas.Paper.pending_normal_completion`.
+The proof uses the actual binding invariant and retained registrations, rather
+than deriving outcome equality from marginal identities. Completion itself
+and the post-timeout settlement and utility comparisons remain open.
 
 Finally average over `w`. If `mu` is the distribution of `tau_w`, this gives
 a joint law `(X,Y,B,H)` with:
@@ -857,6 +864,8 @@ The current repository has:
 - trace-preserving focal predrawing and the resulting source/native coupling
   mixture for arbitrary randomized unilateral replacements, with a fixed
   deterministic environment response function and unchanged opponent kernels;
+- pointwise identification of a completed, timeout-free coupled native run
+  with the retained source realization under event decoding, also for mixtures;
 - retention of all focal source-owned registrations at a common first-timeout
   snapshot, including speculative registrations;
 - private-registration provenance and agreement of all players' source-owned
@@ -945,10 +954,11 @@ The remaining implementation work is specific:
 
 1. Check backend admission for nullable values and direct unique reveals,
    without changing source well-formedness.
-2. Connect the resolving source-policy translation's terminal public fields to the
-   existing source outcome evaluator for every admitted program, not only
-   the concrete settlement regression. Service values and logical defaults
-   remain distinct.
+2. Connect post-timeout terminal public settlement to the program's outcome
+   evaluator for every admitted program, not only the concrete settlement
+   regression. Normal completed event decoding already recovers the exact
+   coupled source realization. After timeout, service values and logical
+   defaults remain distinct; equal private bindings are not the target claim.
 3. Establish readiness/read invariants after defaults and instantiate the
    fair-service and termination arguments. Do not assume a bare expiration
    status is a source settlement.
