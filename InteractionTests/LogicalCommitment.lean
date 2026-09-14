@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.LogicalCommitment
+import Interaction.SealedCandidateResolution
 
 /-! # Representative logical commitment traces
 
@@ -83,4 +84,46 @@ theorem unopenable_resolves_by_fallback :
           (.open false false 11, false)] := by
   decide
 
+/-! ## Native prerequisite rejection versus the ungated logical kernel
+
+This single transition is an operational projection counterexample.  It does
+not rule out a coarser strategic simulation with additional admission gates or
+certified native effects. -/
+
+/-- Node `1` is an owner commitment whose sole prerequisite is the ordinary,
+still-incomplete commitment at node `0`. -/
+def nativePrerequisiteProgram : SealedProgram Bool :=
+  ⟨[⟨.commit true, []⟩, ⟨.commit false, [0]⟩]⟩
+
+def blockedNativeSelection : Message Bool (SealedProgram.Payload Bool Nat) :=
+  ⟨(false, 0), .commitment 1 (false, 7)⟩
+
+def projectedProtocol : LogicalCommitment Bool (CommitmentHandle Bool Nat) where
+  owner := false
+  handleOwner := Prod.fst
+
+def projectedSelection : Claim Bool (CommitmentHandle Bool Nat) Nat :=
+  .select false (false, 7)
+
+/-- The actual candidate validator rejects selection at a commitment node with
+an incomplete prerequisite.  The current ungated logical inclusion accepts
+the corresponding owner-authored selection and records a positive receipt.
+Thus this literal one-step operational projection does not preserve admission
+or public receipts; the result makes no claim about strategic simulation. -/
+theorem incomplete_prerequisite_breaks_literal_projection :
+    nativePrerequisiteProgram.candidateMessage?
+        (CommitmentCandidates.empty : CommitmentCandidates Bool Nat Nat)
+        [] blockedNativeSelection = none ∧
+      let logicalNext := (State.empty :
+        LogicalCommitment.State Bool (CommitmentHandle Bool Nat) Nat).recordInclusion
+          projectedProtocol projectedSelection
+      logicalNext.selected = some (false, 7) ∧
+        logicalNext.receipts = [(projectedSelection, true)] := by
+  decide
+
 end InteractionTests.LogicalCommitment
+
+/-- info: 'InteractionTests.LogicalCommitment.incomplete_prerequisite_breaks_literal_projection'
+depends on axioms: [propext] -/
+#guard_msgs (whitespace := lax) in
+#print axioms InteractionTests.LogicalCommitment.incomplete_prerequisite_breaks_literal_projection

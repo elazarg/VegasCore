@@ -149,7 +149,11 @@ relative-information, cross-site, and quitting-utility obligations.
 
 `InteractionTests/LogicalCommitment.lean` checks early-opening visibility with
 public rejection, selection among competing prepared handles, and attributed
-fallback after acceptance of an unopenable handle and rejected traffic. The module
+fallback after acceptance of an unopenable handle and rejected traffic. It also
+checks a limit of the abstraction against the actual native candidate validator:
+an incomplete graph prerequisite blocks native selection but not logical
+selection. This requires an admission gate in a literal operational refinement;
+it does not refute a coarser strategic simulation. The module
 is built independently of the Vegas compiler: no active compiler theorem depends
 on it, and it is not an additional claimed compilation edge.
 

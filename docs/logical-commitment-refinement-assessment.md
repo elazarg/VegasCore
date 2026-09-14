@@ -6,8 +6,12 @@ The literal projection into the current one-binding
 `Interaction.LogicalCommitment` should **not** be used as an intermediate
 policy-simulation edge. A useful terminal-state classifier can be defined, and
 honest generated traffic is close to its transition system, but the proposed
-local step projection fails on the native cases analyzed below. These are
-code-inspected counterexamples, not additional mechanized impossibility proofs.
+local step projection fails on the native cases analyzed below. The prerequisite
+rejection mismatch is checked in
+`InteractionTests/LogicalCommitment.lean` by
+`incomplete_prerequisite_breaks_literal_projection`. The other counterexamples
+are code-inspected; none establishes impossibility of a coarser strategic
+simulation.
 
 This does not refute a logical-protocol boundary in general. The counterexample
 establishes that graph-relative admission gates and owner preparation recall
@@ -79,7 +83,10 @@ meaning. It has no graph node, prerequisite state, or native timeout gate.
 
 Therefore an owner-authored selection included before a graph prerequisite is
 ready is publicly rejected natively but accepted by `recordInclusion`
-logically. The same mismatch occurs for an otherwise valid opening whose extra
+logically. The checked example submits the second of two commitment nodes while
+its predecessor is incomplete: the actual `candidateMessage?` validator returns
+`none`, whereas the logical kernel selects the handle and records an accepting
+receipt. The same mismatch occurs for an otherwise valid opening whose extra
 graph prerequisites are incomplete. The receipt boolean exposes the mismatch.
 Mapping that included payload to `Claim.malformed` would not repair a trace
 projection: the sent and delivered occurrences exposed the original selection
