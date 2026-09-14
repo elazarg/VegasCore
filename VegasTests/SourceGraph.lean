@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceGraph
+import Vegas.Core.SourceLikelihood
 import VegasTests.PendingStages
 import VegasTests.PendingSource
 
@@ -48,6 +49,27 @@ theorem source_repeat_law (law : FinDist Value) :
   apply FinDist.bind_congr
   intro value _
   cases value <;> rfl
+
+/-- A copied choice contributes mass one, not a second independent draw.
+This also checks queries outside the first draw's support. -/
+theorem source_repeat_factors (law : FinDist Value) (value : Value) :
+    sourcePointFactors core (repeatPolicy law) (VEnv.empty simpleExpr)
+      (repeatedOutcome value) = [law.prob value, 1, 1] := by
+  classical
+  simp only [core, sourcePointFactors, sourceInitialProjection, repeatedOutcome,
+    VEnv.tail_cons, VEnv.cons_get_here, repeatPolicy, VegasCore.commit.noConfusion,
+    VegasCore.reveal.noConfusion, VegasCore.noConfusion, id_eq,
+    SourceBehavioralProfile.afterCommit, SourceBehavioralProfile.afterReveal,
+    FinDist.map_comp, Function.comp_def, FinDist.map_pure]
+  change [(law.map id).prob value, (FinDist.pure value).prob value,
+    (FinDist.pure (repeatedOutcome value)).prob (repeatedOutcome value)] = _
+  rw [FinDist.map_id, FinDist.prob_pure_self, FinDist.prob_pure_self]
+
+theorem source_repeat_probability (law : FinDist Value) (value : Value) :
+    (denoteSource core (repeatPolicy law) (VEnv.empty simpleExpr)).prob
+      (repeatedOutcome value) = law.prob value := by
+  rw [denoteSource_prob_eq_prod, source_repeat_factors]
+  simp only [List.prod_cons, List.prod_nil, mul_one]
 
 /-- The second commitment follows the first disclosed choice for any finite
 first-choice law, including an explicit source decline. -/

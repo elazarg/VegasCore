@@ -20,6 +20,7 @@ import Vegas.Core.Strategy
 import Vegas.Core.SourceRecall
 import Vegas.Core.SourcePolicyExtension
 import Vegas.Core.SourceContext
+import Vegas.Core.SourceLikelihood
 import Vegas.Core.WellFormed
 
 /-! Checked source syntax, expressions, obligations, source SOS, and source strategies. -/

@@ -121,10 +121,21 @@ stopped trace with its honest-registration cylinder mass under any joint
 assignment law. Independence of those coordinates is not assumed. This is
 a replay law, not yet the marginal law of the original honest kernels.
 
-The remaining probability argument must compute the source cylinder masses
-using this fresh-kernel agreement, account for deterministic invocations, and identify the
-actual stopped-native marginal. The source law and its focal consistency are
-checked; the native marginal is not. Randomized responses must also be predrawn
+`Vegas.denoteSource_prob_eq_prod` factors the probability of every written-source
+terminal environment into its actual conditional draw probabilities and a final
+environment-consistency check. It includes samples, guards, and dependent
+choices, even for queried environments of probability zero.
+`MessageApplication.tracePolicies_prefixThrough_prob_eq_prod` factors the actual
+stopped-native trace law into invocation probabilities and snapshot-consistency
+checks. The original runner continues; the discarded suffix integrates to one.
+`invoke_player_prob_of_step` identifies a player invocation's factor with its
+chosen command's probability, including rejected or state-preserving commands.
+The paper audits these laws as `source_point_probability` and `native_prefix_probability`.
+
+The remaining probability argument must sum the source factors over each replay
+cylinder using the fresh-kernel agreement and identify that sum with the native
+prefix product. The source and native factorizations are checked separately;
+their required equality is not. Randomized responses must also be predrawn
 consistently across honest assignments, and the post-timeout native suffix must
 be attached with its actual continuation law. Pointwise choice agreement alone
 does not establish these probabilities for dependent source decisions.

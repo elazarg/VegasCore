@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import GameTheoryExtensions.Core.MixtureSimulation
 import GameTheoryExtensions.Core.UtilitySimulation
 import Interaction.SealedTimeoutDisclosure
+import Interaction.MessageApplicationTraceLikelihood
 import Vegas.Language.Nullable
 import Vegas.Compile.SealedCompiler
 import Vegas.Compile.SealedPolicy
@@ -18,6 +19,7 @@ import Vegas.Compile.SealedSourceAssignment
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
+import Vegas.Core.SourceLikelihood
 import Vegas.EventGraph.Confluence
 import Vegas.EventGraph.Fence
 import Vegas.EventGraph.SourceOrder
@@ -53,6 +55,26 @@ open GameTheory Vegas EventGraph Interaction
 open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
+
+/-- Source execution retains the conditional probability of every draw,
+including samples and choices depending on earlier observations. -/
+theorem source_point_probability {Γ : VCtx Player L} (prog : VegasCore Player L Γ)
+    (profile : SourceBehavioralProfile prog) (env : VEnv L Γ)
+    (final : VEnv L (sourceTerminalCtx prog)) :
+    (denoteSource prog profile env).prob final = (sourcePointFactors prog profile env final).prod :=
+  denoteSource_prob_eq_prod prog profile env final
+
+/-- Exact native prefix probabilities, before any compiler-specific
+identification with source cylinder masses. -/
+theorem native_prefix_probability (app : MessageApplication Player)
+    (players : Player → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (release : app.PolicyExecution → Bool)
+    (schedule : List (@MessageApplication.Invocation Player)) (initial : app.PolicyExecution)
+    (trace : app.PolicyTrace) :
+    ((app.tracePolicies players environment schedule initial).map
+      (MessageApplication.PolicyTrace.prefixThrough release)).prob trace =
+        (app.stoppedPointFactors players environment release schedule initial trace).prod :=
+  app.tracePolicies_prefixThrough_prob_eq_prod players environment release schedule initial trace
 
 theorem sealed_rule_count
     {source : WFProgram Player L} {ty : L.Ty}
@@ -1012,3 +1034,13 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pending_honest_registration_kernel
+
+/-- info: 'Vegas.Paper.source_point_probability' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_point_probability
+
+/-- info: 'Vegas.Paper.native_prefix_probability' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.native_prefix_probability

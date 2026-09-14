@@ -35,6 +35,10 @@ inductive PolicyTrace (app : MessageApplication Principal) where
 
 variable {app : MessageApplication Principal}
 
+def PolicyTrace.first : app.PolicyTrace → app.PolicyExecution
+  | .finish execution => execution
+  | .step execution _ => execution
+
 def PolicyTrace.last : app.PolicyTrace → app.PolicyExecution
   | .finish execution => execution
   | .step _ tail => tail.last
@@ -52,6 +56,15 @@ def PolicyTrace.prefixThrough (release : app.PolicyExecution → Bool) :
   | .finish execution => .finish execution
   | .step execution tail =>
       if release execution then .finish execution else .step execution (tail.prefixThrough release)
+
+theorem PolicyTrace.prefixThrough_first (trace : app.PolicyTrace)
+    (release : app.PolicyExecution → Bool) :
+    (trace.prefixThrough release).first = trace.first := by
+  cases trace with
+  | finish => rfl
+  | step execution tail =>
+      cases hrelease : release execution <;>
+        simp only [prefixThrough, hrelease, Bool.false_eq_true, ↓reduceIte, first]
 
 theorem PolicyTrace.prefixThrough_last (trace : app.PolicyTrace)
     (release : app.PolicyExecution → Bool) :
@@ -83,6 +96,23 @@ def tracePolicies [DecidableEq Principal]
   | invocation :: rest, execution =>
       (app.invoke players environment execution invocation).bind fun next =>
         (tracePolicies players environment rest next).map (.step execution)
+
+theorem tracePolicies_first [DecidableEq Principal]
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (initial : app.PolicyExecution)
+    (trace : app.PolicyTrace)
+    (htrace : trace ∈ (app.tracePolicies players environment schedule initial).support) :
+    trace.first = initial := by
+  cases schedule with
+  | nil =>
+      have heq := FinDist.mem_support_pure.mp htrace
+      subst trace
+      rfl
+  | cons invocation rest =>
+      simp only [tracePolicies, FinDist.support_bind, Set.mem_iUnion,
+        FinDist.support_map, Set.mem_image] at htrace
+      obtain ⟨next, _, tail, _, rfl⟩ := htrace
+      rfl
 
 /-- Instrumentation preserves the full policy-game outcome law. -/
 theorem tracePolicies_last [DecidableEq Principal]

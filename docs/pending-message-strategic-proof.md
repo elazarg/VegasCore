@@ -423,6 +423,17 @@ choices and earlier focal decisions. Read-boundedness makes every focal
 decision causal as well. Summing variables in reverse source order proves
 normalization.
 
+The checked source point-mass theorem is `Vegas.denoteSource_prob_eq_prod`,
+audited as `Vegas.Paper.source_point_probability`. It applies to the existing
+written-source denotation, with every binding retained in its terminal
+environment. The factors include sample probabilities, guarded commitment
+probabilities, and a final equality check. Specializing this to the honest
+assignment law in (2) still requires eliminating deterministic focal choices
+and projecting the retained environment; the general factorization alone does
+not establish (2) or the cylinder-mass identity below. The dependent-choice
+regression copies a first draw at a later source decision: its factors are
+`[law.prob value, 1, 1]`, including when `law.prob value = 0`.
+
 Consider any supported full native prefix `t` before the first resolution,
 including private registration commands and the invocation records for waits.
 Let `J(t)` be its honest registration sites and `b_d` their values. An honest
@@ -437,6 +448,16 @@ p_w(t) = product over d in J(t)
 
 There is no probability factor for deterministic messages, retries, rejection,
 clock advancement, or waiting.
+
+At the native level, `MessageApplication.tracePolicies_prefixThrough_prob_eq_prod`
+proves the exact product of invocation probabilities for the existing stopped
+trace projection, including zero-mass and inconsistent trace queries. It
+integrates the unrecorded suffix, without stopping or changing the runner.
+`invoke_player_prob_of_step` reduces a player's invocation factor to its command
+probability; recorded histories distinguish commands with identical native
+effects. These results are runtime-general. Reducing that product to precisely
+the fresh honest registrations in (3), with the same source inputs and fixed
+native responses, remains part of the compiler probability argument.
 
 Define the rectangle
 
