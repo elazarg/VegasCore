@@ -99,4 +99,45 @@ theorem runPolicies_lookup_origin
   · cases hprior
   · exact hrecorded
 
+/-- A registration attempt leaves its owner-scoped slot occupied. Repeated
+attempts may retain an earlier value, so no equality with the last payload is
+claimed. The occupied entry survives all later native actions. -/
+theorem run_registration_occupied (actions : List runtime.messageApplication.Action)
+    (initial next : runtime.messageApplication.State)
+    (hnext : next ∈ (runtime.messageApplication.run actions initial).support)
+    (owner : Principal) (slot : Nat) (submitted : Value)
+    (hrecord : .privateCommand owner ⟨(slot, submitted)⟩ ∈ actions) :
+    ∃ value, next.application.service.lookup (owner, slot) = some value := by
+  induction actions generalizing initial with
+  | nil => simp only [List.not_mem_nil] at hrecord
+  | cons action rest ih =>
+      simp only [MessageApplication.run, FinDist.support_bind, Set.mem_iUnion] at hnext
+      obtain ⟨middle, hmiddle, hnext⟩ := hnext
+      rcases List.mem_cons.mp hrecord with heq | hrest
+      · subst action
+        simp only [MessageApplication.step, FinDist.mem_support_pure] at hmiddle
+        subst middle
+        have hoccupied : ∃ value,
+            (initial.application.service.sealValue owner slot submitted).state.lookup
+              (owner, slot) = some value := by
+          rw [IdealCommitments.lookup_sealValue, if_pos rfl]
+          cases initial.application.service.lookup (owner, slot) <;> simp
+        obtain ⟨value, hvalue⟩ := hoccupied
+        exact ⟨value, runtime.run_lookup_of_eq_some rest _ next (owner, slot)
+          value hvalue hnext⟩
+      · exact ih middle hnext hrest
+
+theorem runPolicies_registration_occupied
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (next : runtime.messageApplication.PolicyExecution)
+    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment schedule
+      (PolicyExecution.initial _ (State.initial _ runtime.initial))).support)
+    (owner : Principal) (slot : Nat) (submitted : Value)
+    (hrecord : .privateCommand owner ⟨(slot, submitted)⟩ ∈ next.nativeTrace) :
+    ∃ value, next.native.application.service.lookup (owner, slot) = some value :=
+  runtime.run_registration_occupied next.nativeTrace _ _
+    (runtime.messageApplication.runPolicies_initial_native_support players environment
+      schedule (State.initial _ runtime.initial) next hnext) owner slot submitted hrecord
+
 end Interaction.SealedResolution

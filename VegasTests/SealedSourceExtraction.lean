@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Compile.SealedSourceAssignment
+import Vegas.Compile.SealedSourceRestriction
 
 /-! # A native pending disclosure becomes a legal source input
 
@@ -376,5 +376,64 @@ theorem zero_probability_assignment (fallback : Value) :
     rw [first_policy, FinDist.mem_support_pure]
     intro heq
     cases heq
+
+/-- Native registrations at the focal player's slots do not constrain the
+reference source profile. The same extracted focal policy will be used. -/
+theorem restriction_keeps_focal
+    (service : IdealCommitments Player Nat Value) (profile : SourceBehavioralProfile core) :
+    @Eq (SourceBehavioralPolicy core 1)
+      ((compilation.registrationRestriction 1 service).apply profile 1) (profile 1) := by
+  funext Δ name choiceTy guard site visible
+  simp only [SourceChoiceRestriction.apply, SealedCompilation.registrationRestriction,
+    ↓reduceIte]
+
+/-- Even an assignment with zero original mass has a nonempty reference law
+reproducing the actual first registration, with only that honest slot fixed. -/
+theorem first_registration_reference_exists (profile : SourceBehavioralProfile core)
+    (value fallback : Value) :
+    ∃ cfg ∈ (compilation.extractedSourceRun none 3 1 deviator environment [.player 0] fallback
+      ((compilation.registrationRestriction 1 (registered value).native.application.service).apply
+        profile)).support,
+      cfg.1.nodeValues (ty := BaseTy.option .bool) fallback (node 0) = value ∧
+      supported.resolvingReplay none 3 (cfg.1.nodeValues fallback) 1 deviator environment
+        [.player 0] = .step initial (.finish (registered value)) := by
+  obtain ⟨cfg, hcfg⟩ := (compilation.extractedSourceRun none 3 1 deviator environment
+    [.player 0] fallback
+    ((compilation.registrationRestriction 1 (registered value).native.application.service).apply
+      profile)).support_nonempty
+  refine ⟨cfg, hcfg, ?_, ?_⟩
+  · exact compilation.restrictedSourceRun_registered none 3 1 deviator environment [.player 0]
+      fallback (registered value).native.application.service profile cfg hcfg 0 (by decide)
+      (node 0) _ rfl value (by simp [registered, node, IdealCommitments.lookup_sealValue,
+        IdealCommitments.lookup_empty])
+  · have hprefix := compilation.restrictedSourceRun_replay_prefix none 3 1 deviator environment
+      [.player 0] fallback (fun _ => value) (fun _ => false) profile
+    dsimp only at hprefix
+    rw [first_replay, PolicyTrace.prefixThrough_false] at hprefix
+    simpa only [PolicyTrace.prefixThrough_false] using hprefix cfg hcfg
+
+private def copyReferenceProfile (profile : SourceBehavioralProfile core) (value : Value) :
+    SourceBehavioralProfile core :=
+  (compilation.registrationRestriction 1
+    (supported.resolvingReplay none 3 (fun _ => value) 1 deviator environment schedule
+      |>.last.native.application.service)).apply profile
+
+/-- The reference construction also applies to the full delivery/copy example,
+where the honest opening is pending and the focal player has acted on it. -/
+theorem pending_copy_reference (profile : SourceBehavioralProfile core)
+    (value fallback : Value) (cfg : ReachableConfig graph)
+    (hcfg : cfg ∈ (compilation.extractedSourceRun none 3 1 deviator environment schedule fallback
+      (copyReferenceProfile profile value)).support) :
+      supported.resolvingReplay none 3
+        (cfg.1.nodeValues (ty := BaseTy.option .bool) fallback) 1 deviator environment schedule =
+        supported.resolvingReplay none 3 (fun _ => value) 1 deviator environment schedule ∧
+        cfg.1.nodeValues (ty := BaseTy.option .bool) fallback (node 2) =
+          cfg.1.nodeValues (ty := BaseTy.option .bool) fallback (node 0) := by
+  refine ⟨?_, complete_source_copies _ fallback cfg hcfg⟩
+  have hprefix := compilation.restrictedSourceRun_replay_prefix none 3 1 deviator environment
+    schedule fallback (fun _ => value) (fun _ => false) profile
+  dsimp only at hprefix
+  simp only [PolicyTrace.prefixThrough_false] at hprefix
+  exact hprefix cfg hcfg
 
 end VegasTests.SealedSourceExtraction

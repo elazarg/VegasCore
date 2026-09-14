@@ -142,9 +142,26 @@ ordinary source profiles and probability queries, not new source constructs
 or runtime layers. The reference changes honest kernels for the summation
 only; it is not the source deviation or the source marginal of the coupling.
 
-The remaining probability argument must instantiate this restriction with the
-honest registrations in each native prefix, identify its event with the replay
-cylinder, and prove its weight constant using the fresh-kernel agreement.
+`SealedCompilation.registrationRestriction` constructs this reference profile
+from the prefix's private commitment service, fixing only occupied honest source
+slots. Unoccupied slots retain their original kernels, the focal policy is
+unchanged, and recompilation gives precisely the corresponding graph kernels.
+`restrictedSourceRun_source` identifies its law with ordinary restricted source
+execution. `restrictedSourceRun_replay_prefix` proves that every supported
+reference realization reproduces the entire recorded native prefix, including
+pending messages, histories, clock, and receipts. The cutoff is arbitrary; this
+support theorem does not assert probability agreement after timeout. The service
+is proof-facing data, not an additional observation available to a player.
+
+`restrictedSourceRun_registration_kernel` compares the original source kernels
+throughout this reference support with their laws at the same recorded native
+input, before first timeout. All reference realizations are covered, including
+those with zero original probability. Changing the assigned honest values leaves
+the selected registration slot unchanged; its draw law still comes from the
+original source policy.
+
+The remaining probability argument must identify the restriction's event with
+the replay cylinder and prove its weight constant using the fresh-kernel agreement.
 That constant must equal the actual native prefix product. The general
 source summation and native factorization are checked; this compiler-specific
 equality is not. Randomized responses must also be predrawn

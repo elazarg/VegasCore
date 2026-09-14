@@ -521,10 +521,29 @@ source order after pulling out the fixed factors. The reference-law proof
 uses the existing source denotation to perform that normalization directly.
 
 The general source identities are checked and audited in `Paper.lean`.
-Their compiler instantiation remains open: define the restriction from the
-recorded honest registrations, identify its event with the replay cylinder,
-and derive its constant weight from the all-assignment kernel agreement and
-the native invocation factors. In particular, positivity under `mu_w` cannot
+`SealedCompilation.registrationRestriction` constructs `rho_t` from the
+private service in the recorded prefix. Only occupied slots at honest source
+decisions are fixed; the extracted focal policy and unoccupied honest kernels
+remain unchanged. The compiler proves that these source choices recompile to
+the recorded graph values. `restrictedSourceRun_source` identifies the reference
+execution with the ordinary restricted written-source law.
+`restrictedSourceRun_replay_prefix` proves that every supported reference
+realization reproduces `t` exactly, including private histories, pending traffic,
+receipts, and clock. Its arbitrary-cutoff statement is a support result, not a
+probability identification beyond first timeout. Neither construction grants
+players access to the proof-facing service snapshot.
+
+`restrictedSourceRun_registration_kernel` applies the original source/native
+kernel comparison throughout this reference support, at every selected
+pre-timeout checkpoint of the same recorded trace. It does not require positive
+mass under the original profile. Reassignment changes a registration's value,
+not its selected slot, so the comparison uses the same native input for every
+reference realization.
+
+The remaining compiler probability obligations are to identify the restriction
+event with the replay cylinder, and derive its constant weight from the
+all-assignment kernel agreement and native invocation factors.
+In particular, positivity under `mu_w` cannot
 replace the all-assignment comparison: `nu_t` may support environments that
 have zero original probability.
 
@@ -752,6 +771,10 @@ The current repository has:
 - its actual complete source law with unchanged opponents,
   `SealedCompilation.extractedSourceRun_source`, and focal-choice consistency
   at every supported terminal realization;
+- exact source-restriction likelihood identities and native stopped-trace
+  factorization; the reference profile constructed from occupied honest slots
+  reproduces the full recorded prefix, with original-kernel agreement throughout
+  its pre-timeout reference support;
 - retention of all focal source-owned registrations at a common first-timeout
   snapshot, including speculative registrations;
 - private-registration provenance and agreement of all players' source-owned
@@ -816,8 +839,13 @@ values equal the assignment, and its entire native replay is unchanged.
 kernel at those source inputs, without requiring the assignment to have positive
 probability under that policy. The regression exhibits a realized nullable quit
 whose probability is zero under the compared non-quitting policy.
-The source factorization, finite cylinder sum, deterministic invocation factors,
-and actual native trace probabilities remain to be checked.
+The general source factorization, restriction likelihood and summation laws,
+and native stopped-trace factorization are checked. The compiler constructs the
+reference restriction, proves exact prefix replay for its supported source
+realizations, and compares each original source kernel at their recorded native
+inputs. Identifying the restriction event with the replay cylinder and matching
+the complete source likelihood product to the native invocation product remain
+open. These equalities are needed for the original native marginal law.
 The fallback is only source-policy totalization, not an identification of
 runtime timeout with a source action.
 

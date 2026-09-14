@@ -169,14 +169,15 @@ theorem selected_valuePolicy_registration (supported : SealedFragment G ty)
       ((G.nodeOrder.findSome? (supported.nodeCommand? who completed
         (supported.valuePolicy values who) history view store)).getD
           (FinDist.pure .wait)).support) :
-    ∃ node : Fin G.nodeCount, slot = node.val ∧ value = values node := by
+    ∃ node : Fin G.nodeCount, slot = node.val ∧ value = values node ∧
+      ∃ guard, (G.nodeRow node).sem = .commit who guard := by
   obtain ⟨node, guard, hsem, reads, hslot, _, _, hkernel⟩ :=
     supported.selected_registration_kernel who completed (supported.valuePolicy values who)
       history view store slot value hcommand
   rw [hkernel (supported.valuePolicy values who)] at hcommand
   simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq,
     FinDist.mem_support_pure, MessageInterface.PlayerCommand.privateCommand.injEq] at hcommand
-  exact ⟨node, hslot, (Prod.mk.inj (congrArg ULift.down hcommand)).2⟩
+  exact ⟨node, hslot, (Prod.mk.inj (congrArg ULift.down hcommand)).2, guard, hsem⟩
 
 /-- Changing only unused honest assignment coordinates preserves an entire
 supported native execution, including private histories and the pending pool.
@@ -240,7 +241,7 @@ theorem runPolicies_valuePlayers_registration (supported : SealedFragment G ty)
               MessageInterface.Action.privateCommand.injEq] at ha
             obtain ⟨rfl, rfl⟩ := ha
             rw [valuePlayers, GameTheory.Profile.update_of_ne _ _ hwho] at hcommand
-            obtain ⟨actual, hindex, hvalue⟩ :=
+            obtain ⟨actual, hindex, hvalue, _⟩ :=
               supported.selected_valuePolicy_registration values actor [] history view
                 _ index.val registered hcommand
             have hactual : actual = index := Fin.ext hindex.symm

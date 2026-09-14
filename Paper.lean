@@ -16,6 +16,7 @@ import Vegas.Compile.SealedResolutionReadBound
 import Vegas.Compile.SealedSourceExtraction
 import Vegas.Compile.SealedSourceRealization
 import Vegas.Compile.SealedSourceAssignment
+import Vegas.Compile.SealedSourceRestriction
 import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SourceLaw
 import Vegas.Core.AccountingIntegrity
@@ -429,6 +430,41 @@ theorem pending_honest_registration_kernel
                 (compilation.supported.commitType node who guard hsem)) choice.1)⟩) :=
   compilation.assignmentRealization_registration_kernel nullValue window focal deviator environment
     schedule fallback values release
+
+/-- Fixing the honest registrations of a native prefix produces exactly the
+ordinary restricted source law, with the extracted focal policy unchanged. -/
+theorem pending_reference_source_law
+    (service : IdealCommitments Player Nat (L.Val ty))
+    (profile : SourceBehavioralProfile source.core.prog) :
+    (compilation.extractedSourceRun nullValue window focal deviator environment schedule fallback
+      ((compilation.registrationRestriction focal service).apply profile)).map
+        (ToEventGraph.observeSourceOutcome source.core) =
+      (denoteSource source.core.prog
+        ((compilation.registrationRestriction focal service).apply
+          (Profile.update (sig := sourceGameSignature source.core.prog) profile focal
+            (compilation.extractedSourcePolicy nullValue window focal deviator environment
+              schedule fallback))) source.core.env).map some :=
+  compilation.restrictedSourceRun_source nullValue window focal deviator environment schedule
+    fallback service profile
+
+/-- Every supported reference source execution reproduces the recorded native
+prefix, including pending messages and histories. This reference law is for
+probability calculation; it is not the coupling's original source marginal. -/
+theorem pending_reference_replay_prefix
+    (reference : Fin (ToEventGraph.compile source.core).graph.nodeCount → L.Val ty)
+    (release :
+      (compilation.supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution →
+        Bool)
+    (profile : SourceBehavioralProfile source.core.prog) :
+    let stopped := (compilation.supported.resolvingReplay nullValue window reference focal
+      deviator environment schedule).prefixThrough release
+    ∀ cfg ∈ (compilation.extractedSourceRun nullValue window focal deviator environment schedule
+      fallback ((compilation.registrationRestriction focal
+        stopped.last.native.application.service).apply profile)).support,
+      (compilation.supported.resolvingReplay nullValue window (cfg.1.nodeValues fallback) focal
+        deviator environment schedule).prefixThrough release = stopped :=
+  compilation.restrictedSourceRun_replay_prefix nullValue window focal deviator environment
+    schedule fallback reference release profile
 
 end SourceRealization
 
@@ -1075,3 +1111,13 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_restriction_probability_of_constant
+
+/-- info: 'Vegas.Paper.pending_reference_source_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_reference_source_law
+
+/-- info: 'Vegas.Paper.pending_reference_replay_prefix' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_reference_replay_prefix

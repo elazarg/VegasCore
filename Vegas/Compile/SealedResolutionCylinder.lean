@@ -82,11 +82,12 @@ theorem runPolicies_resolvingValues_registration (values : Fin G.nodeCount → L
     (htrace : (.privateCommand owner ⟨(node.val, value)⟩ :
       (supported.resolvingRuntime nullValue window).messageApplication.Action) ∈
         final.nativeTrace) :
-    value = values node := by
+    value = values node ∧ ∃ guard, (G.nodeRow node).sem = .commit owner guard := by
   have hproperty :=
     (supported.resolvingRuntime nullValue window).messageApplication.runPolicies_action_property
       (fun action => ∀ who (index : Fin G.nodeCount) (registered : L.Val ty), who ≠ focal →
-        action = .privateCommand who ⟨(index.val, registered)⟩ → registered = values index)
+        action = .privateCommand who ⟨(index.val, registered)⟩ →
+          registered = values index ∧ ∃ guard, (G.nodeRow index).sem = .commit who guard)
       (supported.resolvingValuePlayers nullValue window values focal deviator) environment
       (by
         intro actor history view command hcommand action ha who index registered hwho heq
@@ -97,13 +98,14 @@ theorem runPolicies_resolvingValues_registration (values : Fin G.nodeCount → L
               MessageInterface.Action.privateCommand.injEq] at ha
             obtain ⟨rfl, rfl⟩ := ha
             rw [resolvingValuePlayers, GameTheory.Profile.update_of_ne _ _ hwho] at hcommand
-            obtain ⟨actual, hindex, hvalue⟩ :=
+            obtain ⟨actual, hindex, hvalue, guard, hsem⟩ :=
               supported.selected_valuePolicy_registration values actor view.application.timeouts
                 ((supported.resolvingRuntime nullValue window).eventHistory history)
                 ((supported.resolvingRuntime nullValue window).eventView view)
                 _ index.val registered hcommand
             have hactual : actual = index := Fin.ext hindex.symm
-            simpa only [hactual] using hvalue
+            exact ⟨by simpa only [hactual] using hvalue,
+              guard, by simpa only [hactual] using hsem⟩
         | submit payload | replay id | wait =>
             simp only [PlayerCommand.toAction, Option.some.injEq] at ha
             cases ha)
@@ -130,10 +132,10 @@ theorem runPolicies_resolvingValues_lookup (values : Fin G.nodeCount → L.Val t
     (owner : Player) (node : Fin G.nodeCount) (value : L.Val ty) (howner : owner ≠ focal)
     (hlookup : final.native.application.service.lookup (owner, node.val) = some value) :
     value = values node := by
-  exact supported.runPolicies_resolvingValues_registration nullValue window focal
+  exact (supported.runPolicies_resolvingValues_registration nullValue window focal
     deviator environment values schedule final hfinal owner node value howner
     ((supported.resolvingRuntime nullValue window).runPolicies_lookup_origin
-      _ _ schedule final hfinal owner node.val value hlookup)
+      _ _ schedule final hfinal owner node.val value hlookup)).1
 
 end Support
 
@@ -217,13 +219,18 @@ theorem resolvingStop_honest_lookup (values : Fin G.nodeCount → L.Val ty)
     (fun history view => FinDist.pure (environment history view)) values front _ hprefix
     owner node value howner hlookup
 
-theorem resolvingReplay_registration (values : Fin G.nodeCount → L.Val ty)
-    (owner : Player) (node : Fin G.nodeCount) (value : L.Val ty) (howner : owner ≠ focal)
-    (htrace : (.privateCommand owner ⟨(node.val, value)⟩ :
-      (supported.resolvingRuntime nullValue window).messageApplication.Action) ∈
-        (supported.resolvingReplay nullValue window values focal
-          deviator environment schedule |>.prefixThrough release).last.nativeTrace) :
-    value = values node := by
+/-- Every stopped replay snapshot is supported by an actual invocation prefix
+of the same runner, with no replacement transition at the cutoff. -/
+theorem resolvingReplay_prefix_run_support (values : Fin G.nodeCount → L.Val ty) :
+    ∃ front suffix, schedule = front ++ suffix ∧
+      (supported.resolvingReplay nullValue window values focal
+        deviator environment schedule |>.prefixThrough release).last ∈
+        ((supported.resolvingRuntime nullValue window).messageApplication.runPolicies
+          (supported.resolvingValuePlayers nullValue window values focal
+            (fun history view => FinDist.pure (deviator history view)))
+          (fun history view => FinDist.pure (environment history view)) front
+          (PolicyExecution.initial _
+            (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support := by
   have hfull : supported.resolvingReplay nullValue window values focal
       deviator environment schedule ∈
       ((supported.resolvingRuntime nullValue window).messageApplication.tracePolicies
@@ -233,13 +240,51 @@ theorem resolvingReplay_registration (values : Fin G.nodeCount → L.Val ty)
         (PolicyExecution.initial _
           (State.initial _ (supported.resolvingRuntime nullValue window).initial))).support := by
     rw [resolvingReplay_law, FinDist.mem_support_pure]
-  obtain ⟨front, _, _, hprefix, _⟩ :=
+  obtain ⟨front, suffix, hschedule, hprefix, _⟩ :=
     MessageApplication.tracePolicies_firstRelease_split _ _ _ release schedule _ _ hfull
-  rw [PolicyTrace.prefixThrough_last] at htrace
-  exact supported.runPolicies_resolvingValues_registration nullValue window focal
+  exact ⟨front, suffix, hschedule, by
+    simpa only [PolicyTrace.prefixThrough_last] using hprefix⟩
+
+theorem resolvingReplay_registration (values : Fin G.nodeCount → L.Val ty)
+    (owner : Player) (node : Fin G.nodeCount) (value : L.Val ty) (howner : owner ≠ focal)
+    (htrace : (.privateCommand owner ⟨(node.val, value)⟩ :
+      (supported.resolvingRuntime nullValue window).messageApplication.Action) ∈
+        (supported.resolvingReplay nullValue window values focal
+          deviator environment schedule |>.prefixThrough release).last.nativeTrace) :
+    value = values node := by
+  obtain ⟨front, _, _, hprefix⟩ := supported.resolvingReplay_prefix_run_support
+    nullValue window focal deviator environment schedule release values
+  exact (supported.runPolicies_resolvingValues_registration nullValue window focal
+    (fun history view => FinDist.pure (deviator history view))
+    (fun history view => FinDist.pure (environment history view)) values front _ hprefix
+    owner node value howner htrace).1
+
+/-- Recorded honest registrations occupy precisely their source-owned slots
+with the assigned values, even if the prefix includes timeout transitions. -/
+theorem resolvingReplay_registration_lookup (values : Fin G.nodeCount → L.Val ty)
+    (owner : Player) (node : Fin G.nodeCount) (value : L.Val ty) (howner : owner ≠ focal)
+    (htrace : (.privateCommand owner ⟨(node.val, value)⟩ :
+      (supported.resolvingRuntime nullValue window).messageApplication.Action) ∈
+        (supported.resolvingReplay nullValue window values focal
+          deviator environment schedule |>.prefixThrough release).last.nativeTrace) :
+    (supported.resolvingReplay nullValue window values focal
+      deviator environment schedule |>.prefixThrough release).last.native.application.service.lookup
+        (owner, node.val) = some (values node) ∧
+      ∃ guard, (G.nodeRow node).sem = .commit owner guard := by
+  obtain ⟨front, _, _, hprefix⟩ := supported.resolvingReplay_prefix_run_support
+    nullValue window focal deviator environment schedule release values
+  obtain ⟨stored, hstored⟩ :=
+    (supported.resolvingRuntime nullValue window).runPolicies_registration_occupied
+      _ _ front _ hprefix owner node.val value htrace
+  have hvalue := supported.runPolicies_resolvingValues_lookup nullValue window focal
+    (fun history view => FinDist.pure (deviator history view))
+    (fun history view => FinDist.pure (environment history view)) values front _ hprefix
+    owner node stored howner hstored
+  have hregistered := supported.runPolicies_resolvingValues_registration nullValue window focal
     (fun history view => FinDist.pure (deviator history view))
     (fun history view => FinDist.pure (environment history view)) values front _ hprefix
     owner node value howner htrace
+  exact ⟨hvalue ▸ hstored, hregistered.2⟩
 
 /-- Exact replay equivalence, retaining every local history, pool snapshot,
 clock transition, and receipt. Agreement is needed only at the honest values

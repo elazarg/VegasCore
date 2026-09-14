@@ -36,6 +36,35 @@ theorem resolvingPolicy_valuePolicy_pure (supported : SealedFragment G ty)
     ((supported.resolvingRuntime nullValue window).eventView view)
     _ command hcommand (fun _ _ => rfl)
 
+/-- Reassigning honest values changes the payload of a fresh registration,
+but not whether that same slot is selected. No agreement on its value is needed. -/
+theorem resolvingValuePlayers_registration_transfer (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat) (left right : Fin G.nodeCount → L.Val ty)
+    (focal : Player)
+    (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
+    (who : Player) (hwho : who ≠ focal)
+    (history : List (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
+    (view : (supported.resolvingRuntime nullValue window).messageApplication.View)
+    (slot : Nat) (value : L.Val ty)
+    (hcommand : .privateCommand ⟨(slot, value)⟩ ∈
+      (supported.resolvingValuePlayers nullValue window left focal deviator
+        who history view).support) :
+    ∃ assigned, .privateCommand ⟨(slot, assigned)⟩ ∈
+      (supported.resolvingValuePlayers nullValue window right focal deviator
+        who history view).support := by
+  rw [resolvingValuePlayers, GameTheory.Profile.update_of_ne _ _ hwho] at hcommand ⊢
+  obtain ⟨node, guard, hsem, reads, hslot, _, _, hkernel⟩ :=
+    supported.selected_registration_kernel who view.application.timeouts _
+      ((supported.resolvingRuntime nullValue window).eventHistory history)
+      ((supported.resolvingRuntime nullValue window).eventView view) _ slot value hcommand
+  have hlaw := hkernel (supported.valuePolicy right who)
+  change supported.resolvingPolicy nullValue window who (supported.valuePolicy right who)
+    history view = _ at hlaw
+  refine ⟨right node, ?_⟩
+  rw [hlaw]
+  simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq, hslot,
+    FinDist.mem_support_pure]
+
 variable (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
 
 private theorem resolvingReplay_exists (values : Fin G.nodeCount → L.Val ty) (focal : Player)

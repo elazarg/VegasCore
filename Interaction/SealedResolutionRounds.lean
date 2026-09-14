@@ -157,21 +157,18 @@ theorem round_clock (runtime : SealedResolution Principal Value)
   rw [runtime.clockStep_native middle next hnext, runtime.tick_clock,
     runtime.runPolicies_wire_clock players environment _ execution middle hmiddle]
 
-/-- Immutable ideal registrations survive arbitrary native policies, including
-clock resolution and post-timeout traffic. -/
-theorem runPolicies_lookup_of_eq_some (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.messageApplication.PlayerPolicy)
-    (environment : runtime.messageApplication.EnvironmentPolicy)
-    (schedule : List (@MessageApplication.Invocation Principal))
-    (execution next : runtime.messageApplication.PolicyExecution)
+/-- Immutable ideal registrations survive arbitrary native action sequences,
+including clock resolution and post-timeout traffic. -/
+theorem run_lookup_of_eq_some (runtime : SealedResolution Principal Value)
+    (actions : List runtime.messageApplication.Action)
+    (initial next : runtime.messageApplication.State)
     (handle : CommitmentHandle Principal Nat) (value : Value)
-    (hlookup : execution.native.application.service.lookup handle = some value)
-    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
-      schedule execution).support) :
-    next.native.application.service.lookup handle = some value := by
-  apply runtime.messageApplication.runPolicies_application_invariant
+    (hlookup : initial.application.service.lookup handle = some value)
+    (hnext : next ∈ (runtime.messageApplication.run actions initial).support) :
+    next.application.service.lookup handle = some value := by
+  apply runtime.messageApplication.run_application_invariant
     (fun state => state.service.lookup handle = some value) ?_ ?_ ?_
-    players environment schedule execution next hlookup hnext
+    initial next actions hlookup hnext
   · intro state who command hstate
     exact IdealCommitments.lookup_sealValue_of_eq_some state.service who
       command.down.1 command.down.2 handle value hstate
@@ -182,6 +179,22 @@ theorem runPolicies_lookup_of_eq_some (runtime : SealedResolution Principal Valu
     simp only [messageApplication, FinDist.mem_support_pure] at hafter
     subst after
     exact hstate
+
+/-- The policy runner inherits persistence from its native action execution. -/
+theorem runPolicies_lookup_of_eq_some (runtime : SealedResolution Principal Value)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Principal))
+    (execution next : runtime.messageApplication.PolicyExecution)
+    (handle : CommitmentHandle Principal Nat) (value : Value)
+    (hlookup : execution.native.application.service.lookup handle = some value)
+    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+      schedule execution).support) :
+    next.native.application.service.lookup handle = some value := by
+  obtain ⟨actions, _, hnative⟩ := runtime.messageApplication.runPolicies_native_support
+    players environment schedule execution next hnext
+  exact runtime.run_lookup_of_eq_some actions execution.native next.native handle value
+    hlookup hnative
 
 theorem runRounds_lookup_of_eq_some (runtime : SealedResolution Principal Value)
     (principals : List Principal) (serviceSlots : Nat)

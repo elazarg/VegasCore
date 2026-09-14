@@ -34,6 +34,7 @@ import Vegas.Compile.SealedResolutionCylinder
 import Vegas.Compile.SealedSourceExtraction
 import Vegas.Compile.SealedSourceRealization
 import Vegas.Compile.SealedSourceAssignment
+import Vegas.Compile.SealedSourceRestriction
 import Vegas.Compile.SealedSourceInputs
 import Vegas.Compile.SealedReplay
 import Vegas.Compile.SealedPublication

@@ -195,4 +195,26 @@ theorem compileSourcePolicy_at {Γ Δ : VCtx P L} (prog : VegasCore P L Γ)
     (⟨Δ, name, ty, guard, site, hindex, hrow⟩ : DecisionAt prog fresh state who node)
     hdecision policy _ hguard rfl reads
 
+/-- A compiled node depends only on the source policy at its instruction
+position. Agreement at other source decisions is unnecessary. -/
+theorem compileSourcePolicy_congr_at_depth {Γ : VCtx P L} (prog : VegasCore P L Γ)
+    (fresh : FreshBindings prog) (state : BuildState P L Γ) (hempty : state.nodes = [])
+    (who : P) (first second : SourceBehavioralPolicy prog who)
+    (node : Fin (compileCore prog fresh state).graph.nodeCount) (guard : EventGuard L)
+    (hsem : ((compileCore prog fresh state).graph.nodeRow node).sem = .commit who guard)
+    (reads : ReadEnv L guard.choiceReads)
+    (hagrees : ∀ {Δ name ty sourceGuard}
+      (site : SourceDecisionSite who prog Δ name ty sourceGuard),
+        site.depth = node.val → first site = second site) :
+    compileSourcePolicy prog fresh state hempty who first node guard hsem reads =
+      compileSourcePolicy prog fresh state hempty who second node guard hsem reads := by
+  let decision := locateDecision prog fresh state hempty who node guard hsem
+  have hdepth : decision.site.depth = node.val := by
+    have hindex := decision.index
+    rw [decisionSiteState_nodes_length, hempty, List.length_nil, Nat.zero_add] at hindex
+    exact hindex.symm
+  have hpolicy := hagrees decision.site hdepth
+  dsimp only [decision] at hpolicy
+  simp only [compileSourcePolicy, DecisionAt.law, hpolicy]
+
 end Vegas.ToEventGraph
