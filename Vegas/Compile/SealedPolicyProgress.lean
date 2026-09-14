@@ -221,6 +221,58 @@ theorem nodeCommand_progress (supported : SealedFragment G ty)
         next dist hsem => exact (supported.noSamples node dist hsem).elim
     next => contradiction
 
+/-- A ready unfinished reveal uses an actually accepted producer. If the
+producer had defaulted instead, propagation would already complete the reveal. -/
+theorem ready_reveal_source_accepted (supported : SealedFragment G ty)
+    (nullValue : L.Val ty) (window : Nat)
+    (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
+    (hinvariant : SealedResolution.EventInvariant (supported.resolvingRuntime nullValue window)
+      execution.native.application)
+    (hclosed : execution.native.application.visible.ResolutionClosed
+      (supported.resolvingRuntime nullValue window))
+    (node producer : Fin G.nodeCount) (who : Player) (guard : EventGuard L)
+    (hreveal : (G.nodeRow node).sem = .reveal (G.nodeTarget producer))
+    (hproducer : (G.nodeRow producer).sem = .commit who guard)
+    (hnotDone : execution.native.application.visible.completed node.val = false)
+    (hrequires : (G.messagePrerequisites node).all
+      execution.native.application.visible.completed = true) :
+    SealedProgram.accepted? execution.native.application.visible.events producer.val =
+      some (who, producer.val) := by
+  let runtime := supported.resolvingRuntime nullValue window
+  let state := execution.native.application.visible
+  have hlt : producer.val < node.val := by
+    have hnodeWF := supported.graphWF node (G.nodeRow node) (G.nodes_get?_nodeRow node)
+    have havailable := hnodeWF.1 (G.nodeTarget producer) (by simp [hreveal, NodeSem.reads])
+    unfold Graph.fieldAvailableBefore at havailable
+    rw [G.field?_nodeTarget (G.nodes_get?_nodeRow producer)] at havailable
+    simpa using havailable
+  have hprereq : producer ∈ G.prereqs node :=
+    G.nodeTarget_mem_prereqs_of_read (G.nodes_get?_nodeRow node)
+      (G.nodes_get?_nodeRow producer) hlt (by simp [hreveal, NodeSem.reads])
+  have hproducerComplete : state.completed producer.val = true :=
+    List.all_eq_true.mp hrequires producer.val ((G.mem_messagePrerequisites node producer).mpr
+      hprereq)
+  have hrevealRule : runtime.program.rules[node.val]? =
+      some ⟨.reveal who producer.val, G.messagePrerequisites node⟩ := by
+    change supported.compile.rules[node.val]? = _
+    rw [supported.compile_rule]
+    exact congrArg some (G.sealedRule_reveal_eq node producer who guard hreveal hproducer)
+  have hproducerNotTimeout : producer.val ∉ state.timeouts := by
+    intro htimeout
+    have hcomplete := hclosed node.val who producer.val (G.messagePrerequisites node)
+      hrevealRule hrequires htimeout
+    rw [hnotDone] at hcomplete
+    contradiction
+  have hproducerDone : SealedProgram.done state.events producer.val = true := by
+    simpa [SealedResolution.PublicState.completed, hproducerNotTimeout] using hproducerComplete
+  have hproducerRule : runtime.program.rules[producer.val]? =
+      some ⟨.commit who, G.messagePrerequisites producer⟩ := by
+    change supported.compile.rules[producer.val]? = _
+    rw [supported.compile_rule]
+    exact congrArg some (G.sealedRule_commit_eq producer who guard hproducer)
+  exact hinvariant.accepted?_eq_some_of_done_commit producer.val who
+    (G.messagePrerequisites producer) hproducerRule hproducerDone
+
 private theorem nodeCommand_isSome_of_ready (supported : SealedFragment G ty)
     (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
     (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
@@ -276,38 +328,13 @@ private theorem nodeCommand_isSome_of_ready (supported : SealedFragment G ty)
   next source hsem =>
     rcases howned with ⟨otherGuard, hother⟩ | ⟨producer, guard, hreveal, hproducer⟩
     · cases hsem.symm.trans hother
-    have hlt : producer.val < node.val := by
-      have hnodeWF := supported.graphWF node (G.nodeRow node) (G.nodes_get?_nodeRow node)
-      have havailable := hnodeWF.1 (G.nodeTarget producer) (by simp [hreveal, NodeSem.reads])
-      unfold Graph.fieldAvailableBefore at havailable
-      rw [G.field?_nodeTarget (G.nodes_get?_nodeRow producer)] at havailable
-      simpa using havailable
-    have hprereq : producer ∈ G.prereqs node :=
-      G.nodeTarget_mem_prereqs_of_read (G.nodes_get?_nodeRow node)
-        (G.nodes_get?_nodeRow producer) hlt (by simp [hreveal, NodeSem.reads])
-    have hproducerComplete : state.completed producer.val = true :=
-      List.all_eq_true.mp hrequires producer.val ((G.mem_messagePrerequisites node producer).mpr
-        hprereq)
     have hrevealRule : runtime.program.rules[node.val]? =
         some ⟨.reveal who producer.val, G.messagePrerequisites node⟩ := by
       change supported.compile.rules[node.val]? = _
       rw [supported.compile_rule]
       exact congrArg some (G.sealedRule_reveal_eq node producer who guard hreveal hproducer)
-    have hproducerNotTimeout : producer.val ∉ state.timeouts := by
-      intro htimeout
-      have hcomplete := hclosed node.val who producer.val (G.messagePrerequisites node)
-        hrevealRule hrequires htimeout
-      rw [hnotDone] at hcomplete
-      contradiction
-    have hproducerDone : SealedProgram.done state.events producer.val = true := by
-      simpa [SealedResolution.PublicState.completed, hproducerNotTimeout] using hproducerComplete
-    have hproducerRule : runtime.program.rules[producer.val]? =
-        some ⟨.commit who, G.messagePrerequisites producer⟩ := by
-      change supported.compile.rules[producer.val]? = _
-      rw [supported.compile_rule]
-      exact congrArg some (G.sealedRule_commit_eq producer who guard hproducer)
-    have haccepted := hinvariant.accepted?_eq_some_of_done_commit producer.val who
-      (G.messagePrerequisites producer) hproducerRule hproducerDone
+    have haccepted := supported.ready_reveal_source_accepted nullValue window execution
+      hinvariant hclosed node producer who guard hreveal hproducer hnotDone hrequires
     change SealedProgram.accepted? state.events producer.val = some (who, producer.val)
       at haccepted
     have hhandle : (supported.compile.discharge state.timeouts).openingHandle?

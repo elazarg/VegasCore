@@ -245,6 +245,80 @@ private theorem tick_preserves_completed
   apply runtime.refresh_completed true _ node
   exact hcompleted
 
+/-- Every supported native action preserves completion of an already completed
+node, independently of which principal or environment policy selected it. -/
+theorem step_completed
+    (runtime : SealedResolution Principal Value)
+    (state next : runtime.messageApplication.State)
+    (action : runtime.messageApplication.Action) (node : Nat)
+    (hcompleted : state.application.visible.completed node = true)
+    (hnext : next ∈ (runtime.messageApplication.step state action).support) :
+    next.application.visible.completed node = true := by
+  apply runtime.messageApplication.step_application_invariant
+    (fun application => application.visible.completed node = true) ?_ ?_ ?_
+      state next action hcompleted hnext
+  · intro application owner command hbefore
+    simpa [messageApplication] using hbefore
+  · intro application message after hbefore hhandle
+    exact handle_preserves_completed runtime application after message node hbefore hhandle
+  · intro application command after hbefore hafter
+    simp only [messageApplication, GameTheory.Math.Probability.FinDist.mem_support_pure]
+      at hafter
+    subst after
+    exact tick_preserves_completed runtime application node hbefore
+
+/-- Executing the optional action selected by one policy call preserves
+completion in every supported native result. -/
+theorem advance_completed
+    (runtime : SealedResolution Principal Value)
+    (execution : runtime.messageApplication.PolicyExecution)
+    (action : Option runtime.messageApplication.Action)
+    (advanced : runtime.messageApplication.State ×
+      List runtime.messageApplication.Action)
+    (node : Nat)
+    (hcompleted : execution.native.application.visible.completed node = true)
+    (hadvanced : advanced ∈
+      (runtime.messageApplication.advance execution action).support) :
+    advanced.1.application.visible.completed node = true := by
+  cases action with
+  | none =>
+      simp only [MessageApplication.advance,
+        GameTheory.Math.Probability.FinDist.mem_support_pure] at hadvanced
+      subst advanced
+      exact hcompleted
+  | some action =>
+      simp only [MessageApplication.advance,
+        GameTheory.Math.Probability.FinDist.support_bind, Set.mem_iUnion,
+        GameTheory.Math.Probability.FinDist.mem_support_pure] at hadvanced
+      obtain ⟨next, hnext, rfl⟩ := hadvanced
+      exact runtime.step_completed execution.native next action node hcompleted hnext
+
+/-- Arbitrary randomized player and environment policies cannot undo a node's
+completion during a finite invocation schedule. -/
+theorem runPolicies_completed
+    (runtime : SealedResolution Principal Value)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (environment : runtime.messageApplication.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Principal))
+    (execution next : runtime.messageApplication.PolicyExecution)
+    (node : Nat)
+    (hcompleted : execution.native.application.visible.completed node = true)
+    (hnext : next ∈ (runtime.messageApplication.runPolicies players environment
+      schedule execution).support) :
+    next.native.application.visible.completed node = true := by
+  apply runtime.messageApplication.runPolicies_application_invariant
+    (fun application => application.visible.completed node = true) ?_ ?_ ?_
+      players environment schedule execution next hcompleted hnext
+  · intro application owner command hbefore
+    simpa [messageApplication] using hbefore
+  · intro application message after hbefore hhandle
+    exact handle_preserves_completed runtime application after message node hbefore hhandle
+  · intro application command after hbefore hafter
+    simp only [messageApplication, GameTheory.Math.Probability.FinDist.mem_support_pure]
+      at hafter
+    subst after
+    exact tick_preserves_completed runtime application node hbefore
+
 private theorem handle_preserves_all_completed
     (runtime : SealedResolution Principal Value)
     (state next : ApplicationState Principal Value)
@@ -329,33 +403,7 @@ private theorem step_pendingReadyOrCompleted
     next.application.visible.completed node = true ∨
       (target ∈ next.pool.pending ∧ ready next.application) := by
   rcases hstate with hcompleted | ⟨hpending, hready⟩
-  · left
-    cases action with
-    | privateCommand actor command =>
-        simp only [MessageApplication.step, GameTheory.Math.Probability.FinDist.mem_support_pure]
-          at hnext
-        subst next
-        exact hcompleted
-    | submit actor payload | replay actor id | deliver actor id =>
-        simp only [MessageApplication.step, GameTheory.Math.Probability.FinDist.mem_support_pure]
-          at hnext
-        subst next
-        exact hcompleted
-    | «include» id =>
-        simp only [MessageApplication.step, GameTheory.Math.Probability.FinDist.mem_support_pure]
-          at hnext
-        subst next
-        exact runtime.messageApplication.includePending_application_invariant
-          (fun application => application.visible.completed node = true)
-          (fun application message after hbefore hafter =>
-            handle_preserves_completed runtime application after message node hbefore hafter)
-          state id hcompleted
-    | environment command =>
-        simp only [MessageApplication.step, messageApplication,
-          GameTheory.Math.Probability.FinDist.map_pure,
-          GameTheory.Math.Probability.FinDist.mem_support_pure] at hnext
-        subst next
-        exact tick_preserves_completed runtime state.application node hcompleted
+  · exact Or.inl (runtime.step_completed state next action node hcompleted hnext)
   · cases action with
     | privateCommand actor command =>
         simp only [MessageApplication.step, GameTheory.Math.Probability.FinDist.mem_support_pure]

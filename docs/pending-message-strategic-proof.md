@@ -1094,10 +1094,55 @@ completes. Queue drainage therefore implies completion of that ready site.
 `runRounds_ready_opening_completed` combine this invariant with delayed
 reserved capacity in the actual stopped round driver. They do not assume
 acceptance and permit player reactions before inclusion. Completion may still
-be through timeout; the finite phase count and clock bound must exclude that
+be through timeout; the phase count and clock comparison distinguish that
 case for compiled players. The checked source regression
 continues to its next commitment after earlier defaults and includes that
 commitment and its opening through the actual pending-message interface.
+
+The finite phase count is checked over adjacent snapshots of the shared runner.
+`tracePolicies_drop_support`, `tracePolicies_between`, and
+`tracePolicies_drop_invoke` supply the actual invocation prefixes, intervals,
+and executed steps without resetting policy memory. `RegistrationAt` records
+an executed compiled registration, and `registrationAt_unique` rules out two
+different positions for the same source slot. `SubmissionAt` records a
+canonical submission from an unfinished ready site. Its private binding and
+accepted producer are derived from the compiled phase and native invariants;
+queue drainage completes the site under arbitrary intervening policies.
+
+`submission_count_le` bounds a site's designated submission polls by `b+1`.
+The service premise gives an actual checkpoint after the submission step and
+no later than the poll in round `r+b+1`, where the queue is empty or the whole
+application is complete. An excess later submission would require the site
+to be unfinished after that checkpoint, contradicting completion persistence.
+Thus the completion alternative cannot discharge missed service retroactively.
+`ready_poll_count_le` sums registration and submission charges and gives the
+coarse bound `(d+1)*(b+2)` through target index `d`. Other players' progress may
+change the least ready selector; it need not remain constant. A concrete
+checked-source trace witnesses a real registration after earlier defaults.
+
+`completed_by_poll` concludes completion **before the last poll** of an
+interval exceeding that budget. This endpoint matters: using the next round's
+poll would unnecessarily spend another unit of the timeout window.
+`SealedResolution.PublicState.ReadySound` derives prerequisite completion from
+a recorded timestamp. `DeadlineSound` records the retained timestamp and
+elapsed clock bound of every actual timeout. Both invariants hold throughout
+arbitrary native policy runs; newly created timestamps equal the actual
+invocation's resulting clock. Concrete tests check both a real elapsed timeout
+and an inclusion that makes a dependent rule newly ready.
+
+`SealedFragment.no_timeout_of_poll_service` combines these facts: if enough
+actual compiled-player polls receive bounded service and their last pre-state
+is before the target's recorded deadline, that target never times out at any
+later checkpoint. Later arbitrary traffic cannot append a timeout for an
+already completed site whose timeout record is clear. No absence of earlier
+defaults or acceptance of honest submissions is assumed. This is a per-trace service theorem; its
+polling, service-checkpoint, and clock premises still require uniform scheduling
+witnesses. `roundSchedule_player` supplies roster calls, and
+`tracePolicies_round_clock` identifies the clocks at actual round boundaries.
+The remaining bridge must maintain empty periodic drain boundaries (or a
+suitable backlog bound), locate the first post-readiness owner poll, and derive
+the service checkpoints and pre-deadline endpoint from the configured window.
+Initial queue emptiness alone does not justify every later service window.
 
 The remaining implementation work is specific:
 
@@ -1108,15 +1153,13 @@ The remaining implementation work is specific:
    regression. Normal completed event decoding already recovers the exact
    coupled source realization. After timeout, service values and logical
    defaults remain distinct; equal private bindings are not the target claim.
-3. Establish the deadline-relative service theorem that rules out honest
-   timeouts: combine ready-node selection, finite cache/commit/opening phases,
-   owner-roster coverage, and timely inclusion. Post-default read availability,
-   exact selected-node progress, registration non-repetition, automatic
-   reveal-default propagation, canonical packet persistence, and delayed
-   capacity-to-completion are checked. The bounded early-stopping driver and
-   its exact source/native marginal connection are checked. The remaining
-   service step counts selected invocations before expiry; a bare expiration
-   status is not a source settlement.
+3. Instantiate `no_timeout_of_poll_service` uniformly for the stopped round
+   driver from roster coverage, maintained periodic drain capacity, and
+   `n*(b+2)+2 <= window`. The phase count, per-trace no-timeout theorem,
+   timestamp provenance, actual roster calls, and round-boundary clocks are
+   checked. The bounded early-stopping driver and its exact source/native
+   marginal connection are checked. A bare expiration status is not a source
+   settlement.
 4. Establish the all-compiled honest outcome law. The arbitrary-deviation
    mixture alone does not identify its source marginal with the original
    all-honest source profile.

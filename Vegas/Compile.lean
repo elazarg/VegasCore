@@ -33,6 +33,8 @@ import Vegas.Compile.SealedResolutionClosure
 import Vegas.Compile.SealedResolvedStore
 import Vegas.Compile.SealedResolvedReads
 import Vegas.Compile.SealedPolicyProgress
+import Vegas.Compile.SealedPhaseCount
+import Vegas.Compile.SealedPolicyDeadline
 import Vegas.Compile.SealedTermination
 import Vegas.Compile.SealedResolutionPrivacy
 import Vegas.Compile.SealedResolutionReadBound

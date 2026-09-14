@@ -35,6 +35,83 @@ theorem PolicyTrace.drop_append_length (front tail : app.PolicyTrace) :
   | finish => rfl
   | step execution front ih => exact ih
 
+theorem PolicyTrace.drop_add (trace : app.PolicyTrace) (first second : Nat) :
+    (trace.drop first).drop second = trace.drop (first + second) := by
+  induction first generalizing trace with
+  | zero => simp only [drop, Nat.zero_add]
+  | succ first ih =>
+      cases trace with
+      | finish execution => cases second <;> rfl
+      | step execution tail => simpa only [drop, Nat.succ_add] using ih tail
+
+/-- Every indexed checkpoint lies on the actual prefix, and its remaining
+record is supported by the unchanged policies on the remaining invocation list.
+Indices beyond the end retain the final snapshot. -/
+theorem tracePolicies_drop_support [DecidableEq Principal]
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (execution : app.PolicyExecution)
+    (trace : app.PolicyTrace)
+    (htrace : trace ∈ (app.tracePolicies players environment schedule execution).support)
+    (count : Nat) :
+    (trace.drop count).first ∈
+        (app.runPolicies players environment (schedule.take count) execution).support ∧
+      trace.drop count ∈ (app.tracePolicies players environment (schedule.drop count)
+        (trace.drop count).first).support := by
+  induction count generalizing schedule execution trace with
+  | zero =>
+      have hfirst := app.tracePolicies_first players environment schedule execution trace htrace
+      simpa only [PolicyTrace.drop, List.take_zero, List.drop_zero, runPolicies,
+        FinDist.mem_support_pure, hfirst, true_and] using htrace
+  | succ count ih =>
+      cases schedule with
+      | nil =>
+          simp only [tracePolicies, FinDist.mem_support_pure] at htrace
+          subst trace
+          simp [PolicyTrace.drop, PolicyTrace.first, runPolicies, tracePolicies]
+      | cons invocation rest =>
+          simp only [tracePolicies, FinDist.support_bind, Set.mem_iUnion,
+            FinDist.support_map, Set.mem_image] at htrace
+          obtain ⟨next, hnext, tail, htail, rfl⟩ := htrace
+          obtain ⟨hprefix, hsuffix⟩ := ih rest next tail htail
+          refine ⟨?_, hsuffix⟩
+          simp only [PolicyTrace.drop, List.take_succ_cons, runPolicies,
+            FinDist.support_bind, Set.mem_iUnion]
+          exact ⟨next, hnext, hprefix⟩
+
+/-- Any interval of indexed snapshots is an execution of the corresponding
+invocation slice, retaining the policies' actual memories at its first snapshot. -/
+theorem tracePolicies_between [DecidableEq Principal]
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (execution : app.PolicyExecution)
+    (trace : app.PolicyTrace)
+    (htrace : trace ∈ (app.tracePolicies players environment schedule execution).support)
+    (start count : Nat) :
+    (trace.drop (start + count)).first ∈
+      (app.runPolicies players environment ((schedule.drop start).take count)
+        (trace.drop start).first).support := by
+  have htail := (app.tracePolicies_drop_support players environment schedule execution trace
+    htrace start).2
+  simpa only [PolicyTrace.drop_add] using
+    (app.tracePolicies_drop_support players environment (schedule.drop start)
+      (trace.drop start).first (trace.drop start) htail count).1
+
+/-- Adjacent checkpoints expose exactly the invocation recorded at that
+position, rather than an independently chosen transition with matching endpoints. -/
+theorem tracePolicies_drop_invoke [DecidableEq Principal]
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (execution : app.PolicyExecution)
+    (trace : app.PolicyTrace)
+    (htrace : trace ∈ (app.tracePolicies players environment schedule execution).support)
+    (index : Nat) (invocation : @Invocation Principal)
+    (hcall : schedule[index]? = some invocation) :
+    (trace.drop (index + 1)).first ∈
+      (app.invoke players environment (trace.drop index).first invocation).support := by
+  have hbetween := app.tracePolicies_between players environment schedule execution trace
+    htrace index 1
+  obtain ⟨hindex, hcall⟩ := List.getElem?_eq_some_iff.mp hcall
+  rw [List.drop_eq_getElem_cons hindex, hcall] at hbetween
+  simpa only [List.take_succ_cons, List.take_zero, runPolicies, FinDist.bind_pure] using hbetween
+
 /-- Select the first successful check at one of the next fixed-width block
 boundaries; if none succeeds, retain the trace's final execution. -/
 def PolicyTrace.firstReleaseEvery (width : Nat) (release : app.PolicyExecution → Bool) :

@@ -10,6 +10,7 @@ import InteractionTests.PolicyTrace
 import InteractionTests.TimeoutGate
 import InteractionTests.SealedTimeout
 import InteractionTests.SealedResolution
+import InteractionTests.SealedResolutionDeadline
 import InteractionTests.SealedResolutionDriver
 import InteractionTests.SealedResolutionService
 import InteractionTests.SealedResolutionKnowledge

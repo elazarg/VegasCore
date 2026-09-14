@@ -50,6 +50,61 @@ theorem roundSchedule_length (principals : List Principal) (serviceSlots count :
   | zero => simp [roundSchedule]
   | succ count ih => simp only [roundSchedule, List.length_append, ih, Nat.succ_mul, Nat.add_comm]
 
+omit [DecidableEq Principal] in
+theorem roundSchedule_add (principals : List Principal) (serviceSlots left right : Nat) :
+    roundSchedule principals serviceSlots (left + right) =
+      roundSchedule principals serviceSlots left ++
+        roundSchedule principals serviceSlots right := by
+  induction left with
+  | zero => simp only [Nat.zero_add, roundSchedule, List.nil_append]
+  | succ left ih => simp only [Nat.succ_add, roundSchedule, ih, List.append_assoc]
+
+omit [DecidableEq Principal] in
+theorem roundSchedule_take (principals : List Principal) (serviceSlots total count : Nat)
+    (hcount : count ≤ total) :
+    (roundSchedule principals serviceSlots total).take
+        (count * (roundInvocations principals serviceSlots).length) =
+      roundSchedule principals serviceSlots count := by
+  rw [← Nat.add_sub_of_le hcount,
+    roundSchedule_add principals serviceSlots count (total - count),
+    ← roundSchedule_length principals serviceSlots count, List.take_left]
+
+omit [DecidableEq Principal] in
+theorem roundSchedule_drop (principals : List Principal) (serviceSlots total count : Nat)
+    (hcount : count ≤ total) :
+    (roundSchedule principals serviceSlots total).drop
+        (count * (roundInvocations principals serviceSlots).length) =
+      roundSchedule principals serviceSlots (total - count) := by
+  rw [← Nat.add_sub_of_le hcount,
+    roundSchedule_add principals serviceSlots count (total - count),
+    ← roundSchedule_length principals serviceSlots count, List.drop_left]
+  simp
+
+omit [DecidableEq Principal] in
+/-- Roster membership supplies the same actual player invocation in every
+recorded round. Repeated roster entries are permitted. -/
+theorem roundSchedule_player (principals : List Principal) (serviceSlots total round slot : Nat)
+    (who : Principal) (hround : round < total) (hslot : principals[slot]? = some who) :
+    (roundSchedule principals serviceSlots total)[
+      round * (roundInvocations principals serviceSlots).length + slot]? = some (.player who) := by
+  rw [← List.getElem?_drop, roundSchedule_drop principals serviceSlots total round (by omega)]
+  have hremaining : total - round = (total - round - 1) + 1 := by omega
+  rw [hremaining, roundSchedule]
+  have hslotLength : slot < principals.length := (List.getElem?_eq_some_iff.mp hslot).1
+  have hblock : slot < (roundInvocations principals serviceSlots).length := by
+    simp only [roundInvocations, List.length_append, List.length_map,
+      List.length_replicate, List.length_singleton]
+    omega
+  have hservice : slot < (principals.map Invocation.player ++
+      List.replicate serviceSlots Invocation.environment).length := by
+    simp only [List.length_append, List.length_map, List.length_replicate]
+    omega
+  rw [List.getElem?_append_left hblock, roundInvocations,
+    List.getElem?_append_left hservice,
+    List.getElem?_append_left (by simpa only [List.length_map] using hslotLength),
+    List.getElem?_map, hslot]
+  rfl
+
 /-- The clock phase uses only the environment's own invocation count. Wire
 decisions still receive the complete real history and current observation. -/
 def roundEnvironment (runtime : SealedResolution Principal Value) (serviceSlots : Nat)
@@ -120,6 +175,68 @@ theorem round_environmentHistory_length (runtime : SealedResolution Principal Va
   rw [service_invocations_count] at hlength
   rw [runtime.messageApplication.environmentStep_history_length middle _ next hnext, hlength]
   omega
+
+/-- The shared invocation trace advances the clock exactly once per complete
+round. This counts recorded rounds before applying the stopping readout. -/
+theorem runPolicies_roundSchedule_clock (runtime : SealedResolution Principal Value)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (wire : runtime.messageApplication.WirePolicy) (count : Nat)
+    (execution next : runtime.messageApplication.PolicyExecution)
+    (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
+    (hnext : next ∈ (runtime.messageApplication.runPolicies players
+      (runtime.roundEnvironment serviceSlots wire)
+      (roundSchedule principals serviceSlots count) execution).support) :
+    next.native.application.visible.clock = execution.native.application.visible.clock + count ∧
+      next.environmentHistory.length = execution.environmentHistory.length +
+        count * (serviceSlots + 1) := by
+  induction count generalizing execution with
+  | zero =>
+      simp only [roundSchedule, runPolicies, FinDist.mem_support_pure] at hnext
+      subst next
+      simp
+  | succ count ih =>
+      rw [roundSchedule, runtime.messageApplication.runPolicies_append] at hnext
+      simp only [FinDist.support_bind, Set.mem_iUnion] at hnext
+      obtain ⟨middle, hmiddle, hnext⟩ := hnext
+      rw [← runtime.round_eq_runPolicies principals serviceSlots players wire execution hphase]
+        at hmiddle
+      have hclock := runtime.round_clock principals serviceSlots players wire execution middle
+        hmiddle
+      have hhistory := runtime.round_environmentHistory_length principals serviceSlots players wire
+        execution middle hmiddle
+      have hmiddlePhase : middle.environmentHistory.length % (serviceSlots + 1) = 0 := by
+        rw [hhistory, Nat.add_mod, hphase]
+        simp
+      have htail := ih middle hmiddlePhase hnext
+      constructor
+      · omega
+      · rw [htail.2, hhistory, Nat.succ_mul]
+        omega
+
+/-- Every round-boundary snapshot of an actual shared trace has the expected
+clock and environment phase, including boundaries before early stopping. -/
+theorem tracePolicies_round_clock (runtime : SealedResolution Principal Value)
+    (principals : List Principal) (serviceSlots : Nat)
+    (players : Principal → runtime.messageApplication.PlayerPolicy)
+    (wire : runtime.messageApplication.WirePolicy) (total count : Nat)
+    (execution : runtime.messageApplication.PolicyExecution)
+    (trace : runtime.messageApplication.PolicyTrace)
+    (hphase : execution.environmentHistory.length % (serviceSlots + 1) = 0)
+    (htrace : trace ∈ (runtime.messageApplication.tracePolicies players
+      (runtime.roundEnvironment serviceSlots wire)
+      (roundSchedule principals serviceSlots total) execution).support)
+    (hcount : count ≤ total) :
+    let boundary := (trace.drop (count * (roundInvocations principals serviceSlots).length)).first
+    boundary.native.application.visible.clock = execution.native.application.visible.clock + count ∧
+      boundary.environmentHistory.length = execution.environmentHistory.length +
+        count * (serviceSlots + 1) := by
+  have hprefix := (runtime.messageApplication.tracePolicies_drop_support players
+    (runtime.roundEnvironment serviceSlots wire) (roundSchedule principals serviceSlots total)
+    execution trace htrace (count * (roundInvocations principals serviceSlots).length)).1
+  rw [roundSchedule_take principals serviceSlots total count hcount] at hprefix
+  exact runtime.runPolicies_roundSchedule_clock principals serviceSlots players wire count
+    execution _ hphase hprefix
 
 /-- Early stopping selects an actual round-boundary snapshot of the same
 native run. The equality retains all private and public execution data, not
