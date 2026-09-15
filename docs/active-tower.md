@@ -21,7 +21,9 @@ introducing a new edge and proving its own correspondence laws.
 
 Public guard validation is implemented as a candidate-host parameter through
 `guardedCandidateApplication`, with graph-code compilation and source guard
-evaluation agreement. The shared runner still proves bounded completion under
+evaluation agreement. Source visibility and expression dependencies certify
+public eligibility; legality of the designated source default transfers to the
+compiled guard. The shared runner still proves bounded completion under
 arbitrary policies. Its local tests retain pending invalid openings and reject
 them before timeout settlement. This feature is not yet covered by the
 candidate-message strategic edge above: that edge still assumes universally

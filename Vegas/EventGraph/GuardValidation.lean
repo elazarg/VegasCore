@@ -40,21 +40,23 @@ private theorem storedReadRefs_mem {Γ : Ctx L.Ty} {name : VarId} {ty : L.Ty}
       · exact Finset.mem_insert_of_mem (ih (fun binding => fieldOf (.there binding)) hname)
       · exact ih (fun binding => fieldOf (.there binding)) hname
 
-private theorem storedReadRefs_subset {Γ : Ctx L.Ty}
+private theorem storedReadRefs_forall {Γ : Ctx L.Ty}
     (fieldOf : {name : VarId} → {ty : L.Ty} → HasVar Γ name ty → Nat)
-    (names : Finset VarId) (refs : Finset (FieldRef L))
+    (names : Finset VarId) (property : FieldRef L → Prop)
     (hall : ∀ {name ty} (binding : HasVar Γ name ty),
-      (⟨fieldOf binding, ty⟩ : FieldRef L) ∈ refs) :
-    storedReadRefs fieldOf names ⊆ refs := by
+      name ∈ names → property ⟨fieldOf binding, ty⟩) :
+    ∀ ref ∈ storedReadRefs fieldOf names, property ref := by
   induction Γ with
   | nil => simp [storedReadRefs]
   | cons head tail ih =>
       rcases head with ⟨name, ty⟩
       simp only [storedReadRefs]
       split
-      · exact Finset.insert_subset_iff.mpr
-          ⟨hall .here, ih (fun binding => fieldOf (.there binding))
-            (fun binding => hall (.there binding))⟩
+      · intro ref href
+        rcases Finset.mem_insert.mp href with rfl | href
+        · exact hall .here (by assumption)
+        · exact ih (fun binding => fieldOf (.there binding))
+            (fun binding => hall (.there binding)) ref href
       · exact ih (fun binding => fieldOf (.there binding))
           (fun binding => hall (.there binding))
 
@@ -74,7 +76,7 @@ theorem validation_read_mem (guard : EventGuard L) {name : VarId} {ty : L.Ty}
 
 theorem validationReads_subset (guard : EventGuard L) :
     guard.validationReads ⊆ guard.choiceReads :=
-  storedReadRefs_subset guard.code.fieldOf _ _ guard.read_mem
+  storedReadRefs_forall guard.code.fieldOf _ _ (fun binding _ => guard.read_mem binding)
 
 /-- Evaluate the retained guard from the action and its stored dependencies.
 No lookup is made for a stored binding outside `validationReads`. -/
@@ -135,6 +137,15 @@ dependencies is public. The player's larger choice footprint remains intact. -/
 def PubliclyValidatable {Player : Type} [DecidableEq Player]
     (guard : EventGuard L) (G : Graph Player L) : Prop :=
   ∀ ref ∈ guard.validationReads, G.fieldRefPublic ref
+
+/-- Public stored dependencies suffice; bindings unused by the guard
+may remain private, even though they are part of the player's choice view. -/
+theorem publiclyValidatable_of_dependencies
+    {Player : Type} [DecidableEq Player] (guard : EventGuard L) (G : Graph Player L)
+    (hpublic : ∀ {name ty} (binding : HasVar guard.code.Context name ty),
+      name ∈ L.exprDeps guard.code.expr → G.fieldRefPublic (guard.code.ref binding)) :
+    guard.PubliclyValidatable G :=
+  storedReadRefs_forall guard.code.fieldOf _ _ hpublic
 
 /-- Public eligibility and public-store agreement suffice for validation.
 This makes the static predicate an actual premise of the evaluator theorem. -/

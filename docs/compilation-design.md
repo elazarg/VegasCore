@@ -171,6 +171,14 @@ compiler's `eventGuardOf_evalValidationStore?_eq_source` proves agreement with
 the original source guard. The expression interface supplies a sound dependency
 over-approximation, so the footprint is not claimed to be semantically minimal.
 
+`PublicGuardDependencies` states eligibility using only source visibility tags
+and expression dependencies. `eventGuardOf_publiclyValidatable` derives the
+generated guard's public footprint from the compiler's field-allocation
+invariant; private bindings unused by the guard remain available to the player.
+`eventGuardOf_default_legal` transports a designated source default's legality
+in every source view to every compiled choice view. Neither result assumes
+that all other candidate values pass the guard.
+
 `Graph.sealedOpeningValidator` resolves a reveal to its commitment producer,
 checks the claimed type, and runs that evaluator on the public event store.
 `SealedResolution.guardedCandidateApplication` installs it through the existing
@@ -197,8 +205,9 @@ require another validation mechanism or a proved public representation. A
 guarded site also needs an enforcement point before its unchecked value can
 affect a protected continuation.
 
-`VegasTests/GuardValidation.lean` checks a nontrivial nullable guard with unused
-private choice information, public dependency failure, private-guard
+`VegasTests/GuardValidation.lean` checks source-derived public eligibility and
+default legality for a compiled nontrivial nullable guard with unused private
+choice information. Its native tests cover public dependency failure, private-guard
 ineligibility, opaque acceptance of an invalid candidate, a visible rejected
 opening followed by timeout to null, and successful inclusion of a legal
 opening. These are native runs of the guarded host; they do not assert a
