@@ -166,5 +166,8 @@ an operational projection from a strategic simulation.
 between graph-gated logical claims and the native candidate validator, including
 blocked prerequisites and unprepared candidates. This is an independent local
 admission result, not a policy or observation simulation. The experiment also
+checks equality of the actual validator's semantic effects (candidate meanings,
+selected handle, and opening result) in `Interaction/LogicalCommitmentEffects.lean`.
+These local laws do not cover post-admission graph refresh. The experiment
 contains a checked clock-erasure obstruction and states the prefix-law theorem
 required before adopting a logical protocol as a strategic compilation edge.

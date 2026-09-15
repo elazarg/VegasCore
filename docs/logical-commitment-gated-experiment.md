@@ -43,8 +43,17 @@ candidate, and rejection of malformed or cleartext payloads. It imports no
 Vegas code and adds no policy runner. The build includes the module, but no
 compiler theorem imports it.
 
-These are local admission theorems. They do not yet prove equality of resulting
-application states or observations. In particular, `candidateHandle`'s outer
+`Interaction/LogicalCommitmentEffects.lean` strengthens acceptance agreement to
+equality of the projected semantic result: every candidate meaning, the selected
+handle, and the opening result. Both sides use their actual validators; no
+assumed refinement supplies the equality. It covers disabled prerequisites,
+competing selections, prepared and unopenable candidates, and rejected or valid
+opening claims. The native and logical validators share the same authority and
+snapshot projection, while the logical kernel exposes a general selection-effect
+lemma and keeps its private update implementation internal.
+
+These are local admission and semantic-effect theorems. They do not yet prove
+equality of full resulting application states or observations. In particular, `candidateHandle`'s outer
 timeout rejection, discharge of defaulted prerequisites and post-admission
 refresh are outside this comparison. Owner command recall is also outside the
 admission snapshot. The experiment closes the concrete prerequisite-validation

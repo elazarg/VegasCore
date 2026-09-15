@@ -164,6 +164,25 @@ def applyClaim? [DecidableEq Principal] [DecidableEq Handle] [DecidableEq Value]
       else none
   | .malformed _ => none
 
+/-- Exact semantic effect of admitting an authorized selection into a pending,
+unselected binding.  This exposes the checked transition without exposing the
+private helper used to implement it. -/
+theorem applyClaim?_select [DecidableEq Principal] [DecidableEq Handle]
+    [DecidableEq Value]
+    (protocol : LogicalCommitment Principal Handle)
+    (state : State Principal Handle Value) (sender : Principal) (handle : Handle)
+    (hpending : state.result = .pending) (hunselected : state.selected = none)
+    (hsender : sender = protocol.owner)
+    (hhandleOwner : protocol.handleOwner handle = protocol.owner) :
+    state.applyClaim? protocol (.select sender handle) =
+      some { state with
+        meanings := match state.meanings handle with
+          | .fresh => fun queried =>
+              if queried = handle then .unopenable else state.meanings queried
+          | .openable _ | .unopenable => state.meanings
+        selected := some handle } := by
+  simp [applyClaim?, hpending, hunselected, hsender, hhandleOwner, acceptMeaning]
+
 /-- Ledger inclusion is public even when semantic admission rejects.  The
 receipt records that distinction. -/
 def recordInclusion [DecidableEq Principal] [DecidableEq Handle] [DecidableEq Value]

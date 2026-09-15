@@ -1,6 +1,7 @@
 import Interaction.MessagePool
 import Interaction.LogicalCommitment
 import Interaction.LogicalCommitmentAdmission
+import Interaction.LogicalCommitmentEffects
 import Interaction.MessagePoolFreshness
 import Interaction.MessageRouting
 import Interaction.MessageReplay

@@ -23,13 +23,13 @@ universe uPrincipal uValue
 variable {Principal : Type uPrincipal} {Value : Type uValue}
 
 /-- The logical authority carried by a native owner/slot candidate handle. -/
-private def admissionProtocol (owner : Principal) :
+def candidateProtocol (owner : Principal) :
     LogicalCommitment Principal (CommitmentHandle Principal Nat) where
   owner := owner
   handleOwner := Prod.fst
 
 /-- The semantic part of one pending native candidate binding. -/
-private def admissionSnapshot
+def State.ofCandidate
     (candidates : CommitmentCandidates Principal Nat Value)
     (selected : Option (CommitmentHandle Principal Nat)) :
     State Principal (CommitmentHandle Principal Nat) Value :=
@@ -79,8 +79,8 @@ theorem candidateMessage?_commit_isSome
     (hrule : program.rules[node]? = some ⟨.commit owner, requires⟩) :
     (program.candidateMessage? candidates events
       ⟨(sender, serial), .commitment node handle⟩).isSome =
-      ((admissionSnapshot candidates (SealedProgram.accepted? events node)).applyClaimWhenEnabled?
-        (graphAdmissionEnabled events node requires) (admissionProtocol owner)
+      ((State.ofCandidate candidates (SealedProgram.accepted? events node)).applyClaimWhenEnabled?
+        (graphAdmissionEnabled events node requires) (candidateProtocol owner)
         (.select sender handle)).isSome := by
   rw [program.candidateMessage?_commit candidates events sender owner serial node handle requires
     hrule]
@@ -91,7 +91,7 @@ theorem candidateMessage?_commit_isSome
         by_cases hsender : sender = owner <;>
         by_cases hhandleOwner : handle.1 = owner <;>
         simp [State.applyClaimWhenEnabled?, graphAdmissionEnabled, State.applyClaim?,
-          admissionSnapshot, admissionProtocol, State.empty, hdone, hselected, hready,
+          State.ofCandidate, candidateProtocol, State.empty, hdone, hselected, hready,
           hsender, hhandleOwner]
   | true => simp [State.applyClaimWhenEnabled?, graphAdmissionEnabled, hdone]
 
@@ -108,9 +108,9 @@ theorem candidateMessage?_opening_isSome
     (hrule : program.rules[node]? = some ⟨.reveal owner source, requires⟩) :
     (program.candidateMessage? candidates events
       ⟨(sender, serial), .opening node handle claimed⟩).isSome =
-      ((admissionSnapshot candidates
+      ((State.ofCandidate candidates
         (SealedProgram.accepted? events source)).applyClaimWhenEnabled?
-        (graphAdmissionEnabled events node requires) (admissionProtocol owner)
+        (graphAdmissionEnabled events node requires) (candidateProtocol owner)
         (.open sender handle claimed)).isSome := by
   cases hdone : SealedProgram.done events node <;>
     cases hready : requires.all (SealedProgram.done events) <;>
@@ -120,7 +120,7 @@ theorem candidateMessage?_opening_isSome
     by_cases hmeaning : candidates.lookup handle = .openable claimed <;>
     simp [SealedProgram.candidateMessage?, hrule, State.applyClaimWhenEnabled?,
       SealedProgram.prerequisitesDone, graphAdmissionEnabled, State.applyClaim?,
-      admissionSnapshot, admissionProtocol, State.empty, Message.sender,
+      State.ofCandidate, candidateProtocol, State.empty, Message.sender,
       CommitmentCandidates.verify_eq_true_iff, hdone, hready, hsender, hhandleOwner,
       hselected, hmeaning]
 
@@ -208,7 +208,7 @@ theorem malformed_rejected [DecidableEq Principal] [DecidableEq Value]
     (owner : Principal)
     (state : State Principal (CommitmentHandle Principal Nat) Value) :
     program.candidateMessage? candidates events ⟨(sender, serial), .malformed⟩ = none ∧
-      state.applyClaimWhenEnabled? enabled (admissionProtocol owner)
+      state.applyClaimWhenEnabled? enabled (candidateProtocol owner)
         (.malformed sender) = none := by
   cases enabled <;>
     simp [SealedProgram.candidateMessage?, State.applyClaimWhenEnabled?, State.applyClaim?]
@@ -223,7 +223,7 @@ theorem cleartext_rejected [DecidableEq Principal] [DecidableEq Value]
     (state : State Principal (CommitmentHandle Principal Nat) Value) :
     program.candidateMessage? candidates events
         ⟨(sender, serial), .cleartext node value⟩ = none ∧
-      state.applyClaimWhenEnabled? enabled (admissionProtocol owner)
+      state.applyClaimWhenEnabled? enabled (candidateProtocol owner)
         (.malformed sender) = none := by
   cases enabled <;>
     simp [SealedProgram.candidateMessage?, State.applyClaimWhenEnabled?, State.applyClaim?]
