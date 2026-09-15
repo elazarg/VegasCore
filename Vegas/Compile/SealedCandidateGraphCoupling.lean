@@ -2,6 +2,7 @@
 
 import Vegas.Compile.SealedCandidateGraphNative
 import Interaction.MessageApplicationContinuation
+import Interaction.MessageApplicationCheckpoints
 import Vegas.Compile.SealedPublicStore
 import Interaction.SealedCandidateEvents
 
@@ -114,6 +115,107 @@ theorem candidateGraphCoupling_native
     (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial)) _ _
     (supported.candidateGraphRun_native_prefix_law hinfo hguards nullValue window focal deviator
       environment schedule fallback profile)
+
+/-- Supported coupling pairs retain the identical native prefix through first
+timeout. This is a joint support fact, not an inference from two marginals. -/
+theorem candidateGraphCoupling_prefix_eq
+    (profile : CommitPolicyProfile G) (cfg : ReachableConfig G)
+    (trace : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyTrace)
+    (hpair : (cfg, trace) ∈ (supported.candidateGraphCoupling hinfo hguards nullValue window
+      focal deviator environment schedule fallback profile).support) :
+    let stop := fun execution :
+      (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution =>
+        !execution.native.application.visible.timeouts.isEmpty
+    (supported.candidateReplay nullValue window (cfg.1.nodeValues fallback)
+      focal deviator environment schedule).prefixThrough stop = trace.prefixThrough stop := by
+  intro stop
+  have hseen : ((supported.candidateReplay nullValue window (cfg.1.nodeValues fallback)
+      focal deviator environment schedule).prefixThrough stop, trace) ∈
+      ((supported.candidateGraphCoupling hinfo hguards nullValue window focal deviator
+        environment schedule fallback profile).map (fun pair =>
+          ((supported.candidateReplay nullValue window (pair.1.1.nodeValues fallback)
+            focal deviator environment schedule).prefixThrough stop, pair.2))).support := by
+    rw [FinDist.support_map]
+    exact ⟨(cfg, trace), hpair, rfl⟩
+  rw [supported.candidateGraphCoupling_prefix_native] at hseen
+  simp only [FinDist.support_map, Set.mem_image, Prod.mk.injEq] at hseen
+  obtain ⟨actual, _, hprefix, rfl⟩ := hseen
+  exact hprefix.symm
+
+/-- Every disclosure present at a normally reached pre-timeout checkpoint
+agrees with the retained graph realization, even if the actual continuation
+later times out. The checkpoint retains the full native observations. -/
+theorem candidateGraphCoupling_opened_before_timeout
+    (profile : CommitPolicyProfile G) (cfg : ReachableConfig G)
+    (trace : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyTrace)
+    (hpair : (cfg, trace) ∈ (supported.candidateGraphCoupling hinfo hguards nullValue window
+      focal deviator environment schedule fallback profile).support)
+    (checkpoint : Nat) :
+    let runtime := supported.resolvingRuntime nullValue window
+    let stop := fun execution : runtime.candidateApplication.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty
+    let selected := (trace.drop checkpoint).first
+    checkpoint < (trace.prefixThrough stop).length →
+      ∀ index value, SealedProgram.Event.opened index value ∈
+        selected.native.application.visible.events →
+          cfg.1.store (G.nodeTarget index) = some (⟨ty, value⟩ : TypedValue L) := by
+  intro runtime stop selected hcheckpoint index value hopened
+  let players := Profile.update (sig := policySignature Player runtime.candidateApplication)
+    (fun who => runtime.candidatePlayerPolicy
+      (supported.resolvingPolicy nullValue window who (profile who))) focal
+    (fun history view => FinDist.pure (deviator history view))
+  let nativeEnvironment : runtime.candidateApplication.EnvironmentPolicy :=
+    fun history view => FinDist.pure (environment history view)
+  let initial := PolicyExecution.initial runtime.candidateApplication
+    (State.initial _ runtime.candidateInitial)
+  have hcfg : cfg ∈ (supported.candidateGraphRun hinfo hguards nullValue window focal
+      deviator environment schedule fallback profile).support := by
+    rw [← supported.candidateGraphCoupling_graph, FinDist.support_map]
+    exact ⟨(cfg, trace), hpair, rfl⟩
+  have hnative : trace ∈ (runtime.candidateApplication.tracePolicies players nativeEnvironment
+      schedule initial).support := by
+    rw [← supported.candidateGraphCoupling_native hinfo hguards nullValue window focal deviator
+      environment schedule fallback profile, FinDist.support_map]
+    exact ⟨(cfg, trace), hpair, rfl⟩
+  have haccepted := supported.candidateGraphRun_accepted hinfo hguards nullValue window focal
+    deviator environment schedule fallback profile cfg hcfg (fun _ => false)
+  have hprefix := supported.candidateGraphCoupling_prefix_eq hinfo hguards nullValue window focal
+    deviator environment schedule fallback profile cfg trace hpair
+  dsimp only at haccepted hprefix
+  rw [hprefix, PolicyTrace.firstRelease_false_eq_last, PolicyTrace.prefixThrough_last]
+    at haccepted
+  have hbefore := (runtime.candidateApplication.tracePolicies_drop_support players
+    nativeEnvironment schedule initial trace hnative checkpoint).1
+  have hafter := runtime.candidateApplication.tracePolicies_between players nativeEnvironment
+    schedule initial trace hnative checkpoint ((trace.prefixThrough stop).length - checkpoint)
+  have hcut : checkpoint + ((trace.prefixThrough stop).length - checkpoint) =
+      (trace.prefixThrough stop).length := by omega
+  rw [hcut, ← trace.firstRelease_eq_drop_prefixThrough_length stop] at hafter
+  have hclear : selected.native.application.visible.timeouts = [] := by
+    simpa [stop] using trace.release_false_before_prefixThrough stop checkpoint hcheckpoint
+  have hacceptedBefore : ∀ node handle stored,
+      SealedProgram.Event.accepted node handle ∈ selected.native.application.visible.events →
+      selected.native.application.service.lookup handle = .openable stored →
+      cfg.1.store (G.nodeTarget node) = some (⟨ty, stored⟩ : TypedValue L) := by
+    intro node handle stored hrecord hlookup
+    have hinvariant := runtime.runPolicies_candidate_acceptance players nativeEnvironment
+      (schedule.take checkpoint) initial selected
+      SealedResolution.CandidateAcceptanceInvariant.initial hbefore
+    have hpointer := runtime.runPolicies_candidate_accepted? players nativeEnvironment
+      ((schedule.drop checkpoint).take ((trace.prefixThrough stop).length - checkpoint))
+      selected (trace.firstRelease stop) node handle (hinvariant node handle hrecord).1 hafter
+    have hmeaning := runtime.runPolicies_candidate_lookup_of_not_fresh players nativeEnvironment
+      ((schedule.drop checkpoint).take ((trace.prefixThrough stop).length - checkpoint))
+      selected (trace.firstRelease stop) handle (by rw [hlookup]; simp) hafter
+    exact haccepted node handle stored
+      (SealedProgram.accepted_mem_of_accepted?_eq_some hpointer) (hmeaning.trans hlookup)
+  have hopening := runtime.runPolicies_candidate_openings players nativeEnvironment
+    (schedule.take checkpoint) initial selected
+    SealedResolution.CandidateOpeningInvariant.initial hbefore
+  exact supported.candidate_opened_graph_value cfg
+    (supported.candidateGraphRun_terminal hinfo hguards nullValue window focal deviator
+      environment schedule fallback profile cfg hcfg) nullValue window
+    selected.native.application hopening hclear hacceptedBefore index value hopened
 
 /-- In the absence of timeout, no post-cutoff suffix was resampled: the actual
 full trace is the complete fixed-response replay of the retained graph
@@ -236,6 +338,16 @@ end Vegas.EventGraph.SealedFragment
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraph.SealedFragment.candidateGraphCoupling_prefix_native
+
+/-- info: 'Vegas.EventGraph.SealedFragment.candidateGraphCoupling_prefix_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraph.SealedFragment.candidateGraphCoupling_prefix_eq
+
+/-- info: 'Vegas.EventGraph.SealedFragment.candidateGraphCoupling_opened_before_timeout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraph.SealedFragment.candidateGraphCoupling_opened_before_timeout
 
 /-- info: 'Vegas.EventGraph.SealedFragment.candidateGraphCoupling_public_store'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/

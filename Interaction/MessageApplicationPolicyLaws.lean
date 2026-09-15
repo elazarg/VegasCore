@@ -75,6 +75,45 @@ private theorem environmentStep_support [DecidableEq Principal]
   subst next
   exact advance_support app execution _ advanced hadvanced
 
+/-- A supported policy invocation either waits or performs one supported
+native action. The witness comes from the selected player's or environment's
+command, and does not identify separate invocations with the same effect. -/
+theorem invoke_native_step [DecidableEq Principal]
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (execution next : app.PolicyExecution) (invocation : @Invocation Principal)
+    (hnext : next ∈ (app.invoke players environment execution invocation).support) :
+    next.native = execution.native ∨
+      ∃ action, next.native ∈ (app.step execution.native action).support := by
+  have hadvance (action : Option app.Action) (advanced : app.State × List app.Action)
+      (hadvanced : advanced ∈ (app.advance execution action).support) :
+      advanced.1 = execution.native ∨
+        ∃ action, advanced.1 ∈ (app.step execution.native action).support := by
+    cases action with
+    | none =>
+        simp only [advance, FinDist.mem_support_pure] at hadvanced
+        subst advanced
+        exact Or.inl rfl
+    | some action =>
+        simp only [advance, FinDist.support_bind, Set.mem_iUnion,
+          FinDist.mem_support_pure] at hadvanced
+        obtain ⟨state, hstate, rfl⟩ := hadvanced
+        exact Or.inr ⟨action, hstate⟩
+  cases invocation with
+  | player who =>
+      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
+      obtain ⟨command, _, hstep⟩ := hnext
+      simp only [playerStep, FinDist.support_bind, Set.mem_iUnion,
+        FinDist.mem_support_pure] at hstep
+      obtain ⟨advanced, hadvanced, rfl⟩ := hstep
+      exact hadvance _ advanced hadvanced
+  | environment =>
+      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
+      obtain ⟨command, _, hstep⟩ := hnext
+      simp only [environmentPolicyStep, FinDist.support_bind, Set.mem_iUnion,
+        FinDist.mem_support_pure] at hstep
+      obtain ⟨advanced, hadvanced, rfl⟩ := hstep
+      exact hadvance _ advanced hadvanced
+
 private theorem invoke_support [DecidableEq Principal]
     (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
     (execution next : app.PolicyExecution) (invocation : @Invocation Principal)

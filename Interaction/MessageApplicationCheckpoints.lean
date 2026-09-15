@@ -90,6 +90,30 @@ theorem PolicyTrace.prefixThrough_length_le_of_drop_first (trace : app.PolicyTra
               simpa only [prefixThrough, hfirst, Bool.false_eq_true, ↓reduceIte, length]
                 using Nat.succ_le_succ htail
 
+/-- The first-release readout is the snapshot immediately after its retained
+invocation prefix. This also covers traces that never satisfy the predicate. -/
+theorem PolicyTrace.firstRelease_eq_drop_prefixThrough_length (trace : app.PolicyTrace)
+    (release : app.PolicyExecution → Bool) :
+    trace.firstRelease release = (trace.drop (trace.prefixThrough release).length).first := by
+  induction trace with
+  | finish execution => rfl
+  | step execution tail ih =>
+      cases hrelease : release execution <;>
+        simp only [firstRelease, prefixThrough, hrelease, Bool.false_eq_true,
+          ↓reduceIte, length, drop, first, ih]
+
+/-- Every snapshot strictly before the first-release boundary fails the
+predicate, even when the retained prefix is the complete trace. -/
+theorem PolicyTrace.release_false_before_prefixThrough (trace : app.PolicyTrace)
+    (release : app.PolicyExecution → Bool) (index : Nat)
+    (hindex : index < (trace.prefixThrough release).length) :
+    release (trace.drop index).first = false := by
+  cases hrelease : release (trace.drop index).first with
+  | false => rfl
+  | true =>
+      have hle := trace.prefixThrough_length_le_of_drop_first release index hrelease
+      omega
+
 /-- Every indexed checkpoint lies on the actual prefix, and its remaining
 record is supported by the unchanged policies on the remaining invocation list.
 Indices beyond the end retain the final snapshot. -/

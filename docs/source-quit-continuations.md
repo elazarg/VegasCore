@@ -69,7 +69,7 @@ transporting it to `before_s` equality. On normally completed coupling pairs,
 public utility already agrees exactly. On timeout pairs:
 
 1. Recover the first-timeout snapshot from the underlying full native trace,
-   and select its chronologically first timeout. For a timed-out reveal, use
+   and select a timeout introduced by that clock transition. For a timed-out reveal, use
    its producer commitment as the decision boundary `s`.
 2. Obtain a settlement graph realizing the native public payout, with the
    default recorded at this exact producer. Preserve its identity through
@@ -85,9 +85,24 @@ public utility already agrees exactly. On timeout pairs:
    to obtain `before_s` equality. Apply the source comparison pointwise, then
    reuse the existing expectation and finite-mixture selection argument.
 
-The missing work is primarily the first-timeout prerequisite theorem, precise
-site correspondence, and prior-public agreement across the two realizations.
-The existing marginal probability laws do not imply this pair relation.
+The first-timeout prerequisite theorem is checked in
+`Interaction/SealedResolutionFirstTimeout.lean`. A positive window ensures that
+every node expiring in that transition was ready before the transition: a node
+first made ready during the scan cannot already have exhausted its window.
+`Interaction/SealedCandidatePrerequisites.lean` separately proves that an
+accepted commitment's prerequisites remain completed. This is needed for a
+reveal timeout: the reveal depends on the producer, but prerequisite lists
+are not assumed transitively closed.
+
+The graph settlement lemma retains a specified defaulted producer, and
+`candidateGraphCoupling_opened_before_timeout` proves agreement with the retained
+graph realization for disclosures included before the first timeout. The
+compiler also has a decoder lemma transporting equality of the relevant public
+graph fields to `before_s` equality. These are components, not the completed
+comparison: the remaining argument must select and align the producer, preserve
+its earlier public values through the native continuation, and assemble the
+source-only incentive theorem. The marginal probability laws alone do not imply
+this pair relation.
 
 ## Boundaries that must be respected
 

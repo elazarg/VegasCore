@@ -162,3 +162,9 @@ identifies admission and private-recall information missing from this kernel.
 The [gated single-site experiment](logical-commitment-gated-experiment.md) tests
 those additions against actual candidate-runtime transitions and distinguishes
 an operational projection from a strategic simulation.
+`Interaction/LogicalCommitmentAdmission.lean` proves exact acceptance agreement
+between graph-gated logical claims and the native candidate validator, including
+blocked prerequisites and unprepared candidates. This is an independent local
+admission result, not a policy or observation simulation. The experiment also
+contains a checked clock-erasure obstruction and states the prefix-law theorem
+required before adopting a logical protocol as a strategic compilation edge.

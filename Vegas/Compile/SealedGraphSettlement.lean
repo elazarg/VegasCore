@@ -204,6 +204,47 @@ private theorem public_reveal_eq_default
   · rwa [hvalues value hopened] at hopened
   · exact hvalues
 
+/-- A terminal graph realization matching all public fields records the default
+at the supplied producer when either that producer or one specified direct
+reveal times out.  The producer is retained in the conclusion for callers that
+need an exact source decision boundary. -/
+theorem public_store_graph_choice_at_producer_of_timeout [Finite Player]
+    (supported : SealedFragment G ty) (hguards : GuardLive G) (hunique : G.UniqueReveals)
+    (nullValue : L.Val ty) (window : Nat)
+    (state : SealedResolution.PublicState Player (L.Val ty))
+    (hinvariant : SealedResolution.PublicEventInvariant
+      (supported.resolvingRuntime nullValue window) state)
+    (hsettlement : SealedResolution.SettlementInvariant
+      (supported.resolvingRuntime nullValue window) state)
+    (hcomplete : (supported.resolvingRuntime nullValue window).complete state = true)
+    (producer : Fin G.nodeCount) (who : Player) (guard : EventGuard L)
+    (hcommit : (G.nodeRow producer).sem = .commit who guard)
+    (timeoutNode : Fin G.nodeCount) (htimeout : timeoutNode.val ∈ state.timeouts)
+    (hsite : timeoutNode = producer ∨
+      (G.nodeRow timeoutNode).sem = .reveal (G.nodeTarget producer)) :
+    ∃ cfg : ReachableConfig G, Terminal G cfg.1 ∧
+      (∀ ref, G.fieldRefPublic ref →
+        Store.getAs (G.publicSealedStore ty state.events) ref.field ref.ty =
+          Store.getAs cfg.1.store ref.field ref.ty) ∧
+      cfg.1.store (G.nodeTarget producer) =
+        some (⟨ty, nullValue⟩ : TypedValue L) := by
+  obtain ⟨cfg, hterminal, hagrees, hdefaults⟩ :=
+    supported.public_store_graph_of_complete hguards hunique nullValue window state
+      hinvariant hcomplete
+  refine ⟨cfg, hterminal, hagrees, ?_⟩
+  rw [cfg.1.store_nodeValues (reachable_storeCoherent supported.graphWF cfg.2)
+    nullValue producer (supported.rowType producer) (hterminal producer),
+    hdefaults producer who guard hcommit ?_]
+  intro reveal hreveal
+  rcases hsite with heq | hdirect
+  · exact supported.public_reveal_eq_default nullValue window state hinvariant hsettlement
+      hcomplete reveal producer who guard hreveal hcommit
+        (Or.inr (by simpa [heq] using htimeout))
+  · have heq := hunique reveal timeoutNode _ hreveal hdirect
+    subst reveal
+    exact supported.public_reveal_eq_default nullValue window state hinvariant hsettlement
+      hcomplete timeoutNode producer who guard hdirect hcommit (Or.inl htimeout)
+
 /-- The same terminal graph realization matches all public fields and records
 the timed-out owner's default at a commitment. This uses a graph disclosure
 certificate, not a source-image assumption or an opponent-strategy claim. -/
@@ -228,33 +269,17 @@ theorem public_store_graph_choice_of_timeout [Finite Player]
       ∃ (producer : Fin G.nodeCount) (guard : EventGuard L),
         (G.nodeRow producer).sem = .commit who guard ∧
         cfg.1.store (G.nodeTarget producer) = some (⟨ty, nullValue⟩ : TypedValue L) := by
-  obtain ⟨cfg, hterminal, hagrees, hdefaults⟩ :=
-    supported.public_store_graph_of_complete hguards hunique nullValue window state
-      hinvariant hcomplete
-  have hchoose (producer : Fin G.nodeCount) (guard : EventGuard L)
-      (hcommit : (G.nodeRow producer).sem = .commit who guard)
-      (hdefault : ∀ reveal, (G.nodeRow reveal).sem = .reveal (G.nodeTarget producer) →
-        Store.getAs (G.publicSealedStore ty state.events) (G.nodeTarget reveal) ty =
-          some nullValue) :
-      ∃ (producer : Fin G.nodeCount) (guard : EventGuard L),
-        (G.nodeRow producer).sem = .commit who guard ∧
-        cfg.1.store (G.nodeTarget producer) = some (⟨ty, nullValue⟩ : TypedValue L) := by
-    refine ⟨producer, guard, hcommit, ?_⟩
-    rw [cfg.1.store_nodeValues (reachable_storeCoherent supported.graphWF cfg.2)
-      nullValue producer (supported.rowType producer) (hterminal producer),
-      hdefaults producer who guard hcommit hdefault]
-  refine ⟨cfg, hterminal, hagrees, ?_⟩
   rcases howned with ⟨guard, hcommit⟩ | ⟨producer, guard, hsem, hcommit⟩
-  · apply hchoose node guard hcommit
-    intro reveal hsem
-    exact supported.public_reveal_eq_default nullValue window state hinvariant hsettlement
-      hcomplete reveal node who guard hsem hcommit (Or.inr htimeout)
-  · apply hchoose producer guard hcommit
-    intro reveal hreveal
-    have heq := hunique reveal node _ hreveal hsem
-    subst reveal
-    exact supported.public_reveal_eq_default nullValue window state hinvariant hsettlement
-      hcomplete node producer who guard hsem hcommit (Or.inl htimeout)
+  · obtain ⟨cfg, hterminal, hagrees, hvalue⟩ :=
+      supported.public_store_graph_choice_at_producer_of_timeout hguards hunique
+        nullValue window state hinvariant hsettlement hcomplete node who guard hcommit
+        node htimeout (Or.inl rfl)
+    exact ⟨cfg, hterminal, hagrees, node, guard, hcommit, hvalue⟩
+  · obtain ⟨cfg, hterminal, hagrees, hvalue⟩ :=
+      supported.public_store_graph_choice_at_producer_of_timeout hguards hunique
+        nullValue window state hinvariant hsettlement hcomplete producer who guard hcommit
+        node htimeout (Or.inr hsem)
+    exact ⟨cfg, hterminal, hagrees, producer, guard, hcommit, hvalue⟩
 
 end Vegas.EventGraph.SealedFragment
 
@@ -262,6 +287,11 @@ end Vegas.EventGraph.SealedFragment
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraph.SealedFragment.public_store_graph_of_complete
+
+/-- info: 'Vegas.EventGraph.SealedFragment.public_store_graph_choice_at_producer_of_timeout'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraph.SealedFragment.public_store_graph_choice_at_producer_of_timeout
 
 /-- info: 'Vegas.EventGraph.SealedFragment.public_store_graph_choice_of_timeout'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/

@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Interaction.SealedResolutionLaws
 import Interaction.SealedResolutionPolicy
 import Interaction.SealedResolutionBinding
+import Interaction.SealedResolutionFirstTimeout
 
 /-! # Nullable continuation and deadline boundary regressions
 
@@ -25,6 +26,46 @@ private def runtime : SealedResolution Bool (Option Bool) :=
       ⟨.commit true, [0, 1]⟩, ⟨.reveal true 2, [0, 1, 2]⟩]⟩, none, 2⟩
 
 private def missedCommit := runtime.tick (runtime.tick runtime.initial)
+
+private def parallelRuntime : SealedResolution Bool (Option Bool) :=
+  ⟨⟨[⟨.commit false, []⟩, ⟨.commit true, []⟩,
+      ⟨.commit false, [0, 1]⟩]⟩, none, 2⟩
+
+/-- One scan can expire several independently ready nodes, but a dependent
+node that becomes ready in that scan keeps its full positive window. -/
+theorem simultaneous_timeouts_leave_newly_ready_node_live :
+    let after := parallelRuntime.tick (parallelRuntime.tick parallelRuntime.initial)
+    after.visible.timeouts = [0, 1] ∧
+      after.visible.firstReady? 2 = some 2 ∧ after.visible.completed 2 = false := by
+  decide
+
+/-- The generic first-timeout lemma applies to every expired node in the
+same actual clock step, rather than selecting only the first list entry. -/
+theorem simultaneous_timeout_prerequisites_before
+    (node : Nat)
+    (hnode : node ∈ (parallelRuntime.tick
+      (parallelRuntime.tick parallelRuntime.initial)).visible.timeouts) :
+    ∃ rule timestamp,
+      parallelRuntime.program.rules[node]? = some rule ∧
+      (parallelRuntime.tick parallelRuntime.initial).visible.firstReady? node = some timestamp ∧
+      timestamp + parallelRuntime.window ≤
+        (parallelRuntime.tick parallelRuntime.initial).visible.clock + 1 ∧
+      rule.requires.all (SealedProgram.done
+        (parallelRuntime.tick parallelRuntime.initial).visible.events) = true :=
+  parallelRuntime.tick_first_timeout_ready_before (by decide)
+    (parallelRuntime.tick parallelRuntime.initial)
+    (SealedResolution.PublicState.ReadySound.initial parallelRuntime).tick
+    (by decide) node hnode
+
+private def zeroWindowRuntime : SealedResolution Bool (Option Bool) :=
+  ⟨⟨[⟨.commit false, []⟩, ⟨.commit true, [0]⟩]⟩, none, 0⟩
+
+/-- Positivity is necessary: a zero-window scan can expire a node whose
+prerequisite was itself only completed by timeout in that same scan. -/
+theorem zero_window_breaks_prior_normal_readiness :
+    (zeroWindowRuntime.tick zeroWindowRuntime.initial).visible.timeouts = [0, 1] ∧
+      SealedProgram.done zeroWindowRuntime.initial.visible.events 0 = false := by
+  decide
 
 theorem initial_readiness :
     runtime.initial.visible.firstReady? 0 = some 0 ∧

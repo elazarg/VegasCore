@@ -16,15 +16,39 @@ meanings, readiness gates, and owner recall, but respectively two and one units
 remaining before expiration. The same environment clock action leaves the
 first pending and expires the second. Absolute clocks might still be erasable,
 but only if the logical boundary treats timeout as a certified exogenous event
-or retains a sufficient relative deadline phase. Gate plus recall alone is not
-a Markov state for the native clock transition. This is a paper counterexample,
-not a Lean-mechanized theorem.
+or retains a sufficient relative deadline phase. Gate plus recall alone does not
+determine the native clock transition. The two-tick instance is checked in
+`InteractionTests/LogicalCommitmentClock.lean`; the general `window >= 2`
+construction below is a mathematical argument.
 
 This finding does not rely on assuming that a fixed response chooses the same
 action on different native histories. That assumption is false in general.
 The operational table below projects realized before/after transitions. The
 later strategic question is whether their conditional law can be reproduced
 with fixed honest opponents and the existing predrawn responses.
+
+## Checked local admission boundary
+
+`Interaction/LogicalCommitmentAdmission.lean` computes a graph-enabled bit from
+event completion and rule prerequisites, then applies the existing logical
+commitment validator. For a fixed commitment or reveal rule, it proves that
+this calculation and the actual `SealedProgram.candidateMessage?` validator
+have the same acceptance boolean. Authority, first selection, the selected
+source handle and verification of the claimed value are checked; agreement
+with the native validator is a conclusion, not an assumed certificate.
+
+The module also checks rejection with incomplete prerequisites or an already
+completed commitment, admission and permanent freezing of an unprepared
+candidate, and rejection of malformed or cleartext payloads. It imports no
+Vegas code and adds no policy runner. The build includes the module, but no
+compiler theorem imports it.
+
+These are local admission theorems. They do not yet prove equality of resulting
+application states or observations. In particular, `candidateHandle`'s outer
+timeout rejection, discharge of defaulted prerequisites and post-admission
+refresh are outside this comparison. Owner command recall is also outside the
+admission snapshot. The experiment closes the concrete prerequisite-validation
+mismatch at this boundary without claiming the broader projection below.
 
 ## Proposed minimal operational boundary
 
@@ -271,6 +295,23 @@ clock must be public in a logical game. Three possibilities remain logically
 distinct: retain relative slack, consume certified timeout events as above, or
 derive a conditional timeout kernel under a fixed response coupling.
 
+The checked instance uses the actual candidate initial state of a commitment
+and its reveal, with window two. Its projection retains the entire candidate
+catalog, public events and timeout attribution, and erases only clock and
+readiness timestamps. The initial state and its first-tick successor have equal
+projections. Applying a tick to each respectively leaves the binding pending
+or defaults it, publishing the programmed null without accepting a handle.
+`no_autonomous_clock_free_tick` proves that no deterministic function on the
+projected state can reproduce both transitions. There are no private commands
+or message occurrences in either prefix, so adding their recall does not
+distinguish this pair.
+
+This rules out a particular action-preserving state quotient. A logical
+protocol may instead translate a tick to progress or attributed settlement
+according to its native effect. The realization theorem must justify that
+effect and the applicable service condition; strategic preservation then
+requires a separate policy law. The regression does not rule out that design.
+
 ## Operational projection versus strategic sufficiency
 
 The transition table is state-by-state and can use the realized native
@@ -335,3 +376,40 @@ per-profile candidate deviation bound already handles the full native
 observations; failure of a smaller stepwise abstraction does not refute that
 bound. Without a concrete simplification, retain this table as the design test
 and do not add a second policy/game interpreter.
+
+### Strategic adoption target
+
+The concrete proof to factor is `candidateGraphRun_native_prefix_law` in
+`Vegas/Compile/SealedCandidateGraphNative.lean`, which supplies the native
+prefix law used by `candidateGraphCoupling_prefix_native`. Its replacement
+would have two independently stated edges: graph policies produce a logical
+protocol law, and native candidate execution realizes that law up to the first
+settlement. The generic coupling that attaches the native continuation need
+not be rewritten.
+
+The proposed lower-edge theorem, not yet proved, is: for fixed compiled
+opponents, an admitted native environment and an arbitrary focal native
+policy, the projected native stopped-prefix law is a finite mixture of logical
+stopped-prefix laws under logical focal deviations, with the same logical
+opponents. The environment interpretation must be fixed for the edge, not
+silently replaced for each focal deviation. The theorem must construct legal
+logical policies, rather than choose their commands retrospectively from a
+realized hidden state.
+
+The key probability obligation is preservation of each unchanged opponent's
+conditional choice kernel at its declared logical view, jointly with the
+retained prior disclosures and the focal player's local command history.
+Individual-message hiding does not establish that obligation. Predrawing or
+conditioning may be proof tools, but neither licenses assuming that arbitrary
+native commands are constant on fibers of the logical observation projection.
+
+Single-site admission tests are useful prerequisites, not a sufficient test
+of this theorem. Candidate identities are shared across an owner's sites, and
+another site's pending opening can affect a decision at this site. A strategic
+boundary must represent those joint effects, for example with a shared
+candidate catalog and a collection of binding states driven by the existing
+sealed dependency graph. It need not introduce another source language.
+
+Adoption requires this prefix-law theorem, an honest completion law, and a
+continuation/settlement interface sufficient to consume the source quitting
+inequality. Exact local admission alone does not satisfy that criterion.

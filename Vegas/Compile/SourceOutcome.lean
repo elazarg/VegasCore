@@ -169,6 +169,40 @@ theorem decisionSite_recorded_agrees {who : P} {Γ Δ : VCtx P L}
   | commit site ih => exact ih fresh.2 _ cfg hterminal
   | reveal site ih => exact ih fresh.2 _ cfg hterminal
 
+/-- Equality of the exact compiler fields for public bindings before a source
+decision implies equality of the public source environments recorded before
+that decision.  No agreement on the decision owner's private bindings is
+required. -/
+theorem _root_.Vegas.SourceDecisionSite.recorded_tail_erasePubEnv_eq_of_getAs_eq
+    {who : P} {Γ Δ : VCtx P L} {prog : VegasCore P L Γ}
+    {name : VarId} {ty : L.Ty}
+    {guard : L.Expr ((name, ty) :: eraseVCtx (viewVCtx who Δ)) L.bool}
+    (site : SourceDecisionSite who prog Δ name ty guard)
+    (fresh : FreshBindings prog) (state : BuildState P L Γ)
+    (left right : ReachableConfig (compileCore prog fresh state).graph)
+    (hleft : Terminal (compileCore prog fresh state).graph left.1)
+    (hright : Terminal (compileCore prog fresh state).graph right.1)
+    (hpublic : ∀ {query queryTy}
+      (binding : HasVar (erasePubVCtx Δ) query queryTy),
+      Store.getAs left.1.store
+          ((decisionSiteState site fresh state).fieldOf
+            (VHasVar.ofPubVCtx (HasVar.toVHasVarPub binding))) queryTy =
+        Store.getAs right.1.store
+          ((decisionSiteState site fresh state).fieldOf
+            (VHasVar.ofPubVCtx (HasVar.toVHasVarPub binding))) queryTy) :
+    (site.recorded (decodeSourceOutcome prog fresh state left hleft)).tail.erasePubEnv =
+      (site.recorded (decodeSourceOutcome prog fresh state right hright)).tail.erasePubEnv := by
+  funext query queryTy binding
+  rw [VEnv.erasePubEnv_get, VEnv.erasePubEnv_get]
+  let publicBinding : VHasVar Δ query (.pub queryTy) :=
+    VHasVar.ofPubVCtx (HasVar.toVHasVarPub binding)
+  have hleftValue :=
+    decisionSite_recorded_agrees site fresh state left hleft (.there publicBinding)
+  have hrightValue :=
+    decisionSite_recorded_agrees site fresh state right hright (.there publicBinding)
+  rw [BuildState.addCommitEvent_fieldOf_there] at hleftValue hrightValue
+  exact Option.some.inj (hleftValue.symm.trans ((hpublic binding).trans hrightValue))
+
 /-- A recorded source choice is the value stored at its compiler-allocated
 field, including its type tag. -/
 theorem decisionSite_recorded_value {who : P} {Γ Δ : VCtx P L}
@@ -234,3 +268,8 @@ theorem compileSourcePolicy_recorded_law {Γ : VCtx P L} (prog : VegasCore P L �
     simpa only [GameTheory.Math.Probability.FinDist.map_comp, Function.comp_def] using! hlaw
 
 end Vegas.ToEventGraph
+
+/-- info: 'Vegas.SourceDecisionSite.recorded_tail_erasePubEnv_eq_of_getAs_eq'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceDecisionSite.recorded_tail_erasePubEnv_eq_of_getAs_eq
