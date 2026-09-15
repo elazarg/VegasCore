@@ -156,6 +156,26 @@ theorem withhold_value_public [DecidableEq Slot] (protocol : GuardedPublication 
       protocol.resolve state.publications site none := by
   simp [reveal, bound]
 
+/-- Prescribed play can realize a failed opening by withholding its raw
+payload without changing the binding or logical publication state. A message
+implementation must separately justify timing and observation correspondence. -/
+theorem reveal_eq_withhold_of_failed [DecidableEq Slot]
+    (protocol : GuardedPublication Value) (state : BoundPublicationState Value)
+    (site : Slot) (disclose : Bool)
+    (failed : (state.reveal protocol site disclose).publications site = .failed) :
+    state.reveal protocol site disclose = state.reveal protocol site false := by
+  cases current : state.bindings site with
+  | unbound => simp [reveal, current]
+  | unopenable => simp [reveal, current]
+  | value data =>
+      have failedResolution :
+          protocol.resolve state.publications site (if disclose then some data else none) site =
+            .failed := by
+        simpa [reveal, current] using failed
+      have same := protocol.resolve_eq_none_of_failed state.publications site
+        (if disclose then some data else none) failedResolution
+      simpa [reveal, current] using same
+
 end BoundPublicationState
 
 end Interaction

@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import GameTheory
 import Vegas.Core
+import Vegas.Source
 import Vegas.Foundation.ViewExtension
 import Vegas.EventGraph
 import Vegas.Protocol

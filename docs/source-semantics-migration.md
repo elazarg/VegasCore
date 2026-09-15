@@ -2,16 +2,19 @@
 
 ## Status and source decisions
 
-The checked deferred-publication component supplies consistency, immutable
-bindings and publications, incremental obligation registration, and ordinary
-honest feasibility. It does not define the complete revised source language.
-The active `VegasCore` semantics and its compiler theorems remain unchanged.
+`Vegas.Source` defines the complete failure-aware source semantics: all four
+constructors, typed result expressions, arbitrary binding and disclosure
+policies, private action recall, and dependent public chance. Checked terminal
+theorems establish resolution of every publication obligation and satisfaction
+of every retained guard, under arbitrary policies. No compiler theorem for
+this source has been established; the compiler still consumes `WFProgram`.
+The design choices and examples are collected in
+[source-design-rationale.md](source-design-rationale.md).
 
-Integrating continuing failure requires a programmer-visible typing choice.
-Currently `reveal` introduces an ordinary public value of type `A`. Its
-continuation cannot receive a failure outside `A`. Changing only the
-operational relation would leave expression, distribution, and payoff
-evaluation without an inhabitant of their expected input type.
+Continuing failure requires explicit typing. A continuation expecting an
+ordinary public value of type `A` cannot receive a failure outside `A`.
+Changing only the operational relation would leave expression, distribution,
+and payoff evaluation without an inhabitant of their expected input type.
 
 The agreed choice is **explicit typed publication results**:
 
@@ -103,19 +106,24 @@ These guide the implementation independently of its representation:
    choices in the proposed source operational game.
 3. Opening cannot replace the private candidate. Guard rejection changes the
    public result, not the player's retained private knowledge.
-4. Deferred guards are ordinary relations. Their null-vacuous lifting and
-   pending status belong to publication semantics, not partial expression
-   evaluation.
+4. Deferred guards are ordinary relations with static required support. Their
+   lifting is vacuous when any required component fails and waiting when none
+   has failed but some remain pending. No ordinary value is extracted from an
+   unopened binding. Static support, including dead branches, is semantic;
+   ordinary Boolean equivalence alone does not justify changing it.
 5. A public value with an outstanding relational obligation is observable
    but is not certified to satisfy that relation. Previous public effects
    are never retracted.
-6. Player policies see their information, including retained private values
-   and public results. Executable guard evaluation uses publicly available
-   resolved dependencies. These are different interfaces.
+6. Player policies see their information, including retained private values,
+   public results, and their own action history. Executable guard evaluation
+   uses publicly available resolved dependencies. These are different
+   interfaces.
 7. Failure is per publication. Permanent withdrawal is a separate additional
    rule, not an implicit consequence of one failed opening.
 8. Public pending traffic and raw failed-opening payloads remain observable in
    target models. A result-store projection cannot erase their strategic effect.
+   Compliant prescribed failure must avoid leaking rejected data omitted from
+   the source view; arbitrary deviators remain free to transmit their own data.
 
 The source visibility discipline must prove that unresolved private
 dependencies of a guard belong to its author. Earlier public values, including
@@ -125,8 +133,13 @@ timely-service assumptions in a runtime.
 
 ## Source acceptance milestone
 
-Before changing downstream compiler interfaces, construct and check one complete
-source semantics with all four constructors and the following properties:
+This milestone is checked in `Vegas.Source` and `VegasTests.SourceSemantics`.
+The tests establish complete execution laws and actual payout laws for the
+mixed program; `Paper.lean` delegates to the general terminal-resolution and
+guard-satisfaction theorems. These results do not establish a compiler edge.
+
+The acceptance criteria are one complete source semantics with all four
+constructors and the following properties:
 
 - Heterogeneous payloads and ordinary nullable payloads.
 - Private initial values, distinct from their public disclosure results.
@@ -137,22 +150,26 @@ source semantics with all four constructors and the following properties:
 - Fresh names and an explicit resolution obligation for every sealed resource.
 - A utility-free source game with observation-local policies at both binding
   and disclosure decisions, not just the existing commit-only policy carrier.
-- Concrete ordinary successful play and nonconstant failure-sensitive utilities.
+- Concrete ordinary successful play with nonconstant, failure-sensitive
+  utilities, including an explicit payoff branch for invalid publication
+  results. This is an acceptance example, not a feasibility requirement for
+  every well-formed program.
 
-Resolve these admission details explicitly while defining the source interface:
+The source interface settles the admission details as follows:
 
-- Raw syntax currently permits repeated aliases, while checked accounting
-  prevents repeated discharge. Specify the checked resource contract; do not
-  silently turn failure into either retry or permanent withdrawal.
-- Existing conditional-copy accounting may discharge an original binding
-  without a literal reveal of it. Its replacement must express the intended
-  optional disclosure, or identify a further language-design choice before
-  removing that capability.
-- Ordinary honest feasibility and operational totality are different claims.
-  Unconditional availability of failure does not justify admitting an
-  allegedly useful game with no ordinary successful play. Decide the checked
-  feasibility contract without importing a desired strategic theorem as a
-  well-formedness field.
+- Every initial private binding and each commitment creates one resolution
+  obligation. A reveal removes exactly that obligation and adds a fresh public
+  result alias. Terminal syntax requires no obligations remaining; fresh names
+  prevent duplicate resource identity or alias replacement.
+- A reveal policy chooses disclosure or failure using its current source
+  information. This expresses optional disclosure without copying an ordinary
+  value as an implicit failure default. It is neither retry nor permanent
+  withdrawal.
+- Operational totality and ordinary failure-free feasibility are different
+  claims. Admit unsatisfiable guards: failure is a source behavior, while
+  well-formedness is structural and accounts for resources. A satisfying
+  ordinary execution is a separate optional property, not an execution
+  prerequisite.
 
 ## Migration order and proof obligations
 
@@ -165,23 +182,27 @@ Resolve these admission details explicitly while defining the source interface:
    Prove honest laws and causal unilateral-deviation correspondence for this
    edge. No homogeneous, sample-free, or always-accepting fragment substitutes
    for full constructor coverage.
+   The [source-to-graph design](source-graph-edge.md) specifies operation-specific
+   binding and resolution nodes, immutable fields, guard placement, and own
+   action recall without additional expression-construction assumptions.
 3. **Logical/public-message edge.** Adapt the typed ordered application to
    publicly resolvable deferred guards, immutable candidate acceptance,
    source-defined failure, and the exact chance law. Reuse the shared message
    runner and independent service contracts. Do not retain a private-validation
    oracle as the purported ordinary public implementation.
-4. **Strategic composition.** Establish graph-relative causal comparison laws
-   with unchanged opponents. Derive utility bounds from stated source
-   incentives for optional withholding and invalid binding choices, rather
-   than assuming native checkpoint inequalities. Compose the source edge and
-   backend edge to obtain the end-to-end Nash theorem.
+4. **Strategic composition.** Establish the exact unilateral-deviation mixture
+   law under canonical ordered operations, with unchanged compiled opponents
+   and one fixed admissible adaptive environment. Add utility bounds only for
+   actions, information, or costs genuinely introduced by a later target edge.
+   Compose the source edge and backend edge to obtain the end-to-end Nash theorem.
 5. **Ledger and VM.** Realize authenticated calls, atomic application steps,
    reverts, deadlines, costs, bounded code, and cryptographic services through
    additional independently specified edges.
 
-Retain stronger exact-law results where they hold; informed failure may need
-utility domination instead. Full language coverage never means hiding a
-partial compiler branch behind a feasibility or service assumption.
+The present source objective is exact law because reveal and failure choices
+belong to source strategies. No inherent need for a separate informed-failure
+domination premise has been demonstrated. Full language coverage never means
+hiding a partial compiler branch behind a feasibility or service assumption.
 
 ## Work allocation and retirement
 

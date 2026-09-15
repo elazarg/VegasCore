@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Foundation.Context
 import Vegas.Foundation.Probability
+import Vegas.Foundation.Result
 
 /-!
 # The embedded expression-language interface `IExpr`
@@ -102,6 +103,16 @@ structure IExpr where
       AgreesOn ρ₁ ρ₂ (distDeps d) → evalLaw d ρ₁ = evalLaw d ρ₂
 
 namespace IExpr
+
+/-- Optional publication-result support for an expression language. This is
+separate from `IExpr` so languages that do not publish fallible source outcomes
+remain valid implementations. Ordinary expression evaluation remains total. -/
+class ResultTypes (L : IExpr) where
+  /-- The source-language result type constructor. -/
+  result : L.Ty → L.Ty
+  /-- Semantic result values are precisely publication failures or successes. -/
+  valueEquiv (τ : L.Ty) :
+    L.Val (result τ) ≃ PublicationResult (L.Val τ)
 
 /-- Denote a retained exact rational table as GameTheory's canonical semantic
 finite probability law. -/

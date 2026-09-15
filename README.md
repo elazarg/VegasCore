@@ -10,6 +10,11 @@ sequential checked source
   -> native public-message execution
 ```
 
+This checked path currently consumes `WFProgram`. The failure-aware source
+semantics in `Vegas.Source` has complete execution and terminal safety proofs,
+but is not yet an input to this compiler. See the
+[source migration plan](docs/source-semantics-migration.md) for that boundary.
+
 The source language gives choices an explicit owner and visible environment.
 Compilation retains typed fields, dependencies, guards, probability tables,
 and payoff code in an event graph. The native endpoint uses the shared
@@ -102,6 +107,11 @@ contribute proof coverage. The current theorem boundary is listed in
 [road ahead](docs/a-road-ahead.md) sets the full-language and executable-target
 milestones, and the [typed protocol proposal](docs/typed-protocol-interface.md)
 specifies the next interface. Those milestones are not checked results.
+
+The [source rationale](docs/source-design-rationale.md) records the semantics
+choices and their small examples and counterexamples. The corresponding
+[migration plan](docs/source-semantics-migration.md) separates the checked
+source semantics from the remaining graph and runtime integration.
 
 A successful Lean build checks the active proof terms. It is not evidence that
 the separate manuscript's claims are all established. `paper-claims.json`

@@ -201,6 +201,26 @@ theorem check_values (guard : PublicationGuard Value) (values : (site : Slot) �
       if guard.test (fun site => values site) then .satisfied else .rejected := by
   simp [check, checkReads, Publication.isFailed, Publication.hasValue, Publication.get]
 
+/-- Once every declared dependency has resolved, the guard no longer waits.
+An invalid dependency discharges the relation without providing a value. -/
+theorem check_ne_pending_of_resolved (guard : PublicationGuard Value)
+    (state : PublicationStore Value)
+    (resolved : ∀ site ∈ guard.dependencies, state site ≠ .pending) :
+    guard.check state ≠ .pending := by
+  unfold check checkReads
+  split
+  · decide
+  · next noFailure =>
+      have ordinary : ∀ site : guard.dependencies, (state site).hasValue = true := by
+        intro site
+        cases current : state site with
+        | pending => exact False.elim (resolved site site.property current)
+        | failed =>
+            exact False.elim (noFailure ⟨site, by simp [current, Publication.isFailed]⟩)
+        | value value => rfl
+      rw [dif_pos ordinary]
+      split <;> decide
+
 /-- A partial disclosure of a satisfying assignment cannot reject its guard. -/
 theorem check_compatible (guard : PublicationGuard Value) (state : PublicationStore Value)
     (values : (site : Slot) → Value site) (compatible : state.Compatible values)
@@ -340,6 +360,22 @@ theorem consistent_empty (protocol : GuardedPublication Value) :
 def Satisfies (protocol : GuardedPublication Value) (values : (site : Slot) → Value site) : Prop :=
   ∀ guard ∈ protocol.guards, guard.test (fun site => values site) = true
 
+/-- Complete publication accounting strengthens consistency to discharge of
+every registered obligation. Discharge includes null-vacuous satisfaction;
+it does not assert an ordinary satisfying assignment. -/
+theorem satisfied_of_resolved (protocol : GuardedPublication Value)
+    (state : PublicationStore Value) (consistent : protocol.Consistent state)
+    (resolved : ∀ guard ∈ protocol.guards,
+      ∀ site ∈ guard.dependencies, state site ≠ .pending) :
+    ∀ guard ∈ protocol.guards, guard.check state = .satisfied := by
+  intro guard member
+  have notRejected := consistent guard member
+  have notPending := guard.check_ne_pending_of_resolved state (resolved guard member)
+  cases verdict : guard.check state with
+  | pending => exact False.elim (notPending verdict)
+  | satisfied => rfl
+  | rejected => exact False.elim (notRejected verdict)
+
 theorem consistent_of_compatible (protocol : GuardedPublication Value)
     (state : PublicationStore Value) (values : (site : Slot) → Value site)
     (compatible : state.Compatible values) (valid : protocol.Satisfies values) :
@@ -409,6 +445,23 @@ theorem resolve_none [DecidableEq Slot] (protocol : GuardedPublication Value)
     (state : PublicationStore Value) (site : Slot) (pending : state site = .pending) :
     protocol.resolve state site none = state.write site .failed := by
   simp [resolve, pending, Publication.isPending, Publication.ofOption]
+
+/-- An opening which resolves as failure has the same logical state effect as
+non-disclosing failure. This does not identify their message observations. -/
+theorem resolve_eq_none_of_failed [DecidableEq Slot] (protocol : GuardedPublication Value)
+    (state : PublicationStore Value) (site : Slot) (candidate : Option (Value site))
+    (failed : protocol.resolve state site candidate site = .failed) :
+    protocol.resolve state site candidate = protocol.resolve state site none := by
+  cases candidate with
+  | none => rfl
+  | some value =>
+      by_cases pending : state site = .pending
+      · rw [protocol.resolve_none state site pending]
+        by_cases accepted : protocol.consistent? (state.write site (.value value)) = true
+        · simp [resolve, pending, Publication.isPending, Publication.ofOption, accepted] at failed
+        · simp [resolve, pending, Publication.isPending, Publication.ofOption, accepted]
+      · rw [protocol.resolve_of_resolved state site _ pending,
+          protocol.resolve_of_resolved state site _ pending]
 
 theorem resolve_site_resolved [DecidableEq Slot] (protocol : GuardedPublication Value)
     (state : PublicationStore Value) (site : Slot) (candidate : Option (Value site)) :

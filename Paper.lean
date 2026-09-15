@@ -4,6 +4,7 @@ import Vegas.EventGraph.Confluence
 import Vegas.EventGraph.Fence
 import Vegas.Game.SourceGraph
 import Vegas.Game.SourcePublicCandidate
+import Vegas.Source.Safety
 
 /-! # Paper theorem audit
 
@@ -12,6 +13,10 @@ is a direct delegation to the active implementation theorem, with its exact
 hypotheses visible here.  Supporting probability, replay, provenance, and
 coupling lemmas remain checked in their owning modules; they are not repeated
 as paper capstones.
+
+The source safety results concern the failure-aware `SourceProgram` semantics.
+The compiler results below still concern `WFProgram`; they do not establish
+compilation of `SourceProgram`.
 
 The candidate-message results are the strongest currently proved end-to-end
 boundary.  Their common value type, universally accepting guards,
@@ -25,6 +30,28 @@ namespace Vegas.Paper
 open GameTheory Vegas EventGraph Interaction
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
+
+/-- Every complete execution of a failure-aware source program resolves all
+publication obligations, without assuming successful or guard-valid play. -/
+theorem source_publications_resolved [IExpr.ResultTypes L]
+    (source : SourceProgram.Initial (Player := Player) (L := L))
+    (profile : SourceProgram.BehavioralProfile source.program)
+    (outcome : State L source.program.terminalCtx)
+    (supported : outcome ∈ (source.run profile).support)
+    {owner : Player} {payload : L.Ty} {name : VarId}
+    (resource : HasVar source.program.terminalCtx name (.privateData owner payload)) :
+    (outcome.get resource).2 ≠ Publication.pending :=
+  source.terminal_resolved profile outcome supported resource
+
+/-- Every complete failure-aware source execution satisfies all retained
+guards, including executions with invalid bindings or withheld disclosures. -/
+theorem source_guards_satisfied [IExpr.ResultTypes L]
+    (source : SourceProgram.Initial (Player := Player) (L := L))
+    (profile : SourceProgram.BehavioralProfile source.program)
+    (outcome : State L source.program.terminalCtx)
+    (supported : outcome ∈ (source.run profile).support) :
+    (SourceProgram.finalRegistry source.program []).Satisfied outcome :=
+  source.terminal_registry_satisfied profile outcome supported
 
 /-- Whole-program equality for the actual graph policy runner. -/
 theorem source_graph_honest_law [Fintype Player] (source : WFProgram Player L)
@@ -178,6 +205,16 @@ theorem pending_candidate_public_nash_iff
     interpretation missing profile hdominance ε
 
 end Vegas.Paper
+
+/-- info: 'Vegas.Paper.source_publications_resolved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_publications_resolved
+
+/-- info: 'Vegas.Paper.source_guards_satisfied' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_guards_satisfied
 
 /-- info: 'Vegas.Paper.source_graph_honest_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

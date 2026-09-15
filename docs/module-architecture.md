@@ -19,6 +19,16 @@ connects them to the active sealed-message protocol. `Game` contains the
 focused policy and strategic adapters. The former fused application-plan
 development is outside this active dependency graph in `archive/fused/`.
 
+`Source` contains the failure-aware source semantics: typed publication results,
+deferred guards, explicit resolution accounting, observation-local policies,
+and exact execution. `Accounting` proves terminal resolution; `Safety` proves
+satisfaction of every retained guard under arbitrary source policies.
+Its foundational types belong in `Foundation`; runtime-independent publication
+laws belong in `Interaction`. The compiler still consumes `Core`, so building
+`Source` does not yet establish a compiler theorem for the replacement. The
+[source acceptance milestone](source-semantics-migration.md#source-acceptance-milestone)
+governs that switch.
+
 The active compiler is organized by proof responsibility: source/graph
 construction, sealed rule generation, decoding, native refinement, and source
 reconstruction. A new runtime feature should add a separate interaction or

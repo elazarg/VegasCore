@@ -3,19 +3,29 @@
 This page records checked theorem scope. The [road ahead](a-road-ahead.md)
 records the broader compiler goal and milestone acceptance tests; the
 [typed protocol interface](typed-protocol-interface.md) describes the broader
-operational model and the unresolved source-resolution boundary.
+operational model and the source-resolution implementation boundary.
 
 The [deferred-guard mathematical specification](deferred-guards-semantics.tex)
 has a checked publication component in `Interaction.GuardedPublication` and
 immutable bindings in `Interaction.BoundPublication`. Its consistency and
 honest-feasibility theorems are source-design results, not another compiled
-tower edge. The active source and compiler below have not been migrated to it.
+tower edge.
+
+Publication-result expressions are also checked: `Result A` distinguishes
+failure from successful ordinary values, including `Option.none`, and has
+total explicit eliminators. `Vegas.Source` supplies the complete failure-aware
+source game and proves terminal resolution and guard satisfaction under
+arbitrary source policies. The compiler below still consumes `Vegas.Core`;
+its strategic results do not apply to `SourceProgram`. The
+[source rationale](source-design-rationale.md) records the semantic choices,
+and [the graph-edge design](source-graph-edge.md) specifies the next migration.
 
 ## Layers and results
 
 | Layer | Main interface | Checked result and boundary |
 | --- | --- | --- |
 | Generic strategic transport | `GameTheoryExtensions`: `MixtureSimulationOn`, `UtilitySimulation` | Exact mixture and utility-specific deviation bounds compose. Honest agreement and unilateral bounds imply same-error epsilon-Nash equivalence at compiled profiles. These are generic rules, not compiler instances by themselves. |
+| Failure-aware source | `Vegas.Source`: `SourceProgram`, `gameForm` | All four constructors, arbitrary binding/disclosure policies, own-action recall, heterogeneous results, initial secrets, deferred guards, and dependent chance. Complete runs resolve all resources and satisfy all guards. No compiler edge yet. |
 | Checked sequential source | `Vegas.Core`: `WFProgram`, `sourceGameForm` | Written-order typed execution with guarded owner choices, public dependent samples, disclosures, and terminal environments. Utilities can interpret outcomes rather than identify payouts with utility. |
 | Source to graph | `Vegas.Game.SourceGraph`: `WFProgram.sourceGraphSimulation` | Exact honest terminal-environment law and arbitrary unilateral declared-read graph-deviation backtranslation with unchanged opponents, for all checked core programs and finite player sets. Source/graph Nash and same-error epsilon-Nash equivalence. |
 | Graph to sealed application | `Vegas.Compile`: `SealedShape`, `SealedFragment` | Concrete rules and strategy translation use the shared runner. `SealedShape` permits guards in code; the strategic certificate `SealedFragment` assumes they always accept. Both require one common node type, no samples, and commitment-produced disclosures. |

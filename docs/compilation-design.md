@@ -3,6 +3,19 @@
 VegasCore compiles one checked sequential source artifact into an event graph
 and then into focused native public-message applications.
 
+The [source design rationale](source-design-rationale.md) specifies the
+failure-aware source and its motivating examples. The
+[migration plan](source-semantics-migration.md) tracks its implementation. The
+source and candidate certificates described below concern the current guarded,
+ordinary-value source; they do not establish the revised source theorem.
+
+The revised ordered compiler targets exact decoded outcome laws and exact
+unilateral-deviation mixtures, with unchanged opponents. Its source strategies
+include binding and disclosure failure, so an extra failure-domination premise
+is not imposed without an identified difference in the target game. Strategic
+utility bounds remain available for target edges which genuinely change
+actions, observations, costs, or service guarantees.
+
 ## Artifact boundary
 
 Every compiler output retains the code needed by its consumer: typed fields,

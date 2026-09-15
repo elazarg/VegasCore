@@ -42,6 +42,7 @@ inductive BaseTy where
   | word : BaseTy
   | range (lo hi : Int) : BaseTy
   | option (b : BaseTy) : BaseTy
+  | result (b : BaseTy) : BaseTy
 deriving Repr, DecidableEq
 
 abbrev Val : BaseTy → Type
@@ -50,6 +51,7 @@ abbrev Val : BaseTy → Type
   | .word => BitVec wordBits
   | .range lo hi => Set.Icc lo hi
   | .option b => Option (Val b)
+  | .result b => PublicationResult (Val b)
 
 def instDecidableEqVal : (b : BaseTy) → DecidableEq (Val b)
   | .int => inferInstance
@@ -59,11 +61,15 @@ def instDecidableEqVal : (b : BaseTy) → DecidableEq (Val b)
   | .option b =>
       letI : DecidableEq (Val b) := instDecidableEqVal b
       inferInstance
+  | .result b =>
+      letI : DecidableEq (Val b) := instDecidableEqVal b
+      inferInstance
 
 instance {b : BaseTy} : DecidableEq (Val b) := instDecidableEqVal b
 
 def BaseTy.NonNullable : BaseTy → Prop
   | .option _ => False
+  | .result _ => False
   | _ => True
 
 class CommitPayloadTy (b : BaseTy) : Prop where
@@ -118,6 +124,14 @@ inductive Expr : CtxSimple → BaseTy → Type where
   | getD {Γ : CtxSimple} {b : BaseTy}
       (e : Expr Γ (.option b)) (fallback : Expr Γ b) :
       Expr Γ b
+  | failure {Γ : CtxSimple} {b : BaseTy} : Expr Γ (.result b)
+  | success {Γ : CtxSimple} {b : BaseTy} (e : Expr Γ b) : Expr Γ (.result b)
+  | isSuccess {Γ : CtxSimple} {b : BaseTy}
+      (e : Expr Γ (.result b)) : Expr Γ .bool
+  | isFailure {Γ : CtxSimple} {b : BaseTy}
+      (e : Expr Γ (.result b)) : Expr Γ .bool
+  | getResultD {Γ : CtxSimple} {b : BaseTy}
+      (e : Expr Γ (.result b)) (fallback : Expr Γ b) : Expr Γ b
   | addInt {Γ : CtxSimple} (l r : Expr Γ .int) : Expr Γ .int
   /-- EVM `ADD`: addition modulo `2 ^ wordBits`. -/
   | addWord {Γ : CtxSimple} (l r : Expr Γ .word) : Expr Γ .word
@@ -144,6 +158,12 @@ def evalExpr {Γ : CtxSimple} {b : BaseTy} : Expr Γ b → PlainEnv Γ → Val b
   | .isSome e, env => (evalExpr e env).isSome
   | .isNone e, env => (evalExpr e env).isNone
   | .getD e fallback, env => (evalExpr e env).getD (evalExpr fallback env)
+  | .failure, _ => .failure
+  | .success e, env => .success (evalExpr e env)
+  | .isSuccess e, env => (evalExpr e env).isSuccess
+  | .isFailure e, env => (evalExpr e env).isFailure
+  | .getResultD e fallback, env =>
+      (evalExpr e env).getD (evalExpr fallback env)
   | .addInt l r, env => evalExpr l env + evalExpr r env
   | .addWord l r, env => evalExpr l env + evalExpr r env
   | .subWord l r, env => evalExpr l env - evalExpr r env
@@ -166,6 +186,11 @@ def exprDeps {Γ : CtxSimple} {b : BaseTy} : Expr Γ b → Finset VarId
   | .isSome e => exprDeps e
   | .isNone e => exprDeps e
   | .getD e fallback => exprDeps e ∪ exprDeps fallback
+  | .failure => ∅
+  | .success e => exprDeps e
+  | .isSuccess e => exprDeps e
+  | .isFailure e => exprDeps e
+  | .getResultD e fallback => exprDeps e ∪ exprDeps fallback
   | .addInt l r => exprDeps l ∪ exprDeps r
   | .addWord l r => exprDeps l ∪ exprDeps r
   | .subWord l r => exprDeps l ∪ exprDeps r
@@ -210,6 +235,23 @@ theorem expr_deps_context {Γ : CtxSimple} {b : BaseTy}
       intro y hy
       exact ih y hy
   | getD e fallback ihe ihf =>
+      intro y hy
+      rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
+      · exact ihe y hy
+      · exact ihf y hy
+  | failure =>
+      intro y hy
+      simp [exprDeps] at hy
+  | success e ih =>
+      intro y hy
+      exact ih y hy
+  | isSuccess e ih =>
+      intro y hy
+      exact ih y hy
+  | isFailure e ih =>
+      intro y hy
+      exact ih y hy
+  | getResultD e fallback ihe ihf =>
       intro y hy
       rcases Finset.mem_union.mp (by simpa [exprDeps] using hy) with hy | hy
       · exact ihe y hy
@@ -288,6 +330,20 @@ theorem expr_deps_sound {Γ : CtxSimple} {b : BaseTy}
     simp only [evalExpr]
     rw [ihe (ha.mono Finset.subset_union_left),
         ihf (ha.mono Finset.subset_union_right)]
+  | failure => rfl
+  | success e ih =>
+    simp only [evalExpr]
+    rw [ih ha]
+  | isSuccess e ih =>
+    simp only [evalExpr]
+    rw [ih ha]
+  | isFailure e ih =>
+    simp only [evalExpr]
+    rw [ih ha]
+  | getResultD e fallback ihe ihf =>
+    simp only [evalExpr]
+    rw [ihe (ha.mono Finset.subset_union_left),
+        ihf (ha.mono Finset.subset_union_right)]
   | addInt l r ihl ihr =>
     simp only [evalExpr]
     rw [ihl (ha.mono Finset.subset_union_left),
@@ -345,6 +401,21 @@ def evalExprDeps {Γ : CtxSimple} {b : BaseTy} : (e : Expr Γ b) →
       (evalExprDeps e
         (fun x τ h hx => ρ x τ h (by simpa [exprDeps] using hx))).isNone
   | .getD e fallback, ρ =>
+      (evalExprDeps e
+        (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))).getD
+        (evalExprDeps fallback
+          (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx])))
+  | .failure, _ => .failure
+  | .success e, ρ =>
+      .success (evalExprDeps e
+        (fun x τ h hx => ρ x τ h (by simpa [exprDeps] using hx)))
+  | .isSuccess e, ρ =>
+      (evalExprDeps e
+        (fun x τ h hx => ρ x τ h (by simpa [exprDeps] using hx))).isSuccess
+  | .isFailure e, ρ =>
+      (evalExprDeps e
+        (fun x τ h hx => ρ x τ h (by simpa [exprDeps] using hx))).isFailure
+  | .getResultD e fallback, ρ =>
       (evalExprDeps e
         (fun x τ h hx => ρ x τ h (by simp [exprDeps, hx]))).getD
         (evalExprDeps fallback
@@ -414,6 +485,15 @@ theorem evalExprDeps_eq_eval {Γ : CtxSimple} {b : BaseTy}
   | isNone e ih =>
       simp [evalExprDeps, evalExpr, ih]
   | getD e fallback ihe ihf =>
+      simp [evalExprDeps, evalExpr, ihe, ihf]
+  | failure => rfl
+  | success e ih =>
+      simp [evalExprDeps, evalExpr, ih]
+  | isSuccess e ih =>
+      simp [evalExprDeps, evalExpr, ih]
+  | isFailure e ih =>
+      simp [evalExprDeps, evalExpr, ih]
+  | getResultD e fallback ihe ihf =>
       simp [evalExprDeps, evalExpr, ihe, ihf]
   | addInt l r ihl ihr =>
       simp [evalExprDeps, evalExpr, ihl, ihr]
@@ -530,6 +610,10 @@ theorem evalLawDistExprDeps_eq_evalLaw {Γ : CtxSimple} {b : BaseTy}
   expr_deps_sound := @expr_deps_sound
   law_deps_sound := @law_deps_sound
 
+instance simpleExprResultTypes : IExpr.ResultTypes simpleExpr where
+  result := BaseTy.result
+  valueEquiv := fun _ => Equiv.refl _
+
 noncomputable instance finiteType_bool : FiniteType simpleExpr .bool where
   fintype := by
     change Fintype Bool
@@ -554,6 +638,13 @@ noncomputable instance finiteType_option (b : BaseTy)
   fintype := by
     letI : Fintype (Val b) := FiniteType.fintype (L := simpleExpr) (τ := b)
     change Fintype (Option (Val b))
+    infer_instance
+
+noncomputable instance finiteType_result (b : BaseTy)
+    [FiniteType simpleExpr b] : FiniteType simpleExpr (.result b) where
+  fintype := by
+    letI : Fintype (Val b) := FiniteType.fintype (L := simpleExpr) (τ := b)
+    change Fintype (PublicationResult (Val b))
     infer_instance
 
 abbrev BindTySimple : Type := Vegas.BindTy Player simpleExpr
@@ -644,6 +735,11 @@ def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BaseTy}
   | .isSome e => .isSome e.weaken
   | .isNone e => .isNone e.weaken
   | .getD e fallback => .getD e.weaken fallback.weaken
+  | .failure => .failure
+  | .success e => .success e.weaken
+  | .isSuccess e => .isSuccess e.weaken
+  | .isFailure e => .isFailure e.weaken
+  | .getResultD e fallback => .getResultD e.weaken fallback.weaken
   | .addInt l r => .addInt l.weaken r.weaken
   | .addWord l r => .addWord l.weaken r.weaken
   | .subWord l r => .subWord l.weaken r.weaken
@@ -669,6 +765,12 @@ def Expr.substVars {Γ Δ : CtxSimple}
   | _, .isSome e => .isSome (e.substVars σ)
   | _, .isNone e => .isNone (e.substVars σ)
   | _, .getD e fallback => .getD (e.substVars σ) (fallback.substVars σ)
+  | _, .failure => .failure
+  | _, .success e => .success (e.substVars σ)
+  | _, .isSuccess e => .isSuccess (e.substVars σ)
+  | _, .isFailure e => .isFailure (e.substVars σ)
+  | _, .getResultD e fallback =>
+      .getResultD (e.substVars σ) (fallback.substVars σ)
   | _, .addInt l r => .addInt (l.substVars σ) (r.substVars σ)
   | _, .addWord l r => .addWord (l.substVars σ) (r.substVars σ)
   | _, .subWord l r => .subWord (l.substVars σ) (r.substVars σ)
@@ -710,6 +812,12 @@ theorem evalExpr_weaken {Γ : CtxSimple} {b τ : BaseTy} {x : VarId}
   | isSome e ih => simp [Expr.weaken, evalExpr, ih]
   | isNone e ih => simp [Expr.weaken, evalExpr, ih]
   | getD e fallback ihe ihf => simp [Expr.weaken, evalExpr, ihe, ihf]
+  | failure => rfl
+  | success e ih => simp [Expr.weaken, evalExpr, ih]
+  | isSuccess e ih => simp [Expr.weaken, evalExpr, ih]
+  | isFailure e ih => simp [Expr.weaken, evalExpr, ih]
+  | getResultD e fallback ihe ihf =>
+      simp [Expr.weaken, evalExpr, ihe, ihf]
   | addInt l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
   | addWord l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
   | subWord l r ihl ihr => simp [Expr.weaken, evalExpr, ihl, ihr]
@@ -727,6 +835,8 @@ def Expr.constVal {Γ : CtxSimple} : {b : BaseTy} → Val b → Expr Γ b
   | .range _ _, v => .constRange v
   | .option _, Option.none => .none
   | .option _, Option.some v => .some (Expr.constVal v)
+  | .result _, .failure => .failure
+  | .result _, .success v => .success (Expr.constVal v)
 
 def Expr.replaceHeadWithGetD
     {Γ : CtxSimple} {x : VarId} {b c : BaseTy}
@@ -746,6 +856,13 @@ def Expr.replaceHeadWithGetD
   | .isNone e => .isNone (e.replaceHeadWithGetD fallback)
   | .getD e fb =>
       .getD (e.replaceHeadWithGetD fallback)
+        (fb.replaceHeadWithGetD fallback)
+  | .failure => .failure
+  | .success e => .success (e.replaceHeadWithGetD fallback)
+  | .isSuccess e => .isSuccess (e.replaceHeadWithGetD fallback)
+  | .isFailure e => .isFailure (e.replaceHeadWithGetD fallback)
+  | .getResultD e fb =>
+      .getResultD (e.replaceHeadWithGetD fallback)
         (fb.replaceHeadWithGetD fallback)
   | .addInt l r =>
       .addInt (l.replaceHeadWithGetD fallback)
@@ -788,6 +905,10 @@ theorem evalExpr_constVal {Γ : CtxSimple} {b : BaseTy}
       | none => simp [Expr.constVal, evalExpr]
       | some v =>
           simp [Expr.constVal, evalExpr, ih]
+  | result b ih =>
+      cases v with
+      | failure => simp [Expr.constVal, evalExpr]
+      | success v => simp [Expr.constVal, evalExpr, ih]
 
 theorem evalExpr_replaceHeadWithGetD_some
     {Γ : CtxSimple} {x : VarId} {b c : BaseTy}
@@ -816,6 +937,16 @@ theorem evalExpr_replaceHeadWithGetD_some
   | isNone e ih =>
       simp [Expr.replaceHeadWithGetD, evalExpr, ih]
   | getD e fb ihe ihf =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ihe, ihf]
+  | failure =>
+      simp [Expr.replaceHeadWithGetD, evalExpr]
+  | success e ih =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ih]
+  | isSuccess e ih =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ih]
+  | isFailure e ih =>
+      simp [Expr.replaceHeadWithGetD, evalExpr, ih]
+  | getResultD e fb ihe ihf =>
       simp [Expr.replaceHeadWithGetD, evalExpr, ihe, ihf]
   | addInt l r ihl ihr =>
       simp [Expr.replaceHeadWithGetD, evalExpr, ihl, ihr]

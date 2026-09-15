@@ -81,12 +81,14 @@ guard that used that secret. An already published dependent value cannot simply
 be retracted. The [mathematical note](ordered-protocol-argument.tex) gives a
 counterexample to this per-cell replacement rule, not to all possible compilers.
 
-The source/runtime relation must therefore specify the original private value,
-the validated public result, subsequent decisions, and settlement. It must prove
-that each authorized failure implements the designated source quitting behavior.
-This is the unresolved semantic boundary. It must not be bypassed by a global
-"resolution is source-correct" field or a utility assumption on an outcome
-which is not a legal source quitting outcome.
+The revised source/runtime relation specifies the original private value, the
+validated `Result` publication, subsequent decisions, and explicit settlement.
+Failure is itself a source choice, including for unsatisfiable guards; ordinary
+failure-free feasibility is optional rather than a well-formedness premise.
+Ordinary public and payoff expressions must eliminate `Result` explicitly, so
+failure neither supplies a fabricated payload nor wins a comparison vacuously.
+This relation is under construction and must not be bypassed by a global
+"resolution is source-correct" field.
 
 The [deferred-guard specification](deferred-guards-semantics.tex) develops a
 candidate source interpretation in `Interaction.GuardedPublication` and
@@ -154,8 +156,9 @@ For the source compiler edge, prove:
    service and capability assumptions.
 4. Arbitrary unilateral native policies admit a causal source comparison with
    unchanged opponents and an environment fixed across the comparison.
-5. The source quitting condition bounds additional informed failure choices;
-   generic utility-simulation composition then supplies same-error Nash transfer.
+5. Every unilateral target policy has the exact law of a causal mixture of
+   source deviations under canonical order, unchanged opponents, and the same
+   fixed admissible adaptive environment.
 
 The coupling in the fourth item must have the claimed source marginal law.
 A supported source witness is insufficient for expected-utility or Nash

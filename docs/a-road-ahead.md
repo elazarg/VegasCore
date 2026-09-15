@@ -11,14 +11,15 @@ runtime, preserving at least Nash equilibrium, and carry the same theorem
 through executable deployment. Ethereum is the grounding target. Transport,
 commitments, resolution, and strategic simulation remain runtime-general.
 
-For a source profile `s`, generated profile `C s`, and arbitrary observation-local
-unilateral runtime deviation `d`, the ideal-target theorem should establish:
+For every source profile `s`, generated profile `C s`, canonical ordered
+execution, and fixed admissible adaptive environment, the ideal-target theorem
+should establish:
 
 ```text
-honest law:  observe(run(C s)) = law(source(s))
-deviation:   exists legal source deviation b,
-             E[U_target(run((C s)[i := d]))]
-               <= E[U_source(source(s[i := b]))]
+honest law:  law(run(C s)) = law(source(s))
+deviation:   for every unilateral target deviation d,
+             law(run((C s)[i := d]))
+               = mixture_b law(source(s[i := b]))
 ```
 
 The opponents stay unchanged. The strategy compiler describes compliant play;
@@ -27,11 +28,11 @@ The environment may adapt to its observations, including pending payloads;
 its deadline-relative service contract is explicit. Player-builder coalitions
 are a different strategy space from unilateral player deviations.
 
-Honest utility agreement and the deviation inequality give same-error
-epsilon-Nash preservation and reflection at generated profiles. Exact deviation
-outcome laws are a stronger, separate objective: informed quitting can change
-those laws without increasing utility. Concrete cryptography, costs, or
-imperfect service may require quantified error rather than exact Nash.
+The extracted mixture is causal and leaves compiled opponents unchanged.
+Because reveal and failure are source choices, exact deviation law is the
+current objective rather than an informed-failure utility relaxation. Utility
+bounds remain appropriate for later edges that add actions, information, costs,
+or approximation error, when their necessity and strength are demonstrated.
 
 No final theorem should exclude heterogeneous values, rejecting guards,
 dependent source chance, or initial fields merely because a proof was built
@@ -101,33 +102,34 @@ Separate the three acceptance points within this milestone:
 3. **Correctness:** the generated program satisfies the honest outcome law;
    milestone 2 below adds the whole-program arbitrary-deviation certificate.
 
-The current source admits only guard-valid commitments and has deterministic
-reveal. The intended target accepts opaque candidates and checks their guards
-at reveal; failure resolves to programmed quitting. Prove the interpretation
-between these semantics, including dependent private choices and subsequent
-settlement, or explicitly correct the source abstraction. Do not silently add
-recoverability or commit-time validity proofs to make the models agree.
+`Vegas.Source` admits failure-producing commitments and disclosures as source
+behavior and gives public expressions explicit `Result` branches. Its complete
+execution resolves all accounted resources and satisfies all retained guards
+under arbitrary policies. The compiler still consumes `Vegas.Core`; its
+theorems do not establish correspondence for `SourceProgram`. Do not add
+recoverability or commit-time validity proofs to make models agree.
 
 Replace homogeneous sealed values with site-indexed values and typed decoding.
 Separate raw candidates from legal source actions. Preserve arbitrary candidate
 selection, failed openings, retries, and rejection. Rejection is an application
 stutter; authorized resolution installs a declared legal alternative and its
 continuation. Retain original guard inputs without pretending public code can
-read a secret. In the current source, legality is determined at commitment:
-a raw candidate rejected at reveal never becomes a legal source action merely
-by being bound. A correspondence with that source needs a legal alternative
-at the commitment checkpoint. A source with explicit deferred failure instead
-needs its own policy semantics and correspondence; existing theorems do not
-automatically transfer to the changed rules.
+read a secret. A correspondence for `SourceProgram` must preserve its binding,
+strategic disclosure, deferred validation, and explicit failure decisions.
+The existing commit-time-validating `WFProgram` correspondence does not
+establish those laws. The [next graph edge](source-graph-edge.md) specifies
+their operation and observation interfaces.
 
 Design chance and initialization at this same boundary before proving another
 whole-program specialization. Chance draws from the source conditional kernel
 once, caches the result, and publishes it as the source's public sample step.
 There is no strategic sampler or publisher. Private initial data belongs to a
 setup realization, not public constants. An initial sealed binding can be used
-in its owner's guard and later disclosed. Its deterministic disclosure does
-not itself give the owner a source quitting choice; the host must implement its
-availability. Setup refusal is a separate pre-play contract.
+in its owner's guard and later resolved through a disclosure decision, just
+like a commitment-produced resource. Source setup fixes a binding or an
+unopenable candidate; runtime setup must realize that initial state without
+revealing it. Failure to establish the agreed setup is a separate pre-play
+contract.
 
 Exit test: one actual checked source program combines two value types, a
 rejecting guard, meaningful private initial data, and dependent chance. Its
@@ -151,9 +153,8 @@ not merely yield an arbitrary source support witness.
 Exit test: a graph-relative honest/deviation certificate for the typed protocol,
 instantiated by the compiler, and a directly delegated source-to-pending
 epsilon-Nash theorem. The combined program from milestone 1 instantiates it.
-The incentive premise is source-defined and its strength is explained. An
-assumed native-checkpoint inequality does not replace deriving it from that
-source condition.
+Any inequality premise is confined to target behavior not represented by the
+source, and its strength is supported by a concrete counterexample.
 
 This is the immediate strategic target. Supporting lemmas count toward it only
 when they discharge a named part of this certificate.
@@ -204,7 +205,7 @@ precise nonimplementability results where a required capability is absent.
 
 | Concern | Required contract; what it cannot conceal |
 | --- | --- |
-| Withholding | Legal source resolution and an incentive comparison at stopping information. Ex-ante strict quit dominance alone can fail after a new observation. |
+| Withholding | A causal source reveal/fail choice at the same information state. Additional domination is needed only if the target adds a choice absent from the source. |
 | Private guards | Public dependencies or a sound private-verification capability. A secret in proof state does not implement public execution. |
 | Chance | The correct conditional draw, sample-once storage, and availability. Strategic selection or retrying a draw changes the game. |
 | Initial secrets | Authenticated private setup and availability for deterministic disclosure. Setup refusal must be accounted for before entering the source game. Public EVM storage cannot implement private storage directly. |
