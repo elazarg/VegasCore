@@ -174,6 +174,59 @@ theorem initial_playerView_congr {Γ : VCtx Player L} (graph : Graph Player L Γ
       (observe who right) (fun _ => .fresh)
   rw [samePublic, initialBindings_independent Γ left right, visible]
 
+def candidates : State Player L Δ → CommitmentCandidates Player Slot (Raw L)
+  | .running _ _ _ _ candidates _ _ _ => candidates
+
+omit R in
+private theorem initialCandidates_lookup_congr (who : Player) (Γ : VCtx Player L)
+    (left right : VEnv L Γ) (visible : observe who left = observe who right)
+    (slot : Slot) :
+    (initialCandidates (initialEntries Γ left)).lookup (who, slot) =
+      (initialCandidates (initialEntries Γ right)).lookup (who, slot) := by
+  induction Γ with
+  | nil => cases slot <;> rfl
+  | cons head tail ih =>
+      rcases head with ⟨name, ty, visibility⟩
+      have tailVisible : observe who (VEnv.tail left) = observe who (VEnv.tail right) :=
+        Graph.observe_tail_eq who name ⟨ty, visibility⟩ left right visible
+      cases slot with
+      | prepared serial => rfl
+      | initial queried =>
+          cases visibility with
+          | pub =>
+              simpa [CommitmentCandidates.lookup, initialCandidates, initialEntries] using
+                ih (VEnv.tail left) (VEnv.tail right) tailVisible
+          | sealed owner =>
+              by_cases owns : owner = who
+              · subst owner
+                have value : left.get (.here : HasVar ((name, .sealed who ty) :: tail)
+                    name (.sealed who ty)) = right.get .here := by
+                  have cell := congrArg
+                    (fun observation => observation.cells.get
+                      (.here : HasVar ((name, .sealed who ty) :: tail)
+                        name (.sealed who ty))) visible
+                  change (if who = who then some (left.get .here) else none) =
+                    (if who = who then some (right.get .here) else none) at cell
+                  simpa using cell
+                by_cases same : name = queried
+                · subst queried
+                  simp [CommitmentCandidates.lookup, initialCandidates, initialEntries, value]
+                · simpa [CommitmentCandidates.lookup, initialCandidates,
+                    initialEntries, same] using
+                    ih (VEnv.tail left) (VEnv.tail right) tailVisible
+              · simpa [CommitmentCandidates.lookup, initialCandidates,
+                  initialEntries, owns] using
+                  ih (VEnv.tail left) (VEnv.tail right) tailVisible
+
+/-- Equal initial graph observations determine the player's complete native
+candidate catalogue, including reusable initial-field handles. -/
+theorem initial_candidate_lookup_congr {Γ : VCtx Player L}
+    (graph : Graph Player L Γ Δ) (who : Player) (left right : VEnv L Γ)
+    (visible : observe who left = observe who right) (slot : Slot) :
+    (initial graph left).candidates.lookup (who, slot) =
+      (initial graph right).candidates.lookup (who, slot) := by
+  exact initialCandidates_lookup_congr who Γ left right visible slot
+
 omit [DecidableEq Player] R in
 private theorem initialBindings_names (context : VCtx Player L) (input : VEnv L context)
     (name : VarId) (handle : Handle Player)
@@ -198,9 +251,6 @@ theorem initial_binding_name {Γ : VCtx Player L} (graph : Graph Player L Γ Δ)
     (found : lookupBinding (initial graph input).publicView.bindings name = some handle) :
     name ∈ Γ.map Prod.fst :=
   initialBindings_names Γ input name handle found
-
-def candidates : State Player L Δ → CommitmentCandidates Player Slot (Raw L)
-  | .running _ _ _ _ candidates _ _ _ => candidates
 
 /-- Setup populates only initial-field handles. Every policy preparation slot
 starts fresh, independently of the private initial values. -/

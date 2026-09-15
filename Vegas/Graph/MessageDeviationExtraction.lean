@@ -168,7 +168,7 @@ inductive State.RealizesOwnAction :
         (.running next (VEnv.cons ((R.valueEquiv payload).symm choice) ideal)
           (PublicValues.consSealed values) nextBindings nextCandidates
           (pc + 1) nextClock nextClock)
-  | resolve {Γ : VCtx Player L} {outputName bindingName : VarId}
+  | resolveFailure {Γ : VCtx Player L} {outputName bindingName : VarId}
       {owner : Player} {payload : L.Ty} {fresh : outputName ∉ Γ.map Prod.fst}
       {source : HasVar Γ bindingName (.sealed owner (R.result payload))}
       {checks : List (GuardCheck (R := R)
@@ -176,15 +176,33 @@ inductive State.RealizesOwnAction :
       {next : Graph Player L ((outputName, .pub (R.result payload)) :: Γ) Δ}
       {ideal : VEnv L Γ} {values : PublicValues Γ} {bindings : Bindings Player}
       {candidates : CommitmentCandidates Player Slot (Raw L)} {pc clock enteredAt : Nat}
-      (disclose : Bool) (nextClock : Nat) :
+      (nextClock : Nat) :
       State.RealizesOwnAction
         (.running (.resolve outputName owner bindingName fresh source checks next)
           ideal values bindings candidates pc clock enteredAt)
-        (.resolve owner bindingName disclose)
+        (.resolve owner bindingName false)
         (.running next (VEnv.cons ((R.valueEquiv payload).symm
-            (acceptedResult source checks ideal disclose)) ideal)
+            (.failure : PublicationResult (L.Val payload))) ideal)
           (PublicValues.consPublic ((R.valueEquiv payload).symm
-            (acceptedResult source checks ideal disclose)) values)
+            (.failure : PublicationResult (L.Val payload))) values)
+          bindings candidates (pc + 1) nextClock nextClock)
+  | resolveSuccess {Γ : VCtx Player L} {outputName bindingName : VarId}
+      {owner : Player} {payload : L.Ty} {fresh : outputName ∉ Γ.map Prod.fst}
+      {source : HasVar Γ bindingName (.sealed owner (R.result payload))}
+      {checks : List (GuardCheck (R := R)
+        ((outputName, .pub (R.result payload)) :: Γ))}
+      {next : Graph Player L ((outputName, .pub (R.result payload)) :: Γ) Δ}
+      {ideal : VEnv L Γ} {values : PublicValues Γ} {bindings : Bindings Player}
+      {candidates : CommitmentCandidates Player Slot (Raw L)} {pc clock enteredAt : Nat}
+      (value : L.Val payload)
+      (accepted : acceptedResult source checks ideal true = .success value)
+      (nextClock : Nat) :
+      State.RealizesOwnAction
+        (.running (.resolve outputName owner bindingName fresh source checks next)
+          ideal values bindings candidates pc clock enteredAt)
+        (.resolve owner bindingName true)
+        (.running next (VEnv.cons ((R.valueEquiv payload).symm (.success value)) ideal)
+          (PublicValues.consPublic ((R.valueEquiv payload).symm (.success value)) values)
           bindings candidates (pc + 1) nextClock nextClock)
 
 private theorem advanceBind_realizes
@@ -344,7 +362,7 @@ private theorem advanceResolveFailure_realizes
       (.resolve owner bindingName false)
       (advanceResolve next ideal values bindings candidates pc nextClock .failure) := by
   simpa [advanceResolve, acceptedResult, proposedResult] using
-    (State.RealizesOwnAction.resolve (Δ := Δ) (source := source) false nextClock)
+    (State.RealizesOwnAction.resolveFailure (Δ := Δ) (source := source) nextClock)
 
 /-- At a focal-owned resolve cursor, every phase-changing native step realizes
 the Boolean selected by the typed graph semantics: an accepted verified opening
@@ -468,11 +486,20 @@ theorem phaseChangingStep_resolve_realizes
                           have same := acceptedProposal_eq_acceptedResult
                             source checks ideal true
                           simpa only [proposedResult, if_true, ← encoded_eq] using same
-                        rw [result_eq]
-                        exact ⟨true, by
-                          simpa [advanceResolve] using
-                            (State.RealizesOwnAction.resolve (Δ := Δ)
-                              (source := source) true clock)⟩
+                        cases proposal : acceptedProposal checks values
+                            (R.valueEquiv payload encoded) with
+                        | failure =>
+                            rw [proposal] at result_eq
+                            exact ⟨false, by
+                              simpa [advanceResolve] using
+                                (State.RealizesOwnAction.resolveFailure (Δ := Δ)
+                                  (source := source) clock)⟩
+                        | success value =>
+                            rw [proposal] at result_eq
+                            exact ⟨true, by
+                              simpa [advanceResolve] using
+                                (State.RealizesOwnAction.resolveSuccess (Δ := Δ)
+                                  (source := source) value result_eq.symm clock)⟩
 
 /-- Applying bind extraction to the step selected by `FirstPhaseChange` makes
 the stopping point explicit: later actions in the same service block are not

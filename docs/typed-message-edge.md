@@ -173,7 +173,8 @@ memory, and submission without relying on scheduling-dependent receipts.
 Both successful and failed prescribed play use the same number of local
 invocations before submission. The local kernel and submission laws, initialized
 provenance invariants, and whole-run honest law are checked. Observation-local
-extraction of arbitrary native deviations remains proof work.
+extraction of arbitrary native deviations is checked by the replay-locality and
+effective-action construction described below.
 `MessagePolicyCommands` proves that every supported compiled command is
 addressed to the active phase, never malformed or replayed. Once a submission
 is recorded for that phase, the policy waits while it remains active. These
@@ -273,7 +274,7 @@ using one uninformed policy. A native deviation mixture may depend on the setup
 law, profile, and wire policy, but must be chosen before the realized hidden
 state. Predrawing separately at each realized initial state is insufficient.
 
-## Honest law and remaining strategic proof
+## Honest and strategic laws
 
 The operational host, policy compiler, local laws, and service termination are
 checked. The shared-prior predrawing theorem and whole-run honest continuation
@@ -281,14 +282,15 @@ identity are checked as well. `GraphRuntime.servicedGame_honest_law` proves the
 graph outcome law, and `Setup.pendingGame_honest_law` composes it with source
 compilation under the same private initial law. `Paper.lean` delegates its
 completion and honest-law capstones to these repository theorems.
-Observation-local extraction and the deviation law remain proof work; the
-deviation-mixture and epsilon-Nash capstones are the two explicit admissions.
-No supporting library lemma is admitted.
-The checked `Setup.pendingGame_approximate_nash_of_compiled` gives the reverse
-incentive direction already: an epsilon-Nash compiled target profile has an
-epsilon-Nash source profile. It uses honest utility equality for every source
-profile, including compiled source deviations. It does not bound arbitrary
-native deviations and therefore does not prove source-to-target preservation.
+Observation-local extraction and the exact deviation law are checked.
+`GraphRuntime.servicedGame_deviation_law` predraws the focal player and adaptive
+wire response jointly, then maps every supported deterministic response pair
+to one observation-local graph policy. `Setup.pendingGame_deviation_law`
+composes this with source backtranslation. Its finite mixture is chosen before
+the private initial state is sampled and leaves every opponent unchanged.
+`Setup.pendingSimulation` packages the honest and deviation laws, and
+`Setup.pendingGame_approximate_nash_iff` gives same-error epsilon-Nash
+equivalence for source-outcome utilities.
 
 ### Reachable-prefix invariant
 
@@ -437,20 +439,20 @@ write a misleading prepare or disclosure marker, choose a different candidate,
 or withhold despite recording `true`. Its native markers cannot fix the focal
 graph branch. For deviation simulation, the staged relation must instead use
 the focal graph action obtained by deterministic phase replay, consulting
-compiler caches only for unchanged players. Establishing that this extracted
-action depends only on the focal graph observation is a separate obligation;
-the honest continuation evaluator does not establish it.
+compiler caches only for unchanged players. The checked replay-locality theorem
+proves that this extracted action depends only on the focal graph observation;
+the honest continuation evaluator alone does not establish it.
 
 The local obligation is therefore `V(e) = invoke(e).bind V`, at the actual
 invocation cursor and on reachable states, with this staged interpretation of
 `V`. At completion, `V` is the point mass at the decoded terminal environment.
 Finite bind associativity gives the checked whole-run honest law.
-For arbitrary focal deviations, the continuation must instead use an
+For arbitrary focal deviations, the continuation instead uses the checked
 observation-local extracted focal policy. Protection of every unchanged
 player's outstanding action is checked by
 `servicePlan_unilateralDeviation_expirySafe`: only the deviator's own live
-decision may expire. Constructing the focal policy and extending the
-continuation-law argument remain unproved.
+decision may expire. The deviation continuation law composes these facts over
+the complete service plan.
 The checked safety induction is over graph-indexed service blocks; finite-run
 conservation then composes individual invocation laws. Both retain the complete service plan and
 environment history: replacing the service environment by one for the
@@ -507,8 +509,8 @@ predrawn. Supported pure-response histories stay within the original
 behavioral support; the selected-site command laws therefore justify replacing
 the full predrawn environment response by this service wrapper. The equality
 preserves the complete execution law while leaving opponent policies and graph
-chance kernels live. It reduces the remaining deviation proof to deterministic
-focal and wire responses without weakening the service premise.
+chance kernels live. The final proof handles each deterministic focal/wire
+response pair without weakening the service premise.
 
 For a fixed response pair, pure extraction replays the environment response and
 graph-ineffective public transitions on the native prefix paired with the
@@ -525,21 +527,21 @@ samples. Equal focal information does not imply equal full residual outcome
 laws when hidden opponent values differ. The outcome-law proof must instead
 retain the opponents' respective live kernels in its execution coupling.
 
-The whole finite-mixture law is the proof goal of this edge, not a consequence
-already supplied by predrawing. It requires this extraction invariant and
-composition of the local probability and service laws with one arbitrary focal
-policy; the all-prescribed continuation theorem alone does not supply that
-composition.
+The proved whole finite-mixture law is not a consequence of predrawing alone.
+It additionally uses this extraction invariant and composes the local
+probability and service laws with one arbitrary focal policy; the
+all-prescribed continuation theorem alone does not supply that composition.
 
 The [effective-action extraction](pending-deviation-extraction.md) separates
-the checked transition correspondence from this policy-locality obligation.
+the transition correspondence from the checked policy-locality theorem.
 Every first phase-changing bind step fixes a legal graph value or failure;
 every such resolve step realizes a legal graph disclosure decision.
 `State.BindingSoundness` supplies the verification-to-immutable-value direction
 for arbitrary senders, including bindings whose materialized value is failure.
 `MessageObservation` proves that private preparation leaves other players'
 views unchanged and that commitment admission reveals no foreign sealed value.
-These local laws do not yet establish the whole-prefix two-run invariant.
+These local laws do not by themselves establish the whole-prefix two-run
+invariant; the replay-locality induction supplies that composition.
 
 ### Sharp information test
 

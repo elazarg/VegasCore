@@ -1,5 +1,11 @@
 # Pending-deviation extraction
 
+This document describes the extraction used by the checked pending-message
+deviation law. The replay-locality theorem proves that each reached focal
+observation determines one normalized graph action; completion extends that
+partial relation to a total behavioral policy without consulting own-action
+history.
+
 At a focal player's bind or resolve node, a native service block is not itself
 one source-language move. It may contain private preparation, submission,
 delivery, rejected inclusion, clock ticks, and even actions belonging to later
@@ -28,24 +34,25 @@ caches, and disclosure markers do not occur in this relation.
 - At `bind`, accepted inclusion extracts the value actually frozen into the
   immutable cell. Fresh, unopenable, ill-typed, or expired candidates extract
   `failure`.
-- At `resolve`, an accepted verified opening extracts `true`; authenticated
-  withholding or expiry extracts `false`. Public agreement identifies concrete
-  guard evaluation with graph evaluation. `State.BindingSoundness` proves that
-  any verified typed opening equals the immutable bound source value.
+- At `resolve`, a successful accepted publication extracts `true`; every
+  failure result, including withholding, expiry, bound failure, and guard
+  rejection, extracts `false`. Public agreement identifies concrete guard
+  evaluation with graph evaluation. `State.BindingSoundness` proves that any
+  verified typed opening equals the immutable bound source value.
 
-The resolve Boolean cannot be reconstructed from the residual published value:
-`true` can still publish `failure` when the bound value is failure or a guard
-rejects. Extraction consequently inspects the admitted packet/tick, while its
-meaning is justified from immutable state and binding soundness.
+The original disclosure intention cannot be reconstructed from the published
+value: `true` can still publish `failure` when the bound value is failure or a
+guard rejects. The extracted action uses a canonical representative of this
+effect, justified from immutable state and binding soundness.
 
-The extracted Boolean is the effective wire action, not a cached intention:
-accepted opening is `true`, and withholding or expiry is `false`. Thus a cached
-`true` followed by canonical withholding after guard failure extracts `false`;
-an adversarial cached `false` followed by a valid opening extracts `true`.
-Future simulation cannot identify arbitrary native markers with this extracted
-history. It must either carry native memory separately or establish that the
-effective graph view determines the later native response on initialized
-support.
+The extracted Boolean is the canonical effective result, not a cached intention
+or merely the packet constructor: success is `true` and failure is `false`.
+Thus a cached `true` followed by canonical withholding after guard failure
+extracts `false`; an adversarial opening that is accepted but guard-rejected
+also extracts `false`. Future simulation cannot identify arbitrary native
+markers with this extracted history. It must either carry native memory
+separately or establish that the immutable focal observation determines the
+later native response on initialized support.
 
 ## Locality boundary
 
@@ -56,12 +63,12 @@ environment policy sees the public pool and receipts. Thus an unrestricted
 policy can distinguish two native states with the same graph view and change
 submission timing or payload.
 
-For initialized supported runs, the following proposed induction should
-establish the required locality statement for a fixed deterministic focal
+For initialized supported runs, the checked replay induction establishes
+locality for a fixed deterministic focal
 response and deterministic service-compatible environment response. Opponent
 policies and chance draws do not have to be identified. Compare two prefixes at
 the same invocation index, ending at focal phase `k`, and assume their focal
-`Graph.DecisionView`s agree. Use this endpoint-parameterized prefix relation.
+graph observations agree. Use this endpoint-parameterized prefix relation.
 
 1. Each current graph environment is the restriction of its endpoint
    environment, so equality of the endpoint focal observation restricts to
@@ -125,11 +132,34 @@ before sampling the initial state. It is not needed for the pointwise locality
 argument and does not license conditioning the source policy on hidden setup
 data.
 
-At phase `k`, the proposed relation gives equality of the focal policy's
-complete native input, not merely its graph projection. Determinism would then
-give the same native response sequence through the first actual phase change,
-and the checked extraction lemmas turn that transition into the same effective
-graph action. This bridge induction is not yet a Lean theorem in
-`MessageDeviationExtraction`; that module proves the stopping/extraction facts
-it consumes. The intended claim is only action locality. Residual outcome laws
-still contain independent opponent and chance continuations.
+At phase `k`, the replay relation gives equality of the focal policy's complete
+native input, not merely its graph projection. Determinism gives the same native
+response sequence through the first actual phase change, and the extraction
+lemmas turn that transition into the same effective graph action.
+`MessageDeviationActionLocality` packages this replay as
+`servicePlan_reachedOwnAction_locality_pure`. If two reached actions occur at
+unequal schedule indices, phase monotonicity and endpoint ownership force the
+earlier run to advance before the later focal-owned endpoint, contradicting the
+shared typed cursor; equal indices use the paired invocation replay laws. The
+conclusion is action locality only. Residual outcome laws still contain
+independent opponent and chance continuations.
+
+## Coupling at actual invocations
+
+`ReachedOwnAction` records an initialized supported schedule prefix, its next
+supported invocation, and the normalized graph action realized by that
+invocation. Observation-locality makes this relation single-valued at each
+focal graph decision. Its totalization chooses failure at unreached binding
+observations and withholding at unreached resolution observations.
+
+The residual graph law ignores the deviator's untrusted native cache and uses
+this extracted policy. It retains every other player's actual compiled cache
+and logical history. Focal stuttering steps preserve that law; effective focal
+steps must agree with the extracted action. Nonfocal steps retain their original
+policy kernels, including hidden remembered intentions.
+
+For focal inclusion, conservation is required only for commands actually in
+the environment invocation's support. Requiring it for every pending packet
+would be false: the focal player can submit competing commitments whose
+contents differ. The fixed environment response selects the effective one.
+An unselected packet is not a second action of that same execution.

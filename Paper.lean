@@ -141,8 +141,9 @@ theorem source_pending_honest_law [IExpr.ResultTypes L]
         (setup.pendingOutcome runtime) = (setup.run profile).map some :=
   setup.pendingGame_honest_law runtime roster reactionRounds wire profile
 
-/-- error: declaration uses `sorry` -/
-#guard_msgs (whitespace := lax) in
+/-- Every arbitrary unilateral native deviation has the exact outcome law of
+a finite mixture of source deviations against unchanged opponents. The mixture
+is chosen before the private initial state is sampled. -/
 theorem source_pending_deviation_law [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
     (runtime : GraphRuntime Player L (SourceProgram.graphCtx setup.program.terminalCtx))
@@ -156,11 +157,11 @@ theorem source_pending_deviation_law [IExpr.ResultTypes L]
           who replacement)).map (setup.pendingOutcome runtime) =
       mixture.bind (fun alternative =>
         (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
-          profile who alternative)).map some) := by
-  sorry
+          profile who alternative)).map some) :=
+  setup.pendingGame_deviation_law runtime roster reactionRounds wire profile who replacement
 
-/-- error: declaration uses `sorry` -/
-#guard_msgs (whitespace := lax) in
+/-- Same-error Nash preservation and reflection at compiled profiles for
+arbitrary utilities of source outcomes, against arbitrary native deviations. -/
 theorem source_pending_approximate_nash_iff [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
     (runtime : GraphRuntime Player L (SourceProgram.graphCtx setup.program.terminalCtx))
@@ -171,8 +172,9 @@ theorem source_pending_approximate_nash_iff [IExpr.ResultTypes L]
       (fun outcome who => (setup.pendingOutcome runtime outcome).elim
         (missing who) (fun state => utility state who)) ε
       (fun who => setup.compilePendingStrategy runtime who (profile who)) ↔
-    IsεNash setup.gameForm utility ε profile := by
-  sorry
+    IsεNash setup.gameForm utility ε profile :=
+  setup.pendingGame_approximate_nash_iff runtime roster reactionRounds wire utility missing
+    ε profile
 
 /-- Independent available graph events form a diamond. -/
 theorem execution_diamond
@@ -323,11 +325,11 @@ end Vegas.Paper
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_pending_honest_law
 /-- info: 'Vegas.Paper.source_pending_deviation_law' depends on axioms:
-[propext, sorryAx, Classical.choice, Quot.sound] -/
+[propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_pending_deviation_law
 /-- info: 'Vegas.Paper.source_pending_approximate_nash_iff' depends on axioms:
-[propext, sorryAx, Classical.choice, Quot.sound] -/
+[propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_pending_approximate_nash_iff
 /-- info: 'Vegas.Paper.execution_diamond' depends on axioms:

@@ -36,7 +36,7 @@ optimization; the subsequent build checks the active proof terms.
 | Whole-prefix policy memory projection | `Vegas/Graph/MessageHistoryExtension.lean` |
 | Reserved service and arbitrary-policy termination | `Vegas/Graph/MessageService.lean`, `MessageServiceTermination.lean` |
 | Shared-private-setup predrawing | `Interaction/MessageApplicationPredrawTransport.lean` |
-| Concrete full-language pending target | `Vegas/Game/GraphMessages.lean` (completion, honest law, and Nash reflection proved; deviation simulation and forward Nash preservation unproved) |
+| Concrete full-language pending target | `Vegas/Game/GraphMessages.lean` (completion, honest law, exact deviation mixture, and same-error Nash equivalence proved) |
 | Pending messages and candidate commitments | `Interaction/MessageApplication.lean`, `Interaction/CommitmentCandidates.lean` |
 | Restricted graph-relative candidate strategic edge | `Vegas/Game/SealedCandidate.lean` |
 | Restricted source-to-pending Nash | `Vegas/Game/SourcePublicCandidate.lean` |
@@ -53,10 +53,8 @@ candidate backend, with hypotheses stated in the
 ## Paper audit
 
 `Paper.lean` is a compact direct-delegation audit, not an inventory of support
-lemmas. Two pending-message capstones, deviation-mixture simulation and Nash
-correspondence, are explicitly admitted, with expected diagnostics and
-`sorryAx` pins. They name the actual compiler and native game;
-they are not proved results or assumptions available to library proofs.
+lemmas. Its pending-message completion, honest-law, deviation-mixture, and Nash
+capstones delegate to proved results for the actual compiler and native game.
 Every declaration has an axiom pin. Supporting probability, extraction,
 provenance, and coupling proofs remain checked in their owning modules even
 when they have no separate paper wrapper.

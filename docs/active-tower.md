@@ -2,7 +2,7 @@
 
 This page records checked theorem scope. The [road ahead](a-road-ahead.md)
 records the compiler goal; the [graph-to-message plan](typed-message-edge.md)
-separates the implemented host from the remaining strategic proof.
+describes the implemented host and its strategic proof boundary.
 
 ## Full failure-aware language
 
@@ -10,7 +10,7 @@ separates the implemented host from the remaining strategic proof.
 | --- | --- | --- |
 | Source semantics | `Vegas.Source`: `SourceProgram` | Arbitrary binding and disclosure policies, own-action recall, heterogeneous results, initial secrets, deferred guards, and dependent chance. Every complete run resolves every obligation and satisfies every retained guard. |
 | Source to typed graph | `Vegas.Game.GraphCompilation`, `Vegas.Game.GraphSetup` | Exact decoded terminal-state and payout laws; every unilateral graph deviation has one exact source-policy preimage against unchanged opponents. Finite private setup uses shared policies and a state-independent backtranslation. Nash and same-error epsilon-Nash equivalence at compiled profiles, without failure-dominance or finite-domain premises. |
-| Typed graph to message host | `Vegas.Graph.MessageApplication`: `GraphRuntime` | Exact whole-run honest outcome law for the complete language, composed to the source with shared private initial setup. The concrete service terminates under arbitrary player and wire policies. **Arbitrary-deviation simulation and Nash preservation remain unproved at this edge.** |
+| Typed graph to message host | `Vegas.Graph.MessageApplication`: `GraphRuntime` | Exact whole-run honest and arbitrary unilateral-deviation laws for the complete language, composed to the source with shared private initial setup. The concrete service terminates under arbitrary player and wire policies; compiled profiles satisfy same-error epsilon-Nash equivalence. |
 | Transaction/block execution, cryptography, VM deployment | Further target edges | No active end-to-end refinement to these targets. Passive VM reference code does not establish one. |
 
 The graph is an independently executable strategic IR. Its ordered nodes retain
@@ -29,8 +29,8 @@ every verified typed opening at an accepted address equals the immutable graph
 cell. It holds from initial setup through arbitrary player and environment
 policies, including failed, ill-typed, and repeated commitment preparations.
 `MessageHistoryExtension` proves the compiler's whole-prefix own-action
-projection laws. Neither fact substitutes for the remaining probability and
-observation-local deviation argument.
+projection laws. The deviation proof combines these facts with replay locality
+and setup-wide probability coupling.
 
 The shared runner proves authenticated sender-history provenance for all
 retained messages. Reserved service inclusion uses it to identify the exact
@@ -56,8 +56,9 @@ equation for arbitrary adaptive wire invocations at every graph constructor,
 deriving cache typing and packet provenance from initialized execution.
 `MessageContinuationClock` proves the corresponding actual chance-tick and
 waiting laws. `MessageHonestLaw` composes these invocation equations through
-the full service schedule. Extension to arbitrary focal deviations remains
-unproved.
+the full service schedule. The deviation continuation and replay-locality
+modules separately cover an arbitrary focal policy without trusting its cache
+markers.
 
 `MessageBindingAcceptance` identifies any accepted current commitment of a
 compiled owner with its canonical prepared handle and exact typed value,
@@ -102,8 +103,9 @@ or belongs to that deviator. It cannot expire an unchanged player's live
 decision. `MessageDeviationExtraction` identifies the first actual
 phase-changing transition and proves that a bind or resolve transition has
 the effect of a legal graph action. This extraction reads accepted immutable
-values and verified packets, not the deviator's caches. It is a transition
-correspondence, not yet an observation-local graph policy or a deviation law.
+values and verified packets, not the deviator's caches. Replay locality makes
+the resulting action relation observation-local, and policy completion turns
+it into the graph policy used by the proved deviation law.
 
 The native host admits competing and unopenable candidates, arbitrary tagged
 payloads, pending delivery, retries/replay, rejection receipts, and withholding.
@@ -117,7 +119,8 @@ uses the graph's public conditional kernel and advances atomically.
 `VegasTests.GraphMessages` runs the full source fixture through this host:
 an initial private Boolean, an optional-Boolean commitment, a deferred relation,
 reverse disclosure, chance, and failure-sensitive settlement. These are
-operational witnesses, not a substitute for the missing arbitrary-policy law.
+operational regression witnesses rather than the proof of the arbitrary-policy
+law.
 
 `GraphRuntime.servicedGame` uses the shared policy runner with graph-indexed
 owner opportunities, adaptive wire/reaction slots, reserved inclusion, and
@@ -127,10 +130,11 @@ wire policy. Its full-language compilation objectives are expressible in
 play, and `Paper.source_pending_complete` delegates to it.
 `Setup.pendingGame_honest_law` composes the graph-to-message honest law with
 the source-to-graph law, and `Paper.source_pending_honest_law` delegates to it.
-`Setup.pendingGame_approximate_nash_of_compiled` reflects epsilon-Nash from a
-compiled target profile to its source profile using honest utility equality.
-The deviation-mixture law and source-to-target Nash preservation remain
-unproved. In `MessageProgress`,
+`Setup.pendingGame_deviation_law` gives one finite source-policy mixture for
+each arbitrary native unilateral deviation. The mixture is selected before the
+private initial state is sampled and preserves all opponents.
+`Setup.pendingGame_approximate_nash_iff` combines this law with honest utility
+equality to give same-error epsilon-Nash equivalence. In `MessageProgress`,
 `run_completed_of_ticks` proves the separate
 operational fact that enough actual ticks force completion despite arbitrary
 intervening native traffic; it does not protect honest messages from expiry.
@@ -139,7 +143,7 @@ intervening native traffic; it does not protect honest messages from expiry.
 
 The active `WFProgram` / `Vegas.EventGraph` candidate backend has a checked
 source-to-pending strategic theorem. It does **not** implement `SourceProgram`'s
-failure-aware source semantics and cannot supply the missing full-language edge.
+failure-aware source semantics and does not itself supply the full-language edge.
 Its capstones remain in
 [SourcePublicCandidate.lean](../Vegas/Game/SourcePublicCandidate.lean):
 
@@ -180,14 +184,12 @@ window. This is deadline-relative service, not censorship resistance. The
 environment is fixed across unilateral comparisons. Builder/player coalitions
 would require a different strategy space.
 
-For the full typed host, the immediate goal is an exact deviation-mixture law
-under canonical order and deadline-relative service. The remaining work is
-whole-program observation-local policy extraction and its outcome-law coupling
-with unchanged opponents. Service completion and protection of unchanged
-players from expiry are proved. The generic shared-prior predrawing
-theorem supplies one joint player/environment response mixture before the
-initial execution is sampled; it preserves the complete native execution law
-but does not construct a graph deviation. The concrete
+For the full typed host, the exact deviation-mixture law is proved under
+canonical order and deadline-relative service. Observation-local extraction,
+whole-run coupling, service completion, and protection of unchanged players
+from expiry are checked. The generic shared-prior predrawing theorem supplies
+one joint player/environment response mixture before the initial execution is
+sampled. The concrete
 `exists_joint_service_response_mixture_runPolicies_setup` keeps reserved
 inclusion and expiry live while predrawing only the focal player and adaptive
 wire choices. It uses one response pair across the entire private initial law.
@@ -203,9 +205,9 @@ automatically.
 
 ## Audit and ownership
 
-`Paper.lean` selects directly delegated proved capstones and two explicitly
-admitted full-language pending-message objectives. All have axiom pins; the
-two objectives explicitly include `sorryAx`.
+`Paper.lean` selects directly delegated proved capstones, including the
+full-language pending-message deviation and Nash laws. All have standard axiom
+pins.
 It is not a supporting-lemma inventory. Build roots check all active modules
 and tests. The manuscript registry explicitly records unverified claims;
 `--allow-unverified` checks mapping consistency, not draft parity.
