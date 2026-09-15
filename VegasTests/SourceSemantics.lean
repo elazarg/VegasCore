@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Source.Semantics
 import Vegas.Core.ExprSimple
+import Vegas.Game.GraphCompilation
 
 /-! Mixed examples for the revised source language.
 
@@ -328,6 +329,66 @@ private theorem false_guard_run : falseGuardProgram.run falseProfile
 example : (falseGuardProgram.run falseProfile (Env.empty (CellVal simpleExpr))).map
     falseGuardProgram.evaluatePayoffs = FinDist.pure [(.alice, -1)] := by
   rw [false_guard_run, FinDist.map_pure]
+  rfl
+
+/-- The compiler consumes the complete mixed program, including a private
+initial input, heterogeneous payloads, deferred checking and dependent chance. -/
+example (profile : mixedProgram.BehavioralProfile) :
+    (Graph.run mixedInitial.graph (mixedInitial.compileGraphProfile profile)
+      mixedInitial.graphInputs).map mixedInitial.decodeGraph = mixedInitial.run profile :=
+  mixedInitial.graph_honest_law profile
+
+example (profile : mixedProgram.BehavioralProfile)
+    (replacement : Graph.BehavioralPolicy Player.alice mixedInitial.graph) :
+    (Graph.run mixedInitial.graph
+      (Profile.update (sig := Graph.gameSignature mixedInitial.graph)
+        (mixedInitial.compileGraphProfile profile) Player.alice replacement)
+      mixedInitial.graphInputs).map mixedInitial.decodeGraph =
+      mixedInitial.run (Profile.update (sig := SourceProgram.gameSignature mixedProgram)
+        profile Player.alice
+        (SourceProgram.backtranslateGraphPolicy mixedProgram mixedInitial.namesNodup
+          SourceProgram.initialMap [] Player.alice replacement)) :=
+  mixedInitial.graph_deviation_law profile Player.alice replacement
+
+example :
+    (Graph.run mixedInitial.graph
+      (mixedInitial.compileGraphProfile (mixedProfile (BoundValue.value Option.none) true))
+      mixedInitial.graphInputs).map (Graph.evaluatePayoffs mixedInitial.graph) =
+      FinDist.pure [(.alice, 10)] := by
+  rw [mixedInitial.graph_payoff_law]
+  change (mixedProgram.run _ initialState).map mixedProgram.evaluatePayoffs = _
+  rw [successful_run, FinDist.map_comp]
+  change fairBool.denote.map (fun _ => ([(Player.alice, 10)] : List (Player × Int))) = _
+  exact FinDist.map_const _ _
+
+example :
+    (Graph.run mixedInitial.graph
+      (mixedInitial.compileGraphProfile (mixedProfile (BoundValue.value (some false)) true))
+      mixedInitial.graphInputs).map (Graph.evaluatePayoffs mixedInitial.graph) =
+      FinDist.pure [(.alice, -5)] := by
+  rw [mixedInitial.graph_payoff_law]
+  change (mixedProgram.run _ initialState).map mixedProgram.evaluatePayoffs = _
+  rw [invalid_run, FinDist.map_pure]
+  rfl
+
+example :
+    (Graph.run mixedInitial.graph
+      (mixedInitial.compileGraphProfile (mixedProfile (BoundValue.unopenable _) true))
+      mixedInitial.graphInputs).map (Graph.evaluatePayoffs mixedInitial.graph) =
+      FinDist.pure [(.alice, -10)] := by
+  rw [mixedInitial.graph_payoff_law]
+  change (mixedProgram.run _ initialState).map mixedProgram.evaluatePayoffs = _
+  rw [unopenable_run, FinDist.map_pure]
+  rfl
+
+example :
+    (Graph.run mixedInitial.graph
+      (mixedInitial.compileGraphProfile (mixedProfile (BoundValue.value Option.none) false))
+      mixedInitial.graphInputs).map (Graph.evaluatePayoffs mixedInitial.graph) =
+      FinDist.pure [(.alice, -10)] := by
+  rw [mixedInitial.graph_payoff_law]
+  change (mixedProgram.run _ initialState).map mixedProgram.evaluatePayoffs = _
+  rw [withholding_run, FinDist.map_pure]
   rfl
 
 end

@@ -2,7 +2,7 @@
 
 import Vegas.EventGraph.Confluence
 import Vegas.EventGraph.Fence
-import Vegas.Game.SourceGraph
+import Vegas.Game.GraphCompilation
 import Vegas.Game.SourcePublicCandidate
 import Vegas.Source.Safety
 
@@ -14,9 +14,9 @@ hypotheses visible here.  Supporting probability, replay, provenance, and
 coupling lemmas remain checked in their owning modules; they are not repeated
 as paper capstones.
 
-The source safety results concern the failure-aware `SourceProgram` semantics.
-The compiler results below still concern `WFProgram`; they do not establish
-compilation of `SourceProgram`.
+The source safety and typed-graph compiler results concern the complete
+failure-aware `SourceProgram` semantics. The candidate-message results concern
+`WFProgram`; they do not establish pending-message compilation of `SourceProgram`.
 
 The candidate-message results are the strongest currently proved end-to-end
 boundary.  Their common value type, universally accepting guards,
@@ -53,48 +53,42 @@ theorem source_guards_satisfied [IExpr.ResultTypes L]
     (SourceProgram.finalRegistry source.program []).Satisfied outcome :=
   source.terminal_registry_satisfied profile outcome supported
 
-/-- Whole-program equality for the actual graph policy runner. -/
-theorem source_graph_honest_law [Fintype Player] (source : WFProgram Player L)
-    (profile : SourceBehavioralProfile source.core.prog) :
-    ((EventGraph.policyGame (ToEventGraph.compile source.core).graph
-      (ToEventGraph.compile source.core).graphWF
-      (ToEventGraph.compile_guardLive source.core source.legal)).play
-      (source.sourceGraphSimulation.compileProfile profile)).map
-        (ToEventGraph.observeSourceOutcome source.core) =
-      (denoteSource source.core.prog profile source.core.env).map some :=
-  source.sourceGraphSimulation.honest_law profile
+/-- Complete source-to-graph equality of decoded terminal-state laws. -/
+theorem source_graph_honest_law [IExpr.ResultTypes L]
+    (source : SourceProgram.Initial (Player := Player) (L := L))
+    (profile : SourceProgram.BehavioralProfile source.program) :
+    (Vegas.Graph.run source.graph (source.compileGraphProfile profile) source.graphInputs).map
+      source.decodeGraph = source.run profile :=
+  source.graph_honest_law profile
 
-/-- Exact source backtranslation of every unilateral declared-read kernel. -/
-theorem source_graph_deviation_law [Fintype Player] (source : WFProgram Player L)
-    (profile : SourceBehavioralProfile source.core.prog) (who : Player)
-    (replacement : CommitPolicy (ToEventGraph.compile source.core).graph who) :
-    ((EventGraph.policyGame (ToEventGraph.compile source.core).graph
-      (ToEventGraph.compile source.core).graphWF
-      (ToEventGraph.compile_guardLive source.core source.legal)).play
-      (Profile.update (source.sourceGraphSimulation.compileProfile profile)
-        who replacement)).map (ToEventGraph.observeSourceOutcome source.core) =
-      (denoteSource source.core.prog
-        (Profile.update (sig := sourceGameSignature source.core.prog) profile who
-          (ToEventGraph.backtranslateCommitPolicy source.core who replacement))
-        source.core.env).map some :=
-  ToEventGraph.runPolicyNodes_source_deviation source.core source.legal profile who replacement
+/-- Every unilateral graph deviation has an exact source-policy preimage. -/
+theorem source_graph_deviation_law [IExpr.ResultTypes L]
+    (source : SourceProgram.Initial (Player := Player) (L := L))
+    (profile : SourceProgram.BehavioralProfile source.program) (who : Player)
+    (replacement : Vegas.Graph.BehavioralPolicy who source.graph) :
+    (Vegas.Graph.run source.graph
+      (Profile.update (sig := Vegas.Graph.gameSignature source.graph)
+        (source.compileGraphProfile profile) who replacement) source.graphInputs).map
+      source.decodeGraph =
+    source.run (Profile.update (sig := SourceProgram.gameSignature source.program)
+      profile who (SourceProgram.backtranslateGraphPolicy source.program source.namesNodup
+        SourceProgram.initialMap [] who replacement)) :=
+  source.graph_deviation_law profile who replacement
 
-/-- Source and declared-read graph games have the same approximate equilibria. -/
-theorem source_graph_approximate_nash_iff [Fintype Player] (source : WFProgram Player L)
-    (value : Option (VEnv L (sourceTerminalCtx source.core.prog)) → Player → ℝ)
-    (ε : ℝ) (profile : SourceBehavioralProfile source.core.prog) :
-    IsεNash (EventGraph.policyGame (ToEventGraph.compile source.core).graph
-      (ToEventGraph.compile source.core).graphWF
-      (ToEventGraph.compile_guardLive source.core source.legal))
-      (fun outcome who => value (ToEventGraph.observeSourceOutcome source.core outcome) who) ε
-      (source.sourceGraphSimulation.compileProfile profile) ↔
-    IsεNash (sourceGameForm source.core.prog source.core.env)
-      (fun outcome who => value (some outcome) who) ε profile :=
-  source.source_graph_approximate_nash_iff value ε profile
+/-- Same-error Nash correspondence for arbitrary utilities of source outcomes. -/
+theorem source_graph_approximate_nash_iff [IExpr.ResultTypes L]
+    (source : SourceProgram.Initial (Player := Player) (L := L))
+    (utility : State L source.program.terminalCtx → Player → ℝ)
+    (ε : ℝ) (profile : SourceProgram.BehavioralProfile source.program) :
+    IsεNash (Vegas.Graph.gameForm source.graph source.graphInputs)
+      (fun outcome who => utility (source.decodeGraph outcome) who) ε
+      (source.compileGraphProfile profile) ↔
+    IsεNash (SourceProgram.gameForm source.program source.state) utility ε profile :=
+  source.graph_approximate_nash_iff utility ε profile
 
 /-- Independent available graph events form a diamond. -/
 theorem execution_diamond
-    {G : Graph Player L} (hwf : G.WF) {cfg leftNext rightNext : Config G}
+    {G : EventGraph.Graph Player L} (hwf : G.WF) {cfg leftNext rightNext : Config G}
     (left right : AvailableEvent G cfg) (hne : left.node ≠ right.node)
     (hleft : leftNext ∈ (stepAvailableEvent G cfg left).support)
     (hright : rightNext ∈ (stepAvailableEvent G cfg right).support) :
@@ -107,14 +101,14 @@ theorem execution_diamond
   supported_available_events_diamond hwf left right hne hleft hright
 
 /-- Permuting a duplicate-free complete schedule does not change its result. -/
-theorem schedule_confluence {G : Graph Player L} (cfg : Config G)
+theorem schedule_confluence {G : EventGraph.Graph Player L} (cfg : Config G)
     (value : Fin G.nodeCount → TypedValue L) {left right : List (Fin G.nodeCount)}
     (hperm : List.Perm left right) (hnodup : left.Nodup) :
     cfg.scheduleComplete value left = cfg.scheduleComplete value right :=
   Config.scheduleComplete_perm cfg value hperm hnodup
 
 /-- A reveal depends on every earlier commitment. -/
-theorem commit_reveal_barrier (G : Graph Player L)
+theorem commit_reveal_barrier (G : EventGraph.Graph Player L)
     {node prior : Fin G.nodeCount} {event priorEvent : EventNode Player L} {source : Nat}
     {who : Player} {guard : EventGuard L}
     (hnode : G.nodes[node]? = some event) (hprior : G.nodes[prior]? = some priorEvent)
@@ -123,7 +117,7 @@ theorem commit_reveal_barrier (G : Graph Player L)
   G.prior_commit_mem_prereqs_of_reveal hnode hprior hlt hreveal hcommit
 
 /-- A ready reveal has completed every earlier commitment. -/
-theorem ready_reveal_fence (G : Graph Player L) (cfg : Config G)
+theorem ready_reveal_fence (G : EventGraph.Graph Player L) (cfg : Config G)
     {node prior : Fin G.nodeCount} {event priorEvent : EventNode Player L} {source : Nat}
     {who : Player} {guard : EventGuard L}
     (hnode : G.nodes[node]? = some event) (hprior : G.nodes[prior]? = some priorEvent)

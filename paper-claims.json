@@ -1,10 +1,6 @@
 {
   "prose:source-graph-policy": {
-    "theorems": [
-      "Vegas.Paper.source_graph_honest_law",
-      "Vegas.Paper.source_graph_deviation_law",
-      "Vegas.Paper.source_graph_approximate_nash_iff"
-    ]
+    "supporting": "The manuscript's commit-only declared-read-kernel correspondence is checked in Vegas.Game.SourceGraph. Paper.lean's source_graph_* capstones instead certify the full failure-aware SourceProgram-to-Vegas.Graph edge, including strategic disclosure; the manuscript's source semantics must be aligned before those capstones are cited for this paragraph. Neither edge alone establishes the native pending-message theorem."
   },
   "prose:utility-simulation": {
     "supporting": "The generic utility transfer remains proved in GameTheoryExtensions; it is supporting infrastructure rather than a paper capstone."

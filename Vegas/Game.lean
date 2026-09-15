@@ -15,6 +15,7 @@ import Vegas.Game.SealedCandidatePrefix
 import Vegas.Game.SourceCandidate
 import Vegas.Game.SourcePublicCandidate
 import Vegas.Game.SourceGraph
+import Vegas.Game.GraphCompilation
 import Vegas.Game.SourceQuitPrefix
 
 /-! # Native operational games and source correspondence -/

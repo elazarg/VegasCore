@@ -6,8 +6,12 @@
 constructors, typed result expressions, arbitrary binding and disclosure
 policies, private action recall, and dependent public chance. Checked terminal
 theorems establish resolution of every publication obligation and satisfaction
-of every retained guard, under arbitrary policies. No compiler theorem for
-this source has been established; the compiler still consumes `WFProgram`.
+of every retained guard, under arbitrary policies. The complete source also
+has a checked compiler to the typed sequential `Vegas.Graph` IR, with exact
+honest and unilateral-deviation laws and same-error Nash equivalence. This edge
+has no failure-dominance or finite-domain premise. The candidate-message pipeline
+still consumes `WFProgram` through `Vegas.EventGraph`; the complete native
+theorem remains a separate goal.
 The design choices and examples are collected in
 [source-design-rationale.md](source-design-rationale.md).
 
@@ -136,7 +140,10 @@ timely-service assumptions in a runtime.
 This milestone is checked in `Vegas.Source` and `VegasTests.SourceSemantics`.
 The tests establish complete execution laws and actual payout laws for the
 mixed program; `Paper.lean` delegates to the general terminal-resolution and
-guard-satisfaction theorems. These results do not establish a compiler edge.
+guard-satisfaction theorems. The checked source-to-`Vegas.Graph` certificate
+complements these source results; it does not establish the remaining
+typed-graph-to-native-message edge. `Vegas.EventGraph` is not an additional
+required target between them.
 
 The acceptance criteria are one complete source semantics with all four
 constructors and the following properties:
@@ -177,11 +184,11 @@ The source interface settles the admission details as follows:
    expressions, states, obligations, decisions, and execution
    together. Prove local consistency and preservation of private knowledge;
    exercise all constructors in one mixed-feature source example.
-2. **Typed graph edge.** Compile every revised source constructor and retain
+2. **Typed graph edge (checked).** Compile every revised source constructor and retain
    expression code, guard support, publication provenance, and observations.
-   Prove honest laws and causal unilateral-deviation correspondence for this
-   edge. No homogeneous, sample-free, or always-accepting fragment substitutes
-   for full constructor coverage.
+   The checked honest and unilateral-deviation laws cover the full language;
+   no homogeneous, sample-free, or always-accepting fragment substitutes for
+   full constructor coverage.
    The [source-to-graph design](source-graph-edge.md) specifies operation-specific
    binding and resolution nodes, immutable fields, guard placement, and own
    action recall without additional expression-construction assumptions.

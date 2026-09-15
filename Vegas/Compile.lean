@@ -9,6 +9,7 @@ import Vegas.Compile.GuardValidation
 import Vegas.Compile.FieldMap
 import Vegas.Compile.RevealAccounting
 import Vegas.Compile.SourceView
+import Vegas.Compile.GraphLaw
 import Vegas.Compile.SourceChoice
 import Vegas.Compile.SourceLaw
 import Vegas.Compile.DecisionSite

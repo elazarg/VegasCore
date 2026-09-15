@@ -1,20 +1,25 @@
 # Compilation design
 
-VegasCore compiles one checked sequential source artifact into an event graph
-and then into focused native public-message applications.
+VegasCore has a checked exact edge from the complete failure-aware source to
+the typed sequential `Vegas.Graph` IR. The established native pipeline uses
+`WFProgram` and `Vegas.EventGraph` artifacts before lowering to focused
+public-message applications. Its backend must be adapted to the complete typed
+graph and proved correct there; adding an adapter to a restricted source
+fragment would not establish the required end-to-end boundary.
 
 The [source design rationale](source-design-rationale.md) specifies the
 failure-aware source and its motivating examples. The
 [migration plan](source-semantics-migration.md) tracks its implementation. The
-source and candidate certificates described below concern the current guarded,
-ordinary-value source; they do not establish the revised source theorem.
+source and candidate certificates described below concern the guarded,
+ordinary-value `WFProgram` pipeline. Separately, `Initial.graphSimulation`
+establishes the complete source-to-`Vegas.Graph` theorem.
 
-The revised ordered compiler targets exact decoded outcome laws and exact
-unilateral-deviation mixtures, with unchanged opponents. Its source strategies
-include binding and disclosure failure, so an extra failure-domination premise
-is not imposed without an identified difference in the target game. Strategic
-utility bounds remain available for target edges which genuinely change
-actions, observations, costs, or service guarantees.
+The typed ordered compiler proves exact decoded outcome laws and maps every
+unilateral graph deviation to one exact source-policy deviation with unchanged
+opponents. Its source strategies include binding and disclosure failure, so the
+edge needs neither failure dominance nor finite action domains. Strategic
+utility bounds remain available for later target edges that genuinely change
+strategic possibilities through actions, observations, costs, or service guarantees.
 
 ## Artifact boundary
 
@@ -506,6 +511,14 @@ these semantics, including owner scoping and the binding point. No trace
 equivalence with immutable payloads fixed at submission is claimed.
 
 ## Current boundary
+
+The complete failure-aware source-to-typed-graph edge is checked through
+`Initial.graphSimulation`, including exact honest execution, exact arbitrary
+unilateral deviations, and same-error Nash equivalence. Its target is
+`Vegas.Graph`, and initial source state is supplied as graph input rather than
+embedded in graph code. The complete native theorem remains a goal: the
+candidate-message backend and established native certificates below are
+phrased over `WFProgram` and `Vegas.EventGraph`.
 
 The direct mathematical argument for the pending-message strategic edge is in
 [pending-message-strategic-proof.md](pending-message-strategic-proof.md).
