@@ -83,7 +83,8 @@ theorem restrictedSourceRun_registered
       profile who node guard hsem reads] at hchoice
   have hselected : decide (who ≠ focal) = true := by simp [hwho]
   rw [hselected] at hchoice
-  simp only [if_true, hlookup, SealedFragment.valuePolicy, FinDist.mem_support_pure] at hchoice
+  simp only [if_true, hlookup, SealedFragment.assignedCommitPolicy,
+    FinDist.mem_support_pure] at hchoice
   subst choice
   change cfg.1.store ((compile source.core).graph.nodeTarget node) =
     some (⟨guard.ty, cast (congrArg L.Val

@@ -5,40 +5,41 @@ import Interaction.SealedResolutionRounds
 
 /-! # Fixed-seed replay and causal registration extraction
 
-The replay selects the unique trace of the shared resolving runner when honest
-choices and native deviator/environment responses are fixed. It includes
+The replay selects the unique trace of the shared resolving runner when assigned
+reference proposals and native deviator/environment responses are fixed. It includes
 post-timeout execution; a source choice is extracted from the first registration
 or first-timeout snapshot. No separate operational transition is introduced.
 -/
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction Interaction.MessageApplication GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
-theorem resolvingPolicy_valuePolicy_pure (supported : SealedFragment G ty)
+theorem resolvingProposalPolicy_assigned_pure (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (values : Fin G.nodeCount → L.Val ty)
     (who : Player)
     (history : List (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
     (view : (supported.resolvingRuntime nullValue window).messageApplication.View) :
-    ∃ command, supported.resolvingPolicy nullValue window who (supported.valuePolicy values who)
+    ∃ command, supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+      values who)
       history view = FinDist.pure command := by
   obtain ⟨command, hcommand⟩ :=
-    (supported.resolvingPolicy nullValue window who (supported.valuePolicy values who)
+    (supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals values who)
       history view).support_nonempty
   refine ⟨command, ?_⟩
-  exact supported.selected_valuePolicy_congr values values who view.application.timeouts
+  exact supported.selected_proposals_congr values values who view.application.timeouts
     ((supported.resolvingRuntime nullValue window).eventHistory history)
     ((supported.resolvingRuntime nullValue window).eventView view)
     _ command hcommand (fun _ _ => rfl)
 
-/-- Reassigning honest values changes the payload of a fresh registration,
+/-- Reassigning reference values changes the payload of a fresh registration,
 but not whether that same slot is selected. No agreement on its value is needed. -/
-theorem resolvingValuePlayers_registration_transfer (supported : SealedFragment G ty)
+theorem resolvingValuePlayers_registration_transfer (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (left right : Fin G.nodeCount → L.Val ty)
     (focal : Player)
     (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
@@ -57,15 +58,16 @@ theorem resolvingValuePlayers_registration_transfer (supported : SealedFragment 
     supported.selected_registration_kernel who view.application.timeouts _
       ((supported.resolvingRuntime nullValue window).eventHistory history)
       ((supported.resolvingRuntime nullValue window).eventView view) _ slot value hcommand
-  have hlaw := hkernel (supported.valuePolicy right who)
-  change supported.resolvingPolicy nullValue window who (supported.valuePolicy right who)
+  have hlaw := hkernel (supported.assignedProposals right who)
+  change supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals right
+    who)
     history view = _ at hlaw
   refine ⟨right node, ?_⟩
   rw [hlaw]
-  simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq, hslot,
+  simp only [SealedShape.assignedProposals, FinDist.map_pure, cast_cast, cast_eq, hslot,
     FinDist.mem_support_pure]
 
-variable (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
+variable (supported : SealedShape G ty) (nullValue : L.Val ty) (window : Nat)
 
 private theorem resolvingReplay_exists (values : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator :
@@ -91,7 +93,7 @@ private theorem resolvingReplay_exists (values : Fin G.nodeCount → L.Val ty) (
     exact ⟨deviator history view, by
       simp only [resolvingValuePlayers, GameTheory.Profile.update_same]⟩
   · rw [resolvingValuePlayers, GameTheory.Profile.update_of_ne _ _ hwho]
-    exact supported.resolvingPolicy_valuePolicy_pure nullValue window values who history view
+    exact supported.resolvingProposalPolicy_assigned_pure nullValue window values who history view
 
 variable (values : Fin G.nodeCount → L.Val ty) (focal : Player)
 variable (deviator :
@@ -121,7 +123,7 @@ theorem resolvingReplay_law :
   Classical.choose_spec (supported.resolvingReplay_exists nullValue window values focal
     deviator environment schedule)
 
-/-- Full native replay depends only on values at honest commitment sites,
+/-- Full native replay depends only on values at non-focal commitment sites,
 including after timeouts. Other coordinates never supply a native draw. -/
 theorem resolvingReplay_congr (right : Fin G.nodeCount → L.Val ty)
     (hagrees : ∀ who, who ≠ focal → ∀ node guard,
@@ -183,7 +185,7 @@ theorem resolvingBinding_eq_stop_lookup (decision : Fin G.nodeCount) :
   · rw [resolvingReplay_law, FinDist.mem_support_pure]
 
 /-- Pointwise causal extraction using the same native seed at all decisions.
-Both registration and absence are independent of source-future honest values. -/
+Both registration and absence are independent of later non-focal reference values. -/
 theorem resolvingBinding_read_bound (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
     (rightValues : Fin G.nodeCount → L.Val ty)
@@ -201,8 +203,8 @@ theorem resolvingBinding_read_bound (decision : Fin G.nodeCount) (guard : EventG
   rw [← hlaw]
   exact FinDist.mem_support_pure.mpr rfl
 
-/-- The honest coordinates disclosed before the focal source choice.
-Membership is static program data, independent of native delivery order. -/
+/-- The non-focal commitment coordinates preceding the focal decision.
+Membership is static graph data, independent of native delivery order. -/
 def priorHonestCoordinates (decision : Fin G.nodeCount) : Set (Fin G.nodeCount) :=
   {node | ∃ who, who ≠ focal ∧ supported.knownBefore focal decision (who, node.val)}
 
@@ -262,14 +264,14 @@ theorem extractedChoice_eq_binding (decision : Fin G.nodeCount) (guard : EventGu
   intro who hwho node hknown
   exact dif_pos ⟨who, hwho, hknown⟩
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.resolvingBinding_read_bound' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.resolvingBinding_read_bound' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.resolvingBinding_read_bound
+#print axioms Vegas.EventGraph.SealedShape.resolvingBinding_read_bound
 
-/-- info: 'Vegas.EventGraph.SealedFragment.extractedChoice_eq_binding' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.extractedChoice_eq_binding' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.extractedChoice_eq_binding
+#print axioms Vegas.EventGraph.SealedShape.extractedChoice_eq_binding

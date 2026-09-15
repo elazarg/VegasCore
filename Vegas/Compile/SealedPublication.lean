@@ -11,7 +11,7 @@ it does not require the focal private registration slot to be empty. Native
 binding separately turns completed commitment prerequisites into stored values.
 -/
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction GameTheory.Math.Probability
 
@@ -20,7 +20,7 @@ variable {G : Graph Player L} {ty : L.Ty}
 
 /-- Before a compiled opening can be submitted, every earlier commitment is
 complete in the public log. No private service state or value invariant is used. -/
-theorem openingReady_prior_commit_done (supported : SealedFragment G ty)
+theorem openingReady_prior_commit_done (supported : SealedShape G ty)
     (owner : Player) (node prior : Fin G.nodeCount)
     (events : List (SealedProgram.Event Player (L.Val ty)))
     (hready : SealedProgram.openingReady supported.compile events
@@ -47,7 +47,7 @@ theorem openingReady_prior_commit_done (supported : SealedFragment G ty)
 
 /-- The current registered-handle functionality turns public commitment
 completion into a stored value. This is separate from the publication barrier. -/
-theorem openingReady_prior_commit_lookup (supported : SealedFragment G ty)
+theorem openingReady_prior_commit_lookup (supported : SealedShape G ty)
     [DecidableEq (L.Val ty)]
     (owner : Player) (node prior : Fin G.nodeCount)
     (state : (supported.compile.messageApplication (Value := L.Val ty)).State)
@@ -66,7 +66,7 @@ theorem openingReady_prior_commit_lookup (supported : SealedFragment G ty)
 
 /-- In the registered-handle functionality, absence of a private value rules
 out public completion of the corresponding commitment. -/
-theorem commit_not_done_of_lookup_none (supported : SealedFragment G ty)
+theorem commit_not_done_of_lookup_none (supported : SealedShape G ty)
     (owner : Player) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hnode : (G.nodeRow node).sem = .commit owner guard)
     (state : SealedProgram.State Player (L.Val ty))
@@ -85,7 +85,7 @@ theorem commit_not_done_of_lookup_none (supported : SealedFragment G ty)
 
 /-- The focal principal's own slots and values disclosed before this source
 decision. This predicate does not include future honest disclosures. -/
-def knownBefore (supported : SealedFragment G ty) (focal : Player)
+def knownBefore (supported : SealedShape G ty) (focal : Player)
     (decision : Fin G.nodeCount) (handle : CommitmentHandle Player Nat) : Prop :=
   handle.1 = focal ∨ ∃ opening requires, opening < decision.val ∧
     supported.compile.rules[opening]? = some ⟨.reveal handle.1 handle.2, requires⟩
@@ -93,7 +93,7 @@ def knownBefore (supported : SealedFragment G ty) (focal : Player)
 /-- Before the focal commitment is publicly complete, every allowed opening
 is a source-earlier disclosure. Private registrations are unrestricted by this
 lemma. This is a submission-time fact, not merely an inclusion check. -/
-theorem openingHandle?_knownBefore (supported : SealedFragment G ty)
+theorem openingHandle?_knownBefore (supported : SealedShape G ty)
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
     (events : List (SealedProgram.Event Player (L.Val ty)))
@@ -126,7 +126,7 @@ theorem openingHandle?_knownBefore (supported : SealedFragment G ty)
 
 /-- Every packet emitted by a compiled policy before the focal commitment completes
 meets the native knowledge relation's authenticated-opening condition. -/
-theorem playerPolicy_openings_known (supported : SealedFragment G ty)
+theorem playerPolicy_openings_known (supported : SealedShape G ty)
     [DecidableEq (L.Val ty)]
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
@@ -146,9 +146,9 @@ theorem playerPolicy_openings_known (supported : SealedFragment G ty)
     exact supported.openingHandle?_knownBefore focal decision guard hdecision
       execution.native.application.events hnotDone owner node handle hhandle
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.playerPolicy_openings_known' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.playerPolicy_openings_known' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.playerPolicy_openings_known
+#print axioms Vegas.EventGraph.SealedShape.playerPolicy_openings_known

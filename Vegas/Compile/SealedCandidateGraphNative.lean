@@ -108,9 +108,9 @@ theorem candidateReplay_registration_factor
     exact hgraph index handle stored
       (SealedProgram.accepted_mem_of_accepted?_eq_some hselected) (hfixed.trans hlookup)
   have hplayer : players who = runtime.candidatePlayerPolicy
-      (supported.resolvingPolicy nullValue window who
-        (supported.valuePolicy reference who)) := by
-    simp only [players, runtime, SealedFragment.candidateValuePlayers,
+      (supported.resolvingProposalPolicy nullValue window who
+        (supported.assignedProposals reference who)) := by
+    simp only [players, runtime, SealedShape.candidateValuePlayers,
       Profile.update_of_ne _ _ hwho]
   have hselected := hcommand
   rw [hplayer] at hselected
@@ -227,7 +227,7 @@ theorem candidateReplay_prefix_prob_eq_product
     intro before initial who command next after hbefore hcommand hnext hafter hstop
     by_cases hwho : who = focal
     · subst who
-      simp only [referencePlayers, EventGraph.SealedFragment.candidateValuePlayers,
+      simp only [referencePlayers, EventGraph.SealedShape.candidateValuePlayers,
         Profile.update_same, FinDist.mem_support_pure] at hcommand
       simp only [players, Profile.update_same, ← hcommand, FinDist.prob_pure_self]
       cases command <;>
@@ -245,12 +245,12 @@ theorem candidateReplay_prefix_prob_eq_product
           rw [hfactor, SealedResolution.candidatePreparationFactor,
             if_pos ⟨List.mem_toFinset.mpr hmem, hfresh⟩]
       | submit payload | replay id | wait =>
-          simp only [referencePlayers, EventGraph.SealedFragment.candidateValuePlayers,
+          simp only [referencePlayers, EventGraph.SealedShape.candidateValuePlayers,
             Profile.update_of_ne _ _ hwho] at hcommand
           have hlaw := supported.selected_nonregistration_law who
             initial.native.application.visible.timeouts
-            (supported.valuePolicy reference who)
-            (profile who)
+            (supported.assignedProposals reference who)
+            ((profile who)).proposals
             (runtime.eventHistory (runtime.registeredPlayerHistory (initial.principalHistory who)))
             (runtime.eventView (runtime.registeredPlayerView
               (State.observe runtime.candidateApplication initial.native who)))

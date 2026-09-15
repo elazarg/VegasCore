@@ -68,7 +68,7 @@ theorem extractedCandidateSourcePolicy_law
         (fun value => cast
           (congrArg L.Val (compilation.supported.commitType decision focal guard hdecision))
           value.1) =
-      FinDist.pure (SealedFragment.candidateValue
+      FinDist.pure (SealedShape.candidateValue
         (compilation.supported.candidateSelection nullValue window values focal
           deviator environment schedule decision) fallback) := by
   unfold extractedCandidateSourcePolicy

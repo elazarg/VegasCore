@@ -32,7 +32,7 @@ The assignment is proof data, not an input to the compiled native adversary. -/
 def valueSourceProfile (values : Fin (compile source.core).graph.nodeCount → L.Val ty) :
     SourceBehavioralProfile source.core.prog :=
   fun who => backtranslateCommitPolicy source.core who
-    (compilation.supported.valuePolicy values who)
+    (compilation.supported.assignedCommitPolicy values who)
 
 private theorem valueSourceProfile_pure (value : L.Val ty) (who : Player)
     {Δ name choiceTy guard}
@@ -41,7 +41,7 @@ private theorem valueSourceProfile_pure (value : L.Val ty) (who : Player)
     ∃ choice, compilation.valueSourceProfile (fun _ => value) who site visible =
       FinDist.pure choice := by
   simp only [valueSourceProfile, backtranslateCommitPolicy, backtranslateSourceDecision,
-    SealedFragment.valuePolicy, FinDist.map_pure]
+    SealedFragment.assignedCommitPolicy, FinDist.map_pure]
   exact ⟨_, rfl⟩
 
 private def sourceChoice (value : L.Val ty) (who : Player)
@@ -68,7 +68,7 @@ private theorem sourceChoice_value (value : L.Val ty) (who : Player)
   have hlaw := congrArg (FinDist.map fun choice => (⟨choiceTy, choice.1⟩ : TypedValue L))
     (compilation.sourceChoice_law value who site visible)
   simp only [valueSourceProfile, backtranslateCommitPolicy, backtranslateSourceDecision,
-    SealedFragment.valuePolicy, FinDist.map_pure] at hlaw
+    SealedFragment.assignedCommitPolicy, FinDist.map_pure] at hlaw
   have heq := FinDist.mem_support_pure.mp (hlaw ▸ FinDist.mem_support_pure.mpr rfl)
   have hcast {left right : L.Ty} (hty : left = right) (chosen : L.Val right) :
       (⟨left, cast (congrArg L.Val hty.symm) chosen⟩ : TypedValue L) = ⟨right, chosen⟩ := by
@@ -190,7 +190,8 @@ theorem compile_recordedChoiceRestriction (selected : Player → Bool)
           (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
           rfl who (profile who) node guard hsem reads
       | some value =>
-          compilation.supported.valuePolicy (fun _ => value) who node guard hsem reads := by
+          compilation.supported.assignedCommitPolicy (fun _ => value) who node guard hsem reads :=
+            by
   cases hselected : selected who with
   | false =>
     simp only [Bool.false_eq_true, ↓reduceIte]
@@ -222,7 +223,8 @@ theorem compile_recordedChoiceRestriction (selected : Player → Bool)
             exact compilation.sourceChoice_law value who site visible)
         exact hpolicy.trans (congrFun (congrFun (congrFun (congrFun
           (compile_backtranslateCommitPolicy source.core who
-            (compilation.supported.valuePolicy (fun _ => value) who)) node) guard) hsem) reads)
+            (compilation.supported.assignedCommitPolicy (fun _ => value) who)) node) guard) hsem)
+              reads)
 
 /-- Applying recorded-choice restrictions commutes with source-to-graph
 policy compilation. This is an outer compiler certificate; the graph

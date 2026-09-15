@@ -4,10 +4,10 @@ import Vegas.Compile.SealedResolutionPrivacy
 
 /-! # Whole-prefix read bounds through commitment acceptance
 
-Execute the compiled resolving policies with assigned honest values, retaining
+Execute the resolving command generator with assigned reference values, retaining
 an arbitrary native focal policy and adaptive full-pool environment. The law of
 the focal registration and the focal player's information through public
-acceptance, cut off at the first timeout, depend only on honest values whose
+acceptance, cut off at the first timeout, depend only on non-focal values whose
 disclosures precede that source decision. The finite invocation list is
 unrestricted; no service or fairness assumption is used for hiding.
 
@@ -20,28 +20,29 @@ read bound for extraction; it does not identify the source probability law.
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction Interaction.MessageApplication GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
-/-- Assigned source choices for compiled opponents, with the focal native
-policy unchanged. Assignment substitution is used only in the proof. -/
-def resolvingValuePlayers (supported : SealedFragment G ty)
+/-- Assigned proposals for reference opponents, with the focal native policy
+unchanged. Assignment substitution is used only in the proof. -/
+def resolvingValuePlayers (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (values : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy) :=
   Profile.update
     (sig := MessageApplication.policySignature Player
       (supported.resolvingRuntime nullValue window).messageApplication)
-    (fun who => supported.resolvingPolicy nullValue window who (supported.valuePolicy values who))
+    (fun who => supported.resolvingProposalPolicy nullValue window who
+      (supported.assignedProposals values who))
     focal deviator
 
-/-- Only honest commitment coordinates are queried by the substituted
+/-- Only non-focal commitment coordinates are queried by the assigned
 policies. Focal and non-commitment assignment coordinates have no effect. -/
-theorem resolvingValuePlayers_congr (supported : SealedFragment G ty)
+theorem resolvingValuePlayers_congr (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (left right : Fin G.nodeCount → L.Val ty)
     (focal : Player)
     (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
@@ -54,12 +55,13 @@ theorem resolvingValuePlayers_congr (supported : SealedFragment G ty)
   · subst who
     simp only [resolvingValuePlayers, Profile.update_same]
   · simp only [resolvingValuePlayers, Profile.update_of_ne _ _ hwho]
-    have hpolicy : supported.valuePolicy left who = supported.valuePolicy right who := by
+    have hpolicy :
+        supported.assignedProposals left who = supported.assignedProposals right who := by
       funext node guard hsem reads
-      simp only [valuePolicy, hagrees who hwho node guard hsem]
+      simp only [SealedShape.assignedProposals, hagrees who hwho node guard hsem]
     rw [hpolicy]
 
-def bindingCut (supported : SealedFragment G ty)
+def bindingCut (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (focal : Player) (decision : Fin G.nodeCount)
     (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution) :
     Bool :=
@@ -68,7 +70,7 @@ def bindingCut (supported : SealedFragment G ty)
 
 /-- First native registration at the focal source handle, or absence if a
 timeout or the finite horizon is reached first. -/
-def resolvingBindingLaw (supported : SealedFragment G ty)
+def resolvingBindingLaw (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (values : Fin G.nodeCount → L.Val ty) (focal : Player) (decision : Fin G.nodeCount)
     (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
@@ -86,7 +88,7 @@ def resolvingBindingLaw (supported : SealedFragment G ty)
 cut that stops by focal completion or the first timeout. Readouts may retain
 native observations and histories; erased delivery steps are not assumed to be
 strategically silent. -/
-theorem resolvingValuePlayers_cut_law {Observation : Type*} (supported : SealedFragment G ty)
+theorem resolvingValuePlayers_cut_law {Observation : Type*} (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
@@ -160,9 +162,9 @@ theorem resolvingValuePlayers_cut_law {Observation : Type*} (supported : SealedF
         exact ⟨hc, hopen⟩
 
 /-- A native deviator cannot choose its registered value as a function
-of honest commitments disclosed only after the focal source choice. The
+of non-focal reference commitments disclosed only after the focal source choice. The
 environment may use arbitrary randomized policies over the entire pool. -/
-theorem resolvingBindingLaw_read_bound (supported : SealedFragment G ty)
+theorem resolvingBindingLaw_read_bound (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
@@ -207,7 +209,7 @@ theorem resolvingBindingLaw_read_bound (supported : SealedFragment G ty)
 /-- The first publicly completed focal commitment or the first timeout. Unlike
 the registration cut, this allows an arbitrary interval of native interaction
 after the focal player has privately prepared its value. -/
-def acceptanceCut (supported : SealedFragment G ty)
+def acceptanceCut (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (decision : Fin G.nodeCount)
     (execution : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution) :
     Bool :=
@@ -217,7 +219,7 @@ def acceptanceCut (supported : SealedFragment G ty)
 /-- The focal player's entire local input at first acceptance, timeout, or the
 finite horizon. Its history includes its private preparations and public
 commands; its view includes ledger events, sent/delivered messages, and receipts. -/
-def resolvingAcceptanceLaw (supported : SealedFragment G ty)
+def resolvingAcceptanceLaw (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (values : Fin G.nodeCount → L.Val ty) (focal : Player) (decision : Fin G.nodeCount)
     (deviator : (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy)
@@ -233,11 +235,11 @@ def resolvingAcceptanceLaw (supported : SealedFragment G ty)
       (PolicyTrace.firstRelease (supported.acceptanceCut nullValue window decision))).map
     fun execution => (execution.principalHistory focal, State.observe app execution.native focal)
 
-/-- Future hidden honest values do not affect even the focal player's full
+/-- Future hidden non-focal reference values do not affect even the focal player's full
 local information through public acceptance. The focal policy and full-pool
 environment are arbitrary and randomized. This covers native interaction after
 private registration; no service assumption or empty-slot premise is required. -/
-theorem resolvingAcceptanceLaw_read_bound (supported : SealedFragment G ty)
+theorem resolvingAcceptanceLaw_read_bound (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
@@ -271,14 +273,14 @@ theorem resolvingAcceptanceLaw_read_bound (supported : SealedFragment G ty)
     | cons node rest =>
         simp only [ht, List.isEmpty_cons, Bool.not_false, Bool.true_eq_false] at hh
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.resolvingBindingLaw_read_bound' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.resolvingBindingLaw_read_bound' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.resolvingBindingLaw_read_bound
+#print axioms Vegas.EventGraph.SealedShape.resolvingBindingLaw_read_bound
 
-/-- info: 'Vegas.EventGraph.SealedFragment.resolvingAcceptanceLaw_read_bound' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.resolvingAcceptanceLaw_read_bound' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.resolvingAcceptanceLaw_read_bound
+#print axioms Vegas.EventGraph.SealedShape.resolvingAcceptanceLaw_read_bound

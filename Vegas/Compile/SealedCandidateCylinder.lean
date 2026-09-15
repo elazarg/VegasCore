@@ -6,23 +6,23 @@ import Vegas.Compile.SealedCandidateValues
 /-! # Exact assignment cylinders for candidate-host replay
 
 For fixed native responses, a replay prefix is determined exactly by the
-honest choices it prepared. Pending packets, competing focal candidates,
+non-focal reference proposals it prepared. Pending packets, competing focal candidates,
 unopenable acceptances, and post-timeout execution are retained. The assignment
 law may be correlated. These are probability laws for assigned-value replay;
-the original state-dependent source kernels require the source likelihood law.
+original state-dependent legal kernels require a separate source likelihood law.
 -/
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction Interaction.MessageApplication GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
-variable (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat) (focal : Player)
+variable (supported : SealedShape G ty) (nullValue : L.Val ty) (window : Nat) (focal : Player)
 
-/-- Changing only unprepared honest coordinates preserves a supported trace,
+/-- Changing only unprepared non-focal reference coordinates preserves a supported trace,
 with the same arbitrary randomized focal and environment policies. -/
 theorem tracePolicies_candidateValues_transfer
     (deviator : (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
@@ -53,12 +53,13 @@ theorem tracePolicies_candidateValues_transfer
   · subst who
     simpa only [candidateValuePlayers, Profile.update_same] using hcommand
   · rw [candidateValuePlayers, Profile.update_of_ne _ _ hwho] at hcommand ⊢
-    have hright := supported.selected_valuePolicy_congr left right who view.application.timeouts
+    have hright := supported.selected_proposals_congr left right who view.application.timeouts
       (runtime.eventHistory (runtime.registeredPlayerHistory history))
       (runtime.eventView (runtime.registeredPlayerView view)) _ command hcommand
       (fun node heq => hagrees who node (left node) hwho (hrecord _ (by rw [heq]; rfl)))
     change runtime.candidatePlayerPolicy
-      (supported.resolvingPolicy nullValue window who (supported.valuePolicy right who))
+      (supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals right
+        who))
         history view = FinDist.pure command at hright
     rw [hright, FinDist.mem_support_pure]
 
@@ -97,7 +98,7 @@ theorem candidateReplay_prefix_run_support (values : Fin G.nodeCount → L.Val t
     _ _ _ release schedule _ _ hfull
   exact ⟨front, by simpa only [PolicyTrace.prefixThrough_last] using hprefix⟩
 
-/-- Replay records the assigned honest preparation and retains its opening.
+/-- Replay records the assigned reference preparation and retains its opening.
 This is valid even when the selected prefix contains timeout transitions. -/
 theorem candidateReplay_registration_lookup (values : Fin G.nodeCount → L.Val ty)
     (who : Player) (hwho : who ≠ focal) (node : Fin G.nodeCount) (value : L.Val ty)
@@ -117,7 +118,7 @@ theorem candidateReplay_registration_lookup (values : Fin G.nodeCount → L.Val 
       _ _ front _ hprefix who hwho node value hrecord⟩
 
 /-- The complete prefix agrees exactly when the assignments agree on the
-honest preparations recorded by the left run. Focal commands add no draw factors. -/
+non-focal preparations recorded by the left run. Focal commands add no draw factors. -/
 theorem candidateReplay_prefix_eq_iff (left right : Fin G.nodeCount → L.Val ty) :
     (supported.candidateReplay nullValue window left focal
       deviator environment schedule).prefixThrough release =
@@ -153,7 +154,7 @@ theorem candidateReplay_prefix_eq_iff (left right : Fin G.nodeCount → L.Val ty
       _ _ hleft hagrees
     rwa [candidateReplay_law, FinDist.map_pure, FinDist.mem_support_pure] at hright
 
-/-- Equivalently, only the openable honest source slots in the prefix's
+/-- Equivalently, only the openable non-focal graph slots in the prefix's
 catalog constrain the assignment. Extra focal candidates and unopenable
 acceptances are retained by replay but add no source draw constraints. -/
 theorem candidateReplay_prefix_eq_iff_lookup (left right : Fin G.nodeCount → L.Val ty) :
@@ -183,7 +184,7 @@ theorem candidateReplay_prefix_eq_iff_lookup (left right : Fin G.nodeCount → L
     exact (h who node guard hsem hwho (left node) hlookup).symm
 
 /-- For any correlated assignment law, the probability of a complete replay
-prefix is exactly the mass of its honest-preparation cylinder. This statement
+prefix is exactly the mass of its non-focal preparation cylinder. This statement
 does not assume independent source draws or normal completion. -/
 theorem candidateReplay_cylinder_probability
     (assignments : FinDist (Fin G.nodeCount → L.Val ty)) (reference : Fin G.nodeCount → L.Val ty) :
@@ -205,9 +206,9 @@ theorem candidateReplay_cylinder_probability
   exact eq_comm.trans (supported.candidateReplay_prefix_eq_iff nullValue window focal
     deviator environment schedule release reference values)
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.candidateReplay_cylinder_probability' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.candidateReplay_cylinder_probability' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.candidateReplay_cylinder_probability
+#print axioms Vegas.EventGraph.SealedShape.candidateReplay_cylinder_probability

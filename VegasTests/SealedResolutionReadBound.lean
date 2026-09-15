@@ -95,8 +95,8 @@ theorem acceptance_retains_preparation_and_submission :
       [.player 1, .player 1, .environment]).map
         (fun input => (input.1.length, input.2.application.events)) =
       FinDist.pure (2, [.accepted 1 (1, 1)]) := by
-  simp only [SealedFragment.resolvingAcceptanceLaw, tracePolicies, invoke,
-    SealedFragment.resolvingValuePlayers, GameTheory.Profile.update_same,
+  simp only [SealedShape.resolvingAcceptanceLaw, tracePolicies, invoke,
+    SealedShape.resolvingValuePlayers, GameTheory.Profile.update_same,
     prepareThenSubmit, playerStep, environmentPolicyStep, advance, PlayerCommand.toAction,
     EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
     FinDist.map_pure, PolicyExecution.initial, List.isEmpty_nil, List.isEmpty_cons,
@@ -118,11 +118,11 @@ theorem registration_after_pending_delivery :
       principalHistory := fun who => if who = 0 then
         [⟨State.observe app initial.native 0, .privateCommand ⟨(0, some false)⟩⟩] else []
       nativeTrace := [.privateCommand 0 ⟨(0, some false)⟩] }
-  have hfirst : sealedFragment.resolvingPolicy none 3 0
-      (sealedFragment.valuePolicy (fun _ => some false) 0)
+  have hfirst : sealedFragment.resolvingProposalPolicy none 3 0
+      (sealedFragment.assignedProposals (fun _ => some false) 0)
       [] (State.observe app initial.native 0) =
         FinDist.pure (.privateCommand ⟨(0, some false)⟩ : app.PlayerCommand) := by
-    change sealedFragment.commitCommand 0 (sealedFragment.valuePolicy (fun _ => some false) 0)
+    change sealedFragment.commitCommand 0 (sealedFragment.assignedProposals (fun _ => some false) 0)
       (node 0) _ rfl [] _ = _
     unfold SealedShape.commitCommand
     simp only [ChoiceEncoding.cachedValue_nil]
@@ -132,12 +132,12 @@ theorem registration_after_pending_delivery :
     simp only [playerStep, advance, PlayerCommand.toAction, MessageApplication.step,
       FinDist.pure_bind]
     rfl
-  have hsecond : sealedFragment.resolvingPolicy none 3 0
-      (sealedFragment.valuePolicy (fun _ => some false) 0)
+  have hsecond : sealedFragment.resolvingProposalPolicy none 3 0
+      (sealedFragment.assignedProposals (fun _ => some false) 0)
       (registered.principalHistory 0) (State.observe app registered.native 0) =
         FinDist.pure (.submit (.commitment 0 (0, 0)) : app.PlayerCommand) := rfl
-  simp only [SealedFragment.resolvingBindingLaw, tracePolicies, invoke,
-    SealedFragment.resolvingValuePlayers, GameTheory.Profile.update_same,
+  simp only [SealedShape.resolvingBindingLaw, tracePolicies, invoke,
+    SealedShape.resolvingValuePlayers, GameTheory.Profile.update_same,
     GameTheory.Profile.update_of_ne _ _ (show (0 : PendingSource.Player) ≠ 1 by decide)]
   erw [hfirst]
   simp only [FinDist.pure_bind]
@@ -186,8 +186,8 @@ theorem candidate_acceptance_retains_selection :
           input.2.2 10, input.2.2 11)) =
       FinDist.pure (3, [.accepted 1 (1, 11)],
         CommitmentCandidate.openable (some false), CommitmentCandidate.openable (some true)) := by
-  simp only [SealedFragment.candidateAcceptanceLaw, tracePolicies, invoke,
-    SealedFragment.candidateValuePlayers, GameTheory.Profile.update_same,
+  simp only [SealedShape.candidateAcceptanceLaw, tracePolicies, invoke,
+    SealedShape.candidateValuePlayers, GameTheory.Profile.update_same,
     prepareThenSelect, selectCommand, playerStep, environmentPolicyStep, advance,
     PlayerCommand.toAction,
     EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
@@ -208,11 +208,11 @@ theorem candidate_selection_second (values : Fin graph.nodeCount → Value) :
       (fun history view => FinDist.pure (selectCommand history view))
       (fun _ _ => FinDist.pure (.include (1, 0)))
       [.player 1, .player 1, .player 1, .environment]).map
-        (fun input => SealedFragment.selectedCandidate 1 (node 1)
+        (fun input => SealedShape.selectedCandidate 1 (node 1)
           input.2.1.application.events input.2.2) =
       FinDist.pure (some (.openable (some true))) := by
-    simp only [SealedFragment.candidateAcceptanceLaw, tracePolicies, invoke,
-      SealedFragment.candidateValuePlayers, GameTheory.Profile.update_same,
+    simp only [SealedShape.candidateAcceptanceLaw, tracePolicies, invoke,
+      SealedShape.candidateValuePlayers, GameTheory.Profile.update_same,
       selectCommand, playerStep, environmentPolicyStep, advance, PlayerCommand.toAction,
       EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
       FinDist.map_pure, PolicyExecution.initial, List.length_nil, List.length_append,
@@ -233,10 +233,10 @@ theorem candidate_selection_unopenable (values : Fin graph.nodeCount → Value) 
   have hcomputed : (sealedFragment.candidateAcceptanceLaw none 3 values 1 (node 1)
       (fun _ _ => FinDist.pure (.submit (.commitment 1 (1, 23))))
       (fun _ _ => FinDist.pure (.include (1, 0))) [.player 1, .environment]).map
-        (fun input => SealedFragment.selectedCandidate 1 (node 1)
+        (fun input => SealedShape.selectedCandidate 1 (node 1)
           input.2.1.application.events input.2.2) = FinDist.pure (some .unopenable) := by
-    simp only [SealedFragment.candidateAcceptanceLaw, tracePolicies, invoke,
-      SealedFragment.candidateValuePlayers, GameTheory.Profile.update_same,
+    simp only [SealedShape.candidateAcceptanceLaw, tracePolicies, invoke,
+      SealedShape.candidateValuePlayers, GameTheory.Profile.update_same,
       playerStep, environmentPolicyStep, advance, PlayerCommand.toAction,
       EnvironmentPolicyCommand.toAction, MessageApplication.step, FinDist.pure_bind,
       FinDist.map_pure, PolicyExecution.initial]
@@ -315,7 +315,7 @@ theorem candidate_compiled_memory (profile : SourceBehavioralProfile core)
       (Vegas.ToEventGraph.BuildState.fromInitial
         (Vegas.ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx))
       rfl 0 (profile 0)
-    exact sealedFragment.candidatePolicy_memory none 3 0 original _ environment
+    exact sealedFragment.candidatePolicy_memory none 3 0 original.proposals _ environment
       (by rfl) schedule next hnext
   exact hmemory.memory slot
 
@@ -365,7 +365,8 @@ theorem candidate_compiled_acceptance_slot (profile : SourceBehavioralProfile co
     (Vegas.ToEventGraph.BuildState.fromInitial
       (Vegas.ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx))
     rfl 0 (profile 0)
-  have hhandle := sealedFragment.candidatePolicy_accepted_slot none 3 0 original _ environment
+  have hhandle := sealedFragment.candidatePolicy_accepted_slot none 3 0
+    original.proposals _ environment
     (by rfl) schedule next hnext index (0, slot) haccepted rfl
   exact congrArg Prod.snd hhandle
 

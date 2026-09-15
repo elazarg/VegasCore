@@ -21,6 +21,50 @@ the whole-program pending-message deviation law.
 
 noncomputable section
 
+namespace Vegas.EventGraph
+
+/-- A local proposal kernel may return values rejected by the graph guard.
+It describes native preparations, not legal graph actions. -/
+@[reducible] def ProposalPolicy {Player : Type} [DecidableEq Player] {L : IExpr}
+    (G : Graph Player L) (who : Player) :=
+  ∀ (node : Fin G.nodeCount) (guard : EventGuard L),
+    (G.nodeRow node).sem = .commit who guard →
+      ReadEnv L guard.choiceReads →
+        GameTheory.Math.Probability.FinDist (L.Val guard.ty)
+
+/-- Forget the legality evidence when implementing a legal graph policy.
+The native command generator is also used with unrestricted proposal kernels. -/
+def CommitPolicy.proposals {Player : Type} [DecidableEq Player] {L : IExpr}
+    {G : Graph Player L} {who : Player} (policy : CommitPolicy G who) :
+    ProposalPolicy G who :=
+  fun node guard hsem reads => (policy node guard hsem reads).map Subtype.val
+
+/-- The native projection preserves every legal choice mass and gives each
+guard-invalid proposal zero mass. This is a probability statement, not a
+replacement of invalid native traffic by a legal value. -/
+theorem CommitPolicy.proposals_prob {Player : Type} [DecidableEq Player] {L : IExpr}
+    {G : Graph Player L} {who : Player} (policy : CommitPolicy G who)
+    (node : Fin G.nodeCount) (guard : EventGuard L)
+    (hsem : (G.nodeRow node).sem = .commit who guard)
+    (reads : ReadEnv L guard.choiceReads) (value : L.Val guard.ty) :
+    (policy.proposals node guard hsem reads).prob value =
+      if h : guard.eval value reads = true then
+        (policy node guard hsem reads).prob ⟨value, h⟩ else 0 := by
+  classical
+  unfold CommitPolicy.proposals
+  split
+  · rename_i hvalid
+    exact GameTheory.Math.Probability.FinDist.prob_map_of_injective
+      Subtype.val Subtype.val_injective (policy node guard hsem reads) ⟨value, hvalid⟩
+  · rename_i hinvalid
+    apply GameTheory.Math.Probability.FinDist.prob_eq_zero_iff.mpr
+    intro hsupport
+    rw [GameTheory.Math.Probability.FinDist.support_map] at hsupport
+    obtain ⟨choice, _, rfl⟩ := hsupport
+    exact hinvalid choice.property
+
+end Vegas.EventGraph
+
 namespace Vegas.EventGraph.SealedShape
 
 open Interaction GameTheory.Math.Probability
@@ -41,7 +85,7 @@ def playerStore (supported : SealedShape G ty) (who : Player)
 slot only publishes its handle. Runtime-specific store reconstruction is kept
 separate from this shared command generation. -/
 def commitCommand (supported : SealedShape G ty) (who : Player)
-    (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
+    (policy : ProposalPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (store : Store L) :
@@ -54,13 +98,13 @@ def commitCommand (supported : SealedShape G ty) (who : Player)
       | none => FinDist.pure .wait
       | some reads => (policy node guard hsem reads).map fun choice =>
           .privateCommand ⟨(node.val,
-            cast (congrArg L.Val (supported.commitType node who guard hsem)) choice.1)⟩
+            cast (congrArg L.Val (supported.commitType node who guard hsem)) choice)⟩
 
 /-- The optional command of one owned ready node. Publicly resolved nodes are
 skipped and discharged from prerequisites. Prerequisites are checked before
 publication, including before a value-bearing opening enters the pool. -/
 def nodeCommand? (supported : SealedShape G ty) (who : Player) (completed : List Nat)
-    (policy : CommitPolicy G who)
+    (policy : ProposalPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
     (store : Store L)
@@ -85,20 +129,26 @@ def nodeCommand? (supported : SealedShape G ty) (who : Player) (completed : List
     | .sample _ => none
   else none
 
-/-- Playerwise implementation of graph kernels on the actual message runtime. -/
-def playerPolicy (supported : SealedShape G ty) (who : Player)
-    (policy : CommitPolicy G who) :
+/-- Implement a proposal kernel using the shared sample-once message code. -/
+def proposalPlayerPolicy (supported : SealedShape G ty) (who : Player)
+    (policy : ProposalPolicy G who) :
     (supported.compile.messageApplication (Value := L.Val ty)).PlayerPolicy :=
   fun history view =>
     ((G.nodeOrder.findSome? (supported.nodeCommand? who [] policy history view
       (supported.playerStore who history view))).getD
       (FinDist.pure .wait))
 
+/-- Playerwise implementation of legal graph kernels on the actual runtime. -/
+def playerPolicy (supported : SealedShape G ty) (who : Player)
+    (policy : CommitPolicy G who) :
+    (supported.compile.messageApplication (Value := L.Val ty)).PlayerPolicy :=
+  supported.proposalPlayerPolicy who policy.proposals
+
 /-- Whether a node is selected is determined by the public readiness and
 ownership checks. Private history and the choice kernel cannot change it. -/
 theorem nodeCommand?_none_iff (supported : SealedShape G ty) (who : Player)
     (completed : List Nat)
-    (left right : CommitPolicy G who)
+    (left right : ProposalPolicy G who)
     (leftHistory rightHistory :
       List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
@@ -117,7 +167,7 @@ theorem nodeCommand?_none_iff (supported : SealedShape G ty) (who : Player)
   · rfl
 
 private theorem nodeCommand?_registration_kernel (supported : SealedShape G ty)
-    (who : Player) (completed : List Nat) (original : CommitPolicy G who)
+    (who : Player) (completed : List Nat) (original : ProposalPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
     (store : Store L) (node : Fin G.nodeCount)
@@ -131,11 +181,11 @@ private theorem nodeCommand?_registration_kernel (supported : SealedShape G ty)
       (supported.compile.registrationEncoding node.val).cachedValue
         (supported.compile.messageApplication (Value := L.Val ty)) history = none ∧
       ReadEnv.ofStoreExec? store guard.choiceReads = some reads ∧
-      ∀ policy : CommitPolicy G who,
+      ∀ policy : ProposalPolicy G who,
         supported.nodeCommand? who completed policy history view store node =
           some ((policy node guard hsem reads).map (fun choice =>
             .privateCommand ⟨(node.val,
-              cast (congrArg L.Val (supported.commitType node who guard hsem)) choice.1)⟩)) := by
+              cast (congrArg L.Val (supported.commitType node who guard hsem)) choice)⟩)) := by
   unfold nodeCommand? at hselected
   split at hselected
   · contradiction
@@ -187,10 +237,10 @@ private theorem nodeCommand?_registration_kernel (supported : SealedShape G ty)
   · contradiction
 
 /-- An actual private registration identifies the selected commitment, fresh
-cache, and successful declared reads. Replacing its source policy changes only
+cache, and successful declared reads. Replacing its proposal kernel changes only
 the draw kernel, not the selected site or its input. -/
 theorem selected_registration_kernel (supported : SealedShape G ty)
-    (who : Player) (completed : List Nat) (original : CommitPolicy G who)
+    (who : Player) (completed : List Nat) (original : ProposalPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
     (store : Store L) (slot : Nat) (value : L.Val ty)
@@ -203,12 +253,12 @@ theorem selected_registration_kernel (supported : SealedShape G ty)
       (supported.compile.registrationEncoding node.val).cachedValue
         (supported.compile.messageApplication (Value := L.Val ty)) history = none ∧
       ReadEnv.ofStoreExec? store guard.choiceReads = some reads ∧
-      ∀ policy : CommitPolicy G who,
+      ∀ policy : ProposalPolicy G who,
         (G.nodeOrder.findSome? (supported.nodeCommand? who completed policy
           history view store)).getD (FinDist.pure .wait) =
           (policy node guard hsem reads).map (fun choice =>
             .privateCommand ⟨(node.val,
-              cast (congrArg L.Val (supported.commitType node who guard hsem)) choice.1)⟩) := by
+              cast (congrArg L.Val (supported.commitType node who guard hsem)) choice)⟩) := by
   cases hselected : G.nodeOrder.findSome?
       (supported.nodeCommand? who completed original history view store) with
   | none =>
@@ -230,7 +280,7 @@ theorem selected_registration_kernel (supported : SealedShape G ty)
       rw [hright, Option.getD_some]
 
 private theorem commitCommand_nonregistration_law (supported : SealedShape G ty)
-    (who : Player) (original replacement : CommitPolicy G who)
+    (who : Player) (original replacement : ProposalPolicy G who)
     (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
@@ -251,7 +301,7 @@ private theorem commitCommand_nonregistration_law (supported : SealedShape G ty)
       exact False.elim (hnonregistration _ heq.symm)
 
 private theorem nodeCommand?_nonregistration_law (supported : SealedShape G ty)
-    (who : Player) (completed : List Nat) (original replacement : CommitPolicy G who)
+    (who : Player) (completed : List Nat) (original replacement : ProposalPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
     (store : Store L) (node : Fin G.nodeCount)
@@ -294,7 +344,7 @@ private theorem nodeCommand?_nonregistration_law (supported : SealedShape G ty)
 and independent of the source decision kernel. This includes cached commitment
 submissions, openings, and waits, both before and after timeout. -/
 theorem selected_nonregistration_law (supported : SealedShape G ty)
-    (who : Player) (completed : List Nat) (original replacement : CommitPolicy G who)
+    (who : Player) (completed : List Nat) (original replacement : ProposalPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
     (store : Store L)
@@ -331,7 +381,7 @@ theorem selected_nonregistration_law (supported : SealedShape G ty)
       rw [hright, Option.getD_some]
 
 theorem commitCommand_cached (supported : SealedShape G ty) (who : Player)
-    (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
+    (policy : ProposalPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (store : Store L) (value : L.Val ty)
@@ -357,7 +407,7 @@ theorem commitCommand_fresh (supported : SealedShape G ty) (who : Player)
     (hcache : (supported.compile.registrationEncoding node.val).cachedValue
       (supported.compile.messageApplication (Value := L.Val ty))
       (execution.principalHistory who) = none) :
-    supported.commitCommand who policy node guard hsem (execution.principalHistory who)
+    supported.commitCommand who policy.proposals node guard hsem (execution.principalHistory who)
       (supported.playerStore who (execution.principalHistory who)
         (MessageApplication.State.observe _ execution.native who)) =
       (policy node guard hsem reads).map (fun choice =>
@@ -371,10 +421,11 @@ theorem commitCommand_fresh (supported : SealedShape G ty) (who : Player)
     ReadEnv.ofStoreExec?_eq_some_of_ofStore?_eq_some
       (supported.sealedPlayerStore_reads who execution hmemory hbinding cfg hdecode
         node guard hsem reads hreads)
-  simp only [commitCommand, hcache, hlocal]
+  simp only [commitCommand, hcache, hlocal, CommitPolicy.proposals, FinDist.map_comp,
+    Function.comp_def]
 
 theorem commitCommand_submission (supported : SealedShape G ty) (who : Player)
-    (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
+    (policy : ProposalPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (store : Store L)
@@ -399,7 +450,7 @@ theorem commitCommand_submission (supported : SealedShape G ty) (who : Player)
 
 theorem nodeCommand?_submission (supported : SealedShape G ty) (who : Player)
     (completed : List Nat)
-    (policy : CommitPolicy G who)
+    (policy : ProposalPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
     (store : Store L)
@@ -453,8 +504,9 @@ theorem playerPolicy_submission (supported : SealedShape G ty) (who : Player)
     (∃ node, payload = .commitment node (who, node)) ∨
       ∃ node handle value, payload = .opening node handle value ∧
         supported.compile.openingHandle? view.application who node = some handle := by
-  unfold playerPolicy at hsubmit
-  cases hselected : G.nodeOrder.findSome? (supported.nodeCommand? who [] policy history view
+  unfold playerPolicy proposalPlayerPolicy at hsubmit
+  cases hselected : G.nodeOrder.findSome?
+      (supported.nodeCommand? who [] policy.proposals history view
       (supported.playerStore who history view)) with
   | none =>
       simp only [hselected, Option.getD_none, FinDist.mem_support_pure] at hsubmit
@@ -462,7 +514,7 @@ theorem playerPolicy_submission (supported : SealedShape G ty) (who : Player)
   | some law =>
       simp only [hselected, Option.getD_some] at hsubmit
       obtain ⟨node, _, hnode⟩ := List.exists_of_findSome?_eq_some hselected
-      rcases supported.nodeCommand?_submission who [] policy history view
+      rcases supported.nodeCommand?_submission who [] policy.proposals history view
         (supported.playerStore who history view) node law hnode
         payload hsubmit with ⟨hcommit, _⟩ | ⟨handle, value, hopen, hready⟩
       · exact Or.inl ⟨node.val, hcommit⟩
@@ -517,3 +569,8 @@ end Vegas.SealedCompilation
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraph.SealedShape.commitCommand_fresh
+
+/-- info: 'Vegas.EventGraph.CommitPolicy.proposals_prob' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraph.CommitPolicy.proposals_prob

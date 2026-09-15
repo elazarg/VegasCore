@@ -4,9 +4,9 @@ import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedPolicyKnowledge
 import Interaction.SealedResolutionCoupling
 
-/-! # Compiled command agreement before a focal binding
+/-! # Assigned command agreement before a focal binding
 
-The command proof uses the continuing runtime's actual histories and views.
+The reference-command proof uses the continuing runtime's actual histories and views.
 Known-value cache agreement follows from paired histories, so no separate
 assumption that a local cache matches the ideal service is needed here.
 The source-order publication argument still needs a valid sealed event prefix
@@ -15,14 +15,14 @@ and the absence of earlier timeout resolution.
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
-theorem resolvingPolicy_knowledge (supported : SealedFragment G ty)
+theorem resolvingPolicy_knowledge (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (known : CommitmentHandle Player Nat → Prop) (who : Player)
     (leftValues rightValues : Fin G.nodeCount → L.Val ty)
@@ -35,10 +35,12 @@ theorem resolvingPolicy_knowledge (supported : SealedFragment G ty)
       supported.compile.openingHandle? left.native.application.visible.events who node.val =
         some handle → known handle) :
     ∃ leftCommand rightCommand,
-      supported.resolvingPolicy nullValue window who (supported.valuePolicy leftValues who)
+      supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+        leftValues who)
           (left.principalHistory who)
           (MessageApplication.State.observe _ left.native who) = FinDist.pure leftCommand ∧
-      supported.resolvingPolicy nullValue window who (supported.valuePolicy rightValues who)
+      supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+        rightValues who)
           (right.principalHistory who)
           (MessageApplication.State.observe _ right.native who) = FinDist.pure rightCommand ∧
       SealedProgram.CommandAgreement supported.compile known who leftCommand rightCommand := by
@@ -46,8 +48,8 @@ theorem resolvingPolicy_knowledge (supported : SealedFragment G ty)
   have hrightClear : right.native.application.visible.timeouts = [] := by
     rw [← related.native.publicState]
     exact hclear
-  rw [supported.resolvingPolicy_no_timeout nullValue window who _ _ _ hclear,
-    supported.resolvingPolicy_no_timeout nullValue window who _ _ _ hrightClear]
+  rw [supported.resolvingProposalPolicy_no_timeout nullValue window who _ _ _ hclear,
+    supported.resolvingProposalPolicy_no_timeout nullValue window who _ _ _ hrightClear]
   rw [← related.native.observe_eq who]
   apply supported.playerPolicy_knowledge known who leftValues rightValues
     (runtime.eventHistory (left.principalHistory who))
@@ -63,7 +65,7 @@ theorem resolvingPolicy_knowledge (supported : SealedFragment G ty)
 compiled policies meet the native lockstep theorem's command and opening
 premises. The focal slot may already be registered. The assignment may differ
 at every source-future hidden value. -/
-theorem resolvingPolicy_before_focal (supported : SealedFragment G ty)
+theorem resolvingPolicy_before_focal (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (focal who : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
@@ -76,10 +78,12 @@ theorem resolvingPolicy_before_focal (supported : SealedFragment G ty)
     (hvalues : ∀ node, supported.knownBefore focal decision (who, node.val) →
       leftValues node = rightValues node) :
     ∃ leftCommand rightCommand,
-      supported.resolvingPolicy nullValue window who (supported.valuePolicy leftValues who)
+      supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+        leftValues who)
           (left.principalHistory who)
           (MessageApplication.State.observe _ left.native who) = FinDist.pure leftCommand ∧
-      supported.resolvingPolicy nullValue window who (supported.valuePolicy rightValues who)
+      supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+        rightValues who)
           (right.principalHistory who)
           (MessageApplication.State.observe _ right.native who) = FinDist.pure rightCommand ∧
       SealedProgram.CommandAgreement supported.compile (supported.knownBefore focal decision)
@@ -99,11 +103,13 @@ theorem resolvingPolicy_before_focal (supported : SealedFragment G ty)
   refine ⟨lc, rc, hl, hr, hc, ?_⟩
   intro payload hp
   have hsubmit : .submit payload ∈
-      (supported.resolvingPolicy nullValue window who (supported.valuePolicy leftValues who)
+      (supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+        leftValues who)
         (left.principalHistory who)
         (MessageApplication.State.observe _ left.native who)).support := by
     rw [hl, hp, FinDist.mem_support_pure]
-  rcases supported.resolvingPolicy_submission nullValue window who _ _ _ payload hsubmit with
+  rcases supported.resolvingProposalPolicy_submission nullValue window who _ _ _ payload hsubmit
+    with
     ⟨node, rfl, _⟩ | ⟨node, handle, value, rfl, hhandle⟩
   · trivial
   · simp only [MessageApplication.State.observe, SealedResolution.messageApplication,
@@ -112,9 +118,9 @@ theorem resolvingPolicy_before_focal (supported : SealedFragment G ty)
     exact supported.openingHandle?_knownBefore focal decision guard hdecision _
       hnotDone who node handle hhandle
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.resolvingPolicy_before_focal' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.resolvingPolicy_before_focal' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.resolvingPolicy_before_focal
+#print axioms Vegas.EventGraph.SealedShape.resolvingPolicy_before_focal

@@ -158,10 +158,10 @@ private def delivered (value : Value) : app.PolicyExecution :=
     nativeTrace := (opened value).nativeTrace ++ [.deliver 1 (0, 1)] }
 
 private theorem first_policy (values : Fin graph.nodeCount → Value) :
-    supported.resolvingPolicy none 3 0 (supported.valuePolicy values 0)
+    supported.resolvingProposalPolicy none 3 0 (supported.assignedProposals values 0)
       [] (State.observe app initial.native 0) =
         FinDist.pure (.privateCommand ⟨(0, values (node 0))⟩ : app.PlayerCommand) := by
-  change supported.commitCommand 0 (supported.valuePolicy values 0)
+  change supported.commitCommand 0 (supported.assignedProposals values 0)
     (node 0) _ rfl [] _ = _
   unfold SealedShape.commitCommand
   simp only [ChoiceEncoding.cachedValue_nil]
@@ -175,7 +175,7 @@ private theorem register_step (value : Value) :
   rfl
 
 private theorem second_policy (value : Value) :
-    supported.resolvingPolicy none 3 0 (supported.valuePolicy (fun _ => value) 0)
+    supported.resolvingProposalPolicy none 3 0 (supported.assignedProposals (fun _ => value) 0)
       ((registered value).principalHistory 0) (State.observe app (registered value).native 0) =
         FinDist.pure (.submit (.commitment 0 (0, 0)) : app.PlayerCommand) := rfl
 
@@ -194,7 +194,7 @@ private theorem include_step (value : Value) :
   rfl
 
 private theorem third_policy (value : Value) :
-    supported.resolvingPolicy none 3 0 (supported.valuePolicy (fun _ => value) 0)
+    supported.resolvingProposalPolicy none 3 0 (supported.assignedProposals (fun _ => value) 0)
       ((included value).principalHistory 0) (State.observe app (included value).native 0) =
         FinDist.pure (.submit (.opening 1 (0, 0) value) : app.PlayerCommand) := rfl
 
@@ -221,8 +221,8 @@ theorem pending_copy_law (value : Value) :
       (fun history view => FinDist.pure (deviator history view))
       (fun history view => FinDist.pure (environment history view)) schedule =
         FinDist.pure (some value) := by
-  simp only [SealedFragment.resolvingBindingLaw, schedule, tracePolicies, invoke,
-    SealedFragment.resolvingValuePlayers, GameTheory.Profile.update_same,
+  simp only [SealedShape.resolvingBindingLaw, schedule, tracePolicies, invoke,
+    SealedShape.resolvingValuePlayers, GameTheory.Profile.update_same,
     GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)]
   erw [first_policy (fun _ => value)]
   simp only [FinDist.pure_bind]
@@ -320,7 +320,7 @@ private theorem first_replay (values : Fin graph.nodeCount → Value) :
     supported.resolvingReplay none 3 values 1 deviator environment [.player 0] =
       .step initial (.finish (registered (values (node 0)))) := by
   have hlaw := supported.resolvingReplay_law none 3 values 1 deviator environment [.player 0]
-  simp only [tracePolicies, invoke, SealedFragment.resolvingValuePlayers,
+  simp only [tracePolicies, invoke, SealedShape.resolvingValuePlayers,
     GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)] at hlaw
   erw [first_policy values] at hlaw
   simp only [FinDist.pure_bind] at hlaw
@@ -356,7 +356,7 @@ theorem initial_registration_kernel (values : Fin graph.nodeCount → Value)
       (supported.resolvingValuePlayers none 3 values 1
         (fun history view => FinDist.pure (deviator history view)) 0
         [] (State.observe app initial.native 0)).support := by
-    rw [SealedFragment.resolvingValuePlayers,
+    rw [SealedShape.resolvingValuePlayers,
       GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)]
     rw [first_policy, FinDist.mem_support_pure]
   obtain ⟨decision, guard, hsem, input, hindex, _, hreads, hlaw⟩ :=
@@ -377,7 +377,8 @@ theorem zero_probability_assignment (fallback : Value) :
   · exact compilation.assignmentRealization_honest none 3 1 deviator environment [.player 0]
       fallback (fun _ => none) 0 (by decide) (node 0) _ rfl
   · simp only [SealedCompilation.compileResolvingPolicy, SealedCompilation.valueSourceProfile,
-      compile_backtranslateCommitPolicy]
+      compile_backtranslateCommitPolicy, SealedShape.resolvingPolicy,
+      SealedFragment.assignedCommitPolicy_proposals]
     rw [first_policy, FinDist.mem_support_pure]
     intro heq
     cases heq
@@ -489,7 +490,7 @@ theorem initial_source_probability (profile : SourceBehavioralProfile core)
       (supported.resolvingValuePlayers none 3 (fun _ => reference) 1
         (fun history view => FinDist.pure (deviator history view)) 0
         [] (State.observe app initial.native 0)).support := by
-    rw [SealedFragment.resolvingValuePlayers,
+    rw [SealedShape.resolvingValuePlayers,
       GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)]
     rw [first_policy, FinDist.mem_support_pure]
   obtain ⟨final, _, Δ, name, choiceTy, guard, site, hdepth, hprob⟩ :=
@@ -519,7 +520,7 @@ theorem first_registration_factors (profile : SourceBehavioralProfile core) (val
       (supported.resolvingValuePlayers none 3 (fun _ => value) 1
         (fun history view => FinDist.pure (deviator history view)) 0
         [] (State.observe app initial.native 0)).support := by
-    rw [SealedFragment.resolvingValuePlayers,
+    rw [SealedShape.resolvingValuePlayers,
       GameTheory.Profile.update_of_ne _ _ (show (0 : Player) ≠ 1 by decide)]
     rw [first_policy, FinDist.mem_support_pure]
   unfold SealedCompilation.replayRegistrationFactor

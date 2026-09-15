@@ -56,7 +56,7 @@ a program's incentives remain open. Ordinary source quit dominance does not
 suffice for that premise.
 
 The resolving message runtime has a checked whole-prefix registration read
-bound, `SealedFragment.resolvingBindingLaw_read_bound`. It executes compiled
+bound, `SealedShape.resolvingBindingLaw_read_bound`. It executes compiled
 opponents with assigned source values against an arbitrary randomized native
 deviator and full-pool environment. The focal registration law, stopped at the
 first timeout, is unchanged when assigned honest values differ only at handles

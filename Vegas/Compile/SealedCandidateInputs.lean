@@ -19,25 +19,25 @@ replays. Identifying their joint probability law is a separate step.
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction Interaction.MessageApplication GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
-variable (supported : SealedFragment G ty)
+variable (supported : SealedShape G ty)
 
 /-- A generated player's cache remains exact under arbitrary opponent and
 environment policies. Its preparation discipline follows from the generated
 command selector and is imposed on no other player. -/
 theorem candidatePolicy_memory (nullValue : L.Val ty) (window : Nat) (who : Player)
-    (policy : CommitPolicy G who)
+    (policy : ProposalPolicy G who)
     (players : Player →
       (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
     (environment : MessageApplication.EnvironmentPolicy
       (supported.resolvingRuntime nullValue window).candidateApplication)
     (hplayer : players who = (supported.resolvingRuntime nullValue window).candidatePlayerPolicy
-      (supported.resolvingPolicy nullValue window who policy))
+      (supported.resolvingProposalPolicy nullValue window who policy))
     (schedule : List (@Invocation Player))
     (execution : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution)
     (hactual : execution ∈
@@ -51,7 +51,7 @@ theorem candidatePolicy_memory (nullValue : L.Val ty) (window : Nat) (who : Play
     schedule execution hactual
   intro current payload hcurrent hsubmit site handle hpacket
   rw [hplayer] at hsubmit
-  rcases supported.resolvingPolicy_submission nullValue window who policy
+  rcases supported.resolvingProposalPolicy_submission nullValue window who policy
       (runtime.registeredPlayerHistory (current.principalHistory who))
       (runtime.registeredPlayerView (State.observe _ current.native who)) payload hsubmit with
     ⟨node, hcommit, hcache⟩ | ⟨node, openingHandle, value, hopening, _hready⟩
@@ -64,6 +64,15 @@ theorem candidatePolicy_memory (nullValue : L.Val ty) (window : Nat) (who : Play
   · rw [hpacket] at hopening
     contradiction
 
+end Vegas.EventGraph.SealedShape
+
+namespace Vegas.EventGraph.SealedFragment
+
+open Interaction Interaction.MessageApplication GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
+variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+variable (supported : SealedFragment G ty)
 variable (cfg : ReachableConfig G) (hterminal : Terminal G cfg.1)
 variable (nullValue : L.Val ty) (window : Nat)
 
@@ -94,11 +103,22 @@ theorem candidate_opened_graph_value
       Option.getD_some, cast_eq]
   rw [supported.terminal_reveal_store cfg hterminal nullValue node producer hsem, hsource]
 
-/-- A generated preparation in an actual candidate-host execution fills a
-fresh catalog slot and uses the original source kernel at its exact declared
-source reads. Cache agreement is derived from the generated policy. The
-remaining premises concern the player's own accepted values and actual public
-openings. An adversarial candidate may have an invalid hidden value without
+end Vegas.EventGraph.SealedFragment
+
+namespace Vegas.EventGraph.SealedShape
+
+open Interaction Interaction.MessageApplication GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
+variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+variable (supported : SealedShape G ty) (cfg : ReachableConfig G)
+variable (nullValue : L.Val ty) (window : Nat)
+
+/-- A generated preparation fills a fresh catalog slot. Replacing its proposal
+kernel by a legal graph policy uses that policy at its exact declared reads.
+Cache agreement follows from the proposal generator. The remaining premises
+concern the player's own accepted values and actual public openings. An
+adversarial candidate may have an invalid hidden value without
 being identified with a legal graph commitment. -/
 theorem candidate_registration_kernel
     (players : Player →
@@ -112,9 +132,9 @@ theorem candidate_registration_kernel
         players environment schedule (PolicyExecution.initial _ (State.initial _
           (supported.resolvingRuntime nullValue window).candidateInitial))).support)
     (hclear : execution.native.application.visible.timeouts = [])
-    (who : Player) (original replacement : CommitPolicy G who)
+    (who : Player) (original : ProposalPolicy G who) (replacement : CommitPolicy G who)
     (hplayer : players who = (supported.resolvingRuntime nullValue window).candidatePlayerPolicy
-      (supported.resolvingPolicy nullValue window who original))
+      (supported.resolvingProposalPolicy nullValue window who original))
     (haccepted : ∀ index handle value,
       SealedProgram.Event.accepted index handle ∈ execution.native.application.visible.events →
       handle.1 = who →
@@ -126,7 +146,7 @@ theorem candidate_registration_kernel
     (slot : Nat) (value : L.Val ty)
     (hcommand : .privateCommand ⟨(slot, value)⟩ ∈
       ((supported.resolvingRuntime nullValue window).candidatePlayerPolicy
-        (supported.resolvingPolicy nullValue window who original)
+        (supported.resolvingProposalPolicy nullValue window who original)
         (execution.principalHistory who) (State.observe _ execution.native who)).support) :
     ∃ (node : Fin G.nodeCount) (guard : EventGuard L)
       (hsem : (G.nodeRow node).sem = .commit who guard) (reads : ReadEnv L guard.choiceReads),
@@ -141,7 +161,7 @@ theorem candidate_registration_kernel
             cast (congrArg L.Val (supported.commitType node who guard hsem)) choice.1)⟩) := by
   let runtime := supported.resolvingRuntime nullValue window
   rw [SealedResolution.candidatePlayerPolicy,
-    supported.resolvingPolicy_no_timeout _ _ _ _ _ _ hclear] at hcommand
+    supported.resolvingProposalPolicy_no_timeout _ _ _ _ _ _ hclear] at hcommand
   obtain ⟨node, guard, hsem, reads, hslot, hcache, hreads, hkernel⟩ :=
     supported.selected_registration_kernel who [] original _ _ _ slot value hcommand
   have hprepared := supported.candidatePolicy_memory nullValue window who original players
@@ -163,11 +183,13 @@ theorem candidate_registration_kernel
     exact haccepted index handle stored hmem howner hlookup
   · rw [SealedResolution.candidatePlayerPolicy,
       supported.resolvingPolicy_no_timeout _ _ _ _ _ _ hclear]
-    exact hkernel replacement
+    simpa only [SealedShape.playerPolicy, SealedShape.proposalPlayerPolicy,
+      CommitPolicy.proposals, FinDist.map_comp, Function.comp_def] using hkernel
+        replacement.proposals
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.candidate_registration_kernel' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.candidate_registration_kernel' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.candidate_registration_kernel
+#print axioms Vegas.EventGraph.SealedShape.candidate_registration_kernel

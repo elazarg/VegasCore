@@ -187,7 +187,7 @@ theorem extractedStoppingRoundSourceCoupling_locked
     exact hlookupActual
   apply compilation.extractedSourceRun_locked nullValue window focal deviator environment
     schedule fallback profile cfg hsource decision guard hdecision value
-  simpa only [replayStopped, EventGraph.SealedFragment.resolvingStop,
+  simpa only [replayStopped, EventGraph.SealedShape.resolvingStop,
     PolicyTrace.prefixThrough_last] using hlookupReplay
 
 /-- A randomized focal replacement and wire policy admit a source coupling

@@ -5,28 +5,29 @@ import Interaction.SealedResolutionProvenance
 
 /-! # All-assigned sealed-resolution replay cylinders
 
-Every principal uses the resolving policy with its source commitment values
-fixed by one graph assignment.  The resulting deterministic trace supports a
-focal-free cylinder characterization for honest source execution.
+Every principal uses the resolving command generator with raw commitment values
+fixed by one graph assignment. The resulting deterministic trace supports a
+focal-free cylinder characterization for an all-assigned reference execution.
 -/
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction Interaction.MessageApplication GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
-/-- Resolve every player's source choices from the same graph assignment. -/
-def resolvingAssignedPlayers (supported : SealedFragment G ty)
+/-- Resolve every player's reference proposals from the same graph assignment. -/
+def resolvingAssignedPlayers (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (values : Fin G.nodeCount → L.Val ty) :
     Player → (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy :=
-  fun who => supported.resolvingPolicy nullValue window who (supported.valuePolicy values who)
+  fun who => supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+    values who)
 
-variable (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
+variable (supported : SealedShape G ty) (nullValue : L.Val ty) (window : Nat)
 
 private theorem resolvingAssignedReplay_exists
     (values : Fin G.nodeCount → L.Val ty)
@@ -43,7 +44,7 @@ private theorem resolvingAssignedReplay_exists
   apply MessageApplication.tracePolicies_pure _ _ _ ?_
     (fun _ _ => ⟨_, rfl⟩) (fun _ _ => ⟨_, rfl⟩)
   intro who history view
-  exact supported.resolvingPolicy_valuePolicy_pure nullValue window values who history view
+  exact supported.resolvingProposalPolicy_assigned_pure nullValue window values who history view
 
 /-- The unique full trace of an all-assigned resolving execution with one
 fixed environment response. -/
@@ -101,17 +102,20 @@ private theorem tracePolicies_resolvingAssigned_transfer
     initial trace htrace
   intro owner history view command hcommand hrecord
   change command ∈
-    (supported.resolvingPolicy nullValue window owner (supported.valuePolicy left owner)
+    (supported.resolvingProposalPolicy nullValue window owner (supported.assignedProposals left
+      owner)
       history view).support at hcommand
-  have hright := supported.selected_valuePolicy_congr left right owner view.application.timeouts
+  have hright := supported.selected_proposals_congr left right owner view.application.timeouts
     ((supported.resolvingRuntime nullValue window).eventHistory history)
     ((supported.resolvingRuntime nullValue window).eventView view)
     _ command hcommand (fun node heq =>
       hagrees owner node (left node) (hrecord _ (by rw [heq]; rfl)))
-  change supported.resolvingPolicy nullValue window owner (supported.valuePolicy right owner)
+  change supported.resolvingProposalPolicy nullValue window owner (supported.assignedProposals
+    right owner)
     history view = FinDist.pure command at hright
   change command ∈
-    (supported.resolvingPolicy nullValue window owner (supported.valuePolicy right owner)
+    (supported.resolvingProposalPolicy nullValue window owner (supported.assignedProposals right
+      owner)
       history view).support
   rw [hright, FinDist.mem_support_pure]
 
@@ -148,10 +152,10 @@ theorem runPolicies_resolvingAssigned_registration
               MessageInterface.Action.privateCommand.injEq] at ha
             obtain ⟨rfl, rfl⟩ := ha
             change .privateCommand ⟨(index.val, registered)⟩ ∈
-              (supported.resolvingPolicy nullValue window actor
-                (supported.valuePolicy values actor) history view).support at hcommand
+              (supported.resolvingProposalPolicy nullValue window actor
+                (supported.assignedProposals values actor) history view).support at hcommand
             obtain ⟨actual, hindex, hvalue, guard, hsem⟩ :=
-              supported.selected_valuePolicy_registration values actor view.application.timeouts
+              supported.selected_proposals_registration values actor view.application.timeouts
                 ((supported.resolvingRuntime nullValue window).eventHistory history)
                 ((supported.resolvingRuntime nullValue window).eventView view)
                 _ index.val registered hcommand
@@ -358,9 +362,9 @@ theorem resolvingAssignedReplay_cylinder_probability
   exact eq_comm.trans (supported.resolvingAssignedReplay_prefix_eq_iff_lookup nullValue window
     environment schedule release reference values)
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.resolvingAssignedReplay_prefix_eq_iff_lookup'
+/-- info: 'Vegas.EventGraph.SealedShape.resolvingAssignedReplay_prefix_eq_iff_lookup'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.resolvingAssignedReplay_prefix_eq_iff_lookup
+#print axioms Vegas.EventGraph.SealedShape.resolvingAssignedReplay_prefix_eq_iff_lookup

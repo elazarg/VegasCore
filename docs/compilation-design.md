@@ -166,8 +166,8 @@ with a proof of the source continuation used on failure.
 well-formedness, a common node type, no samples, and disclosures of commitment
 producers. Rule generation, local observation reconstruction, and playerwise
 strategy translation consume this certificate and permit arbitrary guards.
-`SealedFragment` adds universally accepting guards for the replay and strategic
-theorems. These are two certificates for the same generated code, not separate
+`SealedFragment` adds universally accepting guards for the graph restrictions,
+extraction and strategic probability theorems. These are two certificates for the same generated code, not separate
 runtime models or compiler implementations.
 
 `EventGuard.validationReads` separates the guard expression's stored
@@ -247,8 +247,40 @@ The guarded probability argument has a separate zero-likelihood case: a raw
 candidate assignment may request an illegal value from an honest graph policy.
 Such an assignment has zero mass at those reads. Replacing it with the default
 inside native replay would change the observed traffic and the event whose
-probability is being computed. Legality adjustment belongs to graph extraction;
-the reference replay must keep raw preparation values and histories unchanged.
+probability is being computed. Legality adjustment belongs to graph extraction.
+
+`ProposalPolicy` supplies raw values to the shared native command generator;
+`CommitPolicy.proposals` projects legal graph choices into that interface.
+Its checked probability law retains legal masses and gives invalid proposals
+zero mass. `SealedShape.assignedProposals` fixes raw reference values without
+checking guards or substituting defaults. The registration, replay-cylinder
+and pre-acceptance privacy proofs use this interface and no universally
+accepting guard certificate. Legal graph assignment is separately represented
+by `SealedFragment.assignedCommitPolicy`.
+
+These reference replay laws still concern the unvalidated registered and
+candidate hosts. The guarded host uses the same proposal generator, but its
+rejection receipts and event log require a guarded replay/acceptance coupling.
+Neither the raw-policy separation nor the local zero-mass law establishes the
+whole guarded graph/native probability argument.
+
+The next operational generalization is one handler-knowledge contract. Two
+candidate states agreeing on public state and known candidate meanings must
+give matching rejection/acceptance and, on acceptance, matching public state
+and known candidate meanings when handling a message whose opening is known. The existing candidate
+relation already records the needed public-state and known-handle agreement.
+For opening-time validation, both runs also have the same node and claimed
+value, so a validator depending only on these values and the public event log
+receives identical inputs. A validator consulting private catalog contents
+would require a stronger contract.
+
+The intended proof factors pending-message inclusion over this handler
+contract, then reuses the current paired execution and trace induction.
+Preparation, submission, replay, delivery, and clock steps keep their common
+semantics. The same parameterized replay/read-bound/cylinder family should
+serve both the unconditional and guarded handlers. This guarded handler
+instance and its whole-trace laws remain unproved; they are separate from
+the graph-side zero-likelihood and source-incentive arguments.
 
 The validation context must agree with the context intended by the source
 guard. Public eligibility alone proves neither availability at opening nor
@@ -274,7 +306,10 @@ whole-program source strategy law.
 with that rejecting guard. Its actual policy-runner execution privately prepares
 a legal value, submits an opaque commitment, and opens it through the guarded
 host. This checks the operational translation independently of the remaining
-guarded strategic proof.
+guarded strategic proof. `assigned_invalid_opening_times_out` exercises
+the same generator with a guard-invalid reference proposal: the actual opening
+is rejected, timeout publishes the null value, and the private candidate
+retains the original invalid value.
 
 ### Shared candidate hosts
 
@@ -317,7 +352,7 @@ is constructed by `CandidateRoundModel.utilitySimulation` below.
 The public acceptance/disclosure barrier is
 independent of private registration, but that information-flow fact and a
 source settlement witness alone do not provide the required strategy law.
-`SealedFragment.candidateAcceptanceLaw_read_bound` proves that the focal input
+`SealedShape.candidateAcceptanceLaw_read_bound` proves that the focal input
 and candidate catalog at first acceptance or timeout depend only on
 source-earlier honest disclosures. Both commitment services use the common
 policy-trace coupling lemma; the candidate relation does not equate hidden

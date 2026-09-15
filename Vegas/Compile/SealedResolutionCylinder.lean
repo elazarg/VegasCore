@@ -6,25 +6,25 @@ import Interaction.SealedResolutionProvenance
 /-! # Exact assignment cylinders for resolving native execution
 
 For fixed native responses, equality of stopped replays is equivalent to
-agreement on the honest registration coordinates recorded by one replay.
+agreement on the non-focal reference coordinates recorded by one replay.
 Every finite invocation prefix is an instance. The trace records private
 commands for analysis; its complete contents are not exposed to players.
 
 These facts include post-timeout execution. They characterize value-substituted
-replay, not yet the law obtained from the original state-dependent honest
-source kernels. The source/native coupling must connect those kernels to the
+replay, not yet the law obtained from the original state-dependent source
+kernels. A source/native coupling must connect those legal kernels to the
 assignment distribution used in the cylinder probability theorem.
 -/
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction Interaction.MessageApplication GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
-variable (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
+variable (supported : SealedShape G ty) (nullValue : L.Val ty) (window : Nat)
 
 section Support
 
@@ -33,7 +33,7 @@ variable (deviator : (supported.resolvingRuntime nullValue window).messageApplic
 variable (environment :
   (supported.resolvingRuntime nullValue window).messageApplication.EnvironmentPolicy)
 
-/-- Changing only unregistered honest coordinates preserves the supported
+/-- Changing only unregistered non-focal reference coordinates preserves the supported
 stopped trace, with the same arbitrary randomized deviator and environment. -/
 theorem tracePolicies_resolvingValues_transfer (left right : Fin G.nodeCount → L.Val ty)
     (release : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution →
@@ -59,17 +59,18 @@ theorem tracePolicies_resolvingValues_transfer (left right : Fin G.nodeCount →
   · subst owner
     simpa only [resolvingValuePlayers, GameTheory.Profile.update_same] using hcommand
   · rw [resolvingValuePlayers, GameTheory.Profile.update_of_ne _ _ howner] at hcommand ⊢
-    have hright := supported.selected_valuePolicy_congr left right owner view.application.timeouts
+    have hright := supported.selected_proposals_congr left right owner view.application.timeouts
       ((supported.resolvingRuntime nullValue window).eventHistory history)
       ((supported.resolvingRuntime nullValue window).eventView view)
       _ command hcommand (fun node heq =>
         hagrees owner node (left node) howner (hrecord _ (by rw [heq]; rfl)))
-    change supported.resolvingPolicy nullValue window owner (supported.valuePolicy right owner)
+    change supported.resolvingProposalPolicy nullValue window owner (supported.assignedProposals
+      right owner)
       history view = FinDist.pure command at hright
     rw [hright, FinDist.mem_support_pure]
 
-/-- Every honest registration in a resolving policy run carries its assigned
-node value, including registrations made after an earlier public default. -/
+/-- Every non-focal reference registration in a resolving run carries its
+assigned node value, including registrations made after an earlier public default. -/
 theorem runPolicies_resolvingValues_registration (values : Fin G.nodeCount → L.Val ty)
     (schedule : List (@Invocation Player))
     (final : (supported.resolvingRuntime nullValue window).messageApplication.PolicyExecution)
@@ -99,7 +100,7 @@ theorem runPolicies_resolvingValues_registration (values : Fin G.nodeCount → L
             obtain ⟨rfl, rfl⟩ := ha
             rw [resolvingValuePlayers, GameTheory.Profile.update_of_ne _ _ hwho] at hcommand
             obtain ⟨actual, hindex, hvalue, guard, hsem⟩ :=
-              supported.selected_valuePolicy_registration values actor view.application.timeouts
+              supported.selected_proposals_registration values actor view.application.timeouts
                 ((supported.resolvingRuntime nullValue window).eventHistory history)
                 ((supported.resolvingRuntime nullValue window).eventView view)
                 _ index.val registered hcommand
@@ -119,7 +120,7 @@ theorem runPolicies_resolvingValues_registration (values : Fin G.nodeCount → L
   exact hproperty _ htrace owner node value howner rfl
 
 /-- The continuing private service retains exactly the assigned value at
-each occupied honest slot. This conclusion concerns the service itself,
+each occupied non-focal reference slot. This conclusion concerns the service itself,
 not merely the values appearing in emitted commands. -/
 theorem runPolicies_resolvingValues_lookup (values : Fin G.nodeCount → L.Val ty)
     (schedule : List (@Invocation Player))
@@ -189,8 +190,8 @@ theorem resolvingReplay_prefix_support (values : Fin G.nodeCount → L.Val ty) :
         nullValue window).messageApplication.PolicyExecution =>
       !execution.native.application.visible.timeouts.isEmpty) release schedule _ _ hfull
 
-/-- Every occupied honest slot at the common timeout snapshot retains its
-assigned source value, even when the snapshot already contains public defaults. -/
+/-- Every occupied non-focal reference slot at the common timeout snapshot retains its
+assigned graph value, even when the snapshot already contains public defaults. -/
 theorem resolvingStop_honest_lookup (values : Fin G.nodeCount → L.Val ty)
     (owner : Player) (node : Fin G.nodeCount) (value : L.Val ty) (howner : owner ≠ focal)
     (hlookup : (supported.resolvingStop nullValue window values focal
@@ -255,7 +256,7 @@ theorem resolvingReplay_registration (values : Fin G.nodeCount → L.Val ty)
     (fun history view => FinDist.pure (environment history view)) values front _ hprefix
     owner node value howner htrace).1
 
-/-- Recorded honest registrations occupy precisely their source-owned slots
+/-- Recorded non-focal reference registrations occupy precisely their graph-owned slots
 with the assigned values, even if the prefix includes timeout transitions. -/
 theorem resolvingReplay_registration_lookup (values : Fin G.nodeCount → L.Val ty)
     (owner : Player) (node : Fin G.nodeCount) (value : L.Val ty) (howner : owner ≠ focal)
@@ -297,8 +298,8 @@ theorem resolvingReplay_lookup_origin (values : Fin G.nodeCount → L.Val ty)
     _ _ front _ hprefix owner slot value hlookup
 
 /-- Exact replay equivalence, retaining every local history, pool snapshot,
-clock transition, and receipt. Agreement is needed only at the honest values
-registered by the left replay, not at every potential source decision. -/
+clock transition, and receipt. Agreement is needed only at the non-focal values
+registered by the left replay, not at every potential graph decision. -/
 theorem resolvingReplay_prefix_eq_iff (left right : Fin G.nodeCount → L.Val ty) :
     (supported.resolvingReplay nullValue window left focal
       deviator environment schedule).prefixThrough release =
@@ -334,7 +335,7 @@ theorem resolvingReplay_prefix_eq_iff (left right : Fin G.nodeCount → L.Val ty
       hleft hagrees
     rwa [resolvingReplay_law, FinDist.map_pure, FinDist.mem_support_pure] at hright
 
-/-- A stopped replay is determined exactly by its occupied honest source
+/-- A stopped replay is determined exactly by its occupied non-focal graph
 slots. Out-of-program and focal registrations add no assignment constraints. -/
 theorem resolvingReplay_prefix_eq_iff_lookup (left right : Fin G.nodeCount → L.Val ty) :
     (supported.resolvingReplay nullValue window left focal
@@ -362,8 +363,8 @@ theorem resolvingReplay_prefix_eq_iff_lookup (left right : Fin G.nodeCount → L
     exact (h owner node guard hsem howner (left node) hlookup).symm
 
 /-- For any joint assignment law, the mass of a stopped replay is the mass
-of its honest-registration cylinder. No independence of assignment coordinates
-is assumed. This preserves correlations supplied by a source assignment law. -/
+of its non-focal registration cylinder. No independence of assignment coordinates
+is assumed. A later source coupling may supply a correlated assignment law. -/
 theorem resolvingReplay_cylinder_probability (assignments : FinDist (Fin G.nodeCount → L.Val ty))
     (reference : Fin G.nodeCount → L.Val ty) :
     (assignments.map (fun values =>
@@ -384,14 +385,14 @@ theorem resolvingReplay_cylinder_probability (assignments : FinDist (Fin G.nodeC
   exact eq_comm.trans (supported.resolvingReplay_prefix_eq_iff nullValue window focal
     deviator environment schedule release reference values)
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.resolvingReplay_prefix_eq_iff' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.resolvingReplay_prefix_eq_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.resolvingReplay_prefix_eq_iff
+#print axioms Vegas.EventGraph.SealedShape.resolvingReplay_prefix_eq_iff
 
-/-- info: 'Vegas.EventGraph.SealedFragment.resolvingReplay_cylinder_probability' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.resolvingReplay_cylinder_probability' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.resolvingReplay_cylinder_probability
+#print axioms Vegas.EventGraph.SealedShape.resolvingReplay_cylinder_probability

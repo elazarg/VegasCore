@@ -161,6 +161,7 @@ theorem honestRun_source (left right : Value) (reverse : Bool) :
 
 end VegasTests.PendingOutcome
 
-/-- info: 'Vegas.WFProgram.sealed_run_source' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.WFProgram.sealed_run_source' depends on axioms: [propext, Classical.choice,
+  Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.WFProgram.sealed_run_source

@@ -102,7 +102,7 @@ theorem extractedSourceRun_locked (profile : SourceBehavioralProfile source.core
     cfg.1.nodeValues fallback decision = value := by
   have hchoice := compilation.extractedSourceRun_consistent nullValue window focal deviator
     environment schedule fallback profile cfg hcfg decision guard hdecision
-  rw [EventGraph.SealedFragment.resolvingBinding_eq_stop_lookup, hregistered,
+  rw [EventGraph.SealedShape.resolvingBinding_eq_stop_lookup, hregistered,
     Option.getD_some] at hchoice
   exact hchoice
 
@@ -202,7 +202,7 @@ theorem extractedSourceRun_registration_kernel
               .privateCommand ⟨(node.val, cast (congrArg L.Val
                 (compilation.supported.commitType node who guard hsem)) choice.1)⟩) := by
   intro runtime stopped hclear who hwho slot value hcommand policy
-  rw [EventGraph.SealedFragment.resolvingValuePlayers, Profile.update_of_ne _ _ hwho] at hcommand
+  rw [EventGraph.SealedShape.resolvingValuePlayers, Profile.update_of_ne _ _ hwho] at hcommand
   obtain ⟨before, after, hbefore, hafter⟩ := compilation.supported.resolvingReplay_prefix_support
     nullValue window focal deviator environment schedule release (cfg.1.nodeValues fallback)
   have hmemory := SealedResolution.RegistrationMemory.runPolicies _ _ before _ stopped

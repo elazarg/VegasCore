@@ -136,7 +136,8 @@ theorem compiled_policy_prepares :
         FinDist.pure (.privateCommand ⟨(0, some true)⟩) := by
   change supported.commitCommand 0 _ (node 0) _ rfl [] _ = _
   unfold SealedShape.commitCommand
-  simp only [ChoiceEncoding.cachedValue_nil]
+  simp only [ChoiceEncoding.cachedValue_nil, CommitPolicy.proposals,
+    FinDist.map_comp, Function.comp_def]
   change (ToEventGraph.compileSourcePolicy core source.core.fresh
     (ToEventGraph.BuildState.fromInitial
       (ToEventGraph.initialState source.core.Γ source.core.env source.core.wctx)) rfl 0

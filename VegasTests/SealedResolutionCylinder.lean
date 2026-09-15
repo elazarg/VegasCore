@@ -50,11 +50,11 @@ private theorem replay_eq (values : Fin graph.nodeCount → Value) :
   have hwait : app.playerStep 1 initial .wait = FinDist.pure waited := by
     simp only [playerStep, advance, PlayerCommand.toAction, FinDist.pure_bind]
     rfl
-  have hpolicy : sealedFragment.resolvingPolicy none 3 0
-      (sealedFragment.valuePolicy values 0)
+  have hpolicy : sealedFragment.resolvingProposalPolicy none 3 0
+      (sealedFragment.assignedProposals values 0)
       (waited.principalHistory 0) (State.observe app waited.native 0) =
         FinDist.pure (.privateCommand ⟨(0, values (node 0))⟩ : app.PlayerCommand) := by
-    change sealedFragment.commitCommand 0 (sealedFragment.valuePolicy values 0)
+    change sealedFragment.commitCommand 0 (sealedFragment.assignedProposals values 0)
       (node 0) _ rfl [] _ = _
     unfold SealedShape.commitCommand
     simp only [ChoiceEncoding.cachedValue_nil]
@@ -66,7 +66,7 @@ private theorem replay_eq (values : Fin graph.nodeCount → Value) :
     rfl
   have hlaw := sealedFragment.resolvingReplay_law none 3 values 1
     (fun _ _ => .wait) (fun _ _ => .wait) [.player 1, .player 0]
-  simp only [tracePolicies, invoke, SealedFragment.resolvingValuePlayers,
+  simp only [tracePolicies, invoke, SealedShape.resolvingValuePlayers,
     GameTheory.Profile.update_same,
     GameTheory.Profile.update_of_ne _ _ (show (0 : PendingSource.Player) ≠ 1 by decide),
     FinDist.pure_bind] at hlaw

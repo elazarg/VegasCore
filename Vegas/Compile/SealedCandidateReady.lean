@@ -45,7 +45,8 @@ theorem candidatePolicy_ownCommitCache
   let runtime := supported.resolvingRuntime nullValue window
   let initial := PolicyExecution.initial runtime.candidateApplication
     (State.initial _ runtime.candidateInitial)
-  have hmemory := supported.candidatePolicy_memory nullValue window who policy players environment
+  have hmemory := supported.candidatePolicy_memory nullValue window who policy.proposals players
+    environment
     hplayer schedule execution hactual
   have hpublic := runtime.runPolicies_candidate_publicEvents players environment schedule initial
     execution (SealedResolution.EventInvariant.initial (runtime := runtime)).publicEvents hactual
@@ -72,7 +73,7 @@ theorem candidatePolicy_ownCommitCache
     rw [hrule] at hrule'
     exact (SealedRuleKind.commit.inj (congrArg SealedRule.kind
       (Option.some.inj hrule'))).symm
-  have hcanonical := supported.candidatePolicy_accepted_slot nullValue window who policy
+  have hcanonical := supported.candidatePolicy_accepted_slot nullValue window who policy.proposals
     players environment hplayer schedule execution hactual node.val handle hmem howner
   subst handle
   have hslot := hmemory.memory node.val

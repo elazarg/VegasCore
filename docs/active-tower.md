@@ -78,7 +78,7 @@ The payout is reconstructed from public initial fields and opening events.
 This honest law has no incentive hypothesis and does not establish candidate-host
 Nash preservation.
 
-`SealedFragment.candidateAcceptanceLaw_read_bound` proves a causal information
+`SealedShape.candidateAcceptanceLaw_read_bound` proves a causal information
 bound for this host. With fixed assigned honest choices, an arbitrary randomized
 focal policy and full-pool environment have the same joint law of focal history,
 view, and owner-scoped candidate catalog through first acceptance or timeout
@@ -392,9 +392,9 @@ equality after timeout. General utilities use the checked timeout-checkpoint
 comparison; payout utilities can discharge it entirely from the source-only
 `QuitPayoutBound` described below.
 
-`SealedFragment.replay` evaluates the shared native runner with assigned honest
-values and fixed deterministic deviator/environment policies. Its checked
-`replay_eq_iff` characterizes each full execution by exactly the honest
+`SealedShape.replay` evaluates the shared native runner with raw assigned
+reference values and fixed deterministic deviator/environment policies. Its checked
+`replay_eq_iff` characterizes each full execution by exactly the non-focal
 registration coordinates it records. This holds for every finite invocation
 schedule and thus for every invocation prefix. It concerns proof-facing records,
 including private commands; it does not expose those records to players. The
@@ -404,7 +404,7 @@ preserves public observations, pool operations, and validation receipts while
 allowing unknown registered values to differ. The compiled-policy comparison
 and submission barrier supply its local policy premises.
 
-`SealedFragment.resolvingBindingLaw_read_bound` proves a whole-prefix
+`SealedShape.resolvingBindingLaw_read_bound` proves a whole-prefix
 registration read bound in the continuing deadline runtime. Substitute complete
 assignments for honest source draws, leaving the focal native policy and the
 full-pool environment arbitrary and randomized. If the assignments agree at
@@ -418,7 +418,7 @@ The cutoff reads the first timeout snapshot after its tick, which preserves
 the private service. Absence of registration is separate from registration
 of the nullable source value.
 
-`SealedFragment.resolvingAcceptanceLaw_read_bound` extends the information bound
+`SealedShape.resolvingAcceptanceLaw_read_bound` extends the information bound
 through public commitment acceptance, first timeout, or the finite horizon.
 It equates the focal player's entire local history and current view, including
 interaction after private registration. The local publication proof uses only
@@ -430,7 +430,7 @@ boundary of the current functionality; it does not yet admit competing or
 unopenable candidates.
 
 The theorem supplies the causal read bound for assigned-value replay.
-`SealedFragment.resolvingReplay` fixes native deviator/environment responses
+`SealedShape.resolvingReplay` fixes native deviator/environment responses
 and selects the unique trace of that same runner. `SealedCompilation.extractedSourcePolicy`
 uses one such pair of responses at all source decisions. Its inputs are actual
 declared-read source fields: the compiler proves that every earlier public
@@ -482,7 +482,7 @@ including assignments having zero mass under the compared source policy. Its
 audit is `Vegas.Paper.pending_honest_registration_kernel`; the zero-probability
 regression distinguishes realization from support under the compared policy.
 
-`SealedFragment.resolvingReplay_prefix_eq_iff` characterizes stopped resolving
+`SealedShape.resolvingReplay_prefix_eq_iff` characterizes stopped resolving
 replays by their recorded honest registrations, including when the cutoff
 discards a suffix whose honest values differ. The cutoff may inspect the full
 proof-facing snapshot; it does not change player observations.

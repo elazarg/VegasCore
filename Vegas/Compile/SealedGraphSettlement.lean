@@ -34,7 +34,7 @@ private theorem exists_terminal_values [Finite Player]
         cfg.1.nodeValues fallback node = values node := by
   let : Fintype Player := Fintype.ofFinite Player
   let graph := G
-  let policies := fun who => supported.valuePolicy values who
+  let policies := fun who => supported.assignedCommitPolicy values who
   let initial : ReachableConfig graph := ⟨Config.initial graph, .initial⟩
   let law := runPolicyNodes supported.graphWF
     hguards policies initial graph.nodeOrder
@@ -49,7 +49,7 @@ private theorem exists_terminal_values [Finite Player]
     hguards policies initial
     (CommitValuesSupported.initial _) graph.nodeOrder cfg hcfg
   obtain ⟨reads, _, choice, hchoice, hvalue⟩ := hchoices node (hterminal node) owner guard hsem
-  simp only [policies, SealedFragment.valuePolicy, FinDist.mem_support_pure] at hchoice
+  simp only [policies, SealedFragment.assignedCommitPolicy, FinDist.mem_support_pure] at hchoice
   subst choice
   change cfg.1.store (graph.nodeTarget node) =
     some (⟨guard.ty, cast (congrArg L.Val

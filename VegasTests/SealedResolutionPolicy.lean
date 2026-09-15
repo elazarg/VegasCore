@@ -137,10 +137,11 @@ theorem missing_commit_continues (law : FinDist Value) :
       FinDist.pure (.privateCommand ⟨(2, none)⟩ : app.PlayerCommand) := by
   change supported.commitCommand 0
     (compileSourcePolicy core source.core.fresh SealedPolicy.initialBuild rfl 0
-      (SourceGraph.repeatPolicy law 0)) (node 2) secondGuard rfl []
+      (SourceGraph.repeatPolicy law 0)).proposals (node 2) secondGuard rfl []
       (supported.resolvedPlayerStore 0 none missingCommit.visible.timeouts []
         (runtime.eventView (view missingCommit))) = _
   unfold SealedShape.commitCommand
+  simp only [CommitPolicy.proposals, FinDist.map_comp, Function.comp_def]
   simp only [MessageApplication.ChoiceEncoding.cachedValue_nil]
   change (compileSourcePolicy core source.core.fresh SealedPolicy.initialBuild rfl 0
     (SourceGraph.repeatPolicy law 0) (node 2) secondGuard rfl _).map _ = _
@@ -157,12 +158,13 @@ theorem missing_opening_continues (law : FinDist Value) (value : Value) :
   rw [hview]
   change supported.commitCommand 0
     (compileSourcePolicy core source.core.fresh SealedPolicy.initialBuild rfl 0
-      (SourceGraph.repeatPolicy law 0)) (node 2) secondGuard rfl
+      (SourceGraph.repeatPolicy law 0)).proposals (node 2) secondGuard rfl
       (runtime.eventHistory (history value))
       (supported.resolvedPlayerStore 0 none (missingOpening none).visible.timeouts
         (runtime.eventHistory (history value))
         (runtime.eventView (view (missingOpening none)))) = _
   unfold SealedShape.commitCommand
+  simp only [CommitPolicy.proposals, FinDist.map_comp, Function.comp_def]
   change (compileSourcePolicy core source.core.fresh SealedPolicy.initialBuild rfl 0
     (SourceGraph.repeatPolicy law 0) (node 2) secondGuard rfl _).map _ = _
   rw [second_kernel]

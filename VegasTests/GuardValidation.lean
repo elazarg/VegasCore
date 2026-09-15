@@ -4,6 +4,7 @@ import Vegas.Compile.GuardValidation
 import Vegas.Compile.SealedGuardSettlement
 import Vegas.Compile.SealedValidatedRealization
 import Vegas.Compile.SealedResolutionPolicy
+import Vegas.Compile.SealedReplay
 import Interaction.SealedCandidatePolicyEmbedding
 import Vegas.EventGraph.Validate
 import Vegas.Core.ExprSimple
@@ -196,12 +197,13 @@ It first prepares the legal value privately, without putting it in the pool. -/
 theorem generated_prepares_legal_value :
     generated 0 [] (State.observe app initial 0) =
       FinDist.pure (.privateCommand ⟨(0, some true)⟩) := by
-  change shape.commitCommand 0 (referencePolicy 0) ⟨0, by decide⟩ publicGuard rfl []
+  change shape.commitCommand 0 (referencePolicy 0).proposals ⟨0, by decide⟩ publicGuard rfl []
     (shape.resolvedPlayerStore 0 none [] []
       (runtime.eventView (runtime.registeredPlayerView (State.observe app initial 0)))) = _
   unfold SealedShape.commitCommand
   simp only [ChoiceEncoding.cachedValue_nil]
-  change (FinDist.pure _).map _ = _
+  change ((FinDist.pure _).map Subtype.val).map _ = _
+  rw [FinDist.map_pure]
   rw [FinDist.map_pure]
   rfl
 
@@ -228,6 +230,60 @@ theorem generated_guarded_execution :
   change ((FinDist.pure
     (.submit (.opening 1 (0, 0) (some true)) : app.PlayerCommand)).bind _).map _ = _
   simp only [FinDist.pure_bind, FinDist.map_pure]
+  rfl
+
+/-- The same command generator can replay a raw proposed value, without
+claiming that the proposal is a legal graph choice. -/
+private noncomputable def assigned (value : Option Bool) (who : Nat) : app.PlayerPolicy :=
+  runtime.candidatePlayerPolicy
+    (shape.resolvingProposalPolicy none 2 who (shape.assignedProposals (fun _ => value) who))
+
+theorem assigned_prepares_raw_value (value : Option Bool) :
+    assigned value 0 [] (State.observe app initial 0) =
+      FinDist.pure (.privateCommand ⟨(0, value)⟩) := by
+  change shape.commitCommand 0 (shape.assignedProposals (fun _ => value) 0)
+    ⟨0, by decide⟩ publicGuard rfl []
+    (shape.resolvedPlayerStore 0 none [] []
+      (runtime.eventView (runtime.registeredPlayerView (State.observe app initial 0)))) = _
+  unfold SealedShape.commitCommand
+  simp only [ChoiceEncoding.cachedValue_nil]
+  change (FinDist.pure _).map _ = _
+  rw [FinDist.map_pure]
+  rfl
+
+/-- Replaying an invalid proposal really submits its invalid opening. The
+guard rejects that packet; clocks publish quitting while the original private
+candidate remains unchanged. This uses the ordinary policy runner. -/
+theorem assigned_invalid_opening_times_out :
+    (app.runPolicies (assigned (some false))
+      (fun history _ => FinDist.pure
+        (match history.length with
+        | 0 => .include (0, 0)
+        | 1 => .include (0, 1)
+        | _ => .application ⟨()⟩))
+      [.player 0, .player 0, .environment, .player 0, .environment,
+        .environment, .environment]
+      (PolicyExecution.initial app initial)).map
+        (fun next => (next.native.application.visible.events, next.native.receipts,
+          next.native.application.service.lookup (0, 0))) =
+      FinDist.pure
+        ([SealedProgram.Event.accepted 0 (0, 0), .opened 1 none],
+          [((0, 0), true), ((0, 1), false)],
+          CommitmentCandidate.openable (some false)) := by
+  simp only [MessageApplication.runPolicies, MessageApplication.invoke,
+    FinDist.bind_pure, FinDist.bind_bind]
+  erw [assigned_prepares_raw_value]
+  simp only [FinDist.pure_bind, MessageApplication.playerStep, MessageApplication.advance,
+    MessageApplication.PlayerCommand.toAction, MessageApplication.step]
+  change ((FinDist.pure (.submit (.commitment 0 (0, 0)) : app.PlayerCommand)).bind _).map _ = _
+  simp only [FinDist.pure_bind, MessageApplication.advance, MessageApplication.step,
+    MessageApplication.environmentPolicyStep, EnvironmentPolicyCommand.toAction,
+    PolicyExecution.initial, List.length_nil]
+  change ((FinDist.pure
+    (.submit (.opening 1 (0, 0) (some false)) : app.PlayerCommand)).bind _).map _ = _
+  simp only [app, SealedResolution.guardedCandidateApplication, SealedResolution.host,
+    List.length_append, List.length_cons, List.length_nil, Nat.reduceAdd,
+    FinDist.map_pure, FinDist.pure_bind]
   rfl
 
 private noncomputable def openingTrace (value : Option Bool) : List app.Action :=
@@ -361,3 +417,8 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.GuardValidation.arbitrary_completed_policies_have_legal_graph_settlement
+
+/-- info: 'VegasTests.GuardValidation.assigned_invalid_opening_times_out'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.GuardValidation.assigned_invalid_opening_times_out

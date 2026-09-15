@@ -43,7 +43,7 @@ theorem resolvingPolicy_registration_fresh (supported : SealedFragment G ty)
     execution.native.application.visible.timeouts history view
   obtain ⟨node, guard, hsem, reads, hslot, hcache, _⟩ :=
     supported.selected_registration_kernel who execution.native.application.visible.timeouts
-      policy history view store slot value hcommand
+      policy.proposals history view store slot value hcommand
   rw [hslot, hmemory who node.val]
   exact (runtime.eventHistory_cache (runtime.program.registrationEncoding node.val)
     (execution.principalHistory who)).symm.trans hcache
@@ -120,7 +120,7 @@ theorem nodeCommand_progress (supported : SealedFragment G ty)
       ((supported.resolvingRuntime nullValue window).eventHistory nativeHistory))
     (node : Fin G.nodeCount)
     (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (hselected : supported.nodeCommand? who nativeView.application.timeouts policy
+    (hselected : supported.nodeCommand? who nativeView.application.timeouts policy.proposals
       ((supported.resolvingRuntime nullValue window).eventHistory nativeHistory)
       ((supported.resolvingRuntime nullValue window).eventView
         nativeView)
@@ -141,7 +141,7 @@ theorem nodeCommand_progress (supported : SealedFragment G ty)
   let store := supported.resolvedPlayerStore who nullValue
     nativeView.application.timeouts history view
   change supported.nodeCommand? who nativeView.application.timeouts
-    policy history view store node = some law at hselected
+    policy.proposals history view store node = some law at hselected
   change _ ∧ _ ∧ ∀ command ∈ law.support, ProgressCommand supported who history node command
   unfold SealedShape.nodeCommand? at hselected
   split at hselected
@@ -290,7 +290,7 @@ private theorem nodeCommand_isSome_of_ready (supported : SealedFragment G ty)
       ∃ (producer : Fin G.nodeCount) (guard : EventGuard L),
         (G.nodeRow node).sem = .reveal (G.nodeTarget producer) ∧
         (G.nodeRow producer).sem = .commit who guard) :
-    (supported.nodeCommand? who nativeView.application.timeouts policy
+    (supported.nodeCommand? who nativeView.application.timeouts policy.proposals
       ((supported.resolvingRuntime nullValue window).eventHistory nativeHistory)
       ((supported.resolvingRuntime nullValue window).eventView
         nativeView)
@@ -392,7 +392,7 @@ theorem resolvingPolicy_progress_of_ready (supported : SealedFragment G ty)
   let history := runtime.eventHistory nativeHistory
   let view := runtime.eventView nativeView
   let commandAt := supported.nodeCommand? who nativeView.application.timeouts
-    policy history view (supported.resolvedPlayerStore who nullValue
+    policy.proposals history view (supported.resolvedPlayerStore who nullValue
       nativeView.application.timeouts history view)
   have htarget : (commandAt target).isSome := supported.nodeCommand_isSome_of_ready
     nullValue window who policy nativeHistory nativeView hownCache hclosed target

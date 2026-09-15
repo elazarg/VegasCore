@@ -9,20 +9,20 @@ import Interaction.SealedCandidateAcceptance
 Fixing the native response functions gives one replay of the actual candidate
 runner. Extraction reads the accepted handle's meaning, not the first private
 preparation. The acceptance information bound makes this choice a function of
-source-earlier honest disclosures. The same response functions are used at
+earlier non-focal reference disclosures. The same response functions are used at
 every source decision. Fallback totalizes missing or unopenable commitments;
 it does not assert a timeout payoff comparison or a joint deviation law.
 -/
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction Interaction.MessageApplication GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
-variable (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
+variable (supported : SealedShape G ty) (nullValue : L.Val ty) (window : Nat)
 variable (values : Fin G.nodeCount → L.Val ty) (focal : Player)
 variable (deviator :
   List (supported.resolvingRuntime nullValue window).candidateApplication.PlayerEntry →
@@ -50,10 +50,10 @@ private theorem candidateReplay_exists :
       simp only [candidateValuePlayers, GameTheory.Profile.update_same]⟩
   · rw [candidateValuePlayers, GameTheory.Profile.update_of_ne _ _ hwho,
       SealedResolution.candidatePlayerPolicy]
-    exact supported.resolvingPolicy_valuePolicy_pure nullValue window values who _ _
+    exact supported.resolvingProposalPolicy_assigned_pure nullValue window values who _ _
 
 /-- The unique trace of the existing candidate runner with fixed native
-responses and assigned honest draws. It includes execution after timeouts. -/
+responses and assigned reference proposals. It includes execution after timeouts. -/
 def candidateReplay :
     (supported.resolvingRuntime nullValue window).candidateApplication.PolicyTrace :=
   Classical.choose (supported.candidateReplay_exists nullValue window values focal
@@ -240,7 +240,7 @@ theorem candidateSelection_frozen (decision : Fin G.nodeCount)
       next => contradiction
 
 /-- With the same native seed, selected candidate meanings depend only on
-source-earlier honest disclosures, despite competing pending commitments. -/
+earlier non-focal reference disclosures, despite competing pending commitments. -/
 theorem candidateSelection_read_bound (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
     (rightValues : Fin G.nodeCount → L.Val ty)
@@ -262,14 +262,14 @@ theorem candidateSelection_read_bound (decision : Fin G.nodeCount) (guard : Even
   exact FinDist.mem_support_pure.mpr rfl
 
 /-- Preserve an openable value, including a source null value. Other candidate
-statuses select the explicitly supplied legal-source fallback. -/
+statuses select the explicitly supplied fallback. -/
 def candidateValue (selection : Option (CommitmentCandidate (L.Val ty)))
     (fallback : L.Val ty) : L.Val ty :=
   match selection with
   | some (.openable value) => value
   | _ => fallback
 
-/-- A source-local choice: replay receives only earlier honest disclosures;
+/-- A decision-local reference choice: replay receives only earlier non-focal disclosures;
 all other coordinates are filled with a fixed value. -/
 def extractedCandidateChoice (decision : Fin G.nodeCount)
     (visible : supported.priorHonestCoordinates focal decision → L.Val ty)
@@ -295,14 +295,14 @@ theorem extractedCandidateChoice_eq_selection (decision : Fin G.nodeCount) (guar
   intro who hwho node hknown
   exact dif_pos ⟨who, hwho, hknown⟩
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.extractedCandidateChoice_eq_selection' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.extractedCandidateChoice_eq_selection' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.extractedCandidateChoice_eq_selection
+#print axioms Vegas.EventGraph.SealedShape.extractedCandidateChoice_eq_selection
 
-/-- info: 'Vegas.EventGraph.SealedFragment.candidateSelection_frozen' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.candidateSelection_frozen' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.candidateSelection_frozen
+#print axioms Vegas.EventGraph.SealedShape.candidateSelection_frozen

@@ -101,7 +101,7 @@ acceptance and does not implement the continuing `SealedResolution` settlement.
 
 The compiled release barrier is stronger than checking the arriving opening:
 the public readiness test requires earlier commitments to be complete before
-an opening is submitted. `SealedFragment.resolvingAcceptanceLaw_read_bound`
+an opening is submitted. `SealedShape.resolvingAcceptanceLaw_read_bound`
 proves that future hidden values do not affect the focal player's local input
 through first acceptance or timeout. In the current registered-handle service,
 `SealedFragment.opening_barrier_trace` additionally fixes every earlier

@@ -99,22 +99,22 @@ theorem restrictedCandidateGraphRun_registration_kernel
     focal deviator environment schedule fallback _ cfg hcfg release
   dsimp only at hkernel
   rw [hreplay] at hkernel
-  rw [SealedFragment.candidateValuePlayers, Profile.update_of_ne _ _ hwho] at hcommand
+  rw [SealedShape.candidateValuePlayers, Profile.update_of_ne _ _ hwho] at hcommand
   obtain ⟨node, guard, hsem, reads, hslot, _, _, hselected⟩ :=
     supported.selected_registration_kernel who
       stopped.native.application.visible.timeouts
-      (supported.valuePolicy reference who)
+      (supported.assignedProposals reference who)
       (runtime.eventHistory (runtime.registeredPlayerHistory (stopped.principalHistory who)))
       (runtime.eventView (runtime.registeredPlayerView
         (State.observe runtime.candidateApplication stopped.native who))) _ slot value hcommand
-  have hlaw := hselected (supported.valuePolicy (cfg.1.nodeValues fallback) who)
-  change runtime.candidatePlayerPolicy (supported.resolvingPolicy nullValue window
-    who (supported.valuePolicy (cfg.1.nodeValues fallback) who))
+  have hlaw := hselected (supported.assignedProposals (cfg.1.nodeValues fallback) who)
+  change runtime.candidatePlayerPolicy (supported.resolvingProposalPolicy nullValue window
+    who (supported.assignedProposals (cfg.1.nodeValues fallback) who))
       (stopped.principalHistory who) (State.observe runtime.candidateApplication stopped.native who)
         = _ at hlaw
   apply hkernel hclear who hwho slot (cfg.1.nodeValues fallback node) ?_ policy
-  rw [SealedFragment.candidateValuePlayers, Profile.update_of_ne _ _ hwho, hlaw]
-  simp only [SealedFragment.valuePolicy, FinDist.map_pure, cast_cast, cast_eq, hslot,
+  rw [SealedShape.candidateValuePlayers, Profile.update_of_ne _ _ hwho, hlaw]
+  simp only [SealedShape.assignedProposals, FinDist.map_pure, cast_cast, cast_eq, hslot,
     FinDist.mem_support_pure]
 
 end Vegas.EventGraph.SealedFragment

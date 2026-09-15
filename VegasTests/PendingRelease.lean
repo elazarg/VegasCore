@@ -165,14 +165,17 @@ end
 
 end VegasTests.PendingRelease
 
-/-- info: 'Interaction.SealedProgram.tracePolicies_hiding_beforeRelease' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Interaction.SealedProgram.tracePolicies_hiding_beforeRelease' depends on axioms:
+  [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.SealedProgram.tracePolicies_hiding_beforeRelease
 
-/-- info: 'VegasTests.PendingRelease.controllerTraceLaw_hiding' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'VegasTests.PendingRelease.controllerTraceLaw_hiding' depends on axioms: [propext,
+  Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.PendingRelease.controllerTraceLaw_hiding
 
-/-- info: 'Vegas.EventGraph.SealedFragment.openingCommand_prerequisites' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.EventGraph.SealedFragment.openingCommand_prerequisites' depends on axioms:
+  [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraph.SealedFragment.openingCommand_prerequisites

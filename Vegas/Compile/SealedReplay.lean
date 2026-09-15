@@ -4,12 +4,18 @@ import Vegas.Compile.SealedPolicy
 import Interaction.MessageApplicationPolicyLaws
 import Interaction.MessageApplicationPolicyTrace
 
-/-! # Value-substituted execution of the compiled sealed policy
+/-! # Assigned-proposal execution of the compiled sealed command generator
 
-The value policy fixes a value at each graph commitment without changing the
-native policy's registration, submission, or opening code. It is the deterministic
-evaluation used by the causal source backtranslation: the actual shared runner
-still supplies every history, pending packet, delivery, inclusion, and receipt.
+An assigned proposal kernel fixes a raw value at each graph commitment without
+changing the shared registration, submission, or opening code. It is the
+deterministic reference execution used by causal backtranslation; the actual
+shared runner still supplies every history, pending packet, delivery, inclusion,
+and receipt. A separate assigned commit policy is available only when the
+fragment certificate proves those values legal graph choices.
+
+These raw replay laws concern the registered and candidate hosts before optional
+opening validation. Allowing rejecting guards in `SealedShape` does not by itself
+establish their probability or strategy laws for a guarded host.
 -/
 
 noncomputable section
@@ -21,17 +27,34 @@ open Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
-/-- Substitute the supplied node value for a source kernel's fresh draw. -/
-def valuePolicy (supported : SealedFragment G ty)
+/-- Assigned legal graph choices require a certificate that every value passes. -/
+def assignedCommitPolicy (supported : SealedFragment G ty)
     (values : Fin G.nodeCount → L.Val ty) (who : Player) : CommitPolicy G who :=
   fun node guard hsem reads =>
     FinDist.pure ⟨cast (congrArg L.Val (supported.commitType node who guard hsem).symm)
       (values node), supported.commitGuard node who guard hsem _ reads⟩
 
+end Vegas.EventGraph.SealedFragment
+
+namespace Vegas.EventGraph.SealedShape
+
+open Interaction GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
+variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+
+/-- Fix raw native preparations, including values that fail a graph guard.
+No graph legality proof is asserted and no invalid value is replaced. -/
+def assignedProposals (supported : SealedShape G ty)
+    (values : Fin G.nodeCount → L.Val ty) (who : Player) : ProposalPolicy G who :=
+  fun node guard hsem _ =>
+    FinDist.pure (cast (congrArg L.Val (supported.commitType node who guard hsem).symm)
+      (values node))
+
 /-- The only assignment coordinate read by an invocation is its fresh private
 registration, if any. Cached submissions, openings, and waits ignore the rest
-of the assignment. The statement uses the actual compiled policy. -/
-theorem selected_valuePolicy_congr (supported : SealedFragment G ty)
+of the assignment. The statement uses the shared compiled command generator. -/
+theorem selected_proposals_congr (supported : SealedShape G ty)
     (left right : Fin G.nodeCount → L.Val ty) (who : Player) (completed : List Nat)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
@@ -39,43 +62,46 @@ theorem selected_valuePolicy_congr (supported : SealedFragment G ty)
     (command : (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
     (hcommand : command ∈
       ((G.nodeOrder.findSome? (supported.nodeCommand? who completed
-        (supported.valuePolicy left who) history view store)).getD (FinDist.pure .wait)).support)
+        (supported.assignedProposals left who) history view store)).getD (FinDist.pure
+          .wait)).support)
     (hagrees : ∀ node : Fin G.nodeCount,
       command = .privateCommand ⟨(node.val, left node)⟩ → left node = right node) :
     (G.nodeOrder.findSome? (supported.nodeCommand? who completed
-      (supported.valuePolicy right who) history view store)).getD (FinDist.pure .wait) =
+      (supported.assignedProposals right who) history view store)).getD (FinDist.pure .wait) =
       FinDist.pure command := by
   cases command with
   | privateCommand request =>
       obtain ⟨node, guard, hsem, reads, _, _, _, hkernel⟩ :=
-        supported.selected_registration_kernel who completed (supported.valuePolicy left who)
+        supported.selected_registration_kernel who completed (supported.assignedProposals left who)
           history view store request.down.1 request.down.2 hcommand
-      rw [hkernel (supported.valuePolicy left who)] at hcommand
-      simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq,
+      rw [hkernel (supported.assignedProposals left who)] at hcommand
+      simp only [assignedProposals, FinDist.map_pure, cast_cast, cast_eq,
         FinDist.mem_support_pure] at hcommand
       have heq := hagrees node hcommand
-      rw [hkernel (supported.valuePolicy right who)]
-      simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq, ← heq]
+      rw [hkernel (supported.assignedProposals right who)]
+      simp only [assignedProposals, FinDist.map_pure, cast_cast, cast_eq, ← heq]
       exact congrArg FinDist.pure hcommand.symm
   | submit payload | replay id | wait =>
       exact supported.selected_nonregistration_law who completed
-        (supported.valuePolicy left who) (supported.valuePolicy right who) history view store
+        (supported.assignedProposals left who) (supported.assignedProposals right who) history
+          view store
         _ hcommand (fun _ h => by cases h)
 
-/-- Honest players use assigned source values; the focal principal retains
+/-- Reference players use assigned proposal values; the focal principal retains
 its arbitrary native policy, including all pending-message observations. -/
-def valuePlayers (supported : SealedFragment G ty)
+def valuePlayers (supported : SealedShape G ty)
     (values : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator : (supported.compile.messageApplication (Value := L.Val ty)).PlayerPolicy) :
     Player → (supported.compile.messageApplication (Value := L.Val ty)).PlayerPolicy :=
   GameTheory.Profile.update
     (sig := MessageApplication.policySignature Player
       (supported.compile.messageApplication (Value := L.Val ty)))
-    (fun who => supported.playerPolicy who (supported.valuePolicy values who)) focal deviator
+    (fun who => supported.proposalPlayerPolicy who (supported.assignedProposals values who)) focal
+      deviator
 
-/-- Every honest private registration carries precisely the substituted
-value of its source node. No other assignment coordinate is encoded there. -/
-theorem selected_valuePolicy_registration (supported : SealedFragment G ty)
+/-- Every non-focal reference registration carries precisely the assigned
+value of its graph node. No other assignment coordinate is encoded there. -/
+theorem selected_proposals_registration (supported : SealedShape G ty)
     (values : Fin G.nodeCount → L.Val ty) (who : Player) (completed : List Nat)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
@@ -83,22 +109,22 @@ theorem selected_valuePolicy_registration (supported : SealedFragment G ty)
     (slot : Nat) (value : L.Val ty)
     (hcommand : .privateCommand ⟨(slot, value)⟩ ∈
       ((G.nodeOrder.findSome? (supported.nodeCommand? who completed
-        (supported.valuePolicy values who) history view store)).getD
+        (supported.assignedProposals values who) history view store)).getD
           (FinDist.pure .wait)).support) :
     ∃ node : Fin G.nodeCount, slot = node.val ∧ value = values node ∧
       ∃ guard, (G.nodeRow node).sem = .commit who guard := by
   obtain ⟨node, guard, hsem, reads, hslot, _, _, hkernel⟩ :=
-    supported.selected_registration_kernel who completed (supported.valuePolicy values who)
+    supported.selected_registration_kernel who completed (supported.assignedProposals values who)
       history view store slot value hcommand
-  rw [hkernel (supported.valuePolicy values who)] at hcommand
-  simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq,
+  rw [hkernel (supported.assignedProposals values who)] at hcommand
+  simp only [assignedProposals, FinDist.map_pure, cast_cast, cast_eq,
     FinDist.mem_support_pure, MessageInterface.PlayerCommand.privateCommand.injEq] at hcommand
   exact ⟨node, hslot, (Prod.mk.inj (congrArg ULift.down hcommand)).2, guard, hsem⟩
 
-/-- Changing only unused honest assignment coordinates preserves an entire
+/-- Changing only unused non-focal assignment coordinates preserves an entire
 supported native execution, including private histories and the pending pool.
 The deviator and environment can be randomized and adaptive. -/
-theorem runPolicies_valuePlayers_transfer (supported : SealedFragment G ty)
+theorem runPolicies_valuePlayers_transfer (supported : SealedShape G ty)
     (left right : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator : (supported.compile.messageApplication (Value := L.Val ty)).PlayerPolicy)
     (environment : (supported.compile.messageApplication (Value := L.Val ty)).EnvironmentPolicy)
@@ -122,14 +148,14 @@ theorem runPolicies_valuePlayers_transfer (supported : SealedFragment G ty)
   · subst owner
     simpa only [valuePlayers, GameTheory.Profile.update_same] using hcommand
   · rw [valuePlayers, GameTheory.Profile.update_of_ne _ _ howner] at hcommand ⊢
-    have hright := supported.selected_valuePolicy_congr left right owner []
+    have hright := supported.selected_proposals_congr left right owner []
       history view _ command hcommand (fun node heq =>
         hagrees owner node (left node) howner (hrecord _ (by rw [heq]; rfl)))
-    rw [SealedShape.playerPolicy, hright, FinDist.mem_support_pure]
+    rw [SealedShape.proposalPlayerPolicy, hright, FinDist.mem_support_pure]
 
-/-- Honest registrations in the actual native trace identify their assigned
-source values, even when the deviator and environment are randomized. -/
-theorem runPolicies_valuePlayers_registration (supported : SealedFragment G ty)
+/-- Non-focal reference registrations in the actual native trace identify their
+assigned graph values, even when the deviator and environment are randomized. -/
+theorem runPolicies_valuePlayers_registration (supported : SealedShape G ty)
     (values : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator : (supported.compile.messageApplication (Value := L.Val ty)).PlayerPolicy)
     (environment : (supported.compile.messageApplication (Value := L.Val ty)).EnvironmentPolicy)
@@ -158,7 +184,7 @@ theorem runPolicies_valuePlayers_registration (supported : SealedFragment G ty)
             obtain ⟨rfl, rfl⟩ := ha
             rw [valuePlayers, GameTheory.Profile.update_of_ne _ _ hwho] at hcommand
             obtain ⟨actual, hindex, hvalue, _⟩ :=
-              supported.selected_valuePolicy_registration values actor [] history view
+              supported.selected_proposals_registration values actor [] history view
                 _ index.val registered hcommand
             have hactual : actual = index := Fin.ext hindex.symm
             simpa only [hactual] using hvalue
@@ -176,7 +202,7 @@ theorem runPolicies_valuePlayers_registration (supported : SealedFragment G ty)
         false_implies, implies_true]) hfinal
   exact hproperty _ htrace owner node value howner rfl
 
-private theorem replay_exists (supported : SealedFragment G ty)
+private theorem replay_exists (supported : SealedShape G ty)
     (values : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry →
       (supported.compile.messageApplication (Value := L.Val ty)).View →
@@ -204,11 +230,11 @@ private theorem replay_exists (supported : SealedFragment G ty)
       exact ⟨deviator history view, by
         simp only [valuePlayers, GameTheory.Profile.update_same]⟩
     · obtain ⟨command, hcommand⟩ :=
-        (supported.playerPolicy who (supported.valuePolicy values who)
+        (supported.proposalPlayerPolicy who (supported.assignedProposals values who)
           history view).support_nonempty
       refine ⟨command, ?_⟩
       rw [valuePlayers, GameTheory.Profile.update_of_ne _ _ hwho]
-      exact supported.selected_valuePolicy_congr values values who [] history view
+      exact supported.selected_proposals_congr values values who [] history view
         _ command hcommand (fun _ _ => rfl)
   obtain ⟨trace, htrace⟩ := app.tracePolicies_pure
     (supported.valuePlayers values focal (fun history view => FinDist.pure (deviator history view)))
@@ -221,7 +247,7 @@ private theorem replay_exists (supported : SealedFragment G ty)
 
 /-- Deterministic value substitution evaluated by the shared native runner.
 This selects its unique outcome; it does not implement a second machine. -/
-def replay (supported : SealedFragment G ty)
+def replay (supported : SealedShape G ty)
     (values : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry →
       (supported.compile.messageApplication (Value := L.Val ty)).View →
@@ -234,7 +260,7 @@ def replay (supported : SealedFragment G ty)
     (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution :=
   Classical.choose (supported.replay_exists values focal deviator environment schedule)
 
-theorem replay_law (supported : SealedFragment G ty)
+theorem replay_law (supported : SealedShape G ty)
     (values : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry →
       (supported.compile.messageApplication (Value := L.Val ty)).View →
@@ -253,10 +279,10 @@ theorem replay_law (supported : SealedFragment G ty)
       FinDist.pure (supported.replay values focal deviator environment schedule) :=
   Classical.choose_spec (supported.replay_exists values focal deviator environment schedule)
 
-/-- A whole native replay depends only on honest values actually registered
+/-- A whole native replay depends only on non-focal values actually registered
 in that replay. Arbitrary deterministic deviations and adaptive service
 commands are preserved, with the entire final native execution record. -/
-theorem replay_congr (supported : SealedFragment G ty)
+theorem replay_congr (supported : SealedShape G ty)
     (left right : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry →
       (supported.compile.messageApplication (Value := L.Val ty)).View →
@@ -286,11 +312,11 @@ theorem replay_congr (supported : SealedFragment G ty)
     (fun history view => FinDist.pure (environment history view)) schedule _ _ hleft hagrees
   rwa [supported.replay_law, FinDist.mem_support_pure] at hright
 
-/-- Exact cylinder characterization for the value-substituted native runner.
-Equality of entire executions is equivalent to equality at the honest
+/-- Exact cylinder characterization for the assigned-proposal native runner.
+Equality of entire executions is equivalent to equality at the non-focal
 registration coordinates recorded by one execution. Every invocation prefix
 is an instance, by choosing that prefix as the schedule. -/
-theorem replay_eq_iff (supported : SealedFragment G ty)
+theorem replay_eq_iff (supported : SealedShape G ty)
     (left right : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry →
       (supported.compile.messageApplication (Value := L.Val ty)).View →
@@ -323,9 +349,23 @@ theorem replay_eq_iff (supported : SealedFragment G ty)
     exact hleft.symm.trans hright
   · exact supported.replay_congr left right focal deviator environment schedule
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.replay_eq_iff' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.replay_eq_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.replay_eq_iff
+#print axioms Vegas.EventGraph.SealedShape.replay_eq_iff
+
+namespace Vegas.EventGraph.SealedFragment
+
+/-- Legal assigned graph policies implement the same raw reference proposals. -/
+@[simp] theorem assignedCommitPolicy_proposals {Player : Type} [DecidableEq Player] {L : IExpr}
+    {G : Graph Player L} {ty : L.Ty} (supported : SealedFragment G ty)
+    (values : Fin G.nodeCount → L.Val ty) (who : Player) :
+    (supported.assignedCommitPolicy values who).proposals =
+      supported.assignedProposals values who := by
+  funext node guard hsem reads
+  simp only [CommitPolicy.proposals, assignedCommitPolicy, SealedShape.assignedProposals,
+    GameTheory.Math.Probability.FinDist.map_pure]
+
+end Vegas.EventGraph.SealedFragment

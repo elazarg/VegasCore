@@ -158,7 +158,7 @@ theorem restrictedGraphRun_assigned_registration_kernel
     SealedResolution.BeforeTimeoutBinding.initial hbefore hclear
   apply supported.resolving_registration_kernel cfg hterminal fallback nullValue window
     stopped hclear hmemory (hbinding.copy rfl rfl) ?_ who
-    (supported.valuePolicy reference who) policy slot value hcommand
+    (supported.assignedProposals reference who) policy slot value hcommand
   intro owner node guard hsem registered hlookup
   exact hrecorded owner node guard hsem rfl registered
     (runtime.runPolicies_lookup_of_eq_some players env after stopped tracePrefix.last

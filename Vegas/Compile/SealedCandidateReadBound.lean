@@ -5,7 +5,7 @@ import Interaction.SealedCandidateCoupling
 
 /-! # Source-earlier information at candidate acceptance
 
-Assigned honest values vary freely at source-future coordinates. The focal
+Assigned reference values vary freely at graph-future coordinates. The focal
 native policy and the full-pool environment remain arbitrary and randomized.
 The actual first-acceptance/timeout readout retains the focal player's entire
 local input and its candidate catalog for extraction. No private preparation
@@ -14,26 +14,27 @@ is treated as the source-site decision, and no fairness premise is needed.
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction Interaction.MessageApplication GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
-/-- Assigned honest choices in the actual candidate host, with one arbitrary
-native replacement. Only the proof substitutes the honest value assignment. -/
-def candidateValuePlayers (supported : SealedFragment G ty)
+/-- Assigned reference proposals in the actual candidate host, with one arbitrary
+native replacement. Only the proof substitutes the non-focal value assignment. -/
+def candidateValuePlayers (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (values : Fin G.nodeCount → L.Val ty) (focal : Player)
     (deviator : (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy) :=
   let runtime := supported.resolvingRuntime nullValue window
   Profile.update (sig := MessageApplication.policySignature Player runtime.candidateApplication)
     (fun who => runtime.candidatePlayerPolicy
-      (supported.resolvingPolicy nullValue window who (supported.valuePolicy values who)))
+      (supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals values
+        who)))
     focal deviator
 
-private theorem candidatePolicy_before_focal (supported : SealedFragment G ty)
+private theorem candidatePolicy_before_focal (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (focal who : Player)
     (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
@@ -50,10 +51,12 @@ private theorem candidatePolicy_before_focal (supported : SealedFragment G ty)
     let runtime := supported.resolvingRuntime nullValue window
     ∃ leftCommand rightCommand,
       runtime.candidatePlayerPolicy
-          (supported.resolvingPolicy nullValue window who (supported.valuePolicy leftValues who))
+          (supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+            leftValues who))
           (left.principalHistory who) (State.observe _ left.native who) = FinDist.pure leftCommand ∧
       runtime.candidatePlayerPolicy
-          (supported.resolvingPolicy nullValue window who (supported.valuePolicy rightValues who))
+          (supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+            rightValues who))
           (right.principalHistory who) (State.observe _ right.native who) =
         FinDist.pure rightCommand ∧
       SealedProgram.CommandAgreement supported.compile (supported.knownBefore focal decision)
@@ -83,26 +86,30 @@ private theorem candidatePolicy_before_focal (supported : SealedFragment G ty)
       erw [runtime.eventHistory_cache, runtime.eventHistory_cache]
       exact ((related.histories who).cache slot).2 hknown) hvalues hopenings
   have hleft : runtime.candidatePlayerPolicy
-      (supported.resolvingPolicy nullValue window who (supported.valuePolicy leftValues who))
+      (supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+        leftValues who))
       (left.principalHistory who) (State.observe _ left.native who) = FinDist.pure lc := by
     rw [SealedResolution.candidatePlayerPolicy,
-      supported.resolvingPolicy_no_timeout nullValue window who _ _ _ hclear]
+      supported.resolvingProposalPolicy_no_timeout nullValue window who _ _ _ hclear]
     exact hl
   have hright : runtime.candidatePlayerPolicy
-      (supported.resolvingPolicy nullValue window who (supported.valuePolicy rightValues who))
+      (supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+        rightValues who))
       (right.principalHistory who) (State.observe _ right.native who) = FinDist.pure rc := by
     rw [SealedResolution.candidatePlayerPolicy,
-      supported.resolvingPolicy_no_timeout nullValue window who _ _ _ hrightClear,
+      supported.resolvingProposalPolicy_no_timeout nullValue window who _ _ _ hrightClear,
       ← related.native.observe_eq who]
     exact hr
   refine ⟨lc, rc, hleft, hright, hc, ?_⟩
   intro payload hp
   have hsubmit : .submit payload ∈
       (runtime.candidatePlayerPolicy
-        (supported.resolvingPolicy nullValue window who (supported.valuePolicy leftValues who))
+        (supported.resolvingProposalPolicy nullValue window who (supported.assignedProposals
+          leftValues who))
         (left.principalHistory who) (State.observe _ left.native who)).support := by
     rw [hleft, hp, FinDist.mem_support_pure]
-  rcases supported.resolvingPolicy_submission nullValue window who _ _ _ payload hsubmit with
+  rcases supported.resolvingProposalPolicy_submission nullValue window who _ _ _ payload hsubmit
+    with
     ⟨node, rfl, _⟩ | ⟨node, handle, value, rfl, hhandle⟩
   · trivial
   · simp only [SealedResolution.registeredPlayerView, State.observe,
@@ -115,7 +122,7 @@ private theorem candidatePolicy_before_focal (supported : SealedFragment G ty)
 /-- Whole-prefix candidate-host hiding for any related readout that stops by
 the focal source site's acceptance or the first timeout. This uses the actual
 shared runner and its complete adaptive environment input. -/
-theorem candidateValuePlayers_cut_law {Observation : Type*} (supported : SealedFragment G ty)
+theorem candidateValuePlayers_cut_law {Observation : Type*} (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
@@ -190,7 +197,7 @@ theorem candidateValuePlayers_cut_law {Observation : Type*} (supported : SealedF
 
 /-- First public completion of the source commitment or first timeout. Private
 preparation alone never triggers this readout. -/
-def candidateAcceptanceCut (supported : SealedFragment G ty)
+def candidateAcceptanceCut (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (decision : Fin G.nodeCount)
     (execution :
       (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution) :
@@ -201,7 +208,7 @@ def candidateAcceptanceCut (supported : SealedFragment G ty)
 /-- The focal player's actual local input and owner-scoped candidate catalog
 at first acceptance, timeout, or the finite horizon. The catalog component is
 proof-facing extraction data; the runtime does not expose it to policies. -/
-def candidateAcceptanceLaw (supported : SealedFragment G ty)
+def candidateAcceptanceLaw (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (values : Fin G.nodeCount → L.Val ty) (focal : Player) (decision : Fin G.nodeCount)
     (deviator : (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
@@ -220,12 +227,12 @@ def candidateAcceptanceLaw (supported : SealedFragment G ty)
     fun execution => (execution.principalHistory focal, State.observe app execution.native focal,
       fun slot => execution.native.application.service.lookup (focal, slot))
 
-/-- Source-future hidden honest choices change neither the focal player's
+/-- Graph-future hidden reference values change neither the focal player's
 complete input nor any of its candidate meanings through public acceptance.
 The focal policy and full-pool environment are arbitrary and randomized;
 several preparations, competing submissions, and unopenable candidates are
 permitted. No service, completion, or incentive assumption is used. -/
-theorem candidateAcceptanceLaw_read_bound (supported : SealedFragment G ty)
+theorem candidateAcceptanceLaw_read_bound (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
@@ -261,9 +268,9 @@ theorem candidateAcceptanceLaw_read_bound (supported : SealedFragment G ty)
     | cons node rest =>
         simp only [ht, List.isEmpty_cons, Bool.not_false, Bool.true_eq_false] at hh
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.candidateAcceptanceLaw_read_bound' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.candidateAcceptanceLaw_read_bound' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.candidateAcceptanceLaw_read_bound
+#print axioms Vegas.EventGraph.SealedShape.candidateAcceptanceLaw_read_bound

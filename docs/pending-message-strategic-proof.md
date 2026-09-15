@@ -930,7 +930,7 @@ The current repository has:
   allows any joint honest-assignment law, including correlated coordinates;
 - local knowledge-indexed native hiding and the compiled submission barrier;
 - a whole-prefix registration read bound for the resolving runtime:
-  `SealedFragment.resolvingBindingLaw_read_bound` allows arbitrary randomized
+  `SealedShape.resolvingBindingLaw_read_bound` allows arbitrary randomized
   native deviator and full-pool environment policies, and compares assigned
   honest values agreeing at source-earlier disclosures;
 - a fixed-response resolving replay and its causal action extraction, with one

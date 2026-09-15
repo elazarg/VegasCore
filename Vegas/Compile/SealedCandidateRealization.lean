@@ -55,7 +55,7 @@ theorem candidateGraphRun_consistent (profile : CommitPolicyProfile G)
       environment schedule fallback profile).support)
     (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard) :
-    cfg.1.nodeValues fallback decision = SealedFragment.candidateValue
+    cfg.1.nodeValues fallback decision = SealedShape.candidateValue
       (supported.candidateSelection nullValue window (cfg.1.nodeValues fallback) focal
         deviator environment schedule decision) fallback := by
   have hchoice := supported.runOfDisclosures_consistent hinfo hguards focal
@@ -85,9 +85,9 @@ private theorem candidateGraphRun_locked (profile : CommitPolicyProfile G)
         .openable value) : cfg.1.nodeValues fallback decision = value := by
   have hchoice := supported.candidateGraphRun_consistent hinfo hguards nullValue window focal
     deviator environment schedule fallback profile cfg hcfg decision guard hdecision
-  rw [SealedFragment.candidateSelection_eq_stop _ _ _ _ _ _ _ _ decision guard hdecision] at hchoice
-  simpa only [SealedFragment.selectedCandidate, haccepted, Option.bind_some, ↓reduceIte,
-    hvalue, SealedFragment.candidateValue] using hchoice
+  rw [SealedShape.candidateSelection_eq_stop _ _ _ _ _ _ _ _ decision guard hdecision] at hchoice
+  simpa only [SealedShape.selectedCandidate, haccepted, Option.bind_some, ↓reduceIte,
+    hvalue, SealedShape.candidateValue] using hchoice
 
 /-- Every focal acceptance at a checkpoint of the pre-timeout replay has its
 complete graph value whenever that candidate is openable. Arbitrary other
@@ -165,8 +165,8 @@ theorem candidateGraphRun_accepted
     obtain ⟨_hselected, requires, hrule⟩ := hacceptance index handle haccepted
     obtain ⟨node, guard, rfl, _hsem⟩ := supported.ruleAt_commit hrule rfl
     have hhandle := supported.candidatePolicy_accepted_slot nullValue window handle.1
-      (supported.valuePolicy (cfg.1.nodeValues fallback) handle.1) _ _
-      (by rw [SealedFragment.candidateValuePlayers, Profile.update_of_ne _ _ howner])
+      (supported.assignedProposals (cfg.1.nodeValues fallback) handle.1) _ _
+      (by rw [SealedShape.candidateValuePlayers, Profile.update_of_ne _ _ howner])
       before stopped hbefore node.val handle haccepted rfl
     rw [hhandle] at hvalue
     have hgraph := supported.runPolicies_candidateValues_lookup nullValue window
@@ -213,10 +213,10 @@ theorem candidateGraphRun_registration_kernel
     nullValue window (cfg.1.nodeValues fallback) focal deviator environment schedule release
   have hplayer := Profile.update_of_ne
     (sig := MessageApplication.policySignature Player runtime.candidateApplication)
-    (fun owner => runtime.candidatePlayerPolicy (supported.resolvingPolicy nullValue
-      window owner (supported.valuePolicy (cfg.1.nodeValues fallback) owner)))
+    (fun owner => runtime.candidatePlayerPolicy (supported.resolvingProposalPolicy nullValue
+      window owner (supported.assignedProposals (cfg.1.nodeValues fallback) owner)))
     (fun history view => FinDist.pure (deviator history view)) hwho
-  rw [SealedFragment.candidateValuePlayers, Profile.update_of_ne _ _ hwho] at hcommand
+  rw [SealedShape.candidateValuePlayers, Profile.update_of_ne _ _ hwho] at hcommand
   have haccepted := supported.candidateGraphRun_accepted hinfo hguards nullValue window focal
     deviator environment schedule fallback profile cfg hcfg release
   have hopening := runtime.runPolicies_candidate_openings _ _ before _ stopped

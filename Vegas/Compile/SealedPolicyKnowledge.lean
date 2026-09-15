@@ -3,9 +3,9 @@
 import Vegas.Compile.SealedReplay
 import Vegas.Compile.SealedPublication
 
-/-! # Compiled policy commands under partial disclosure
+/-! # Assigned-proposal commands under partial disclosure
 
-The value-substituted honest policy consults private history only for its
+The assigned reference command generator consults private history only for its
 registration cache. Equal occupancy preserves typed read availability and
 node selection; equal known values preserve permitted opening payloads.
 Fresh registrations may differ only at handles outside the knowledge set.
@@ -88,14 +88,14 @@ theorem sealedPlayerStore_readAvailability (G : Graph Player L) (ty : L.Ty) (who
 
 end Vegas.EventGraph.Graph
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
-private theorem commitCommand_knowledge (supported : SealedFragment G ty)
+private theorem commitCommand_knowledge (supported : SealedShape G ty)
     (known : CommitmentHandle Player Nat → Prop) (who : Player)
     (leftValues rightValues : Fin G.nodeCount → L.Val ty)
     (leftHistory rightHistory :
@@ -110,9 +110,9 @@ private theorem commitCommand_knowledge (supported : SealedFragment G ty)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (hvalues : known (who, node.val) → leftValues node = rightValues node) :
     ∃ leftCommand rightCommand,
-      supported.commitCommand who (supported.valuePolicy leftValues who) node guard hsem
+      supported.commitCommand who (supported.assignedProposals leftValues who) node guard hsem
         leftHistory (supported.playerStore who leftHistory view) = FinDist.pure leftCommand ∧
-      supported.commitCommand who (supported.valuePolicy rightValues who) node guard hsem
+      supported.commitCommand who (supported.assignedProposals rightValues who) node guard hsem
         rightHistory (supported.playerStore who rightHistory view) = FinDist.pure rightCommand ∧
       SealedProgram.CommandAgreement supported.compile known who leftCommand rightCommand := by
   have hslot := hoccupied node.val
@@ -140,13 +140,13 @@ private theorem commitCommand_knowledge (supported : SealedFragment G ty)
     · exact ⟨_, _, rfl, rfl, SealedProgram.CommandAgreement.refl _ who⟩
     · contradiction
     · contradiction
-    · simp only [valuePolicy, FinDist.map_pure, cast_cast, cast_eq]
+    · simp only [SealedShape.assignedProposals, FinDist.map_pure, cast_cast, cast_eq]
       exact ⟨_, _, rfl, rfl, ⟨rfl, hvalues⟩⟩
   · contradiction
   · contradiction
   · exact ⟨_, _, rfl, rfl, SealedProgram.CommandAgreement.refl _ who⟩
 
-private theorem nodeCommand?_knowledge (supported : SealedFragment G ty)
+private theorem nodeCommand?_knowledge (supported : SealedShape G ty)
     (known : CommitmentHandle Player Nat → Prop) (who : Player)
     (leftValues rightValues : Fin G.nodeCount → L.Val ty)
     (leftHistory rightHistory :
@@ -167,10 +167,10 @@ private theorem nodeCommand?_knowledge (supported : SealedFragment G ty)
       supported.compile.openingHandle? view.application who node.val = some handle → known handle)
     (node : Fin G.nodeCount)
     (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (hselected : supported.nodeCommand? who [] (supported.valuePolicy leftValues who)
+    (hselected : supported.nodeCommand? who [] (supported.assignedProposals leftValues who)
       leftHistory view (supported.playerStore who leftHistory view) node = some law) :
     ∃ leftCommand rightCommand, law = FinDist.pure leftCommand ∧
-      supported.nodeCommand? who [] (supported.valuePolicy rightValues who)
+      supported.nodeCommand? who [] (supported.assignedProposals rightValues who)
         rightHistory view (supported.playerStore who rightHistory view) node =
           some (FinDist.pure rightCommand) ∧
       SealedProgram.CommandAgreement supported.compile known who leftCommand rightCommand := by
@@ -207,8 +207,8 @@ private theorem nodeCommand?_knowledge (supported : SealedFragment G ty)
 
 /-- Honest command shape is independent of hidden registered values.
 Designated known openings agree, while fresh private values need agree only
-at designated known slots. Both sides are the actual compiled policy. -/
-theorem playerPolicy_knowledge (supported : SealedFragment G ty)
+at designated known slots. Both sides use the shared compiled command generator. -/
+theorem playerPolicy_knowledge (supported : SealedShape G ty)
     (known : CommitmentHandle Player Nat → Prop) (who : Player)
     (leftValues rightValues : Fin G.nodeCount → L.Val ty)
     (leftHistory rightHistory :
@@ -228,18 +228,21 @@ theorem playerPolicy_knowledge (supported : SealedFragment G ty)
     (hopenings : ∀ (node : Fin G.nodeCount) handle,
       supported.compile.openingHandle? view.application who node.val = some handle → known handle) :
     ∃ leftCommand rightCommand,
-      supported.playerPolicy who (supported.valuePolicy leftValues who) leftHistory view =
+      supported.proposalPlayerPolicy who (supported.assignedProposals leftValues who) leftHistory
+        view =
         FinDist.pure leftCommand ∧
-      supported.playerPolicy who (supported.valuePolicy rightValues who) rightHistory view =
+      supported.proposalPlayerPolicy who (supported.assignedProposals rightValues who)
+        rightHistory view =
         FinDist.pure rightCommand ∧
       SealedProgram.CommandAgreement supported.compile known who leftCommand rightCommand := by
-  unfold SealedShape.playerPolicy
+  unfold SealedShape.proposalPlayerPolicy
   cases hselected : G.nodeOrder.findSome?
-      (supported.nodeCommand? who [] (supported.valuePolicy leftValues who) leftHistory view
+      (supported.nodeCommand? who [] (supported.assignedProposals leftValues who) leftHistory view
         (supported.playerStore who leftHistory view)) with
   | none =>
       have hnone : G.nodeOrder.findSome?
-          (supported.nodeCommand? who [] (supported.valuePolicy rightValues who) rightHistory view
+          (supported.nodeCommand? who [] (supported.assignedProposals rightValues who)
+            rightHistory view
             (supported.playerStore who rightHistory view)) =
             none := by
         apply List.findSome?_eq_none_iff.mpr
@@ -255,7 +258,8 @@ theorem playerPolicy_knowledge (supported : SealedFragment G ty)
         leftValues rightValues leftHistory rightHistory view hoccupied hcache hvalues hopenings
         node law hnode
       have hright : G.nodeOrder.findSome?
-          (supported.nodeCommand? who [] (supported.valuePolicy rightValues who) rightHistory view
+          (supported.nodeCommand? who [] (supported.assignedProposals rightValues who)
+            rightHistory view
             (supported.playerStore who rightHistory view)) =
             some (FinDist.pure rc) := by
         apply List.findSome?_eq_some_iff.mpr
@@ -267,4 +271,4 @@ theorem playerPolicy_knowledge (supported : SealedFragment G ty)
       simp only [hright, Option.getD_some]
       exact ⟨lc, rc, hl, rfl, hrelated⟩
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape

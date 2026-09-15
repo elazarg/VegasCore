@@ -35,10 +35,10 @@ def registered (value : Value) : app.PolicyExecution :=
     nativeTrace := [.privateCommand 0 ⟨(0, value)⟩] }
 
 theorem assigned_first_command (values : Fin graph.nodeCount → Value) :
-    sealedFragment.playerPolicy 0 (sealedFragment.valuePolicy values 0) []
+    sealedFragment.proposalPlayerPolicy 0 (sealedFragment.assignedProposals values 0) []
       (MessageApplication.State.observe app initial.native 0) =
         FinDist.pure (.privateCommand ⟨(0, values (node 0))⟩) := by
-  change sealedFragment.commitCommand 0 (sealedFragment.valuePolicy values 0)
+  change sealedFragment.commitCommand 0 (sealedFragment.assignedProposals values 0)
     (node 0) _ rfl [] _ = _
   unfold SealedShape.commitCommand
   simp only [MessageApplication.ChoiceEncoding.cachedValue_nil]
@@ -51,8 +51,8 @@ theorem first_native_law (values : Fin graph.nodeCount → Value)
     app.runPolicies (sealedFragment.valuePlayers values 1 deviator) environment
       [.player 0] initial = FinDist.pure (registered (values (node 0))) := by
   simp only [MessageApplication.runPolicies, MessageApplication.invoke, FinDist.bind_pure]
-  rw [SealedFragment.valuePlayers, GameTheory.Profile.update_of_ne _ _ (by decide)]
-  change (sealedFragment.playerPolicy 0 (sealedFragment.valuePolicy values 0) []
+  rw [SealedShape.valuePlayers, GameTheory.Profile.update_of_ne _ _ (by decide)]
+  change (sealedFragment.proposalPlayerPolicy 0 (sealedFragment.assignedProposals values 0) []
     (MessageApplication.State.observe app initial.native 0)).bind _ = _
   rw [assigned_first_command, FinDist.pure_bind]
   simp only [MessageApplication.playerStep, MessageApplication.advance,

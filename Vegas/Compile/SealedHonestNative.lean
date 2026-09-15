@@ -101,7 +101,7 @@ theorem assigned_registration_factor [Finite Player]
   obtain ⟨node, guard, hsem, reads, hslot, hfresh, hreads, hkernel⟩ :=
     supported.resolving_registration_kernel cfg hterminal fallback nullValue window initial
       hclear hmemory (hbinding.copy rfl rfl) hvalues who
-      (supported.valuePolicy reference who) (profile who) slot value hcommand
+      (supported.assignedProposals reference who) (profile who) slot value hcommand
   have hfreshSlot : initial.native.application.service.lookup (who, slot) = none := hslot ▸ hfresh
   have hnew : next.native.application.service.lookup (who, slot) = some value := by
     simp only [playerStep, advance, PlayerCommand.toAction, MessageApplication.step,
@@ -200,8 +200,8 @@ theorem assignedReplay_prefix_prob_eq_product
         dsimp only [players]
         have hlaw := supported.selected_nonregistration_law who
           initial.native.application.visible.timeouts
-          (supported.valuePolicy reference who)
-          (profile who)
+          (supported.assignedProposals reference who)
+          ((profile who)).proposals
           (runtime.eventHistory (initial.principalHistory who))
           (runtime.eventView (State.observe runtime.messageApplication initial.native who))
           _ _ hcommand (fun _ h => by cases h)

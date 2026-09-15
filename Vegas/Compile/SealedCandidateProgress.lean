@@ -27,7 +27,8 @@ private theorem nodeCommand_candidate_ready (who : Player) (policy : CommitPolic
       who execution)
     (node : Fin G.nodeCount) (store : Store L)
     (law : FinDist (supported.compile.messageApplication (Value := L.Val ty)).PlayerCommand)
-    (hselected : supported.nodeCommand? who execution.native.application.visible.timeouts policy
+    (hselected : supported.nodeCommand? who execution.native.application.visible.timeouts
+      policy.proposals
       ((supported.resolvingRuntime nullValue window).eventHistory
         ((supported.resolvingRuntime nullValue window).registeredPlayerHistory
           (execution.principalHistory who)))
@@ -44,7 +45,8 @@ private theorem nodeCommand_candidate_ready (who : Player) (policy : CommitPolic
     (runtime.registeredPlayerHistory (execution.principalHistory who))
   let view := runtime.eventView (runtime.registeredPlayerView (State.observe _ execution.native
     who))
-  change supported.nodeCommand? who state.timeouts policy history view store node = some law
+  change supported.nodeCommand? who state.timeouts policy.proposals history view store node = some
+    law
     at hselected
   unfold SealedShape.nodeCommand? at hselected
   split at hselected
@@ -60,7 +62,8 @@ private theorem nodeCommand_candidate_ready (who : Player) (policy : CommitPolic
         next howner =>
           subst owner
           rw [← Option.some.inj hselected] at hsubmit
-          obtain ⟨hpayload, _⟩ := supported.commitCommand_submission who policy node guard hsem
+          obtain ⟨hpayload, _⟩ := supported.commitCommand_submission who policy.proposals node
+            guard hsem
             history store payload hsubmit
           subst payload
           refine .commitment who serial node.val (who, node.val) (G.messagePrerequisites node)
@@ -132,13 +135,14 @@ theorem candidatePolicy_submission_ready (who : Player) (policy : CommitPolicy G
       SealedResolution.CandidateSubmissionReady (supported.resolvingRuntime nullValue window)
         execution.native.application ⟨(who, serial), payload⟩ node.val := by
   let runtime := supported.resolvingRuntime nullValue window
-  have hmemory := supported.candidatePolicy_memory nullValue window who policy players environment
+  have hmemory := supported.candidatePolicy_memory nullValue window who policy.proposals players
+    environment
     hplayer schedule execution hactual
   rw [hplayer] at hsubmit
   change .submit payload ∈ (supported.resolvingPolicy nullValue window who policy
     (runtime.registeredPlayerHistory (execution.principalHistory who))
     (runtime.registeredPlayerView (State.observe _ execution.native who))).support at hsubmit
-  unfold SealedShape.resolvingPolicy at hsubmit
+  unfold SealedShape.resolvingPolicy SealedShape.resolvingProposalPolicy at hsubmit
   dsimp only at hsubmit
   unfold Option.getD at hsubmit
   split at hsubmit
@@ -170,16 +174,17 @@ theorem candidatePolicy_registration_fresh
       (State.observe _ execution.native who)).support) :
     execution.native.application.service.lookup (who, slot) = .fresh := by
   let runtime := supported.resolvingRuntime nullValue window
-  have hmemory := supported.candidatePolicy_memory nullValue window who policy players environment
+  have hmemory := supported.candidatePolicy_memory nullValue window who policy.proposals players
+    environment
     hplayer schedule execution hactual
   rw [hplayer] at hcommand
   change .privateCommand ⟨(slot, value)⟩ ∈ (supported.resolvingPolicy nullValue window who policy
     (runtime.registeredPlayerHistory (execution.principalHistory who))
     (runtime.registeredPlayerView (State.observe _ execution.native who))).support at hcommand
-  unfold SealedShape.resolvingPolicy at hcommand
+  unfold SealedShape.resolvingPolicy SealedShape.resolvingProposalPolicy at hcommand
   dsimp only at hcommand
   obtain ⟨node, guard, hsem, reads, hslot, hcache, _⟩ := supported.selected_registration_kernel
-    who execution.native.application.visible.timeouts policy _ _ _ slot value hcommand
+    who execution.native.application.visible.timeouts policy.proposals _ _ _ slot value hcommand
   rw [hslot]
   erw [runtime.eventHistory_cache, runtime.registeredPlayerHistory_cache] at hcache
   erw [hmemory.memory node.val, hcache]

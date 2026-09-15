@@ -158,7 +158,7 @@ theorem commitCommand_source_kernel (who : Player) (policy : CommitPolicy G who)
       guard.choiceReads).isSome) :
     ∃ reads : ReadEnv L guard.choiceReads,
       ReadEnv.ofStore? cfg.1.store guard.choiceReads = some reads ∧
-      supported.commitCommand who policy node guard hsem history
+      supported.commitCommand who policy.proposals node guard hsem history
         (G.sealedPlayerStore ty who (fun slot =>
           (supported.compile.registrationEncoding slot).cachedValue
             (supported.compile.messageApplication (Value := L.Val ty)) history) state.events) =
@@ -169,7 +169,8 @@ theorem commitCommand_source_kernel (who : Player) (policy : CommitPolicy G who)
   refine ⟨reads, supported.sealedPlayerStore_source_reads cfg hterminal fallback state hbinding
     hregistered who _ hmemory _ reads
     (ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some hreads), ?_⟩
-  simp only [SealedShape.commitCommand, hcache, hreads]
+  simp only [SealedShape.commitCommand, hcache, hreads, CommitPolicy.proposals,
+    FinDist.map_comp, Function.comp_def]
 
 omit hbinding hregistered in
 /-- At any compatible native snapshot before timeout, a fresh registration
@@ -187,9 +188,11 @@ theorem resolving_registration_kernel (nullValue : L.Val ty) (window : Nat)
       (G.nodeRow node).sem = .commit owner guard → ∀ value,
         execution.native.application.service.lookup (owner, node.val) = some value →
           cfg.1.nodeValues fallback node = value)
-    (who : Player) (original replacement : CommitPolicy G who) (slot : Nat) (value : L.Val ty)
+    (who : Player) (original : ProposalPolicy G who) (replacement : CommitPolicy G who)
+    (slot : Nat) (value : L.Val ty)
     (hcommand : .privateCommand ⟨(slot, value)⟩ ∈
-      (supported.resolvingPolicy nullValue window who original (execution.principalHistory who)
+      (supported.resolvingProposalPolicy nullValue window who original
+        (execution.principalHistory who)
         (MessageApplication.State.observe _ execution.native who)).support) :
     ∃ (node : Fin G.nodeCount) (guard : EventGuard L)
       (hsem : (G.nodeRow node).sem = .commit who guard) (reads : ReadEnv L guard.choiceReads),
@@ -200,7 +203,7 @@ theorem resolving_registration_kernel (nullValue : L.Val ty) (window : Nat)
         (replacement node guard hsem reads).map (fun choice =>
           .privateCommand ⟨(node.val,
             cast (congrArg L.Val (supported.commitType node who guard hsem)) choice.1)⟩) := by
-  rw [supported.resolvingPolicy_no_timeout _ _ _ _ _ _ hclear] at hcommand
+  rw [supported.resolvingProposalPolicy_no_timeout _ _ _ _ _ _ hclear] at hcommand
   obtain ⟨node, guard, hsem, reads, hslot, hcache, hreads, hkernel⟩ :=
     supported.selected_registration_kernel who [] original _ _ _ slot value hcommand
   let runtime := supported.resolvingRuntime nullValue window
@@ -216,6 +219,8 @@ theorem resolving_registration_kernel (nullValue : L.Val ty) (window : Nat)
   · exact supported.sealedPlayerStore_source_reads cfg hterminal fallback _ hvalid hvalues who
       _ hhistory _ reads (ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some hreads)
   · rw [supported.resolvingPolicy_no_timeout _ _ _ _ _ _ hclear]
-    exact hkernel replacement
+    simpa only [SealedShape.playerPolicy, SealedShape.proposalPlayerPolicy,
+      CommitPolicy.proposals, FinDist.map_comp, Function.comp_def] using hkernel
+        replacement.proposals
 
 end Vegas.EventGraph.SealedFragment

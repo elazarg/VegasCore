@@ -5,33 +5,33 @@ import Vegas.Compile.SealedCandidateReadBound
 import Interaction.SealedCandidateAcceptance
 import Interaction.SealedCandidateProvenance
 
-/-! # Honest candidate values under arbitrary native deviations
+/-! # Reference candidate values under arbitrary native deviations
 
 Generated submissions retain their source-site identity through delivery and
-replay. In assigned-value execution, each honest player's private cache and
+replay. In assigned-value execution, each reference player's private cache and
 openable candidate slots retain exactly those assigned values. The focal
 player's preparations, candidate identities, and submission policies are unrestricted.
 -/
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction Interaction.MessageApplication GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
-variable (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
+variable (supported : SealedShape G ty) (nullValue : L.Val ty) (window : Nat)
 
 /-- A generated owner's accepted handle belongs to that very source site,
 even when every other player and the environment behaves arbitrarily. -/
-theorem candidatePolicy_accepted_slot (who : Player) (policy : CommitPolicy G who)
+theorem candidatePolicy_accepted_slot (who : Player) (policy : ProposalPolicy G who)
     (players : Player →
       (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
     (environment : MessageApplication.EnvironmentPolicy
       (supported.resolvingRuntime nullValue window).candidateApplication)
     (hplayer : players who = (supported.resolvingRuntime nullValue window).candidatePlayerPolicy
-      (supported.resolvingPolicy nullValue window who policy))
+      (supported.resolvingProposalPolicy nullValue window who policy))
     (schedule : List (@Invocation Player))
     (execution : (supported.resolvingRuntime nullValue window).candidateApplication.PolicyExecution)
     (hactual : execution ∈
@@ -49,7 +49,8 @@ theorem candidatePolicy_accepted_slot (who : Player) (policy : CommitPolicy G wh
   intro current sender payload hsubmit index selected hpacket hauth hwho
   have hsender := hauth.trans hwho
   rw [hsender, hplayer] at hsubmit
-  rcases supported.resolvingPolicy_submission nullValue window who policy _ _ payload hsubmit with
+  rcases supported.resolvingProposalPolicy_submission nullValue window who policy _ _ payload
+    hsubmit with
     ⟨site, hpayload, _hcache⟩ | ⟨site, openingHandle, value, hpayload, _hready⟩
   · rw [hpacket] at hpayload
     cases hpayload
@@ -63,7 +64,7 @@ variable (deviator :
 variable (environment : MessageApplication.EnvironmentPolicy
   (supported.resolvingRuntime nullValue window).candidateApplication)
 
-/-- Recorded honest preparations carry the assigned value at a real source
+/-- Recorded reference preparations carry the assigned value at a real source
 commitment node. Rejected traffic and candidate acceptance cannot manufacture
 these proof-facing private-command records. -/
 theorem runPolicies_candidateValues_registration
@@ -94,7 +95,7 @@ theorem runPolicies_candidateValues_registration
           obtain ⟨rfl, rfl⟩ := ha
           rw [candidateValuePlayers, Profile.update_of_ne _ _ howner] at hchosen
           obtain ⟨actual, hindex, hvalue, guard, hsem⟩ :=
-            supported.selected_valuePolicy_registration values actor view.application.timeouts
+            supported.selected_proposals_registration values actor view.application.timeouts
               (runtime.eventHistory (runtime.registeredPlayerHistory history))
               (runtime.eventView (runtime.registeredPlayerView view)) _ index.val registered hchosen
           have hactual : actual = index := Fin.ext hindex.symm
@@ -128,7 +129,7 @@ theorem runPolicies_candidateValues_lookup
   let encoding : ChoiceEncoding (L.Val ty) runtime.candidateApplication.PlayerCommand :=
     runtime.program.registrationEncoding node.val
   have hmemory := supported.candidatePolicy_memory nullValue window who
-    (supported.valuePolicy values who)
+    (supported.assignedProposals values who)
     (supported.candidateValuePlayers nullValue window values focal deviator) environment
     (by rw [candidateValuePlayers, Profile.update_of_ne _ _ hwho]) schedule execution hactual
   have hcache : encoding.cachedValue runtime.candidateApplication
@@ -153,7 +154,7 @@ theorem runPolicies_candidateValues_lookup
   rw [hcommand] at hchosen
   rw [candidateValuePlayers, Profile.update_of_ne _ _ hwho] at hchosen
   obtain ⟨actual, hindex, hvalue, guard, _hsem⟩ :=
-    supported.selected_valuePolicy_registration values who view.application.timeouts
+    supported.selected_proposals_registration values who view.application.timeouts
       (runtime.eventHistory (runtime.registeredPlayerHistory history))
       (runtime.eventView (runtime.registeredPlayerView view)) _ node.val stored hchosen
   have hnode : actual = node := Fin.ext hindex.symm
@@ -180,7 +181,7 @@ theorem runPolicies_candidateValues_registration_lookup
   have hfixed := runtime.runPolicies_candidate_preparation_fixed _ _ schedule execution
     hactual who node.val value hrecord
   have hmemory := supported.candidatePolicy_memory nullValue window who
-    (supported.valuePolicy values who)
+    (supported.assignedProposals values who)
     (supported.candidateValuePlayers nullValue window values focal deviator) environment
     (by rw [candidateValuePlayers, Profile.update_of_ne _ _ hwho]) schedule execution hactual
   have hslot := hmemory.memory node.val
@@ -197,9 +198,9 @@ theorem runPolicies_candidateValues_registration_lookup
       exact ⟨hvalue ▸ hslot, (supported.runPolicies_candidateValues_registration nullValue window
         values focal deviator environment schedule execution hactual who hwho node value hrecord).2⟩
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
-/-- info: 'Vegas.EventGraph.SealedFragment.runPolicies_candidateValues_lookup' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.runPolicies_candidateValues_lookup' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.runPolicies_candidateValues_lookup
+#print axioms Vegas.EventGraph.SealedShape.runPolicies_candidateValues_lookup

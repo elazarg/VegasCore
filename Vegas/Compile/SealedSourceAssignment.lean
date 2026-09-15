@@ -72,7 +72,7 @@ theorem assignmentRealization_honest (who : Player) (hwho : who ≠ focal)
   obtain ⟨reads, _, choice, hchoice, hvalue⟩ := hchoices node (hterminal node) who guard hsem
   rw [Profile.update_of_ne _ _ hwho] at hchoice
   simp only [valueSourceProfile, compile_backtranslateCommitPolicy,
-    EventGraph.SealedFragment.valuePolicy, FinDist.mem_support_pure] at hchoice
+    EventGraph.SealedFragment.assignedCommitPolicy, FinDist.mem_support_pure] at hchoice
   subst choice
   change cfg.1.store ((compile source.core).graph.nodeTarget node) =
     some (⟨guard.ty, cast (congrArg L.Val

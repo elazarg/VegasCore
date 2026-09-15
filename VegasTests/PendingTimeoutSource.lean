@@ -93,14 +93,17 @@ theorem complete_timed_run_source (left right : Value) (reverse : Bool) :
 
 end VegasTests.PendingTimeoutSource
 
-/-- info: 'Vegas.EventGraph.SealedFragment.sealed_timeout_run_refines' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.EventGraph.SealedFragment.sealed_timeout_run_refines' depends on axioms:
+  [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraph.SealedFragment.sealed_timeout_run_refines
 
-/-- info: 'Vegas.WFProgram.sealed_timeout_run_source' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.WFProgram.sealed_timeout_run_source' depends on axioms: [propext,
+  Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.WFProgram.sealed_timeout_run_source
 
-/-- info: 'Vegas.WFProgram.sealed_timeout_message_policy_source' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Vegas.WFProgram.sealed_timeout_message_policy_source' depends on axioms: [propext,
+  Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.WFProgram.sealed_timeout_message_policy_source

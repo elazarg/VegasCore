@@ -52,8 +52,8 @@ def resolvedPlayerStore (supported : SealedShape G ty) (who : Player)
   completed.foldl (supported.resolvedPlayerStoreStep who nullValue history)
     (supported.playerStore who history view)
 
-def resolvingPolicy (supported : SealedShape G ty) (nullValue : L.Val ty)
-    (window : Nat) (who : Player) (policy : CommitPolicy G who) :
+def resolvingProposalPolicy (supported : SealedShape G ty) (nullValue : L.Val ty)
+    (window : Nat) (who : Player) (policy : ProposalPolicy G who) :
     (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy :=
   fun history view =>
     let runtime := supported.resolvingRuntime nullValue window
@@ -64,9 +64,28 @@ def resolvingPolicy (supported : SealedShape G ty) (nullValue : L.Val ty)
     (G.nodeOrder.findSome? (supported.nodeCommand? who view.application.timeouts
       policy history eventView store)).getD (FinDist.pure .wait)
 
-/-- With no recorded timeout, the policy is exactly the untimed source-policy
+/-- Translate a legal graph policy through the same native proposal generator. -/
+def resolvingPolicy (supported : SealedShape G ty) (nullValue : L.Val ty)
+    (window : Nat) (who : Player) (policy : CommitPolicy G who) :
+    (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy :=
+  supported.resolvingProposalPolicy nullValue window who policy.proposals
+
+/-- With no recorded timeout, the proposal policy is exactly its untimed
 implementation on the event/history projection. Clock and readiness timestamps
-do not change which source kernel is used. -/
+do not change which local kernel is used. -/
+theorem resolvingProposalPolicy_no_timeout (supported : SealedShape G ty)
+    (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : ProposalPolicy G who)
+    (history : List
+      (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
+    (view : (supported.resolvingRuntime nullValue window).messageApplication.View)
+    (htimeouts : view.application.timeouts = []) :
+    supported.resolvingProposalPolicy nullValue window who policy history view =
+      supported.proposalPlayerPolicy who policy
+        ((supported.resolvingRuntime nullValue window).eventHistory history)
+        ((supported.resolvingRuntime nullValue window).eventView view) := by
+  simp only [resolvingProposalPolicy, htimeouts, resolvedPlayerStore, List.foldl_nil,
+    proposalPlayerPolicy]
+
 theorem resolvingPolicy_no_timeout (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
     (history : List
@@ -76,24 +95,25 @@ theorem resolvingPolicy_no_timeout (supported : SealedShape G ty)
     supported.resolvingPolicy nullValue window who policy history view =
       supported.playerPolicy who policy
         ((supported.resolvingRuntime nullValue window).eventHistory history)
-        ((supported.resolvingRuntime nullValue window).eventView view) := by
-  simp only [resolvingPolicy, htimeouts, resolvedPlayerStore, List.foldl_nil, playerPolicy]
+        ((supported.resolvingRuntime nullValue window).eventView view) :=
+  supported.resolvingProposalPolicy_no_timeout nullValue window who policy.proposals
+    history view htimeouts
 
-theorem resolvingPolicy_submission (supported : SealedShape G ty)
-    (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
+theorem resolvingProposalPolicy_submission (supported : SealedShape G ty)
+    (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : ProposalPolicy G who)
     (history : List
       (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
     (view : (supported.resolvingRuntime nullValue window).messageApplication.View)
     (payload : SealedProgram.Payload Player (L.Val ty))
     (hsubmit : .submit payload ∈
-      (supported.resolvingPolicy nullValue window who policy history view).support) :
+      (supported.resolvingProposalPolicy nullValue window who policy history view).support) :
     (∃ node, payload = .commitment node (who, node) ∧
       ((supported.compile.registrationEncoding node).cachedValue
         (supported.resolvingRuntime nullValue window).messageApplication history).isSome = true) ∨
       ∃ node handle value, payload = .opening node handle value ∧
         (supported.compile.discharge view.application.timeouts).openingHandle?
           view.application.events who node = some handle := by
-  unfold resolvingPolicy at hsubmit
+  unfold resolvingProposalPolicy at hsubmit
   dsimp only at hsubmit
   unfold Option.getD at hsubmit
   split at hsubmit
@@ -109,6 +129,23 @@ theorem resolvingPolicy_submission (supported : SealedShape G ty)
   · simp only [FinDist.mem_support_pure] at hsubmit
     cases hsubmit
 
+theorem resolvingPolicy_submission (supported : SealedShape G ty)
+    (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
+    (history : List
+      (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
+    (view : (supported.resolvingRuntime nullValue window).messageApplication.View)
+    (payload : SealedProgram.Payload Player (L.Val ty))
+    (hsubmit : .submit payload ∈
+      (supported.resolvingPolicy nullValue window who policy history view).support) :
+    (∃ node, payload = .commitment node (who, node) ∧
+      ((supported.compile.registrationEncoding node).cachedValue
+        (supported.resolvingRuntime nullValue window).messageApplication history).isSome = true) ∨
+      ∃ node handle value, payload = .opening node handle value ∧
+        (supported.compile.discharge view.application.timeouts).openingHandle?
+          view.application.events who node = some handle :=
+  supported.resolvingProposalPolicy_submission nullValue window who policy.proposals
+    history view payload hsubmit
+
 theorem resolvingPolicy_no_cleartext (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
     (history : List
@@ -118,7 +155,8 @@ theorem resolvingPolicy_no_cleartext (supported : SealedShape G ty)
     .submit (.cleartext node value) ∉
       (supported.resolvingPolicy nullValue window who policy history view).support := by
   intro hsubmit
-  rcases supported.resolvingPolicy_submission nullValue window who policy history view _
+  rcases supported.resolvingProposalPolicy_submission nullValue window who policy.proposals
+    history view _
     hsubmit with ⟨_, h, _⟩ | ⟨_, _, _, h, _⟩ <;> cases h
 
 end Vegas.EventGraph.SealedShape
@@ -141,10 +179,10 @@ def compileResolvingPolicy (compilation : SealedCompilation source ty)
 
 end Vegas.SealedCompilation
 
-/-- info: 'Vegas.EventGraph.SealedShape.resolvingPolicy_no_timeout' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.resolvingProposalPolicy_no_timeout' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedShape.resolvingPolicy_no_timeout
+#print axioms Vegas.EventGraph.SealedShape.resolvingProposalPolicy_no_timeout
 
 /-- info: 'Vegas.EventGraph.SealedShape.resolvingPolicy_no_cleartext' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

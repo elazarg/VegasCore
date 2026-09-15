@@ -325,7 +325,7 @@ theorem candidateGraphCoupling_public_store
     nullValue window focal deviator environment schedule fallback _ cfg hcfg (fun _ => false)
   dsimp only at haccepted
   simp only [PolicyTrace.firstRelease_false_eq_last, PolicyTrace.prefixThrough_last] at haccepted
-  dsimp only [SealedFragment.candidateStop] at hstop
+  dsimp only [SealedShape.candidateStop] at hstop
   rw [← hstop] at haccepted
   exact supported.publicSealedStore_agrees_of_opened_values nullValue window
     trace.last.native.application.visible hinvariant hcomplete cfg

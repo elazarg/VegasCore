@@ -104,11 +104,11 @@ theorem replay_registration_factor
     intro owner node guard hsem registered hlookup
     apply compilation.extractedSourceRun_registered nullValue window focal deviator environment
       schedule fallback restricted cfg hcfg owner node guard hsem registered
-    rw [EventGraph.SealedFragment.resolvingStop, ← PolicyTrace.prefixThrough_last, hreplay]
+    rw [EventGraph.SealedShape.resolvingStop, ← PolicyTrace.prefixThrough_last, hreplay]
     exact runtime.runPolicies_lookup_of_eq_some players env (.player who :: after) initial _
       (owner, node.val) registered hlookup hrest
   have hselected := hcommand
-  simp only [players, EventGraph.SealedFragment.resolvingValuePlayers,
+  simp only [players, EventGraph.SealedShape.resolvingValuePlayers,
     Profile.update_of_ne _ _ hwho] at hselected
   obtain ⟨node, guard, hsem, reads, hslot, hempty, hreads, hkernel⟩ :=
     compilation.supported.resolving_registration_kernel cfg hterminal fallback nullValue window
@@ -220,7 +220,7 @@ theorem replay_prefix_prob_eq_product
     intro before initial who command next after hbefore hcommand hnext hafter hstop
     by_cases hwho : who = focal
     · subst who
-      simp only [referencePlayers, EventGraph.SealedFragment.resolvingValuePlayers,
+      simp only [referencePlayers, EventGraph.SealedShape.resolvingValuePlayers,
         Profile.update_same, FinDist.mem_support_pure] at hcommand
       simp only [players, Profile.update_same, ← hcommand, FinDist.prob_pure_self]
       cases command <;>
@@ -236,15 +236,15 @@ theorem replay_prefix_prob_eq_product
           rw [hfactor, SealedResolution.registrationFactor,
             if_pos ⟨List.mem_toFinset.mpr hmem, hfresh⟩]
       | submit payload | replay id | wait =>
-          simp only [referencePlayers, EventGraph.SealedFragment.resolvingValuePlayers,
+          simp only [referencePlayers, EventGraph.SealedShape.resolvingValuePlayers,
             Profile.update_of_ne _ _ hwho] at hcommand
           have hlaw := compilation.supported.selected_nonregistration_law who
             initial.native.application.visible.timeouts
-            (compilation.supported.valuePolicy reference who)
+            (compilation.supported.assignedProposals reference who)
             (compileSourcePolicy source.core.prog source.core.fresh
               (BuildState.fromInitial
                 (initialState source.core.Γ source.core.env source.core.wctx))
-              rfl who (profile who))
+              rfl who (profile who)).proposals
             (runtime.eventHistory (initial.principalHistory who))
             (runtime.eventView (State.observe runtime.messageApplication initial.native who))
             _ _ hcommand (fun _ h => by cases h)

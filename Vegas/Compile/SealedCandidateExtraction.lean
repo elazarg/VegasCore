@@ -52,7 +52,7 @@ theorem extractedCandidateCommitPolicy_law
       schedule fallback) decision guard hdecision reads).map
         (fun value => cast (congrArg L.Val (supported.commitType decision focal guard hdecision))
           value.1) =
-      FinDist.pure (candidateValue
+      FinDist.pure (SealedShape.candidateValue
         (supported.candidateSelection nullValue window values focal deviator environment
           schedule decision) fallback) := by
   simp only [extractedCandidateCommitPolicy, commitPolicyOfDisclosures, FinDist.map_pure,

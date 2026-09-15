@@ -53,10 +53,11 @@ theorem first_command (law : FinDist Value) :
       law.map (fun value => (.privateCommand ⟨(0, value)⟩ : app.PlayerCommand)) := by
   change supported.commitCommand 0
     (compileSourcePolicy core source.core.fresh initialBuild rfl 0
-      (SourceGraph.repeatPolicy law 0)) (node 0) firstGuard rfl []
+      (SourceGraph.repeatPolicy law 0)).proposals (node 0) firstGuard rfl []
       (supported.playerStore 0 [] (MessageApplication.State.observe app initial.native 0)) = _
   unfold SealedShape.commitCommand
-  simp only [MessageApplication.ChoiceEncoding.cachedValue_nil]
+  simp only [MessageApplication.ChoiceEncoding.cachedValue_nil, CommitPolicy.proposals,
+    FinDist.map_comp, Function.comp_def]
   change (compileSourcePolicy core source.core.fresh initialBuild rfl 0
     (SourceGraph.repeatPolicy law 0) (node 0) firstGuard rfl _).map _ = _
   rw [first_kernel, FinDist.map_comp]
@@ -69,7 +70,7 @@ theorem cached_command (law : FinDist Value) (value : Value) :
       FinDist.pure (.submit (.commitment 0 (0, 0))) := by
   change supported.commitCommand 0
     (compileSourcePolicy core source.core.fresh initialBuild rfl 0
-      (SourceGraph.repeatPolicy law 0)) (node 0) firstGuard rfl
+      (SourceGraph.repeatPolicy law 0)).proposals (node 0) firstGuard rfl
       [⟨MessageApplication.State.observe app initial.native 0, .privateCommand ⟨(0, value)⟩⟩]
       (supported.playerStore 0
         [⟨MessageApplication.State.observe app initial.native 0, .privateCommand ⟨(0, value)⟩⟩]
