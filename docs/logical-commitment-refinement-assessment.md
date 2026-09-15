@@ -207,12 +207,16 @@ These failures concern particular operational and observation interfaces. They
 do not rule out a fixed-profile expected-utility bound. That bound asks for a
 legal graph deviation whose expected utility is at least the native deviation's;
 it does not ask a logical policy to reproduce every native command.
-`CandidateRoundModel.deviation_bound_of_support_floor` in
-`Vegas/Game/SealedCandidate.lean` proves this weaker statement using the full
+`CandidateRoundModel.deviation_bound_of_quit_prefix` in
+`Vegas/Game/SealedCandidatePrefix.lean` proves such a bound using the full
 native-information coupling. Normal completed pairs agree on public utility;
-timeout pairs satisfy the graph quitting cap and the fixed-opponent graph
-support floor. The source theorem in `Vegas/Game/SourceCandidate.lean`
-transports those conditions through the separate source/graph edge.
+timeout pairs are compared with legal continuations sharing the relevant
+pre-decision public prefix. The source theorems in
+`Vegas/Game/SourcePublicCandidate.lean` transport this comparison through the
+separate source/graph edge for arbitrary public source-outcome utilities.
+Their admitted graph fragment remains sample-free with a common commitment
+type and universally accepting guards. Public guard validation has local
+implementation proofs, but is not covered by that strategic result.
 
 A logical intermediate game remains a possible factoring of that argument,
 but its missing strategic certificate must not be confused with a missing

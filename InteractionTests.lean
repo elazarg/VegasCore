@@ -5,6 +5,7 @@ import InteractionTests.LogicalCommitment
 import InteractionTests.LogicalCommitmentClock
 import InteractionTests.LogicalCommitmentInformation
 import InteractionTests.LogicalCommitmentSequential
+import InteractionTests.LogicalCommitmentNative
 import InteractionTests.ConditionalPublication
 import InteractionTests.ChoiceController
 import InteractionTests.PrivateChoice

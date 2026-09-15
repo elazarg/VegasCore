@@ -204,7 +204,44 @@ composition is sound only if those joint effects are retained in the logical
 history or their continuation law is proved independent of the erased data.
 Composing separate per-site hiding results is not sufficient.
 
-The next adoption test is a native stopped-prefix factorization under one
+## Native fixed-segment instance
+
+`InteractionTests/LogicalCommitmentNative.lean` proves the two-stage law for
+actual candidate `MessageApplication` execution. One owner prepares a Boolean
+candidate and its commitment is accepted. A fixed distribution chooses an
+unauthenticated opening claim and whether it remains pending or is included
+and rejected. The claim is delivered to the owner's inbox in both cases.
+The owner's second response submits a claimed opening or withholds. The
+continuation includes any submitted response and advances the actual deadline
+clock. Matching claims open; mismatches and withholding publish the null
+default with a timeout record.
+
+`candidate_two_decision_policy_law` quantifies over both randomized responses.
+The second response receives the actual native owner view plus the recalled
+first action and auxiliary initial metadata, never the private catalog.
+The proof derives the two action-total kernel equalities from these native
+segments. It retains the pending claim separately from ledger inclusion, and
+preserves the final published-value/timeout law. The disclosure distribution
+and transport segments are fixed independently of both response policies.
+
+This is a single-binding decision experiment. Its logical side is a small
+observation/result kernel, not an execution of `LogicalCommitment.State` or a
+new game interpreter. The other sender follows fixed background traffic;
+there is no quantified opponent policy or native `EnvironmentPolicy` theorem.
+The result does not erase arbitrary packet identifiers, deadline phases,
+receipts or transport behavior, nor preserve the final raw observation.
+The varying unauthenticated claim is not another honest binding's secret
+opening. The experiment therefore tests the native factorization mechanism
+without establishing the cross-site information theorem.
+
+The next bounded test is a one-binding `runPolicies` law under a fixed
+environment and unchanged compiled opponents, uniform over the focal
+replacement. It must derive the continuation factorization from that runner's
+observations and progress assumptions. Retaining the entire native execution
+as the logical state, assuming the factorization equality, or reconditioning
+the logical opponents separately for each replacement would not meet this test.
+
+The compiler adoption test is a graph-wide stopped-prefix factorization under one
 fixed admitted environment and unchanged opponents, consuming the existing
 candidate admission/effect lemmas. It must account for jointly visible traffic
 across sites and prove the two kernel hypotheses from runtime facts. Until

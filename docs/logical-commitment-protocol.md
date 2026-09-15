@@ -198,6 +198,12 @@ disclosures. Its generic probability theorem is separate from its logical
 binding tests. It establishes a sufficient finite-policy composition condition,
 not that the candidate runtime satisfies that condition.
 
+The same note describes the actual native fixed-segment instance in
+`InteractionTests/LogicalCommitmentNative.lean`. It checks the factorization
+against candidate-message execution, including varying pending/rejected claims
+and real timeout settlement. It remains separate from a whole-protocol policy
+law and from the active compiler.
+
 Promoting the experiment requires the strategic prefix-law and settlement
 interface specified in the gated experiment, together with a demonstrated
 simplification of an existing backend proof. Local validator agreement is not
