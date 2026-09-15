@@ -234,12 +234,40 @@ The varying unauthenticated claim is not another honest binding's secret
 opening. The experiment therefore tests the native factorization mechanism
 without establishing the cross-site information theorem.
 
-The next bounded test is a one-binding `runPolicies` law under a fixed
-environment and unchanged compiled opponents, uniform over the focal
-replacement. It must derive the continuation factorization from that runner's
-observations and progress assumptions. Retaining the entire native execution
-as the logical state, assuming the factorization equality, or reconditioning
-the logical opponents separately for each replacement would not meet this test.
+## Native policy-runner instance
+
+`InteractionTests/LogicalCommitmentPolicyExecution.lean` realizes the same
+single-binding experiment with the actual `MessageApplication.runPolicies`
+runner. A fixed nine-invocation schedule calls the owner to prepare, submit a
+commitment, and later open or withhold. The opening decision recovers the
+prepared value from the owner's private-command history and receives the
+actual owner view. The fixed background opponent submits one unauthenticated
+claim. The environment includes the commitment, delivers the background
+claim, optionally includes it, attempts inclusion of the owner's response,
+and advances the clock. Its policy is unchanged when either owner kernel
+changes, including when the owner withholds.
+
+`runPolicies_two_decision_outcome` derives the resulting terminal law directly
+from the runner. `runPolicies_logical_policy_law` then delegates to the checked
+conditioning construction: for every pair of randomized owner kernels, there
+are logical kernels with the same published-value/timeout law. They retain the
+prepared value and pending-versus-included observation, but receive neither
+the full native view nor the auxiliary metadata used to mix owner policies.
+The background opponent, environment, schedule and logical transition kernels
+are fixed independently of both owner kernels. The fixed disclosure itself
+is a theorem parameter, not a fresh random draw shared secretly by the
+opponent and environment.
+
+This is a restricted-strategy law. The owner must follow the specified
+preparation and submission interface at its non-decision steps; the theorem
+does not quantify over arbitrary native `PlayerPolicy` values. Nor does it
+cover arbitrary adaptive service, shared candidates across sites, or a
+compiled opponent's private disclosure. Its logical side is the same finite
+observation/result kernel, not a newly implemented game interpreter. The
+result validates policy execution and information erasure for this bounded
+interface; it does not yet replace a compiler proof.
+
+## Compiler adoption test
 
 The compiler adoption test is a graph-wide stopped-prefix factorization under one
 fixed admitted environment and unchanged opponents, consuming the existing
@@ -247,3 +275,11 @@ candidate admission/effect lemmas. It must account for jointly visible traffic
 across sites and prove the two kernel hypotheses from runtime facts. Until
 that is established, this experiment stays independent of the active compiler;
 it does not replace `candidateGraphRun_native_prefix_law`.
+
+The retained observation must also support the quitting comparison. The
+current `candidateGraphRoundCoupling_timeout_settlement` connects a native
+timeout settlement to a legal graph realization with the relevant public
+pre-decision prefix. A terminal published-value/timeout law alone loses that
+comparison point. A replacement must recover this prefix agreement as well
+as its terminal law; otherwise the source incentive premise cannot be composed
+through the proposed intermediate game.

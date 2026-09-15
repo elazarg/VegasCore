@@ -4,6 +4,23 @@
 much of a pending-message execution can be forgotten before the strategic
 argument becomes unsound.
 
+## Module boundary
+
+The protocol kernel and candidate-admission comparisons live in `Interaction/`
+and import no source-language or compiler modules. The finite conditioning
+arguments live in `GameTheoryExtensions/Math/Probability/`, in the
+`GameTheory.Math.Probability.FinDist` namespace. Concrete experiments live in
+`InteractionTests/` and use the existing native policy runner. All are checked
+by the ordinary build, but the active Vegas compiler imports none of the
+logical-commitment experiment modules.
+
+This separation permits testing the proposed intermediate game without
+changing an existing compiler edge. Adoption requires a strategic theorem
+that replaces a named part of the current proof; adding an operational
+projection or another runner alone does not satisfy that requirement.
+
+## Semantic kernel
+
 The kernel retains competing handles, immutable private meanings, the first
 accepted handle, locally sent and delivered *logical* claims, a public
 logical-claim ledger, public acceptance receipts, and the terminal distinction

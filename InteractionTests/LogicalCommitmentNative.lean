@@ -28,21 +28,21 @@ namespace InteractionTests.LogicalCommitmentNative
 
 open Interaction Interaction.MessageApplication GameTheory.Math.Probability
 
-private def runtime : SealedResolution Bool (Option Bool) :=
+def runtime : SealedResolution Bool (Option Bool) :=
   ⟨⟨[⟨.commit false, []⟩, ⟨.reveal false 0, [0]⟩]⟩, none, 1⟩
 
-private abbrev app := runtime.candidateApplication
+abbrev app := runtime.candidateApplication
 
-private def initial : app.State := State.initial app runtime.candidateInitial
+def initial : app.State := State.initial app runtime.candidateInitial
 
-private def commitment : SealedProgram.Payload Bool (Option Bool) :=
+def commitment : SealedProgram.Payload Bool (Option Bool) :=
   .commitment 0 (false, 0)
 
-private def competingOpening (claimed : Option Bool) :
+def competingOpening (claimed : Option Bool) :
     SealedProgram.Payload Bool (Option Bool) :=
   .opening 1 (false, 0) claimed
 
-private def ownerOpening (claimed : Bool) :
+def ownerOpening (claimed : Bool) :
     SealedProgram.Payload Bool (Option Bool) :=
   .opening 1 (false, 0) (some claimed)
 
@@ -73,7 +73,7 @@ private def competitorDelivered (value : Bool) (disclosure : Disclosure) : app.S
   { competitorSubmitted value disclosure with
     pool := ((competitorSubmitted value disclosure).pool.deliver false (true, 0)).state }
 
-private def disclosedState (value : Bool) (disclosure : Disclosure) : app.State :=
+def disclosedState (value : Bool) (disclosure : Disclosure) : app.State :=
   if disclosure.included then
     app.includePending (competitorDelivered value disclosure) (true, 0)
   else competitorDelivered value disclosure
@@ -184,9 +184,9 @@ private theorem finishSegment_run (value : Bool) (disclosure : Disclosure)
         FinDist.map_pure, FinDist.pure_bind]
       rfl
 
-private abbrev Outcome := Option (Option Bool) × Bool
+abbrev Outcome := Option (Option Bool) × Bool
 
-private def outcome (state : app.State) : Outcome :=
+def outcome (state : app.State) : Outcome :=
   (state.application.visible.published? 1,
     state.application.visible.timeouts.contains 1)
 
@@ -212,7 +212,7 @@ private def nativeNext (disclosures : FinDist Disclosure)
     (_ : Fin 2) (value : Bool) : FinDist app.State :=
   disclosures.bind fun disclosure => app.run (firstSegment value disclosure) initial
 
-private def logicalNext (disclosures : FinDist Disclosure)
+def logicalNext (disclosures : FinDist Disclosure)
     (_ : Unit) (_ : Bool) : FinDist OpeningObservation :=
   disclosures.map disclosureObservation
 
@@ -220,7 +220,7 @@ private def nativeFinish
     (history : Fin 2 × Bool × app.State) (response : Option Bool) : FinDist Outcome :=
   (app.run (finishSegment response) history.2.2).map outcome
 
-private def logicalFinish
+def logicalFinish
     (history : Unit × Bool × OpeningObservation) (response : Option Bool) : FinDist Outcome :=
   FinDist.pure (if response = some history.2.1 then
     (some (some history.2.1), false) else (some none, true))
@@ -258,9 +258,10 @@ theorem candidate_two_decision_policy_law
     ∃ logicalFirst : Unit → FinDist Bool,
       ∃ logicalSecond : Unit × Bool × OpeningObservation → FinDist (Option Bool),
         (metadata.bind fun info => (first info).bind fun value =>
-          (nativeNext disclosures info value).bind fun later =>
-            (second (info, value, State.observe app later false)).bind
-              (nativeFinish (info, value, later))) =
+          disclosures.bind fun disclosure =>
+            (second (info, value, State.observe app (disclosedState value disclosure) false)).bind
+              fun response => FinDist.pure (if response = some value then
+                (some (some value), false) else (some none, true))) =
         ((metadata.map fun _ => ()).bind fun info =>
           (logicalFirst info).bind fun value =>
             (logicalNext disclosures info value).bind fun later =>
@@ -273,7 +274,14 @@ theorem candidate_two_decision_policy_law
       nativeFinish_factor disclosures info value later hlater response) first
     (fun history => second
       (history.1, history.2.1, State.observe app history.2.2 false))
-  simpa only using hlaw
+  have hfinish (info : Fin 2) (value : Bool) (disclosure : Disclosure) :
+      nativeFinish (info, value, disclosedState value disclosure) =
+        fun response => FinDist.pure (if response = some value then
+          (some (some value), false) else (some none, true)) := by
+    funext response
+    rw [nativeFinish, finishSegment_run, FinDist.map_pure, settled_outcome]
+  simpa only [nativeNext, FinDist.bind_bind, firstSegment_run,
+    FinDist.pure_bind, hfinish] using hlaw
 
 end InteractionTests.LogicalCommitmentNative
 
