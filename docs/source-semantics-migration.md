@@ -1,6 +1,6 @@
 # Full-source semantics and downstream migration
 
-## Status and decision boundary
+## Status and source decisions
 
 The checked deferred-publication component supplies consistency, immutable
 bindings and publications, incremental obligation registration, and ordinary
@@ -13,8 +13,7 @@ continuation cannot receive a failure outside `A`. Changing only the
 operational relation would leave expression, distribution, and payoff
 evaluation without an inhabitant of their expected input type.
 
-The proposed choice is **explicit typed publication results**, subject to
-confirmation before the source migration:
+The agreed choice is **explicit typed publication results**:
 
 - A publication has type `Result A`, distinct from ordinary nullable data of
   type `Option A`. Failure and successful publication of an ordinary `none`
@@ -28,12 +27,71 @@ confirmation before the source migration:
 - Retain `ret`, `sample`, `commit`, and `reveal`. Add result inspection to the
   embedded expression interface, not another rich protocol language.
 
-An alternative is separate success/failure continuations in the protocol
-syntax. That would change the straight-line control structure and require
-branch-sensitive accounting and graph compilation. Automatic failure
-propagation and absorbing failure are further semantic alternatives; neither
-is implied by null-vacuous guards. None of these alternatives should be
-selected merely to preserve existing proof signatures.
+Programmer convenience belongs in the frontend. The core keeps explicit
+failure handling rather than separate success/failure protocol continuations,
+implicit ordinary defaults, or automatic failure propagation.
+
+## Chance and distribution annotations
+
+**Working decision: retain primitive public chance.** Keep `sample` distinct
+from player-controlled commitments, and revisit this representation if a
+uniform input interface demonstrably simplifies the complete semantics and
+compiler. No distribution-annotation feature is added by this decision.
+
+A sample specifies a conditional kernel as part of the program:
+
+```text
+K : PublicView -> RationalLaw A
+```
+
+It draws once at the specified source step and publishes the result. A player
+does not choose whether to obey that kernel, replace the result, or withhold
+its publication in this source operation. This is an abstract specification,
+not evidence that every target runtime supplies the required service.
+
+A distribution annotation on a commitment can have different meanings:
+
+- An assumption about a reference player's policy fixes or constrains that
+  policy for the analysis. Ordinary deviations may still replace it.
+- A restriction on admitted strategies also restricts the deviations quantified
+  by a theorem. The restriction must be explicit, especially when the intended
+  runtime permits those strategies.
+- A prescribed nonstrategic policy can represent chance through a synthetic
+  controller. This is a possible representation of the same operation, not an
+  impossibility to be ruled out.
+
+A direct equivalence for the third encoding uses the corresponding information
+and execution contract: the prescribed conditional law, matching publication
+timing and visibility, and no extra choice to replace, fail, retry, or delay the
+result. Fixing the synthetic controller in the comparison, or giving it a
+singleton admitted strategy class, supplies the nonstrategic policy contract.
+More permissive implementations may also be equivalent, but need their own
+refinement argument. Merely assigning an unrestricted controller constant
+utility does not restrict its possible behavior or establish the outcome and
+deviation laws.
+
+The probability contract concerns the joint law, not just a marginal. If a
+private bit `X` is fair, a commitment to `B = X` is marginally fair too, but its
+publication reveals `X`. Even fairness conditional on the prior public view
+does not rule this out. The source sample instead draws from `K(public view)`
+conditional on the complete source prehistory, including previously chosen
+private values. A realization must preserve the appropriate conditional law
+or prove the weaker observation-relative law actually used by the theorem.
+
+Annotations can usefully describe prescribed randomization, partial distribution
+constraints, or private inputs. Such descriptions belong initially to profile,
+setup, or capability assumptions; they need not replace the primitive which
+specifies an exogenous public draw. Internal execution interfaces may share
+machinery for strategic and fixed-kernel inputs without identifying their
+deviation contracts.
+
+Every backend covering the full language must give `sample` an implementation
+under a named chance-service contract. A contract which permits selective
+withholding, biased selection, or resampling does not implement this operation
+merely because it labels a provider's commitments random. If a target cannot
+realize the stated source kernel, report the missing capability or the need
+for a different source mechanism; do not silently exclude programs with samples.
+Programs without samples need no chance-service assumption.
 
 ## Settled contracts
 
@@ -98,8 +156,8 @@ Resolve these admission details explicitly while defining the source interface:
 
 ## Migration order and proof obligations
 
-1. **Source interface and semantics.** Agree on the result-typing choice;
-   implement expressions, states, obligations, decisions, and execution
+1. **Source interface and semantics.** Implement the agreed result typing,
+   expressions, states, obligations, decisions, and execution
    together. Prove local consistency and preservation of private knowledge;
    exercise all constructors in one mixed-feature source example.
 2. **Typed graph edge.** Compile every revised source constructor and retain
