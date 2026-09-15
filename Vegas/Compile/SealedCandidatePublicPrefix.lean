@@ -50,7 +50,8 @@ theorem candidate_publicRead_eq_of_prereqs_done
     Store.getAs (G.publicSealedStore ty after.native.application.visible.events) ref.field ref.ty =
       Store.getAs cfg.1.store ref.field ref.ty := by
   let runtime := supported.resolvingRuntime nullValue window
-  rcases supported.publicField_origin ref hpublic with
+  rcases G.publicField_origin supported.graphWF supported.rowType supported.noSamples
+    supported.revealSource ref hpublic with
     ⟨spec, value, hfield, hsource, hty, howner⟩ |
       ⟨prior, producer, owner, priorGuard, htarget, hrefty, hreveal, hcommit⟩
   · rw [← hty, G.publicSealedStore_getAs_initial ty after.native.application.visible.events

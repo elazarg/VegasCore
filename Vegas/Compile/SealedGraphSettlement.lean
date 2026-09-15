@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedPublicStore
+import Vegas.Compile.SealedSettlementValues
 import Vegas.Compile.SealedSourceInputs
 import Vegas.Compile.SealedReplay
 import Vegas.EventGraph.Disclosure
@@ -16,24 +17,6 @@ the deviation coupling supplies those laws separately.
 -/
 
 noncomputable section
-
-namespace Vegas.EventGraph.Graph
-
-open Interaction
-
-variable {Player : Type} [DecidableEq Player] {L : IExpr}
-
-/-- Logical graph choices used only to witness a public settlement. They may
-differ from private registrations after a publication defaults. -/
-private def revealAssignment (G : Graph Player L) {ty : L.Ty}
-    (fallback : L.Val ty) (store : Store L) : Fin G.nodeCount → L.Val ty := by
-  classical
-  exact fun producer =>
-    if found : ∃ node, (G.nodeRow node).sem = .reveal (G.nodeTarget producer) then
-      (Store.getAs store (G.nodeTarget (Classical.choose found).val) ty).getD fallback
-    else fallback
-
-end Vegas.EventGraph.Graph
 
 namespace Vegas.EventGraph.SealedFragment
 
@@ -76,19 +59,6 @@ private theorem exists_terminal_values [Finite Player]
   simp only [TypedValue.as?, dif_pos (supported.commitType node owner guard hsem),
     cast_cast, cast_eq, Option.getD_some]
 
-private theorem revealAssignment_reveal
-    (hunique : G.UniqueReveals) (fallback : L.Val ty) (store : Store L)
-    (node producer : Fin G.nodeCount)
-    (hsem : (G.nodeRow node).sem =
-      .reveal (G.nodeTarget producer)) :
-    G.revealAssignment fallback store producer =
-      (Store.getAs store (G.nodeTarget node) ty).getD fallback := by
-  classical
-  have found : ∃ node, (G.nodeRow node).sem =
-      .reveal (G.nodeTarget producer) := ⟨node, hsem⟩
-  rw [Graph.revealAssignment, dif_pos found]
-  rw [hunique _ node _ (Classical.choose_spec found) hsem]
-
 private theorem exists_terminal_public_store [Finite Player]
     (supported : SealedFragment G ty) (hguards : GuardLive G) (hunique : G.UniqueReveals)
     (fallback : L.Val ty)
@@ -110,7 +80,8 @@ private theorem exists_terminal_public_store [Finite Player]
     (G.revealAssignment fallback store)
   refine ⟨cfg, hterminal, ?_, hvalues⟩
   intro ref hpublic
-  rcases supported.publicField_origin ref hpublic with
+  rcases G.publicField_origin supported.graphWF supported.rowType supported.noSamples
+    supported.revealSource ref hpublic with
     ⟨spec, value, hfield, hsource, hty, howner⟩ |
       ⟨node, producer, owner, guard, htarget, hrefty, hsem, hcommit⟩
   · rw [← hty, hinitial ref.field spec value hfield hsource howner]
@@ -124,7 +95,7 @@ private theorem exists_terminal_public_store [Finite Player]
     obtain ⟨value, hvalue⟩ := hav
     rw [hvalue, Store.getAs, supported.terminal_reveal_store cfg hterminal fallback
       node producer hsem, hvalues producer owner guard hcommit,
-      revealAssignment_reveal hunique fallback store node producer hsem,
+      G.revealAssignment_reveal hunique fallback store node producer hsem,
       hvalue]
     simp [TypedValue.as?]
 
@@ -155,7 +126,8 @@ theorem public_store_graph_of_complete [Finite Player]
   classical
   obtain ⟨cfg, hterminal, hagrees, hvalues⟩ := supported.exists_terminal_public_store
     hguards hunique nullValue _
-    (supported.publicSealedStore_available_of_complete nullValue window
+    (G.publicSealedStore_available_of_complete supported.graphWF supported.rowType
+      supported.noSamples supported.revealSource (supported.resolvingRuntime nullValue window) rfl
       state hinvariant hcomplete)
     (G.publicSealedStore_getAs_initial ty state.events)
   refine ⟨cfg, hterminal, hagrees, ?_⟩

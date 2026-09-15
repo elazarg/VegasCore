@@ -80,6 +80,8 @@ import Vegas.Compile.SealedResolvedReads
 import Vegas.Compile.SealedPublicOutcome
 import Vegas.Compile.SealedPublicStore
 import Vegas.Compile.SealedGraphSettlement
+import Vegas.Compile.SealedSettlementValues
+import Vegas.Compile.SealedValidatedRealization
 import Vegas.Compile.SealedGraphUtility
 import Vegas.Compile.SealedSettlement
 import Vegas.Compile.SealedPolicyProgress

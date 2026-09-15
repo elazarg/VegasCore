@@ -150,6 +150,44 @@ theorem publicSealedStore_getAs_initial (G : Graph Player L)
   simp [Store.getAs, initialPublicStore, hfield, hpublic, FieldSpec.initialValue?,
     hsource, TypedValue.as?]
 
+/-- Every typed public field is available after completion, including runs
+with commitment and reveal defaults. No source decoding is assumed. -/
+theorem publicSealedStore_available_of_complete (G : Graph Player L) {ty : L.Ty}
+    (hwf : G.WF) (hrow : ∀ node, (G.nodeRow node).ty = ty)
+    (hnoSamples : ∀ node dist, (G.nodeRow node).sem ≠ .sample dist)
+    (hreveals : ∀ node source, (G.nodeRow node).sem = .reveal source →
+      ∃ (producer : Fin G.nodeCount) (who : Player) (guard : EventGuard L),
+        source = G.nodeTarget producer ∧ (G.nodeRow producer).sem = .commit who guard)
+    (runtime : SealedResolution Player (L.Val ty))
+    (hrules : runtime.program.rules = G.nodeOrder.map G.sealedRule)
+    (state : SealedResolution.PublicState Player (L.Val ty))
+    (hinvariant : runtime.PublicEventInvariant state)
+    (hcomplete : runtime.complete state = true)
+    (ref : FieldRef L) (hpublic : G.fieldRefPublic ref) :
+    ∃ value, Store.getAs (G.publicSealedStore ty state.events)
+      ref.field ref.ty = some value := by
+  rcases G.publicField_origin hwf hrow hnoSamples hreveals ref hpublic with
+    ⟨spec, value, hfield, hsource, hty, howner⟩ |
+      ⟨node, producer, owner, guard, htarget, hrefty, hsem, hcommit⟩
+  · rw [← hty]
+    exact ⟨value, G.publicSealedStore_getAs_initial ty state.events
+      ref.field spec value hfield hsource howner⟩
+  · have hcompleted : state.completed node.val = true := by
+      apply List.all_eq_true.mp hcomplete node.val
+      simp [hrules, Graph.nodeOrder]
+    have hrule : runtime.program.rules[node.val]? =
+        some ⟨.reveal owner producer.val, G.messagePrerequisites node⟩ := by
+      have hlookup : runtime.program.rules[node.val]? = some (G.sealedRule node) := by
+        simp [hrules, Graph.nodeOrder]
+      rw [hlookup]
+      exact congrArg some (G.sealedRule_reveal_eq node producer owner guard hsem hcommit)
+    obtain ⟨value, hopened⟩ := hinvariant.opened_of_completed_reveal
+      node.val owner producer.val (G.messagePrerequisites node) hrule hcompleted
+    have havailable := G.publicSealedStore_available_of_opened ty
+      state.events node.val value hopened
+    rw [htarget, hrefty]
+    exact Option.isSome_iff_exists.mp havailable
+
 end Vegas.EventGraph.Graph
 
 namespace Vegas.EventGraph.SealedFragment
@@ -158,40 +196,6 @@ open Interaction
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
-
-omit [DecidableEq (L.Val ty)] in
-/-- Every typed public field is available after completion, including runs
-with commitment and reveal defaults. No source decoding is assumed. -/
-theorem publicSealedStore_available_of_complete
-    (supported : SealedFragment G ty) (nullValue : L.Val ty) (window : Nat)
-    (state : SealedResolution.PublicState Player (L.Val ty))
-    (hinvariant : SealedResolution.PublicEventInvariant
-      (supported.resolvingRuntime nullValue window) state)
-    (hcomplete : (supported.resolvingRuntime nullValue window).complete state = true)
-    (ref : FieldRef L) (hpublic : G.fieldRefPublic ref) :
-    ∃ value, Store.getAs (G.publicSealedStore ty state.events)
-      ref.field ref.ty = some value := by
-  rcases supported.publicField_origin ref hpublic with
-    ⟨spec, value, hfield, hsource, hty, howner⟩ |
-      ⟨node, producer, owner, guard, htarget, hrefty, hsem, hcommit⟩
-  · rw [← hty]
-    exact ⟨value, G.publicSealedStore_getAs_initial ty state.events
-      ref.field spec value hfield hsource howner⟩
-  · have hcompleted : state.completed node.val = true := by
-      apply List.all_eq_true.mp hcomplete node.val
-      have hlen : supported.compile.rules.length = G.nodeCount := by
-        simp [SealedFragment.compile, Graph.nodeOrder]
-      simpa only [List.mem_range, resolvingRuntime, hlen] using node.isLt
-    have hrule : supported.compile.rules[node.val]? =
-        some ⟨.reveal owner producer.val, G.messagePrerequisites node⟩ := by
-      rw [supported.compile_rule]
-      exact congrArg some (G.sealedRule_reveal_eq node producer owner guard hsem hcommit)
-    obtain ⟨value, hopened⟩ := hinvariant.opened_of_completed_reveal
-      node.val owner producer.val (G.messagePrerequisites node) hrule hcompleted
-    have havailable := G.publicSealedStore_available_of_opened ty
-      state.events node.val value hopened
-    rw [htarget, hrefty]
-    exact Option.isSome_iff_exists.mp havailable
 
 omit [DecidableEq (L.Val ty)] in
 /-- Public values of a completed log agree with a specified reachable source
@@ -209,7 +213,8 @@ theorem publicSealedStore_agrees_of_opened_values
     (ref : FieldRef L) (hpublic : G.fieldRefPublic ref) :
     Store.getAs (G.publicSealedStore ty state.events) ref.field ref.ty =
       Store.getAs cfg.1.store ref.field ref.ty := by
-  rcases supported.publicField_origin ref hpublic with
+  rcases G.publicField_origin supported.graphWF supported.rowType supported.noSamples
+    supported.revealSource ref hpublic with
     ⟨spec, value, hfield, hsource, hty, howner⟩ |
       ⟨node, producer, owner, guard, htarget, hrefty, hsem, hcommit⟩
   · rw [← hty, G.publicSealedStore_getAs_initial ty state.events

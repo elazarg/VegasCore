@@ -201,23 +201,32 @@ acceptance and evaluated rejection persist: an available dependency cannot be
 overwritten by another node. Consequently `opened_valid_or_default` classifies
 every published value using the final public store, and `opened_guard_legal`
 proves graph-guard legality whenever the graph decision agrees on the guard's
-stored dependencies and the designated default is legal. The latter agreement
-is still a premise; these lemmas do not construct the graph execution.
+stored dependencies and the designated default is legal.
 
-These are local compiler and operational results. The whole-program strategic
-theorem still requires universally accepting guards. Widening it requires a
-source-independent graph certificate for public validation and legal defaults,
-plus a replay/settlement proof for invalid candidates. In particular, recorded
-values cannot simply be inserted into guard-restricted source policies as the
-current unrestricted-fragment proof does. Private attempts and invalid pending
-claims remain in native observations even when their eventual settlement is
-null. Their strategic treatment requires the actual deviation argument, not an
-assumed observation quotient.
+`Graph.validated_settlement_reachable` constructs that agreeing graph execution.
+It assembles public reveal values from the completed event log, assigns each
+producer its unique reveal's value, and uses the default for unrevealed
+commitments. Public-store agreement follows from graph structure before any
+semantic-validity assumption. The historical validator then proves every
+commitment value legal. `Config.canonicalCompletion_reachable` realizes the
+resulting assignment by actual graph execution; this graph-only theorem also
+handles sample support when supplied by a valid assignment.
 
-The graph settlement proof must construct legal decisions in node order,
-maintaining agreement on already produced public fields. Validated openings
-supply their values; timeouts and unpublished commitments use the legal
-default. Backtranslation must preserve raw candidate contents in native
+`Graph.runPolicies_validated_settlement` obtains the public and historical
+invariants from arbitrary native player and environment policies. Every
+completed execution has the public store of a legal terminal graph execution.
+Its backend assumptions are graph well-formedness, a common node type, no
+samples, direct unique commitment reveals, public validation dependencies,
+legal defaults, and exact compiled-rule linkage. It needs no service premise
+and does not assume that every candidate satisfies its guard. The witness may
+change private choices and opponents' policies: this is support refinement,
+not strategic simulation.
+
+The whole-program strategic theorem still requires universally accepting
+guards. Widening it requires a policy replay proof using public validation and
+legal defaults. Private attempts and invalid pending claims remain in native
+observations even when their eventual settlement is null. Backtranslation
+must preserve raw candidate contents in native
 memory while projecting an invalid graph choice to that default. Acceptance
 of an opaque focal candidate alone cannot imply equality with a legal graph
 choice: equality is needed for honest accepted candidates and successfully
@@ -238,8 +247,10 @@ opening followed by timeout to null, and successful inclusion of a legal
 opening. `arbitrary_policies_never_publish_invalid` additionally excludes the
 guard-invalid Boolean value from every supported finite policy execution of
 that host. It uses the historical invariant and persistence of evaluated
-rejection, without a service or completion premise. These results do not
-assert a whole-program source strategy law.
+rejection, without a service or completion premise. The settlement test
+instantiates whole-graph realization for the same rejecting guard under
+arbitrary completed policy executions. These results do not assert a
+whole-program source strategy law.
 
 ### Shared candidate hosts
 

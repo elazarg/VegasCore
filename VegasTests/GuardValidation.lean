@@ -2,6 +2,8 @@
 
 import Vegas.Compile.GuardValidation
 import Vegas.Compile.SealedGuardSettlement
+import Vegas.Compile.SealedValidatedRealization
+import Vegas.EventGraph.Validate
 import Vegas.Core.ExprSimple
 
 /-! # Nontrivial guard checks without unused private choice information -/
@@ -236,9 +238,58 @@ theorem arbitrary_policies_never_publish_invalid
       (congrArg (fun result : Option Bool => result.getD false) hrejected).symm.trans hresult
     cases himpossible
 
+/-- A rejecting guard still admits legal whole-graph settlement for every
+completed native policy execution, including those using invalid candidates. -/
+theorem arbitrary_completed_policies_have_legal_graph_settlement
+    (players : Nat → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Nat)) (next : app.PolicyExecution)
+    (hnext : next ∈ (app.runPolicies players environment schedule
+      (PolicyExecution.initial app initial)).support)
+    (hcomplete : runtime.complete next.native.application.visible = true) :
+    ∃ cfg : ReachableConfig graph, Terminal graph cfg.1 ∧
+      ∀ ref, graph.fieldRefPublic ref →
+        Store.getAs cfg.1.store ref.field ref.ty =
+          Store.getAs (graph.publicSealedStore (.option .bool)
+            next.native.application.visible.events) ref.field ref.ty := by
+  apply graph.runPolicies_validated_settlement (ty := .option .bool)
+    (graph.WF_of_valid_eq_true (by decide))
+    (fun node => by fin_cases node <;> rfl)
+    (fun node dist => by fin_cases node <;> simp [graph, Graph.nodeRow])
+    ?_ ?_ ?_ runtime rfl ?_ players environment schedule next hnext hcomplete
+  · intro node source hsem
+    fin_cases node
+    · cases hsem
+    · change NodeSem.reveal 2 = NodeSem.reveal source at hsem
+      cases hsem
+      exact ⟨⟨0, by decide⟩, 0, publicGuard, rfl, rfl⟩
+  · intro left right field hleft hright
+    fin_cases left <;> fin_cases right
+    · rfl
+    · cases hleft
+    · cases hright
+    · rfl
+  · intro node who guard hsem
+    fin_cases node
+    · change NodeSem.commit 0 publicGuard = NodeSem.commit who guard at hsem
+      cases hsem
+      exact public_guard_eligible
+    · cases hsem
+  · intro node who guard hsem hty reads
+    fin_cases node
+    · change NodeSem.commit 0 publicGuard = NodeSem.commit who guard at hsem
+      cases hsem
+      change publicGuard.eval none reads = true
+      exact evalExpr_nullableCommitGuard_declineValue _ _
+    · cases hsem
+
 end VegasTests.GuardValidation
 
 /-- info: 'VegasTests.GuardValidation.arbitrary_policies_never_publish_invalid'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.GuardValidation.arbitrary_policies_never_publish_invalid
+
+/-- info: 'VegasTests.GuardValidation.arbitrary_completed_policies_have_legal_graph_settlement'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.GuardValidation.arbitrary_completed_policies_have_legal_graph_settlement

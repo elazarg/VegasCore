@@ -133,7 +133,8 @@ theorem public_payout_after_opening (value : Value) :
     have available : ∀ ref, ref ∈ eventPayoff.reads →
         ∃ value, Store.getAs store ref.field ref.ty = some value := by
       intro ref href
-      exact supported.publicSealedStore_available_of_complete none 2 visible
+      exact graph.publicSealedStore_available_of_complete supported.graphWF supported.rowType
+        supported.noSamples supported.revealSource (supported.resolvingRuntime none 2) rfl visible
         hinvariant hcomplete ref (compiled.payoffsWF (0, eventPayoff) hmem ref href).1
     let readEnv := ReadEnv.ofStore store eventPayoff.reads available
     refine ⟨readEnv, ?_, ?_⟩

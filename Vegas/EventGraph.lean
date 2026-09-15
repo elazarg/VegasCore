@@ -48,6 +48,7 @@ import Vegas.EventGraph.Strategic
 import Vegas.EventGraph.SourceOrder
 import Vegas.EventGraph.TopologicalOrder
 import Vegas.EventGraph.Validate
+import Vegas.EventGraph.ValueRealization
 import Vegas.EventGraph.VisibleOrder
 
 /-! Typed dependency graphs, schedule-free execution, and protocol denotation. -/

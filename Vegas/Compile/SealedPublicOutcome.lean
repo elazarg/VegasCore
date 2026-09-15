@@ -40,7 +40,9 @@ theorem publicPayout?_isSome_of_complete
     ∃ payout, compilation.publicPayout? state.events = some payout := by
   apply evalPayoffs?_isSome_of_available
   intro payoff hpayoff ref href
-  exact compilation.supported.publicSealedStore_available_of_complete nullValue window
+  exact (compile source.core).graph.publicSealedStore_available_of_complete
+    compilation.supported.graphWF compilation.supported.rowType compilation.supported.noSamples
+    compilation.supported.revealSource (compilation.supported.resolvingRuntime nullValue window) rfl
     state hinvariant hcomplete ref
     ((ToEventGraph.compile source.core).payoffsWF payoff hpayoff ref href).1
 

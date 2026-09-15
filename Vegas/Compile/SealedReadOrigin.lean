@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.SealedMessages
+import Vegas.EventGraph.Disclosure
 
 /-! # Origins of declared reads in the sealed backend -/
 
@@ -10,47 +11,6 @@ open Interaction
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty}
-
-/-- Public fields in a sealed fragment are initial public data or the output
-of a reveal of a compiled commitment. This classification uses graph typing,
-not a runtime reachability or completion assumption. -/
-theorem publicField_origin (supported : SealedFragment G ty)
-    (ref : FieldRef L) (hpublic : G.fieldRefPublic ref) :
-    (∃ spec value, G.field? ref.field = some spec ∧
-      spec.source = .initial value ∧ spec.ty = ref.ty ∧ spec.owner = none) ∨
-    ∃ (node producer : Fin G.nodeCount) (owner : Player) (guard : EventGuard L),
-      ref.field = G.nodeTarget node ∧ ref.ty = ty ∧
-      (G.nodeRow node).sem = .reveal (G.nodeTarget producer) ∧
-      (G.nodeRow producer).sem = .commit owner guard := by
-  obtain ⟨spec, hfield, hty, howner⟩ := hpublic
-  cases hsource : spec.source with
-  | initial value => exact Or.inl ⟨spec, value, hfield, hsource, hty, howner⟩
-  | event writer =>
-      obtain ⟨_, hwriter⟩ := G.node_get_of_field_event_source hfield hsource
-      have hlt : writer < G.nodeCount := (List.getElem?_eq_some_iff.mp hwriter).1
-      let node : Fin G.nodeCount := ⟨writer, hlt⟩
-      have htarget : ref.field = G.nodeTarget node :=
-        G.field_eq_nodeTarget_of_event_source hfield hsource
-      have hspec := G.field?_nodeTarget (G.nodes_get?_nodeRow node)
-      rw [← htarget, hfield] at hspec
-      have heq := Option.some.inj hspec
-      have hrefty : ref.ty = ty := hty.symm.trans
-        ((congrArg FieldSpec.ty heq).trans (supported.rowType node))
-      cases hsem : (G.nodeRow node).sem with
-      | sample dist => exact (supported.noSamples node dist hsem).elim
-      | commit owner guard =>
-          have hwf := supported.graphWF node (G.nodeRow node) (G.nodes_get?_nodeRow node)
-          unfold Graph.nodeWFAt at hwf
-          rw [hsem] at hwf
-          have hbad : spec.owner = some owner :=
-            (congrArg FieldSpec.owner heq).trans hwf.2.2.1
-          rw [howner] at hbad
-          contradiction
-      | reveal source =>
-          obtain ⟨producer, owner, guard, hproducer, hcommit⟩ :=
-            supported.revealSource node source hsem
-          exact Or.inr ⟨node, producer, owner, guard, htarget, hrefty,
-            hproducer ▸ hsem, hcommit⟩
 
 /-- A declared read of a compiled commitment is either an initially visible
 field or the output of a completed earlier node. In the latter case the

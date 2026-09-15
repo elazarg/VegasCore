@@ -60,9 +60,11 @@ See [the composition design](docs/compilation-design.md#strategic-intermediate-r
 The candidate theorem covers homogeneous commit/reveal graphs with universally
 accepting guards, no samples, and no initially private disclosure. The registered-site
 host additionally has conditional timeout-checkpoint incentive results;
-transporting general conditional source comparisons to the candidate host remains open. Nontrivial
-guard validation, chance compilation, heterogeneous sealed values, concrete
-commitment cryptography, and ledger/EVM refinement remain further work. Service
+transporting general conditional source comparisons to the candidate host remains open.
+Nontrivial public guards have checked opening validation and legal whole-graph
+settlement under arbitrary completed native policy executions. Extending the
+strategic theorem to those guards, chance compilation, heterogeneous sealed
+values, concrete commitment cryptography, and ledger/EVM refinement remain further work. Service
 is an explicit operational assumption, not a proved censorship-resistance result.
 
 The former fused application path is passive reference material under
