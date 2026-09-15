@@ -43,7 +43,7 @@ theorem candidatePolicy_accepted_slot (who : Player) (policy : ProposalPolicy G 
       execution.native.application.visible.events) (howner : handle.1 = who) :
     handle = (who, node) := by
   let runtime := supported.resolvingRuntime nullValue window
-  apply runtime.runPolicies_candidate_accepted_property
+  apply runtime.runPolicies_candidate_accepted_property runtime.candidateHandle_sound
     (fun index selected => selected.1 = who → selected = (who, index)) players environment ?_
     schedule execution hactual node handle haccepted howner
   intro current sender payload hsubmit index selected hpacket hauth hwho

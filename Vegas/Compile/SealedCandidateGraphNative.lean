@@ -89,7 +89,8 @@ theorem candidateReplay_registration_factor
     refine ⟨next, ?_, hafter⟩
     simp only [invoke, FinDist.support_bind, Set.mem_iUnion]
     exact ⟨_, hcommand, hnext⟩
-  have hacceptance := runtime.runPolicies_candidate_acceptance players env before _ initial
+  have hacceptance := runtime.runPolicies_candidate_acceptance
+    runtime.candidateHandle_sound players env before _ initial
     SealedResolution.CandidateAcceptanceInvariant.initial hbefore
   have hvalues : ∀ index handle stored,
       SealedProgram.Event.accepted index handle ∈ initial.native.application.visible.events →
@@ -97,9 +98,11 @@ theorem candidateReplay_registration_factor
       cfg.1.store (G.nodeTarget index) =
         some (⟨ty, stored⟩ : TypedValue L) := by
     intro index handle stored haccepted hlookup
-    have hselected := runtime.runPolicies_candidate_accepted? players env (.player who :: after)
+    have hselected := runtime.runPolicies_candidate_accepted?
+      runtime.candidateHandle_sound players env (.player who :: after)
       initial stopped.last index handle (hacceptance index handle haccepted).1 hrest
-    have hfixed := runtime.runPolicies_candidate_lookup_of_not_fresh players env
+    have hfixed := runtime.runPolicies_candidate_lookup_of_not_fresh
+      runtime.candidateHandle_sound players env
       (.player who :: after) initial stopped.last handle (by simp [hlookup]) hrest
     have hgraph := supported.candidateGraphRun_accepted hinfo hguards
       nullValue window focal deviator environment schedule fallback _ cfg hcfg (fun _ => false)
@@ -132,7 +135,8 @@ theorem candidateReplay_registration_factor
       (by rw [hfresh])
   have hlookup : stopped.last.native.application.service.lookup (who, slot) =
       .openable value :=
-    (runtime.runPolicies_candidate_lookup_of_not_fresh players env after next stopped.last
+    (runtime.runPolicies_candidate_lookup_of_not_fresh
+      runtime.candidateHandle_sound players env after next stopped.last
       (who, slot) (by simp [hnew]) hafter).trans hnew
   have htrace : trace ∈ (runtime.candidateApplication.tracePolicies players env schedule
       (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial))).support := by

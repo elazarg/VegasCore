@@ -118,28 +118,34 @@ theorem PublicEventInvariant.candidateHandle
                   simp_all [SealedRule.discharge]
                 exact horiginal.trans (congrArg some hshape)
 
+variable {applyMessage : ApplicationState Principal Value
+  (CommitmentCandidates Principal Nat Value) →
+  Message Principal (SealedProgram.Payload Principal Value) →
+  Option (ApplicationState Principal Value (CommitmentCandidates Principal Nat Value))}
+
 /-- Arbitrary randomized candidate-host policies preserve the public invariant.
 Only the shared application invariant lifting is used; there is no new runner
 or whole-execution induction. -/
 theorem runPolicies_candidate_publicEvents
     (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.candidateApplication.PlayerPolicy)
-    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (hsound : runtime.CandidateHandlerSound applyMessage)
+    (players : Principal → (runtime.candidateHost applyMessage).PlayerPolicy)
+    (environment : (runtime.candidateHost applyMessage).EnvironmentPolicy)
     (schedule : List (@Invocation Principal))
-    (execution next : runtime.candidateApplication.PolicyExecution)
+    (execution next : (runtime.candidateHost applyMessage).PolicyExecution)
     (hinitial : PublicEventInvariant runtime execution.native.application.visible)
-    (hnext : next ∈ (runtime.candidateApplication.runPolicies
+    (hnext : next ∈ ((runtime.candidateHost applyMessage).runPolicies
       players environment schedule execution).support) :
     PublicEventInvariant runtime next.native.application.visible := by
-  apply runtime.candidateApplication.runPolicies_application_invariant
+  apply (runtime.candidateHost applyMessage).runPolicies_application_invariant
     (fun state => PublicEventInvariant runtime state.visible) ?_ ?_ ?_
     players environment schedule execution next hinitial hnext
   · intro state owner command hstate
     exact hstate
   · intro state message result hstate hresult
-    exact hstate.candidateHandle message hresult
+    exact hstate.candidateHandle message (hsound state message result hresult)
   · intro state command result hstate hresult
-    simp only [candidateApplication, host, FinDist.mem_support_pure] at hresult
+    simp only [candidateHost, host, FinDist.mem_support_pure] at hresult
     subst result
     exact hstate.clock.refresh true
 

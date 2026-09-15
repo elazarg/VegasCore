@@ -141,7 +141,8 @@ theorem candidateSelection_eq_stop (decision : Fin G.nodeCount) (guard : EventGu
     change supported.compile.rules[decision.val]? = _
     rw [supported.compile_rule]
     exact congrArg some (G.sealedRule_commit_eq decision focal guard hdecision)
-  obtain ⟨hread, hmeaning⟩ := runtime.tracePolicies_candidate_acceptance_checkpoint _ _
+  obtain ⟨hread, hmeaning⟩ := runtime.tracePolicies_candidate_acceptance_checkpoint
+    runtime.candidateHandle_sound _ _
     schedule trace htrace decision.val focal _ hrule
   let selected := trace.firstRelease (supported.candidateAcceptanceCut nullValue window decision)
   change SealedProgram.accepted? selected.native.application.visible.events decision.val =
@@ -243,6 +244,7 @@ theorem candidateSelection_frozen (decision : Fin G.nodeCount)
           rw [candidateReplay_law, FinDist.mem_support_pure]
         obtain ⟨hfixed, hfrozen⟩ :=
           (supported.resolvingRuntime nullValue window).tracePolicies_candidate_accepted_frozen
+            (supported.resolvingRuntime nullValue window).candidateHandle_sound
             _ _ schedule trace htrace release decision.val handle haccepted
         have hhandle : handle = (focal, handle.2) := Prod.ext howner rfl
         rw [hhandle] at haccepted hfixed hfrozen

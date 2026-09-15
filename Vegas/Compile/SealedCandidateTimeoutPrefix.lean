@@ -93,7 +93,8 @@ theorem candidateGraphCoupling_timeout_public_prefix
   subst timeoutIndex
   have hbefore := (runtime.candidateApplication.tracePolicies_drop_support players
     nativeEnvironment schedule initial trace hnative index).1
-  have hpublic := runtime.runPolicies_candidate_publicEvents players nativeEnvironment
+  have hpublic := runtime.runPolicies_candidate_publicEvents
+    runtime.candidateHandle_sound players nativeEnvironment
     (schedule.take index) initial (trace.drop index).first
     (SealedResolution.PublicEventInvariant.initial runtime) hbefore
   have hcandidates := runtime.runPolicies_candidate_prerequisites players nativeEnvironment

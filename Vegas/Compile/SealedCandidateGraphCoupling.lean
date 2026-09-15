@@ -198,13 +198,16 @@ theorem candidateGraphCoupling_opened_before_timeout
       selected.native.application.service.lookup handle = .openable stored →
       cfg.1.store (G.nodeTarget node) = some (⟨ty, stored⟩ : TypedValue L) := by
     intro node handle stored hrecord hlookup
-    have hinvariant := runtime.runPolicies_candidate_acceptance players nativeEnvironment
+    have hinvariant := runtime.runPolicies_candidate_acceptance
+      runtime.candidateHandle_sound players nativeEnvironment
       (schedule.take checkpoint) initial selected
       SealedResolution.CandidateAcceptanceInvariant.initial hbefore
-    have hpointer := runtime.runPolicies_candidate_accepted? players nativeEnvironment
+    have hpointer := runtime.runPolicies_candidate_accepted?
+      runtime.candidateHandle_sound players nativeEnvironment
       ((schedule.drop checkpoint).take ((trace.prefixThrough stop).length - checkpoint))
       selected (trace.firstRelease stop) node handle (hinvariant node handle hrecord).1 hafter
-    have hmeaning := runtime.runPolicies_candidate_lookup_of_not_fresh players nativeEnvironment
+    have hmeaning := runtime.runPolicies_candidate_lookup_of_not_fresh
+      runtime.candidateHandle_sound players nativeEnvironment
       ((schedule.drop checkpoint).take ((trace.prefixThrough stop).length - checkpoint))
       selected (trace.firstRelease stop) handle (by rw [hlookup]; simp) hafter
     exact haccepted node handle stored
@@ -247,8 +250,9 @@ theorem candidateGraphCoupling_clear
     !execution.native.application.visible.timeouts.isEmpty
   have hsuffixLast : suffix.last.native.application.visible.timeouts = [] := by
     simpa only [PolicyTrace.append_last] using hclear
-  have hbefore := runtime.runPolicies_candidate_clear_before _ _ _ _ _
+  have hbefore := runtime.runPolicies_candidate_clear_before runtime.candidateHandle_sound _ _ _ _ _
     (by
+      change suffix.last ∈ (runtime.candidateApplication.runPolicies _ _ _ _).support
       rw [← runtime.candidateApplication.tracePolicies_last, FinDist.support_map]
       exact ⟨suffix, hsuffix, rfl⟩)
     hsuffixLast
@@ -317,7 +321,8 @@ theorem candidateGraphCoupling_public_store
       schedule initial).support := by
     rw [← runtime.candidateApplication.tracePolicies_last, FinDist.support_map]
     exact ⟨trace, hnative, rfl⟩
-  have hinvariant := runtime.runPolicies_candidate_publicEvents players nativeEnvironment
+  have hinvariant := runtime.runPolicies_candidate_publicEvents
+    runtime.candidateHandle_sound players nativeEnvironment
     schedule initial trace.last (SealedResolution.PublicEventInvariant.initial _) hfinal
   have hopening := runtime.runPolicies_candidate_openings players nativeEnvironment schedule
     initial trace.last SealedResolution.CandidateOpeningInvariant.initial hfinal

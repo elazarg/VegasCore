@@ -221,7 +221,8 @@ theorem candidatePolicy_no_reregistration
     simp only [runtime.candidateApplication.runPolicies_append, FinDist.support_bind,
       Set.mem_iUnion]
     exact ⟨execution, hactual, hnext⟩
-  have hretained := runtime.runPolicies_candidate_lookup_of_not_fresh players environment after
+  have hretained := runtime.runPolicies_candidate_lookup_of_not_fresh
+    runtime.candidateHandle_sound players environment after
     execution next (who, slot) hfixed hnext
   intro hcommand
   exact hfixed (hretained.symm.trans (supported.candidatePolicy_registration_fresh nullValue

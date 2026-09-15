@@ -6,6 +6,7 @@ import Vegas.Compile.SealedValidatedRealization
 import Vegas.Compile.SealedResolutionPolicy
 import Vegas.Compile.SealedReplay
 import Interaction.SealedCandidatePolicyEmbedding
+import Interaction.SealedCandidateAcceptance
 import Vegas.EventGraph.Validate
 import Vegas.Core.ExprSimple
 
@@ -370,6 +371,45 @@ theorem arbitrary_policies_never_publish_invalid
       (congrArg (fun result : Option Bool => result.getD false) hrejected).symm.trans hresult
     cases himpossible
 
+/-- Arbitrary guarded-host behavior cannot revise the meaning of an accepted
+candidate, including after rejected openings or timeout. The trace and cutoff
+use the actual validating handler, not the unconditional candidate host. -/
+theorem accepted_guarded_candidate_stays_fixed
+    (players : Nat → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Nat)) (trace : app.PolicyTrace)
+    (htrace : trace ∈ (app.tracePolicies players environment schedule
+      (PolicyExecution.initial app initial)).support)
+    (release : app.PolicyExecution → Bool) (handle : CommitmentHandle Nat Nat)
+    (haccepted : SealedProgram.accepted?
+      (trace.firstRelease release).native.application.visible.events 0 = some handle) :
+    (trace.firstRelease release).native.application.service.lookup handle ≠ .fresh ∧
+      trace.last.native.application.service.lookup handle =
+        (trace.firstRelease release).native.application.service.lookup handle :=
+  runtime.tracePolicies_candidate_accepted_frozen
+    (runtime.guardedCandidateHandle_sound (graph.sealedOpeningValidator (.option .bool)))
+    players environment schedule trace htrace release 0 handle haccepted
+
+/-- The same accepted handle and meaning can be read at first acceptance or
+the first-timeout checkpoint under arbitrary guarded-host policies. -/
+theorem guarded_acceptance_checkpoint
+    (players : Nat → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Nat)) (trace : app.PolicyTrace)
+    (htrace : trace ∈ (app.tracePolicies players environment schedule
+      (PolicyExecution.initial app initial)).support) :
+    let selected := trace.firstRelease (fun execution : app.PolicyExecution =>
+      SealedProgram.done execution.native.application.visible.events 0 ||
+        !execution.native.application.visible.timeouts.isEmpty)
+    let stopped := trace.firstRelease (fun execution : app.PolicyExecution =>
+      !execution.native.application.visible.timeouts.isEmpty)
+    SealedProgram.accepted? selected.native.application.visible.events 0 =
+        SealedProgram.accepted? stopped.native.application.visible.events 0 ∧
+      ∀ handle, SealedProgram.accepted? selected.native.application.visible.events 0 =
+        some handle → selected.native.application.service.lookup handle =
+          stopped.native.application.service.lookup handle :=
+  runtime.tracePolicies_candidate_acceptance_checkpoint
+    (runtime.guardedCandidateHandle_sound (graph.sealedOpeningValidator (.option .bool)))
+    players environment schedule trace htrace 0 0 [] rfl
+
 /-- A rejecting guard still admits legal whole-graph settlement for every
 completed native policy execution, including those using invalid candidates. -/
 theorem arbitrary_completed_policies_have_legal_graph_settlement
@@ -422,3 +462,13 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.GuardValidation.assigned_invalid_opening_times_out
+
+/-- info: 'VegasTests.GuardValidation.accepted_guarded_candidate_stays_fixed'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.GuardValidation.accepted_guarded_candidate_stays_fixed
+
+/-- info: 'VegasTests.GuardValidation.guarded_acceptance_checkpoint'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.GuardValidation.guarded_acceptance_checkpoint

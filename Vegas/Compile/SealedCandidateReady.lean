@@ -48,11 +48,14 @@ theorem candidatePolicy_ownCommitCache
   have hmemory := supported.candidatePolicy_memory nullValue window who policy.proposals players
     environment
     hplayer schedule execution hactual
-  have hpublic := runtime.runPolicies_candidate_publicEvents players environment schedule initial
+  have hpublic := runtime.runPolicies_candidate_publicEvents
+    runtime.candidateHandle_sound players environment schedule initial
     execution (SealedResolution.EventInvariant.initial (runtime := runtime)).publicEvents hactual
-  have hauth := runtime.runPolicies_candidate_acceptance players environment schedule initial
+  have hauth := runtime.runPolicies_candidate_acceptance
+    runtime.candidateHandle_sound players environment schedule initial
     execution SealedResolution.CandidateAcceptanceInvariant.initial hactual
-  have hfixed := runtime.runPolicies_candidate_accepted_not_fresh players environment schedule
+  have hfixed := runtime.runPolicies_candidate_accepted_not_fresh
+    runtime.candidateHandle_sound players environment schedule
     initial execution (by
       intro node handle hmem
       have : SealedProgram.Event.accepted node handle ∈
@@ -130,7 +133,8 @@ theorem candidatePolicy_progress_of_ready
     (State.initial _ runtime.candidateInitial)
   have hcache := supported.candidatePolicy_ownCommitCache nullValue window who policy players
     environment hplayer schedule execution hactual
-  have hpublic := runtime.runPolicies_candidate_publicEvents players environment schedule initial
+  have hpublic := runtime.runPolicies_candidate_publicEvents
+    runtime.candidateHandle_sound players environment schedule initial
     execution (SealedResolution.EventInvariant.initial (runtime := runtime)).publicEvents hactual
   have hbackward : ∀ (node : Nat) (rule : SealedRule Player),
       runtime.program.rules[node]? = some rule →

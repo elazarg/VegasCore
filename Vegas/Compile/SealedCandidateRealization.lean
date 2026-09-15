@@ -114,15 +114,18 @@ private theorem candidateGraphRun_focal_accepted
   let runtime := supported.resolvingRuntime nullValue window
   obtain ⟨before, after, hbefore, hafter⟩ := supported.candidateReplay_prefix_support
     nullValue window (cfg.1.nodeValues fallback) focal deviator environment schedule release
-  have hacceptance := runtime.runPolicies_candidate_acceptance _ _ before _ stopped
+  have hacceptance := runtime.runPolicies_candidate_acceptance
+    runtime.candidateHandle_sound _ _ before _ stopped
     SealedResolution.CandidateAcceptanceInvariant.initial hbefore
   obtain ⟨hselected, requires, hrule⟩ := hacceptance index (focal, slot) haccepted
   obtain ⟨node, guard, rfl, hsem⟩ := supported.ruleAt_commit hrule rfl
   have hgraph := supported.candidateGraphRun_locked hinfo hguards nullValue window focal
     deviator environment schedule fallback profile cfg hcfg node guard hsem slot value
-    (runtime.runPolicies_candidate_accepted? _ _ after stopped _ node.val (focal, slot)
+    (runtime.runPolicies_candidate_accepted?
+      runtime.candidateHandle_sound _ _ after stopped _ node.val (focal, slot)
       hselected hafter)
-    ((runtime.runPolicies_candidate_lookup_of_not_fresh _ _ after stopped _ (focal, slot)
+    ((runtime.runPolicies_candidate_lookup_of_not_fresh
+      runtime.candidateHandle_sound _ _ after stopped _ (focal, slot)
       (by rw [hvalue]; simp) hafter).trans hvalue)
   have hterminal := supported.candidateGraphRun_terminal hinfo hguards nullValue window focal
     deviator environment schedule fallback profile cfg hcfg
@@ -160,7 +163,8 @@ theorem candidateGraphRun_accepted
     obtain ⟨before, _after, hbefore, _hafter⟩ :=
       supported.candidateReplay_prefix_support nullValue window
         (cfg.1.nodeValues fallback) focal deviator environment schedule release
-    have hacceptance := runtime.runPolicies_candidate_acceptance _ _ before _ stopped
+    have hacceptance := runtime.runPolicies_candidate_acceptance
+      runtime.candidateHandle_sound _ _ before _ stopped
       SealedResolution.CandidateAcceptanceInvariant.initial hbefore
     obtain ⟨_hselected, requires, hrule⟩ := hacceptance index handle haccepted
     obtain ⟨node, guard, rfl, _hsem⟩ := supported.ruleAt_commit hrule rfl

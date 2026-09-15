@@ -200,7 +200,8 @@ theorem run_candidate_preparation_fixed (actions : List runtime.candidateApplica
             (owner, slot) ≠ .fresh := by
           rw [CommitmentCandidates.lookup_prepare_self]
           cases initial.application.service.lookup (owner, slot) <;> simp
-        rw [runtime.run_candidate_lookup_of_not_fresh rest _ next (owner, slot) hfixed hnext]
+        rw [runtime.run_candidate_lookup_of_not_fresh
+          runtime.candidateHandle_sound rest _ next (owner, slot) hfixed hnext]
         exact hfixed
       · exact ih middle hnext hrest
 

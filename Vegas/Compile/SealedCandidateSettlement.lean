@@ -53,6 +53,7 @@ theorem candidate_publicPayout_source
   apply compilation.publicPayout?_eq_source_of_complete nullValue window
     next.native.application.visible _ hcomplete
   exact (compilation.supported.resolvingRuntime nullValue window).runPolicies_candidate_publicEvents
+    (compilation.supported.resolvingRuntime nullValue window).candidateHandle_sound
     players environment schedule _ next (SealedResolution.PublicEventInvariant.initial _) hnext
 
 /-- If an owned site times out in a completed candidate-host run, its actual
@@ -92,6 +93,7 @@ theorem candidate_publicPayout_source_choice
         some (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) := by
   have hpublic :=
     (compilation.supported.resolvingRuntime nullValue window).runPolicies_candidate_publicEvents
+      (compilation.supported.resolvingRuntime nullValue window).candidateHandle_sound
       players environment schedule _ next (SealedResolution.PublicEventInvariant.initial _) hnext
   have hsettlement :=
     SealedResolution.runPolicies_candidate_settlementInvariant

@@ -103,7 +103,8 @@ theorem candidateGraphRoundCoupling_timeout_settlement
   have hselectedRun := (runtime.candidateApplication.tracePolicies_drop_support players
     nativeEnvironment schedule initial trace hnative checkpoint).1
   rw [hdropEq] at hselectedRun
-  have hpublic := runtime.runPolicies_candidate_publicEvents players nativeEnvironment
+  have hpublic := runtime.runPolicies_candidate_publicEvents
+    runtime.candidateHandle_sound players nativeEnvironment
     (schedule.take checkpoint) initial selected
     (SealedResolution.PublicEventInvariant.initial runtime) hselectedRun
   have hsettlement := SealedResolution.runPolicies_candidate_settlementInvariant runtime

@@ -96,6 +96,14 @@ theorem guardedCandidateHandle_success [DecidableEq Principal] [DecidableEq Valu
         exact ⟨rfl, hpermitted⟩
       · contradiction
 
+/-- Public validation only restricts authenticated candidate admission. -/
+theorem guardedCandidateHandle_sound [DecidableEq Principal] [DecidableEq Value]
+    (runtime : SealedResolution Principal Value)
+    (validator : PublicOpeningValidator Principal Value) :
+    runtime.CandidateHandlerSound (runtime.guardedCandidateHandle validator) :=
+  fun state message next h => (runtime.guardedCandidateHandle_success
+    validator state next message h).1
+
 /-- A successful guarded opening exposes the exact public check that passed. -/
 theorem guardedCandidateHandle_opening_valid
     [DecidableEq Principal] [DecidableEq Value]

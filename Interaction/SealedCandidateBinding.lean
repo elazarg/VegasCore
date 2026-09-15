@@ -149,19 +149,25 @@ theorem candidateHandle_commitment_fixed
         · rw [hpayload] at hopening
           contradiction
 
+variable {applyMessage : ApplicationState Principal Value
+  (CommitmentCandidates Principal Nat Value) →
+  Message Principal (SealedProgram.Payload Principal Value) →
+  Option (ApplicationState Principal Value (CommitmentCandidates Principal Nat Value))}
+
 /-- Every native action suffix preserves an already fixed candidate meaning. -/
 theorem run_candidate_lookup_of_not_fresh
     (runtime : SealedResolution Principal Value)
-    (actions : List runtime.candidateApplication.Action)
-    (initial next : runtime.candidateApplication.State)
+    (hsound : runtime.CandidateHandlerSound applyMessage)
+    (actions : List (runtime.candidateHost applyMessage).Action)
+    (initial next : (runtime.candidateHost applyMessage).State)
     (handle : CommitmentHandle Principal Nat)
     (hfixed : initial.application.service.lookup handle ≠ .fresh)
-    (hnext : next ∈ (runtime.candidateApplication.run actions initial).support) :
+    (hnext : next ∈ ((runtime.candidateHost applyMessage).run actions initial).support) :
     next.application.service.lookup handle = initial.application.service.lookup handle := by
   let original := initial.application.service.lookup handle
   let invariant := fun state : ApplicationState Principal Value
       (CommitmentCandidates Principal Nat Value) => state.service.lookup handle = original
-  apply runtime.candidateApplication.run_application_invariant invariant
+  apply (runtime.candidateHost applyMessage).run_application_invariant invariant
     (fun state owner command hinvariant => ?_)
     (fun state message result hinvariant hresult => ?_)
     (fun state command result hinvariant hresult => ?_)
@@ -171,14 +177,14 @@ theorem run_candidate_lookup_of_not_fresh
     · exact hinvariant
     · rw [hinvariant]
       exact hfixed
-  · change runtime.candidateHandle state message = some result at hresult
+  · have hresult := hsound state message result hresult
     change result.service.lookup handle = original
     rw [runtime.candidateHandle_lookup_eq_of_not_fresh state result message handle]
     · exact hinvariant
     · rw [hinvariant]
       exact hfixed
     · exact hresult
-  · simp only [candidateApplication, host, GameTheory.Math.Probability.FinDist.mem_support_pure]
+  · simp only [candidateHost, host, GameTheory.Math.Probability.FinDist.mem_support_pure]
       at hresult
     subst result
     exact hinvariant
@@ -187,19 +193,21 @@ theorem run_candidate_lookup_of_not_fresh
 handle that was fixed at the start of the supplied policy-run suffix. -/
 theorem runPolicies_candidate_lookup_of_not_fresh
     (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.candidateApplication.PlayerPolicy)
-    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (hsound : runtime.CandidateHandlerSound applyMessage)
+    (players : Principal → (runtime.candidateHost applyMessage).PlayerPolicy)
+    (environment : (runtime.candidateHost applyMessage).EnvironmentPolicy)
     (schedule : List (@Invocation Principal))
-    (execution next : runtime.candidateApplication.PolicyExecution)
+    (execution next : (runtime.candidateHost applyMessage).PolicyExecution)
     (handle : CommitmentHandle Principal Nat)
     (hfixed : execution.native.application.service.lookup handle ≠ .fresh)
-    (hnext : next ∈ (runtime.candidateApplication.runPolicies
+    (hnext : next ∈ ((runtime.candidateHost applyMessage).runPolicies
       players environment schedule execution).support) :
     next.native.application.service.lookup handle =
       execution.native.application.service.lookup handle := by
-  obtain ⟨actions, _htrace, hnative⟩ := runtime.candidateApplication.runPolicies_native_support
-    players environment schedule execution next hnext
-  exact runtime.run_candidate_lookup_of_not_fresh actions execution.native next.native
+  obtain ⟨actions, _htrace, hnative⟩ :=
+    (runtime.candidateHost applyMessage).runPolicies_native_support
+      players environment schedule execution next hnext
+  exact runtime.run_candidate_lookup_of_not_fresh hsound actions execution.native next.native
     handle hfixed hnative
 
 /-- A timeout-free final candidate execution cannot have resumed from a
@@ -207,22 +215,23 @@ timed-out state. Arbitrary candidate preparation, traffic, and ticks preserve
 this fact; no service or completion premise is needed. -/
 theorem runPolicies_candidate_clear_before
     (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.candidateApplication.PlayerPolicy)
-    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (hsound : runtime.CandidateHandlerSound applyMessage)
+    (players : Principal → (runtime.candidateHost applyMessage).PlayerPolicy)
+    (environment : (runtime.candidateHost applyMessage).EnvironmentPolicy)
     (schedule : List (@MessageApplication.Invocation Principal))
-    (execution next : runtime.candidateApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.candidateApplication.runPolicies players environment
+    (execution next : (runtime.candidateHost applyMessage).PolicyExecution)
+    (hnext : next ∈ ((runtime.candidateHost applyMessage).runPolicies players environment
       schedule execution).support)
     (hclear : next.native.application.visible.timeouts = []) :
     execution.native.application.visible.timeouts = [] := by
-  have h := runtime.candidateApplication.runPolicies_application_invariant
+  have h := (runtime.candidateHost applyMessage).runPolicies_application_invariant
     (fun state => state.visible.timeouts = [] → execution.native.application.visible.timeouts = [])
     ?_ ?_ ?_ players environment schedule execution next (fun h => h) hnext
   · exact h hclear
   · intro state who command hstate
     exact hstate
   · intro state message after hstate hafter hclear
-    change runtime.candidateHandle state message = some after at hafter
+    have hafter := hsound state message after hafter
     unfold candidateHandle at hafter
     split at hafter
     · contradiction
@@ -234,7 +243,7 @@ theorem runPolicies_candidate_clear_before
           subst after
           exact hstate (runtime.refresh_clear false _ hclear).1
   · intro state command after hstate hafter hclear
-    simp only [candidateApplication, host, GameTheory.Math.Probability.FinDist.mem_support_pure]
+    simp only [candidateHost, host, GameTheory.Math.Probability.FinDist.mem_support_pure]
       at hafter
     subst after
     exact hstate (runtime.refresh_clear true _ hclear).1
@@ -243,18 +252,19 @@ theorem runPolicies_candidate_clear_before
 the same arbitrary policy-run suffix. -/
 theorem runPolicies_candidate_verify
     (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.candidateApplication.PlayerPolicy)
-    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (hsound : runtime.CandidateHandlerSound applyMessage)
+    (players : Principal → (runtime.candidateHost applyMessage).PlayerPolicy)
+    (environment : (runtime.candidateHost applyMessage).EnvironmentPolicy)
     (schedule : List (@Invocation Principal))
-    (execution next : runtime.candidateApplication.PolicyExecution)
+    (execution next : (runtime.candidateHost applyMessage).PolicyExecution)
     (handle : CommitmentHandle Principal Nat) (claimed : Value)
     (hfixed : execution.native.application.service.lookup handle ≠ .fresh)
-    (hnext : next ∈ (runtime.candidateApplication.runPolicies
+    (hnext : next ∈ ((runtime.candidateHost applyMessage).runPolicies
       players environment schedule execution).support) :
     next.native.application.service.verify handle claimed =
       execution.native.application.service.verify handle claimed := by
   unfold CommitmentCandidates.verify
-  rw [runtime.runPolicies_candidate_lookup_of_not_fresh players environment schedule
+  rw [runtime.runPolicies_candidate_lookup_of_not_fresh hsound players environment schedule
     execution next handle hfixed hnext]
 
 /-- Every accepted candidate has a fixed meaning in every supported policy
@@ -262,14 +272,15 @@ run. Timeout resolution adds no acceptance events, and neither preparation nor
 later messages can restore freshness. No player follows a prescribed policy. -/
 theorem runPolicies_candidate_accepted_not_fresh
     (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.candidateApplication.PlayerPolicy)
-    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (hsound : runtime.CandidateHandlerSound applyMessage)
+    (players : Principal → (runtime.candidateHost applyMessage).PlayerPolicy)
+    (environment : (runtime.candidateHost applyMessage).EnvironmentPolicy)
     (schedule : List (@Invocation Principal))
-    (execution next : runtime.candidateApplication.PolicyExecution)
+    (execution next : (runtime.candidateHost applyMessage).PolicyExecution)
     (hinitial : ∀ node handle,
       SealedProgram.Event.accepted node handle ∈ execution.native.application.visible.events →
       execution.native.application.service.lookup handle ≠ .fresh)
-    (hnext : next ∈ (runtime.candidateApplication.runPolicies
+    (hnext : next ∈ ((runtime.candidateHost applyMessage).runPolicies
       players environment schedule execution).support) :
     ∀ node handle, SealedProgram.Event.accepted node handle ∈
       next.native.application.visible.events →
@@ -278,7 +289,7 @@ theorem runPolicies_candidate_accepted_not_fresh
       (CommitmentCandidates Principal Nat Value) => ∀ node handle,
     SealedProgram.Event.accepted node handle ∈ state.visible.events →
       state.service.lookup handle ≠ .fresh
-  apply runtime.candidateApplication.runPolicies_application_invariant invariant ?_ ?_ ?_
+  apply (runtime.candidateHost applyMessage).runPolicies_application_invariant invariant ?_ ?_ ?_
     players environment schedule execution next hinitial hnext
   · intro state owner command hstate node handle haccepted
     change (state.service.prepare owner command.down.1 command.down.2).lookup handle ≠ .fresh
@@ -286,7 +297,7 @@ theorem runPolicies_candidate_accepted_not_fresh
       (hstate node handle haccepted)]
     exact hstate node handle haccepted
   · intro state message result hstate hresult
-    change runtime.candidateHandle state message = some result at hresult
+    have hresult := hsound state message result hresult
     unfold candidateHandle at hresult
     split at hresult
     · contradiction
@@ -312,7 +323,7 @@ theorem runPolicies_candidate_accepted_not_fresh
               message admitted.1 node handle
             simpa only [hnew] using hmessage
   · intro state command result hstate hresult
-    simp only [candidateApplication, host, GameTheory.Math.Probability.FinDist.mem_support_pure]
+    simp only [candidateHost, host, GameTheory.Math.Probability.FinDist.mem_support_pure]
       at hresult
     subst result
     intro node handle haccepted
@@ -324,14 +335,15 @@ already has its final immutable meaning. This covers arbitrary randomized
 policies, arbitrary cuts, and suffixes that execute after timeouts. -/
 theorem tracePolicies_candidate_accepted_frozen
     (runtime : SealedResolution Principal Value)
-    (players : Principal → runtime.candidateApplication.PlayerPolicy)
-    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (hsound : runtime.CandidateHandlerSound applyMessage)
+    (players : Principal → (runtime.candidateHost applyMessage).PlayerPolicy)
+    (environment : (runtime.candidateHost applyMessage).EnvironmentPolicy)
     (schedule : List (@Invocation Principal))
-    (trace : runtime.candidateApplication.PolicyTrace)
-    (htrace : trace ∈ (runtime.candidateApplication.tracePolicies players environment schedule
-      (PolicyExecution.initial _ (MessageApplication.State.initial _
-        runtime.candidateInitial))).support)
-    (release : runtime.candidateApplication.PolicyExecution → Bool)
+    (trace : (runtime.candidateHost applyMessage).PolicyTrace)
+    (htrace : trace ∈ ((runtime.candidateHost applyMessage).tracePolicies
+      players environment schedule (PolicyExecution.initial _
+        (MessageApplication.State.initial _ runtime.candidateInitial))).support)
+    (release : (runtime.candidateHost applyMessage).PolicyExecution → Bool)
     (node : Nat) (handle : CommitmentHandle Principal Nat)
     (haccepted : SealedProgram.accepted?
       (trace.firstRelease release).native.application.visible.events node = some handle) :
@@ -339,13 +351,13 @@ theorem tracePolicies_candidate_accepted_frozen
       trace.last.native.application.service.lookup handle =
         (trace.firstRelease release).native.application.service.lookup handle := by
   obtain ⟨front, suffix, _hsplit, hfront, hsuffix⟩ :=
-    runtime.candidateApplication.tracePolicies_firstRelease_split players environment release
-      schedule _ trace htrace
-  have hfixed := runtime.runPolicies_candidate_accepted_not_fresh players environment front
+    (runtime.candidateHost applyMessage).tracePolicies_firstRelease_split
+      players environment release schedule _ trace htrace
+  have hfixed := runtime.runPolicies_candidate_accepted_not_fresh hsound players environment front
     _ _ (fun index selected hmem => ?_) hfront node handle
       (SealedProgram.accepted_mem_of_accepted?_eq_some haccepted)
-  · exact ⟨hfixed, runtime.runPolicies_candidate_lookup_of_not_fresh players environment suffix
-      _ _ handle hfixed hsuffix⟩
+  · exact ⟨hfixed, runtime.runPolicies_candidate_lookup_of_not_fresh hsound
+      players environment suffix _ _ handle hfixed hsuffix⟩
   · have hempty := (runtime.refresh_accepted_iff false {} index selected).mp hmem
     exact False.elim (List.not_mem_nil hempty)
 

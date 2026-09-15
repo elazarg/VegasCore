@@ -204,6 +204,23 @@ def candidateHandle [DecidableEq Principal] [DecidableEq Value]
     some ⟨result.1, runtime.refresh false
       { state.visible with events := state.visible.events ++ [result.2] }⟩
 
+/-- Restricting admission may reject more messages, but every successful
+application retains exactly the authenticated candidate transition. This
+condition concerns successful effects, not the information disclosed by rejection. -/
+def CandidateHandlerSound [DecidableEq Principal] [DecidableEq Value]
+    (runtime : SealedResolution Principal Value)
+    (applyMessage : ApplicationState Principal Value
+      (CommitmentCandidates Principal Nat Value) →
+      Message Principal (SealedProgram.Payload Principal Value) →
+      Option (ApplicationState Principal Value (CommitmentCandidates Principal Nat Value))) :
+    Prop :=
+  ∀ state message next, applyMessage state message = some next →
+    runtime.candidateHandle state message = some next
+
+theorem candidateHandle_sound [DecidableEq Principal] [DecidableEq Value]
+    (runtime : SealedResolution Principal Value) :
+    runtime.CandidateHandlerSound runtime.candidateHandle := fun _ _ _ h => h
+
 /-- Candidate preparation and the ordinary resolution runner, parameterized
 only by message admission. Every instance has the same policy interface. -/
 noncomputable abbrev candidateHost [DecidableEq Principal]

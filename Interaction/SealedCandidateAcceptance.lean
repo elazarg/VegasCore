@@ -184,24 +184,30 @@ end CandidateAcceptanceInvariant
 
 variable [DecidableEq Principal] [DecidableEq Value]
 
+variable {applyMessage : ApplicationState Principal Value
+  (CommitmentCandidates Principal Nat Value) →
+  Message Principal (SealedProgram.Payload Principal Value) →
+  Option (ApplicationState Principal Value (CommitmentCandidates Principal Nat Value))}
+
 theorem runPolicies_candidate_acceptance
-    (players : Principal → runtime.candidateApplication.PlayerPolicy)
-    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (hsound : runtime.CandidateHandlerSound applyMessage)
+    (players : Principal → (runtime.candidateHost applyMessage).PlayerPolicy)
+    (environment : (runtime.candidateHost applyMessage).EnvironmentPolicy)
     (schedule : List (@Invocation Principal))
-    (execution next : runtime.candidateApplication.PolicyExecution)
+    (execution next : (runtime.candidateHost applyMessage).PolicyExecution)
     (hinitial : CandidateAcceptanceInvariant runtime execution.native.application.visible)
-    (hnext : next ∈ (runtime.candidateApplication.runPolicies
+    (hnext : next ∈ ((runtime.candidateHost applyMessage).runPolicies
       players environment schedule execution).support) :
     CandidateAcceptanceInvariant runtime next.native.application.visible := by
-  apply runtime.candidateApplication.runPolicies_application_invariant
+  apply (runtime.candidateHost applyMessage).runPolicies_application_invariant
     (fun state => CandidateAcceptanceInvariant runtime state.visible) ?_ ?_ ?_
     players environment schedule execution next hinitial hnext
   · intro state owner command hstate
     exact hstate
   · intro state message result hstate hresult
-    exact hstate.handle message hresult
+    exact hstate.handle message (hsound state message result hresult)
   · intro state command result hstate hresult
-    simp only [candidateApplication, host, FinDist.mem_support_pure] at hresult
+    simp only [candidateHost, host, FinDist.mem_support_pure] at hresult
     subst result
     have hclock : CandidateAcceptanceInvariant runtime
         { state.visible with clock := state.visible.clock + 1 } := hstate
@@ -209,22 +215,23 @@ theorem runPolicies_candidate_acceptance
 
 /-- The selected pointer persists under arbitrary suffix policies, even after timeout. -/
 theorem runPolicies_candidate_accepted?
-    (players : Principal → runtime.candidateApplication.PlayerPolicy)
-    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (hsound : runtime.CandidateHandlerSound applyMessage)
+    (players : Principal → (runtime.candidateHost applyMessage).PlayerPolicy)
+    (environment : (runtime.candidateHost applyMessage).EnvironmentPolicy)
     (schedule : List (@Invocation Principal))
-    (execution next : runtime.candidateApplication.PolicyExecution)
+    (execution next : (runtime.candidateHost applyMessage).PolicyExecution)
     (node : Nat) (handle : CommitmentHandle Principal Nat)
     (hread : SealedProgram.accepted? execution.native.application.visible.events node = some handle)
-    (hnext : next ∈ (runtime.candidateApplication.runPolicies
+    (hnext : next ∈ ((runtime.candidateHost applyMessage).runPolicies
       players environment schedule execution).support) :
     SealedProgram.accepted? next.native.application.visible.events node = some handle := by
-  apply runtime.candidateApplication.runPolicies_application_invariant
+  apply (runtime.candidateHost applyMessage).runPolicies_application_invariant
     (fun state => SealedProgram.accepted? state.visible.events node = some handle) ?_ ?_ ?_
     players environment schedule execution next hread hnext
   · intro state owner command hstate
     exact hstate
   · intro state message result hstate hresult
-    change runtime.candidateHandle state message = some result at hresult
+    have hresult := hsound state message result hresult
     unfold candidateHandle at hresult
     split at hresult
     · contradiction
@@ -237,7 +244,7 @@ theorem runPolicies_candidate_accepted?
           rw [runtime.refresh_accepted?]
           exact SealedProgram.accepted?_append_of_some _ _ node handle hstate
   · intro state command result hstate hresult
-    simp only [candidateApplication, host, FinDist.mem_support_pure] at hresult
+    simp only [candidateHost, host, FinDist.mem_support_pure] at hresult
     subst result
     exact (runtime.refresh_accepted? true _ node).trans hstate
 
@@ -245,28 +252,30 @@ theorem runPolicies_candidate_accepted?
 submissions. Retained packets preserve the property through delivery and replay;
 unrelated submissions and private candidate preparation remain unrestricted. -/
 theorem runPolicies_candidate_accepted_property
+    (hsound : runtime.CandidateHandlerSound applyMessage)
     (property : Nat → CommitmentHandle Principal Nat → Prop)
-    (players : Principal → runtime.candidateApplication.PlayerPolicy)
-    (environment : runtime.candidateApplication.EnvironmentPolicy)
-    (hsubmit : ∀ (execution : runtime.candidateApplication.PolicyExecution) sender payload,
+    (players : Principal → (runtime.candidateHost applyMessage).PlayerPolicy)
+    (environment : (runtime.candidateHost applyMessage).EnvironmentPolicy)
+    (hsubmit : ∀ (execution : (runtime.candidateHost applyMessage).PolicyExecution) sender payload,
       .submit payload ∈ (players sender (execution.principalHistory sender)
         (State.observe _ execution.native sender)).support →
       ∀ node handle, payload = .commitment node handle → sender = handle.1 → property node handle)
-    (schedule : List (@Invocation Principal)) (next : runtime.candidateApplication.PolicyExecution)
-    (hnext : next ∈ (runtime.candidateApplication.runPolicies players environment schedule
+    (schedule : List (@Invocation Principal))
+    (next : (runtime.candidateHost applyMessage).PolicyExecution)
+    (hnext : next ∈ ((runtime.candidateHost applyMessage).runPolicies players environment schedule
       (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial))).support) :
     ∀ node handle, SealedProgram.Event.accepted node handle ∈
       next.native.application.visible.events → property node handle := by
   let safe := fun message : Message Principal (SealedProgram.Payload Principal Value) =>
     ∀ node handle, message.payload = .commitment node handle →
       message.sender = handle.1 → property node handle
-  let invariant := fun state : runtime.candidateApplication.Application =>
+  let invariant := fun state : (runtime.candidateHost applyMessage).Application =>
     ∀ node handle, SealedProgram.Event.accepted node handle ∈ state.visible.events →
       property node handle
-  have hresult := runtime.candidateApplication.runPolicies_message_application_invariant
+  have hresult := (runtime.candidateHost applyMessage).runPolicies_message_application_invariant
     safe invariant (fun _ _ _ hstate => hstate) (by
       intro state message result hstate hsafe hresult
-      change runtime.candidateHandle state message = some result at hresult
+      have hresult := hsound state message result hresult
       unfold candidateHandle at hresult
       split at hresult
       · contradiction
@@ -300,7 +309,7 @@ theorem runPolicies_candidate_accepted_property
               · have hevent := congrArg Prod.snd heq
                 cases hevent) (by
       intro state command result hstate hresult
-      simp only [candidateApplication, host, FinDist.mem_support_pure] at hresult
+      simp only [candidateHost, host, FinDist.mem_support_pure] at hresult
       subst result
       intro node handle hmem
       exact hstate node handle ((runtime.refresh_accepted_iff true
@@ -317,20 +326,22 @@ theorem runPolicies_candidate_accepted_property
 checkpoint gives the same selected handle and meaning. The whole trace may
 continue after timeout. Candidate preparation and player policies are arbitrary. -/
 theorem tracePolicies_candidate_acceptance_checkpoint
-    (players : Principal → runtime.candidateApplication.PlayerPolicy)
-    (environment : runtime.candidateApplication.EnvironmentPolicy)
+    (hsound : runtime.CandidateHandlerSound applyMessage)
+    (players : Principal → (runtime.candidateHost applyMessage).PlayerPolicy)
+    (environment : (runtime.candidateHost applyMessage).EnvironmentPolicy)
     (schedule : List (@Invocation Principal))
-    (trace : runtime.candidateApplication.PolicyTrace)
-    (htrace : trace ∈ (runtime.candidateApplication.tracePolicies players environment schedule
-      (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial))).support)
+    (trace : (runtime.candidateHost applyMessage).PolicyTrace)
+    (htrace : trace ∈ ((runtime.candidateHost applyMessage).tracePolicies
+      players environment schedule
+        (PolicyExecution.initial _ (State.initial _ runtime.candidateInitial))).support)
     (node : Nat) (owner : Principal) (requires : List Nat)
     (hrule : runtime.program.rules[node]? = some ⟨.commit owner, requires⟩) :
     let selected := trace.firstRelease (fun execution :
-        runtime.candidateApplication.PolicyExecution =>
+        (runtime.candidateHost applyMessage).PolicyExecution =>
       SealedProgram.done execution.native.application.visible.events node ||
         !execution.native.application.visible.timeouts.isEmpty)
     let stopped := trace.firstRelease (fun execution :
-        runtime.candidateApplication.PolicyExecution =>
+        (runtime.candidateHost applyMessage).PolicyExecution =>
       !execution.native.application.visible.timeouts.isEmpty)
     SealedProgram.accepted? selected.native.application.visible.events node =
         SealedProgram.accepted? stopped.native.application.visible.events node ∧
@@ -338,31 +349,32 @@ theorem tracePolicies_candidate_acceptance_checkpoint
         some handle → selected.native.application.service.lookup handle =
           stopped.native.application.service.lookup handle := by
   intro selected stopped
-  let read := fun execution : runtime.candidateApplication.PolicyExecution =>
+  let read := fun execution : (runtime.candidateHost applyMessage).PolicyExecution =>
     SealedProgram.accepted? execution.native.application.visible.events node
-  let cutoff := fun execution : runtime.candidateApplication.PolicyExecution =>
+  let cutoff := fun execution : (runtime.candidateHost applyMessage).PolicyExecution =>
     !execution.native.application.visible.timeouts.isEmpty
-  have hcut := runtime.candidateApplication.tracePolicies_firstRelease_congr players environment
+  have hcut := (runtime.candidateHost applyMessage).tracePolicies_firstRelease_congr
+    players environment
     (fun execution => SealedProgram.done execution.native.application.visible.events node ||
       cutoff execution) (fun execution => (read execution).isSome || cutoff execution)
     schedule _ trace htrace (by
       intro front execution hexecution
-      have hpublic := runtime.runPolicies_candidate_publicEvents players environment front
+      have hpublic := runtime.runPolicies_candidate_publicEvents hsound players environment front
         _ execution (PublicEventInvariant.initial runtime) hexecution
       rw [hpublic.done_eq_accepted_isSome runtime node owner requires hrule])
   have hread : read selected = read stopped := by
     change read (trace.firstRelease _) = read (trace.firstRelease cutoff)
     rw [hcut]
-    exact runtime.candidateApplication.tracePolicies_firstRelease_option players environment
-      read cutoff (fun front before after hafter handle hhandle =>
-        runtime.runPolicies_candidate_accepted? players environment front before after node
+    exact (runtime.candidateHost applyMessage).tracePolicies_firstRelease_option
+      players environment read cutoff (fun front before after hafter handle hhandle =>
+        runtime.runPolicies_candidate_accepted? hsound players environment front before after node
           handle hhandle hafter) schedule _ trace htrace
   refine ⟨hread, ?_⟩
   intro handle hhandle
   have hstopped : read stopped = some handle := hread.symm.trans hhandle
-  have hselected := (runtime.tracePolicies_candidate_accepted_frozen players environment
+  have hselected := (runtime.tracePolicies_candidate_accepted_frozen hsound players environment
     schedule trace htrace _ node handle hhandle).2
-  have hstop := (runtime.tracePolicies_candidate_accepted_frozen players environment
+  have hstop := (runtime.tracePolicies_candidate_accepted_frozen hsound players environment
     schedule trace htrace cutoff node handle hstopped).2
   exact hselected.symm.trans hstop
 
