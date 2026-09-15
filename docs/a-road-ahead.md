@@ -43,26 +43,26 @@ Whether the current source failure semantics matches the intended programming
 contract must be settled explicitly, not assumed from a backend default.
 
 The [deferred-guard specification](deferred-guards-semantics.tex) and checked
-`Interaction.GuardedPublication` component provide a candidate interpretation:
+`Interaction.GuardedPublication` component specify the publication rules:
 ordinary typed values, pending publications, and null failures are distinct;
 deferred relations fail the publication that closes an inconsistent tuple.
 Private bindings and earlier public results are immutable. Consistency and
-ordinary satisfying executions are proved. Integrating source expression
-evaluation, observations, chance, and settlement remains the acceptance test;
-the component alone does not complete the models milestone.
+ordinary satisfying executions are proved. `Vegas.Source` integrates source
+expressions, observations, chance, and settlement, with terminal safety and an
+exact strategic compiler edge to `Vegas.Graph`. The component alone would not
+establish those results.
 
 The [source migration plan](source-semantics-migration.md) records the agreed
 explicit-result typing, the tentative decision to retain primitive public
 chance, the full-source acceptance test, and the downstream migration order.
-Agreement on these contracts does not establish their source implementation
-or downstream correspondence.
+The [active tower](active-tower.md) identifies which downstream correspondence
+results have been checked.
 
 ## One compilation spine
 
 ```text
 checked sequential source
   -> typed event graph with compiler-proved information certificates
-  -> typed logical commitment protocol
   -> public pending-message application with deadline resolution
   -> transaction/block host
   -> identified executable contract in a checked VM/ledger semantics
@@ -80,8 +80,8 @@ distinct source operations. Inclusion checks alone cannot justify publishing
 an honest opening early. Optional parallel admission belongs in a later
 refinement with its own information theorem.
 
-The [typed protocol interface](typed-protocol-interface.md) specifies the next
-boundary and its operational implementation. It is not a preservation theorem. Local transition
+The [typed message interface](typed-message-edge.md) specifies the next
+boundary and its direct graph host. It is not a preservation theorem. Local transition
 classification must be accompanied by the joint observation/probability law
 needed to translate adaptive deviations.
 
@@ -105,9 +105,11 @@ Separate the three acceptance points within this milestone:
 `Vegas.Source` admits failure-producing commitments and disclosures as source
 behavior and gives public expressions explicit `Result` branches. Its complete
 execution resolves all accounted resources and satisfies all retained guards
-under arbitrary policies. The compiler still consumes `Vegas.Core`; its
-theorems do not establish correspondence for `SourceProgram`. Do not add
-recoverability or commit-time validity proofs to make models agree.
+under arbitrary policies. Its exact source-to-graph certificate covers every
+constructor. The typed message host has local operational laws; its whole-run
+policy correspondence remains to be proved. The restricted `Vegas.Core`
+candidate certificate does not establish that theorem. Do not add recoverability
+or commit-time validity proofs to make models agree.
 
 Replace homogeneous sealed values with site-indexed values and typed decoding.
 Separate raw candidates from legal source actions. Preserve arbitrary candidate

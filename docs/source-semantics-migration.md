@@ -192,11 +192,13 @@ The source interface settles the admission details as follows:
    The [source-to-graph design](source-graph-edge.md) specifies operation-specific
    binding and resolution nodes, immutable fields, guard placement, and own
    action recall without additional expression-construction assumptions.
-3. **Logical/public-message edge.** Adapt the typed ordered application to
-   publicly resolvable deferred guards, immutable candidate acceptance,
-   source-defined failure, and the exact chance law. Reuse the shared message
-   runner and independent service contracts. Do not retain a private-validation
-   oracle as the purported ordinary public implementation.
+3. **Public-message edge.** `GraphRuntime` directly hosts every typed graph
+   operation in the shared message application, with public deferred checks,
+   immutable candidate acceptance, explicit failure, and conditional chance.
+   The local transition laws and mixed-feature transport tests establish its
+   operational boundary. Prescribed policies, completion under deadline-relative
+   service, and the whole-run honest law remain to be proved. See the
+   [graph-to-message proof plan](typed-message-edge.md).
 4. **Strategic composition.** Establish the exact unilateral-deviation mixture
    law under canonical ordered operations, with unchanged compiled opponents
    and one fixed admissible adaptive environment. Add utility bounds only for

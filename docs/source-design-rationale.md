@@ -1,9 +1,9 @@
 # Source design rationale
 
 This note records the semantic choices for the failure-aware source language,
-with small examples explaining their consequences. The source implementation
-and its safety theorems are checked; the compiler objective below remains to
-be proved for this source. The mathematical publication rules are described in
+with small examples explaining their consequences. The source safety and
+source-to-graph strategic theorems are checked; the public-message strategic
+objective below remains to be proved. The mathematical publication rules are described in
 [deferred-guards-semantics.tex](deferred-guards-semantics.tex).
 
 ## Publication results are explicit
@@ -98,6 +98,20 @@ For example, its next ordinary choice may equal its previous disclosure
 decision. A compiler that uses one failure message for both cases must preserve
 that private memory or prove an equivalent policy realization. Equality of
 public results alone does not prove that claim.
+
+## Immutable private bindings
+
+A failed disclosure changes its publication result, not the original private
+binding. Suppose ordinary nullable bindings `x` and `y` must satisfy
+`y = none` or `y = x`. Bind both to `some true` and publish `y` first.
+Replacing the original `x` by `none` on a later timeout would leave
+`(x, y) = (none, some true)`, which violates the binding relation. An incentive
+premise about legal source failures cannot turn that pair into a legal one.
+
+Separate private bindings and `Result` publications avoid this mutation.
+The owner retains the original value; the failed public result is outside the
+ordinary domain; and the lifted public relation handles that failure explicitly.
+Already published values remain unchanged.
 
 ## Disclosure order is observable semantics
 
@@ -241,6 +255,10 @@ has probability one half for each Boolean; actual run payout laws distinguish
 successful play from each failure case. A separate constant-false guard program
 demonstrates defined forced failure.
 
-The compiler still consumes `WFProgram`, not `SourceProgram`. Its existing
-strategic certificates do not establish the exact compiler objective for this
-source. The next boundary is specified in [source-graph-edge.md](source-graph-edge.md).
+The full `SourceProgram` compiler has exact outcome, payout, and arbitrary
+unilateral-deviation laws to the typed `Vegas.Graph`, and same-error Nash
+correspondence for source-outcome utilities. The
+[source-to-graph certificate](source-graph-edge.md) covers every constructor
+without a guard-feasibility or failure-dominance premise. The remaining
+[public-message edge](typed-message-edge.md) must preserve that complete graph;
+the restricted `WFProgram` candidate certificate does not establish this step.

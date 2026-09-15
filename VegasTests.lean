@@ -49,15 +49,14 @@ import VegasTests.SealedSourceExtraction
 import VegasTests.GraphPublicPrefix
 import VegasTests.GraphRestriction
 import VegasTests.SealedResolutionCylinder
-import VegasTests.OrderedProtocol
+import VegasTests.GraphMessages
 import VegasTests.FailureGame
 import VegasTests.ResultExpressions
 import VegasTests.SourceSemantics
 
-/-! # Regression tests for the active strict sealed-message tower
+/-! # Regression tests for source, graph, and public-message execution
 
-The executable test surface follows the same edge as the library: checked
-source, event graph, one sealed rule per graph node, and explicit message
-execution. Earlier fused application tests are archived outside the build
-roots.
+The full failure-aware source and typed graph have mixed-feature execution
+tests. Candidate-backend tests concern the restricted `WFProgram` theorem;
+they do not establish the full typed host's pending-message strategic law.
 -/

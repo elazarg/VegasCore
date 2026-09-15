@@ -13,21 +13,20 @@ Production libraries do not import tests or the paper audit. Generic
 game-theoretic results do not import Vegas. Interaction owns reusable message
 semantics and does not depend on Vegas source syntax.
 
-Within Vegas, `Core` defines source programs and written-order execution,
-`EventGraph` defines the dependency graph and its execution, and `Compile`
-connects them to the active sealed-message protocol. `Game` contains the
-focused policy and strategic adapters. The former fused application-plan
-development is outside this active dependency graph in `archive/fused/`.
-
 `Source` contains the failure-aware source semantics: typed publication results,
 deferred guards, explicit resolution accounting, observation-local policies,
 and exact execution. `Accounting` proves terminal resolution; `Safety` proves
 satisfaction of every retained guard under arbitrary source policies.
 Its foundational types belong in `Foundation`; runtime-independent publication
-laws belong in `Interaction`. The compiler still consumes `Core`, so building
-`Source` does not yet establish a compiler theorem for the replacement. The
-[source acceptance milestone](source-semantics-migration.md#source-acceptance-milestone)
-governs that switch.
+laws belong in `Interaction`. `Graph` defines its typed immutable strategic IR
+and the direct `GraphRuntime` public-message host. `Compile.Graph*` proves the
+complete source-to-graph correspondence; `Game.GraphCompilation` packages its
+strategic certificate. The host's full strategic certificate remains open.
+
+`Core`, `EventGraph`, and `Compile.Sealed*` supply the restricted candidate
+backend and its separate strategic certificate. These results are checked but
+do not cover the failure-aware source. The
+[active tower](active-tower.md) records their exact scope.
 
 The active compiler is organized by proof responsibility: source/graph
 construction, sealed rule generation, decoding, native refinement, and source

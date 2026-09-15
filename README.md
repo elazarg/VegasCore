@@ -1,80 +1,42 @@
 # VegasCore
 
 VegasCore is a Lean 4 foundation for executable games with partial information.
-Its strict compiler path is:
+Its full-language compilation path is:
 
 ```text
-sequential checked source
-  -> typed event graph
-  -> explicit sealed-message program
-  -> native public-message execution
+failure-aware sequential source
+  -> typed immutable graph
+  -> public pending-message application
 ```
 
-This checked path currently consumes `WFProgram`. The failure-aware source
-semantics in `Vegas.Source` has complete execution and terminal safety proofs,
-but is not yet an input to this compiler. See the
-[source migration plan](docs/source-semantics-migration.md) for that boundary.
+The first edge has checked exact outcome and arbitrary unilateral-deviation
+laws, and Nash/same-error epsilon-Nash equivalence at compiled profiles.
+It covers every `SourceProgram` constructor, without finite-domain,
+guard-feasibility, or failure-dominance premises. The source includes explicit
+binding and disclosure failure, heterogeneous publication results, deferred
+guards, private initial inputs, own-action recall, and dependent public chance.
 
-The source language gives choices an explicit owner and visible environment.
-Compilation retains typed fields, dependencies, guards, probability tables,
-and payoff code in an event graph. The native endpoint uses the shared
-`Interaction` message pool and explicit commitment service.
+The message host executes the typed graph directly using the shared
+`Interaction` pool, ideal opaque commitments, public validation, and relative
+deadlines. Its local transition laws and mixed-feature transport tests are
+checked. Its prescribed-policy translation, whole-run honest law, and
+arbitrary-deviation certificate remain to be proved. Thus the full-language
+Nash theorem currently reaches the graph, not the pending-message runtime.
 
-The source-to-graph certificate preserves the source outcome law and exactly
-backtranslates arbitrary unilateral graph policies. The pending-message backend
-has an independent graph-to-candidate utility simulation. Their composition,
-`SealedCompilation.candidate_public_deviation_bound`, bounds every
-randomized native unilateral deviation by a legal written-source deviation
-against unchanged opponents. Nash and same-error epsilon-Nash are preserved and
-reflected at the actual generated profiles.
+A restricted `WFProgram` / `Vegas.EventGraph` candidate backend separately has
+checked end-to-end public outcome and unilateral-deviation utility bounds,
+composed through a graph-relative certificate. It preserves and reflects
+same-error epsilon-Nash at generated profiles under explicit deadline-relative
+service and pointwise source quitting conditions. It requires homogeneous,
+sample-free graphs, universally accepting commitment guards, and
+commitment-produced disclosures. That certificate does not cover the revised
+failure-aware source. See [the active tower](docs/active-tower.md) for the
+theorems and exact assumptions.
 
-The candidate runtime admits competing commitments, unopenable accepted handles,
-malformed traffic, retries, replay, pending-message observations, and withholding.
-Its adaptive wire policy sees the pending pool, but not the private candidate
-table. Periodic inclusion capacity, roster coverage, and sufficiently large
-timeout windows protect unchanged players. Withholding resolves to the programmed
-default. The theorem assumes a source-only quitting condition: a legal quitting
-settlement is no better than any supported unilateral source continuation with
-the same public environment strictly before that commitment. Opponents stay
-fixed in the continuation law. This is a pointwise comparison, stronger than
-ordinary ex-ante quit dominance. A global quitting cap and equal fixed-opponent
-support floor suffice; a floor over all legal executions also supplies the
-reusable `candidatePayoutSimulation` certificate.
-
-Separate source quitting caps and supported-outcome floors give a quantitative
-version: every native deviation is bounded by a legal source deviation plus the
-gap times that native deviation's actual timeout probability. A source epsilon-Nash profile
-therefore compiles to an `(epsilon + delta)`-Nash profile when every player's gap
-is at most `delta >= 0`. Reflection at compiled profiles needs no quitting
-condition; it follows from honest public-outcome utility agreement under the service assumptions.
-
-The proof factors through the graph as an independently usable strategic
-intermediate representation. The compiler certifies public-prefix readability,
-unique direct disclosures, and the public source outcome interpretation. The backend
-constructs its own deviation coupling and proves the timeout utility comparison;
-it does not assume a source-image witness or a desired native incentive law.
-The all-compiled honest law preserves the original public outcome distribution.
-The end-to-end theorem supports any interpretation of the public terminal source
-environment, including outcome maps followed by player-specific utilities.
-Payout valuations are a special case. The native observation reads only public
-graph fields; every supported stopped-game result decodes to a legal public
-source outcome, including after defaults. This support result needs no fair
-service, but does not fix opponents or establish a deviation law.
-See [the composition design](docs/compilation-design.md#strategic-intermediate-representation).
-
-The candidate theorem covers homogeneous commit/reveal graphs with universally
-accepting guards, no samples, and no initially private disclosure. The registered-site
-host additionally has conditional timeout-checkpoint incentive results;
-transporting general conditional source comparisons to the candidate host remains open.
-The same rule generator and playerwise strategy translation accept nontrivial
-guards. Public guards have checked opening validation and legal whole-graph
-settlement under arbitrary completed native policy executions. Extending the
-strategic theorem to those guards, chance compilation, heterogeneous sealed
-values, concrete commitment cryptography, and ledger/EVM refinement remain further work. Service
-is an explicit operational assumption, not a proved censorship-resistance result.
-
-The former fused application path is passive reference material under
-`archive/fused/`; it is not an active compiler edge or evidence for these results.
+Outcomes, executable payouts, and player utilities are separate interfaces.
+Source-outcome guarantees do not automatically cover preferences over native
+traffic or costs. Computational commitment security, concrete entropy, and
+ledger/EVM refinement require further target edges.
 
 The active libraries are `GameTheoryExtensions`, `Interaction`, `Vegas`,
 the retained tests, and the source/native paper audit. See
@@ -105,13 +67,13 @@ axiom pins. Supporting proofs stay in their owning modules; archives do not
 contribute proof coverage. The current theorem boundary is listed in
 [the active tower](docs/active-tower.md). The
 [road ahead](docs/a-road-ahead.md) sets the full-language and executable-target
-milestones, and the [typed protocol proposal](docs/typed-protocol-interface.md)
-specifies the next interface. Those milestones are not checked results.
+milestones, and the [typed message proof plan](docs/typed-message-edge.md)
+separates the operational host from the remaining strategic argument.
 
 The [source rationale](docs/source-design-rationale.md) records the semantics
 choices and their small examples and counterexamples. The corresponding
 [migration plan](docs/source-semantics-migration.md) separates the checked
-source semantics from the remaining graph and runtime integration.
+source-to-graph results from the remaining runtime integration.
 
 A successful Lean build checks the active proof terms. It is not evidence that
 the separate manuscript's claims are all established. `paper-claims.json`

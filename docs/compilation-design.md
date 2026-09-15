@@ -3,9 +3,10 @@
 VegasCore has a checked exact edge from the complete failure-aware source to
 the typed sequential `Vegas.Graph` IR. The established native pipeline uses
 `WFProgram` and `Vegas.EventGraph` artifacts before lowering to focused
-public-message applications. Its backend must be adapted to the complete typed
-graph and proved correct there; adding an adapter to a restricted source
-fragment would not establish the required end-to-end boundary.
+public-message applications. `GraphRuntime` directly hosts the complete typed
+graph with public deferred checks and failure resolution. Its whole-program
+policy and strategic laws remain to be proved; adding an adapter to a restricted
+source fragment would not establish that boundary.
 
 The [source design rationale](source-design-rationale.md) specifies the
 failure-aware source and its motivating examples. The
@@ -139,8 +140,8 @@ the source compiler supplies their certificates. The source-to-candidate
 theorem composes that edge with source/graph correspondence. The immediate gap
 is its language coverage: homogeneous values, no samples, and universally
 accepting guards still constrain the backend. The
-[typed protocol proposal](typed-protocol-interface.md) addresses that interface;
-it is not yet a replacement implementation or theorem.
+[typed graph-to-message host](typed-message-edge.md) implements all revised
+source operations. Its local laws are not yet a replacement strategic theorem.
 
 ## Active lowering
 

@@ -27,20 +27,22 @@ optimization; the subsequent build checks the active proof terms.
 
 | Question | Main location |
 | --- | --- |
-| Source syntax and written-order execution | `Vegas/Core/Basic.lean`, `SmallStep.lean`, `Strategy.lean` |
-| Typed graph compilation | `Vegas/Compile/Compiler.lean`, `Vegas/EventGraph/` |
-| Exact strategic source/graph correspondence | `Vegas/Game/SourceGraph.lean` |
-| Pending messages and candidate commitments | `Interaction/MessageApplication.lean`, `Interaction/SealedCandidateResolution.lean` |
-| Graph-relative candidate strategic edge | `Vegas/Game/SealedCandidate.lean` |
-| Source outcomes and pending-message Nash | `Vegas/Game/SourcePublicCandidate.lean` |
+| Full failure-aware source and its safety | `Vegas/Source/Basic.lean`, `Semantics.lean`, `Safety.lean` |
+| Typed graph semantics and compilation | `Vegas/Graph/`, `Vegas/Compile/GraphCompiler.lean` |
+| Exact full-source/graph strategic certificate | `Vegas/Game/GraphCompilation.lean` |
+| Full typed public-message host and local laws | `Vegas/Graph/MessageApplication.lean`, `MessageStepLaw.lean`, `MessageInvariant.lean` |
+| Pending messages and candidate commitments | `Interaction/MessageApplication.lean`, `Interaction/CommitmentCandidates.lean` |
+| Restricted graph-relative candidate strategic edge | `Vegas/Game/SealedCandidate.lean` |
+| Restricted source-to-pending Nash | `Vegas/Game/SourcePublicCandidate.lean` |
 | Source-only quitting condition | `Vegas/Core/SourceQuitPrefix.lean` |
 | Generic compositional incentive bounds | `GameTheoryExtensions/Core/UtilitySimulation.lean` |
 | Paper-visible capstones and important lemmas | `Paper.lean` |
 
 Read each owning theorem and its definitions, not just its audit restatement.
-The source/graph theorem covers all checked core programs. The pending-message
-theorem has the narrower sealed-fragment and service hypotheses stated in the
-[active tower](docs/active-tower.md#end-to-end-candidate-theorem).
+The full-source/graph theorem covers every `SourceProgram` constructor. The
+pending-message strategic theorem still concerns the restricted `WFProgram`
+candidate backend, with hypotheses stated in the
+[active tower](docs/active-tower.md#restricted-candidate-certificate).
 
 ## Paper audit
 
@@ -67,6 +69,13 @@ A successful Lean build does not establish them all.
 
 ## Representative integration tests
 
+- `VegasTests/SourceSemantics.lean` proves complete laws for a failure-aware
+  program with heterogeneous values, deferred guards, initial secrets, chance,
+  and failure-sensitive settlement.
+- `VegasTests/GraphMessages.lean` executes that compiled graph through actual
+  submission, recipient-local delivery, inclusion, and timeout. It checks
+  successful and failed payouts and preservation of the completed outcome
+  across later ticks; it is not a whole-program strategy law.
 - `VegasTests/SealedPayout.lean` derives native incentives from legal source
   execution for a nonconstant programmed payout, including candidate-host play.
 - `VegasTests/SealedProfilePayout.lean` separates fixed-opponent incentive
@@ -98,10 +107,11 @@ parts of the target contract. Local player views include pending messages
 delivered before inclusion; the environment sees the full pool.
 
 Support correspondence, honest outcome equality, and arbitrary-deviation
-utility bounds have distinct conclusions. Only the latter together with honest
-utility agreement establishes Nash preservation. The current selective-quitting
-bound does not imply exact deviation outcome equality or another player's
-arbitrary worst-case outcome guarantee.
+correspondence have distinct conclusions. Nash preservation requires deviation
+control as well as honest agreement, either through exact laws or sufficient
+utility bounds. The restricted selective-quitting bound does not imply exact
+deviation outcome equality or another player's arbitrary worst-case outcome
+guarantee.
 
 The repository does not treat an executable compiler, encoding lemma, test
 vector, or partial VM proof as whole-program refinement. Concrete execution
