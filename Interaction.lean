@@ -1,4 +1,5 @@
 import Interaction.MessagePool
+import Interaction.OrderedProtocol
 import Interaction.LogicalCommitment
 import Interaction.LogicalCommitmentAdmission
 import Interaction.LogicalCommitmentEffects

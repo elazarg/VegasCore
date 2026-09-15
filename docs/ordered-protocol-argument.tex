@@ -1,0 +1,391 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{array}
+
+\newcommand{\Val}{\mathsf{Val}}
+\newcommand{\Some}{\mathsf{some}}
+\newcommand{\None}{\mathsf{none}}
+\newcommand{\Obs}{\mathsf{Obs}}
+\newcommand{\Law}{\mathsf{Law}}
+\newcommand{\supp}{\mathop{\mathrm{supp}}}
+\newcommand{\pub}{\mathsf{pub}}
+\newcommand{\raw}{\mathsf{raw}}
+\newcommand{\eff}{\mathsf{eff}}
+
+\title{An Ordered Commitment Protocol: Mathematical Boundary and Proof Plan}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\paragraph{Status.}
+This note specifies a proposed target semantics and the mathematical obligations
+for compiling the full typed source language.  Statements explicitly labelled
+\emph{checked} summarize facts already represented in the Lean development.
+Statements labelled \emph{proposed} are proof targets, not claims that the
+present implementation has proved a whole-program compiler theorem.  In
+particular, the operational interface below contains local capabilities; it
+does not contain a global execution or deviation theorem as a field.
+
+\section{The source boundary}
+
+\paragraph{Checked source facts.}
+A source program has heterogeneous public chance, guarded private commitment,
+deterministic reveal, and return.  At a commitment, the owner chooses a value
+in the guard subtype.  Thus legality is established in the source view at the
+commitment step, not for the first time when the value is revealed.  A reveal
+copies the already committed value and has no source-level failure branch.
+Public chance is sampled from a distribution computed from public state.
+
+Consequently, in the current source semantics an invalid target opening and a
+failure to open are not already two presentations of a source quit.  One may
+instead want a different source abstraction in which commitment records an
+unchecked binding and reveal performs validation and can resolve failure.  That
+is a legitimate design alternative, but it requires an explicit change to the
+source transition system and its policy information: guard timing, descendant
+choices, public chance, and the legal quitting execution must then all be
+defined against that deferred-validation state.  This note does not silently
+identify that proposed semantics with the checked current semantics.
+
+The existing source quitting predicate compares a legal terminal quitting
+execution with a supported unilateral continuation against fixed source
+opponents.  The executions must have the same public source prefix immediately
+before the designated source decision.  It is deliberately a predicate on
+source executions: a target timeout has no incentive meaning until a separate
+correspondence proof constructs the required legal source execution.
+
+\paragraph{Checked conditional-opening mechanism.}
+The source library also represents a conditional opening as a fresh optional
+commitment followed immediately by its reveal.  If the original sealed value
+is $x$, the fresh value is either $\None$ or $\Some(x)$.  The original secret
+remains unchanged.  Choosing $\None$ is legal in every source view.  This is a
+genuine source-declared quitting operation and is fundamentally different from
+rewriting the original committed value after a failed reveal.
+
+\section{Proposed ordered target model}
+
+Let the lowered program have sites $0,\ldots,n-1$ in canonical program-counter
+order.  Site $i$ has a value type $A_i$ and is one of
+\[
+  \mathsf{chance}(K_i),\qquad
+  \mathsf{commit}(p_i,G_i),\qquad
+  \mathsf{reveal}(o_i).
+\]
+Here $o_i$ names either an initial private field or an earlier commitment.
+Values crossing the transport boundary are tagged members of the heterogeneous
+sum $\sum_i A_i$.  The public code contains types, owners, declared reads,
+guards, chance kernels, and reveal origins, but not the initial private values.
+
+A runtime state should distinguish at least
+\[
+ (pc,B,E,D,C,H).
+\]
+$B$ is immutable bound material: typed candidate meanings and any exact source
+inputs authenticated at binding time.  $E$ is the effective materialized store
+used by later source operations.  $D$ contains values actually disclosed to
+the public.  $C$ caches chance samples, and $H$ is transport and observation
+history.  Conflating $B$, $E$, and $D$ makes timeout reasoning unsound: binding
+a value, using a value in the effective source context, and publishing a value
+are three different events.
+
+The program counter advances only after the current operation is realized or
+after an explicitly authorized resolution for that operation.  Messages may
+still be submitted, delivered, replayed, malformed, mistyped, or out of order;
+such actions can affect transport-visible history, but they do not silently
+realize a source step.
+
+\subsection{Local operational capabilities}
+
+The following capabilities are local and source-independent enough to belong
+at the runtime boundary.
+
+\begin{enumerate}
+\item A typed decoder checks the site tag and produces an $A_i$, or rejects.
+\item One sufficient ideal alternative is a \emph{certified recoverable
+      binding} for an ordinary commitment.  It hides
+      a definite value $v:A_i$ while authenticating (a) its type and site,
+      (b) $G_i(v)$ in the exact source commitment context, and (c) a recovery
+      token that will disclose this same $v$ at every direct reveal of the
+      binding.  A backend may implement this by public checking, a proof plus
+      escrow, trusted ideal functionality, or another explicit mechanism.
+      Merely accepting an opaque unopenable handle is insufficient to establish
+      a source commitment step.  In particular, an invalid or fresh
+      unprepared candidate is rejected before $pc$ advances.
+\item Under that sufficient alternative, a direct reveal has mode
+      $\mathsf{recover}$: the owner may open first,
+      but on timeout the recovery capability discloses the certified value.
+      It never substitutes a different value.  Failure to provide the recovery
+      capability is an unsupported deployment, not automatically a source
+      quit, because source reveal is deterministic.
+\item Initial-input availability loads a typed private setup supplied outside
+      public code.  An initial deterministic reveal is automatic once enabled;
+      setup failure is an admission failure, not a player deviation.
+\item A chance capability samples exactly once from $K_i$ evaluated on the
+      effective public prefix, caches the result, and publishes it atomically.
+      An unavailable sampler stutters rather than substitutes a default.
+\end{enumerate}
+
+Private guards need not expose private reads.  What is required is evidence
+that the accepted value satisfies the source guard in the owner's source view.
+Public-guard checking is one implementation of this obligation, not the
+definition of the language boundary.
+
+The authenticated commitment context must itself be rooted in the ordered
+source prefix: each public read comes from an earlier realized public site, and
+each private read comes from initial setup or an earlier certified binding of
+the same owner.  A certificate over an arbitrary raw snapshot is not enough.
+This recursive provenance is established incrementally by the program-counter
+induction; it is not an additional oracle claiming final settlement legality.
+
+No general field of the form ``fallback is source-correct'' should be added to
+each site.  Such a field would simply assume the difficult refinement theorem.
+Resolution is instead justified by recognizable source syntax, such as the
+optional conditional-opening pair, or by a concrete recovery or settlement
+mechanism whose correspondence is proved separately.
+
+This is one concrete mode discipline for legal bindings and deterministic
+disclosure, not a claim that recovery or escrow is indispensable or that it has
+been selected as the full-Core target.  It does not by itself resolve refusal
+to submit a commitment: that case still requires an explicit, source-related
+resolution or an admission contract.  Recoverability after acceptance is not
+a complete progress or compiler theorem.
+Under it, ordinary source commitments use certified recoverable bindings and
+direct reveals use $\mathsf{recover}$.  Strategic disclosure failure is
+represented by an explicit source decision, most simply the adjacent
+optional-copy commitment and reveal: the owner chooses $\None$ or $\Some(x)$,
+and the ordered machine does not pass that reveal before the choice is
+materialized.  A deferred-validation source semantics could justify a
+different mode, but only after its own legal executions and guard context have
+been specified and related to the runtime.  A target may also offer a plain
+opaque-binding mode, but the positive argument below is conditional on a
+correspondence theorem for whichever mode is chosen.
+
+\section{Why naive per-cell defaults are not sound}
+
+Consider one owner and two source commitments
+\[
+ x,y : \mathsf{Option}(\mathsf{Bool}).
+\]
+The guard for $x$ may be the ordinary nullable guard.  The guard for $y$ allows
+$y=\None$ in every view and allows $y=\Some(b)$ only if $x=\Some(b)$.  Order the
+source operations as
+\[
+ \mathsf{commit}\ x;\quad \mathsf{commit}\ y;\quad
+ \mathsf{reveal}\ y;\quad \mathsf{reveal}\ x.
+\]
+The source execution that binds $x=\Some(b)$ and $y=\Some(b)$ is legal.  A
+target can first publish $y=\Some(b)$ and later fail to open $x$.  If timeout
+rewrites the effective and public value of the original $x$ to $\None$, the
+final public pair is
+\[
+ (x,y)=(\None,\Some(b)).
+\]
+No legal source execution has this result.  Rechecking only future openings
+does not help, because the dependent value $y$ has already been published.
+Likewise, validating $y$ against a captured original snapshot proves only that
+it was legal when bound; it does not make the rewritten terminal store a legal
+source store.
+
+This failure persists even under a strong source quitting inequality.  Define
+utility to be $2$ on the impossible pair $(\None,\Some(b))$, $1$ on a valid
+both-present pair, and $0$ otherwise.  Every legal source quit outcome has
+utility $0$, and every legal supported continuation has nonnegative utility.
+The pointwise source quit condition therefore holds, while the naive target
+timeout can create utility $2$.  The missing premise is operational
+correspondence, not a stronger source incentive inequality.
+
+This is only a counterexample to direct null replacement of an original source
+cell while retaining already published dependent results.  It is neither a
+universal compiler impossibility nor proof that any particular stronger
+mechanism is necessary.  Candidate sound implementation choices include:
+\begin{enumerate}
+\item recover or escrow deterministic openings, so the later timeout cannot
+      rewrite $x$;
+\item expose a distinct source-declared optional opening $o\in
+      \{\None,\Some(x)\}$ and resolve $o$ to $\None$ while retaining $x$;
+\item use an explicit settlement-closure mechanism that proves all already
+      public dependent effects admit one legal source realization.
+\end{enumerate}
+For unpublished descendants, a topological cascade of source-legal defaults
+may be provable.  It cannot retract an already published descendant and hence
+is not by itself a general solution.
+
+\section{The correspondence certificate}
+
+The target model should be expressive enough to run the counterexample above,
+but the compiler theorem must refuse to claim source correspondence for its
+naive settlement.  The smallest load-bearing certificate is therefore not a
+per-node fallback oracle.  It is a proof, derived for a concrete lowering and
+execution, of the following alternative.
+
+\paragraph{Proposed first-resolution realization.}
+For every target trace, either it realizes the ordinary source prefix, or at
+the first source-relevant resolution there are
+\begin{itemize}
+\item a designated source decision $d$ owned by the focal player,
+\item a legal terminal source execution $q$ that takes the declared resolution
+      at $d$,
+\item a continued legal source execution $c$ under a unilateral source policy,
+\end{itemize}
+such that $q$ reproduces the target's payoff-relevant public settlement, $q$
+and $c$ agree on the required pre-decision source information, and all earlier
+target blocks correspond to their source operations.
+
+This certificate may be proved for an adjacent conditional opening, for an
+escrow-backed deterministic reveal, or for another explicit mechanism.  It is
+false for the naive reversed-reveal trace above.  Keeping it as a theorem about
+the lowering avoids weakening the source language and avoids installing a
+circular global-refinement assumption inside the runtime.
+
+\section{Proposed local induction lemmas}
+
+The following are proof targets, not currently asserted Lean facts.
+
+\begin{enumerate}
+\item \textbf{Typed block law.}  With no resolution, executing site $i$ and
+      advancing $pc$ realizes exactly the corresponding heterogeneous source
+      operation.  Malformed, mistyped, replayed, and off-order traffic does not
+      change the realized source prefix.
+\item \textbf{Binding law.}  Binding evidence reconstructs the source guard
+      proof in the exact owner view.  It preserves the raw value and the
+      owner's private-action recall without exposing private inputs.
+\item \textbf{Opening law.}  A successful deterministic opening publishes the
+      bound source value.  A conditional-opening resolution publishes the
+      optional copy's legal $\None$, not a mutation of its source secret.
+\item \textbf{Chance law.}  Conditional on an equal effective public prefix,
+      the cached target sample has kernel $K_i$ and is sampled only once.
+\item \textbf{Observation law.}  Equal source decision views induce equal
+      retained target observations, including the focal player's own earlier
+      choices.  Extra packet history may be retained unless a separate fixed-
+      environment factorization theorem proves it irrelevant.
+\item \textbf{First-resolution decomposition.}  Every stopped target trace
+      either has no source-relevant resolution or has an earliest such
+      resolution; the preceding ordered prefix satisfies the block laws.
+\item \textbf{Resolution realization.}  A recognized resolution mechanism
+      constructs the legal $q$ described above and proves public-settlement
+      agreement.  This is exactly where the reversed-reveal counterexample
+      blocks a naive backend.
+\end{enumerate}
+
+Together these lemmas support induction over the public program counter.  They
+should be ordinary theorems consumed by the compiler proof, not fields saying
+that all global executions or deviations are already correct.
+
+\section{Strategies, environment, and causal deviations}
+
+Fix a focal player $p$.  A strategy is an observation-local stochastic kernel
+with perfect recall of $p$'s private setup and prior actions.  Fix all opponent
+strategies and an adaptive environment strategy before choosing a deviation of
+$p$.  The environment may react to its observations, deliver or delay
+messages, and choose when to advance time.  It must not be reselected after
+seeing which focal policy is under comparison.
+
+The relevant fairness condition is timeout-relative and uniform over focal
+deviations.  For a nonfocal honest site, once its prescribed honest action is
+enabled and available, the fixed environment must service that action before
+the site's deadline; it may not let timeout win the race.  A focal player may
+withhold an action, after which the declared resolution mechanism may run at
+the deadline.  Chance and automatic initial disclosure receive their declared
+service.  Fairness does not require a fixed absolute schedule, and it does not
+erase the environment's lawful adaptive behavior.
+
+\paragraph{Proposed causal extraction.}
+For every observation-local target deviation $\tau_p$, with the opponents and
+environment fixed as above, construct a source behavioral policy $\alpha_p$
+by induction over retained source decisions.  The action law at a source view
+is obtained by conditioning the target law on the corresponding retained
+history.  Random response tapes may be sampled ex ante.  The construction must
+not choose a source action post hoc using hidden future transport, chance, or
+opponent outcomes.
+
+The induction should produce a joint law of target result $R$, continued source
+execution $C$, and, on a resolution branch, legal quitting execution $Q$ and
+site $d$.  Crucially, the $C$ marginal must be the complete source law induced
+by the extracted policy, not merely a distribution supported by that law:
+\begin{align*}
+ \Law(C) &= \Law(P,\alpha_p,\sigma_{-p}),\\
+ \pub(R) &= \pub(C) \quad\text{on ordinary branches},\\
+ \pub(R) &= \pub(Q) \quad\text{on resolution branches},\\
+ \Obs_d(Q) &= \Obs_d(C) \quad\text{on resolution branches}.
+\end{align*}
+An alternative formulation may use a mixture of source policies, but it must
+state its exact mixed marginal and obtain the corresponding source incentive
+bound.  Mere pointwise support membership is insufficient for the expected
+utility inequality below.
+Here $\Obs_d$ is source-defined.  The existing public-prefix predicate is a
+sufficient choice when the realization proof supplies its equality.  A weaker
+information-indexed incentive theorem may instead use the focal source view,
+but its probability law and conditioning must also be proved by this coupling;
+it cannot be assumed as a native-conditioned premise.
+
+\section{Sufficient incentive conditions}
+
+Let $U_p$ be a utility of the public source outcome.  The presently usable
+pointwise condition is
+\[
+ \Obs_d(q)=\Obs_d(c)
+ \quad\Longrightarrow\quad
+ U_p(q)\leq U_p(c)
+\]
+for every legal declared-resolution execution $q$ and every supported
+unilateral continuation $c$ at the same owned decision.  The existing
+public-prefix quitting condition is stronger than necessary whenever the
+coupling preserves a richer focal view, but it is already adequate once the
+legal $q$ exists.
+
+A genuinely weaker future condition could compare conditional expectations on
+a source-defined observation cylinder $Z$:
+\[
+ \mathbb{E}[U_p(Q)\mid Z=z]
+ \leq
+ \mathbb{E}[U_p(C)\mid Z=z].
+\]
+It is useful only if the compiler proves the joint cylinder probabilities and
+the stopping coupling.  Quantifying over all opponent restrictions and all
+deterministic focal alternatives may isolate every positive-probability source
+outcome and collapse this condition back to pointwise dominance.  Therefore an
+admissible cylinder family must come from the retained source observation, not
+from arbitrary post hoc restrictions.
+
+Assume the ordinary branch and first-resolution coupling above, the pointwise
+condition, and an honest exact outcome law.  Then, for every target deviation,
+\[
+ \mathbb{E}U_p(R_{\tau_p})
+ \leq \mathbb{E}U_p(C_{\alpha_p})
+ \leq \mathbb{E}U_p(C_{\sigma_p})+\varepsilon
+ = \mathbb{E}U_p(R_{\sigma_p})+\varepsilon,
+\]
+where the middle inequality is source $\varepsilon$-Nash.  The first inequality
+uses legal resolution realization plus quitting dominance; it is precisely the
+step unavailable for the naive per-cell-default counterexample.
+
+\section{Adequacy checklist for a full-Core lowering}
+
+\begin{center}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.23\linewidth}
+                >{\raggedright\arraybackslash}p{0.69\linewidth}}
+Source feature & Required target fact \\
+\hline
+Heterogeneous values & Typed tags and dependent stores; no homogeneous widening.\\
+Private guarded choice & Exact-view binding evidence, without public disclosure of private reads.\\
+Public guarded choice & Direct public validator is an admissible specialization.\\
+Deterministic reveal & Under current semantics, an availability or recovery correspondence; alternatively, an explicitly redesigned deferred-validation source step.\\
+Conditional opening & Preserve the original secret and resolve the fresh optional copy.\\
+Public dependent chance & Evaluate on the effective public prefix, sample once, and cache.\\
+Initial private setup & Separate typed input plus automatic availability; not a strategic publication.\\
+Timeout & Attribute it to an explicit source-resolvable operation and prove legal settlement realization.\\
+Arbitrary deviation & Observation-local causal policy extraction against opponents and environment fixed in advance.\\
+Adaptive timing & Uniform timeout-relative fairness, not a policy-dependent schedule.\\
+\end{tabular}
+\end{center}
+
+The model may express deployments lacking one of these capabilities.  What it
+must not do is attach a source-correctness theorem to such a deployment.  This
+separation keeps the target language expressive while making the compiler's
+positive theorem both meaningful and falsifiable.
+
+\end{document}

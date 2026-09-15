@@ -1,351 +1,150 @@
-# Typed protocol interface
+# Typed ordered protocol
 
-## Decision
+## Interface and status
 
-This is a proposed interface, not an implemented model or preservation theorem.
-The Lean-shaped declarations are schematic dependency sketches, not checked APIs.
+The typed protocol retains every event-graph operation and hosts it in the
+shared public-message application runner. It has no homogeneous-value,
+no-sampling, or universally-accepting-guard restriction. This is an operational
+model and adapter, not a general source correspondence or Nash theorem.
 
-Generate one graph-relative, dependently typed protocol which executes
-`G.nodeOrder` with a public program counter. Transport remains unrestricted:
-off-order, malformed, replayed, or adversarial calls may be submitted and
-observed, but they do not change application state. Only a successful action or
-an authorized resolution for the current operation advances the counter.
+The implementation boundary is:
 
-This conservative compiler policy matches the canonical order already used by
-the source-to-declared-read graph theorem and avoids another induction over
-partial graph frontiers. Parallel admission can later be proved as an
-optimization/refinement. It is not part of the minimum interface.
-Private values may affect guards; source chance reads only public values.
-Neither changes the operation sequence: compilation has already fixed `nodeOrder`.
+| Module | Responsibility |
+| --- | --- |
+| `Vegas/Protocol/Code.lean` | Typed operations, field layout, and separate initial inputs |
+| `Vegas/Protocol/Graph.lean` | Total erasure of graph metadata and retained executable expressions |
+| `Interaction/OrderedProtocol.lean` | Runtime-general ordered commitment, opening, chance, and resolution transitions |
+| `Vegas/Protocol/Application.lean` | Tagged values and graph guard/chance evaluators for that runtime |
 
-The proposed interface replaces `SealedShape G ty` and `SealedFragment G ty`. It has no
-global value type, `noSamples`, or universally accepting `commitGuard` premise,
-and introduces neither a second source semantics nor a whole-run simulation
-certificate.
+`Interaction` imports no Vegas concepts. The adapter imports graph definitions,
+not the source compiler. Source compilation and strategic composition belong
+above this edge. `MessageApplication` supplies the existing submission,
+delivery, inclusion, receipt, and policy machinery; there is no additional
+policy runner.
 
-## Public code and private setup
+The public program counter determines which application operation can take
+effect. It does not prohibit off-order submission, pending observation, replay,
+malformed traffic, or attempted inclusion. Baseline compilation follows the
+source-certified canonical order. Parallel admission requires its own proof.
 
-`Graph.initialFields` currently contains values. Those values must not be copied
-into public generated code. Compilation erases them to a layout; deployment
-supplies them separately:
+## Code, setup, and stores
 
-```lean
-structure InitialSlot (Player : Type) (L : IExpr) where
-  ty : L.Ty
-  owner : Option Player
+Public code contains initial-field types and owners, operation types, declared
+reads, guard expressions, chance distributions, and disclosure origins.
+Initial values are separate dependent inputs, not public code constants.
+Operation fields follow the initial fields without compressing their indexes.
 
-def InitialLayout (G : Graph Player L) : List (InitialSlot Player L) :=
-  G.initialFields.map fun field => ⟨field.ty, field.owner⟩
+Runtime values are tagged. A wrong-tag opening is possible traffic and fails
+validation; it is not a member of a legal source-action subtype. Candidate
+identity is separate from source-site identity. Players can prepare several
+candidates, and accepting a previously unprepared candidate freezes it as
+unopenable in the ordinary opaque mode.
 
-structure InitialInput (layout : List (InitialSlot Player L)) where
-  value : (slot : Fin layout.length) -> L.Val (layout.get slot).ty
+The runtime keeps distinct stores for immutable bound material, effective
+operation results, and public disclosures. It also retains captured guard
+contexts and candidate meanings. Player observations contain their own setup
+and bound values. Environment observation excludes these private components;
+the surrounding message runner exposes the pending traffic it specifies.
+Observation definitions alone are not a joint information-flow theorem.
 
-structure InitialRealization (G : Graph Player L) where
-  input : InitialInput (InitialLayout G)
-  realizes : forall slot,
-    input.value slot = cast (by simp [InitialLayout])
-      (G.initialFields.get slot).value
-```
+## Validation and failure
 
-These declarations are proof-facing specifications, not serialized code:
-indexing by `G` may mention the source graph and its initial constants. The
-executable public artifact is a separate erasure containing the layout,
-operation code, and public metadata, but neither `G.initialFields[*].value` nor
-`InitialRealization.input`. Initialization consumes setup once:
+In ordinary opaque/manual mode, commitment inclusion does not test the guard
+or require an openable candidate. Opening checks the current site, authenticated
+sender, accepted candidate, commitment verification, tag, and retained guard.
+The Vegas adapter evaluates the guard on its captured binding-time inputs.
+Those inputs may contain private fields: this is an explicit ideal verification
+capability, not a claim that an ordinary public contract can read them.
 
-```lean
-def initialize (spec : TypedProtocolSpec G)
-    (input : InitialInput spec.initialLayout) : ProtocolState G
-```
+Rejected attempts do not advance the application counter. They remain
+retryable and may be transport-visible. At expiry, a configured resolution can
+publish its designated value and advance. Neither the existence of that value
+nor its type proves that this transition implements source quitting.
+The adapter does not choose defaults on the programmer's behalf.
 
-The compiler emits a proof-facing realization for the checked source run. A
-real deployment obtains secrets through an explicitly named authenticated
-private-input capability and proves correspondence without publishing
-owner-private values. Ordinary EVM storage is observable and does not supply
-that capability. Embedding the witness or private constants in bytecode or
-public storage is forbidden. A
-raw initializer may refuse while decoding or authenticating setup; that occurs
-before a corresponding source execution starts, not as a source default. Once
-`InitialRealization` holds, initialization is total and later failure cannot
-replace those already-realized source inputs.
+The intended compiler interpretation is that failed opening and invalid opening
+resolve to the source-declared quitting behavior. That interpretation is not
+yet supplied generally by the Lean source rules:
 
-## Values, raw traffic, and operations
+- `SmallStep.commit` admits only values satisfying the guard in the owner's
+  commitment-time view.
+- `SmallStep.reveal` copies the original sealed value without a failure branch;
+  the original binding remains in scope.
+- `ConditionalOpening` expresses a separate optional copy of an original
+  secret. Declining that copy preserves the original secret.
 
-All Lean-shaped declarations below are schematic, unimplemented interface
-sketches. They specify dependency and separation requirements, not promised
-exact signatures; names such as `ProtocolState`, projections, and correspondence
-relations stand for interfaces the implementation must define.
+Delaying a check over the same value and immutable inputs preserves its Boolean
+result. It does not by itself prove that all failed executions correspond to
+one legal source continuation. In particular, treating failed publication as
+if the original secret had always been a null value can invalidate a later
+guard that used that secret. An already published dependent value cannot simply
+be retracted. The [mathematical note](ordered-protocol-argument.tex) gives a
+counterexample to this per-cell replacement rule, not to all possible compilers.
 
-```lean
-abbrev NodeValue (G : Graph Player L) :=
-  (node : Fin G.nodeCount) × L.Val (G.nodeRow node).ty
+The source/runtime relation must therefore specify the original private value,
+the validated public result, subsequent decisions, and settlement. It must prove
+that each authorized failure implements the designated source quitting behavior.
+This is the unresolved semantic boundary. It must not be bypassed by a global
+"resolution is source-correct" field or a utility assumption on an outcome
+which is not a legal source quitting outcome.
 
-structure TypedCodec (L : IExpr) (Raw : Type) where
-  encode : (ty : L.Ty) -> L.Val ty -> Raw
-  decode? : (ty : L.Ty) -> Raw -> Option (L.Val ty)
-  decode_encode : forall ty value, decode? ty (encode ty value) = some value
+The generic runtime also has certified-binding and recovery modes. These are
+explicitly stronger ideal capabilities: they check a hidden candidate before
+acceptance and can disclose the same immutable value without its owner's
+cooperation. They are useful comparison models, not properties of ordinary
+hiding and binding, not established indispensable requirements, and not the
+selected implementation of quitting. Their availability must never silently
+replace the intended deferred-validation compiler contract.
 
-structure CandidateId (Player : Type) where owner : Player; nonce : Nat
-structure MessageId where senderNonce : Nat
+## Chance and initial disclosure
 
-inductive RevealOrigin (G : Graph Player L) (ty : L.Ty) where
-  | initial (field : Fin G.initialFields.length)
-      (type_eq : (G.initialFields.get field).ty = ty)
-      (sealed : (G.initialFields.get field).owner.isSome)
-  | committed (producer : Fin G.nodeCount) (owner : Player)
-      (guard : EventGuard L)
-      (producerRow : (G.nodeRow producer).sem = .commit owner guard)
-      (type_eq : (G.nodeRow producer).ty = ty)
+A chance operation obtains its retained conditional kernel from the effective
+declared snapshot and publishes the sampled value in the same transition.
+An unavailable snapshot or kernel stutters without drawing. A successful draw
+advances the counter and records the result, so later ticks cannot resample
+that site. The capability carries a checked typed-support property; rejecting
+ill-typed draws and retrying is not a valid way to implement a source kernel.
 
-def RevealOrigin.field : RevealOrigin G ty -> Nat
-  | .initial field .. => field.val
-  | .committed producer .. => G.nodeTarget producer
+Initial private fields are supplied through an ideal typed setup. Their owners
+can use them in guards. An initial-origin reveal reads that supplied value
+automatically when enabled. This models availability of the source's
+deterministic input disclosure; it does not prove availability on a concrete
+ledger. A host which instead lets a player withhold it needs an explicit source
+failure interpretation, just as for commitment-produced disclosures.
 
-inductive Operation (G : Graph Player L) :
-    (node : Fin G.nodeCount) -> Type where
-  | chance (dist : EventDist L)
-      (row : (G.nodeRow node).sem = .sample dist) : Operation G node
-  | commit (owner : Player) (guard : EventGuard L)
-      (row : (G.nodeRow node).sem = .commit owner guard) : Operation G node
-  | reveal (origin : RevealOrigin G (G.nodeRow node).ty)
-      (row : (G.nodeRow node).sem = .reveal origin.field) :
-      Operation G node
+Neither chance nor initial disclosure has a fabricated quitting default.
+Concrete entropy, private setup, and verification require their own realizations.
 
-structure TypedProtocolSpec (G : Graph Player L) where
-  graphWF : G.WF
-  initialLayout : List (InitialSlot Player L)
-  initialLayout_eq : initialLayout = InitialLayout G
-  operation : (node : Fin G.nodeCount) -> Operation G node
-```
+## Proof obligations and acceptance
 
-`TypedProtocolSpec G` is schematic and proof-facing. Reveal-origin construction
-must inspect `G.field? source` and retain its type and sealed-owner witness; it
-must not classify an arbitrary numeric field as revealable. A separate real
-`PublicArtifact` representation erases `G` and its initial values and is
-connected to the specification by a representation refinement. Equality proofs
-erase. `Graph.WF` supplies reveal origins and dependencies: an initial origin publishes an already-realized input,
-while a committed origin goes through opening validation. At the current
-`nodeOrder[pc]`, prerequisites are already satisfied. Raw
-payloads never inhabit `NodeValue`: wrong-type traffic simply fails decoding.
-Source-site, candidate, and message identities remain distinct, so several
-candidates may be prepared for one site while acceptance binds at most one.
+Local laws establish candidate immutability, rejection behavior, setup
+separation, and the conditional chance transition. These laws do not establish
+a whole-program honest law or deviation backtranslation.
 
-## Attempt and default APIs
+The model-readiness test exercises heterogeneous values, a genuinely rejecting
+guard with private and public inputs, initial-origin disclosure, dependent
+chance, competing/unopenable candidates, retries, and deadline resolution in
+the shared runner. Passing operational tests alone does not settle the source
+failure interpretation above.
 
-```lean
-inductive RejectReason where
-  | offOrder | replay | malformed | wrongType | unauthorized
-  | wrongCandidate | invalidOpening | guardUnavailable
+For the source compiler edge, prove:
 
-inductive AttemptResult (State : Type) where
-  | rejected (reason : RejectReason) (same : State)
-  | applied (next : State)
+1. Successful operations realize the corresponding typed graph step, including
+   the correct guard context and chance law.
+2. Authorized resolutions implement the programmer's source alternatives while
+   preserving relevant prior knowledge and public effects.
+3. Honest policies have the exact source outcome law under named, deadline-relative
+   service and capability assumptions.
+4. Arbitrary unilateral native policies admit a causal source comparison with
+   unchanged opponents and an environment fixed across the comparison.
+5. The source quitting condition bounds additional informed failure choices;
+   generic utility-simulation composition then supplies same-error Nash transfer.
 
-inductive ResolutionCause where
-  | deadline | authenticatedInvalidOpening | authenticatedGuardRejection
+The coupling in the fourth item must have the claimed source marginal law.
+A supported source witness is insufficient for expected-utility or Nash
+reasoning. Extra observations must be handled jointly with information already
+present, not by separate marginal hiding claims.
 
-structure SourceAlternative (G : Graph Player L)
-    (node : Fin G.nodeCount) where
-  next : ProtocolState G
-  source : SourceContinuationAt G node
-  legal : SourceAlternativeLegalAt G node source
-  corresponds : ProtocolStateCorresponds G next source
-  preservesPrior : PriorKnowledgeAndResultsPreserved G node next
-
-structure Resolvable (G : Graph Player L) (node : Fin G.nodeCount) where
-  causeAllowed : ResolutionCause -> Prop
-  alternative : forall cause, causeAllowed cause ->
-    ProtocolState G -> SourceAlternative G node
-
-structure DefaultResolver (G : Graph Player L) where
-  resolvable? : (node : Fin G.nodeCount) -> Option (Resolvable G node)
-```
-
-Every `rejected` result is a retryable application stutter: it preserves the
-counter, bindings, store, chance cells, and source continuation. Rejection may
-remain visible in transport history, but an outsider's malformed packet cannot
-make another player quit.
-
-Only an authenticated protocol transition or deadline authority may invoke a
-present resolver with a proved allowed cause. Resolution installs a *legal,
-specified source alternative* and
-advances to its certified continuation. There is no raw `failed reason` terminal
-state and no global `nullValue`. Chance, successful initial publication, and
-every other node without a certified alternative have `resolvable? = none`; the
-backend cannot invent quitting behavior. An authenticated bad opening or guard rejection
-may either remain retryable or invoke a named resolution transition; generated
-code must choose explicitly. Candidate acceptance does not imply openability:
-the existing fresh/openable/accepted-but-unopenable meanings are retained.
-
-## Reveal validation
-
-This section applies to `.committed` reveal origins. An `.initial` origin has no
-candidate, guard, or player-controlled publisher: the protocol automatically
-reads the already-realized typed sealed slot, publicly publishes it, and
-advances. Supporting player withholding here would require an explicit source
-contract extension; it must not be invented by the backend.
-
-```lean
-structure GuardInputs (G : Graph Player L) (producer : Fin G.nodeCount)
-    (guard : EventGuard L) where
-  reads : ReadEnv L guard.choiceReads
-  sourceDecisionInputs : AgreesWithSourceDecisionInputs G producer reads
-
-inductive VerifiedOpening (G : Graph Player L)
-    (producer : Fin G.nodeCount) where
-  | value (value : L.Val (G.nodeRow producer).ty)
-
-def verifyOpening? (codec : TypedCodec L Raw)
-    (candidate : AcceptedCandidate Player Raw)
-    (raw : Raw) : Option (VerifiedOpening G producer)
-
-def validateGuard (inputs : GuardInputs G producer guard)
-    (opening : VerifiedOpening G producer) : Bool
-```
-
-The order is authorization/selected-candidate check, commitment verification,
-typed decoding, then guard evaluation. This is deferred checking of
-*commit-time legality*: the source admits the action at the commit choice, while
-the target may discover illegality only on opening. A guard-invalid raw
-candidate therefore never corresponds to a legal source commit choice. Its
-backtranslation or authorized default must use a separately certified legal
-source alternative at that commit checkpoint, not reinterpret rejection as an
-ordinary source reveal failure. A successful block writes precisely the
-producer's typed value and advances. Ordinary failures stutter; only an
-explicit authorized resolution selects the source alternative.
-
-Guard legality uses the source decision inputs, not a later default-modified
-store. `GuardInputs` is proof-facing unless the runtime really possesses those
-values. A realistic host must provide either public availability of all guard
-dependencies or a sound authenticated proof/ideal verifier for private inputs.
-Merely storing a captured private context in the model is not a realization. If
-neither capability exists, that backend cannot host the program, although the
-source and typed protocol remain valid.
-
-## Chance and observations
-
-Chance is internal and uses the retained conditional distribution:
-
-```lean
-structure ChanceService (G : Graph Player L) where
-  sampleOnce : forall node dist,
-    (G.nodeRow node).sem = .sample dist ->
-    ReadEnv L dist.reads -> ChanceCell G node ->
-    FinDist (ChanceCell G node × L.Val (G.nodeRow node).ty)
-  first_law : ... = dist.eval reads
-  replay_law : Cached cell value ->
-    sampleOnce ... cell = FinDist.pure (cell, value)
-
-structure ProtocolObservation (G : Graph Player L) (who : Player) where
-  pc : Nat
-  publicStore : PublicProjection G
-  privateStore : PrivateProjection G who
-  acceptedSites : PublicAcceptedBindings G
-  publishedOpenings : PublicOpenings G
-  resolutions : PublicResolutions G
-  transport : ObservableTransportHistory who
-```
-
-Dependent reads are the actual earlier graph values; no independence assumption
-is introduced. For source-compiled graphs, `VegasCore.sample` reads only public
-state and produces a public value. The protocol-controlled chance service must
-sample once and publicly publish that value as the same atomic logical
-operation; lower service steps may refine it, but neither player nor scheduler
-selects, withholds, or republishes the result. The compiler must not invent a
-private sampler or strategic publisher. Visibility is observer-relative: the
-environment sees a submission when it enters the pending pool; a player sees
-its own sent payloads and those delivered to its inbox, potentially before
-inclusion. These local observations are not assumed common knowledge.
-`publishedOpenings` records payloads visible to that observer and distinguishes
-pending claims from authenticated accepted openings. Ledger inclusion has its
-separate public observation. Private candidate preparation and unreleased
-chance cells remain absent from other players' observations.
-Rejected traffic remains observable, including any cleartext it contains, but
-does not install an accepted binding, authenticated opening, source result,
-or resolution.
-
-## Proof boundary and module impact
-
-The implementation first proves one uniform current-operation block law:
-
-```lean
-typedBlockLaw :
-  currentOperation spec state = operation ->
-  HostBlock spec state calls =
-    -- visible rejected stutters, followed by exactly one of:
-    successStep operation ∨ chanceStep operation ∨ authorizedDefault operation
-```
-
-Advancing cases respectively match the graph typed step, retained dependent
-kernel, or resolver's certified source alternative. That operational law is
-necessary but does not establish arbitrary-deviation simulation. The compiler
-must separately prove observation/history correspondence and a causal joint-law
-backtranslation: each unilateral native policy, jointly with the adaptive
-environment and unchanged opponents, induces a legal graph/source comparison
-without unavailable information or factoring dependent choices. A third,
-separate incentive edge applies the program's source-derived continuation
-inequality to authorized resolutions. Only these results together yield the
-existing simulation/utility certificates and then Nash. No interface field
-may assume whole-run simulation, policy extraction, utility domination, or Nash.
-
-The public counter removes the current backend's ability to *apply*
-prerequisite-ready nodes out of numeric order. It does not restrict the
-environment: off-order submission, delivery, pending observation, replay, and
-attempted inclusion remain available. Serial blocking changes timing and
-information—an earlier withheld operation must be authoritatively resolved
-before later application—so the observation and causal joint-law results are
-new obligations, not corollaries obtained by restricting the existing runtime.
-
-Reuse `EventGraph.Basic`, `Execution`, `GuardValidation`, `Compile.Compiler` and
-`BuildResult`, `Interaction.CommitmentCandidates`, the message/pending/replay/
-clock runner, and existing `FinDist`, dependent-kernel, and source-to-graph
-results. Replace homogeneous sealed rules/state/decoding, `SealedShape`,
-`SealedFragment`, `SealedCompilation`, and `nullValue`. Port the host through one
-adapter; do not create a second runner or duplicate source/native inductions.
-
-## Capabilities, not conveniences
-
-Runtime-inherent assumptions are authenticated authority, immutable candidate
-meaning and site binding, sound opening verification, a real public/private
-guard-verification capability, unbiased sample-once entropy, private setup for
-secret inputs, idempotent effects and stable identities, and the
-ledger/finality/liveness and settlement expressiveness used by the theorem.
-Cryptographic implementations state their computational error; gas and fees
-enter utilities when relevant.
-
-The following are conveniences, not admission restrictions: one value type,
-total guards, public-only inputs, independent chance, no initial fields, one
-candidate per site, guaranteed openability, fixed-size encoding, parallel
-frontier execution, one deadline, or one transaction ordering. Concrete
-bytecode bounds belong to the later representation refinement.
-
-## Discriminating acceptance test
-
-Compile one nonconstant game with an initial `.sealed Alice Bool` named
-`secret`, a public positive
-`Nat bound`, an Alice `Nat bid` guarded at reveal by `bid <= bound` and a
-predicate depending on `secret`, a Bob
-`Bool` commitment/reveal, and a later distribution whose weights depend on both
-accepted values. A later source `reveal` explicitly publishes the initial-field
-origin for `secret`, so the private setup and initial-origin reveal paths are not
-vacuous. That publication is automatically serviced, not a new player choice.
-Its source settlement supplies the legal commit-checkpoint alternatives used
-for deadline or authenticated invalid-opening resolution and proves the
-continuation inequality needed for Nash.
-
-The test must deploy public code without either initial value and realize them
-through separate setup; submit off-order/replayed/wrong-type traffic and observe
-only retryable stutters; prepare multiple Alice candidates, accept one, and
-reveal a typed bid above `bound`, showing that the original decision inputs,
-including `secret` through a real verifier capability, are used and only
-authorized resolution installs the source fallback; execute the explicit
-initial-origin publication; then, in a
-successful run, reveal heterogeneous `Nat`/`Bool` values and trigger chance
-twice, obtaining one cached draw with exactly the source conditional law.
-Finally it establishes nonconstant source outcome/settlement correspondence and
-the resulting target Nash theorem under the stated service assumptions.
-
-The test fails if malformed traffic itself quits, guard rejection writes the
-candidate, defaults leave continuation uninterpreted, chance resamples, private
-initial constants occur in public code, or equilibrium relies on an invented
-runtime-checkpoint inequality.
+The [road ahead](a-road-ahead.md) states the full compiler milestones. Until the
+source failure interpretation and these laws are proved, this adapter is not a
+replacement for the restricted backend's strategic certificate.

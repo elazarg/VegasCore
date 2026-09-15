@@ -8,6 +8,7 @@ import GameTheory
 import Vegas.Core
 import Vegas.Foundation.ViewExtension
 import Vegas.EventGraph
+import Vegas.Protocol
 import Vegas.Language
 import Vegas.Compile
 import Vegas.Game

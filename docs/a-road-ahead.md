@@ -37,7 +37,9 @@ No final theorem should exclude heterogeneous values, rejecting guards,
 dependent source chance, or initial fields merely because a proof was built
 without them. A target capability restriction must identify the missing
 operation or information, preferably with a counterexample or impossibility
-theorem. The source language need not change to express the restriction.
+theorem. Networking constructs do not belong in the minimal source language.
+Whether the current source failure semantics matches the intended programming
+contract must be settled explicitly, not assumed from a backend default.
 
 ## One compilation spine
 
@@ -62,14 +64,34 @@ distinct source operations. Inclusion checks alone cannot justify publishing
 an honest opening early. Optional parallel admission belongs in a later
 refinement with its own information theorem.
 
-The [typed protocol proposal](typed-protocol-interface.md) specifies the next
-boundary. It is a design, not an implemented theorem. Local transition
+The [typed protocol interface](typed-protocol-interface.md) specifies the next
+boundary and its operational implementation. It is not a preservation theorem. Local transition
 classification must be accompanied by the joint observation/probability law
 needed to translate adaptive deviations.
 
 ## Milestones and exit tests
 
 ### 1. Typed protocol with actual language coverage
+
+Separate the three acceptance points within this milestone:
+
+1. **Models:** all source constructs have operational representations; raw
+   deviations remain expressible; local capability contracts are explicit;
+   mixed-feature tests compile; the mathematical source failure interpretation
+   is settled. Definitions that merely carry arbitrary resolution values do
+   not settle that interpretation.
+2. **Compilation:** one actual checked mixed-feature program is lowered through
+   the graph to this model, including its guard contexts and source-defined
+   resolution behavior. No source constructor is disabled.
+3. **Correctness:** the generated program satisfies the honest outcome law;
+   milestone 2 below adds the whole-program arbitrary-deviation certificate.
+
+The current source admits only guard-valid commitments and has deterministic
+reveal. The intended target accepts opaque candidates and checks their guards
+at reveal; failure resolves to programmed quitting. Prove the interpretation
+between these semantics, including dependent private choices and subsequent
+settlement, or explicitly correct the source abstraction. Do not silently add
+recoverability or commit-time validity proofs to make the models agree.
 
 Replace homogeneous sealed values with site-indexed values and typed decoding.
 Separate raw candidates from legal source actions. Preserve arbitrary candidate

@@ -2,7 +2,8 @@
 
 This page records checked theorem scope. The [road ahead](a-road-ahead.md)
 records the broader compiler goal and milestone acceptance tests; the
-[typed protocol interface](typed-protocol-interface.md) is a proposed design.
+[typed protocol interface](typed-protocol-interface.md) describes the broader
+operational model and the unresolved source-resolution boundary.
 
 ## Layers and results
 
@@ -15,6 +16,7 @@ records the broader compiler goal and milestone acceptance tests; the
 | Public pending-message host | `Interaction`: `MessageApplication`, `SealedResolution.candidateApplication` | Competing candidates, immutable accepted meaning, accepted-but-unopenable handles, delivery, inclusion, retries/replay, rejection, clock, and continuing default resolution. Arbitrary-policy invariants and finite completion are proved. |
 | Graph to candidate game | `SealedFragment.CandidateRoundModel` | Independent graph-relative honest law and randomized unilateral utility bounds. The backend constructs its coupling and timeout attribution; it does not assume the desired deviation simulation. |
 | Source to candidate game | `Vegas.Game.SourcePublicCandidate` | Composition gives the public source outcome law, a source-deviation utility bound, and same-error epsilon-Nash equivalence under the source quitting and service conditions below. |
+| Typed ordered protocol | `Vegas.Protocol`, `Interaction.OrderedProtocol` | Retains heterogeneous graph operations, guard code, initial inputs, and conditional chance in the shared message application. Local operational laws only; no general source settlement, honest-law, or arbitrary-deviation certificate. |
 | Transaction/block execution, concrete cryptography, VM deployment | Further target edges | No active end-to-end refinement to these targets. Reference VM code outside build roots does not establish one. |
 
 The graph's behavioral-frontier presentation has additional exact strategic
@@ -92,11 +94,18 @@ strategic preservation.
 | Initial-field disclosure | Checked source/graph semantics | Requires setup and subsequent availability for deterministic disclosure; not supported by this backend. Setup refusal is pre-play, not an invented source quit. |
 | Private guard evaluation | Legal source semantics | Needs an implemented public or private-verification capability; a proof-facing secret is insufficient |
 
+The typed adapter represents these source features without disabling an
+operation. This does not extend the candidate theorem's language coverage.
+Its source failure interpretation is still unresolved: current source commits
+are guard-valid and reveals deterministic, while the intended target admits
+invalid candidates and maps failed publication to programmed quitting.
+Local default insertion alone does not prove that correspondence.
+
 The next acceptance test combines these source features in one real compiled
 program and obtains the source-to-pending theorem through the same typed
-protocol. The baseline will use the source-certified canonical operation order,
-with arbitrary off-order traffic still expressible. This is planned work, not
-a claim that the typed protocol or its strategic theorem already exists.
+protocol. The baseline uses canonical operation order, with arbitrary off-order
+traffic still expressible. Operational representation does not yet establish
+that strategic theorem or supersede the restricted backend.
 
 ## Audit and ownership
 
