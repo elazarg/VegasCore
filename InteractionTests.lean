@@ -7,6 +7,7 @@ import InteractionTests.LogicalCommitmentInformation
 import InteractionTests.LogicalCommitmentSequential
 import InteractionTests.LogicalCommitmentNative
 import InteractionTests.LogicalCommitmentPolicyExecution
+import InteractionTests.LogicalCommitmentCrossSite
 import InteractionTests.ConditionalPublication
 import InteractionTests.ChoiceController
 import InteractionTests.PrivateChoice

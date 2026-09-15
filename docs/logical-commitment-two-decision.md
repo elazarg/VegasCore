@@ -269,31 +269,42 @@ interface; it does not yet replace a compiler proof.
 
 ## Compiler adoption test
 
-The next discriminating test is a two-site native execution: the focal owner
-prepares a candidate, another compiled binding exposes an opening, and the
-focal owner opens or withholds. Fix the opponent policy, environment and
-schedule before quantifying over the focal decision kernels. Use an actual
-authenticated opening from the other binding, rather than the unauthenticated
-background claim used by the single-site experiment.
+The [cross-site experiment](logical-commitment-cross-site.md) checks a two-site
+native execution: the focal owner prepares a candidate, another binding
+exposes an authenticated opening, and the focal owner opens or withholds.
+Its logical-policy law fixes the other-binding policy, environment and
+schedule before quantifying over both focal kernels. It uses the actual
+policy runner, while remaining independent of the Vegas compiler.
 
 Retain the joint logical observations of both sites, private action recall,
-and pending-versus-included status. The output to preserve is the relevant
-public pre-decision prefix together with the focal settlement value and
+and pending-versus-included status. Preserve the public prefix supplied to the
+runtime opening decision together with the focal settlement value and
 attribution. Derive the action-total kernel factorization from the native
 execution. A failure after erasing another site's observed traffic identifies
 an insufficient observation quotient; it does not establish strategic
 impossibility for the runtime.
 
-This prefix is needed by `candidateGraphRoundCoupling_timeout_settlement`,
-which connects native timeout settlement to a legal graph realization at the
-comparison point used by the source quitting condition. Preserving only a
-terminal published-value/timeout law cannot replace that interface.
+The source incentive comparison has an earlier boundary. In
+`candidateGraphCoupling_timeout_public_prefix`, the settlement and retained
+graph continuation agree on the commitment producer's public declared reads,
+even when its later reveal times out. The logical proof must identify that
+producer and recover these reads from its retained history. An opening-decision
+prefix can contain additional disclosures and is not itself the source
+comparison prefix. Two independent bindings with empty read dependencies do
+not test this graph-indexed reconstruction.
 
-Adoption requires generalizing the successful fixture to a graph-wide
-stopped-prefix law under one fixed admitted environment and unchanged
-opponents, consuming the existing candidate admission/effect lemmas. It must
-replace a named portion of `candidateGraphRun_native_prefix_law` without
-reintroducing the whole native history as an unconstrained logical signal.
+`candidateGraphRoundCoupling_timeout_settlement` consumes this joint agreement
+to connect native timeout settlement to the source quitting comparison.
+Preserving only a terminal published-value/timeout law cannot replace it.
+
+Adoption requires a graph-wide stopped-prefix law under one fixed admitted
+environment and unchanged opponents, consuming the existing candidate
+admission/effect lemmas. A fixed environment may still inspect erased packet
+identifiers, multiplicity, receipts and clock phase; a scripted environment
+that ignores them establishes factorization only for that script. The new law
+must replace a named portion of `candidateGraphRun_native_prefix_law` and
+recover its public-read agreement without reintroducing the whole native
+history as an unconstrained logical signal.
 Until that simplification is demonstrated, the experiment remains independent
 of the active compiler. Further local safety lemmas alone would not settle
 the adoption decision.

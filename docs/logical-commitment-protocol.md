@@ -221,6 +221,12 @@ against candidate-message execution, including varying pending/rejected claims
 and real timeout settlement. It remains separate from a whole-protocol policy
 law and from the active compiler.
 
+The [cross-site experiment](logical-commitment-cross-site.md) supplies a checked
+two-binding policy law with authenticated disclosure and logical observation
+erasure. It preserves the joint opening-decision prefix and focal settlement
+under fixed surrounding policies. The note distinguishes that bounded result
+from the graph-indexed producer-input correspondence required for adoption.
+
 Promoting the experiment requires the strategic prefix-law and settlement
 interface specified in the gated experiment, together with a demonstrated
 simplification of an existing backend proof. Local validator agreement is not
