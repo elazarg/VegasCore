@@ -46,7 +46,7 @@ private theorem nodeCommand_candidate_ready (who : Player) (policy : CommitPolic
     who))
   change supported.nodeCommand? who state.timeouts policy history view store node = some law
     at hselected
-  unfold nodeCommand? at hselected
+  unfold SealedShape.nodeCommand? at hselected
   split at hselected
   · contradiction
   · split at hselected
@@ -138,7 +138,7 @@ theorem candidatePolicy_submission_ready (who : Player) (policy : CommitPolicy G
   change .submit payload ∈ (supported.resolvingPolicy nullValue window who policy
     (runtime.registeredPlayerHistory (execution.principalHistory who))
     (runtime.registeredPlayerView (State.observe _ execution.native who))).support at hsubmit
-  unfold resolvingPolicy at hsubmit
+  unfold SealedShape.resolvingPolicy at hsubmit
   dsimp only at hsubmit
   unfold Option.getD at hsubmit
   split at hsubmit
@@ -176,7 +176,7 @@ theorem candidatePolicy_registration_fresh
   change .privateCommand ⟨(slot, value)⟩ ∈ (supported.resolvingPolicy nullValue window who policy
     (runtime.registeredPlayerHistory (execution.principalHistory who))
     (runtime.registeredPlayerView (State.observe _ execution.native who))).support at hcommand
-  unfold resolvingPolicy at hcommand
+  unfold SealedShape.resolvingPolicy at hcommand
   dsimp only at hcommand
   obtain ⟨node, guard, hsem, reads, hslot, hcache, _⟩ := supported.selected_registration_kernel
     who execution.native.application.visible.timeouts policy _ _ _ slot value hcommand

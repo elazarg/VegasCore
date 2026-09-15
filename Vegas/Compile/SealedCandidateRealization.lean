@@ -217,12 +217,17 @@ theorem candidateGraphRun_registration_kernel
       window owner (supported.valuePolicy (cfg.1.nodeValues fallback) owner)))
     (fun history view => FinDist.pure (deviator history view)) hwho
   rw [SealedFragment.candidateValuePlayers, Profile.update_of_ne _ _ hwho] at hcommand
-  exact supported.candidate_registration_kernel cfg
-    (supported.candidateGraphRun_terminal hinfo hguards nullValue window focal deviator
-      environment schedule fallback profile cfg hcfg) nullValue window
+  have haccepted := supported.candidateGraphRun_accepted hinfo hguards nullValue window focal
+    deviator environment schedule fallback profile cfg hcfg release
+  have hopening := runtime.runPolicies_candidate_openings _ _ before _ stopped
+    SealedResolution.CandidateOpeningInvariant.initial hbefore
+  exact supported.candidate_registration_kernel cfg nullValue window
     _ _ before stopped hbefore hclear who _ _ hplayer
-    (supported.candidateGraphRun_accepted hinfo hguards nullValue window focal deviator environment
-      schedule fallback profile cfg hcfg release) slot value hcommand
+    (fun index handle value hrecord _ => haccepted index handle value hrecord)
+    (supported.candidate_opened_graph_value cfg
+      (supported.candidateGraphRun_terminal hinfo hguards nullValue window focal deviator
+        environment schedule fallback profile cfg hcfg) nullValue window
+      stopped.native.application hopening hclear haccepted) slot value hcommand
 
 end Vegas.EventGraph.SealedFragment
 

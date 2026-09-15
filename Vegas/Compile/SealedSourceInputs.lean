@@ -169,7 +169,7 @@ theorem commitCommand_source_kernel (who : Player) (policy : CommitPolicy G who)
   refine ⟨reads, supported.sealedPlayerStore_source_reads cfg hterminal fallback state hbinding
     hregistered who _ hmemory _ reads
     (ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some hreads), ?_⟩
-  simp only [commitCommand, hcache, hreads]
+  simp only [SealedShape.commitCommand, hcache, hreads]
 
 omit hbinding hregistered in
 /-- At any compatible native snapshot before timeout, a fresh registration

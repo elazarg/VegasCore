@@ -48,7 +48,7 @@ particular, a source commit followed by a reveal remains two protocol phases.
 theorem program_rule_count (compilation : SealedCompilation source ty) :
     compilation.program.rules.length =
       (ToEventGraph.compile source.core).graph.nodeCount := by
-  simp [program, SealedFragment.compile, EventGraph.Graph.nodeOrder]
+  simp [program, SealedShape.compile, EventGraph.Graph.nodeOrder]
 
 /-- The compiler edge is the checked end-to-end support theorem for this
 backend. It includes arbitrary finite native actions, including malformed

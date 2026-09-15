@@ -140,7 +140,7 @@ theorem missing_commit_continues (law : FinDist Value) :
       (SourceGraph.repeatPolicy law 0)) (node 2) secondGuard rfl []
       (supported.resolvedPlayerStore 0 none missingCommit.visible.timeouts []
         (runtime.eventView (view missingCommit))) = _
-  unfold SealedFragment.commitCommand
+  unfold SealedShape.commitCommand
   simp only [MessageApplication.ChoiceEncoding.cachedValue_nil]
   change (compileSourcePolicy core source.core.fresh SealedPolicy.initialBuild rfl 0
     (SourceGraph.repeatPolicy law 0) (node 2) secondGuard rfl _).map _ = _
@@ -162,7 +162,7 @@ theorem missing_opening_continues (law : FinDist Value) (value : Value) :
       (supported.resolvedPlayerStore 0 none (missingOpening none).visible.timeouts
         (runtime.eventHistory (history value))
         (runtime.eventView (view (missingOpening none)))) = _
-  unfold SealedFragment.commitCommand
+  unfold SealedShape.commitCommand
   change (compileSourcePolicy core source.core.fresh SealedPolicy.initialBuild rfl 0
     (SourceGraph.repeatPolicy law 0) (node 2) secondGuard rfl _).map _ = _
   rw [second_kernel]

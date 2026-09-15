@@ -60,7 +60,7 @@ theorem runPolicies_resolvingAssigned_decode_of_complete_clear
   · intro node
     have hindex : node.val < runtime.program.rules.length := by
       change node.val < supported.compile.rules.length
-      simp [SealedFragment.compile, Graph.nodeOrder]
+      simp [SealedShape.compile, Graph.nodeOrder]
     have hdone := List.all_eq_true.mp hcomplete node.val (List.mem_range.mpr hindex)
     simpa only [SealedResolution.PublicState.completed, hclear, List.contains_nil,
       Bool.or_false] using hdone

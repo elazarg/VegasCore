@@ -3,6 +3,8 @@
 import Vegas.Compile.GuardValidation
 import Vegas.Compile.SealedGuardSettlement
 import Vegas.Compile.SealedValidatedRealization
+import Vegas.Compile.SealedResolutionPolicy
+import Interaction.SealedCandidatePolicyEmbedding
 import Vegas.EventGraph.Validate
 import Vegas.Core.ExprSimple
 
@@ -97,6 +99,38 @@ private def graph : Graph Nat simpleExpr where
   nodes := [⟨.option .bool, some 0, .commit 0 publicGuard⟩,
     ⟨.option .bool, none, .reveal 2⟩]
 
+private theorem shape : SealedShape graph (.option .bool) where
+  graphWF := graph.WF_of_valid_eq_true (by decide)
+  rowType node := by fin_cases node <;> rfl
+  noSamples node dist := by fin_cases node <;> simp [graph, Graph.nodeRow]
+  commitType node who guard hsem := by
+    fin_cases node
+    · change NodeSem.commit 0 publicGuard = NodeSem.commit who guard at hsem
+      cases hsem
+      rfl
+    · cases hsem
+  revealSource node source hsem := by
+    fin_cases node
+    · cases hsem
+    · change NodeSem.reveal 2 = NodeSem.reveal source at hsem
+      cases hsem
+      exact ⟨⟨0, by decide⟩, 0, publicGuard, rfl, rfl⟩
+
+/-- Prefer participation when it is legal at the supplied read environment;
+the nullable alternative makes the policy total at every other environment. -/
+private noncomputable def referencePolicy (who : Nat) : CommitPolicy graph who := by
+  classical
+  intro node guard hsem reads
+  have hguard : guard = publicGuard := by
+    fin_cases node
+    · change NodeSem.commit 0 publicGuard = NodeSem.commit who guard at hsem
+      cases hsem
+      rfl
+    · cases hsem
+  subst guard
+  exact FinDist.pure (if h : publicGuard.eval (some true) reads = true then
+    ⟨some true, h⟩ else ⟨none, evalExpr_nullableCommitGuard_declineValue _ _⟩)
+
 private def publicStore (value : Bool) : Store simpleExpr :=
   fun field => if field = 1 then some ⟨.bool, value⟩ else none
 
@@ -153,6 +187,48 @@ private noncomputable def app : MessageApplication Nat :=
 
 private noncomputable def initial : app.State :=
   State.initial app runtime.candidateInitial
+
+private noncomputable def generated (who : Nat) : app.PlayerPolicy :=
+  runtime.candidatePlayerPolicy (shape.resolvingPolicy none 2 who (referencePolicy who))
+
+/-- The shared strategy translation handles a genuinely rejecting guard.
+It first prepares the legal value privately, without putting it in the pool. -/
+theorem generated_prepares_legal_value :
+    generated 0 [] (State.observe app initial 0) =
+      FinDist.pure (.privateCommand ⟨(0, some true)⟩) := by
+  change shape.commitCommand 0 (referencePolicy 0) ⟨0, by decide⟩ publicGuard rfl []
+    (shape.resolvedPlayerStore 0 none [] []
+      (runtime.eventView (runtime.registeredPlayerView (State.observe app initial 0)))) = _
+  unfold SealedShape.commitCommand
+  simp only [ChoiceEncoding.cachedValue_nil]
+  change (FinDist.pure _).map _ = _
+  rw [FinDist.map_pure]
+  rfl
+
+/-- Actual generated commands prepare, commit and open through the guarded
+pending-message host. The source kernel is not replaced by a scripted player. -/
+theorem generated_guarded_execution :
+    (app.runPolicies generated
+      (fun history _ => FinDist.pure (.include (0, history.length)))
+      [.player 0, .player 0, .environment, .player 0, .environment]
+      (PolicyExecution.initial app initial)).map
+        (fun next => (next.native.application.visible.events,
+          next.native.receipts, next.native.application.visible.timeouts)) =
+      FinDist.pure
+        ([SealedProgram.Event.accepted 0 (0, 0), .opened 1 (some true)],
+          [((0, 0), true), ((0, 1), true)], ([] : List Nat)) := by
+  simp only [MessageApplication.runPolicies, MessageApplication.invoke,
+    FinDist.bind_pure, FinDist.bind_bind]
+  erw [generated_prepares_legal_value]
+  simp only [FinDist.pure_bind, MessageApplication.playerStep, MessageApplication.advance,
+    MessageApplication.PlayerCommand.toAction, MessageApplication.step]
+  change ((FinDist.pure (.submit (.commitment 0 (0, 0)) : app.PlayerCommand)).bind _).map _ = _
+  simp only [FinDist.pure_bind, MessageApplication.advance, MessageApplication.step,
+    MessageApplication.environmentPolicyStep, EnvironmentPolicyCommand.toAction]
+  change ((FinDist.pure
+    (.submit (.opening 1 (0, 0) (some true)) : app.PlayerCommand)).bind _).map _ = _
+  simp only [FinDist.pure_bind, FinDist.map_pure]
+  rfl
 
 private noncomputable def openingTrace (value : Option Bool) : List app.Action :=
   [.privateCommand 0 ⟨(7, value)⟩,
@@ -252,16 +328,8 @@ theorem arbitrary_completed_policies_have_legal_graph_settlement
           Store.getAs (graph.publicSealedStore (.option .bool)
             next.native.application.visible.events) ref.field ref.ty := by
   apply graph.runPolicies_validated_settlement (ty := .option .bool)
-    (graph.WF_of_valid_eq_true (by decide))
-    (fun node => by fin_cases node <;> rfl)
-    (fun node dist => by fin_cases node <;> simp [graph, Graph.nodeRow])
-    ?_ ?_ ?_ runtime rfl ?_ players environment schedule next hnext hcomplete
-  · intro node source hsem
-    fin_cases node
-    · cases hsem
-    · change NodeSem.reveal 2 = NodeSem.reveal source at hsem
-      cases hsem
-      exact ⟨⟨0, by decide⟩, 0, publicGuard, rfl, rfl⟩
+    shape.graphWF shape.rowType shape.noSamples shape.revealSource
+    ?_ ?_ runtime rfl ?_ players environment schedule next hnext hcomplete
   · intro left right field hleft hright
     fin_cases left <;> fin_cases right
     · rfl

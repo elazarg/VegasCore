@@ -226,8 +226,8 @@ theorem publicSealedStore_agrees_of_opened_values
   · have hcompleted : state.completed node.val = true := by
       apply List.all_eq_true.mp hcomplete node.val
       have hlen : supported.compile.rules.length = G.nodeCount := by
-        simp [SealedFragment.compile, Graph.nodeOrder]
-      simpa only [List.mem_range, resolvingRuntime, hlen] using node.isLt
+        simp [SealedShape.compile, Graph.nodeOrder]
+      simpa only [List.mem_range, SealedShape.resolvingRuntime, hlen] using node.isLt
     have hrule : supported.compile.rules[node.val]? =
         some ⟨.reveal owner producer.val, G.messagePrerequisites node⟩ := by
       rw [supported.compile_rule]

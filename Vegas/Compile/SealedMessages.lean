@@ -9,11 +9,13 @@ import Interaction.SealedProgram
 
 /-! # Compiling a homogeneous commit/reveal fragment to public messages
 
-The input is an existing event graph with a separate supported-fragment
+The input is an existing event graph with a structural `SealedShape`
 certificate. Core well-formedness is unchanged. The emitted application rules
-retain graph owners, producer indices, and prerequisite edges. Supported
-commitments have unrestricted guards; samples and private initial-field
-disclosures are outside this fragment.
+retain graph owners, producer indices, and prerequisite edges. Rule generation
+and policy translation allow arbitrary guards. The stronger `SealedFragment`
+certificate supplies universally accepting guards for the exact replay and
+strategic theorems. Both certificates exclude samples and initial-field
+disclosures.
 
 The target uses an explicit ideal commitment service. This module does not
 identify missing openings with a source value or prove settlement under
@@ -26,19 +28,24 @@ open Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
-/-- Admission to this backend fragment is separate from source admission.
-All commits accept every value of the common type. Graph prerequisites still
-determine when each commitment and reveal may be accepted. -/
-structure SealedFragment (G : Graph Player L) (ty : L.Ty) : Prop where
+/-- Structural interface for homogeneous sealed-message compilation. Guards
+remain arbitrary; their validation and strategic treatment are separate from
+rule generation and the playerwise strategy translation. -/
+structure SealedShape (G : Graph Player L) (ty : L.Ty) : Prop where
   graphWF : G.WF
   rowType : ∀ node, (G.nodeRow node).ty = ty
   noSamples : ∀ node dist, (G.nodeRow node).sem ≠ .sample dist
   commitType : ∀ node who guard, (G.nodeRow node).sem = .commit who guard → guard.ty = ty
-  commitGuard : ∀ node who guard, (G.nodeRow node).sem = .commit who guard →
-    ∀ value env, guard.eval value env = true
   revealSource : ∀ node source, (G.nodeRow node).sem = .reveal source →
     ∃ (producer : Fin G.nodeCount) (who : Player) (guard : EventGuard L),
       source = G.nodeTarget producer ∧ (G.nodeRow producer).sem = .commit who guard
+
+/-- The unrestricted-guard fragment used by the exact replay and strategic
+theorems. It supplies the structural interface of the same compiler. -/
+structure SealedFragment (G : Graph Player L) (ty : L.Ty) : Prop
+    extends SealedShape G ty where
+  commitGuard : ∀ node who guard, (G.nodeRow node).sem = .commit who guard →
+    ∀ value env, guard.eval value env = true
 
 namespace Graph
 
@@ -63,24 +70,24 @@ def sealedRule (G : Graph Player L) (node : Fin G.nodeCount) : SealedRule Player
 
 end Graph
 
-namespace SealedFragment
+namespace SealedShape
 
 variable {G : Graph Player L} {ty : L.Ty}
 
 /-- Lower the admitted graph's reified event metadata to the message
 application. The certificate is erased; the emitted rules remain data. -/
-def compile (_supported : SealedFragment G ty) : SealedProgram Player where
+def compile (_supported : SealedShape G ty) : SealedProgram Player where
   rules := G.nodeOrder.map G.sealedRule
 
-theorem compile_rules (supported : SealedFragment G ty) :
+theorem compile_rules (supported : SealedShape G ty) :
     supported.compile.rules = G.nodeOrder.map G.sealedRule := rfl
 
-@[simp] theorem compile_rule (supported : SealedFragment G ty)
+@[simp] theorem compile_rule (supported : SealedShape G ty)
     (node : Fin G.nodeCount) :
     supported.compile.rules[node.val]? = some (G.sealedRule node) := by
   simp [compile, Graph.nodeOrder]
 
-end SealedFragment
+end SealedShape
 
 namespace Graph
 

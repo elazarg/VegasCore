@@ -143,7 +143,7 @@ theorem nodeCommand_progress (supported : SealedFragment G ty)
   change supported.nodeCommand? who nativeView.application.timeouts
     policy history view store node = some law at hselected
   change _ ∧ _ ∧ ∀ command ∈ law.support, ProgressCommand supported who history node command
-  unfold nodeCommand? at hselected
+  unfold SealedShape.nodeCommand? at hselected
   split at hselected
   · contradiction
   next htimeout =>
@@ -169,7 +169,8 @@ theorem nodeCommand_progress (supported : SealedFragment G ty)
             | some value =>
                 intro command hcommand
                 have heq : command = .submit (.commitment node.val (who, node.val)) := by
-                  simpa only [commitCommand, hcache, FinDist.mem_support_pure] using hcommand
+                  simpa only [SealedShape.commitCommand, hcache, FinDist.mem_support_pure]
+                    using hcommand
                 subst command
                 exact .commitment node guard hsem value hcache
             | none =>
@@ -178,7 +179,7 @@ theorem nodeCommand_progress (supported : SealedFragment G ty)
                   hsem hrequires
                 change ReadEnv.ofStoreExec? store guard.choiceReads = some reads at hreads
                 intro command hcommand
-                rw [commitCommand, hcache, hreads, FinDist.support_map] at hcommand
+                rw [SealedShape.commitCommand, hcache, hreads, FinDist.support_map] at hcommand
                 obtain ⟨choice, _, rfl⟩ := hcommand
                 exact .registration node guard hsem _ hcache
           next => contradiction
@@ -307,7 +308,7 @@ private theorem nodeCommand_isSome_of_ready (supported : SealedFragment G ty)
       ((G.sealedRule node).discharge state.timeouts) = true := by
     rw [state.prerequisitesDone_discharge]
     exact hrequires
-  unfold nodeCommand?
+  unfold SealedShape.nodeCommand?
   change (if state.timeouts.contains node.val then none else
     if SealedProgram.done state.events node.val = false ∧
       SealedProgram.prerequisitesDone state.events

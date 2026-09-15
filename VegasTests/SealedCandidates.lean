@@ -135,7 +135,7 @@ theorem compiled_policy_prepares :
       [] (State.observe app initial 0) =
         FinDist.pure (.privateCommand ⟨(0, some true)⟩) := by
   change supported.commitCommand 0 _ (node 0) _ rfl [] _ = _
-  unfold SealedFragment.commitCommand
+  unfold SealedShape.commitCommand
   simp only [ChoiceEncoding.cachedValue_nil]
   change (ToEventGraph.compileSourcePolicy core source.core.fresh
     (ToEventGraph.BuildState.fromInitial

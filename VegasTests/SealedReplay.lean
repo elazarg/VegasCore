@@ -40,7 +40,7 @@ theorem assigned_first_command (values : Fin graph.nodeCount → Value) :
         FinDist.pure (.privateCommand ⟨(0, values (node 0))⟩) := by
   change sealedFragment.commitCommand 0 (sealedFragment.valuePolicy values 0)
     (node 0) _ rfl [] _ = _
-  unfold SealedFragment.commitCommand
+  unfold SealedShape.commitCommand
   simp only [MessageApplication.ChoiceEncoding.cachedValue_nil]
   change (FinDist.pure _).map _ = _
   simp only [FinDist.map_pure, cast_eq]

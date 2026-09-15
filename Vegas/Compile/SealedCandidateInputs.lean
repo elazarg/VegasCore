@@ -7,9 +7,9 @@ import Interaction.SealedCandidateMemory
 
 /-! # Candidate-host draws at declared graph inputs
 
-Before timeout, actual opening admission supplies the value of its accepted
-candidate. Agreement of openable accepted values and the honest player's cache
-with a graph realization therefore gives exact declared-read kernel equality.
+Agreement of public openings and the honest player's own accepted values with
+a graph realization gives exact declared-read kernel equality. No agreement
+is required for another player's opaque, still-unopened candidate.
 Unopenable commitments are permitted, and no private table enters the policy.
 The generated policy establishes its own cache/catalog agreement even when
 all opponents deviate. `Vegas.Compile.SealedCandidateRealization`
@@ -67,8 +67,7 @@ theorem candidatePolicy_memory (nullValue : L.Val ty) (window : Nat) (who : Play
 variable (cfg : ReachableConfig G) (hterminal : Terminal G cfg.1)
 variable (nullValue : L.Val ty) (window : Nat)
 
-include hterminal
-
+include hterminal in
 /-- An actual successful opening has the graph reveal value whenever its
 openable accepted candidate has the graph commitment value. Openability of
 other accepted candidates is neither assumed nor needed. -/
@@ -98,8 +97,9 @@ theorem candidate_opened_graph_value
 /-- A generated preparation in an actual candidate-host execution fills a
 fresh catalog slot and uses the original source kernel at its exact declared
 source reads. Cache agreement is derived from the generated policy. The
-remaining premise concerns accepted values, not equality of input environments
-or execution laws. -/
+remaining premises concern the player's own accepted values and actual public
+openings. An adversarial candidate may have an invalid hidden value without
+being identified with a legal graph commitment. -/
 theorem candidate_registration_kernel
     (players : Player →
       (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
@@ -117,7 +117,11 @@ theorem candidate_registration_kernel
       (supported.resolvingPolicy nullValue window who original))
     (haccepted : ∀ index handle value,
       SealedProgram.Event.accepted index handle ∈ execution.native.application.visible.events →
+      handle.1 = who →
       execution.native.application.service.lookup handle = .openable value →
+      cfg.1.store (G.nodeTarget index) = some (⟨ty, value⟩ : TypedValue L))
+    (hopened : ∀ index value,
+      SealedProgram.Event.opened index value ∈ execution.native.application.visible.events →
       cfg.1.store (G.nodeTarget index) = some (⟨ty, value⟩ : TypedValue L))
     (slot : Nat) (value : L.Val ty)
     (hcommand : .privateCommand ⟨(slot, value)⟩ ∈
@@ -140,8 +144,6 @@ theorem candidate_registration_kernel
     supported.resolvingPolicy_no_timeout _ _ _ _ _ _ hclear] at hcommand
   obtain ⟨node, guard, hsem, reads, hslot, hcache, hreads, hkernel⟩ :=
     supported.selected_registration_kernel who [] original _ _ _ slot value hcommand
-  have hopening := SealedResolution.runPolicies_candidate_openings players environment
-    schedule _ execution SealedResolution.CandidateOpeningInvariant.initial hactual
   have hprepared := supported.candidatePolicy_memory nullValue window who original players
     environment hplayer schedule execution hactual
   refine ⟨node, guard, hsem, reads, hslot, ?_, ?_, ?_⟩
@@ -149,8 +151,7 @@ theorem candidate_registration_kernel
     erw [hprepared.memory node.val, hcache]
     rfl
   · apply cfg.sealedPlayerStore_reads_eq ty who _ execution.native.application.visible.events ?_
-      (supported.candidate_opened_graph_value cfg hterminal nullValue window
-        execution.native.application hopening hclear haccepted)
+      hopened
       guard.choiceReads reads (ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some hreads)
     intro index handle stored hmem howner hcache
     erw [runtime.eventHistory_cache, runtime.registeredPlayerHistory_cache] at hcache
@@ -159,7 +160,7 @@ theorem candidate_registration_kernel
       erw [hprepared.memory handle.2, hcache]
       rfl
     rw [← howner] at hlookup
-    exact haccepted index handle stored hmem hlookup
+    exact haccepted index handle stored hmem howner hlookup
   · rw [SealedResolution.candidatePlayerPolicy,
       supported.resolvingPolicy_no_timeout _ _ _ _ _ _ hclear]
     exact hkernel replacement

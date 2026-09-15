@@ -33,7 +33,7 @@ private theorem fold_resolvedStoreStep_getAs_of_preserved
   | cons index rest ih =>
       simp only [List.foldl_cons]
       rw [ih]
-      · unfold resolvedPlayerStoreStep
+      · unfold SealedShape.resolvedPlayerStoreStep
         cases hnode : G.node? index with
         | none => rfl
         | some sem =>
@@ -68,7 +68,7 @@ private theorem fold_resolvedStoreStep_getAs_commit
   | cons index rest ih =>
       simp only [List.foldl_cons]
       apply ih
-      unfold resolvedPlayerStoreStep
+      unfold SealedShape.resolvedPlayerStoreStep
       cases hnode : G.node? index with
       | none => exact hstore
       | some sem =>
@@ -106,11 +106,11 @@ theorem resolvedPlayerStore_getAs_timeout_commit
       (((supported.compile.registrationEncoding node.val).cachedValue
         (supported.compile.messageApplication (Value := L.Val ty)) history).getD nullValue) := by
   obtain ⟨before, after, rfl⟩ := List.mem_iff_append.mp htimeout
-  unfold resolvedPlayerStore
+  unfold SealedShape.resolvedPlayerStore
   rw [List.foldl_append]
   simp only [List.foldl_cons]
   apply supported.fold_resolvedStoreStep_getAs_commit who nullValue history node
-  unfold resolvedPlayerStoreStep
+  unfold SealedShape.resolvedPlayerStoreStep
   rw [G.node?_nodeRow, hsem]
   simp [Store.getAs, TypedValue.as?]
 
@@ -129,7 +129,7 @@ theorem resolvedPlayerStore_getAs_of_not_owned_timeout_target
     Store.getAs (supported.resolvedPlayerStore who nullValue completed history view)
         field fieldTy =
       Store.getAs (supported.playerStore who history view) field fieldTy := by
-  unfold resolvedPlayerStore
+  unfold SealedShape.resolvedPlayerStore
   exact supported.fold_resolvedStoreStep_getAs_of_preserved who nullValue history _ _ _ _ hfield
 
 private theorem fold_resolvedStoreStep_available
@@ -145,7 +145,7 @@ private theorem fold_resolvedStoreStep_available
   | cons index rest ih =>
       simp only [List.foldl_cons]
       apply ih
-      unfold resolvedPlayerStoreStep
+      unfold SealedShape.resolvedPlayerStoreStep
       cases hnode : G.node? index with
       | none => exact havailable
       | some sem =>
@@ -176,7 +176,7 @@ theorem resolvedPlayerStore_available
     (havailable : (Store.getAs (supported.playerStore who history view) field ty).isSome = true) :
     (Store.getAs (supported.resolvedPlayerStore who nullValue completed history view)
       field ty).isSome = true := by
-  unfold resolvedPlayerStore
+  unfold SealedShape.resolvedPlayerStore
   exact supported.fold_resolvedStoreStep_available who nullValue history _ _ field havailable
 
 /-- A reveal target is preserved by timeout completion, including when that

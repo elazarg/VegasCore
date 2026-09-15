@@ -56,7 +56,7 @@ private theorem replay_eq (values : Fin graph.nodeCount → Value) :
         FinDist.pure (.privateCommand ⟨(0, values (node 0))⟩ : app.PlayerCommand) := by
     change sealedFragment.commitCommand 0 (sealedFragment.valuePolicy values 0)
       (node 0) _ rfl [] _ = _
-    unfold SealedFragment.commitCommand
+    unfold SealedShape.commitCommand
     simp only [ChoiceEncoding.cachedValue_nil]
     exact FinDist.map_pure _ _
   have hregister : app.playerStep 0 waited (.privateCommand ⟨(0, values (node 0))⟩) =

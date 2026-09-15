@@ -21,7 +21,7 @@ the whole-program pending-message deviation law.
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction GameTheory.Math.Probability
 
@@ -30,7 +30,7 @@ variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
 /-- Actual player input reconstruction; all private data comes from this
 principal's own registration history. -/
-def playerStore (supported : SealedFragment G ty) (who : Player)
+def playerStore (supported : SealedShape G ty) (who : Player)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View) : Store L :=
   G.sealedPlayerStore ty who (fun slot =>
@@ -40,7 +40,7 @@ def playerStore (supported : SealedFragment G ty) (who : Player)
 /-- An empty slot draws once from the supplied local read store; an occupied
 slot only publishes its handle. Runtime-specific store reconstruction is kept
 separate from this shared command generation. -/
-def commitCommand (supported : SealedFragment G ty) (who : Player)
+def commitCommand (supported : SealedShape G ty) (who : Player)
     (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
@@ -59,7 +59,7 @@ def commitCommand (supported : SealedFragment G ty) (who : Player)
 /-- The optional command of one owned ready node. Publicly resolved nodes are
 skipped and discharged from prerequisites. Prerequisites are checked before
 publication, including before a value-bearing opening enters the pool. -/
-def nodeCommand? (supported : SealedFragment G ty) (who : Player) (completed : List Nat)
+def nodeCommand? (supported : SealedShape G ty) (who : Player) (completed : List Nat)
     (policy : CommitPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
@@ -86,7 +86,7 @@ def nodeCommand? (supported : SealedFragment G ty) (who : Player) (completed : L
   else none
 
 /-- Playerwise implementation of graph kernels on the actual message runtime. -/
-def playerPolicy (supported : SealedFragment G ty) (who : Player)
+def playerPolicy (supported : SealedShape G ty) (who : Player)
     (policy : CommitPolicy G who) :
     (supported.compile.messageApplication (Value := L.Val ty)).PlayerPolicy :=
   fun history view =>
@@ -96,7 +96,7 @@ def playerPolicy (supported : SealedFragment G ty) (who : Player)
 
 /-- Whether a node is selected is determined by the public readiness and
 ownership checks. Private history and the choice kernel cannot change it. -/
-theorem nodeCommand?_none_iff (supported : SealedFragment G ty) (who : Player)
+theorem nodeCommand?_none_iff (supported : SealedShape G ty) (who : Player)
     (completed : List Nat)
     (left right : CommitPolicy G who)
     (leftHistory rightHistory :
@@ -116,7 +116,7 @@ theorem nodeCommand?_none_iff (supported : SealedFragment G ty) (who : Player)
     · rfl
   · rfl
 
-private theorem nodeCommand?_registration_kernel (supported : SealedFragment G ty)
+private theorem nodeCommand?_registration_kernel (supported : SealedShape G ty)
     (who : Player) (completed : List Nat) (original : CommitPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
@@ -189,7 +189,7 @@ private theorem nodeCommand?_registration_kernel (supported : SealedFragment G t
 /-- An actual private registration identifies the selected commitment, fresh
 cache, and successful declared reads. Replacing its source policy changes only
 the draw kernel, not the selected site or its input. -/
-theorem selected_registration_kernel (supported : SealedFragment G ty)
+theorem selected_registration_kernel (supported : SealedShape G ty)
     (who : Player) (completed : List Nat) (original : CommitPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
@@ -229,7 +229,7 @@ theorem selected_registration_kernel (supported : SealedFragment G ty)
             history history view store store prior).mp (hfront prior hprior)⟩
       rw [hright, Option.getD_some]
 
-private theorem commitCommand_nonregistration_law (supported : SealedFragment G ty)
+private theorem commitCommand_nonregistration_law (supported : SealedShape G ty)
     (who : Player) (original replacement : CommitPolicy G who)
     (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
@@ -250,7 +250,7 @@ private theorem commitCommand_nonregistration_law (supported : SealedFragment G 
       obtain ⟨choice, _, heq⟩ := hcommand
       exact False.elim (hnonregistration _ heq.symm)
 
-private theorem nodeCommand?_nonregistration_law (supported : SealedFragment G ty)
+private theorem nodeCommand?_nonregistration_law (supported : SealedShape G ty)
     (who : Player) (completed : List Nat) (original replacement : CommitPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
@@ -293,7 +293,7 @@ private theorem nodeCommand?_nonregistration_law (supported : SealedFragment G t
 /-- Outside a fresh registration, the actual selected command is deterministic
 and independent of the source decision kernel. This includes cached commitment
 submissions, openings, and waits, both before and after timeout. -/
-theorem selected_nonregistration_law (supported : SealedFragment G ty)
+theorem selected_nonregistration_law (supported : SealedShape G ty)
     (who : Player) (completed : List Nat) (original replacement : CommitPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
@@ -330,7 +330,7 @@ theorem selected_nonregistration_law (supported : SealedFragment G ty)
               view store store prior).mp (hfront prior hprior)⟩
       rw [hright, Option.getD_some]
 
-theorem commitCommand_cached (supported : SealedFragment G ty) (who : Player)
+theorem commitCommand_cached (supported : SealedShape G ty) (who : Player)
     (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
@@ -343,7 +343,7 @@ theorem commitCommand_cached (supported : SealedFragment G ty) (who : Player)
 
 /-- At an empty slot, native local reads give exactly the declared source
 kernel, mapped into a private registration rather than a cleartext packet. -/
-theorem commitCommand_fresh (supported : SealedFragment G ty) (who : Player)
+theorem commitCommand_fresh (supported : SealedShape G ty) (who : Player)
     (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (execution : (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution)
@@ -373,7 +373,7 @@ theorem commitCommand_fresh (supported : SealedFragment G ty) (who : Player)
         node guard hsem reads hreads)
   simp only [commitCommand, hcache, hlocal]
 
-theorem commitCommand_submission (supported : SealedFragment G ty) (who : Player)
+theorem commitCommand_submission (supported : SealedShape G ty) (who : Player)
     (policy : CommitPolicy G who) (node : Fin G.nodeCount) (guard : EventGuard L)
     (hsem : (G.nodeRow node).sem = .commit who guard)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
@@ -397,7 +397,7 @@ theorem commitCommand_submission (supported : SealedFragment G ty) (who : Player
       obtain ⟨choice, _, hchoice⟩ := hsubmit
       cases hchoice
 
-theorem nodeCommand?_submission (supported : SealedFragment G ty) (who : Player)
+theorem nodeCommand?_submission (supported : SealedShape G ty) (who : Player)
     (completed : List Nat)
     (policy : CommitPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
@@ -444,7 +444,7 @@ theorem nodeCommand?_submission (supported : SealedFragment G ty) (who : Player)
 
 /-- Every emitted packet is an opaque commitment or an opening whose public
 publication barrier is already satisfied. This holds even on arbitrary inputs. -/
-theorem playerPolicy_submission (supported : SealedFragment G ty) (who : Player)
+theorem playerPolicy_submission (supported : SealedShape G ty) (who : Player)
     (policy : CommitPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
@@ -468,7 +468,7 @@ theorem playerPolicy_submission (supported : SealedFragment G ty) (who : Player)
       · exact Or.inl ⟨node.val, hcommit⟩
       · exact Or.inr ⟨node.val, handle, value, hopen, by simpa using hready⟩
 
-theorem playerPolicy_no_cleartext (supported : SealedFragment G ty) (who : Player)
+theorem playerPolicy_no_cleartext (supported : SealedShape G ty) (who : Player)
     (policy : CommitPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
@@ -478,7 +478,7 @@ theorem playerPolicy_no_cleartext (supported : SealedFragment G ty) (who : Playe
   rcases supported.playerPolicy_submission who policy history view _ hsubmit with
     ⟨_, h⟩ | ⟨_, _, _, h, _⟩ <;> cases h
 
-theorem playerPolicy_opening_ready (supported : SealedFragment G ty) (who : Player)
+theorem playerPolicy_opening_ready (supported : SealedShape G ty) (who : Player)
     (policy : CommitPolicy G who)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View)
@@ -492,7 +492,7 @@ theorem playerPolicy_opening_ready (supported : SealedFragment G ty) (who : Play
   · cases h
     simp only [SealedProgram.openingReady, hready, Option.isSome_some]
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
 namespace Vegas.SealedCompilation
 
@@ -513,7 +513,7 @@ def compilePolicy (compilation : SealedCompilation source ty) (who : Player)
 
 end Vegas.SealedCompilation
 
-/-- info: 'Vegas.EventGraph.SealedFragment.commitCommand_fresh' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.commitCommand_fresh' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.commitCommand_fresh
+#print axioms Vegas.EventGraph.SealedShape.commitCommand_fresh

@@ -60,7 +60,7 @@ theorem resolvingRuntime_runRounds_complete
     (MessageApplication.PolicyExecution.initial _
       (MessageApplication.State.initial _ runtime.initial)) next
     (SealedResolution.PublicState.ClockBounded.initial _) hnext
-  simpa [runtime, SealedFragment.resolvingRuntime, SealedFragment.compile,
+  simpa [runtime, SealedShape.resolvingRuntime, SealedShape.compile,
     EventGraph.Graph.nodeOrder] using hbound
 
 /-- The candidate runtime for a certified graph fragment completes at every
@@ -97,7 +97,7 @@ theorem candidateRuntime_runRounds_complete
     (MessageApplication.PolicyExecution.initial _
       (MessageApplication.State.initial _ runtime.candidateInitial)) next
     (SealedResolution.PublicState.ClockBounded.initial _) hnext
-  simpa [runtime, SealedFragment.resolvingRuntime, SealedFragment.compile,
+  simpa [runtime, SealedShape.resolvingRuntime, SealedShape.compile,
     EventGraph.Graph.nodeOrder] using hbound
 
 end Vegas.EventGraph.SealedFragment

@@ -125,7 +125,7 @@ theorem runPolicies_valuePlayers_transfer (supported : SealedFragment G ty)
     have hright := supported.selected_valuePolicy_congr left right owner []
       history view _ command hcommand (fun node heq =>
         hagrees owner node (left node) howner (hrecord _ (by rw [heq]; rfl)))
-    rw [playerPolicy, hright, FinDist.mem_support_pure]
+    rw [SealedShape.playerPolicy, hright, FinDist.mem_support_pure]
 
 /-- Honest registrations in the actual native trace identify their assigned
 source values, even when the deviator and environment are randomized. -/

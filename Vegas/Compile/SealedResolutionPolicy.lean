@@ -18,19 +18,19 @@ needs service, termination, and the source/native probability coupling.
 
 noncomputable section
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
-def resolvingRuntime (supported : SealedFragment G ty) (nullValue : L.Val ty)
+def resolvingRuntime (supported : SealedShape G ty) (nullValue : L.Val ty)
     (window : Nat) : SealedResolution Player (L.Val ty) :=
   ⟨supported.compile, nullValue, window⟩
 
 /-- Complete one owned timed-out commitment field in a local store. -/
-def resolvedPlayerStoreStep (supported : SealedFragment G ty) (who : Player)
+def resolvedPlayerStoreStep (supported : SealedShape G ty) (who : Player)
     (nullValue : L.Val ty)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (store : Store L) (node : Nat) : Store L :=
@@ -45,14 +45,14 @@ def resolvedPlayerStoreStep (supported : SealedFragment G ty) (who : Player)
 
 /-- Complete only the owner's timed-out commitment fields in the local store.
 No private registration is fabricated and no existing private value is erased. -/
-def resolvedPlayerStore (supported : SealedFragment G ty) (who : Player)
+def resolvedPlayerStore (supported : SealedShape G ty) (who : Player)
     (nullValue : L.Val ty) (completed : List Nat)
     (history : List (supported.compile.messageApplication (Value := L.Val ty)).PlayerEntry)
     (view : (supported.compile.messageApplication (Value := L.Val ty)).View) : Store L :=
   completed.foldl (supported.resolvedPlayerStoreStep who nullValue history)
     (supported.playerStore who history view)
 
-def resolvingPolicy (supported : SealedFragment G ty) (nullValue : L.Val ty)
+def resolvingPolicy (supported : SealedShape G ty) (nullValue : L.Val ty)
     (window : Nat) (who : Player) (policy : CommitPolicy G who) :
     (supported.resolvingRuntime nullValue window).messageApplication.PlayerPolicy :=
   fun history view =>
@@ -67,7 +67,7 @@ def resolvingPolicy (supported : SealedFragment G ty) (nullValue : L.Val ty)
 /-- With no recorded timeout, the policy is exactly the untimed source-policy
 implementation on the event/history projection. Clock and readiness timestamps
 do not change which source kernel is used. -/
-theorem resolvingPolicy_no_timeout (supported : SealedFragment G ty)
+theorem resolvingPolicy_no_timeout (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
     (history : List
       (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
@@ -79,7 +79,7 @@ theorem resolvingPolicy_no_timeout (supported : SealedFragment G ty)
         ((supported.resolvingRuntime nullValue window).eventView view) := by
   simp only [resolvingPolicy, htimeouts, resolvedPlayerStore, List.foldl_nil, playerPolicy]
 
-theorem resolvingPolicy_submission (supported : SealedFragment G ty)
+theorem resolvingPolicy_submission (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
     (history : List
       (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
@@ -109,7 +109,7 @@ theorem resolvingPolicy_submission (supported : SealedFragment G ty)
   · simp only [FinDist.mem_support_pure] at hsubmit
     cases hsubmit
 
-theorem resolvingPolicy_no_cleartext (supported : SealedFragment G ty)
+theorem resolvingPolicy_no_cleartext (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (who : Player) (policy : CommitPolicy G who)
     (history : List
       (supported.resolvingRuntime nullValue window).messageApplication.PlayerEntry)
@@ -121,7 +121,7 @@ theorem resolvingPolicy_no_cleartext (supported : SealedFragment G ty)
   rcases supported.resolvingPolicy_submission nullValue window who policy history view _
     hsubmit with ⟨_, h, _⟩ | ⟨_, _, _, h, _⟩ <;> cases h
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape
 
 namespace Vegas.SealedCompilation
 
@@ -141,12 +141,12 @@ def compileResolvingPolicy (compilation : SealedCompilation source ty)
 
 end Vegas.SealedCompilation
 
-/-- info: 'Vegas.EventGraph.SealedFragment.resolvingPolicy_no_timeout' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.resolvingPolicy_no_timeout' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.resolvingPolicy_no_timeout
+#print axioms Vegas.EventGraph.SealedShape.resolvingPolicy_no_timeout
 
-/-- info: 'Vegas.EventGraph.SealedFragment.resolvingPolicy_no_cleartext' depends on axioms:
+/-- info: 'Vegas.EventGraph.SealedShape.resolvingPolicy_no_cleartext' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.EventGraph.SealedFragment.resolvingPolicy_no_cleartext
+#print axioms Vegas.EventGraph.SealedShape.resolvingPolicy_no_cleartext

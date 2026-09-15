@@ -116,7 +116,7 @@ private theorem commitCommand_knowledge (supported : SealedFragment G ty)
         rightHistory (supported.playerStore who rightHistory view) = FinDist.pure rightCommand ∧
       SealedProgram.CommandAgreement supported.compile known who leftCommand rightCommand := by
   have hslot := hoccupied node.val
-  unfold commitCommand
+  unfold SealedShape.commitCommand
   cases hl : (supported.compile.registrationEncoding node.val).cachedValue
       (supported.compile.messageApplication (Value := L.Val ty)) leftHistory <;>
     cases hr : (supported.compile.registrationEncoding node.val).cachedValue
@@ -174,7 +174,7 @@ private theorem nodeCommand?_knowledge (supported : SealedFragment G ty)
         rightHistory view (supported.playerStore who rightHistory view) node =
           some (FinDist.pure rightCommand) ∧
       SealedProgram.CommandAgreement supported.compile known who leftCommand rightCommand := by
-  simp only [nodeCommand?, List.contains_nil, Bool.false_eq_true, ite_false,
+  simp only [SealedShape.nodeCommand?, List.contains_nil, Bool.false_eq_true, ite_false,
     SealedRule.discharge_nil, SealedProgram.discharge_nil] at hselected ⊢
   split at hselected
   · rename_i hready
@@ -233,7 +233,7 @@ theorem playerPolicy_knowledge (supported : SealedFragment G ty)
       supported.playerPolicy who (supported.valuePolicy rightValues who) rightHistory view =
         FinDist.pure rightCommand ∧
       SealedProgram.CommandAgreement supported.compile known who leftCommand rightCommand := by
-  unfold playerPolicy
+  unfold SealedShape.playerPolicy
   cases hselected : G.nodeOrder.findSome?
       (supported.nodeCommand? who [] (supported.valuePolicy leftValues who) leftHistory view
         (supported.playerStore who leftHistory view)) with

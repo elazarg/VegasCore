@@ -162,6 +162,14 @@ with a proof of the source continuation used on failure.
 
 ### Opening-time guard validation
 
+`SealedShape` states the structural requirements of the message compiler:
+well-formedness, a common node type, no samples, and disclosures of commitment
+producers. Rule generation, local observation reconstruction, and playerwise
+strategy translation consume this certificate and permit arbitrary guards.
+`SealedFragment` adds universally accepting guards for the replay and strategic
+theorems. These are two certificates for the same generated code, not separate
+runtime models or compiler implementations.
+
 `EventGuard.validationReads` separates the guard expression's stored
 dependencies from the larger `choiceReads` used by the player's strategy.
 `evalValidationStore?` evaluates the retained code from those dependencies and
@@ -232,6 +240,16 @@ of an opaque focal candidate alone cannot imply equality with a legal graph
 choice: equality is needed for honest accepted candidates and successfully
 validated focal openings, not for all accepted candidates.
 
+`candidate_registration_kernel` requires agreement only with the preparing
+player's own accepted values and the actual public openings. It does not
+identify other players' opaque accepted candidates with legal graph values.
+The guarded probability argument has a separate zero-likelihood case: a raw
+candidate assignment may request an illegal value from an honest graph policy.
+Such an assignment has zero mass at those reads. Replacing it with the default
+inside native replay would change the observed traffic and the event whose
+probability is being computed. Legality adjustment belongs to graph extraction;
+the reference replay must keep raw preparation values and histories unchanged.
+
 The validation context must agree with the context intended by the source
 guard. Public eligibility alone proves neither availability at opening nor
 agreement after other nodes have defaulted. Genuinely private dependencies
@@ -251,6 +269,12 @@ rejection, without a service or completion premise. The settlement test
 instantiates whole-graph realization for the same rejecting guard under
 arbitrary completed policy executions. These results do not assert a
 whole-program source strategy law.
+
+`generated_guarded_execution` also instantiates the shared policy translation
+with that rejecting guard. Its actual policy-runner execution privately prepares
+a legal value, submits an opaque commitment, and opens it through the guarded
+host. This checks the operational translation independently of the remaining
+guarded strategic proof.
 
 ### Shared candidate hosts
 

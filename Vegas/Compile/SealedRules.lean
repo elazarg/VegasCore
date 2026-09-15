@@ -15,12 +15,12 @@ open Interaction
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty}
 
-namespace SealedFragment
+namespace SealedShape
 
 /-- Every admitted graph node is a player's commitment or a disclosure of
 that player's commitment. Sampling and disclosures of initial fields are
 excluded by the fragment certificate. -/
-theorem node_owner (supported : SealedFragment G ty) (node : Fin G.nodeCount) :
+theorem node_owner (supported : SealedShape G ty) (node : Fin G.nodeCount) :
     ∃ owner,
       (∃ guard, (G.nodeRow node).sem = .commit owner guard) ∨
       ∃ (producer : Fin G.nodeCount) (guard : EventGuard L),
@@ -36,7 +36,7 @@ theorem node_owner (supported : SealedFragment G ty) (node : Fin G.nodeCount) :
 
 /-- Every successfully indexed compiled rule comes from the graph node at that
 same numeric index. -/
-theorem ruleAt_exists_node (supported : SealedFragment G ty) {index : Nat}
+theorem ruleAt_exists_node (supported : SealedShape G ty) {index : Nat}
     {rule : SealedRule Player}
     (hrule : supported.compile.rules[index]? = some rule) :
     ∃ node : Fin G.nodeCount,
@@ -44,13 +44,13 @@ theorem ruleAt_exists_node (supported : SealedFragment G ty) {index : Nat}
   have hget := getElem?_eq_some_iff.mp hrule
   rcases hget with ⟨hindex, heq⟩
   have hlt : index < G.nodeCount := by
-    simpa [SealedFragment.compile, Graph.nodeOrder] using hindex
+    simpa [SealedShape.compile, Graph.nodeOrder] using hindex
   let node : Fin G.nodeCount := ⟨index, hlt⟩
   refine ⟨node, rfl, ?_⟩
-  simpa [SealedFragment.compile, Graph.nodeOrder, node] using heq.symm
+  simpa [SealedShape.compile, Graph.nodeOrder, node] using heq.symm
 
 /-- A compiled commit rule reflects an actual commit row with the same owner. -/
-theorem ruleAt_commit (supported : SealedFragment G ty) {index : Nat}
+theorem ruleAt_commit (supported : SealedShape G ty) {index : Nat}
     {rule : SealedRule Player} {owner : Player}
     (hrule : supported.compile.rules[index]? = some rule)
     (hkind : rule.kind = .commit owner) :
@@ -82,7 +82,7 @@ theorem ruleAt_commit (supported : SealedFragment G ty) {index : Nat}
 
 /-- A compiled reveal rule reflects a reveal of the exact indicated commit
 producer, whose row has the same owner. -/
-theorem ruleAt_reveal (supported : SealedFragment G ty) {index : Nat}
+theorem ruleAt_reveal (supported : SealedShape G ty) {index : Nat}
     {rule : SealedRule Player} {owner : Player} {source : Nat}
     (hrule : supported.compile.rules[index]? = some rule)
     (hkind : rule.kind = .reveal owner source) :
@@ -118,6 +118,6 @@ theorem ruleAt_reveal (supported : SealedFragment G ty) {index : Nat}
       exact ⟨node, producer, guard, rfl, hsource,
         hsourceField ▸ hsem, hproducer⟩
 
-end SealedFragment
+end SealedShape
 
 end Vegas.EventGraph

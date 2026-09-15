@@ -128,7 +128,7 @@ private theorem replaySealedView_agrees (G : Graph Player L) (ty : L.Ty) (who : 
 
 end Vegas.EventGraph.Graph
 
-namespace Vegas.EventGraph.SealedFragment
+namespace Vegas.EventGraph.SealedShape
 
 open Interaction
 
@@ -137,7 +137,7 @@ variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
 /-- The native local reconstruction agrees with the decoded graph store on
 all source-visible fields. No source-policy restriction is needed. -/
-theorem sealedPlayerStore_agrees (supported : SealedFragment G ty) (who : Player)
+theorem sealedPlayerStore_agrees (supported : SealedShape G ty) (who : Player)
     (execution : (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution)
     (hmemory : SealedProgram.RegistrationMemory supported.compile execution)
     (hbinding : SealedProgram.BindingInvariant supported.compile
@@ -170,7 +170,7 @@ theorem sealedPlayerStore_agrees (supported : SealedFragment G ty) (who : Player
 
 /-- Reconstruct the actual declared-read environment of a source commitment
 from the player's local history and the public application events. -/
-theorem sealedPlayerStore_reads (supported : SealedFragment G ty) (who : Player)
+theorem sealedPlayerStore_reads (supported : SealedShape G ty) (who : Player)
     (execution : (supported.compile.messageApplication (Value := L.Val ty)).PolicyExecution)
     (hmemory : SealedProgram.RegistrationMemory supported.compile execution)
     (hbinding : SealedProgram.BindingInvariant supported.compile
@@ -195,4 +195,4 @@ theorem sealedPlayerStore_reads (supported : SealedFragment G ty) (who : Player)
   exact (supported.sealedPlayerStore_agrees who execution hmemory hbinding cfg hdecode
     ref (hwf.2.2.2 ref href)).symm
 
-end Vegas.EventGraph.SealedFragment
+end Vegas.EventGraph.SealedShape

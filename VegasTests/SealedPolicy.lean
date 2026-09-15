@@ -55,7 +55,7 @@ theorem first_command (law : FinDist Value) :
     (compileSourcePolicy core source.core.fresh initialBuild rfl 0
       (SourceGraph.repeatPolicy law 0)) (node 0) firstGuard rfl []
       (supported.playerStore 0 [] (MessageApplication.State.observe app initial.native 0)) = _
-  unfold SealedFragment.commitCommand
+  unfold SealedShape.commitCommand
   simp only [MessageApplication.ChoiceEncoding.cachedValue_nil]
   change (compileSourcePolicy core source.core.fresh initialBuild rfl 0
     (SourceGraph.repeatPolicy law 0) (node 0) firstGuard rfl _).map _ = _

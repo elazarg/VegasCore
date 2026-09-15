@@ -124,7 +124,7 @@ theorem registration_after_pending_delivery :
         FinDist.pure (.privateCommand ⟨(0, some false)⟩ : app.PlayerCommand) := by
     change sealedFragment.commitCommand 0 (sealedFragment.valuePolicy (fun _ => some false) 0)
       (node 0) _ rfl [] _ = _
-    unfold SealedFragment.commitCommand
+    unfold SealedShape.commitCommand
     simp only [ChoiceEncoding.cachedValue_nil]
     exact FinDist.map_pure _ _
   have hregistered : app.playerStep 0 initial (.privateCommand ⟨(0, some false)⟩) =

@@ -114,10 +114,15 @@ theorem candidateReplay_registration_factor
       Profile.update_of_ne _ _ hwho]
   have hselected := hcommand
   rw [hplayer] at hselected
+  have hopening := runtime.runPolicies_candidate_openings players env before _ initial
+    SealedResolution.CandidateOpeningInvariant.initial hbefore
   obtain ⟨node, guard, hsem, reads, hslot, hempty, hreads, hkernel⟩ :=
-    supported.candidate_registration_kernel cfg hterminal nullValue window
+    supported.candidate_registration_kernel cfg nullValue window
       players env before initial hbefore hclear who _
-      (profile who) hplayer hvalues slot value hselected
+      (profile who) hplayer
+      (fun index handle value hrecord _ => hvalues index handle value hrecord)
+      (supported.candidate_opened_graph_value cfg hterminal nullValue window
+        initial.native.application hopening hclear hvalues) slot value hselected
   have hfresh : initial.native.application.service.lookup (who, slot) = .fresh := hslot ▸ hempty
   have hnew : next.native.application.service.lookup (who, slot) = .openable value := by
     simp only [playerStep, advance, PlayerCommand.toAction, MessageApplication.step,

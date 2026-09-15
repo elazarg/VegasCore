@@ -164,8 +164,8 @@ private theorem public_reveal_eq_default
   have hcompleted : state.completed node.val = true := by
     apply List.all_eq_true.mp hcomplete node.val
     have hlen : supported.compile.rules.length = graph.nodeCount := by
-      simp [SealedFragment.compile, Graph.nodeOrder, graph]
-    simpa only [List.mem_range, SealedFragment.resolvingRuntime, hlen] using node.isLt
+      simp [SealedShape.compile, Graph.nodeOrder, graph]
+    simpa only [List.mem_range, SealedShape.resolvingRuntime, hlen] using node.isLt
   obtain ⟨value, hopened⟩ := hinvariant.opened_of_completed_reveal
     node.val who producer.val (graph.messagePrerequisites node) hrule hcompleted
   have hvalues : ∀ value, .opened node.val value ∈ state.events → value = nullValue := by
