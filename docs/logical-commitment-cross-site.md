@@ -83,6 +83,14 @@ identifiers, receipts, multiplicities, or deadline phase. Success therefore
 shows sufficiency only for this common kernel, not for every candidate-runtime
 environment.
 
+The independent `InteractionTests/LogicalCommitmentAdaptive.lean` test makes
+one limit concrete: an unchanged wire can use rejected cleartext traffic to
+choose between delivery and immediate inclusion of an honest opening. Erasing
+that traffic from the command prefix prevents one common next-publication
+kernel from covering both tag policies, although both runs complete. This
+constrains that trace erasure; it does not exclude a richer logical history
+or an outcome-only strategic simulation.
+
 The theorem does not assume or prove deadline-relative service. Withholding
 or a mismatched focal opening resolves by the actual clock; the other opening
 can also remain pending until timeout. These cases test the logical law, not

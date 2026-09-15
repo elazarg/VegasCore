@@ -227,6 +227,41 @@ erasure. It preserves the joint opening-decision prefix and focal settlement
 under fixed surrounding policies. The note distinguishes that bounded result
 from the graph-indexed producer-input correspondence required for adoption.
 
+### Adaptive wire test
+
+`InteractionTests/LogicalCommitmentAdaptive.lean` tests erasure against an
+unchanged public adaptive wire. Two policies of the tag-sending principal
+submit different cleartext payloads that the candidate handler rejects. The
+honest commitment owner and the wire are unchanged. Mapping those submissions
+to one malformed claim identifies their complete native command prefixes.
+Nevertheless, the same wire reads the rejected tag from the ledger and either
+includes a pending honest opening immediately or first delivers it. Both runs
+include the opening within two wire invocations, without advancing the clock.
+
+`no_common_erased_continuation` proves that no single randomized continuation
+on that erased command trace reproduces both next-publication laws. Its
+quantifiers fix the continuation before varying the tag policy. Allowing a
+different continuation for each policy would not implement an unchanged wire.
+
+This is a boundary for the specified trace projection, not an impossibility
+of behavioral strategic simulation. In particular, the theorem does not
+compare full logical observation histories or retain the sender's private
+recall of the erased payload. Keeping that information, using another logical
+action translation, or preserving only terminal outcomes changes the question.
+The test shows why rejection alone does not justify forgetting a payload that
+the surrounding service can read. The common-kernel condition must concern
+the retained local histories and permitted private recall jointly.
+
+### Next adoption test
+
+The next positive test should add a nontrivial public declared read at the
+commitment producer to the two-site fixture. Its result should retain that
+earlier input alongside the later disclosure and settlement prefix. Prove the
+native continuation's factorization through those retained data before applying
+conditioning. A graph-wide extension must then establish the same condition
+under one admitted adaptive environment and unchanged compiled opponents;
+neither the scripted two-site law nor the command-trace obstruction settles it.
+
 Promoting the experiment requires the strategic prefix-law and settlement
 interface specified in the gated experiment, together with a demonstrated
 simplification of an existing backend proof. Local validator agreement is not
