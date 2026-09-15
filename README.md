@@ -21,8 +21,10 @@ the graph deviation backtranslation is independent of the realized setup.
 The message host executes the typed graph directly using the shared
 `Interaction` pool, ideal opaque commitments, public validation, and relative
 deadlines. Its local transition laws and mixed-feature transport tests are
-checked. The prescribed-policy compiler, its local command laws, and a concrete
-reserved service with adaptive wire choices are implemented. The whole-run
+checked. The prescribed-policy compiler and its local command laws are
+implemented. The concrete reserved service terminates for arbitrary player
+policies and adaptive wire choices, including with private initial setup.
+The whole-run
 honest law and arbitrary-deviation certificate remain unproved. Thus the full-language
 Nash theorem currently reaches the graph, not the pending-message runtime.
 

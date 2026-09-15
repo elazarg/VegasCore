@@ -10,7 +10,7 @@ separates the implemented host from the remaining strategic proof.
 | --- | --- | --- |
 | Source semantics | `Vegas.Source`: `SourceProgram` | Arbitrary binding and disclosure policies, own-action recall, heterogeneous results, initial secrets, deferred guards, and dependent chance. Every complete run resolves every obligation and satisfies every retained guard. |
 | Source to typed graph | `Vegas.Game.GraphCompilation`, `Vegas.Game.GraphSetup` | Exact decoded terminal-state and payout laws; every unilateral graph deviation has one exact source-policy preimage against unchanged opponents. Finite private setup uses shared policies and a state-independent backtranslation. Nash and same-error epsilon-Nash equivalence at compiled profiles, without failure-dominance or finite-domain premises. |
-| Typed graph to message host | `Vegas.Graph.MessageApplication`: `GraphRuntime` | Every graph constructor, public-only guard evaluation, local graph-step laws, public-store invariants, and mixed-feature transport tests. Actual prescribed-policy translation and local sampling/submission laws are implemented. Tick-budget completion holds for native traces with enough actual ticks. **No whole-run honest or strategic certificate yet.** |
+| Typed graph to message host | `Vegas.Graph.MessageApplication`: `GraphRuntime` | Every graph constructor, public-only guard evaluation, local graph-step laws, public-store invariants, and mixed-feature transport tests. Prescribed-policy translation and local execution laws are checked. The concrete service terminates under arbitrary player and wire policies, including private initial setup. **No whole-run honest or strategic certificate yet.** |
 | Transaction/block execution, cryptography, VM deployment | Further target edges | No active end-to-end refinement to these targets. Passive VM reference code does not establish one. |
 
 The graph is an independently executable strategic IR. Its ordered nodes retain
@@ -36,8 +36,9 @@ operational witnesses, not a substitute for the missing arbitrary-policy law.
 owner opportunities, adaptive wire/reaction slots, reserved inclusion, and
 phase-gated expiry. It accepts every native player policy and every supplied
 wire policy. Its full-language compilation objectives are expressible in
-`Paper.lean`, but the service-wide completion, honest law, and deviation law
-are not yet proved. `MessageProgress.run_completed_of_ticks` proves the separate
+`Paper.lean`. `Setup.pendingGame_complete` proves completion of every supported
+play, and `Paper.source_pending_complete` delegates to it. The honest and
+deviation laws are not yet proved. `MessageProgress.run_completed_of_ticks` proves the separate
 operational fact that enough actual ticks force completion despite arbitrary
 intervening native traffic; it does not protect honest messages from expiry.
 
@@ -88,8 +89,12 @@ would require a different strategy space.
 
 For the full typed host, the immediate goal is an exact deviation-mixture law
 under canonical order and deadline-relative service. The remaining work is
-whole-program observation projection, serviced completion, and the
-joint observation/probability argument with unchanged opponents. Hiding an
+whole-program observation projection, protection of unchanged players' messages
+from expiry, and the joint observation/probability argument with unchanged
+opponents. Service completion is proved. The generic shared-prior predrawing
+theorem supplies one joint player/environment response mixture before the
+initial execution is sampled; it preserves the complete native execution law
+but does not construct a graph deviation. Hiding an
 accepted handle and matching local result stores do not alone prove that law.
 The [proof plan](typed-message-edge.md) records the failed-opening information
 test and the causal replay obligation.

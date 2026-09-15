@@ -197,9 +197,9 @@ The source interface settles the admission details as follows:
    immutable candidate acceptance, explicit failure, and conditional chance.
    The local transition laws and mixed-feature transport tests establish its
    operational boundary. The prescribed-policy compiler and local command laws
-   are implemented. Whole-program observation correspondence, completion under
-   the concrete reserved service, and the whole-run honest law remain to be
-   proved. See the
+   are implemented. Completion under the concrete reserved service is proved
+   for arbitrary player and wire policies. Whole-program observation
+   correspondence and the whole-run honest law remain to be proved. See the
    [graph-to-message proof plan](typed-message-edge.md).
 4. **Strategic composition.** Establish the exact unilateral-deviation mixture
    law under canonical ordered operations, with unchanged compiled opponents

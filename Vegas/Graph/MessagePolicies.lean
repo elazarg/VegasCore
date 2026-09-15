@@ -41,7 +41,7 @@ def submittedAt {runtime : GraphRuntime Player L Δ}
     | .submit (.withhold submittedSite) => submittedSite = site
     | _ => false
 
-private def findVar (context : VCtx Player L) (name : VarId) (binding : BindTy Player L) :
+def findVar (context : VCtx Player L) (name : VarId) (binding : BindTy Player L) :
     Option (HasVar context name binding) :=
   match context with
   | [] => none
@@ -50,7 +50,7 @@ private def findVar (context : VCtx Player L) (name : VarId) (binding : BindTy P
         some (h ▸ HasVar.here)
       else (findVar tail name binding).map HasVar.there
 
-private def observedBindChoice {target : VCtx Player L} (who : Player)
+def observedBindChoice {target : VCtx Player L} (who : Player)
     (observation : Observation L who target) (name : VarId) (payload : L.Ty) :
     PublicationResult (L.Val payload) :=
   match findVar target name (.sealed who (R.result payload)) with

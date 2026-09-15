@@ -23,7 +23,7 @@ failure-aware `SourceProgram` semantics. The candidate-message results concern
 `WFProgram`; they do not establish pending-message compilation of `SourceProgram`.
 
 The candidate-message results are the strongest currently proved end-to-end
-boundary.  Their common value type, universally accepting guards,
+strategic boundary. Their common value type, universally accepting guards,
 commitment-produced reveals, absence of compiled sampling, timely-service, and
 source quitting hypotheses remain explicit and must not be read as the final
 language or blockchain theorem.
@@ -103,7 +103,7 @@ theorem source_setup_graph_approximate_nash_iff [IExpr.ResultTypes L]
     IsεNash setup.gameForm utility ε profile :=
   setup.graph_approximate_nash_iff utility ε profile
 
-/-! ## Unproved full-language pending-message capstones
+/-! ## Full-language pending-message capstones
 
 These statements name the actual composed strategy compiler and the actual
 serviced message game. The reserved service provides preparation/submission,
@@ -115,6 +115,19 @@ The initial private state is sampled inside the game. In the deviation law,
 the mixture is chosen outside that sample. No source constructor is excluded,
 and no failure-incentive premise is assumed at this ordered ideal edge.
 -/
+
+/-- Every supported target play completes under the concrete bounded service,
+including arbitrary native policies and the specified private initial law. -/
+theorem source_pending_complete [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (runtime : GraphRuntime Player L (SourceProgram.graphCtx setup.program.terminalCtx))
+    (roster : List Player) (reactionRounds : Nat) (wire : runtime.application.WirePolicy)
+    (players : Player → runtime.application.PlayerPolicy)
+    (outcome : runtime.application.PolicyExecution)
+    (supported : outcome ∈
+      ((setup.pendingGame runtime roster reactionRounds wire).play players).support) :
+    (setup.pendingOutcome runtime outcome).isSome = true :=
+  setup.pendingGame_complete runtime roster reactionRounds wire players outcome supported
 
 /-- error: declaration uses `sorry` -/
 #guard_msgs (whitespace := lax) in
@@ -301,6 +314,10 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_setup_graph_approximate_nash_iff
+/-- info: 'Vegas.Paper.source_pending_complete' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_pending_complete
 /-- info: 'Vegas.Paper.source_pending_honest_law' depends on axioms:
 [propext, sorryAx, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in

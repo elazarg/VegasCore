@@ -48,5 +48,15 @@ theorem bob_completed_bind_history :
       [OwnAction.bind .bob 2 simpleExpr.bool (.success false)] := by
   rfl
 
+/-- Initialization finds a sealed field behind another owner's field and
+installs the exact corresponding verifier, without executing a new bind. -/
+theorem initial_owned_field_verifier :
+    let state := GraphRuntime.State.initial (Graph.ret [] : Graph Actor simpleExpr
+      FinalCtx FinalCtx) finalEnv
+    lookupBinding state.publicView.bindings 1 = some (.alice, .initial 1) ∧
+      state.candidates.verify (.alice, .initial 1)
+        ⟨.result .bool, PublicationResult.success true⟩ = true :=
+  GraphRuntime.State.initial_binding (.ret []) finalEnv (by decide) (.there .here)
+
 end
 end VegasTests.GraphMessagePolicies

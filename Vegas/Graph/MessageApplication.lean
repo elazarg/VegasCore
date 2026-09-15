@@ -137,6 +137,47 @@ def playerView (state : State Player L Δ) (who : Player) : PlayerView Player L 
 def candidates : State Player L Δ → CommitmentCandidates Player Slot (Raw L)
   | .running _ _ _ _ candidates _ _ _ => candidates
 
+omit R in
+private theorem initial_binding_entry {Γ : VCtx Player L} {name : VarId}
+    {owner : Player} {ty : L.Ty} (source : HasVar Γ name (.sealed owner ty))
+    (unique : (Γ.map Prod.fst).Nodup) (input : VEnv L Γ) :
+    lookupBinding (initialBindings (initialEntries Γ input)) name =
+        some (owner, .initial name) ∧
+      (initialEntries Γ input).findSome? (fun entry =>
+        if entry.1 = name && entry.2.1 = owner then some entry.2.2 else none) =
+          some ⟨ty, input.get source⟩ := by
+  induction Γ with
+  | nil => exact nomatch source
+  | cons head Γ ih =>
+      cases source with
+      | here => simp [initialEntries, initialBindings, lookupBinding]
+      | there source =>
+          rename_i headName headBinding
+          have different : headName ≠ name := by
+            intro same
+            exact (List.nodup_cons.mp unique).1 (same ▸ source.mem_map_fst)
+          obtain ⟨headTy, visibility⟩ := headBinding
+          cases visibility <;>
+            simpa [initialEntries, initialBindings, lookupBinding, different,
+              VEnv.tail, VEnv.get] using ih source unique.tail (VEnv.tail input)
+
+/-- Every sealed initial field has its own public handle and exact ideal
+verification material. Unique field names prevent one initial field from
+shadowing another; graph constructor freshness maintains that condition later. -/
+theorem initial_binding {Γ : VCtx Player L} (graph : Graph Player L Γ Δ)
+    (input : VEnv L Γ) (unique : (Γ.map Prod.fst).Nodup)
+    {name : VarId} {owner : Player} {ty : L.Ty}
+    (source : HasVar Γ name (.sealed owner ty)) :
+    lookupBinding (initial graph input).publicView.bindings name =
+        some (owner, .initial name) ∧
+      (initial graph input).candidates.verify (owner, .initial name)
+        ⟨ty, input.get source⟩ = true := by
+  obtain ⟨binding, entry⟩ := initial_binding_entry source unique input
+  refine ⟨binding, ?_⟩
+  apply (CommitmentCandidates.verify_eq_true_iff ..).mpr
+  simp only [initial, candidates, CommitmentCandidates.lookup, initialCandidates]
+  rw [entry]
+
 def outcome? : State Player L Δ → Option (VEnv L Δ)
   | .running (.ret _) ideal _ _ _ _ _ _ => some ideal
   | .running (.sample ..) _ _ _ _ _ _ _ => none

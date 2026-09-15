@@ -62,8 +62,16 @@ graph constructors enforce freshness of every subsequently added field.
 `MessagePolicies` implements the policy translation below. `MessagePolicyLaws`
 connects the actual command kernels to graph choices and checks uniform failed
 disclosure. `MessageServiceLaw` factors a real preparation/submission/inclusion
-run through the graph bind kernel. The whole-program correspondence remains
-unproved.
+run through the graph bind kernel. `MessageBindingLaw` and
+`MessageResolutionLaw` compose prescribed submission with reserved inclusion
+through the actual shared runner. Resolution installs the graph's accepted
+result for both logical Booleans, including guard rejection; only successful
+publication requires an opening witness. `State.initial_binding` constructs
+that witness for every sealed initial field under name uniqueness. Preserving
+the association between later graph fields and accepted handles remains part
+of the whole-program argument. `MessageVerification` already proves that once
+an opening verifies, every supported policy-driven continuation preserves that
+exact verifier, even with arbitrary players and environment.
 
 This is a strategy translation used to compare games. The contract does not
 require players to run generated client software: native deviations still
@@ -107,6 +115,13 @@ unnecessary for those past actions. Completed resolve Booleans instead come
 from site-indexed own-history markers, since result fields do not determine them.
 The cursor retains the original graph when traversing its current tail: the
 history projection scans completed operations of that original graph.
+`Prefix` in `MessagePolicyHistory.lean` is a typed prefix witness in the
+`Vegas.GraphRuntime` namespace, not another execution model. Its compiler
+cursor theorem equates the actual root policy with its residual policy at that
+suffix. It preserves context-name uniqueness, and typed owned-field lookup
+recovers the stored binding choice. The logical-history projection theorem
+still requires agreement with the completed graph actions; that agreement
+must be established along the execution coupling.
 
 At a current bind, choose once and prepare slot `.prepared pc`; on the next
 invocation submit its commitment, then wait. At a current resolve, choose and
@@ -116,6 +131,16 @@ memory, and submission without relying on scheduling-dependent receipts.
 Both successful and failed prescribed play use the same number of local
 invocations before submission. The local kernel and submission laws are checked;
 the whole-program observation and provenance invariants remain proof work.
+`MessagePolicyCommands` proves that every supported compiled command is
+addressed to the active phase, never malformed or replayed. Once a submission
+is recorded for that phase, the policy waits while it remains active. These
+restrictions concern unchanged compiled players; deviations remain unrestricted.
+`MessagePolicyFreshness` derives the corresponding own-history invariant from
+the actual initial execution and preserves it through the shared runner with
+arbitrary opponents and environment. All recorded phases are at most the
+current phase, and the three compiler caches are empty at strictly future
+phases. This is a phase bound, not the still-needed equality with graph
+decision histories.
 
 ## Concrete bounded service
 
@@ -133,6 +158,16 @@ from spending a later phase's deadline. The wire policy receives its actual
 history and public pool and may deliver, include, or wait. It cannot insert
 additional application ticks. Player commands at reaction slots are unrestricted.
 
+Early wire inclusion can advance the application into a later graph phase
+before the current service block has finished. The proof must therefore allow
+the runtime to be ahead of the planned phase, rather than treating every
+reaction as a stutter. `MessageServiceCursor` proves that the environment's
+actual history selects the intended slot after any supported invocation prefix.
+Reserved inclusion selects the newest allocated identifier if it is still
+pending, not an arbitrary older pending message. The unchanged player's
+one-submission-per-active-phase property is needed to show that this selection
+protects its prescribed packet.
+
 These are service restrictions, not a characterization of every deadline-fair
 environment. The graph-to-message capstones quantify over every supplied wire
 policy, roster, reaction-round count, deadline function, and source profile.
@@ -147,10 +182,15 @@ advancement from progress also requires rejection of openings after their
 deadline even if an expiry call has not yet been included.
 
 `MessageProgress` proves a finite tick budget for every graph and its decrease
-through arbitrary native actions. Enough actual ticks force terminal execution,
-including with malformed traffic and withholding. This does not protect
-prescribed messages: the concrete service-wide completion and timely-inclusion
-arguments must also use the reserved owner and inclusion opportunities.
+through arbitrary native actions. `MessageServiceTermination` uses the actual
+environment cursor and phase-gated expiry blocks to prove that every supported
+play of the concrete service terminates, with arbitrary player and wire
+policies. The typed suffix invariant allows early inclusion to advance past
+planned phases. This theorem composes to `Setup.pendingGame_complete` for the
+actual source compiler's target, including its finite private initial law.
+It establishes completion, not timely inclusion of prescribed messages;
+the honest-law proof must also show that unchanged players' messages succeed
+before expiry.
 
 ## Private initial setup
 
@@ -168,9 +208,10 @@ state. Predrawing separately at each realized initial state is insufficient.
 
 ## Proposed strategic proof
 
-The operational host, policy compiler, local laws, and concrete service are
-implemented. Everything in this section—supported-pair coupling, extraction,
-and the whole deviation law—is proposed proof work. `Paper.lean` contains three
+The operational host, policy compiler, local laws, and service termination are
+checked. The shared-prior predrawing theorem is also checked. Supported-pair
+coupling, extraction, and the whole deviation law remain proof work.
+`Paper.lean` contains a proved completion capstone and three
 explicitly admitted capstones for the actual source-to-pending honest law,
 deviation-mixture law, and epsilon-Nash correspondence. No supporting library
 lemma is admitted.
@@ -188,8 +229,18 @@ configuration and a native trace prefix such that:
    graph configuration, privately to its owner;
 4. every compiled principal's projected observation and compiler memory equal
    its graph observation and own logical action history; and
-5. the next graph kernel, when any, is the kernel used at the next effective
-   native phase transition.
+5. any prescribed choice already sampled for the current phase is retained
+   with its original graph decision view and kernel until that phase completes.
+
+The last item matters because sampling and inclusion are different native
+steps. A bind kernel is sampled during private preparation, and a disclosure
+kernel during private Boolean recording. The coupling carries that draw
+through intervening wire actions; it must not sample again or evaluate the
+policy at a later observation. The local bind factorization already exposes
+the draw before its continuation. A whole-run proof should retain this branch
+evidence directly, rather than reconstructing its probability from the final
+store. At checkpoints with no outstanding prescribed draw, the remaining
+graph kernel is the one determined by the paired graph decision view.
 
 The relation deliberately does not equate the raw native transcript with a
 graph trace. The decoded outcome may contain the full typed graph environment,
@@ -234,16 +285,18 @@ relation pointwise. Binding over the response-pair distribution must give:
 An arbitrary shorter prefix need not be terminal. Its corresponding statement
 uses graph prefixes, not a fabricated terminal outcome.
 
-`MessageApplication.exists_joint_response_mixture_tracePolicies` is the
-reusable first step. For a fixed finite schedule it predraws focal and
-environment responses jointly, preserves the complete trace law and all
-opponent kernels, and requires neither finite command/view carriers nor a
-`Fintype` instance. Its inputs are only the existing `FinDist` policy kernels
-and bounded schedule.
-
-The response-pair mixture must also be valid across the complete initial-state
-law, without conditioning its selection on the realized hidden setup. The
-fixed-initial-state predrawing lemma alone does not establish that extension.
+`MessageApplication.exists_joint_response_mixture_tracePolicies_setup` is the
+checked reusable first step. For a fixed finite schedule it predraws focal and
+environment responses jointly before sampling the initial execution. It
+preserves the complete trace law and all opponent kernels, and requires
+neither finite command/view carriers nor a `Fintype` instance.
+`exists_joint_response_mixture_runPolicies_setup` gives the actual shared-runner
+projection. The mixture ranges over the finite union of reachable information
+sites across the entire initial law; it does not select a different policy
+after learning the realized secret. Explicit wait fallbacks make the total
+response-function law independent of the chosen initial model, including at
+unreachable sites. The generic finite-site protocol lemma is separately owned
+by `GameTheoryExtensions/Protocol/FiniteSupportPredraw.lean`.
 
 For a fixed response pair, pure extraction replays the environment response and
 graph-ineffective public transitions on the native prefix paired with the
@@ -255,7 +308,7 @@ response pair, but must not be smuggled into the extracted graph observation.
 
 The whole finite-mixture law is the proof goal of this edge, not a consequence
 already supplied by predrawing. It still requires the supported-pair induction,
-observation projection, chance-kernel step, deadline completion, and final
+observation projection, chance-kernel step, timely inclusion, and final
 decoding proofs.
 
 ### Sharp information test

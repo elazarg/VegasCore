@@ -31,9 +31,10 @@ optimization; the subsequent build checks the active proof terms.
 | Typed graph semantics and compilation | `Vegas/Graph/`, `Vegas/Compile/GraphCompiler.lean` |
 | Exact full-source/graph strategic certificate | `Vegas/Game/GraphCompilation.lean`, `GraphSetup.lean` |
 | Full typed public-message host and local laws | `Vegas/Graph/MessageApplication.lean`, `MessageStepLaw.lean`, `MessageInvariant.lean` |
-| Actual player-policy compiler and local laws | `Vegas/Graph/MessagePolicies.lean`, `MessagePolicyLaws.lean` |
-| Reserved service and tick-progress bounds | `Vegas/Graph/MessageService.lean`, `MessageProgress.lean` |
-| Concrete full-language pending target | `Vegas/Game/GraphMessages.lean` (definitions; strategic capstones unproved) |
+| Actual player-policy compiler and execution laws | `Vegas/Graph/MessagePolicies.lean`, `MessageBindingLaw.lean`, `MessageResolutionLaw.lean` |
+| Reserved service and arbitrary-policy termination | `Vegas/Graph/MessageService.lean`, `MessageServiceTermination.lean` |
+| Shared-private-setup predrawing | `Interaction/MessageApplicationPredrawTransport.lean` |
+| Concrete full-language pending target | `Vegas/Game/GraphMessages.lean` (completion proved; honest/deviation laws unproved) |
 | Pending messages and candidate commitments | `Interaction/MessageApplication.lean`, `Interaction/CommitmentCandidates.lean` |
 | Restricted graph-relative candidate strategic edge | `Vegas/Game/SealedCandidate.lean` |
 | Restricted source-to-pending Nash | `Vegas/Game/SourcePublicCandidate.lean` |
