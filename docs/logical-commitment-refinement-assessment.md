@@ -9,9 +9,11 @@ honest generated traffic is close to its transition system, but the proposed
 local step projection fails on the native cases analyzed below. The prerequisite
 rejection mismatch is checked in
 `InteractionTests/LogicalCommitment.lean` by
-`incomplete_prerequisite_breaks_literal_projection`. The other counterexamples
-are code-inspected; none establishes impossibility of a coarser strategic
-simulation.
+`incomplete_prerequisite_breaks_literal_projection`. The same test module's
+`no_view_only_owner_opening` checks the missing private recall in a view-only
+logical policy interface. The clock-erasure obstruction is checked separately
+in `InteractionTests/LogicalCommitmentClock.lean`. Other examples below are
+code-inspected; none establishes impossibility of a coarser strategic simulation.
 
 This does not refute a logical-protocol boundary in general. The counterexample
 establishes that graph-relative admission gates and owner preparation recall

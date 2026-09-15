@@ -422,3 +422,54 @@ sealed dependency graph. It need not introduce another source language.
 Adoption requires this prefix-law theorem, an honest completion law, and a
 continuation/settlement interface sufficient to consume the source quitting
 inequality. Exact local admission alone does not satisfy that criterion.
+
+### One-decision information test
+
+The independent probability module
+`GameTheoryExtensions/Math/Probability/DecisionObservation.lean` isolates a
+sufficient condition for erasing information at a single decision. Its
+namespace is `GameTheory.Math.Probability.FinDist`; it contains no commitment,
+compiler, or blockchain concepts.
+
+Fix a finite-support law `mu` of native information, a retained observation
+`observe`, a common action space, and a continuation kernel `K` from retained
+observations and actions to result laws. These are fixed independently of the
+native response policy. The construction is:
+
+```text
+logicalPolicy(observed) =
+  mu.condOnFibre(observe, observed).bind(nativePolicy)
+```
+
+It preserves the joint law of retained observation and action, and consequently
+the result law under every such fixed `K`. The support-relative variant takes
+a native continuation kernel and requires, for every supported native input
+and every action:
+
+```text
+nativeKernel(input, action) = K(observe(input), action)
+```
+
+This premise is about continuation kernels, not constancy of native policy
+commands on observation fibers. Unsupported observations impose no positivity
+obligation. The conditional policy uses the total finite-distribution
+conditioning operation's off-support fallback.
+
+`InteractionTests/LogicalCommitmentInformation.lean` tests this condition using
+the logical binding's opened/quit result. In the positive example a response
+may branch on erased metadata, while the fixed settlement depends only on its
+action; a randomized logical response has the same result law. In the negative
+example a uniform phase selects which action opens. The informed response
+opens with certainty, whereas every response on the erased observation has
+opening probability one half, under the same fixed settlement rule. This
+separates attainable utilities and rules out exact result-law simulation for
+that quotient. It is not a counterexample to the pending-message compiler.
+
+The experiment concerns one decision with a fixed input law. It supplies
+neither a whole-protocol game interpreter nor an extensive-game strategic
+certificate. In particular, it does not establish the factorization premise
+for the candidate runtime. That requires controlling the joint information
+from other sites, owner recall, pending capabilities and settlement phase,
+and showing that the fixed opponents' continuation laws are retained. The
+environment interpretation must be fixed before choosing a focal deviation;
+changing it for each deviation would not define the required compilation edge.

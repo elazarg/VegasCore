@@ -84,6 +84,54 @@ theorem unopenable_resolves_by_fallback :
           (.open false false 11, false)] := by
   decide
 
+/-! ## Private preparation recall
+
+The logical state projection hides preparation values even from the owner's
+current view. An autonomous policy game built on this kernel must retain the
+owner's command history or an equivalent private memory. A policy receiving
+only `State.observe` cannot always open its own prepared candidate.
+-/
+
+private def selectedAfterPreparation (value : Nat) : State Bool Bool Nat :=
+  protocol.run State.empty
+    [.prepare false false value,
+      .submit false (.select false false), .include (.select false false)]
+
+/-- Two well-formed preparation/selection traces have the same owner view and
+selected handle, but different immutable private candidate meanings. -/
+theorem prepared_values_share_owner_view :
+    (selectedAfterPreparation 11).observe false =
+        (selectedAfterPreparation 22).observe false ∧
+      (selectedAfterPreparation 11).meanings false = .openable 11 ∧
+      (selectedAfterPreparation 22).meanings false = .openable 22 := by
+  exact ⟨rfl, rfl, rfl⟩
+
+private theorem opening_accepted_iff (prepared claimed : Nat) :
+    ((selectedAfterPreparation prepared).applyClaim? protocol
+      (.open false false claimed)).isSome = true ↔ claimed = prepared := by
+  simp only [State.applyClaim?, selectedAfterPreparation, run, protocol, State.empty,
+    List.foldl_cons, step, State.prepare, and_self, ↓reduceIte, State.submit,
+    List.nil_append, State.recordInclusion, List.foldl_nil, true_and, Option.isSome_ite]
+  change CommitmentCandidate.openable prepared = .openable claimed ↔ claimed = prepared
+  simp only [CommitmentCandidate.openable.injEq, eq_comm]
+
+/-- No deterministic choice from the current logical view always opens the
+owner's selected candidate. This refutes a view-only policy interface, not a
+logical game with private recall, nor strategic preservation by that game. -/
+theorem no_view_only_owner_opening :
+    ¬ ∃ choose : State.View Bool Bool Nat → Nat,
+      ((selectedAfterPreparation 11).applyClaim? protocol
+        (.open false false (choose ((selectedAfterPreparation 11).observe false)))).isSome =
+          true ∧
+      ((selectedAfterPreparation 22).applyClaim? protocol
+        (.open false false (choose ((selectedAfterPreparation 22).observe false)))).isSome =
+          true := by
+  rintro ⟨choose, hfirst, hsecond⟩
+  have hfirstValue := (opening_accepted_iff 11 _).mp hfirst
+  have hsecondValue := (opening_accepted_iff 22 _).mp hsecond
+  rw [← prepared_values_share_owner_view.1] at hsecondValue
+  omega
+
 /-! ## Native prerequisite rejection versus the ungated logical kernel
 
 This single transition is an operational projection counterexample.  It does
@@ -127,3 +175,8 @@ end InteractionTests.LogicalCommitment
 depends on axioms: [propext] -/
 #guard_msgs (whitespace := lax) in
 #print axioms InteractionTests.LogicalCommitment.incomplete_prerequisite_breaks_literal_projection
+
+/-- info: 'InteractionTests.LogicalCommitment.no_view_only_owner_opening'
+depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms InteractionTests.LogicalCommitment.no_view_only_owner_opening

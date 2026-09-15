@@ -149,8 +149,13 @@ relative-information, cross-site, and quitting-utility obligations.
 
 `InteractionTests/LogicalCommitment.lean` checks early-opening visibility with
 public rejection, selection among competing prepared handles, and attributed
-fallback after acceptance of an unopenable handle and rejected traffic. It also
-checks a limit of the abstraction against the actual native candidate validator:
+fallback after acceptance of an unopenable handle and rejected traffic.
+Its `no_view_only_owner_opening` theorem checks that the current owner view
+alone cannot determine a valid opening: two prepared and selected candidates
+have identical views but different immutable values. The policy interface must
+retain private command history or equivalent owner recall. The theorem does
+not rule out a logical game with that memory or its strategic simulation.
+The test module also checks a limit of the abstraction against the actual native candidate validator:
 an incomplete graph prerequisite blocks native selection but not logical
 selection. This requires an admission gate in a literal operational refinement;
 it does not refute a coarser strategic simulation. The module
@@ -171,3 +176,24 @@ selected handle, and opening result) in `Interaction/LogicalCommitmentEffects.le
 These local laws do not cover post-admission graph refresh. The experiment
 contains a checked clock-erasure obstruction and states the prefix-law theorem
 required before adopting a logical protocol as a strategic compilation edge.
+
+## Independent development boundary
+
+The experiment lives in `Interaction/LogicalCommitment*.lean` and its
+`InteractionTests` modules, with no imports from Vegas. Its modules are included
+in the normal library build so the experiment remains checked. No active
+compiler theorem depends on them, and they carry no paper-level compilation
+claim. This permits independent implementation and mathematical review in the
+shared checkout without a worktree or a change to the main compiler.
+
+The generic one-decision information-erasure result lives separately in
+`GameTheoryExtensions/Math/Probability/DecisionObservation.lean`, with finite
+settlement examples in `InteractionTests/LogicalCommitmentInformation.lean`.
+The gated experiment states its fixed-kernel assumption and the additional
+cross-site work required for strategic adoption.
+
+Promoting the experiment requires the strategic prefix-law and settlement
+interface specified in the gated experiment, together with a demonstrated
+simplification of an existing backend proof. Local validator agreement is not
+the adoption criterion. Parallel work should keep these files separate from
+the compiler and share one Lean build process.
