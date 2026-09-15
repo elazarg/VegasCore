@@ -118,14 +118,14 @@ theorem setupResponseMixture_eq_focalMixed
 
 /-- A single finite response mixture, chosen before the initial execution is
 sampled, preserves the complete setup-wide native trace law. -/
-theorem exists_invocation_response_mixture_tracePolicies_setup
+theorem setupResponseMixture_tracePolicies_setup
     (app : MessageApplication Principal)
     (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
     (who : @Invocation Principal) (schedule : List (@Invocation Principal))
     (initials : FinDist app.PolicyExecution)
     (replacement : app.InvocationSite who → FinDist (app.InvocationCommand who)) :
-    ∃ mixture : FinDist (app.InvocationSite who → app.InvocationCommand who),
-      mixture.bind (fun response => initials.bind fun initial => app.tracePolicies
+    (app.setupResponseMixture players environment who schedule initials replacement).bind
+      (fun response => initials.bind fun initial => app.tracePolicies
         (app.playersReplacing players who (fun site => FinDist.pure (response site)))
         (app.environmentReplacing environment who (fun site => FinDist.pure (response site)))
         schedule initial) =
@@ -133,7 +133,6 @@ theorem exists_invocation_response_mixture_tracePolicies_setup
         (app.playersReplacing players who replacement)
         (app.environmentReplacing environment who replacement) schedule initial := by
   classical
-  refine ⟨app.setupResponseMixture players environment who schedule initials replacement, ?_⟩
   rw [FinDist.bind_comm
     (app.setupResponseMixture players environment who schedule initials replacement) initials]
   apply FinDist.bind_congr
@@ -169,10 +168,48 @@ theorem exists_invocation_response_mixture_tracePolicies_setup
           (fun result => app.focalRecordedTrace players environment who schedule initial result
             (.finish result.state.execution)) := by
       rw [app.focal_runMixedWithin_setup_eq_runBehavioral players environment who schedule
-        initials replacement initial hinitial]
+        initials replacement initial hinitial schedule.length (by rfl)]
     _ = _ := by
       simpa only [hprefix, FinDist.map_id, start, ExecutionProtocol.initHistory_state] using
         app.focal_runBehavioralFrom players environment who schedule initial replacement start
+
+theorem exists_invocation_response_mixture_tracePolicies_setup
+    (app : MessageApplication Principal)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (who : @Invocation Principal) (schedule : List (@Invocation Principal))
+    (initials : FinDist app.PolicyExecution)
+    (replacement : app.InvocationSite who → FinDist (app.InvocationCommand who)) :
+    ∃ mixture : FinDist (app.InvocationSite who → app.InvocationCommand who),
+      mixture.bind (fun response => initials.bind fun initial => app.tracePolicies
+        (app.playersReplacing players who (fun site => FinDist.pure (response site)))
+        (app.environmentReplacing environment who (fun site => FinDist.pure (response site)))
+        schedule initial) =
+      initials.bind fun initial => app.tracePolicies
+        (app.playersReplacing players who replacement)
+        (app.environmentReplacing environment who replacement) schedule initial := by
+  exact ⟨app.setupResponseMixture players environment who schedule initials replacement,
+    app.setupResponseMixture_tracePolicies_setup players environment who schedule initials
+      replacement⟩
+
+/-- Execution projection of the explicit canonical setup-response mixture. -/
+theorem setupResponseMixture_runPolicies_setup
+    (app : MessageApplication Principal)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (who : @Invocation Principal) (schedule : List (@Invocation Principal))
+    (initials : FinDist app.PolicyExecution)
+    (replacement : app.InvocationSite who → FinDist (app.InvocationCommand who)) :
+    (app.setupResponseMixture players environment who schedule initials replacement).bind
+      (fun response => initials.bind fun initial => app.runPolicies
+        (app.playersReplacing players who (fun site => FinDist.pure (response site)))
+        (app.environmentReplacing environment who (fun site => FinDist.pure (response site)))
+        schedule initial) =
+      initials.bind fun initial => app.runPolicies
+        (app.playersReplacing players who replacement)
+        (app.environmentReplacing environment who replacement) schedule initial := by
+  have traced := app.setupResponseMixture_tracePolicies_setup players environment who schedule
+    initials replacement
+  have mapped := congrArg (FinDist.map PolicyTrace.last) traced
+  simpa only [FinDist.map_bind, app.tracePolicies_last] using mapped
 
 theorem exists_native_response_mixture_tracePolicies_setup
     (app : MessageApplication Principal)

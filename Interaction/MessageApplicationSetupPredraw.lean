@@ -121,7 +121,8 @@ theorem focal_runMixedWithin_setup_eq_runBehavioral
     (who : @Invocation Principal) (schedule : List (@Invocation Principal))
     (initials : FinDist app.PolicyExecution)
     (replacement : app.InvocationSite who → FinDist (app.InvocationCommand who))
-    (initial : app.PolicyExecution) (hinitial : initial ∈ initials.support) :
+    (initial : app.PolicyExecution) (hinitial : initial ∈ initials.support)
+    (fuel : Nat) (hfuel : fuel ≤ schedule.length) :
     let M := app.focalInformation players environment who schedule initial
     let start := (app.focalProtocol players environment who schedule initial).initHistory
     let policy : (i : Unit) → M.BehavioralPolicy i := fun _ =>
@@ -131,7 +132,7 @@ theorem focal_runMixedWithin_setup_eq_runBehavioral
     let fallback : (i : Unit) → M.Policy i := fun _ =>
       app.focalWaitPolicy players environment who schedule initial
     M.runMixedFrom (fun i => (policy i).toMixedWithin (sites i) (fallback i))
-        schedule.length start = M.runBehavioralFrom policy schedule.length start := by
+        fuel start = M.runBehavioralFrom policy fuel start := by
   classical
   dsimp only
   let M := app.focalInformation players environment who schedule initial
@@ -144,12 +145,13 @@ theorem focal_runMixedWithin_setup_eq_runBehavioral
     app.focalWaitPolicy players environment who schedule initial
   calc
     _ = M.runBehavioralFrom (InformationModel.restrictProfile M policy sites fallback)
-          schedule.length start :=
+          fuel start :=
       M.runMixedFrom_restrictRandomization
         (app.focal_actsOnceWhereItMatters players environment who schedule initial)
-        policy sites fallback schedule.length start
-    _ = _ := (M.runBehavioralFrom_congr_on_support schedule.length start
-      (app.focal_restrictProfile_agrees_on_support players environment who schedule initials
-        replacement initial hinitial)).symm
+        policy sites fallback fuel start
+    _ = _ := (M.runBehavioralFrom_congr_on_support fuel start (by
+      intro elapsed helapsed later hlater hterminal i
+      exact app.focal_restrictProfile_agrees_on_support players environment who schedule initials
+        replacement initial hinitial elapsed (helapsed.trans hfuel) later hlater hterminal i)).symm
 
 end Interaction.MessageApplication

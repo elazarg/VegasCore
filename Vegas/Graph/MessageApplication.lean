@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Graph.PublicEvaluation
+import Vegas.Graph.Observation
 import Interaction.CommitmentCandidates
 import Interaction.MessageApplication
 
@@ -133,6 +133,71 @@ def playerView (state : State Player L Δ) (who : Player) : PlayerView Player L 
   | .running _ ideal values bindings candidates pc clock enteredAt =>
       ⟨who, ⟨_, values, pc, clock, enteredAt, bindings⟩, observe who ideal,
         fun serial => candidates.lookup (who, .prepared serial)⟩
+
+omit [DecidableEq Player] R in
+private theorem initialBindings_independent (context : VCtx Player L)
+    (left right : VEnv L context) :
+    initialBindings (initialEntries context left) =
+      initialBindings (initialEntries context right) := by
+  induction context with
+  | nil => rfl
+  | cons head tail ih =>
+      rcases head with ⟨name, ty, visibility⟩
+      cases visibility with
+      | pub => exact ih (VEnv.tail left) (VEnv.tail right)
+      | sealed owner =>
+          exact congrArg (List.cons (name, (owner, Slot.initial name)))
+            (ih (VEnv.tail left) (VEnv.tail right))
+
+/-- Public setup metadata depends only on the public initial fields. Initial
+commitment addresses reveal neither private values nor their failure status. -/
+theorem initial_publicView_congr {Γ : VCtx Player L} (graph : Graph Player L Γ Δ)
+    (left right : VEnv L Γ)
+    (samePublic : (PublicValues.ofVEnv left : PublicValues Γ) =
+      (PublicValues.ofVEnv right : PublicValues Γ)) :
+    (initial graph left).publicView = (initial graph right).publicView := by
+  dsimp only [initial, publicView]
+  rw [samePublic, initialBindings_independent Γ left right]
+
+/-- Setup exposes exactly the player's graph observation: equal graph-visible
+initial data give equal native application views despite different secrets. -/
+theorem initial_playerView_congr {Γ : VCtx Player L} (graph : Graph Player L Γ Δ)
+    (who : Player) (left right : VEnv L Γ)
+    (visible : observe who left = observe who right) :
+    (initial graph left).playerView who = (initial graph right).playerView who := by
+  have samePublic := Graph.publicValues_eq_of_observe_eq who left right visible
+  change PlayerView.mk who
+      ⟨Γ, PublicValues.ofVEnv left, 0, 0, 0, initialBindings (initialEntries Γ left)⟩
+      (observe who left) (fun _ => .fresh) =
+    PlayerView.mk who
+      ⟨Γ, PublicValues.ofVEnv right, 0, 0, 0, initialBindings (initialEntries Γ right)⟩
+      (observe who right) (fun _ => .fresh)
+  rw [samePublic, initialBindings_independent Γ left right, visible]
+
+omit [DecidableEq Player] R in
+private theorem initialBindings_names (context : VCtx Player L) (input : VEnv L context)
+    (name : VarId) (handle : Handle Player)
+    (found : lookupBinding (initialBindings (initialEntries context input)) name = some handle) :
+    name ∈ context.map Prod.fst := by
+  induction context with
+  | nil => simp [initialEntries, initialBindings, lookupBinding] at found
+  | cons head tail ih =>
+      rcases head with ⟨field, ty, visibility⟩
+      cases visibility with
+      | pub => exact List.mem_cons_of_mem _ (ih (VEnv.tail input) found)
+      | sealed owner =>
+          by_cases same : field = name
+          · simp [same]
+          · apply List.mem_cons_of_mem
+            apply ih (VEnv.tail input)
+            simpa [initialEntries, initialBindings, lookupBinding, same] using found
+
+/-- Every address installed by setup belongs to an actual initial field. -/
+theorem initial_binding_name {Γ : VCtx Player L} (graph : Graph Player L Γ Δ)
+    (input : VEnv L Γ) (name : VarId) (handle : Handle Player)
+    (found : lookupBinding (initial graph input).publicView.bindings name = some handle) :
+    name ∈ Γ.map Prod.fst :=
+  initialBindings_names Γ input name handle found
 
 def candidates : State Player L Δ → CommitmentCandidates Player Slot (Raw L)
   | .running _ _ _ _ candidates _ _ _ => candidates

@@ -36,9 +36,12 @@ theorem honest_service_bind_head_advances
     (site : Nat) (walk : Prefix Δ whole (.bind name owner fresh tail) site)
     (before suffix : List (ServiceInstruction Player)) (roster : List Player)
     (rounds : Nat) (wire : runtime.application.WirePolicy)
+    (players : Player → runtime.application.PlayerPolicy)
+    (ownerCompiled : players owner =
+      runtime.compilePlayerPolicy whole owner (profile owner))
     (execution afterBlock : runtime.application.PolicyExecution)
     (reached : execution ∈ (runtime.application.runPolicies
-      (runtime.compileProfile whole profile)
+      players
       (runtime.serviceEnvironment
         (before ++ [.player owner, .player owner] ++
           (List.replicate rounds (reactionRound roster)).flatten ++
@@ -52,7 +55,7 @@ theorem honest_service_bind_head_advances
     (cursor : execution.environmentHistory.length =
       (before.filterMap ServiceInstruction.environmentSlot).length)
     (supported : afterBlock ∈ (runtime.application.runPolicies
-      (runtime.compileProfile whole profile)
+      players
       (runtime.serviceEnvironment
         (before ++ [.player owner, .player owner] ++
           (List.replicate rounds (reactionRound roster)).flatten ++
@@ -70,7 +73,7 @@ theorem honest_service_bind_head_advances
     (.bind name owner fresh tail) site execution.native.application follows
   by_cases already : site < execution.native.application.phase
   · have monotone := runtime.runPolicies_phase_mono
-      (runtime.compileProfile whole profile) environment _ execution afterBlock
+      players environment _ execution afterBlock
       (by simpa [environment, reactions] using supported)
     exact already.trans_le monotone
   have atPhase : execution.native.application.phase = site := by
@@ -83,8 +86,8 @@ theorem honest_service_bind_head_advances
   simp only [FinDist.support_bind, Set.mem_iUnion] at throughLeadAndReactions
   obtain ⟨afterLead, leadSupported, reactionSupported⟩ := throughLeadAndReactions
   apply runtime.runPolicies_initial_bind_full_service_block_advances name owner whole
-    (profile owner) fresh tail site walk input (runtime.compileProfile whole profile)
-    (by rfl) before suffix roster rounds wire (before.map ServiceInstruction.invocation)
+    (profile owner) fresh tail site walk input players ownerCompiled before suffix roster rounds
+    wire (before.map ServiceInstruction.invocation)
     execution afterLead reacted
     afterBlock reached follows atPhase cursor
   · simpa [ServiceInstruction.invocation] using leadSupported
@@ -109,9 +112,12 @@ theorem honest_service_resolve_head_advances
       (.resolve outputName owner bindingName fresh source checks tail) site)
     (before suffix : List (ServiceInstruction Player)) (roster : List Player)
     (rounds : Nat) (wire : runtime.application.WirePolicy)
+    (players : Player → runtime.application.PlayerPolicy)
+    (ownerCompiled : players owner =
+      runtime.compilePlayerPolicy whole owner (profile owner))
     (execution afterBlock : runtime.application.PolicyExecution)
     (reached : execution ∈ (runtime.application.runPolicies
-      (runtime.compileProfile whole profile)
+      players
       (runtime.serviceEnvironment
         (before ++ [.player owner, .player owner] ++
           (List.replicate rounds (reactionRound roster)).flatten ++
@@ -125,7 +131,7 @@ theorem honest_service_resolve_head_advances
     (cursor : execution.environmentHistory.length =
       (before.filterMap ServiceInstruction.environmentSlot).length)
     (supported : afterBlock ∈ (runtime.application.runPolicies
-      (runtime.compileProfile whole profile)
+      players
       (runtime.serviceEnvironment
         (before ++ [.player owner, .player owner] ++
           (List.replicate rounds (reactionRound roster)).flatten ++
@@ -144,7 +150,7 @@ theorem honest_service_resolve_head_advances
     execution.native.application follows
   by_cases already : site < execution.native.application.phase
   · have monotone := runtime.runPolicies_phase_mono
-      (runtime.compileProfile whole profile) environment _ execution afterBlock
+      players environment _ execution afterBlock
       (by simpa [environment, reactions] using supported)
     exact already.trans_le monotone
   have atPhase : execution.native.application.phase = site := by
@@ -155,7 +161,7 @@ theorem honest_service_resolve_head_advances
       (.resolve outputName owner bindingName fresh source checks tail) site
       execution.native.application follows (by simpa [State.publicView_pc] using atPhase)
   have agreement := runtime.runPolicies_preserves_publicAgreement
-    (runtime.compileProfile whole profile) environment
+    players environment
     (before.map ServiceInstruction.invocation) _ execution
     (State.initial_publicAgreement whole input) (by simpa [environment, reactions] using reached)
   rw [stateEq] at agreement
@@ -170,7 +176,7 @@ theorem honest_service_resolve_head_advances
   obtain ⟨afterLead, leadSupported, reactionSupported⟩ := throughLeadAndReactions
   apply resolve_full_service_block_advances runtime whole input unique discipline
     outputName bindingName owner fresh source checks tail (profile owner) site walk
-    (runtime.compileProfile whole profile) (by rfl) before reactions suffix wire
+    players ownerCompiled before reactions suffix wire
     (before.map ServiceInstruction.invocation) execution afterLead reacted afterBlock
     ideal bindings candidates clock enteredAt
   · simpa [environment, reactions] using reached

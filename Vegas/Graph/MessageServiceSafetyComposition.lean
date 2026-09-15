@@ -27,7 +27,7 @@ def ExpirySafe (runtime : GraphRuntime Player L Δ)
       next.native.application.phase ≠ phase ∨ next.native.application.IsSample
 
 /-- Locate a distinguished cons either in the left or right side of an append. -/
-private theorem append_cons_split {A : Type} (left right before after : List A) (item : A)
+theorem append_cons_split {A : Type} (left right before after : List A) (item : A)
     (equal : left ++ right = before ++ item :: after) :
     (∃ leftBefore leftAfter, left = leftBefore ++ item :: leftAfter ∧
       before = leftBefore ∧ after = leftAfter ++ right) ∨

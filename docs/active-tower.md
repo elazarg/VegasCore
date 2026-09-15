@@ -24,6 +24,10 @@ private setups. `MessageBindingProvenance` preserves the corresponding
 field/handle invariant through arbitrary native policies. Successful
 prescribed disclosures therefore have an exact accepted verifier. These
 certificates require no additional law on the abstract expression types.
+`MessageBindingSoundness` proves the converse needed for arbitrary senders:
+every verified typed opening at an accepted address equals the immutable graph
+cell. It holds from initial setup through arbitrary player and environment
+policies, including failed, ill-typed, and repeated commitment preparations.
 `MessageHistoryExtension` proves the compiler's whole-prefix own-action
 projection laws. Neither fact substitutes for the remaining probability and
 observation-local deviation argument.
@@ -91,6 +95,15 @@ waits at a completed phase or runs a chance node. Its graph induction retains
 the complete environment policy and handles early advancement during reactions.
 The runtime-general finite-run conservation theorem then composes the local
 equations; completion identifies the final residual law with the actual outcome.
+
+`servicePlan_unilateralDeviation_expirySafe` extends service protection to one
+arbitrary native deviator: a reached expiry is stale, executes a chance node,
+or belongs to that deviator. It cannot expire an unchanged player's live
+decision. `MessageDeviationExtraction` identifies the first actual
+phase-changing transition and proves that a bind or resolve transition has
+the effect of a legal graph action. This extraction reads accepted immutable
+values and verified packets, not the deviator's caches. It is a transition
+correspondence, not yet an observation-local graph policy or a deviation law.
 
 The native host admits competing and unopenable candidates, arbitrary tagged
 payloads, pending delivery, retries/replay, rejection receipts, and withholding.
@@ -169,12 +182,16 @@ would require a different strategy space.
 
 For the full typed host, the immediate goal is an exact deviation-mixture law
 under canonical order and deadline-relative service. The remaining work is
-whole-program observation projection, protection of unchanged players' messages
-from expiry, and the joint observation/probability argument with unchanged
-opponents. Service completion is proved. The generic shared-prior predrawing
+whole-program observation-local policy extraction and its outcome-law coupling
+with unchanged opponents. Service completion and protection of unchanged
+players from expiry are proved. The generic shared-prior predrawing
 theorem supplies one joint player/environment response mixture before the
 initial execution is sampled; it preserves the complete native execution law
-but does not construct a graph deviation. Hiding an
+but does not construct a graph deviation. The concrete
+`exists_joint_service_response_mixture_runPolicies_setup` keeps reserved
+inclusion and expiry live while predrawing only the focal player and adaptive
+wire choices. It uses one response pair across the entire private initial law.
+Hiding an
 accepted handle and matching local result stores do not alone prove that law.
 The [proof plan](typed-message-edge.md) records the failed-opening information
 test and the causal replay obligation.

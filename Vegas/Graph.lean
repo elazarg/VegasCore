@@ -4,13 +4,16 @@ import Vegas.Graph.Basic
 import Vegas.Graph.BindingDiscipline
 import Vegas.Graph.Semantics
 import Vegas.Graph.PublicEvaluation
+import Vegas.Graph.Observation
 import Vegas.Graph.MessageApplication
 import Vegas.Graph.MessageInvariant
+import Vegas.Graph.MessageObservation
 import Vegas.Graph.MessageStepLaw
 import Vegas.Graph.MessagePolicies
 import Vegas.Graph.MessagePolicyLaws
 import Vegas.Graph.MessageProgress
 import Vegas.Graph.MessageService
+import Vegas.Graph.MessageServicePredraw
 import Vegas.Graph.MessageServiceLaw
 import Vegas.Graph.MessageServiceCursor
 import Vegas.Graph.MessageBindingLaw
@@ -21,6 +24,7 @@ import Vegas.Graph.MessageBindingService
 import Vegas.Graph.MessagePolicyHistory
 import Vegas.Graph.MessagePrefixComposition
 import Vegas.Graph.MessageFocalDeterminism
+import Vegas.Graph.MessageDeviationExtraction
 import Vegas.Graph.MessageContinuation
 import Vegas.Graph.MessageContinuationFrame
 import Vegas.Graph.MessageContinuationPolicy
@@ -39,6 +43,7 @@ import Vegas.Graph.MessagePolicyFreshness
 import Vegas.Graph.MessageResolutionLaw
 import Vegas.Graph.MessageVerification
 import Vegas.Graph.MessageBindingProvenance
+import Vegas.Graph.MessageBindingSoundness
 import Vegas.Graph.MessageExpiryService
 import Vegas.Graph.MessageServiceTermination
 import Vegas.Graph.MessageServiceProtection
@@ -46,3 +51,4 @@ import Vegas.Graph.MessageServiceSafety
 import Vegas.Graph.MessageDisclosureAcceptance
 import Vegas.Graph.MessageDisclosureService
 import Vegas.Graph.MessageHonestServiceSafety
+import Vegas.Graph.MessageDeviationServiceSafety

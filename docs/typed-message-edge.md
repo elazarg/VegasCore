@@ -446,8 +446,11 @@ invocation cursor and on reachable states, with this staged interpretation of
 `V`. At completion, `V` is the point mass at the decoded terminal environment.
 Finite bind associativity gives the checked whole-run honest law.
 For arbitrary focal deviations, the continuation must instead use an
-observation-local extracted focal policy and protect every unchanged player's
-outstanding action; that extension is unproved.
+observation-local extracted focal policy. Protection of every unchanged
+player's outstanding action is checked by
+`servicePlan_unilateralDeviation_expirySafe`: only the deviator's own live
+decision may expire. Constructing the focal policy and extending the
+continuation-law argument remain unproved.
 The checked safety induction is over graph-indexed service blocks; finite-run
 conservation then composes individual invocation laws. Both retain the complete service plan and
 environment history: replacing the service environment by one for the
@@ -495,6 +498,18 @@ response-function law independent of the chosen initial model, including at
 unreachable sites. The generic finite-site protocol lemma is separately owned
 by `GameTheoryExtensions/Protocol/FiniteSupportPredraw.lean`.
 
+The concrete service-preserving reduction is also checked:
+`GraphRuntime.exists_joint_service_response_mixture_runPolicies_setup` draws
+one focal response and one wire response before the initial execution. Each
+component runs under the actual `serviceEnvironment`, with reserved inclusion
+and expiry computed from its live state. Only ordinary wire choices are
+predrawn. Supported pure-response histories stay within the original
+behavioral support; the selected-site command laws therefore justify replacing
+the full predrawn environment response by this service wrapper. The equality
+preserves the complete execution law while leaving opponent policies and graph
+chance kernels live. It reduces the remaining deviation proof to deterministic
+focal and wire responses without weakening the service premise.
+
 For a fixed response pair, pure extraction replays the environment response and
 graph-ineffective public transitions on the native prefix paired with the
 current graph prefix. The extracted graph action may inspect only the visible
@@ -515,6 +530,16 @@ already supplied by predrawing. It requires this extraction invariant and
 composition of the local probability and service laws with one arbitrary focal
 policy; the all-prescribed continuation theorem alone does not supply that
 composition.
+
+The [effective-action extraction](pending-deviation-extraction.md) separates
+the checked transition correspondence from this policy-locality obligation.
+Every first phase-changing bind step fixes a legal graph value or failure;
+every such resolve step realizes a legal graph disclosure decision.
+`State.BindingSoundness` supplies the verification-to-immutable-value direction
+for arbitrary senders, including bindings whose materialized value is failure.
+`MessageObservation` proves that private preparation leaves other players'
+views unchanged and that commitment admission reveals no foreign sealed value.
+These local laws do not yet establish the whole-prefix two-run invariant.
 
 ### Sharp information test
 

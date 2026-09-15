@@ -60,6 +60,7 @@ import Interaction.ChoiceControllerHistory
 import Interaction.MessageApplicationPredraw
 import Interaction.MessageApplicationSetupPredraw
 import Interaction.MessageApplicationPredrawTransport
+import Interaction.MessageApplicationPredrawSupport
 import Interaction.MessageApplicationContinuation
 import Interaction.MessageApplicationCheckpoints
 import Interaction.SealedProgram

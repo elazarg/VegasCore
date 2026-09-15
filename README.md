@@ -25,9 +25,10 @@ checked. The prescribed-policy compiler and its local command laws are
 implemented. The concrete reserved service terminates for arbitrary player
 policies and adaptive wire choices, including with private initial setup.
 Binding-origin certificates and verifier provenance are checked, including
-arbitrary native deviations. The whole-run honest law and arbitrary-deviation
-certificate remain unproved. Thus the full-language
-Nash theorem currently reaches the graph, not the pending-message runtime.
+arbitrary native deviations. The whole-run honest outcome law is proved and
+composes with the source-to-graph law. It also gives Nash reflection at compiled
+profiles. Arbitrary-deviation simulation and forward Nash preservation remain
+unproved for this pending-message runtime.
 
 A restricted `WFProgram` / `Vegas.EventGraph` candidate backend separately has
 checked end-to-end public outcome and unilateral-deviation utility bounds,
@@ -68,7 +69,7 @@ the source language, event-graph compiler, and its native integration.
 ## Paper target and proof status
 
 The single active `Paper.lean` audit selects paper-visible capstones and
-important lemmas. Proved results delegate directly to repository theorems;
+important lemmas. Proved results delegate directly to repository theorems.
 The full-language pending-message completion and honest outcome laws are proved;
 two explicitly admitted capstones state the deviation-mixture and Nash
 objectives. Every declaration has an axiom pin, with
