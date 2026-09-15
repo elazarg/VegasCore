@@ -24,3 +24,4 @@ import InteractionTests.SealedCandidateSubmission
 import InteractionTests.SealedResolutionDriver
 import InteractionTests.SealedResolutionService
 import InteractionTests.SealedResolutionKnowledge
+import InteractionTests.GuardedPublication

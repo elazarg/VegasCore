@@ -41,6 +41,15 @@ theorem. Networking constructs do not belong in the minimal source language.
 Whether the current source failure semantics matches the intended programming
 contract must be settled explicitly, not assumed from a backend default.
 
+The [deferred-guard specification](deferred-guards-semantics.tex) and checked
+`Interaction.GuardedPublication` component provide a candidate interpretation:
+ordinary typed values, pending publications, and null failures are distinct;
+deferred relations fail the publication that closes an inconsistent tuple.
+Private bindings and earlier public results are immutable. Consistency and
+ordinary satisfying executions are proved. Integrating source expression
+evaluation, observations, chance, and settlement remains the acceptance test;
+the component alone does not complete the models milestone.
+
 ## One compilation spine
 
 ```text
@@ -98,9 +107,12 @@ Separate raw candidates from legal source actions. Preserve arbitrary candidate
 selection, failed openings, retries, and rejection. Rejection is an application
 stutter; authorized resolution installs a declared legal alternative and its
 continuation. Retain original guard inputs without pretending public code can
-read a secret. Source legality is determined at commitment: a raw candidate
-rejected at reveal never becomes a legal source action merely by being bound.
-Its backtranslation needs a legal alternative at that commitment checkpoint.
+read a secret. In the current source, legality is determined at commitment:
+a raw candidate rejected at reveal never becomes a legal source action merely
+by being bound. A correspondence with that source needs a legal alternative
+at the commitment checkpoint. A source with explicit deferred failure instead
+needs its own policy semantics and correspondence; existing theorems do not
+automatically transfer to the changed rules.
 
 Design chance and initialization at this same boundary before proving another
 whole-program specialization. Chance draws from the source conditional kernel

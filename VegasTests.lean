@@ -50,6 +50,7 @@ import VegasTests.GraphPublicPrefix
 import VegasTests.GraphRestriction
 import VegasTests.SealedResolutionCylinder
 import VegasTests.OrderedProtocol
+import VegasTests.FailureGame
 
 /-! # Regression tests for the active strict sealed-message tower
 

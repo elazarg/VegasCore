@@ -88,6 +88,23 @@ This is the unresolved semantic boundary. It must not be bypassed by a global
 "resolution is source-correct" field or a utility assumption on an outcome
 which is not a legal source quitting outcome.
 
+The [deferred-guard specification](deferred-guards-semantics.tex) develops a
+candidate source interpretation in `Interaction.GuardedPublication` and
+`Interaction.BoundPublication`. It separates pending publication, resolved
+failure, and ordinary typed values. Relations wait for their dependencies;
+if a publication would close a false relation, that publication fails while
+earlier publications and private bindings remain unchanged. The checked laws
+cover consistency, write-once publication, failure attribution under owned
+pending dependencies, and successful publication of any satisfying ordinary
+assignment. Heterogeneous partial-disclosure tests and an informed-failure
+matching-pennies Nash example check that the component is nonvacuous.
+
+These components do not change the current `Vegas.Core` rules or this typed
+adapter. Source expressions, observations, chance, and settlement still need
+one integrated semantics and a compiler correspondence. In particular, the
+adapter's ideal evaluation of private guard inputs is not an implementation
+of deferred public validation.
+
 The generic runtime also has certified-binding and recovery modes. These are
 explicitly stronger ideal capabilities: they check a hidden candidate before
 acceptance and can disclose the same immutable value without its owner's

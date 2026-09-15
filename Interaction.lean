@@ -129,3 +129,5 @@ import Interaction.SealedResolutionPolicy
 import Interaction.SealedResolutionLikelihood
 import Interaction.SealedResolutionKnowledge
 import Interaction.SealedResolutionCoupling
+import Interaction.GuardedPublication
+import Interaction.BoundPublication

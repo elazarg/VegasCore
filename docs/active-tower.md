@@ -5,6 +5,12 @@ records the broader compiler goal and milestone acceptance tests; the
 [typed protocol interface](typed-protocol-interface.md) describes the broader
 operational model and the unresolved source-resolution boundary.
 
+The [deferred-guard mathematical specification](deferred-guards-semantics.tex)
+has a checked publication component in `Interaction.GuardedPublication` and
+immutable bindings in `Interaction.BoundPublication`. Its consistency and
+honest-feasibility theorems are source-design results, not another compiled
+tower edge. The active source and compiler below have not been migrated to it.
+
 ## Layers and results
 
 | Layer | Main interface | Checked result and boundary |
