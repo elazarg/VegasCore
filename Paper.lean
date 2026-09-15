@@ -129,8 +129,8 @@ theorem source_pending_complete [IExpr.ResultTypes L]
     (setup.pendingOutcome runtime outcome).isSome = true :=
   setup.pendingGame_complete runtime roster reactionRounds wire players outcome supported
 
-/-- error: declaration uses `sorry` -/
-#guard_msgs (whitespace := lax) in
+/-- Complete source-to-pending honest outcome-law preservation, including
+private initial setup, adaptive wire delivery, and arbitrary reaction rosters. -/
 theorem source_pending_honest_law [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
     (runtime : GraphRuntime Player L (SourceProgram.graphCtx setup.program.terminalCtx))
@@ -138,8 +138,8 @@ theorem source_pending_honest_law [IExpr.ResultTypes L]
     (profile : SourceProgram.BehavioralProfile setup.program) :
     ((setup.pendingGame runtime roster reactionRounds wire).play
       (fun who => setup.compilePendingStrategy runtime who (profile who))).map
-        (setup.pendingOutcome runtime) = (setup.run profile).map some := by
-  sorry
+        (setup.pendingOutcome runtime) = (setup.run profile).map some :=
+  setup.pendingGame_honest_law runtime roster reactionRounds wire profile
 
 /-- error: declaration uses `sorry` -/
 #guard_msgs (whitespace := lax) in
@@ -319,7 +319,7 @@ end Vegas.Paper
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_pending_complete
 /-- info: 'Vegas.Paper.source_pending_honest_law' depends on axioms:
-[propext, sorryAx, Classical.choice, Quot.sound] -/
+[propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_pending_honest_law
 /-- info: 'Vegas.Paper.source_pending_deviation_law' depends on axioms:

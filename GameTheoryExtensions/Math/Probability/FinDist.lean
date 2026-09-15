@@ -43,6 +43,59 @@ theorem bindOnSupport_map {γ : Type*} (law : FinDist α) (f : α → β)
   intro value supported
   exact agrees (f value) (by rw [support_map]; exact ⟨value, supported, rfl⟩)
 
+/-- Support-dependent composition is associative.  The evidence for the final
+continuation is constructed from the two realized support witnesses, so no
+arbitrary off-support continuation is needed. -/
+@[simp]
+theorem bindOnSupport_bindOnSupport {γ : Type*} (law : FinDist α)
+    (first : ∀ value ∈ law.support, FinDist β)
+    (next : ∀ value ∈ (law.bindOnSupport first).support, FinDist γ) :
+    (law.bindOnSupport first).bindOnSupport next =
+      law.bindOnSupport fun value valueMem =>
+        (first value valueMem).bindOnSupport fun result resultMem =>
+          next result (by
+            rw [support_bindOnSupport]
+            exact Set.mem_iUnion_of_mem value
+              (Set.mem_iUnion_of_mem valueMem resultMem)) := by
+  apply ext
+  change
+    ((law.toPMF.bindOnSupport fun value valueMem =>
+      (first value valueMem).toPMF).bindOnSupport fun value valueMem =>
+        (next value valueMem).toPMF) = _
+  exact PMF.bindOnSupport_bindOnSupport law.toPMF
+    (fun value valueMem => (first value valueMem).toPMF)
+    (fun value valueMem => (next value valueMem).toPMF)
+
+/-- Associativity when the first continuation is total but the final one uses
+support evidence. -/
+theorem bind_bindOnSupport_assoc {γ : Type*} (law : FinDist α)
+    (first : α → FinDist β)
+    (next : ∀ value ∈ (law.bind first).support, FinDist γ) :
+    (law.bind first).bindOnSupport next =
+      law.bindOnSupport fun value valueMem =>
+        (first value).bindOnSupport fun result resultMem =>
+          next result (by
+            rw [support_bind]
+            exact Set.mem_iUnion_of_mem value
+              (Set.mem_iUnion_of_mem valueMem resultMem)) := by
+  let dependentFirst : ∀ value ∈ law.support, FinDist β := fun value _ => first value
+  have sourceEq : law.bindOnSupport dependentFirst = law.bind first :=
+    bindOnSupport_eq_bind law first
+  calc
+    (law.bind first).bindOnSupport next =
+        (law.bindOnSupport dependentFirst).bindOnSupport
+          (fun value valueMem => next value (by rwa [sourceEq] at valueMem)) := by
+      apply bindOnSupport_congr_measure sourceEq.symm
+      intro value _ _
+      congr
+    _ = law.bindOnSupport fun value valueMem =>
+          (first value).bindOnSupport fun result resultMem =>
+            next result (by
+              rw [support_bind]
+              exact Set.mem_iUnion_of_mem value
+                (Set.mem_iUnion_of_mem valueMem resultMem)) := by
+      exact bindOnSupport_bindOnSupport law dependentFirst _
+
 /-- Events that agree on a law's support have the same probability. -/
 theorem probOf_congr (law : FinDist α) {first second : Set α}
     (hagrees : ∀ outcome ∈ law.support, outcome ∈ first ↔ outcome ∈ second) :

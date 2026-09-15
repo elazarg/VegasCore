@@ -31,6 +31,7 @@ import Vegas.Graph.MessageContinuationStep
 import Vegas.Graph.MessageContinuationEnvironment
 import Vegas.Graph.MessageContinuationService
 import Vegas.Graph.MessageContinuationWire
+import Vegas.Graph.MessageHonestLaw
 import Vegas.Graph.MessageHistoryExtension
 import Vegas.Graph.MessageServiceCompletion
 import Vegas.Graph.MessagePhaseFrame
@@ -41,5 +42,7 @@ import Vegas.Graph.MessageBindingProvenance
 import Vegas.Graph.MessageExpiryService
 import Vegas.Graph.MessageServiceTermination
 import Vegas.Graph.MessageServiceProtection
+import Vegas.Graph.MessageServiceSafety
 import Vegas.Graph.MessageDisclosureAcceptance
 import Vegas.Graph.MessageDisclosureService
+import Vegas.Graph.MessageHonestServiceSafety

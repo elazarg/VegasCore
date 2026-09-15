@@ -91,20 +91,10 @@ theorem servicePlan_terminates_from (runtime : GraphRuntime Player L Δ)
         simp only [MessageApplication.runPolicies, FinDist.support_bind,
           Set.mem_iUnion, FinDist.mem_support_pure]
         exact ⟨middle, first, rfl⟩
-      obtain ⟨length, hlength⟩ := State.follows_phase
-        (.sample name fresh law tail) phase execution.native.application follows
-      have phaseLe : phase ≤ execution.native.application.publicView.pc := by omega
       have advanced : phase < middle.native.application.publicView.pc := by
-        rcases phaseLe.eq_or_lt with atPhase | already
-        · have exactAdvance := runtime.runPolicies_expire_sample_advances players before
-            (runtime.servicePlan roster reactionRounds tail (phase + 1)) phase wire
-            execution middle follows cursor atPhase.symm firstRun
-          omega
-        · have monotone := runtime.runPolicies_phase_mono players _ [.environment]
-            execution middle firstRun
-          change phase < execution.native.application.phase at already
-          change phase < middle.native.application.phase
-          omega
+        exact runtime.runPolicies_sample_slot_advances players before
+          (runtime.servicePlan roster reactionRounds tail (phase + 1)) phase wire
+          execution middle follows cursor firstRun
       have middleFollows := runtime.runPolicies_follows
         (.sample name fresh law tail) phase players _ [.environment]
         execution middle follows firstRun

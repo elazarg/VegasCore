@@ -94,6 +94,36 @@ theorem runPolicies_expire_sample_advances (runtime : GraphRuntime Player L Δ)
   rw [← nextEq]
   rfl
 
+/-- At a sample's reserved slot, execution passes that nominal phase. If
+earlier inclusions already advanced further, phase monotonicity suffices. -/
+theorem runPolicies_sample_slot_advances (runtime : GraphRuntime Player L Δ)
+    {name : VarId} {payload : L.Ty} {fresh law}
+    {tail : Graph Player L ((name, .pub payload) :: Γ) Δ}
+    (players : Player → runtime.application.PlayerPolicy)
+    (before suffix : List (ServiceInstruction Player)) (phase : Nat)
+    (wire : runtime.application.WirePolicy)
+    (execution next : runtime.application.PolicyExecution)
+    (follows : execution.native.application.Follows (.sample name fresh law tail) phase)
+    (cursor : execution.environmentHistory.length =
+      (before.filterMap ServiceInstruction.environmentSlot).length)
+    (supported : next ∈ (runtime.application.runPolicies players
+      (runtime.serviceEnvironment (before ++ .expire phase :: suffix) wire)
+      [.environment] execution).support) : phase < next.native.application.phase := by
+  obtain ⟨length, phaseEq⟩ := State.follows_phase
+    (.sample name fresh law tail) phase execution.native.application follows
+  have lower : phase ≤ execution.native.application.phase := by
+    simpa only [State.publicView_pc] using
+      (show phase ≤ execution.native.application.publicView.pc by omega)
+  rcases lower.eq_or_lt with current | passed
+  · have advanced := runtime.runPolicies_expire_sample_advances players before suffix phase wire
+      execution next follows cursor (by simpa only [State.publicView_pc] using current.symm)
+      supported
+    rw [State.publicView_pc] at advanced
+    omega
+  · exact passed.trans_le (runtime.runPolicies_phase_mono players
+      (runtime.serviceEnvironment (before ++ .expire phase :: suffix) wire)
+      [.environment] execution next supported)
+
 private theorem runPolicies_expire_progress (runtime : GraphRuntime Player L Δ)
     (players : Player → runtime.application.PlayerPolicy)
     (before suffix : List (ServiceInstruction Player)) (phase : Nat)

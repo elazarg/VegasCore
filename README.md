@@ -69,8 +69,9 @@ the source language, event-graph compiler, and its native integration.
 
 The single active `Paper.lean` audit selects paper-visible capstones and
 important lemmas. Proved results delegate directly to repository theorems;
-three explicitly admitted pending-message capstones state the concrete honest,
-deviation-mixture, and Nash objectives. Every declaration has an axiom pin, with
+The full-language pending-message completion and honest outcome laws are proved;
+two explicitly admitted capstones state the deviation-mixture and Nash
+objectives. Every declaration has an axiom pin, with
 `sorryAx` recorded for the admitted objectives. Supporting proofs stay in their
 owning modules; archives do not
 contribute proof coverage. The current theorem boundary is listed in

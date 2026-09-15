@@ -171,8 +171,9 @@ remember the Boolean once; next submit the prechecked opening or the uniform
 withhold packet, then wait. Own command history detects prior preparation,
 memory, and submission without relying on scheduling-dependent receipts.
 Both successful and failed prescribed play use the same number of local
-invocations before submission. The local kernel and submission laws are checked;
-the whole-program observation and provenance invariants remain proof work.
+invocations before submission. The local kernel and submission laws, initialized
+provenance invariants, and whole-run honest law are checked. Observation-local
+extraction of arbitrary native deviations remains proof work.
 `MessagePolicyCommands` proves that every supported compiled command is
 addressed to the active phase, never malformed or replayed. Once a submission
 is recorded for that phase, the policy waits while it remains active. These
@@ -253,9 +254,10 @@ play of the concrete service terminates, with arbitrary player and wire
 policies. The typed suffix invariant allows early inclusion to advance past
 planned phases. This theorem composes to `Setup.pendingGame_complete` for the
 actual source compiler's target, including its finite private initial law.
-It establishes completion, not timely inclusion of prescribed messages;
-the honest-law proof must also show that unchanged players' messages succeed
-before expiry.
+It establishes completion independently of timely inclusion.
+`MessageHonestServiceSafety` separately proves that each prescribed owner block
+advances before its expiry slots. `MessageServiceSafety` lifts this fact through
+the full graph, including executions already ahead of the nominal service phase.
 
 ## Private initial setup
 
@@ -271,16 +273,22 @@ using one uninformed policy. A native deviation mixture may depend on the setup
 law, profile, and wire policy, but must be chosen before the realized hidden
 state. Predrawing separately at each realized initial state is insufficient.
 
-## Proposed strategic proof
+## Honest law and remaining strategic proof
 
 The operational host, policy compiler, local laws, and service termination are
-checked. The shared-prior predrawing theorem is also checked. The whole-run
-continuation identity, observation-local extraction, and deviation law remain
-proof work.
-`Paper.lean` contains a proved completion capstone and three
-explicitly admitted capstones for the actual source-to-pending honest law,
-deviation-mixture law, and epsilon-Nash correspondence. No supporting library
-lemma is admitted.
+checked. The shared-prior predrawing theorem and whole-run honest continuation
+identity are checked as well. `GraphRuntime.servicedGame_honest_law` proves the
+graph outcome law, and `Setup.pendingGame_honest_law` composes it with source
+compilation under the same private initial law. `Paper.lean` delegates its
+completion and honest-law capstones to these repository theorems.
+Observation-local extraction and the deviation law remain proof work; the
+deviation-mixture and epsilon-Nash capstones are the two explicit admissions.
+No supporting library lemma is admitted.
+The checked `Setup.pendingGame_approximate_nash_of_compiled` gives the reverse
+incentive direction already: an epsilon-Nash compiled target profile has an
+epsilon-Nash source profile. It uses honest utility equality for every source
+profile, including compiled source deviations. It does not bound arbitrary
+native deviations and therefore does not prove source-to-target preservation.
 
 ### Reachable-prefix invariant
 
@@ -327,7 +335,7 @@ execution, not just the all-prescribed run. Arbitrary focal delay or withholding
 maps to the graph's failure choice. Sufficient clock progress must separately
 ensure completion; inclusion fairness alone does not make time advance.
 
-### Completed finite-run deviation theorem
+### Target finite-run deviation theorem
 
 Fix a graph profile, a focal principal, one admissible adaptive environment,
 and a bounded finite invocation schedule long enough for guaranteed completion
@@ -400,6 +408,14 @@ ticks with their probability law and proves the waiting case separately.
 reserved `includeLatest` slot by equality of the current environment kernels,
 retaining the full plan and the actual environment-history cursor.
 
+`MessageServiceSafety` proves the expiry premise for every reached prefix of
+the actual plan. A matching expiry can therefore execute only at a chance node;
+prescribed bind and resolve blocks have already advanced. The generic
+`runPolicies_map_bindOnSupport_conservation` composes the local equations along
+labelled invocation opportunities without giving a residual value to an
+off-invariant state. `MessageHonestLaw` combines this identity with the initial
+and terminal continuation laws to obtain exact whole-run honest preservation.
+
 Packet acceptance has a separate origin obligation. For an actual run from
 an empty pool, `runPolicies_initial_pending_submission_origin` recovers the
 original sender invocation, the selected submission command, its allocated
@@ -428,13 +444,12 @@ the honest continuation evaluator does not establish it.
 The local obligation is therefore `V(e) = invoke(e).bind V`, at the actual
 invocation cursor and on reachable states, with this staged interpretation of
 `V`. At completion, `V` is the point mass at the decoded terminal environment.
-Finite bind associativity then gives the whole-run law. This proof must still
-establish that the service never expires an unchanged player's outstanding
-action and that the policy sees the correct graph decision view. For the
-deviation law it additionally needs the observation-local extracted focal
-policy. The continuation equation is a proof plan, not a checked global law.
-The induction is over graph-indexed service blocks, with an inner induction
-over each block's instructions. It retains the complete service plan and
+Finite bind associativity gives the checked whole-run honest law.
+For arbitrary focal deviations, the continuation must instead use an
+observation-local extracted focal policy and protect every unchanged player's
+outstanding action; that extension is unproved.
+The checked safety induction is over graph-indexed service blocks; finite-run
+conservation then composes individual invocation laws. Both retain the complete service plan and
 environment history: replacing the service environment by one for the
 remaining instructions would reset its cursor incorrectly. Every inner step
 uses the actual typed suffix, which may already be beyond the nominal block.
@@ -488,10 +503,18 @@ meanings of other players and recipient-undelivered messages are never graph
 policy inputs. Native details may guide deterministic replay of the fixed
 response pair, but must not be smuggled into the extracted graph observation.
 
+The crucial two-run obligation concerns the extracted focal action: with the
+same predrawn response pair and the same focal graph decision view, that action
+must agree across supported executions, including different private initial
+samples. Equal focal information does not imply equal full residual outcome
+laws when hidden opponent values differ. The outcome-law proof must instead
+retain the opponents' respective live kernels in its execution coupling.
+
 The whole finite-mixture law is the proof goal of this edge, not a consequence
-already supplied by predrawing. It still requires the service-schedule induction,
-observation projection, chance-kernel step, timely inclusion, and final
-decoding proofs.
+already supplied by predrawing. It requires this extraction invariant and
+composition of the local probability and service laws with one arbitrary focal
+policy; the all-prescribed continuation theorem alone does not supply that
+composition.
 
 ### Sharp information test
 

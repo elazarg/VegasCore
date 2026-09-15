@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Interaction.MessageApplicationPolicies
 import Interaction.MessageApplicationLaws
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # Native support refinement for message-application policies -/
 
@@ -206,6 +207,112 @@ theorem runPolicies_initial_application_invariant [DecidableEq Principal]
     invariant next.native.application := by
   exact app.runPolicies_application_invariant invariant hprivate hhandler henvironment
     players environment schedule (PolicyExecution.initial app initial) next hinitial hnext
+
+/-- A support invariant preserved by each labelled invocation is preserved by
+the policy run over the corresponding label plan.  Labels retain protocol
+information which may be erased by their native invocation. -/
+theorem runPolicies_map_invariant [DecidableEq Principal]
+    {Label : Type*} (toInvocation : Label → @Invocation Principal)
+    (invariant : app.PolicyExecution → Prop)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (preserve : ∀ label execution, invariant execution → ∀ next,
+      next ∈ (app.invoke players environment execution (toInvocation label)).support →
+        invariant next)
+    (labels : List Label) (execution : app.PolicyExecution)
+    (hinitial : invariant execution) :
+    ∀ next, next ∈ (app.runPolicies players environment (labels.map toInvocation)
+      execution).support → invariant next := by
+  induction labels generalizing execution with
+  | nil =>
+      intro next supported
+      simp only [List.map_nil, runPolicies, FinDist.mem_support_pure] at supported
+      rwa [supported]
+  | cons label rest ih =>
+      intro next supported
+      simp only [List.map_cons, runPolicies, FinDist.support_bind, Set.mem_iUnion] at supported
+      obtain ⟨middle, first, remaining⟩ := supported
+      exact ih middle (preserve label execution hinitial middle first) next remaining
+
+/-- Pointwise conservation at every actually reached labelled invocation
+lifts to the complete finite policy run.  The residual law is defined only on
+the invariant, and all compositions use support evidence; no off-support
+fallback outcome is introduced. -/
+theorem runPolicies_map_bindOnSupport_conservation [DecidableEq Principal]
+    {Label Outcome : Type*} (toInvocation : Label → @Invocation Principal)
+    (plan : List Label) (invariant : app.PolicyExecution → Prop)
+    (residual : ∀ execution, invariant execution → FinDist Outcome)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (initial : app.PolicyExecution) (hinitial : invariant initial)
+    (preserve : ∀ label execution, invariant execution → ∀ next,
+      next ∈ (app.invoke players environment execution (toInvocation label)).support →
+        invariant next)
+    (conserve : ∀ before label after, plan = before ++ label :: after →
+      ∀ execution, execution ∈ (app.runPolicies players environment
+          (before.map toInvocation) initial).support →
+        ∀ hexecution : invariant execution,
+          (app.invoke players environment execution (toInvocation label)).bindOnSupport
+              (fun next supported => residual next
+                (preserve label execution hexecution next supported)) =
+            residual execution hexecution) :
+    (app.runPolicies players environment (plan.map toInvocation) initial).bindOnSupport
+        (fun next supported => residual next
+          (app.runPolicies_map_invariant toInvocation invariant players environment preserve
+            plan initial hinitial next supported)) =
+      residual initial hinitial := by
+  have go : ∀ before after, plan = before ++ after →
+      ∀ execution, execution ∈ (app.runPolicies players environment
+          (before.map toInvocation) initial).support →
+        ∀ hexecution : invariant execution,
+          (app.runPolicies players environment (after.map toInvocation)
+              execution).bindOnSupport
+              (fun next supported => residual next
+                (app.runPolicies_map_invariant toInvocation invariant players environment
+                  preserve after execution hexecution next supported)) =
+            residual execution hexecution := by
+    intro before after split execution reached hexecution
+    induction after generalizing before execution with
+    | nil =>
+        change (FinDist.pure execution).bindOnSupport _ = _
+        rw [FinDist.pure_bindOnSupport]
+    | cons label rest ih =>
+        let stepLaw := app.invoke players environment execution (toInvocation label)
+        let restLaw := app.runPolicies players environment (rest.map toInvocation)
+        have totalPreserved : ∀ next ∈ (stepLaw.bind restLaw).support, invariant next := by
+          intro next nextMem
+          simp only [FinDist.support_bind, Set.mem_iUnion] at nextMem
+          obtain ⟨middle, middleMem, restMem⟩ := nextMem
+          exact app.runPolicies_map_invariant toInvocation invariant players environment
+            preserve rest middle (preserve label execution hexecution middle middleMem)
+            next restMem
+        have normalized :
+            (app.runPolicies players environment ((label :: rest).map toInvocation)
+              execution).bindOnSupport
+                (fun next supported => residual next
+                  (app.runPolicies_map_invariant toInvocation invariant players environment
+                    preserve (label :: rest) execution hexecution next supported)) =
+              (stepLaw.bind restLaw).bindOnSupport fun next supported =>
+                residual next (totalPreserved next supported) := by
+          apply FinDist.bindOnSupport_congr_measure rfl
+          intro next _ _
+          congr
+        rw [normalized]
+        rw [FinDist.bind_bindOnSupport_assoc]
+        calc
+          _ = (app.invoke players environment execution
+                (toInvocation label)).bindOnSupport
+              (fun middle supported => residual middle
+                (preserve label execution hexecution middle supported)) := by
+              apply FinDist.bindOnSupport_congr
+              intro middle middleMem
+              apply ih (before ++ [label])
+              · simpa [List.append_assoc] using split
+              · simp only [List.map_append, app.runPolicies_append,
+                  FinDist.support_bind, Set.mem_iUnion]
+                exact ⟨execution, reached, by
+                  simpa [runPolicies] using middleMem⟩
+          _ = residual execution hexecution :=
+            conserve before label rest split execution reached hexecution
+  exact go [] plan (by simp) initial (by simp [runPolicies]) hinitial
 
 private theorem advance_action_property [DecidableEq Principal]
     (property : app.Action → Prop) (execution : app.PolicyExecution)
