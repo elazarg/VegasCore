@@ -15,12 +15,15 @@ It covers every `SourceProgram` constructor, without finite-domain,
 guard-feasibility, or failure-dominance premises. The source includes explicit
 binding and disclosure failure, heterogeneous publication results, deferred
 guards, private initial inputs, own-action recall, and dependent public chance.
+Finite setup distributions retain one policy across sampled private states;
+the graph deviation backtranslation is independent of the realized setup.
 
 The message host executes the typed graph directly using the shared
 `Interaction` pool, ideal opaque commitments, public validation, and relative
 deadlines. Its local transition laws and mixed-feature transport tests are
-checked. Its prescribed-policy translation, whole-run honest law, and
-arbitrary-deviation certificate remain to be proved. Thus the full-language
+checked. The prescribed-policy compiler, its local command laws, and a concrete
+reserved service with adaptive wire choices are implemented. The whole-run
+honest law and arbitrary-deviation certificate remain unproved. Thus the full-language
 Nash theorem currently reaches the graph, not the pending-message runtime.
 
 A restricted `WFProgram` / `Vegas.EventGraph` candidate backend separately has
@@ -62,8 +65,11 @@ the source language, event-graph compiler, and its native integration.
 ## Paper target and proof status
 
 The single active `Paper.lean` audit selects paper-visible capstones and
-important lemmas, all directly delegated to proved repository theorems with
-axiom pins. Supporting proofs stay in their owning modules; archives do not
+important lemmas. Proved results delegate directly to repository theorems;
+three explicitly admitted pending-message capstones state the concrete honest,
+deviation-mixture, and Nash objectives. Every declaration has an axiom pin, with
+`sorryAx` recorded for the admitted objectives. Supporting proofs stay in their
+owning modules; archives do not
 contribute proof coverage. The current theorem boundary is listed in
 [the active tower](docs/active-tower.md). The
 [road ahead](docs/a-road-ahead.md) sets the full-language and executable-target
@@ -75,7 +81,8 @@ choices and their small examples and counterexamples. The corresponding
 [migration plan](docs/source-semantics-migration.md) separates the checked
 source-to-graph results from the remaining runtime integration.
 
-A successful Lean build checks the active proof terms. It is not evidence that
+A successful Lean build checks the active proof terms and the expected
+admission diagnostics in `Paper.lean`. It is not evidence that
 the separate manuscript's claims are all established. `paper-claims.json`
 distinguishes direct audit mappings, supporting results without a paper audit,
 and explicitly unverified manuscript claims. Strict checking requires direct

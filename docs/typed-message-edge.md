@@ -57,12 +57,19 @@ Initial handles are keyed by field name. A correspondence theorem therefore
 requires unique initial field names, as supplied by `SourceProgram.Initial`;
 graph constructors enforce freshness of every subsequently added field.
 
-## Planned prescribed policies and observations
+## Prescribed policies and observations
 
-The policy translation described here is a proof target, not yet a Lean
-implementation. The host supplies the required actions and observation fields.
+`MessagePolicies` implements the policy translation below. `MessagePolicyLaws`
+connects the actual command kernels to graph choices and checks uniform failed
+disclosure. `MessageServiceLaw` factors a real preparation/submission/inclusion
+run through the graph bind kernel. The whole-program correspondence remains
+unproved.
 
-A compiled bind policy prepares the chosen encoded `Result` before submitting
+This is a strategy translation used to compare games. The contract does not
+require players to run generated client software: native deviations still
+range over every policy admitted by the open message runtime.
+
+The compiled bind policy prepares the chosen encoded `Result` before submitting
 its handle. This includes `Result.failure`: it may sit behind an opaque
 openable handle and need not be represented by a fresh candidate. Binding has
 no reveal requirement and performs no public early-failure optimization. A
@@ -89,7 +96,7 @@ graph; projection prevents an unchanged compiled opponent from acquiring a
 new response to traffic sent by a deviator. Canonical phase gating alone does
 not provide either property.
 
-The minimal implementation is a recursive policy compiler over the fixed graph,
+The implementation is a recursive policy compiler over the fixed graph,
 its behavioral policy, and the public program counter. It advances graph and
 policy tails together; a context or owner mismatch totalizes to native `wait`.
 It uses the shared message runner, with no additional protocol interpreter.
@@ -98,6 +105,8 @@ the immutable fields in the current private observation, transporting their
 typed references through the completed prefix. Candidate-table lookup is
 unnecessary for those past actions. Completed resolve Booleans instead come
 from site-indexed own-history markers, since result fields do not determine them.
+The cursor retains the original graph when traversing its current tail: the
+history projection scans completed operations of that original graph.
 
 At a current bind, choose once and prepare slot `.prepared pc`; on the next
 invocation submit its commitment, then wait. At a current resolve, choose and
@@ -105,19 +114,71 @@ remember the Boolean once; next submit the prechecked opening or the uniform
 withhold packet, then wait. Own command history detects prior preparation,
 memory, and submission without relying on scheduling-dependent receipts.
 Both successful and failed prescribed play use the same number of local
-invocations before submission. These are the next implementation steps, not
-properties already established by the host's operational laws.
+invocations before submission. The local kernel and submission laws are checked;
+the whole-program observation and provenance invariants remain proof work.
+
+## Concrete bounded service
+
+`MessageService` expands the fixed graph into a list of invocations for the
+shared runner. Each binding or disclosure phase gives its owner two calls,
+then a parameterized number of wire/reaction rounds, a reserved inclusion of
+the owner's latest pending submission, and `max 1 (deadline phase)` expiry
+opportunities. A wire/reaction round gives the arbitrary wire policy one call,
+followed by player calls from a supplied finite roster. Chance has one reserved
+progress call. No new execution interpreter is introduced.
+
+Expiry is gated by the expected graph phase: if inclusion already completed
+that phase, its reserved tick waits. This prevents an early successful message
+from spending a later phase's deadline. The wire policy receives its actual
+history and public pool and may deliver, include, or wait. It cannot insert
+additional application ticks. Player commands at reaction slots are unrestricted.
+
+These are service restrictions, not a characterization of every deadline-fair
+environment. The graph-to-message capstones quantify over every supplied wire
+policy, roster, reaction-round count, deadline function, and source profile.
+Positive reaction counts with an appropriate roster exercise pending delivery
+and reactions before reserved inclusion. Other service realizations can be
+added after the exact certificate is established for this concrete one.
+
+An application tick combines clock advancement with expiry/chance execution.
+A lower transaction runtime must realize that progress service through actual
+calls. Clock observation alone does not run a contract. Separating clock
+advancement from progress also requires rejection of openings after their
+deadline even if an expiry call has not yet been included.
+
+`MessageProgress` proves a finite tick budget for every graph and its decrease
+through arbitrary native actions. Enough actual ticks force terminal execution,
+including with malformed traffic and withholding. This does not protect
+prescribed messages: the concrete service-wide completion and timely-inclusion
+arguments must also use the reserved owner and inclusion opportunities.
+
+## Private initial setup
+
+`SourceProgram.Setup` supplies a finite distribution of initially pending typed
+states. One behavioral policy is used across the distribution. Its checked
+source-to-graph deviation law uses a backtranslation independent of the sampled
+state. `Setup.pendingGame` initializes the native host from the same law and
+uses the concrete composed `compilePendingStrategy`.
+
+This quantifier order matters. For each fixed hidden bit, some constant guess
+is correct; that observation proves nothing about guessing a fair private bit
+using one uninformed policy. A native deviation mixture may depend on the setup
+law, profile, and wire policy, but must be chosen before the realized hidden
+state. Predrawing separately at each realized initial state is insufficient.
 
 ## Proposed strategic proof
 
-The operational `GraphRuntime` host and its local public-evaluation properties
-are the implementation boundary. Everything in this section—supported-pair
-coupling, extraction, and the whole deviation law—is proposed proof work.
+The operational host, policy compiler, local laws, and concrete service are
+implemented. Everything in this section—supported-pair coupling, extraction,
+and the whole deviation law—is proposed proof work. `Paper.lean` contains three
+explicitly admitted capstones for the actual source-to-pending honest law,
+deviation-mixture law, and epsilon-Nash correspondence. No supporting library
+lemma is admitted.
 
 ### Supported pair
 
-For a fixed graph, initial typed environment, finite invocation schedule, and
-adaptive environment policy, a supported pair consists of a reachable graph
+For a fixed graph, initial-state law, finite invocation schedule, and adaptive
+environment policy, a supported pair consists of a reachable graph
 configuration and a native trace prefix such that:
 
 1. the native completed phase count equals the graph prefix length;
@@ -179,6 +240,10 @@ environment responses jointly, preserves the complete trace law and all
 opponent kernels, and requires neither finite command/view carriers nor a
 `Fintype` instance. Its inputs are only the existing `FinDist` policy kernels
 and bounded schedule.
+
+The response-pair mixture must also be valid across the complete initial-state
+law, without conditioning its selection on the realized hidden setup. The
+fixed-initial-state predrawing lemma alone does not establish that extension.
 
 For a fixed response pair, pure extraction replays the environment response and
 graph-ineffective public transitions on the native prefix paired with the

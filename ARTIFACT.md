@@ -29,8 +29,11 @@ optimization; the subsequent build checks the active proof terms.
 | --- | --- |
 | Full failure-aware source and its safety | `Vegas/Source/Basic.lean`, `Semantics.lean`, `Safety.lean` |
 | Typed graph semantics and compilation | `Vegas/Graph/`, `Vegas/Compile/GraphCompiler.lean` |
-| Exact full-source/graph strategic certificate | `Vegas/Game/GraphCompilation.lean` |
+| Exact full-source/graph strategic certificate | `Vegas/Game/GraphCompilation.lean`, `GraphSetup.lean` |
 | Full typed public-message host and local laws | `Vegas/Graph/MessageApplication.lean`, `MessageStepLaw.lean`, `MessageInvariant.lean` |
+| Actual player-policy compiler and local laws | `Vegas/Graph/MessagePolicies.lean`, `MessagePolicyLaws.lean` |
+| Reserved service and tick-progress bounds | `Vegas/Graph/MessageService.lean`, `MessageProgress.lean` |
+| Concrete full-language pending target | `Vegas/Game/GraphMessages.lean` (definitions; strategic capstones unproved) |
 | Pending messages and candidate commitments | `Interaction/MessageApplication.lean`, `Interaction/CommitmentCandidates.lean` |
 | Restricted graph-relative candidate strategic edge | `Vegas/Game/SealedCandidate.lean` |
 | Restricted source-to-pending Nash | `Vegas/Game/SourcePublicCandidate.lean` |
@@ -47,7 +50,10 @@ candidate backend, with hypotheses stated in the
 ## Paper audit
 
 `Paper.lean` is a compact direct-delegation audit, not an inventory of support
-lemmas. Every declaration has an axiom pin. Supporting probability, extraction,
+lemmas. Three pending-message capstones are explicitly admitted, with expected
+diagnostics and `sorryAx` pins. They name the actual compiler and native game;
+they are not proved results or assumptions available to library proofs.
+Every declaration has an axiom pin. Supporting probability, extraction,
 provenance, and coupling proofs remain checked in their owning modules even
 when they have no separate paper wrapper.
 

@@ -50,9 +50,11 @@ import VegasTests.GraphPublicPrefix
 import VegasTests.GraphRestriction
 import VegasTests.SealedResolutionCylinder
 import VegasTests.GraphMessages
+import VegasTests.GraphMessagePolicies
 import VegasTests.FailureGame
 import VegasTests.ResultExpressions
 import VegasTests.SourceSemantics
+import VegasTests.SourceSetup
 
 /-! # Regression tests for source, graph, and public-message execution
 

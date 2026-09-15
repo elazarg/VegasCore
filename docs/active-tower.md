@@ -9,8 +9,8 @@ separates the implemented host from the remaining strategic proof.
 | Boundary | Implementation | Checked result |
 | --- | --- | --- |
 | Source semantics | `Vegas.Source`: `SourceProgram` | Arbitrary binding and disclosure policies, own-action recall, heterogeneous results, initial secrets, deferred guards, and dependent chance. Every complete run resolves every obligation and satisfies every retained guard. |
-| Source to typed graph | `Vegas.Game.GraphCompilation`: `Initial.graphSimulation` | Exact decoded terminal-state and payout laws; every unilateral graph deviation has one exact source-policy preimage against unchanged opponents. Nash and same-error epsilon-Nash equivalence at compiled profiles, without failure-dominance or finite-domain premises. |
-| Typed graph to message host | `Vegas.Graph.MessageApplication`: `GraphRuntime` | Direct execution of every graph constructor in `Interaction.MessageApplication`. Public-only guard evaluation, local graph-step correspondence, public-store invariants, and mixed-feature submission/delivery/inclusion tests. **No whole-run policy or strategic certificate yet.** |
+| Source to typed graph | `Vegas.Game.GraphCompilation`, `Vegas.Game.GraphSetup` | Exact decoded terminal-state and payout laws; every unilateral graph deviation has one exact source-policy preimage against unchanged opponents. Finite private setup uses shared policies and a state-independent backtranslation. Nash and same-error epsilon-Nash equivalence at compiled profiles, without failure-dominance or finite-domain premises. |
+| Typed graph to message host | `Vegas.Graph.MessageApplication`: `GraphRuntime` | Every graph constructor, public-only guard evaluation, local graph-step laws, public-store invariants, and mixed-feature transport tests. Actual prescribed-policy translation and local sampling/submission laws are implemented. Tick-budget completion holds for native traces with enough actual ticks. **No whole-run honest or strategic certificate yet.** |
 | Transaction/block execution, cryptography, VM deployment | Further target edges | No active end-to-end refinement to these targets. Passive VM reference code does not establish one. |
 
 The graph is an independently executable strategic IR. Its ordered nodes retain
@@ -31,6 +31,15 @@ uses the graph's public conditional kernel and advances atomically.
 an initial private Boolean, an optional-Boolean commitment, a deferred relation,
 reverse disclosure, chance, and failure-sensitive settlement. These are
 operational witnesses, not a substitute for the missing arbitrary-policy law.
+
+`GraphRuntime.servicedGame` uses the shared policy runner with graph-indexed
+owner opportunities, adaptive wire/reaction slots, reserved inclusion, and
+phase-gated expiry. It accepts every native player policy and every supplied
+wire policy. Its full-language compilation objectives are expressible in
+`Paper.lean`, but the service-wide completion, honest law, and deviation law
+are not yet proved. `MessageProgress.run_completed_of_ticks` proves the separate
+operational fact that enough actual ticks force completion despite arbitrary
+intervening native traffic; it does not protect honest messages from expiry.
 
 ## Restricted candidate certificate
 
@@ -79,7 +88,7 @@ would require a different strategy space.
 
 For the full typed host, the immediate goal is an exact deviation-mixture law
 under canonical order and deadline-relative service. The remaining work is
-prescribed-policy compilation, own-history projection, completion, and the
+whole-program observation projection, serviced completion, and the
 joint observation/probability argument with unchanged opponents. Hiding an
 accepted handle and matching local result stores do not alone prove that law.
 The [proof plan](typed-message-edge.md) records the failed-opening information
@@ -92,7 +101,9 @@ automatically.
 
 ## Audit and ownership
 
-`Paper.lean` selects directly delegated capstones with transitive axiom pins.
+`Paper.lean` selects directly delegated proved capstones and three explicitly
+admitted full-language pending-message objectives. All have axiom pins; the
+three objectives explicitly include `sorryAx`.
 It is not a supporting-lemma inventory. Build roots check all active modules
 and tests. The manuscript registry explicitly records unverified claims;
 `--allow-unverified` checks mapping consistency, not draft parity.

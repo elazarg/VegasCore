@@ -6,5 +6,6 @@ Authors: VegasCore contributors
 
 import Vegas.Source.Basic
 import Vegas.Source.Semantics
+import Vegas.Source.Setup
 import Vegas.Source.Accounting
 import Vegas.Source.Safety

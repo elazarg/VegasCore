@@ -3,14 +3,18 @@
 import Vegas.EventGraph.Confluence
 import Vegas.EventGraph.Fence
 import Vegas.Game.GraphCompilation
+import Vegas.Game.GraphSetup
+import Vegas.Game.GraphMessages
 import Vegas.Game.SourcePublicCandidate
 import Vegas.Source.Safety
 
 /-! # Paper theorem audit
 
-This file contains only the principal claims used by the paper.  Every result
-is a direct delegation to the active implementation theorem, with its exact
-hypotheses visible here.  Supporting probability, replay, provenance, and
+This file contains only principal proved claims and expressible compiler
+objectives. Proved results delegate directly to implementation theorems;
+the explicitly unproved pending-message capstones contain the only admissions.
+Their expected diagnostics and axiom pins record that status rather than hiding it.
+Supporting probability, replay, provenance, and
 coupling lemmas remain checked in their owning modules; they are not repeated
 as paper capstones.
 
@@ -28,6 +32,7 @@ language or blockchain theorem.
 namespace Vegas.Paper
 
 open GameTheory Vegas EventGraph Interaction
+open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
@@ -85,6 +90,76 @@ theorem source_graph_approximate_nash_iff [IExpr.ResultTypes L]
       (source.compileGraphProfile profile) ↔
     IsεNash (SourceProgram.gameForm source.program source.state) utility ε profile :=
   source.graph_approximate_nash_iff utility ε profile
+
+/-- Source-to-graph Nash correspondence also preserves uncertainty about the
+sampled private setup: one policy is used across the entire initial law. -/
+theorem source_setup_graph_approximate_nash_iff [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (ε : ℝ) (profile : SourceProgram.BehavioralProfile setup.program) :
+    IsεNash setup.graphGameForm
+      (fun outcome who => utility (setup.decodeGraph outcome) who) ε
+      (setup.compileGraphProfile profile) ↔
+    IsεNash setup.gameForm utility ε profile :=
+  setup.graph_approximate_nash_iff utility ε profile
+
+/-! ## Unproved full-language pending-message capstones
+
+These statements name the actual composed strategy compiler and the actual
+serviced message game. The reserved service provides preparation/submission,
+inclusion, and clock execution opportunities. Between them an arbitrary wire
+policy can expose pending messages and players can react. This is the concrete
+bounded service target, not all fair schedulers or a deployed blockchain.
+
+The initial private state is sampled inside the game. In the deviation law,
+the mixture is chosen outside that sample. No source constructor is excluded,
+and no failure-incentive premise is assumed at this ordered ideal edge.
+-/
+
+/-- error: declaration uses `sorry` -/
+#guard_msgs (whitespace := lax) in
+theorem source_pending_honest_law [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (runtime : GraphRuntime Player L (SourceProgram.graphCtx setup.program.terminalCtx))
+    (roster : List Player) (reactionRounds : Nat) (wire : runtime.application.WirePolicy)
+    (profile : SourceProgram.BehavioralProfile setup.program) :
+    ((setup.pendingGame runtime roster reactionRounds wire).play
+      (fun who => setup.compilePendingStrategy runtime who (profile who))).map
+        (setup.pendingOutcome runtime) = (setup.run profile).map some := by
+  sorry
+
+/-- error: declaration uses `sorry` -/
+#guard_msgs (whitespace := lax) in
+theorem source_pending_deviation_law [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (runtime : GraphRuntime Player L (SourceProgram.graphCtx setup.program.terminalCtx))
+    (roster : List Player) (reactionRounds : Nat) (wire : runtime.application.WirePolicy)
+    (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
+    (replacement : runtime.application.PlayerPolicy) :
+    ∃ mixture : FinDist (SourceProgram.BehavioralPolicy who setup.program),
+      ((setup.pendingGame runtime roster reactionRounds wire).play
+        (Profile.update (sig := (setup.pendingGame runtime roster reactionRounds wire).sig)
+          (fun actor => setup.compilePendingStrategy runtime actor (profile actor))
+          who replacement)).map (setup.pendingOutcome runtime) =
+      mixture.bind (fun alternative =>
+        (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
+          profile who alternative)).map some) := by
+  sorry
+
+/-- error: declaration uses `sorry` -/
+#guard_msgs (whitespace := lax) in
+theorem source_pending_approximate_nash_iff [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (runtime : GraphRuntime Player L (SourceProgram.graphCtx setup.program.terminalCtx))
+    (roster : List Player) (reactionRounds : Nat) (wire : runtime.application.WirePolicy)
+    (utility : State L setup.program.terminalCtx → Player → ℝ) (missing : Player → ℝ)
+    (ε : ℝ) (profile : SourceProgram.BehavioralProfile setup.program) :
+    IsεNash (setup.pendingGame runtime roster reactionRounds wire)
+      (fun outcome who => (setup.pendingOutcome runtime outcome).elim
+        (missing who) (fun state => utility state who)) ε
+      (fun who => setup.compilePendingStrategy runtime who (profile who)) ↔
+    IsεNash setup.gameForm utility ε profile := by
+  sorry
 
 /-- Independent available graph events form a diamond. -/
 theorem execution_diamond
@@ -222,6 +297,22 @@ end Vegas.Paper
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_graph_approximate_nash_iff
+/-- info: 'Vegas.Paper.source_setup_graph_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_setup_graph_approximate_nash_iff
+/-- info: 'Vegas.Paper.source_pending_honest_law' depends on axioms:
+[propext, sorryAx, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_pending_honest_law
+/-- info: 'Vegas.Paper.source_pending_deviation_law' depends on axioms:
+[propext, sorryAx, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_pending_deviation_law
+/-- info: 'Vegas.Paper.source_pending_approximate_nash_iff' depends on axioms:
+[propext, sorryAx, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_pending_approximate_nash_iff
 /-- info: 'Vegas.Paper.execution_diamond' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
