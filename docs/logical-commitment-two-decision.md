@@ -269,17 +269,31 @@ interface; it does not yet replace a compiler proof.
 
 ## Compiler adoption test
 
-The compiler adoption test is a graph-wide stopped-prefix factorization under one
-fixed admitted environment and unchanged opponents, consuming the existing
-candidate admission/effect lemmas. It must account for jointly visible traffic
-across sites and prove the two kernel hypotheses from runtime facts. Until
-that is established, this experiment stays independent of the active compiler;
-it does not replace `candidateGraphRun_native_prefix_law`.
+The next discriminating test is a two-site native execution: the focal owner
+prepares a candidate, another compiled binding exposes an opening, and the
+focal owner opens or withholds. Fix the opponent policy, environment and
+schedule before quantifying over the focal decision kernels. Use an actual
+authenticated opening from the other binding, rather than the unauthenticated
+background claim used by the single-site experiment.
 
-The retained observation must also support the quitting comparison. The
-current `candidateGraphRoundCoupling_timeout_settlement` connects a native
-timeout settlement to a legal graph realization with the relevant public
-pre-decision prefix. A terminal published-value/timeout law alone loses that
-comparison point. A replacement must recover this prefix agreement as well
-as its terminal law; otherwise the source incentive premise cannot be composed
-through the proposed intermediate game.
+Retain the joint logical observations of both sites, private action recall,
+and pending-versus-included status. The output to preserve is the relevant
+public pre-decision prefix together with the focal settlement value and
+attribution. Derive the action-total kernel factorization from the native
+execution. A failure after erasing another site's observed traffic identifies
+an insufficient observation quotient; it does not establish strategic
+impossibility for the runtime.
+
+This prefix is needed by `candidateGraphRoundCoupling_timeout_settlement`,
+which connects native timeout settlement to a legal graph realization at the
+comparison point used by the source quitting condition. Preserving only a
+terminal published-value/timeout law cannot replace that interface.
+
+Adoption requires generalizing the successful fixture to a graph-wide
+stopped-prefix law under one fixed admitted environment and unchanged
+opponents, consuming the existing candidate admission/effect lemmas. It must
+replace a named portion of `candidateGraphRun_native_prefix_law` without
+reintroducing the whole native history as an unconstrained logical signal.
+Until that simplification is demonstrated, the experiment remains independent
+of the active compiler. Further local safety lemmas alone would not settle
+the adoption decision.
