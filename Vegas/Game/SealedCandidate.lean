@@ -96,18 +96,17 @@ private theorem play_publicInvariant (model : CandidateRoundModel supported null
 
 /-- Every timeout in a unilateral deviation belongs to that deviator. The
 claim concerns actual supported executions, not an assumed policy discipline. -/
-theorem deviation_timeout_owner (model : CandidateRoundModel supported nullValue window)
+theorem timeout_owner (model : CandidateRoundModel supported nullValue window)
     (timely : model.Timely) (profile : CommitPolicyProfile G) (who : Player)
     (replacement : model.game.sig.Strategy who) (next : model.game.sig.Outcome)
     (hnext : next ∈ (model.game.play
       (Profile.update (model.compileProfile profile) who replacement)).support)
-    (htimeout : next.native.application.visible.timeouts ≠ []) :
-    ∃ node : Fin G.nodeCount, node.val ∈ next.native.application.visible.timeouts ∧
+    (index : Nat) (hindex : index ∈ next.native.application.visible.timeouts) :
+    ∃ node : Fin G.nodeCount, node.val = index ∧
       ((∃ guard, (G.nodeRow node).sem = .commit who guard) ∨
         ∃ (producer : Fin G.nodeCount) (guard : EventGuard L),
           (G.nodeRow node).sem = .reveal (G.nodeTarget producer) ∧
           (G.nodeRow producer).sem = .commit who guard) := by
-  obtain ⟨index, hindex⟩ := List.exists_mem_of_ne_nil _ htimeout
   obtain ⟨node, owner, hnode, hnot, howned⟩ :=
     supported.candidate_runRounds_timeout_owner nullValue window model.principals
       model.serviceSlots _ model.wire timely.reserved timely.service timely.period
@@ -120,7 +119,7 @@ theorem deviation_timeout_owner (model : CandidateRoundModel supported nullValue
       next hnext index hindex
   have heq : owner = who := not_not.mp hnot
   subst owner
-  exact ⟨node, by simpa only [hnode] using hindex, howned⟩
+  exact ⟨node, hnode, howned⟩
 
 variable [Fintype Player]
 
@@ -197,8 +196,11 @@ theorem deviation_bound_with_quit_gap (model : CandidateRoundModel supported nul
           (Profile.update (model.compileProfile profile) who replacement)).support := by
         rw [← hnative, FinDist.support_map]
         exact ⟨pair, hpair, rfl⟩
-      obtain ⟨node, htimeout, howned⟩ :=
-        model.deviation_timeout_owner timely profile who replacement pair.2 hnext hclear
+      obtain ⟨index, hindex⟩ := List.exists_mem_of_ne_nil _ hclear
+      obtain ⟨node, hnode, howned⟩ :=
+        model.timeout_owner timely profile who replacement pair.2 hnext index hindex
+      have htimeout : node.val ∈ pair.2.native.application.visible.timeouts := by
+        simpa only [hnode] using hindex
       obtain ⟨hevents, hsettlement⟩ := model.play_publicInvariant _ pair.2 hnext
       have hgraphSupport : pair.1 ∈ (responses.bind fun commands =>
           supported.candidateGraphRun hinfo hguards nullValue window who commands.1 commands.2

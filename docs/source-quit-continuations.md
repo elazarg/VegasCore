@@ -29,10 +29,14 @@ outcome satisfies both bounds; hence `f_i <= c_i`. These unconditional bounds
 must not be presented as a strictly positive continuation margin. A finer
 comparison needs to preserve enough of the actual source continuation context.
 
-## Proposed source-only condition
+## Checked prefix-relative condition
 
-This section specifies an unproved strengthening, not an additional checked
-compiler theorem.
+`VegasCore.QuitPayoutPrefixDominanceAgainst` in
+`Vegas/Core/SourceQuitPrefix.lean` states the condition below.
+`SealedCompilation.candidate_deviation_bound_of_source_quit_prefix` composes
+its source/graph transport with an independent graph/native bound. The resulting
+same-error Nash and epsilon-Nash equivalences at compiled profiles are checked
+in `Vegas/Game/SourceCandidate.lean` and directly audited in `Paper.lean`.
 
 Fix a source profile `sigma` and a syntactic commitment decision site `s` owned
 by player `i`. A terminal source environment determines the environment at `s`:
@@ -53,20 +57,28 @@ written-source semantics. There are no runtime histories, conditional native
 laws, or hypothesized backtranslations in this condition. Across differently
 typed sites, quitting is a typed-value equality, not an unchecked cast.
 
-The current equal cap/floor condition implies this comparison by ignoring its
-prefix equality. The equality can permit comparisons that no global cap/floor
-separates: for example, an earlier opponent disclosure determines a baseline
-payout, while the player's own participation adds a bonus and quitting subtracts
-a penalty. Matching the baseline permits a local comparison even when the
-baselines span more than the penalty. This is a motivating mathematical example,
-not a mechanized source-to-runtime instance of the proposed condition.
+The equal cap/floor condition implies this comparison by ignoring its prefix
+equality; `QuitPayoutBoundAgainst.quitPayoutPrefixDominance` proves the implication.
+`VegasTests/SourceQuitPrefix.lean` proves a strict separation: a public sampled
+bit determines a baseline paid after either decision value. Prefix dominance
+holds, although no global bound can cap the high-baseline quit and floor the
+low-baseline continuation. This is a source-level example; its sample is outside
+the candidate backend's admitted fragment, so it is not an end-to-end instance.
 
-## Required compiler argument
+`VegasTests/SealedCandidatePrefix.lean` separately instantiates the new theorem
+inside the admitted fragment: a first player commits and reveals a randomized
+baseline, followed by the second player's commitment and reveal. The second
+payout depends only on that baseline; the first payout is constant. The test
+proves the source prefix condition and the native expected-utility bound for
+arbitrary unilateral replacements and arbitrary unreserved wire behavior under
+certified periodic inclusion service.
 
-Keep the existing independently proved source/graph and graph/native edges.
-The backend should establish a graph-level pair relation, with the compiler
-transporting it to `before_s` equality. On normally completed coupling pairs,
-public utility already agrees exactly. On timeout pairs:
+## Compiler argument
+
+The proof keeps the independently proved source/graph and graph/native edges.
+The backend establishes a graph-level pair relation, and the compiler transports
+it to `before_s` equality. Normally completed coupling pairs have identical
+public utilities. On timeout pairs:
 
 1. Recover the first-timeout snapshot from the underlying full native trace,
    and select a timeout introduced by that clock transition. For a timed-out reveal, use
@@ -94,17 +106,34 @@ accepted commitment's prerequisites remain completed. This is needed for a
 reveal timeout: the reveal depends on the producer, but prerequisite lists
 are not assumed transitively closed.
 
-The graph settlement lemma retains a specified defaulted producer, and
-`candidateGraphCoupling_opened_before_timeout` proves agreement with the retained
-graph realization for disclosures included before the first timeout. The
-compiler also has a decoder lemma transporting equality of the relevant public
-graph fields to `before_s` equality. These are components, not the completed
-comparison: the remaining argument must select and align the producer, preserve
-its earlier public values through the native continuation, and assemble the
-source-only incentive theorem. The marginal probability laws alone do not imply
-this pair relation.
+`candidateGraphCoupling_timeout_public_prefix` identifies the producer and
+preserves its public reads through the actual native continuation.
+`candidateGraphRoundCoupling_timeout_settlement` constructs a terminal quitting
+graph with the actual native public store and the same producer reads as the
+retained graph realization. These are joint statements about supported coupling
+pairs, not conclusions inferred from separate marginal laws.
+
+`WFProgram.graphPayout_le_of_source_quitPrefix` transports the source condition
+to those graph pairs. Its decoder uses
+`SourceDecisionSite.recorded_tail_erasePubEnv_eq_of_choiceReads_eq` to prove
+`before_s` equality. The graph-only theorem
+`CandidateRoundModel.deviation_bound_of_quit_prefix` supplies the arbitrary
+native deviation bound; the source theorem composes that inequality with the
+source/graph strategic certificate. Opponents retain their original policies.
 
 ## Boundaries that must be respected
+
+The end-to-end result covers the homogeneous, sample-free sealed fragment with
+universally accepting guards, finite players, and the existing
+deadline-relative service contract. The pointwise prefix condition is sufficient,
+not a characterization of all utilities for which Nash is preserved. It compares
+all legal quitting settlements to all supported unilateral continuations with
+the same earlier public environment, including continuations that themselves
+quit. It supplies no positive strict margin on those self-comparisons.
+
+The candidate theorem does not yet transport general conditional-expectation or
+commitment-dependent continuation conditions. Those require their own joint
+correspondence and cannot be inferred from prefix equality alone.
 
 An accepted-event set is not a sequential source prefix. Independent sites may
 complete out of order, and accepted commitments are still sealed values.

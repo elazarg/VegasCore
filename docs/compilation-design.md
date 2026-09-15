@@ -316,9 +316,13 @@ The direct mathematical argument for the pending-message strategic edge is in
 [pending-message-strategic-proof.md](pending-message-strategic-proof.md).
 It constructs a causal coupling with a legal source completion, followed by an
 informed-quitting utility bound. Current theorem scope is recorded in
-[active-tower.md](active-tower.md). For payout-valued utilities, the uniform
-source-only `QuitPayoutBound` discharges the runtime comparison; more general
-source continuation criteria still need corresponding proofs.
+[active-tower.md](active-tower.md). For payout-valued utilities,
+`QuitPayoutPrefixDominanceAgainst` compares legal quitting settlements with
+supported unilateral continuations sharing the public environment before the
+source commitment. The backend proves this graph pair relation through the first
+timeout; a compiler adapter transports it to source semantics. Uniform source
+bounds are sufficient special cases. General conditional-expectation source
+criteria still need their own correspondence proofs.
 
 The written-source-to-declared-read-graph edge has a concrete strategic
 certificate, `WFProgram.sourceGraphSimulation`. Its honest law compares the

@@ -129,9 +129,12 @@ two-player source with an arbitrary first-player policy and delayed service;
 the second player meets both deadlines and completed supported runs exist.
 `pending_candidate_source_payout_deviation_bound` and
 `pending_candidate_source_payout_nash_iff` audit the candidate host's end-to-end
-deviation bound and same-error equilibrium correspondence. Their source floor
-need hold only on the supports of unilateral deviations against the fixed
-opponents; the quitting cap still ranges over all legal source settlements.
+deviation bound and same-error equilibrium correspondence. Their source-only
+condition compares legal quitting settlements with supported unilateral
+continuations against fixed opponents, when the public source environments
+strictly before the commitment agree. The graph/backend proof constructs this
+pair relation; it is not supplied as a native incentive assumption. Equal global
+quitting caps and fixed-opponent support floors imply the condition.
 The uniform special case composes
 `sourceGraphPayoutSimulation` with `CandidateRoundModel.utilitySimulation` through
 `UtilitySimulation.trans`. The compiler derives graph information, disclosure,
@@ -150,6 +153,15 @@ weighted by the actual native timeout probability;
 `pending_candidate_approximate_nash_with_gap` audits its unconditional error
 corollary. `pending_candidate_approximate_nash_reflection` uses honest payout
 agreement alone and does not assume any quitting incentive condition.
+
+`VegasTests/SourceQuitPrefix.lean` proves the prefix condition strictly weaker
+than equal global cap/floor bounds: an earlier public sample changes a baseline
+payout. This is a source-only separation test, not a candidate-runtime instance;
+sampling remains outside that backend fragment.
+`VegasTests/SealedCandidatePrefix.lean` supplies an in-fragment integration test:
+an earlier player's randomized commit/reveal sets the public baseline, the source
+prefix condition is proved, and the native deviation bound is instantiated under
+periodic service with arbitrary replacement policies and unreserved wire actions.
 
 At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
 sharper exact statement under declared-read locality and a single ready

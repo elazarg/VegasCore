@@ -17,7 +17,7 @@ introducing a new edge and proving its own correspondence laws.
 | Resolving native protocol | `Interaction` | `SealedResolution`, shared policy-runner rounds | Per-node relative deadlines, nullable resolution, and continuing execution are implemented. Before the first timeout, validator/event projection is exact. Private bindings persist under arbitrary policies and resolution. Every round advances the clock once. Termination is checked without service; periodic inclusion capacity provides deadline-relative service. For the admitted Vegas fragment, completed public settlement has a legal source realization even after defaults. The single-checkpoint `SealedTimeout` model instead records final failure and does not implement this continuation. |
 | Vegas compiler edge | `Vegas.Compile` | `SealedCompilation`, sealed decode/refinement/source modules | One sealed rule per graph node; native prefixes decode to reachable graph states; terminal prefixes reconstruct a written-order source run. Under roster coverage, periodic inclusion capacity, a sufficient window, and a whole-period termination budget, all-compiled play has the exact original written-source outcome law in the actual stopped pending-message driver. |
 | Pending-message strategic edge | `Vegas.Game` | `SealedCompilation.RoundModel` | Constructed source/native coupling, actual timeout-checkpoint information, retained focal registrations, and same-error Nash equivalence under timely service, normal utility agreement, and explicit conditional timeout utility comparisons. For payout-valued utilities, a source-only `VegasCore.QuitPayoutBound` supplies both utility premises. |
-| Candidate-message strategic edge | `Vegas.Game` | `SealedFragment.CandidateRoundModel` | Independent graph utility comparison and composition to written source. Arbitrary randomized candidate deviations are bounded by legal source deviations under timely service, a source quitting cap, and a pointwise source floor against the fixed opponents. Same-error Nash holds at the analyzed generated profile; a uniform floor supplies a whole-game simulation. |
+| Candidate-message strategic edge | `Vegas.Game` | `SealedFragment.CandidateRoundModel` | Independent graph utility comparison and composition to written source. Arbitrary randomized candidate deviations are bounded by legal source deviations under timely service and a source-only quitting comparison between continuations with matching pre-decision public environments. Same-error Nash holds at the analyzed generated profile; uniform cap/floor bounds supply a whole-game simulation. |
 
 The ideal commitment service provides more than an abstract hiding-and-binding
 interface. For the compiled protocol, a source site is the numeric slot itself,
@@ -265,7 +265,7 @@ Two checked laws establish the result:
 
 1. **Honest law:** every compiled profile completes without timeout and
    `Law(pR; R(C σ)) = Law(pS; S(σ))`.
-2. **Deviation bound:** under the source-only `QuitPayoutBoundAgainst` at `σ`, for every
+2. **Deviation bound:** under source-only `QuitPayoutPrefixDominanceAgainst` at `σ`, for every
    source profile `σ`, player `i`, and randomized native replacement `τi`,
    there is a legal source replacement `sᵢ` with
    `E[uᵢ(pR); R((C σ)[i := τi])] ≤ E[uᵢ(pS); S(σ[i := sᵢ])]`.
@@ -273,7 +273,7 @@ Two checked laws establish the result:
    mixture, then selects a component at least as good as its mean. It does not
    claim equality of deviation outcome laws.
 
-`candidate_approximate_nash_iff_of_source_floor` gives preservation and
+`candidate_approximate_nash_iff_of_source_quit_prefix` gives preservation and
 reflection at the analyzed compiled profile, including ordinary Nash at zero
 error. `Paper.lean` directly audits this source
 deviation bound and same-error equilibrium theorem. `VegasTests/SealedPayout.lean`
@@ -302,7 +302,22 @@ reflection at compiled profiles. These results have direct `Paper.lean` audits.
 The two-player regression also checks a source Nash profile excluded by every
 equal cap/floor certificate, but covered by the gap theorem with `delta = 1`.
 
-`QuitPayoutBoundAgainst` retains a global cap over legal own-quitting settlements,
+`QuitPayoutPrefixDominanceAgainst` compares every legal terminal source quitting
+settlement to every supported unilateral continuation against the fixed
+opponents, when their public source environments strictly before that commitment
+agree. The comparison is pointwise; it does not assume that the quitting
+settlement follows the opponents' policies. It fixes public inputs only, so it
+is stronger than a condition comparing executions with the same full private
+information. `candidateGraphRoundCoupling_timeout_settlement` proves the required
+joint graph pair relation, and `graphPayout_le_of_source_quitPrefix` transports
+the source condition. `VegasTests/SourceQuitPrefix.lean` proves a strict
+source-level separation from equal global bounds using a public sampled
+baseline; that sampling example is outside the candidate runtime fragment.
+`VegasTests/SealedCandidatePrefix.lean` uses an earlier player's randomized
+commit/reveal instead and instantiates the source-prefix native bound in the
+admitted fragment under periodic service and arbitrary unreserved wire behavior.
+
+As a sufficient special case, `QuitPayoutBoundAgainst` retains a global cap over legal own-quitting settlements,
 but its source floor ranges only over unilateral deviations against the fixed
 opponents. The floor is pointwise on their supports, not merely an expectation
 or equilibrium-support condition. `QuitPayoutBound` supplies it uniformly at
@@ -322,10 +337,9 @@ or ledger refinement remain further scope requirements. Their assumptions and
 obstructions must be established for the particular model and guarantee. The
 present theorem does not establish the paper's entire scope.
 
-The proposed stronger source-only continuation criterion and its missing
-first-timeout correspondence proofs are specified in
-[source quitting continuations](source-quit-continuations.md). No prefix-dependent
-source theorem is inferred from the checked cap/floor or gap results.
+The checked source-prefix comparison, its first-timeout correspondence proof,
+and its remaining distinction from general conditional continuation criteria
+are described in [source quitting continuations](source-quit-continuations.md).
 
 `paper-claims.json` is a manuscript coverage inventory. Unverified entries
 remain visible; passive reference material contributes nothing to the audit.

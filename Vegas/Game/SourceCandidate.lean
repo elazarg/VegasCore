@@ -2,6 +2,8 @@
 
 import Vegas.Game.SourceGraph
 import Vegas.Game.SealedCandidate
+import Vegas.Game.SealedCandidatePrefix
+import Vegas.Game.SourceQuitPrefix
 import Vegas.Compile.SealedCandidatePolicy
 import Vegas.Compile.SealedPublicOutcome
 import Vegas.Compile.SourceDisclosureReads
@@ -11,9 +13,11 @@ import Vegas.Compile.SourceDisclosureReads
 This edge is the composition of the independently proved source-to-graph and
 graph-to-candidate certificates. The source compiler certifies the graph's
 information condition, disclosure uniqueness, and public utility interpretation.
-Incentive premises are source-only: a cap on legal quitting settlements and a
-pointwise floor against the fixed opponents. A uniform floor supplies a reusable
-whole-game utility simulation.
+Incentive premises are source-only: legal quitting settlements are compared
+with supported unilateral continuations sharing the public environment before
+the source decision. A global quitting cap and fixed-opponent support floor
+are sufficient conditions. A uniform floor supplies a reusable whole-game
+utility simulation.
 Separate caps and floors give a timeout-weighted deviation bound and quantified
 approximate-Nash preservation. Reflection requires no quitting condition.
 The target permits arbitrary observation-local native unilateral policies,
@@ -67,6 +71,89 @@ theorem candidate_honest_payout_utility (compilation : SealedCompilation source 
     (source.graphPayoutUtility valuation missing)
     ((source.sourceGraphPayoutSimulation valuation missing).compileProfile profile) who).trans
       ((source.sourceGraphPayoutSimulation valuation missing).honest_utility profile who)
+
+/-- An arbitrary native deviation is bounded by a written-source deviation
+against unchanged opponents under the source-only prefix-relative quitting
+condition. The proof composes the graph/native prefix comparison with the
+independent source/graph strategic correspondence. -/
+theorem candidate_deviation_bound_of_source_quit_prefix
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
+    (valuation : Payout Player → Player → ℝ) (missing : Player → ℝ)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (hdominance : source.core.prog.QuitPayoutPrefixDominanceAgainst source.core.env
+      nullValue valuation profile) (who : Player) (replacement : model.game.sig.Strategy who) :
+    ∃ alternative : SourceBehavioralPolicy source.core.prog who,
+      (model.game.play (Profile.update
+        (fun player => compilation.compileCandidatePolicy nullValue window player (profile player))
+        who replacement)).expect (fun next =>
+          (compilation.publicPayout? next.native.application.visible.events).elim
+            (missing who) (fun payout => valuation payout who)) ≤
+      ((sourceGameForm source.core.prog source.core.env).play
+        (Profile.update profile who alternative)).expect (fun final =>
+          valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who) := by
+  let : Fintype Player := Fintype.ofFinite Player
+  let first := source.sourceGraphPayoutSimulation valuation missing
+  obtain ⟨graphAlternative, hgraph⟩ := model.deviation_bound_of_quit_prefix timely
+    (compile_publicPrefixReadable source.core) (compile_guardLive source.core source.legal)
+    source.compiled_uniqueReveals (source.graphPayoutUtility valuation missing)
+    (first.compileProfile profile) who
+    (fun alternative quitting continued hcontinued hquitting producer guard
+        hproducer hvalue hreads =>
+      source.graphPayout_le_of_source_quitPrefix nullValue valuation missing profile hdominance
+        who alternative quitting continued hcontinued hquitting producer guard hproducer
+        hvalue hreads) replacement
+  obtain ⟨alternative, hsource⟩ := first.deviation_bound profile who graphAlternative
+  exact ⟨alternative, hgraph.trans hsource⟩
+
+/-- Same-error Nash preservation and reflection at a compiled source profile
+under a source-only comparison of prefix-matched quitting continuations. The
+target permits all observation-local candidate-message deviations. -/
+theorem candidate_approximate_nash_iff_of_source_quit_prefix
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
+    (valuation : Payout Player → Player → ℝ) (missing : Player → ℝ)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (hdominance : source.core.prog.QuitPayoutPrefixDominanceAgainst source.core.env
+      nullValue valuation profile) (ε : ℝ) :
+    IsεNash model.game (fun next who =>
+      (compilation.publicPayout? next.native.application.visible.events).elim
+        (missing who) (fun payout => valuation payout who)) ε
+      (fun player => compilation.compileCandidatePolicy nullValue window player (profile player)) ↔
+    IsεNash (sourceGameForm source.core.prog source.core.env)
+      (fun final who => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
+      ε profile := by
+  exact isεNash_compileProfile_iff_of_utility_bounds
+    (source := sourceGameForm source.core.prog source.core.env) (target := model.game)
+    (sourceUtility := fun final who =>
+      valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
+    (targetUtility := fun next who =>
+      (compilation.publicPayout? next.native.application.visible.events).elim
+        (missing who) (fun payout => valuation payout who))
+    (compilation.compileCandidatePolicy nullValue window)
+    (compilation.candidate_honest_payout_utility nullValue window model timely valuation missing)
+    profile (compilation.candidate_deviation_bound_of_source_quit_prefix nullValue window
+      model timely valuation missing profile hdominance) ε
+
+/-- Exact Nash correspondence at the compiled profile is the zero-error
+instance of the same source-prefix comparison. -/
+theorem candidate_nash_iff_of_source_quit_prefix
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
+    (valuation : Payout Player → Player → ℝ) (missing : Player → ℝ)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (hdominance : source.core.prog.QuitPayoutPrefixDominanceAgainst source.core.env
+      nullValue valuation profile) :
+    IsNash model.game (euPreference (fun next who =>
+      (compilation.publicPayout? next.native.application.visible.events).elim
+        (missing who) (fun payout => valuation payout who)))
+      (fun player => compilation.compileCandidatePolicy nullValue window player (profile player)) ↔
+    IsNash (sourceGameForm source.core.prog source.core.env)
+      (euPreference (fun final who =>
+        valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)) profile := by
+  simpa only [isNash_iff_isεNash_zero] using
+    compilation.candidate_approximate_nash_iff_of_source_quit_prefix nullValue window model
+      timely valuation missing profile hdominance 0
 
 /-- A source-defined gap between the quitting cap and the fixed-opponent
 support floor bounds the gain from selective quitting. It is charged only on
@@ -124,9 +211,8 @@ theorem candidate_deviation_bound_of_source_floor (compilation : SealedCompilati
       ((sourceGameForm source.core.prog source.core.env).play
         (Profile.update profile who alternative)).expect (fun final =>
           valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who) := by
-  simpa only [sub_self, zero_mul, add_zero] using
-    compilation.candidate_deviation_bound_with_quit_gap nullValue window model timely valuation
-      missing bound bound profile hbound.quit_upper hbound.lower who replacement
+  exact compilation.candidate_deviation_bound_of_source_quit_prefix nullValue window model
+    timely valuation missing profile hbound.quitPayoutPrefixDominance who replacement
 
 /-- At an approximate source equilibrium, the gain of each native deviation
 is bounded by the source error plus the source utility gap times that very
@@ -313,6 +399,21 @@ theorem candidate_nash_iff (compilation : SealedCompilation source ty)
     hbound).isNash_compileProfile_iff profile
 
 end Vegas.SealedCompilation
+
+/-- info: 'Vegas.SealedCompilation.candidate_deviation_bound_of_source_quit_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.candidate_deviation_bound_of_source_quit_prefix
+
+/-- info: 'Vegas.SealedCompilation.candidate_approximate_nash_iff_of_source_quit_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.candidate_approximate_nash_iff_of_source_quit_prefix
+
+/-- info: 'Vegas.SealedCompilation.candidate_nash_iff_of_source_quit_prefix'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SealedCompilation.candidate_nash_iff_of_source_quit_prefix
 
 /-- info: 'Vegas.SealedCompilation.candidate_deviation_bound_with_quit_gap'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/

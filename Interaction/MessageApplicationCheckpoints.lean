@@ -90,6 +90,26 @@ theorem PolicyTrace.prefixThrough_length_le_of_drop_first (trace : app.PolicyTra
               simpa only [prefixThrough, hfirst, Bool.false_eq_true, ↓reduceIte, length]
                 using Nat.succ_le_succ htail
 
+/-- If any indexed snapshot satisfies the predicate, the first-release
+readout also satisfies it. This needs no monotonicity assumption on the
+predicate or consistency assumption on the recorded snapshots. -/
+theorem PolicyTrace.release_firstRelease_of_drop_first (trace : app.PolicyTrace)
+    (release : app.PolicyExecution → Bool) (index : Nat)
+    (hrelease : release (trace.drop index).first = true) :
+    release (trace.firstRelease release) = true := by
+  induction index generalizing trace with
+  | zero =>
+      cases trace <;> simp_all only [drop, first, firstRelease, ↓reduceIte]
+  | succ index ih =>
+      cases trace with
+      | finish execution => exact hrelease
+      | step execution tail =>
+          cases hfirst : release execution with
+          | true => simp only [firstRelease, hfirst, ↓reduceIte]
+          | false =>
+              simpa only [firstRelease, hfirst, Bool.false_eq_true, ↓reduceIte] using
+                ih tail hrelease
+
 /-- The first-release readout is the snapshot immediately after its retained
 invocation prefix. This also covers traces that never satisfy the predicate. -/
 theorem PolicyTrace.firstRelease_eq_drop_prefixThrough_length (trace : app.PolicyTrace)

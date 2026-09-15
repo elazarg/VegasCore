@@ -18,7 +18,7 @@ and payoff code in an event graph. The native endpoint uses the shared
 The source-to-graph certificate preserves the source outcome law and exactly
 backtranslates arbitrary unilateral graph policies. The pending-message backend
 has an independent graph-to-candidate utility simulation. Their composition,
-`SealedCompilation.candidate_deviation_bound_of_source_floor`, bounds every
+`SealedCompilation.candidate_deviation_bound_of_source_quit_prefix`, bounds every
 randomized native unilateral deviation by a legal written-source deviation
 against unchanged opponents. Nash and same-error epsilon-Nash are preserved and
 reflected at the actual generated profiles.
@@ -28,13 +28,13 @@ malformed traffic, retries, replay, pending-message observations, and withholdin
 Its adaptive wire policy sees the pending pool, but not the private candidate
 table. Periodic inclusion capacity, roster coverage, and sufficiently large
 timeout windows protect unchanged players. Withholding resolves to the programmed
-default. The theorem assumes a source-only quitting condition: every outcome
-possible under a unilateral source deviation against the fixed opponents gives
-the deviator at least a bound, and every legal source execution recording its
-designated quitting value gives it at most that bound. The floor is pointwise
-on each deviation's support, not merely an expected-payoff comparison. A global
-floor over all legal executions is a stronger sufficient condition and supplies
-the reusable `candidatePayoutSimulation` certificate.
+default. The theorem assumes a source-only quitting condition: a legal quitting
+settlement is no better than any supported unilateral source continuation with
+the same public environment strictly before that commitment. Opponents stay
+fixed in the continuation law. This is a pointwise comparison, stronger than
+ordinary ex-ante quit dominance. A global quitting cap and equal fixed-opponent
+support floor suffice; a floor over all legal executions also supplies the
+reusable `candidatePayoutSimulation` certificate.
 
 Separate source quitting caps and supported-outcome floors give a quantitative
 version: every native deviation is bounded by a legal source deviation plus the
@@ -55,8 +55,8 @@ See [the composition design](docs/compilation-design.md#strategic-intermediate-r
 
 The candidate theorem covers homogeneous commit/reveal graphs with universally
 accepting guards, no samples, and no initially private disclosure. The registered-site
-host additionally has finer conditional timeout-checkpoint incentive results;
-transporting such source conditions to the candidate host remains open. Nontrivial
+host additionally has conditional timeout-checkpoint incentive results;
+transporting general conditional source comparisons to the candidate host remains open. Nontrivial
 guard validation, chance compilation, heterogeneous sealed values, concrete
 commitment cryptography, and ledger/EVM refinement remain further work. Service
 is an explicit operational assumption, not a proved censorship-resistance result.

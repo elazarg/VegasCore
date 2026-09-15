@@ -25,6 +25,7 @@ import VegasTests.SealedCompiler
 import VegasTests.PendingDisclosureIncentive
 import VegasTests.PendingStages
 import VegasTests.SourceGraph
+import VegasTests.SourceQuitPrefix
 import VegasTests.SourceRestriction
 import VegasTests.SealedPolicy
 import VegasTests.SealedReplay
@@ -40,6 +41,7 @@ import VegasTests.SealedProfilePayout
 import VegasTests.SealedCandidates
 import VegasTests.SealedCandidateReady
 import VegasTests.SealedCandidateDeadline
+import VegasTests.SealedCandidatePrefix
 import VegasTests.SealedResolutionReadBound
 import VegasTests.SealedSourceExtraction
 import VegasTests.GraphPublicPrefix

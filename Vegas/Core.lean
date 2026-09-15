@@ -22,6 +22,7 @@ import Vegas.Core.SourcePolicyExtension
 import Vegas.Core.SourceContext
 import Vegas.Core.SourceLikelihood
 import Vegas.Core.Settlement
+import Vegas.Core.SourceQuitPrefix
 import Vegas.Core.SourceRestriction
 import Vegas.Core.WellFormed
 

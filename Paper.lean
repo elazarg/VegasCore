@@ -58,9 +58,10 @@ delegates directly to a theorem in the active source, graph, or sealed-message
 tower. Source-to-declared-read-graph strategic preservation uses a concrete
 compiler simulation. The candidate pending-message round game composes that
 certificate with an independent graph-to-native deviation bound. For payout
-valuations, a written-source quitting cap and a floor on unilateral deviations
-against the fixed opponents supply its incentive condition; native policies
-remain unrestricted. A uniform source floor yields a whole-game utility
+valuations, a source-only comparison of quitting and supported unilateral
+continuations with matching pre-decision public environments supplies its
+incentive condition; native policies remain unrestricted. Global quitting caps
+and support floors are sufficient conditions. A uniform source floor yields a whole-game utility
 simulation. The registered-site game also has a
 `UtilitySimulation` under timely service, normal utility agreement, and
 timeout-checkpoint conditional utility comparisons. A uniform cap on own
@@ -1118,15 +1119,16 @@ theorem pending_source_payout_nash_iff
 
 /-- The graph-composed certificate bounds every native candidate deviation
 by one legal written-source deviation, with the other players unchanged.
-Its source floor is required only against those fixed opponents. -/
+Its source-only quitting comparison is relative to the public environment
+strictly before the source decision. -/
 theorem pending_candidate_source_payout_deviation_bound
     [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
     (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
     (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
-    (valuation : Payout Player → Player → ℝ) (missing bound : Player → ℝ)
+    (valuation : Payout Player → Player → ℝ) (missing : Player → ℝ)
     (profile : SourceBehavioralProfile source.core.prog)
-    (hbound : source.core.prog.QuitPayoutBoundAgainst source.core.env nullValue
-      valuation bound profile) (who : Player)
+    (hdominance : source.core.prog.QuitPayoutPrefixDominanceAgainst source.core.env nullValue
+      valuation profile) (who : Player)
     (replacement : model.game.sig.Strategy who) :
     ∃ alternative : SourceBehavioralPolicy source.core.prog who,
       (model.game.play (Profile.update
@@ -1137,8 +1139,8 @@ theorem pending_candidate_source_payout_deviation_bound
       ((sourceGameForm source.core.prog source.core.env).play
         (Profile.update profile who alternative)).expect (fun final =>
           valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who) :=
-  compilation.candidate_deviation_bound_of_source_floor nullValue window model timely valuation
-    missing bound profile hbound who replacement
+  compilation.candidate_deviation_bound_of_source_quit_prefix nullValue window model timely
+    valuation missing profile hdominance who replacement
 
 /-- The source-only quitting condition gives same-error Nash correspondence
 for the actual candidate-message driver and original generated source policies. -/
@@ -1146,10 +1148,10 @@ theorem pending_candidate_source_payout_nash_iff
     [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
     (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
     (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
-    (valuation : Payout Player → Player → ℝ) (missing bound : Player → ℝ)
+    (valuation : Payout Player → Player → ℝ) (missing : Player → ℝ)
     (profile : SourceBehavioralProfile source.core.prog)
-    (hbound : source.core.prog.QuitPayoutBoundAgainst source.core.env nullValue
-      valuation bound profile) (ε : ℝ) :
+    (hdominance : source.core.prog.QuitPayoutPrefixDominanceAgainst source.core.env nullValue
+      valuation profile) (ε : ℝ) :
     IsεNash model.game
       (fun next who => (compilation.publicPayout? next.native.application.visible.events).elim
         (missing who) (fun payout => valuation payout who)) ε
@@ -1157,8 +1159,8 @@ theorem pending_candidate_source_payout_nash_iff
     IsεNash (sourceGameForm source.core.prog source.core.env)
       (fun final who => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
       ε profile :=
-  compilation.candidate_approximate_nash_iff_of_source_floor nullValue window model timely valuation
-    missing bound profile hbound ε
+  compilation.candidate_approximate_nash_iff_of_source_quit_prefix nullValue window model timely
+    valuation missing profile hdominance ε
 
 /-- info: 'Vegas.Paper.pending_candidate_source_payout_deviation_bound'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
