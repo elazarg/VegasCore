@@ -6,5 +6,6 @@ import GameTheoryExtensions.Math.SelectiveStopping
 import GameTheoryExtensions.Math.SelectiveStoppingTests
 import GameTheoryExtensions.Math.Probability.FinDist
 import GameTheoryExtensions.Math.Probability.DecisionObservation
+import GameTheoryExtensions.Math.Probability.SequentialDecisionObservation
 import GameTheoryExtensions.Math.Finset
 import GameTheoryExtensions.Core.UtilitySimulation

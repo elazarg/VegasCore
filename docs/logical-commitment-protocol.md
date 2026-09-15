@@ -192,6 +192,12 @@ settlement examples in `InteractionTests/LogicalCommitmentInformation.lean`.
 The gated experiment states its fixed-kernel assumption and the additional
 cross-site work required for strategic adoption.
 
+The [two-decision experiment](logical-commitment-two-decision.md) checks
+sequential conditioning with private action recall and distinct pending/included
+disclosures. Its generic probability theorem is separate from its logical
+binding tests. It establishes a sufficient finite-policy composition condition,
+not that the candidate runtime satisfies that condition.
+
 Promoting the experiment requires the strategic prefix-law and settlement
 interface specified in the gated experiment, together with a demonstrated
 simplification of an existing backend proof. Local validator agreement is not
