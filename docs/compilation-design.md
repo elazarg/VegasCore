@@ -115,14 +115,14 @@ deadline provenance, and the periodic-service argument are shared across the
 commitment hosts; player-specific completion is supplied by each host's checked
 polling theorem.
 
-The strategic factoring is incomplete. Some backend modules still transitively
-import mixed source/backend modules. Legal resolution defaults and the quitting
-utility bound need graph
-formulations with compiler certificates, rather than a hidden source-image
-premise. Only after those laws are proved can the candidate backend expose a
-`UtilitySimulation` and the source-to-runtime theorem delegate to composition.
-The existing source-relative results remain checked; they do not establish this
-independent graph/backend certificate.
+The candidate backend exposes a graph-relative `UtilitySimulation`. Legal
+defaults, public settlement, and quitting utility bounds have graph formulations;
+the source compiler supplies their certificates. The source-to-candidate
+theorem composes that edge with source/graph correspondence. The immediate gap
+is its language coverage: homogeneous values, no samples, and universally
+accepting guards still constrain the backend. The
+[typed protocol proposal](typed-protocol-interface.md) addresses that interface;
+it is not yet a replacement implementation or theorem.
 
 ## Active lowering
 
@@ -293,13 +293,23 @@ service or incentive premise. The checked two-player source regression
 `validated_candidate_hidden_until_acceptance` instantiates it for any public
 opening validator, including rejecting validators.
 
-The remaining guarded operational work is to generalize the deterministic
-replay, acceptance-persistence and cylinder laws without duplicating their
-proofs. In addition to hiding, persistence needs a successful-admission
-contract: guarded success must retain the original candidate transition.
-The guarded handler already proves this local fact. These operational laws
-then support the separate graph-side zero-likelihood and source-incentive
-arguments; the acceptance information law alone does not establish them.
+`CandidateHandlerSound` is the separate successful-admission contract:
+every successful handler result is the original authenticated candidate
+transition. Additional rejection is permitted. Both candidate handlers
+discharge it. The shared arbitrary-policy persistence, public-event,
+acceptance and acceptance-checkpoint theorems consume this contract and run
+the supplied handler. Accepted meanings remain fixed through rejected
+openings and timeout. The guarded regression checks both arbitrary-cut
+persistence and equality of the acceptance and first-timeout readouts for a
+genuinely rejecting source guard.
+
+The remaining guarded operational work is to generalize deterministic replay
+and its cylinder laws without duplicating their proofs. These laws support
+the separate graph-side zero-likelihood and source-incentive arguments;
+neither the acceptance information law nor persistence alone establishes
+those probability or strategic conclusions. Successful-admission soundness
+does not imply observation equivalence: extra rejection remains visible in
+the ledger and receipts.
 
 The validation context must agree with the context intended by the source
 guard. Public eligibility alone proves neither availability at opening nor
@@ -579,8 +589,10 @@ All player and environment policies may randomize and adapt to their declared
 observations. The theorem does not assert that readiness is ever reached or
 that later quitting has the law of an earlier source decision.
 
-No active theorem establishes general adaptive scheduling equivalence,
-censorship resistance, cryptographic hiding, gas behavior, or EVM execution.
+The candidate theorem admits adaptive full-pool wire policies satisfying its
+round-service contract. It does not establish equivalence for every adaptive
+scheduling model, censorship resistance, concrete cryptographic security, gas
+behavior, or EVM execution.
 
 ## Source and ownership constraints
 

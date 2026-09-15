@@ -520,8 +520,8 @@ choices and earlier focal decisions. Read-boundedness makes every focal
 decision causal as well. Summing variables in reverse source order proves
 normalization.
 
-The checked source point-mass theorem is `Vegas.denoteSource_prob_eq_prod`,
-audited as `Vegas.Paper.source_point_probability`. It applies to the existing
+The checked source point-mass theorem is `Vegas.denoteSource_prob_eq_prod`.
+It applies to the existing
 written-source denotation, with every binding retained in its terminal
 environment. The factors include sample probabilities, guarded commitment
 probabilities, and a final equality check. The cylinder calculation below works
@@ -629,7 +629,7 @@ Equivalently, the free-coordinate sums in (2) can be eliminated in reverse
 source order after pulling out the fixed factors. The reference-law proof
 uses the existing source denotation to perform that normalization directly.
 
-The general source identities are checked and audited in `Paper.lean`.
+The general source identities are checked in their source probability modules.
 `SealedCompilation.recordedChoiceRestriction` constructs `rho_t` from the
 private service in the recorded prefix. Only occupied slots at honest source
 decisions are fixed; the extracted focal policy and unoccupied honest kernels
@@ -657,7 +657,7 @@ field correspondence, and the occupied native honest slots.
 the checked whole-program source law. `extractedSourceRun_replay_likelihood`
 then instantiates the source restriction identity above: the replay cylinder
 mass is exactly the expectation of `W_t` under the ordinary reference source
-execution. `Vegas.Paper.pending_source_cylinder_likelihood` audits this formula.
+execution.
 
 `restrictedSourceRun_weight_eq_product` proves `W_t` constant throughout `nu_t`.
 `VegasCore.decisionPositions` enumerates the owners and source instruction
@@ -667,8 +667,7 @@ likelihood by these positions. At every occupied honest slot, the native theorem
 whose owner policy can select the recorded registration. The source/native
 decision identity supplies its factor at every reference realization. No positive
 mass under `mu_w` is required. The theorem
-`extractedSourceRun_replay_prob_eq_product`, audited as
-`Vegas.Paper.pending_source_prefix_product`, eliminates the expectation and
+`extractedSourceRun_replay_prob_eq_product` eliminates the expectation and
 identifies the source cylinder mass with this fixed product.
 
 `replay_registration_factor` proves that the selected checkpoint and the actual
@@ -682,8 +681,7 @@ equations in `replay_prefix_prob_eq_product`. All remaining invocations have
 unit factors, including repeated submissions and focal registrations.
 The proof multiplies equations without dividing, so zero factors are allowed.
 
-`extractedSourceRun_native_prefix_law`, audited as
-`Vegas.Paper.pending_source_native_prefix_law`, equates the entire prefix law
+`extractedSourceRun_native_prefix_law` equates the entire prefix law
 with replay of the ordinary source execution against the extracted focal policy.
 Agreement of masses on the normalized source law's support also rules out extra
 native mass outside that support. Both marginals are therefore checked for fixed
@@ -731,8 +729,8 @@ opponent profile.
 is the full replay of the retained source realization: timeout records cannot
 be erased, so the cutoff retained the entire invocation list. If the native
 program is complete as well, `extractedSourceCoupling_decode_of_complete_clear`
-recovers exactly that realization through the native event decoder. Its
-finite-mixture version is audited as `Vegas.Paper.pending_normal_completion`.
+recovers exactly that realization through the native event decoder. The
+randomized source coupling retains this normal-completion correspondence.
 The proof uses the actual binding invariant and retained registrations, rather
 than deriving outcome equality from marginal identities. The round driver
 below separately establishes completion. Post-timeout settlement identification
@@ -1047,8 +1045,6 @@ close the fixed-response native marginal in `extractedSourceRun_native_prefix_la
 retained state and histories, preserving the joint stopped-prefix/full-trace
 law; `exists_randomized_source_coupling` lifts that law to randomized focal
 and environment policies.
-`Vegas.Paper.pending_randomized_source_coupling`
-audits the joint law and both marginals by direct delegation.
 `MessageApplication.RoundDriver.runRounds_eq_tracePolicies` identifies the actual round
 driver with the first complete block-boundary snapshot of that trace. The
 periodic environment performs wire actions at its service opportunities and
@@ -1235,11 +1231,9 @@ and every source outcome gives it at least `b_i`. Timely service proves that
 all timeouts under a unilateral replacement belong to the deviator. Normal
 branches use exact decoding; timeout branches use the cap. Finite averaging
 then yields one legal source deviation with at least the native deviation's
-utility. `RoundModel.isεNash_iff`, audited as
-`Vegas.Paper.pending_round_approximate_nash_iff`, combines this bound with the
+utility. `RoundModel.isεNash_iff` combines this bound with the
 original honest law. A source lower bound `b_i + delta` yields the stronger
-`RoundModel.deviation_utility_margin_bound`, audited as
-`Vegas.Paper.pending_round_deviation_margin`: the source deviation's expected
+`RoundModel.deviation_utility_margin_bound`: the source deviation's expected
 utility exceeds the native one by at least `delta * Pr(timeout)`.
 
 `RoundModel.stoppingCoupling` retains `(source configuration, J, native result)`.

@@ -167,6 +167,28 @@ class PaperClaimsTests(unittest.TestCase):
         self.assertTrue(any("needs a nonempty explanation" in error for error in
                             CHECKER.check(self.root, self.paper, allow_unverified=True)))
 
+    def test_supporting_claim_is_rejected_in_strict_mode(self):
+        self.registry.write_text(json.dumps({
+            "thm:witness": {"supporting": "Checked in its owning module; not a paper capstone."}
+        }), encoding="utf-8")
+        self.audit.write_text("", encoding="utf-8")
+        self.assertTrue(any("Supporting-only paper claim is not directly audited" in error
+                            for error in CHECKER.check(self.root, self.paper)))
+
+    def test_supporting_claim_is_accepted_in_coverage_mode(self):
+        self.registry.write_text(json.dumps({
+            "thm:witness": {"supporting": "Checked in its owning module; not a paper capstone."}
+        }), encoding="utf-8")
+        self.audit.write_text("", encoding="utf-8")
+        self.assertEqual(CHECKER.check(self.root, self.paper, allow_unverified=True), [])
+
+    def test_supporting_claim_needs_an_explanation(self):
+        self.registry.write_text(json.dumps({
+            "thm:witness": {"supporting": " "}
+        }), encoding="utf-8")
+        self.assertTrue(any("supporting claim needs a nonempty explanation" in error
+                            for error in self.check()))
+
     def test_theorem_and_unverified_status_cannot_be_combined(self):
         self.registry.write_text(json.dumps({
             "thm:witness": {"theorems": ["Vegas.Paper.witness"], "unverified": "Missing law"}

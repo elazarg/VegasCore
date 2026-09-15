@@ -94,17 +94,22 @@ the source language, event-graph compiler, and its native integration.
 
 ## Paper target and proof status
 
-The single active `Paper.lean` audit contains only direct delegations to proved
-repository theorems; it has no admissions and does not count archived claims.
-The exact active layering, source-payout pending-message theorem, and next
-end-to-end target are listed in
-[the active tower](docs/active-tower.md).
+The single active `Paper.lean` audit selects paper-visible capstones and
+important lemmas, all directly delegated to proved repository theorems with
+axiom pins. Supporting proofs stay in their owning modules; archives do not
+contribute proof coverage. The current theorem boundary is listed in
+[the active tower](docs/active-tower.md). The
+[road ahead](docs/a-road-ahead.md) sets the full-language and executable-target
+milestones, and the [typed protocol proposal](docs/typed-protocol-interface.md)
+specifies the next interface. Those milestones are not checked results.
 
 A successful Lean build checks the active proof terms. It is not evidence that
 the separate manuscript's claims are all established. `paper-claims.json`
-distinguishes active audit mappings from explicitly unverified manuscript
-claims. The latter are coverage gaps, not a count or a worklist of missing
-theorems. Reference material supplies neither proofs nor audit obligations.
+distinguishes direct audit mappings, supporting results without a paper audit,
+and explicitly unverified manuscript claims. Strict checking requires direct
+audits; coverage checking alone does not establish the manuscript's claims.
+These statuses are not a count or a worklist of missing theorems. Reference
+material supplies neither proofs nor audit obligations.
 
 Readable source material for porting is preserved in the
 [proof reference archive](archive/fused/README.md), outside all active libraries.

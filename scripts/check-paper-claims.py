@@ -9,6 +9,10 @@ main.tex inputs are checked. Reference code is never read or indexed.
 
 Strict mode rejects unverified claims and admitted audit declarations.
 --allow-unverified checks coverage during development, not proof completion.
+Supporting entries identify claims whose proof infrastructure remains checked in
+its owning modules but is intentionally absent from the compact capstone audit.
+They are permitted only in coverage mode: strict mode requires every active
+paper claim to name an axiom-pinned capstone in `Paper.lean`.
 Unverified entries record manuscript coverage gaps, not a theorem work plan.
 """
 
@@ -237,8 +241,21 @@ def check(root: Path, paper: Path, allow_missing: bool = False,
         admitted.update(open_theorems)
     failures = []
     for claim, entry in registry.items():
-        if not isinstance(entry, dict) or set(entry) not in ({"theorems"}, {"unverified"}):
-            failures.append(f"{claim}: expected exactly one of 'theorems' or 'unverified'")
+        if not isinstance(entry, dict) or set(entry) not in (
+                {"theorems"}, {"supporting"}, {"unverified"}):
+            failures.append(
+                f"{claim}: expected exactly one of 'theorems', 'supporting', or 'unverified'"
+            )
+            continue
+        if "supporting" in entry:
+            reason = entry["supporting"]
+            if not isinstance(reason, str) or not reason.strip():
+                failures.append(f"{claim}: supporting claim needs a nonempty explanation")
+            elif not allow_unverified:
+                failures.append(
+                    f"Supporting-only paper claim is not directly audited: {claim} "
+                    f"({reason.strip()})"
+                )
             continue
         if "unverified" in entry:
             reason = entry["unverified"]
@@ -346,7 +363,11 @@ def main() -> int:
         print("\n".join(failures))
         return 1
     if args.allow_unverified:
-        print("Paper coverage audit passed; unverified claims are permitted in this mode. "
+        registry = json.loads((root / "paper-claims.json").read_text(encoding="utf-8"))
+        supporting = sum("supporting" in entry for entry in registry.values())
+        unverified = sum("unverified" in entry for entry in registry.values())
+        print(f"Paper coverage audit passed with {supporting} supporting-only and "
+              f"{unverified} unverified claims permitted in this mode. "
               "This is not a proof-completion check.")
     else:
         print("Paper claim registry checks passed. Prose/Lean semantic agreement requires review.")

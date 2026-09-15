@@ -3,125 +3,65 @@
     "theorems": [
       "Vegas.Paper.source_graph_honest_law",
       "Vegas.Paper.source_graph_deviation_law",
-      "Vegas.Paper.source_graph_nash_iff",
       "Vegas.Paper.source_graph_approximate_nash_iff"
     ]
   },
   "prose:utility-simulation": {
-    "theorems": [
-      "Vegas.Paper.utility_approximate_nash_preservation"
-    ]
+    "supporting": "The generic utility transfer remains proved in GameTheoryExtensions; it is supporting infrastructure rather than a paper capstone."
   },
   "prose:sealed-opening-barrier": {
-    "theorems": [
-      "Vegas.Paper.sealed_opening_barrier",
-      "Vegas.Paper.pending_acceptance_read_bound"
-    ]
+    "supporting": "Opening and read-bound lemmas remain proved in the sealed runtime modules; the paper audit retains the graph-level fence capstones."
   },
   "prose:pending-source-prefix": {
-    "theorems": [
-      "Vegas.Paper.pending_extracted_source_law",
-      "Vegas.Paper.pending_source_native_prefix_law",
-      "Vegas.Paper.pending_randomized_source_coupling",
-      "Vegas.Paper.pending_normal_completion"
-    ]
+    "supporting": "The prefix, extraction, and coupling lemmas remain checked in Vegas.Compile and support the retained end-to-end candidate capstones."
   },
   "prose:pending-candidate-graph-coupling": {
-    "theorems": [
-      "Vegas.Paper.pending_candidate_randomized_graph_coupling",
-      "Vegas.Paper.pending_candidate_randomized_source_coupling",
-      "Vegas.Paper.pending_candidate_round_graph_coupling",
-      "Vegas.Paper.pending_candidate_round_source_coupling",
-      "Vegas.Paper.pending_candidate_honest_graph_law",
-      "Vegas.Paper.pending_candidate_timeout_owner"
-    ]
+    "supporting": "Graph/source candidate couplings and timeout attribution remain checked in their owning modules and discharge the retained end-to-end results."
   },
   "prose:pending-round-coupling": {
-    "theorems": [
-      "Vegas.Paper.pending_randomized_round_source_coupling",
-      "Vegas.Paper.pending_round_normal_completion"
-    ]
+    "supporting": "Round coupling and normal-completion results remain checked in Vegas.Compile and are not separate paper capstones."
   },
   "prose:pending-honest-round": {
-    "theorems": [
-      "Vegas.Paper.pending_honest_round_source_law"
-    ]
+    "supporting": "The registered-host honest round law remains checked, but the compact audit advertises the stronger current candidate-host boundary."
   },
   "prose:pending-round-incentives": {
-    "theorems": [
-      "Vegas.Paper.pending_round_approximate_nash_iff",
-      "Vegas.Paper.pending_round_deviation_margin"
-    ]
+    "supporting": "Registered-host incentive theorems remain checked; the retained candidate-host deviation and equilibrium capstones are the advertised boundary."
   },
   "prose:pending-checkpoint-incentives": {
-    "theorems": [
-      "Vegas.Paper.pending_checkpoint_information",
-      "Vegas.Paper.pending_checkpoint_locked",
-      "Vegas.Paper.pending_checkpoint_deviation_margin",
-      "Vegas.Paper.pending_checkpoint_approximate_nash_iff",
-      "Vegas.Paper.pending_checkpoint_timeout_cost"
-    ]
+    "supporting": "Checkpoint information, locking, margin, and timeout-cost lemmas remain proved in Vegas.Game.SealedRounds as supporting infrastructure."
   },
   "prose:pending-public-payout": {
-    "theorems": [
-      "Vegas.Paper.pending_public_payout"
-    ]
+    "supporting": "Public payout decoding remains proved in the sealed payout modules and is subsumed in the audit by the public-source outcome capstones."
   },
   "prose:pending-candidate-settlement": {
     "theorems": [
-      "Vegas.Paper.pending_candidate_binding",
-      "Vegas.Paper.pending_candidate_public_payout",
-      "Vegas.Paper.pending_candidate_timeout_source_choice",
-      "Vegas.Paper.pending_candidate_honest_payout_law",
       "Vegas.Paper.pending_candidate_public_source_law",
       "Vegas.Paper.pending_candidate_public_source_support"
     ]
   },
   "prose:pending-source-payout-incentives": {
-    "theorems": [
-      "Vegas.Paper.pending_timeout_source_choice",
-      "Vegas.Paper.pending_source_payout_nash_iff"
-    ]
+    "supporting": "Source-payout timeout lemmas remain checked; the public-source candidate equilibrium theorem is the retained end-to-end capstone."
   },
   "prose:pending-candidate-incentives": {
     "theorems": [
       "Vegas.Paper.pending_candidate_public_deviation_bound",
-      "Vegas.Paper.pending_candidate_public_nash_iff",
-      "Vegas.Paper.pending_candidate_source_quit_gap",
-      "Vegas.Paper.pending_candidate_approximate_nash_with_gap",
-      "Vegas.Paper.pending_candidate_approximate_nash_reflection"
+      "Vegas.Paper.pending_candidate_public_nash_iff"
     ]
   },
   "prose:pending-termination": {
-    "theorems": [
-      "Vegas.Paper.compiled_resolution_terminates"
-    ]
+    "supporting": "Bounded-driver termination remains proved in the sealed termination modules and supports public-source support."
   },
   "prose:selective-quitting-margin": {
-    "theorems": [
-      "Vegas.Paper.selective_quitting_bound"
-    ]
+    "supporting": "The abstract selective-quitting inequality remains proved in GameTheoryExtensions and supports the concrete incentive capstone."
   },
   "prose:pending-disclosure-margin": {
-    "theorems": [
-      "Vegas.Paper.sealed_disclosure_utility_bound"
-    ]
+    "supporting": "The disclosure-margin theorem remains checked in Interaction and is supporting infrastructure."
   },
   "prose:source-decisions": {
-    "theorems": [
-      "Vegas.Paper.source_strategy_support",
-      "Vegas.Paper.source_decision_information",
-      "Vegas.Paper.source_publication_barrier",
-      "Vegas.Paper.source_decision_roundtrip",
-      "Vegas.Paper.graph_decision_roundtrip"
-    ]
+    "supporting": "Source-decision information and roundtrip lemmas remain checked in the source/graph compiler modules and discharge sourceGraphSimulation."
   },
   "prose:commitment-accounting": {
-    "theorems": [
-      "Vegas.Paper.Source.committed_binding_accounted",
-      "Vegas.Paper.Source.initial_binding_accounted",
-      "Vegas.Paper.Source.binding_resolutions_nodup"
-    ]
+    "supporting": "Commitment accounting integrity remains checked in Vegas.Core.AccountingIntegrity and is not a separate paper capstone."
   },
   "prose:public-application-support": {
     "unverified": "The manuscript's ApplicationPlan interface is not active. Its whole-program public-output support claim must be stated for the sealed compiler; current settlement theorems have their own fragment and completion premises."
@@ -162,8 +102,7 @@
   "thm:confluence": {
     "theorems": [
       "Vegas.Paper.execution_diamond",
-      "Vegas.Paper.schedule_confluence",
-      "Vegas.Paper.schedule_observation_confluence"
+      "Vegas.Paper.schedule_confluence"
     ]
   },
   "thm:fence": {
