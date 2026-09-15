@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import VegasTests.Language
+import VegasTests.GuardValidation
 import VegasTests.CoreFinite
 import VegasTests.PendingSource
 import VegasTests.PendingExecution

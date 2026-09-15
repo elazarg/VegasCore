@@ -14,6 +14,7 @@ import Vegas.EventGraph.Execution
 import Vegas.EventGraph.Fence
 import Vegas.EventGraph.FiniteState
 import Vegas.EventGraph.Frontier
+import Vegas.EventGraph.GuardValidation
 import Vegas.EventGraph.Information
 import Vegas.EventGraph.HistoryInformation
 import Vegas.EventGraph.IndependentWrites

@@ -19,6 +19,15 @@ introducing a new edge and proving its own correspondence laws.
 | Pending-message strategic edge | `Vegas.Game` | `SealedCompilation.RoundModel` | Constructed source/native coupling, actual timeout-checkpoint information, retained focal registrations, and same-error Nash equivalence under timely service, normal utility agreement, and explicit conditional timeout utility comparisons. For payout-valued utilities, a source-only `VegasCore.QuitPayoutBound` supplies both utility premises. |
 | Candidate-message strategic edge | `Vegas.Game` | `SealedFragment.CandidateRoundModel` | Independent graph utility comparison and composition to written source. The complete public source outcome law is preserved at generated profiles. For arbitrary interpretations of that outcome, randomized candidate deviations are bounded by legal source deviations under timely service and a source-only quitting comparison between continuations with matching pre-decision public environments. Same-error Nash holds at the analyzed generated profile; uniform payout cap/floor bounds supply a whole-game simulation. |
 
+Public guard validation is implemented as a candidate-host parameter through
+`guardedCandidateApplication`, with graph-code compilation and source guard
+evaluation agreement. The shared runner still proves bounded completion under
+arbitrary policies. Its local tests retain pending invalid openings and reject
+them before timeout settlement. This feature is not yet covered by the
+candidate-message strategic edge above: that edge still assumes universally
+accepting guards. See the opening-validation boundary in
+[compilation-design.md](compilation-design.md#opening-time-guard-validation).
+
 The ideal commitment service provides more than an abstract hiding-and-binding
 interface. For the compiled protocol, a source site is the numeric slot itself,
 so there is one canonical owner/slot handle. Its first authenticated private

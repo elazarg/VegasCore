@@ -160,6 +160,52 @@ or a well-typed hidden value for every arbitrary target candidate. Site-specific
 typing and guard checks belong to authenticated opening validation, together
 with a proof of the source continuation used on failure.
 
+### Opening-time guard validation
+
+`EventGuard.validationReads` separates the guard expression's stored
+dependencies from the larger `choiceReads` used by the player's strategy.
+`evalValidationStore?` evaluates the retained code from those dependencies and
+the claimed action, rejecting missing or ill-typed reads. Its correctness
+theorem consumes `PubliclyValidatable` and public-store agreement. The source
+compiler's `eventGuardOf_evalValidationStore?_eq_source` proves agreement with
+the original source guard. The expression interface supplies a sound dependency
+over-approximation, so the footprint is not claimed to be semantically minimal.
+
+`Graph.sealedOpeningValidator` resolves a reveal to its commitment producer,
+checks the claimed type, and runs that evaluator on the public event store.
+`SealedResolution.guardedCandidateApplication` installs it through the existing
+candidate host. Candidate authentication happens first; commitment acceptance
+remains unchanged and does not test hidden validity. An invalid opening receives
+a rejecting receipt and does not append an opening event. The shared deadline
+mechanism remains responsible for resolution. Arbitrary-policy bounded
+completion follows from the existing generic handler theorem.
+
+These are local compiler and operational results. The whole-program strategic
+theorem still requires universally accepting guards. Widening it requires a
+source-independent graph certificate for public validation and legal defaults,
+plus a replay/settlement proof for invalid candidates. In particular, recorded
+values cannot simply be inserted into guard-restricted source policies as the
+current unrestricted-fragment proof does. Private attempts and invalid pending
+claims remain in native observations even when their eventual settlement is
+null. Their strategic treatment requires the actual deviation argument, not an
+assumed observation quotient.
+
+The validation context must agree with the context intended by the source
+guard. Public eligibility alone proves neither availability at opening nor
+agreement after other nodes have defaulted. Genuinely private dependencies
+require another validation mechanism or a proved public representation. A
+guarded site also needs an enforcement point before its unchecked value can
+affect a protected continuation.
+
+`VegasTests/GuardValidation.lean` checks a nontrivial nullable guard with unused
+private choice information, public dependency failure, private-guard
+ineligibility, opaque acceptance of an invalid candidate, a visible rejected
+opening followed by timeout to null, and successful inclusion of a legal
+opening. These are native runs of the guarded host; they do not assert a
+whole-program source strategy law.
+
+### Shared candidate hosts
+
 `SealedResolution.host` keeps the program rules, transport, clock, and policy
 interface fixed while instantiating preparation and message admission. The
 registered service admits canonical pre-registered site handles; the candidate

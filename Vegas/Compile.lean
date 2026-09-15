@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.Compiler
+import Vegas.Compile.GuardValidation
 import Vegas.Compile.FieldMap
 import Vegas.Compile.RevealAccounting
 import Vegas.Compile.SourceView
@@ -24,6 +25,7 @@ import Vegas.Compile.SourceQuitPrefix
 import Vegas.Compile.SourcePublicOutcome
 import Vegas.Compile.SealedPublicSourceOutcome
 import Vegas.Compile.SealedMessages
+import Vegas.Compile.SealedGuardValidation
 import Vegas.Compile.SealedReadOrigin
 import Vegas.Compile.SealedDecode
 import Vegas.Compile.SealedExecution
