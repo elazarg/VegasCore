@@ -92,6 +92,19 @@ def projectDecisionView {runtime : GraphRuntime Player L Δ}
     (observation : Observation L who target) : DecisionView who target :=
   (observation, projectLogicalHistory who observation history graph 0 site)
 
+/-- Wire disclosure is determined by the publication result and its public
+address. Failure sends no opening material. Successful publication sends the
+canonical encoding of exactly the published value. -/
+def disclosureCommand (runtime : GraphRuntime Player L Δ) (site : Nat) (bindingName : VarId)
+    (bindings : Bindings Player) {payload : L.Ty} :
+    PublicationResult (L.Val payload) → Command runtime
+  | .failure => .submit (.withhold site)
+  | .success value =>
+      match lookupBinding bindings bindingName with
+      | some handle => .submit (.opening site handle
+          ⟨R.result payload, (R.valueEquiv payload).symm (.success value)⟩)
+      | none => .wait
+
 def compileAt (runtime : GraphRuntime Player L Δ) (who : Player)
     {Γ₀ : VCtx Player L} (whole : Graph Player L Γ₀ Δ) :
     {Γ : VCtx Player L} → (graph : Graph Player L Γ Δ) → BehavioralPolicy who graph →
@@ -146,14 +159,9 @@ def compileAt (runtime : GraphRuntime Player L Δ) (who : Player)
                     match disclose, observation.cells.get ownedSource with
                     | true, some encoded =>
                         let proposal := R.valueEquiv payload encoded
-                        match acceptedProposal checks publicValues proposal with
-                        | .success _ =>
-                            match lookupBinding view.application.publicState.bindings
-                                bindingName with
-                            | some handle => FinDist.pure
-                                (.submit (.opening site handle ⟨R.result payload, encoded⟩))
-                            | none => FinDist.pure .wait
-                        | .failure => FinDist.pure (.submit (.withhold site))
+                        FinDist.pure (disclosureCommand runtime site bindingName
+                          view.application.publicState.bindings
+                          (acceptedProposal checks publicValues proposal))
                     | _, _ => FinDist.pure (.submit (.withhold site))
                   else FinDist.pure .wait
                 else FinDist.pure .wait

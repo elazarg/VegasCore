@@ -99,15 +99,16 @@ theorem compileAt_command_atPhase (runtime : GraphRuntime Player L Δ)
             · split at supported
               · split at supported
                 · split at supported
-                  · split at supported
+                  · simp only [disclosureCommand] at supported
+                    split at supported
+                    · simp only [FinDist.mem_support_pure] at supported
+                      subst command
+                      exact phase.symm
                     · split at supported <;>
                         simp only [FinDist.mem_support_pure] at supported <;>
                         subst command
                       · exact phase.symm
                       · trivial
-                    · simp only [FinDist.mem_support_pure] at supported
-                      subst command
-                      exact phase.symm
                   · simp only [FinDist.mem_support_pure] at supported
                     subst command
                     exact phase.symm

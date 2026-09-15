@@ -128,6 +128,25 @@ def acceptedResult {Γ : VCtx Player L} {owner : Player} {payload : L.Ty}
   let tentative := VEnv.cons ((R.valueEquiv _).symm proposed) env
   if checksAccepted checks tentative then proposed else .failure
 
+omit [DecidableEq Player] in
+/-- A successful resolution publishes the exact immutable bound value. -/
+theorem acceptedResult_success {Γ : VCtx Player L} {owner : Player} {payload : L.Ty}
+    {outputName bindingName : VarId}
+    (source : HasVar Γ bindingName (.sealed owner (R.result payload)))
+    (checks : List (GuardCheck (R := R) ((outputName, .pub (R.result payload)) :: Γ)))
+    (env : VEnv L Γ) (disclose : Bool) (value : L.Val payload)
+    (accepted : acceptedResult source checks env disclose = .success value) :
+    disclose = true ∧ env.get source = (R.valueEquiv payload).symm (.success value) := by
+  unfold acceptedResult at accepted
+  dsimp only at accepted
+  split at accepted
+  · cases disclose with
+    | false => simp [proposedResult] at accepted
+    | true =>
+        refine ⟨rfl, ?_⟩
+        exact (R.valueEquiv payload).injective (by simpa [proposedResult] using accepted)
+  · contradiction
+
 def runWith : {Γ Δ : VCtx Player L} → (graph : Graph Player L Γ Δ) →
     BehavioralProfile graph → VEnv L Γ → History Player L →
     FinDist (VEnv L Δ)

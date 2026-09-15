@@ -32,6 +32,8 @@ optimization; the subsequent build checks the active proof terms.
 | Exact full-source/graph strategic certificate | `Vegas/Game/GraphCompilation.lean`, `GraphSetup.lean` |
 | Full typed public-message host and local laws | `Vegas/Graph/MessageApplication.lean`, `MessageStepLaw.lean`, `MessageInvariant.lean` |
 | Actual player-policy compiler and execution laws | `Vegas/Graph/MessagePolicies.lean`, `MessageBindingLaw.lean`, `MessageResolutionLaw.lean` |
+| Binding-origin certificate and verifier provenance | `Vegas/Compile/GraphBindingDiscipline.lean`, `Vegas/Graph/MessageBindingProvenance.lean` |
+| Whole-prefix policy memory projection | `Vegas/Graph/MessageHistoryExtension.lean` |
 | Reserved service and arbitrary-policy termination | `Vegas/Graph/MessageService.lean`, `MessageServiceTermination.lean` |
 | Shared-private-setup predrawing | `Interaction/MessageApplicationPredrawTransport.lean` |
 | Concrete full-language pending target | `Vegas/Game/GraphMessages.lean` (completion proved; honest/deviation laws unproved) |

@@ -57,21 +57,48 @@ Initial handles are keyed by field name. A correspondence theorem therefore
 requires unique initial field names, as supplied by `SourceProgram.Initial`;
 graph constructors enforce freshness of every subsequently added field.
 
+### Binding-origin certificate
+
+The backend's semantic certificate also retains each bound field's original
+payload type. `Graph.BindingDiscipline` threads a name-to-payload map through
+binds and checks it at resolves. Both `Initial.graph_bindingDiscipline` and
+`Setup.graph_bindingDiscipline` prove this property for the source compiler's
+complete output. It is proof data, not another runtime or a source restriction.
+
+This distinction matters for the abstract expression interface. `ResultTypes`
+does not require its result-type constructor to be injective. Two payload
+types can share a representation type while their decoding equivalences assign
+different meanings to the same element. For example, two singleton payload
+types can share a two-element result representation: one decoder treats `0`
+as failure, while the other treats `0` as success. A hand-built graph that binds
+at the first payload and resolves at the second can reinterpret a failed
+binding as successful. Mere equality of representation types does not exclude
+that graph.
+
+The source retains the payload identity in its private-field type and compiles
+both operations using that identity. The graph certificate exposes this fact
+to a source-independent backend proof. The expression interface does not need
+an additional injectivity or representation-coherence assumption.
+
 ## Prescribed policies and observations
 
 `MessagePolicies` implements the policy translation below. `MessagePolicyLaws`
 connects the actual command kernels to graph choices and checks uniform failed
-disclosure. `MessageServiceLaw` factors a real preparation/submission/inclusion
-run through the graph bind kernel. `MessageBindingLaw` and
+disclosure. `MessageServiceLaw` factors a fresh bind or resolve invocation
+through its graph kernel with an arbitrary remaining native schedule and
+environment. `MessageBindingLaw` and
 `MessageResolutionLaw` compose prescribed submission with reserved inclusion
 through the actual shared runner. Resolution installs the graph's accepted
 result for both logical Booleans, including guard rejection; only successful
 publication requires an opening witness. `State.initial_binding` constructs
-that witness for every sealed initial field under name uniqueness. Preserving
-the association between later graph fields and accepted handles remains part
-of the whole-program argument. `MessageVerification` already proves that once
-an opening verifies, every supported policy-driven continuation preserves that
-exact verifier, even with arbitrary players and environment.
+that witness for every sealed initial field under name uniqueness.
+`MessageBindingProvenance` preserves origin-indexed field/handle association
+through arbitrary native policy execution, including failed binds and clock
+expiry. `State.resolveSource_verified` derives the exact owner-correct verifier
+for a successful resolution at a disciplined graph cursor; the local
+submission law consumes this invariant instead of assuming an opening witness.
+`MessageVerification` separately proves that once an opening verifies, every
+supported policy-driven continuation preserves that exact verifier.
 
 This is a strategy translation used to compare games. The contract does not
 require players to run generated client software: native deviations still
@@ -88,11 +115,19 @@ Withholding and guard-rejected disclosure use the same canonical public packet
 shape and timing, so they do not signal the omitted logical Boolean. The Bool
 is retained only in authenticated compiler memory. This failure realization is
 part of the prescribed policy, not a property supplied by phase gating.
+`compileAt_resolve_result` proves that the second command is determined by the
+accepted graph result and public address. The compiler constructs that command
+with `disclosureCommand`; a successful packet contains the canonical encoding
+of its published value. The acceptance proof consumes this factorization.
 
 Compiler-private memory records the selected bind choice even when it is
 failure, and records the logical resolve Boolean. In particular,
 `disclose = true` followed by guard rejection is distinguishable from
 `disclose = false` at later decisions although both public fields are failure.
+`MessageHistoryExtension` proves the whole original-graph scan's extension
+laws for bind, resolve, and sample, and its invariance under fresh immutable
+field extension. Appending a marker at the current phase leaves the earlier
+logical history unchanged.
 Together with the visible graph prefix, this reconstructs exactly the graph
 `DecisionView`.
 
@@ -192,6 +227,15 @@ It establishes completion, not timely inclusion of prescribed messages;
 the honest-law proof must also show that unchanged players' messages succeed
 before expiry.
 
+`MessageServiceProtection` establishes two ingredients of that protection:
+an exact valid commitment envelope remains pending unless its phase advances,
+and an unchanged sender that has submitted cannot allocate a newer identifier
+while that phase remains active. The first theorem allows arbitrary progress
+commands, so its advanced-phase alternative may include expiry. It is not yet
+a theorem that the chosen value was installed. To derive that conclusion, the
+whole-run proof must use the actual wire-only reaction slots, authenticated
+message provenance, and reserved inclusion before the phase's expiry slots.
+
 ## Private initial setup
 
 `SourceProgram.Setup` supplies a finite distribution of initially pending typed
@@ -281,6 +325,24 @@ relation pointwise. Binding over the response-pair distribution must give:
 * a finite mixture of graph laws with only the focal graph policy replaced;
 * unchanged graph kernels for every opponent and for graph chance; and
 * equality of the decoded full graph-environment law at the completed boundary.
+
+For the probability argument, an outstanding prescribed draw must be treated
+as already sampled. A useful continuation law at a native prefix is the graph's
+remaining terminal-outcome distribution, with the current action fixed if its
+prepare/disclosure marker has already been recorded. Before that marker it
+still averages over the graph decision kernel. After inclusion, the same law
+is the ordinary continuation at the next graph node. This is equivalent to a
+coupling whose graph side may be one step ahead while a prescribed submission
+awaits inclusion.
+
+The local obligation is therefore `V(e) = invoke(e).bind V`, at the actual
+invocation cursor and on reachable states, with this staged interpretation of
+`V`. At completion, `V` is the point mass at the decoded terminal environment.
+Finite bind associativity then gives the whole-run law. This proof must still
+establish that the service never expires an unchanged player's outstanding
+action and that the policy sees the correct graph decision view. For the
+deviation law it additionally needs the observation-local extracted focal
+policy. The continuation equation is a proof plan, not a checked global law.
 
 An arbitrary shorter prefix need not be terminal. Its corresponding statement
 uses graph prefixes, not a fabricated terminal outcome.

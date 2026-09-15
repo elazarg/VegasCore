@@ -106,6 +106,6 @@ theorem compileAt_resolve_rejected
         policy site history view =
       FinDist.pure (.submit (.withhold site)) := by
   simp [compileAt, hpc, hwho, hΓ, hremembered,
-    hunsubmitted, hobserved, hrejected]
+    hunsubmitted, hobserved, hrejected, disclosureCommand]
 
 end Vegas.GraphRuntime

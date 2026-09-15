@@ -18,6 +18,16 @@ typed expression code and observations; the native host consumes that graph,
 not a source program or a source-image witness. Source composition belongs
 above the backend theorem.
 
+`Graph.BindingDiscipline` retains original payload identities across bind and
+resolve; the source compiler proves it for every output, including shared
+private setups. `MessageBindingProvenance` preserves the corresponding
+field/handle invariant through arbitrary native policies. Successful
+prescribed disclosures therefore have an exact accepted verifier. These
+certificates require no additional law on the abstract expression types.
+`MessageHistoryExtension` proves the compiler's whole-prefix own-action
+projection laws. Neither fact substitutes for the remaining probability and
+observation-local deviation argument.
+
 The native host admits competing and unopenable candidates, arbitrary tagged
 payloads, pending delivery, retries/replay, rejection receipts, and withholding.
 Binding accepts an opaque handle without running guards. Resolution validates

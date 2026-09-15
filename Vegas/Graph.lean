@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Graph.Basic
+import Vegas.Graph.BindingDiscipline
 import Vegas.Graph.Semantics
 import Vegas.Graph.PublicEvaluation
 import Vegas.Graph.MessageApplication
@@ -15,9 +16,13 @@ import Vegas.Graph.MessageServiceCursor
 import Vegas.Graph.MessageBindingLaw
 import Vegas.Graph.MessagePolicyCommands
 import Vegas.Graph.MessagePolicyHistory
+import Vegas.Graph.MessageFocalDeterminism
+import Vegas.Graph.MessageHistoryExtension
 import Vegas.Graph.MessageServiceCompletion
 import Vegas.Graph.MessagePolicyFreshness
 import Vegas.Graph.MessageResolutionLaw
 import Vegas.Graph.MessageVerification
+import Vegas.Graph.MessageBindingProvenance
 import Vegas.Graph.MessageExpiryService
 import Vegas.Graph.MessageServiceTermination
+import Vegas.Graph.MessageServiceProtection

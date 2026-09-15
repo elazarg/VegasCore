@@ -5,7 +5,7 @@ Its full-language compilation path is:
 
 ```text
 failure-aware sequential source
-  -> typed immutable graph
+  -> typed immutable graph with compiler certificates
   -> public pending-message application
 ```
 
@@ -24,8 +24,9 @@ deadlines. Its local transition laws and mixed-feature transport tests are
 checked. The prescribed-policy compiler and its local command laws are
 implemented. The concrete reserved service terminates for arbitrary player
 policies and adaptive wire choices, including with private initial setup.
-The whole-run
-honest law and arbitrary-deviation certificate remain unproved. Thus the full-language
+Binding-origin certificates and verifier provenance are checked, including
+arbitrary native deviations. The whole-run honest law and arbitrary-deviation
+certificate remain unproved. Thus the full-language
 Nash theorem currently reaches the graph, not the pending-message runtime.
 
 A restricted `WFProgram` / `Vegas.EventGraph` candidate backend separately has

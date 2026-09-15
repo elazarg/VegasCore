@@ -93,7 +93,7 @@ private theorem include_matching_resolves
 
 private theorem step_pendingOrResolved
     (ready milestone : app.Application → Prop)
-    (who : Principal) (payload : app.Payload)
+    (who : Principal) (serial : Nat) (payload : app.Payload)
     (hprivateMilestone : ∀ application actor command, milestone application →
       milestone (app.privateStep application actor command))
     (hprivateReady : ∀ application actor command, ready application →
@@ -113,10 +113,16 @@ private theorem step_pendingOrResolved
         ({ id := (who, serial), payload } : Message Principal app.Payload) = some next ∧
           milestone next)
     (state next : app.State) (action : app.Action)
-    (hstate : app.PendingOrResolved ready milestone who payload state)
+    (hstate : milestone state.application ∨
+      (ready state.application ∧
+        ({ id := (who, serial), payload } : Message Principal app.Payload) ∈
+          state.pool.pending))
     (hnext : next ∈ (app.step state action).support) :
-    app.PendingOrResolved ready milestone who payload next := by
-  rcases hstate with hdone | ⟨hready, serial, hpending⟩
+    milestone next.application ∨
+      (ready next.application ∧
+        ({ id := (who, serial), payload } : Message Principal app.Payload) ∈
+          next.pool.pending) := by
+  rcases hstate with hdone | ⟨hready, hpending⟩
   · left
     cases action with
     | privateCommand actor command =>
@@ -140,19 +146,19 @@ private theorem step_pendingOrResolved
         simp only [step, FinDist.mem_support_pure] at hnext
         subst next
         rcases hprivateReady _ actor command hready with hready' | hdone
-        · exact Or.inr ⟨hready', serial, hpending⟩
+        · exact Or.inr ⟨hready', hpending⟩
         · exact Or.inl hdone
     | submit actor sent =>
         simp only [step, FinDist.mem_support_pure] at hnext
         subst next
-        refine Or.inr ⟨hready, serial, ?_⟩
+        refine Or.inr ⟨hready, ?_⟩
         change ({ id := (who, serial), payload } : Message Principal app.Payload) ∈
           state.pool.pending ++ [_]
         exact List.mem_append_left _ hpending
     | replay actor id =>
         simp only [step, FinDist.mem_support_pure] at hnext
         subst next
-        refine Or.inr ⟨hready, serial, ?_⟩
+        refine Or.inr ⟨hready, ?_⟩
         unfold MessagePool.replay
         split
         · exact List.mem_append_left _ hpending
@@ -160,7 +166,7 @@ private theorem step_pendingOrResolved
     | deliver actor id =>
         simp only [step, FinDist.mem_support_pure] at hnext
         subst next
-        refine Or.inr ⟨hready, serial, ?_⟩
+        refine Or.inr ⟨hready, ?_⟩
         unfold MessagePool.deliver
         split <;> exact hpending
     | «include» id =>
@@ -181,15 +187,64 @@ private theorem step_pendingOrResolved
           state id (Or.inr ⟨hready, hpending⟩)
         rcases hprogress with hdone | ⟨hready', hpending'⟩
         · exact Or.inl hdone
-        · exact Or.inr ⟨hready', serial, hpending'⟩
+        · exact Or.inr ⟨hready', hpending'⟩
     | environment command =>
         simp only [step, FinDist.support_map, Set.mem_image] at hnext
         obtain ⟨application, hsupported, rfl⟩ := hnext
         rcases henvironmentReady _ command application hready hsupported with hready' | hdone
-        · exact Or.inr ⟨hready', serial, hpending⟩
+        · exact Or.inr ⟨hready', hpending⟩
         · exact Or.inl hdone
 
-private theorem run_pendingOrResolved
+/-- An exact pending envelope survives arbitrary native actions until the
+application's milestone is reached. Its allocated identifier is retained. -/
+theorem run_exactPendingOrResolved
+    (ready milestone : app.Application → Prop)
+    (who : Principal) (serial : Nat) (payload : app.Payload)
+    (hprivateMilestone : ∀ application actor command, milestone application →
+      milestone (app.privateStep application actor command))
+    (hprivateReady : ∀ application actor command, ready application →
+      ready (app.privateStep application actor command) ∨
+        milestone (app.privateStep application actor command))
+    (hhandlerMilestone : ∀ application message next, milestone application →
+      app.handle application message = some next → milestone next)
+    (hhandlerReady : ∀ application message next, ready application →
+      app.handle application message = some next → ready next ∨ milestone next)
+    (henvironmentMilestone : ∀ application command next, milestone application →
+      next ∈ (app.environmentStep application command).support → milestone next)
+    (henvironmentReady : ∀ application command next, ready application →
+      next ∈ (app.environmentStep application command).support →
+        ready next ∨ milestone next)
+    (hresolve : ∀ application serial, ready application →
+      ∃ next, app.handle application
+        ({ id := (who, serial), payload } : Message Principal app.Payload) = some next ∧
+          milestone next)
+    (state next : app.State) (actions : List app.Action)
+    (hstate : milestone state.application ∨
+      (ready state.application ∧
+        ({ id := (who, serial), payload } : Message Principal app.Payload) ∈
+          state.pool.pending))
+    (hnext : next ∈ (app.run actions state).support) :
+    milestone next.application ∨
+      (ready next.application ∧
+        ({ id := (who, serial), payload } : Message Principal app.Payload) ∈
+          next.pool.pending) := by
+  induction actions generalizing state with
+  | nil =>
+      simp only [run_nil, FinDist.mem_support_pure] at hnext
+      subst next
+      exact hstate
+  | cons action rest ih =>
+      simp only [run_cons, FinDist.support_bind, Set.mem_iUnion] at hnext
+      obtain ⟨middle, hmiddle, hnext⟩ := hnext
+      exact ih middle
+        (step_pendingOrResolved app ready milestone who serial payload
+          hprivateMilestone hprivateReady hhandlerMilestone hhandlerReady
+          henvironmentMilestone henvironmentReady hresolve state middle action hstate hmiddle)
+        hnext
+
+/-- A pending, still-resolvable submission survives arbitrary native actions
+until the application's milestone is reached. -/
+theorem run_pendingOrResolved
     (ready milestone : app.Application → Prop)
     (who : Principal) (payload : app.Payload)
     (hprivateMilestone : ∀ application actor command, milestone application →
@@ -214,19 +269,19 @@ private theorem run_pendingOrResolved
     (hstate : app.PendingOrResolved ready milestone who payload state)
     (hnext : next ∈ (app.run actions state).support) :
     app.PendingOrResolved ready milestone who payload next := by
-  induction actions generalizing state with
-  | nil =>
-      simp only [run_nil, FinDist.mem_support_pure] at hnext
-      subst next
-      exact hstate
-  | cons action rest ih =>
-      simp only [run_cons, FinDist.support_bind, Set.mem_iUnion] at hnext
-      obtain ⟨middle, hmiddle, hnext⟩ := hnext
-      exact ih middle
-        (step_pendingOrResolved app ready milestone who payload
-          hprivateMilestone hprivateReady hhandlerMilestone hhandlerReady
-          henvironmentMilestone henvironmentReady hresolve state middle action hstate hmiddle)
-        hnext
+  rcases hstate with done | ⟨hready, serial, pending⟩
+  · have result := app.run_exactPendingOrResolved ready milestone who 0 payload
+      hprivateMilestone hprivateReady hhandlerMilestone hhandlerReady
+      henvironmentMilestone henvironmentReady hresolve state next actions
+      (Or.inl done) hnext
+    exact result.elim Or.inl (fun ⟨stillReady, exactPending⟩ =>
+      Or.inr ⟨stillReady, 0, exactPending⟩)
+  · have result := app.run_exactPendingOrResolved ready milestone who serial payload
+      hprivateMilestone hprivateReady hhandlerMilestone hhandlerReady
+      henvironmentMilestone henvironmentReady hresolve state next actions
+      (Or.inr ⟨hready, pending⟩) hnext
+    exact result.elim Or.inl (fun ⟨stillReady, exactPending⟩ =>
+      Or.inr ⟨stillReady, serial, exactPending⟩)
 
 /-- Starting before this principal has submitted the exact payload, every
 supported policy execution satisfies the one-shot bridge: a matching history

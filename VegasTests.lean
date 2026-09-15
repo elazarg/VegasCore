@@ -51,6 +51,7 @@ import VegasTests.GraphRestriction
 import VegasTests.SealedResolutionCylinder
 import VegasTests.GraphMessages
 import VegasTests.GraphMessagePolicies
+import VegasTests.GraphBindingDiscipline
 import VegasTests.FailureGame
 import VegasTests.ResultExpressions
 import VegasTests.SourceSemantics

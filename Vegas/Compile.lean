@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Compile.Compiler
+import Vegas.Compile.GraphBindingDiscipline
 import Vegas.Compile.GuardValidation
 import Vegas.Compile.FieldMap
 import Vegas.Compile.RevealAccounting
