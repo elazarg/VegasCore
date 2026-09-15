@@ -7,6 +7,7 @@ import Vegas.Compile.SealedCandidateSourceLikelihood
 import Vegas.Compile.SealedCandidateGraphFactors
 import Vegas.Compile.SealedCandidateNativeLikelihood
 import Vegas.Compile.SealedCandidateRandomizedCoupling
+import Interaction.SealedOpeningValidation
 import VegasTests.PendingSource
 
 /-! # Native registration and acceptance hiding for a checked two-player source
@@ -154,12 +155,34 @@ theorem candidate_hidden_until_acceptance (leftValues rightValues : Fin graph.no
     (deviator : runtime.candidateApplication.PlayerPolicy)
     (environment : runtime.candidateApplication.EnvironmentPolicy)
     (schedule : List (@Invocation PendingSource.Player)) :
-    sealedFragment.candidateAcceptanceLaw none 3 leftValues 1 (node 1)
+    sealedFragment.candidateAcceptanceLaw none 3 runtime.candidateHandle leftValues 1 (node 1)
         deviator environment schedule =
-      sealedFragment.candidateAcceptanceLaw none 3 rightValues 1 (node 1)
+      sealedFragment.candidateAcceptanceLaw none 3 runtime.candidateHandle rightValues 1 (node 1)
         deviator environment schedule := by
   obtain ⟨guard, hguard, _⟩ := node1_commit
-  apply sealedFragment.candidateAcceptanceLaw_read_bound none 3 1 (node 1) guard hguard
+  apply sealedFragment.candidateAcceptanceLaw_read_bound none 3
+    runtime.candidateHandle_knowledge 1 (node 1) guard hguard
+    leftValues rightValues ?_ deviator environment schedule
+  intro who hwho index hknown
+  exact False.elim (no_honest_known_before_second who hwho index hknown)
+
+/-- The same independence holds with any public opening validator, including
+rejecting ones. Neither the arbitrary native deviator nor the full-pool wire
+is restricted; only the unchanged generated proposals obey the disclosure
+barrier. The validator is fixed across both runs. -/
+theorem validated_candidate_hidden_until_acceptance
+    (validator : SealedResolution.PublicOpeningValidator PendingSource.Player Value)
+    (leftValues rightValues : Fin graph.nodeCount → Value)
+    (deviator : (runtime.guardedCandidateApplication validator).PlayerPolicy)
+    (environment : (runtime.guardedCandidateApplication validator).EnvironmentPolicy)
+    (schedule : List (@Invocation PendingSource.Player)) :
+    sealedFragment.candidateAcceptanceLaw none 3 (runtime.guardedCandidateHandle validator)
+        leftValues 1 (node 1) deviator environment schedule =
+      sealedFragment.candidateAcceptanceLaw none 3 (runtime.guardedCandidateHandle validator)
+        rightValues 1 (node 1) deviator environment schedule := by
+  obtain ⟨guard, hguard, _⟩ := node1_commit
+  apply sealedFragment.candidateAcceptanceLaw_read_bound none 3
+    (runtime.guardedCandidateHandle_knowledge validator) 1 (node 1) guard hguard
     leftValues rightValues ?_ deviator environment schedule
   intro who hwho index hknown
   exact False.elim (no_honest_known_before_second who hwho index hknown)
@@ -179,7 +202,8 @@ private def prepareThenSelect : runtime.candidateApplication.PlayerPolicy :=
 public acceptance. It retains both preparations, the submission, the accepted
 handle, and the immutable meanings, rather than cutting at the first preparation. -/
 theorem candidate_acceptance_retains_selection :
-    (sealedFragment.candidateAcceptanceLaw none 3 (fun _ => some false) 1 (node 1)
+    (sealedFragment.candidateAcceptanceLaw none 3 runtime.candidateHandle
+      (fun _ => some false) 1 (node 1)
       prepareThenSelect (fun _ _ => FinDist.pure (.include (1, 0)))
       [.player 1, .player 1, .player 1, .environment]).map
         (fun input => (input.1.length, input.2.1.application.events,
@@ -204,7 +228,8 @@ theorem candidate_selection_second (values : Fin graph.nodeCount → Value) :
         some (.openable (some true)) := by
   have hlaw := sealedFragment.candidateSelection_law none 3 values 1 selectCommand
     (fun _ _ => .include (1, 0)) [.player 1, .player 1, .player 1, .environment] (node 1)
-  have hcomputed : (sealedFragment.candidateAcceptanceLaw none 3 values 1 (node 1)
+  have hcomputed : (sealedFragment.candidateAcceptanceLaw none 3 runtime.candidateHandle
+      values 1 (node 1)
       (fun history view => FinDist.pure (selectCommand history view))
       (fun _ _ => FinDist.pure (.include (1, 0)))
       [.player 1, .player 1, .player 1, .environment]).map
@@ -230,7 +255,8 @@ theorem candidate_selection_unopenable (values : Fin graph.nodeCount → Value) 
   have hlaw := sealedFragment.candidateSelection_law none 3 values 1
     (fun _ _ => .submit (.commitment 1 (1, 23))) (fun _ _ => .include (1, 0))
     [.player 1, .environment] (node 1)
-  have hcomputed : (sealedFragment.candidateAcceptanceLaw none 3 values 1 (node 1)
+  have hcomputed : (sealedFragment.candidateAcceptanceLaw none 3 runtime.candidateHandle
+      values 1 (node 1)
       (fun _ _ => FinDist.pure (.submit (.commitment 1 (1, 23))))
       (fun _ _ => FinDist.pure (.include (1, 0))) [.player 1, .environment]).map
         (fun input => SealedShape.selectedCandidate 1 (node 1)
@@ -562,3 +588,8 @@ end VegasTests.SealedResolutionReadBound
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.SealedResolutionReadBound.hidden_first_choice
+
+/-- info: 'VegasTests.SealedResolutionReadBound.validated_candidate_hidden_until_acceptance'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SealedResolutionReadBound.validated_candidate_hidden_until_acceptance

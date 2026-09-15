@@ -3,13 +3,15 @@
 import Vegas.Compile.SealedResolutionReplay
 import Interaction.SealedCandidateCoupling
 
-/-! # Source-earlier information at candidate acceptance
+/-! # Graph-earlier information at candidate acceptance
 
 Assigned reference values vary freely at graph-future coordinates. The focal
 native policy and the full-pool environment remain arbitrary and randomized.
 The actual first-acceptance/timeout readout retains the focal player's entire
 local input and its candidate catalog for extraction. No private preparation
-is treated as the source-site decision, and no fairness premise is needed.
+is treated as the graph-site decision, and no fairness premise is needed.
+Admission is parameterized by its knowledge contract, including public opening
+validation. The policy interface and complete native observations are shared.
 -/
 
 noncomputable section
@@ -20,6 +22,11 @@ open Interaction Interaction.MessageApplication GameTheory GameTheory.Math.Proba
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 variable {G : Graph Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+variable {applyMessage : SealedResolution.ApplicationState Player (L.Val ty)
+  (CommitmentCandidates Player Nat (L.Val ty)) →
+  Message Player (SealedProgram.Payload Player (L.Val ty)) →
+  Option (SealedResolution.ApplicationState Player (L.Val ty)
+    (CommitmentCandidates Player Nat (L.Val ty)))}
 
 /-- Assigned reference proposals in the actual candidate host, with one arbitrary
 native replacement. Only the proof substitutes the non-focal value assignment. -/
@@ -120,10 +127,12 @@ private theorem candidatePolicy_before_focal (supported : SealedShape G ty)
       hnotDone who node handle hhandle
 
 /-- Whole-prefix candidate-host hiding for any related readout that stops by
-the focal source site's acceptance or the first timeout. This uses the actual
-shared runner and its complete adaptive environment input. -/
+the focal graph site's acceptance or the first timeout. This uses the actual
+shared runner, a knowledge-respecting handler, and the complete adaptive
+environment input. -/
 theorem candidateValuePlayers_cut_law {Observation : Type*} (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
+    (hknowledge : SealedResolution.CandidateHandlerKnowledge applyMessage)
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
     (leftValues rightValues : Fin G.nodeCount → L.Val ty)
@@ -149,18 +158,19 @@ theorem candidateValuePlayers_cut_law {Observation : Type*} (supported : SealedS
       left.native.application.visible.timeouts = [] ∧
       SealedProgram.done left.native.application.visible.events decision.val = false) :
     let runtime := supported.resolvingRuntime nullValue window
-    let app := runtime.candidateApplication
+    let app := runtime.candidateHost applyMessage
     ((app.tracePolicies (supported.candidateValuePlayers nullValue window leftValues focal deviator)
       environment schedule
       (PolicyExecution.initial app (State.initial app runtime.candidateInitial))).map
-        (PolicyTrace.firstRelease cut)).map observe =
+        (PolicyTrace.firstRelease (app := app) cut)).map observe =
       ((app.tracePolicies
         (supported.candidateValuePlayers nullValue window rightValues focal deviator)
         environment schedule
         (PolicyExecution.initial app (State.initial app runtime.candidateInitial))).map
-          (PolicyTrace.firstRelease cut)).map observe := by
+          (PolicyTrace.firstRelease (app := app) cut)).map observe := by
   apply SealedResolution.candidate_firstRelease_observation_law
     (known := supported.knownBefore focal decision)
+    hknowledge
     _ _ environment cut observe hcut hobserve ?_ schedule _ _
     SealedResolution.CandidateExecutionRelated.initial
   intro left right related hstop who
@@ -195,7 +205,7 @@ theorem candidateValuePlayers_cut_law {Observation : Type*} (supported : SealedS
       subst pair
       exact ⟨hc, hopen⟩
 
-/-- First public completion of the source commitment or first timeout. Private
+/-- First public completion of the graph commitment or first timeout. Private
 preparation alone never triggers this readout. -/
 def candidateAcceptanceCut (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat) (decision : Fin G.nodeCount)
@@ -210,6 +220,11 @@ at first acceptance, timeout, or the finite horizon. The catalog component is
 proof-facing extraction data; the runtime does not expose it to policies. -/
 def candidateAcceptanceLaw (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
+    (applyMessage : SealedResolution.ApplicationState Player (L.Val ty)
+      (CommitmentCandidates Player Nat (L.Val ty)) →
+      Message Player (SealedProgram.Payload Player (L.Val ty)) →
+      Option (SealedResolution.ApplicationState Player (L.Val ty)
+        (CommitmentCandidates Player Nat (L.Val ty))))
     (values : Fin G.nodeCount → L.Val ty) (focal : Player) (decision : Fin G.nodeCount)
     (deviator : (supported.resolvingRuntime nullValue window).candidateApplication.PlayerPolicy)
     (environment :
@@ -219,11 +234,12 @@ def candidateAcceptanceLaw (supported : SealedShape G ty)
       (supported.resolvingRuntime nullValue window).candidateApplication.View ×
       (Nat → CommitmentCandidate (L.Val ty))) :=
   let runtime := supported.resolvingRuntime nullValue window
-  let app := runtime.candidateApplication
+  let app := runtime.candidateHost applyMessage
   ((app.tracePolicies (supported.candidateValuePlayers nullValue window values focal deviator)
     environment schedule
     (PolicyExecution.initial app (State.initial app runtime.candidateInitial))).map
-      (PolicyTrace.firstRelease (supported.candidateAcceptanceCut nullValue window decision))).map
+      (PolicyTrace.firstRelease (app := app)
+        (supported.candidateAcceptanceCut nullValue window decision))).map
     fun execution => (execution.principalHistory focal, State.observe app execution.native focal,
       fun slot => execution.native.application.service.lookup (focal, slot))
 
@@ -234,6 +250,7 @@ several preparations, competing submissions, and unopenable candidates are
 permitted. No service, completion, or incentive assumption is used. -/
 theorem candidateAcceptanceLaw_read_bound (supported : SealedShape G ty)
     (nullValue : L.Val ty) (window : Nat)
+    (hknowledge : SealedResolution.CandidateHandlerKnowledge applyMessage)
     (focal : Player) (decision : Fin G.nodeCount) (guard : EventGuard L)
     (hdecision : (G.nodeRow decision).sem = .commit focal guard)
     (leftValues rightValues : Fin G.nodeCount → L.Val ty)
@@ -243,11 +260,12 @@ theorem candidateAcceptanceLaw_read_bound (supported : SealedShape G ty)
     (environment :
       (supported.resolvingRuntime nullValue window).candidateApplication.EnvironmentPolicy)
     (schedule : List (@Invocation Player)) :
-    supported.candidateAcceptanceLaw nullValue window leftValues focal decision
+    supported.candidateAcceptanceLaw nullValue window applyMessage leftValues focal decision
         deviator environment schedule =
-      supported.candidateAcceptanceLaw nullValue window rightValues focal decision
+      supported.candidateAcceptanceLaw nullValue window applyMessage rightValues focal decision
         deviator environment schedule := by
-  apply supported.candidateValuePlayers_cut_law nullValue window focal decision guard hdecision
+  apply supported.candidateValuePlayers_cut_law nullValue window hknowledge
+    focal decision guard hdecision
     leftValues rightValues hvalues deviator environment schedule
     (supported.candidateAcceptanceCut nullValue window decision)
     (fun execution => (execution.principalHistory focal, State.observe _ execution.native focal,

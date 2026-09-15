@@ -204,8 +204,19 @@ def candidateHandle [DecidableEq Principal] [DecidableEq Value]
     some ⟨result.1, runtime.refresh false
       { state.visible with events := state.visible.events ++ [result.2] }⟩
 
-/-- The candidate service in the ordinary message runner. It changes neither
-the program's rules nor its transport, clock, timeout, or policy interfaces. -/
+/-- Candidate preparation and the ordinary resolution runner, parameterized
+only by message admission. Every instance has the same policy interface. -/
+noncomputable abbrev candidateHost [DecidableEq Principal]
+    (runtime : SealedResolution Principal Value)
+    (applyMessage : ApplicationState Principal Value
+      (CommitmentCandidates Principal Nat Value) →
+      Message Principal (SealedProgram.Payload Principal Value) →
+      Option (ApplicationState Principal Value (CommitmentCandidates Principal Nat Value))) :
+    MessageApplication Principal :=
+  runtime.host (Service := CommitmentCandidates Principal Nat Value)
+    (fun state owner slot value => state.prepare owner slot value) applyMessage
+
+/-- The candidate service with authenticated, otherwise unrestricted openings. -/
 noncomputable def candidateApplication [DecidableEq Principal] [DecidableEq Value]
     (runtime : SealedResolution Principal Value) : MessageApplication Principal :=
   runtime.host (Service := CommitmentCandidates Principal Nat Value)

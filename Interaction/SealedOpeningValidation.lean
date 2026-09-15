@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.SealedCandidateBinding
+import Interaction.SealedCandidateKnowledge
 import Interaction.SealedResolutionTermination
 
 /-! # Public validation of authenticated candidate openings
@@ -59,6 +60,19 @@ def guardedCandidateHandle [DecidableEq Principal] [DecidableEq Value]
     some next
   else
     none
+
+/-- Public validation preserves candidate hiding: paired runs present exactly
+the same pre-inclusion events, node and claimed value to the predicate. -/
+theorem guardedCandidateHandle_knowledge [DecidableEq Principal] [DecidableEq Value]
+    (runtime : SealedResolution Principal Value)
+    (validator : PublicOpeningValidator Principal Value) :
+    CandidateHandlerKnowledge (runtime.guardedCandidateHandle validator) := by
+  intro known left right hvalues hpublic message hknown
+  have hbase := runtime.candidateHandle_knowledge known left right
+    hvalues hpublic message hknown
+  cases hpermitted : openingPermitted validator right.visible.events message.payload with
+  | false => simp [guardedCandidateHandle, hpublic, hpermitted]
+  | true => simpa [guardedCandidateHandle, hpublic, hpermitted] using hbase
 
 /-- Every successful guarded application was first accepted by the original
 candidate handler and passed the public opening check. -/
@@ -199,3 +213,8 @@ end Interaction.SealedResolution
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.SealedResolution.guardedCandidate_runRounds_complete
+
+/-- info: 'Interaction.SealedResolution.guardedCandidateHandle_knowledge'
+depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.SealedResolution.guardedCandidateHandle_knowledge

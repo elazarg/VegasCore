@@ -258,29 +258,48 @@ and pre-acceptance privacy proofs use this interface and no universally
 accepting guard certificate. Legal graph assignment is separately represented
 by `SealedFragment.assignedCommitPolicy`.
 
-These reference replay laws still concern the unvalidated registered and
-candidate hosts. The guarded host uses the same proposal generator, but its
-rejection receipts and event log require a guarded replay/acceptance coupling.
-Neither the raw-policy separation nor the local zero-mass law establishes the
-whole guarded graph/native probability argument.
+The deterministic reference replay and graph/native likelihood laws still
+concern the unvalidated registered and candidate hosts. Acceptance-time
+information bounds also cover guarded admission through the shared
+handler-knowledge contract below. Neither the raw-policy separation nor the
+local zero-mass law establishes the whole guarded graph/native probability
+argument.
 
-The next operational generalization is one handler-knowledge contract. Two
+`CandidateHandlerKnowledge` is the operational information contract. Two
 candidate states agreeing on public state and known candidate meanings must
 give matching rejection/acceptance and, on acceptance, matching public state
-and known candidate meanings when handling a message whose opening is known. The existing candidate
-relation already records the needed public-state and known-handle agreement.
+and known candidate meanings when handling a message whose opening is known.
+The candidate relation records the needed public-state and known-handle agreement.
 For opening-time validation, both runs also have the same node and claimed
 value, so a validator depending only on these values and the public event log
 receives identical inputs. A validator consulting private catalog contents
 would require a stronger contract.
 
-The intended proof factors pending-message inclusion over this handler
-contract, then reuses the current paired execution and trace induction.
-Preparation, submission, replay, delivery, and clock steps keep their common
-semantics. The same parameterized replay/read-bound/cylinder family should
-serve both the unconditional and guarded handlers. This guarded handler
-instance and its whole-trace laws remain unproved; they are separate from
-the graph-side zero-likelihood and source-incentive arguments.
+`candidateHandle_knowledge` and `guardedCandidateHandle_knowledge` discharge
+the contract for unconditional and publicly validated admission respectively.
+`CandidateKnowledgeRelated.includePending` and the paired policy execution
+proof are parameterized by this contract. Preparation, submission, replay,
+delivery, and clock steps keep their common semantics.
+`candidate_firstRelease_observation_law` gives the same whole-prefix law under
+arbitrary adaptive environment policies for either handler.
+
+At the compiler boundary, `candidateAcceptanceLaw_read_bound` uses that one
+trace proof for every certified handler. It retains the focal player's entire
+local history and view, together with its proof-facing candidate catalog, up
+to acceptance, first timeout, or the finite horizon. Arbitrary pending traffic
+and native deviations are allowed; the unchanged raw proposal policies must
+respect the graph's disclosure barrier. This is an information law, with no
+service or incentive premise. The checked two-player source regression
+`validated_candidate_hidden_until_acceptance` instantiates it for any public
+opening validator, including rejecting validators.
+
+The remaining guarded operational work is to generalize the deterministic
+replay, acceptance-persistence and cylinder laws without duplicating their
+proofs. In addition to hiding, persistence needs a successful-admission
+contract: guarded success must retain the original candidate transition.
+The guarded handler already proves this local fact. These operational laws
+then support the separate graph-side zero-likelihood and source-incentive
+arguments; the acceptance information law alone does not establish them.
 
 The validation context must agree with the context intended by the source
 guard. Public eligibility alone proves neither availability at opening nor

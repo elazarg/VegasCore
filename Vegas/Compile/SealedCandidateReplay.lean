@@ -90,14 +90,24 @@ def candidateSelection (decision : Fin G.nodeCount) : Option (CommitmentCandidat
     (fun slot => execution.native.application.service.lookup (focal, slot))
 
 theorem candidateSelection_law (decision : Fin G.nodeCount) :
-    (supported.candidateAcceptanceLaw nullValue window values focal decision
+    (supported.candidateAcceptanceLaw nullValue window
+      (supported.resolvingRuntime nullValue window).candidateHandle values focal decision
       (fun history view => FinDist.pure (deviator history view))
       (fun history view => FinDist.pure (environment history view)) schedule).map
         (fun input => selectedCandidate focal decision input.2.1.application.events input.2.2) =
       FinDist.pure (supported.candidateSelection nullValue window values focal
         deviator environment schedule decision) := by
-  simp only [candidateAcceptanceLaw, candidateReplay_law, FinDist.map_pure]
-  rfl
+  have hlaw := congrArg (fun law =>
+    (law.map (PolicyTrace.firstRelease
+      (app := (supported.resolvingRuntime nullValue window).candidateApplication)
+      (supported.candidateAcceptanceCut nullValue window decision))).map fun execution =>
+        selectedCandidate focal decision execution.native.application.visible.events
+          (fun slot => execution.native.application.service.lookup (focal, slot)))
+    (supported.candidateReplay_law nullValue window values focal deviator environment schedule)
+  simpa only [candidateAcceptanceLaw, candidateSelection, FinDist.map_comp,
+    Function.comp_def, FinDist.map_pure, State.observe,
+    SealedResolution.candidateApplication, SealedResolution.candidateHost,
+    SealedResolution.host] using hlaw
 
 /-- The common checkpoint immediately after first timeout, or the final
 snapshot when there is no timeout. Execution itself is not stopped here. -/
@@ -252,7 +262,8 @@ theorem candidateSelection_read_bound (decision : Fin G.nodeCount) (guard : Even
         deviator environment schedule decision := by
   have hlaw := congrArg (fun law => law.map (fun input =>
     selectedCandidate focal decision input.2.1.application.events input.2.2))
-    (supported.candidateAcceptanceLaw_read_bound nullValue window focal decision guard
+    (supported.candidateAcceptanceLaw_read_bound nullValue window
+      (supported.resolvingRuntime nullValue window).candidateHandle_knowledge focal decision guard
       hdecision values rightValues hvalues
       (fun history view => FinDist.pure (deviator history view))
       (fun history view => FinDist.pure (environment history view)) schedule)

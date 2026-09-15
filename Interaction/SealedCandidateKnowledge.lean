@@ -84,8 +84,28 @@ variable {Principal : Type uPrincipal} {Value : Type uValue}
 variable [DecidableEq Principal] [DecidableEq Value]
 variable {runtime : SealedResolution Principal Value}
 
+/-- Message admission respects the chosen disclosure boundary. Equal public
+state and known candidate meanings give equal rejection or equal visible and
+known-private results. Unknown candidates may differ in value or openability. -/
+def CandidateHandlerKnowledge
+    (applyMessage : ApplicationState Principal Value
+      (CommitmentCandidates Principal Nat Value) →
+      Message Principal (SealedProgram.Payload Principal Value) →
+      Option (ApplicationState Principal Value (CommitmentCandidates Principal Nat Value))) :
+    Prop :=
+  ∀ (known : CommitmentHandle Principal Nat → Prop)
+    (left right : ApplicationState Principal Value (CommitmentCandidates Principal Nat Value)),
+    (∀ handle, known handle → left.service.lookup handle = right.service.lookup handle) →
+    left.visible = right.visible →
+    ∀ message, SealedProgram.OpeningKnown known message →
+      (applyMessage left message).map (fun state =>
+        (state.visible, fun handle : {h // known h} => state.service.lookup handle.val)) =
+      (applyMessage right message).map (fun state =>
+        (state.visible, fun handle : {h // known h} => state.service.lookup handle.val))
+
 /-- Candidate-state agreement for a fixed disclosure boundary. The complete
-pool is retained, including delivered and pending copies. -/
+pool is retained, including delivered and pending copies. The carrier is shared
+by all candidate hosts; this relation does not depend on their handler. -/
 structure CandidateKnowledgeRelated (runtime : SealedResolution Principal Value)
     (known : CommitmentHandle Principal Nat → Prop)
     (left right : runtime.candidateApplication.State) : Prop where
@@ -165,65 +185,64 @@ theorem CandidateKnowledgeRelated.tick
 
 /-- The resolving handler preserves public and designated-private agreement,
 including all rejection receipts and timeout-dependent eligibility tests. -/
-theorem CandidateKnowledgeRelated.handle_knowledge
-    (related : CandidateKnowledgeRelated runtime known left right)
-    (message : Message Principal (SealedProgram.Payload Principal Value))
-    (hknown : SealedProgram.OpeningKnown known message) :
-    (runtime.candidateHandle left.application message).map
-        (fun state => (state.visible,
-          fun handle : {h // known h} => state.service.lookup handle.val)) =
-      (runtime.candidateHandle right.application message).map
-        (fun state => (state.visible,
-          fun handle : {h // known h} => state.service.lookup handle.val)) := by
-  simp only [candidateHandle, related.publicState]
+theorem candidateHandle_knowledge (runtime : SealedResolution Principal Value) :
+    CandidateHandlerKnowledge runtime.candidateHandle := by
+  intro known left right hvalues hpublic message hknown
+  simp only [candidateHandle, hpublic]
   split
   · rfl
   · have hmessage := SealedProgram.candidateMessage?_knowledge
-      (runtime.program.discharge right.application.visible.timeouts)
-      known left.application.service right.application.service
-      related.values right.application.visible.events message hknown
+      (runtime.program.discharge right.visible.timeouts)
+      known left.service right.service hvalues right.visible.events message hknown
     have hmapped := congrArg (Option.map fun result =>
-      (runtime.refresh false { right.application.visible with
-        events := right.application.visible.events ++ [result.1] }, result.2)) hmessage
+      (runtime.refresh false { right.visible with
+        events := right.visible.events ++ [result.1] }, result.2)) hmessage
     simpa only [Option.map_map, Function.comp_def, Option.bind_eq_bind, Option.map_bind,
       Option.map_some, Option.map_eq_bind, Option.bind_assoc, Option.bind_some] using hmapped
 
 theorem CandidateKnowledgeRelated.includePending
-    (related : CandidateKnowledgeRelated runtime known left right) (id : MessageId Principal) :
+    (related : CandidateKnowledgeRelated runtime known left right)
+    {applyMessage : ApplicationState Principal Value
+      (CommitmentCandidates Principal Nat Value) →
+      Message Principal (SealedProgram.Payload Principal Value) →
+      Option (ApplicationState Principal Value (CommitmentCandidates Principal Nat Value))}
+    (hknowledge : CandidateHandlerKnowledge applyMessage) (id : MessageId Principal) :
+    let app := runtime.candidateHost applyMessage
     CandidateKnowledgeRelated runtime known
-      (runtime.candidateApplication.includePending left id)
-      (runtime.candidateApplication.includePending right id) := by
+      (app.includePending left id) (app.includePending right id) := by
+  intro app
   cases hlookup : left.pool.lookup id with
   | none =>
-      rw [runtime.candidateApplication.includePending_missing left id hlookup,
-        runtime.candidateApplication.includePending_missing right id
+      rw [app.includePending_missing left id hlookup,
+        app.includePending_missing right id
           (related.pool ▸ hlookup)]
       exact related
   | some message =>
       have hknown := related.openings.1 message (List.mem_of_find?_eq_some hlookup)
-      have hhandler := related.handle_knowledge message hknown
-      cases hl : runtime.candidateHandle left.application message with
+      have hhandler := hknowledge known left.application right.application
+        related.values related.publicState message hknown
+      cases hl : applyMessage left.application message with
       | none =>
-          have hr : runtime.candidateHandle right.application message = none := by
-            cases hr : runtime.candidateHandle right.application message with
+          have hr : applyMessage right.application message = none := by
+            cases hr : applyMessage right.application message with
             | none => rfl
             | some result =>
                 simp only [hl, hr, Option.map_none, Option.map_some] at hhandler
                 contradiction
-          rw [runtime.candidateApplication.includePending_reject left id message hlookup hl,
-            runtime.candidateApplication.includePending_reject right id message
+          rw [app.includePending_reject left id message hlookup hl,
+            app.includePending_reject right id message
               (related.pool ▸ hlookup) hr]
           exact ⟨related.values, related.publicState, by rw [related.pool],
             by rw [related.receipts], related.openings.includePending id⟩
       | some nextLeft =>
-          cases hr : runtime.candidateHandle right.application message with
+          cases hr : applyMessage right.application message with
           | none =>
               simp only [hl, hr, Option.map_none, Option.map_some] at hhandler
               contradiction
           | some nextRight =>
               simp only [hl, hr, Option.map_some, Option.some.injEq, Prod.mk.injEq] at hhandler
-              rw [runtime.candidateApplication.includePending_accept left id message nextLeft
-                hlookup hl, runtime.candidateApplication.includePending_accept right id message
+              rw [app.includePending_accept left id message nextLeft
+                hlookup hl, app.includePending_accept right id message
                   nextRight (related.pool ▸ hlookup) hr]
               exact ⟨fun handle hknown => congrFun hhandler.2 ⟨handle, hknown⟩,
                 hhandler.1, by rw [related.pool], by rw [related.receipts],
