@@ -37,6 +37,7 @@ import Interaction.MessageApplicationImmediateService
 import Interaction.MessageApplicationProgress
 import Interaction.MessageApplicationArrival
 import Interaction.MessageApplicationSubmission
+import Interaction.MessageApplicationSubmissionOrigin
 import Interaction.MessageApplicationSampleOnce
 import Interaction.DependencyGate
 import Interaction.DependencyGateLaws

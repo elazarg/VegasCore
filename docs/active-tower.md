@@ -39,10 +39,36 @@ Within an unchanged graph phase, arbitrary native runs
 preserve the typed values and accepted addresses; later commands also preserve
 the history scan of earlier logical decisions. A proof-side residual law
 accounts for choices sampled before their messages are included, and its
-empty-cache case equals graph execution. Concrete bind and resolve invocation
-laws instantiate this calculation for the actual compiler at arbitrary typed
-prefixes. The local probability and service facts have not yet been composed
-into the full honest or deviation law.
+empty-cache case equals graph execution. `continuation_compiled_player_invoke`
+proves the corresponding expectation equation for every graph constructor,
+every preparation/submission stage, and any invoked player using its compiled
+policy. Other player policies and the environment remain arbitrary. The
+resulting continuation uses the actual extended own histories. The local
+probability and service facts have not yet been composed into the full honest
+or deviation law.
+
+`MessageBindingAcceptance` identifies any accepted current commitment of a
+compiled owner with its canonical prepared handle and exact typed value,
+including acceptance through the shared environment runner. The generic
+`MessageApplicationSubmissionOrigin` reconstructs an actual supported
+submission checkpoint for every pending message in an initially empty pool;
+replay preserves the original sender and submission witness. These provenance
+results connect accepted packets to actual policy execution, rather than to
+an assumed well-formed message.
+`accepted_initial_compiled_resolve_packet` uses that reconstruction to prove
+that an accepted disclosure in an actual initialized run installs exactly the
+compiled owner's cached graph result. It covers successful opening, deliberate
+withholding, and positive disclosure rejected by the guard precheck; other
+players and the environment may use arbitrary policies.
+
+For bindings, `runPolicies_bind_two_owner_calls_submitted` proves that the
+service's two consecutive owner opportunities produce the canonical submission
+from every preparation/submission state reachable under that compiled policy.
+The proof uses actual command-history provenance: candidate agreement alone
+would also admit fabricated histories containing the wrong message kind.
+Separate persistence laws protect a canonical submitted commitment while its
+phase remains current. Connecting this to the full reserved-inclusion and
+expiry schedule remains part of the whole-service proof.
 
 The native host admits competing and unopenable candidates, arbitrary tagged
 payloads, pending delivery, retries/replay, rejection receipts, and withholding.
@@ -64,7 +90,7 @@ phase-gated expiry. It accepts every native player policy and every supplied
 wire policy. Its full-language compilation objectives are expressible in
 `Paper.lean`. `Setup.pendingGame_complete` proves completion of every supported
 play, and `Paper.source_pending_complete` delegates to it. The honest and
-deviation laws are not yet proved. `MessageProgress.run_completed_of_ticks` proves the separate
+deviation laws are not yet proved. In `MessageProgress`, `run_completed_of_ticks` proves the separate
 operational fact that enough actual ticks force completion despite arbitrary
 intervening native traffic; it does not protect honest messages from expiry.
 

@@ -16,10 +16,15 @@ import Vegas.Graph.MessageServiceCursor
 import Vegas.Graph.MessageBindingLaw
 import Vegas.Graph.MessagePolicyCommands
 import Vegas.Graph.MessagePreparationInvariant
+import Vegas.Graph.MessageBindingAcceptance
+import Vegas.Graph.MessageBindingService
 import Vegas.Graph.MessagePolicyHistory
+import Vegas.Graph.MessagePrefixComposition
 import Vegas.Graph.MessageFocalDeterminism
 import Vegas.Graph.MessageContinuation
+import Vegas.Graph.MessageContinuationFrame
 import Vegas.Graph.MessageContinuationPolicy
+import Vegas.Graph.MessageContinuationStep
 import Vegas.Graph.MessageHistoryExtension
 import Vegas.Graph.MessageServiceCompletion
 import Vegas.Graph.MessagePhaseFrame
@@ -30,3 +35,4 @@ import Vegas.Graph.MessageBindingProvenance
 import Vegas.Graph.MessageExpiryService
 import Vegas.Graph.MessageServiceTermination
 import Vegas.Graph.MessageServiceProtection
+import Vegas.Graph.MessageDisclosureAcceptance

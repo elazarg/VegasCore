@@ -367,12 +367,31 @@ with the graph kernel averaged over continuations containing the recorded
 prepare or disclosure command. This evaluator is proof data; it adds neither
 a game nor an operational interpreter to the compilation tower.
 
-`MessageContinuationPolicy` instantiates both sampling identities for the
-actual policy compiler at arbitrary typed prefixes of the original graph.
-The bind and resolve theorems derive their decision kernels from the current
-ideal observation and projected logical history; they do not assume an
-abstract policy-kernel correspondence. They cover the sampling invocation,
-not the entire interval through submission, inclusion, and completion.
+In `MessageContinuationPolicy`, `continuation_compiled_player_invoke` proves
+the expectation identity for every actual
+compiled player invocation at a typed prefix of the original graph. Fresh
+bind and resolve decisions sample the graph kernel. Previously sampled
+decisions, public submissions, and waits preserve the cached continuation.
+The theorem derives the decision view and uses the resulting authenticated
+history, without an abstract policy-kernel premise. Only the invoked player
+must use its compiled policy. This covers player invocations, not the complete
+interval through packet acceptance and expiry service.
+
+Packet acceptance has a separate origin obligation. For an actual run from
+an empty pool, `runPolicies_initial_pending_submission_origin` recovers the
+original sender invocation, the selected submission command, its allocated
+identifier, and supported runs before and after that command. This remains
+true when another player replays the packet. The binding acceptance theorem
+then identifies any accepted current packet with the compiled owner's exact
+prepared value. Disclosure acceptance must additionally retain the public
+precheck result and opening verification from emission to inclusion.
+`accepted_initial_compiled_resolve_packet` discharges this obligation from an
+actual initialized run: it recovers the emitting invocation, derives the
+compiled Boolean decision, and proves that acceptance installs its exact
+graph result. The same-phase frame is used backwards to identify the emitting
+typed cursor from the accepting one. Initial binding discipline and unique
+field names supply verification provenance; the source compiler establishes
+these graph properties.
 
 These cache equations concern prescribed players. An arbitrary deviator may
 write a misleading prepare or disclosure marker, choose a different candidate,
@@ -395,6 +414,14 @@ The intended induction follows the remaining service instructions with an
 explicit typed suffix and policy tail. Each induction case can use that
 suffix's continuation directly; no total evaluator on arbitrary off-prefix
 native states or additional execution machine is required.
+
+Typed prefix restriction composes via `policyTail_trans` and
+`profileTail_trans`. Prefix witnesses at a fixed typed cursor are subsingleton,
+so choosing a witness recovered from an operational invariant cannot change
+the residual policy. `MessageContinuationStep` uses these composed witnesses
+and the full original-graph history scan at each bind, resolve, and sample
+successor. These are the transition equations required by the induction,
+not a substitute for its service-protection premise.
 
 An arbitrary shorter prefix need not be terminal. Its corresponding statement
 uses graph prefixes, not a fabricated terminal outcome.

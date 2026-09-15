@@ -117,6 +117,66 @@ theorem runPolicies_running_eq_of_phase_eq
   · omega
   · exact unchanged
 
+/-- Extract the original graph prefix at a known running cursor. The
+existential mutable fields in `Follows` do not enter this witness. -/
+theorem State.prefix_of_running_follows {Γ₀ : VCtx Player L}
+    (whole : Graph Player L Γ₀ Δ) (graph : Graph Player L Γ Δ)
+    (ideal : VEnv L Γ) (values : PublicValues Γ) (bindings : Bindings Player)
+    (candidates : CommitmentCandidates Player Slot (Raw L)) (pc clock enteredAt : Nat)
+    (follows : (State.running graph ideal values bindings candidates pc clock enteredAt).Follows
+      whole 0) : Nonempty (Prefix Δ whole graph pc) := by
+  let hasPrefix : State Player L Δ → Prop := fun state =>
+    match state with
+    | .running suffix _ _ _ _ phase _ _ => Nonempty (Prefix Δ whole suffix phase)
+  rcases follows with ⟨target, suffix, length, env, publicValues, addresses, catalog,
+    time, entered, walk, same⟩
+  have witness : hasPrefix (.running suffix env publicValues addresses catalog
+      (0 + length) time entered) := by
+    simpa [hasPrefix] using (⟨walk⟩ : Nonempty (Prefix Δ whole suffix length))
+  rw [← same] at witness
+  exact witness
+
+/-- Reading the same-phase frame backwards recovers the earlier typed cursor
+and immutable values from a known later cursor. This allows a message's actual
+submission checkpoint to be identified without assuming its source node. -/
+theorem runPolicies_running_before_of_phase_eq
+    (runtime : GraphRuntime Player L Δ) (graph : Graph Player L Γ Δ)
+    (ideal : VEnv L Γ) (values : PublicValues Γ) (bindings : Bindings Player)
+    (candidates : CommitmentCandidates Player Slot (Raw L)) (pc clock enteredAt : Nat)
+    (players : Player → runtime.application.PlayerPolicy)
+    (environment : runtime.application.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Player))
+    (execution next : runtime.application.PolicyExecution)
+    (finalState : next.native.application =
+      .running graph ideal values bindings candidates pc clock enteredAt)
+    (supported : next ∈ (runtime.application.runPolicies players environment
+      schedule execution).support)
+    (samePhase : execution.native.application.phase = pc) :
+    ∃ candidates₀ clock₀ enteredAt₀,
+      execution.native.application =
+        .running graph ideal values bindings candidates₀ pc clock₀ enteredAt₀ := by
+  cases initial : execution.native.application with
+  | running initialGraph initialIdeal initialValues initialBindings initialCandidates
+      initialPc initialClock initialEntered =>
+      rw [initial] at samePhase
+      change initialPc = pc at samePhase
+      subst initialPc
+      obtain ⟨laterCandidates, laterClock, laterEntered, sameState⟩ :=
+        runtime.runPolicies_running_eq_of_phase_eq initialGraph initialIdeal initialValues
+          initialBindings initialCandidates pc initialClock initialEntered players environment
+          schedule execution next initial supported (by rw [finalState]; rfl)
+      rw [finalState] at sameState
+      change (State.running graph ideal values bindings candidates pc clock enteredAt :
+          State Player L Δ) =
+        .running initialGraph initialIdeal initialValues initialBindings laterCandidates
+          pc laterClock laterEntered at sameState
+      have immutable := congrArg (fun state : State Player L Δ =>
+        match state with
+        | .running nextGraph env publicValues addresses _ phase _ _ =>
+            State.running nextGraph env publicValues addresses initialCandidates
+              phase initialClock initialEntered) sameState
+      exact ⟨initialCandidates, initialClock, initialEntered, immutable.symm⟩
+
 /-- Actual own histories cannot acquire new disclosure markers for an already
 passed site. The observation argument is fixed: changes in observed graph
 values are a separate question from extension of authenticated command history.
