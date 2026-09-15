@@ -188,6 +188,22 @@ a rejecting receipt and does not append an opening event. The shared deadline
 mechanism remains responsible for resolution. Arbitrary-policy bounded
 completion follows from the existing generic handler theorem.
 
+`OpeningHistoryInvariant` records unique event-node indices and the exact
+pre-admission event prefix for each validated opening. A synthetic opening
+instead records the designated null value and a timeout of its reveal or
+producer. The guarded host preserves this invariant under arbitrary player,
+environment and round-driver policies; no delivery service is assumed for
+this safety result.
+
+`Graph.guard_validation_prefix` proves that a completed guard evaluation has
+the same Boolean result after extending a node-distinct public log. Both
+acceptance and evaluated rejection persist: an available dependency cannot be
+overwritten by another node. Consequently `opened_valid_or_default` classifies
+every published value using the final public store, and `opened_guard_legal`
+proves graph-guard legality whenever the graph decision agrees on the guard's
+stored dependencies and the designated default is legal. The latter agreement
+is still a premise; these lemmas do not construct the graph execution.
+
 These are local compiler and operational results. The whole-program strategic
 theorem still requires universally accepting guards. Widening it requires a
 source-independent graph certificate for public validation and legal defaults,
@@ -197,6 +213,15 @@ current unrestricted-fragment proof does. Private attempts and invalid pending
 claims remain in native observations even when their eventual settlement is
 null. Their strategic treatment requires the actual deviation argument, not an
 assumed observation quotient.
+
+The graph settlement proof must construct legal decisions in node order,
+maintaining agreement on already produced public fields. Validated openings
+supply their values; timeouts and unpublished commitments use the legal
+default. Backtranslation must preserve raw candidate contents in native
+memory while projecting an invalid graph choice to that default. Acceptance
+of an opaque focal candidate alone cannot imply equality with a legal graph
+choice: equality is needed for honest accepted candidates and successfully
+validated focal openings, not for all accepted candidates.
 
 The validation context must agree with the context intended by the source
 guard. Public eligibility alone proves neither availability at opening nor
@@ -210,8 +235,11 @@ default legality for a compiled nontrivial nullable guard with unused private
 choice information. Its native tests cover public dependency failure, private-guard
 ineligibility, opaque acceptance of an invalid candidate, a visible rejected
 opening followed by timeout to null, and successful inclusion of a legal
-opening. These are native runs of the guarded host; they do not assert a
-whole-program source strategy law.
+opening. `arbitrary_policies_never_publish_invalid` additionally excludes the
+guard-invalid Boolean value from every supported finite policy execution of
+that host. It uses the historical invariant and persistence of evaluated
+rejection, without a service or completion premise. These results do not
+assert a whole-program source strategy law.
 
 ### Shared candidate hosts
 

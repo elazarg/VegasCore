@@ -83,6 +83,7 @@ import Interaction.SealedTimeoutDisclosure
 import Interaction.SealedResolution
 import Interaction.SealedCandidateResolution
 import Interaction.SealedOpeningValidation
+import Interaction.SealedOpeningHistory
 import Interaction.SealedCandidateEmbedding
 import Interaction.SealedPreparedPolicies
 import Interaction.SealedCandidatePolicyEmbedding

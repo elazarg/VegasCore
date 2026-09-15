@@ -449,7 +449,8 @@ theorem accepted_mem_of_accepted?_eq_some
       · contradiction
   | opened eventNode value => simp at hmatch
 
-private theorem eventNodes_nodup_append
+/-- Appending an event at an unfinished node preserves unique event indices. -/
+theorem eventNodes_nodup_append
     {events : List (Event Principal Value)} {event : Event Principal Value}
     (hnodup : (events.map Event.node).Nodup)
     (hnotDone : done events event.node = false) :

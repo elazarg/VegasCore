@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.GuardValidation
-import Vegas.Compile.SealedGuardValidation
+import Vegas.Compile.SealedGuardSettlement
 import Vegas.Core.ExprSimple
 
 /-! # Nontrivial guard checks without unused private choice information -/
@@ -206,4 +206,39 @@ theorem legal_opening_is_included :
     FinDist.pure_bind, FinDist.map_pure]
   rfl
 
+/-- No player or environment policy can publish the guard-invalid candidate.
+The statement covers every supported finite execution, including arbitrary
+preparations, malformed traffic, retries and clock commands. It does not
+require service or completion: an unpublished site is also safe. -/
+theorem arbitrary_policies_never_publish_invalid
+    (players : Nat → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Nat)) (next : app.PolicyExecution)
+    (hnext : next ∈ (app.runPolicies players environment schedule
+      (PolicyExecution.initial app initial)).support) :
+    SealedProgram.Event.opened 1 (some false) ∉ next.native.application.visible.events := by
+  have hhistory := runtime.runPolicies_guarded_openingHistory
+    (graph.sealedOpeningValidator (.option .bool)) players environment schedule
+    (PolicyExecution.initial app initial) next
+    (Interaction.SealedResolution.OpeningHistoryInvariant.initial runtime _) hnext
+  intro hopened
+  rcases graph.opened_valid_or_default (.option .bool) runtime _ hhistory
+      1 (some false) hopened with hdefault | hvalid
+  · cases hdefault
+  · have hrejected := graph.guard_validation_prefix (.option .bool) []
+        next.native.application.visible.events (by simpa using hhistory.nodes_unique)
+        publicGuard (some false)
+        (show publicGuard.evalValidationStore? (some false)
+          (graph.publicSealedStore (.option .bool) []) = some false from by decide)
+    have hresult := (graph.sealedOpeningValidator_reveal 1 0 0 publicGuard rfl rfl
+      next.native.application.visible.events (some false)).symm.trans hvalid
+    simp only [List.nil_append] at hrejected
+    have himpossible : false = true :=
+      (congrArg (fun result : Option Bool => result.getD false) hrejected).symm.trans hresult
+    cases himpossible
+
 end VegasTests.GuardValidation
+
+/-- info: 'VegasTests.GuardValidation.arbitrary_policies_never_publish_invalid'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.GuardValidation.arbitrary_policies_never_publish_invalid

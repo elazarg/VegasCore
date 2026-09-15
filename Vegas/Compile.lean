@@ -26,6 +26,8 @@ import Vegas.Compile.SourcePublicOutcome
 import Vegas.Compile.SealedPublicSourceOutcome
 import Vegas.Compile.SealedMessages
 import Vegas.Compile.SealedGuardValidation
+import Vegas.Compile.SealedGuardSettlement
+import Vegas.Compile.SealedPublicStorePersistence
 import Vegas.Compile.SealedReadOrigin
 import Vegas.Compile.SealedDecode
 import Vegas.Compile.SealedExecution

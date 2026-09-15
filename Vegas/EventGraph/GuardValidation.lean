@@ -108,6 +108,24 @@ def evalValidationStore? (guard : EventGuard L) (action : L.Val guard.ty)
     (store : Store L) : Option Bool :=
   (ReadEnv.ofStoreExec? store guard.validationReads).map (guard.evalValidation action)
 
+/-- A successful dependency-local check is unchanged by a store extension
+that preserves the values already present in its validation footprint. -/
+theorem evalValidationStore?_preserved (guard : EventGuard L) (action : L.Val guard.ty)
+    (beforeStore afterStore : Store L) (result : Bool)
+    (hresult : guard.evalValidationStore? action beforeStore = some result)
+    (hpreserved : ∀ ref ∈ guard.validationReads, ∀ value,
+      Store.getAs beforeStore ref.field ref.ty = some value →
+        Store.getAs afterStore ref.field ref.ty = some value) :
+    guard.evalValidationStore? action afterStore = some result := by
+  obtain ⟨reads, hreads, heval⟩ := Option.map_eq_some_iff.mp hresult
+  have hbefore := ReadEnv.ofStore?_eq_some_of_ofStoreExec?_eq_some hreads
+  have hafter := ReadEnv.ofStore?_eq_of_getAs_eq hbefore (by
+    intro ref href
+    have hread := ReadEnv.ofStore?_read hbefore href
+    exact hread.trans (hpreserved ref href _ hread).symm)
+  rw [evalValidationStore?, ReadEnv.ofStoreExec?_eq_some_of_ofStore?_eq_some hafter,
+    Option.map_some, heval]
+
 /-- A store agreeing with the player's view on guard dependencies evaluates
 the same guard; it need not contain the rest of the player's information. -/
 theorem evalValidationStore?_eq_some (guard : EventGuard L) (action : L.Val guard.ty)
