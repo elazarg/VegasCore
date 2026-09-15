@@ -2,13 +2,46 @@
 
 import GameTheory.Math.Probability.FinDist
 
-/-! # Point masses with an identifiable branch -/
+/-! # Finite-support composition and branch laws -/
 
 noncomputable section
 
 namespace GameTheory.Math.Probability.FinDist
 
 variable {α β : Type*}
+
+/-- Support-dependent binds transport across equality of their source laws
+when corresponding branches agree. -/
+theorem bindOnSupport_congr_measure {μ ν : FinDist α} (same : μ = ν)
+    (f : ∀ a ∈ μ.support, FinDist β) (g : ∀ a ∈ ν.support, FinDist β)
+    (agree : ∀ a ha hb, f a ha = g a hb) :
+    μ.bindOnSupport f = ν.bindOnSupport g := by
+  subst ν
+  apply bindOnSupport_congr
+  intro a ha
+  exact agree a ha ha
+
+/-- A support-dependent continuation after a pushforward can instead be
+evaluated at each original draw. The pushforward need not be injective. -/
+theorem bindOnSupport_map {γ : Type*} (law : FinDist α) (f : α → β)
+    (next : ∀ value ∈ (law.map f).support, FinDist γ) :
+    (law.map f).bindOnSupport next = law.bindOnSupport fun value supported =>
+      next (f value) (by rw [support_map]; exact ⟨value, supported, rfl⟩) := by
+  classical
+  obtain ⟨someValue, someSupported⟩ := (law.map f).support_nonempty
+  let total : β → FinDist γ := fun value =>
+    if supported : value ∈ (law.map f).support then next value supported
+    else next someValue someSupported
+  have agrees : ∀ value (supported : value ∈ (law.map f).support),
+      next value supported = total value := by
+    intro value supported
+    dsimp only [total]
+    rw [dif_pos supported]
+  rw [bindOnSupport_eq_bind_of_eq_on_support agrees, bind_map]
+  symm
+  apply bindOnSupport_eq_bind_of_eq_on_support
+  intro value supported
+  exact agrees (f value) (by rw [support_map]; exact ⟨value, supported, rfl⟩)
 
 /-- Events that agree on a law's support have the same probability. -/
 theorem probOf_congr (law : FinDist α) {first second : Set α}

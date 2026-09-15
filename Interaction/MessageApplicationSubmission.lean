@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.MessageApplicationProgress
+import Interaction.MessageApplicationPolicyInvariant
 
 /-! # One-shot submission progress
 
@@ -30,6 +31,31 @@ variable (app : MessageApplication Principal)
 /-- The principal has sampled an exact submission command at least once. -/
 def SubmittedPayload (payload : app.Payload) (history : List app.PlayerEntry) : Prop :=
   ∃ entry ∈ history, entry.command = .submit payload
+
+/-- Once a payload occurs in a principal's authenticated submission history,
+every supported continuation retains that occurrence. -/
+theorem runPolicies_submittedPayload_preserved
+    (who : Principal) (payload : app.Payload)
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (execution next : app.PolicyExecution)
+    (submitted : app.SubmittedPayload payload (execution.principalHistory who))
+    (supported : next ∈ (app.runPolicies players environment schedule execution).support) :
+    app.SubmittedPayload payload (next.principalHistory who) := by
+  apply app.runPolicies_execution_invariant
+    (fun current => app.SubmittedPayload payload (current.principalHistory who))
+    players environment
+  · intro current actor command after holds _ stepMem
+    obtain ⟨entry, member, commandEq⟩ := holds
+    refine ⟨entry, ?_, commandEq⟩
+    by_cases same : actor = who
+    · subst actor
+      rw [app.playerStep_history_self who current command after stepMem]
+      exact List.mem_append_left _ member
+    · rwa [app.playerStep_other_history actor who (Ne.symm same) current command after stepMem]
+  · intro current command after holds _ stepMem
+    simpa [app.environmentStep_principalHistory current command after stepMem] using holds
+  · exact submitted
+  · exact supported
 
 /-- A pending envelope authored by the named principal carries the exact
 payload.  The serial is the one allocated by the native submission step. -/

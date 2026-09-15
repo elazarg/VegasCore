@@ -14,6 +14,97 @@ universe uPrincipal
 variable {Principal : Type uPrincipal} [DecidableEq Principal]
 variable (app : MessageApplication Principal)
 
+private theorem invoke_history_origin
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (invocation : @Invocation Principal) (execution next : app.PolicyExecution)
+    (supported : next ∈ (app.invoke players environment execution invocation).support)
+    (who : Principal) (entry : app.PlayerEntry) (member : entry ∈ next.principalHistory who) :
+    entry ∈ execution.principalHistory who ∨
+      (invocation = .player who ∧ entry.beforeView = State.observe app execution.native who ∧
+        entry.command ∈ (players who (execution.principalHistory who) entry.beforeView).support ∧
+        next ∈ (app.playerStep who execution entry.command).support) := by
+  cases invocation with
+  | environment =>
+      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at supported
+      obtain ⟨command, _, step⟩ := supported
+      left
+      rwa [app.environmentStep_principalHistory execution command next step] at member
+  | player actor =>
+      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at supported
+      obtain ⟨command, commandMem, step⟩ := supported
+      by_cases same : actor = who
+      · subst actor
+        rw [app.playerStep_history_self who execution command next step] at member
+        simp only [List.mem_append, List.mem_singleton] at member
+        rcases member with prior | rfl
+        · exact Or.inl prior
+        · exact Or.inr ⟨rfl, rfl, commandMem, step⟩
+      · left
+        rwa [app.playerStep_other_history actor who (Ne.symm same)
+          execution command next step] at member
+
+/-- A history entry either predates the run or records an actual supported
+player invocation in it. The checkpoint retains the entire native execution,
+not only the observation stored in the entry. -/
+theorem runPolicies_history_origin
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (execution final : app.PolicyExecution)
+    (supported : final ∈ (app.runPolicies players environment schedule execution).support)
+    (who : Principal) (entry : app.PlayerEntry) (member : entry ∈ final.principalHistory who) :
+    entry ∈ execution.principalHistory who ∨
+      ∃ front suffix before after,
+        schedule = front ++ .player who :: suffix ∧
+        before ∈ (app.runPolicies players environment front execution).support ∧
+        entry.beforeView = State.observe app before.native who ∧
+        entry.command ∈ (players who (before.principalHistory who) entry.beforeView).support ∧
+        after ∈ (app.playerStep who before entry.command).support ∧
+        final ∈ (app.runPolicies players environment suffix after).support := by
+  induction schedule generalizing execution with
+  | nil =>
+      simp only [runPolicies, FinDist.mem_support_pure] at supported
+      subst final
+      exact Or.inl member
+  | cons invocation rest ih =>
+      simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion] at supported
+      obtain ⟨middle, first, last⟩ := supported
+      rcases ih middle last with prior | origin
+      · rcases app.invoke_history_origin players environment invocation execution middle
+          first who entry prior with initial | here
+        · exact Or.inl initial
+        · rcases here with ⟨invocationEq, viewEq, commandMem, step⟩
+          subst invocation
+          exact Or.inr ⟨[], rest, execution, middle, rfl,
+            FinDist.mem_support_pure.mpr rfl, viewEq, commandMem, step, last⟩
+      · rcases origin with
+          ⟨front, suffix, before, after, split, beforeMem, viewEq, commandMem, step, residual⟩
+        refine Or.inr ⟨invocation :: front, suffix, before, after, ?_, ?_,
+          viewEq, commandMem, step, residual⟩
+        · simp only [List.cons_append, split]
+        · simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion]
+          exact ⟨middle, first, beforeMem⟩
+
+/-- Every history entry in an initialized run has its own supported invocation
+checkpoint and a supported residual execution with the same policies. -/
+theorem runPolicies_initial_history_origin
+    (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
+    (schedule : List (@Invocation Principal)) (initial : app.State)
+    (final : app.PolicyExecution)
+    (supported : final ∈ (app.runPolicies players environment schedule
+      (PolicyExecution.initial app initial)).support)
+    (who : Principal) (entry : app.PlayerEntry) (member : entry ∈ final.principalHistory who) :
+    ∃ front suffix before after,
+      schedule = front ++ .player who :: suffix ∧
+      before ∈ (app.runPolicies players environment front
+        (PolicyExecution.initial app initial)).support ∧
+      entry.beforeView = State.observe app before.native who ∧
+      entry.command ∈ (players who (before.principalHistory who) entry.beforeView).support ∧
+      after ∈ (app.playerStep who before entry.command).support ∧
+      final ∈ (app.runPolicies players environment suffix after).support := by
+  rcases app.runPolicies_history_origin players environment schedule
+      (PolicyExecution.initial app initial) final supported who entry member with prior | origin
+  · exact (List.not_mem_nil prior).elim
+  · exact origin
+
 /-- Every recorded player command in an actual initialized run is supported
 by that player's policy at its recorded observation and some prior history. -/
 theorem runPolicies_initial_history_supported
@@ -24,28 +115,11 @@ theorem runPolicies_initial_history_supported
       (PolicyExecution.initial app initial)).support) :
     ∀ who entry, entry ∈ next.principalHistory who →
       ∃ history, entry.command ∈ (players who history entry.beforeView).support := by
-  apply app.runPolicies_execution_invariant
-    (fun execution => ∀ who entry, entry ∈ execution.principalHistory who →
-      ∃ history, entry.command ∈ (players who history entry.beforeView).support) players environment
-    (schedule := schedule) (execution := PolicyExecution.initial app initial) (next := next)
-  · intro current actor command after provenance commandMem stepMem who entry member
-    by_cases same : actor = who
-    · subst actor
-      rw [app.playerStep_history_self who current command after stepMem] at member
-      simp only [List.mem_append, List.mem_singleton] at member
-      rcases member with old | rfl
-      · exact provenance who entry old
-      · exact ⟨current.principalHistory who, commandMem⟩
-    · rw [app.playerStep_other_history actor who (Ne.symm same) current command after
-        stepMem] at member
-      exact provenance who entry member
-  · intro current command after provenance _commandMem stepMem who entry member
-    rw [app.environmentStep_principalHistory current command after stepMem] at member
-    exact provenance who entry member
-  · intro who entry member
-    change entry ∈ ([] : List app.PlayerEntry) at member
-    contradiction
-  · exact supported
+  intro who entry member
+  obtain ⟨_, _, before, _, _, _, _, commandMem, _, _⟩ :=
+    app.runPolicies_initial_history_origin players environment schedule initial next
+      supported who entry member
+  exact ⟨before.principalHistory who, commandMem⟩
 
 /-- A message is retained in at least one pool store. Retention does not imply
 that every principal has observed it. -/

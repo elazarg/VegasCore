@@ -18,6 +18,53 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {Γ₀ Γ Δ : VCtx Player L}
 
+private theorem Prefix.cursor_unique
+    {whole : Graph Player L Γ₀ Δ} {leftContext rightContext : VCtx Player L}
+    {left : Graph Player L leftContext Δ} {right : Graph Player L rightContext Δ}
+    {site : Nat} (leftWalk : Prefix Δ whole left site)
+    (rightWalk : Prefix Δ whole right site) :
+    ∃ _ : leftContext = rightContext, HEq left right := by
+  induction leftWalk generalizing rightContext with
+  | refl =>
+      cases rightWalk
+      exact ⟨rfl, HEq.rfl⟩
+  | sample leftWalk ih =>
+      cases rightWalk with
+      | sample rightWalk =>
+          obtain ⟨rfl, graphEq⟩ := ih rightWalk
+          cases graphEq
+          exact ⟨rfl, HEq.rfl⟩
+  | bind leftWalk ih =>
+      cases rightWalk with
+      | bind rightWalk =>
+          obtain ⟨rfl, graphEq⟩ := ih rightWalk
+          cases graphEq
+          exact ⟨rfl, HEq.rfl⟩
+  | resolve leftWalk ih =>
+      cases rightWalk with
+      | resolve rightWalk =>
+          obtain ⟨rfl, graphEq⟩ := ih rightWalk
+          cases graphEq
+          exact ⟨rfl, HEq.rfl⟩
+
+private theorem State.follows_at_prefix
+    {whole : Graph Player L Γ₀ Δ} {suffix : Graph Player L Γ Δ} {site : Nat}
+    (walk : Prefix Δ whole suffix site) (state : State Player L Δ)
+    (follows : state.Follows whole 0) (atSite : state.phase = site) :
+    ∃ (ideal : VEnv L Γ) (values : Graph.PublicValues Γ)
+        (bindings : Bindings Player)
+        (candidates : CommitmentCandidates Player Slot (Raw L)) (clock enteredAt : Nat),
+      state = .running suffix ideal values bindings candidates site clock enteredAt := by
+  rcases follows with
+    ⟨target, current, length, ideal, values, bindings, candidates, clock,
+      enteredAt, currentWalk, rfl⟩
+  have lengthEq : length = site := by
+    simpa [State.phase] using atSite
+  subst length
+  obtain ⟨rfl, graphEq⟩ := Prefix.cursor_unique walk currentWalk
+  cases graphEq
+  exact ⟨ideal, values, bindings, candidates, clock, enteredAt, by simp⟩
+
 private theorem compileAt_bind_submit_payload
     (runtime : GraphRuntime Player L Δ) (whole : Graph Player L Γ₀ Δ)
     (name : VarId) (owner : Player) {payload : L.Ty}
@@ -126,37 +173,6 @@ private theorem canonicalSubmitted_of_actual_history
           have impossible := compileAt_bind_submit_payload runtime whole name owner fresh tail
             (walk.policyTail owner policy) site prior entry.beforeView _ siteEq commandMem
           cases impossible
-
-private theorem runPolicies_submittedPayload_preserved
-    (runtime : GraphRuntime Player L Δ) (who : Player)
-    (payload : runtime.application.Payload)
-    (players : Player → runtime.application.PlayerPolicy)
-    (environment : runtime.application.EnvironmentPolicy)
-    (schedule : List (@MessageApplication.Invocation Player))
-    (execution next : runtime.application.PolicyExecution)
-    (submitted : runtime.application.SubmittedPayload payload
-      (execution.principalHistory who))
-    (supported : next ∈ (runtime.application.runPolicies players environment schedule
-      execution).support) :
-    runtime.application.SubmittedPayload payload (next.principalHistory who) := by
-  apply runtime.application.runPolicies_execution_invariant
-    (fun current => runtime.application.SubmittedPayload payload
-      (current.principalHistory who)) players environment
-  · intro current actor command after currentSubmitted _commandMem stepMem
-    obtain ⟨entry, member, entryCommand⟩ := currentSubmitted
-    by_cases same : actor = who
-    · subst actor
-      refine ⟨entry, ?_, entryCommand⟩
-      rw [runtime.application.playerStep_history_self who current command after stepMem]
-      exact List.mem_append_left _ member
-    · refine ⟨entry, ?_, entryCommand⟩
-      rwa [runtime.application.playerStep_other_history actor who (Ne.symm same) current command
-        after stepMem]
-  · intro current command after currentSubmitted _commandMem stepMem
-    simpa [runtime.application.environmentStep_principalHistory current command after stepMem]
-      using currentSubmitted
-  · exact submitted
-  · exact supported
 
 private theorem submittedAt_true_of_canonicalSubmitted
     (runtime : GraphRuntime Player L Δ) (owner : Player) (site : Nat)
@@ -282,6 +298,196 @@ theorem runPolicies_bind_submission_pending_or_advanced
   rcases bridge with advanced | ⟨⟨stillFollows, same⟩, pending⟩
   · exact Or.inl advanced
   · exact Or.inr ⟨stillFollows, same, pending⟩
+
+/-- In an initialized execution, a canonical binding submission recorded at a
+typed cursor is still pending under its actual author, unless execution has
+already advanced past that cursor.  No pending-message or counter premise is
+required from the caller. -/
+theorem runPolicies_initial_bind_submission_pending_or_advanced
+    (runtime : GraphRuntime Player L Δ)
+    (name : VarId) (owner : Player) {payload : L.Ty}
+    (whole : Graph Player L Γ₀ Δ) (policy : BehavioralPolicy owner whole)
+    (fresh : name ∉ Γ.map Prod.fst)
+    (tail : Graph Player L ((name, .sealed owner (R.result payload)) :: Γ) Δ)
+    (site : Nat) (walk : Prefix Δ whole (.bind name owner fresh tail) site)
+    (input : VEnv L Γ₀)
+    (players : Player → runtime.application.PlayerPolicy)
+    (ownerCompiled : players owner = runtime.compilePlayerPolicy whole owner policy)
+    (environment : runtime.application.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Player))
+    (next : runtime.application.PolicyExecution)
+    (supported : next ∈ (runtime.application.runPolicies players environment schedule
+      (MessageApplication.PolicyExecution.initial runtime.application
+        (MessageApplication.State.initial runtime.application
+          (State.initial whole input)))).support)
+    (submitted : runtime.application.SubmittedPayload
+      (.commitment site (owner, .prepared site)) (next.principalHistory owner)) :
+    site < next.native.application.phase ∨
+      (next.native.application.phase = site ∧
+        runtime.application.AuthoredPending owner
+          (.commitment site (owner, .prepared site)) next.native) := by
+  let invariant : State Player L Δ → Prop := fun state => state.Follows whole 0
+  let ready : State Player L Δ → Prop := fun state => invariant state ∧ state.phase = site
+  let milestone : State Player L Δ → Prop := fun state => site < state.phase
+  have bridge := runtime.application.runPolicies_submitted_pendingOrResolved
+    invariant ready milestone owner (.commitment site (owner, .prepared site))
+    players environment
+    (fun application actor command valid =>
+      runtime.privateStep_follows whole 0 application actor command valid)
+    (fun application message after valid accepted =>
+      runtime.handle_follows whole 0 application after message valid accepted)
+    (fun application command after valid happened => by
+      cases command with
+      | tick => exact runtime.tick_follows whole 0 application after valid happened)
+    (fun application actor command done => by
+      change site < (runtime.privateStep application actor command).phase
+      rw [runtime.privateStep_phase]
+      exact done)
+    (fun application actor command current => by
+      left
+      exact ⟨runtime.privateStep_follows whole 0 application actor command current.1,
+        by
+          change (runtime.privateStep application actor command).phase = site
+          rw [runtime.privateStep_phase]
+          exact current.2⟩)
+    (fun application message after done accepted => by
+      have step := runtime.handle_phase application after message accepted
+      omega)
+    (fun application message after current accepted => by
+      have step := runtime.handle_phase application after message accepted
+      right
+      omega)
+    (fun application command after done happened => by
+      cases command with
+      | tick =>
+          have monotone := runtime.tick_phase_mono application after happened
+          omega)
+    (fun application command after current happened => by
+      cases command with
+      | tick =>
+          have monotone := runtime.tick_phase_mono application after happened
+          rcases Nat.eq_or_lt_of_le monotone with same | later
+          · left
+            exact ⟨runtime.tick_follows whole 0 application after current.1 happened, by omega⟩
+          · right; omega)
+    (fun application serial current => by
+      obtain ⟨ideal, values, bindings, candidates, clock, enteredAt, stateEq⟩ :=
+        State.follows_at_prefix walk application current.1 current.2
+      refine ⟨advanceBind tail ideal values bindings candidates site clock
+        (owner, .prepared site), ?_, ?_⟩
+      · rw [stateEq]
+        simp only [GraphRuntime.application]
+        simp only [GraphRuntime.handle, Message.sender, decide_eq_true_eq,
+          Bool.and_self, if_true]
+      · simp [milestone, State.phase, advanceBind])
+    (fun current command valid commandMem commandEq => by
+      have atPhase := runtime.compilePlayerPolicy_command_atPhase whole owner policy
+        (current.principalHistory owner)
+        (MessageApplication.State.observe runtime.application current.native owner)
+        command (by rwa [← ownerCompiled])
+      refine ⟨valid, ?_⟩
+      rw [commandEq] at atPhase
+      have siteEq := atPhase.1
+      change site = current.native.application.publicView.pc at siteEq
+      rw [State.publicView_pc] at siteEq
+      exact siteEq.symm)
+    schedule
+    (MessageApplication.PolicyExecution.initial runtime.application
+      (MessageApplication.State.initial runtime.application (State.initial whole input)))
+    next (State.initial_follows whole input) (by
+      rintro ⟨entry, member, _⟩
+      exact List.not_mem_nil member)
+    supported submitted
+  rcases bridge with advanced | ⟨⟨_, same⟩, pending⟩
+  · exact Or.inl advanced
+  · exact Or.inr ⟨same, pending⟩
+
+private theorem runPolicies_initial_bind_submission_pending_counter_or_advanced
+    (runtime : GraphRuntime Player L Δ)
+    (name : VarId) (owner : Player) {payload : L.Ty}
+    (whole : Graph Player L Γ₀ Δ) (policy : BehavioralPolicy owner whole)
+    (fresh : name ∉ Γ.map Prod.fst)
+    (tail : Graph Player L ((name, .sealed owner (R.result payload)) :: Γ) Δ)
+    (site : Nat) (walk : Prefix Δ whole (.bind name owner fresh tail) site)
+    (input : VEnv L Γ₀) (players : Player → runtime.application.PlayerPolicy)
+    (ownerCompiled : players owner = runtime.compilePlayerPolicy whole owner policy)
+    (environment : runtime.application.EnvironmentPolicy)
+    (schedule : List (@MessageApplication.Invocation Player))
+    (next : runtime.application.PolicyExecution)
+    (supported : next ∈ (runtime.application.runPolicies players environment schedule
+      (MessageApplication.PolicyExecution.initial runtime.application
+        (MessageApplication.State.initial runtime.application
+          (State.initial whole input)))).support)
+    (submitted : runtime.application.SubmittedPayload
+      (.commitment site (owner, .prepared site)) (next.principalHistory owner)) :
+    site < next.native.application.phase ∨ ∃ serial,
+      ({ id := (owner, serial), payload := .commitment site (owner, .prepared site) } :
+        Message Player runtime.application.Payload) ∈ next.native.pool.pending ∧
+      next.native.pool.nextSerial owner = serial + 1 := by
+  obtain ⟨entry, member, entryCommand⟩ := submitted
+  obtain ⟨front, suffix, before, after, _split, beforeMem, viewEq, commandMem,
+      stepMem, residual⟩ :=
+    runtime.application.runPolicies_initial_history_origin players environment schedule
+      (MessageApplication.State.initial runtime.application (State.initial whole input))
+      next supported owner entry member
+  have atPhase := runtime.compilePlayerPolicy_command_atPhase whole owner policy
+    (before.principalHistory owner) entry.beforeView entry.command (by
+      rw [← ownerCompiled]
+      exact commandMem)
+  rw [entryCommand, viewEq] at atPhase
+  have beforePhase : before.native.application.phase = site := by
+    have phaseAt := atPhase.1
+    change site = before.native.application.publicView.pc at phaseAt
+    rw [State.publicView_pc] at phaseAt
+    exact phaseAt.symm
+  have beforeFollows := runtime.runPolicies_follows whole 0 players environment front
+    _ before (State.initial_follows whole input) beforeMem
+  obtain ⟨ideal, values, bindings, candidates, clock, enteredAt, beforeState⟩ :=
+    State.follows_at_prefix walk before.native.application beforeFollows beforePhase
+  have nativeMem : after.native ∈
+      ((runtime.application.playerStep owner before
+        (.submit (.commitment site (owner, .prepared site)))).map
+          MessageInterface.PolicyExecution.native).support := by
+    rw [FinDist.support_map]
+    exact ⟨after, by simpa [entryCommand] using stepMem, rfl⟩
+  rw [runtime.application.playerStep_native] at nativeMem
+  simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
+    FinDist.mem_support_pure] at nativeMem
+  let serial := before.native.pool.nextSerial owner
+  have afterState : after.native.application =
+      .running (.bind name owner fresh tail) ideal values bindings candidates
+        site clock enteredAt := by
+    rw [nativeMem]
+    exact beforeState
+  have afterPending :
+      ({ id := (owner, serial), payload := .commitment site (owner, .prepared site) } :
+        Message Player runtime.application.Payload) ∈ after.native.pool.pending := by
+    rw [nativeMem]
+    simp [serial, MessagePool.submit]
+  have afterCounter : after.native.pool.nextSerial owner = serial + 1 := by
+    rw [nativeMem]
+    simp [serial, MessagePool.submit]
+  have afterSubmitted : submittedAt (after.principalHistory owner) site = true := by
+    rw [runtime.application.playerStep_history_self owner before _ after
+      (by simpa [entryCommand] using stepMem)]
+    unfold submittedAt
+    rw [List.any_append]
+    simp
+  have afterFollows : after.native.application.Follows
+      (.bind name owner fresh tail) site := by
+    rw [afterState]
+    exact State.running_follows _ _ _ _ _ site _ _
+  have protection := runtime.runPolicies_bind_commitment_exact_pending_or_advanced
+    site serial (owner, .prepared site) rfl players environment suffix after next
+    afterFollows (by rw [afterState]; rfl) afterPending residual
+  rcases protection with advanced | ⟨same, remains⟩
+  · exact Or.inl advanced
+  · have counterLaw := runtime.runPolicies_compiled_submitted_counter whole owner policy
+      players ownerCompiled environment suffix after next site (serial + 1)
+      (by rw [afterState]; rfl) afterSubmitted afterCounter residual
+    rcases counterLaw with advanced | ⟨_, _, counter⟩
+    · exact Or.inl advanced
+    · exact Or.inr ⟨serial, remains, counter⟩
 
 /-- If the current binding already has an immutable preparation, its next
 actual compiled-owner invocation records the exact canonical submission. -/
@@ -497,7 +703,7 @@ theorem runPolicies_bind_two_owner_calls_submitted
     by_cases wasSubmitted : submittedAt (execution.principalHistory owner) base = true
     · have beforeCanonical := canonicalSubmitted_of_actual_history runtime name owner whole policy
         fresh tail base walk players ownerCompiled execution provenance wasSubmitted
-      exact runPolicies_submittedPayload_preserved runtime owner _ players environment
+      exact runtime.application.runPolicies_submittedPayload_preserved owner _ players environment
         [.player owner, .player owner] execution next beforeCanonical supported
     · have unsubmitted : submittedAt (execution.principalHistory owner) base = false :=
         Bool.eq_false_iff.mpr wasSubmitted
@@ -521,8 +727,128 @@ theorem runPolicies_bind_two_owner_calls_submitted
               [.player owner] middle).support := by
             simpa only [MessageApplication.runPolicies, FinDist.support_bind, Set.mem_iUnion,
               FinDist.mem_support_pure] using second
-          exact runPolicies_submittedPayload_preserved runtime owner _ players environment
-            [.player owner] middle next middleSubmitted secondSupported
+          exact runtime.application.runPolicies_submittedPayload_preserved owner _ players
+            environment [.player owner] middle next middleSubmitted secondSupported
   exact ⟨submittedAt_true_of_canonicalSubmitted runtime owner base _ canonical, canonical⟩
+
+/-- The complete pre-expiry service block for an actually reached binding
+advances beyond that binding.  The two reserved owner calls work for every
+cache state; reaction rounds may advance early, and otherwise the reserved
+newest-message inclusion accepts the protected canonical commitment. -/
+theorem runPolicies_initial_bind_full_service_block_advances
+    (runtime : GraphRuntime Player L Δ)
+    (name : VarId) (owner : Player) {payload : L.Ty}
+    (whole : Graph Player L Γ₀ Δ) (policy : BehavioralPolicy owner whole)
+    (fresh : name ∉ Γ.map Prod.fst)
+    (tail : Graph Player L ((name, .sealed owner (R.result payload)) :: Γ) Δ)
+    (site : Nat) (walk : Prefix Δ whole (.bind name owner fresh tail) site)
+    (input : VEnv L Γ₀) (players : Player → runtime.application.PlayerPolicy)
+    (ownerCompiled : players owner = runtime.compilePlayerPolicy whole owner policy)
+    (before suffix : List (ServiceInstruction Player)) (roster : List Player)
+    (rounds : Nat) (wire : runtime.application.WirePolicy)
+    (prefixSchedule : List (@MessageApplication.Invocation Player))
+    (execution afterLead reacted included : runtime.application.PolicyExecution)
+    (reached : execution ∈ (runtime.application.runPolicies players
+      (runtime.serviceEnvironment
+        (before ++ [.player owner, .player owner] ++
+          (List.replicate rounds (reactionRound roster)).flatten ++
+          .includeLatest owner :: suffix) wire)
+      prefixSchedule (MessageApplication.PolicyExecution.initial runtime.application
+        (MessageApplication.State.initial runtime.application
+          (State.initial whole input)))).support)
+    (follows : execution.native.application.Follows
+      (.bind name owner fresh tail) site)
+    (atPhase : execution.native.application.phase = site)
+    (cursor : execution.environmentHistory.length =
+      (before.filterMap ServiceInstruction.environmentSlot).length)
+    (leadSupported : afterLead ∈ (runtime.application.runPolicies players
+      (runtime.serviceEnvironment
+        (before ++ [.player owner, .player owner] ++
+          (List.replicate rounds (reactionRound roster)).flatten ++
+          .includeLatest owner :: suffix) wire)
+      [.player owner, .player owner] execution).support)
+    (reactionSupported : reacted ∈ (runtime.application.runPolicies players
+      (runtime.serviceEnvironment
+        (before ++ [.player owner, .player owner] ++
+          (List.replicate rounds (reactionRound roster)).flatten ++
+          .includeLatest owner :: suffix) wire)
+      (((List.replicate rounds (reactionRound roster)).flatten).map
+        ServiceInstruction.invocation) afterLead).support)
+    (includeSupported : included ∈ (runtime.application.runPolicies players
+      (runtime.serviceEnvironment
+        (before ++ [.player owner, .player owner] ++
+          (List.replicate rounds (reactionRound roster)).flatten ++
+          .includeLatest owner :: suffix) wire)
+      [.environment] reacted).support) :
+    site < included.native.application.phase := by
+  let lead : List (ServiceInstruction Player) := [.player owner, .player owner]
+  let reactionBlock := (List.replicate rounds (reactionRound roster)).flatten
+  let plan := before ++ lead ++ reactionBlock ++ .includeLatest owner :: suffix
+  let serviceEnvironment := runtime.serviceEnvironment plan wire
+  have leadCanonical := runPolicies_bind_two_owner_calls_submitted runtime name owner whole
+    policy fresh tail site walk players ownerCompiled serviceEnvironment
+    (State.initial whole input) prefixSchedule execution afterLead
+    (by simpa [serviceEnvironment, plan, lead, reactionBlock] using reached)
+    follows atPhase
+    (by simpa [serviceEnvironment, plan, lead, reactionBlock] using leadSupported)
+  have reachedLead : afterLead ∈ (runtime.application.runPolicies players serviceEnvironment
+      (prefixSchedule ++ [.player owner, .player owner])
+      (MessageApplication.PolicyExecution.initial runtime.application
+        (MessageApplication.State.initial runtime.application
+          (State.initial whole input)))).support := by
+    rw [runtime.application.runPolicies_append]
+    simp only [FinDist.support_bind, Set.mem_iUnion]
+    exact ⟨execution, by simpa [serviceEnvironment, plan, lead, reactionBlock] using reached,
+      by simpa [serviceEnvironment, plan, lead, reactionBlock] using leadSupported⟩
+  have pendingBridge := runPolicies_initial_bind_submission_pending_or_advanced runtime name
+    owner whole policy fresh tail site walk input players ownerCompiled serviceEnvironment
+    (prefixSchedule ++ [.player owner, .player owner]) afterLead reachedLead leadCanonical.2
+  rcases pendingBridge with advanced | ⟨leadPhase, _authoredPending⟩
+  · have reactionMono := runtime.runPolicies_phase_mono players serviceEnvironment
+      (reactionBlock.map ServiceInstruction.invocation) afterLead reacted
+      (by simpa [serviceEnvironment, plan, lead, reactionBlock] using reactionSupported)
+    have includeMono := runtime.runPolicies_phase_mono players serviceEnvironment [.environment]
+      reacted included
+      (by simpa [serviceEnvironment, plan, lead, reactionBlock] using includeSupported)
+    exact advanced.trans_le (reactionMono.trans includeMono)
+  · have pendingCounter := runPolicies_initial_bind_submission_pending_counter_or_advanced runtime
+      name owner whole policy fresh tail site walk input players ownerCompiled serviceEnvironment
+      (prefixSchedule ++ [.player owner, .player owner]) afterLead reachedLead leadCanonical.2
+    rcases pendingCounter with advanced | ⟨serial, pending, counter⟩
+    · omega
+    · have afterLeadFollows := runtime.runPolicies_follows
+        (.bind name owner fresh tail) site players serviceEnvironment
+        [.player owner, .player owner] execution afterLead follows
+        (by simpa [serviceEnvironment, plan, lead, reactionBlock] using leadSupported)
+      have authorship := runtime.application.runPolicies_initial_authorship players
+        serviceEnvironment (prefixSchedule ++ [.player owner, .player owner])
+        (State.initial whole input) afterLead reachedLead
+      have leadCursorStep := runtime.runPolicies_service_cursor players serviceEnvironment lead
+        execution afterLead (by
+          simpa [lead, ServiceInstruction.invocation, serviceEnvironment, plan, reactionBlock]
+            using leadSupported)
+      have afterLeadCursor : afterLead.environmentHistory.length =
+          ((before ++ lead).filterMap ServiceInstruction.environmentSlot).length := by
+        rw [cursor] at leadCursorStep
+        simpa [List.filterMap_append, lead] using leadCursorStep
+      have serviceResult := runtime.runPolicies_bind_service_reactions_or_reserved_include
+        whole policy site serial rounds (owner, .prepared site) rfl players ownerCompiled
+        (before ++ lead) suffix roster wire afterLead reacted included afterLeadFollows
+        leadPhase leadCanonical.1 counter pending authorship afterLeadCursor
+        (by simpa [serviceEnvironment, plan, lead, reactionBlock, List.append_assoc]
+          using reactionSupported)
+        (by simpa [serviceEnvironment, plan, lead, reactionBlock, List.append_assoc]
+          using includeSupported)
+      rcases serviceResult with ⟨reactedAdvanced, _⟩ | ⟨_, includedAdvanced⟩
+      · have includeMono := runtime.runPolicies_phase_mono players serviceEnvironment
+          [.environment] reacted included
+          (by simpa [serviceEnvironment, plan, lead, reactionBlock] using includeSupported)
+        exact reactedAdvanced.trans_le includeMono
+      · exact includedAdvanced
+
+/-- info: 'Vegas.GraphRuntime.runPolicies_initial_bind_full_service_block_advances' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.GraphRuntime.runPolicies_initial_bind_full_service_block_advances
 
 end Vegas.GraphRuntime

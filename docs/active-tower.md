@@ -43,9 +43,16 @@ empty-cache case equals graph execution. `continuation_compiled_player_invoke`
 proves the corresponding expectation equation for every graph constructor,
 every preparation/submission stage, and any invoked player using its compiled
 policy. Other player policies and the environment remain arbitrary. The
-resulting continuation uses the actual extended own histories. The local
-probability and service facts have not yet been composed into the full honest
-or deviation law.
+resulting continuation uses the actual extended own histories.
+`MessageContinuationAt` packages this law at the actual native cursor, with
+a proof that the state follows the compiled graph. It has no off-graph default
+outcome. Its initial law is graph execution and its terminal law is the actual
+ideal outcome. `continuationAt_initialized_wire` proves the expectation
+equation for arbitrary adaptive wire invocations at every graph constructor,
+deriving cache typing and packet provenance from initialized execution.
+`MessageContinuationClock` proves the corresponding actual chance-tick and
+waiting laws. These invocation equations have not yet been composed through
+the full service schedule or extended to arbitrary focal deviations.
 
 `MessageBindingAcceptance` identifies any accepted current commitment of a
 compiled owner with its canonical prepared handle and exact typed value,
@@ -54,7 +61,9 @@ including acceptance through the shared environment runner. The generic
 submission checkpoint for every pending message in an initially empty pool;
 replay preserves the original sender and submission witness. These provenance
 results connect accepted packets to actual policy execution, rather than to
-an assumed well-formed message.
+an assumed well-formed message. Its history-entry origin theorem also recovers
+the actual execution before and after a recorded command, including commands
+whose packets are no longer pending.
 `accepted_initial_compiled_resolve_packet` uses that reconstruction to prove
 that an accepted disclosure in an actual initialized run installs exactly the
 compiled owner's cached graph result. It covers successful opening, deliberate
@@ -66,9 +75,19 @@ service's two consecutive owner opportunities produce the canonical submission
 from every preparation/submission state reachable under that compiled policy.
 The proof uses actual command-history provenance: candidate agreement alone
 would also admit fabricated histories containing the wrong message kind.
-Separate persistence laws protect a canonical submitted commitment while its
-phase remains current. Connecting this to the full reserved-inclusion and
-expiry schedule remains part of the whole-service proof.
+The analogous disclosure theorem covers every cache state and derives its
+exact opening/withhold payload from the cached graph decision and binding
+provenance. The bind and resolve service-block theorems start at an actually
+reached current node, compose the two owner calls with reactions and reserved
+inclusion, and prove strict progress beyond that node. They assume neither
+prior submission nor pending packets, counters, or valid cache contents.
+The real reaction block contains only wire and player instructions; the
+whole-service proof must use that fact when excluding premature expiry.
+`continuationAt_initialized_includeLatest` applies the wire law to the real
+reserved service slot, retaining its complete plan and environment-history
+cursor. The remaining honest-law task is to compose these local equations
+through the service blocks and show that their subsequent tagged expiry
+instructions wait.
 
 The native host admits competing and unopenable candidates, arbitrary tagged
 payloads, pending delivery, retries/replay, rejection receipts, and withholding.

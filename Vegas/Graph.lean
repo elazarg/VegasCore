@@ -24,7 +24,13 @@ import Vegas.Graph.MessageFocalDeterminism
 import Vegas.Graph.MessageContinuation
 import Vegas.Graph.MessageContinuationFrame
 import Vegas.Graph.MessageContinuationPolicy
+import Vegas.Graph.MessageContinuationAt
+import Vegas.Graph.MessageContinuationClock
+import Vegas.Graph.MessageContinuationDisclosure
 import Vegas.Graph.MessageContinuationStep
+import Vegas.Graph.MessageContinuationEnvironment
+import Vegas.Graph.MessageContinuationService
+import Vegas.Graph.MessageContinuationWire
 import Vegas.Graph.MessageHistoryExtension
 import Vegas.Graph.MessageServiceCompletion
 import Vegas.Graph.MessagePhaseFrame
@@ -36,3 +42,4 @@ import Vegas.Graph.MessageExpiryService
 import Vegas.Graph.MessageServiceTermination
 import Vegas.Graph.MessageServiceProtection
 import Vegas.Graph.MessageDisclosureAcceptance
+import Vegas.Graph.MessageDisclosureService

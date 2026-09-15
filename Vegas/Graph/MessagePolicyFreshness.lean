@@ -22,23 +22,34 @@ def HistoryFresh (runtime : GraphRuntime Player L Δ) (who : Player)
     Command.AtPhase runtime who entry.beforeView.application.publicState.pc entry.command ∧
       entry.beforeView.application.publicState.pc ≤ execution.native.application.phase
 
-theorem playerStep_phase_mono (runtime : GraphRuntime Player L Δ) (who : Player)
+/-- Player commands prepare or submit messages; only environment inclusion or
+application commands can advance the graph cursor. -/
+theorem playerStep_phase (runtime : GraphRuntime Player L Δ) (who : Player)
     (execution next : runtime.application.PolicyExecution) (command : Command runtime)
     (supported : next ∈ (runtime.application.playerStep who execution command).support) :
-    execution.native.application.phase ≤ next.native.application.phase := by
+    next.native.application.phase = execution.native.application.phase := by
   have nativeMem : next.native ∈
       ((runtime.application.playerStep who execution command).map
         MessageInterface.PolicyExecution.native).support := by
     rw [FinDist.support_map]
     exact ⟨next, supported, rfl⟩
   rw [runtime.application.playerStep_native] at nativeMem
-  cases haction : command.toAction runtime.application who with
-  | none =>
-      simp only [haction, FinDist.mem_support_pure] at nativeMem
+  cases command with
+  | privateCommand action =>
+      simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
+        FinDist.mem_support_pure] at nativeMem
       rw [nativeMem]
-  | some action =>
-      rw [haction] at nativeMem
-      exact runtime.application_step_phase_mono _ _ action nativeMem
+      exact runtime.privateStep_phase _ who action
+  | submit payload | replay id | wait =>
+      simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
+        FinDist.mem_support_pure] at nativeMem
+      rw [nativeMem]
+
+theorem playerStep_phase_mono (runtime : GraphRuntime Player L Δ) (who : Player)
+    (execution next : runtime.application.PolicyExecution) (command : Command runtime)
+    (supported : next ∈ (runtime.application.playerStep who execution command).support) :
+    execution.native.application.phase ≤ next.native.application.phase :=
+  (runtime.playerStep_phase who execution next command supported).symm.le
 
 theorem environmentPolicyStep_phase_mono (runtime : GraphRuntime Player L Δ)
     (execution next : runtime.application.PolicyExecution)

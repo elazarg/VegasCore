@@ -291,6 +291,7 @@ theorem accepted_initial_compiled_resolve_packet
     (ideal : VEnv L Γ) (bindings : Bindings Player)
     (candidates : CommitmentCandidates Player Slot (Raw L))
     (site clock enteredAt : Nat) (message : Message Player (Payload Player L))
+    (id : MessageId Player)
     (after : State Player L Δ)
     (supported : current ∈ (runtime.application.runPolicies players environment schedule
       (MessageApplication.PolicyExecution.initial runtime.application
@@ -299,7 +300,7 @@ theorem accepted_initial_compiled_resolve_packet
     (currentState : current.native.application =
       .running (.resolve outputName owner bindingName fresh source checks tail)
         ideal (PublicValues.ofVEnv ideal) bindings candidates site clock enteredAt)
-    (lookup : current.native.pool.lookup message.id = some message)
+    (lookup : current.native.pool.lookup id = some message)
     (accepted : runtime.handle current.native.application message = some after) :
     ∃ disclose,
       rememberedDisclosure (current.principalHistory owner) site = some disclose ∧

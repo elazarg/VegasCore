@@ -359,7 +359,9 @@ private theorem playerStep_preparationInvariant
           exact agreement site
     · simpa [historyOther] using commitments
 
-private theorem accepted_commitment_was_prepared
+/-- An accepted commitment using one of a compiled player's canonical handles
+has an authenticated preparation marker for that slot. -/
+theorem accepted_commitment_was_prepared
     (runtime : GraphRuntime Player L Δ) (who : Player)
     (execution : runtime.application.PolicyExecution)
     (authorship : runtime.application.Authorship execution)

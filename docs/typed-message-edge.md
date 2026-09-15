@@ -377,6 +377,29 @@ history, without an abstract policy-kernel premise. Only the invoked player
 must use its compiled policy. This covers player invocations, not the complete
 interval through packet acceptance and expiry service.
 
+`MessageContinuationAt` evaluates that same residual law using the actual
+native state and a `State.Follows` witness. Typed-prefix uniqueness removes any
+dependence on the chosen witness. The domain excludes off-graph states; this
+definition introduces no runtime state or operational interpreter.
+`continuationAt_compiled_player_invoke` reads both sides of its equation at
+the actual executions, rather than a fixed suffix supplied for all successors.
+Its initial and terminal equations connect graph execution to the actual
+terminal ideal environment.
+
+`continuationAt_initialized_wire` proves the full-graph wire invocation law.
+The bind case derives the cached raw value's type from the actual originating
+prepare command. Without that reachability condition a fabricated wrong-typed
+cache would make the equation false: the handler installs failure while the
+typed continuation has no cached choice. The disclosure case uses the actual
+emitting checkpoint and its persistent verifier. Sample and terminal cursors
+reject all application messages, so wire traffic changes only transport state.
+The shared accepted-handler rule handles delivery, rejection, and inclusion
+once for these cases. `MessageContinuationClock` treats actual public chance
+ticks with their probability law and proves the waiting case separately.
+`MessageContinuationService` transports the same wire law to the actual
+reserved `includeLatest` slot by equality of the current environment kernels,
+retaining the full plan and the actual environment-history cursor.
+
 Packet acceptance has a separate origin obligation. For an actual run from
 an empty pool, `runPolicies_initial_pending_submission_origin` recovers the
 original sender invocation, the selected submission command, its allocated
@@ -410,10 +433,28 @@ establish that the service never expires an unchanged player's outstanding
 action and that the policy sees the correct graph decision view. For the
 deviation law it additionally needs the observation-local extracted focal
 policy. The continuation equation is a proof plan, not a checked global law.
-The intended induction follows the remaining service instructions with an
-explicit typed suffix and policy tail. Each induction case can use that
-suffix's continuation directly; no total evaluator on arbitrary off-prefix
-native states or additional execution machine is required.
+The induction is over graph-indexed service blocks, with an inner induction
+over each block's instructions. It retains the complete service plan and
+environment history: replacing the service environment by one for the
+remaining instructions would reset its cursor incorrectly. Every inner step
+uses the actual typed suffix, which may already be beyond the nominal block.
+At a block boundary the runtime follows the nominal suffix at its base ordinal.
+For bind and resolve, the owner calls, reactions, and reserved inclusion must
+establish strict progress beyond that ordinal before expiry. Exact one-step
+advancement is not required. Phase monotonicity then makes every tagged expiry
+slot wait. Sample blocks use the actual chance-tick equation when current,
+and wait if already passed. The terminal residual law supplies the final
+outcome; the initial residual law supplies graph execution.
+
+The checked `runPolicies_initial_bind_full_service_block_advances` and
+`resolve_full_service_block_advances` provide that strict-progress conclusion
+from actual initialized reachability and the real service cursor. They derive
+canonical submission, retained packet identity, and the latest sender counter
+internally. The resolve theorem allows a general intervening instruction
+list; progress alone must not be described as acceptance if that list contains
+expiry instructions. Its whole-service instantiation uses the compiler's
+wire/player-only reaction rounds. These block results supply the expiry
+protection input; they are not whole-run probability or deviation theorems.
 
 Typed prefix restriction composes via `policyTail_trans` and
 `profileTail_trans`. Prefix witnesses at a fixed typed cursor are subsingleton,

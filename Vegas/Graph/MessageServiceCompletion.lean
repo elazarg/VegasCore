@@ -625,6 +625,21 @@ theorem runPolicies_follows (runtime : GraphRuntime Player L Δ)
   exact runtime.application_run_follows whole base suffix execution.native next.native
     follows hrun
 
+/-- Every actual invocation remains at a typed suffix of the same graph. -/
+theorem invoke_follows (runtime : GraphRuntime Player L Δ)
+    (whole : Graph Player L Γ Δ) (base : Nat)
+    (players : Player → runtime.application.PlayerPolicy)
+    (environment : runtime.application.EnvironmentPolicy)
+    (invocation : @MessageApplication.Invocation Player)
+    (execution next : runtime.application.PolicyExecution)
+    (follows : execution.native.application.Follows whole base)
+    (supported : next ∈
+      (runtime.application.invoke players environment execution invocation).support) :
+    next.native.application.Follows whole base := by
+  apply runtime.runPolicies_follows whole base players environment [invocation]
+    execution next follows
+  simpa [MessageApplication.runPolicies] using supported
+
 /-- Any policy run which reaches its fixed end ordinal is terminal.  The
 premise is deliberately an inequality: phase monotonicity and end-ordinal
 preservation rule out overshooting for executions originating in a graph. -/
