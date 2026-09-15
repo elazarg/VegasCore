@@ -179,6 +179,22 @@ theorem check_empty (guard : PublicationGuard Value) :
   unfold check checkReads
   rw [if_neg (by simp [PublicationStore.empty, Publication.isFailed]), dif_neg notReady]
 
+/-- A guard cannot reject before its own subject has resolved. A failed
+dependency may already discharge it; otherwise the pending subject keeps the
+guard waiting. -/
+theorem check_ne_rejected_of_subject_pending (guard : PublicationGuard Value)
+    (state : PublicationStore Value) (pending : state guard.subject = .pending) :
+    guard.check state ≠ .rejected := by
+  unfold check checkReads
+  split
+  · decide
+  · next noFailure =>
+      split
+      · next ready =>
+          have subjectReady := ready ⟨guard.subject, guard.subject_mem⟩
+          simp [pending, Publication.hasValue] at subjectReady
+      · decide
+
 /-- A fully ordinary publication evaluates precisely the ordinary relation. -/
 theorem check_values (guard : PublicationGuard Value) (values : (site : Slot) → Value site) :
     guard.check (fun site => .value (values site)) =
@@ -216,6 +232,30 @@ theorem check_write_of_not_mem [DecidableEq Slot] (guard : PublicationGuard Valu
   intro other member
   exact PublicationStore.write_other state site other result
     (fun equal => outside (equal ▸ member))
+
+/-- Once satisfied, a guard remains satisfied as write-once publication state
+extends. This covers both an immutable failed dependency and a fully resolved
+ordinary satisfying tuple. -/
+theorem check_satisfied_of_extends (guard : PublicationGuard Value)
+    (before after : PublicationStore Value) (extension : before.Extends after)
+    (satisfied : guard.check before = .satisfied) : guard.check after = .satisfied := by
+  by_cases failed : ∃ slot : guard.dependencies, (before slot).isFailed = true
+  · obtain ⟨slot, hfailed⟩ := failed
+    have hstate : before slot = .failed := by
+      cases hpublication : before slot <;> simp_all [Publication.isFailed]
+    have hafter := extension slot (by simp [hstate])
+    exact guard.check_of_failed after slot slot.property (hafter.trans hstate)
+  · have ready : ∀ slot : guard.dependencies, (before slot).hasValue = true := by
+      unfold check checkReads at satisfied
+      rw [if_neg failed] at satisfied
+      split at satisfied
+      · assumption
+      · contradiction
+    apply (guard.check_congr before after ?_).symm.trans satisfied
+    intro site member
+    apply (extension site ?_).symm
+    have := ready ⟨site, member⟩
+    cases hpublication : before site <;> simp_all [Publication.hasValue]
 
 /-- A guard can only newly reject a publication in its own declared support. -/
 theorem mem_of_new_rejection [DecidableEq Slot] (guard : PublicationGuard Value)
@@ -264,6 +304,24 @@ variable {Slot : Type u} {Value : Slot → Type v}
 
 def Consistent (protocol : GuardedPublication Value) (state : PublicationStore Value) : Prop :=
   ∀ guard ∈ protocol.guards, guard.check state ≠ .rejected
+
+/-- Add one deferred obligation at its source declaration point. -/
+def register (protocol : GuardedPublication Value) (guard : PublicationGuard Value) :
+    GuardedPublication Value :=
+  ⟨protocol.guards ++ [guard]⟩
+
+/-- Registering an obligation whose subject is still pending preserves an
+already consistent publication prefix. -/
+theorem register_consistent_of_subject_pending (protocol : GuardedPublication Value)
+    (guard : PublicationGuard Value) (state : PublicationStore Value)
+    (consistent : protocol.Consistent state) (pending : state guard.subject = .pending) :
+    (protocol.register guard).Consistent state := by
+  intro candidate member
+  simp only [register, List.mem_append, List.mem_singleton] at member
+  rcases member with old | added
+  · exact consistent candidate old
+  · subst candidate
+    exact guard.check_ne_rejected_of_subject_pending state pending
 
 def consistent? (protocol : GuardedPublication Value) (state : PublicationStore Value) : Bool :=
   protocol.guards.all fun guard => guard.check state != .rejected

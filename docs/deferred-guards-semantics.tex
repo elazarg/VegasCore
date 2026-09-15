@@ -411,6 +411,10 @@ and guard definitions. Its principal lemmas are:
 \begin{itemize}
 \item \lean{GuardedPublication.resolve_consistent} and
       \lean{run_consistent}: one-step and finite-run consistency;
+\item \lean{register_consistent_of_subject_pending}: a newly declared guard
+      may be registered while its subject is still pending, preserving consistency;
+\item \lean{PublicationGuard.check_satisfied_of_extends}: a satisfied guard
+      remains satisfied under write-once extension;
 \item \lean{resolve_extends}, \lean{run_extends}, and
       \lean{resolve_idempotent}: immutable public results;
 \item \lean{PublicationGuard.rejection_owner}: attribution under owned

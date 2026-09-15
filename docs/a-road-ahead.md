@@ -50,6 +50,11 @@ ordinary satisfying executions are proved. Integrating source expression
 evaluation, observations, chance, and settlement remains the acceptance test;
 the component alone does not complete the models milestone.
 
+The [source migration plan](source-semantics-migration.md) records the proposed
+result-typing decision, full-source acceptance test, and downstream migration
+order. No source typing change is assumed to be agreed merely because the
+publication component is checked.
+
 ## One compilation spine
 
 ```text
