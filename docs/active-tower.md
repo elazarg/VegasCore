@@ -28,6 +28,22 @@ certificates require no additional law on the abstract expression types.
 projection laws. Neither fact substitutes for the remaining probability and
 observation-local deviation argument.
 
+The shared runner proves authenticated sender-history provenance for all
+retained messages. Reserved service inclusion uses it to identify the exact
+protected envelope. `runPolicies_initial_preparationInvariant` proves that an
+unchanged compiled player's preparation history exactly determines its
+canonical candidate values, throughout arbitrary opponent and environment
+behavior. Own commitments are canonical and have a prior preparation; this
+prevents acceptance from freezing an unprepared slot of that player.
+Within an unchanged graph phase, arbitrary native runs
+preserve the typed values and accepted addresses; later commands also preserve
+the history scan of earlier logical decisions. A proof-side residual law
+accounts for choices sampled before their messages are included, and its
+empty-cache case equals graph execution. Concrete bind and resolve invocation
+laws instantiate this calculation for the actual compiler at arbitrary typed
+prefixes. The local probability and service facts have not yet been composed
+into the full honest or deviation law.
+
 The native host admits competing and unopenable candidates, arbitrary tagged
 payloads, pending delivery, retries/replay, rejection receipts, and withholding.
 Binding accepts an opaque handle without running guards. Resolution validates

@@ -137,6 +137,12 @@ def playerView (state : State Player L Δ) (who : Player) : PlayerView Player L 
 def candidates : State Player L Δ → CommitmentCandidates Player Slot (Raw L)
   | .running _ _ _ _ candidates _ _ _ => candidates
 
+/-- Setup populates only initial-field handles. Every policy preparation slot
+starts fresh, independently of the private initial values. -/
+@[simp] theorem initial_prepared_fresh {Γ : VCtx Player L}
+    (graph : Graph Player L Γ Δ) (input : VEnv L Γ) (who : Player) (site : Nat) :
+    (State.initial graph input).candidates.lookup (who, .prepared site) = .fresh := rfl
+
 omit R in
 private theorem initial_binding_entry {Γ : VCtx Player L} {name : VarId}
     {owner : Player} {ty : L.Ty} (source : HasVar Γ name (.sealed owner ty))

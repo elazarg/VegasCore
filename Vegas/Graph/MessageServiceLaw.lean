@@ -2,6 +2,7 @@
 
 import Vegas.Graph.MessageService
 import Vegas.Graph.MessagePolicyLaws
+import Vegas.Graph.MessageHistoryExtension
 
 /-! # Local execution laws for the prescribed graph service -/
 
@@ -15,18 +16,6 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {Γ₀ Γ Δ : VCtx Player L}
 
-private theorem preparedRaw_append_prepare
-    (runtime : GraphRuntime Player L Δ) (history : List (Entry runtime))
-    (before : runtime.application.View) (site : Nat) (raw : Raw L)
-    (h : preparedRaw history site = none) :
-    preparedRaw (history ++ [⟨before, .privateCommand (.prepare site raw)⟩]) site =
-      some raw := by
-  induction history with
-  | nil => simp [preparedRaw]
-  | cons entry history ih =>
-      cases entry with
-      | mk view command =>
-          cases command <;> simp_all [preparedRaw]
 
 private theorem submittedAt_append_prepare
     (runtime : GraphRuntime Player L Δ) (history : List (Entry runtime))

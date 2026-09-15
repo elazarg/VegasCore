@@ -236,4 +236,61 @@ theorem entryDisclosureAt_remember_ne
     (hcommand : entry.command = .privateCommand (.prepare slot raw)) (site : Nat) :
     entryDisclosureAt entry site = none := by simp [entryDisclosureAt, hcommand]
 
+theorem preparedRaw_append_prepare (runtime : GraphRuntime Player L Δ)
+    (history : List (Entry runtime)) (before : runtime.application.View)
+    (site : Nat) (raw : Raw L) (missing : preparedRaw history site = none) :
+    preparedRaw (history ++ [⟨before, .privateCommand (.prepare site raw)⟩]) site =
+      some raw := by
+  unfold preparedRaw at missing ⊢
+  rw [List.findSome?_append, missing]
+  simp
+
+theorem rememberedDisclosure_append_remember (runtime : GraphRuntime Player L Δ)
+    (history : List (Entry runtime)) (before : runtime.application.View)
+    (site : Nat) (disclose : Bool) (missing : rememberedDisclosure history site = none)
+    (atSite : before.application.publicState.pc = site) :
+    rememberedDisclosure
+        (history ++ [⟨before, .privateCommand (.rememberDisclosure disclose)⟩]) site =
+      some disclose := by
+  unfold rememberedDisclosure at missing ⊢
+  rw [List.findSome?_append, missing]
+  simp [atSite]
+
+theorem preparedRaw_append_prepare_ne (runtime : GraphRuntime Player L Δ)
+    (history : List (Entry runtime)) (before : runtime.application.View)
+    (marked queried : Nat) (raw : Raw L) (hne : marked ≠ queried) :
+    preparedRaw (history ++ [⟨before, .privateCommand (.prepare marked raw)⟩]) queried =
+      preparedRaw history queried := by
+  unfold preparedRaw
+  rw [List.findSome?_append]
+  simp [hne]
+
+theorem preparedRaw_append_remember (runtime : GraphRuntime Player L Δ)
+    (history : List (Entry runtime)) (before : runtime.application.View)
+    (disclose : Bool) (queried : Nat) :
+    preparedRaw (history ++ [⟨before, .privateCommand (.rememberDisclosure disclose)⟩]) queried =
+      preparedRaw history queried := by
+  unfold preparedRaw
+  rw [List.findSome?_append]
+  simp
+
+theorem rememberedDisclosure_append_prepare (runtime : GraphRuntime Player L Δ)
+    (history : List (Entry runtime)) (before : runtime.application.View)
+    (marked : Nat) (raw : Raw L) (queried : Nat) :
+    rememberedDisclosure
+        (history ++ [⟨before, .privateCommand (.prepare marked raw)⟩]) queried =
+      rememberedDisclosure history queried := by
+  apply rememberedDisclosure_append_of_entry_none
+  simp [entryDisclosureAt]
+
+theorem rememberedDisclosure_append_remember_ne (runtime : GraphRuntime Player L Δ)
+    (history : List (Entry runtime)) (before : runtime.application.View)
+    (marked queried : Nat) (disclose : Bool)
+    (atMarked : before.application.publicState.pc = marked) (hne : marked ≠ queried) :
+    rememberedDisclosure
+        (history ++ [⟨before, .privateCommand (.rememberDisclosure disclose)⟩]) queried =
+      rememberedDisclosure history queried := by
+  apply rememberedDisclosure_append_of_entry_none
+  simp [entryDisclosureAt, atMarked, hne]
+
 end Vegas.GraphRuntime

@@ -3,6 +3,7 @@
 import Vegas.Graph.MessageServiceTermination
 import Interaction.MessageApplicationPending
 import Interaction.MessageApplicationSubmission
+import Interaction.MessageApplicationAuthorship
 import Interaction.MessagePoolCounters
 import Vegas.Graph.MessagePolicyFreshness
 
@@ -15,6 +16,263 @@ open GameTheory.Math.Probability Interaction
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 variable {Δ : VCtx Player L}
+
+/-- At every residual reaction-round cursor of the real service plan, the
+environment callback is exactly the supplied wire policy. In particular it is
+not an expiry callback, regardless of earlier phase advancement. -/
+theorem serviceEnvironment_reactionRound_wire
+    (runtime : GraphRuntime Player L Δ)
+    (before suffix : List (ServiceInstruction Player)) (roster : List Player)
+    (completed remaining : Nat) (wire : runtime.application.WirePolicy)
+    (history : List runtime.application.EnvironmentEntry)
+    (view : runtime.application.EnvironmentObservation)
+    (cursor : history.length =
+      ((before ++ (List.replicate completed (reactionRound roster)).flatten).filterMap
+        ServiceInstruction.environmentSlot).length) :
+    runtime.serviceEnvironment
+      (before ++ (List.replicate completed (reactionRound roster)).flatten ++
+        (List.replicate (remaining + 1) (reactionRound roster)).flatten ++ suffix)
+      wire history view = runtime.application.wireEnvironment wire history view := by
+  rw [List.replicate_succ, List.flatten_cons]
+  simp only [reactionRound, List.append_assoc]
+  simpa only [reactionRound, List.append_assoc, List.cons_append] using
+    runtime.serviceEnvironment_at
+    (before ++ (List.replicate completed (reactionRound roster)).flatten)
+    (roster.map ServiceInstruction.player ++
+      (List.replicate remaining (reactionRound roster)).flatten ++ suffix)
+    .wire wire history view rfl cursor
+
+/-- Commands selected in a real reaction wire slot cannot be application
+commands, hence cannot tick or expire a graph phase. -/
+theorem serviceEnvironment_reactionRound_not_application
+    (runtime : GraphRuntime Player L Δ)
+    (before suffix : List (ServiceInstruction Player)) (roster : List Player)
+    (completed remaining : Nat) (wire : runtime.application.WirePolicy)
+    (history : List runtime.application.EnvironmentEntry)
+    (view : runtime.application.EnvironmentObservation)
+    (cursor : history.length =
+      ((before ++ (List.replicate completed (reactionRound roster)).flatten).filterMap
+        ServiceInstruction.environmentSlot).length)
+    (command : runtime.application.EnvironmentPolicyCommand)
+    (supported : command ∈ (runtime.serviceEnvironment
+      (before ++ (List.replicate completed (reactionRound roster)).flatten ++
+        (List.replicate (remaining + 1) (reactionRound roster)).flatten ++ suffix)
+      wire history view).support) :
+    ∀ applicationCommand, command ≠ .application applicationCommand := by
+  rw [runtime.serviceEnvironment_reactionRound_wire before suffix roster completed remaining
+    wire history view cursor] at supported
+  unfold MessageApplication.wireEnvironment at supported
+  rw [FinDist.support_map] at supported
+  obtain ⟨wireCommand, _, rfl⟩ := supported
+  cases wireCommand <;> simp [WireCommand.toEnvironmentCommand]
+
+private theorem handle_clock (runtime : GraphRuntime Player L Δ)
+    (state next : State Player L Δ) (message : Message Player runtime.application.Payload)
+    (accepted : runtime.handle state message = some next) :
+    next.publicView.clock = state.publicView.clock := by
+  cases state with
+  | running graph ideal values bindings candidates pc clock enteredAt =>
+      cases message with
+      | mk id payload =>
+          cases graph with
+          | ret => simp [GraphRuntime.handle] at accepted
+          | sample => simp [GraphRuntime.handle] at accepted
+          | bind name owner fresh tail =>
+              cases payload <;> simp only [GraphRuntime.handle] at accepted
+              · split_ifs at accepted
+                cases accepted
+                rfl
+              all_goals contradiction
+          | resolve output owner binding fresh source checks tail =>
+              cases payload with
+              | commitment | malformed => simp [GraphRuntime.handle] at accepted
+              | opening site candidate raw =>
+                  simp only [GraphRuntime.handle] at accepted
+                  split_ifs at accepted
+                  cases typed : raw.as? _ with
+                  | none => rw [typed] at accepted; contradiction
+                  | some encoded => rw [typed] at accepted; cases accepted; rfl
+              | withhold site =>
+                  simp only [GraphRuntime.handle] at accepted
+                  split_ifs at accepted
+                  cases accepted
+                  rfl
+
+private theorem includePending_clock (runtime : GraphRuntime Player L Δ)
+    (state : runtime.application.State) (id : MessageId Player) :
+    (runtime.application.includePending state id).application.publicView.clock =
+      state.application.publicView.clock := by
+  cases lookup : state.pool.lookup id with
+  | none => rw [runtime.application.includePending_missing state id lookup]
+  | some message =>
+      cases accepted : runtime.handle state.application message with
+      | none => rw [runtime.application.includePending_reject state id message lookup accepted]
+      | some next =>
+          rw [runtime.application.includePending_accept state id message next lookup accepted]
+          exact runtime.handle_clock state.application next message accepted
+
+private theorem playerStep_clock (runtime : GraphRuntime Player L Δ)
+    (who : Player) (execution next : runtime.application.PolicyExecution)
+    (command : runtime.application.PlayerCommand)
+    (supported : next ∈ (runtime.application.playerStep who execution command).support) :
+    next.native.application.publicView.clock =
+      execution.native.application.publicView.clock := by
+  have nativeMem : next.native ∈
+      ((runtime.application.playerStep who execution command).map
+        MessageInterface.PolicyExecution.native).support := by
+    rw [FinDist.support_map]
+    exact ⟨next, supported, rfl⟩
+  rw [runtime.application.playerStep_native] at nativeMem
+  cases command with
+  | privateCommand privateCommand =>
+      simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
+        FinDist.mem_support_pure] at nativeMem
+      rw [nativeMem]
+      cases execution.native.application
+      cases privateCommand <;> rfl
+  | submit payload | replay id | wait =>
+      simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
+        FinDist.mem_support_pure] at nativeMem
+      rw [nativeMem]
+
+private theorem environmentWireStep_clock (runtime : GraphRuntime Player L Δ)
+    (execution next : runtime.application.PolicyExecution)
+    (command : runtime.application.EnvironmentPolicyCommand)
+    (notApplication : ∀ applicationCommand, command ≠ .application applicationCommand)
+    (supported : next ∈
+      (runtime.application.environmentPolicyStep execution command).support) :
+    next.native.application.publicView.clock =
+      execution.native.application.publicView.clock := by
+  have nativeMem : next.native ∈
+      ((runtime.application.environmentPolicyStep execution command).map
+        MessageInterface.PolicyExecution.native).support := by
+    rw [FinDist.support_map]
+    exact ⟨next, supported, rfl⟩
+  rw [runtime.application.environmentStep_native] at nativeMem
+  cases command with
+  | deliver observer id =>
+      simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
+        MessageApplication.step, FinDist.mem_support_pure] at nativeMem
+      rw [nativeMem]
+  | «include» id =>
+      simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
+        MessageApplication.step, FinDist.mem_support_pure] at nativeMem
+      rw [nativeMem]
+      exact runtime.includePending_clock execution.native id
+  | application applicationCommand => exact (notApplication applicationCommand rfl).elim
+  | wait =>
+      simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
+        FinDist.mem_support_pure] at nativeMem
+      rw [nativeMem]
+
+private theorem runPolicies_players_clock (runtime : GraphRuntime Player L Δ)
+    (players : Player → runtime.application.PlayerPolicy)
+    (environment : runtime.application.EnvironmentPolicy) (roster : List Player)
+    (execution next : runtime.application.PolicyExecution)
+    (supported : next ∈ (runtime.application.runPolicies players environment
+      (roster.map (MessageApplication.Invocation.player)) execution).support) :
+    next.native.application.publicView.clock =
+      execution.native.application.publicView.clock := by
+  induction roster generalizing execution with
+  | nil =>
+      simp only [List.map_nil, MessageApplication.runPolicies,
+        FinDist.mem_support_pure] at supported
+      subst next
+      rfl
+  | cons who rest ih =>
+      simp only [List.map_cons, MessageApplication.runPolicies,
+        FinDist.support_bind, Set.mem_iUnion] at supported
+      obtain ⟨middle, first, last⟩ := supported
+      simp only [MessageApplication.invoke, FinDist.support_bind,
+        Set.mem_iUnion] at first
+      obtain ⟨command, _, step⟩ := first
+      exact (ih middle last).trans (runtime.playerStep_clock who execution middle command step)
+
+/-- A complete reaction round in the actual residual service plan consumes its
+wire slot and all roster reactions without changing the graph clock. Thus the
+round cannot perform expiry, although a wire inclusion may advance the phase. -/
+theorem runPolicies_service_reactionRound_clock
+    (runtime : GraphRuntime Player L Δ)
+    (players : Player → runtime.application.PlayerPolicy)
+    (before suffix : List (ServiceInstruction Player)) (roster : List Player)
+    (completed remaining : Nat) (wire : runtime.application.WirePolicy)
+    (execution next : runtime.application.PolicyExecution)
+    (cursor : execution.environmentHistory.length =
+      ((before ++ (List.replicate completed (reactionRound roster)).flatten).filterMap
+        ServiceInstruction.environmentSlot).length)
+    (supported : next ∈ (runtime.application.runPolicies players
+      (runtime.serviceEnvironment
+        (before ++ (List.replicate completed (reactionRound roster)).flatten ++
+          (List.replicate (remaining + 1) (reactionRound roster)).flatten ++ suffix) wire)
+      ((reactionRound roster).map ServiceInstruction.invocation) execution).support) :
+    next.native.application.publicView.clock =
+      execution.native.application.publicView.clock := by
+  simp only [reactionRound, List.map_cons, List.map_map,
+    ServiceInstruction.invocation, MessageApplication.runPolicies,
+    FinDist.support_bind, Set.mem_iUnion] at supported
+  obtain ⟨middle, first, last⟩ := supported
+  simp only [MessageApplication.invoke, FinDist.support_bind,
+    Set.mem_iUnion] at first
+  obtain ⟨command, commandMem, stepMem⟩ := first
+  have noApplication := runtime.serviceEnvironment_reactionRound_not_application
+    before suffix roster completed remaining wire execution.environmentHistory
+    (MessageApplication.State.environmentView runtime.application execution.native)
+    cursor command commandMem
+  have firstClock := runtime.environmentWireStep_clock execution middle command
+    noApplication stepMem
+  have lastClock := runtime.runPolicies_players_clock players
+    (runtime.serviceEnvironment
+      (before ++ (List.replicate completed (reactionRound roster)).flatten ++
+        (List.replicate (remaining + 1) (reactionRound roster)).flatten ++ suffix) wire)
+    roster middle next last
+  exact lastClock.trans firstClock
+
+/-- The entire replicated reaction prefix of the real service plan preserves
+the graph clock. No reaction wire or player opportunity can consume timeout
+budget before the designated expiry block. -/
+theorem runPolicies_service_reactions_clock
+    (runtime : GraphRuntime Player L Δ)
+    (players : Player → runtime.application.PlayerPolicy)
+    (before suffix : List (ServiceInstruction Player)) (roster : List Player)
+    (rounds : Nat) (wire : runtime.application.WirePolicy)
+    (execution next : runtime.application.PolicyExecution)
+    (cursor : execution.environmentHistory.length =
+      (before.filterMap ServiceInstruction.environmentSlot).length)
+    (supported : next ∈ (runtime.application.runPolicies players
+      (runtime.serviceEnvironment
+        (before ++ (List.replicate rounds (reactionRound roster)).flatten ++ suffix) wire)
+      (((List.replicate rounds (reactionRound roster)).flatten).map
+        ServiceInstruction.invocation) execution).support) :
+    next.native.application.publicView.clock =
+      execution.native.application.publicView.clock := by
+  induction rounds generalizing before execution with
+  | zero =>
+      simp only [List.replicate_zero, List.flatten_nil, List.map_nil,
+        MessageApplication.runPolicies, FinDist.mem_support_pure] at supported
+      subst next
+      rfl
+  | succ rounds ih =>
+      simp only [List.replicate_succ, List.flatten_cons, List.map_append,
+        runtime.application.runPolicies_append] at supported
+      simp only [FinDist.support_bind, Set.mem_iUnion] at supported
+      obtain ⟨middle, first, last⟩ := supported
+      have firstClock := runtime.runPolicies_service_reactionRound_clock players
+        before suffix roster 0 rounds wire execution middle (by simpa using cursor) (by
+          simpa [Nat.add_comm, List.replicate_succ, List.append_assoc] using first)
+      have middleCursor : middle.environmentHistory.length =
+          ((before ++ reactionRound roster).filterMap
+            ServiceInstruction.environmentSlot).length := by
+        have advanced := runtime.runPolicies_service_cursor players
+          (runtime.serviceEnvironment
+            (before ++ reactionRound roster ++
+              (List.replicate rounds (reactionRound roster)).flatten ++ suffix) wire)
+          (reactionRound roster) execution middle (by
+            simpa [List.append_assoc] using first)
+        simp [cursor, reactionRound] at advanced ⊢
+        omega
+      have lastClock := ih (before ++ reactionRound roster) middle middleCursor (by
+        simpa [List.append_assoc] using last)
+      exact lastClock.trans firstClock
 
 /-- The reserved selector chooses the exact newest pending envelope. -/
 theorem latestSubmissionCommand_of_pending_latest
@@ -99,8 +357,6 @@ theorem runPolicies_pending_or_phase_advanced
       who payload execution.native)
     (validPrivate : ∀ application actor command, valid application →
       valid (runtime.privateStep application actor command))
-    (_validHandler : ∀ application message after, valid application →
-      runtime.handle application message = some after → valid after)
     (validTick : ∀ application after, valid application →
       after ∈ (runtime.tick application).support → valid after)
     (accepts : ∀ application serial, valid application → application.phase = phase →
@@ -165,8 +421,6 @@ theorem runPolicies_exact_pending_or_phase_advanced
       Message Player runtime.application.Payload) ∈ execution.native.pool.pending)
     (validPrivate : ∀ application actor command, valid application →
       valid (runtime.privateStep application actor command))
-    (_validHandler : ∀ application message after, valid application →
-      runtime.handle application message = some after → valid after)
     (validTick : ∀ application after, valid application →
       after ∈ (runtime.tick application).support → valid after)
     (accepts : ∀ application allocated, valid application →
@@ -230,8 +484,6 @@ theorem runPolicies_valid_pending_or_advanced
     (pending : runtime.application.AuthoredPending who payload execution.native)
     (validPrivate : ∀ application actor command, valid application →
       valid (runtime.privateStep application actor command))
-    (validHandler : ∀ application message after, valid application →
-      runtime.handle application message = some after → valid after)
     (validTick : ∀ application after, valid application →
       after ∈ (runtime.tick application).support → valid after)
     (accepts : ∀ application serial, valid application → application.phase = phase →
@@ -245,7 +497,7 @@ theorem runPolicies_valid_pending_or_advanced
         runtime.application.AuthoredPending who payload next.native) := by
   have bridge := runtime.runPolicies_pending_or_phase_advanced phase who payload valid players
     environment schedule execution next (Or.inr ⟨⟨initialValid, atPhase⟩, pending⟩)
-    validPrivate validHandler validTick accepts supported
+    validPrivate validTick accepts supported
   rcases bridge with advanced | ⟨⟨_, same⟩, remains⟩
   · exact Or.inl advanced
   · exact Or.inr ⟨same, remains⟩
@@ -279,8 +531,6 @@ theorem runPolicies_bind_commitment_pending_or_advanced
     players environment schedule execution next follows atPhase pending
   · intro application actor command valid
     exact runtime.privateStep_follows _ _ _ actor command valid
-  · intro application message after valid accepted
-    exact runtime.handle_follows _ _ application after message valid accepted
   · intro application after valid ticked
     exact runtime.tick_follows _ _ application after valid ticked
   · intro application serial valid current
@@ -322,8 +572,6 @@ theorem runPolicies_bind_commitment_exact_pending_or_advanced
     players environment schedule execution next follows atPhase pending
   · intro application actor command valid
     exact runtime.privateStep_follows _ _ _ actor command valid
-  · intro application message after valid accepted
-    exact runtime.handle_follows _ _ application after message valid accepted
   · intro application after valid ticked
     exact runtime.tick_follows _ _ application after valid ticked
   · intro application allocated valid current
@@ -438,5 +686,157 @@ theorem runPolicies_compiled_submitted_counter
           rw [← nativeEq]
           exact currentCounter
         · simpa [nativeMem] using currentCounter
+
+/-- A current, latest bind commitment is protected through arbitrary reactions
+up to the phase-progress boundary, and the real reserved service cursor then
+advances the bind whenever reactions have not already advanced it. The earlier
+advance may itself be expiry; this theorem asserts phase progress, not chosen-
+value success. -/
+theorem runPolicies_bind_reactions_then_reserved_include_advances
+    (runtime : GraphRuntime Player L Δ) {Γ origin : VCtx Player L}
+    {name : VarId} {owner : Player} {payloadTy : L.Ty} {fresh}
+    {tail : Graph Player L ((name, .sealed owner
+      (IExpr.ResultTypes.result payloadTy)) :: Γ) Δ}
+    (whole : Graph Player L origin Δ)
+    (policy : Graph.BehavioralPolicy owner whole)
+    (base serial : Nat) (handle : Handle Player) (owned : handle.1 = owner)
+    (players : Player → runtime.application.PlayerPolicy)
+    (ownerCompiled : players owner = runtime.compilePlayerPolicy whole owner policy)
+    (reactionEnvironment : runtime.application.EnvironmentPolicy)
+    (reactions : List (@MessageApplication.Invocation Player))
+    (before suffix : List (ServiceInstruction Player))
+    (wire : runtime.application.WirePolicy)
+    (execution reacted included : runtime.application.PolicyExecution)
+    (follows : execution.native.application.Follows
+      (.bind name owner fresh tail) base)
+    (atPhase : execution.native.application.phase = base)
+    (submitted : submittedAt (execution.principalHistory owner) base = true)
+    (nextSerial : execution.native.pool.nextSerial owner = serial + 1)
+    (pending : ({ id := (owner, serial), payload := .commitment base handle } :
+      Message Player runtime.application.Payload) ∈ execution.native.pool.pending)
+    (authorship : runtime.application.Authorship execution)
+    (reactionSupported : reacted ∈ (runtime.application.runPolicies players
+      reactionEnvironment reactions execution).support)
+    (cursor : reacted.environmentHistory.length =
+      (before.filterMap ServiceInstruction.environmentSlot).length)
+    (includeSupported : included ∈ (runtime.application.runPolicies players
+      (runtime.serviceEnvironment (before ++ .includeLatest owner :: suffix) wire)
+      [.environment] reacted).support) :
+    base < included.native.application.phase := by
+  have protection := runtime.runPolicies_bind_commitment_exact_pending_or_advanced
+    base serial handle owned players reactionEnvironment reactions execution reacted
+    follows atPhase pending reactionSupported
+  rcases protection with advanced | ⟨reactedPhase, reactedPending⟩
+  · have monotone := runtime.runPolicies_phase_mono players
+      (runtime.serviceEnvironment (before ++ .includeLatest owner :: suffix) wire)
+      [.environment] reacted included includeSupported
+    exact advanced.trans_le monotone
+  · have counterProtected := runtime.runPolicies_compiled_submitted_counter
+      whole owner policy players ownerCompiled reactionEnvironment reactions
+      execution reacted base (serial + 1) atPhase submitted nextSerial reactionSupported
+    have reactedCounter : reacted.native.pool.nextSerial owner = serial + 1 := by
+      rcases counterProtected with later | ⟨_, _, same⟩
+      · omega
+      · exact same
+    have reactedAuthorship := runtime.application.runPolicies_authorship players
+      reactionEnvironment reactions execution reacted authorship reactionSupported
+    have lookup := MessageApplication.Authorship.lookup_eq_of_mem_pending
+      runtime.application reacted reactedAuthorship
+      ({ id := (owner, serial), payload := .commitment base handle } :
+        Message Player runtime.application.Payload) reactedPending
+    have nativeEq := runtime.runPolicies_includeLatest_pending players before suffix owner
+      serial wire reacted included cursor reactedCounter
+      ⟨_, lookup⟩ includeSupported
+    have reactedFollows := runtime.runPolicies_follows (.bind name owner fresh tail) base
+      players reactionEnvironment reactions execution reacted follows reactionSupported
+    obtain ⟨ideal, values, bindings, candidates, clock, enteredAt, stateEq⟩ :=
+      State.follows_at_base (.bind name owner fresh tail) base
+        reacted.native.application reactedFollows (by simpa using reactedPhase)
+    let after := advanceBind tail ideal values bindings candidates base clock handle
+    have accepted : runtime.handle reacted.native.application
+        ({ id := (owner, serial), payload := .commitment base handle } :
+          Message Player runtime.application.Payload) = some after := by
+      rw [stateEq]
+      simp [GraphRuntime.handle, Message.sender, owned, after]
+    have includedState := runtime.application.includePending_accept reacted.native
+      (owner, serial)
+      ({ id := (owner, serial), payload := .commitment base handle } :
+        Message Player runtime.application.Payload)
+      after lookup accepted
+    rw [nativeEq, includedState]
+    simp [after, State.phase, advanceBind]
+
+/-- For the actual pre-expiry service prefix of a bind, either wire/player
+reactions accept some packet and advance while preserving the clock, or the
+designated newest-message inclusion advances the still-current bind. Timeout
+cannot account for the first alternative. -/
+theorem runPolicies_bind_service_reactions_or_reserved_include
+    (runtime : GraphRuntime Player L Δ) {Γ origin : VCtx Player L}
+    {name : VarId} {owner : Player} {payloadTy : L.Ty} {fresh}
+    {tail : Graph Player L ((name, .sealed owner
+      (IExpr.ResultTypes.result payloadTy)) :: Γ) Δ}
+    (whole : Graph Player L origin Δ) (policy : Graph.BehavioralPolicy owner whole)
+    (base serial rounds : Nat) (handle : Handle Player) (owned : handle.1 = owner)
+    (players : Player → runtime.application.PlayerPolicy)
+    (ownerCompiled : players owner = runtime.compilePlayerPolicy whole owner policy)
+    (before suffix : List (ServiceInstruction Player)) (roster : List Player)
+    (wire : runtime.application.WirePolicy)
+    (execution reacted included : runtime.application.PolicyExecution)
+    (follows : execution.native.application.Follows
+      (.bind name owner fresh tail) base)
+    (atPhase : execution.native.application.phase = base)
+    (submitted : submittedAt (execution.principalHistory owner) base = true)
+    (nextSerial : execution.native.pool.nextSerial owner = serial + 1)
+    (pending : ({ id := (owner, serial), payload := .commitment base handle } :
+      Message Player runtime.application.Payload) ∈ execution.native.pool.pending)
+    (authorship : runtime.application.Authorship execution)
+    (cursor : execution.environmentHistory.length =
+      (before.filterMap ServiceInstruction.environmentSlot).length)
+    (reactionSupported : reacted ∈ (runtime.application.runPolicies players
+      (runtime.serviceEnvironment
+        (before ++ (List.replicate rounds (reactionRound roster)).flatten ++
+          .includeLatest owner :: suffix) wire)
+      (((List.replicate rounds (reactionRound roster)).flatten).map
+        ServiceInstruction.invocation) execution).support)
+    (includeSupported : included ∈ (runtime.application.runPolicies players
+      (runtime.serviceEnvironment
+        (before ++ (List.replicate rounds (reactionRound roster)).flatten ++
+          .includeLatest owner :: suffix) wire)
+      [.environment] reacted).support) :
+    (base < reacted.native.application.phase ∧
+      reacted.native.application.publicView.clock =
+        execution.native.application.publicView.clock) ∨
+      (reacted.native.application.phase = base ∧
+        base < included.native.application.phase) := by
+  let reactionBlock := (List.replicate rounds (reactionRound roster)).flatten
+  let plan := before ++ reactionBlock ++ .includeLatest owner :: suffix
+  have clockEq := runtime.runPolicies_service_reactions_clock players before
+    (.includeLatest owner :: suffix) roster rounds wire execution reacted cursor (by
+      simpa [reactionBlock, plan, List.append_assoc] using reactionSupported)
+  have phaseMono := runtime.runPolicies_phase_mono players
+    (runtime.serviceEnvironment plan wire) _ execution reacted (by
+      simpa [plan, reactionBlock] using reactionSupported)
+  by_cases advanced : base < reacted.native.application.phase
+  · exact Or.inl ⟨advanced, clockEq⟩
+  · have reactedPhase : reacted.native.application.phase = base := by omega
+    have reactedCursor : reacted.environmentHistory.length =
+        ((before ++ reactionBlock).filterMap
+          ServiceInstruction.environmentSlot).length := by
+      have cursorStep := runtime.runPolicies_service_cursor players
+        (runtime.serviceEnvironment plan wire) reactionBlock execution reacted (by
+          simpa [plan, reactionBlock] using reactionSupported)
+      rw [cursor] at cursorStep
+      simpa [List.filterMap_append] using cursorStep
+    right
+    refine ⟨reactedPhase, ?_⟩
+    apply runtime.runPolicies_bind_reactions_then_reserved_include_advances
+      whole policy base serial handle owned players ownerCompiled
+      (runtime.serviceEnvironment plan wire)
+      (reactionBlock.map ServiceInstruction.invocation)
+      (before ++ reactionBlock) suffix wire execution reacted included
+      follows atPhase submitted nextSerial pending authorship
+    · simpa [plan, reactionBlock] using reactionSupported
+    · exact reactedCursor
+    · simpa [plan, reactionBlock, List.append_assoc] using includeSupported
 
 end Vegas.GraphRuntime

@@ -128,6 +128,13 @@ failure, and records the logical resolve Boolean. In particular,
 laws for bind, resolve, and sample, and its invariance under fresh immutable
 field extension. Appending a marker at the current phase leaves the earlier
 logical history unchanged.
+In `MessagePhaseFrame`, `runPolicies_projectLogicalHistory_before` lifts that
+fact to arbitrary native policy runs: newly recorded commands cannot change the
+history scan of already passed sites, for a fixed observation. Its companion
+`runPolicies_running_eq_of_phase_eq` proves that a run remaining at one phase
+preserves the exact typed graph, ideal values, public values, and accepted
+binding addresses. Candidate preparation, clocks, pools, and receipts may
+still change.
 Together with the visible graph prefix, this reconstructs exactly the graph
 `DecisionView`.
 
@@ -170,6 +177,15 @@ the whole-program observation and provenance invariants remain proof work.
 addressed to the active phase, never malformed or replayed. Once a submission
 is recorded for that phase, the policy waits while it remains active. These
 restrictions concern unchanged compiled players; deviations remain unrestricted.
+In `MessagePreparationInvariant`, `runPolicies_initial_preparationInvariant`
+derives exact agreement between one compiled player's preparation history and
+its candidate catalog from the actual empty-pool initialization. Other player
+and environment policies are arbitrary. The invariant combines authenticated
+message provenance, canonical prepared-slot values, and the fact that every
+own commitment follows a preparation. It rules out acceptance of a still-fresh
+canonical handle of that player; already prepared handles retain their value
+through acceptance. No candidate/history agreement is assumed for the initial
+run, and arbitrary deviators are not required to follow this invariant.
 `MessagePolicyFreshness` derives the corresponding own-history invariant from
 the actual initial execution and preserves it through the shared runner with
 arbitrary opponents and environment. All recorded phases are at most the
@@ -203,6 +219,20 @@ pending, not an arbitrary older pending message. The unchanged player's
 one-submission-per-active-phase property is needed to show that this selection
 protects its prescribed packet.
 
+`MessageApplication.Authorship` connects sender-local serials to the actual
+authenticated submission history and is preserved from the empty initial
+pool through arbitrary policies. In particular, a pending envelope's exact
+identifier looks up that same envelope, even when replay produces duplicates.
+`MessageServiceProtection` uses this invariant, exact envelope retention,
+and the unchanged sender's counter stability to prove phase advancement at
+reserved inclusion. That statement alone also permits earlier expiry.
+`runPolicies_service_reactions_clock` separately proves that the entire actual
+reaction prefix preserves the application clock. Its wire slots execute the
+supplied wire policy and cannot request application ticks. The combined bind
+service theorem therefore distinguishes clock-preserving early advancement
+from advancement at reserved inclusion. Honest chosen-value preservation still
+requires preparation and disclosure agreement throughout the actual service.
+
 These are service restrictions, not a characterization of every deadline-fair
 environment. The graph-to-message capstones quantify over every supplied wire
 policy, roster, reaction-round count, deadline function, and source profile.
@@ -227,15 +257,6 @@ It establishes completion, not timely inclusion of prescribed messages;
 the honest-law proof must also show that unchanged players' messages succeed
 before expiry.
 
-`MessageServiceProtection` establishes two ingredients of that protection:
-an exact valid commitment envelope remains pending unless its phase advances,
-and an unchanged sender that has submitted cannot allocate a newer identifier
-while that phase remains active. The first theorem allows arbitrary progress
-commands, so its advanced-phase alternative may include expiry. It is not yet
-a theorem that the chosen value was installed. To derive that conclusion, the
-whole-run proof must use the actual wire-only reaction slots, authenticated
-message provenance, and reserved inclusion before the phase's expiry slots.
-
 ## Private initial setup
 
 `SourceProgram.Setup` supplies a finite distribution of initially pending typed
@@ -253,38 +274,39 @@ state. Predrawing separately at each realized initial state is insufficient.
 ## Proposed strategic proof
 
 The operational host, policy compiler, local laws, and service termination are
-checked. The shared-prior predrawing theorem is also checked. Supported-pair
-coupling, extraction, and the whole deviation law remain proof work.
+checked. The shared-prior predrawing theorem is also checked. The whole-run
+continuation identity, observation-local extraction, and deviation law remain
+proof work.
 `Paper.lean` contains a proved completion capstone and three
 explicitly admitted capstones for the actual source-to-pending honest law,
 deviation-mixture law, and epsilon-Nash correspondence. No supporting library
 lemma is admitted.
 
-### Supported pair
+### Reachable-prefix invariant
 
-For a fixed graph, initial-state law, finite invocation schedule, and adaptive
-environment policy, a supported pair consists of a reachable graph
-configuration and a native trace prefix such that:
+For a fixed graph and its actual service plan, the proof tracks a native
+execution prefix, the unconsumed service instructions, and a typed graph
+suffix. The invariant must establish:
 
-1. the native completed phase count equals the graph prefix length;
-2. every completed public native field decodes to the corresponding graph
-   field, including failures and chance values;
-3. each accepted bind handle has the graph binding meaning represented in the
-   graph configuration, privately to its owner;
+1. the native completed phase count equals the typed graph prefix length;
+2. the concrete public values equal the public projection of the ideal typed
+   environment, including failures and chance values;
+3. each accepted bind handle has the binding meaning represented in the
+   ideal environment, privately to its owner;
 4. every compiled principal's projected observation and compiler memory equal
    its graph observation and own logical action history; and
 5. any prescribed choice already sampled for the current phase is retained
-   with its original graph decision view and kernel until that phase completes.
+   with its original graph decision view and kernel until that phase completes;
+6. the residual service supplies the required submission and inclusion
+   opportunities before the phase's expiry slots.
 
 The last item matters because sampling and inclusion are different native
 steps. A bind kernel is sampled during private preparation, and a disclosure
-kernel during private Boolean recording. The coupling carries that draw
-through intervening wire actions; it must not sample again or evaluate the
-policy at a later observation. The local bind factorization already exposes
-the draw before its continuation. A whole-run proof should retain this branch
-evidence directly, rather than reconstructing its probability from the final
-store. At checkpoints with no outstanding prescribed draw, the remaining
-graph kernel is the one determined by the paired graph decision view.
+kernel during private Boolean recording. The residual outcome law carries
+that draw through intervening wire actions; it must not sample again or
+evaluate the policy at a later observation. The service cursor is essential:
+with an arbitrary tick schedule, a prepared choice could expire before
+inclusion, so treating it as the fixed successful continuation would be wrong.
 
 The relation deliberately does not equate the raw native transcript with a
 graph trace. The decoded outcome may contain the full typed graph environment,
@@ -317,9 +339,9 @@ finite distribution of pairs
 (focal deterministic response, environment deterministic response)
 ```
 
-and, for every supported response pair, an extracted focal graph policy such
-that the coupled native prefix and graph run satisfy the supported-pair
-relation pointwise. Binding over the response-pair distribution must give:
+and, for every supported response pair, an extracted focal graph policy whose
+continuation law agrees with the native execution. Binding over the
+response-pair distribution must give:
 
 * exactly the original deviating native trace law on the native marginal;
 * a finite mixture of graph laws with only the focal graph policy replaced;
@@ -335,6 +357,32 @@ is the ordinary continuation at the next graph node. This is equivalent to a
 coupling whose graph side may be one step ahead while a prescribed submission
 awaits inclusion.
 
+`MessageContinuation` defines this residual `continuation` law over a typed
+graph suffix, explicit logical histories, and cached runtime commands. The
+checked `continuation_empty_eq_runWith` identifies it with graph execution
+when caches are empty, including arbitrary starting logical histories and
+later chance kernels. `continuation_initial_eq_run` supplies the initial
+case. The bind and resolve averaging laws identify the uncached continuation
+with the graph kernel averaged over continuations containing the recorded
+prepare or disclosure command. This evaluator is proof data; it adds neither
+a game nor an operational interpreter to the compilation tower.
+
+`MessageContinuationPolicy` instantiates both sampling identities for the
+actual policy compiler at arbitrary typed prefixes of the original graph.
+The bind and resolve theorems derive their decision kernels from the current
+ideal observation and projected logical history; they do not assume an
+abstract policy-kernel correspondence. They cover the sampling invocation,
+not the entire interval through submission, inclusion, and completion.
+
+These cache equations concern prescribed players. An arbitrary deviator may
+write a misleading prepare or disclosure marker, choose a different candidate,
+or withhold despite recording `true`. Its native markers cannot fix the focal
+graph branch. For deviation simulation, the staged relation must instead use
+the focal graph action obtained by deterministic phase replay, consulting
+compiler caches only for unchanged players. Establishing that this extracted
+action depends only on the focal graph observation is a separate obligation;
+the honest continuation evaluator does not establish it.
+
 The local obligation is therefore `V(e) = invoke(e).bind V`, at the actual
 invocation cursor and on reachable states, with this staged interpretation of
 `V`. At completion, `V` is the point mass at the decoded terminal environment.
@@ -343,6 +391,10 @@ establish that the service never expires an unchanged player's outstanding
 action and that the policy sees the correct graph decision view. For the
 deviation law it additionally needs the observation-local extracted focal
 policy. The continuation equation is a proof plan, not a checked global law.
+The intended induction follows the remaining service instructions with an
+explicit typed suffix and policy tail. Each induction case can use that
+suffix's continuation directly; no total evaluator on arbitrary off-prefix
+native states or additional execution machine is required.
 
 An arbitrary shorter prefix need not be terminal. Its corresponding statement
 uses graph prefixes, not a fabricated terminal outcome.
@@ -369,7 +421,7 @@ policy inputs. Native details may guide deterministic replay of the fixed
 response pair, but must not be smuggled into the extracted graph observation.
 
 The whole finite-mixture law is the proof goal of this edge, not a consequence
-already supplied by predrawing. It still requires the supported-pair induction,
+already supplied by predrawing. It still requires the service-schedule induction,
 observation projection, chance-kernel step, timely inclusion, and final
 decoding proofs.
 

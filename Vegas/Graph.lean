@@ -15,10 +15,14 @@ import Vegas.Graph.MessageServiceLaw
 import Vegas.Graph.MessageServiceCursor
 import Vegas.Graph.MessageBindingLaw
 import Vegas.Graph.MessagePolicyCommands
+import Vegas.Graph.MessagePreparationInvariant
 import Vegas.Graph.MessagePolicyHistory
 import Vegas.Graph.MessageFocalDeterminism
+import Vegas.Graph.MessageContinuation
+import Vegas.Graph.MessageContinuationPolicy
 import Vegas.Graph.MessageHistoryExtension
 import Vegas.Graph.MessageServiceCompletion
+import Vegas.Graph.MessagePhaseFrame
 import Vegas.Graph.MessagePolicyFreshness
 import Vegas.Graph.MessageResolutionLaw
 import Vegas.Graph.MessageVerification

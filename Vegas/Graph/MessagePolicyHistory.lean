@@ -117,6 +117,12 @@ def policyTail (who : Player) : {Γ : VCtx Player L} →
   | _, _, _, _, _, .bind walk, policy => policyTail who walk policy.2
   | _, _, _, _, _, .resolve walk, policy => policyTail who walk policy.2
 
+/-- Restrict every player's policy to the same typed graph suffix. -/
+def profileTail {whole : Graph Player L Γ₀ Δ} {suffix : Graph Player L Γ Δ}
+    {length : Nat} (walk : Prefix Δ whole suffix length)
+    (profile : BehavioralProfile whole) : BehavioralProfile suffix :=
+  fun who => walk.policyTail who (profile who)
+
 /-- At the phase selected by a typed prefix, compiling from the ambient graph
 is definitionally the same command kernel as compiling its residual policy at
 the corresponding suffix. -/
