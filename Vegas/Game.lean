@@ -13,6 +13,7 @@ import Vegas.Game.SealedPayoutBounds
 import Vegas.Game.SealedCandidate
 import Vegas.Game.SealedCandidatePrefix
 import Vegas.Game.SourceCandidate
+import Vegas.Game.SourcePublicCandidate
 import Vegas.Game.SourceGraph
 import Vegas.Game.SourceQuitPrefix
 

@@ -316,13 +316,21 @@ The direct mathematical argument for the pending-message strategic edge is in
 [pending-message-strategic-proof.md](pending-message-strategic-proof.md).
 It constructs a causal coupling with a legal source completion, followed by an
 informed-quitting utility bound. Current theorem scope is recorded in
-[active-tower.md](active-tower.md). For payout-valued utilities,
-`QuitPayoutPrefixDominanceAgainst` compares legal quitting settlements with
+[active-tower.md](active-tower.md). For arbitrary interpretations of public
+terminal source outcomes, `QuitPrefixDominanceAgainst` compares legal quitting settlements with
 supported unilateral continuations sharing the public environment before the
 source commitment. The backend proves this graph pair relation through the first
 timeout; a compiler adapter transports it to source semantics. Uniform source
 bounds are sufficient special cases. General conditional-expectation source
 criteria still need their own correspondence proofs.
+
+`candidate_public_source_law` preserves the complete public source outcome
+law at generated profiles. `candidate_public_source_support` shows that every
+supported candidate-game result has a legal public source realization, under
+arbitrary player and wire policies and without a service premise. This is
+support correspondence, not a unilateral-deviation law: the realization may
+change source opponents' choices. The public decoder is a semantic observation
+and does not consult private candidate meanings.
 
 The written-source-to-declared-read-graph edge has a concrete strategic
 certificate, `WFProgram.sourceGraphSimulation`. Its honest law compares the

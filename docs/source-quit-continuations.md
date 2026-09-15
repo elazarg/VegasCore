@@ -31,12 +31,14 @@ comparison needs to preserve enough of the actual source continuation context.
 
 ## Checked prefix-relative condition
 
-`VegasCore.QuitPayoutPrefixDominanceAgainst` in
+`VegasCore.QuitPrefixDominanceAgainst` in
 `Vegas/Core/SourceQuitPrefix.lean` states the condition below.
-`SealedCompilation.candidate_deviation_bound_of_source_quit_prefix` composes
+`SealedCompilation.candidate_public_deviation_bound` composes
 its source/graph transport with an independent graph/native bound. The resulting
 same-error Nash and epsilon-Nash equivalences at compiled profiles are checked
-in `Vegas/Game/SourceCandidate.lean` and directly audited in `Paper.lean`.
+in `Vegas/Game/SourcePublicCandidate.lean` and directly audited in `Paper.lean`.
+Utilities may interpret the complete public terminal source environment;
+`QuitPayoutPrefixDominanceAgainst` is the payout-valued specialization.
 
 Fix a source profile `sigma` and a syntactic commitment decision site `s` owned
 by player `i`. A terminal source environment determines the environment at `s`:
@@ -83,7 +85,7 @@ public utilities. On timeout pairs:
 1. Recover the first-timeout snapshot from the underlying full native trace,
    and select a timeout introduced by that clock transition. For a timed-out reveal, use
    its producer commitment as the decision boundary `s`.
-2. Obtain a settlement graph realizing the native public payout, with the
+2. Obtain a settlement graph realizing the native public source outcome, with the
    default recorded at this exact producer. Preserve its identity through
    source decoding; the existing existential `Chooses` result alone loses it.
 3. Prove that the public prerequisites of this producer completed normally
@@ -113,13 +115,25 @@ graph with the actual native public store and the same producer reads as the
 retained graph realization. These are joint statements about supported coupling
 pairs, not conclusions inferred from separate marginal laws.
 
-`WFProgram.graphPayout_le_of_source_quitPrefix` transports the source condition
+`WFProgram.graphUtility_le_of_source_quitPrefix` transports the source condition
 to those graph pairs. Its decoder uses
 `SourceDecisionSite.recorded_tail_erasePubEnv_eq_of_choiceReads_eq` to prove
 `before_s` equality. The graph-only theorem
 `CandidateRoundModel.deviation_bound_of_quit_prefix` supplies the arbitrary
 native deviation bound; the source theorem composes that inequality with the
 source/graph strategic certificate. Opponents retain their original policies.
+
+The public source decoder reads only compiler-allocated public fields. It
+agrees with complete source decoding at terminal graph states and returns a
+legal public source outcome at every supported result of the actual stopped
+candidate game, including after defaults. Its fallback is therefore unreachable
+in that game. This is a semantic observation; no executable parser or contract
+code-generation theorem is added by defining it.
+
+`VegasTests/SealedPublicUtility.lean` instantiates the deviation and Nash
+theorems for a source with no payout expressions and a nonconstant utility of
+its public reveal. It also proves that no valuation of its programmed payout
+can represent that utility, even on reachable source outcomes.
 
 ## Boundaries that must be respected
 
@@ -150,3 +164,46 @@ Ordinary ex-ante dominance of the quit action remains insufficient: a player can
 commit to a risky action, then disclose only on favorable observations. The
 source-only condition must compare the continuation actually retained by the
 coupling, rather than substituting a different safe action after it was locked.
+
+## Expected-continuation criterion: open design question
+
+A weaker criterion would average continuation utility over uncertainty that
+the native stopping behavior cannot distinguish. It needs a source/graph-defined
+family of admissible observations or partial choice assignments, together with
+a compiler proof that every relevant stopping event is determined by those
+observations. The environment and unchanged opponent kernels must be fixed
+independently of the focal deviation.
+
+Quantifying over every opponent-only `SourceChoiceRestriction` is not a useful
+weakening in the sample-free fragment. A deterministic focal policy and a
+restriction fixing all opponents' choices along a supported terminal path can
+isolate that path. Its likelihood is positive, so the weighted mean comparison
+reduces to the pointwise comparison. This is a mathematical argument, not a
+separate Lean impossibility theorem. A single cylinder with utilities zero and
+two averaging above a quit utility of one does not refute it: the universally
+quantified condition must also hold for finer cylinders.
+
+The admissible family must therefore reflect the protocol's information
+boundary. In particular, it must not permit fixing arbitrary future choices
+that remain unobserved when withholding is resolved. A source condition defined
+by reference to actual native runs would leave the desired compiler obligation
+to the programmer and is not the intended interface.
+
+`SealedFragment.candidateReplay_graph_expect` in
+`Vegas/Compile/SealedCandidateGraphLikelihood.lean` proves a weighted joint
+identity retaining the graph completion, rather than just the mass of a
+stopped replay prefix. For a fixed prefix `t`, recorded-choice restriction `R`,
+graph law `mu`, normalized restricted law `nu`, and original likelihood `w`:
+
+```text
+E_mu[if replayPrefix(c) = t then F(c) else 0] = E_nu[w(c) * F(c)].
+```
+
+It permits arbitrary terminal observables `F`, including utilities and
+indicators of further outcome events. The scalar replay probability theorem
+is its constant-one case. To derive an expected-continuation incentive theorem,
+one must also connect the actual native continuation and settlement selection
+to the same admissible information. Scalar prefix masses or pointwise support
+correspondence alone do not justify that step. No weaker source incentive
+predicate is adopted until its information-coverage and joint law obligations
+are proved.

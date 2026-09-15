@@ -18,7 +18,7 @@ and payoff code in an event graph. The native endpoint uses the shared
 The source-to-graph certificate preserves the source outcome law and exactly
 backtranslates arbitrary unilateral graph policies. The pending-message backend
 has an independent graph-to-candidate utility simulation. Their composition,
-`SealedCompilation.candidate_deviation_bound_of_source_quit_prefix`, bounds every
+`SealedCompilation.candidate_public_deviation_bound`, bounds every
 randomized native unilateral deviation by a legal written-source deviation
 against unchanged opponents. Nash and same-error epsilon-Nash are preserved and
 reflected at the actual generated profiles.
@@ -41,16 +41,20 @@ version: every native deviation is bounded by a legal source deviation plus the
 gap times that native deviation's actual timeout probability. A source epsilon-Nash profile
 therefore compiles to an `(epsilon + delta)`-Nash profile when every player's gap
 is at most `delta >= 0`. Reflection at compiled profiles needs no quitting
-condition; it follows from honest payout agreement under the service assumptions.
+condition; it follows from honest public-outcome utility agreement under the service assumptions.
 
 The proof factors through the graph as an independently usable strategic
 intermediate representation. The compiler certifies public-prefix readability,
-unique direct disclosures, and the public payout interpretation. The backend
+unique direct disclosures, and the public source outcome interpretation. The backend
 constructs its own deviation coupling and proves the timeout utility comparison;
 it does not assume a source-image witness or a desired native incentive law.
 The all-compiled honest law preserves the original public outcome distribution.
-The graph theorem supports arbitrary utilities of typed public fields; the
-end-to-end source theorem applies a supplied valuation to the programmed payout.
+The end-to-end theorem supports any interpretation of the public terminal source
+environment, including outcome maps followed by player-specific utilities.
+Payout valuations are a special case. The native observation reads only public
+graph fields; every supported stopped-game result decodes to a legal public
+source outcome, including after defaults. This support result needs no fair
+service, but does not fix opponents or establish a deviation law.
 See [the composition design](docs/compilation-design.md#strategic-intermediate-representation).
 
 The candidate theorem covers homogeneous commit/reveal graphs with universally

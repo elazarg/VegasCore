@@ -73,20 +73,26 @@ theorem graphPayout_floor_of_source_deviations (source : WFProgram P L)
   rw [source.graphPayoutUtility_terminal valuation missing cfg hterminal who, ← heq]
   exact hlower _ final hfinal
 
-/-- The source-to-graph certificate with utilities evaluated from public
-compiled payouts. Nonterminal graph states may have a different utility
-extension; the independently proved terminal-support theorem discharges that
-difference before composition with a message backend. -/
-def sourceGraphPayoutSimulation (source : WFProgram P L)
-    (valuation : Payout P → P → ℝ) (missing : P → ℝ) :
+/-- Interpret the exact source/graph correspondence using any public graph
+utility whose terminal meaning agrees with the supplied source utility.
+This is a compiler-adapter interface: terminal agreement must be proved, not
+assumed of the native runtime. Nonterminal utility extensions are immaterial. -/
+def sourceGraphUtilitySimulation (source : WFProgram P L)
+    (sourceUtility : VEnv L (sourceTerminalCtx source.core.prog) → P → ℝ)
+    (graphUtility : (compile source.core).graph.PublicUtility) (missing : P → ℝ)
+    (hterminalUtility : ∀ (cfg : ReachableConfig (compile source.core).graph)
+      (hterminal : Terminal (compile source.core).graph cfg.1) (who : P),
+      graphUtility.eval cfg.1.store who = sourceUtility
+        (decodeSourceOutcome source.core.prog source.core.fresh
+          (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+          cfg hterminal) who) :
     UtilitySimulation (sourceGameForm source.core.prog source.core.env)
       (policyGame (compile source.core).graph (compile source.core).graphWF
         (compile_guardLive source.core source.legal))
-      (fun final who => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
-      (fun cfg => (source.graphPayoutUtility valuation missing).eval cfg.1.store) :=
+      sourceUtility (fun cfg => graphUtility.eval cfg.1.store) :=
   (source.sourceGraphSimulation.toUtilitySimulation
     (fun outcome who => outcome.elim (missing who)
-      (fun final => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who))
+      (fun final => sourceUtility final who))
     (fun _ _ => trivial)).congrUtilities _ _ (fun _ _ => rfl) (by
       intro profile who
       apply FinDist.expect_congr
@@ -97,7 +103,20 @@ def sourceGraphPayoutSimulation (source : WFProgram P L)
         (compile source.core).graph.nodeOrder_readyOrder
         (fun node => Or.inr (by simp)) cfg hcfg
       rw [observeSourceOutcome_of_terminal source.core cfg hterminal]
-      exact (source.graphPayoutUtility_terminal valuation missing cfg hterminal who).symm)
+      exact (hterminalUtility cfg hterminal who).symm)
+
+/-- Payout valuation is one source/public-graph utility interpretation. -/
+def sourceGraphPayoutSimulation (source : WFProgram P L)
+    (valuation : Payout P → P → ℝ) (missing : P → ℝ) :
+    UtilitySimulation (sourceGameForm source.core.prog source.core.env)
+      (policyGame (compile source.core).graph (compile source.core).graphWF
+        (compile_guardLive source.core source.legal))
+      (fun final who => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
+      (fun cfg => (source.graphPayoutUtility valuation missing).eval cfg.1.store) :=
+  source.sourceGraphUtilitySimulation
+    (fun final who => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
+    (source.graphPayoutUtility valuation missing) missing
+    (source.graphPayoutUtility_terminal valuation missing)
 
 /-- All source-outcome utilities have the same approximate Nash equilibria
 at compiled graph profiles, with the same additive error. `none` is unreachable

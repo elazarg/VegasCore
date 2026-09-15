@@ -52,9 +52,10 @@ equilibrium correspondence under the source-only uniform bound.
 source/graph and graph/candidate edges. Its native policies admit competing and
 unopenable commitments, malformed traffic, and arbitrary withholding. The
 graph-level certificate supports public-field utilities; the source composition
-values the programmed payout. The registered host's finer conditional incentive
+in `SourcePublicCandidate.lean` supports arbitrary interpretations of the public
+terminal source environment. The registered host's finer conditional incentive
 criteria have not been transferred to the candidate host.
-For the candidate host, `candidate_approximate_nash_iff_of_source_quit_prefix`
+For the candidate host, `candidate_public_approximate_nash_iff`
 compares legal source quitting settlements with supported unilateral continuations
 against the fixed opponents, when their earlier public source environments agree.
 The comparison is pointwise, and the backend proves the required joint prefix

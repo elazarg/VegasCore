@@ -72,7 +72,9 @@
       "Vegas.Paper.pending_candidate_binding",
       "Vegas.Paper.pending_candidate_public_payout",
       "Vegas.Paper.pending_candidate_timeout_source_choice",
-      "Vegas.Paper.pending_candidate_honest_payout_law"
+      "Vegas.Paper.pending_candidate_honest_payout_law",
+      "Vegas.Paper.pending_candidate_public_source_law",
+      "Vegas.Paper.pending_candidate_public_source_support"
     ]
   },
   "prose:pending-source-payout-incentives": {
@@ -83,8 +85,8 @@
   },
   "prose:pending-candidate-incentives": {
     "theorems": [
-      "Vegas.Paper.pending_candidate_source_payout_deviation_bound",
-      "Vegas.Paper.pending_candidate_source_payout_nash_iff",
+      "Vegas.Paper.pending_candidate_public_deviation_bound",
+      "Vegas.Paper.pending_candidate_public_nash_iff",
       "Vegas.Paper.pending_candidate_source_quit_gap",
       "Vegas.Paper.pending_candidate_approximate_nash_with_gap",
       "Vegas.Paper.pending_candidate_approximate_nash_reflection"

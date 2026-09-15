@@ -127,8 +127,8 @@ a sufficient window ensure that every timeout belongs to an unprotected player.
 `VegasTests/SealedCandidateDeadline.lean` instantiates this result for a
 two-player source with an arbitrary first-player policy and delayed service;
 the second player meets both deadlines and completed supported runs exist.
-`pending_candidate_source_payout_deviation_bound` and
-`pending_candidate_source_payout_nash_iff` audit the candidate host's end-to-end
+`pending_candidate_public_deviation_bound` and
+`pending_candidate_public_nash_iff` audit the candidate host's end-to-end
 deviation bound and same-error equilibrium correspondence. Their source-only
 condition compares legal quitting settlements with supported unilateral
 continuations against fixed opponents, when the public source environments
@@ -151,7 +151,7 @@ certificate exists, and derives a candidate `1`-Nash guarantee from separate
 source bounds. `pending_candidate_source_quit_gap` audits the sharper bound
 weighted by the actual native timeout probability;
 `pending_candidate_approximate_nash_with_gap` audits its unconditional error
-corollary. `pending_candidate_approximate_nash_reflection` uses honest payout
+corollary. `pending_candidate_approximate_nash_reflection` uses honest public-outcome utility
 agreement alone and does not assume any quitting incentive condition.
 
 `VegasTests/SourceQuitPrefix.lean` proves the prefix condition strictly weaker
@@ -162,6 +162,17 @@ sampling remains outside that backend fragment.
 an earlier player's randomized commit/reveal sets the public baseline, the source
 prefix condition is proved, and the native deviation bound is instantiated under
 periodic service with arbitrary replacement policies and unreserved wire actions.
+
+The public-outcome theorem accepts any utility interpretation of the source's
+public terminal environment, without factoring through payout. The decoder
+reads only compiler-allocated public fields. `pending_candidate_public_source_law`
+audits the exact honest law, and `pending_candidate_public_source_support`
+audits legal source realization of every supported stopped-game outcome,
+including after defaults and without service assumptions. The latter proves the
+partial decoder's missing branch unreachable in the game; it does not fix the
+opponents' source policies. `VegasTests/SealedPublicUtility.lean` checks a source
+with no payouts and a nonconstant participation utility, proves that this utility
+cannot factor through payout, and instantiates the native deviation and Nash theorems.
 
 At the graph boundary, `Vegas.EventGraph.Strategic.deviation_law` proves the
 sharper exact statement under declared-read locality and a single ready

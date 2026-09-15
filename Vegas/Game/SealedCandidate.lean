@@ -123,16 +123,21 @@ theorem timeout_owner (model : CandidateRoundModel supported nullValue window)
 
 variable [Fintype Player]
 
-/-- The original graph profile and its compiled native profile have the same
-expected public utility. The candidate wire policy is arbitrary subject to
-the operational service condition; no source program is used. -/
-theorem honest_utility (model : CandidateRoundModel supported nullValue window)
-    (timely : model.Timely) (hguards : GuardLive G) (utility : G.PublicUtility)
-    (profile : CommitPolicyProfile G) (who : Player) :
-    (model.game.play (model.compileProfile profile)).expect
-        (fun next => model.nativeUtility utility next who) =
-      ((policyGame G supported.graphWF hguards).play profile).expect
-        (fun cfg => utility.eval cfg.1.store who) := by
+/-- Every public-store observation has the same law at a graph profile and
+its compiled native profile. The wire may adapt within the service contract;
+neither a source program nor an outcome-utility interpretation is required. -/
+theorem honest_observation_law {Outcome : Type*}
+    (model : CandidateRoundModel supported nullValue window)
+    (timely : model.Timely) (hguards : GuardLive G)
+    (observe : Store L → Outcome)
+    (hpublic : ∀ left right, (∀ ref, G.fieldRefPublic ref →
+      Store.getAs left ref.field ref.ty = Store.getAs right ref.field ref.ty) →
+      observe left = observe right)
+    (profile : CommitPolicyProfile G) :
+    (model.game.play (model.compileProfile profile)).map
+        (fun next => observe (G.publicSealedStore ty next.native.application.visible.events)) =
+      ((policyGame G supported.graphWF hguards).play profile).map
+        (fun cfg => observe cfg.1.store) := by
   let runtime := supported.resolvingRuntime nullValue window
   obtain ⟨wire, hwire⟩ := runtime.candidateWirePolicy_surjective model.wire
   have hservice := runtime.inclusionService_of_candidateWirePolicy wire
@@ -145,10 +150,24 @@ theorem honest_utility (model : CandidateRoundModel supported nullValue window)
   rw [hwire] at hnative
   change coupling.map Prod.snd = model.game.play (model.compileProfile profile) at hnative
   change coupling.map Prod.fst = (policyGame G supported.graphWF hguards).play profile at hgraph
-  rw [← hnative, FinDist.expect_map, ← hgraph, FinDist.expect_map]
-  apply FinDist.expect_congr
+  rw [← hnative, FinDist.map_comp, ← hgraph, FinDist.map_comp]
+  apply FinDist.map_congr_of_eq_on_support
   intro pair hpair
-  exact utility.congr _ _ (hpairs pair.1 pair.2 hpair).2.2.2 who
+  exact hpublic _ _ (hpairs pair.1 pair.2 hpair).2.2.2
+
+/-- Expected public utilities agree as a consequence of the public outcome law. -/
+theorem honest_utility (model : CandidateRoundModel supported nullValue window)
+    (timely : model.Timely) (hguards : GuardLive G) (utility : G.PublicUtility)
+    (profile : CommitPolicyProfile G) (who : Player) :
+    (model.game.play (model.compileProfile profile)).expect
+        (fun next => model.nativeUtility utility next who) =
+      ((policyGame G supported.graphWF hguards).play profile).expect
+        (fun cfg => utility.eval cfg.1.store who) := by
+  have hlaw := model.honest_observation_law timely hguards
+    (fun store => utility.eval store who)
+    (fun left right hagrees => utility.congr left right hagrees who) profile
+  have h := congrArg (fun law => law.expect (fun value : ℝ => value)) hlaw
+  simpa only [FinDist.expect_map, nativeUtility] using h
 
 /-- Any gap between the quitting cap and the fixed-opponent source floor is
 charged only on actual timeout outcomes. The response mixture and timeout

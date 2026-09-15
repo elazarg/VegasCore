@@ -50,6 +50,7 @@ import Vegas.Game.SealedRounds
 import Vegas.Game.SealedPayoutBounds
 import Vegas.Game.SourceGraph
 import Vegas.Game.SourceCandidate
+import Vegas.Game.SourcePublicCandidate
 
 /-! # Paper theorem audit
 
@@ -57,8 +58,9 @@ This file is deliberately a thin audit surface. Every closed statement below
 delegates directly to a theorem in the active source, graph, or sealed-message
 tower. Source-to-declared-read-graph strategic preservation uses a concrete
 compiler simulation. The candidate pending-message round game composes that
-certificate with an independent graph-to-native deviation bound. For payout
-valuations, a source-only comparison of quitting and supported unilateral
+certificate with an independent graph-to-native deviation bound. For arbitrary
+interpretations of public terminal source outcomes, a source-only comparison
+of quitting and supported unilateral
 continuations with matching pre-decision public environments supplies its
 incentive condition; native policies remain unrestricted. Global quitting caps
 and support floors are sufficient conditions. A uniform source floor yields a whole-game utility
@@ -76,7 +78,7 @@ comparison is instantiated on the actual native information and retains the
 player's registered commitments in its legal source completion. Proving this
 incentive condition for a particular program remains a separate obligation;
 ordinary source quit dominance does not suffice. Public settlement, including
-after timeouts, has the payout of a legal source execution; this support result
+after timeouts, decodes to the public environment of a legal source execution; this support result
 does not identify the source deviation law or the private registrations.
 -/
 
@@ -1117,60 +1119,107 @@ theorem pending_source_payout_nash_iff
       (SealedCompilation.sourcePayoutUtility (source := source) valuation) ε profile :=
   model.isεNash_iff_of_sourcePayoutBound timely valuation missing bound hbound ε profile
 
+/-- Every result of the actual stopped candidate game has a legal public
+source realization, including after defaults and without a service premise. -/
+theorem pending_candidate_public_source_support
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window)
+    (players : Profile model.game.sig) (next : model.game.sig.Outcome)
+    (hnext : next ∈ (model.game.play players).support) :
+    ∃ final : VEnv L (sourceTerminalCtx source.core.prog),
+      SmallStep.Star
+        { ctx := source.core.Γ, env := source.core.env, cont := source.core.prog }
+        { ctx := sourceTerminalCtx source.core.prog, env := final,
+          cont := .ret (sourceTerminalPayoffs source.core.prog) } ∧
+      compilation.publicSourceOutcome? next.native.application.visible.events =
+        some final.erasePubEnv :=
+  compilation.candidate_public_source_support nullValue window model players next hnext
+
+/-- Honest candidate play has the complete public written-source outcome law,
+independently of any payout or utility interpretation. -/
+theorem pending_candidate_public_source_law
+    [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
+    (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
+    (profile : SourceBehavioralProfile source.core.prog) :
+    (model.game.play
+      (fun player => compilation.compileCandidatePolicy nullValue window player (profile player))
+        ).map (fun next =>
+          compilation.publicSourceOutcome? next.native.application.visible.events) =
+      ((sourceGameForm source.core.prog source.core.env).play profile).map
+        (fun final => some final.erasePubEnv) :=
+  compilation.candidate_public_source_law nullValue window model timely profile
+
 /-- The graph-composed certificate bounds every native candidate deviation
 by one legal written-source deviation, with the other players unchanged.
 Its source-only quitting comparison is relative to the public environment
 strictly before the source decision. -/
-theorem pending_candidate_source_payout_deviation_bound
+theorem pending_candidate_public_deviation_bound
     [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
     (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
     (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
-    (valuation : Payout Player → Player → ℝ) (missing : Player → ℝ)
+    (interpretation :
+      Env L.Val (erasePubVCtx (sourceTerminalCtx source.core.prog)) → Player → ℝ)
+    (missing : Player → ℝ)
     (profile : SourceBehavioralProfile source.core.prog)
-    (hdominance : source.core.prog.QuitPayoutPrefixDominanceAgainst source.core.env nullValue
-      valuation profile) (who : Player)
+    (hdominance : source.core.prog.QuitPrefixDominanceAgainst source.core.env nullValue
+      (fun final who => interpretation final.erasePubEnv who) profile) (who : Player)
     (replacement : model.game.sig.Strategy who) :
     ∃ alternative : SourceBehavioralPolicy source.core.prog who,
       (model.game.play (Profile.update
         (fun player => compilation.compileCandidatePolicy nullValue window player (profile player))
         who replacement)).expect (fun next =>
-          (compilation.publicPayout? next.native.application.visible.events).elim
-            (missing who) (fun payout => valuation payout who)) ≤
+          (compilation.publicSourceOutcome? next.native.application.visible.events).elim
+            (missing who) (fun outcome => interpretation outcome who)) ≤
       ((sourceGameForm source.core.prog source.core.env).play
         (Profile.update profile who alternative)).expect (fun final =>
-          valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who) :=
-  compilation.candidate_deviation_bound_of_source_quit_prefix nullValue window model timely
-    valuation missing profile hdominance who replacement
+          interpretation final.erasePubEnv who) :=
+  compilation.candidate_public_deviation_bound nullValue window model timely
+    interpretation missing profile hdominance who replacement
 
 /-- The source-only quitting condition gives same-error Nash correspondence
 for the actual candidate-message driver and original generated source policies. -/
-theorem pending_candidate_source_payout_nash_iff
+theorem pending_candidate_public_nash_iff
     [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
     (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
     (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
-    (valuation : Payout Player → Player → ℝ) (missing : Player → ℝ)
+    (interpretation :
+      Env L.Val (erasePubVCtx (sourceTerminalCtx source.core.prog)) → Player → ℝ)
+    (missing : Player → ℝ)
     (profile : SourceBehavioralProfile source.core.prog)
-    (hdominance : source.core.prog.QuitPayoutPrefixDominanceAgainst source.core.env nullValue
-      valuation profile) (ε : ℝ) :
+    (hdominance : source.core.prog.QuitPrefixDominanceAgainst source.core.env nullValue
+      (fun final who => interpretation final.erasePubEnv who) profile) (ε : ℝ) :
     IsεNash model.game
-      (fun next who => (compilation.publicPayout? next.native.application.visible.events).elim
-        (missing who) (fun payout => valuation payout who)) ε
+      (fun next who =>
+        (compilation.publicSourceOutcome? next.native.application.visible.events).elim
+        (missing who) (fun outcome => interpretation outcome who)) ε
       (fun who => compilation.compileCandidatePolicy nullValue window who (profile who)) ↔
     IsεNash (sourceGameForm source.core.prog source.core.env)
-      (fun final who => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
+      (fun final who => interpretation final.erasePubEnv who)
       ε profile :=
-  compilation.candidate_approximate_nash_iff_of_source_quit_prefix nullValue window model timely
-    valuation missing profile hdominance ε
+  compilation.candidate_public_approximate_nash_iff nullValue window model timely
+    interpretation missing profile hdominance ε
 
-/-- info: 'Vegas.Paper.pending_candidate_source_payout_deviation_bound'
+/-- info: 'Vegas.Paper.pending_candidate_public_source_law'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.pending_candidate_source_payout_deviation_bound
+#print axioms Vegas.Paper.pending_candidate_public_source_law
 
-/-- info: 'Vegas.Paper.pending_candidate_source_payout_nash_iff'
+/-- info: 'Vegas.Paper.pending_candidate_public_source_support'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.pending_candidate_source_payout_nash_iff
+#print axioms Vegas.Paper.pending_candidate_public_source_support
+
+/-- info: 'Vegas.Paper.pending_candidate_public_deviation_bound'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_public_deviation_bound
+
+/-- info: 'Vegas.Paper.pending_candidate_public_nash_iff'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pending_candidate_public_nash_iff
 
 /-- A source-defined utility gap is charged only on actual native timeouts. -/
 theorem pending_candidate_source_quit_gap
@@ -1217,22 +1266,25 @@ theorem pending_candidate_approximate_nash_with_gap
   compilation.candidate_approximate_nash_of_source_gap nullValue window model timely valuation
     missing cap floor profile hcap hfloor ε δ hnash hδ hgap
 
-/-- Honest payout agreement reflects Nash without a quitting incentive premise. -/
+/-- Honest public-outcome utility agreement reflects Nash without a quitting premise. -/
 theorem pending_candidate_approximate_nash_reflection
     [Finite Player] {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
     (compilation : SealedCompilation source ty) (nullValue : L.Val ty) (window : Nat)
     (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
-    (valuation : Payout Player → Player → ℝ) (missing : Player → ℝ)
+    (interpretation :
+      Env L.Val (erasePubVCtx (sourceTerminalCtx source.core.prog)) → Player → ℝ)
+    (missing : Player → ℝ)
     (profile : SourceBehavioralProfile source.core.prog) (ε : ℝ)
     (hnash : IsεNash model.game
-      (fun next who => (compilation.publicPayout? next.native.application.visible.events).elim
-        (missing who) (fun payout => valuation payout who)) ε
+      (fun next who =>
+        (compilation.publicSourceOutcome? next.native.application.visible.events).elim
+        (missing who) (fun outcome => interpretation outcome who)) ε
       (fun who => compilation.compileCandidatePolicy nullValue window who (profile who))) :
     IsεNash (sourceGameForm source.core.prog source.core.env)
-      (fun final who => valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who)
+      (fun final who => interpretation final.erasePubEnv who)
       ε profile :=
-  compilation.candidate_approximate_nash_reflect nullValue window model timely valuation missing
-    profile ε hnash
+  compilation.candidate_public_approximate_nash_reflect nullValue window model timely
+    interpretation missing profile ε hnash
 
 /-- info: 'Vegas.Paper.pending_candidate_source_quit_gap'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/

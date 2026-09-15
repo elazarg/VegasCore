@@ -17,7 +17,7 @@ introducing a new edge and proving its own correspondence laws.
 | Resolving native protocol | `Interaction` | `SealedResolution`, shared policy-runner rounds | Per-node relative deadlines, nullable resolution, and continuing execution are implemented. Before the first timeout, validator/event projection is exact. Private bindings persist under arbitrary policies and resolution. Every round advances the clock once. Termination is checked without service; periodic inclusion capacity provides deadline-relative service. For the admitted Vegas fragment, completed public settlement has a legal source realization even after defaults. The single-checkpoint `SealedTimeout` model instead records final failure and does not implement this continuation. |
 | Vegas compiler edge | `Vegas.Compile` | `SealedCompilation`, sealed decode/refinement/source modules | One sealed rule per graph node; native prefixes decode to reachable graph states; terminal prefixes reconstruct a written-order source run. Under roster coverage, periodic inclusion capacity, a sufficient window, and a whole-period termination budget, all-compiled play has the exact original written-source outcome law in the actual stopped pending-message driver. |
 | Pending-message strategic edge | `Vegas.Game` | `SealedCompilation.RoundModel` | Constructed source/native coupling, actual timeout-checkpoint information, retained focal registrations, and same-error Nash equivalence under timely service, normal utility agreement, and explicit conditional timeout utility comparisons. For payout-valued utilities, a source-only `VegasCore.QuitPayoutBound` supplies both utility premises. |
-| Candidate-message strategic edge | `Vegas.Game` | `SealedFragment.CandidateRoundModel` | Independent graph utility comparison and composition to written source. Arbitrary randomized candidate deviations are bounded by legal source deviations under timely service and a source-only quitting comparison between continuations with matching pre-decision public environments. Same-error Nash holds at the analyzed generated profile; uniform cap/floor bounds supply a whole-game simulation. |
+| Candidate-message strategic edge | `Vegas.Game` | `SealedFragment.CandidateRoundModel` | Independent graph utility comparison and composition to written source. The complete public source outcome law is preserved at generated profiles. For arbitrary interpretations of that outcome, randomized candidate deviations are bounded by legal source deviations under timely service and a source-only quitting comparison between continuations with matching pre-decision public environments. Same-error Nash holds at the analyzed generated profile; uniform payout cap/floor bounds supply a whole-game simulation. |
 
 The ideal commitment service provides more than an abstract hiding-and-binding
 interface. For the compiled protocol, a source site is the numeric slot itself,
@@ -239,6 +239,10 @@ The checked strategic composition is source → certified graph → candidate
 runtime. `WFProgram.sourceGraphSimulation` supplies the exact first edge.
 `sourceGraphPayoutSimulation` interprets its outcomes through public compiled
 payouts, with terminal-support agreement proved independently.
+The generic `sourceGraphUtilitySimulation` transports any source interpretation
+whose graph utility agrees at terminal states. `graphPublicUtility_terminal`
+discharges that compiler obligation for arbitrary interpretations of the public
+terminal source environment.
 `CandidateRoundModel.utilitySimulation` supplies the graph-to-native utility
 edge. `SealedCompilation.candidatePayoutSimulation` composes them using
 `UtilitySimulation.trans`; its translation is the existing `compileCandidatePolicy`.
@@ -250,7 +254,8 @@ arbitrary unchanged graph policies; normal public outcomes agree, and timeout
 attribution plus graph settlement proves the utility inequality.
 
 Fix a checked source with an admitted `SealedCompilation`, its initial
-environment, designated default, and payout valuation. The fragment has
+environment, designated default, and utility interpretation of its public
+terminal source environment. The fragment has
 homogeneous values, universally accepting guards, no samples, and no initially
 private disclosure. Players form a finite type. The stopped driver has roster
 coverage, periodic inclusion capacity, sufficiently large timeout windows, and
@@ -260,20 +265,26 @@ admits unrestricted randomized player policies, competing and unopenable
 candidates, malformed traffic, replay, and withholding.
 
 Write `S` for written-source play, `R` for candidate round play, `C` for the
-generated policy translation, and `pS` and `pR` for the payout evaluations.
+generated policy translation, and `oS` and `oR` for the public source and native
+outcome observations. The native observation reads only public fields; it
+does not query private candidate meanings. Its partial decoder returns a legal
+public source environment at every supported game result, under arbitrary
+players and wire policies, without requiring timely service. This support
+theorem does not require that the source witness retain opponents' policies.
 Two checked laws establish the result:
 
 1. **Honest law:** every compiled profile completes without timeout and
-   `Law(pR; R(C σ)) = Law(pS; S(σ))`.
-2. **Deviation bound:** under source-only `QuitPayoutPrefixDominanceAgainst` at `σ`, for every
+   `Law(oR; R(C σ)) = Law(some ∘ oS; S(σ))`.
+2. **Deviation bound:** under source-only `QuitPrefixDominanceAgainst` at `σ`, for every
    source profile `σ`, player `i`, and randomized native replacement `τi`,
    there is a legal source replacement `sᵢ` with
-   `E[uᵢ(pR); R((C σ)[i := τi])] ≤ E[uᵢ(pS); S(σ[i := sᵢ])]`.
+   `E[uᵢ(oR); R((C σ)[i := τi])] ≤ E[uᵢ(oS); S(σ[i := sᵢ])]`,
+   with any utility assigned to the unreachable decoding-failure case.
    Opponents retain their original policies. The proof constructs a finite
    mixture, then selects a component at least as good as its mean. It does not
    claim equality of deviation outcome laws.
 
-`candidate_approximate_nash_iff_of_source_quit_prefix` gives preservation and
+`candidate_public_approximate_nash_iff` gives preservation and
 reflection at the analyzed compiled profile, including ordinary Nash at zero
 error. `Paper.lean` directly audits this source
 deviation bound and same-error equilibrium theorem. `VegasTests/SealedPayout.lean`
@@ -283,6 +294,10 @@ nonconstant written-source game and arbitrary unreserved wire behavior.
 the fixed-opponent condition holds at its source Nash profile, although no
 uniform source bound exists. The same profile compiles to a candidate Nash
 equilibrium for arbitrary unreserved wire behavior.
+`VegasTests/SealedPublicUtility.lean` additionally proves a candidate Nash
+equilibrium and arbitrary-deviation bound for nonconstant participation utility
+in a program with no payouts. No valuation of its programmed payout represents
+that utility, even on its reachable source outcomes.
 
 With separate source quitting cap `c` and fixed-opponent support floor `f`,
 `candidate_deviation_bound_with_quit_gap` proves the quantitative bound
@@ -296,20 +311,20 @@ The source alternative retains the original opponents. At a source epsilon-Nash
 profile this bounds each native deviation's gain by `epsilon` plus its own
 timeout-weighted gap. `candidate_approximate_nash_of_source_gap` consequently
 gives an `(epsilon + delta)`-Nash guarantee for any nonnegative `delta` bounding
-all players' gaps. `candidate_approximate_nash_reflect` requires no source
-incentive premise: honest payout agreement and service suffice for same-error
+all players' gaps. `candidate_public_approximate_nash_reflect` requires no source
+incentive premise: honest public-utility agreement and service suffice for same-error
 reflection at compiled profiles. These results have direct `Paper.lean` audits.
 The two-player regression also checks a source Nash profile excluded by every
 equal cap/floor certificate, but covered by the gap theorem with `delta = 1`.
 
-`QuitPayoutPrefixDominanceAgainst` compares every legal terminal source quitting
+`QuitPrefixDominanceAgainst` compares every legal terminal source quitting
 settlement to every supported unilateral continuation against the fixed
 opponents, when their public source environments strictly before that commitment
 agree. The comparison is pointwise; it does not assume that the quitting
 settlement follows the opponents' policies. It fixes public inputs only, so it
 is stronger than a condition comparing executions with the same full private
 information. `candidateGraphRoundCoupling_timeout_settlement` proves the required
-joint graph pair relation, and `graphPayout_le_of_source_quitPrefix` transports
+joint graph pair relation, and `graphUtility_le_of_source_quitPrefix` transports
 the source condition. `VegasTests/SourceQuitPrefix.lean` proves a strict
 source-level separation from equal global bounds using a public sampled
 baseline; that sampling example is outside the candidate runtime fragment.
@@ -323,8 +338,9 @@ opponents. The floor is pointwise on their supports, not merely an expectation
 or equilibrium-support condition. `QuitPayoutBound` supplies it uniformly at
 every profile, yielding the composable whole-game certificate above. Both are
 stronger than ordinary ex-ante quit dominance. The graph certificate supports
-arbitrary utilities of typed public fields; the source specialization values
-the programmed payout. Additional
+arbitrary utilities of typed public fields; the source theorem supports any
+interpretation of its public terminal environment. Payout valuation is one
+specialization. Additional
 runtime trace preferences are not covered automatically. Service and ideal
 binding are assumptions of the model, not cryptographic or censorship-resistance
 results.

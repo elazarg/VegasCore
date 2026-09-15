@@ -33,6 +33,70 @@ open EventGraph ToEventGraph GameTheory GameTheory.GameForm
 variable {Player : Type} [DecidableEq Player] [Finite Player] {L : IExpr}
 variable {source : WFProgram Player L} {ty : L.Ty} [DecidableEq (L.Val ty)]
 
+/-- Honest utility transport for a proved public graph interpretation of the
+source outcome. The source compiler's terminal-interpretation lemma is the
+only adapter premise; the native law is proved independently. -/
+theorem candidate_honest_utility (compilation : SealedCompilation source ty)
+    (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
+    (sourceUtility : VEnv L (sourceTerminalCtx source.core.prog) → Player → ℝ)
+    (graphUtility : (compile source.core).graph.PublicUtility) (missing : Player → ℝ)
+    (hterminalUtility : ∀ (cfg : ReachableConfig (compile source.core).graph)
+      (hterminal : Terminal (compile source.core).graph cfg.1) (who : Player),
+      graphUtility.eval cfg.1.store who = sourceUtility
+        (decodeSourceOutcome source.core.prog source.core.fresh
+          (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+          cfg hterminal) who)
+    (profile : SourceBehavioralProfile source.core.prog) (who : Player) :
+    (model.game.play
+      (fun player => compilation.compileCandidatePolicy nullValue window player (profile player))
+        ).expect (fun next => model.nativeUtility graphUtility next who) =
+      ((sourceGameForm source.core.prog source.core.env).play profile).expect
+        (fun final => sourceUtility final who) := by
+  let : Fintype Player := Fintype.ofFinite Player
+  let first := source.sourceGraphUtilitySimulation
+    sourceUtility graphUtility missing hterminalUtility
+  exact (model.honest_utility timely (compile_guardLive source.core source.legal)
+    graphUtility (first.compileProfile profile) who).trans (first.honest_utility profile who)
+
+/-- Compose the source prefix condition with the graph/native comparison for
+any compiler-certified public interpretation of source outcomes. No native
+utility inequality or deviation law is assumed. -/
+theorem candidate_utility_deviation_bound (compilation : SealedCompilation source ty)
+    (nullValue : L.Val ty) (window : Nat)
+    (model : compilation.supported.CandidateRoundModel nullValue window) (timely : model.Timely)
+    (sourceUtility : VEnv L (sourceTerminalCtx source.core.prog) → Player → ℝ)
+    (graphUtility : (compile source.core).graph.PublicUtility) (missing : Player → ℝ)
+    (hterminalUtility : ∀ (cfg : ReachableConfig (compile source.core).graph)
+      (hterminal : Terminal (compile source.core).graph cfg.1) (who : Player),
+      graphUtility.eval cfg.1.store who = sourceUtility
+        (decodeSourceOutcome source.core.prog source.core.fresh
+          (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+          cfg hterminal) who)
+    (profile : SourceBehavioralProfile source.core.prog)
+    (hdominance : source.core.prog.QuitPrefixDominanceAgainst source.core.env
+      nullValue sourceUtility profile) (who : Player) (replacement : model.game.sig.Strategy who) :
+    ∃ alternative : SourceBehavioralPolicy source.core.prog who,
+      (model.game.play (Profile.update
+        (fun player => compilation.compileCandidatePolicy nullValue window player (profile player))
+        who replacement)).expect (fun next => model.nativeUtility graphUtility next who) ≤
+      ((sourceGameForm source.core.prog source.core.env).play
+        (Profile.update profile who alternative)).expect
+          (fun final => sourceUtility final who) := by
+  let : Fintype Player := Fintype.ofFinite Player
+  let first := source.sourceGraphUtilitySimulation
+    sourceUtility graphUtility missing hterminalUtility
+  obtain ⟨graphAlternative, hgraph⟩ := model.deviation_bound_of_quit_prefix timely
+    (compile_publicPrefixReadable source.core) (compile_guardLive source.core source.legal)
+    source.compiled_uniqueReveals graphUtility (first.compileProfile profile) who
+    (fun alternative quitting continued hcontinued hquitting producer guard
+        hproducer hvalue hreads =>
+      source.graphUtility_le_of_source_quitPrefix nullValue sourceUtility graphUtility
+        hterminalUtility profile hdominance who alternative quitting continued hcontinued
+        hquitting producer guard hproducer hvalue hreads) replacement
+  obtain ⟨alternative, hsource⟩ := first.deviation_bound profile who graphAlternative
+  exact ⟨alternative, hgraph.trans hsource⟩
+
 /-- Source-to-candidate utility simulation by composition through the graph.
 The target utility values the actual public payout; no private service table
 or source reconstruction is used to evaluate native outcomes. -/
@@ -65,12 +129,12 @@ theorem candidate_honest_payout_utility (compilation : SealedCompilation source 
             (missing who) (fun payout => valuation payout who)) =
       ((sourceGameForm source.core.prog source.core.env).play profile).expect
         (fun final =>
-          valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who) := by
-  let : Fintype Player := Fintype.ofFinite Player
-  exact (model.honest_utility timely (compile_guardLive source.core source.legal)
-    (source.graphPayoutUtility valuation missing)
-    ((source.sourceGraphPayoutSimulation valuation missing).compileProfile profile) who).trans
-      ((source.sourceGraphPayoutSimulation valuation missing).honest_utility profile who)
+          valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who) :=
+  compilation.candidate_honest_utility nullValue window model timely
+    (fun final player => valuation
+      (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) player)
+    (source.graphPayoutUtility valuation missing) missing
+    (source.graphPayoutUtility_terminal valuation missing) profile who
 
 /-- An arbitrary native deviation is bounded by a written-source deviation
 against unchanged opponents under the source-only prefix-relative quitting
@@ -91,20 +155,12 @@ theorem candidate_deviation_bound_of_source_quit_prefix
             (missing who) (fun payout => valuation payout who)) ≤
       ((sourceGameForm source.core.prog source.core.env).play
         (Profile.update profile who alternative)).expect (fun final =>
-          valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who) := by
-  let : Fintype Player := Fintype.ofFinite Player
-  let first := source.sourceGraphPayoutSimulation valuation missing
-  obtain ⟨graphAlternative, hgraph⟩ := model.deviation_bound_of_quit_prefix timely
-    (compile_publicPrefixReadable source.core) (compile_guardLive source.core source.legal)
-    source.compiled_uniqueReveals (source.graphPayoutUtility valuation missing)
-    (first.compileProfile profile) who
-    (fun alternative quitting continued hcontinued hquitting producer guard
-        hproducer hvalue hreads =>
-      source.graphPayout_le_of_source_quitPrefix nullValue valuation missing profile hdominance
-        who alternative quitting continued hcontinued hquitting producer guard hproducer
-        hvalue hreads) replacement
-  obtain ⟨alternative, hsource⟩ := first.deviation_bound profile who graphAlternative
-  exact ⟨alternative, hgraph.trans hsource⟩
+          valuation (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) who) :=
+  compilation.candidate_utility_deviation_bound nullValue window model timely
+    (fun final player => valuation
+      (evalPayoffs (sourceTerminalPayoffs source.core.prog) final) player)
+    (source.graphPayoutUtility valuation missing) missing
+    (source.graphPayoutUtility_terminal valuation missing) profile hdominance who replacement
 
 /-- Same-error Nash preservation and reflection at a compiled source profile
 under a source-only comparison of prefix-matched quitting continuations. The

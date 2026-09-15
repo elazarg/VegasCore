@@ -21,6 +21,8 @@ import Vegas.Compile.SourceOutcomeExecution
 import Vegas.Compile.SourceCorrespondence
 import Vegas.Compile.SourceUtility
 import Vegas.Compile.SourceQuitPrefix
+import Vegas.Compile.SourcePublicOutcome
+import Vegas.Compile.SealedPublicSourceOutcome
 import Vegas.Compile.SealedMessages
 import Vegas.Compile.SealedReadOrigin
 import Vegas.Compile.SealedDecode

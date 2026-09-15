@@ -5,7 +5,7 @@ import Vegas.Compile.SourceOutcomeExecution
 import Vegas.Compile.SourceQuitPrefix
 import Vegas.Game.SourceGraph
 
-/-! # Source prefix dominance for compiled graph payouts
+/-! # Source prefix dominance for public graph utilities
 
 The source condition compares legal terminal continuations at one source
 decision.  Source/graph correspondence supplies the continued source support,
@@ -22,14 +22,21 @@ open EventGraph ToEventGraph GameTheory GameTheory.Math.Probability
 variable {P : Type} [DecidableEq P] [Fintype P] {L : IExpr}
 
 /-- Prefix-relative source quitting dominance bounds the corresponding pair of
-terminal compiled graph payouts.  The compared stores need agree only on the
-public references in the quitting decision's declared choice footprint. -/
-theorem graphPayout_le_of_source_quitPrefix
+terminal graph utilities under a proved source interpretation. The compared
+stores need agree only on public references in the decision's choice footprint. -/
+theorem graphUtility_le_of_source_quitPrefix
     (source : WFProgram P L) {ty : L.Ty} (nullValue : L.Val ty)
-    (valuation : Payout P → P → ℝ) (missing : P → ℝ)
+    (sourceUtility : VEnv L (sourceTerminalCtx source.core.prog) → P → ℝ)
+    (graphUtility : (compile source.core).graph.PublicUtility)
+    (hterminalUtility : ∀ (cfg : ReachableConfig (compile source.core).graph)
+      (hterminal : Terminal (compile source.core).graph cfg.1) (who : P),
+      graphUtility.eval cfg.1.store who = sourceUtility
+        (decodeSourceOutcome source.core.prog source.core.fresh
+          (BuildState.fromInitial (initialState source.core.Γ source.core.env source.core.wctx))
+          cfg hterminal) who)
     (sourceProfile : SourceBehavioralProfile source.core.prog)
-    (hdominance : source.core.prog.QuitPayoutPrefixDominanceAgainst
-      source.core.env nullValue valuation sourceProfile)
+    (hdominance : source.core.prog.QuitPrefixDominanceAgainst
+      source.core.env nullValue sourceUtility sourceProfile)
     (who : P) (alternative : CommitPolicy (compile source.core).graph who)
     (quitting continued : ReachableConfig (compile source.core).graph)
     (hcontinued : continued ∈
@@ -47,8 +54,7 @@ theorem graphPayout_le_of_source_quitPrefix
       (compile source.core).graph.fieldRefPublic ref →
       Store.getAs quitting.1.store ref.field ref.ty =
         Store.getAs continued.1.store ref.field ref.ty) :
-    (source.graphPayoutUtility valuation missing).eval quitting.1.store who ≤
-      (source.graphPayoutUtility valuation missing).eval continued.1.store who := by
+    graphUtility.eval quitting.1.store who ≤ graphUtility.eval continued.1.store who := by
   let state := BuildState.fromInitial
     (initialState source.core.Γ source.core.env source.core.wctx)
   have hcontinuedTerminal := runPolicyNodes_terminal (compile source.core).graphWF
@@ -110,13 +116,13 @@ theorem graphPayout_le_of_source_quitPrefix
     quittingFinal continuedFinal
     (decodeSourceOutcome_reachable source.core quitting hquittingTerminal)
     hquit hcontinuedSource hprefix
-  rw [source.graphPayoutUtility_terminal valuation missing quitting hquittingTerminal who,
-    source.graphPayoutUtility_terminal valuation missing continued hcontinuedTerminal who]
+  rw [hterminalUtility quitting hquittingTerminal who,
+    hterminalUtility continued hcontinuedTerminal who]
   exact hsourceBound
 
 end Vegas.WFProgram
 
-/-- info: 'Vegas.WFProgram.graphPayout_le_of_source_quitPrefix' depends on axioms:
+/-- info: 'Vegas.WFProgram.graphUtility_le_of_source_quitPrefix' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.WFProgram.graphPayout_le_of_source_quitPrefix
+#print axioms Vegas.WFProgram.graphUtility_le_of_source_quitPrefix
