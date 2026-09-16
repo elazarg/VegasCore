@@ -51,6 +51,27 @@ progress, honest continuation laws, and unilateral deviation extraction.
 [deviation extraction note](pending-deviation-extraction.md) explain the proof
 boundary.
 
+## Dependency-driven graph interface
+
+The [EventGraph core](../Vegas/EventGraph.lean) provides a typed ready-event
+executor, public and player-local observations, behavioral policies, and
+public schedulers. Initial values are separate from the graph, so the same
+policy is used for every possible private setup draw. The executor proves
+finite completion; its canonical scheduler selects the least unfinished
+event. Independent commitments can execute in either order.
+
+Game outcomes are terminal configurations. A shared utility lift interprets
+their complete typed stores and ignores scheduling metadata; utilities on the
+full trace can instead use the configuration directly, with separate strategic
+proof obligations.
+
+This interface is not yet an edge of the checked compiler tower above.
+Full-source lowering, source-order correspondence, asynchronous scheduling
+comparison, and the asynchronous pending-message strategic certificate are
+the remaining compiler/proof work described in the
+[EventGraph plan](event-graph-design.md). Source-order correspondence and
+equivalence under other schedules are distinct obligations.
+
 ## Outside the theorem
 
 The target assumes ideal commitments, authentication, canonical ordered

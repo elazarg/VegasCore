@@ -140,8 +140,9 @@ class ModuleBoundaryTests(unittest.TestCase):
         forbidden = {
             "Vegas.Foundation": ("Vegas.Expr", "Vegas.Language"),
             "Vegas.Expr": ("Vegas.Language", "Vegas.Source"),
-            "Vegas.Source": ("Vegas.Graph", "Vegas.Pending", "Vegas.Language"),
-            "Vegas.Graph": ("Vegas.Source", "Vegas.Pending", "Vegas.Compile"),
+            "Vegas.Source": ("Vegas.Graph", "Vegas.EventGraph", "Vegas.Pending", "Vegas.Language"),
+            "Vegas.Graph": ("Vegas.Source", "Vegas.EventGraph", "Vegas.Pending", "Vegas.Compile"),
+            "Vegas.EventGraph": ("Vegas.Source", "Vegas.Graph", "Vegas.Pending", "Vegas.Compile"),
             "Vegas.Pending": ("Vegas.Source", "Vegas.Compile", "Vegas.Game"),
             "Vegas.Compile": ("Vegas.Pending", "Vegas.Language"),
             "Vegas.Game": ("Vegas.Language",),

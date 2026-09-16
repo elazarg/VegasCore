@@ -2,10 +2,22 @@
 
 ## Status and objective
 
-This document specifies a proposed asynchronous compiler target and the work
-needed to prove its strategic correctness. It does not describe a checked
-asynchronous theorem. The [active theorem map](active-tower.md) records the
-existing source-to-ordered-graph-to-pending-message results.
+This document specifies an asynchronous compiler target and the work needed
+to prove its strategic correctness. The shared
+[EventGraph core](../Vegas/EventGraph.lean) implements typed dependency cuts,
+node execution, observations, public scheduling, and finite completion. The
+source compiler and asynchronous pending-message edge are not yet connected
+to it. The [active theorem map](active-tower.md) records the checked
+source-to-ordered-graph-to-pending-message results; those remain the current
+end-to-end guarantees.
+
+The shared interface is not fully frozen: a graph-local description of extra
+failure opportunities, feasible continuation repairs, and their utility
+condition remains to be fixed. Generic utility simulation supplies the eventual
+composition theorem, not this premise. Local commutation of ready event kernels
+also remains to prove. The node representation already confines reads to
+predecessors and writes to distinct outputs; no additional source-relative
+simulation assumption is required for that local proof.
 
 The objective is one compilation tower:
 
@@ -601,6 +613,38 @@ game. A graph-level scheduling theorem establishes the appropriate law and
 deviation comparison for asynchronous graph execution. The native backend is
 graph-relative and must discharge the same causal observation obligations
 under its richer message histories.
+
+The operational compiler theorem has a particular schedule in its statement.
+Writing `C(P)` for the compiled graph, `compilePolicy` for the policy
+translation, and `decode` for the terminal-state interpretation, its target is
+
+```text
+map decode (runGraph C(P) sourceOrder (compilePolicy pi)) = runSource P pi.
+```
+
+Initial environments, including their private distribution, are related by
+the compiler's encoding. Event numbering follows the source order; choosing
+the least ready event therefore selects the least unfinished source event.
+This is source implementation by one scheduling instance of the asynchronous
+semantics, not an assertion that every asynchronous policy has the source law.
+
+Schedule-independent conclusions are separate theorems:
+
+- With corresponding per-event actions and chance realizations, commuting
+  independent events preserves the terminal binding store. Completion order
+  and the physical transcript can differ.
+- Equality of interpreted terminal stores implies equality of the retained
+  payout expressions and of any utility supplied on those outcomes.
+- Equality of outcome *laws* under policies additionally needs the appropriate
+  observation and kernel-independence argument. An unchanged policy can react
+  differently when the schedule changes what it observes.
+- Arbitrary-deviation and Nash comparisons quantify over the asynchronous
+  strategy space. They require the scheduling-information argument and, where
+  additional selective failure is possible, the explicit utility condition.
+
+These statements have different hypotheses. Final-store commutation alone
+does not establish strategic preservation, and no equality of full transcripts
+is needed for an outcome-based utility theorem.
 
 When composing, the two certificates must name exactly the same middle game,
 strategy compiler, outcome interpretation, and environment parameters. There

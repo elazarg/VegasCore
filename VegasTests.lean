@@ -1,4 +1,5 @@
 import VegasTests.FailureGame
+import VegasTests.EventGraph
 import VegasTests.GraphBindingDiscipline
 import VegasTests.GraphMessagePolicies
 import VegasTests.GraphMessages
