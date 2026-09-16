@@ -221,6 +221,21 @@ grace interval must be combined with proved compiled-policy use of the reserved
 opportunities. The ideal-graph scheduling theorem alone does not establish a
 strategic law for the richer message host.
 
+`Vegas.Game.EventMessages` defines the actual source-to-native game, composed
+policy compiler, and terminal-state readout. `Paper.lean` states three
+UNPROVED capstones over these definitions:
+
+- `source_event_pending_honest_law`: equality with the source outcome law.
+- `source_event_pending_deviation_law`: every unilateral native deviation has
+  the law of one finite source-policy mixture across private setup.
+- `source_event_pending_approximate_nash_iff`: same-error Nash preservation
+  and reflection at compiled profiles for source-state utilities.
+
+These statements assume the concrete epoch service with deadlines of at least
+two ticks; they do not assume a strategic certificate. Each contains `sorry`
+and an adjacent axiom pin recording `sorryAx`. Their statements elaborate,
+but their proofs and the sufficiency of the stated hypotheses remain open.
+
 `EventGraphRuntime.handle_publicView_replaceRemembered` proves that changing
 the private original-action cache cannot change packet acceptance or the
 resulting public view. A rejected original disclosure decision can remain in

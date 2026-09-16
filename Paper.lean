@@ -5,6 +5,7 @@ import Vegas.Game.GraphSetup
 import Vegas.Game.GraphMessages
 import Vegas.Game.EventScheduling
 import Vegas.Game.EventCompilation
+import Vegas.Game.EventMessages
 import Vegas.Source.Safety
 import Vegas.Compile.EventGraphPolicy
 import Vegas.Compile.EventGraphReadout
@@ -16,12 +17,15 @@ import Vegas.Pending.EventServiceCompletion
 
 Principal source-safety and compilation results for the full failure-aware
 language. Proved statements delegate directly to their owning theorems; the
-axiom pins below check the complete proof dependencies.
+axiom pins below check the complete proof dependencies. The three UNPROVED
+asynchronous pending-message capstones at the end are explicit proof targets:
+their guarded admission diagnostics and axiom pins expose `sorryAx`.
 
 The pending-message strategic results use ideal commitments and a concrete
 bounded ordered service with adaptive delivery. The event-addressed target has
-a separate completion theorem under public adaptive epoch service. These
-results do not assert cryptographic, transaction-ledger, or EVM refinement.
+a separate completion theorem under public adaptive epoch service; its
+whole-run honest and strategic correspondence remains unproved. None of these
+statements asserts cryptographic, transaction-ledger, or EVM refinement.
 -/
 
 namespace Vegas.Paper
@@ -379,5 +383,92 @@ theorem event_pending_completion [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.event_pending_completion
+
+/-! ## Open asynchronous pending-message capstones
+
+These statements use the concrete compiler and service, not a hypothesized
+simulation certificate. `ServiceFeasible` requires at least two clock ticks
+per event deadline so an event enabled mid-epoch receives its reserved service
+opportunities. The compiler's public barriers are intended to support exact
+deviation laws without a failure-dominance premise. The statements below are
+UNPROVED, including that intended sufficiency of the hypotheses.
+-/
+
+/-- error: declaration uses `sorry` -/
+#guard_msgs (whitespace := lax) in
+/-- UNPROVED: the compiled full-source profile has the source terminal-state
+law under the asynchronous pending-message service. -/
+theorem source_event_pending_honest_law [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime setup.eventGraph)
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (profile : SourceProgram.BehavioralProfile setup.program) :
+    ((setup.eventPendingGame runtime roster reactionRounds wire order).play
+      (fun who => setup.compileEventPendingStrategy runtime who (profile who))).map
+        (setup.eventPendingOutcome runtime) = (setup.run profile).map some := by
+  sorry
+
+/-- info: 'Vegas.Paper.source_event_pending_honest_law' depends on axioms:
+[propext, sorryAx, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_event_pending_honest_law
+
+/-- error: declaration uses `sorry` -/
+#guard_msgs (whitespace := lax) in
+/-- UNPROVED: every arbitrary native unilateral deviation has the terminal
+source-state law of a finite mixture of source deviations against unchanged
+opponents. One mixture is chosen across the entire private setup law. -/
+theorem source_event_pending_deviation_law [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime setup.eventGraph)
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
+    (replacement : runtime.application.PlayerPolicy) :
+    ∃ mixture : FinDist (SourceProgram.BehavioralPolicy who setup.program),
+      ((setup.eventPendingGame runtime roster reactionRounds wire order).play
+        (Profile.update (sig := (setup.eventPendingGame runtime
+          roster reactionRounds wire order).sig)
+          (fun actor => setup.compileEventPendingStrategy runtime actor (profile actor))
+          who replacement)).map (setup.eventPendingOutcome runtime) =
+      mixture.bind fun alternative =>
+        (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
+          profile who alternative)).map some := by
+  sorry
+
+/-- info: 'Vegas.Paper.source_event_pending_deviation_law' depends on axioms:
+[propext, sorryAx, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_event_pending_deviation_law
+
+/-- error: declaration uses `sorry` -/
+#guard_msgs (whitespace := lax) in
+/-- UNPROVED: same-error Nash preservation and reflection at compiled source
+profiles in the asynchronous pending-message target, for every utility of the
+complete terminal source state. The utility assigned to a missing outcome is
+arbitrary; the concrete service has a separate proved completion theorem. -/
+theorem source_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime setup.eventGraph)
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (missing : Player → ℝ) (ε : ℝ)
+    (profile : SourceProgram.BehavioralProfile setup.program) :
+    IsεNash (setup.eventPendingGame runtime roster reactionRounds wire order)
+        (fun outcome who => (setup.eventPendingOutcome runtime outcome).elim
+          (missing who) (fun state => utility state who))
+        ε (fun who => setup.compileEventPendingStrategy runtime who (profile who)) ↔
+      IsεNash setup.gameForm utility ε profile := by
+  sorry
+
+/-- info: 'Vegas.Paper.source_event_pending_approximate_nash_iff' depends on axioms:
+[propext, sorryAx, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_event_pending_approximate_nash_iff
 
 end Vegas.Paper

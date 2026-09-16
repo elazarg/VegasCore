@@ -66,6 +66,20 @@ class LeanOptionTests(unittest.TestCase):
                 "#print axioms Vegas.Paper.witness\n")
         self.assertEqual(CHECKER.check_audit_pins(text), [])
 
+    def test_explicit_open_capstone_with_adjacent_pin_passes(self):
+        text = (
+            "/-- error: declaration uses `sorry` -/\n"
+            "#guard_msgs (whitespace := lax) in\n"
+            "/-- UNPROVED capstone. -/\n"
+            "theorem target : True := by\n  sorry\n"
+            "/-- info: 'Vegas.Paper.target' depends on axioms: [sorryAx] -/\n"
+            "#guard_msgs (whitespace := lax) in\n"
+            "#print axioms Vegas.Paper.target\n"
+        )
+        self.assertEqual(CHECKER.check_audit_pins(text), [])
+        self.assertEqual(CHECKER.check_admissions(Path("Paper.lean"), text), [])
+        self.assertEqual(CHECKER.admission_tokens(text), [(5, "sorry")])
+
     def test_audit_theorem_requires_guarded_pin(self):
         for pin in ("", "#print axioms Vegas.Paper.witness\n",
                     "/- #guard_msgs in\n#print axioms Vegas.Paper.witness -/\n"):
