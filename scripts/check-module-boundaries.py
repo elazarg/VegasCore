@@ -15,6 +15,21 @@ import sys
 import tomllib
 
 
+# Allowed Vegas dependencies inside each semantic layer. External libraries have
+# their own ownership checks below. The root Vegas module is an umbrella only.
+VEGAS_LAYERS = {
+    "Vegas.Foundation": ("Vegas.Foundation",),
+    "Vegas.Expr": ("Vegas.Foundation", "Vegas.Expr"),
+    "Vegas.Source": ("Vegas.Foundation", "Vegas.Source"),
+    "Vegas.Graph": ("Vegas.Foundation", "Vegas.Graph"),
+    "Vegas.Pending": ("Vegas.Foundation", "Vegas.Graph", "Vegas.Pending"),
+    "Vegas.Compile": ("Vegas.Foundation", "Vegas.Source", "Vegas.Graph", "Vegas.Compile"),
+    "Vegas.Game": ("Vegas.Foundation", "Vegas.Source", "Vegas.Graph", "Vegas.Pending",
+                   "Vegas.Compile", "Vegas.Game"),
+    "Vegas.Language": ("Vegas.Foundation", "Vegas.Expr", "Vegas.Language"),
+}
+
+
 def imports(text: str) -> list[str]:
     """Remove nested block comments and line comments before reading imports."""
     clean: list[str] = []
@@ -169,6 +184,10 @@ def check(root: Path) -> list[str]:
 
     for module, dependencies in modules.items():
         for dependency in dependencies:
+            for layer, allowed in VEGAS_LAYERS.items():
+                if under(module, layer) and under(dependency, "Vegas") and not any(
+                        under(dependency, prefix) for prefix in allowed):
+                    failures.append(f"{module}: {layer} imports outside its layer contract: {dependency}")
             if under(module, "GameTheoryExtensions") and not any(
                     under(dependency, prefix) for prefix in
                     ("GameTheory", "GameTheoryExtensions", "Mathlib", "Batteries", "Init", "Std")):
@@ -181,26 +200,18 @@ def check(root: Path) -> list[str]:
                     ("GameTheory", "GameTheoryExtensions", "GameTheoryExtensionsTests", "Mathlib", "Batteries", "Init", "Std")):
                 failures.append(f"{module}: game-theory test imports downstream module {dependency}")
             if under(module, "Interaction") and any(under(dependency, prefix) for prefix in
-                    ("Vegas", "VegasEVM", "VegasTests", "InteractionTests", "Paper")):
+                    ("Vegas", "VegasTests", "InteractionTests", "Paper")):
                 failures.append(f"{module}: interaction carrier imports downstream module {dependency}")
             if under(module, "InteractionTests") and any(under(dependency, prefix) for prefix in
-                    ("Vegas", "VegasEVM", "VegasTests", "Paper")):
+                    ("Vegas", "VegasTests", "Paper")):
                 failures.append(f"{module}: runtime-independent test imports {dependency}")
             if not under(module, "InteractionTests") and under(dependency, "InteractionTests"):
                 failures.append(f"{module}: production or audit module imports interaction test {dependency}")
             if under(module, "Vegas") and any(under(dependency, prefix) for prefix in
-                    ("VegasEVM", "VegasTests", "Paper")):
-                failures.append(f"{module}: core imports downstream module {dependency}")
-            if under(module, "VegasEVM") and any(under(dependency, prefix) for prefix in
                     ("VegasTests", "Paper")):
-                failures.append(f"{module}: backend imports downstream module {dependency}")
+                failures.append(f"{module}: core imports downstream module {dependency}")
             if under(module, "VegasTests") and under(dependency, "Paper"):
                 failures.append(f"{module}: test imports paper audit {dependency}")
-            if under(module, "Vegas.Machine") and under(dependency, "Vegas.Compile"):
-                failures.append(f"{module}: machine carrier imports compiler {dependency}")
-            if under(module, "Vegas.Runtime") and any(under(dependency, prefix) for prefix in
-                    ("Vegas.Game", "Vegas.Compile", "Vegas.Machine", "Vegas.Scheduled")):
-                failures.append(f"{module}: runtime-general interface imports {dependency}")
 
     def reachable(starts: list[str]) -> set[str]:
         seen: set[str] = set()
@@ -219,9 +230,11 @@ def check(root: Path) -> list[str]:
     for module in sorted(modules.keys() - covered):
         failures.append(f"{module}: unreachable from default build roots")
 
-    # These public aggregators promise their complete subtree, not only a
-    # subset incidentally reached through the paper audit or test suite.
-    for aggregator in ("Vegas.Game", "Vegas.Runtime", "Interaction", "GameTheoryExtensions"):
+    # A module with descendants is its directory's public aggregator. It must
+    # expose the complete subtree, not rely on incidental test/audit imports.
+    for aggregator in sorted(modules):
+        if not any(module.startswith(aggregator + ".") for module in modules):
+            continue
         covered = reachable([aggregator])
         for module in sorted(modules):
             if under(module, aggregator) and module not in covered:

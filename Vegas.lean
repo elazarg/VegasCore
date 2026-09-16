@@ -5,9 +5,10 @@ Authors: VegasCore contributors
 -/
 
 import GameTheory
-import Vegas.Core
+import Vegas.Expr
 import Vegas.Source
 import Vegas.Graph
+import Vegas.Pending
 import Vegas.Foundation.ViewExtension
 import Vegas.Language
 import Vegas.Compile

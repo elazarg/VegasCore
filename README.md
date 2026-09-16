@@ -30,7 +30,7 @@ also holds against every unilateral native deviation, with missing native
 outcomes represented explicitly.
 
 `Vegas.Language` is a surface-syntax prototype for typed bindings and nullable
-guard notation. It lowers to an internal `VegasCore` representation. A verified
+guard notation. It lowers to an internal `SurfaceCore` representation. A verified
 elaboration into `SourceProgram` remains to be supplied; the prototype carries
 no operational or strategic compilation claim.
 

@@ -15,9 +15,8 @@ class ModuleBoundaryTests(unittest.TestCase):
     def fixture(self, directory, modules, extra_config=""):
         root = Path(directory)
         (root / "lakefile.toml").write_text(
-            'defaultTargets = ["Vegas", "VegasEVM", "VegasTests", "Paper"]\n'
+            'defaultTargets = ["Vegas", "VegasTests", "Paper"]\n'
             '[[lean_lib]]\nname = "Vegas"\n'
-            '[[lean_lib]]\nname = "VegasEVM"\n'
             '[[lean_lib]]\nname = "VegasTests"\n'
             '[[lean_lib]]\nname = "Paper"\n' + extra_config, encoding="utf-8"
         )
@@ -29,19 +28,19 @@ class ModuleBoundaryTests(unittest.TestCase):
 
     def test_comments_do_not_create_imports(self):
         self.assertEqual(CHECKER.imports(
-            "/- import Bogus\n/- nested -/ -/\nimport Vegas.Core -- comment\n"
-        ), ["Vegas.Core"])
+            "/- import Bogus\n/- nested -/ -/\nimport Vegas.Foundation -- comment\n"
+        ), ["Vegas.Foundation"])
 
     def test_downstream_import_and_orphan_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "lakefile.toml").write_text(
-                'defaultTargets = ["Vegas", "VegasEVM"]\n'
+                'defaultTargets = ["Vegas", "VegasTests"]\n'
                 '[[lean_lib]]\nname = "Vegas"\n'
-                '[[lean_lib]]\nname = "VegasEVM"\n', encoding="utf-8"
+                '[[lean_lib]]\nname = "VegasTests"\n', encoding="utf-8"
             )
-            (root / "Vegas.lean").write_text("import VegasEVM\n", encoding="utf-8")
-            (root / "VegasEVM.lean").write_text("", encoding="utf-8")
+            (root / "Vegas.lean").write_text("import VegasTests\n", encoding="utf-8")
+            (root / "VegasTests.lean").write_text("", encoding="utf-8")
             (root / "Vegas").mkdir()
             (root / "Vegas" / "Orphan.lean").write_text("", encoding="utf-8")
             errors = CHECKER.check(root)
@@ -57,21 +56,21 @@ class ModuleBoundaryTests(unittest.TestCase):
     def test_reference_files_cannot_supply_a_missing_local_module(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory, {"Vegas": "import Vegas.Backend"})
-            archive = root / "archive" / "split" / "Vegas"
-            archive.mkdir(parents=True)
-            reference = archive / "Backend.lean.txt"
+            references = root / "references" / "Vegas"
+            references.mkdir(parents=True)
+            reference = references / "Backend.lean.txt"
             reference.write_bytes(b"\xff\xfe not a Lean module")
             errors = CHECKER.check(root)
             self.assertTrue(any("missing local import Vegas.Backend" in error for error in errors))
             reference.unlink()
             self.assertEqual(CHECKER.check(root), errors)
 
-    def test_archived_original_does_not_shadow_active_module(self):
+    def test_reference_text_does_not_shadow_active_module(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = self.fixture(directory, {"Vegas": "import Vegas.Core", "Vegas.Core": ""})
-            archive = root / "archive" / "split" / "Vegas"
-            archive.mkdir(parents=True)
-            (archive / "Core.lean.txt").write_text("", encoding="utf-8")
+            root = self.fixture(directory, {"Vegas": "import Vegas.Foundation", "Vegas.Foundation": ""})
+            references = root / "references" / "Vegas"
+            references.mkdir(parents=True)
+            (references / "Foundation.lean.txt").write_text("", encoding="utf-8")
             self.assertEqual(CHECKER.check(root), [])
 
     def test_interaction_cannot_import_language_or_its_tests(self):
@@ -137,41 +136,71 @@ class ModuleBoundaryTests(unittest.TestCase):
             self.assertTrue(any("runtime-independent test imports Vegas" in error
                                 for error in CHECKER.check(root)))
 
-    def test_carriers_and_runtime_cannot_import_adapters(self):
+    def test_semantic_layers_reject_upward_and_prototype_dependencies(self):
+        forbidden = {
+            "Vegas.Foundation": ("Vegas.Expr", "Vegas.Language"),
+            "Vegas.Expr": ("Vegas.Language", "Vegas.Source"),
+            "Vegas.Source": ("Vegas.Graph", "Vegas.Pending", "Vegas.Language"),
+            "Vegas.Graph": ("Vegas.Source", "Vegas.Pending", "Vegas.Compile"),
+            "Vegas.Pending": ("Vegas.Source", "Vegas.Compile", "Vegas.Game"),
+            "Vegas.Compile": ("Vegas.Pending", "Vegas.Language"),
+            "Vegas.Game": ("Vegas.Language",),
+            "Vegas.Language": ("Vegas.Pending",),
+        }
+        for layer, dependencies in forbidden.items():
+            for dependency in dependencies:
+                with self.subTest(layer=layer, dependency=dependency), \
+                        tempfile.TemporaryDirectory() as directory:
+                    root = self.fixture(directory, {
+                        "Vegas": f"import {layer}.Example",
+                        f"{layer}.Example": f"import {dependency}.Example",
+                        f"{dependency}.Example": "",
+                    })
+                    expected = f"{layer} imports outside its layer contract: {dependency}.Example"
+                    self.assertTrue(any(expected in error for error in CHECKER.check(root)))
+
+    def test_semantic_layers_accept_the_intended_compilation_tower(self):
+        with tempfile.TemporaryDirectory() as directory:
+            modules = {"Vegas": "import " + " ".join(
+                f"{layer}.Example" for layer in CHECKER.VEGAS_LAYERS)}
+            for layer, allowed in CHECKER.VEGAS_LAYERS.items():
+                modules[f"{layer}.Example"] = "\n".join(
+                    f"import {dependency}.Example" for dependency in allowed if dependency != layer)
+            root = self.fixture(directory, modules)
+            self.assertEqual(CHECKER.check(root), [])
+
+    def test_umbrella_import_cannot_bypass_a_layer_contract(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory, {
-                "Vegas": "import Vegas.Machine.Program Vegas.Runtime.Adapter",
-                "Vegas.Machine.Program": "import Vegas.Compile.Machine",
-                "Vegas.Compile.Machine": "",
-                "Vegas.Runtime.Adapter": "import Vegas.Game.Basic",
-                "Vegas.Game.Basic": "",
+                "Vegas": "import Vegas.Graph.Example",
+                "Vegas.Graph.Example": "import Vegas",
             })
-            errors = CHECKER.check(root)
-            self.assertTrue(any("machine carrier imports compiler" in error for error in errors))
-            self.assertTrue(any("runtime-general interface imports" in error for error in errors))
+            self.assertTrue(any("Vegas.Graph imports outside its layer contract: Vegas" in error
+                                for error in CHECKER.check(root)))
 
     def test_test_reachability_does_not_mask_incomplete_aggregator(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = self.fixture(directory, {
-                "Vegas": "import Vegas.Game", "Vegas.Game": "",
-                "Vegas.Game.Adapter": "", "VegasTests": "import Vegas.Game.Adapter",
-            })
-            errors = CHECKER.check(root)
-            self.assertTrue(any("absent from Vegas.Game aggregator" in error for error in errors))
-            self.assertFalse(any("unreachable" in error for error in errors))
+        for layer in ("Vegas.Graph", "Vegas.Pending", "Vegas.Game", "Vegas.Expr", "Vegas.Language"):
+            with self.subTest(layer=layer), tempfile.TemporaryDirectory() as directory:
+                root = self.fixture(directory, {
+                    "Vegas": f"import {layer}", layer: "",
+                    f"{layer}.Adapter": "", "VegasTests": f"import {layer}.Adapter",
+                })
+                errors = CHECKER.check(root)
+                self.assertTrue(any(f"absent from {layer} aggregator" in error for error in errors))
+                self.assertFalse(any("unreachable" in error for error in errors))
 
     def test_all_default_targets_are_followed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory, {
-                "Vegas": "", "VegasEVM": "import Vegas", "VegasTests": "import VegasEVM",
-                "Paper": "import VegasTests Paper.General", "Paper.General": "import Vegas",
+                "Vegas": "", "VegasTests": "import Vegas",
+                "Paper": "import Vegas Paper.Extra", "Paper.Extra": "import Vegas",
             })
             self.assertEqual(CHECKER.check(root), [])
 
     def test_overlapping_libraries_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = self.fixture(directory, {"Vegas": "import Vegas.Core", "Vegas.Core": ""},
-                                '[[lean_lib]]\nname = "Duplicate"\nroots = ["Vegas.Core"]\n')
+            root = self.fixture(directory, {"Vegas": "import Vegas.Foundation", "Vegas.Foundation": ""},
+                                '[[lean_lib]]\nname = "Duplicate"\nroots = ["Vegas.Foundation"]\n')
             self.assertTrue(any("belongs to both" in error for error in CHECKER.check(root)))
 
     def test_two_layer_cycle_reports_import_witnesses(self):
@@ -191,15 +220,15 @@ class ModuleBoundaryTests(unittest.TestCase):
     def test_three_module_cycle_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory, {
-                "Vegas": "import Vegas.Core.A",
-                "Vegas.Core.A": "import Vegas.Core.B",
-                "Vegas.Core.B": "import Vegas.Core.C",
-                "Vegas.Core.C": "import Vegas.Core.A",
+                "Vegas": "import Vegas.Foundation.A",
+                "Vegas.Foundation.A": "import Vegas.Foundation.B",
+                "Vegas.Foundation.B": "import Vegas.Foundation.C",
+                "Vegas.Foundation.C": "import Vegas.Foundation.A",
             })
             errors = CHECKER.check(root)
             report = next(error for error in errors if "local module import cycle" in error)
-            self.assertIn("Vegas.Core.A imports Vegas.Core.B", report)
-            self.assertIn("Vegas.Core.C imports Vegas.Core.A", report)
+            self.assertIn("Vegas.Foundation.A imports Vegas.Foundation.B", report)
+            self.assertIn("Vegas.Foundation.C imports Vegas.Foundation.A", report)
 
     def test_acyclic_diamond_is_accepted(self):
         with tempfile.TemporaryDirectory() as directory:

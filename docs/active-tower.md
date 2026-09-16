@@ -25,7 +25,7 @@ action-domain, failure-dominance, or universal guard-feasibility premise. See
 ## Typed graph to pending messages
 
 `Vegas.GraphRuntime` is the concrete target. Its state and policies use
-the generic `Interaction.MessageApplication`; graph modules prove binding and
+the generic `Interaction.MessageApplication`; `Vegas.Pending` modules prove binding and
 opening soundness, history provenance, replay locality, service protection,
 progress, honest continuation laws, and unilateral deviation extraction.
 

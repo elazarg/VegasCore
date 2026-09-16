@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.GraphSetup
-import Vegas.Core.ExprSimple
+import Vegas.Expr.Simple
 
 /-! # A shared-policy private setup regression -/
 

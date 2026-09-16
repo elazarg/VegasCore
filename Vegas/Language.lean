@@ -7,4 +7,4 @@ Authors: VegasCore contributors
 import Vegas.Language.Nullable
 import Vegas.Language.ToCore
 
-/-! Surface syntax, nullable-guard facts, and typed lowering to `VegasCore`. -/
+/-! Surface syntax, nullable-guard facts, and typed lowering to `SurfaceCore`. -/

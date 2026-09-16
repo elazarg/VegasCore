@@ -49,19 +49,19 @@ class DocReferenceTests(unittest.TestCase):
     def test_tracked_markdown_rejects_nonexistent_exact_project_path(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "Vegas/Scheduled").mkdir(parents=True)
-            (root / "Vegas/Scheduled/Compiled.lean").write_text(
-                "namespace EventGraph\nend EventGraph\n", encoding="utf-8"
+            (root / "Vegas/Pending").mkdir(parents=True)
+            (root / "Vegas/Pending/Application.lean").write_text(
+                "namespace Vegas.GraphRuntime\nend Vegas.GraphRuntime\n", encoding="utf-8"
             )
             (root / "README.md").write_text(
-                "See `Vegas/Scheduled/EventGraph.lean`.", encoding="utf-8"
+                "See `Vegas/Pending/GraphRuntime.lean`.", encoding="utf-8"
             )
             subprocess.run(["git", "init", "-q", str(root)], check=True)
             subprocess.run(["git", "-C", str(root), "add", "README.md"], check=True)
             result = subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
                                     capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("missing local file `Vegas/Scheduled/EventGraph.lean`", result.stdout)
+        self.assertIn("missing local file `Vegas/Pending/GraphRuntime.lean`", result.stdout)
 
     def test_relative_markdown_links_resolve_from_source_directory(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -85,7 +85,7 @@ class DocReferenceTests(unittest.TestCase):
             root = Path(directory)
             (root / "README.md").write_text("No local paths.", encoding="utf-8")
             (root / "notes.md").write_text(
-                "See `Vegas/Scheduled/DoesNotExist.lean`.", encoding="utf-8"
+                "See `Vegas/Pending/DoesNotExist.lean`.", encoding="utf-8"
             )
             subprocess.run(["git", "init", "-q", str(root)], check=True)
             subprocess.run(["git", "-C", str(root), "add", "README.md"], check=True)

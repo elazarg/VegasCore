@@ -1,0 +1,293 @@
+/-
+Copyright (c) 2026 VegasCore contributors. All rights reserved.
+Released under MIT license as described in the file LICENSE.
+Authors: VegasCore contributors
+-/
+
+import Vegas.Language.Core
+
+/-!
+# Surface-core side conditions
+
+Freshness, reveal completeness, and guard feasibility for the surface-language
+prototype. These predicates are separate from `SourceProgram`'s checked semantics.
+-/
+
+namespace Vegas
+
+def Fresh {P : Type} {L : Vegas.IExpr}
+    (x : VarId) (Γ : Vegas.VCtx P L) : Prop :=
+  x ∉ Γ.map Prod.fst
+
+def WFCtx {P : Type} {L : Vegas.IExpr}
+    (Γ : Vegas.VCtx P L) : Prop :=
+  (Γ.map Prod.fst).Nodup
+
+instance {P : Type} {L : Vegas.IExpr} {x : VarId}
+    {Γ : Vegas.VCtx P L} : Decidable (Fresh x Γ) :=
+  inferInstanceAs (Decidable (x ∉ _))
+
+def FreshBindings {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+:
+    {Γ : Vegas.VCtx P L} → Vegas.SurfaceCore P L Γ → Prop
+  | _, .ret _ => True
+  | Γ, .sample x _ k => Fresh x Γ ∧ FreshBindings k
+  | Γ, .commit x _ _ k => Fresh x Γ ∧ FreshBindings k
+  | Γ, .reveal y _ _ _ k => Fresh y Γ ∧ FreshBindings k
+
+def decidableFreshBindings {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+:
+    {Γ : Vegas.VCtx P L} → (p : Vegas.SurfaceCore P L Γ) → Decidable (FreshBindings p)
+  | _, .ret _ => .isTrue trivial
+  | _, .sample _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableFreshBindings k)
+  | _, .commit _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableFreshBindings k)
+  | _, .reveal _ _ _ _ k => @instDecidableAnd _ _ (inferInstance) (decidableFreshBindings k)
+
+instance {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+    {Γ : Vegas.VCtx P L} {p : Vegas.SurfaceCore P L Γ} :
+    Decidable (FreshBindings p) := decidableFreshBindings p
+
+/-- Names of sealed bindings already present when a program starts.  These
+bindings obey the same eventual-opening discipline as values introduced by a
+`commit` site. -/
+def SealedVars {P : Type} {L : Vegas.IExpr} :
+    Vegas.VCtx P L → List VarId
+  | [] => []
+  | (_name, ⟨_, .pub⟩) :: tail => SealedVars tail
+  | (name, ⟨_, .sealed _⟩) :: tail => name :: SealedVars tail
+
+/-- Every pending secret and every newly committed secret is revealed exactly
+once. `pending` includes sealed inputs already present in the initial context
+and is extended by commit variables awaiting revelation. -/
+def RevealComplete {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+:
+    {Γ : Vegas.VCtx P L} → List VarId → Vegas.SurfaceCore P L Γ → Prop
+  | _, pending, .ret _ => pending = []
+  | _, pending, .sample _ _ k => RevealComplete pending k
+  | _, pending, .commit x _ _ k => RevealComplete (x :: pending) k
+  | _, pending, .reveal _ _ x _ k =>
+    x ∈ pending ∧ RevealComplete (pending.filter (· ≠ x)) k
+
+/-- Source variables introduced by commit sites. -/
+def CommittedVars {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr} :
+    {Γ : Vegas.VCtx P L} → Vegas.SurfaceCore P L Γ → List VarId
+  | _, .ret _ => []
+  | _, .sample _ _ k => CommittedVars k
+  | _, .commit x _ _ k => x :: CommittedVars k
+  | _, .reveal _ _ _ _ k => CommittedVars k
+
+/-- Source variables opened by reveal sites. -/
+def RevealedSources {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr} :
+    {Γ : Vegas.VCtx P L} → Vegas.SurfaceCore P L Γ → List VarId
+  | _, .ret _ => []
+  | _, .sample _ _ k => RevealedSources k
+  | _, .commit _ _ _ k => RevealedSources k
+  | _, .reveal _ _ x _ k => x :: RevealedSources k
+
+/-- Reveal completeness means every pending or later committed source variable
+is opened by some later reveal site. -/
+theorem RevealComplete.pending_or_committed_revealed
+    {P : Type} [DecidableEq P] {L : Vegas.IExpr} :
+    {Γ : Vegas.VCtx P L} → {pending : List VarId} →
+      (p : Vegas.SurfaceCore P L Γ) →
+      RevealComplete pending p →
+      ∀ x, x ∈ pending ++ CommittedVars p → x ∈ RevealedSources p
+  | _, pending, .ret _payoffs, hcomplete, x, hx => by
+      have hxPending : x ∈ pending := by
+        simpa only [CommittedVars, List.append_nil] using hx
+      rw [hcomplete] at hxPending
+      simp at hxPending
+  | _, pending, .sample _ _ tail, hcomplete, x, hx => by
+      exact
+        RevealComplete.pending_or_committed_revealed
+          tail hcomplete x (by simpa [CommittedVars] using hx)
+  | _, pending, .commit name _ _ tail, hcomplete, x, hx => by
+      have hxShape :
+          x ∈ pending ∨ x = name ∨ x ∈ CommittedVars tail := by
+        simpa only [CommittedVars, List.mem_append, List.mem_cons] using hx
+      have hx' :
+          x = name ∨ x ∈ pending ∨ x ∈ CommittedVars tail := by
+        rcases hxShape with hpending | hname | hcommitted
+        · exact Or.inr (Or.inl hpending)
+        · exact Or.inl hname
+        · exact Or.inr (Or.inr hcommitted)
+      exact
+        RevealComplete.pending_or_committed_revealed
+          tail hcomplete x
+          (by simpa [CommittedVars, List.mem_append] using hx')
+  | _, pending, .reveal _ _ source _ tail, hcomplete, x, hx => by
+      rcases hcomplete with ⟨_hsource, htail⟩
+      by_cases hxs : x = source
+      · simp [RevealedSources, hxs]
+      · right
+        apply
+          RevealComplete.pending_or_committed_revealed
+            tail htail x
+        simpa [CommittedVars, List.mem_append, hxs] using hx
+
+/-- Reveal completeness opens every source variable committed by the program,
+independently of which sealed inputs were already pending. -/
+theorem RevealComplete.committed_revealed
+    {P : Type} [DecidableEq P] {L : Vegas.IExpr}
+    {Γ : Vegas.VCtx P L} {pending : List VarId}
+    {p : Vegas.SurfaceCore P L Γ}
+    (hcomplete : RevealComplete pending p) :
+    ∀ x, x ∈ CommittedVars p → x ∈ RevealedSources p := by
+  intro x hx
+  exact
+    RevealComplete.pending_or_committed_revealed
+      p hcomplete x (by simp [hx])
+
+/-- Reveal completeness also opens every secret that was pending when program
+execution began. -/
+theorem RevealComplete.pending_revealed
+    {P : Type} [DecidableEq P] {L : Vegas.IExpr}
+    {Γ : Vegas.VCtx P L} {pending : List VarId}
+    {p : Vegas.SurfaceCore P L Γ}
+    (hcomplete : RevealComplete pending p) :
+    ∀ x, x ∈ pending → x ∈ RevealedSources p := by
+  intro x hx
+  exact
+    RevealComplete.pending_or_committed_revealed
+      p hcomplete x (by simp [hx])
+
+instance : DecidableEq VarId := inferInstanceAs (DecidableEq Nat)
+
+def decidableRevealComplete {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+:
+    {Γ : Vegas.VCtx P L} →
+    (pending : List VarId) → (p : Vegas.SurfaceCore P L Γ) →
+    Decidable (RevealComplete pending p)
+  | _, _, .ret _ => inferInstanceAs (Decidable (_ = []))
+  | _, pending, .sample _ _ k => decidableRevealComplete pending k
+  | _, pending, .commit x _ _ k => decidableRevealComplete (x :: pending) k
+  | _, pending, .reveal _ _ x _ k =>
+    @instDecidableAnd _ _ (inferInstance) (decidableRevealComplete (pending.filter (· ≠ x)) k)
+
+instance {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+    {pending : List VarId} {Γ : Vegas.VCtx P L} {p : Vegas.SurfaceCore P L Γ} :
+    Decidable (RevealComplete pending p) := decidableRevealComplete pending p
+
+@[simp] theorem WFCtx_nil {P : Type} {L : IExpr} :
+    WFCtx (L := L) (P := P) [] := List.nodup_nil
+
+theorem WFCtx.cons {P : Type} {L : IExpr}
+    {x : VarId} {τ : BindTy P L} {Γ : VCtx P L}
+    (hfresh : Fresh x Γ) (hwf : WFCtx Γ) :
+    WFCtx ((x, τ) :: Γ) := by
+  change (((x, τ) :: Γ).map Prod.fst).Nodup
+  exact List.Nodup.cons hfresh hwf
+
+theorem WFCtx.tail {P : Type} {L : IExpr}
+    {x : VarId} {τ : BindTy P L} {Γ : VCtx P L} :
+    WFCtx ((x, τ) :: Γ) → WFCtx Γ := by
+  intro h; exact (List.nodup_cons.mp h).2
+
+theorem WFCtx.fresh_head {P : Type} {L : IExpr}
+    {x : VarId} {τ : BindTy P L} {Γ : VCtx P L} :
+    WFCtx ((x, τ) :: Γ) → Fresh x Γ := by
+  intro h; exact (List.nodup_cons.mp h).1
+
+theorem Fresh_viewVCtx {P : Type} [DecidableEq P] {L : IExpr}
+    {x : VarId} {p : P} {Γ : VCtx P L}
+    (hfresh : Fresh x Γ) : Fresh x (viewVCtx p Γ) :=
+  fun hmem => hfresh (viewVCtx_map_fst_sub hmem)
+
+theorem WFCtx.viewVCtx {P : Type} [DecidableEq P] {L : IExpr}
+    {p : P} {Γ : VCtx P L}
+    (hctx : WFCtx Γ) : WFCtx (viewVCtx p Γ) := by
+  induction Γ generalizing p with
+  | nil => exact WFCtx_nil
+  | cons hd tl ih =>
+      obtain ⟨x, τ⟩ := hd
+      have hfresh : Fresh x tl := WFCtx.fresh_head hctx
+      have htail : WFCtx tl := WFCtx.tail hctx
+      cases hsee : canSee p τ with
+      | false =>
+          change WFCtx (if canSee p τ then (x, τ) :: Vegas.viewVCtx p tl else Vegas.viewVCtx p tl)
+          rw [hsee]
+          exact ih (p := p) htail
+      | true =>
+          change WFCtx (if canSee p τ then (x, τ) :: Vegas.viewVCtx p tl else Vegas.viewVCtx p tl)
+          rw [hsee]
+          exact WFCtx.cons (Fresh_viewVCtx (p := p) hfresh) (ih (p := p) htail)
+
+theorem pubVCtx_map_fst_sub {P : Type} {L : IExpr}
+    {Γ : VCtx P L} {x : VarId} :
+    x ∈ (pubVCtx Γ).map Prod.fst → x ∈ Γ.map Prod.fst := by
+  induction Γ with
+  | nil =>
+      intro hx
+      simp [pubVCtx] at hx
+  | cons hd tl ih =>
+      intro hx
+      obtain ⟨y, τ⟩ := hd
+      obtain ⟨base, visibility⟩ := τ
+      cases visibility with
+      | pub =>
+          change x ∈ y :: (pubVCtx tl).map Prod.fst at hx
+          change x ∈ y :: tl.map Prod.fst
+          simp only [List.mem_cons] at hx ⊢
+          exact hx.imp id ih
+      | sealed owner =>
+          change x ∈ (pubVCtx tl).map Prod.fst at hx
+          change x ∈ y :: tl.map Prod.fst
+          simp only [List.mem_cons]
+          exact Or.inr (ih hx)
+
+theorem Fresh_pubVCtx {P : Type} {L : IExpr}
+    {x : VarId} {Γ : VCtx P L}
+    (hfresh : Fresh x Γ) : Fresh x (pubVCtx Γ) :=
+  fun hmem => hfresh (pubVCtx_map_fst_sub hmem)
+
+theorem WFCtx.pubSubctx {P : Type} {L : IExpr}
+    {Γ : VCtx P L}
+    (hctx : WFCtx Γ) : WFCtx (pubVCtx Γ) := by
+  induction Γ with
+  | nil => exact WFCtx_nil
+  | cons hd tl ih =>
+      obtain ⟨x, τ⟩ := hd
+      obtain ⟨base, visibility⟩ := τ
+      have hfresh : Fresh x tl := WFCtx.fresh_head hctx
+      have htail : WFCtx tl := WFCtx.tail hctx
+      cases visibility with
+      | pub =>
+          change WFCtx ((x, ⟨base, .pub⟩) :: Vegas.pubVCtx tl)
+          exact WFCtx.cons (Fresh_pubVCtx hfresh) (ih htail)
+      | sealed owner =>
+          change WFCtx (Vegas.pubVCtx tl)
+          exact ih htail
+
+theorem WFCtx.eraseVCtx {P : Type} {L : IExpr}
+    {Γ : VCtx P L}
+    (hctx : WFCtx Γ) : ((eraseVCtx Γ).map Prod.fst).Nodup := by
+  rw [eraseVCtx_map_fst]
+  exact hctx
+
+theorem WFCtx.erasePubVCtx {P : Type} {L : IExpr}
+    {Γ : VCtx P L}
+    (hctx : WFCtx Γ) : ((erasePubVCtx Γ).map Prod.fst).Nodup := by
+  rw [← eraseVCtx_pubVCtx, eraseVCtx_map_fst]
+  exact WFCtx.pubSubctx hctx
+
+def Legal {P : Type} [DecidableEq P]
+    {L : Vegas.IExpr}
+:
+    {Γ : Vegas.VCtx P L} → Vegas.SurfaceCore P L Γ → Prop
+  | _, .ret _ => True
+  | _, .sample _ _ k => Legal k
+  | Γ, .commit _ who (b := b) R k =>
+    (∀ env : Env L.Val (Vegas.eraseVCtx (viewVCtx who Γ)),
+        ∃ a : L.Val b, Vegas.evalGuard (Player := P) (L := L) R a env = true) ∧
+    Legal k
+  | _, .reveal _ _ _ _ k => Legal k
+
+end Vegas

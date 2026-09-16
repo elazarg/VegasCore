@@ -3,9 +3,9 @@
 import Vegas.Compile.GraphSetup
 import Vegas.Game.GraphSetup
 import Vegas.Compile.GraphBindingDiscipline
-import Vegas.Graph.MessageHonestLaw
-import Vegas.Graph.MessageServiceTermination
-import Vegas.Graph.MessageDeviationMixture
+import Vegas.Pending.HonestLaw
+import Vegas.Pending.ServiceTermination
+import Vegas.Pending.DeviationMixture
 import GameTheoryExtensions.Core.UtilitySimulation
 
 /-! # The source compiler's serviced pending-message target

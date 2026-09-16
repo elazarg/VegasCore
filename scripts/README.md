@@ -3,9 +3,11 @@
 Run these tools from the repository root.
 
 - `python scripts/check-module-boundaries.py` checks local import resolution,
-  default-build reachability, complete game/runtime aggregators, cycles in the
-  module and sibling-directory dependency graphs, and the
-  interaction/core/backend/test/audit dependency directions. Cycle reports include witness
+  default-build reachability, complete directory aggregators, cycles in the
+  module and sibling-directory dependency graphs, and the semantic layer
+  contracts. Graph semantics are independent of the pending backend; the backend
+  is independent of source/compiler modules; shared expressions and the verified
+  tower are independent of the surface prototype. Cycle reports include witness
   imports; acyclicity supplements rather than replaces the direction rules.
   Every tracked Lean source belongs to a configured library; production
   libraries may not import test libraries.

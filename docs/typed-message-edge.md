@@ -82,22 +82,22 @@ an additional injectivity or representation-coherence assumption.
 
 ## Prescribed policies and observations
 
-`MessagePolicies` implements the policy translation below. `MessagePolicyLaws`
+`Vegas.Pending.Policies` implements the policy translation below. `Vegas.Pending.PolicyLaws`
 connects the actual command kernels to graph choices and checks uniform failed
-disclosure. `MessageServiceLaw` factors a fresh bind or resolve invocation
+disclosure. `Vegas.Pending.ServiceLaw` factors a fresh bind or resolve invocation
 through its graph kernel with an arbitrary remaining native schedule and
-environment. `MessageBindingLaw` and
-`MessageResolutionLaw` compose prescribed submission with reserved inclusion
+environment. `Vegas.Pending.BindingLaw` and
+`Vegas.Pending.ResolutionLaw` compose prescribed submission with reserved inclusion
 through the actual shared runner. Resolution installs the graph's accepted
 result for both logical Booleans, including guard rejection; only successful
 publication requires an opening witness. `State.initial_binding` constructs
 that witness for every sealed initial field under name uniqueness.
-`MessageBindingProvenance` preserves origin-indexed field/handle association
+`Vegas.Pending.BindingProvenance` preserves origin-indexed field/handle association
 through arbitrary native policy execution, including failed binds and clock
 expiry. `State.resolveSource_verified` derives the exact owner-correct verifier
 for a successful resolution at a disciplined graph cursor; the local
 submission law consumes this invariant instead of assuming an opening witness.
-`MessageVerification` separately proves that once an opening verifies, every
+`Vegas.Pending.Verification` separately proves that once an opening verifies, every
 supported policy-driven continuation preserves that exact verifier.
 
 This is a strategy translation used to compare games. The contract does not
@@ -124,11 +124,11 @@ Compiler-private memory records the selected bind choice even when it is
 failure, and records the logical resolve Boolean. In particular,
 `disclose = true` followed by guard rejection is distinguishable from
 `disclose = false` at later decisions although both public fields are failure.
-`MessageHistoryExtension` proves the whole original-graph scan's extension
+`Vegas.Pending.HistoryExtension` proves the whole original-graph scan's extension
 laws for bind, resolve, and sample, and its invariance under fresh immutable
 field extension. Appending a marker at the current phase leaves the earlier
 logical history unchanged.
-In `MessagePhaseFrame`, `runPolicies_projectLogicalHistory_before` lifts that
+In `Vegas.Pending.PhaseFrame`, `runPolicies_projectLogicalHistory_before` lifts that
 fact to arbitrary native policy runs: newly recorded commands cannot change the
 history scan of already passed sites, for a fixed observation. Its companion
 `runPolicies_running_eq_of_phase_eq` proves that a run remaining at one phase
@@ -175,11 +175,11 @@ invocations before submission. The local kernel and submission laws, initialized
 provenance invariants, and whole-run honest law are checked. Observation-local
 extraction of arbitrary native deviations is checked by the replay-locality and
 effective-action construction described below.
-`MessagePolicyCommands` proves that every supported compiled command is
+`Vegas.Pending.PolicyCommands` proves that every supported compiled command is
 addressed to the active phase, never malformed or replayed. Once a submission
 is recorded for that phase, the policy waits while it remains active. These
 restrictions concern unchanged compiled players; deviations remain unrestricted.
-In `MessagePreparationInvariant`, `runPolicies_initial_preparationInvariant`
+In `Vegas.Pending.PreparationInvariant`, `runPolicies_initial_preparationInvariant`
 derives exact agreement between one compiled player's preparation history and
 its candidate catalog from the actual empty-pool initialization. Other player
 and environment policies are arbitrary. The invariant combines authenticated
@@ -188,7 +188,7 @@ own commitment follows a preparation. It rules out acceptance of a still-fresh
 canonical handle of that player; already prepared handles retain their value
 through acceptance. No candidate/history agreement is assumed for the initial
 run, and arbitrary deviators are not required to follow this invariant.
-`MessagePolicyFreshness` derives the corresponding own-history invariant from
+`Vegas.Pending.PolicyFreshness` derives the corresponding own-history invariant from
 the actual initial execution and preserves it through the shared runner with
 arbitrary opponents and environment. All recorded phases are at most the
 current phase, and the three compiler caches are empty at strictly future
@@ -197,7 +197,7 @@ decision histories.
 
 ## Concrete bounded service
 
-`MessageService` expands the fixed graph into a list of invocations for the
+`Vegas.Pending.Service` expands the fixed graph into a list of invocations for the
 shared runner. Each binding or disclosure phase gives its owner two calls,
 then a parameterized number of wire/reaction rounds, a reserved inclusion of
 the owner's latest pending submission, and `max 1 (deadline phase)` expiry
@@ -214,7 +214,7 @@ additional application ticks. Player commands at reaction slots are unrestricted
 Early wire inclusion can advance the application into a later graph phase
 before the current service block has finished. The proof must therefore allow
 the runtime to be ahead of the planned phase, rather than treating every
-reaction as a stutter. `MessageServiceCursor` proves that the environment's
+reaction as a stutter. `Vegas.Pending.ServiceCursor` proves that the environment's
 actual history selects the intended slot after any supported invocation prefix.
 Reserved inclusion selects the newest allocated identifier if it is still
 pending, not an arbitrary older pending message. The unchanged player's
@@ -225,7 +225,7 @@ protects its prescribed packet.
 authenticated submission history and is preserved from the empty initial
 pool through arbitrary policies. In particular, a pending envelope's exact
 identifier looks up that same envelope, even when replay produces duplicates.
-`MessageServiceProtection` uses this invariant, exact envelope retention,
+`Vegas.Pending.ServiceProtection` uses this invariant, exact envelope retention,
 and the unchanged sender's counter stability to prove phase advancement at
 reserved inclusion. That statement alone also permits earlier expiry.
 `runPolicies_service_reactions_clock` separately proves that the entire actual
@@ -248,16 +248,16 @@ calls. Clock observation alone does not run a contract. Separating clock
 advancement from progress also requires rejection of openings after their
 deadline even if an expiry call has not yet been included.
 
-`MessageProgress` proves a finite tick budget for every graph and its decrease
-through arbitrary native actions. `MessageServiceTermination` uses the actual
+`Vegas.Pending.Progress` proves a finite tick budget for every graph and its decrease
+through arbitrary native actions. `Vegas.Pending.ServiceTermination` uses the actual
 environment cursor and phase-gated expiry blocks to prove that every supported
 play of the concrete service terminates, with arbitrary player and wire
 policies. The typed suffix invariant allows early inclusion to advance past
 planned phases. This theorem composes to `Setup.pendingGame_complete` for the
 actual source compiler's target, including its finite private initial law.
 It establishes completion independently of timely inclusion.
-`MessageHonestServiceSafety` separately proves that each prescribed owner block
-advances before its expiry slots. `MessageServiceSafety` lifts this fact through
+`Vegas.Pending.HonestServiceSafety` separately proves that each prescribed owner block
+advances before its expiry slots. `Vegas.Pending.ServiceSafety` lifts this fact through
 the full graph, including executions already ahead of the nominal service phase.
 
 ## Private initial setup
@@ -367,7 +367,7 @@ is the ordinary continuation at the next graph node. This is equivalent to a
 coupling whose graph side may be one step ahead while a prescribed submission
 awaits inclusion.
 
-`MessageContinuation` defines this residual `continuation` law over a typed
+`Vegas.Pending.Continuation` defines this residual `continuation` law over a typed
 graph suffix, explicit logical histories, and cached runtime commands. The
 checked `continuation_empty_eq_runWith` identifies it with graph execution
 when caches are empty, including arbitrary starting logical histories and
@@ -377,7 +377,7 @@ with the graph kernel averaged over continuations containing the recorded
 prepare or disclosure command. This evaluator is proof data; it adds neither
 a game nor an operational interpreter to the compilation tower.
 
-In `MessageContinuationPolicy`, `continuation_compiled_player_invoke` proves
+In `Vegas.Pending.ContinuationPolicy`, `continuation_compiled_player_invoke` proves
 the expectation identity for every actual
 compiled player invocation at a typed prefix of the original graph. Fresh
 bind and resolve decisions sample the graph kernel. Previously sampled
@@ -387,7 +387,7 @@ history, without an abstract policy-kernel premise. Only the invoked player
 must use its compiled policy. This covers player invocations, not the complete
 interval through packet acceptance and expiry service.
 
-`MessageContinuationAt` evaluates that same residual law using the actual
+`Vegas.Pending.ContinuationAt` evaluates that same residual law using the actual
 native state and a `State.Follows` witness. Typed-prefix uniqueness removes any
 dependence on the chosen witness. The domain excludes off-graph states; this
 definition introduces no runtime state or operational interpreter.
@@ -404,18 +404,18 @@ typed continuation has no cached choice. The disclosure case uses the actual
 emitting checkpoint and its persistent verifier. Sample and terminal cursors
 reject all application messages, so wire traffic changes only transport state.
 The shared accepted-handler rule handles delivery, rejection, and inclusion
-once for these cases. `MessageContinuationClock` treats actual public chance
+once for these cases. `Vegas.Pending.ContinuationClock` treats actual public chance
 ticks with their probability law and proves the waiting case separately.
-`MessageContinuationService` transports the same wire law to the actual
+`Vegas.Pending.ContinuationService` transports the same wire law to the actual
 reserved `includeLatest` slot by equality of the current environment kernels,
 retaining the full plan and the actual environment-history cursor.
 
-`MessageServiceSafety` proves the expiry premise for every reached prefix of
+`Vegas.Pending.ServiceSafety` proves the expiry premise for every reached prefix of
 the actual plan. A matching expiry can therefore execute only at a chance node;
 prescribed bind and resolve blocks have already advanced. The generic
 `runPolicies_map_bindOnSupport_conservation` composes the local equations along
 labelled invocation opportunities without giving a residual value to an
-off-invariant state. `MessageHonestLaw` combines this identity with the initial
+off-invariant state. `Vegas.Pending.HonestLaw` combines this identity with the initial
 and terminal continuation laws to obtain exact whole-run honest preservation.
 
 Packet acceptance has a separate origin obligation. For an actual run from
@@ -479,7 +479,7 @@ protection input; they are not whole-run probability or deviation theorems.
 Typed prefix restriction composes via `policyTail_trans` and
 `profileTail_trans`. Prefix witnesses at a fixed typed cursor are subsingleton,
 so choosing a witness recovered from an operational invariant cannot change
-the residual policy. `MessageContinuationStep` uses these composed witnesses
+the residual policy. `Vegas.Pending.ContinuationStep` uses these composed witnesses
 and the full original-graph history scan at each bind, resolve, and sample
 successor. These are the transition equations required by the induction,
 not a substitute for its service-protection premise.
@@ -538,7 +538,7 @@ Every first phase-changing bind step fixes a legal graph value or failure;
 every such resolve step realizes a legal graph disclosure decision.
 `State.BindingSoundness` supplies the verification-to-immutable-value direction
 for arbitrary senders, including bindings whose materialized value is failure.
-`MessageObservation` proves that private preparation leaves other players'
+`Vegas.Pending.Observation` proves that private preparation leaves other players'
 views unchanged and that commitment admission reveals no foreign sealed value.
 These local laws do not by themselves establish the whole-prefix two-run
 invariant; the replay-locality induction supplies that composition.

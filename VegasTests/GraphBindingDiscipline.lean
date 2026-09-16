@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.GraphBindingDiscipline
-import Vegas.Core.ExprSimple
+import Vegas.Expr.Simple
 import VegasTests.SourceSetup
 
 /-! # Binding payload discipline regressions -/

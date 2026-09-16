@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Graph.MessagePolicyLaws
+import Vegas.Pending.PolicyLaws
 import VegasTests.SourceSemantics
 
 /-! # Executable checks for graph message policy projection -/

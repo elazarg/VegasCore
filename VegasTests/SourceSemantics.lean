@@ -5,7 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Source.Semantics
-import Vegas.Core.ExprSimple
+import Vegas.Expr.Simple
 import Vegas.Game.GraphCompilation
 
 /-! Mixed examples for the revised source language.

@@ -67,6 +67,6 @@ observation correspondence. See [typed-message edge](typed-message-edge.md),
 [deviation extraction](pending-deviation-extraction.md), and the
 [road ahead](a-road-ahead.md).
 
-The `Vegas.Language` surface-syntax prototype lowers to an internal `VegasCore`
+The `Vegas.Language` surface-syntax prototype lowers to an internal `SurfaceCore`
 representation. A verified elaboration to `SourceProgram` is a separate edge;
 the prototype's typed lowering alone has no operational or strategic guarantee.

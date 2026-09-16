@@ -23,9 +23,9 @@ import re
 import subprocess
 import sys
 
-ROOTS_DEFINING = ("GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction", "InteractionTests", "Vegas", "VegasEVM",
+ROOTS_DEFINING = ("GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction", "InteractionTests", "Vegas",
                   "Paper", "GameTheory/GameTheory")
-ROOTS_CITING = ("GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction", "InteractionTests", "Vegas", "VegasEVM", "Paper")
+ROOTS_CITING = ("GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction", "InteractionTests", "Vegas", "Paper")
 
 # Lean tactics and attributes that look like our identifiers but are not
 # declarations we can index.
@@ -51,7 +51,7 @@ CONSTRUCTOR = re.compile(
     r"^\s*\|\s*([A-Za-z_][A-Za-z0-9_']*)(?:\s*(?::|\(|\{)|\s*$)"
 )
 PROJECT_PATH = re.compile(
-    r"`((?:GameTheoryExtensions|GameTheoryExtensionsTests|Interaction|InteractionTests|Vegas|VegasEVM|VegasTests|Paper)"
+    r"`((?:GameTheoryExtensions|GameTheoryExtensionsTests|Interaction|InteractionTests|Vegas|VegasTests|Paper)"
     r"(?:/[A-Za-z0-9_.-]+)*\.lean)(?::\d+)?`"
 )
 MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")

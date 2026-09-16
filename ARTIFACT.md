@@ -24,7 +24,7 @@ the subsequent kernel-checked build.
 | Source execution and safety | `Vegas/Source/` |
 | Source to typed graph | `Vegas/Compile/Graph*.lean`, `Vegas/Game/GraphCompilation.lean` |
 | Private setup transport | `Vegas/Game/GraphSetup.lean` |
-| Pending-message runtime and service | `Interaction/MessageApplication*.lean`, `Vegas/Graph/Message*.lean` |
+| Pending-message runtime and service | `Interaction/MessageApplication*.lean`, `Vegas/Pending/` |
 | End-to-end completion, honest law, deviations, arbitrary observations, Nash | `Vegas/Game/GraphMessages.lean` |
 | Generic simulation and equilibrium transport | `GameTheoryExtensions/` |
 | Paper-visible theorem selection and axiom pins | `Paper.lean` |
@@ -45,7 +45,7 @@ relative deadlines, reserved inclusion, and bounded reaction slots are part of
 the proved target model. The artifact establishes neither computational
 cryptography nor an EVM/ledger implementation.
 
-`Vegas.Language` is a surface-syntax prototype with an internal `VegasCore`
+`Vegas.Language` is a surface-syntax prototype with an internal `SurfaceCore`
 elaboration target. Its connection to `SourceProgram` is not proved; it is
 outside the active strategic tower.
 

@@ -9,10 +9,10 @@ import Vegas.Language.Basic
 /-!
 # Surface-to-core lowering
 
-This module implements the intrinsically typed `VegasLang -> VegasCore`
-translation. Constructing its result establishes core typing. It does not
-construct `WFProgram`, prove the additional well-formedness obligations used by
-that admission boundary, or establish operational or strategic preservation.
+This module implements the intrinsically typed `VegasLang -> SurfaceCore`
+translation. Constructing its result establishes typing of the surface core.
+It does not construct a checked `SourceProgram` or establish operational or
+strategic preservation into that source language.
 -/
 
 namespace Vegas
@@ -120,7 +120,7 @@ end LowerEnv
 
 /-- Lower surface syntax to core syntax, substituting administrative lets. -/
 def lowerWith : {Γ Δ : VCtx P simpleExpr} → LowerEnv P Γ Δ →
-    VegasLang P Γ → VegasCore P simpleExpr Δ
+    VegasLang P Γ → SurfaceCore P simpleExpr Δ
   | _, _, env, .ret payoffs =>
       .ret (payoffs.map fun payoff => (payoff.1, env.expr payoff.2))
   | _, _, env, .letExpr x e k => lowerWith (env.aliasPublic x (env.expr e)) k
@@ -138,7 +138,7 @@ def lowerWith : {Γ Δ : VCtx P simpleExpr} → LowerEnv P Γ Δ →
 
 /-- Lower surface Vegas to an intrinsically typed core term. -/
 def lower {Γ : VCtx P simpleExpr} (p : VegasLang P Γ) :
-    VegasCore P simpleExpr Γ :=
+    SurfaceCore P simpleExpr Γ :=
   lowerWith (LowerEnv.id Γ) p
 
 end VegasLang

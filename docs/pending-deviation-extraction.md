@@ -135,7 +135,7 @@ At phase `k`, the replay relation gives equality of the focal policy's complete
 native input, not merely its graph projection. Determinism gives the same native
 response sequence through the first actual phase change, and the extraction
 lemmas turn that transition into the same effective graph action.
-`MessageDeviationActionLocality` packages this replay as
+`Vegas.Pending.DeviationActionLocality` packages this replay as
 `servicePlan_reachedOwnAction_locality_pure`. If two reached actions occur at
 unequal schedule indices, phase monotonicity and endpoint ownership force the
 earlier run to advance before the later focal-owned endpoint, contradicting the

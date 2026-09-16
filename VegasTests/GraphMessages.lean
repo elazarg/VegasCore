@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import VegasTests.SourceSemantics
-import Vegas.Graph.MessageApplication
+import Vegas.Pending.Application
 
 /-! # Typed graph execution through the shared message transport -/
 
