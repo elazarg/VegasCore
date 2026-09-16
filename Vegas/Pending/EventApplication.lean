@@ -87,6 +87,8 @@ structure State (graph : Vegas.EventGraph Player L) where
   remembered : RememberedActions graph
   clock : Nat
   activatedAt : graph.EventId → Option Nat
+  /-- Public service request; it does not restrict packet submission or acceptance. -/
+  serviceGrant : Option graph.EventId
 
 /-- Public application projection. Candidate meanings, hidden binding values,
 and remembered actions are absent. -/
@@ -95,11 +97,13 @@ structure PublicView (graph : Vegas.EventGraph Player L) where
   accepted : AcceptedHandles graph
   clock : Nat
   activatedAt : graph.EventId → Option Nat
+  serviceGrant : Option graph.EventId
 
 /-- Authenticated player projection. Unfinished remembered choices and this
 player's candidate catalogue are private additions to `playerObserve`. -/
 structure PlayerView (graph : Vegas.EventGraph Player L) where
   who : Player
+  publicView : PublicView graph
   observation : graph.PlayerObservation who
   remembered : (event : graph.EventId) → Option (graph.Action event)
   candidates : CandidateSlot graph → CommitmentCandidate (Raw L)
@@ -132,9 +136,19 @@ inductive PrivateCommand (graph : Vegas.EventGraph Player L) where
 /-- Public environment operations are separate: clocks do not automatically
 sample or expire events. Expiry tests the current clock. -/
 inductive EnvironmentCommand (graph : Vegas.EventGraph Player L) where
+  | grant (event : graph.EventId)
   | advanceClock
   | executeSample (event : graph.EventId)
   | expire (event : graph.EventId)
+
+namespace EnvironmentCommand
+
+/-- Number of logical clock ticks contributed by one environment command. -/
+def clockTicks {graph : Vegas.EventGraph Player L} : EnvironmentCommand graph → Nat
+  | .advanceClock => 1
+  | .grant _ | .executeSample _ | .expire _ => 0
+
+end EnvironmentCommand
 
 variable {graph : Vegas.EventGraph Player L}
 
@@ -188,16 +202,19 @@ def initial (inputs : graph.Inputs) : State graph :=
     candidates := initialCandidates inputs
     remembered := fun _ => none
     clock := 0
-    activatedAt := refreshActivated config 0 (fun _ => none) }
+    activatedAt := refreshActivated config 0 (fun _ => none)
+    serviceGrant := none }
 
 def publicView (state : State graph) : PublicView graph where
   observation := graph.publicObserve state.config
   accepted := state.accepted
   clock := state.clock
   activatedAt := state.activatedAt
+  serviceGrant := state.serviceGrant
 
 def playerView (state : State graph) (who : Player) : PlayerView graph where
   who
+  publicView := state.publicView
   observation := graph.playerObserve who state.config
   remembered := fun event =>
     if graph.actor? event = some who then state.remembered event else none
@@ -572,7 +589,9 @@ private theorem handle_commitment_config_step
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
     ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
-      next.config ∈ (state.config.step event ready action).support := by
+      next.config ∈ (state.config.step event ready action).support ∧
+        next.clock = state.clock ∧
+        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt := by
   by_cases ready : state.config.cut.Ready event
   · by_cases timely : state.WithinDeadline runtime event
     · cases view : nodeView graph event with
@@ -591,7 +610,8 @@ private theorem handle_commitment_config_step
               | .openable raw => (raw.as? payload).elim .failure .success
               | .fresh | .unopenable => .failure
             refine ⟨cast (congrArg EventField.Action outputEq.symm) result, ?_⟩
-            exact bind_complete_mem_step state event ready owner payload outputEq codeEq result
+            exact ⟨bind_complete_mem_step state event ready owner payload outputEq codeEq result,
+              rfl, rfl⟩
           · simp_all only [reduceCtorEq]
     · simp [handle, ready, timely] at accepted
   · simp [handle, ready] at accepted
@@ -602,7 +622,9 @@ private theorem handle_opening_config_step
     (raw : Raw L)
     (accepted : handle runtime state ⟨id, .opening event candidate raw⟩ = some next) :
     ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
-      next.config ∈ (state.config.step event ready action).support := by
+      next.config ∈ (state.config.step event ready action).support ∧
+        next.clock = state.clock ∧
+        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt := by
   by_cases ready : state.config.cut.Ready event
   · by_cases timely : state.WithinDeadline runtime event
     · cases view : nodeView graph event with
@@ -633,8 +655,8 @@ private theorem handle_opening_config_step
                       Option.bind_some, Option.some.injEq] at accepted
                     subst next
                     refine ⟨cast (congrArg EventField.Action outputEq.symm) true, ?_⟩
-                    exact resolve_complete_mem_step state event ready owner payload binding
-                      checks outputEq codeEq true result resultEq
+                    exact ⟨resolve_complete_mem_step state event ready owner payload binding
+                      checks outputEq codeEq true result resultEq, rfl, rfl⟩
               · simp [stored] at accepted
           · simp_all only [reduceCtorEq]
     · simp [handle, ready, timely] at accepted
@@ -645,7 +667,9 @@ private theorem handle_withhold_config_step
     (id : MessageId Player) (event : graph.EventId)
     (accepted : handle runtime state ⟨id, .withhold event⟩ = some next) :
     ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
-      next.config ∈ (state.config.step event ready action).support := by
+      next.config ∈ (state.config.step event ready action).support ∧
+        next.clock = state.clock ∧
+        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt := by
   by_cases ready : state.config.cut.Ready event
   · by_cases timely : state.WithinDeadline runtime event
     · cases view : nodeView graph event with
@@ -671,8 +695,8 @@ private theorem handle_withhold_config_step
                   Option.bind_some, Option.some.injEq] at accepted
                 subst next
                 refine ⟨cast (congrArg EventField.Action outputEq.symm) disclose, ?_⟩
-                exact resolve_complete_mem_step state event ready owner payload binding checks
-                  outputEq codeEq disclose result resultEq
+                exact ⟨resolve_complete_mem_step state event ready owner payload binding checks
+                  outputEq codeEq disclose result resultEq, rfl, rfl⟩
           · simp_all only [reduceCtorEq]
     · simp [handle, ready, timely] at accepted
   · simp [handle, ready] at accepted
@@ -690,17 +714,42 @@ theorem handle_config_mem_step (runtime : EventGraphRuntime graph)
   cases packet with
   | malformed raw => simp [handle] at accepted
   | commitment event candidate =>
-      obtain ⟨ready, action, member⟩ :=
+      obtain ⟨ready, action, member, _, _⟩ :=
         handle_commitment_config_step runtime state next id event candidate accepted
       exact ⟨event, rfl, ready, action, member⟩
   | opening event candidate raw =>
-      obtain ⟨ready, action, member⟩ :=
+      obtain ⟨ready, action, member, _, _⟩ :=
         handle_opening_config_step runtime state next id event candidate raw accepted
       exact ⟨event, rfl, ready, action, member⟩
   | withhold event =>
-      obtain ⟨ready, action, member⟩ :=
+      obtain ⟨ready, action, member, _, _⟩ :=
         handle_withhold_config_step runtime state next id event accepted
       exact ⟨event, rfl, ready, action, member⟩
+
+/-- Every accepted packet preserves the clock and refreshes activation metadata
+around its unique graph completion.  This structural fact complements
+`handle_config_mem_step`; it exposes no private candidate or action data. -/
+theorem handle_clock_activated (runtime : EventGraphRuntime graph)
+    (state next : State graph) (message : Message Player (Payload graph))
+    (accepted : handle runtime state message = some next) :
+    next.clock = state.clock ∧
+      next.activatedAt =
+        State.refreshActivated next.config state.clock state.activatedAt := by
+  rcases message with ⟨id, packet⟩
+  cases packet with
+  | malformed raw => simp [handle] at accepted
+  | commitment event candidate =>
+      obtain ⟨_, _, _, clockEq, activatedEq⟩ :=
+        handle_commitment_config_step runtime state next id event candidate accepted
+      exact ⟨clockEq, activatedEq⟩
+  | opening event candidate raw =>
+      obtain ⟨_, _, _, clockEq, activatedEq⟩ :=
+        handle_opening_config_step runtime state next id event candidate raw accepted
+      exact ⟨clockEq, activatedEq⟩
+  | withhold event =>
+      obtain ⟨_, _, _, clockEq, activatedEq⟩ :=
+        handle_withhold_config_step runtime state next id event accepted
+      exact ⟨clockEq, activatedEq⟩
 
 /-- Replacing the private remembered-action cache cannot change the public
 result of applying any pending packet. Rejected original `true` actions remain
@@ -872,6 +921,7 @@ private def expire (runtime : EventGraphRuntime graph) (state : State graph)
 
 def environmentStep (runtime : EventGraphRuntime graph) (state : State graph) :
     EnvironmentCommand graph → FinDist (State graph)
+  | .grant event => FinDist.pure { state with serviceGrant := some event }
   | .advanceClock => FinDist.pure { state with clock := state.clock + 1 }
   | .executeSample event => executeSample state event
   | .expire event => FinDist.pure (expire runtime state event)
@@ -998,6 +1048,159 @@ theorem environmentStep_expire_config_eq_or_mem_step
                   checks outputEq codeEq false .failure resultEq
       · exact Or.inl rfl
   · exact Or.inl rfl
+
+omit [DecidableEq Player] in
+theorem environmentStep_expire_of_not_ready
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (event : graph.EventId) (ready : ¬state.config.cut.Ready event) :
+    environmentStep runtime state (.expire event) = FinDist.pure state := by
+  simp only [environmentStep, expire, dif_neg ready]
+
+omit [DecidableEq Player] in
+theorem environmentStep_expire_of_not_activated
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (event : graph.EventId) (ready : state.config.cut.Ready event)
+    (activated : state.activatedAt event = none) :
+    environmentStep runtime state (.expire event) = FinDist.pure state := by
+  simp only [environmentStep, expire, dif_pos ready]
+  split
+  · rfl
+  · rename_i entered actual
+    rw [activated] at actual
+    contradiction
+
+omit [DecidableEq Player] in
+theorem environmentStep_expire_of_not_due
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (event : graph.EventId) (ready : state.config.cut.Ready event)
+    (entered : Nat) (activated : state.activatedAt event = some entered)
+    (due : ¬runtime.deadline event ≤ state.clock - entered) :
+    environmentStep runtime state (.expire event) = FinDist.pure state := by
+  simp only [environmentStep, expire, dif_pos ready]
+  split
+  · rename_i actual
+    rw [activated] at actual
+  · rename_i actualEntered actual
+    have same : actualEntered = entered := by simpa [activated] using actual.symm
+    subst actualEntered
+    simp only [dif_neg due]
+
+omit [DecidableEq Player] in
+theorem environmentStep_expire_sample_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (event : graph.EventId) (ready : state.config.cut.Ready event)
+    (entered : Nat) (activated : state.activatedAt event = some entered)
+    (due : runtime.deadline event ≤ state.clock - entered)
+    (payload : L.Ty) (law : PublicDist graph.layout payload)
+    (outputEq : graph.outputLayout event = .publicData payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .sample payload law)
+    (viewEq : nodeView graph event = .sample payload law outputEq codeEq) :
+    environmentStep runtime state (.expire event) = FinDist.pure state := by
+  simp only [environmentStep, expire, dif_pos ready]
+  split
+  · rename_i actual
+    rw [activated] at actual
+  · rename_i actualEntered actual
+    have same : actualEntered = entered := by simpa [activated] using actual.symm
+    subst actualEntered
+    simp only [dif_pos due, viewEq]
+
+omit [DecidableEq Player] in
+/-- A supported sample command either stutters or performs its addressed graph
+step and refreshes activation metadata. -/
+theorem environmentStep_executeSample_config_activated
+    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (event : graph.EventId)
+    (member : next ∈ (environmentStep runtime state (.executeSample event)).support) :
+    next.clock = state.clock ∧
+      ((next.config = state.config ∧ next.activatedAt = state.activatedAt) ∨
+        ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
+          next.config ∈ (state.config.step event ready action).support ∧
+            next.activatedAt =
+              State.refreshActivated next.config state.clock state.activatedAt) := by
+  by_cases ready : state.config.cut.Ready event
+  · cases view : nodeView graph event with
+    | bind owner payload outputEq codeEq =>
+        simp only [environmentStep, executeSample, dif_pos ready, view,
+          FinDist.mem_support_pure] at member
+        subst next
+        exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
+    | resolve owner payload binding checks outputEq codeEq =>
+        simp only [environmentStep, executeSample, dif_pos ready, view,
+          FinDist.mem_support_pure] at member
+        subst next
+        exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
+    | sample payload law outputEq codeEq =>
+        rw [environmentStep_executeSample_eq runtime state event ready payload law
+          outputEq codeEq view, FinDist.support_map] at member
+        obtain ⟨config, configMem, rfl⟩ := member
+        exact ⟨rfl, Or.inr ⟨ready,
+          cast (congrArg EventField.Action outputEq.symm) PUnit.unit,
+          configMem, rfl⟩⟩
+  · simp only [environmentStep, executeSample, dif_neg ready,
+      FinDist.mem_support_pure] at member
+    subst next
+    exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
+
+omit [DecidableEq Player] in
+/-- A supported expiry command either stutters or performs its addressed graph
+step and refreshes activation metadata. -/
+theorem environmentStep_expire_config_activated
+    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (event : graph.EventId)
+    (member : next ∈ (environmentStep runtime state (.expire event)).support) :
+    next.clock = state.clock ∧
+      ((next.config = state.config ∧ next.activatedAt = state.activatedAt) ∨
+        ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
+          next.config ∈ (state.config.step event ready action).support ∧
+            next.activatedAt =
+              State.refreshActivated next.config state.clock state.activatedAt) := by
+  by_cases ready : state.config.cut.Ready event
+  · cases activated : state.activatedAt event with
+    | none =>
+        rw [environmentStep_expire_of_not_activated runtime state event ready activated,
+          FinDist.mem_support_pure] at member
+        subst next
+        exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
+    | some entered =>
+        by_cases due : runtime.deadline event ≤ state.clock - entered
+        · cases view : nodeView graph event with
+          | sample payload law outputEq codeEq =>
+              rw [environmentStep_expire_sample_eq runtime state event ready entered
+                activated due payload law outputEq codeEq view,
+                FinDist.mem_support_pure] at member
+              subst next
+              exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
+          | bind owner payload outputEq codeEq =>
+              rw [environmentStep_expire_bind_eq runtime state event ready entered
+                activated due owner payload outputEq codeEq view,
+                FinDist.mem_support_pure] at member
+              subst next
+              let failed : PublicationResult (L.Val payload) := .failure
+              exact ⟨rfl, Or.inr ⟨ready,
+                cast (congrArg EventField.Action outputEq.symm) failed,
+                bind_complete_mem_step state event ready owner payload outputEq
+                  codeEq failed, rfl⟩⟩
+          | resolve owner payload binding checks outputEq codeEq =>
+              rw [environmentStep_expire_resolve_eq runtime state event ready entered
+                activated due owner payload binding checks outputEq codeEq view,
+                FinDist.mem_support_pure] at member
+              subst next
+              have resultEq := resolveOutput?_false_eq_failure_of_ready state event ready
+                owner payload binding checks outputEq codeEq
+              exact ⟨rfl, Or.inr ⟨ready,
+                cast (congrArg EventField.Action outputEq.symm) false,
+                resolve_complete_mem_step state event ready owner payload binding checks
+                  outputEq codeEq false .failure resultEq, rfl⟩⟩
+        · rw [environmentStep_expire_of_not_due runtime state event ready entered
+            activated due, FinDist.mem_support_pure] at member
+          subst next
+          exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
+  · rw [environmentStep_expire_of_not_ready runtime state event ready,
+      FinDist.mem_support_pure] at member
+    subst next
+    exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
 
 /-- Shared pending-message application instance. Transport, pools, receipts,
 and policy histories come from `Interaction.MessageApplication`. -/

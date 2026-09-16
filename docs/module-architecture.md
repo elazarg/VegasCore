@@ -40,8 +40,10 @@ source-policy backtranslation. `Vegas.Game.EventCompilation` packages the
 result as a finite-mixture simulation from the full source game and delegates
 Nash and guarantee transport to the shared game-theory interface.
 `Vegas.Pending.EventApplication`
-implements an event-addressed message application; its whole-run strategic
-edge is not proved. The [EventGraph plan](event-graph-design.md) separates
+implements an event-addressed message application. `EventService` and
+`EventServiceCompletion` supply concrete adaptive public service and prove
+whole-run completion under arbitrary players; the whole-run strategic edge
+is not proved. The [EventGraph plan](event-graph-design.md) separates
 source correspondence, scheduling laws, and pending-message guarantees.
 
 `Vegas.Language` prototypes surface notation for typed bindings and nullable

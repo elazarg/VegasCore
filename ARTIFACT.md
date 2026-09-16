@@ -28,6 +28,7 @@ the subsequent kernel-checked build.
 | End-to-end completion, honest law, deviations, arbitrary observations, Nash | `Vegas/Game/GraphMessages.lean` |
 | Full-source honest law under adaptive public graph scheduling | `Vegas/Compile/EventGraphScheduling.lean` |
 | Full-source asynchronous deviations and Nash correspondence | `Vegas/Compile/EventGraphDeviation.lean`, `Vegas/Game/EventCompilation.lean` |
+| Asynchronous pending-message service and arbitrary-player completion | `Vegas/Pending/EventService.lean`, `Vegas/Pending/EventServiceCompletion.lean` |
 | Generic simulation and equilibrium transport | `GameTheoryExtensions/` |
 | Paper-visible theorem selection and axiom pins | `Paper.lean` |
 
@@ -59,8 +60,9 @@ The asynchronous graph compiler preserves and reflects same-error Nash at
 compiled source profiles for utilities of the complete terminal source state.
 Its unilateral deviation witness is one source-policy mixture chosen before
 private setup. The graph-local scheduling theorem is separately audited.
-The asynchronous pending-message refinement remains unproved; the native
-capstones use ordered service.
+The asynchronous pending-message game has a checked completion theorem under
+concrete public epoch service. Its honest/deviation refinement remains
+unproved; the native strategic capstones use ordered service.
 Read the [active theorem map](docs/active-tower.md) for the
 formal boundary and [pending deviation extraction](docs/pending-deviation-extraction.md)
 for the central adversarial argument.

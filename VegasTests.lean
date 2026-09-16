@@ -3,6 +3,7 @@ import VegasTests.EventGraph
 import VegasTests.EventGraphReadout
 import VegasTests.EventCompilation
 import VegasTests.EventStrategies
+import VegasTests.EventService
 import VegasTests.GraphBindingDiscipline
 import VegasTests.GraphMessagePolicies
 import VegasTests.GraphMessages

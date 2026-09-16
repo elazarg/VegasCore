@@ -20,8 +20,8 @@ pending-message profile preserves and reflects same-error epsilon-Nash.
 The native target uses authenticated messages, ideal opaque commitments,
 public opening verification, relative deadlines, and a bounded ordered service
 plan. These are explicit semantic assumptions. The repository does not yet
-provide cryptographic security, censorship resistance, a fair asynchronous
-scheduler, ledger refinement, or EVM deployment.
+provide cryptographic security, censorship resistance, refinement of a general
+fair asynchronous network, ledger refinement, or EVM deployment.
 
 An arbitrary real-valued observation of the terminal source state may be used
 in the deviation guarantee; it need not be a player's declared payoff. Thus a
@@ -46,8 +46,10 @@ The [EventGraph design and implementation plan](docs/event-graph-design.md)
 specifies the asynchronous compilation work. Its full-source honest law,
 unilateral deviation mixture law, and same-error epsilon-Nash correspondence
 under adaptive public graph scheduling are checked. The source mixture is
-chosen before private setup. The event-addressed pending-message edge remains
-open.
+chosen before private setup. The event-addressed pending-message game also has
+a checked arbitrary-player completion theorem under
+[public epoch service](docs/event-service.md). Its honest outcome and deviation
+laws remain open.
 The end-to-end pending-message theorem above uses ordered service.
 
 ## Build

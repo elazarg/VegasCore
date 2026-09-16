@@ -185,9 +185,29 @@ traffic, private candidate preparation, explicit expiry, and chance execution.
 
 This application is an ideal-commitment model: the semantic state retains
 binding meanings and original player decisions, while public projections
-expose handles and publication results. No event-addressed whole-run service,
-honest-law, or deviation theorem is claimed yet. In particular, the checked
-ideal-graph scheduling theorem does not establish a law for this richer host.
+expose handles, publication results, clocks, activation times, and service
+grants. Authenticated player observations include this full public projection.
+
+`EventGraphRuntime.servicedEventGame` runs a concrete bounded service: each
+epoch visits every event in a permutation sampled from the full public
+environment view and history, offers owner/wire/reaction opportunities and
+event-addressed reserved inclusion, then advances the clock and checks expiry.
+The wire policy remains adaptive within the epoch and arbitrary player
+commands remain legal.
+
+`servicedEventGame_complete` and `servicedEventGame_outcome_total` prove
+terminality and total graph-outcome readout for every supported play, under
+arbitrary player policies. The horizon is `eventCount * (maxDeadline + 1)`
+epochs. The proof uses actual native transitions and deadline progress, not an
+assumed service-correctness certificate. `Paper.event_pending_completion`
+directly delegates to the totality theorem. The
+[service argument](event-service.md) gives the construction and timing boundary.
+
+The event-addressed honest-law and deviation theorems remain open. Completion
+does not establish preservation of honest outcomes. The configured deadline
+grace interval must be combined with proved compiled-policy use of the reserved
+opportunities. The ideal-graph scheduling theorem alone does not establish a
+strategic law for the richer message host.
 
 `EventGraphRuntime.handle_publicView_replaceRemembered` proves that changing
 the private original-action cache cannot change packet acceptance or the

@@ -3,6 +3,11 @@
 import Vegas.Pending.ActionReadout
 import Vegas.Pending.Application
 import Vegas.Pending.EventApplication
+import Vegas.Pending.EventInvariant
+import Vegas.Pending.EventSubmission
+import Vegas.Pending.EventService
+import Vegas.Pending.EventServiceLaw
+import Vegas.Pending.EventServiceCompletion
 import Vegas.Pending.BindingAcceptance
 import Vegas.Pending.BindingLaw
 import Vegas.Pending.BindingProvenance

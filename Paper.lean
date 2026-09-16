@@ -10,6 +10,7 @@ import Vegas.Compile.EventGraphPolicy
 import Vegas.Compile.EventGraphReadout
 import Vegas.Compile.EventGraphCanonical
 import Vegas.Compile.EventGraphScheduling
+import Vegas.Pending.EventServiceCompletion
 
 /-! # Paper theorem audit
 
@@ -17,9 +18,10 @@ Principal source-safety and compilation results for the full failure-aware
 language. Proved statements delegate directly to their owning theorems; the
 axiom pins below check the complete proof dependencies.
 
-The pending-message target uses ideal commitments and a concrete bounded
-ordered service with adaptive delivery. These results do not assert
-cryptographic, transaction-ledger, or EVM refinement.
+The pending-message strategic results use ideal commitments and a concrete
+bounded ordered service with adaptive delivery. The event-addressed target has
+a separate completion theorem under public adaptive epoch service. These
+results do not assert cryptographic, transaction-ledger, or EVM refinement.
 -/
 
 namespace Vegas.Paper
@@ -357,5 +359,25 @@ theorem source_event_graph_approximate_nash_iff [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_graph_approximate_nash_iff
+
+/-- The event-addressed pending game produces a complete graph outcome under
+arbitrary player policies, adaptive wire delivery, and public service ordering.
+This is termination, not yet the asynchronous pending strategic law. -/
+theorem event_pending_completion [IExpr.ResultTypes L]
+    {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
+    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (players : Player → runtime.application.PlayerPolicy)
+    (next : runtime.application.PolicyExecution)
+    (supported : next ∈
+      ((runtime.servicedEventGame inputs roster reactionRounds wire order).play players).support) :
+    next.native.application.config.outcome?.isSome = true :=
+  runtime.servicedEventGame_outcome_total inputs roster reactionRounds wire order players next
+    supported
+
+/-- info: 'Vegas.Paper.event_pending_completion' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.event_pending_completion
 
 end Vegas.Paper

@@ -10,8 +10,9 @@ full-source lowerer constructs a certified executable graph. Its whole-run
 source-order law is checked for every source constructor, including private
 initial-state distributions. Honest asynchronous correspondence, setup-wide
 finite-mixture source deviation laws, and same-error Nash correspondence at
-compiled source profiles are checked. The asynchronous pending-message edge
-remains unproved.
+compiled source profiles are checked. The asynchronous pending-message game
+has a concrete adaptive epoch service and a checked arbitrary-player
+completion theorem. Its honest and deviation laws remain unproved.
 The [active theorem map](active-tower.md) records the checked
 source-to-asynchronous-graph and source-to-ordered-pending-message results.
 
@@ -641,11 +642,13 @@ This is an evaluator API requirement, not a restriction on guards or chance.
 Protected inclusion must be addressed to an event as well as an owner.
 Selecting an owner's latest packet is insufficient when that owner has
 prepared several candidates or submitted packets for different events. The
-service must select an effective pending packet for the granted event using
-public packet fields, without inspecting a sealed candidate's meaning.
+service selects the newest pending packet with the granted event address and
+authenticated owner, without inspecting a sealed candidate's meaning. For a
+prescribed policy, a separate acceptance proof must establish that this packet
+is effective; arbitrary packets can be rejected.
 
 The public view consists of completion identities/cut, `publicStore`, accepted
-handles, clock, and activation metadata. Candidate meanings and binding values
+handles, clock, activation metadata, and the current service grant. Candidate meanings and binding values
 remain hidden. A player's authenticated view adds `playerStore`, original
 `ownCompletions`, and its own prepared candidates. Reuse
 `EventGraph.publicObserve` and `playerObserve`; a parallel logical-history
@@ -706,7 +709,9 @@ Event-specific modules use the following ownership:
 | `EventPolicies.lean` | Per-event sample-once caches, uniform opaque bind traffic for success and failure, retained resolve Boolean, and readiness-gated sends. |
 | `EventStepLaw.lean` | Accepted bind/resolve/sample/expiry projects to the corresponding `Config.step`; preparation and rejected traffic stutter. |
 | `EventService.lean` | Finite public rounds over enabled IDs: owner opportunities, adaptive wire slots, addressed reserved inclusion, clock advance, local expiry, and sample execution. |
-| `EventServiceLaw.lean` | A feasible witness, protection of compliant ready events, expiry of ineffective owners, decreasing unfinished count, and supported-run completion. |
+| `EventSubmission.lean` | Public author/address selection and immunity to later unrelated packets. |
+| `EventServiceLaw.lean` | Clock accounting, invariant preservation, persistent activation times, and local sample/expiry progress. |
+| `EventServiceCompletion.lean` | Per-epoch progress and supported-run completion of the concrete service game under arbitrary players. |
 | `EventHonestLaw.lean` | Couple compiled policies and the admitted driver to EventGraph steps, then use scheduling commutation to obtain the canonical terminal `g.Outcome` law. |
 | `EventDeviationLaw.lean` | Setup-wide predrawing/locality and the exact graph-relative deviation mixture; never an application invariant. |
 
@@ -740,19 +745,20 @@ different inclusions after different raw focal packets. The local step
 relation plus graph scheduling/coupling must establish the displayed outcome
 law directly.
 
-The concrete design gate is service with several enabled events. Static source
-phases are insufficient. A bounded public round may choose an enabled ID,
-offer adaptive delivery, reserve inclusion for that addressed event, advance
-time, and execute eligible local expiries. With the current fixed-invocation
-runner, each round polls the finite owner list extracted from graph nodes; only
-the granted event's compiled owner responds and the others wait. Reserved
-inclusion must search the public pool for the latest effective packet addressed
-to that event, rather than reuse the old owner-only `latestSubmissionCommand`.
-This needs no `Fintype Player` and prevents an unrelated packet from consuming
-the grant. The driver must permit either acceptance order for two independent
-ready bindings while proving a decreasing unfinished count. Deadlines therefore
-require a feasible round-budget witness; an unrestricted scheduler with no
-service obligation cannot imply termination.
+The concrete service visits all event IDs once per epoch, in a permutation
+chosen from the environment's current public observation and history. Each
+event receives a public grant, its owner's invocation opportunities, adaptive
+wire delivery/reactions, reserved event-addressed inclusion, and a sample
+opportunity. Only after the complete sweep does the clock advance, followed by
+all expiry checks. No `Fintype Player` is needed: node ownership determines
+the reserved calls and a finite roster determines additional reactions.
+
+Relative deadlines of at least two ticks leave time to serve an event enabled
+after its position in the preceding epoch. The [service argument](event-service.md)
+explains why one tick is insufficient and separates arbitrary-player
+completion from the remaining compiled-policy protection and strategic laws.
+The environment may reorder independent events and inspect all pending
+payloads; it cannot add clock advances beyond the concrete service plan.
 
 ## 6. Strategic statements and composition
 
