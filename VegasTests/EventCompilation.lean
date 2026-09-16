@@ -4,7 +4,9 @@ import Vegas.Compile.EventGraphAssembly
 import Vegas.Compile.EventGraphHistory
 import Vegas.Compile.EventGraphIndependence
 import Vegas.Compile.EventGraphObservation
+import Vegas.Compile.EventGraphScheduling
 import Vegas.EventGraph.BarrierInformation
+import Vegas.Pending.EventApplication
 import VegasTests.SourceSemantics
 
 /-! # Source-to-event compilation regressions
@@ -180,6 +182,21 @@ example : inputLayout SourceSemantics.mixedInitial.context ⟨0, by decide⟩ =
 example : encodeInputs SourceSemantics.mixedInitial.state ⟨0, by decide⟩ =
     PublicationResult.success true := rfl
 
+/-- The complete mixed program has its source law under every adaptive public
+scheduler, not just under the canonical schedule. -/
+example (scheduler : SourceSemantics.mixedInitial.eventGraph.PublicScheduler)
+    (profile : SourceProgram.BehavioralProfile SourceSemantics.mixedInitial.program) :
+    (SourceSemantics.mixedInitial.eventGraph.terminalOutcomes scheduler
+      (compileEventProfile SourceSemantics.mixedInitial.program
+        SourceSemantics.mixedInitial.namesNodup profile)
+      (encodeInputs SourceSemantics.mixedInitial.state)).map
+        (terminalState SourceSemantics.mixedInitial.program
+          SourceSemantics.mixedInitial.namesNodup) =
+      SourceSemantics.mixedInitial.run profile :=
+  scheduled_terminalState_law SourceSemantics.mixedInitial.program
+    SourceSemantics.mixedInitial.namesNodup scheduler profile
+    SourceSemantics.mixedInitial.state SourceSemantics.mixedInitial.privatePending
+
 private def rejectingGraph := toEventGraph SourceSemantics.falseGuardProgram (by decide)
 
 private abbrev rejectingBind : rejectingGraph.EventId := ⟨0, by decide⟩
@@ -208,6 +225,82 @@ example : decodeHistory SourceSemantics.falseGuardProgram (by decide)
       (BoundValue.value true),
      SourceProgram.OwnAction.reveal SourceSemantics.Player.alice 20 true] := by
   rfl
+
+private def pairRuntime : EventGraphRuntime pairGraph := ⟨fun _ => 3⟩
+
+private def pendingInitial : EventGraphRuntime.State pairGraph :=
+  EventGraphRuntime.State.initial (fun input => nomatch input)
+
+private def preparedSecond : EventGraphRuntime.State pairGraph :=
+  EventGraphRuntime.privateStep pendingInitial true (.prepare 0 ⟨.bool, true⟩)
+
+private def pendingSecond : Interaction.Message Bool (EventGraphRuntime.Payload pairGraph) :=
+  ⟨(true, 0), .commitment second (true, .prepared 0)⟩
+
+/-- Private preparation does not publish the selected binding's meaning. -/
+example : preparedSecond.publicView = pendingInitial.publicView := rfl
+
+/-- Independent initially ready events get independent activation entries. -/
+example : pendingInitial.activatedAt first = some 0 ∧
+    pendingInitial.activatedAt second = some 0 := by decide
+
+/-- The second source commitment has a live native inclusion window before
+the first source commitment is included. -/
+example : preparedSecond.WithinDeadline pairRuntime second := by
+  change 0 < 3
+  decide
+
+/-- The boundary belongs to expiry, not to packet acceptance. -/
+example : ¬ ({ preparedSecond with clock := 3 }).WithinDeadline pairRuntime second := by
+  change ¬ 3 < 3
+  decide
+
+example : EventGraphRuntime.handle pairRuntime { preparedSecond with clock := 3 }
+    pendingSecond = none := by
+  have ready : preparedSecond.config.cut.Ready second := second_ready
+  have late : ¬ ({ preparedSecond with clock := 3 }).WithinDeadline pairRuntime second := by
+    change ¬ 3 < 3
+    decide
+  simp only [EventGraphRuntime.handle, pendingSecond, dif_pos ready, dif_neg late]
+
+/-- A completed event cannot be accepted again, independently of its clock. -/
+example : EventGraphRuntime.handle pairRuntime
+    { preparedSecond with config := completedSecond } pendingSecond = none := by
+  have finished : ¬ completedSecond.cut.Ready second := by decide
+  simp only [EventGraphRuntime.handle, pendingSecond, dif_neg finished]
+
+example : EventGraphRuntime.handle pairRuntime pendingInitial
+    ⟨(true, 0), .malformed ⟨.bool, true⟩⟩ = none := rfl
+
+/-- A real event-addressed handler accepts the second source binding first. -/
+example : (EventGraphRuntime.handle pairRuntime preparedSecond pendingSecond).isSome = true := by
+  have ready : preparedSecond.config.cut.Ready second := second_ready
+  have timely : preparedSecond.WithinDeadline pairRuntime second := by
+    change 0 < 3
+    decide
+  have vacant : preparedSecond.accepted (.inr second) = none := rfl
+  have unused : preparedSecond.HandleUnused (true, .prepared 0) := by
+    intro field
+    cases field with
+    | inl input => nomatch input
+    | inr event =>
+        change (none : Option (EventGraphRuntime.Handle pairGraph)) ≠ some _
+        simp
+  simp only [EventGraphRuntime.handle, pendingSecond, dif_pos ready, dif_pos timely]
+  split
+  · rename_i owner payload outputEq _
+    change Vegas.EventGraph.EventField.binding true simpleExpr.bool =
+      .binding owner payload at outputEq
+    cases outputEq
+    simpa [Interaction.Message.sender, unused] using vacant
+  · rename_i owner payload binding checks outputEq _ _
+    change Vegas.EventGraph.EventField.binding true simpleExpr.bool =
+      .publication payload at outputEq
+    cases outputEq
+  · rename_i payload law outputEq _
+    change Vegas.EventGraph.EventField.binding true simpleExpr.bool =
+      .publicData payload at outputEq
+    cases outputEq
 
 end
 

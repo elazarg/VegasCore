@@ -7,13 +7,14 @@ import Vegas.Source.Safety
 import Vegas.Compile.EventGraphPolicy
 import Vegas.Compile.EventGraphReadout
 import Vegas.Compile.EventGraphCanonical
+import Vegas.Compile.EventGraphScheduling
 
 /-! # Paper theorem audit
 
 Principal source-safety and compilation results for the full failure-aware
 language. Proved statements delegate directly to their owning theorems; the
 axiom pins below check the complete proof dependencies. The explicitly
-prospective asynchronous capstones are admitted and are not checked results.
+prospective asynchronous deviation capstone is admitted and is not a checked result.
 
 The pending-message target uses ideal commitments and a concrete bounded
 ordered service with adaptive delivery. These results do not assert
@@ -263,17 +264,16 @@ theorem source_event_graph_canonical_law [IExpr.ResultTypes L]
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_graph_canonical_law
 
-/-! ## Prospective asynchronous graph capstones
+/-! ## Asynchronous graph capstones
 
 These are exact targets over the actual graph executor and policy compiler.
 The scheduler observes the ideal graph's public store and completion order;
-this is not yet the public-message protocol. The mixture in the second target
-is chosen before private setup is sampled. Neither statement is proved.
+this is not yet the public-message protocol. The honest law is checked. The
+deviation target remains admitted; its mixture is chosen before private setup
+is sampled.
 -/
 
-/-- error: declaration uses `sorry` -/
-#guard_msgs in
-/-- Target: every public schedule of compiled source policies has the source
+/-- Every public schedule of compiled source policies has the source
 terminal-state law. -/
 theorem source_event_graph_honest_law [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
@@ -284,11 +284,11 @@ theorem source_event_graph_honest_law [IExpr.ResultTypes L]
         (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup profile)
         (setup.eventInputs initial.1)).map
           (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup)) =
-      setup.run profile := by
-  sorry
+      setup.run profile :=
+  SourceProgram.EventLowering.scheduled_setup_law setup scheduler profile
 
 /-- info: 'Vegas.Paper.source_event_graph_honest_law' depends on axioms:
-[propext, sorryAx, Classical.choice, Quot.sound] -/
+[propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_graph_honest_law
 

@@ -77,34 +77,35 @@ retained kernel once.
 
 ## Whole-run honest law
 
-The next graph-owned theorem equates the terminal store laws of
+The checked graph-owned theorem
+`BarrierOrdered.runPolicies_store_eq_canonical` equates the terminal store laws of
 `runPolicies E (normalizeProfile sigma)` and
 `runPolicies canonicalScheduler (normalizeProfile sigma)` for each initial
 environment. It is proved before lifting through the finite initial law.
 For compiled source profiles, normalization is definitionally the identity
 (`normalizeProfile_compileEventProfile`), so the checked source-order law
-supplies the source-facing conclusion.
+supplies the source-facing conclusion `EventLowering.scheduled_setup_law`.
 
-Use the configuration projection
+The proof uses the configuration projection
 
 ```text
 semanticState c = (c.cut.completed, storeRecall g c)
 ```
 
-and induction on the number of unfinished events. First prove that canonical
+and induction on the number of unfinished events. Canonical
 normalized continuation depends only on this projection. The cut determines
 readiness, the store determines node evaluation, and the store plus per-player
 original actions determine the normalized policy kernels. Actual completion
 order is unnecessary.
 
-Then prove that choosing any ready event and continuing canonically gives the
+Choosing any ready event and continuing canonically gives the
 same terminal law as choosing the least ready event. If they differ, both are
 foreign-owner bindings. Apply the induction hypothesis to take the other
 event next on each side, use the two-step diamond, and use continuation
 congruence to identify the remaining laws. At a public event there is only one
 ready event. Terminal cuts give the base case.
 
-Finally expand the actual scheduler's first-step bind. Each supported choice
+Finally, expand the actual scheduler's first-step bind. Each supported choice
 has the same canonical continuation law, so their weighted average has that
 law as well. This handles history-adaptive selection without fixing a trace or
 assuming its probability is invariant under permutation. It proves only the
@@ -112,34 +113,71 @@ honest law; an arbitrary focal policy need not obey normalization.
 
 ## Predrawing and deviation extraction
 
+The following is the mathematical plan for the remaining deviation theorem.
+`Vegas.EventGraph.SchedulerReplay` implements bounded pure-scheduler replay,
+public-store masking, and a total replay policy. Replay termination,
+completion-order insensitivity, and the normalization fixed-point law are
+checked. Reconstruction
+of the observation along an actual scheduler-generated run, setup-wide
+scheduler predrawing, and the deviation law remain unproved.
+
 The arbitrary focal policy can use actual completion order, and `E` can adapt
-to public completion identities and public fields. Predraw their responses
-jointly over the complete finite execution tree generated from `rho`. A pure
-draw consists of one deterministic focal response at every reached focal
-observation and one deterministic scheduler response at every reached public
-observation. The law of this draw precedes `rho`; opponents' kernels and node
-chance remain live.
+to public completion identities and public fields. Predraw the **scheduler's**
+responses over the complete finite execution tree generated from `rho`. A
+pure draw supplies one deterministic scheduler response at every relevant
+public observation and enabled set. The law of this draw precedes `rho`.
+Player kernels, including the focal replacement `tau`, and node chance remain
+live. Predrawing the focal policy is unnecessary for this graph edge.
 
-For each supported pure response pair, construct one canonical focal policy.
-At a canonical focal decision, replay the deterministic scheduler within the
-current public-barrier interval, using:
+Fix one pure scheduler `s`. At a canonical focal decision `e`, replay `s` from
+the empty cut, retaining only event identities and stopping immediately before
+it selects `e`. At each replay step, form the scheduler observation from the
+replayed completion list and the current decision's public store, restricted
+to initial public fields and public events already completed in the replay.
+No event value is sampled by replay.
 
-- the canonical public prefix;
-- public completion identities and the enabled set;
-- the focal player's original earlier actions; and
-- the deterministic response pair.
+Replay reaches the target for every supplied store: each other selection
+completes a fresh event, so the finite graph forces selection of the target.
+No fallback observation is needed. The required actual-run lemma must show
+that this replayed prefix equals the real prefix, not merely that replay
+terminates.
 
-Foreign binding meanings are not replay inputs. `publicStore` hides every
-binding, while a focal `playerStore` hides foreign bindings. Completing an
-opaque foreign binding reveals its event identity but not its action or stored
-meaning. Hence the replay determines the asynchronous completion metadata
-available to `tau` without clairvoyance. The extracted canonical policy applies
-the predrawn focal response to that reconstructed observation.
+Public barriers ensure that every public output encountered before `e` has
+rank less than `e`. Those outputs are all available in its canonical decision
+view. The scheduler may place later foreign bindings before `e`, but their
+values are hidden from both the scheduler and the focal player. Same-owner
+dependencies ensure that the actual focal own-action list and visible private
+fields agree with their canonical counterparts.
 
-Opponent binding values are still sampled from their unchanged kernels when
-their events execute. Reordering those independent finite draws is justified
-by bind commutation, not by predrawing or inspecting them. Averaging the exact
-store law for every pure response pair yields `mu` and the deviation equation.
+Define a canonical focal policy by
+
+```text
+replayPolicy s tau e observation =
+  tau e (observation with completionOrder := replayPrefix s e observation.store).
+```
+
+This policy ignores the supplied chronological order. Its kernel can still
+randomize, exactly as `tau` does. The graph-specific replay theorem must show
+that, at every reachable focal decision under `s`, the reconstructed
+observation equals the actual observation passed to `tau`. This yields a
+whole-run law replacing `tau` by `replayPolicy s tau` under the same scheduler.
+
+All policies in that replaced profile are normalized: unchanged opponents
+already use `normalizeProfile`, and `replayPolicy` is a fixed point of
+normalization. The honest scheduler-erasure theorem therefore applies to the
+entire replaced profile. It produces the canonical deviation law for this
+pure scheduler without commuting an order-sensitive focal kernel. Averaging
+over scheduler seeds gives `mu` and the exact mixture law. Source-facing
+composition additionally needs canonical graph-to-source policy
+backtranslation; the honest source-order law alone does not supply it.
+
+`Vegas.Compile.EventGraphBacktranslation` proves two-sided reconstruction of
+strategic actions and their dependent completion histories. The remaining
+canonical backtranslation must reconstruct the complete player-visible store
+from a source observation and prove the inverse on reachable canonical
+decisions. Arbitrary graph policies can inspect every visible slot, so
+successful decoding alone is insufficient: alias consistency and field
+coverage must establish that re-encoding recovers the actual observation.
 
 The setup-wide placement of the draw is essential. Predrawing separately after
 each concrete input would produce an input-dependent policy and would not be a
@@ -147,9 +185,9 @@ legal witness for `gameForm g rho`.
 
 ## Hard locality and coupling lemma
 
-The proof should isolate one graph-specific lemma rather than hide it inside a
-whole-run induction. For a supported pure focal/scheduler response pair, relate
-an asynchronous reachable configuration to a canonical residual execution by:
+The proof should isolate the graph-specific replay lemma rather than hide it
+inside a whole-run source induction. For a pure scheduler, relate replay to
+an asynchronous reachable configuration by:
 
 1. the same completed public prefix and the same values for those public
    fields;
@@ -158,16 +196,15 @@ an asynchronous reachable configuration to a canonical residual execution by:
 3. possibly different completion order among current-interval foreign-owner
    bindings;
 4. the asynchronous scheduler observation obtained by replaying the pure
-   scheduler from the related canonical information; and
-5. equal residual store laws after canonical completion.
+   scheduler from the related canonical information.
 
 The step lemma must cover the scheduler's actual selected event, not every
 enabled event simultaneously:
 
 - for a nonfocal bind, the compiled kernel is equal on the two normalized
   observations, and its draw can be commuted to the canonical position;
-- for a focal bind, replay reconstructs exactly the observation passed to the
-  predrawn focal response;
+- for a focal bind, replay reconstructs exactly the observation passed to its
+  original randomized response;
 - at a public barrier, all earlier events are complete, so both sides have the
   same full prior store and execute the same resolve or sample kernel;
 - completing any event appends its original action to the proper owner's
@@ -195,8 +232,8 @@ therefore to payoff or utility functions factored through those stores.
 Existing message-application predrawing proves the analogous setup-wide joint
 response result, but is tied to `MessageApplication` invocation sites. The
 ideal graph proof needs either a small EventGraph specialization or a reusable
-finite-horizon theorem: jointly predraw two behavioral kernels over a finite
-initial law, retain all other kernels live, and return a finite mixture chosen
-before setup. No new probability model is required. After the graph-specific
-locality/coupling lemma, ordinary `FinDist.bind`/`map` laws and
+finite-horizon theorem: predraw the scheduler kernel over a finite initial
+law, retain every player kernel live, and return a finite mixture chosen before
+setup. No new probability model is required. After the graph-specific replay
+lemma and honest scheduler erasure, ordinary `FinDist.bind`/`map` laws and
 `MixtureSimulationOn` package the result.

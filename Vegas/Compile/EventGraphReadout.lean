@@ -2,6 +2,7 @@
 
 import Vegas.Compile.EventGraphObservation
 import Vegas.Compile.EventGraphState
+import Vegas.EventGraph.Semantics
 
 /-! # Typed source-state readout from event-graph stores
 
@@ -13,6 +14,8 @@ field is unavailable, and never invents a binding or publication result.
 noncomputable section
 
 namespace Vegas.SourceProgram.EventLowering
+
+open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -248,6 +251,30 @@ def terminalState {Γ : SourceCtx Player L} {openNames : Finset VarId}
   (decodeState? (terminalRefs program) (terminalPublications program unique)
     result.1.store).get (decodeState?_isSome_of_available _ _ result.1.store
       (fun field => result.1.store_available_of_terminal result.2 field))
+
+/-- Decoding completed plays depends only on their store law, not on their
+completion order. The optional readout on the right succeeds on every play;
+the left side exposes this without introducing a payload default. -/
+theorem terminalOutcomes_map_decode
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames)
+    (unique : (Γ.map Prod.fst).Nodup)
+    (scheduler : (toEventGraph program unique).PublicScheduler)
+    (profile : (toEventGraph program unique).BehavioralProfile)
+    (inputs : (toEventGraph program unique).Inputs) :
+    (((toEventGraph program unique).terminalOutcomes scheduler profile inputs).map
+        (terminalState program unique)).map some =
+      (((toEventGraph program unique).runPolicies scheduler profile inputs).map
+        Vegas.EventGraph.Config.store).map
+          (decodeState? (terminalRefs program) (terminalPublications program unique)) := by
+  have decodeTerminal : (some ∘ terminalState program unique) =
+      (decodeState? (terminalRefs program) (terminalPublications program unique) ∘
+        Vegas.EventGraph.Config.store) ∘ Subtype.val := by
+    funext result
+    exact Option.some_get _
+  rw [FinDist.map_comp, decodeTerminal, ← FinDist.map_comp,
+    (toEventGraph program unique).terminalOutcomes_map_val,
+    FinDist.map_comp]
 
 /-- Agreement identifies the no-default terminal decoder with the simulated
 source terminal state. -/

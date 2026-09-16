@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ActionReadout
 import Vegas.Pending.Application
+import Vegas.Pending.EventApplication
 import Vegas.Pending.BindingAcceptance
 import Vegas.Pending.BindingLaw
 import Vegas.Pending.BindingProvenance

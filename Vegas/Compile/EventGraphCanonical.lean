@@ -33,7 +33,7 @@ theorem canonical_terminalState_law
       (terminalState program unique) =
     SourceProgram.run program profile state := by
   apply FinDist.map_injective (f := some) (Option.some_injective _)
-  rw [FinDist.map_comp]
+  rw [terminalOutcomes_map_decode]
   have agreements := initialConfig_agrees program unique state pending
   have law := runWith_option_law program unique profile program unique profile
     (ContextRefs.initial Γ (outputLayout program)) initialPublications []
@@ -46,14 +46,7 @@ theorem canonical_terminalState_law
     state agreements.1 agreements.2 (fun _ => []) rfl
   change _ = (runWith program profile state [] (fun _ => [])).map some
   rw [← law]
-  have decodeTerminal : (some ∘ terminalState program unique) =
-      (fun result => decodeState? (terminalRefs program)
-        (terminalPublications program unique) result.store) ∘ Subtype.val := by
-    funext result
-    unfold terminalState
-    exact Option.some_get _
-  rw [decodeTerminal, ← FinDist.map_comp]
-  rw [(toEventGraph program unique).terminalOutcomes_map_val]
+  rw [FinDist.map_comp]
   rfl
 
 /-- A single compiled graph and behavioral profile serve an entire finite law

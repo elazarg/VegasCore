@@ -100,7 +100,11 @@ Supporting results are checked:
 - `EventGraph.BarrierOrdered.policyStepThen_map_storeRecall_comm` lifts the
   fixed-action diamond to the two actual normalized behavioral kernels. The
   resulting two-step laws agree on the typed store and every player's
-  original-action recall; it is not yet a whole-run scheduling theorem.
+  original-action recall.
+- `EventGraph.BarrierOrdered.runPolicies_store_eq_canonical` proves the
+  whole-run scheduling law for normalized profiles. Any adaptive public
+  scheduler gives the canonical terminal-store distribution. The proof uses
+  continuation-law confluence, not a fixed-trace argument.
 - `EventCode.resolve_eval?_playerStore` proves owner-local prevalidation of a
   complete resolution kernel. No foreign hidden binding is needed, and guards
   may reject. This supports checking an opening before public emission; it
@@ -125,18 +129,47 @@ law and one profile used across that law. `Paper.source_event_graph_canonical_la
 delegates to this result. It covers every source constructor and requires no
 guard-feasibility or failure-dominance premise.
 
-The asynchronous scheduling comparison and the asynchronous pending-message
-strategic certificate are the remaining compiler/proof work described in the
-[EventGraph plan](event-graph-design.md). Source-order correspondence and
-equivalence under other schedules are distinct obligations. The conservative
-barrier compiler targets exact honest and finite-mixture unilateral-deviation
-laws at both the ideal EventGraph and pending-message levels; these targets are
-not yet checked. The two asynchronous ideal-graph law targets in `Paper.lean`
-are explicitly admitted; their axiom pins include `sorryAx`. They do not
-replace the proved ordered pending-message capstones. A separate
+`EventLowering.scheduled_setup_law` composes this source-order law with graph
+scheduling independence. Every adaptive public schedule of the compiled
+profile has the full source terminal-state law, with one profile across the
+private setup distribution. `Paper.source_event_graph_honest_law` delegates
+to this result. No failure-dominance or finite-payload premise is required.
+
+The asynchronous unilateral-deviation law and the asynchronous pending-message
+certificate remain open, as described in the
+[EventGraph plan](event-graph-design.md). The conservative barrier compiler
+targets exact finite-mixture deviation laws at both levels.
+`Paper.source_event_graph_deviation_law` is explicitly admitted, with
+`sorryAx` in its axiom pin. The checked honest scheduling law does not replace
+the proved ordered pending-message strategic capstones. A separate
 [failure-comparison contract](event-graph-failure-comparison.md) applies only
 to broader runtimes that expose genuinely new information before a failure
 choice, and is not a gate for that initial compiler.
+
+### Event-addressed pending application
+
+`Vegas.Pending.EventApplication` defines `EventGraphRuntime` independently of
+source syntax. Packets address graph events, and accepted inclusions complete
+ready events rather than advance a global cursor. Each strategic event has a
+separate activation time and relative deadline. The application uses the shared
+`Interaction.MessageApplication` host, with public malformed and replayed
+traffic, private candidate preparation, explicit expiry, and chance execution.
+
+This application is an ideal-commitment model: the semantic state retains
+binding meanings and original player decisions, while public projections
+expose handles and publication results. No event-addressed whole-run service,
+honest-law, or deviation theorem is claimed yet. In particular, the checked
+ideal-graph scheduling theorem does not establish a law for this richer host.
+
+`EventGraphRuntime.handle_publicView_replaceRemembered` proves that changing
+the private original-action cache cannot change packet acceptance or the
+resulting public view. A rejected original disclosure decision can remain in
+private recall without becoming a public ledger input.
+
+A concrete ledger refinement must realize commitment verification, prove that
+the stored-binding check follows from accepted-handle provenance, and evaluate
+openings from the submitted proposal and public guard inputs. The current
+semantic evaluator is not itself public contract code.
 
 ## Outside the theorem
 

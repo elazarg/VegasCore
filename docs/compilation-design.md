@@ -2,9 +2,10 @@
 
 This document describes the checked ordered tower. The next compiler design
 and implementation milestones are specified in
-[Dependency-driven EventGraph](event-graph-design.md). Its asynchronous
-semantics and strategic theorem remain to be implemented; the existing
-ordered theorem is not evidence for those prospective claims.
+[Dependency-driven EventGraph](event-graph-design.md). Its full-source lowering,
+ready-event semantics, and honest law under adaptive public scheduling are
+checked. Its asynchronous strategic and pending-message theorems remain open;
+the existing ordered theorem does not discharge those obligations.
 
 ## Semantic interfaces
 

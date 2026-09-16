@@ -808,6 +808,90 @@ def readFields {Field : Type} [DecidableEq Field]
       insert binding.field (DeferredCheck.listReadFields checks)
   | .sample _ law => law.readFields
 
+/-- Deterministic resolution output before it is embedded in the general
+finite-distribution evaluator.  Pending reads are represented by `none`;
+binding failure and rejected publication remain ordinary output values. -/
+def resolveOutput? {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {owner : Player} {payload : L.Ty}
+    (binding : FieldRef layout (.binding owner payload))
+    (checks : List (DeferredCheck layout payload)) (disclose : Bool)
+    (store : Store layout) : Option (PublicationResult (L.Val payload)) := do
+  let bound ← binding.get? store
+  let proposal := if disclose then bound else .failure
+  let accepted ← DeferredCheck.allAccepted? checks store proposal
+  pure (if accepted then proposal else .failure)
+
+omit R in
+/-- Availability of a resolution node's retained footprint makes its
+deterministic output defined. -/
+theorem resolveOutput?_isSome {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {owner : Player} {payload : L.Ty}
+    (binding : FieldRef layout (.binding owner payload))
+    (checks : List (DeferredCheck layout payload)) (disclose : Bool)
+    (store : Store layout)
+    (available : ∀ field ∈ insert binding.field
+      (DeferredCheck.listReadFields checks), (store field).isSome = true) :
+    (resolveOutput? binding checks disclose store).isSome = true := by
+  have bindingPresent := binding.get?_isSome store
+    (available binding.field (Finset.mem_insert_self _ _))
+  cases hbinding : binding.get? store with
+  | none => simp [hbinding] at bindingPresent
+  | some bound =>
+      have checksPresent := DeferredCheck.allAccepted?_isSome checks store
+        (if disclose then bound else .failure)
+        (fun field member => available field (Finset.mem_insert_of_mem member))
+      cases hchecks : DeferredCheck.allAccepted? checks store
+          (if disclose then bound else .failure) with
+      | none => simp [hchecks] at checksPresent
+      | some accepted => simp [resolveOutput?, hbinding, hchecks]
+
+omit R in
+/-- Withholding always produces public failure once the retained resolution
+footprint is available. -/
+theorem resolveOutput?_false_eq_failure {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {owner : Player} {payload : L.Ty}
+    (binding : FieldRef layout (.binding owner payload))
+    (checks : List (DeferredCheck layout payload)) (store : Store layout)
+    (available : ∀ field ∈ insert binding.field
+      (DeferredCheck.listReadFields checks), (store field).isSome = true) :
+    resolveOutput? binding checks false store = some .failure := by
+  have defined := resolveOutput?_isSome binding checks false store available
+  cases outputEq : resolveOutput? binding checks false store with
+  | none => simp [outputEq] at defined
+  | some output =>
+      cases bindingEq : binding.get? store with
+      | none => simp [resolveOutput?, bindingEq] at outputEq
+      | some bound =>
+          cases checksEq : DeferredCheck.allAccepted? checks store .failure with
+          | none => simp [resolveOutput?, bindingEq, checksEq] at outputEq
+          | some accepted =>
+              simpa [resolveOutput?, bindingEq, checksEq] using outputEq.symm
+
+omit R in
+/-- The deterministic resolution output depends only on the binding and
+deferred-check footprint retained by the node. -/
+theorem resolveOutput?_congr {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {owner : Player} {payload : L.Ty}
+    (binding : FieldRef layout (.binding owner payload))
+    (checks : List (DeferredCheck layout payload)) (disclose : Bool)
+    (left right : Store layout)
+    (agree : Store.AgreeOn left right
+      (insert binding.field (DeferredCheck.listReadFields checks))) :
+    resolveOutput? binding checks disclose left =
+      resolveOutput? binding checks disclose right := by
+  have bindingEq := binding.get?_congr left right
+    (agree binding.field (Finset.mem_insert_self _ _))
+  cases hbound : binding.get? left with
+  | none =>
+      rw [hbound] at bindingEq
+      simp [resolveOutput?, hbound, ← bindingEq]
+  | some bound =>
+      rw [hbound] at bindingEq
+      have checksEq := DeferredCheck.allAccepted?_congr checks left right
+        (if disclose then bound else .failure)
+        (fun field member => agree field (Finset.mem_insert_of_mem member))
+      simp [resolveOutput?, hbound, ← bindingEq, checksEq]
+
 /-- Evaluate one node against a partial field store. The outer `Option` records
 missing required inputs; the returned finite law is the node's semantic output. -/
 def eval? {Field : Type} [DecidableEq Field]
@@ -815,12 +899,20 @@ def eval? {Field : Type} [DecidableEq Field]
     {output : EventField Player L} → (code : EventCode layout output) →
       EventField.Action output → Store layout → Option (FinDist output.Value)
   | _, .bind _ _, action, _ => some (FinDist.pure action)
-  | _, .resolve _ _ binding checks, disclose, store => do
-      let bound ← binding.get? store
-      let proposal := if (show Bool from disclose) then bound else .failure
-      let accepted ← DeferredCheck.allAccepted? checks store proposal
-      pure (FinDist.pure (if accepted then proposal else .failure))
+  | _, .resolve _ _ binding checks, disclose, store =>
+      (resolveOutput? binding checks disclose store).map FinDist.pure
   | _, .sample _ law, _, store => law.eval? store
+
+/-- The general evaluator embeds the unique deterministic resolve output as a
+point law.  Public-message handlers use `resolveOutput?` directly and prove
+their transition law against `eval?` through this equation. -/
+@[simp] theorem resolve_eval? {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {owner : Player} {payload : L.Ty}
+    (binding : FieldRef layout (.binding owner payload))
+    (checks : List (DeferredCheck layout payload)) (disclose : Bool)
+    (store : Store layout) :
+    (EventCode.resolve owner payload binding checks).eval? disclose store =
+      (resolveOutput? binding checks disclose store).map FinDist.pure := rfl
 
 /-- Availability of the finite node footprint is sufficient for evaluation. -/
 theorem eval?_isSome_of_reads {Field : Type} [DecidableEq Field]
@@ -832,18 +924,8 @@ theorem eval?_isSome_of_reads {Field : Type} [DecidableEq Field]
   cases code with
   | bind => rfl
   | resolve owner payload binding checks =>
-      have bindingPresent := binding.get?_isSome store
-        (available binding.field (Finset.mem_insert_self _ _))
-      cases hbinding : binding.get? store with
-      | none => simp [hbinding] at bindingPresent
-      | some bound =>
-          have checksPresent := DeferredCheck.allAccepted?_isSome checks store
-            (if (show Bool from action) then bound else .failure)
-            (fun field member => available field (Finset.mem_insert_of_mem member))
-          simp only [eval?, hbinding]
-          cases hchecks : DeferredCheck.allAccepted? checks store
-              (if (show Bool from action) then bound else .failure) <;>
-            simp_all
+      rw [resolve_eval?, Option.isSome_map]
+      exact resolveOutput?_isSome binding checks action store available
   | sample payload law => exact law.eval?_isSome store available
 
 /-- Node evaluation depends only on the node's declared finite footprint. -/
@@ -855,24 +937,8 @@ theorem eval?_congr {Field : Type} [DecidableEq Field]
   cases code with
   | bind => rfl
   | resolve owner payload binding checks =>
-      have bindingEq := binding.get?_congr left right
-        (agree binding.field (Finset.mem_insert_self _ _))
-      cases hbound : binding.get? left with
-      | none =>
-          rw [hbound] at bindingEq
-          simp [eval?, hbound, ← bindingEq]
-      | some bound =>
-          rw [hbound] at bindingEq
-          cases action with
-          | false =>
-              have checksEq := DeferredCheck.allAccepted?_congr checks left right
-                PublicationResult.failure
-                (fun field member => agree field (Finset.mem_insert_of_mem member))
-              simp [eval?, hbound, ← bindingEq, checksEq]
-          | true =>
-              have checksEq := DeferredCheck.allAccepted?_congr checks left right bound
-                (fun field member => agree field (Finset.mem_insert_of_mem member))
-              simp [eval?, hbound, ← bindingEq, checksEq]
+      exact congrArg (Option.map FinDist.pure)
+        (resolveOutput?_congr binding checks action left right agree)
   | sample payload law => exact law.eval?_congr left right agree
 
 end EventCode

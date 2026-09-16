@@ -83,6 +83,33 @@ theorem DeferredCheck.allAccepted?_playerStore {payload : L.Ty}
   | cons check rest ih =>
       simp only [DeferredCheck.allAccepted?, check.eval?_playerStore who store proposal, ih]
 
+/-- Owner-local prevalidation computes the exact deterministic resolution
+output.  Foreign private bindings are neither needed nor exposed. -/
+theorem EventCode.resolveOutput?_playerStore {owner : Player} {payload : L.Ty}
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (DeferredCheck graph.layout payload))
+    (store : Store graph.layout) (disclose : Bool) :
+    EventCode.resolveOutput? binding checks disclose (graph.playerStore owner store) =
+      EventCode.resolveOutput? binding checks disclose store := by
+  simp only [EventCode.resolveOutput?]
+  rw [binding.get?_playerStore owner store rfl]
+  congr 1
+  funext bound
+  rw [DeferredCheck.allAccepted?_playerStore]
+
+/-- Ready-footprint availability makes owner-local prevalidation defined. -/
+theorem EventCode.resolveOutput?_playerStore_isSome
+    {owner : Player} {payload : L.Ty}
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (DeferredCheck graph.layout payload))
+    (store : Store graph.layout) (disclose : Bool)
+    (available : ∀ field ∈ insert binding.field
+      (DeferredCheck.listReadFields checks), (store field).isSome = true) :
+    (EventCode.resolveOutput? binding checks disclose
+      (graph.playerStore owner store)).isSome = true := by
+  rw [EventCode.resolveOutput?_playerStore]
+  exact EventCode.resolveOutput?_isSome binding checks disclose store available
+
 /-- Owner-local prevalidation computes exactly the resolution kernel that the
 semantic store would compute, including rejection and failure. This does not
 require a successful opening or a feasible guard. -/
@@ -93,10 +120,7 @@ theorem EventCode.resolve_eval?_playerStore {owner : Player} {payload : L.Ty}
     (EventCode.resolve owner payload binding checks).eval? disclose
         (graph.playerStore owner store) =
       (EventCode.resolve owner payload binding checks).eval? disclose store := by
-  simp only [EventCode.eval?]
-  rw [binding.get?_playerStore owner store rfl]
-  congr 1
-  funext bound
-  rw [DeferredCheck.allAccepted?_playerStore]
+  simp only [EventCode.resolve_eval?]
+  rw [EventCode.resolveOutput?_playerStore]
 
 end Vegas.EventGraph

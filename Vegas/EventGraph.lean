@@ -14,6 +14,10 @@ import Vegas.EventGraph.Recall
 import Vegas.EventGraph.Semantics
 import Vegas.EventGraph.NormalizedPolicy
 import Vegas.EventGraph.PolicyCommutation
+import Vegas.EventGraph.StateCongruence
+import Vegas.EventGraph.SchedulingLaw
+import Vegas.EventGraph.SchedulerErasure
+import Vegas.EventGraph.SchedulerReplay
 import Vegas.EventGraph.Canonical
 import Vegas.EventGraph.CanonicalStep
 

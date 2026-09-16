@@ -30,10 +30,12 @@ in `Vegas.Pending` executes that graph directly. Source-to-graph composition
 belongs in `Vegas.Game`, above the backend theorem.
 
 `Vegas.EventGraph` supplies the operational interface for dependency-driven
-compilation. It has no source compiler or pending-message strategic edge yet.
-Its source-order execution and other scheduling instances share one runner;
-the [EventGraph plan](event-graph-design.md) separates source correspondence,
-schedule-independent semantic effects, and asynchronous strategic guarantees.
+compilation. `Vegas.Compile.EventGraphScheduling` proves full-source honest
+correspondence under adaptive public scheduling. Source-order execution and
+other scheduling instances share one runner. `Vegas.Pending.EventApplication`
+implements an event-addressed message application; its whole-run strategic
+edge is not proved. The [EventGraph plan](event-graph-design.md) separates
+source correspondence, scheduling laws, and pending-message guarantees.
 
 `Vegas.Language` prototypes surface notation for typed bindings and nullable
 guards. Its internal `SurfaceCore` representation and side conditions live in

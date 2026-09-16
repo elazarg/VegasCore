@@ -531,6 +531,11 @@ players' ability to transmit raw values.
 Prescribed failure traffic remains uniform in failed intention and rejected
 raw value. Otherwise a guard-invalid candidate could leak a different secret
 through a packet whose accepted source result is only failure.
+Uniformity includes submission opportunities, not only packet contents. A
+successful binding must not require an extra visible preparation round that
+lets an observer distinguish it from an unopenable binding. Use the same
+private preparation stages and public submission opportunity for both;
+unused private stages can stutter.
 
 The original disclosure decision belongs to the player's private recall. A
 canonical withholding packet cannot tell the ledger whether the source policy
@@ -665,7 +670,10 @@ dependent-pattern-matches its retained `EventCode`.
 - For `resolve owner payload binding checks`, an opening must use the immutable
   handle associated with `binding.field`, verify its typed raw value, and agree
   with the stored successful binding. Execute `Config.step` with action `true`;
-  withholding uses `false`. The node evaluator, not duplicate handler code,
+  withholding has the public effect of `false`. Private original-action
+  bookkeeping may retain a remembered rejected `true` only when its evaluated
+  output is that same failure. The public transition must not depend on this
+  choice of private record. The node evaluator, not duplicate handler code,
   computes deferred checks and the accepted publication result.
 - A sample accepts no player packet. A public command executes its unit action
   and retained kernel exactly once.
@@ -684,18 +692,20 @@ and service proofs.
 
 #### File plan and proof boundary
 
-Keep the source-independent edge under `Vegas/EventGraphRuntime/`:
+Keep the source-independent edge under `Vegas/Pending/`, alongside the
+source-independent ordered backend until that implementation is superseded.
+Event-specific modules use the following ownership:
 
 | File | Responsibility |
 | --- | --- |
-| `Application.lean` | Raw values, field-indexed handles, cut-based state/views, preparation, event-addressed inclusion, sample/expiry commands, and the `MessageApplication` instance. |
-| `Invariant.lean` | Activation domain, output/handle immutability, binding provenance, observation secrecy, and command preservation. |
-| `Policies.lean` | Per-event sample-once caches, uniform opaque bind traffic for success and failure, retained resolve Boolean, and readiness-gated sends. |
-| `StepLaw.lean` | Accepted bind/resolve/sample/expiry projects to the corresponding `Config.step`; preparation and rejected traffic stutter. |
-| `Service.lean` | Finite public rounds over enabled IDs: owner opportunities, adaptive wire slots, addressed reserved inclusion, clock advance, local expiry, and sample execution. |
-| `ServiceLaw.lean` | A feasible witness, protection of compliant ready events, expiry of ineffective owners, decreasing unfinished count, and supported-run completion. |
-| `HonestLaw.lean` | Couple compiled policies and the admitted driver to EventGraph steps, then use scheduling commutation to obtain the canonical terminal `g.Outcome` law. |
-| `DeviationLaw.lean` | Later setup-wide predrawing/locality and the exact graph-relative deviation mixture; never an application invariant. |
+| `EventApplication.lean` | Raw values, field-indexed handles, cut-based state/views, preparation, event-addressed inclusion, sample/expiry commands, and the `MessageApplication` instance. |
+| `EventInvariant.lean` | Activation domain, output/handle immutability, binding provenance, observation secrecy, and command preservation. |
+| `EventPolicies.lean` | Per-event sample-once caches, uniform opaque bind traffic for success and failure, retained resolve Boolean, and readiness-gated sends. |
+| `EventStepLaw.lean` | Accepted bind/resolve/sample/expiry projects to the corresponding `Config.step`; preparation and rejected traffic stutter. |
+| `EventService.lean` | Finite public rounds over enabled IDs: owner opportunities, adaptive wire slots, addressed reserved inclusion, clock advance, local expiry, and sample execution. |
+| `EventServiceLaw.lean` | A feasible witness, protection of compliant ready events, expiry of ineffective owners, decreasing unfinished count, and supported-run completion. |
+| `EventHonestLaw.lean` | Couple compiled policies and the admitted driver to EventGraph steps, then use scheduling commutation to obtain the canonical terminal `g.Outcome` law. |
+| `EventDeviationLaw.lean` | Setup-wide predrawing/locality and the exact graph-relative deviation mixture; never an application invariant. |
 
 Reuse `MessageApplication`, its wire policies and history runner,
 `CommitmentCandidates`, and the setup-wide predrawing framework. The old

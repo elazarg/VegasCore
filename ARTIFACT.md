@@ -26,6 +26,7 @@ the subsequent kernel-checked build.
 | Private setup transport | `Vegas/Game/GraphSetup.lean` |
 | Pending-message runtime and service | `Interaction/MessageApplication*.lean`, `Vegas/Pending/` |
 | End-to-end completion, honest law, deviations, arbitrary observations, Nash | `Vegas/Game/GraphMessages.lean` |
+| Full-source honest law under adaptive public graph scheduling | `Vegas/Compile/EventGraphScheduling.lean` |
 | Generic simulation and equilibrium transport | `GameTheoryExtensions/` |
 | Paper-visible theorem selection and axiom pins | `Paper.lean` |
 
@@ -49,8 +50,10 @@ cryptography nor an EVM/ledger implementation.
 elaboration target. Its connection to `SourceProgram` is not proved; it is
 outside the active strategic tower.
 
-`Paper.lean` is a self-contained capstone audit. Its theorems delegate to
+`Paper.lean` is a self-contained capstone audit. Proved statements delegate to
 repository results and pin their proof dependencies; supporting lemmas remain
-in their owning modules. Read the [active theorem map](docs/active-tower.md) for the
+in their owning modules. Its asynchronous graph deviation target is explicitly
+admitted and has `sorryAx` in its pin; it is not a checked result.
+Read the [active theorem map](docs/active-tower.md) for the
 formal boundary and [pending deviation extraction](docs/pending-deviation-extraction.md)
 for the central adversarial argument.

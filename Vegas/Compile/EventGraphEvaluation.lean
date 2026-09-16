@@ -430,14 +430,20 @@ theorem compileResolve_eval? {Field : Type} [DecidableEq Field]
       checks store proposedResult (registry.map fun obligation => obligation.check tentative)
       checksExact']
     simp only [List.all_map, Function.comp_def, Registry.ok]
-  suffices h :
-      (Vegas.EventGraph.DeferredCheck.allAccepted? checks store proposedResult).bind
-          (fun accepted => some (FinDist.pure
-            (if accepted then proposedResult else .failure))) =
-        some (FinDist.pure
-          (if registry.ok tentative then proposedResult else .failure)) by
-    simpa [Vegas.EventGraph.EventCode.eval?, bindingStored, proposalEq] using h
-  rw [acceptedExact]
+  have outputExact :
+      Vegas.EventGraph.EventCode.resolveOutput? (refs.get selected) checks disclose store =
+        some (if registry.ok tentative then proposedResult else .failure) := by
+    unfold Vegas.EventGraph.EventCode.resolveOutput?
+    rw [bindingStored]
+    change (do
+      let accepted ← Vegas.EventGraph.DeferredCheck.allAccepted? checks store
+        (if disclose then BoundValue.resultEquiv _ (state.get selected).1 else .failure)
+      pure (if accepted then
+        (if disclose then BoundValue.resultEquiv _ (state.get selected).1 else .failure)
+        else .failure)) = _
+    rw [proposalEq, acceptedExact]
+    rfl
+  rw [Vegas.EventGraph.EventCode.resolve_eval?, outputExact]
   rfl
 
 end Vegas.SourceProgram.EventLowering
