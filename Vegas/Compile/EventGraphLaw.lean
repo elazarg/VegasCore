@@ -37,17 +37,6 @@ private theorem canonical_ready_least
   omega
 
 omit [DecidableEq Player] in
-private theorem EventCode.actor_cast {Field : Type} [DecidableEq Field]
-    {layout : Field → Vegas.EventGraph.EventField Player L}
-    {left right : Vegas.EventGraph.EventField Player L}
-    (same : left = right) (code : Vegas.EventGraph.EventCode layout left) :
-    Vegas.EventGraph.EventCode.actor
-        (cast (congrArg (Vegas.EventGraph.EventCode layout) same) code) =
-      Vegas.EventGraph.EventCode.actor code := by
-  cases same
-  rfl
-
-omit [DecidableEq Player] in
 private theorem EventCode.actionOfActorNone_eq_sample
     {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}

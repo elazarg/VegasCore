@@ -623,6 +623,19 @@ After a completion, scan the finite enabled set, retain existing times, and
 stamp newly ready events with the current clock. There is no application
 cursor.
 
+`MessageApplication.handle` is deterministic. Binding and resolution handlers
+should therefore consume a deterministic output interface proved equivalent to
+the corresponding `EventCode.eval?` pure law. Extract that interface from the
+graph evaluator; do not repeat its deferred-validation algorithm in the
+backend. Sample events retain their `FinDist` kernel as environment actions.
+This is an evaluator API requirement, not a restriction on guards or chance.
+
+Protected inclusion must be addressed to an event as well as an owner.
+Selecting an owner's latest packet is insufficient when that owner has
+prepared several candidates or submitted packets for different events. The
+service must select an effective pending packet for the granted event using
+public packet fields, without inspecting a sealed candidate's meaning.
+
 The public view consists of completion identities/cut, `publicStore`, accepted
 handles, clock, and activation metadata. Candidate meanings and binding values
 remain hidden. A player's authenticated view adds `playerStore`, original
