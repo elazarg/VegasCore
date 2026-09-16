@@ -1,55 +1,47 @@
 # VegasCore
 
-VegasCore is a Lean 4 foundation for executable games with partial information.
-Its full-language compilation path is:
+VegasCore is a Lean 4 foundation for describing executable games with partial
+information and proving that their strategic meaning survives compilation.
+The checked compilation path is:
 
 ```text
-failure-aware sequential source
-  -> typed immutable graph with compiler certificates
-  -> public pending-message application
+failure-aware SourceProgram
+  -> typed immutable Graph
+  -> public pending-message runtime
 ```
 
-The first edge has checked exact outcome and arbitrary unilateral-deviation
-laws, and Nash/same-error epsilon-Nash equivalence at compiled profiles.
-It covers every `SourceProgram` constructor, without finite-domain,
-guard-feasibility, or failure-dominance premises. The source includes explicit
-binding and disclosure failure, heterogeneous publication results, deferred
-guards, private initial inputs, own-action recall, and dependent public chance.
-Finite setup distributions retain one policy across sampled private states;
-the graph deviation backtranslation is independent of the realized setup.
+The source supports private initial state, dependent public chance, bindings,
+explicit disclosure failure, deferred public guards, heterogeneous results,
+own-action recall, and terminal payoffs. The compiler preserves honest outcome
+laws and translates every unilateral target deviation to a finite mixture of
+legal source policies while leaving opponents unchanged. The resulting
+pending-message profile preserves and reflects same-error epsilon-Nash.
 
-The message host executes the typed graph directly using the shared
-`Interaction` pool, ideal opaque commitments, public validation, and relative
-deadlines. Its local transition laws and mixed-feature transport tests are
-checked. The prescribed-policy compiler and its local command laws are
-implemented. The concrete reserved service terminates for arbitrary player
-policies and adaptive wire choices, including with private initial setup.
-Binding-origin certificates and verifier provenance are checked, including
-arbitrary native deviations. The whole-run honest and arbitrary unilateral-
-deviation laws are proved and compose with the source-to-graph laws. The
-deviation mixture is chosen before the private initial state is sampled and
-leaves every opponent unchanged. Together these laws give same-error
-epsilon-Nash equivalence at compiled profiles.
+The native target uses authenticated messages, ideal opaque commitments,
+public opening verification, relative deadlines, and a bounded ordered service
+plan. These are explicit semantic assumptions. The repository does not yet
+provide cryptographic security, censorship resistance, a fair asynchronous
+scheduler, ledger refinement, or EVM deployment.
 
-A restricted `WFProgram` / `Vegas.EventGraph` candidate backend separately has
-checked end-to-end public outcome and unilateral-deviation utility bounds,
-composed through a graph-relative certificate. It preserves and reflects
-same-error epsilon-Nash at generated profiles under explicit deadline-relative
-service and pointwise source quitting conditions. It requires homogeneous,
-sample-free graphs, universally accepting commitment guards, and
-commitment-produced disclosures. That certificate does not cover the revised
-failure-aware source. See [the active tower](docs/active-tower.md) for the
-theorems and exact assumptions.
+An arbitrary real-valued observation of the terminal source state may be used
+in the deviation guarantee; it need not be a player's declared payoff. Thus a
+source lower bound that holds against every legal unilateral source deviation
+also holds against every unilateral native deviation, with missing native
+outcomes represented explicitly.
 
-Outcomes, executable payouts, and player utilities are separate interfaces.
-Source-outcome guarantees do not automatically cover preferences over native
-traffic or costs. Computational commitment security, concrete entropy, and
-ledger/EVM refinement require further target edges.
+`Vegas.Language` is a surface-syntax prototype for typed bindings and nullable
+guard notation. It lowers to an internal `VegasCore` representation. A verified
+elaboration into `SourceProgram` remains to be supplied; the prototype carries
+no operational or strategic compilation claim.
 
-The active libraries are `GameTheoryExtensions`, `Interaction`, `Vegas`,
-the retained tests, and the source/native paper audit. See
-[the artifact guide](ARTIFACT.md), [module boundaries](docs/module-architecture.md),
-and [compilation design](docs/compilation-design.md).
+Start with the [artifact guide](ARTIFACT.md), [theorem map](docs/active-tower.md),
+[module ownership](docs/module-architecture.md), and
+[compilation design](docs/compilation-design.md). Semantic details live in the
+[source rationale](docs/source-design-rationale.md),
+[source semantics](docs/source-semantics.md),
+[source-to-graph edge](docs/source-graph-edge.md), and
+[typed-message edge](docs/typed-message-edge.md). The
+[road ahead](docs/a-road-ahead.md) describes target boundaries still to add.
 
 ## Build
 
@@ -63,37 +55,7 @@ python -m unittest discover -s scripts -p "test_*.py"
 lake --wfail build
 ```
 
-GameTheory is a pinned, separately maintained software dependency. General
-game-theoretic simulation results live under GameTheory namespaces; Vegas owns
-the source language, event-graph compiler, and its native integration.
-
-## Paper target and proof status
-
-The single active `Paper.lean` audit selects paper-visible capstones and
-important lemmas. Proved results delegate directly to repository theorems.
-The full-language pending-message completion, honest outcome, deviation-mixture,
-and same-error Nash laws are proved. Every audit declaration delegates to its
-owning theorem and has a standard axiom pin. Supporting proofs stay in their
-owning modules; archives do not
-contribute proof coverage. The current theorem boundary is listed in
-[the active tower](docs/active-tower.md). The
-[road ahead](docs/a-road-ahead.md) sets the full-language and executable-target
-milestones, and the [typed message proof plan](docs/typed-message-edge.md)
-separates the operational host from the remaining strategic argument.
-
-The [source rationale](docs/source-design-rationale.md) records the semantics
-choices and their small examples and counterexamples. The corresponding
-[migration plan](docs/source-semantics-migration.md) separates the checked
-source-to-graph results from the remaining runtime integration.
-
-A successful Lean build checks the active proof terms and the expected
-admission diagnostics in `Paper.lean`. It is not evidence that
-the separate manuscript's claims are all established. `paper-claims.json`
-distinguishes direct audit mappings, supporting results without a paper audit,
-and explicitly unverified manuscript claims. Strict checking requires direct
-audits; coverage checking alone does not establish the manuscript's claims.
-These statuses are not a count or a worklist of missing theorems. Reference
-material supplies neither proofs nor audit obligations.
-
-Readable source material for porting is preserved in the
-[proof reference archive](archive/fused/README.md), outside all active libraries.
+The pinned `GameTheory` dependency and `GameTheoryExtensions` contain reusable
+game-theoretic mathematics. `Interaction` owns runtime-independent message
+semantics. `Vegas` owns the source language, typed graph, compiler, and their
+correspondence.

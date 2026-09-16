@@ -123,7 +123,7 @@ def check(root: Path) -> list[str]:
                 source_paths.add(path.resolve())
                 modules[module] = imports(path.read_text(encoding="utf-8"))
 
-    # A tracked non-reference source outside configured libraries is an orphan.
+    # A tracked Lean source outside configured libraries is an orphan.
     # Git submodules are gitlinks, so this does not enumerate dependency trees.
     if (root / ".git").exists():
         tracked = subprocess.run(
@@ -131,8 +131,6 @@ def check(root: Path) -> list[str]:
             check=True, capture_output=True, text=True,
         ).stdout.split("\0")
         for filename in filter(None, tracked):
-            if Path(filename).parts[0] == "archive":
-                continue
             path = root / filename
             if path.is_file() and path.resolve() not in source_paths:
                 failures.append(f"{filename}: tracked source outside configured libraries")
@@ -177,6 +175,11 @@ def check(root: Path) -> list[str]:
                 failures.append(f"{module}: game-theory extension imports {dependency}")
             if any(under(dependency, prefix) for prefix in local_roots) and dependency not in modules:
                 failures.append(f"{module}: missing local import {dependency}")
+            if under(dependency, "GameTheoryExtensionsTests") and not under(module, "GameTheoryExtensionsTests"):
+                failures.append(f"{module}: production or audit module imports game-theory test {dependency}")
+            if under(module, "GameTheoryExtensionsTests") and not any(under(dependency, prefix) for prefix in
+                    ("GameTheory", "GameTheoryExtensions", "GameTheoryExtensionsTests", "Mathlib", "Batteries", "Init", "Std")):
+                failures.append(f"{module}: game-theory test imports downstream module {dependency}")
             if under(module, "Interaction") and any(under(dependency, prefix) for prefix in
                     ("Vegas", "VegasEVM", "VegasTests", "InteractionTests", "Paper")):
                 failures.append(f"{module}: interaction carrier imports downstream module {dependency}")

@@ -18,13 +18,12 @@ For a native path
   s_0 \xrightarrow{a_0} s_1 \xrightarrow{a_1} \cdots,
 \]
 
-starting at phase \(k\), `FirstPhaseChange` selects the least \(j\) such that
-`phase(s_{j+1}) > k`. Monotonicity of native execution proves that this prefix
-exists whenever the whole path ends beyond \(k\). This avoids attributing later
-phase changes in the same nominal block to the focal decision.
-`FirstPhaseChange.before_reachable` also exposes the actual action-list prefix
-reaching \(s_j\), so public agreement and binding soundness transport from the
-initialized state to the extraction point.
+starting at phase \(k\), `exists_first_phaseChange_invocation` selects the first
+invocation that advances the graph phase. Its supported prefix retains actual
+policy histories and the continuation to the endpoint. Monotonicity guarantees
+such an invocation when the endpoint is beyond \(k\), without attributing later
+phase changes in the same nominal service block to this decision. Initialized
+reachability carries public agreement and binding soundness to the selected step.
 
 `State.RealizesOwnAction before action after` records the graph-semantic
 effect: the immutable typed environment is extended exactly as the graph

@@ -100,6 +100,25 @@ class ModuleBoundaryTests(unittest.TestCase):
                 self.assertTrue(any(f"game-theory extension imports {dependency}" in error
                                     for error in errors))
 
+    def test_production_cannot_import_game_theory_tests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory, {
+                "Vegas": "import GameTheoryExtensionsTests",
+                "GameTheoryExtensionsTests": "",
+            }, '[[lean_lib]]\nname = "GameTheoryExtensionsTests"\n')
+            errors = CHECKER.check(root)
+            self.assertTrue(any("imports game-theory test" in error for error in errors))
+
+    def test_game_theory_tests_cannot_import_runtime(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory, {
+                "Vegas": "", "Interaction": "",
+                "GameTheoryExtensionsTests": "import Interaction",
+            }, '[[lean_lib]]\nname = "GameTheoryExtensionsTests"\n'
+               '[[lean_lib]]\nname = "Interaction"\n')
+            errors = CHECKER.check(root)
+            self.assertTrue(any("game-theory test imports downstream" in error for error in errors))
+
     def test_game_theory_extensions_can_use_upstream_probability_and_forms(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory, {

@@ -1,29 +1,8 @@
-/-
-Copyright (c) 2026 VegasCore contributors. All rights reserved.
-Released under MIT license as described in the file LICENSE.
-Authors: VegasCore contributors
--/
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Core.Accounting
-import Vegas.Core.AccountingIntegrity
 import Vegas.Core.Basic
-import Vegas.Core.ConditionalOpening
 import Vegas.Core.ExprSimple
-import Vegas.Core.Finite
 import Vegas.Core.FiniteDomain
-import Vegas.Core.ForcedChoice
 import Vegas.Core.Obligations
-import Vegas.Core.OpeningSite
-import Vegas.Core.Scope
-import Vegas.Core.SmallStep
-import Vegas.Core.Strategy
-import Vegas.Core.SourceRecall
-import Vegas.Core.SourcePolicyExtension
-import Vegas.Core.SourceContext
-import Vegas.Core.SourceLikelihood
-import Vegas.Core.Settlement
-import Vegas.Core.SourceQuitPrefix
-import Vegas.Core.SourceRestriction
-import Vegas.Core.WellFormed
 
-/-! Checked source syntax, expressions, obligations, source SOS, and source strategies. -/
+/-! Internal elaboration target for the `Vegas.Language` surface syntax. -/

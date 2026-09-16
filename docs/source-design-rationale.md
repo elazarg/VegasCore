@@ -1,9 +1,9 @@
 # Source design rationale
 
 This note records the semantic choices for the failure-aware source language,
-with small examples explaining their consequences. The source safety and
-source-to-graph strategic theorems are checked; the public-message strategic
-objective below remains to be proved. The mathematical publication rules are described in
+with small examples explaining their consequences. Source safety and the
+source-to-pending outcome/deviation laws are checked under the explicit
+ideal-service boundary. The mathematical publication rules are described in
 [deferred-guards-semantics.tex](deferred-guards-semantics.tex).
 
 ## Publication results are explicit
@@ -164,10 +164,10 @@ availability, and strategy contract force the same conditional law. Giving an
 unrestricted coin publisher constant utility does not stop it from correlating
 the draw or selectively withholding it.
 
-## Exact compiler objective
+## Exact compiler guarantee
 
 Fix a source strategy profile, the canonical ordered operation schedule, and
-an admissible adaptive environment. The intended compiler theorem has two
+the concrete bounded service with an adaptive wire environment. The checked compiler theorem has two
 exact probability statements.
 
 First, at every compiled source profile, decoding the compiled outcome gives
@@ -187,8 +187,8 @@ resampling is also insufficient when environment signals, chance, and the
 deviator's observations are correlated.
 
 Because source strategies themselves include reveal and failure choices, no
-general extra premise that informed failure is utility-dominated has yet been
-shown necessary for this edge. Utility bounds belong where a target really
+extra premise that informed failure is utility-dominated is needed at this
+ordered edge. Utility bounds belong where a target really
 adds actions, information, timing power, or costs that the source does not
 contain, and their required strength should be justified by a counterexample.
 
@@ -259,6 +259,7 @@ The full `SourceProgram` compiler has exact outcome, payout, and arbitrary
 unilateral-deviation laws to the typed `Vegas.Graph`, and same-error Nash
 correspondence for source-outcome utilities. The
 [source-to-graph certificate](source-graph-edge.md) covers every constructor
-without a guard-feasibility or failure-dominance premise. The remaining
-[public-message edge](typed-message-edge.md) must preserve that complete graph;
-the restricted `WFProgram` candidate certificate does not establish this step.
+without a guard-feasibility or failure-dominance premise. The checked
+[public-message edge](typed-message-edge.md) preserves that complete graph,
+yielding source-to-pending exact mixture simulation and same-error Nash
+equivalence under its explicit ideal-service contract.

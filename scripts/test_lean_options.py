@@ -60,6 +60,29 @@ class LeanOptionTests(unittest.TestCase):
         text = 'def note := "quoted \\\" sorryAx"\ntheorem open : True := by sorry\n'
         self.assertEqual(CHECKER.admission_tokens(text), [(2, "sorry")])
 
+    def test_guarded_audit_pin_passes(self):
+        text = ("theorem witness : True := True.intro\n"
+                "#guard_msgs (whitespace := lax) in\n"
+                "#print axioms Vegas.Paper.witness\n")
+        self.assertEqual(CHECKER.check_audit_pins(text), [])
+
+    def test_audit_theorem_requires_guarded_pin(self):
+        for pin in ("", "#print axioms Vegas.Paper.witness\n",
+                    "/- #guard_msgs in\n#print axioms Vegas.Paper.witness -/\n"):
+            with self.subTest(pin=pin):
+                failures = CHECKER.check_audit_pins("theorem witness : True := True.intro\n" + pin)
+                self.assertTrue(any("missing guarded axiom pin" in error for error in failures))
+
+    def test_stale_audit_pin_fails(self):
+        failures = CHECKER.check_audit_pins("#guard_msgs in\n#print axioms Vegas.Paper.absent\n")
+        self.assertTrue(any("names no audit theorem" in error for error in failures))
+
+    def test_duplicate_audit_pin_fails(self):
+        failures = CHECKER.check_audit_pins(
+            "theorem witness : True := True.intro\n" +
+            "#guard_msgs in\n#print axioms Vegas.Paper.witness\n" * 2)
+        self.assertTrue(any("duplicate axiom pin" in error for error in failures))
+
     def test_only_root_paper_audit_may_admit(self):
         admitted = "theorem target : True := by sorry\n"
         self.assertEqual(CHECKER.check_admissions(Path("Paper.lean"), admitted), [])

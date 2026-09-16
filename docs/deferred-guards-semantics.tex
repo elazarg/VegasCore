@@ -25,9 +25,11 @@
 \paragraph{Scope and status.}
 This note specifies deferred source guards and their failure-aware source
 execution. The publication component and the complete source safety theorems
-are formalized in Lean. The compiler still consumes the commit-time-validating
-\lean{WFProgram} interface, not this \lean{SourceProgram} semantics. The results
-here establish neither a compiler edge nor strategic equivalence with a runtime.
+are formalized in Lean. The compiler consumes this \lean{SourceProgram}
+semantics and has checked exact outcome and unilateral-deviation laws through
+the ordered graph to its ideal pending-message runtime. This note isolates
+the source publication mathematics; the separate compiler certificates carry
+the runtime information and service obligations.
 
 \section{Heterogeneous publications}
 
@@ -348,7 +350,7 @@ should represent these cases honestly rather than calling private evaluation
 public validation.
 
 Target mempool contents, failed calls, retries, transaction ordering, gas, and
-front-running are absent from this source model. A future compiler proof must
+front-running are absent from this source model. The separate compiler proof must
 couple outcome laws and causally translate deviations while retaining the
 opponents and fixing the environment across the comparison. It must account
 for the extra observations rather than assume they are functions of the source
@@ -357,9 +359,9 @@ settlement safety lemma, but by itself proves neither that invalid and absent
 traffic are strategically indistinguishable nor that native deviations admit
 source-policy backtranslation.
 
-\section{Exact positive claim and remaining boundary}
+\section{Publication invariant and compiler boundary}
 
-The constructive claim is intentionally small:
+The publication component establishes:
 \begin{quote}
 Starting from a consistent heterogeneous publication state, resolving one
 pending slot by ordinary publication when all newly decidable guards accept,
@@ -370,12 +372,13 @@ owner as the failed current publisher.
 \end{quote}
 
 Together with an optional ordinary witness, this shows that deferred relational
-guards are internally consistent and can have failure-free executions. It also isolates the next
-compiler obligations: derive owned pending support from source visibility,
+guards are internally consistent and can have failure-free executions. Separate
+compiler obligations derive owned pending support from source visibility,
 prove exact honest source/publication correspondence, attribute each arbitrary
 failure to a legal source alternative at the retained information prefix, and
-transport the resulting outcome law.  None of those obligations is assumed as
-a field of the publication model.
+transport the resulting outcome law. These obligations are discharged in the
+source, graph, and pending-message proofs; none is assumed as a field of the
+publication model.
 
 \section{Source execution}
 

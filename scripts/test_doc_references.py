@@ -98,12 +98,12 @@ class DocReferenceTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("Markdown path inventory was not checked", result.stdout)
 
-    def test_archive_is_outside_the_documentation_audit(self):
+    def test_tracked_documentation_has_no_directory_exemption(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             reference = root / "archive" / "notes.md"
             reference.parent.mkdir()
-            reference.write_bytes(b"\xff\xfe not UTF-8")
+            reference.write_text("See [missing](absent.md).", encoding="utf-8")
             (root / "README.md").write_text(
                 "[Reference material](archive/missing.md)", encoding="utf-8"
             )
@@ -112,12 +112,9 @@ class DocReferenceTests(unittest.TestCase):
                            check=True)
             result = subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
                                     capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stdout)
-            reference.unlink()
-            reference.parent.rmdir()
-            result = subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
-                                    capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("archive/missing.md", result.stdout)
+            self.assertIn("absent.md", result.stdout)
 
     def test_broken_git_inventory_is_a_failure(self):
         with tempfile.TemporaryDirectory() as directory:

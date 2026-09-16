@@ -1,7 +1,7 @@
 name = "VegasCore"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["GameTheoryExtensions", "Interaction", "InteractionTests", "Vegas", "VegasTests", "Paper"]
+defaultTargets = ["GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction", "InteractionTests", "Vegas", "VegasTests", "Paper"]
 
 [leanOptions]
 pp.unicode.fun = true
@@ -31,6 +31,9 @@ name = "Vegas"
 
 [[lean_lib]]
 name = "GameTheoryExtensions"
+
+[[lean_lib]]
+name = "GameTheoryExtensionsTests"
 
 [[lean_lib]]
 name = "VegasTests"

@@ -5,13 +5,12 @@ import Vegas.Graph.MessageBindingSoundness
 import Vegas.Graph.MessageInvariant
 import Vegas.Graph.MessageStepLaw
 
-/-! # Extracting the first effective action of a native deviation
+/-! # Extracting an effective action of a native deviation
 
 Native message execution contains private preparation, publication, delivery,
-and rejected inclusion steps.  A service block may also contain several graph
-phases.  This file identifies the first individual native step that changes the
-graph phase, and relates such a step at a player-owned bind or resolve cursor to
-the corresponding action of the typed graph semantics.
+and rejected inclusion steps. This file relates an individual native step that
+changes the graph phase at a player-owned bind or resolve cursor to the
+corresponding action of the typed graph semantics.
 -/
 
 noncomputable section
@@ -22,130 +21,6 @@ open GameTheory.Math.Probability Interaction Graph
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {Γ Δ : VCtx Player L}
-
-/-- A supported native path up to, and including, its first graph-phase change.
-The output `before` is the last native state at `phase`; `after` is the result of
-the first individual action that moves beyond it. -/
-inductive FirstPhaseChange (runtime : GraphRuntime Player L Δ) (phase : Nat) :
-    runtime.application.State → List runtime.application.Action →
-      runtime.application.State → runtime.application.Action →
-        runtime.application.State → Prop where
-  | here {state next : runtime.application.State}
-      {action : runtime.application.Action} {rest : List runtime.application.Action}
-      (atPhase : state.application.phase = phase)
-      (step : next ∈ (runtime.application.step state action).support)
-      (changed : phase < next.application.phase) :
-      FirstPhaseChange runtime phase state (action :: rest) state action next
-  | later {state middle before after : runtime.application.State}
-      {action changedAction : runtime.application.Action}
-      {rest : List runtime.application.Action}
-      (atPhase : state.application.phase = phase)
-      (step : middle ∈ (runtime.application.step state action).support)
-      (samePhase : middle.application.phase = phase)
-      (tail : FirstPhaseChange runtime phase middle rest before changedAction after) :
-      FirstPhaseChange runtime phase state (action :: rest) before changedAction after
-
-namespace FirstPhaseChange
-
-theorem before_phase {runtime : GraphRuntime Player L Δ} {phase : Nat}
-    {start before after : runtime.application.State}
-    {actions : List runtime.application.Action} {action : runtime.application.Action}
-    (first : FirstPhaseChange runtime phase start actions before action after) :
-    before.application.phase = phase := by
-  induction first with
-  | here atPhase => exact atPhase
-  | later _ _ _ tail ih => exact ih
-
-theorem supported {runtime : GraphRuntime Player L Δ} {phase : Nat}
-    {start before after : runtime.application.State}
-    {actions : List runtime.application.Action} {action : runtime.application.Action}
-    (first : FirstPhaseChange runtime phase start actions before action after) :
-    after ∈ (runtime.application.step before action).support := by
-  induction first with
-  | here _ step => exact step
-  | later _ _ _ _ ih => exact ih
-
-theorem changed {runtime : GraphRuntime Player L Δ} {phase : Nat}
-    {start before after : runtime.application.State}
-    {actions : List runtime.application.Action} {action : runtime.application.Action}
-    (first : FirstPhaseChange runtime phase start actions before action after) :
-    phase < after.application.phase := by
-  induction first with
-  | here _ _ changed => exact changed
-  | later _ _ _ _ ih => exact ih
-
-/-- The selected `before` state is genuinely reached by a prefix of the given
-native action list.  This is the bridge used to transport run invariants, such
-as public agreement and binding soundness, to the extraction point. -/
-theorem before_reachable {runtime : GraphRuntime Player L Δ} {phase : Nat}
-    {start before after : runtime.application.State}
-    {actions : List runtime.application.Action} {action : runtime.application.Action}
-    (first : FirstPhaseChange runtime phase start actions before action after) :
-    ∃ pre post,
-      actions = pre ++ action :: post ∧
-      before ∈ (runtime.application.run pre start).support := by
-  induction first with
-  | @here state next firstAction rest atPhase step changed =>
-      exact ⟨[], rest, rfl, by simp⟩
-  | @later state middle prior after firstAction changedAction rest
-      atPhase step samePhase tail ih =>
-      obtain ⟨pre, post, rest_eq, reachable⟩ := ih
-      refine ⟨firstAction :: pre, post, ?_, ?_⟩
-      · simp only [List.cons_append, rest_eq]
-      · simp only [MessageApplication.run_cons, FinDist.support_bind, Set.mem_iUnion]
-        exact ⟨middle, step, reachable⟩
-
-theorem before_publicAgreement {runtime : GraphRuntime Player L Δ} {phase : Nat}
-    {start before after : runtime.application.State}
-    {actions : List runtime.application.Action} {action : runtime.application.Action}
-    (first : FirstPhaseChange runtime phase start actions before action after)
-    (agreement : start.application.PublicAgreement) :
-    before.application.PublicAgreement := by
-  obtain ⟨pre, _post, _actions, reachable⟩ := first.before_reachable
-  exact runtime.run_preserves_publicAgreement start before pre agreement reachable
-
-theorem before_bindingSoundness {runtime : GraphRuntime Player L Δ} {phase : Nat}
-    {start before after : runtime.application.State}
-    {actions : List runtime.application.Action} {action : runtime.application.Action}
-    (first : FirstPhaseChange runtime phase start actions before action after)
-    (sound : start.application.BindingSoundness) :
-    before.application.BindingSoundness := by
-  obtain ⟨pre, _post, _actions, reachable⟩ := first.before_reachable
-  exact runtime.run_bindingSoundness pre start before sound reachable
-
-end FirstPhaseChange
-
-/-- Any supported native run that advances the graph has a first individual
-phase-changing action, even when the supplied action list crosses several graph
-phases. -/
-theorem exists_firstPhaseChange_of_run (runtime : GraphRuntime Player L Δ)
-    (actions : List runtime.application.Action)
-    (state final : runtime.application.State)
-    (supported : final ∈ (runtime.application.run actions state).support)
-    (advanced : state.application.phase < final.application.phase) :
-    ∃ before action after,
-      FirstPhaseChange runtime state.application.phase state actions before action after := by
-  induction actions generalizing state with
-  | nil =>
-      simp only [MessageApplication.run_nil, FinDist.mem_support_pure] at supported
-      subst final
-      exact (Nat.lt_irrefl _ advanced).elim
-  | cons action rest ih =>
-      simp only [MessageApplication.run_cons, FinDist.support_bind,
-        Set.mem_iUnion] at supported
-      obtain ⟨middle, hmiddle, hfinal⟩ := supported
-      have monotone := runtime.application_step_phase_mono state middle action hmiddle
-      by_cases changed : state.application.phase < middle.application.phase
-      · exact ⟨state, action, middle, .here rfl hmiddle changed⟩
-      · have same : middle.application.phase = state.application.phase :=
-          Nat.le_antisymm (Nat.le_of_not_gt changed) monotone
-        have tailAdvanced : middle.application.phase < final.application.phase := by
-          simpa [same] using advanced
-        obtain ⟨before, changedAction, after, first⟩ :=
-          ih middle hfinal tailAdvanced
-        rw [same] at first
-        exact ⟨before, changedAction, after,
-          .later rfl hmiddle same first⟩
 
 /-- The trusted part of a concrete phase change: the immutable ideal state is
 extended exactly as one action of the typed graph semantics prescribes.  Pool,
@@ -501,78 +376,4 @@ theorem phaseChangingStep_resolve_realizes
                                 (State.RealizesOwnAction.resolveSuccess (Δ := Δ)
                                   (source := source) value result_eq.symm clock)⟩
 
-/-- Applying bind extraction to the step selected by `FirstPhaseChange` makes
-the stopping point explicit: later actions in the same service block are not
-part of this effective source action. -/
-theorem FirstPhaseChange.bind_realizes
-    (runtime : GraphRuntime Player L Δ) {phase : Nat}
-    {start after : runtime.application.State}
-    {actions : List runtime.application.Action}
-    {name : VarId} {owner : Player} {payload : L.Ty}
-    {fresh : name ∉ Γ.map Prod.fst}
-    {next : Graph Player L ((name, .sealed owner (R.result payload)) :: Γ) Δ}
-    (ideal : VEnv L Γ) (values : PublicValues Γ) (bindings : Bindings Player)
-    (candidates : CommitmentCandidates Player Slot (Raw L))
-    (pc clock enteredAt : Nat)
-    (pool : MessagePool Player (Payload Player L))
-    (receipts : List (MessageId Player × Bool))
-    (action : runtime.application.Action)
-    (first : FirstPhaseChange runtime phase start actions
-      ⟨.running (.bind name owner fresh next) ideal values bindings candidates
-        pc clock enteredAt, pool, receipts⟩ action after) :
-    ∃ choice : PublicationResult (L.Val payload),
-      State.RealizesOwnAction
-        (.running (.bind name owner fresh next) ideal values bindings candidates
-          pc clock enteredAt)
-        (.bind owner name payload choice) after.application := by
-  apply runtime.phaseChangingStep_bind_realizes ideal values bindings candidates
-    pc clock enteredAt pool receipts action after first.supported
-  have atPhase := first.before_phase
-  have changed := first.changed
-  simp only [State.phase_running] at atPhase
-  omega
-
-/-- Resolve extraction at the first actual phase change.  Binding soundness and
-public agreement are the only semantic certificates needed at this boundary. -/
-theorem FirstPhaseChange.resolve_realizes
-    (runtime : GraphRuntime Player L Δ) {phase : Nat}
-    {start after : runtime.application.State}
-    {actions : List runtime.application.Action}
-    {outputName bindingName : VarId} {owner : Player} {payload : L.Ty}
-    {fresh : outputName ∉ Γ.map Prod.fst}
-    {source : HasVar Γ bindingName (.sealed owner (R.result payload))}
-    {checks : List (GuardCheck (R := R)
-      ((outputName, .pub (R.result payload)) :: Γ))}
-    {next : Graph Player L ((outputName, .pub (R.result payload)) :: Γ) Δ}
-    (ideal : VEnv L Γ) (values : PublicValues Γ) (bindings : Bindings Player)
-    (candidates : CommitmentCandidates Player Slot (Raw L))
-    (pc clock enteredAt : Nat)
-    (pool : MessagePool Player (Payload Player L))
-    (receipts : List (MessageId Player × Bool))
-    (action : runtime.application.Action)
-    (agreement : (values : PublicValues Γ) =
-      (PublicValues.ofVEnv ideal : PublicValues Γ))
-    (bindingSound : State.BindingSoundness
-      (.running (.resolve outputName owner bindingName fresh source checks next)
-        ideal values bindings candidates pc clock enteredAt))
-    (first : FirstPhaseChange runtime phase start actions
-      ⟨.running (.resolve outputName owner bindingName fresh source checks next)
-        ideal values bindings candidates pc clock enteredAt, pool, receipts⟩ action after) :
-    ∃ disclose : Bool,
-      State.RealizesOwnAction
-        (.running (.resolve outputName owner bindingName fresh source checks next)
-          ideal values bindings candidates pc clock enteredAt)
-        (.resolve owner bindingName disclose) after.application := by
-  apply runtime.phaseChangingStep_resolve_realizes ideal values bindings candidates
-    pc clock enteredAt pool receipts agreement bindingSound action after first.supported
-  have atPhase := first.before_phase
-  have changed := first.changed
-  simp only [State.phase_running] at atPhase
-  omega
-
 end Vegas.GraphRuntime
-
-/-- info: 'Vegas.GraphRuntime.FirstPhaseChange.resolve_realizes' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.FirstPhaseChange.resolve_realizes

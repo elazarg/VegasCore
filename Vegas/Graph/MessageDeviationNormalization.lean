@@ -13,24 +13,6 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {Γ Δ : VCtx Player L}
 
-/- Re-running resolution with the success bit of its accepted result is
-idempotent, including guard rejection and undisclosed failure. -/
-omit [DecidableEq Player] in
-theorem acceptedResult_isSuccess
-    {owner : Player} {payload : L.Ty} {outputName bindingName : VarId}
-    (source : HasVar Γ bindingName (.sealed owner (R.result payload)))
-    (checks : List (GuardCheck (R := R) ((outputName, .pub (R.result payload)) :: Γ)))
-    (env : VEnv L Γ) (disclose : Bool) :
-    acceptedResult source checks env
-        (PublicationResult.isSuccess (acceptedResult source checks env disclose)) =
-      acceptedResult source checks env disclose := by
-  cases result : acceptedResult source checks env disclose with
-  | failure => simp [PublicationResult.isSuccess, acceptedResult, proposedResult]
-  | success value =>
-      have disclosed := (acceptedResult_success source checks env disclose value result).1
-      subst disclose
-      simpa [PublicationResult.isSuccess] using result
-
 /-- Changing only the focal logical-action history does not change a
 continuation whose focal policy ignores that history and whose focal runtime
 cache is empty. -/
@@ -110,19 +92,6 @@ theorem continuation_congr_focal_logical
               by_cases same : who = owner
               · subst who; simp [Function.update]
               · simp [Function.update, same, agree who different]) histories empty
-
-/-- Erasing the focal logical history is invisible under the same policy and
-cache hypotheses. -/
-theorem continuation_eraseFocalLogical
-    (runtime : GraphRuntime Player L Δ) (graph : Graph Player L Γ Δ)
-    (profile : BehavioralProfile graph) (focal : Player)
-    (independent : PolicyIgnoresOwnHistory focal graph (profile focal))
-    (site : Nat) (env : VEnv L Γ) (logical : History Player L)
-    (histories : Player → List (Entry runtime)) (empty : histories focal = []) :
-    continuation runtime graph profile site env (eraseFocalLogical focal logical) histories =
-      continuation runtime graph profile site env logical histories := by
-  apply runtime.continuation_congr_focal_logical graph profile focal independent site env _ _
-    (fun who different => by simp [eraseFocalLogical, different]) histories empty
 
 /-- Initially, sanitizing the focal transcript changes nothing: the residual
 law is the ordinary graph execution law. -/

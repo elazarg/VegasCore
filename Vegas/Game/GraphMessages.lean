@@ -97,46 +97,6 @@ theorem pendingGame_honest_law (setup : Setup (Player := Player) (L := L))
   rw [FinDist.map_comp] at sourceLaw
   exact decoded.trans sourceLaw
 
-/-- Approximate Nash at the compiled pending-message profile reflects back to
-the source profile. Honest outcome-law preservation suffices for this one-way
-implication; no claim about arbitrary native deviations is used. -/
-theorem pendingGame_approximate_nash_of_compiled
-    (setup : Setup (Player := Player) (L := L))
-    (runtime : GraphRuntime Player L (graphCtx setup.program.terminalCtx))
-    (roster : List Player) (reactionRounds : Nat) (wire : runtime.application.WirePolicy)
-    (utility : State L setup.program.terminalCtx → Player → ℝ)
-    (missing : Player → ℝ) (ε : ℝ)
-    (profile : BehavioralProfile setup.program)
-    (compiledNash : IsεNash (setup.pendingGame runtime roster reactionRounds wire)
-      (fun outcome who => (setup.pendingOutcome runtime outcome).elim
-        (missing who) (fun state => utility state who)) ε
-      (fun who => setup.compilePendingStrategy runtime who (profile who))) :
-    IsεNash setup.gameForm utility ε profile := by
-  let target := setup.pendingGame runtime roster reactionRounds wire
-  let compile := fun (who : Player) (policy : BehavioralPolicy who setup.program) =>
-    setup.compilePendingStrategy runtime who policy
-  let targetUtility := fun (outcome : target.sig.Outcome) (who : Player) =>
-    (setup.pendingOutcome runtime outcome).elim (missing who) (fun state => utility state who)
-  have honestUtility : ∀ alternative who,
-      (target.play (fun player => compile player (alternative player))).expect
-          (fun outcome => targetUtility outcome who) =
-        (setup.gameForm.play alternative).expect (fun state => utility state who) := by
-    intro alternative who
-    have law := setup.pendingGame_honest_law runtime roster reactionRounds wire alternative
-    have expected := congrArg
-      (fun distribution => distribution.expect
-        (fun outcome => outcome.elim (missing who) (fun state => utility state who))) law
-    change (target.play (fun player => compile player (alternative player))).expect
-        (fun outcome => targetUtility outcome who) =
-      (setup.run alternative).expect (fun state => utility state who)
-    simp only [FinDist.expect_map, Option.elim_some] at expected
-    dsimp only [target, compile, targetUtility]
-    exact expected
-  exact GameTheory.GameForm.isεNash_of_compileProfile
-    (source := setup.gameForm) (target := target)
-    (sourceUtility := utility) (targetUtility := targetUtility)
-    compile honestUtility profile ε compiledNash
-
 /-- A graph-policy deviation mixture for the actual pending target composes
 with source/graph backtranslation into a source behavioral-policy mixture.
 This is a conditional compiler-edge reduction, not the pending deviation
@@ -228,6 +188,73 @@ def pendingSimulation (setup : Setup (Player := Player) (L := L))
   deviation_mixture profile who replacement _ :=
     setup.pendingGame_deviation_law runtime roster reactionRounds wire profile who replacement
 
+/-- Any lower bound that survives every unilateral source deviation also
+survives every native deviation of the serviced pending target.  The observed
+quantity is an arbitrary real-valued test of the terminal source state; it need
+not be a player's utility. -/
+theorem pendingGame_deviation_guarantee
+    (setup : Setup (Player := Player) (L := L))
+    (runtime : GraphRuntime Player L (graphCtx setup.program.terminalCtx))
+    (roster : List Player) (reactionRounds : Nat) (wire : runtime.application.WirePolicy)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (value : State L setup.program.terminalCtx → ℝ) (missing bound : ℝ)
+    (hbound : ∀ alternative : BehavioralPolicy who setup.program,
+      bound ≤ (setup.run (Profile.update
+        (sig := SourceProgram.gameSignature setup.program) profile who alternative)).expect
+          (fun state => value state))
+    (replacement : runtime.application.PlayerPolicy) :
+    bound ≤ ((setup.pendingGame runtime roster reactionRounds wire).play
+      (Profile.update
+        (sig := (setup.pendingGame runtime roster reactionRounds wire).sig)
+        (fun actor => setup.compilePendingStrategy runtime actor (profile actor))
+        who replacement)).expect
+          (fun outcome => (setup.pendingOutcome runtime outcome).elim missing value) := by
+  let optionValue : Option (State L setup.program.terminalCtx) → ℝ :=
+    fun outcome => outcome.elim missing value
+  apply (setup.pendingSimulation runtime roster reactionRounds wire).guarantee
+    profile who optionValue bound
+  · intro alternative
+    change bound ≤ (setup.run (Profile.update profile who alternative)).expect
+      (fun state => optionValue (some state))
+    simpa only [optionValue, Option.elim_some] using hbound alternative
+  · trivial
+
+/-- Against fixed opponents, each native deviation's expected terminal-state
+test value is bounded above by that of some legal source deviation. The witness
+may depend on both the profile and the chosen test. -/
+theorem pendingGame_deviation_utility_bound
+    (setup : Setup (Player := Player) (L := L))
+    (runtime : GraphRuntime Player L (graphCtx setup.program.terminalCtx))
+    (roster : List Player) (reactionRounds : Nat) (wire : runtime.application.WirePolicy)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (value : State L setup.program.terminalCtx → ℝ) (missing : ℝ)
+    (replacement : runtime.application.PlayerPolicy) :
+    ∃ alternative : BehavioralPolicy who setup.program,
+      ((setup.pendingGame runtime roster reactionRounds wire).play
+        (Profile.update
+          (sig := (setup.pendingGame runtime roster reactionRounds wire).sig)
+          (fun actor => setup.compilePendingStrategy runtime actor (profile actor))
+          who replacement)).expect
+            (fun outcome => (setup.pendingOutcome runtime outcome).elim missing value) ≤
+      (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
+        profile who alternative)).expect (fun state => value state) := by
+  let optionValue : Option (State L setup.program.terminalCtx) → Player → ℝ :=
+    fun outcome _ => outcome.elim missing value
+  obtain ⟨alternative, hbound⟩ :=
+    ((setup.pendingSimulation runtime roster reactionRounds wire).toUtilitySimulation
+      optionValue (fun _ _ => trivial)).deviation_bound profile who replacement
+  refine ⟨alternative, ?_⟩
+  change
+    ((setup.pendingGame runtime roster reactionRounds wire).play
+      (Profile.update
+        (sig := (setup.pendingGame runtime roster reactionRounds wire).sig)
+        (fun actor => setup.compilePendingStrategy runtime actor (profile actor))
+        who replacement)).expect
+          (fun outcome => optionValue (setup.pendingOutcome runtime outcome) who) ≤
+      (setup.gameForm.play (Profile.update profile who alternative)).expect
+        (fun state => optionValue (some state) who) at hbound
+  exact hbound
+
 /-- Same-error approximate Nash is preserved and reflected at the compiled
 pending-message profile for every terminal-state utility. -/
 theorem pendingGame_approximate_nash_iff
@@ -259,11 +286,6 @@ theorem pendingGame_approximate_nash_iff
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceProgram.Setup.pendingGame_honest_law
 
-/-- info: 'Vegas.SourceProgram.Setup.pendingGame_approximate_nash_of_compiled' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.SourceProgram.Setup.pendingGame_approximate_nash_of_compiled
-
 /-- info: 'Vegas.SourceProgram.Setup.pendingGame_deviation_law_of_graph' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -273,6 +295,16 @@ theorem pendingGame_approximate_nash_iff
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SourceProgram.Setup.pendingGame_deviation_law
+
+/-- info: 'Vegas.SourceProgram.Setup.pendingGame_deviation_guarantee' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.pendingGame_deviation_guarantee
+
+/-- info: 'Vegas.SourceProgram.Setup.pendingGame_deviation_utility_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.pendingGame_deviation_utility_bound
 
 /-- info: 'Vegas.SourceProgram.Setup.pendingGame_approximate_nash_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

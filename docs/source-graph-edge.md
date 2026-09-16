@@ -7,9 +7,9 @@ unilateral graph deviation one exact source-policy preimage against unchanged
 opponents, and derives same-error Nash equivalence. It requires neither failure
 dominance nor finite payload or action domains.
 The target here is `Vegas.Graph`. Its [public-message host](typed-message-edge.md)
-executes these typed nodes directly. The host's whole-program strategic law
-remains necessary for the complete native theorem; the restricted candidate
-certificate over `Vegas.EventGraph.Graph` does not supply that law.
+executes these typed nodes directly. Its checked graph-relative deviation law
+composes with this edge in `Setup.pendingSimulation` to establish the complete
+native theorem.
 
 ## Objective
 

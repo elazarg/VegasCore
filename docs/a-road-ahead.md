@@ -1,241 +1,153 @@
 # A road ahead
 
-This is a non-binding implementation plan. Revise the decomposition when a
-smaller proof boundary becomes clear; retain the acceptance criteria. The
-[active tower](active-tower.md) records checked results separately.
+This is a non-binding implementation roadmap. The [active tower](active-tower.md)
+records checked results; this document describes the next target boundaries.
 
-## Goal and theorem shape
+## Goal and established boundary
 
-Compile checked VegasCore programs to a realistic abstract public-message
-runtime, preserving at least Nash equilibrium, and carry the same theorem
-through executable deployment. Ethereum is the grounding target. Transport,
-commitments, resolution, and strategic simulation remain runtime-general.
+Compile the complete checked source language to executable protocols, preserving
+at least Nash equilibrium under explicit runtime capabilities. Ethereum is a
+grounding target, not the owner of runtime-general concepts.
 
-For every source profile `s`, generated profile `C s`, canonical ordered
-execution, and fixed admissible adaptive environment, the ideal-target theorem
-should establish:
+The checked chain is:
 
 ```text
-honest law:  law(run(C s)) = law(source(s))
-deviation:   for every unilateral target deviation d,
-             law(run((C s)[i := d]))
-               = mixture_b law(source(s[i := b]))
+SourceProgram → typed ordered Graph → public pending-message application
 ```
 
-The opponents stay unchanged. The strategy compiler describes compliant play;
-it neither generates player software nor restricts submitted transactions.
-The environment may adapt to its observations, including pending payloads;
-its deadline-relative service contract is explicit. Player-builder coalitions
-are a different strategy space from unilateral player deviations.
+It preserves honest outcome laws and simulates every unilateral native deviation
+by a finite mixture of source deviations against unchanged opponents. The mixture
+is chosen before the private initial draw. Same-error epsilon-Nash equivalence
+holds at compiled profiles, and source-outcome lower bounds transfer without any
+assumption about the adversary's preferences.
 
-The extracted mixture is causal and leaves compiled opponents unchanged.
-Because reveal and failure are source choices, exact deviation law is the
-current objective rather than an informed-failure utility relaxation. Utility
-bounds remain appropriate for later edges that add actions, information, costs,
-or approximation error, when their necessity and strength are demonstrated.
+The target uses ideal opaque commitments, authenticated commands, the declared
+public chance kernels, and a concrete finite ordered service. It permits raw
+submissions, competing candidates, failed openings, replay, delivery before
+inclusion, and adaptive wire choices. It does not implement cryptography, gas,
+transaction execution, ledger finality, or unrestricted fair scheduling.
 
-No final theorem should exclude heterogeneous values, rejecting guards,
-dependent source chance, or initial fields merely because a proof was built
-without them. A target capability restriction must identify the missing
-operation or information, preferably with a counterexample or impossibility
-theorem. Networking constructs do not belong in the minimal source language.
-Whether the current source failure semantics matches the intended programming
-contract must be settled explicitly, not assumed from a backend default.
+Every source constructor is covered, including heterogeneous values, rejecting
+guards, initial secrets, and dependent chance. Failure and disclosure are source
+choices. No quitting-dominance premise is needed for this exact ordered edge.
 
-The [deferred-guard specification](deferred-guards-semantics.tex) and checked
-`Interaction.GuardedPublication` component specify the publication rules:
-ordinary typed values, pending publications, and null failures are distinct;
-deferred relations fail the publication that closes an inconsistent tuple.
-Private bindings and earlier public results are immutable. Consistency and
-ordinary satisfying executions are proved. `Vegas.Source` integrates source
-expressions, observations, chance, and settlement, with terminal safety and an
-exact strategic compiler edge to `Vegas.Graph`. The component alone would not
-establish those results.
+The [source contract](source-semantics.md), [source rationale](source-design-rationale.md),
+[source/graph edge](source-graph-edge.md), and
+[message proof guide](typed-message-edge.md) specify these boundaries.
 
-The [source migration plan](source-semantics-migration.md) records the agreed
-explicit-result typing, the tentative decision to retain primitive public
-chance, the full-source acceptance test, and the downstream migration order.
-The [active tower](active-tower.md) identifies which downstream correspondence
-results have been checked.
+## Next milestone: transaction and block execution
 
-## One compilation spine
+Add an independently executable host with authenticated callers, transaction
+identities, nonces, atomic application state changes, rejection/revert receipts,
+block-derived clocks, and an explicit finality boundary. Distinguish submission,
+delivery, inclusion, and finalized effects. Keep arbitrary transaction traffic
+and adaptive ordering visible to the permitted observers.
 
-```text
-checked sequential source
-  -> typed event graph with compiler-proved information certificates
-  -> public pending-message application with deadline resolution
-  -> transaction/block host
-  -> identified executable contract in a checked VM/ledger semantics
-```
+The application semantics should remain a parameter of this host. Vegas lowering
+then supplies the handler implementation and its refinement, rather than baking
+Vegas guards or source syntax into the ledger model.
 
-Each artifact has its own observations and strategy space. A game presentation
-is an analysis interface for that artifact, not an independent compiler
-destination. The backend consumes graph certificates, not a source-image
-assumption. The end-to-end theorem delegates to edge composition.
+The proof must establish:
 
-Use the source-certified canonical operation order for the baseline protocol.
-A public program counter gates application acceptance, not off-order submission,
-delivery, observation, or attempted inclusion. Commit and reveal remain
-distinct source operations. Inclusion checks alone cannot justify publishing
-an honest opening early. Optional parallel admission belongs in a later
-refinement with its own information theorem.
+- representation and observation correspondence for actual reachable executions;
+- backtranslation of arbitrary transactions, including malformed and repeated ones;
+- a service condition strong enough to protect unchanged players before expiry;
+- a composed outcome/deviation or utility simulation, with every new premise
+  attributable to the target model.
 
-The [typed message interface](typed-message-edge.md) specifies the next
-boundary and its direct graph host. It is not a preservation theorem. Local transition
-classification must be accompanied by the joint observation/probability law
-needed to translate adaptive deviations.
+Do not require a separate intermediate language merely to choose a queue policy.
+Alternative services can implement one host interface. Conversely, separate
+state-machine edges are appropriate when they add meaningful operational
+structure, such as atomic transactions or finalized blocks.
 
-## Milestones and exit tests
+Exit test: a theorem over the real transaction runner, composed to the source
+without excluding a source constructor or assuming the desired whole-run law.
 
-### 1. Typed protocol with actual language coverage
+## Executable code and VM refinement
 
-Separate the three acceptance points within this milestone:
+Compile the graph/application artifact to identifiable executable code. Separate
+computable lowering and representation from noncomputable strategy-analysis
+witnesses. Prove storage layout, encoding/decoding, expression evaluation,
+dispatch, handler execution, linking, and deployment against the chosen VM.
 
-1. **Models:** all source constructs have operational representations; raw
-   deviations remain expressible; local capability contracts are explicit;
-   mixed-feature tests compile; the mathematical source failure interpretation
-   is settled. Definitions that merely carry arbitrary resolution values do
-   not settle that interpretation.
-2. **Compilation:** one actual checked mixed-feature program is lowered through
-   the graph to this model, including its guard contexts and source-defined
-   resolution behavior. No source constructor is disabled.
-3. **Correctness:** the generated program satisfies the honest outcome law;
-   milestone 2 below adds the whole-program arbitrary-deviation certificate.
+An arbitrary semantic expression interface is not automatically executable.
+A concrete backend must implement its operations and account for finite word
+sizes, encodings, resource limits, and failed execution. Instruction-level code
+proofs are ingredients, not a replacement for the whole application edge.
 
-`Vegas.Source` admits failure-producing commitments and disclosures as source
-behavior and gives public expressions explicit `Result` branches. Its complete
-execution resolves all accounted resources and satisfies all retained guards
-under arbitrary policies. Its exact source-to-graph certificate covers every
-constructor. The typed message host has local operational laws; its whole-run
-policy correspondence remains to be proved. The restricted `Vegas.Core`
-candidate certificate does not establish that theorem. Do not add recoverability
-or commit-time validity proofs to make models agree.
+Exit test: the strategic theorem names deployed code and its execution host.
+Independent instruction vectors and differential execution tests should help
+detect proofs against an incorrect VM specification.
 
-Replace homogeneous sealed values with site-indexed values and typed decoding.
-Separate raw candidates from legal source actions. Preserve arbitrary candidate
-selection, failed openings, retries, and rejection. Rejection is an application
-stutter; authorized resolution installs a declared legal alternative and its
-continuation. Retain original guard inputs without pretending public code can
-read a secret. A correspondence for `SourceProgram` must preserve its binding,
-strategic disclosure, deferred validation, and explicit failure decisions.
-The existing commit-time-validating `WFProgram` correspondence does not
-establish those laws. The [next graph edge](source-graph-edge.md) specifies
-their operation and observation interfaces.
+## Realizing ideal services
 
-Design chance and initialization at this same boundary before proving another
-whole-program specialization. Chance draws from the source conditional kernel
-once, caches the result, and publishes it as the source's public sample step.
-There is no strategic sampler or publisher. Private initial data belongs to a
-setup realization, not public constants. An initial sealed binding can be used
-in its owner's guard and later resolved through a disclosure decision, just
-like a commitment-produced resource. Source setup fixes a binding or an
-unopenable candidate; runtime setup must realize that initial state without
-revealing it. Failure to establish the agreed setup is a separate pre-play
-contract.
+Keep each capability explicit and require it only where the program uses it.
 
-Exit test: one actual checked source program combines two value types, a
-rejecting guard, meaningful private initial data, and dependent chance. Its
-generated public-message application has legal resolution and an exact honest
-outcome law under named capabilities. No disabled case implements a source
-operation; no interface field assumes the desired whole-run law.
-
-### 2. Whole-program arbitrary-deviation theorem
-
-Prove current-operation observation and continuation laws, then compose them
-along canonical execution. Reuse the graph runner, probability factorization,
-candidate persistence, deadline service, and generic utility simulation where
-their contracts fit. Do not repeat the source induction inside the backend.
-
-Extraction must be causal: earlier source choices cannot depend on later
-disclosures. Freeze or condition environmental randomness jointly with the
-deviator; do not independently resample correlated signals. Malformed and
-guard-invalid candidates must retain legal unchanged-opponent continuations,
-not merely yield an arbitrary source support witness.
-
-Exit test: a graph-relative honest/deviation certificate for the typed protocol,
-instantiated by the compiler, and a directly delegated source-to-pending
-epsilon-Nash theorem. The combined program from milestone 1 instantiates it.
-Any inequality premise is confined to target behavior not represented by the
-source, and its strength is supported by a concrete counterexample.
-
-This is the immediate strategic target. Supporting lemmas count toward it only
-when they discharge a named part of this certificate.
-
-### 3. Realistic abstract transaction/block host
-
-Realize the application with authenticated callers, transaction identities,
-nonces/replay protection, pending delivery, inclusion, atomic state changes,
-rejection/revert receipts, block clocks, and a finality boundary. Keep
-adversarial traffic and adaptive ordering. Service is relative to expiry,
-not eventual fairness after the deadline.
-
-Exit test: arbitrary-transaction transport/application refinement, including
-failure effects, and a composed strategic theorem. State who pays fees and how
-balances, costs, and trace-valued utilities relate to source outcomes. Prove
-cost bounds or enrich the interpreted outcome where equality fails. Trusted
-account, verification, or entropy services must be named capabilities.
-
-### 4. Executable artifact and VM refinement
-
-Compile to identifiable executable code. Separate computable compilation and
-representation from noncomputable analysis witnesses. Prove storage layout,
-handlers, dispatch, linking, deployment, and whole-program execution refinement.
-Component instruction proofs alone do not establish this edge. The expression
-implementation, encodings, and resource bounds must be realizable on the chosen
-VM: arbitrary semantic expression interfaces are not automatically executable.
-
-Exit test: a theorem naming deployed code and its host, with source-to-host
-Nash preservation by composition. Independently exercised instruction semantics
-and cross-implementation vectors help detect proofs against an incorrect model.
-
-### 5. Concrete services and broader guarantees
-
-Replace ideal commitments, verification, and chance by separately justified
-implementations. State computational strategies and security errors; the ideal
-exact theorem is not hiding/binding against unbounded concrete adversaries.
-Account for service/finality errors and bound utility where probability error
-must become incentive error.
-
-Broaden source quitting criteria to justified conditional tests. Investigate
-coalitions, robust outcomes, trace utilities, and parallel admission as distinct
-claims; retain stronger guarantees for feature combinations that support them.
-
-Exit test: explicit compositional error bounds and concrete instances, or
-precise nonimplementability results where a required capability is absent.
-
-## Capabilities and failure cases
-
-| Concern | Required contract; what it cannot conceal |
+| Capability | Implementation obligation |
 | --- | --- |
-| Withholding | A causal source reveal/fail choice at the same information state. Additional domination is needed only if the target adds a choice absent from the source. |
-| Private guards | Public dependencies or a sound private-verification capability. A secret in proof state does not implement public execution. |
-| Chance | The correct conditional draw, sample-once storage, and availability. Strategic selection or retrying a draw changes the game. |
-| Initial secrets | Authenticated private setup and availability for deterministic disclosure. Setup refusal must be accounted for before entering the source game. Public EVM storage cannot implement private storage directly. |
-| Pending traffic | Observations relative to all existing information, including openings before inclusion. Separate hiding claims need not compose. |
-| Progress | Deadline-relative service and finality. Termination by default does not imply protection of honest players. |
-| Costs | A source interpretation or utility discrepancy bound. Equivalent payouts need not give equivalent incentives. |
+| Commitments | Hiding and binding in an appropriate computational model; authenticated openings; no leakage through compliant failed-opening packets. |
+| Private setup | Realize the joint initial law and its observations before play. Refusal to establish setup is a separate pre-play mechanism. |
+| Chance | Realize the declared conditional law, once, with the required availability. Marginal fairness alone is insufficient. |
+| Progress | Supply service before the relevant deadline and under the stated finality rule. Eventual fairness after expiry is insufficient. |
+| Costs | Specify who pays fees and how resource failures affect state; interpret costs in source outcomes or bound their utility effect. |
 
-These are contracts to instantiate, not proposed blanket hypotheses for every
-program. Require a capability only when the program and claimed guarantee use it.
+Ideal commitments need not be byte strings at every layer. Opaque handles are the
+right interface until an encoding or concrete cryptographic implementation is
+being verified. Public EVM storage does not itself realize private candidate
+memory; the lower edge must implement that capability explicitly.
 
-## Work allocation and stopping discipline
+Computational security, service failure, and finality errors generally lead to
+approximate laws. Turning probability error into incentive error requires an
+appropriate bounded utility or discrepancy condition. State those assumptions
+instead of silently treating the exact ideal theorem as a concrete security proof.
 
-The coordinating agent owns theorem scope, the dependency plan, interface
-review, integration, and whole-project status. Delegate bounded implementation
-pieces with disjoint file ownership. Mathematical design and adversarial review
-run in parallel when Lean work shares too many dependencies. One agent owns
-the Lean build; freeze edits for the full warning-free gate.
+## Extending guarantees and feature combinations
 
-At a milestone report: broadest source coverage, deepest target, exact strategic
-conclusion, assumptions, and next undischarged edge. Report completion only after
-the exit test passes. Line counts, lemma counts, and green coverage checks are
-not completion metrics.
+An artifact's game is induced by its operational semantics and observation
+interface. FOSG or another presentation can support analysis; it is not a separate
+compiler destination that substitutes for the actual runtime.
 
-Keep `Paper.lean` to directly delegated paper capstones and important lemmas.
-Supporting results stay in their mathematical modules. Keep one live
-implementation of a migrated edge; delete superseded code after consumers move.
-Archives are readable references only.
+Add complications as separate edges when that makes their contracts local, or as
+orthogonal parameters when one carrier supports them naturally. Composing two
+feature proofs requires the second theorem to apply after the first feature has
+been added. Two marginal non-leakage statements are not enough: a random bit
+`R` and `R xor secret` each hide the secret individually but disclose it together.
 
-The richer `../vegas` frontend stays separate. It should export a checked core
-artifact with a specified lowering correspondence; duplicating its surface
-syntax in the minimal core is not a prerequisite for this plan.
+Parallel admission, coalitions, and utilities over native traces are distinct
+extensions. The existing unilateral theorem fixes the environment policy across
+comparisons; it is not a builder/player coalition theorem. An outcome-law
+certificate transports utilities of the decoded source result, not arbitrary
+preferences over timing, fees, receipts, or message traffic.
+
+A future edge that adds an informed quitting opportunity may require a stronger
+incentive condition. For example, play with fair payoff `+2/-2` has expectation
+`0`, exceeding an ex-ante quit payoff `-1`. Learning the payoff before deciding
+whether to quit gives expectation `(2 - 1)/2 = 0.5`. Ex-ante quit dominance does
+not control this added information. The current source already has strategic
+disclosure/failure, so this example is a test for a *new* target capability, not
+an omitted hypothesis of the checked ordered theorem.
+
+Similarly, an accepted-event set is not a sequential source prefix: independent
+events may finish out of order, and a sealed commitment does not publish its
+value. A concurrent lowering needs its own causal and information certificate.
+
+## Engineering acceptance criteria
+
+Each new edge has its own executable carrier, observation interface, strategy
+space, compiler, and strategic certificate. Keep source-specific code in Vegas,
+message/service semantics in Interaction, generic game theory in GameTheory,
+and chain/VM machinery in separate target libraries.
+
+The richer `../vegas` frontend should produce the checked source artifact through
+a specified elaboration boundary. The `Vegas.Language` surface-syntax prototype is not
+yet that verified frontend; extending the minimal source with its entire syntax
+is not a prerequisite.
+
+Keep one implementation of each compiler edge. Delete superseded paths rather
+than retaining compatibility aliases or passive source copies. Keep
+`Paper.lean` to direct delegations for capstones and important lemmas.
+
+At a milestone, report source coverage, target depth, strategic conclusion,
+assumptions, and the next unproved edge. Require the complete warning-free build
+and standard axiom audit. Supporting lemma counts and coverage checks alone are
+not a compiler-correctness result.

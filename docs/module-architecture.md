@@ -1,50 +1,33 @@
-# Library and proof boundaries
+# Module architecture
 
-| Library | Responsibility |
+| Package | Responsibility |
 | --- | --- |
 | `GameTheory` | Pinned probability and game-theory foundation |
-| `GameTheoryExtensions` | Runtime-independent simulation and equilibrium transport |
-| `Interaction` | Native message pool, delivery, receipts, policies, and ideal commitment service |
-| `Vegas` | Sequential source language, event graph, compilation, and native adapters |
-| retained tests | Executable witnesses and regressions |
-| `Paper` | Direct checked theorem restatements and axiom pins in `Paper.lean` |
+| `GameTheoryExtensions` | Reusable simulations, mixtures, utility transport, and predrawing |
+| `Interaction` | Message pools, authenticated histories, policies, inclusion service, and ideal commitments |
+| `Vegas.Foundation` | Shared typed contexts, values, visibility, guards, and result interfaces |
+| `Vegas.Source` | Failure-aware sequential source syntax, semantics, accounting, and safety |
+| `Vegas.Graph` | Typed immutable graph semantics and its pending-message host |
+| `Vegas.Compile` | Source-to-graph construction and correspondence proofs |
+| `Vegas.Game` | Strategic composition across source, graph, setup, and native runtime |
+| test libraries | Executable regressions and theorem instances |
+| `Paper` | Direct paper-visible theorem restatements and axiom pins |
 
 Production libraries do not import tests or the paper audit. Generic
-game-theoretic results do not import Vegas. Interaction owns reusable message
-semantics and does not depend on Vegas source syntax.
+game-theoretic results do not depend on Vegas. `Interaction` is independent of
+Vegas source syntax; graph-specific adapters and proofs remain in `Vegas.Graph`.
 
-`Source` contains the failure-aware source semantics: typed publication results,
-deferred guards, explicit resolution accounting, observation-local policies,
-and exact execution. `Accounting` proves terminal resolution; `Safety` proves
-satisfaction of every retained guard under arbitrary source policies.
-Its foundational types belong in `Foundation`; runtime-independent publication
-laws belong in `Interaction`. `Graph` defines its typed immutable strategic IR
-and the direct `GraphRuntime` public-message host. `Compile.Graph*` proves the
-complete source-to-graph correspondence; `Game.GraphCompilation` packages its
-strategic certificate. The host's full strategic certificate remains open.
+The active IR is `Vegas.Graph`. It retains typed expressions,
+observations, bindings, resolution results, and chance kernels. The native host
+executes that graph directly. Source-to-graph composition belongs in
+`Vegas.Game`, above the backend theorem.
 
-`Core`, `EventGraph`, and `Compile.Sealed*` supply the restricted candidate
-backend and its separate strategic certificate. These results are checked but
-do not cover the failure-aware source. The
-[active tower](active-tower.md) records their exact scope.
+`Vegas.Language` prototypes surface notation for typed bindings and nullable
+guards. `Vegas.Core` supplies its internal elaboration target. Connecting this
+frontend to `SourceProgram` requires a verified elaboration edge; type-correct
+lowering alone does not establish semantic refinement.
 
-The active compiler is organized by proof responsibility: source/graph
-construction, sealed rule generation, decoding, native refinement, and source
-reconstruction. A new runtime feature should add a separate interaction or
-compiler edge with explicit state/observation and correspondence laws; it
-must not silently replace a sealed rule with a fused cleartext endpoint.
-
-Ownership boundaries are semantic. Vegas owns source guards, source-declared
-fallbacks, application instruction identity, and source/graph correspondence.
-Interaction owns generic pending messages, histories, observations, and service
-steps. GameTheoryExtensions owns reusable outcome simulation and equilibrium
-transport. A future ledger or VM library should own its independent execution
-model; Vegas integration should contain only lowering and correspondence for
-Vegas artifacts.
-
-`Interaction.LogicalCommitment` is an isolated semantic experiment with checked
-local transition laws and finite trace tests. It is included in the build, but
-no active compiler edge uses it. The
-[experiment note](logical-commitment-protocol.md) records the observation and
-transport conditions that must be settled before it can serve as a strategic
-intermediate representation.
+Concrete cryptography, ledgers, block production, and virtual machines belong
+in separate target packages with their own execution semantics and refinement
+theorems. The current `Interaction` service assumptions must be discharged,
+not silently identified with a real network.

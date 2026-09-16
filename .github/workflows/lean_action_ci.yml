@@ -23,9 +23,7 @@ jobs:
         run: python scripts/check-doc-references.py
       - name: Require centralized Lean options
         run: python scripts/check-lean-options.py
-      - name: Check paper coverage (unverified claims permitted)
-        run: python scripts/check-paper-claims.py --allow-missing-paper --allow-unverified
-      - name: Test paper claim checker
+      - name: Test repository checks
         run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Check module boundaries and build reachability
         run: python scripts/check-module-boundaries.py

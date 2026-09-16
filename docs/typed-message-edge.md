@@ -1,7 +1,7 @@
 # Typed graph to public-message edge
 
 `GraphRuntime` realizes an ordered `Vegas.Graph` directly as a public-message
-application. It does not pass through source syntax or `Vegas.EventGraph`.
+application. Its interface is graph-relative and independent of source syntax.
 The graph remains the strategic specification; the native execution adds
 transport, candidate preparation, inclusion receipts, and relative deadlines.
 
