@@ -886,6 +886,70 @@ private theorem handle_withhold_config_step
     · simp [handle, ready, timely] at accepted
   · simp [handle, ready] at accepted
 
+/-- Resolution traffic never changes accepted binding handles or candidate meanings. -/
+theorem handle_resolution_tables (runtime : EventGraphRuntime graph)
+    (state next : State graph) (message : Message Player (Payload graph))
+    (noncommitment : ∀ event candidate, message.payload ≠ .commitment event candidate)
+    (accepted : handle runtime state message = some next) :
+    next.accepted = state.accepted ∧ next.candidates = state.candidates := by
+  rcases message with ⟨id, packet⟩
+  cases packet with
+  | malformed raw => simp [handle] at accepted
+  | commitment event candidate => exact (noncommitment event candidate rfl).elim
+  | opening event candidate raw =>
+      by_cases ready : state.config.cut.Ready event
+      · by_cases timely : state.WithinDeadline runtime event
+        · cases view : nodeView graph event with
+          | bind owner payload outputEq codeEq =>
+              simp [handle, ready, timely, view] at accepted
+          | sample payload law outputEq codeEq =>
+              simp [handle, ready, timely, view] at accepted
+          | resolve owner payload binding checks outputEq codeEq =>
+              simp only [handle, dif_pos ready, dif_pos timely, view] at accepted
+              split at accepted
+              · simp_all only [dite_eq_ite, Option.ite_none_right_eq_some]
+                split at accepted
+                · simp at accepted
+                · split at accepted
+                  · unfold acceptResolution at accepted
+                    rcases accepted with ⟨_, _, _, accepted⟩
+                    cases resolved : EventCode.resolveOutput? binding checks true
+                        state.config.store with
+                    | none => simp [resolved] at accepted
+                    | some result =>
+                        simp only [resolved, Option.pure_def, Option.bind_eq_bind,
+                          Option.bind_some, Option.some.injEq] at accepted
+                        subst next
+                        exact ⟨rfl, rfl⟩
+                  · simp at accepted
+              · simp_all only [reduceCtorEq]
+        · simp [handle, ready, timely] at accepted
+      · simp [handle, ready] at accepted
+  | withhold event =>
+      by_cases ready : state.config.cut.Ready event
+      · by_cases timely : state.WithinDeadline runtime event
+        · cases view : nodeView graph event with
+          | bind owner payload outputEq codeEq =>
+              simp [handle, ready, timely, view] at accepted
+          | sample payload law outputEq codeEq =>
+              simp [handle, ready, timely, view] at accepted
+          | resolve owner payload binding checks outputEq codeEq =>
+              simp only [handle, dif_pos ready, dif_pos timely, view] at accepted
+              split at accepted
+              · unfold acceptResolution at accepted
+                cases resolved : EventCode.resolveOutput? binding checks
+                    (withholdingAction state event owner payload binding checks outputEq)
+                    state.config.store with
+                | none => simp [resolved] at accepted
+                | some result =>
+                    simp only [resolved, Option.pure_def, Option.bind_eq_bind,
+                      Option.bind_some, Option.some.injEq] at accepted
+                    subst next
+                    exact ⟨rfl, rfl⟩
+              · simp_all only [reduceCtorEq]
+        · simp [handle, ready, timely] at accepted
+      · simp [handle, ready] at accepted
+
 /-- Every accepted player packet performs exactly one semantic graph step at
 its stable event address. The witness action is the original action retained
 by the ideal configuration, including a sound rejected `true` disclosure. -/
@@ -1112,6 +1176,65 @@ def environmentStep (runtime : EventGraphRuntime graph) (state : State graph) :
   | .expire event => FinDist.pure (expire runtime state event)
 
 omit [DecidableEq Player] in
+/-- Environment service never changes commitment admission tables. -/
+theorem environmentStep_tables
+    (runtime : EventGraphRuntime graph)
+    (state next : State graph) (command : EnvironmentCommand graph)
+    (member : next ∈ (environmentStep runtime state command).support) :
+    next.accepted = state.accepted ∧ next.candidates = state.candidates := by
+  cases command with
+  | grant event =>
+      simp only [environmentStep, FinDist.mem_support_pure] at member
+      subst next
+      exact ⟨rfl, rfl⟩
+  | advanceClock =>
+      simp only [environmentStep, FinDist.mem_support_pure] at member
+      subst next
+      exact ⟨rfl, rfl⟩
+  | executeSample event =>
+      change next ∈ (executeSample state event).support at member
+      unfold executeSample at member
+      split at member
+      · rename_i ready
+        cases view : nodeView graph event with
+        | bind | resolve =>
+            simp only [view] at member
+            simp only [FinDist.mem_support_pure] at member
+            subst next
+            exact ⟨rfl, rfl⟩
+        | sample =>
+          simp only [view] at member
+          rw [FinDist.support_map, Set.mem_image] at member
+          obtain ⟨config, _, rfl⟩ := member
+          exact ⟨rfl, rfl⟩
+      · simp only [FinDist.mem_support_pure] at member
+        subst next
+        exact ⟨rfl, rfl⟩
+  | expire event =>
+      change next ∈ (FinDist.pure (expire runtime state event)).support at member
+      simp only [FinDist.mem_support_pure] at member
+      subst next
+      unfold expire
+      split
+      · split
+        · exact ⟨rfl, rfl⟩
+        · split
+          · rename_i due
+            cases view : nodeView graph event with
+            | bind => exact ⟨rfl, rfl⟩
+            | sample => exact ⟨rfl, rfl⟩
+            | resolve owner payload binding checks outputEq codeEq =>
+                unfold acceptResolution
+                cases resolved : EventCode.resolveOutput? binding checks false
+                    state.config.store
+                · simp only [resolved]
+                  exact ⟨rfl, rfl⟩
+                · simp only [resolved]
+                  exact ⟨rfl, rfl⟩
+          · exact ⟨rfl, rfl⟩
+      · exact ⟨rfl, rfl⟩
+
+omit [DecidableEq Player] in
 /-- Executing a certified ready sample is exactly the graph chance step, with
 only the runtime activation metadata refreshed around each sampled result. -/
 theorem environmentStep_executeSample_eq
@@ -1130,6 +1253,26 @@ theorem environmentStep_executeSample_eq
               config
               activatedAt := State.refreshActivated config state.clock state.activatedAt } := by
   simp only [environmentStep, executeSample, dif_pos ready, viewEq]
+
+omit [DecidableEq Player] in
+theorem environmentStep_executeSample_of_not_ready
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (event : graph.EventId) (ready : ¬state.config.cut.Ready event) :
+    environmentStep runtime state (.executeSample event) = FinDist.pure state := by
+  simp only [environmentStep, executeSample, dif_neg ready]
+
+omit [DecidableEq Player] in
+theorem environmentStep_executeSample_of_nonsample
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (event : graph.EventId) (ready : state.config.cut.Ready event)
+    (view : ∀ payload law outputEq codeEq,
+      nodeView graph event ≠ .sample payload law outputEq codeEq) :
+    environmentStep runtime state (.executeSample event) = FinDist.pure state := by
+  simp only [environmentStep, executeSample, dif_pos ready]
+  cases actual : nodeView graph event with
+  | bind | resolve => rfl
+  | sample payload law outputEq codeEq =>
+      exact (view payload law outputEq codeEq actual).elim
 
 omit [DecidableEq Player] in
 /-- Once a ready binding deadline is due, expiry is exactly the binding's

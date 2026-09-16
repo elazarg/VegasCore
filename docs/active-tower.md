@@ -211,6 +211,18 @@ public timing. Owner-local guard rejection emits withholding rather than an
 invalid raw opening. Exact local handler laws retain both the selected
 binding result and the original disclosure action.
 
+`servicedEventGame_bindingInvariant` proves typed, distinct accepted handles
+and successful-binding candidate provenance for arbitrary complete service
+runs. Local laws cover the actual compiled sampling, staging, submission,
+and reserved inclusion for both bindings and resolutions. For bindings,
+the environment and other players receive the same joint history and
+observation after the block regardless of the selected value or failure.
+The graph's memoized continuation equations are also checked: privately
+drawing and remembering a ready action preserves its future semantic law.
+Both compiled three-invocation blocks satisfy the corresponding native law.
+These local results do not yet establish their entry conditions across
+arbitrary service prefixes or protect honest actions against expiry.
+
 `BarrierOrdered.ready_public_unique` proves that a ready public event is the
 only ready event. It supplies the graph-level reason that observing an honest
 opening before inclusion cannot enable another graph decision in that interval.

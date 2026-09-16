@@ -57,22 +57,6 @@ theorem runService_add (runtime : EventGraphRuntime graph)
       intro middle _
       exact ih middle
 
-theorem runServicePlan_append (runtime : EventGraphRuntime graph)
-    (players : Player → runtime.application.PlayerPolicy)
-    (wire : runtime.application.WirePolicy)
-    (first second : List (ServiceInstruction graph))
-    (execution : runtime.application.PolicyExecution) :
-    runtime.runServicePlan players wire (first ++ second) execution =
-      (runtime.runServicePlan players wire first execution).bind
-        (runtime.runServicePlan players wire second) := by
-  induction first generalizing execution with
-  | nil => simp [runServicePlan]
-  | cons instruction rest ih =>
-      simp only [List.cons_append, runServicePlan, FinDist.bind_bind]
-      apply FinDist.bind_congr
-      intro middle _
-      exact ih middle
-
 theorem runServicePlan_support_append (runtime : EventGraphRuntime graph)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy)

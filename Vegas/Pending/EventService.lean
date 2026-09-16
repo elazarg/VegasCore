@@ -114,6 +114,22 @@ def runServicePlan (runtime : EventGraphRuntime graph)
       (runtime.serviceStep players wire instruction execution).bind
         (runtime.runServicePlan players wire rest)
 
+/-- Splitting a service plan retains its full intermediate native execution,
+including the histories consulted by later policies. -/
+theorem runServicePlan_append (runtime : EventGraphRuntime graph)
+    (players : Player → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy)
+    (first second : List (ServiceInstruction graph))
+    (execution : runtime.application.PolicyExecution) :
+    runtime.runServicePlan players wire (first ++ second) execution =
+      (runtime.runServicePlan players wire first execution).bind
+        (runtime.runServicePlan players wire second) := by
+  induction first generalizing execution with
+  | nil => simp only [List.nil_append, runServicePlan, FinDist.pure_bind]
+  | cons instruction rest ih =>
+      simp only [List.cons_append, runServicePlan, FinDist.bind_bind]
+      exact FinDist.bind_congr fun next _ => ih next
+
 /-- Three uninterrupted owner calls accommodate private sampling, private
 staging, and submission. Every subsequent wire slot permits roster reactions. -/
 def eventServicePlan (roster : List Player) (reactionRounds : Nat)

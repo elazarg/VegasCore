@@ -5,8 +5,16 @@ import Vegas.Pending.Application
 import Vegas.Pending.EventApplication
 import Vegas.Pending.EventInvariant
 import Vegas.Pending.EventBindingInvariant
+import Vegas.Pending.EventBindingService
 import Vegas.Pending.EventPolicies
 import Vegas.Pending.EventPolicyBlock
+import Vegas.Pending.EventBindingAcceptance
+import Vegas.Pending.EventResolutionBlock
+import Vegas.Pending.EventResolutionAcceptance
+import Vegas.Pending.EventInclusion
+import Vegas.Pending.EventPotential
+import Vegas.Pending.EventBindingPotential
+import Vegas.Pending.EventResolutionPotential
 import Vegas.Pending.EventDisclosure
 import Vegas.Pending.EventSubmission
 import Vegas.Pending.EventService

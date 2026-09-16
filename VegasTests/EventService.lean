@@ -3,6 +3,7 @@
 import Vegas.Expr.Simple
 import Vegas.Pending.EventService
 import Vegas.Pending.EventPolicies
+import Vegas.Pending.EventBindingAcceptance
 
 /-! # Event service regressions
 
@@ -106,6 +107,52 @@ private def granted : EventGraphRuntime.State pairGraph :=
 private def observed (state : EventGraphRuntime.State pairGraph) : runtime.application.View :=
   Interaction.MessageApplication.State.observe runtime.application
     (Interaction.MessageApplication.State.initial runtime.application state) false
+
+private def grantedExecution : runtime.application.PolicyExecution :=
+  MessageApplication.PolicyExecution.initial runtime.application
+    (MessageApplication.State.initial runtime.application granted)
+
+/-- The exact actual four-instruction service law is inhabited, for successful
+and failed choices alike. Other players need no prescribed policy here. -/
+example (choice : PublicationResult Bool)
+    (players : Bool → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy)
+    (prescribed : players false = runtime.compilePlayerPolicy false (fixedPolicy choice)) :
+    (runtime.runServicePlan players wire
+      [.player false, .player false, .player false, .includeLatest 0 false]
+      grantedExecution).map (fun next => next.native.application.config) =
+      granted.config.step 0 (by
+        change (EventOrder.Cut.empty pairOrder).Ready 0
+        decide) choice := by
+  have ready : granted.config.cut.Ready 0 := by
+    change (EventOrder.Cut.empty pairOrder).Ready 0
+    decide
+  have unused : granted.HandleUnused (false, .prepared 0) := by
+    intro field
+    cases field with
+    | inl input => nomatch input
+    | inr event =>
+        change (none : Option (EventGraphRuntime.Handle pairGraph)) ≠ some (false, .prepared 0)
+        simp
+  simpa only [fixedPolicy, Vegas.EventGraph.normalizePolicy, FinDist.pure_bind,
+    List.replicate_succ, List.replicate_zero, List.cons_append, List.nil_append,
+    grantedExecution, MessageApplication.PolicyExecution.initial,
+    MessageApplication.State.initial] using
+    runtime.runServicePlan_compiled_bind_includeLatest false (fixedPolicy choice)
+      players wire grantedExecution 0 .bool rfl rfl rfl prescribed rfl ready rfl
+      rfl rfl rfl (by change 0 < 2; decide) rfl rfl unused rfl
+
+/-- The whole prescribed pending block is opaque to the other player, even
+when one selected action fails and the other succeeds. -/
+example (left right : PublicationResult Bool) :
+    (runtime.bindingBlockContinuation false 0 .bool rfl grantedExecution left).map
+        (fun next => (next.principalHistory true,
+          MessageApplication.State.observe runtime.application next.native true)) =
+      (runtime.bindingBlockContinuation false 0 .bool rfl grantedExecution right).map
+        (fun next => (next.principalHistory true,
+          MessageApplication.State.observe runtime.application next.native true)) := by
+  rw [runtime.bindingBlockContinuation_observer_law false true (by decide),
+    runtime.bindingBlockContinuation_observer_law false true (by decide)]
 
 private def remembered (choice : PublicationResult Bool) : EventGraphRuntime.State pairGraph :=
   EventGraphRuntime.privateStep granted false (.remember 0 choice)

@@ -17,6 +17,7 @@ import Vegas.EventGraph.PolicyCommutation
 import Vegas.EventGraph.StateCongruence
 import Vegas.EventGraph.SchedulingLaw
 import Vegas.EventGraph.SchedulerErasure
+import Vegas.EventGraph.MemoizedPolicy
 import Vegas.EventGraph.SchedulerReplay
 import Vegas.EventGraph.SchedulerReplayLaw
 import Vegas.EventGraph.SchedulerProtocol
