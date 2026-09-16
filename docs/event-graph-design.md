@@ -191,6 +191,12 @@ Each field has a declared type, visibility, and unique origin: an initial field
 or a producing event. Initial sealed fields are already bound but still have
 their source disclosure obligations. They are not new player choices.
 
+The graph contains the initial field layout, not the sampled initial values.
+A separate typed input environment supplies those values. One graph and one
+policy type must serve the entire private setup distribution; sampling a
+different graph with secret-dependent policy types would invalidate that
+strategic interface.
+
 An event contains:
 
 - its operation: bind, resolve, or public sample;
@@ -296,6 +302,11 @@ certificate field stating the desired arbitrary-deviation law would merely
 rename the missing proof. The source compiler proves this local certificate
 for every output. Independently constructed graphs may supply it without
 referring to source syntax.
+
+Failure disincentives are a separate predicate on utilities and feasible
+continuations, not a field of this structural certificate. A graph remains
+well formed and executable when a player prefers failure. Its utility-dependent
+Nash theorem then requires an incentive premise that may not hold.
 
 ### 4.1 First dependency construction
 
@@ -752,32 +763,43 @@ concrete enough to state the end-to-end goal without placeholders for the
 desired simulation itself. Report any change needed to source semantics
 before implementing it. No source change is currently proposed.
 
-### M1: executable EventGraph and full-source lowering
+### M1: shared executable EventGraph interface
 
-Implement typed identities, cuts, readiness, node transitions, canonical and
-noncanonical runners, compiler dependencies, partial-view reconstruction,
-guard specialization, and terminal decoding. Wire every module into the build
-as it is added.
+Implement typed identities, cuts, readiness, node transitions, public and
+private observations, own-action history, canonical and noncanonical runners,
+and terminal readout. Define the local causal-discipline certificate and the
+graph-level interface for failure comparisons. Wire every module into the
+build as it is added.
 
-Exit: all four source constructors compile; two independent commitments
-actually complete in either order; unsafe early prescribed publication is
-prevented by emitted dependencies; guard/order examples have the specified
-results. Execution safety, binding origin, and readiness are proved. Pause
-and report that the models/compiler exist, not that Nash is already proved.
+Exercise all node kinds and terminal expressions with small hand-built graphs,
+including initial secrets, heterogeneous payloads, deferred guards, explicit
+failure, and chance. Prove local execution safety, binding-origin preservation,
+and readiness facts. Two independent commitments must actually complete in
+either order. These witnesses validate the graph interface without waiting
+for a completed source compiler.
 
-### M2: source and asynchronous graph strategic correspondence
+Exit: the common interface below compiles, the witnesses run with the expected
+results, and both edge owners can state their theorem against it. Pause and
+report that the graph is ready for parallel compiler/proof work, not that
+full-source lowering or Nash preservation is already proved.
 
-Port canonical source correspondence. Prove information-safe commutation and
-the graph scheduler's honest and arbitrary unilateral-deviation comparison
-under its explicit observation contract. Include finite private setup, not a
-separate strategy chosen after each secret realization. Where this graph game
-has no additional failure choices, prove exact mixture simulation. Otherwise
-use the explicit failure-disincentive bound rather than restricting players.
+### M2: upward edge, source to EventGraph
 
-Exit: an actual ready-event graph game has a checked strategic certificate
-and same-error Nash theorem, with its exact-law or incentive-dependent scope
-explicit. State its scheduler interface precisely; do not identify it with
-the richer native wire scheduler without proof.
+Implement full-source lowering, dependency generation, partial-view
+reconstruction, guard specialization, initial-state encoding, and terminal
+decoding. Prove that every source compiler output satisfies the graph's local
+causal-discipline certificate. Port exact canonical source correspondence,
+including arbitrary graph-policy backtranslation, private setup, and original
+own-action recall. Transport the programmer's utility and failure condition
+to the graph semantics.
+
+Exit: every source constructor compiles, compiler outputs have the graph
+certificate, and source/canonical-graph strategic correspondence is checked.
+The theorem depends on graph definitions and local graph lemmas, not pending
+messages, clocks, service, or a graph/native correctness proof.
+
+M2 runs in parallel with M3 and M4 after M1. Backend implementation and proof
+do not wait for this source edge to finish.
 
 ### M3: asynchronous native implementation and honest laws
 
@@ -793,12 +815,24 @@ deviation obligation explicit.
 
 ### M4: asynchronous native deviation capstone
 
-Prove cut-based native locality, feasible failure normalization, and the
-continuation utility bound. Lift through setup-wide predrawing, package the
-graph-relative certificate, and compose with the source edge. Obtain
-same-error Nash correspondence under the failure-disincentive condition.
-Export exact-law and arbitrary source-observable unilateral guarantees only
-for scopes where the stronger simulation is actually proved.
+Prove information-safe commutation and the graph scheduling comparison, then
+cut-based native locality, feasible failure normalization, and the continuation
+utility bound. Lift through setup-wide predrawing and package the graph-relative
+certificate. The graph scheduler's observation interface remains distinct
+from the richer native wire scheduler; their identification is not assumed.
+The scheduling and failure mathematics can proceed while M3 establishes the
+native handlers and service facts it will consume.
+
+The backend theorem quantifies over independently certified EventGraphs and
+graph policies, utilities, and setup laws. It contains no source program or
+source-relative correctness hypothesis. Obtain its same-error Nash theorem
+under the graph-level failure-disincentive condition. Export exact-law and
+arbitrary source-observable unilateral guarantees only for scopes where the
+stronger simulation is actually proved.
+
+After both M2 and the backend certificate are complete, compose them by the
+generic simulation theorem and discharge the source-facing capstones. This
+join should introduce no new whole-execution induction.
 
 Exit: the theorem names the full source compiler and actual asynchronous
 native runner. Its deviator is unrestricted within that runner. Any changed
@@ -821,34 +855,70 @@ can implement the event-relative integrity and service contracts. Finer
 dependency reduction is a separate proof-backed pass, not a prerequisite for
 claiming this first full-language asynchronous result.
 
-### Parallel work boundaries
+### Parallel dependency structure and interface freeze
 
-When delegation is used, independent useful tracks are: (1) dependency and
-guard mathematics with counterexamples; (2) public scheduler/service design;
-(3) typed-cut representation and compiler interface; and (4) independent
-review of theorem quantifiers and early-disclosure arguments. These can run
-before the interfaces freeze. Assign Lean ownership by module afterward;
-avoid concurrent edits to shared graph definitions and aggregators.
+The milestone numbers identify deliverables, not a sequential work queue:
 
-Suggested ownership follows the dependencies of the work:
+```text
+            M0: shared mathematical contracts
+                          |
+            M1: executable EventGraph interface
+                          |
+              +-----------+-----------+
+              |                       |
+      M2: source -> graph      M3/M4: graph -> native
+      lowering + exact         async runtime + service
+      correspondence           + strategic utility bound
+              |                       |
+              +-----------+-----------+
+                          |
+               end-to-end composition
+                          |
+                  M5: consolidation
+```
 
-1. During M0, keep the dependency/guard analysis and service construction
-   independent; have a reviewer test whether their observation assumptions
-   compose, including the early-disclosure cases.
-2. During M1, give one implementer the graph carrier/semantics and another
-   source dependency generation after the carrier interface is agreed. Put
-   example construction and API validation in a third bounded track.
-3. During M2, separate canonical source correspondence from the scheduling
-   argument; both consume the same local graph certificate.
-4. During M3, separate handler integrity from prescribed-policy history and
-   from service protection. Do not parallelize by cloning a policy runner.
-5. During M4, keep the cut-locality and residual-law interfaces under one
-   owner. Other agents can prove their local premises, test counterexamples,
-   or review quantifiers without competing edits to the central induction.
+Freeze the following common meanings before the two edge proofs expand:
 
-Use implementation agents for bounded Lean tasks and independent mathematical
-review when a proof interface is unsettled. No elapsed-time or line-count
-estimate substitutes for the milestone exit tests.
+1. **Execution.** Typed event and field identity, binding origins, cuts,
+   readiness, atomic bind/resolve/sample effects, deferred validation, and
+   completed failure versus an unfinished event.
+2. **Strategies and observations.** Logical decision views, private action
+   recall, canonical graph policies, actual asynchronous observations, and
+   the precise canonical graph game used as the shared middle game.
+3. **Outcomes and setup.** Initial layout independent of sampled input values,
+   initial-environment laws, terminal readout, and utilities of graph outcomes.
+   Strategy witnesses are chosen before the private setup draw on both edges.
+4. **Local graph certificate.** Typed availability, causal information
+   discipline, origin consistency, and effect constraints. The source edge
+   proves the certificate; the backend consumes it. It contains no assumed
+   end-to-end law and no source syntax.
+5. **Failure comparison.** Source-independent, feasible continuation and
+   failure relations, their utility condition, and the information at which
+   the comparison holds. The source edge transports the programmer's
+   condition; the backend proves the native normalization satisfies it.
+   This interface is separate from structural graph well-formedness.
+6. **Certificate scope.** Matching strategy translations and outcome maps,
+   all-profile versus profile-local premises, and the environment parameters
+   of the exact or utility simulation being composed.
+
+Freezing these definitions does not mean proving both edges first. It means
+that independent implementers can name the same middle game and local
+obligations without inventing each other's semantics. If a genuine interface
+defect is found, revise it jointly; do not hide the mismatch in a compatibility
+wrapper or a new source-relative backend assumption.
+
+Assign one owner to the shared EventGraph definitions and integration. After
+M1, assign separate upward and downward owners. The downward work can further
+separate handler/service proofs from failure and scheduling mathematics,
+provided the local runtime interface is shared rather than duplicated. Tests
+and independent review can proceed alongside either edge. Keep each agent's
+file ownership disjoint; one integration owner wires aggregators and build
+roots. The shared checkout needs no worktrees.
+
+Useful work before M1 includes dependency/guard mathematics, service design,
+historical lemma inspection, and counterexample tests. It must feed the one
+graph interface, not produce competing semantic models. No elapsed-time or
+line-count estimate substitutes for the milestone exit tests.
 
 At each milestone report source coverage, allowed asynchronous behavior,
 strategic conclusion, service/information assumptions, and the next unproved
