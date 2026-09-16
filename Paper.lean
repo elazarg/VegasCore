@@ -4,6 +4,7 @@ import Vegas.Game.GraphCompilation
 import Vegas.Game.GraphSetup
 import Vegas.Game.GraphMessages
 import Vegas.Game.EventScheduling
+import Vegas.Game.EventCompilation
 import Vegas.Source.Safety
 import Vegas.Compile.EventGraphPolicy
 import Vegas.Compile.EventGraphReadout
@@ -14,8 +15,7 @@ import Vegas.Compile.EventGraphScheduling
 
 Principal source-safety and compilation results for the full failure-aware
 language. Proved statements delegate directly to their owning theorems; the
-axiom pins below check the complete proof dependencies. The explicitly
-prospective asynchronous deviation capstone is admitted and is not a checked result.
+axiom pins below check the complete proof dependencies.
 
 The pending-message target uses ideal commitments and a concrete bounded
 ordered service with adaptive delivery. These results do not assert
@@ -269,9 +269,8 @@ theorem source_event_graph_canonical_law [IExpr.ResultTypes L]
 
 These are exact targets over the actual graph executor and policy compiler.
 The scheduler observes the ideal graph's public store and completion order;
-this is not yet the public-message protocol. The graph-local strategic law
-and source honest law are checked. The source deviation target remains
-admitted; its mixture is chosen before private setup is sampled.
+this is not yet the public-message protocol. The source deviation mixture is
+chosen before private setup is sampled.
 -/
 
 /-- Public asynchronous scheduling preserves and reflects same-error Nash
@@ -313,9 +312,7 @@ theorem source_event_graph_honest_law [IExpr.ResultTypes L]
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_graph_honest_law
 
-/-- error: declaration uses `sorry` -/
-#guard_msgs in
-/-- Target: an arbitrary unilateral asynchronous graph deviation has a finite
+/-- An arbitrary unilateral asynchronous graph deviation has a finite
 mixture of source deviations against unchanged opponents. -/
 theorem source_event_graph_deviation_law [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
@@ -332,12 +329,33 @@ theorem source_event_graph_deviation_law [IExpr.ResultTypes L]
             (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup)) =
         mixture.bind fun alternative =>
           setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
-            profile who alternative) := by
-  sorry
+            profile who alternative) :=
+  SourceProgram.EventLowering.scheduled_setup_deviation_law setup scheduler profile who
+    replacement
 
 /-- info: 'Vegas.Paper.source_event_graph_deviation_law' depends on axioms:
-[propext, sorryAx, Classical.choice, Quot.sound] -/
+[propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_graph_deviation_law
+
+/-- Full-source compilation preserves and reflects same-error Nash at the
+actual asynchronously scheduled graph profile, for every source-state utility. -/
+theorem source_event_graph_approximate_nash_iff [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (scheduler : setup.eventGraph.PublicScheduler)
+    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (ε : ℝ) (profile : SourceProgram.BehavioralProfile setup.program) :
+    IsεNash (setup.eventGame scheduler)
+        (fun outcome who => utility
+          (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup outcome) who)
+        ε (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup
+          profile) ↔
+      IsεNash setup.gameForm utility ε profile :=
+  setup.eventGame_approximate_nash_iff scheduler utility ε profile
+
+/-- info: 'Vegas.Paper.source_event_graph_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_event_graph_approximate_nash_iff
 
 end Vegas.Paper

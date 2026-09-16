@@ -185,8 +185,7 @@ normalization. The honest scheduler-erasure theorem therefore applies to the
 entire replaced profile. It produces the canonical deviation law for this
 pure scheduler without commuting an order-sensitive focal kernel. Averaging
 over scheduler seeds gives `mu` and the exact mixture law. Source-facing
-composition additionally needs canonical graph-to-source policy
-backtranslation; the honest source-order law alone does not supply it.
+composition uses canonical graph-to-source policy backtranslation.
 
 `Vegas.Compile.EventGraphBacktranslation` proves two-sided reconstruction of
 strategic actions and their dependent completion histories.
@@ -199,14 +198,19 @@ fields; decoding and re-encoding the actual observation preserves the entire
 visible store and own-action history, without assuming a source-state
 simulation invariant.
 
-The remaining source join is constructor-recursive kernel alignment:
-recompiling the backtranslated focal policy must agree with the normalized
-arbitrary graph policy at each reachable selected source rank. The other
-players remain unchanged. `runPolicies_canonical_eq_of_reachable` then lifts
-that local equality to a full execution law, which composes with
-`canonical_terminalState_law` and the scheduler mixture. This is the open step
-in `Paper.source_event_graph_deviation_law`; the checked encoding lemmas do not
-by themselves prove that capstone.
+`compileEventPolicy_backtranslate_at_prefix`, in namespace
+`SourceProgram.EventLowering` and module `Vegas.Compile.EventGraphPolicyAlignment`,
+proves constructor-recursive
+kernel alignment: recompiling the backtranslated focal policy agrees with the
+normalized arbitrary graph policy at every reachable selected source rank.
+The other players remain unchanged. `runPolicies_canonical_eq_of_reachable`
+lifts that equality to a full execution law, which composes with
+`canonical_terminalState_law` and the scheduler mixture in
+`EventLowering.scheduled_setup_deviation_law`.
+`Paper.source_event_graph_deviation_law` delegates to this result.
+`Setup.eventSimulation` exposes the composed certificate and yields same-error
+Nash correspondence and source-state deviation guarantees through the generic
+finite-mixture transport theorems.
 
 The setup-wide placement of the draw is essential. Predrawing separately after
 each concrete input would produce an input-dependent policy and would not be a

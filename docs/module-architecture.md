@@ -35,6 +35,10 @@ correspondence under adaptive public scheduling. Source-order execution and
 other scheduling instances share one runner. `Vegas.EventGraph.SchedulerMixture`
 proves arbitrary-deviation simulation to canonical graph policies, using
 GameTheory's finite predrawing theorem through an exact execution adapter.
+`Vegas.Compile.EventGraphDeviation` composes that graph-local law with canonical
+source-policy backtranslation. `Vegas.Game.EventCompilation` packages the
+result as a finite-mixture simulation from the full source game and delegates
+Nash and guarantee transport to the shared game-theory interface.
 `Vegas.Pending.EventApplication`
 implements an event-addressed message application; its whole-run strategic
 edge is not proved. The [EventGraph plan](event-graph-design.md) separates

@@ -7,6 +7,7 @@ import Vegas.Compile.EventGraphObservation
 import Vegas.Compile.EventGraphScheduling
 import Vegas.EventGraph.BarrierInformation
 import Vegas.Game.EventScheduling
+import Vegas.Game.EventCompilation
 import Vegas.Pending.EventApplication
 import VegasTests.SourceSemantics
 
@@ -154,6 +155,30 @@ example (inputs : FinDist pairGraph.Inputs) (scheduler : pairGraph.PublicSchedul
       false orderSensitiveFirst
   rw [normalizeProfile_compileEventProfile] at law
   exact ⟨mixture, law⟩
+
+private def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) where
+  context := []
+  namesNodup := by decide
+  initialLaw := FinDist.pure ⟨Env.empty (CellVal simpleExpr), trivial⟩
+  obligations := ∅
+  program := pairSource
+  accounts := rfl
+
+/-- The order-sensitive asynchronous deviation has a source-policy mixture
+for the program whose independent bindings admit both completion orders. -/
+example (scheduler : pairSetup.eventGraph.PublicScheduler) :
+    ∃ mixture : FinDist (SourceProgram.BehavioralPolicy false pairSource),
+      (pairSetup.initialLaw.bind fun initial =>
+        (pairSetup.eventGraph.terminalOutcomes scheduler
+          (GameTheory.Profile.update (sig := pairSetup.eventGraph.gameSignature)
+            (compileEventProfile pairSource pairSetup.namesNodup pairProfile)
+            false orderSensitiveFirst)
+          (pairSetup.eventInputs initial.1)).map
+            (terminalState pairSource pairSetup.namesNodup)) =
+        mixture.bind fun alternative =>
+          pairSetup.run (GameTheory.Profile.update
+            (sig := SourceProgram.gameSignature pairSource) pairProfile false alternative) :=
+  scheduled_setup_deviation_law pairSetup scheduler pairProfile false orderSensitiveFirst
 
 /-- The actual compiled second-player policy can act first. It does not wait
 for the foreign binding merely to reconstruct its source observation. -/

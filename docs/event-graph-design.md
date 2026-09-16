@@ -8,13 +8,12 @@ to prove its strategic correctness. The shared
 node execution, observations, public scheduling, and finite completion. The
 full-source lowerer constructs a certified executable graph. Its whole-run
 source-order law is checked for every source constructor, including private
-initial-state distributions. Honest asynchronous correspondence and the
-graph-local finite-mixture deviation law are checked. The canonical
-graph-to-source arbitrary-policy join and the asynchronous pending-message
-edge remain unproved.
+initial-state distributions. Honest asynchronous correspondence, setup-wide
+finite-mixture source deviation laws, and same-error Nash correspondence at
+compiled source profiles are checked. The asynchronous pending-message edge
+remains unproved.
 The [active theorem map](active-tower.md) records the checked
-source-to-ordered-graph-to-pending-message results; those remain the current
-end-to-end guarantees.
+source-to-asynchronous-graph and source-to-ordered-pending-message results.
 
 Independent ready event kernels commute for fixed event actions after
 projection to the typed store and each player's original action history

@@ -27,6 +27,7 @@ the subsequent kernel-checked build.
 | Pending-message runtime and service | `Interaction/MessageApplication*.lean`, `Vegas/Pending/` |
 | End-to-end completion, honest law, deviations, arbitrary observations, Nash | `Vegas/Game/GraphMessages.lean` |
 | Full-source honest law under adaptive public graph scheduling | `Vegas/Compile/EventGraphScheduling.lean` |
+| Full-source asynchronous deviations and Nash correspondence | `Vegas/Compile/EventGraphDeviation.lean`, `Vegas/Game/EventCompilation.lean` |
 | Generic simulation and equilibrium transport | `GameTheoryExtensions/` |
 | Paper-visible theorem selection and axiom pins | `Paper.lean` |
 
@@ -52,12 +53,14 @@ outside the active strategic tower.
 
 `Paper.lean` is a self-contained capstone audit. Proved statements delegate to
 repository results and pin their proof dependencies; supporting lemmas remain
-in their owning modules. Its asynchronous graph deviation target is explicitly
-admitted and has `sorryAx` in its pin; it is not a checked result.
-The graph-local scheduling theorem is checked and separately audited: public
-asynchrony preserves and reflects same-error Nash at normalized canonical
-profiles for terminal-store utilities. Its source-policy join and the
-asynchronous pending-message refinement remain distinct obligations.
+in their owning modules. All audited statements are proved, with axiom pins
+containing only `propext`, `Classical.choice`, and `Quot.sound`.
+The asynchronous graph compiler preserves and reflects same-error Nash at
+compiled source profiles for utilities of the complete terminal source state.
+Its unilateral deviation witness is one source-policy mixture chosen before
+private setup. The graph-local scheduling theorem is separately audited.
+The asynchronous pending-message refinement remains unproved; the native
+capstones use ordered service.
 Read the [active theorem map](docs/active-tower.md) for the
 formal boundary and [pending deviation extraction](docs/pending-deviation-extraction.md)
 for the central adversarial argument.

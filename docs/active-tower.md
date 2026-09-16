@@ -147,14 +147,29 @@ profile has the full source terminal-state law, with one profile across the
 private setup distribution. `Paper.source_event_graph_honest_law` delegates
 to this result. No failure-dominance or finite-payload premise is required.
 
-The graph-local asynchronous deviation law is checked. The canonical
-graph-to-source policy join and the asynchronous pending-message certificate
-remain open, as described in the
+`EventLowering.canonical_deviation_terminalState_law` backtranslates every
+canonical graph deviation to a single source policy, uniformly over initial
+states. `EventLowering.scheduled_setup_deviation_law` composes this result with
+the graph-local scheduler mixture: every unilateral asynchronous graph
+deviation has exactly the terminal source-state law of a finite mixture of
+source deviations against unchanged opponents. One mixture is chosen before
+private setup. `Paper.source_event_graph_deviation_law` directly delegates to
+this theorem.
+
+`Setup.eventSimulation` packages these laws in the shared finite-mixture
+interface. `Setup.eventGame_approximate_nash_iff` proves same-error Nash
+preservation and reflection at compiled source profiles, for arbitrary
+utilities of the complete terminal source state.
+`Setup.eventGame_deviation_guarantee` transports source-state lower bounds
+against unilateral deviations independently of the deviator's preferences.
+These results cover the full source language and need no failure-dominance
+or finite-payload premise.
+
+The asynchronous pending-message certificate remains open, as described in the
 [EventGraph plan](event-graph-design.md). The conservative barrier compiler
-targets exact finite-mixture deviation laws at both levels.
-`Paper.source_event_graph_deviation_law` is explicitly admitted, with
-`sorryAx` in its axiom pin. The checked honest scheduling law does not replace
-the proved ordered pending-message strategic capstones. A separate
+targets exact finite-mixture deviation laws at that level too. The ideal-graph
+capstones do not replace the proved ordered pending-message strategic
+capstones. A separate
 [failure-comparison contract](event-graph-failure-comparison.md) applies only
 to broader runtimes that expose genuinely new information before a failure
 choice, and is not a gate for that initial compiler.

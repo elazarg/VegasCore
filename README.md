@@ -43,10 +43,11 @@ Start with the [artifact guide](ARTIFACT.md), [theorem map](docs/active-tower.md
 [typed-message edge](docs/typed-message-edge.md). The
 [road ahead](docs/a-road-ahead.md) describes target boundaries still to add.
 The [EventGraph design and implementation plan](docs/event-graph-design.md)
-specifies the asynchronous compilation work. Its full-source compiler and
-honest outcome law under adaptive public graph scheduling are checked.
-The graph-local asynchronous deviation mixture law is also checked; its
-source-policy join and the event-addressed pending-message edge remain open.
+specifies the asynchronous compilation work. Its full-source honest law,
+unilateral deviation mixture law, and same-error epsilon-Nash correspondence
+under adaptive public graph scheduling are checked. The source mixture is
+chosen before private setup. The event-addressed pending-message edge remains
+open.
 The end-to-end pending-message theorem above uses ordered service.
 
 ## Build
