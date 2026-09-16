@@ -43,6 +43,12 @@ event-relative message service, and a full-source asynchronous deviation
 certificate. The native theorem must allow different acceptance orders for
 independent events, not only different packet-delivery orders.
 
+The Nash capstone allows additional early or informed failure and uses an
+explicit failure-disincentive condition to bound its utility. Exact outcome-law
+simulation remains the stronger result where available, not a prerequisite
+for preserving Nash. A utility bound for the deviator does not by itself
+protect other players against an adversary indifferent to that utility.
+
 Arbitrary players may announce their own choices early. The strategic proof
 keeps unchanged opponents on their compiled source policies and accounts for
 the environment's reactions. Prescribed opening traffic respects the source
