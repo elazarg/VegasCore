@@ -63,6 +63,39 @@ structure, such as atomic transactions or finalized blocks.
 Exit test: a theorem over the real transaction runner, composed to the source
 without excluding a source constructor or assuming the desired whole-run law.
 
+### Protocol/host proof interface
+
+The current `GraphRuntime` executes the typed graph through the shared message
+runner, and its strategic proof is graph-relative. A separate sealed-protocol
+language is not required for that result.
+
+When implementing another host, investigate a smaller reusable interface between
+graph-directed protocol rules and transport, commitment, clock, and chance
+services. It should retain typed payloads, owners, binding origins, public
+validation dependencies, disclosure prerequisites, and failure results.
+Candidate preparation, commitment acceptance, visible opening submission,
+validation, and resolution remain distinct events even when a host combines
+some transitions.
+
+The proof interface must relate observations and legal policies as well as
+states. Several host steps may implement one graph action, but delivery cannot
+be erased as an unobservable step: seeing a pending opening can change a later
+decision. Local execution and information laws must justify the extracted graph
+policy against unchanged opponents. The whole-run deviation law is a conclusion,
+not an assumed field of a purported local correctness contract.
+
+Separate safety from progress. A semantic deadline-relative service contract
+should admit both the concrete reserved service and a ledger implementation;
+sample-once chance and stable accepted candidate identities remain separate
+obligations. Introduce utility-dependent comparisons only for edges that need
+them, rather than weakening an available exact outcome-law certificate.
+
+Use a small rule or simulation interface if it suffices. Add another executable
+representation only if its independent semantics makes a real compiler edge
+simpler. The acceptance test is reuse of the graph-level strategic argument by a
+second host, covering every source constructor and arbitrary native deviations.
+A shorter theorem statement alone is not evidence that the interface helps.
+
 ## Executable code and VM refinement
 
 Compile the graph/application artifact to identifiable executable code. Separate
@@ -74,6 +107,8 @@ An arbitrary semantic expression interface is not automatically executable.
 A concrete backend must implement its operations and account for finite word
 sizes, encodings, resource limits, and failed execution. Instruction-level code
 proofs are ingredients, not a replacement for the whole application edge.
+Test the executable path from serialized checked input to generated artifact;
+elaborator evaluation of a concrete example does not establish that path.
 
 Exit test: the strategic theorem names deployed code and its execution host.
 Independent instruction vectors and differential execution tests should help
