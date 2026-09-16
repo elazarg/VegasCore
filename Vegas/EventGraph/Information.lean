@@ -119,6 +119,18 @@ theorem playerStore_foreign_binding (who owner : Player) (different : owner ≠ 
   rw [binding]
   simpa [EventField.VisibleTo] using different
 
+/-- A typed reference to a player-visible field reads the same value from the
+player's actual masked observation as from the semantic store. -/
+theorem FieldRef.get?_playerStore {graph : Vegas.EventGraph Player L}
+    {kind : EventField Player L} (ref : FieldRef graph.layout kind)
+    (who : Player) (store : EventGraph.Store graph.layout) (visible : kind.VisibleTo who) :
+    ref.get? (graph.playerStore who store) = ref.get? store := by
+  apply ref.get?_congr
+  apply graph.playerStore_of_visible
+  change (graph.layout ref.field).VisibleTo who
+  rw [ref.layout_eq]
+  exact visible
+
 omit [DecidableEq Player] in
 /-- Every binding is absent from the public scheduler's projected store. -/
 theorem publicStore_binding (store : EventGraph.Store graph.layout)
@@ -136,6 +148,37 @@ event's possibly failed output. -/
 def ownCompletions (who : Player) (history : List graph.Completion) :
     List graph.Completion :=
   history.filter fun completion => graph.actor? completion.event = some who
+
+/-- Completing a field hidden from a player leaves that player's entire store
+projection unchanged. The public completion order still changes. -/
+theorem playerStore_complete_of_hidden (who : Player) (config : graph.Config)
+    (event : graph.EventId) (ready : config.cut.Ready event)
+    (action : graph.Action event) (value : (graph.outputLayout event).Value)
+    (hidden : ¬ graph.fieldVisibleTo who (.inr event)) :
+    graph.playerStore who (config.complete event ready action value).store =
+      graph.playerStore who config.store := by
+  funext field
+  by_cases visible : graph.fieldVisibleTo who field
+  · simp only [playerStore, if_pos visible]
+    cases field with
+    | inl input => rfl
+    | inr query =>
+        have different : query ≠ event := by
+          intro same
+          subst query
+          exact hidden visible
+        exact config.complete_output_of_ne event query ready action value different
+  · simp only [playerStore, if_neg visible]
+
+/-- Another actor's completion does not change the player's original-action
+recall, regardless of the result written by that event. -/
+theorem ownCompletions_complete_of_not_actor (who : Player) (config : graph.Config)
+    (event : graph.EventId) (ready : config.cut.Ready event)
+    (action : graph.Action event) (value : (graph.outputLayout event).Value)
+    (notOwned : graph.actor? event ≠ some who) :
+    graph.ownCompletions who (config.complete event ready action value).history =
+      graph.ownCompletions who config.history := by
+  simp [Config.complete_history, ownCompletions, notOwned]
 
 /-- The public scheduler observes public store contents and completion order. -/
 structure PublicObservation where

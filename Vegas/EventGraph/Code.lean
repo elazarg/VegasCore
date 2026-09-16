@@ -644,18 +644,32 @@ theorem eval?_eq_of_reads {Field : Type} [DecidableEq Field]
     check.reads env readsEq]
   rfl
 
+omit R in
+/-- Only the operand fields actually read by a deferred check matter. A
+declared read footprint may conservatively contain additional fields. -/
+theorem eval?_congr_reads {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {currentPayload : L.Ty}
+    (check : DeferredCheck layout currentPayload) (left right : Store layout)
+    (proposal : PublicationResult (L.Val currentPayload))
+    (subject : ∀ field, check.subjectRead.field? = some field → left field = right field)
+    (reads : ∀ {name input} (ref : HasVar check.code.schema name input) field,
+      (check.reads ref).field? = some field → left field = right field) :
+    check.eval? left proposal = check.eval? right proposal := by
+  unfold eval?
+  have subjectEq := GuardOperand.get?_congr check.subjectRead left right proposal subject
+  have inputsEq := collectReads_congr left right proposal check.code.schema check.reads
+    reads
+  rw [subjectEq, inputsEq]
+
 omit R in theorem eval?_congr {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {currentPayload : L.Ty}
     (check : DeferredCheck layout currentPayload) (left right : Store layout)
     (proposal : PublicationResult (L.Val currentPayload))
     (agree : Store.AgreeOn left right check.readFields) :
-    check.eval? left proposal = check.eval? right proposal := by
-  unfold eval?
-  have subjectEq := GuardOperand.get?_congr check.subjectRead left right proposal
+    check.eval? left proposal = check.eval? right proposal :=
+  check.eval?_congr_reads left right proposal
     (fun field found => agree field (check.subject_mem field found))
-  have inputsEq := collectReads_congr left right proposal check.code.schema check.reads
     (fun ref field found => agree field (check.reads_mem ref field found))
-  rw [subjectEq, inputsEq]
 
 omit R in theorem eval?_isSome {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {currentPayload : L.Ty}

@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Compile.EventGraphAssembly
+import Vegas.Compile.EventGraphHistory
+import Vegas.Compile.EventGraphIndependence
+import Vegas.Compile.EventGraphObservation
 import Vegas.EventGraph.BarrierInformation
 import VegasTests.SourceSemantics
 
@@ -72,6 +75,65 @@ example : completedSecond ∈ (pairConfig.step second second_ready (.success tru
 
 example : eventCount pairSource = 4 := rfl
 
+private def firstRefs : ContextRefs pairGraph.layout
+    [(0, CellTy.privateData false simpleExpr.bool)] :=
+  ContextRefs.cons (outputRef pairSource first)
+    (ContextRefs.initial [] (outputLayout pairSource))
+
+private def firstPublications : PublicationRefs pairGraph.layout
+    [(0, CellTy.privateData false simpleExpr.bool)] := initialPublications
+
+private def firstState (choice : Bool) :
+    State simpleExpr [(0, CellTy.privateData false simpleExpr.bool)] :=
+  Env.cons (BoundValue.value choice, Interaction.Publication.pending)
+    (Env.empty (CellVal simpleExpr))
+
+/-- The second player can reconstruct its source decision view before the
+foreign commitment has completed. Hidden entries require neither a value nor
+a fabricated in-domain default. -/
+example (choice : Bool) :
+    decodeObservation? true firstRefs firstPublications
+        (pairGraph.playerStore true pairConfig.store) =
+      some (sourceObserve true (firstState choice)) := by
+  apply congrArg some
+  apply congrArg SourceObservation.mk
+  funext name cell source
+  cases source with
+  | here => rfl
+  | there source => nomatch source
+
+/-- An unavailable own binding is genuinely unavailable, rather than silently
+decoded as a payload value. -/
+example : decodeObservation? false firstRefs firstPublications
+    (pairGraph.playerStore false pairConfig.store) = none := rfl
+
+private def pairProfile : SourceProgram.BehavioralProfile pairSource :=
+  fun _ =>
+    (fun _ _ => FinDist.pure (BoundValue.value false),
+     (fun _ _ => FinDist.pure (BoundValue.value true),
+      (fun _ _ => FinDist.pure true,
+       (fun _ _ => FinDist.pure true, PUnit.unit))))
+
+/-- The actual compiled second-player policy can act first. It does not wait
+for the foreign binding merely to reconstruct its source observation. -/
+example : compileEventProfile pairSource (by decide) pairProfile true second rfl
+      (pairGraph.playerObserve true pairConfig) =
+    FinDist.pure (PublicationResult.success true) := by
+  change (FinDist.pure (BoundValue.value true)).map (BoundValue.resultEquiv _) = _
+  rw [FinDist.map_pure]
+  rfl
+
+/-- Publicly completing the other hidden commitment first does not alter the
+first player's prescribed decision. Arbitrary policies may still use that
+completion-order signal. -/
+example : compileEventProfile pairSource (by decide) pairProfile false first rfl
+      (pairGraph.playerObserve false completedSecond) =
+    compileEventProfile pairSource (by decide) pairProfile false first rfl
+      (pairGraph.playerObserve false pairConfig) := by
+  exact compileEventPolicy_complete_hidden pairSource (by decide) false
+    (pairProfile false) pairConfig second first second_ready
+    (.success true) (.success true) (by decide) (by decide) rfl
+
 /-- Compilation creates two initially enabled bindings, not a global cursor. -/
 example : (EventOrder.Cut.empty pairOrder).enabled =
     {⟨0, by decide⟩, ⟨1, by decide⟩} := by decide
@@ -134,6 +196,18 @@ private def rejectingBound : rejectingGraph.Config :=
 silently replaced by an unrestricted commitment or a valid in-domain value. -/
 example : (rejectingGraph.nodes rejectingReveal).eval? true rejectingBound.store =
     some (FinDist.pure (PublicationResult.failure : PublicationResult Bool)) := rfl
+
+private def rejected : rejectingGraph.Config :=
+  rejectingBound.complete rejectingReveal (by decide) true PublicationResult.failure
+
+/-- Public rejection does not erase the player's original disclosure choice
+from its own recall. -/
+example : decodeHistory SourceSemantics.falseGuardProgram (by decide)
+      rejected.history SourceSemantics.Player.alice =
+    [SourceProgram.OwnAction.commit (L := simpleExpr) SourceSemantics.Player.alice 20 .bool
+      (BoundValue.value true),
+     SourceProgram.OwnAction.reveal SourceSemantics.Player.alice 20 true] := by
+  rfl
 
 end
 

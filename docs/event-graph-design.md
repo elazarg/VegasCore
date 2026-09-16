@@ -7,7 +7,9 @@ to prove its strategic correctness. The shared
 [EventGraph core](../Vegas/EventGraph.lean) implements typed dependency cuts,
 node execution, observations, public scheduling, and finite completion. The
 full-source lowerer constructs a certified executable graph. Its whole-run
-source correspondence and asynchronous pending-message edge remain unproved.
+source-order law is checked for every source constructor, including private
+initial-state distributions. Asynchronous strategic correspondence and the
+asynchronous pending-message edge remain unproved.
 The [active theorem map](active-tower.md) records the checked
 source-to-ordered-graph-to-pending-message results; those remain the current
 end-to-end guarantees.
@@ -19,9 +21,12 @@ dependencies and supplies the logical information certificate
 (`toEventGraph_informationDiscipline`). Local evaluation theorems relate
 compiled expressions, distributions, and complete resolution kernels to source
 evaluation, including deferred validation and failure on rejection.
-The canonical scheduler's complete event sequence is also checked. These are
-local semantic and structural results; the source-order execution law and
-asynchronous strategic certificates remain to prove.
+`canonical_setup_law` equates the decoded terminal-state law of compiled
+policies under canonical scheduling with source execution. The ordinary
+ready-event executor supplies that canonical specialization. Normalized
+behavioral policies also satisfy a checked two-step store-and-recall diamond
+(`policyStepThen_map_storeRecall_comm`). Whole-run scheduling independence and
+arbitrary-deviation extraction remain separate proof obligations.
 
 The objective is one compilation tower:
 
@@ -291,6 +296,53 @@ meanings or private policy caches. Its choices need not be independent of
 previous public data. Scheduler noninterference is conditional on the whole
 allowed public history, not a marginal claim about each signal separately.
 
+### 3.4 One graph, progressively concrete operational games
+
+The graph fixes operations, typed dependencies, and deferred validation. Its
+execution interpretations progressively specify the protocol and host:
+
+| Interpretation | Public observations | Private semantic state |
+| --- | --- | --- |
+| Ideal commitment execution | Completed event identities and order, public samples, accepted publication results | Unopened binding meanings and original own decisions |
+| Public commitment protocol | Commitment handles, all submitted payloads, opening attempts, rejections, and receipts | Player memory and the ideal commitment relation |
+| Pending-message execution | Public protocol observations before inclusion, pool changes, inclusion decisions, and clocks | The same player memory and ideal commitment relation |
+| Concrete host execution | The host's actual observable messages, transactions, execution results, and fees | Only what the implemented cryptographic and host interfaces justify |
+
+These are operational games over the same graph, not separately maintained
+source compilers. A semantic binding value is not a public plaintext ledger
+field. A public handle implements it; its hiding, integrity, and observation
+properties belong to the next edge. All-public message transport must not be
+modeled by concealing submitted payloads or failed opening attempts.
+
+Every edge must account for observations jointly with everything already
+visible. Erasing additional observations in the prescribed policy does not
+erase them from an arbitrary deviation or from the environment. In particular,
+the graph-to-protocol proof must establish the prescribed emission rule in
+Section 5.2 and account for arbitrary focal packets. The
+[public-observation note](event-graph-public-observations.md) records the
+rejected-opening counterexample and the necessary compiler invariant.
+
+Scheduling restrictions are parameters or dependency certificates, not source
+language restrictions. A sequential schedule is one interpretation of the
+same graph; the source-order execution theorem concerns that interpretation.
+An asynchronous strategic theorem separately names its scheduler observation
+interface, service assumptions, outcome projection, and solution concept.
+Neither exact state-law correspondence nor Nash preservation by itself asserts
+preservation of correlated recommendations, transcript preferences, or other
+solution concepts. Where more visibility changes such a concept, the result
+must state the additional information condition or use enforced sequential
+dependencies. The unrestricted operational model remains available.
+
+In particular, a scheduling signal is not by itself a counterexample to
+correlated-equilibrium preservation. Additional randomness independent of
+recommendations and hidden game data preserves an incentive bound by
+averaging. A profile-by-profile Nash backtranslation, however, does not
+automatically supply the uniform backtranslation across recommendations
+needed for a correlated-equilibrium theorem. Such a theorem needs that
+uniformity proof, or an actual counterexample under the stated observation
+model; it should not inherit an unsupported impossibility claim from the
+mere presence of scheduling.
+
 ## 4. Compiling the full source
 
 ### Graph-level certificate
@@ -480,6 +532,17 @@ Prescribed failure traffic remains uniform in failed intention and rejected
 raw value. Otherwise a guard-invalid candidate could leak a different secret
 through a packet whose accepted source result is only failure.
 
+The original disclosure decision belongs to the player's private recall. A
+canonical withholding packet cannot tell the ledger whether the source policy
+chose `false` or chose `true` for an opening that prevalidation rejected. The
+compiler must preserve that distinction in player memory without requiring
+the contract to infer it. In a representation containing both native state and
+a semantic graph configuration, this original-action record is private or
+proof state, not an additional readable ledger field. A lower contract
+refinement must show that public acceptance, settlement, and environment
+observations do not depend on that hidden record. A ledger-only decoder to
+the entire graph completion history is neither required nor generally possible.
+
 When several owned events are ready, the native dispatcher must select one
 according to a specified observation-local rule or a public service grant.
 For the initial compiler, same-owner dependency edges sharply simplify this
@@ -534,6 +597,136 @@ Service admissibility must survive unilateral replacement. Do not condition
 execution afterward on the favorable event that the scheduler happened to be
 fair; that conditioning can change outcome laws. Establish service properties
 for all supported runs of the admitted driver/policy implementation.
+
+### 5.4 Minimal graph-relative backend
+
+Build the first backend as a new EventGraph application over the existing
+`Interaction.MessageApplication`, not by adding cases to the cursor-indexed
+`GraphRuntime.State` and not by copying its transport runner. The old
+candidate, pool, authentication, and bounded-service machinery is reusable;
+its existential graph suffix, global `pc`, single `enteredAt`, name-indexed
+bindings, and phase-recursive service plan are not.
+
+For one fixed `EventGraph`, the application state contains:
+
+- its `Config`, hence separate inputs, completed cut, typed optional outputs,
+  and chronological original actions;
+- accepted commitment handles indexed by graph **field identity**, including
+  initial binding fields;
+- the existing private `CommitmentCandidates` catalogue, with initial-field
+  and player-preparation slots; and
+- one monotone clock plus `activatedAt : EventId -> Option Nat`.
+
+The activation invariant is exact: an unfinished ready strategic event has one
+activation time, preserved while it remains ready and cleared on completion.
+After a completion, scan the finite enabled set, retain existing times, and
+stamp newly ready events with the current clock. There is no application
+cursor.
+
+The public view consists of completion identities/cut, `publicStore`, accepted
+handles, clock, and activation metadata. Candidate meanings and binding values
+remain hidden. A player's authenticated view adds `playerStore`, original
+`ownCompletions`, and its own prepared candidates. Reuse
+`EventGraph.publicObserve` and `playerObserve`; a parallel logical-history
+representation would bypass the checked information certificate.
+
+Packets address stable event IDs:
+
+```text
+commitment(event, handle)
+opening(event, handle, typedRaw)
+withhold(event)
+malformed(typedRaw)
+```
+
+Inclusion first checks that the event is unfinished and ready, then
+dependent-pattern-matches its retained `EventCode`.
+
+- For `bind owner payload`, authenticate owner and handle. Decode an openable
+  original-payload candidate as `.success value`; accepting a fresh or already
+  unopenable prescribed handle gives `.failure`. Initial successful bindings
+  receive openable candidates and initial failed bindings receive unopenable
+  ones, while their public handles have the same shape. Complete through
+  `Config.step`, recording that same `PublicationResult` as the original bind
+  action.
+- For `resolve owner payload binding checks`, an opening must use the immutable
+  handle associated with `binding.field`, verify its typed raw value, and agree
+  with the stored successful binding. Execute `Config.step` with action `true`;
+  withholding uses `false`. The node evaluator, not duplicate handler code,
+  computes deferred checks and the accepted publication result.
+- A sample accepts no player packet. A public command executes its unit action
+  and retained kernel exactly once.
+
+Premature, late, wrong-owner, wrong-type, malformed, and replayed packets stay
+in message history but do not change application state. Readiness plus
+`Config.complete` gives write-once outputs. Arbitrary focal packets remain in
+the policy space.
+
+Expiry is an explicit command `expire event`, effective only if that event is
+still ready and its own elapsed time meets `deadline event`. It completes a
+bind with action/output `.failure`, or a resolve with action `false`; it cannot
+expire a sample or spend another event's budget. Fix whether a command advances
+the clock before testing the boundary and use the same convention in handlers
+and service proofs.
+
+#### File plan and proof boundary
+
+Keep the source-independent edge under `Vegas/EventGraphRuntime/`:
+
+| File | Responsibility |
+| --- | --- |
+| `Application.lean` | Raw values, field-indexed handles, cut-based state/views, preparation, event-addressed inclusion, sample/expiry commands, and the `MessageApplication` instance. |
+| `Invariant.lean` | Activation domain, output/handle immutability, binding provenance, observation secrecy, and command preservation. |
+| `Policies.lean` | Per-event sample-once caches, uniform opaque bind traffic for success and failure, retained resolve Boolean, and readiness-gated sends. |
+| `StepLaw.lean` | Accepted bind/resolve/sample/expiry projects to the corresponding `Config.step`; preparation and rejected traffic stutter. |
+| `Service.lean` | Finite public rounds over enabled IDs: owner opportunities, adaptive wire slots, addressed reserved inclusion, clock advance, local expiry, and sample execution. |
+| `ServiceLaw.lean` | A feasible witness, protection of compliant ready events, expiry of ineffective owners, decreasing unfinished count, and supported-run completion. |
+| `HonestLaw.lean` | Couple compiled policies and the admitted driver to EventGraph steps, then use scheduling commutation to obtain the canonical terminal `g.Outcome` law. |
+| `DeviationLaw.lean` | Later setup-wide predrawing/locality and the exact graph-relative deviation mixture; never an application invariant. |
+
+Reuse `MessageApplication`, its wire policies and history runner,
+`CommitmentCandidates`, and the setup-wide predrawing framework. The old
+prepare/submit/include/withhold and reserved-service proof pattern is useful.
+Do not reuse cursor `Prefix`/`Follows`, phase frames, or `pc`-gated expiry
+lemmas. Move generic typed raw/candidate helpers into `Interaction` if needed;
+the new backend imports EventGraph modules and never `Vegas.Compile`.
+
+The local `StepLaw` relation is deliberately smaller than a simulation
+theorem: native cut and typed outputs equal the ideal `Config`; every accepted
+binding field has one owner-correct immutable handle whose candidate decodes
+to its stored binding result; public/player projections agree; and activation
+times have the exact domain above. No whole-run law is a field or premise.
+
+For a graph, information certificate, input law, compiled profile, and admitted
+public driver/wire policy, the first whole-run target is
+
+```text
+map nativeReadout (nativeGame.play compiledProfile)
+  = map readout ((g.canonicalGame inputs).play profile),
+```
+
+where both readouts return `g.Outcome`, discarding transport and completion-
+order metadata. Prove completion separately for every native player policy in
+the shared runner. The arbitrary-deviation goal remains the exact mixture in
+Section 6. Do not first postulate that the wire environment factors through an
+EventGraph `PublicScheduler`: it sees a richer pool/history and can select
+different inclusions after different raw focal packets. The local step
+relation plus graph scheduling/coupling must establish the displayed outcome
+law directly.
+
+The concrete design gate is service with several enabled events. Static source
+phases are insufficient. A bounded public round may choose an enabled ID,
+offer adaptive delivery, reserve inclusion for that addressed event, advance
+time, and execute eligible local expiries. With the current fixed-invocation
+runner, each round polls the finite owner list extracted from graph nodes; only
+the granted event's compiled owner responds and the others wait. Reserved
+inclusion must search the public pool for the latest effective packet addressed
+to that event, rather than reuse the old owner-only `latestSubmissionCommand`.
+This needs no `Fintype Player` and prevents an unrelated packet from consuming
+the grant. The driver must permit either acceptance order for two independent
+ready bindings while proving a decreasing unfinished count. Deadlines therefore
+require a feasible round-budget witness; an unrestricted scheduler with no
+service obligation cannot imply termination.
 
 ## 6. Strategic statements and composition
 

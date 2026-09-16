@@ -67,8 +67,48 @@ one owner retain source order. A binding node has no semantic read and writes
 its unique output. Consequently the corresponding steps commute for fixed
 actions; the two owners' compiled kernels also agree before and after the swap
 because each consumes the same normalized store and own-action history.
-Induction by adjacent swaps gives the honest store law. Chance nodes need no
-swap argument: they are public barriers and execute their retained kernel once.
+The local probabilistic diamond is checked by
+`BarrierOrdered.policyStepThen_map_storeRecall_comm`. A tracewise adjacent-swap
+argument alone is insufficient for an adaptive scheduler: its probabilities
+depend on the preceding observations. The whole-run proof must compare
+continuation laws before averaging the scheduler's selected event. Chance
+nodes need no swap argument: they are public barriers and execute their
+retained kernel once.
+
+## Whole-run honest law
+
+The next graph-owned theorem equates the terminal store laws of
+`runPolicies E (normalizeProfile sigma)` and
+`runPolicies canonicalScheduler (normalizeProfile sigma)` for each initial
+environment. It is proved before lifting through the finite initial law.
+For compiled source profiles, normalization is definitionally the identity
+(`normalizeProfile_compileEventProfile`), so the checked source-order law
+supplies the source-facing conclusion.
+
+Use the configuration projection
+
+```text
+semanticState c = (c.cut.completed, storeRecall g c)
+```
+
+and induction on the number of unfinished events. First prove that canonical
+normalized continuation depends only on this projection. The cut determines
+readiness, the store determines node evaluation, and the store plus per-player
+original actions determine the normalized policy kernels. Actual completion
+order is unnecessary.
+
+Then prove that choosing any ready event and continuing canonically gives the
+same terminal law as choosing the least ready event. If they differ, both are
+foreign-owner bindings. Apply the induction hypothesis to take the other
+event next on each side, use the two-step diamond, and use continuation
+congruence to identify the remaining laws. At a public event there is only one
+ready event. Terminal cuts give the base case.
+
+Finally expand the actual scheduler's first-step bind. Each supported choice
+has the same canonical continuation law, so their weighted average has that
+law as well. This handles history-adaptive selection without fixing a trace or
+assuming its probability is invariant under permutation. It proves only the
+honest law; an arbitrary focal policy need not obey normalization.
 
 ## Predrawing and deviation extraction
 

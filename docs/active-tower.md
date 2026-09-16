@@ -83,6 +83,31 @@ Supporting results are checked:
   public expressions and chance tables to the source state. `compileResolve_eval?`
   equates the complete resolution kernel with the source's proposal, deferred
   registry check, and failure-on-rejection result.
+- `compileEventProfile` translates the complete source strategy interface to
+  actual graph policies. Its observation decoder reads public fields and own
+  bindings only; its history decoder retains original actions, including a
+  disclosure decision whose checked result is failure. Actual graph steps have
+  the expected source state and history effects.
+- `compileEventPolicy_complete_hidden` proves that completing a foreign hidden
+  event does not change a compiled player's decision kernel. The public
+  completion order changes, but that compiled kernel uses the source view and
+  own-action history. Arbitrary graph deviations still see the order.
+- `EventGraph.normalizeProfile` gives a graph-owned policy translation that
+  replaces completion-order metadata with the fixed topological prefix while
+  retaining visible values and original own actions. Its local invariance
+  theorem covers simultaneously ready foreign commitments. Source-compiled
+  profiles are already fixed points of this normalization.
+- `EventGraph.BarrierOrdered.policyStepThen_map_storeRecall_comm` lifts the
+  fixed-action diamond to the two actual normalized behavioral kernels. The
+  resulting two-step laws agree on the typed store and every player's
+  original-action recall; it is not yet a whole-run scheduling theorem.
+- `EventCode.resolve_eval?_playerStore` proves owner-local prevalidation of a
+  complete resolution kernel. No foreign hidden binding is needed, and guards
+  may reject. This supports checking an opening before public emission; it
+  does not by itself prove a public-message implementation correct.
+- Terminal configurations have a total source-state readout with no invented
+  payload defaults. Under typed state agreement, the readout and terminal
+  payoff expressions agree exactly with their source counterparts.
 
 Game outcomes are terminal configurations. A shared utility lift interprets
 their complete typed stores and ignores scheduling metadata; utilities on the
@@ -93,14 +118,22 @@ The compiled-graph regressions include an actual step that completes the second
 source commitment before the first, and a mixed source program with private
 initial inputs, deferred guards, and chance.
 
-Canonical source-policy translation and the whole-run source law, asynchronous scheduling
-comparison, and the asynchronous pending-message strategic certificate are
-the remaining compiler/proof work described in the
+The whole-run source-order theorem `EventLowering.canonical_setup_law` runs
+the actual compiled graph under its canonical public scheduler. Its decoded
+terminal-state law equals source execution, including a finite private setup
+law and one profile used across that law. `Paper.source_event_graph_canonical_law`
+delegates to this result. It covers every source constructor and requires no
+guard-feasibility or failure-dominance premise.
+
+The asynchronous scheduling comparison and the asynchronous pending-message
+strategic certificate are the remaining compiler/proof work described in the
 [EventGraph plan](event-graph-design.md). Source-order correspondence and
 equivalence under other schedules are distinct obligations. The conservative
 barrier compiler targets exact honest and finite-mixture unilateral-deviation
 laws at both the ideal EventGraph and pending-message levels; these targets are
-not yet checked. A separate
+not yet checked. The two asynchronous ideal-graph law targets in `Paper.lean`
+are explicitly admitted; their axiom pins include `sorryAx`. They do not
+replace the proved ordered pending-message capstones. A separate
 [failure-comparison contract](event-graph-failure-comparison.md) applies only
 to broader runtimes that expose genuinely new information before a failure
 choice, and is not a gate for that initial compiler.

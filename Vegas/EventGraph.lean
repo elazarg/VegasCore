@@ -7,11 +7,15 @@ import Vegas.EventGraph.Execution
 import Vegas.EventGraph.Commutation
 import Vegas.EventGraph.CommutationRecall
 import Vegas.EventGraph.Information
+import Vegas.EventGraph.Validation
 import Vegas.EventGraph.Barriers
 import Vegas.EventGraph.BarrierInformation
 import Vegas.EventGraph.Recall
 import Vegas.EventGraph.Semantics
+import Vegas.EventGraph.NormalizedPolicy
+import Vegas.EventGraph.PolicyCommutation
 import Vegas.EventGraph.Canonical
+import Vegas.EventGraph.CanonicalStep
 
 /-! # Dependency-driven typed events
 

@@ -46,7 +46,7 @@ def outputEmbedding {Γ : SourceCtx Player L} {openNames : Finset VarId}
   rfl
 
 /-- Initial context references precede every source-ranked event. -/
-private theorem initialRefsBefore {Γ : SourceCtx Player L} {openNames : Finset VarId}
+theorem initialRefsBefore {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) :
     ContextRefsBefore (ContextRefs.initial Γ (outputLayout program))
       (outputEmbedding program) := by
@@ -54,7 +54,7 @@ private theorem initialRefsBefore {Γ : SourceCtx Player L} {openNames : Finset 
   trivial
 
 omit [DecidableEq Player] R in
-@[simp] private theorem initialPublications_field?_eq_none
+@[simp] theorem initialPublications_field?_eq_none
     {Field : Type} {layout : Field → Vegas.EventGraph.EventField Player L}
     {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty} {name : VarId}
     (source : HasVar Γ name (.privateData owner payload)) :
@@ -69,7 +69,7 @@ omit [DecidableEq Player] R in
           cases headCell <;> exact ih source
 
 /-- Initial private cells are pending, so they name no event output. -/
-private theorem initialPublicationsBefore {Γ : SourceCtx Player L}
+theorem initialPublicationsBefore {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
     PublicationsBeforeAll
       (initialPublications (Field := Vegas.EventGraph.FieldId Γ.length (eventCount program)))

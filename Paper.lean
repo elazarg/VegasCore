@@ -4,12 +4,16 @@ import Vegas.Game.GraphCompilation
 import Vegas.Game.GraphSetup
 import Vegas.Game.GraphMessages
 import Vegas.Source.Safety
+import Vegas.Compile.EventGraphPolicy
+import Vegas.Compile.EventGraphReadout
+import Vegas.Compile.EventGraphCanonical
 
 /-! # Paper theorem audit
 
 Principal source-safety and compilation results for the full failure-aware
-language. Every statement delegates directly to its owning theorem; the axiom
-pins below check the complete proof dependencies.
+language. Proved statements delegate directly to their owning theorems; the
+axiom pins below check the complete proof dependencies. The explicitly
+prospective asynchronous capstones are admitted and are not checked results.
 
 The pending-message target uses ideal commitments and a concrete bounded
 ordered service with adaptive delivery. These results do not assert
@@ -237,5 +241,82 @@ theorem source_pending_deviation_guarantee [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_pending_deviation_guarantee
+
+/-! ## Dependency-driven graph capstones -/
+
+/-- Running the dependency-driven graph in source order preserves the full
+source terminal-state law, including a private initial setup distribution.
+The scheduler is an instance of the ordinary ready-event executor. -/
+theorem source_event_graph_canonical_law [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (profile : SourceProgram.BehavioralProfile setup.program) :
+    ((setup.eventGraph.canonicalGame
+        (setup.initialLaw.map fun initial => setup.eventInputs initial.1)).play
+      (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup
+        profile)).map
+          (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup) =
+      setup.run profile :=
+  SourceProgram.EventLowering.canonical_setup_law setup profile
+
+/-- info: 'Vegas.Paper.source_event_graph_canonical_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_event_graph_canonical_law
+
+/-! ## Prospective asynchronous graph capstones
+
+These are exact targets over the actual graph executor and policy compiler.
+The scheduler observes the ideal graph's public store and completion order;
+this is not yet the public-message protocol. The mixture in the second target
+is chosen before private setup is sampled. Neither statement is proved.
+-/
+
+/-- error: declaration uses `sorry` -/
+#guard_msgs in
+/-- Target: every public schedule of compiled source policies has the source
+terminal-state law. -/
+theorem source_event_graph_honest_law [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (scheduler : setup.eventGraph.PublicScheduler)
+    (profile : SourceProgram.BehavioralProfile setup.program) :
+    (setup.initialLaw.bind fun initial =>
+      (setup.eventGraph.terminalOutcomes scheduler
+        (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup profile)
+        (setup.eventInputs initial.1)).map
+          (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup)) =
+      setup.run profile := by
+  sorry
+
+/-- info: 'Vegas.Paper.source_event_graph_honest_law' depends on axioms:
+[propext, sorryAx, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_event_graph_honest_law
+
+/-- error: declaration uses `sorry` -/
+#guard_msgs in
+/-- Target: an arbitrary unilateral asynchronous graph deviation has a finite
+mixture of source deviations against unchanged opponents. -/
+theorem source_event_graph_deviation_law [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (scheduler : setup.eventGraph.PublicScheduler)
+    (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
+    (replacement : setup.eventGraph.BehavioralPolicy who) :
+    ∃ mixture : FinDist (SourceProgram.BehavioralPolicy who setup.program),
+      (setup.initialLaw.bind fun initial =>
+        (setup.eventGraph.terminalOutcomes scheduler
+          (Profile.update (sig := setup.eventGraph.gameSignature)
+            (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup profile)
+            who replacement)
+          (setup.eventInputs initial.1)).map
+            (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup)) =
+        mixture.bind fun alternative =>
+          setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
+            profile who alternative) := by
+  sorry
+
+/-- info: 'Vegas.Paper.source_event_graph_deviation_law' depends on axioms:
+[propext, sorryAx, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_event_graph_deviation_law
 
 end Vegas.Paper

@@ -179,6 +179,34 @@ def step (config : graph.Config) (event : graph.EventId)
       (fun _ read => config.read_available ready read)) |>.map
         (config.complete event ready action)
 
+/-- A local evaluator law determines the actual configuration transition.
+The readiness proof supplies availability; it does not change the law. -/
+theorem step_eq_map_of_eval (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) (action : graph.Action event)
+    (law : FinDist (graph.outputLayout event).Value)
+    (evaluates : (graph.nodes event).eval? action config.store = some law) :
+    config.step event ready action = law.map (config.complete event ready action) := by
+  unfold step
+  simp only [evaluates, Option.get_some]
+
+/-- A compiler may identify an event's output kind through a typed embedding.
+Transporting its code, action, and output along that same equality preserves
+the ordinary graph transition. -/
+theorem step_eq_map_of_code (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) {output : EventField Player L}
+    (outputEq : graph.outputLayout event = output)
+    (code : EventCode graph.layout output)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) = code)
+    (action : output.Action) (law : FinDist output.Value)
+    (evaluates : code.eval? action config.store = some law) :
+    config.step event ready (cast (congrArg EventField.Action outputEq.symm) action) =
+      law.map (fun value => config.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm) action)
+        (cast (congrArg EventField.Value outputEq.symm) value)) := by
+  cases outputEq
+  subst code
+  exact config.step_eq_map_of_eval event ready action law evaluates
+
 @[simp] theorem step_cut (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (next : graph.Config) (member : next ∈ (config.step event ready action).support) :
