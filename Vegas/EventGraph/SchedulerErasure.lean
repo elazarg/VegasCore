@@ -88,6 +88,19 @@ def canonicalContinuation (graph : Vegas.EventGraph Player L)
     FinDist graph.SemanticKey :=
   graph.canonicalSemanticLaw profile config.remaining config
 
+/-- At the empty cut the continuation is the complete canonical execution
+law, including the original-action recall retained in the semantic key. -/
+theorem canonicalContinuation_initial (profile : graph.BehavioralProfile)
+    (inputs : graph.Inputs) :
+    graph.canonicalContinuation profile (Config.initial inputs) =
+      (graph.runPolicies graph.canonicalScheduler (graph.normalizeProfile profile)
+        inputs).map graph.semanticKey := by
+  have remaining : (Config.initial inputs : graph.Config).remaining =
+      graph.order.eventCount := by
+    simp [Config.remaining, Config.initial, EventOrder.Cut.empty]
+  simp only [canonicalContinuation, remaining, canonicalSemanticLaw,
+    runPolicies, EventGraph.run]
+
 /-- Exact-fuel canonical continuations also factor through semantic state. -/
 theorem canonicalContinuation_congr (profile : graph.BehavioralProfile)
     {left right : graph.Config}

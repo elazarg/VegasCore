@@ -17,14 +17,14 @@ import Vegas.Pending.EventServiceCompletion
 
 Principal source-safety and compilation results for the full failure-aware
 language. Proved statements delegate directly to their owning theorems; the
-axiom pins below check the complete proof dependencies. The three UNPROVED
+axiom pins below check the complete proof dependencies. The two UNPROVED
 asynchronous pending-message capstones at the end are explicit proof targets:
 their guarded admission diagnostics and axiom pins expose `sorryAx`.
 
 The pending-message strategic results use ideal commitments and a concrete
 bounded ordered service with adaptive delivery. The event-addressed target has
-a separate completion theorem under public adaptive epoch service; its
-whole-run honest and strategic correspondence remains unproved. None of these
+completion and full-source honest outcome laws under public adaptive epoch
+service; its arbitrary-deviation and Nash correspondence remain unproved. None of these
 statements asserts cryptographic, transaction-ledger, or EVM refinement.
 -/
 
@@ -384,19 +384,18 @@ theorem event_pending_completion [IExpr.ResultTypes L]
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.event_pending_completion
 
-/-! ## Open asynchronous pending-message capstones
+/-! ## Asynchronous pending-message capstones
 
 These statements use the concrete compiler and service, not a hypothesized
 simulation certificate. `ServiceFeasible` requires at least two clock ticks
 per event deadline so an event enabled mid-epoch receives its reserved service
 opportunities. The compiler's public barriers are intended to support exact
-deviation laws without a failure-dominance premise. The statements below are
-UNPROVED, including that intended sufficiency of the hypotheses.
+deviation laws without a failure-dominance premise. The honest law is proved;
+the two strategic statements remain UNPROVED, including that intended
+sufficiency of the hypotheses.
 -/
 
-/-- error: declaration uses `sorry` -/
-#guard_msgs (whitespace := lax) in
-/-- UNPROVED: the compiled full-source profile has the source terminal-state
+/-- The compiled full-source profile has the source terminal-state
 law under the asynchronous pending-message service. -/
 theorem source_event_pending_honest_law [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
@@ -407,11 +406,11 @@ theorem source_event_pending_honest_law [IExpr.ResultTypes L]
     (profile : SourceProgram.BehavioralProfile setup.program) :
     ((setup.eventPendingGame runtime roster reactionRounds wire order).play
       (fun who => setup.compileEventPendingStrategy runtime who (profile who))).map
-        (setup.eventPendingOutcome runtime) = (setup.run profile).map some := by
-  sorry
+        (setup.eventPendingOutcome runtime) = (setup.run profile).map some :=
+  setup.eventPendingGame_honest_law runtime feasible roster reactionRounds wire order profile
 
 /-- info: 'Vegas.Paper.source_event_pending_honest_law' depends on axioms:
-[propext, sorryAx, Classical.choice, Quot.sound] -/
+[propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_pending_honest_law
 

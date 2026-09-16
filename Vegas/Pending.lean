@@ -20,6 +20,15 @@ import Vegas.Pending.EventSubmission
 import Vegas.Pending.EventService
 import Vegas.Pending.EventServiceLaw
 import Vegas.Pending.EventServiceCompletion
+import Vegas.Pending.EventHonestBoundary
+import Vegas.Pending.EventHonestBlockBase
+import Vegas.Pending.EventHonestReaction
+import Vegas.Pending.EventHonestBlock
+import Vegas.Pending.EventHonestResolution
+import Vegas.Pending.EventHonestDeadline
+import Vegas.Pending.EventHonestEvent
+import Vegas.Pending.EventHonestEpoch
+import Vegas.Pending.EventHonestLaw
 import Vegas.Pending.BindingAcceptance
 import Vegas.Pending.BindingLaw
 import Vegas.Pending.BindingProvenance

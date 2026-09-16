@@ -42,8 +42,10 @@ Nash and guarantee transport to the shared game-theory interface.
 `Vegas.Pending.EventApplication`
 implements an event-addressed message application. `EventService` and
 `EventServiceCompletion` supply concrete adaptive public service and prove
-whole-run completion under arbitrary players; the whole-run strategic edge
-is not proved. The [EventGraph plan](event-graph-design.md) separates
+whole-run completion under arbitrary players. `EventHonestLaw` proves exact
+honest terminal-store laws for independently certified graphs;
+`Vegas.Game.EventMessages` composes that edge with the source-to-graph law.
+The arbitrary-deviation edge is not proved. The [EventGraph plan](event-graph-design.md) separates
 source correspondence, scheduling laws, and pending-message guarantees.
 
 `Vegas.Language` prototypes surface notation for typed bindings and nullable

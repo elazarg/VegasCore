@@ -11,8 +11,9 @@ source-order law is checked for every source constructor, including private
 initial-state distributions. Honest asynchronous correspondence, setup-wide
 finite-mixture source deviation laws, and same-error Nash correspondence at
 compiled source profiles are checked. The asynchronous pending-message game
-has a concrete adaptive epoch service and a checked arbitrary-player
-completion theorem. Its honest and deviation laws remain unproved.
+has a concrete adaptive epoch service, a checked arbitrary-player completion
+theorem, and a full-source honest outcome law. Its arbitrary-deviation and Nash
+correspondence remain unproved.
 The [active theorem map](active-tower.md) records the checked
 source-to-asynchronous-graph and source-to-ordered-pending-message results.
 
@@ -1145,15 +1146,15 @@ do not wait for this source edge to finish.
 
 ### M3: asynchronous native implementation and honest laws
 
-Replace current-phase dispatch with event readiness; implement event caches,
-source-history projection, relative deadlines, and the concrete bounded
-service. Reuse the shared message runner. Prove integrity, failure behavior,
-completion under arbitrary players, and the full honest law.
+Checked: event-readiness dispatch, event caches, source-history projection,
+relative deadlines, and concrete bounded service over the shared message
+runner. Integrity and completion hold under arbitrary players. The full honest
+law composes graph-relative service refinement with the source-to-graph law.
 
 Exit: the actual public-message game permits alternative binding acceptance
 orders, early arbitrary packets, and adaptive delivery. Honest outcomes match
-the full source, and completion is proved. Pause with the remaining arbitrary-
-deviation obligation explicit.
+the full source, and completion is proved. This exit criterion is met; the
+arbitrary-deviation obligation is M4.
 
 ### M4: asynchronous native deviation capstone
 

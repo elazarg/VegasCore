@@ -47,10 +47,10 @@ specifies the asynchronous compilation work. Its full-source honest law,
 unilateral deviation mixture law, and same-error epsilon-Nash correspondence
 under adaptive public graph scheduling are checked. The source mixture is
 chosen before private setup. The event-addressed pending-message game also has
-a checked arbitrary-player completion theorem under
-[public epoch service](docs/event-service.md). Its honest outcome and deviation
-laws remain open.
-The end-to-end pending-message theorem above uses ordered service.
+a checked arbitrary-player completion theorem and a full-source honest outcome
+law under [public epoch service](docs/event-service.md). Its arbitrary-deviation
+and Nash correspondence remain open; the strategic pending-message theorem
+above uses ordered service.
 
 ## Build
 

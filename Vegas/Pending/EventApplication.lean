@@ -1176,6 +1176,51 @@ def environmentStep (runtime : EventGraphRuntime graph) (state : State graph) :
   | .expire event => FinDist.pure (expire runtime state event)
 
 omit [DecidableEq Player] in
+/-- Environment application operations cannot write a player's action cache. -/
+theorem environmentStep_remembered (runtime : EventGraphRuntime graph)
+    (before after : State graph) (command : EnvironmentCommand graph)
+    (member : after ∈ (environmentStep runtime before command).support) :
+    after.remembered = before.remembered := by
+  cases command with
+  | grant event | advanceClock =>
+      simp only [environmentStep, FinDist.mem_support_pure] at member
+      subst after
+      rfl
+  | executeSample event =>
+      change after ∈ (executeSample before event).support at member
+      unfold executeSample at member
+      split at member
+      · cases view : nodeView graph event with
+        | bind | resolve =>
+            simp only [view, FinDist.mem_support_pure] at member
+            subst after
+            rfl
+        | sample =>
+            simp only [view, FinDist.support_map, Set.mem_image] at member
+            obtain ⟨config, _, rfl⟩ := member
+            rfl
+      · simp only [FinDist.mem_support_pure] at member
+        subst after
+        rfl
+  | expire event =>
+      change after ∈ (FinDist.pure (expire runtime before event)).support at member
+      rw [FinDist.mem_support_pure] at member
+      subst after
+      unfold expire
+      split
+      · split
+        · rfl
+        · split
+          · cases nodeView graph event with
+            | bind | sample => rfl
+            | resolve owner payload binding checks outputEq codeEq =>
+                unfold acceptResolution
+                cases resolved : EventCode.resolveOutput? binding checks false
+                    before.config.store <;> simp only [resolved] <;> rfl
+          · rfl
+      · rfl
+
+omit [DecidableEq Player] in
 /-- Environment service never changes commitment admission tables. -/
 theorem environmentStep_tables
     (runtime : EventGraphRuntime graph)

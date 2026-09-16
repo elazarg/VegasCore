@@ -220,33 +220,39 @@ observation after the block regardless of the selected value or failure.
 The graph's memoized continuation equations are also checked: privately
 drawing and remembering a ready action preserves its future semantic law.
 Both compiled three-invocation blocks satisfy the corresponding native law.
-These local results do not yet establish their entry conditions across
-arbitrary service prefixes or protect honest actions against expiry.
+For prescribed profiles, the block laws restore a clean boundary with an
+empty pending pool and untouched resources for unfinished events. The complete
+service proof establishes these entry conditions and deadline protection
+throughout every epoch. Arbitrary deviations require a different locality
+argument; an arbitrary deviator need not restore this boundary.
 
 `BarrierOrdered.ready_public_unique` proves that a ready public event is the
 only ready event. It supplies the graph-level reason that observing an honest
 opening before inclusion cannot enable another graph decision in that interval.
 
-The event-addressed honest-law and deviation theorems remain open. Completion
-does not establish preservation of honest outcomes. The configured deadline
-grace interval must be combined with proved compiled-policy use of the reserved
-opportunities. The ideal-graph scheduling theorem alone does not establish a
-strategic law for the richer message host.
+The event-addressed honest law is checked for the full source language.
+`servicedEventGame_honest_store_law` establishes the graph-relative edge;
+`eventPendingGame_honest_law` composes it with source compilation. The proof
+covers actual adaptive wire actions between submission and inclusion, and
+shows that the configured deadline grace protects prescribed play. The
+arbitrary-deviation theorem remains open. The ideal-graph scheduling theorem
+alone does not establish that strategic law for the richer message host.
 
 `Vegas.Game.EventMessages` defines the actual source-to-native game, composed
-policy compiler, and terminal-state readout. `Paper.lean` states three
-UNPROVED capstones over these definitions:
+policy compiler, and terminal-state readout. `Paper.lean` audits the following
+capstones over these definitions:
 
-- `source_event_pending_honest_law`: equality with the source outcome law.
-- `source_event_pending_deviation_law`: every unilateral native deviation has
+- `source_event_pending_honest_law` (proved): equality with the source outcome law.
+- `source_event_pending_deviation_law` (UNPROVED): every unilateral native deviation has
   the law of one finite source-policy mixture across private setup.
-- `source_event_pending_approximate_nash_iff`: same-error Nash preservation
+- `source_event_pending_approximate_nash_iff` (UNPROVED): same-error Nash preservation
   and reflection at compiled profiles for source-state utilities.
 
 These statements assume the concrete epoch service with deadlines of at least
-two ticks; they do not assume a strategic certificate. Each contains `sorry`
-and an adjacent axiom pin recording `sorryAx`. Their statements elaborate,
-but their proofs and the sufficiency of the stated hypotheses remain open.
+two ticks; they do not assume a strategic certificate. The honest theorem's
+axiom pin contains only the standard Lean axioms. The two UNPROVED statements
+contain `sorry` and adjacent pins recording `sorryAx`; their proofs and the
+sufficiency of their stated hypotheses remain open.
 
 `EventGraphRuntime.handle_publicView_replaceRemembered` proves that changing
 the private original-action cache cannot change packet acceptance or the

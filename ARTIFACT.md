@@ -57,9 +57,9 @@ outside the active strategic tower.
 `Paper.lean` is a self-contained capstone audit. Proved statements delegate to
 repository results and pin their proof dependencies; supporting lemmas remain
 in their owning modules. Proved statements have axiom pins containing only
-`propext`, `Classical.choice`, and `Quot.sound`. The three
-`source_event_pending_*` capstones are UNPROVED: honest outcome law, arbitrary
-unilateral-deviation mixture law, and same-error Nash correspondence. Their
+`propext`, `Classical.choice`, and `Quot.sound`. The asynchronous native honest
+outcome law is proved. Two `source_event_pending_*` capstones are UNPROVED:
+arbitrary unilateral-deviation mixture law and same-error Nash correspondence. Their
 bodies contain `sorry`, with adjacent pins explicitly recording `sorryAx`.
 The expected admission diagnostics are checked by `#guard_msgs`; a successful
 warning-strict build checks their statements and admission status, not their
@@ -68,9 +68,9 @@ The asynchronous graph compiler preserves and reflects same-error Nash at
 compiled source profiles for utilities of the complete terminal source state.
 Its unilateral deviation witness is one source-policy mixture chosen before
 private setup. The graph-local scheduling theorem is separately audited.
-The asynchronous pending-message game has a checked completion theorem under
-concrete public epoch service. Its honest/deviation refinement remains
-unproved; the proved native strategic capstones use ordered service.
+The asynchronous pending-message game has checked completion and full-source
+honest outcome laws under concrete public epoch service. Its arbitrary-deviation
+refinement remains unproved; the proved native strategic capstones use ordered service.
 Read the [active theorem map](docs/active-tower.md) for the
 formal boundary and [pending deviation extraction](docs/pending-deviation-extraction.md)
 for the central adversarial argument.
