@@ -112,6 +112,17 @@ inductive Payload (graph : Vegas.EventGraph Player L) where
   | withhold (event : graph.EventId)
   | malformed (raw : Raw L)
 
+namespace Payload
+
+/-- Stable event address carried by every well-formed application packet. -/
+def event? (graph : Vegas.EventGraph Player L) : Payload graph → Option graph.EventId
+  | .commitment event _ => some event
+  | .opening event _ _ => some event
+  | .withhold event => some event
+  | .malformed _ => none
+
+end Payload
+
 /-- Authenticated private actions prepare arbitrary candidates or remember a
 typed graph action. Remembering is first-write and owner-checked. -/
 inductive PrivateCommand (graph : Vegas.EventGraph Player L) where
@@ -383,10 +394,12 @@ private theorem acceptResolution_publicView_replaceRemembered (state : State gra
 /-- A node viewed through its output field. This performs the dependent
 transport from `graph.nodes` once, so every handler sees the same typed
 constructor data. -/
-private inductive NodeView (graph : Vegas.EventGraph Player L)
+inductive NodeView (graph : Vegas.EventGraph Player L)
     (event : graph.EventId) where
   | bind (owner : Player) (payload : L.Ty)
       (outputEq : graph.outputLayout event = .binding owner payload)
+      (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+        (graph.nodes event) = .bind owner payload)
   | resolve (owner : Player) (payload : L.Ty)
       (binding : FieldRef graph.layout (.binding owner payload))
       (checks : List (DeferredCheck graph.layout payload))
@@ -395,15 +408,17 @@ private inductive NodeView (graph : Vegas.EventGraph Player L)
         (graph.nodes event) = .resolve owner payload binding checks)
   | sample (payload : L.Ty) (law : PublicDist graph.layout payload)
       (outputEq : graph.outputLayout event = .publicData payload)
+      (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+        (graph.nodes event) = .sample payload law)
 
-private def nodeView (graph : Vegas.EventGraph Player L)
+def nodeView (graph : Vegas.EventGraph Player L)
     (event : graph.EventId) : NodeView graph event :=
   match outputEq : graph.outputLayout event with
   | .binding owner payload =>
       let code : EventCode graph.layout (.binding owner payload) :=
         cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event)
-      match code with
-      | .bind _ _ => .bind owner payload outputEq
+      match codeEq : code with
+      | .bind _ _ => .bind owner payload outputEq codeEq
   | .publication payload =>
       let code : EventCode graph.layout (.publication payload) :=
         cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event)
@@ -413,8 +428,83 @@ private def nodeView (graph : Vegas.EventGraph Player L)
   | .publicData payload =>
       let code : EventCode graph.layout (.publicData payload) :=
         cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event)
-      match code with
-      | .sample _ law => .sample payload law outputEq
+      match codeEq : code with
+      | .sample _ law => .sample payload law outputEq codeEq
+
+omit [DecidableEq Player] in
+private theorem bind_complete_mem_step (state : State graph)
+    (event : graph.EventId) (ready : state.config.cut.Ready event)
+    (owner : Player) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (result : PublicationResult (L.Val payload)) :
+    state.config.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm) result)
+        (cast (congrArg EventField.Value outputEq.symm) result) ∈
+      (state.config.step event ready
+        (cast (congrArg EventField.Action outputEq.symm) result)).support := by
+  rw [state.config.step_eq_map_of_code event ready outputEq (.bind owner payload)
+    codeEq result (FinDist.pure result) rfl]
+  simp
+
+omit [DecidableEq Player] in
+private theorem resolve_complete_mem_step (state : State graph)
+    (event : graph.EventId) (ready : state.config.cut.Ready event)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (DeferredCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (disclose : Bool) (result : PublicationResult (L.Val payload))
+    (resultEq : EventCode.resolveOutput? binding checks disclose state.config.store =
+      some result) :
+    state.config.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm) disclose)
+        (cast (congrArg EventField.Value outputEq.symm) result) ∈
+      (state.config.step event ready
+        (cast (congrArg EventField.Action outputEq.symm) disclose)).support := by
+  rw [state.config.step_eq_map_of_code event ready outputEq
+    (.resolve owner payload binding checks) codeEq disclose
+    (FinDist.pure result)]
+  · simp
+  · rw [EventCode.resolve_eval?, resultEq]
+    rfl
+
+omit [DecidableEq Player] in
+private theorem EventCode.readFields_cast {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {left right : EventField Player L}
+    (same : left = right) (code : EventCode layout left) :
+    (cast (congrArg (EventCode layout) same) code).readFields = code.readFields := by
+  cases same
+  rfl
+
+omit [DecidableEq Player] in
+private theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
+    (event : graph.EventId) (ready : state.config.cut.Ready event)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (DeferredCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks) :
+    EventCode.resolveOutput? binding checks false state.config.store = some .failure := by
+  apply EventCode.resolveOutput?_false_eq_failure binding checks state.config.store
+  intro field read
+  apply state.config.read_available ready
+  have readsEq : (graph.nodes event).readFields =
+      insert binding.field (DeferredCheck.listReadFields checks) := by
+    calc
+      (graph.nodes event).readFields =
+          (cast (congrArg (EventCode graph.layout) outputEq)
+            (graph.nodes event)).readFields :=
+        (EventCode.readFields_cast outputEq (graph.nodes event)).symm
+      _ = (EventCode.resolve owner payload binding checks).readFields :=
+        congrArg EventCode.readFields codeEq
+      _ = insert binding.field (DeferredCheck.listReadFields checks) := rfl
+  rw [readsEq]
+  exact read
 
 /-- Event-addressed packet inclusion. Rejected packets remain observable in
 the shared message pool and receipt history, but this function changes no
@@ -428,7 +518,7 @@ def handle (runtime : EventGraphRuntime graph) (state : State graph)
       if ready : state.config.cut.Ready event then
         if timely : state.WithinDeadline runtime event then
           match nodeView graph event with
-          | .bind owner payload outputEq =>
+          | .bind owner payload outputEq _codeEq =>
               if sender : message.sender = owner then
                 if handleOwner : handle.1 = owner then
                   if vacant : state.accepted (.inr event) = none then
@@ -477,6 +567,141 @@ def handle (runtime : EventGraphRuntime graph) (state : State graph)
         else none
       else none
 
+private theorem handle_commitment_config_step
+    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
+    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
+    ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
+      next.config ∈ (state.config.step event ready action).support := by
+  by_cases ready : state.config.cut.Ready event
+  · by_cases timely : state.WithinDeadline runtime event
+    · cases view : nodeView graph event with
+      | resolve owner payload binding checks outputEq codeEq =>
+          simp [handle, ready, timely, view] at accepted
+      | sample payload law outputEq codeEq =>
+          simp [handle, ready, timely, view] at accepted
+      | bind owner payload outputEq codeEq =>
+          simp only [handle, dif_pos ready, dif_pos timely, view] at accepted
+          split at accepted
+          · simp_all only [dite_eq_ite, Option.ite_none_right_eq_some,
+              Option.some.injEq, exists_true_left]
+            rcases accepted with ⟨ownerEq, vacant, unused, rfl⟩
+            let result : PublicationResult (L.Val payload) :=
+              match state.candidates.lookup candidate with
+              | .openable raw => (raw.as? payload).elim .failure .success
+              | .fresh | .unopenable => .failure
+            refine ⟨cast (congrArg EventField.Action outputEq.symm) result, ?_⟩
+            exact bind_complete_mem_step state event ready owner payload outputEq codeEq result
+          · simp_all only [reduceCtorEq]
+    · simp [handle, ready, timely] at accepted
+  · simp [handle, ready] at accepted
+
+private theorem handle_opening_config_step
+    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
+    (raw : Raw L)
+    (accepted : handle runtime state ⟨id, .opening event candidate raw⟩ = some next) :
+    ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
+      next.config ∈ (state.config.step event ready action).support := by
+  by_cases ready : state.config.cut.Ready event
+  · by_cases timely : state.WithinDeadline runtime event
+    · cases view : nodeView graph event with
+      | bind owner payload outputEq codeEq =>
+          simp [handle, ready, timely, view] at accepted
+      | sample payload law outputEq codeEq =>
+          simp [handle, ready, timely, view] at accepted
+      | resolve owner payload binding checks outputEq codeEq =>
+          simp only [handle, dif_pos ready, dif_pos timely, view] at accepted
+          split at accepted
+          · simp_all only [dite_eq_ite, Option.ite_none_right_eq_some,
+              exists_true_left]
+            rcases accepted with ⟨ownerEq, associated, verified, accepted⟩
+            split at accepted
+            · simp at accepted
+            · rename_i value typed
+              by_cases stored :
+                  binding.get? state.config.store = some (.success value)
+              · simp only [stored, if_pos] at accepted
+                unfold acceptResolution at accepted
+                cases resultEq : EventCode.resolveOutput? binding checks true
+                    state.config.store with
+                | none =>
+                    simp only [resultEq, Option.pure_def, Option.bind_eq_bind,
+                      Option.bind_none, reduceCtorEq] at accepted
+                | some result =>
+                    simp only [resultEq, Option.pure_def, Option.bind_eq_bind,
+                      Option.bind_some, Option.some.injEq] at accepted
+                    subst next
+                    refine ⟨cast (congrArg EventField.Action outputEq.symm) true, ?_⟩
+                    exact resolve_complete_mem_step state event ready owner payload binding
+                      checks outputEq codeEq true result resultEq
+              · simp [stored] at accepted
+          · simp_all only [reduceCtorEq]
+    · simp [handle, ready, timely] at accepted
+  · simp [handle, ready] at accepted
+
+private theorem handle_withhold_config_step
+    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (id : MessageId Player) (event : graph.EventId)
+    (accepted : handle runtime state ⟨id, .withhold event⟩ = some next) :
+    ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
+      next.config ∈ (state.config.step event ready action).support := by
+  by_cases ready : state.config.cut.Ready event
+  · by_cases timely : state.WithinDeadline runtime event
+    · cases view : nodeView graph event with
+      | bind owner payload outputEq codeEq =>
+          simp [handle, ready, timely, view] at accepted
+      | sample payload law outputEq codeEq =>
+          simp [handle, ready, timely, view] at accepted
+      | resolve owner payload binding checks outputEq codeEq =>
+          simp only [handle, dif_pos ready, dif_pos timely, view] at accepted
+          split at accepted
+          · simp_all only [exists_true_left]
+            let disclose := withholdingAction state event owner payload binding checks outputEq
+            unfold acceptResolution at accepted
+            cases resultEq : EventCode.resolveOutput? binding checks disclose
+                state.config.store with
+            | none =>
+                dsimp only [disclose] at resultEq
+                simp only [resultEq, Option.pure_def, Option.bind_eq_bind,
+                  Option.bind_none, reduceCtorEq] at accepted
+            | some result =>
+                dsimp only [disclose] at resultEq
+                simp only [resultEq, Option.pure_def, Option.bind_eq_bind,
+                  Option.bind_some, Option.some.injEq] at accepted
+                subst next
+                refine ⟨cast (congrArg EventField.Action outputEq.symm) disclose, ?_⟩
+                exact resolve_complete_mem_step state event ready owner payload binding checks
+                  outputEq codeEq disclose result resultEq
+          · simp_all only [reduceCtorEq]
+    · simp [handle, ready, timely] at accepted
+  · simp [handle, ready] at accepted
+
+/-- Every accepted player packet performs exactly one semantic graph step at
+its stable event address. The witness action is the original action retained
+by the ideal configuration, including a sound rejected `true` disclosure. -/
+theorem handle_config_mem_step (runtime : EventGraphRuntime graph)
+    (state next : State graph) (message : Message Player (Payload graph))
+    (accepted : handle runtime state message = some next) :
+    ∃ event, Payload.event? graph message.payload = some event ∧
+      ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
+        next.config ∈ (state.config.step event ready action).support := by
+  rcases message with ⟨id, packet⟩
+  cases packet with
+  | malformed raw => simp [handle] at accepted
+  | commitment event candidate =>
+      obtain ⟨ready, action, member⟩ :=
+        handle_commitment_config_step runtime state next id event candidate accepted
+      exact ⟨event, rfl, ready, action, member⟩
+  | opening event candidate raw =>
+      obtain ⟨ready, action, member⟩ :=
+        handle_opening_config_step runtime state next id event candidate raw accepted
+      exact ⟨event, rfl, ready, action, member⟩
+  | withhold event =>
+      obtain ⟨ready, action, member⟩ :=
+        handle_withhold_config_step runtime state next id event accepted
+      exact ⟨event, rfl, ready, action, member⟩
+
 /-- Replacing the private remembered-action cache cannot change the public
 result of applying any pending packet. Rejected original `true` actions remain
 available to the owner as ghost recall without becoming ledger information. -/
@@ -497,7 +722,7 @@ theorem handle_publicView_replaceRemembered (runtime : EventGraphRuntime graph)
             simpa [State.WithinDeadline] using timely
           cases view : nodeView graph event <;>
             try { simp [handle, Message.sender, ready, timely, replacedTimely, view] }
-          case bind owner payload outputEq =>
+          case bind owner payload outputEq codeEq =>
             by_cases senderEq : sender.1 = owner
             · by_cases ownerEq : candidate.1 = owner
               · by_cases vacant : state.accepted (.inr event) = none
@@ -570,7 +795,7 @@ theorem handle_publicView_replaceRemembered (runtime : EventGraphRuntime graph)
           cases view : nodeView graph event with
           | bind owner payload outputEq =>
               simp [handle, ready, timely, replacedTimely, view]
-          | sample payload law outputEq =>
+          | sample payload law outputEq codeEq =>
               simp [handle, ready, timely, replacedTimely, view]
           | resolve owner payload binding checks outputEq codeEq =>
               by_cases senderEq : sender.1 = owner
@@ -614,7 +839,7 @@ private def executeSample (state : State graph) (event : graph.EventId) :
     FinDist (State graph) :=
   if ready : state.config.cut.Ready event then
     match nodeView graph event with
-    | .sample _ _ outputEq =>
+    | .sample _ _ outputEq _codeEq =>
         (state.config.step event ready
           (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)).map fun config =>
             { state with
@@ -633,7 +858,7 @@ private def expire (runtime : EventGraphRuntime graph) (state : State graph)
     | some entered =>
         if _due : runtime.deadline event ≤ state.clock - entered then
           match nodeView graph event with
-          | .bind _owner payload outputEq =>
+          | .bind _owner payload outputEq _codeEq =>
               let failed : PublicationResult (L.Val payload) := .failure
               state.complete event ready
                 (cast (congrArg EventField.Action outputEq.symm) failed)
@@ -650,6 +875,129 @@ def environmentStep (runtime : EventGraphRuntime graph) (state : State graph) :
   | .advanceClock => FinDist.pure { state with clock := state.clock + 1 }
   | .executeSample event => executeSample state event
   | .expire event => FinDist.pure (expire runtime state event)
+
+omit [DecidableEq Player] in
+/-- Executing a certified ready sample is exactly the graph chance step, with
+only the runtime activation metadata refreshed around each sampled result. -/
+theorem environmentStep_executeSample_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (event : graph.EventId) (ready : state.config.cut.Ready event)
+    (payload : L.Ty) (law : PublicDist graph.layout payload)
+    (outputEq : graph.outputLayout event = .publicData payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .sample payload law)
+    (viewEq : nodeView graph event = .sample payload law outputEq codeEq) :
+    environmentStep runtime state (.executeSample event) =
+      (state.config.step event ready
+        (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)).map
+          fun config =>
+            { state with
+              config
+              activatedAt := State.refreshActivated config state.clock state.activatedAt } := by
+  simp only [environmentStep, executeSample, dif_pos ready, viewEq]
+
+omit [DecidableEq Player] in
+/-- Once a ready binding deadline is due, expiry is exactly the binding's
+failure graph completion. -/
+theorem environmentStep_expire_bind_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (event : graph.EventId) (ready : state.config.cut.Ready event)
+    (entered : Nat) (activated : state.activatedAt event = some entered)
+    (due : runtime.deadline event ≤ state.clock - entered)
+    (owner : Player) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (viewEq : nodeView graph event = .bind owner payload outputEq codeEq) :
+    environmentStep runtime state (.expire event) =
+      FinDist.pure (state.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm)
+          (PublicationResult.failure : PublicationResult (L.Val payload)))
+        (cast (congrArg EventField.Value outputEq.symm)
+          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
+  simp only [environmentStep, expire, dif_pos ready]
+  split
+  · rename_i activation
+    rw [activated] at activation
+    contradiction
+  · rename_i actual activation
+    have same : actual = entered := by simpa [activated] using activation.symm
+    subst actual
+    simp only [dif_pos due, viewEq]
+
+omit [DecidableEq Player] in
+/-- Once a ready resolution deadline is due, expiry is exactly its canonical
+withholding step, which is total and stores publication failure. -/
+theorem environmentStep_expire_resolve_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (event : graph.EventId) (ready : state.config.cut.Ready event)
+    (entered : Nat) (activated : state.activatedAt event = some entered)
+    (due : runtime.deadline event ≤ state.clock - entered)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (DeferredCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (viewEq : nodeView graph event =
+      .resolve owner payload binding checks outputEq codeEq) :
+    environmentStep runtime state (.expire event) =
+      FinDist.pure (state.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm) false)
+        (cast (congrArg EventField.Value outputEq.symm)
+          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
+  have resultEq := resolveOutput?_false_eq_failure_of_ready state event ready
+    owner payload binding checks outputEq codeEq
+  simp only [environmentStep, expire, dif_pos ready]
+  split
+  · rename_i activation
+    rw [activated] at activation
+    contradiction
+  · rename_i actual activation
+    have same : actual = entered := by simpa [activated] using activation.symm
+    subst actual
+    simp [due, viewEq, acceptResolution, resultEq]
+
+omit [DecidableEq Player] in
+/-- A supported expiry command either stutters or performs exactly one graph
+step at its addressed event. The stutter cases are not-ready, unactivated,
+not-due, or sample events; ready resolution reads make withholding total. -/
+theorem environmentStep_expire_config_eq_or_mem_step
+    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (event : graph.EventId)
+    (member : next ∈ (environmentStep runtime state (.expire event)).support) :
+    next.config = state.config ∨
+      ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
+        next.config ∈ (state.config.step event ready action).support := by
+  simp only [environmentStep, FinDist.mem_support_pure] at member
+  subst next
+  unfold expire
+  split
+  · rename_i ready
+    split
+    · exact Or.inl rfl
+    · rename_i entered activated
+      split
+      · rename_i due
+        cases view : nodeView graph event with
+        | sample payload law outputEq codeEq => exact Or.inl rfl
+        | bind owner payload outputEq codeEq =>
+            let failed : PublicationResult (L.Val payload) := .failure
+            exact Or.inr ⟨ready,
+              cast (congrArg EventField.Action outputEq.symm) failed,
+              bind_complete_mem_step state event ready owner payload outputEq
+                codeEq failed⟩
+        | resolve owner payload binding checks outputEq codeEq =>
+            have resultEq := resolveOutput?_false_eq_failure_of_ready state event ready
+              owner payload binding checks outputEq codeEq
+            refine Or.inr ⟨ready,
+              cast (congrArg EventField.Action outputEq.symm) false, ?_⟩
+            simpa only [view, acceptResolution, resultEq, bind, pure, State.complete,
+              Option.bind_some, Option.getD_some] using
+                resolve_complete_mem_step state event ready owner payload binding
+                  checks outputEq codeEq false .failure resultEq
+      · exact Or.inl rfl
+  · exact Or.inl rfl
 
 /-- Shared pending-message application instance. Transport, pools, receipts,
 and policy histories come from `Interaction.MessageApplication`. -/

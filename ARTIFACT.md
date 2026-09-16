@@ -54,6 +54,10 @@ outside the active strategic tower.
 repository results and pin their proof dependencies; supporting lemmas remain
 in their owning modules. Its asynchronous graph deviation target is explicitly
 admitted and has `sorryAx` in its pin; it is not a checked result.
+The graph-local scheduling theorem is checked and separately audited: public
+asynchrony preserves and reflects same-error Nash at normalized canonical
+profiles for terminal-store utilities. Its source-policy join and the
+asynchronous pending-message refinement remain distinct obligations.
 Read the [active theorem map](docs/active-tower.md) for the
 formal boundary and [pending deviation extraction](docs/pending-deviation-extraction.md)
 for the central adversarial argument.

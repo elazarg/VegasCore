@@ -18,8 +18,15 @@ import Vegas.EventGraph.StateCongruence
 import Vegas.EventGraph.SchedulingLaw
 import Vegas.EventGraph.SchedulerErasure
 import Vegas.EventGraph.SchedulerReplay
+import Vegas.EventGraph.SchedulerReplayLaw
+import Vegas.EventGraph.SchedulerProtocol
+import Vegas.EventGraph.SchedulerPredraw
+import Vegas.EventGraph.SchedulerDeviation
+import Vegas.EventGraph.SchedulerMixture
 import Vegas.EventGraph.Canonical
+import Vegas.EventGraph.CanonicalNormalization
 import Vegas.EventGraph.CanonicalStep
+import Vegas.EventGraph.PolicyCongruence
 
 /-! # Dependency-driven typed events
 

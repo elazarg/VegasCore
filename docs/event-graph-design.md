@@ -8,8 +8,10 @@ to prove its strategic correctness. The shared
 node execution, observations, public scheduling, and finite completion. The
 full-source lowerer constructs a certified executable graph. Its whole-run
 source-order law is checked for every source constructor, including private
-initial-state distributions. Asynchronous strategic correspondence and the
-asynchronous pending-message edge remain unproved.
+initial-state distributions. Honest asynchronous correspondence and the
+graph-local finite-mixture deviation law are checked. The canonical
+graph-to-source arbitrary-policy join and the asynchronous pending-message
+edge remain unproved.
 The [active theorem map](active-tower.md) records the checked
 source-to-ordered-graph-to-pending-message results; those remain the current
 end-to-end guarantees.
@@ -26,7 +28,9 @@ policies under canonical scheduling with source execution. The ordinary
 ready-event executor supplies that canonical specialization. Normalized
 behavioral policies also satisfy a checked two-step store-and-recall diamond
 (`policyStepThen_map_storeRecall_comm`). Whole-run scheduling independence and
-arbitrary-deviation extraction remain separate proof obligations.
+setup-wide arbitrary-deviation extraction are checked for the ideal graph;
+the [scheduling proof](event-graph-scheduling-proof.md) gives their information
+boundary and construction.
 
 The objective is one compilation tower:
 

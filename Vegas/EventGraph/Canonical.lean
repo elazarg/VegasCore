@@ -20,16 +20,17 @@ variable {Player : Type}
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-private def RankPrefix (config : graph.Config) : Prop :=
+/-- Completed events precede every unfinished event and occur in rank order. -/
+def RankPrefix (config : graph.Config) : Prop :=
   (∀ done ∈ config.cut.completed, ∀ missing, missing ∉ config.cut.completed →
     done.val < missing.val) ∧
   (config.history.map Completion.event).Pairwise fun left right => left.val < right.val
 
-private theorem rankPrefix_initial (inputs : graph.Inputs) :
+theorem rankPrefix_initial (inputs : graph.Inputs) :
     RankPrefix (Config.initial inputs) := by
   simp [RankPrefix, Config.initial, EventOrder.Cut.empty]
 
-private theorem rankPrefix_step {config next : graph.Config}
+theorem rankPrefix_step {config next : graph.Config}
     (ordered : RankPrefix config) (event : graph.EventId) (ready : config.cut.Ready event)
     (action : graph.Action event)
     (least : ∀ other, other ∉ config.cut.completed → event.val ≤ other.val)
@@ -86,7 +87,7 @@ private theorem runPlan_rankPrefix (plan : graph.EventPlan)
 
 variable [DecidableEq Player]
 
-private theorem canonical_policyPlan_least (profile : graph.BehavioralProfile)
+theorem canonical_policyPlan_least (profile : graph.BehavioralProfile)
     (config : graph.Config) (notTerminal : ¬ config.cut.Terminal)
     (choice : Σ selected : {event : graph.EventId // config.cut.Ready event},
       graph.Action selected.1)

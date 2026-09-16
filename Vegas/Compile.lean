@@ -19,6 +19,8 @@ import Vegas.Compile.EventGraphLaw
 import Vegas.Compile.EventGraphCanonical
 import Vegas.Compile.EventGraphScheduling
 import Vegas.Compile.EventGraphBacktranslation
+import Vegas.Compile.EventGraphObservationEncoding
+import Vegas.Compile.EventGraphPolicyBacktranslation
 import Vegas.Compile.GraphCompiler
 import Vegas.Compile.GraphLaw
 import Vegas.Compile.GraphLayout

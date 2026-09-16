@@ -32,7 +32,10 @@ belongs in `Vegas.Game`, above the backend theorem.
 `Vegas.EventGraph` supplies the operational interface for dependency-driven
 compilation. `Vegas.Compile.EventGraphScheduling` proves full-source honest
 correspondence under adaptive public scheduling. Source-order execution and
-other scheduling instances share one runner. `Vegas.Pending.EventApplication`
+other scheduling instances share one runner. `Vegas.EventGraph.SchedulerMixture`
+proves arbitrary-deviation simulation to canonical graph policies, using
+GameTheory's finite predrawing theorem through an exact execution adapter.
+`Vegas.Pending.EventApplication`
 implements an event-addressed message application; its whole-run strategic
 edge is not proved. The [EventGraph plan](event-graph-design.md) separates
 source correspondence, scheduling laws, and pending-message guarantees.

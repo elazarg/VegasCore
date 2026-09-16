@@ -45,8 +45,9 @@ Start with the [artifact guide](ARTIFACT.md), [theorem map](docs/active-tower.md
 The [EventGraph design and implementation plan](docs/event-graph-design.md)
 specifies the asynchronous compilation work. Its full-source compiler and
 honest outcome law under adaptive public graph scheduling are checked.
-Asynchronous deviation preservation and the event-addressed pending-message
-edge remain open; the end-to-end strategic theorem above uses ordered service.
+The graph-local asynchronous deviation mixture law is also checked; its
+source-policy join and the event-addressed pending-message edge remain open.
+The end-to-end pending-message theorem above uses ordered service.
 
 ## Build
 

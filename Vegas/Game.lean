@@ -3,5 +3,6 @@
 import Vegas.Game.GraphCompilation
 import Vegas.Game.GraphSetup
 import Vegas.Game.GraphMessages
+import Vegas.Game.EventScheduling
 
 /-! Strategic source-to-graph and graph-to-message correspondence. -/

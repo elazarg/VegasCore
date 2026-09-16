@@ -3,6 +3,7 @@
 import Vegas.Game.GraphCompilation
 import Vegas.Game.GraphSetup
 import Vegas.Game.GraphMessages
+import Vegas.Game.EventScheduling
 import Vegas.Source.Safety
 import Vegas.Compile.EventGraphPolicy
 import Vegas.Compile.EventGraphReadout
@@ -268,10 +269,30 @@ theorem source_event_graph_canonical_law [IExpr.ResultTypes L]
 
 These are exact targets over the actual graph executor and policy compiler.
 The scheduler observes the ideal graph's public store and completion order;
-this is not yet the public-message protocol. The honest law is checked. The
-deviation target remains admitted; its mixture is chosen before private setup
-is sampled.
+this is not yet the public-message protocol. The graph-local strategic law
+and source honest law are checked. The source deviation target remains
+admitted; its mixture is chosen before private setup is sampled.
 -/
+
+/-- Public asynchronous scheduling preserves and reflects same-error Nash
+at normalized canonical profiles for every utility of the terminal typed
+store. The compiler supplies the public-barrier certificate. -/
+theorem event_graph_scheduling_approximate_nash_iff [IExpr.ResultTypes L]
+    (graph : Vegas.EventGraph Player L) (ordered : graph.BarrierOrdered)
+    (inputs : FinDist graph.Inputs) (scheduler : graph.PublicScheduler)
+    (utility : EventGraph.Store graph.layout → Player → ℝ)
+    (ε : ℝ) (profile : graph.BehavioralProfile) :
+    IsεNash (graph.gameForm inputs scheduler)
+        (fun outcome who => utility (graph.terminalStore outcome) who) ε
+        (graph.normalizeProfile profile) ↔
+      IsεNash (graph.canonicalGame inputs)
+        (fun outcome who => utility (graph.terminalStore outcome) who) ε profile :=
+  graph.eventScheduling_approximate_nash_iff ordered inputs scheduler utility ε profile
+
+/-- info: 'Vegas.Paper.event_graph_scheduling_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.event_graph_scheduling_approximate_nash_iff
 
 /-- Every public schedule of compiled source policies has the source
 terminal-state law. -/

@@ -6,6 +6,7 @@ import Vegas.Compile.EventGraphIndependence
 import Vegas.Compile.EventGraphObservation
 import Vegas.Compile.EventGraphScheduling
 import Vegas.EventGraph.BarrierInformation
+import Vegas.Game.EventScheduling
 import Vegas.Pending.EventApplication
 import VegasTests.SourceSemantics
 
@@ -115,6 +116,44 @@ private def pairProfile : SourceProgram.BehavioralProfile pairSource :=
      (fun _ _ => FinDist.pure (BoundValue.value true),
       (fun _ _ => FinDist.pure true,
        (fun _ _ => FinDist.pure true, PUnit.unit))))
+
+private def orderSensitiveFirst : pairGraph.BehavioralPolicy false :=
+  fun event actor observation =>
+    if same : event = first then by
+      subst event
+      exact FinDist.pure (.success (decide (second ∈ observation.completionOrder)))
+    else compileEventProfile pairSource (by decide) pairProfile false event actor observation
+
+/-- The arbitrary policy class really can use public completion order. -/
+example : orderSensitiveFirst first rfl (pairGraph.playerObserve false pairConfig) =
+    FinDist.pure (.success false) := by
+  simp [orderSensitiveFirst, Vegas.EventGraph.playerObserve, pairConfig,
+    Vegas.EventGraph.Config.initial]
+
+example : orderSensitiveFirst first rfl (pairGraph.playerObserve false completedSecond) =
+    FinDist.pure (.success true) := by
+  simp [orderSensitiveFirst, Vegas.EventGraph.playerObserve, completedSecond,
+    Vegas.EventGraph.Config.complete, pairConfig, Vegas.EventGraph.Config.initial]
+
+/-- The actual order-sensitive deviation, not just a compiled source policy,
+is covered by the asynchronous graph mixture theorem. -/
+example (inputs : FinDist pairGraph.Inputs) (scheduler : pairGraph.PublicScheduler) :
+    ∃ mixture : FinDist (pairGraph.BehavioralPolicy false),
+      (inputs.bind fun initial => pairGraph.runPolicies scheduler
+        (GameTheory.Profile.update (sig := pairGraph.gameSignature)
+          (compileEventProfile pairSource (by decide) pairProfile)
+          false orderSensitiveFirst) initial).map Vegas.EventGraph.Config.store =
+        mixture.bind fun alternative =>
+          (inputs.bind fun initial => pairGraph.runPolicies pairGraph.canonicalScheduler
+            (GameTheory.Profile.update (sig := pairGraph.gameSignature)
+              (compileEventProfile pairSource (by decide) pairProfile)
+              false alternative) initial).map Vegas.EventGraph.Config.store := by
+  obtain ⟨mixture, law⟩ :=
+    (toEventGraph_barrierOrdered pairSource (by decide)).exists_deviation_mixture
+      inputs scheduler (compileEventProfile pairSource (by decide) pairProfile)
+      false orderSensitiveFirst
+  rw [normalizeProfile_compileEventProfile] at law
+  exact ⟨mixture, law⟩
 
 /-- The actual compiled second-player policy can act first. It does not wait
 for the foreign binding merely to reconstruct its source observation. -/
@@ -288,7 +327,7 @@ example : (EventGraphRuntime.handle pairRuntime preparedSecond pendingSecond).is
         simp
   simp only [EventGraphRuntime.handle, pendingSecond, dif_pos ready, dif_pos timely]
   split
-  · rename_i owner payload outputEq _
+  · rename_i owner payload outputEq _ _
     change Vegas.EventGraph.EventField.binding true simpleExpr.bool =
       .binding owner payload at outputEq
     cases outputEq
@@ -297,7 +336,7 @@ example : (EventGraphRuntime.handle pairRuntime preparedSecond pendingSecond).is
     change Vegas.EventGraph.EventField.binding true simpleExpr.bool =
       .publication payload at outputEq
     cases outputEq
-  · rename_i payload law outputEq _
+  · rename_i payload law outputEq _ _
     change Vegas.EventGraph.EventField.binding true simpleExpr.bool =
       .publicData payload at outputEq
     cases outputEq

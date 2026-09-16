@@ -66,6 +66,30 @@ def normalizeProfile (profile : graph.BehavioralProfile) : graph.BehavioralProfi
   fun who => graph.normalizePolicy who (profile who)
 
 omit [DecidableEq Player] in
+@[simp] theorem normalizePolicy_idempotent (who : Player)
+    (policy : graph.BehavioralPolicy who) :
+    graph.normalizePolicy who (graph.normalizePolicy who policy) =
+      graph.normalizePolicy who policy := rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem normalizeProfile_idempotent (profile : graph.BehavioralProfile) :
+    graph.normalizeProfile (graph.normalizeProfile profile) =
+      graph.normalizeProfile profile := rfl
+
+/-- Normalization acts independently on each player's policy. -/
+@[simp] theorem normalizeProfile_update (profile : graph.BehavioralProfile)
+    (who : Player) (replacement : graph.BehavioralPolicy who) :
+    graph.normalizeProfile
+        (GameTheory.Profile.update (sig := graph.gameSignature) profile who replacement) =
+      GameTheory.Profile.update (sig := graph.gameSignature)
+        (graph.normalizeProfile profile) who (graph.normalizePolicy who replacement) := by
+  funext owner
+  by_cases same : owner = who
+  · subst owner
+    simp only [normalizeProfile, GameTheory.Profile.update_same]
+  · simp only [normalizeProfile, GameTheory.Profile.update_of_ne _ _ same]
+
+omit [DecidableEq Player] in
 private theorem actor_output_visible {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {output : EventField Player L}
     (code : EventCode layout output) (who : Player) (actor : code.actor = some who) :

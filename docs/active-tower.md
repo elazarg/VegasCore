@@ -105,6 +105,18 @@ Supporting results are checked:
   whole-run scheduling law for normalized profiles. Any adaptive public
   scheduler gives the canonical terminal-store distribution. The proof uses
   continuation-law confluence, not a fixed-trace argument.
+- `EventGraph.exists_scheduler_mixture` replaces an adaptive public scheduler
+  by a finite mixture of deterministic public schedulers, preserving the full
+  configuration law. The mixture is chosen before private setup; player and
+  chance kernels remain unchanged.
+- `EventGraph.BarrierOrdered.exists_deviation_mixture` represents every
+  unilateral asynchronous graph deviation as a finite mixture of canonical
+  graph deviations against the original canonical opponents. It preserves the
+  entire typed terminal-store law, not the completion trace.
+- `EventGraph.eventSchedulingSimulation` packages the canonical and scheduled
+  games in the shared finite-mixture interface.
+  `eventScheduling_approximate_nash_iff` gives same-error Nash preservation and
+  reflection for arbitrary utilities of the typed terminal store.
 - `EventCode.resolve_eval?_playerStore` proves owner-local prevalidation of a
   complete resolution kernel. No foreign hidden binding is needed, and guards
   may reject. This supports checking an opening before public emission; it
@@ -135,8 +147,9 @@ profile has the full source terminal-state law, with one profile across the
 private setup distribution. `Paper.source_event_graph_honest_law` delegates
 to this result. No failure-dominance or finite-payload premise is required.
 
-The asynchronous unilateral-deviation law and the asynchronous pending-message
-certificate remain open, as described in the
+The graph-local asynchronous deviation law is checked. The canonical
+graph-to-source policy join and the asynchronous pending-message certificate
+remain open, as described in the
 [EventGraph plan](event-graph-design.md). The conservative barrier compiler
 targets exact finite-mixture deviation laws at both levels.
 `Paper.source_event_graph_deviation_law` is explicitly admitted, with
@@ -165,6 +178,16 @@ ideal-graph scheduling theorem does not establish a law for this richer host.
 the private original-action cache cannot change packet acceptance or the
 resulting public view. A rejected original disclosure decision can remain in
 private recall without becoming a public ledger input.
+
+`EventGraphRuntime.handle_config_mem_step` proves that every accepted packet
+performs one actual graph step at its addressed event, retaining the original
+action. `environmentStep_expire_config_eq_or_mem_step` proves that expiry
+stutters or performs one graph step. Exact laws identify a due activated
+binding or resolution expiry with failure completion, and a ready sample
+execution with the original graph chance kernel. These local facts impose no source
+restrictions and do not assume a whole-run simulation. Rejected inclusion
+leaves the application state unchanged by the generic message-host law, while
+the traffic and rejection receipt remain public.
 
 A concrete ledger refinement must realize commitment verification, prove that
 the stored-binding check follows from accepted-handle provenance, and evaluate
