@@ -93,6 +93,24 @@ theorem initial_activationAgeOne (inputs : graph.Inputs) :
   omega
 
 omit [DecidableEq Player] in
+/-- A single protected event retains its age bound through a clock-free
+transition. Unrelated events may already be overdue. -/
+theorem age_le_one_of_zero_progress {inputs : graph.Inputs}
+    {before after : State graph} (event : graph.EventId)
+    (age : ∀ entered, before.activatedAt event = some entered →
+      event ∉ before.config.cut.completed → before.clock - entered ≤ 1)
+    (progress : State.ServiceProgress inputs 0 before after)
+    (origin : ActivationOrigin before after)
+    (entered : Nat) (activated : after.activatedAt event = some entered)
+    (unfinished : event ∉ after.config.cut.completed) : after.clock - entered ≤ 1 := by
+  rcases origin event entered activated unfinished with retained | created
+  · have oldAge := age entered retained (fun done => unfinished (progress.completed done))
+    rw [progress.clock]
+    simpa using oldAge
+  · rw [progress.clock]
+    omega
+
+omit [DecidableEq Player] in
 /-- A clock-free prefix preserves the one-block age bound when new timestamp
 origins are accounted for. -/
 theorem ActivationAgeOne.of_zero_progress {inputs : graph.Inputs}
@@ -101,13 +119,21 @@ theorem ActivationAgeOne.of_zero_progress {inputs : graph.Inputs}
     (progress : State.ServiceProgress inputs 0 before after)
     (origin : ActivationOrigin before after) : after.ActivationAgeOne := by
   intro event entered activated unfinished
+  exact age_le_one_of_zero_progress event (age event) progress origin entered activated unfinished
+
+omit [DecidableEq Player] in
+/-- Servicing one event's entry activation suffices to protect its next
+deadline. No completion or age condition is imposed on other players. -/
+theorem age_le_one_after_epoch {inputs : graph.Inputs}
+    {before after : State graph} (event : graph.EventId)
+    (progress : State.ServiceProgress inputs 1 before after)
+    (origin : ActivationOrigin before after)
+    (serviced : ∀ entered, before.activatedAt event = some entered →
+      event ∈ after.config.cut.completed)
+    (entered : Nat) (activated : after.activatedAt event = some entered)
+    (unfinished : event ∉ after.config.cut.completed) : after.clock - entered ≤ 1 := by
   rcases origin event entered activated unfinished with retained | created
-  · have oldUnfinished : event ∉ before.config.cut.completed := by
-      intro completed
-      exact unfinished (progress.completed completed)
-    have oldAge := age event entered retained oldUnfinished
-    rw [progress.clock]
-    simpa using oldAge
+  · exact False.elim (unfinished (serviced entered retained))
   · rw [progress.clock]
     omega
 
@@ -122,10 +148,7 @@ theorem activationAgeOne_after_epoch {inputs : graph.Inputs}
     (serviced : ∀ event entered, before.activatedAt event = some entered →
       event ∈ after.config.cut.completed) : after.ActivationAgeOne := by
   intro event entered activated unfinished
-  rcases origin event entered activated unfinished with retained | created
-  · exact False.elim (unfinished (serviced event entered retained))
-  · rw [progress.clock]
-    omega
+  exact age_le_one_after_epoch event progress origin (serviced event) entered activated unfinished
 
 omit [DecidableEq Player] in
 /-- The one-block boundary invariant and a feasible runtime make every live
@@ -332,15 +355,33 @@ theorem serviceEpoch_activationAgeOne (runtime : EventGraphRuntime graph)
     (runtime.serviceEpoch_activationOrigin inputs roster reactionRounds players wire order
       execution next invariant member) serviced
 
-/-- Under the one-block age invariant, a feasible addressed expiry has no
-application effect. -/
+omit [DecidableEq Player] in
+/-- A protected addressed event cannot expire, regardless of the age or
+behavior of unrelated events. -/
+theorem environmentStep_expire_eq_of_age (runtime : EventGraphRuntime graph)
+    (state : State graph) (event : graph.EventId) (feasible : 2 ≤ runtime.deadline event)
+    (age : ∀ entered, state.activatedAt event = some entered →
+      event ∉ state.config.cut.completed → state.clock - entered ≤ 1) :
+    environmentStep runtime state (.expire event) = FinDist.pure state := by
+  by_cases ready : state.config.cut.Ready event
+  · cases activated : state.activatedAt event with
+    | none => exact runtime.environmentStep_expire_of_not_activated state event ready activated
+    | some entered =>
+        apply runtime.environmentStep_expire_of_not_due state event ready entered activated
+        have ageBound := age entered activated ready.1
+        omega
+  · exact runtime.environmentStep_expire_of_not_ready state event ready
+
+/-- At a protected event, the concrete expiry instruction leaves application
+state unchanged. Other events may already be overdue. -/
 theorem serviceStep_expire_application_eq (runtime : EventGraphRuntime graph)
-    (feasible : runtime.ServiceFeasible) (inputs : graph.Inputs)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (event : graph.EventId)
+    (feasible : 2 ≤ runtime.deadline event)
     (execution next : runtime.application.PolicyExecution)
-    (_invariant : execution.native.application.Invariant inputs)
-    (age : execution.native.application.ActivationAgeOne)
+    (age : ∀ entered, execution.native.application.activatedAt event = some entered →
+      event ∉ execution.native.application.config.cut.completed →
+        execution.native.application.clock - entered ≤ 1)
     (member : next ∈
       (runtime.serviceStep players wire (.expire event) execution).support) :
     next.native.application = execution.native.application := by
@@ -358,26 +399,9 @@ theorem serviceStep_expire_application_eq (runtime : EventGraphRuntime graph)
   have applicationEq := congrArg
     (fun result : runtime.application.State => result.application) same.symm
   rw [applicationEq]
-  by_cases ready : execution.native.application.config.cut.Ready event
-  · cases activated : execution.native.application.activatedAt event with
-    | none =>
-        rw [runtime.environmentStep_expire_of_not_activated
-          execution.native.application event ready activated,
-          FinDist.mem_support_pure] at supported
-        exact supported
-    | some entered =>
-        have unfinished := ready.1
-        have ageBound := age event entered activated unfinished
-        have notDue : ¬runtime.deadline event ≤
-            execution.native.application.clock - entered := by
-          have bound := feasible event
-          omega
-        rw [runtime.environmentStep_expire_of_not_due execution.native.application event
-          ready entered activated notDue, FinDist.mem_support_pure] at supported
-        exact supported
-  · rw [runtime.environmentStep_expire_of_not_ready execution.native.application event ready,
-      FinDist.mem_support_pure] at supported
-    exact supported
+  rw [runtime.environmentStep_expire_eq_of_age execution.native.application event feasible age,
+    FinDist.mem_support_pure] at supported
+  exact supported
 
 private theorem runServicePlan_expiry_list_application_eq
     (runtime : EventGraphRuntime graph)
@@ -399,8 +423,8 @@ private theorem runServicePlan_expiry_list_application_eq
       simp only [List.map_cons, runServicePlan, FinDist.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨middle, headMem, tailMem⟩ := member
-      have middleEq := runtime.serviceStep_expire_application_eq feasible inputs players wire
-        event execution middle invariant age headMem
+      have middleEq := runtime.serviceStep_expire_application_eq players wire
+        event (feasible event) execution middle (age event) headMem
       have middleInvariant : middle.native.application.Invariant inputs := by
         rw [middleEq]
         exact invariant

@@ -199,21 +199,26 @@ graph-to-native law; composing with the source-to-graph theorem gives
 `Paper.source_event_pending_honest_law`. Equality concerns semantic outcomes,
 not chronological traces.
 
-## Remaining arbitrary-deviation edge
+## Arbitrary unilateral deviations
 
 An arbitrary deviator can leave pending packets and staged candidates behind;
 the honest-boundary invariant is therefore not a unilateral-deviation theorem.
-The native binding-provenance and completion results already hold under arbitrary
-policies. What remains is the setup-wide deviation law against unchanged
-opponents, followed by the Nash transfer.
+The native binding-provenance and completion results hold under arbitrary
+policies. The setup-wide deviation theorem uses owner-local coherence and
+deadline protection for unchanged players. It translates every native
+unilateral policy into a finite mixture of canonical graph policies, with one
+mixture across private setup. Source backtranslation and the generic equilibrium
+transfer give `Paper.source_event_pending_deviation_law` and
+`Paper.source_event_pending_approximate_nash_iff`.
+The [deviation proof](event-pending-deviation.md) explains the direct
+native-to-canonical argument and its information-locality theorem.
 
 The richer wire process cannot simply be treated as an ideal public graph
 scheduler. A deviator may publish its own private information in arbitrary
 packets, and wire decisions can depend on those packets. Consequently, the
 effective scheduling law need not factor through the graph's public
-observation. A unilateral extraction must account jointly for the deviator,
-the wire process, and the service ordering. The information argument must
-show that extra observations reveal no unavailable opponent information at
-a focal decision; it need not prevent the focal player from signaling its
-own information. Local handler refinement and completion alone do not supply
-this argument.
+observation. The extraction jointly predraws the deviator, wire process, and
+service ordering, leaving prescribed opponents and chance stochastic. The
+two-run locality proof establishes that equal normalized graph observations
+determine the same effective focal action under each pure response triple.
+The focal player remains free to signal its own information.

@@ -77,6 +77,21 @@ private theorem latestWhere?_append_matching {α : Type} (predicate : α → Boo
   | nil => simp [latestWhere?, matching]
   | cons head tail ih => simp [latestWhere?, ih]
 
+private theorem latestWhere?_exists_of_mem {α : Type} (predicate : α → Bool)
+    (items : List α) (item : α) (member : item ∈ items) (matching : predicate item = true) :
+    ∃ selected, latestWhere? predicate items = some selected := by
+  induction items with
+  | nil => contradiction
+  | cons head tail ih =>
+      cases found : latestWhere? predicate tail with
+      | some selected => exact ⟨selected, by simp [latestWhere?, found]⟩
+      | none =>
+          rcases List.mem_cons.mp member with rfl | inTail
+          · exact ⟨item, by simp [latestWhere?, found, matching]⟩
+          · obtain ⟨selected, present⟩ := ih inTail
+            rw [found] at present
+            contradiction
+
 private theorem latestWhere?_append_nonmatching {α : Type} (predicate : α → Bool)
     (items : List α) (item : α) (nonmatching : predicate item = false) :
     latestWhere? predicate (items ++ [item]) = latestWhere? predicate items := by
@@ -100,6 +115,15 @@ def latestEventSubmissionCommand (runtime : EventGraphRuntime graph)
   match latestEventSubmission? view.pool event owner with
   | some message => .include message.id
   | none => .wait
+
+/-- Any matching pending envelope ensures that the reserved selector returns
+a packet, even in the presence of unrelated or replayed traffic. -/
+theorem latestEventSubmission?_exists (pool : MessagePool Player (Payload graph))
+    (event : graph.EventId) (owner : Player)
+    (message : Message Player (Payload graph)) (pending : message ∈ pool.pending)
+    (matching : Payload.Matches event owner message) :
+    ∃ selected, latestEventSubmission? pool event owner = some selected :=
+  latestWhere?_exists_of_mem _ pool.pending message pending (decide_eq_true matching)
 
 /-- Every selected envelope is pending and has the requested author and event
 address. -/

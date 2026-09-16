@@ -52,7 +52,8 @@ private theorem advance_support [DecidableEq Principal]
       simp only [run_cons, run_nil, FinDist.support_bind, Set.mem_iUnion]
       exact ⟨next, hnext, FinDist.mem_support_pure.mpr rfl⟩
 
-private theorem playerStep_support [DecidableEq Principal]
+/-- A player step appends exactly a supported native action suffix. -/
+theorem playerStep_native_support [DecidableEq Principal]
     (who : Principal) (execution : app.PolicyExecution) (command : app.PlayerCommand)
     (next : app.PolicyExecution)
     (hnext : next ∈ (app.playerStep who execution command).support) :
@@ -64,7 +65,8 @@ private theorem playerStep_support [DecidableEq Principal]
   subst next
   exact advance_support app execution _ advanced hadvanced
 
-private theorem environmentStep_support [DecidableEq Principal]
+/-- An environment step appends exactly a supported native action suffix. -/
+theorem environmentStep_native_support [DecidableEq Principal]
     (execution : app.PolicyExecution) (command : app.EnvironmentPolicyCommand)
     (next : app.PolicyExecution)
     (hnext : next ∈ (app.environmentPolicyStep execution command).support) :
@@ -115,7 +117,8 @@ theorem invoke_native_step [DecidableEq Principal]
       obtain ⟨advanced, hadvanced, rfl⟩ := hstep
       exact hadvance _ advanced hadvanced
 
-private theorem invoke_support [DecidableEq Principal]
+/-- A policy invocation appends exactly a supported native action suffix. -/
+theorem invoke_native_support [DecidableEq Principal]
     (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
     (execution next : app.PolicyExecution) (invocation : @Invocation Principal)
     (hnext : next ∈ (app.invoke players environment execution invocation).support) :
@@ -125,11 +128,11 @@ private theorem invoke_support [DecidableEq Principal]
   | player who =>
       simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
       rcases hnext with ⟨command, _, hstep⟩
-      exact playerStep_support app who execution command next hstep
+      exact playerStep_native_support app who execution command next hstep
   | environment =>
       simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
       rcases hnext with ⟨command, _, hstep⟩
-      exact environmentStep_support app execution command next hstep
+      exact environmentStep_native_support app execution command next hstep
 
 /-- Every supported policy outcome is supported by native execution of exactly
 the action suffix appended to its proof-facing trace. -/
@@ -147,7 +150,7 @@ theorem runPolicies_native_support [DecidableEq Principal]
   | cons invocation rest ih =>
       simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
       rcases hnext with ⟨middle, hmiddle, hnext⟩
-      rcases invoke_support app players environment execution middle invocation hmiddle with
+      rcases invoke_native_support app players environment execution middle invocation hmiddle with
         ⟨first, hfirstTrace, hfirstRun⟩
       rcases ih middle hnext with ⟨second, hsecondTrace, hsecondRun⟩
       refine ⟨first ++ second, ?_, ?_⟩

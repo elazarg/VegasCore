@@ -2,20 +2,20 @@
 
 ## Status and objective
 
-This document specifies an asynchronous compiler target and the work needed
-to prove its strategic correctness. The shared
+This document specifies the checked asynchronous compiler target and its
+remaining refinement boundaries. The shared
 [EventGraph core](../Vegas/EventGraph.lean) implements typed dependency cuts,
 node execution, observations, public scheduling, and finite completion. The
 full-source lowerer constructs a certified executable graph. Its whole-run
 source-order law is checked for every source constructor, including private
 initial-state distributions. Honest asynchronous correspondence, setup-wide
 finite-mixture source deviation laws, and same-error Nash correspondence at
-compiled source profiles are checked. The asynchronous pending-message game
-has a concrete adaptive epoch service, a checked arbitrary-player completion
-theorem, and a full-source honest outcome law. Its arbitrary-deviation and Nash
-correspondence remain unproved.
+compiled source profiles are checked at both the EventGraph and concrete
+pending-message levels. The pending-message game uses a fixed finite epoch
+protocol with public adaptive wire and order policies, and has checked
+arbitrary-player completion, exact unilateral-deviation, and Nash theorems.
 The [active theorem map](active-tower.md) records the checked
-source-to-asynchronous-graph and source-to-ordered-pending-message results.
+source-to-asynchronous-graph and source-to-pending-message results.
 
 Independent ready event kernels commute for fixed event actions after
 projection to the typed store and each player's original action history
@@ -48,11 +48,11 @@ which events may occur, not a separately maintained game tree. The pending
 application executes the graph. The source theorem is a composition of the
 source/graph and graph/native certificates.
 
-For the conservative public-barrier compiler, the asynchronous capstone targets
+For the conservative public-barrier compiler, the asynchronous capstone gives
 exact honest laws and finite-mixture unilateral deviation laws at both the ideal
 EventGraph and pending-message levels. Bind failure and disclosure withholding
-are already graph actions. Prescribed bind traffic, including a source failure,
-must retain one value-oblivious opaque commitment shape. A later, more concurrent
+are graph actions. Prescribed bind traffic, including a source failure, retains
+one value-oblivious opaque commitment shape. A later, more concurrent
 runtime that exposes genuinely new information before failure may instead need
 the separately specified utility-dependent capstone.
 
@@ -566,7 +566,8 @@ event. Completion of an unrelated event must not reset or consume another
 event's private timeout counter. A shared clock can advance several deadlines;
 the service contract must protect all simultaneously active compliant events.
 
-Specify a finite horizon and a public, prefix-checkable service discipline:
+The checked service has a finite horizon and a public, prefix-checkable
+discipline:
 
 - enough owner invocations for a continuously enabled prescribed event to
   prepare and submit;
@@ -577,36 +578,25 @@ Specify a finite horizon and a public, prefix-checkable service discipline:
 - enough progress to complete the finite dependency graph.
 
 Clock advancement, expiry processing, owner invocation, delivery, and inclusion
-are distinct operations. A blockchain host may bundle some of them into one
-transaction or block; the abstract model must specify their order at deadline
-boundaries. Expiry is an executed handler action, not an autonomous promise
-that an EVM contract wakes itself up.
+are distinct operations. Each epoch samples a permutation of all event IDs from
+a policy that sees the public environment history and view. In that order, each
+event receives a grant, three owner calls when it has an owner, the configured
+number of adaptive wire/reaction rounds, reserved inclusion of the latest
+addressed owner submission, and a sample opportunity. The full sweep is
+followed by one clock advance and an expiry check for every event.
 
-The contract must be expressible through observable opportunity and service
-obligations, not through a field assuming whole-run strategic correctness or
-the eventual desired payoff. Prove a concrete service implementation satisfies
-it for arbitrary players. Deadline configurations require a feasibility
-witness; do not make a universal theorem vacuous by admitting no scheduler
-for impossible budgets.
+`ServiceFeasible` requires every relative deadline to be at least two ticks, so
+an event enabled after its position in one epoch receives its reserved visit in
+the next. The finite horizon is `eventCount * (maxDeadline + 1)` epochs.
+Completion holds for arbitrary player policies. The unchanged-owner protection
+used by the deviation theorem holds at every reachable prefix of this actual
+driver; it is not a fairness condition imposed after execution.
 
-First implement bounded service allowing at least two different topological
-completion orders for the same graph. A public driver can grant ready events
-service budgets and interleave delivery/reaction slots, with a watchdog
-providing protected opportunities. It must not impose canonical source order
-on independently ready events. The exact budget/watchdog construction is a
-mathematical design gate before large policy proofs are written.
-
-The existing policy runner has a fixed invocation list. A sufficiently rich
-fixed polling roster can already realize out-of-order event completion through
-adaptive inclusion and ready-event dispatch. If adaptive principal invocation
-is needed, add that capability to `Interaction` with public activation and a
-bounded runner. Do not duplicate the runner or silently claim fixed polling
-covers every adaptive activation model.
-
-Service admissibility must survive unilateral replacement. Do not condition
-execution afterward on the favorable event that the scheduler happened to be
-fair; that conditioning can change outcome laws. Establish service properties
-for all supported runs of the admitted driver/policy implementation.
+A blockchain host may bundle abstract operations into a transaction or block,
+but must separately refine their ordering and liveness. Expiry here is an
+executed handler action, not an assertion that an EVM contract wakes itself up.
+The theorem therefore concerns this concrete service, not every fair network or
+adaptive principal-invocation model.
 
 ### 5.4 Minimal graph-relative backend
 
@@ -714,7 +704,8 @@ Event-specific modules use the following ownership:
 | `EventServiceLaw.lean` | Clock accounting, invariant preservation, persistent activation times, and local sample/expiry progress. |
 | `EventServiceCompletion.lean` | Per-epoch progress and supported-run completion of the concrete service game under arbitrary players. |
 | `EventHonestLaw.lean` | Couple compiled policies and the admitted driver to EventGraph steps, then use scheduling commutation to obtain the canonical terminal `g.Outcome` law. |
-| `EventDeviationLaw.lean` | Setup-wide predrawing/locality and the exact graph-relative deviation mixture; never an application invariant. |
+| `EventPrescribedReachability.lean` | Reachable-prefix protection and the one-tick activation-age bound for unchanged compiled owners. |
+| `EventDeviationLaw.lean` / `EventStrategicLaw.lean` | Setup-wide predrawing/locality and the exact graph-relative deviation mixture; never an application invariant. |
 
 Reuse `MessageApplication`, its wire policies and history runner,
 `CommitmentCandidates`, and the setup-wide predrawing framework. The old
@@ -729,8 +720,8 @@ binding field has one owner-correct immutable handle whose candidate decodes
 to its stored binding result; public/player projections agree; and activation
 times have the exact domain above. No whole-run law is a field or premise.
 
-For a graph, information certificate, input law, compiled profile, and admitted
-public driver/wire policy, the first whole-run target is
+For a graph, information certificate, input law, compiled profile, and public
+driver/wire policy, the checked whole-run law is
 
 ```text
 map nativeReadout (nativeGame.play compiledProfile)
@@ -738,13 +729,12 @@ map nativeReadout (nativeGame.play compiledProfile)
 ```
 
 where both readouts return `g.Outcome`, discarding transport and completion-
-order metadata. Prove completion separately for every native player policy in
-the shared runner. The arbitrary-deviation goal remains the exact mixture in
-Section 6. Do not first postulate that the wire environment factors through an
-EventGraph `PublicScheduler`: it sees a richer pool/history and can select
-different inclusions after different raw focal packets. The local step
-relation plus graph scheduling/coupling must establish the displayed outcome
-law directly.
+order metadata. Completion is separate and holds for every native player policy
+in the shared runner. The exact mixture in Section 6 is also checked. Its proof
+does not postulate that the wire environment factors through an EventGraph
+`PublicScheduler`: the wire sees a richer public pool/history and can select
+different inclusions after different raw focal packets. Native locality,
+reachable-prefix protection, and graph scheduling establish the outcome law.
 
 The concrete service visits all event IDs once per epoch, in a permutation
 chosen from the environment's current public observation and history. Each
@@ -797,7 +787,7 @@ unilateral deviation law:
 
 The mixture is chosen before the private setup draw. Opponents are unchanged,
 and `E` is fixed as an adaptive policy rather than a preselected command trace.
-This target retains arbitrary focal packets. Its proof must use readiness-gated,
+This theorem retains arbitrary focal packets. Its proof uses readiness-gated,
 value-oblivious prescribed traffic—including the same opaque bind shape for a
 source failure—and deadline-relative service; none of those properties is
 assumed merely from the graph syntax.
@@ -1078,12 +1068,12 @@ plan, and whole-run continuation induction. Build one per-event local proof
 interface; do not duplicate binding, resolution, and sample case splits across
 many whole-program inductions.
 
-Keep the checked ordered theorem while the replacement is being established,
-clearly separated from prospective claims. Once the same graph supports a
-canonical specialization and the asynchronous native certificate composes,
-port the source wrappers and remove the separate ordered Graph/runtime path.
-No compatibility aliases, permanent duplicated runners, or dormant archive
-trees are required. Git retains source material needed during migration.
+The EventGraph supports both a canonical scheduler specialization and the
+asynchronous native certificate. The source wrappers compose through this
+shared graph. The older cursor-ordered `GraphRuntime` remains a distinct proved
+backend, not evidence for the event-addressed service theorem. Consolidation
+may remove duplicated paths without compatibility aliases or dormant archive
+trees.
 
 New generic facts belong in dedicated GameTheory-namespaced extension modules
 if not yet available upstream. A bounded adaptive runner or missing probability
@@ -1158,40 +1148,34 @@ arbitrary-deviation obligation is M4.
 
 ### M4: asynchronous native deviation capstone
 
-Prove information-safe commutation and the graph scheduling comparison, then
-cut-based native locality and the exact finite-mixture deviation law for the
-initial public-barrier pending compiler. Lift through setup-wide predrawing and
-package the graph-relative certificate. The graph scheduler's observation interface remains distinct
-from the richer native wire scheduler; their identification is not assumed.
-The scheduling mathematics can proceed while M3 establishes the native
-handlers and service facts it will consume.
+Checked: information-safe graph scheduling, cut-based native locality,
+reachable-prefix service protection, and the exact finite-mixture deviation law
+for the public-barrier pending compiler. Setup-wide predrawing jointly fixes
+pure focal, wire, and order response functions before the private input draw.
+The graph scheduler's observation interface remains distinct from the richer
+native wire scheduler; their identification is not assumed.
 
-The backend theorem quantifies over independently certified EventGraphs, graph
-policies, and setup laws. It contains no source program or source-relative
-correctness hypothesis. Its initial exact law yields arbitrary
+The graph-relative backend theorem quantifies over an EventGraph, graph policy,
+and input law and contains no source program or source-relative correctness
+hypothesis. Composition with the source edge yields arbitrary
 source-observable unilateral guarantees and same-error Nash correspondence.
 A broader runtime that exposes new information before failure has a separate
 utility-dependent M4 extension using the feasible-repair contract; do not
 weaken the initial theorem preemptively.
 
-After both M2 and the backend certificate are complete, compose them by the
-generic simulation theorem and discharge the source-facing capstones. This
-join should introduce no new whole-execution induction.
-
-Exit: the theorem names the full source compiler and actual asynchronous
-native runner. Its deviator is unrestricted within that runner. Any changed
-assumption is reported with a reason, not hidden by a restricted policy class.
-Once expressible, only these prospective capstones belong as explicitly
-unproved statements in `Paper.lean`; supporting obligations stay in their
-owning modules. The milestone closes only when those proofs are discharged.
+The source-facing theorem names the full compiler and actual asynchronous
+native runner. Its deviator is unrestricted within that runner, every opponent
+retains its compiled strategy, and the source mixture is fixed before setup.
+`Paper.lean` audits the deviation and same-error Nash capstones without proof
+admissions.
 
 ### M5: consolidation and next runtime edge
 
-Make the dependency-driven compiler the active path. Retain canonical order
-only as a scheduler instance/reference specialization of the same semantics.
-Delete consumed ordered-only implementations and proofs, update public
-documentation and the capstone audit, and run the complete warning-free build
-and repository checks.
+The dependency-driven compiler is the active asynchronous path. Canonical order
+is a scheduler instance/reference specialization of the same EventGraph
+semantics. Remaining consolidation can remove superseded ordered-only
+implementations, reduce duplicate proof surfaces, and keep the public capstone
+audit warning-free.
 
 Exit: there is one active operational tower, the theorem quantifies over
 actual asynchronous completion orders, and the next transaction/block host

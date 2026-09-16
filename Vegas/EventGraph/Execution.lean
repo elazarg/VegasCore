@@ -215,6 +215,19 @@ theorem step_eq_map_of_code (config : graph.Config) (event : graph.EventId)
   obtain ⟨value, _, rfl⟩ := member
   rfl
 
+/-- A strategic event has exactly one successor once its action is fixed. -/
+theorem step_eq_pure_of_actor (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) (action : graph.Action event)
+    (owner : Player) (owned : (graph.nodes event).actor = some owner)
+    (next : graph.Config) (member : next ∈ (config.step event ready action).support) :
+    config.step event ready action = FinDist.pure next := by
+  obtain ⟨value, evaluates⟩ := (graph.nodes event).eval?_eq_pure_of_actor owner owned
+    action config.store (fun _ read => config.read_available ready read)
+  have law := config.step_eq_map_of_eval event ready action (FinDist.pure value) evaluates
+  rw [FinDist.map_pure] at law
+  rw [law, FinDist.mem_support_pure] at member
+  exact law.trans (congrArg FinDist.pure member.symm)
+
 @[simp] theorem step_history (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (next : graph.Config) (member : next ∈ (config.step event ready action).support) :
@@ -222,6 +235,26 @@ theorem step_eq_map_of_code (config : graph.Config) (event : graph.EventId)
   rw [step, FinDist.support_map] at member
   obtain ⟨value, _, rfl⟩ := member
   rfl
+
+/-- A graph completion writes only its previously unavailable output field. -/
+theorem step_store_of_some (config next : graph.Config)
+    (event : graph.EventId) (ready : config.cut.Ready event) (action : graph.Action event)
+    (member : next ∈ (config.step event ready action).support)
+    (field : graph.Field) (value : (graph.layout field).Value)
+    (stored : config.store field = some value) : next.store field = some value := by
+  rw [step, FinDist.support_map] at member
+  obtain ⟨output, _, rfl⟩ := member
+  cases field with
+  | inl input => exact stored
+  | inr query =>
+      have different : query ≠ event := by
+        intro same
+        subst query
+        have present : (config.outputs event).isSome := by
+          change config.outputs event = some value at stored
+          simp [stored]
+        exact ready.1 ((config.output_available event).mp present)
+      exact (config.complete_output_of_ne event query ready action output different).trans stored
 
 /-- Semantic reachability from one concrete input environment. This is the
 premise under which chronological-history properties should be consumed. -/

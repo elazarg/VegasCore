@@ -29,12 +29,13 @@ the subsequent kernel-checked build.
 | Full-source honest law under adaptive public graph scheduling | `Vegas/Compile/EventGraphScheduling.lean` |
 | Full-source asynchronous deviations and Nash correspondence | `Vegas/Compile/EventGraphDeviation.lean`, `Vegas/Game/EventCompilation.lean` |
 | Asynchronous pending-message service and arbitrary-player completion | `Vegas/Pending/EventService.lean`, `Vegas/Pending/EventServiceCompletion.lean` |
+| Asynchronous pending-message deviation reduction | `Vegas/Pending/EventDeviationLaw.lean`, `Vegas/Pending/EventStrategicLaw.lean` |
+| Full-source pending-message deviations and Nash correspondence | `Vegas/Game/EventMessageStrategic.lean` |
 | Generic simulation and equilibrium transport | `GameTheoryExtensions/` |
 | Paper-visible theorem selection and axiom pins | `Paper.lean` |
 
 The proved capstones are universally quantified proofs, not conclusions
-inferred from tests. `Paper.lean` also records three explicitly admitted
-asynchronous pending-message proof targets, distinguished below.
+inferred from tests.
 `VegasTests/GraphMessages.lean` and the retained source/graph tests are concrete
 execution regressions.
 
@@ -45,32 +46,35 @@ outcomes remain an explicit `Option` case. Utilities or observations of network
 traffic, latency, fees, receipts, or other runtime-only data require an
 additional correspondence contract.
 
-The commitment service is ideal. Authentication, canonical phase order,
-relative deadlines, reserved inclusion, and bounded reaction slots are part of
-the proved target model. The artifact establishes neither computational
+The commitment service is ideal. Authentication, opaque commitment behavior,
+relative deadlines, reserved inclusion, and a fixed finite epoch protocol are
+part of the proved target model. Every epoch uses a publicly and adaptively
+chosen permutation of all events, followed by one clock tick and expiry sweep;
+`ServiceFeasible` requires every deadline to be at least two ticks. Wire and
+order policies may adapt to public histories. This is not a generalized fair
+network theorem, and the artifact establishes neither computational
 cryptography nor an EVM/ledger implementation.
 
 `Vegas.Language` is a surface-syntax prototype with an internal `SurfaceCore`
 elaboration target. Its connection to `SourceProgram` is not proved; it is
 outside the active strategic tower.
 
-`Paper.lean` is a self-contained capstone audit. Proved statements delegate to
+`Paper.lean` is a self-contained capstone audit. Its statements delegate to
 repository results and pin their proof dependencies; supporting lemmas remain
-in their owning modules. Proved statements have axiom pins containing only
-`propext`, `Classical.choice`, and `Quot.sound`. The asynchronous native honest
-outcome law is proved. Two `source_event_pending_*` capstones are UNPROVED:
-arbitrary unilateral-deviation mixture law and same-error Nash correspondence. Their
-bodies contain `sorry`, with adjacent pins explicitly recording `sorryAx`.
-The expected admission diagnostics are checked by `#guard_msgs`; a successful
-warning-strict build checks their statements and admission status, not their
-truth. No library module may contain a proof admission.
+in their owning modules. The pins contain only `propext`, `Classical.choice`,
+and `Quot.sound`. No library module or paper capstone contains a proof
+admission.
 The asynchronous graph compiler preserves and reflects same-error Nash at
 compiled source profiles for utilities of the complete terminal source state.
 Its unilateral deviation witness is one source-policy mixture chosen before
 private setup. The graph-local scheduling theorem is separately audited.
-The asynchronous pending-message game has checked completion and full-source
-honest outcome laws under concrete public epoch service. Its arbitrary-deviation
-refinement remains unproved; the proved native strategic capstones use ordered service.
+The asynchronous pending-message game has checked completion, full-source
+honest outcome, exact unilateral-deviation mixture, and same-error Nash laws
+under the concrete public epoch service. The finite source-policy mixture is
+chosen before private setup, leaves every opponent unchanged, and covers any
+native unilateral player policy. The public wire and adaptive order response
+functions are jointly predrawn in the proof; they are not restricted to fixed
+command traces.
 Read the [active theorem map](docs/active-tower.md) for the
-formal boundary and [pending deviation extraction](docs/pending-deviation-extraction.md)
+formal boundary and [event-pending deviation proof](docs/event-pending-deviation.md)
 for the central adversarial argument.

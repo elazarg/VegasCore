@@ -131,7 +131,9 @@ theorem bindingStageCommand_is_private (runtime : EventGraphRuntime graph)
       .privateCommand command := by
   unfold bindingStageCommand
   generalize cast (congrArg EventField.Action outputEq) action = result
-  cases result <;> simp
+  cases result with
+  | failure => exact ⟨_, rfl⟩
+  | success value => exact ⟨_, rfl⟩
 
 @[simp]
 theorem stagingCount_append_bindingStageCommand (runtime : EventGraphRuntime graph)

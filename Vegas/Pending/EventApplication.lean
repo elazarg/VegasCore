@@ -219,6 +219,16 @@ def initial (inputs : graph.Inputs) : State graph :=
     activatedAt := refreshActivated config 0 (fun _ => none)
     serviceGrant := none }
 
+/-- Initial candidate slots contain precisely the owner-visible typed input;
+prepared slots have not yet been allocated. -/
+theorem initial_candidate (inputs : graph.Inputs) (owner : Player)
+    (slot : CandidateSlot graph) :
+    (initial inputs).candidates.lookup (owner, slot) =
+      match slot with
+      | .initial input => candidateOfValue owner (graph.inputLayout input) (inputs input)
+      | .prepared _ => .fresh := by
+  cases slot <;> rfl
+
 /-- Every initially accepted handle is the canonical opaque handle of one
 typed binding input. Event outputs have no accepted handle initially. -/
 theorem initial_accepted_eq_some (inputs : graph.Inputs) (field : graph.Field)
@@ -776,7 +786,8 @@ private theorem handle_commitment_config_step
     ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
       next.config ∈ (state.config.step event ready action).support ∧
         next.clock = state.clock ∧
-        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt := by
+        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt ∧
+        next.remembered = state.remembered ∧ next.serviceGrant = state.serviceGrant := by
   by_cases ready : state.config.cut.Ready event
   · by_cases timely : state.WithinDeadline runtime event
     · cases view : nodeView graph event with
@@ -796,7 +807,7 @@ private theorem handle_commitment_config_step
               | .fresh | .unopenable => .failure
             refine ⟨cast (congrArg EventField.Action outputEq.symm) result, ?_⟩
             exact ⟨bind_complete_mem_step state event ready owner payload outputEq codeEq result,
-              rfl, rfl⟩
+              rfl, rfl, rfl, rfl⟩
           · simp_all only [reduceCtorEq]
     · simp [handle, ready, timely] at accepted
   · simp [handle, ready] at accepted
@@ -809,7 +820,8 @@ private theorem handle_opening_config_step
     ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
       next.config ∈ (state.config.step event ready action).support ∧
         next.clock = state.clock ∧
-        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt := by
+        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt ∧
+        next.remembered = state.remembered ∧ next.serviceGrant = state.serviceGrant := by
   by_cases ready : state.config.cut.Ready event
   · by_cases timely : state.WithinDeadline runtime event
     · cases view : nodeView graph event with
@@ -841,7 +853,7 @@ private theorem handle_opening_config_step
                     subst next
                     refine ⟨cast (congrArg EventField.Action outputEq.symm) true, ?_⟩
                     exact ⟨resolve_complete_mem_step state event ready owner payload binding
-                      checks outputEq codeEq true result resultEq, rfl, rfl⟩
+                      checks outputEq codeEq true result resultEq, rfl, rfl, rfl, rfl⟩
               · simp [stored] at accepted
           · simp_all only [reduceCtorEq]
     · simp [handle, ready, timely] at accepted
@@ -854,7 +866,8 @@ private theorem handle_withhold_config_step
     ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
       next.config ∈ (state.config.step event ready action).support ∧
         next.clock = state.clock ∧
-        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt := by
+        next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt ∧
+        next.remembered = state.remembered ∧ next.serviceGrant = state.serviceGrant := by
   by_cases ready : state.config.cut.Ready event
   · by_cases timely : state.WithinDeadline runtime event
     · cases view : nodeView graph event with
@@ -881,7 +894,32 @@ private theorem handle_withhold_config_step
                 subst next
                 refine ⟨cast (congrArg EventField.Action outputEq.symm) disclose, ?_⟩
                 exact ⟨resolve_complete_mem_step state event ready owner payload binding checks
-                  outputEq codeEq disclose result resultEq, rfl, rfl⟩
+                  outputEq codeEq disclose result resultEq, rfl, rfl, rfl, rfl⟩
+          · simp_all only [reduceCtorEq]
+    · simp [handle, ready, timely] at accepted
+  · simp [handle, ready] at accepted
+
+/-- Commitment acceptance freezes exactly its addressed handle and installs
+that handle at its event. Authentication binds it to the packet sender. -/
+theorem handle_commitment_tables (runtime : EventGraphRuntime graph)
+    (state next : State graph) (id : MessageId Player)
+    (event : graph.EventId) (candidate : Handle graph)
+    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
+    next.candidates = state.candidates.accept candidate ∧
+      next.accepted = Function.update state.accepted (.inr event) (some candidate) ∧
+      candidate.1 = id.1 := by
+  by_cases ready : state.config.cut.Ready event
+  · by_cases timely : state.WithinDeadline runtime event
+    · cases view : nodeView graph event with
+      | resolve | sample => simp [handle, ready, timely, view] at accepted
+      | bind owner payload outputEq codeEq =>
+          simp only [handle, dif_pos ready, dif_pos timely, view] at accepted
+          split at accepted
+          · rename_i sender
+            simp_all only [dite_eq_ite, Option.ite_none_right_eq_some,
+              Option.some.injEq]
+            rcases accepted with ⟨handleOwner, _, _, rfl⟩
+            exact ⟨rfl, rfl, sender.symm⟩
           · simp_all only [reduceCtorEq]
     · simp [handle, ready, timely] at accepted
   · simp [handle, ready] at accepted
@@ -988,17 +1026,59 @@ theorem handle_clock_activated (runtime : EventGraphRuntime graph)
   cases packet with
   | malformed raw => simp [handle] at accepted
   | commitment event candidate =>
-      obtain ⟨_, _, _, clockEq, activatedEq⟩ :=
+      obtain ⟨_, _, _, clockEq, activatedEq, _⟩ :=
         handle_commitment_config_step runtime state next id event candidate accepted
       exact ⟨clockEq, activatedEq⟩
   | opening event candidate raw =>
-      obtain ⟨_, _, _, clockEq, activatedEq⟩ :=
+      obtain ⟨_, _, _, clockEq, activatedEq, _⟩ :=
         handle_opening_config_step runtime state next id event candidate raw accepted
       exact ⟨clockEq, activatedEq⟩
   | withhold event =>
-      obtain ⟨_, _, _, clockEq, activatedEq⟩ :=
+      obtain ⟨_, _, _, clockEq, activatedEq, _⟩ :=
         handle_withhold_config_step runtime state next id event accepted
       exact ⟨clockEq, activatedEq⟩
+
+/-- Packet acceptance never overwrites a player's privately sampled action. -/
+theorem handle_remembered (runtime : EventGraphRuntime graph)
+    (state next : State graph) (message : Message Player (Payload graph))
+    (accepted : handle runtime state message = some next) :
+    next.remembered = state.remembered := by
+  rcases message with ⟨id, packet⟩
+  cases packet with
+  | malformed raw => simp [handle] at accepted
+  | commitment event candidate =>
+      obtain ⟨_, _, _, _, _, memory⟩ :=
+        handle_commitment_config_step runtime state next id event candidate accepted
+      exact memory.1
+  | opening event candidate raw =>
+      obtain ⟨_, _, _, _, _, memory⟩ :=
+        handle_opening_config_step runtime state next id event candidate raw accepted
+      exact memory.1
+  | withhold event =>
+      obtain ⟨_, _, _, _, _, memory⟩ :=
+        handle_withhold_config_step runtime state next id event accepted
+      exact memory.1
+
+/-- Including a player packet never changes the public service grant. -/
+theorem handle_serviceGrant (runtime : EventGraphRuntime graph)
+    (state next : State graph) (message : Message Player (Payload graph))
+    (accepted : handle runtime state message = some next) :
+    next.serviceGrant = state.serviceGrant := by
+  rcases message with ⟨id, packet⟩
+  cases packet with
+  | malformed raw => simp [handle] at accepted
+  | commitment event candidate =>
+      obtain ⟨_, _, _, _, _, _, grant⟩ :=
+        handle_commitment_config_step runtime state next id event candidate accepted
+      exact grant
+  | opening event candidate raw =>
+      obtain ⟨_, _, _, _, _, _, grant⟩ :=
+        handle_opening_config_step runtime state next id event candidate raw accepted
+      exact grant
+  | withhold event =>
+      obtain ⟨_, _, _, _, _, _, grant⟩ :=
+        handle_withhold_config_step runtime state next id event accepted
+      exact grant
 
 /-- Replacing the private remembered-action cache cannot change the public
 result of applying any pending packet. Rejected original `true` actions remain
@@ -1206,6 +1286,54 @@ theorem environmentStep_remembered (runtime : EventGraphRuntime graph)
       change after ∈ (FinDist.pure (expire runtime before event)).support at member
       rw [FinDist.mem_support_pure] at member
       subst after
+      unfold expire
+      split
+      · split
+        · rfl
+        · split
+          · cases nodeView graph event with
+            | bind | sample => rfl
+            | resolve owner payload binding checks outputEq codeEq =>
+                unfold acceptResolution
+                cases resolved : EventCode.resolveOutput? binding checks false
+                    before.config.store <;> simp only [resolved] <;> rfl
+          · rfl
+      · rfl
+
+omit [DecidableEq Player] in
+/-- Only a grant command changes the public service cursor. -/
+theorem environmentStep_serviceGrant (runtime : EventGraphRuntime graph)
+    (before after : State graph) (command : EnvironmentCommand graph)
+    (member : after ∈ (environmentStep runtime before command).support) :
+    after.serviceGrant = match command with
+      | .grant event => some event
+      | _ => before.serviceGrant := by
+  cases command with
+  | grant event | advanceClock =>
+      simp only [environmentStep, FinDist.mem_support_pure] at member
+      subst after
+      rfl
+  | executeSample event =>
+      change after ∈ (executeSample before event).support at member
+      unfold executeSample at member
+      split at member
+      · cases view : nodeView graph event with
+        | bind | resolve =>
+            simp only [view, FinDist.mem_support_pure] at member
+            subst after
+            rfl
+        | sample =>
+            simp only [view, FinDist.support_map, Set.mem_image] at member
+            obtain ⟨config, _, rfl⟩ := member
+            rfl
+      · simp only [FinDist.mem_support_pure] at member
+        subst after
+        rfl
+  | expire event =>
+      change after ∈ (FinDist.pure (expire runtime before event)).support at member
+      rw [FinDist.mem_support_pure] at member
+      subst after
+      change (expire runtime before event).serviceGrant = before.serviceGrant
       unfold expire
       split
       · split

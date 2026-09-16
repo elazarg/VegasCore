@@ -6,6 +6,7 @@ import Vegas.Game.GraphMessages
 import Vegas.Game.EventScheduling
 import Vegas.Game.EventCompilation
 import Vegas.Game.EventMessages
+import Vegas.Game.EventMessageStrategic
 import Vegas.Source.Safety
 import Vegas.Compile.EventGraphPolicy
 import Vegas.Compile.EventGraphReadout
@@ -16,16 +17,14 @@ import Vegas.Pending.EventServiceCompletion
 /-! # Paper theorem audit
 
 Principal source-safety and compilation results for the full failure-aware
-language. Proved statements delegate directly to their owning theorems; the
-axiom pins below check the complete proof dependencies. The two UNPROVED
-asynchronous pending-message capstones at the end are explicit proof targets:
-their guarded admission diagnostics and axiom pins expose `sorryAx`.
+language. Each statement delegates directly to its owning theorem; the axiom
+pins below check the complete proof dependencies.
 
-The pending-message strategic results use ideal commitments and a concrete
-bounded ordered service with adaptive delivery. The event-addressed target has
-completion and full-source honest outcome laws under public adaptive epoch
-service; its arbitrary-deviation and Nash correspondence remain unproved. None of these
-statements asserts cryptographic, transaction-ledger, or EVM refinement.
+The pending-message strategic results use ideal commitments and concrete
+bounded service with adaptive delivery. The event-addressed target admits
+adaptive public epoch ordering, arbitrary unilateral deviations, and every
+source constructor. None of these statements asserts cryptographic,
+transaction-ledger, or EVM refinement.
 -/
 
 namespace Vegas.Paper
@@ -366,7 +365,7 @@ theorem source_event_graph_approximate_nash_iff [IExpr.ResultTypes L]
 
 /-- The event-addressed pending game produces a complete graph outcome under
 arbitrary player policies, adaptive wire delivery, and public service ordering.
-This is termination, not yet the asynchronous pending strategic law. -/
+This completion guarantee does not require prescribed player behavior. -/
 theorem event_pending_completion [IExpr.ResultTypes L]
     {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
     (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
@@ -389,10 +388,9 @@ theorem event_pending_completion [IExpr.ResultTypes L]
 These statements use the concrete compiler and service, not a hypothesized
 simulation certificate. `ServiceFeasible` requires at least two clock ticks
 per event deadline so an event enabled mid-epoch receives its reserved service
-opportunities. The compiler's public barriers are intended to support exact
-deviation laws without a failure-dominance premise. The honest law is proved;
-the two strategic statements remain UNPROVED, including that intended
-sufficiency of the hypotheses.
+opportunities. The compiler's public barriers support exact deviation laws
+without a failure-dominance premise. The deviation mixture is chosen before
+the private initial state is sampled.
 -/
 
 /-- The compiled full-source profile has the source terminal-state
@@ -414,9 +412,7 @@ theorem source_event_pending_honest_law [IExpr.ResultTypes L]
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_pending_honest_law
 
-/-- error: declaration uses `sorry` -/
-#guard_msgs (whitespace := lax) in
-/-- UNPROVED: every arbitrary native unilateral deviation has the terminal
+/-- Every arbitrary native unilateral deviation has the terminal
 source-state law of a finite mixture of source deviations against unchanged
 opponents. One mixture is chosen across the entire private setup law. -/
 theorem source_event_pending_deviation_law [IExpr.ResultTypes L]
@@ -435,17 +431,16 @@ theorem source_event_pending_deviation_law [IExpr.ResultTypes L]
           who replacement)).map (setup.eventPendingOutcome runtime) =
       mixture.bind fun alternative =>
         (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
-          profile who alternative)).map some := by
-  sorry
+          profile who alternative)).map some :=
+  setup.eventPendingGame_deviation_law runtime feasible roster reactionRounds wire order
+    profile who replacement
 
 /-- info: 'Vegas.Paper.source_event_pending_deviation_law' depends on axioms:
-[propext, sorryAx, Classical.choice, Quot.sound] -/
+[propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_pending_deviation_law
 
-/-- error: declaration uses `sorry` -/
-#guard_msgs (whitespace := lax) in
-/-- UNPROVED: same-error Nash preservation and reflection at compiled source
+/-- Same-error Nash preservation and reflection at compiled source
 profiles in the asynchronous pending-message target, for every utility of the
 complete terminal source state. The utility assigned to a missing outcome is
 arbitrary; the concrete service has a separate proved completion theorem. -/
@@ -462,12 +457,41 @@ theorem source_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
         (fun outcome who => (setup.eventPendingOutcome runtime outcome).elim
           (missing who) (fun state => utility state who))
         ε (fun who => setup.compileEventPendingStrategy runtime who (profile who)) ↔
-      IsεNash setup.gameForm utility ε profile := by
-  sorry
+      IsεNash setup.gameForm utility ε profile :=
+  setup.eventPendingGame_approximate_nash_iff runtime feasible roster reactionRounds wire order
+    utility missing ε profile
 
 /-- info: 'Vegas.Paper.source_event_pending_approximate_nash_iff' depends on axioms:
-[propext, sorryAx, Classical.choice, Quot.sound] -/
+[propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_pending_approximate_nash_iff
+
+/-- Source-outcome lower bounds survive arbitrary unilateral native deviations
+under asynchronous pending-message service, independently of adversary preferences. -/
+theorem source_event_pending_deviation_guarantee [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime setup.eventGraph)
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
+    (value : State L setup.program.terminalCtx → ℝ) (missing bound : ℝ)
+    (sourceBound : ∀ alternative : SourceProgram.BehavioralPolicy who setup.program,
+      bound ≤ (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
+        profile who alternative)).expect value)
+    (replacement : runtime.application.PlayerPolicy) :
+    bound ≤ ((setup.eventPendingGame runtime roster reactionRounds wire order).play
+      (Profile.update (sig := (setup.eventPendingGame runtime
+        roster reactionRounds wire order).sig)
+        (fun actor => setup.compileEventPendingStrategy runtime actor (profile actor))
+        who replacement)).expect
+          (fun outcome => (setup.eventPendingOutcome runtime outcome).elim missing value) :=
+  setup.eventPendingGame_deviation_guarantee runtime feasible roster reactionRounds wire order
+    profile who value missing bound sourceBound replacement
+
+/-- info: 'Vegas.Paper.source_event_pending_deviation_guarantee' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_event_pending_deviation_guarantee
 
 end Vegas.Paper

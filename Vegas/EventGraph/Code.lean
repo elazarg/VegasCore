@@ -793,6 +793,13 @@ def actor {Field : Type} [DecidableEq Field]
   | .resolve owner _ _ _ => some owner
   | .sample _ _ => none
 
+theorem actor_cast {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {left right : EventField Player L}
+    (same : left = right) (code : EventCode layout left) :
+    actor (cast (congrArg (EventCode layout) same) code) = actor code := by
+  cases same
+  rfl
+
 /-- The prescribed semantic action at a node. Chance nodes have no strategic
 action; their randomness is entirely in the retained distribution code. -/
 def Action {Field : Type} [DecidableEq Field]
@@ -927,6 +934,24 @@ theorem eval?_isSome_of_reads {Field : Type} [DecidableEq Field]
       rw [resolve_eval?, Option.isSome_map]
       exact resolveOutput?_isSome binding checks action store available
   | sample payload law => exact law.eval?_isSome store available
+
+/-- Strategic nodes are deterministic once their action and declared reads
+are fixed. Randomness belongs to sample nodes and to the policy choosing an
+action, not to the execution of a supplied strategic action. -/
+theorem eval?_eq_pure_of_actor {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {output : EventField Player L}
+    (code : EventCode layout output) (owner : Player) (owned : code.actor = some owner)
+    (action : output.Action) (store : Store layout)
+    (available : ∀ field ∈ code.readFields, (store field).isSome = true) :
+    ∃ value, code.eval? action store = some (FinDist.pure value) := by
+  cases code with
+  | bind who payload => exact ⟨action, rfl⟩
+  | resolve who payload binding checks =>
+      have present := resolveOutput?_isSome binding checks action store available
+      cases result : resolveOutput? binding checks action store with
+      | none => simp [result] at present
+      | some value => exact ⟨value, by simp [eval?, result]⟩
+  | sample payload law => simp [actor] at owned
 
 /-- Node evaluation depends only on the node's declared finite footprint. -/
 theorem eval?_congr {Field : Type} [DecidableEq Field]

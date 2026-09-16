@@ -63,6 +63,32 @@ theorem canonical_deviation_terminalState_law
   apply FinDist.map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode, terminalOutcomes_map_decode, normalized]
 
+/-- Decode a canonical graph replacement through its source backtranslation.
+The same replacement is used throughout the private initial-state law. -/
+theorem canonical_setup_deviation_decode
+    (setup : Setup (Player := Player) (L := L))
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (replacement : setup.eventGraph.BehavioralPolicy who) :
+    (setup.initialLaw.bind fun initial =>
+      ((setup.eventGraph.runPolicies setup.eventGraph.canonicalScheduler
+        (setup.eventGraph.normalizeProfile
+          (Profile.update (sig := setup.eventGraph.gameSignature)
+            (compileEventProfile setup.program setup.namesNodup profile) who replacement))
+        (setup.eventInputs initial.1)).map (fun config => config.store)).map
+          (decodeState? (terminalRefs setup.program)
+            (terminalPublications setup.program setup.namesNodup))) =
+      (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program) profile who
+        (backtranslateEventPolicy setup.program setup.namesNodup who replacement))).map some := by
+  rw [Setup.run, FinDist.map_bind]
+  apply FinDist.bind_congr
+  intro initial _
+  rw [← setup.eventGraph.runPolicies_canonical_normalize_eq]
+  have law := congrArg (fun measure => measure.map some)
+    (canonical_deviation_terminalState_law setup.program setup.namesNodup profile who replacement
+      initial.1 initial.2)
+  rw [terminalOutcomes_map_decode] at law
+  exact law
+
 /-- Read the graph-local scheduler mixture through the compiler's total
 terminal-state decoder, retaining a single mixture across private setup. -/
 private theorem scheduled_canonical_deviation_mixture

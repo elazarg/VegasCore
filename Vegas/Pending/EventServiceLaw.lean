@@ -16,6 +16,172 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
+/-- A local execution invariant lifts through every concrete service plan. -/
+theorem runServicePlan_invariant (runtime : EventGraphRuntime graph)
+    (players : Player → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy)
+    (invariant : runtime.application.PolicyExecution → Prop)
+    (preserved : ∀ instruction before after, invariant before →
+      after ∈ (runtime.serviceStep players wire instruction before).support → invariant after)
+    (plan : List (ServiceInstruction graph))
+    (before after : runtime.application.PolicyExecution) (holds : invariant before)
+    (member : after ∈ (runtime.runServicePlan players wire plan before).support) :
+    invariant after := by
+  induction plan generalizing before with
+  | nil =>
+      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      subst after
+      exact holds
+  | cons instruction rest ih =>
+      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      obtain ⟨middle, firstMem, restMem⟩ := member
+      exact ih middle (preserved instruction before middle holds firstMem) restMem
+
+/-- Local instruction preservation also suffices for adaptive order choices:
+the order policy selects a plan but does not alter the execution itself. -/
+theorem runService_invariant (runtime : EventGraphRuntime graph)
+    (roster : List Player) (reactionRounds : Nat)
+    (players : Player → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (invariant : runtime.application.PolicyExecution → Prop)
+    (preserved : ∀ instruction before after, invariant before →
+      after ∈ (runtime.serviceStep players wire instruction before).support → invariant after)
+    (count : Nat) (before after : runtime.application.PolicyExecution) (holds : invariant before)
+    (member : after ∈
+      (runtime.runService roster reactionRounds players wire order count before).support) :
+    invariant after := by
+  induction count generalizing before with
+  | zero =>
+      simp only [runService, FinDist.mem_support_pure] at member
+      subst after
+      exact holds
+  | succ count ih =>
+      simp only [runService, FinDist.support_bind, Set.mem_iUnion] at member
+      obtain ⟨middle, epochMem, restMem⟩ := member
+      simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at epochMem
+      obtain ⟨chosen, _, planMem⟩ := epochMem
+      exact ih middle (runtime.runServicePlan_invariant players wire invariant preserved
+        (epochPlan chosen roster reactionRounds) before middle holds planMem) restMem
+
+/-- A service instruction either stutters or executes one supported native
+action. Policy choices introduce no transitions outside the application. -/
+theorem serviceStep_native_step (runtime : EventGraphRuntime graph)
+    (players : Player → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy) (instruction : ServiceInstruction graph)
+    (before after : runtime.application.PolicyExecution)
+    (member : after ∈ (runtime.serviceStep players wire instruction before).support) :
+    after.native = before.native ∨
+      ∃ action, after.native ∈ (runtime.application.step before.native action).support := by
+  have environment (command : runtime.application.EnvironmentPolicyCommand)
+      (supported : after ∈
+        (runtime.application.environmentPolicyStep before command).support) :
+      after.native = before.native ∨
+        ∃ action, after.native ∈ (runtime.application.step before.native action).support := by
+    have native : after.native ∈
+        ((runtime.application.environmentPolicyStep before command).map
+          MessageInterface.PolicyExecution.native).support := by
+      rw [FinDist.support_map]
+      exact ⟨after, supported, rfl⟩
+    rw [runtime.application.environmentStep_native] at native
+    cases actionEq : command.toAction with
+    | none =>
+        left
+        simpa only [actionEq, FinDist.mem_support_pure] using native
+    | some action =>
+        right
+        exact ⟨action, by simpa only [actionEq] using native⟩
+  cases instruction with
+  | player who | wire =>
+      exact runtime.application.invoke_native_step players
+        (runtime.application.wireEnvironment wire) before after _ member
+  | grant event | includeLatest event owner | sample event | tick | expire event =>
+      exact environment _ member
+
+/-- The recorded suffix also retains the exact action labels of that step. -/
+theorem serviceStep_native_support (runtime : EventGraphRuntime graph)
+    (players : Player → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy) (instruction : ServiceInstruction graph)
+    (before after : runtime.application.PolicyExecution)
+    (member : after ∈ (runtime.serviceStep players wire instruction before).support) :
+    ∃ suffix, after.nativeTrace = before.nativeTrace ++ suffix ∧
+      after.native ∈ (runtime.application.run suffix before.native).support := by
+  cases instruction with
+  | player who | wire =>
+      exact runtime.application.invoke_native_support players
+        (runtime.application.wireEnvironment wire) before after _ member
+  | grant event | includeLatest event owner | sample event | tick | expire event =>
+      exact runtime.application.environmentStep_native_support before _ after member
+
+/-- A concrete service plan retains its complete native trace as an execution
+witness, including private work, pending submissions, and rejected traffic. -/
+theorem runServicePlan_native_support (runtime : EventGraphRuntime graph)
+    (players : Player → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy) (plan : List (ServiceInstruction graph))
+    (before after : runtime.application.PolicyExecution)
+    (member : after ∈ (runtime.runServicePlan players wire plan before).support) :
+    ∃ suffix, after.nativeTrace = before.nativeTrace ++ suffix ∧
+      after.native ∈ (runtime.application.run suffix before.native).support := by
+  induction plan generalizing before with
+  | nil =>
+      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      subst after
+      exact ⟨[], by simp⟩
+  | cons instruction rest ih =>
+      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      obtain ⟨middle, firstMem, restMem⟩ := member
+      obtain ⟨first, firstTrace, firstRun⟩ :=
+        runtime.serviceStep_native_support players wire instruction before middle firstMem
+      obtain ⟨second, secondTrace, secondRun⟩ := ih middle restMem
+      refine ⟨first ++ second, ?_, ?_⟩
+      · rw [secondTrace, firstTrace, List.append_assoc]
+      · rw [runtime.application.run_append, FinDist.support_bind]
+        simp only [Set.mem_iUnion]
+        exact ⟨middle.native, firstRun, secondRun⟩
+
+/-- Publicly choosing an epoch order changes which native trace is executed,
+not which native transitions exist. -/
+theorem serviceEpoch_native_support (runtime : EventGraphRuntime graph)
+    (roster : List Player) (reactionRounds : Nat)
+    (players : Player → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (before after : runtime.application.PolicyExecution)
+    (member : after ∈
+      (runtime.serviceEpoch roster reactionRounds players wire order before).support) :
+    ∃ suffix, after.nativeTrace = before.nativeTrace ++ suffix ∧
+      after.native ∈ (runtime.application.run suffix before.native).support := by
+  simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at member
+  obtain ⟨chosen, _, supported⟩ := member
+  exact runtime.runServicePlan_native_support players wire
+    (epochPlan chosen roster reactionRounds) before after supported
+
+/-- Every supported adaptive service run has the exact appended native trace
+as its operational witness. No restriction on player or wire policies is needed. -/
+theorem runService_native_support (runtime : EventGraphRuntime graph)
+    (roster : List Player) (reactionRounds : Nat)
+    (players : Player → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (count : Nat) (before after : runtime.application.PolicyExecution)
+    (member : after ∈
+      (runtime.runService roster reactionRounds players wire order count before).support) :
+    ∃ suffix, after.nativeTrace = before.nativeTrace ++ suffix ∧
+      after.native ∈ (runtime.application.run suffix before.native).support := by
+  induction count generalizing before with
+  | zero =>
+      simp only [runService, FinDist.mem_support_pure] at member
+      subst after
+      exact ⟨[], by simp⟩
+  | succ count ih =>
+      simp only [runService, FinDist.support_bind, Set.mem_iUnion] at member
+      obtain ⟨middle, firstMem, restMem⟩ := member
+      obtain ⟨first, firstTrace, firstRun⟩ := runtime.serviceEpoch_native_support
+        roster reactionRounds players wire order before middle firstMem
+      obtain ⟨second, secondTrace, secondRun⟩ := ih middle restMem
+      refine ⟨first ++ second, ?_, ?_⟩
+      · rw [secondTrace, firstTrace, List.append_assoc]
+      · rw [runtime.application.run_append, FinDist.support_bind]
+        simp only [Set.mem_iUnion]
+        exact ⟨middle.native, firstRun, secondRun⟩
+
 namespace State
 
 /-- Proved transition facts: completed events persist, time advances by the

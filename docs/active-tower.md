@@ -1,5 +1,10 @@
 # Active theorem map
 
+The asynchronous capstone path is `SourceProgram → EventGraph → EventGraphRuntime`.
+The ordered `Graph → GraphRuntime` path has a separate checked source composition.
+The two backends share generic message semantics and game-theoretic transport;
+neither strategic theorem substitutes one runtime's execution for the other's.
+
 ## Source semantics
 
 `Vegas.Source` defines `SourceProgram`, behavioral policies, execution, and
@@ -10,7 +15,7 @@ are satisfied.
 See [source semantics](source-semantics.md) and the
 [source rationale](source-design-rationale.md).
 
-## Source to typed graph
+## Source to ordered typed graph
 
 `Vegas.Game.GraphCompilation` packages the exact honest decoded-state law,
 unilateral deviation backtranslation against unchanged opponents, and
@@ -22,7 +27,7 @@ The edge covers the full failure-aware source language and requires no finite
 action-domain, failure-dominance, or universal guard-feasibility premise. See
 [source-to-graph](source-graph-edge.md).
 
-## Typed graph to pending messages
+## Ordered typed graph to pending messages
 
 `Vegas.GraphRuntime` is the concrete target. Its state and policies use
 the generic `Interaction.MessageApplication`; `Vegas.Pending` modules prove binding and
@@ -165,11 +170,10 @@ against unilateral deviations independently of the deviator's preferences.
 These results cover the full source language and need no failure-dominance
 or finite-payload premise.
 
-The asynchronous pending-message certificate remains open, as described in the
-[EventGraph plan](event-graph-design.md). The conservative barrier compiler
-targets exact finite-mixture deviation laws at that level too. The ideal-graph
-capstones do not replace the proved ordered pending-message strategic
-capstones. A separate
+The asynchronous pending-message certificate is checked independently of the
+ideal-graph scheduler theorem. The conservative barrier compiler has an exact
+finite-mixture deviation law for the concrete event-addressed message service.
+A separate
 [failure-comparison contract](event-graph-failure-comparison.md) applies only
 to broader runtimes that expose genuinely new information before a failure
 choice, and is not a gate for that initial compiler.
@@ -220,39 +224,47 @@ observation after the block regardless of the selected value or failure.
 The graph's memoized continuation equations are also checked: privately
 drawing and remembering a ready action preserves its future semantic law.
 Both compiled three-invocation blocks satisfy the corresponding native law.
-For prescribed profiles, the block laws restore a clean boundary with an
-empty pending pool and untouched resources for unfinished events. The complete
-service proof establishes these entry conditions and deadline protection
-throughout every epoch. Arbitrary deviations require a different locality
-argument; an arbitrary deviator need not restore this boundary.
+For prescribed owners, policy coherence, canonical-resource, packet-origin,
+and replay laws protect each unfinished event through actual service prefixes.
+The reachability theorem gives every unfinished unchanged-owner activation age
+at most one tick. This supplies deadline protection even when a deviation sends
+malformed, premature, repeated, or competing traffic; the deviator need not
+restore a clean pending-pool boundary.
 
 `BarrierOrdered.ready_public_unique` proves that a ready public event is the
 only ready event. It supplies the graph-level reason that observing an honest
 opening before inclusion cannot enable another graph decision in that interval.
 
-The event-addressed honest law is checked for the full source language.
+The event-addressed honest and strategic laws are checked for the full source
+language.
 `servicedEventGame_honest_store_law` establishes the graph-relative edge;
 `eventPendingGame_honest_law` composes it with source compilation. The proof
 covers actual adaptive wire actions between submission and inclusion, and
-shows that the configured deadline grace protects prescribed play. The
-arbitrary-deviation theorem remains open. The ideal-graph scheduling theorem
-alone does not establish that strategic law for the richer message host.
+shows that the configured deadline grace protects prescribed play.
+`exists_deviation_mixture_store_law` proves the graph-relative exact deviation
+mixture for every native focal policy. It jointly predraws the focal, public
+wire, and public adaptive-order response functions, proves reached focal
+actions are observation-local, and protects every unchanged compiled owner
+through the actual service. The ideal-graph scheduling theorem alone is not
+used as a substitute for this richer message-host argument.
 
 `Vegas.Game.EventMessages` defines the actual source-to-native game, composed
 policy compiler, and terminal-state readout. `Paper.lean` audits the following
 capstones over these definitions:
 
-- `source_event_pending_honest_law` (proved): equality with the source outcome law.
-- `source_event_pending_deviation_law` (UNPROVED): every unilateral native deviation has
-  the law of one finite source-policy mixture across private setup.
-- `source_event_pending_approximate_nash_iff` (UNPROVED): same-error Nash preservation
+- `source_event_pending_honest_law`: equality with the source outcome law.
+- `source_event_pending_deviation_law`: every unilateral native deviation has
+  the law of one finite source-policy mixture across private setup, with all
+  opponents unchanged.
+- `source_event_pending_approximate_nash_iff`: same-error Nash preservation
   and reflection at compiled profiles for source-state utilities.
 
 These statements assume the concrete epoch service with deadlines of at least
-two ticks; they do not assume a strategic certificate. The honest theorem's
-axiom pin contains only the standard Lean axioms. The two UNPROVED statements
-contain `sorry` and adjacent pins recording `sorryAx`; their proofs and the
-sufficiency of their stated hypotheses remain open.
+two ticks; they do not assume a strategic certificate or generalized network
+fairness. Their axiom pins contain only the standard Lean axioms. The deviation
+mixture is selected before the private setup draw. The wire and event-order
+policies may adapt to the public pool, observations, and histories exposed by
+the concrete service.
 
 `EventGraphRuntime.handle_publicView_replaceRemembered` proves that changing
 the private original-action cache cannot change packet acceptance or the
@@ -276,11 +288,12 @@ semantic evaluator is not itself public contract code.
 
 ## Outside the theorem
 
-The target assumes ideal commitments, authentication, canonical ordered
-service, bounded reaction slots, and relative deadlines. It is not a theorem
-about computational cryptography, arbitrary asynchronous fairness, transaction
-fees, consensus, a ledger, or the EVM. The [road ahead](a-road-ahead.md) treats
-those as separate refinement edges.
+The target assumes ideal opaque commitments, authentication, a fixed finite
+epoch protocol with publicly adaptive event permutations, fixed reaction
+rounds, and relative deadlines of at least two ticks. It is not a theorem about
+computational cryptography, arbitrary asynchronous fairness, transaction fees,
+consensus, a ledger, or the EVM. The [road ahead](a-road-ahead.md) treats those
+as separate refinement edges.
 
 The `Vegas.Language` surface-syntax prototype has its own internal elaboration
 target. Its connection to this tower has no semantic or strategic theorem yet.

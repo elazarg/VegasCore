@@ -6,7 +6,7 @@ The checked compilation path is:
 
 ```text
 failure-aware SourceProgram
-  -> typed immutable Graph
+  -> dependency-driven EventGraph
   -> public pending-message runtime
 ```
 
@@ -18,10 +18,15 @@ legal source policies while leaving opponents unchanged. The resulting
 pending-message profile preserves and reflects same-error epsilon-Nash.
 
 The native target uses authenticated messages, ideal opaque commitments,
-public opening verification, relative deadlines, and a bounded ordered service
-plan. These are explicit semantic assumptions. The repository does not yet
-provide cryptographic security, censorship resistance, refinement of a general
-fair asynchronous network, ledger refinement, or EVM deployment.
+public opening verification, and relative deadlines. Its concrete finite
+service runs fixed-shape epochs: a public policy adaptively chooses a
+permutation of all events, each event receives its prescribed opportunities,
+then the clock advances once and expiry is checked. The strategic theorem
+assumes every event deadline is at least two ticks. The wire and order policies
+may adapt to their public observations and histories; no generalized fair
+network is assumed. The repository does not provide computational
+cryptographic security, censorship resistance, ledger refinement, or EVM
+deployment.
 
 An arbitrary real-valued observation of the terminal source state may be used
 in the deviation guarantee; it need not be a player's declared payoff. Thus a
@@ -42,15 +47,13 @@ Start with the [artifact guide](ARTIFACT.md), [theorem map](docs/active-tower.md
 [source-to-graph edge](docs/source-graph-edge.md), and
 [typed-message edge](docs/typed-message-edge.md). The
 [road ahead](docs/a-road-ahead.md) describes target boundaries still to add.
-The [EventGraph design and implementation plan](docs/event-graph-design.md)
-specifies the asynchronous compilation work. Its full-source honest law,
-unilateral deviation mixture law, and same-error epsilon-Nash correspondence
-under adaptive public graph scheduling are checked. The source mixture is
-chosen before private setup. The event-addressed pending-message game also has
-a checked arbitrary-player completion theorem and a full-source honest outcome
-law under [public epoch service](docs/event-service.md). Its arbitrary-deviation
-and Nash correspondence remain open; the strategic pending-message theorem
-above uses ordered service.
+The [EventGraph design](docs/event-graph-design.md) specifies the asynchronous
+compilation boundary. The event-addressed pending-message game has checked
+arbitrary-player completion, honest outcome, unilateral-deviation mixture, and
+same-error epsilon-Nash theorems under the concrete
+[public epoch service](docs/event-service.md). The deviation may use any native
+player policy. Its exact source-policy mixture is chosen before private setup,
+while the native wire and event-order policies remain public and adaptive.
 
 ## Build
 

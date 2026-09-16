@@ -24,12 +24,12 @@ imports the graph, not source syntax or its compiler. The boundary checker
 enforces these directions and keeps the prototype frontend out of the verified
 compiler and shared expression modules.
 
-The active IR is `Vegas.Graph`. It retains typed expressions,
+`Vegas.Graph` supplies the ordered IR. It retains typed expressions,
 observations, bindings, resolution results, and chance kernels. The native host
 in `Vegas.Pending` executes that graph directly. Source-to-graph composition
 belongs in `Vegas.Game`, above the backend theorem.
 
-`Vegas.EventGraph` supplies the operational interface for dependency-driven
+`Vegas.EventGraph` supplies the IR and operational interface for dependency-driven
 compilation. `Vegas.Compile.EventGraphScheduling` proves full-source honest
 correspondence under adaptive public scheduling. Source-order execution and
 other scheduling instances share one runner. `Vegas.EventGraph.SchedulerMixture`
@@ -45,8 +45,12 @@ implements an event-addressed message application. `EventService` and
 whole-run completion under arbitrary players. `EventHonestLaw` proves exact
 honest terminal-store laws for independently certified graphs;
 `Vegas.Game.EventMessages` composes that edge with the source-to-graph law.
-The arbitrary-deviation edge is not proved. The [EventGraph plan](event-graph-design.md) separates
-source correspondence, scheduling laws, and pending-message guarantees.
+`EventStrategicLaw` proves the graph-relative native deviation mixture law,
+using actual-service action locality, unchanged-owner deadline protection, and
+joint predrawing of focal, wire, and ordering responses. Source backtranslation
+and strategic transport belong in `Vegas.Game.EventMessageStrategic`; the
+backend has no source-syntax dependency. The [EventGraph plan](event-graph-design.md)
+separates source correspondence, scheduling laws, and pending-message guarantees.
 
 `Vegas.Language` prototypes surface notation for typed bindings and nullable
 guards. Its internal `SurfaceCore` representation and side conditions live in
