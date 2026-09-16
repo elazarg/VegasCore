@@ -35,7 +35,26 @@ The [source contract](source-semantics.md), [source rationale](source-design-rat
 [source/graph edge](source-graph-edge.md), and
 [message proof guide](typed-message-edge.md) specify these boundaries.
 
-## Next milestone: transaction and block execution
+## Next milestone: dependency-driven asynchronous execution
+
+Implement the [EventGraph design and plan](event-graph-design.md): a typed
+ready-event semantics, source-derived information and effect dependencies,
+event-relative message service, and a full-source asynchronous deviation
+certificate. The native theorem must allow different acceptance orders for
+independent events, not only different packet-delivery orders.
+
+Arbitrary players may announce their own choices early. The strategic proof
+keeps unchanged opponents on their compiled source policies and accounts for
+the environment's reactions. Prescribed opening traffic respects the source
+information barriers; restricting arbitrary players from transmitting secrets
+is not an acceptable substitute.
+
+The canonical ordered execution should be a scheduler specialization of the
+same EventGraph semantics. At completion of the migration, keep one active
+compiler/host path. The transaction/block boundary below then realizes that
+dependency-driven application's integrity, observation, and service contracts.
+
+## Following milestone: transaction and block execution
 
 Add an independently executable host with authenticated callers, transaction
 identities, nonces, atomic application state changes, rejection/revert receipts,

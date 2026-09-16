@@ -42,6 +42,9 @@ Start with the [artifact guide](ARTIFACT.md), [theorem map](docs/active-tower.md
 [source-to-graph edge](docs/source-graph-edge.md), and
 [typed-message edge](docs/typed-message-edge.md). The
 [road ahead](docs/a-road-ahead.md) describes target boundaries still to add.
+The [EventGraph design and implementation plan](docs/event-graph-design.md)
+specifies the next asynchronous compilation milestone; its results are not yet
+part of the checked tower.
 
 ## Build
 

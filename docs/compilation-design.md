@@ -1,5 +1,11 @@
 # Compilation design
 
+This document describes the checked ordered tower. The next compiler design
+and implementation milestones are specified in
+[Dependency-driven EventGraph](event-graph-design.md). Its asynchronous
+semantics and strategic theorem remain to be implemented; the existing
+ordered theorem is not evidence for those prospective claims.
+
 ## Semantic interfaces
 
 The source interface is a `SourceProgram` plus an initial typed environment.
