@@ -2,13 +2,14 @@
 
 import Vegas.Expr.Simple
 import Vegas.Pending.EventService
+import Vegas.Pending.EventPolicies
 
 /-! # Event service regressions
 
 The shared pending-message service schedules two independent binding events in
-both orders.  These focused tests cover the concrete epoch plans, deadline
-feasibility, and the event-addressed reserved selector.  Handler acceptance is
-covered by the existing event-compilation runtime regressions.
+both orders. These tests cover epoch plans, deadline feasibility, the reserved
+selector, and prescribed binding staging. Successful and failed choices use
+the same public packet and store their exact selected result on inclusion.
 -/
 
 namespace VegasTests.EventService
@@ -94,6 +95,111 @@ grace requirement. -/
 example : runtime.ServiceFeasible := by
   intro event
   rfl
+
+private def fixedPolicy (choice : PublicationResult Bool) : pairGraph.BehavioralPolicy false :=
+  fun _ _ _ => FinDist.pure choice
+
+private def granted : EventGraphRuntime.State pairGraph :=
+  { EventGraphRuntime.State.initial (graph := pairGraph) (fun input => nomatch input) with
+    serviceGrant := some 0 }
+
+private def observed (state : EventGraphRuntime.State pairGraph) : runtime.application.View :=
+  Interaction.MessageApplication.State.observe runtime.application
+    (Interaction.MessageApplication.State.initial runtime.application state) false
+
+private def remembered (choice : PublicationResult Bool) : EventGraphRuntime.State pairGraph :=
+  EventGraphRuntime.privateStep granted false (.remember 0 choice)
+
+private def firstEntry (choice : PublicationResult Bool) : runtime.application.PlayerEntry :=
+  ⟨observed granted, .privateCommand (.remember 0 choice)⟩
+
+private def preparation (choice : PublicationResult Bool) :
+    EventGraphRuntime.PrivateCommand pairGraph :=
+  match choice with
+  | .failure => .remember 0 choice
+  | .success value => .prepare 0 ⟨.bool, value⟩
+
+private def staged (choice : PublicationResult Bool) : EventGraphRuntime.State pairGraph :=
+  EventGraphRuntime.privateStep (remembered choice) false (preparation choice)
+
+private def stagedHistory (choice : PublicationResult Bool) :
+    List runtime.application.PlayerEntry :=
+  [firstEntry choice,
+   ⟨observed (remembered choice), .privateCommand (preparation choice)⟩]
+
+/-- Both payload success and binding failure first use an entirely private
+sampling operation. Neither emits a packet in the first owner opportunity. -/
+example (choice : PublicationResult Bool) :
+    runtime.compilePlayerPolicy false (fixedPolicy choice) [] (observed granted) =
+      FinDist.pure (.privateCommand (.remember 0 choice)) := by
+  have actor : pairGraph.actor? 0 = some false := rfl
+  simp [EventGraphRuntime.compilePlayerPolicy, EventGraphRuntime.submittedAt,
+    EventGraphRuntime.stagingCount, observed, granted,
+    Interaction.MessageApplication.State.observe,
+    Interaction.MessageApplication.State.initial,
+    EventGraphRuntime.application, EventGraphRuntime.State.playerView,
+    EventGraphRuntime.State.publicView, EventGraphRuntime.PublicView.EventReady,
+    Vegas.EventGraph.publicObserve, Vegas.EventGraph.Config.initial,
+    EventGraphRuntime.State.initial, EventGraphRuntime.nodeView,
+    Vegas.EventGraph.normalizePolicy, fixedPolicy, actor]
+
+/-- Uniform private staging leaves the same public application state for
+every selected value, including failure. -/
+example (left right : PublicationResult Bool) :
+    (staged left).publicView = (staged right).publicView := by
+  cases left <;> cases right <;> rfl
+
+/-- The common packet's private candidate meaning is exactly the chosen
+binding action, including genuine failure rather than an in-domain default. -/
+private theorem staged_result (choice : PublicationResult Bool) :
+    (staged choice).bindingResult (false, .prepared 0) .bool = choice := by
+  cases choice <;> rfl
+
+/-- The third opportunity publishes the same opaque handle for every
+selected value. Failure is not a cleartext alternative to commitment. -/
+example (choice : PublicationResult Bool) :
+    runtime.compilePlayerPolicy false (fixedPolicy choice)
+        (stagedHistory choice) (observed (staged choice)) =
+      FinDist.pure (.submit (.commitment 0 (false, .prepared 0))) := by
+  have actor : pairGraph.actor? 0 = some false := rfl
+  cases choice <;>
+    simp [EventGraphRuntime.compilePlayerPolicy, EventGraphRuntime.submittedAt,
+      EventGraphRuntime.stagingCount, EventGraphRuntime.stagesEvent,
+      EventGraphRuntime.eventSlot, stagedHistory, firstEntry, preparation,
+      staged, remembered, observed, granted,
+      Interaction.MessageApplication.State.observe,
+      Interaction.MessageApplication.State.initial,
+      EventGraphRuntime.application, EventGraphRuntime.privateStep,
+      EventGraphRuntime.State.playerView, EventGraphRuntime.State.publicView,
+      EventGraphRuntime.PublicView.EventReady, Vegas.EventGraph.publicObserve,
+      Vegas.EventGraph.Config.initial, EventGraphRuntime.State.initial,
+      EventGraphRuntime.nodeView, actor, Function.update]
+
+/-- Inclusion of the staged opaque packet really stores the selected value;
+the common failure packet is accepted as a failed binding. -/
+example (choice : PublicationResult Bool) :
+    (EventGraphRuntime.handle runtime (staged choice)
+      ⟨(false, 0), .commitment 0 (false, .prepared 0)⟩).map
+        (fun state => state.config.outputs 0) = some (some choice) := by
+  have ready : (staged choice).config.cut.Ready 0 := by
+    cases choice <;> change (EventOrder.Cut.empty pairOrder).Ready 0 <;> decide
+  have timely : (staged choice).WithinDeadline runtime 0 := by
+    cases choice <;> change 0 < 2 <;> decide
+  have vacant : (staged choice).accepted (.inr 0) = none := by
+    cases choice <;> rfl
+  have unused : (staged choice).HandleUnused (false, .prepared 0) := by
+    intro field
+    cases field with
+    | inl input => nomatch input
+    | inr event =>
+        cases choice <;>
+          change (none : Option (EventGraphRuntime.Handle pairGraph)) ≠
+            some (false, .prepared 0)
+        all_goals simp
+  rw [EventGraphRuntime.handle_commitment_eq runtime (staged choice) (false, 0)
+    0 (false, .prepared 0) false .bool rfl rfl rfl ready timely rfl rfl vacant unused]
+  simpa [EventGraphRuntime.State.complete, staged_result] using
+    congrArg (fun result => some (some result)) (staged_result choice)
 
 end
 

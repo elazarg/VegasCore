@@ -85,10 +85,82 @@ event action. That policy theorem and the whole-run honest/deviation laws are
 separate from termination. No such strategic law is a field of the service
 configuration.
 
+## Prescribed policies and local refinement
+
+The prescribed policy uses a public grant only when that event is ready and
+owned by the player. Readiness is computed from public completion identities.
+The three uninterrupted owner opportunities have a fixed shape:
+
+1. Sample the normalized graph policy and privately remember its action.
+2. Privately prepare the opening material, or repeat the remembered action
+   when no material is needed.
+3. Submit the event-addressed packet.
+
+A binding uses the same opaque handle and submission time for success and
+failure. Its handle is derived from its owner and event identity, independently
+of the selected value. A resolution sends an opening only when owner-local
+prevalidation succeeds. A withheld or rejected disclosure sends the same
+withholding packet. The private remembered action retains the distinction
+between choosing `false` and choosing `true` whose guard rejects the opening.
+Policies outside this prescribed image remain unrestricted.
+
+`runServicePlan_compiled_bind_block` proves an exact distribution law for the
+three actual owner invocations: one normalized graph-policy draw followed by
+its private preparation and submission. The empty cache, unused staging
+history, grant, and readiness premises are explicit. This is a local block law;
+it does not assume that arbitrary service prefixes satisfy these premises.
+
+`handle_commitment_eq`, `handle_opening_eq`, and `handle_withhold_eq` relate
+accepted packets to the graph's actual binding and resolution kernels. These
+are local laws with explicit readiness, deadline, and provenance premises;
+they do not assume a whole-run correspondence.
+
+`handle_resolutionSubmission_eq` connects the packet computed from the owner's
+actual native observation to that resolution kernel. Its binding-provenance
+premise supplies the accepted handle and matching immutable candidate for a
+successful opening. False disclosure and rejected true disclosure both execute
+correctly through withholding, retaining their distinct private actions.
+
+`State.BindingInvariant` records typed, distinct accepted handles and the
+candidate backing each successful binding. Initialization and preservation by
+private commands and completions that cannot introduce a binding success are
+checked. Its preservation through successful binding acceptance and all
+native transitions still needs to be established.
+
+The compiler's public-barrier dependencies address early visibility of an
+honest opening. `BarrierOrdered.ready_public_unique` proves that a ready
+public event is the only ready event in that cut. While its opening awaits
+inclusion, no different event can complete. Once it completes, its successful
+value is graph-public. This fact covers both publications and chance nodes;
+it is a consequence of the dependency discipline, not a restriction on what
+packets an adversary may send.
+
 ## Remaining strategic edge
 
-The graph-to-message proof must construct the prescribed native policies,
-prove their sample-once and prevalidation behavior, and compare their actual
-outcome laws and unilateral deviations with the graph game. It must account
-for the public pool and this service's richer observation history; it cannot
-assume that the wire environment is already an ideal-graph scheduler.
+The whole-run proof must establish binding provenance and the block entry
+conditions throughout execution, effective reserved inclusion, and deadline
+protection, then compare actual outcome laws and unilateral deviations with
+the graph game.
+
+A candidate honest-law coupling advances a proof-only ideal configuration
+when an honest owner first samples its event action. Native preparation,
+submission, and inclusion subsequently implement that already selected action.
+The coupling must relate outstanding remembered actions to the difference
+between the ideal and native cuts. Public-barrier ordering permits outstanding
+independent hidden bindings, while a ready public event excludes another
+ready decision. Normalized observations must agree at each fresh policy draw,
+and service protection must ensure the native state eventually catches up.
+The pointwise `canonicalContinuation_step` law can then handle each ready
+ideal step without factoring the wire process through a public scheduler.
+This is a proof plan, not an established coupling or a new runtime model.
+
+The richer wire process cannot simply be treated as an ideal public graph
+scheduler. A deviator may publish its own private information in arbitrary
+packets, and wire decisions can depend on those packets. Consequently, the
+effective scheduling law need not factor through the graph's public
+observation. A unilateral extraction must account jointly for the deviator,
+the wire process, and the service ordering. The information argument must
+show that extra observations reveal no unavailable opponent information at
+a focal decision; it need not prevent the focal player from signaling its
+own information. Local handler refinement and completion alone do not supply
+this argument.

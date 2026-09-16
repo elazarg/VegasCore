@@ -114,8 +114,8 @@ def runServicePlan (runtime : EventGraphRuntime graph)
       (runtime.serviceStep players wire instruction execution).bind
         (runtime.runServicePlan players wire rest)
 
-/-- Three owner calls accommodate remembering, preparing, and submitting a
-binding; shorter actions may wait. Every wire slot permits roster reactions. -/
+/-- Three uninterrupted owner calls accommodate private sampling, private
+staging, and submission. Every subsequent wire slot permits roster reactions. -/
 def eventServicePlan (roster : List Player) (reactionRounds : Nat)
     (event : graph.EventId) : List (ServiceInstruction graph) :=
   [.grant event] ++

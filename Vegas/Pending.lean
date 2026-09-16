@@ -4,6 +4,10 @@ import Vegas.Pending.ActionReadout
 import Vegas.Pending.Application
 import Vegas.Pending.EventApplication
 import Vegas.Pending.EventInvariant
+import Vegas.Pending.EventBindingInvariant
+import Vegas.Pending.EventPolicies
+import Vegas.Pending.EventPolicyBlock
+import Vegas.Pending.EventDisclosure
 import Vegas.Pending.EventSubmission
 import Vegas.Pending.EventService
 import Vegas.Pending.EventServiceLaw

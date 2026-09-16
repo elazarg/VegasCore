@@ -154,19 +154,33 @@ variable {graph : Vegas.EventGraph Player L}
 
 namespace State
 
-/-- Candidate meaning installed for one initial binding input. -/
-private def initialCandidate (inputs : graph.Inputs) (owner : Player)
-    (input : graph.InputId) : CommitmentCandidate (Raw L) :=
-  match kindEq : graph.inputLayout input with
-  | .publicData _ | .publication _ => .fresh
-  | .binding inputOwner payload =>
-      if _sameOwner : inputOwner = owner then
-        let result : PublicationResult (L.Val payload) :=
-          cast (congrArg EventField.Value kindEq) (inputs input)
+/-- Candidate meaning induced by one typed initial field value for a proposed
+owner. Non-binding fields and bindings owned by somebody else stay fresh. -/
+def candidateOfValue (owner : Player) :
+    (kind : EventField Player L) → kind.Value → CommitmentCandidate (Raw L)
+  | .publicData _, _ | .publication _, _ => .fresh
+  | .binding inputOwner payload, result =>
+      if inputOwner = owner then
         match result with
         | .failure => .unopenable
         | .success value => .openable ⟨payload, value⟩
       else .fresh
+
+omit R in theorem candidateOfValue_binding_success (kind : EventField Player L)
+    (input : kind.Value) (owner : Player) (payload : L.Ty)
+    (kindEq : kind = .binding owner payload) (value : L.Val payload)
+    (success : cast (congrArg EventField.Value kindEq) input =
+      PublicationResult.success value) :
+    candidateOfValue owner kind input = .openable ⟨payload, value⟩ := by
+  subst kind
+  change input = PublicationResult.success value at success
+  subst input
+  simp only [candidateOfValue, ↓reduceIte]
+
+/-- Candidate meaning installed for one initial binding input. -/
+private def initialCandidate (inputs : graph.Inputs) (owner : Player)
+    (input : graph.InputId) : CommitmentCandidate (Raw L) :=
+  candidateOfValue owner (graph.inputLayout input) (inputs input)
 
 private def initialCandidates (inputs : graph.Inputs) :
     CommitmentCandidates Player (CandidateSlot graph) (Raw L) where
@@ -205,6 +219,67 @@ def initial (inputs : graph.Inputs) : State graph :=
     activatedAt := refreshActivated config 0 (fun _ => none)
     serviceGrant := none }
 
+/-- Every initially accepted handle is the canonical opaque handle of one
+typed binding input. Event outputs have no accepted handle initially. -/
+theorem initial_accepted_eq_some (inputs : graph.Inputs) (field : graph.Field)
+    (handle : Handle graph) (accepted : (initial inputs).accepted field = some handle) :
+    ∃ (input : graph.InputId) (owner : Player) (payload : L.Ty),
+      field = .inl input ∧ graph.inputLayout input = .binding owner payload ∧
+        handle = (owner, .initial input) := by
+  cases field with
+  | inr event => simp [initial, initialAccepted] at accepted
+  | inl input =>
+      change initialAccepted (.inl input) = some handle at accepted
+      unfold initialAccepted at accepted
+      dsimp only at accepted
+      generalize kindEq : graph.inputLayout input = kind at accepted
+      cases kind with
+      | publicData payload => simp at accepted
+      | publication payload => simp at accepted
+      | binding owner payload =>
+          have handleEq : handle = (owner, .initial input) :=
+            Option.some.inj accepted.symm
+          exact ⟨input, owner, payload, rfl, kindEq, handleEq⟩
+
+/-- Initial accepted handles are injective across typed graph fields. -/
+theorem initial_accepted_injective (inputs : graph.Inputs)
+    (left right : graph.Field) (handle : Handle graph)
+    (leftAccepted : (initial inputs).accepted left = some handle)
+    (rightAccepted : (initial inputs).accepted right = some handle) : left = right := by
+  obtain ⟨leftInput, leftOwner, leftPayload, rfl, _, leftHandle⟩ :=
+    initial_accepted_eq_some inputs left handle leftAccepted
+  obtain ⟨rightInput, rightOwner, rightPayload, fieldEq, _, rightHandle⟩ :=
+    initial_accepted_eq_some inputs right handle rightAccepted
+  subst right
+  have slotEq : Slot.initial leftInput = Slot.initial rightInput := by
+    simpa [leftHandle] using congrArg Prod.snd rightHandle
+  cases slotEq
+  rfl
+
+/-- A typed initial binding field has its canonical opaque accepted handle. -/
+theorem initial_accepted_binding (inputs : graph.Inputs) (input : graph.InputId)
+    (owner : Player) (payload : L.Ty)
+    (kindEq : graph.inputLayout input = .binding owner payload) :
+    (initial inputs).accepted (.inl input) = some (owner, .initial input) := by
+  unfold initial initialAccepted
+  dsimp only
+  rw [kindEq]
+
+/-- A successful typed initial binding value installs that exact immutable
+candidate meaning under its canonical opaque handle. -/
+theorem initial_candidate_binding_success (inputs : graph.Inputs)
+    (input : graph.InputId) (owner : Player) (payload : L.Ty)
+    (kindEq : graph.inputLayout input = .binding owner payload)
+    (value : L.Val payload)
+    (success : cast (congrArg EventField.Value kindEq) (inputs input) =
+      PublicationResult.success value) :
+    (initial inputs).candidates.lookup (owner, .initial input) =
+      .openable ⟨payload, value⟩ := by
+  unfold initial initialCandidates CommitmentCandidates.lookup initialCandidate
+  dsimp only
+  exact candidateOfValue_binding_success (graph.inputLayout input) (inputs input)
+    owner payload kindEq value success
+
 def publicView (state : State graph) : PublicView graph where
   observation := graph.publicObserve state.config
   accepted := state.accepted
@@ -232,6 +307,14 @@ def complete (state : State graph) (event : graph.EventId)
 /-- No accepted handle may be reused for another binding field. -/
 def HandleUnused (state : State graph) (handle : Handle graph) : Prop :=
   ∀ field, state.accepted field ≠ some handle
+
+/-- Typed meaning of a candidate when it is accepted at a binding event.
+Fresh, unopenable, and wrong-typed candidates all produce binding failure. -/
+def bindingResult (state : State graph) (handle : Handle graph) (payload : L.Ty) :
+    PublicationResult (L.Val payload) :=
+  match state.candidates.lookup handle with
+  | .openable raw => (raw.as? payload).elim .failure .success
+  | .fresh | .unopenable => .failure
 
 /-- Packet inclusion is allowed strictly before this event's relative
 deadline. Expiry becomes effective at the boundary. -/
@@ -265,10 +348,7 @@ private def acceptBinding (state : State graph) (event : graph.EventId)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (handle : Handle graph) :
     State graph := by
-  let result : PublicationResult (L.Val payload) :=
-    match state.candidates.lookup handle with
-    | .openable raw => (raw.as? payload).elim .failure .success
-    | .fresh | .unopenable => .failure
+  let result := state.bindingResult handle payload
   let action : graph.Action event :=
     cast (congrArg EventField.Action outputEq.symm) result
   let value : (graph.outputLayout event).Value :=
@@ -583,6 +663,111 @@ def handle (runtime : EventGraphRuntime graph) (state : State graph)
           | .bind .. | .sample .. => none
         else none
       else none
+
+/-- A timely authenticated commitment installs its handle and exactly its
+typed immutable meaning. The statement includes failed commitments. -/
+theorem handle_commitment_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
+    (owner : Player) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (view : nodeView graph event = .bind owner payload outputEq codeEq)
+    (ready : state.config.cut.Ready event)
+    (timely : state.WithinDeadline runtime event)
+    (sender : id.1 = owner) (handleOwner : candidate.1 = owner)
+    (vacant : state.accepted (.inr event) = none)
+    (unused : state.HandleUnused candidate) :
+    handle runtime state ⟨id, .commitment event candidate⟩ =
+      some { (state.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm)
+          (state.bindingResult candidate payload))
+        (cast (congrArg EventField.Value outputEq.symm)
+          (state.bindingResult candidate payload))) with
+        accepted := Function.update state.accepted (.inr event) (some candidate)
+        candidates := state.candidates.accept candidate } := by
+  simp only [handle, dif_pos ready, dif_pos timely, view, Message.sender, sender,
+    dif_pos, handleOwner, vacant, unused, acceptBinding]
+
+/-- A verified opening executes the retained graph resolution kernel,
+including all deferred checks. No extra validator is introduced here. -/
+theorem handle_opening_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (DeferredCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (view : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+    (ready : state.config.cut.Ready event)
+    (timely : state.WithinDeadline runtime event)
+    (sender : id.1 = owner) (handleOwner : candidate.1 = owner)
+    (associated : state.accepted binding.field = some candidate)
+    (value : L.Val payload)
+    (verified : state.candidates.lookup candidate = .openable ⟨payload, value⟩)
+    (stored : binding.get? state.config.store = some (.success value))
+    (result : PublicationResult (L.Val payload))
+    (resolved : EventCode.resolveOutput? binding checks true state.config.store = some result) :
+    handle runtime state ⟨id, .opening event candidate ⟨payload, value⟩⟩ =
+      some (state.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm) true)
+        (cast (congrArg EventField.Value outputEq.symm) result)) := by
+  have verification : state.candidates.verify candidate ⟨payload, value⟩ = true :=
+    (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr verified
+  simp only [handle, dif_pos ready, dif_pos timely, view, Message.sender, sender,
+    dif_pos, handleOwner, associated, verification]
+  split
+  · rename_i impossible
+    simp [Raw.as?] at impossible
+  · rename_i decoded typed
+    have decodedEq : value = decoded := by
+      simpa [Raw.as?] using typed
+    subst decoded
+    simp [stored, acceptResolution, resolved]
+
+/-- Canonical failure traffic preserves the owner's original disclosure
+decision, even when that decision was `true` and local validation rejected it. -/
+theorem handle_withhold_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (id : MessageId Player) (event : graph.EventId)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (DeferredCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (view : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+    (ready : state.config.cut.Ready event)
+    (timely : state.WithinDeadline runtime event)
+    (sender : id.1 = owner) (disclose : Bool)
+    (remembered : state.remembered event = some
+      (cast (congrArg EventField.Action outputEq.symm) disclose))
+    (resolved : EventCode.resolveOutput? binding checks disclose state.config.store =
+      some .failure) :
+    handle runtime state ⟨id, .withhold event⟩ =
+      some (state.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm) disclose)
+        (cast (congrArg EventField.Value outputEq.symm)
+          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
+  have actionEq : withholdingAction state event owner payload binding checks outputEq =
+      disclose := by
+    cases disclose with
+    | false => simp [withholdingAction, remembered]
+    | true =>
+        have falseResult := resolveOutput?_false_eq_failure_of_ready state event ready
+          owner payload binding checks outputEq codeEq
+        have localEq : EventCode.resolveOutput? binding checks true
+            (graph.playerStore owner state.config.store) =
+          EventCode.resolveOutput? binding checks false
+            (graph.playerStore owner state.config.store) := by
+          rw [EventCode.resolveOutput?_playerStore, EventCode.resolveOutput?_playerStore,
+            resolved, falseResult]
+        simp [withholdingAction, remembered, localEq]
+  simp [handle, ready, timely, view, Message.sender, sender,
+    actionEq, acceptResolution, resolved]
 
 private theorem handle_commitment_config_step
     (runtime : EventGraphRuntime graph) (state next : State graph)

@@ -110,6 +110,30 @@ variable (app : MessageApplication Principal)
 def PolicyExecution.initial (state : app.State) : app.PolicyExecution :=
   ⟨state, fun _ => [], [], []⟩
 
+/-- Exact execution record produced by one private player command. -/
+def afterPrivate [DecidableEq Principal] (execution : app.PolicyExecution) (who : Principal)
+    (command : app.PrivateCommand) : app.PolicyExecution :=
+  { execution with
+    native := { execution.native with
+      application := app.privateStep execution.native.application who command }
+    principalHistory := fun other =>
+      if other = who then execution.principalHistory who ++
+        [⟨State.observe app execution.native who, .privateCommand command⟩]
+      else execution.principalHistory other
+    nativeTrace := execution.nativeTrace ++ [.privateCommand who command] }
+
+/-- Exact execution record produced by one public submission. -/
+def afterSubmit [DecidableEq Principal] (execution : app.PolicyExecution) (who : Principal)
+    (payload : app.Payload) : app.PolicyExecution :=
+  { execution with
+    native := { execution.native with
+      pool := (execution.native.pool.submit who payload).2 }
+    principalHistory := fun other =>
+      if other = who then execution.principalHistory who ++
+        [⟨State.observe app execution.native who, .submit payload⟩]
+      else execution.principalHistory other
+    nativeTrace := execution.nativeTrace ++ [.submit who payload] }
+
 def PlayerCommand.toAction (who : Principal) : app.PlayerCommand → Option app.Action
   | .privateCommand command => some (.privateCommand who command)
   | .submit payload => some (.submit who payload)
@@ -143,6 +167,22 @@ def playerStep [DecidableEq Principal] (who : Principal)
           if other = who then execution.principalHistory who ++ [⟨view, command⟩]
           else execution.principalHistory other
         nativeTrace := advanced.2 }
+
+theorem playerStep_private_eq [DecidableEq Principal]
+    (execution : app.PolicyExecution) (who : Principal)
+    (command : app.PrivateCommand) :
+    app.playerStep who execution (.privateCommand command) =
+      FinDist.pure (app.afterPrivate execution who command) := by
+  simp only [playerStep, PlayerCommand.toAction, advance, MessageApplication.step,
+    FinDist.pure_bind, afterPrivate]
+
+theorem playerStep_submit_eq [DecidableEq Principal]
+    (execution : app.PolicyExecution) (who : Principal)
+    (payload : app.Payload) :
+    app.playerStep who execution (.submit payload) =
+      FinDist.pure (app.afterSubmit execution who payload) := by
+  simp only [playerStep, PlayerCommand.toAction, advance, MessageApplication.step,
+    FinDist.pure_bind, afterSubmit]
 
 def environmentPolicyStep [DecidableEq Principal]
     (execution : app.PolicyExecution) (command : app.EnvironmentPolicyCommand) :

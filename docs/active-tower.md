@@ -203,6 +203,18 @@ assumed service-correctness certificate. `Paper.event_pending_completion`
 directly delegates to the totality theorem. The
 [service argument](event-service.md) gives the construction and timing boundary.
 
+`EventGraphRuntime.compileProfile` constructs observation-local native policies
+from graph policies. They normalize completion-order metadata and use three
+owner opportunities for private sampling, private staging, and public
+submission. Success and failure bindings use the same opaque handle and
+public timing. Owner-local guard rejection emits withholding rather than an
+invalid raw opening. Exact local handler laws retain both the selected
+binding result and the original disclosure action.
+
+`BarrierOrdered.ready_public_unique` proves that a ready public event is the
+only ready event. It supplies the graph-level reason that observing an honest
+opening before inclusion cannot enable another graph decision in that interval.
+
 The event-addressed honest-law and deviation theorems remain open. Completion
 does not establish preservation of honest outcomes. The configured deadline
 grace interval must be combined with proved compiled-policy use of the reserved

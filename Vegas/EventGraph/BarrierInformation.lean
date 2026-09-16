@@ -56,6 +56,25 @@ namespace BarrierOrdered
 
 variable {graph : Vegas.EventGraph Player L}
 
+/-- A ready public event is the unique ready event. Public events are genuine
+barriers: they wait for the whole earlier prefix, and every later event waits
+for them. -/
+theorem ready_public_unique (ordered : graph.BarrierOrdered)
+    (cut : graph.order.Cut) {event other : graph.EventId}
+    (isPublic : (graph.outputLayout event).IsPublic)
+    (ready : cut.Ready event) (otherReady : cut.Ready other) :
+    other = event := by
+  rcases lt_trichotomy other.val event.val with earlier | same | later
+  · have predecessor : other ∈ graph.order.predecessors event := by
+      rw [ordered event]
+      exact barrierOrder_public_event graph.outputLayout earlier isPublic
+    exact False.elim (otherReady.1 (ready.2 predecessor))
+  · exact Fin.ext same
+  · have predecessor : event ∈ graph.order.predecessors other := by
+      rw [ordered other]
+      exact barrierOrder_public_prior graph.outputLayout later isPublic
+    exact False.elim (ready.1 (otherReady.2 predecessor))
+
 /-- Every earlier output visible to a strategic actor is a direct dependency. -/
 theorem visible_predecessor (ordered : graph.BarrierOrdered)
     {event other : graph.EventId} {who : Player}
