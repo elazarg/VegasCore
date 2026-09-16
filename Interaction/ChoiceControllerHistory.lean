@@ -86,11 +86,6 @@ theorem invoke_uncached_ready_cachedValue [DecidableEq Principal]
     simpa [playerStep, advance, PlayerCommand.toAction, step] using
       congrArg FinDist.pure hrecorded
 
-/-- info: 'Interaction.MessageApplication.ChoiceController.invoke_uncached_ready_cachedValue'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms invoke_uncached_ready_cachedValue
-
 end ChoiceController
 
 namespace ChoiceEncoding
@@ -242,11 +237,6 @@ theorem runPolicies_cachedValue_of_some [DecidableEq Principal]
             (app.environmentStep_principalHistory execution command middle hstep) who]
           exact hcache
 
-/-- info: 'Interaction.MessageApplication.ChoiceEncoding.runPolicies_cachedValue_of_some'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms runPolicies_cachedValue_of_some
-
 /-- Carry a first sample jointly with the complete subsequent native
 execution. Later policies and delivery may depend on the sampled command;
 the law retains that dependence rather than multiplying separate marginals.
@@ -276,11 +266,6 @@ theorem runPolicies_sample_joint [DecidableEq Principal]
   exact congrArg (fun cached => (cached, next))
     (encoding.runPolicies_cachedValue_of_some app who players environment schedule
       middle next value hrecorded hnext)
-
-/-- info: 'Interaction.MessageApplication.ChoiceEncoding.runPolicies_sample_joint'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms runPolicies_sample_joint
 
 end ChoiceEncoding
 

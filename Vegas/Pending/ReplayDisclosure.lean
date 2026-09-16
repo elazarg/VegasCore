@@ -122,9 +122,4 @@ theorem FocalReplayCheckpoint.cachedResultsAgree_of_endpoints
         rightEndCandidates leftEndPc leftEndClock leftEndEntered rightEndPc rightEndClock
         rightEndEntered leftExtends rightExtends endVisible
 
-/-- info: 'Vegas.GraphRuntime.FocalReplayCheckpoint.cachedResultsAgree_of_endpoints'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.FocalReplayCheckpoint.cachedResultsAgree_of_endpoints
-
 end Vegas.GraphRuntime

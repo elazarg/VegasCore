@@ -428,13 +428,3 @@ theorem servicedGame_pure_deviation_law_of_locality
   exact congrArg (FinDist.map some) conserved
 
 end Vegas.GraphRuntime
-
-/-- info: 'Vegas.GraphRuntime.servicePlan_pure_deviation_law_of_locality' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.servicePlan_pure_deviation_law_of_locality
-
-/-- info: 'Vegas.GraphRuntime.servicedGame_pure_deviation_law_of_locality' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.servicedGame_pure_deviation_law_of_locality

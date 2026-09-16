@@ -95,9 +95,4 @@ theorem NativeReplayInvariant.player_invoke
   exact invariant.afterInvoke players environment (.player actor) leftSupported rightSupported
     phase focalKey environmentView focalHistory environmentHistory shapes
 
-/-- info: 'Vegas.GraphRuntime.NativeReplayInvariant.player_invoke' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.NativeReplayInvariant.player_invoke
-
 end Vegas.GraphRuntime

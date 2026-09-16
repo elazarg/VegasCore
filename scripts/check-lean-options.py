@@ -1,4 +1,4 @@
-"""Require central Lean options and confine admissions to the paper audit."""
+"""Require central Lean options and keep admissions/axiom prints in the paper audit."""
 
 from collections import Counter
 from pathlib import Path
@@ -95,22 +95,44 @@ def check_admissions(relative: Path, text: str) -> list[str]:
 
 
 def check_audit_pins(text: str) -> list[str]:
-    """Require one guarded dependency print for each flat Vegas.Paper theorem.
+    """Require a guarded dependency print immediately after each audit theorem.
 
-    This checks the compact audit's structure; Lean checks each expected axiom
-    report against the actual proof dependencies during the build.
+    The audit uses flat commands and indented direct-delegation bodies. This
+    checks that layout, not arbitrary Lean syntax; Lean checks each expected
+    axiom report against the actual proof dependencies during the build.
     """
     clean = strip_lean_comments_and_strings(text)
     declarations = set(re.findall(r"(?m)^theorem\s+(\w+)\b", clean))
-    pins = Counter(re.findall(
+    pin_matches = list(re.finditer(
         r"#guard_msgs[^\n]*?\s+in\s+#print\s+axioms\s+Vegas\.Paper\.(\w+)\b", clean
     ))
+    pins = Counter(match.group(1) for match in pin_matches)
     failures = [f"Paper.lean: missing guarded axiom pin for {name}"
                 for name in sorted(declarations - pins.keys())]
     failures.extend(f"Paper.lean: axiom pin names no audit theorem: {name}"
                     for name in sorted(pins.keys() - declarations))
     failures.extend(f"Paper.lean: duplicate axiom pin for {name}"
                     for name, count in sorted(pins.items()) if count != 1)
+    pins_at = {match.start(): match.group(1) for match in pin_matches}
+    commands = list(re.finditer(r"(?m)^\S[^\n]*", clean))
+    for index, command in enumerate(commands):
+        if declaration := re.match(r"theorem\s+(\w+)\b", command.group()):
+            name = declaration.group(1)
+            following = commands[index + 1].start() if index + 1 < len(commands) else None
+            if pins[name] == 1 and pins_at.get(following) != name:
+                failures.append(f"Paper.lean: axiom pin must immediately follow theorem {name}")
+    return failures
+
+
+def check_axiom_prints(relative: Path, text: str) -> list[str]:
+    """Keep axiom-print commands in the single root paper audit."""
+    if relative == Path("Paper.lean"):
+        return []
+    clean = strip_lean_comments_and_strings(text)
+    failures = []
+    for match in re.finditer(r"#print\s+axioms\b", clean):
+        number = clean.count("\n", 0, match.start()) + 1
+        failures.append(f"{relative}:{number}: axiom prints belong only in Paper.lean")
     return failures
 
 
@@ -129,6 +151,7 @@ def main() -> int:
             if local_option.match(line):
                 failures.append(f"{path.relative_to(root)}:{number}: {line.strip()}")
         failures.extend(check_admissions(path.relative_to(root), text))
+        failures.extend(check_axiom_prints(path.relative_to(root), text))
         if path.relative_to(root) == Path("Paper.lean"):
             failures.extend(check_audit_pins(text))
     if failures:
@@ -137,7 +160,7 @@ def main() -> int:
         return 1
     print("Explicit binders and warning-strict compilation configured centrally; "
           "no source-local Lean options or proof admissions outside Paper.lean; "
-          "capstone axiom pins complete.")
+          "axiom prints confined to Paper.lean with adjacent capstone pins.")
     return 0
 
 

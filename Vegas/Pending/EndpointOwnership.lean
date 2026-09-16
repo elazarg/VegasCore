@@ -61,14 +61,4 @@ theorem State.RealizesOwnAction.before_isOwnedBy
     before.IsOwnedBy (some focal) := by
   cases realizes <;> simp_all [State.IsOwnedBy]
 
-/-- info: 'Vegas.GraphRuntime.runPolicies_phase_lt_of_owned_endpoint' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.runPolicies_phase_lt_of_owned_endpoint
-
-/-- info: 'Vegas.GraphRuntime.State.RealizesOwnAction.before_isOwnedBy' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.State.RealizesOwnAction.before_isOwnedBy
-
 end Vegas.GraphRuntime

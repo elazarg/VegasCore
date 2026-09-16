@@ -290,23 +290,3 @@ theorem couplePrefix_native {α : Type*}
   exact hlaw.trans (FinDist.map_id _)
 
 end Interaction.MessageApplication
-
-/-- info: 'Interaction.MessageApplication.tracePolicies_prefix_trace_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.tracePolicies_prefix_trace_law
-
-/-- info: 'Interaction.MessageApplication.tracePolicies_prefix_last_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.tracePolicies_prefix_last_law
-
-/-- info: 'Interaction.MessageApplication.runPolicies_bind_prefixThrough' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.runPolicies_bind_prefixThrough
-
-/-- info: 'Interaction.MessageApplication.couplePrefix_prefix_native' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.couplePrefix_prefix_native

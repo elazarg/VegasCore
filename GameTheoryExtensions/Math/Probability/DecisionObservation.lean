@@ -124,13 +124,3 @@ theorem bind_policy_nativeKernel_eq_bind_conditionedPolicy
 end GameTheory.Math.Probability.FinDist
 
 /-! The strategic probability boundary is proved without additional axioms. -/
-
-/-- info: 'GameTheory.Math.Probability.FinDist.joint_observation_action_eq_bind_conditionedPolicy'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.Math.Probability.FinDist.joint_observation_action_eq_bind_conditionedPolicy
-
-/-- info: 'GameTheory.Math.Probability.FinDist.bind_policy_nativeKernel_eq_bind_conditionedPolicy'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.Math.Probability.FinDist.bind_policy_nativeKernel_eq_bind_conditionedPolicy

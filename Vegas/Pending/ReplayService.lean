@@ -409,13 +409,3 @@ theorem NativeReplayInvariant.pureServiceEnvironment_afterInvoke
       exact invariant.cacheShape owner different)
 
 end Vegas.GraphRuntime
-
-/-- info: 'Vegas.GraphRuntime.NativeReplayInvariant.pureServiceEnvironment_nonsample_afterInvoke' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.NativeReplayInvariant.pureServiceEnvironment_nonsample_afterInvoke
-
-/-- info: 'Vegas.GraphRuntime.NativeReplayInvariant.pureServiceEnvironment_afterInvoke' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.NativeReplayInvariant.pureServiceEnvironment_afterInvoke

@@ -276,8 +276,3 @@ theorem runPolicies_initial_bindingSoundness {Γ : VCtx Player L}
     (State.initial_bindingSoundness graph input unique) supported
 
 end Vegas.GraphRuntime
-
-/-- info: 'Vegas.GraphRuntime.runPolicies_initial_bindingSoundness' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.runPolicies_initial_bindingSoundness

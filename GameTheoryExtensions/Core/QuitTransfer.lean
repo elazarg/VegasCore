@@ -176,20 +176,3 @@ theorem compiled_quit_profile_not_isNash_of_strictlyDominates
     (hdom profile (fun _ => Set.mem_univ _))
 
 end GameTheory.GameForm.MixtureSimulationOn
-
-/-- info: 'GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash
-
-/-- info: 'GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash_of_quit_law'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms
-  GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash_of_quit_law
-
-/-- info: 'GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash_of_strictlyDominates'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms
-  GameTheory.GameForm.MixtureSimulationOn.compiled_quit_profile_not_isNash_of_strictlyDominates

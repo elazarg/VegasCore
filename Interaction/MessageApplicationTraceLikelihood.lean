@@ -213,13 +213,3 @@ theorem tracePolicies_prefixThrough_prob_mul
   exact go schedule root trace [] (FinDist.mem_support_pure.mpr rfl) htrace rfl
 
 end Interaction.MessageApplication
-
-/-- info: 'Interaction.MessageApplication.invoke_player_prob_of_step'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.invoke_player_prob_of_step
-
-/-- info: 'Interaction.MessageApplication.tracePolicies_prefixThrough_prob_eq_prod'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.tracePolicies_prefixThrough_prob_eq_prod

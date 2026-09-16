@@ -216,13 +216,3 @@ def MixtureSimulationOn.toUtilitySimulation
     exact ⟨alternative, hexpect.le.trans hbound⟩
 
 end GameTheory.GameForm
-
-/-- info: 'GameTheory.GameForm.UtilitySimulation.isεNash_compileProfile_iff' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.GameForm.UtilitySimulation.isεNash_compileProfile_iff
-
-/-- info: 'GameTheory.GameForm.UtilitySimulation.trans' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.GameForm.UtilitySimulation.trans

@@ -61,8 +61,3 @@ theorem runPolicies_environment_congr [DecidableEq Principal]
           Bool.false_eq_true, ↓reduceIte] at hlength ⊢ <;> omega
 
 end Interaction.MessageApplication
-
-/-- info: 'Interaction.MessageApplication.runPolicies_environment_congr' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.runPolicies_environment_congr

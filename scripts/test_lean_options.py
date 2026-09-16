@@ -83,6 +83,54 @@ class LeanOptionTests(unittest.TestCase):
             "#guard_msgs in\n#print axioms Vegas.Paper.witness\n" * 2)
         self.assertTrue(any("duplicate axiom pin" in error for error in failures))
 
+    def test_adjacent_pins_allow_documentation_and_indented_proof_bodies(self):
+        text = (
+            "namespace Vegas.Paper\n"
+            "theorem first : True :=\n  True.intro\n"
+            "/-- Expected dependencies. -/\n"
+            "#guard_msgs in\n#print axioms Vegas.Paper.first\n"
+            "/-- Another delegated theorem. -/\n"
+            "theorem second : True := first\n"
+            "#guard_msgs in\n#print axioms Vegas.Paper.second\n"
+            "end Vegas.Paper\n"
+        )
+        self.assertEqual(CHECKER.check_audit_pins(text), [])
+
+    def test_footer_pins_are_not_adjacent(self):
+        text = (
+            "theorem first : True := True.intro\n"
+            "theorem second : True := True.intro\n"
+            "#guard_msgs in\n#print axioms Vegas.Paper.first\n"
+            "#guard_msgs in\n#print axioms Vegas.Paper.second\n"
+        )
+        failures = CHECKER.check_audit_pins(text)
+        self.assertEqual(sum("must immediately follow" in error for error in failures), 2)
+
+    def test_pin_cannot_precede_theorem_or_follow_another_command(self):
+        theorem = "theorem witness : True := True.intro\n"
+        pin = "#guard_msgs in\n#print axioms Vegas.Paper.witness\n"
+        for text in (pin + theorem, theorem + "def unrelated := 0\n" + pin):
+            with self.subTest(text=text):
+                self.assertTrue(any("must immediately follow" in error
+                                    for error in CHECKER.check_audit_pins(text)))
+
+    def test_axiom_prints_are_allowed_only_in_root_audit(self):
+        commands = ("#print axioms witness\n",
+                    "#guard_msgs in #print axioms witness\n",
+                    "#guard_msgs in\n#print\n  axioms\n  witness\n")
+        for text in commands:
+            with self.subTest(text=text):
+                self.assertEqual(CHECKER.check_axiom_prints(Path("Paper.lean"), text), [])
+                for path in ("Vegas/Proof.lean", "Interaction/Example.lean",
+                             "VegasTests/Example.lean", "Paper/Source.lean"):
+                    self.assertEqual(len(CHECKER.check_axiom_prints(Path(path), text)), 1)
+
+    def test_documented_axiom_prints_are_not_commands(self):
+        text = ('/- /- #print axioms hidden -/ -/\n'
+                '-- #print axioms hidden\n'
+                'def help := "#print axioms hidden"\n')
+        self.assertEqual(CHECKER.check_axiom_prints(Path("Vegas/Help.lean"), text), [])
+
     def test_only_root_paper_audit_may_admit(self):
         admitted = "theorem target : True := by sorry\n"
         self.assertEqual(CHECKER.check_admissions(Path("Paper.lean"), admitted), [])

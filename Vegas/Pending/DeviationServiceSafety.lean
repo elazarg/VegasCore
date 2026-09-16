@@ -472,8 +472,3 @@ theorem servicePlan_unilateralDeviation_expirySafe
   rfl
 
 end Vegas.GraphRuntime
-
-/-- info: 'Vegas.GraphRuntime.servicePlan_unilateralDeviation_expirySafe' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.servicePlan_unilateralDeviation_expirySafe

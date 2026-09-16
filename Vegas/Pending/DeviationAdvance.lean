@@ -121,9 +121,4 @@ theorem Prefix.deviationContinuation_resolve_advance
       (acceptedResult source checks env disclose) unique).symm
   · simp [eraseFocalHistory]
 
-/-- info: 'Vegas.GraphRuntime.Prefix.deviationContinuation_resolve_advance' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.Prefix.deviationContinuation_resolve_advance
-
 end Vegas.GraphRuntime

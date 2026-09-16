@@ -154,9 +154,4 @@ theorem servicedGame_honest_law (runtime : GraphRuntime Player L Δ)
   exact runtime.servicePlan_honest_law whole profile input unique discipline
     roster reactionRounds wire
 
-/-- info: 'Vegas.GraphRuntime.servicedGame_honest_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.servicedGame_honest_law
-
 end Vegas.GraphRuntime

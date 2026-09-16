@@ -243,9 +243,4 @@ theorem servicePlan_reachedOwnAction_locality_pure
       discipline focal response roster rounds wireResponse suffix site observation rightAction
       leftAction rightBefore leftBefore ordered rightReached leftReached).symm
 
-/-- info: 'Vegas.GraphRuntime.servicePlan_reachedOwnAction_locality_pure' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.servicePlan_reachedOwnAction_locality_pure
-
 end Vegas.GraphRuntime

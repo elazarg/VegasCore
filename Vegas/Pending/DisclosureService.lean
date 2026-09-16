@@ -908,9 +908,4 @@ theorem resolve_full_service_block_advances
     · exact reactedCursor
     · simpa [serviceEnvironment, plan, lead, List.append_assoc] using includeSupported
 
-/-- info: 'Vegas.GraphRuntime.resolve_full_service_block_advances' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.resolve_full_service_block_advances
-
 end Vegas.GraphRuntime

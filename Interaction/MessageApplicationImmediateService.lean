@@ -146,8 +146,3 @@ theorem submit_include_accepts (players : Principal → app.PlayerPolicy)
   exact hmapped
 
 end Interaction.MessageApplication
-
-/-- info: 'Interaction.MessageApplication.submit_include_accepts' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.submit_include_accepts

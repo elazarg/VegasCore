@@ -846,9 +846,4 @@ theorem runPolicies_initial_bind_full_service_block_advances
         exact reactedAdvanced.trans_le includeMono
       · exact includedAdvanced
 
-/-- info: 'Vegas.GraphRuntime.runPolicies_initial_bind_full_service_block_advances' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.runPolicies_initial_bind_full_service_block_advances
-
 end Vegas.GraphRuntime

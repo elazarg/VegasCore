@@ -281,34 +281,4 @@ theorem pendingGame_approximate_nash_iff
     (setup.pendingSimulation runtime roster reactionRounds wire).isεNash_compileProfile_iff
       optionUtility ε profile (fun _ _ => trivial)
 
-/-- info: 'Vegas.SourceProgram.Setup.pendingGame_honest_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.SourceProgram.Setup.pendingGame_honest_law
-
-/-- info: 'Vegas.SourceProgram.Setup.pendingGame_deviation_law_of_graph' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.SourceProgram.Setup.pendingGame_deviation_law_of_graph
-
-/-- info: 'Vegas.SourceProgram.Setup.pendingGame_deviation_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.SourceProgram.Setup.pendingGame_deviation_law
-
-/-- info: 'Vegas.SourceProgram.Setup.pendingGame_deviation_guarantee' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.SourceProgram.Setup.pendingGame_deviation_guarantee
-
-/-- info: 'Vegas.SourceProgram.Setup.pendingGame_deviation_utility_bound' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.SourceProgram.Setup.pendingGame_deviation_utility_bound
-
-/-- info: 'Vegas.SourceProgram.Setup.pendingGame_approximate_nash_iff' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.SourceProgram.Setup.pendingGame_approximate_nash_iff
-
 end Vegas.SourceProgram.Setup

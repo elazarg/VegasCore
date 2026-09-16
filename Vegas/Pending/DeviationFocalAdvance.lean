@@ -151,14 +151,4 @@ theorem Prefix.deviationContinuationAt_resolve_realizes
     site outputName bindingName fresh source checks next ideal execution.principalHistory
     disclose selected unique
 
-/-- info: 'Vegas.GraphRuntime.Prefix.deviationContinuationAt_bind_realizes' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.Prefix.deviationContinuationAt_bind_realizes
-
-/-- info: 'Vegas.GraphRuntime.Prefix.deviationContinuationAt_resolve_realizes' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.Prefix.deviationContinuationAt_resolve_realizes
-
 end Vegas.GraphRuntime

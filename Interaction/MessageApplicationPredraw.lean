@@ -862,18 +862,3 @@ theorem exists_joint_response_mixture_tracePolicies (app : MessageApplication Pr
     _ = _ := hplayerResponses
 
 end Interaction.MessageApplication
-
-/-- info: 'Interaction.MessageApplication.exists_native_response_mixture_tracePolicies' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.exists_native_response_mixture_tracePolicies
-
-/-- info: 'Interaction.MessageApplication.exists_environment_response_mixture_tracePolicies' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.exists_environment_response_mixture_tracePolicies
-
-/-- info: 'Interaction.MessageApplication.exists_joint_response_mixture_tracePolicies'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.exists_joint_response_mixture_tracePolicies

@@ -233,9 +233,4 @@ theorem runPolicies_extends (runtime : GraphRuntime Player L Δ)
     (fun state command next => runtime.environmentStep_extends whole input state next command)
     players environment schedule execution next retained supported
 
-/-- info: 'Vegas.GraphRuntime.runPolicies_extends' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.runPolicies_extends
-
 end Vegas.GraphRuntime

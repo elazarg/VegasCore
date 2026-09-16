@@ -161,13 +161,3 @@ theorem runPolicies_playerOnly_inbox
             (app.playerStep_inbox who observer execution middle command hstep)
 
 end Interaction.MessageApplication
-
-/-- info: 'Interaction.MessageApplication.runPolicies_playerOnly_pending_lookup'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.runPolicies_playerOnly_pending_lookup
-
-/-- info: 'Interaction.MessageApplication.runPolicies_playerOnly_inbox'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.runPolicies_playerOnly_inbox

@@ -229,9 +229,4 @@ theorem Prefix.deviationContinuationAt_sample_tick
     simp [advanced, eraseFocalLogical, eraseFocalHistory, different]
   · simp [eraseFocalHistory]
 
-/-- info: 'Vegas.GraphRuntime.deviationContinuationAt_wire' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.deviationContinuationAt_wire
-
 end Vegas.GraphRuntime

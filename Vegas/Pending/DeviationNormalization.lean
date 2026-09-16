@@ -147,14 +147,4 @@ theorem deviationContinuationAt_terminal (runtime : GraphRuntime Player L Δ)
       cases suffix <;> simp only [State.outcome?] at completed <;> cases completed
       rfl
 
-/-- info: 'Vegas.GraphRuntime.continuation_congr_focal_logical' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.continuation_congr_focal_logical
-
-/-- info: 'Vegas.GraphRuntime.deviationContinuationAt_initial' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.deviationContinuationAt_initial
-
 end Vegas.GraphRuntime

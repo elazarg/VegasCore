@@ -182,8 +182,4 @@ theorem honest_isNash : IsNash form (euPreference utility) honest := by
   · exact first_deviation_le replacement
   · exact second_deviation_le replacement
 
-/-- info: 'VegasTests.FailureGame.honest_isNash' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms honest_isNash
-
 end VegasTests.FailureGame

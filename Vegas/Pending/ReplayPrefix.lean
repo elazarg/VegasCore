@@ -154,8 +154,3 @@ theorem NativeReplayInvariant.replayPureServicePrefixAgainstExtension
         rightResidual leftState rightState visible
 
 end Vegas.GraphRuntime
-
-/-- info: 'Vegas.GraphRuntime.NativeReplayInvariant.replayPureServicePrefixAgainstExtension' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.NativeReplayInvariant.replayPureServicePrefixAgainstExtension

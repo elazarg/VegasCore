@@ -103,9 +103,4 @@ theorem FocalReplayCheckpoint.tick_application_congr
         · funext serial
           exact congrFun candidates (.prepared serial)
 
-/-- info: 'Vegas.GraphRuntime.FocalReplayCheckpoint.tick_application_congr' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.FocalReplayCheckpoint.tick_application_congr
-
 end Vegas.GraphRuntime

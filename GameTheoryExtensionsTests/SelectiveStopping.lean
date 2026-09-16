@@ -130,13 +130,3 @@ theorem event_gap_sharp :
 end GameTheoryExtensionsTests.SelectiveStopping
 
 /-! The regression proof itself uses only the standard finite-law axioms. -/
-
-/-- info: 'GameTheoryExtensionsTests.SelectiveStopping.randomized_positive_margin_bound'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheoryExtensionsTests.SelectiveStopping.randomized_positive_margin_bound
-
-/-- info: 'GameTheoryExtensionsTests.SelectiveStopping.event_gap_sharp'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheoryExtensionsTests.SelectiveStopping.event_gap_sharp

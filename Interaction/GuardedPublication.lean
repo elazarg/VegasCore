@@ -557,26 +557,6 @@ theorem run_honest_complete [DecidableEq Slot] (protocol : GuardedPublication Va
       (List.mem_map.mpr ⟨site, covers site, rfl⟩) pending)
   · exact ordinary
 
-/-- info: 'Interaction.GuardedPublication.run_honest_complete' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms run_honest_complete
-
-/-- info: 'Interaction.GuardedPublication.run_consistent' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms run_consistent
-
-/-- info: 'Interaction.GuardedPublication.resolve_extends' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms resolve_extends
-
-/-- info: 'Interaction.PublicationGuard.rejection_owner' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms PublicationGuard.rejection_owner
-
 end GuardedPublication
 
 end Interaction

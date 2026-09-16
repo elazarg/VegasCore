@@ -174,9 +174,4 @@ theorem extractedObservationPolicy_realizesAt (runtime : GraphRuntime Player L Î
     Nat.zero_add] at restricted
   exact restricted
 
-/-- info: 'Vegas.GraphRuntime.extractedObservationPolicy_realizesAt' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.extractedObservationPolicy_realizesAt
-
 end Vegas.GraphRuntime

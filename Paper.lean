@@ -35,6 +35,11 @@ theorem source_publications_resolved [IExpr.ResultTypes L]
     (outcome.get resource).2 ≠ Publication.pending :=
   source.terminal_resolved profile outcome supported resource
 
+/-- info: 'Vegas.Paper.source_publications_resolved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_publications_resolved
+
 /-- Every complete failure-aware source execution satisfies all retained
 guards, including executions with invalid bindings or withheld disclosures. -/
 theorem source_guards_satisfied [IExpr.ResultTypes L]
@@ -45,6 +50,11 @@ theorem source_guards_satisfied [IExpr.ResultTypes L]
     (SourceProgram.finalRegistry source.program []).Satisfied outcome :=
   source.terminal_registry_satisfied profile outcome supported
 
+/-- info: 'Vegas.Paper.source_guards_satisfied' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_guards_satisfied
+
 /-- Complete source-to-graph equality of decoded terminal-state laws. -/
 theorem source_graph_honest_law [IExpr.ResultTypes L]
     (source : SourceProgram.Initial (Player := Player) (L := L))
@@ -52,6 +62,11 @@ theorem source_graph_honest_law [IExpr.ResultTypes L]
     (Vegas.Graph.run source.graph (source.compileGraphProfile profile) source.graphInputs).map
       source.decodeGraph = source.run profile :=
   source.graph_honest_law profile
+
+/-- info: 'Vegas.Paper.source_graph_honest_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_graph_honest_law
 
 /-- Every unilateral graph deviation has an exact source-policy preimage. -/
 theorem source_graph_deviation_law [IExpr.ResultTypes L]
@@ -67,6 +82,11 @@ theorem source_graph_deviation_law [IExpr.ResultTypes L]
         SourceProgram.initialMap [] who replacement)) :=
   source.graph_deviation_law profile who replacement
 
+/-- info: 'Vegas.Paper.source_graph_deviation_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_graph_deviation_law
+
 /-- Same-error Nash correspondence for arbitrary utilities of source outcomes. -/
 theorem source_graph_approximate_nash_iff [IExpr.ResultTypes L]
     (source : SourceProgram.Initial (Player := Player) (L := L))
@@ -77,6 +97,11 @@ theorem source_graph_approximate_nash_iff [IExpr.ResultTypes L]
       (source.compileGraphProfile profile) ↔
     IsεNash (SourceProgram.gameForm source.program source.state) utility ε profile :=
   source.graph_approximate_nash_iff utility ε profile
+
+/-- info: 'Vegas.Paper.source_graph_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_graph_approximate_nash_iff
 
 /-- Source-to-graph Nash correspondence also preserves uncertainty about the
 sampled private setup: one policy is used across the entire initial law. -/
@@ -89,6 +114,11 @@ theorem source_setup_graph_approximate_nash_iff [IExpr.ResultTypes L]
       (setup.compileGraphProfile profile) ↔
     IsεNash setup.gameForm utility ε profile :=
   setup.graph_approximate_nash_iff utility ε profile
+
+/-- info: 'Vegas.Paper.source_setup_graph_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_setup_graph_approximate_nash_iff
 
 /-! ## Full-language pending-message capstones
 
@@ -116,6 +146,11 @@ theorem source_pending_complete [IExpr.ResultTypes L]
     (setup.pendingOutcome runtime outcome).isSome = true :=
   setup.pendingGame_complete runtime roster reactionRounds wire players outcome supported
 
+/-- info: 'Vegas.Paper.source_pending_complete' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_pending_complete
+
 /-- Complete source-to-pending honest outcome-law preservation, including
 private initial setup, adaptive wire delivery, and arbitrary reaction rosters. -/
 theorem source_pending_honest_law [IExpr.ResultTypes L]
@@ -127,6 +162,11 @@ theorem source_pending_honest_law [IExpr.ResultTypes L]
       (fun who => setup.compilePendingStrategy runtime who (profile who))).map
         (setup.pendingOutcome runtime) = (setup.run profile).map some :=
   setup.pendingGame_honest_law runtime roster reactionRounds wire profile
+
+/-- info: 'Vegas.Paper.source_pending_honest_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_pending_honest_law
 
 /-- Every arbitrary unilateral native deviation has the exact outcome law of
 a finite mixture of source deviations against unchanged opponents. The mixture
@@ -147,6 +187,11 @@ theorem source_pending_deviation_law [IExpr.ResultTypes L]
           profile who alternative)).map some) :=
   setup.pendingGame_deviation_law runtime roster reactionRounds wire profile who replacement
 
+/-- info: 'Vegas.Paper.source_pending_deviation_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_pending_deviation_law
+
 /-- Same-error Nash preservation and reflection at compiled profiles for
 arbitrary utilities of source outcomes, against arbitrary native deviations. -/
 theorem source_pending_approximate_nash_iff [IExpr.ResultTypes L]
@@ -162,6 +207,11 @@ theorem source_pending_approximate_nash_iff [IExpr.ResultTypes L]
     IsεNash setup.gameForm utility ε profile :=
   setup.pendingGame_approximate_nash_iff runtime roster reactionRounds wire utility missing
     ε profile
+
+/-- info: 'Vegas.Paper.source_pending_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_pending_approximate_nash_iff
 
 /-- Any source-outcome lower bound against unilateral deviations survives
 compilation, independently of the native adversary's preferences. -/
@@ -183,52 +233,9 @@ theorem source_pending_deviation_guarantee [IExpr.ResultTypes L]
   setup.pendingGame_deviation_guarantee runtime roster reactionRounds wire profile who value
     missing bound hbound replacement
 
-end Vegas.Paper
-
-/-- info: 'Vegas.Paper.source_publications_resolved' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_publications_resolved
-
-/-- info: 'Vegas.Paper.source_guards_satisfied' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_guards_satisfied
-
-/-- info: 'Vegas.Paper.source_graph_honest_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_graph_honest_law
-/-- info: 'Vegas.Paper.source_graph_deviation_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_graph_deviation_law
-/-- info: 'Vegas.Paper.source_graph_approximate_nash_iff' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_graph_approximate_nash_iff
-/-- info: 'Vegas.Paper.source_setup_graph_approximate_nash_iff' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_setup_graph_approximate_nash_iff
-/-- info: 'Vegas.Paper.source_pending_complete' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_pending_complete
-/-- info: 'Vegas.Paper.source_pending_honest_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_pending_honest_law
-/-- info: 'Vegas.Paper.source_pending_deviation_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_pending_deviation_law
-/-- info: 'Vegas.Paper.source_pending_approximate_nash_iff' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_pending_approximate_nash_iff
-
 /-- info: 'Vegas.Paper.source_pending_deviation_guarantee' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_pending_deviation_guarantee
+
+end Vegas.Paper

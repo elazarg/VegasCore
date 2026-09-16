@@ -429,16 +429,6 @@ theorem tracePolicies_support_transfer [DecidableEq Principal]
     (fun _ => false) schedule execution trace (by simpa only [hmap] using htrace) hplayers
   simpa only [hmap] using hresult
 
-/-- info: 'Interaction.MessageApplication.tracePolicies_last' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms tracePolicies_last
-
-/-- info: 'Interaction.MessageApplication.tracePolicies_firstRelease_split' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms tracePolicies_firstRelease_split
-
 /-- A coupling of actual invocations preserves the law of a released
 observation. The local relation is required only before the readout selects
 its snapshot; the runtime itself still executes the entire invocation list. -/

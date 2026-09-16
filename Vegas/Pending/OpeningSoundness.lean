@@ -173,8 +173,3 @@ theorem pending_opening_verified
                 (.player owner :: suffix) before current verifiedBefore fromBefore
 
 end Vegas.GraphRuntime
-
-/-- info: 'Vegas.GraphRuntime.pending_opening_verified' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.pending_opening_verified

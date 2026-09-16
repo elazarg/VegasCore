@@ -323,23 +323,3 @@ theorem resolveDisposition_default_verifier_independent
       site.resolveDisposition? now second (some (.publicDefault stored)) done canOpen message := rfl
 
 end Interaction.ConditionalPublication
-
-/-- info: 'Interaction.ConditionalPublication.resolveDefault_some' depends on axioms:
-[propext] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.ConditionalPublication.resolveDefault_some
-
-/-- info: 'Interaction.ConditionalPublication.resolveDisposition_withDeadline_eq' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.ConditionalPublication.resolveDisposition_withDeadline_eq
-
-/-- info: 'Interaction.ConditionalPublication.resolveDisposition_success_inversion' depends on axioms:
-[propext] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.ConditionalPublication.resolveDisposition_success_inversion
-
-/-- info: 'Interaction.ConditionalPublication.resolveDisposition_some_evidence' depends on axioms:
-[propext, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.ConditionalPublication.resolveDisposition_some_evidence

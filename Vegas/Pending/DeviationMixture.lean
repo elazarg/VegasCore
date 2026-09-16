@@ -76,11 +76,6 @@ theorem servicedGame_deviation_law_of_pure
   simp only [servicedGame, FinDist.map_bind]
   rfl
 
-/-- info: 'Vegas.GraphRuntime.servicedGame_deviation_law_of_pure' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.servicedGame_deviation_law_of_pure
-
 /-- Every native unilateral deviation in the concrete serviced game has an
 exact finite mixture of graph-policy backtranslations. The mixture is chosen
 before the private initial state is sampled; opponents and chance retain
@@ -109,10 +104,5 @@ theorem servicedGame_deviation_law
     roster reactionRounds (fun history view => FinDist.pure (wireResponse (history, view)))
   exact runtime.servicePlan_reachedOwnAction_locality_pure whole profile inputs unique
     discipline who playerResponse roster reactionRounds wireResponse
-
-/-- info: 'Vegas.GraphRuntime.servicedGame_deviation_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.servicedGame_deviation_law
 
 end Vegas.GraphRuntime

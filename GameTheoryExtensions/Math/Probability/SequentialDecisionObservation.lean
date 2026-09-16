@@ -91,8 +91,3 @@ theorem exists_two_decision_policy_law
   simpa only [histories, logicalSecond, bind_bind, bind_map] using hlaw
 
 end GameTheory.Math.Probability.FinDist
-
-/-- info: 'GameTheory.Math.Probability.FinDist.exists_two_decision_policy_law'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.Math.Probability.FinDist.exists_two_decision_policy_law

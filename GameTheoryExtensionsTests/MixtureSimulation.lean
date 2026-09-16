@@ -116,8 +116,3 @@ example : ∃ alternatives : FinDist (source.sig.Strategy ()),
   composed.deviation_mixture (fun _ => false) () 2 trivial
 
 end GameTheory.GameForm.MixtureSimulationOn.Tests
-
-/-- info: 'GameTheory.GameForm.MixtureSimulationOn.Tests.mixed_target_not_single_source'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.GameForm.MixtureSimulationOn.Tests.mixed_target_not_single_source

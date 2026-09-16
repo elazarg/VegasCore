@@ -127,9 +127,4 @@ theorem Prefix.continuationAt_sample_tick
     (walk.trans (.sample (.refl tail))) (VEnv.cons value ideal)
     (PublicValues.consPublic value values) bindings candidates (clock + 1) (clock + 1) rfl
 
-/-- info: 'Vegas.GraphRuntime.Prefix.continuationAt_sample_tick' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.Prefix.continuationAt_sample_tick
-
 end Vegas.GraphRuntime

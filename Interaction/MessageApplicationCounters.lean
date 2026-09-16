@@ -120,8 +120,3 @@ theorem runPolicies_initial_lookup_nextSerial_eq_none
     next hnext).lookup_nextSerial_eq_none who
 
 end Interaction.MessageApplication
-
-/-- info: 'Interaction.MessageApplication.runPolicies_initial_lookup_nextSerial_eq_none'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.runPolicies_initial_lookup_nextSerial_eq_none

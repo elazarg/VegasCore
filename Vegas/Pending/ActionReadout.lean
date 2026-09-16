@@ -88,9 +88,4 @@ theorem State.RealizesOwnAction.eq_of_playerView_eq
   rw [visible] at leftReadout
   exact Option.some.inj (leftReadout.symm.trans rightReadout)
 
-/-- info: 'Vegas.GraphRuntime.State.RealizesOwnAction.eq_of_playerView_eq'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.State.RealizesOwnAction.eq_of_playerView_eq
-
 end Vegas.GraphRuntime

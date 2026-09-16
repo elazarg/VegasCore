@@ -415,9 +415,4 @@ theorem FocalReplayCheckpoint.focal_playerStep_replay
         rw [leftNative, rightNative, checkpoint.leftState, checkpoint.rightState]
         exact checkpoint.focalCandidates slot
 
-/-- info: 'Vegas.GraphRuntime.FocalReplayCheckpoint.compiled_nonfocal_invoke_replay'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.FocalReplayCheckpoint.compiled_nonfocal_invoke_replay
-
 end Vegas.GraphRuntime

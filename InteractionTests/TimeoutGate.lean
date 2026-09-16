@@ -110,23 +110,3 @@ def unauthorized := unauthorizedPool.includeApplication initial (0, 0) fixedHand
 #guard unauthorized.pool.ledger.length = 1
 
 end InteractionTests.TimeoutGate
-
-/-- info: 'Interaction.DependencyGate.checkAll_slidingExpiry_two_active_missing' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.DependencyGate.checkAll_slidingExpiry_two_active_missing
-
-/-- info: 'Interaction.DependencyGate.checkAll_fixedExpiry_exact' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.DependencyGate.checkAll_fixedExpiry_exact
-
-/-- info: 'Interaction.DependencyGate.checkAll_fixedExpiry_exists' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.DependencyGate.checkAll_fixedExpiry_exists
-
-/-- info: 'Interaction.MessagePool.includeApplication_reject_ledger' depends on axioms: [propext] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessagePool.includeApplication_reject_ledger
-
-/-- info: 'Interaction.MessagePool.includeApplication_preserves_inbox' does not depend on any axioms -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessagePool.includeApplication_preserves_inbox

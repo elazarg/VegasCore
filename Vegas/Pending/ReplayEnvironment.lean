@@ -326,19 +326,4 @@ theorem FocalReplayCheckpoint.nonsampleTick_focalReplay_congr
     · exact native.2.2
     · exact checkpoint.receipts
 
-/-- info: 'Vegas.GraphRuntime.FocalReplayCheckpoint.environmentPolicyStep_focalReplay_congr' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.FocalReplayCheckpoint.environmentPolicyStep_focalReplay_congr
-
-/-- info: 'Vegas.GraphRuntime.FocalReplayCheckpoint.sampleTick_focalReplay_congr' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.FocalReplayCheckpoint.sampleTick_focalReplay_congr
-
-/-- info: 'Vegas.GraphRuntime.FocalReplayCheckpoint.nonsampleTick_focalReplay_congr' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.FocalReplayCheckpoint.nonsampleTick_focalReplay_congr
-
 end Vegas.GraphRuntime

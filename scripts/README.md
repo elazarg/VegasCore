@@ -14,7 +14,8 @@ Run these tools from the repository root.
 
 - `lake --wfail build Paper` checks the single paper audit in root `Paper.lean`.
   Its proved statements delegate directly to repository theorems. Every audit
-  theorem has an axiom pin. Precisely stated prospective end-to-end declarations
+  theorem has a guarded axiom pin directly below it; axiom-print commands occur
+  only in this file. Precisely stated prospective end-to-end declarations
   may be admitted, but no such declaration counts as a proof.
 - `python -m unittest discover -s scripts -p 'test_*.py'` checks the maintenance
   tooling, including module boundaries, documentation references, centralized
@@ -23,8 +24,8 @@ Run these tools from the repository root.
 - `python scripts/check-lean-options.py` rejects source-local `set_option`
   directives in every project Lean source tree and checks that both implicit-binder
   options are disabled and warnings are errors. It also rejects proof admissions
-  outside root `Paper.lean` and requires a guarded axiom report for every
-  capstone in that file. Shared elaboration and lint settings
+  outside root `Paper.lean`, confines axiom prints to that file, and requires a
+  guarded axiom report directly below every capstone. Shared elaboration and lint settings
   belong in `lakefile.toml`; separately managed dependencies keep their own
   package configuration.
 - `scripts/bump-lean-mathlib.sh v4.32.0` updates the Lean toolchain and

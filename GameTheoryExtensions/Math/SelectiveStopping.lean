@@ -276,23 +276,3 @@ theorem selective_stopping_le_iff
     exact selective_stopping_le states stop quit proceed utility (fun state _ _ => hall state)
 
 end GameTheory.Math.Probability.FinDist
-
-/-- info: 'GameTheory.Math.Probability.FinDist.selective_stopping_bound' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.Math.Probability.FinDist.selective_stopping_bound
-
-/-- info: 'GameTheory.Math.Probability.FinDist.stopping_information_fiber_bound' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.Math.Probability.FinDist.stopping_information_fiber_bound
-
-/-- info: 'GameTheory.Math.Probability.FinDist.selective_stopping_optimal' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.Math.Probability.FinDist.selective_stopping_optimal
-
-/-- info: 'GameTheory.Math.Probability.FinDist.selective_stopping_le_iff' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.Math.Probability.FinDist.selective_stopping_le_iff

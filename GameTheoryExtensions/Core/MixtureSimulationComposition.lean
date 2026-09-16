@@ -79,13 +79,3 @@ def trans
     exact ⟨alternatives, hlaw, fun alternative _ => leftTotal who alternative⟩
 
 end GameTheory.GameForm.MixtureSimulationOn
-
-/-- info: 'GameTheory.GameForm.MixtureSimulationOn.transOn' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.GameForm.MixtureSimulationOn.transOn
-
-/-- info: 'GameTheory.GameForm.MixtureSimulationOn.trans' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.GameForm.MixtureSimulationOn.trans

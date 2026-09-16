@@ -216,9 +216,4 @@ theorem compiled_resolve_endpoint_extends (runtime : GraphRuntime Player L Δ)
   exact runtime.runPolicies_extends tail _ players environment
     (suffix.map ServiceInstruction.invocation) next final retention finalRun
 
-/-- info: 'Vegas.GraphRuntime.compiled_resolve_endpoint_extends' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.compiled_resolve_endpoint_extends
-
 end Vegas.GraphRuntime

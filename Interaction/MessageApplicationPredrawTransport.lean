@@ -320,8 +320,3 @@ theorem exists_joint_response_mixture_runPolicies_setup
   simpa only [FinDist.map_bind, app.tracePolicies_last] using hmapped
 
 end Interaction.MessageApplication
-
-/-- info: 'Interaction.MessageApplication.exists_joint_response_mixture_runPolicies_setup'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.exists_joint_response_mixture_runPolicies_setup

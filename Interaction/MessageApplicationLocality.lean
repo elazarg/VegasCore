@@ -194,13 +194,3 @@ theorem runPolicies_other_frame {Projection : Type uProjection}
             fun id message hlookup => last.2.2 id message (first.2.2 id message hlookup)⟩
 
 end Interaction.MessageApplication
-
-/-- info: 'Interaction.MessageApplication.runPolicies_other_input' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.runPolicies_other_input
-
-/-- info: 'Interaction.MessageApplication.runPolicies_other_frame' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Interaction.MessageApplication.runPolicies_other_frame

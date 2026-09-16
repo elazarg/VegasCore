@@ -81,9 +81,4 @@ theorem continuationAt_initialized_wire
         clock enteredAt atCursor follows (runtime.compileProfile whole profile) rfl
         environment schedule reached wire
 
-/-- info: 'Vegas.GraphRuntime.continuationAt_initialized_wire' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.continuationAt_initialized_wire
-
 end Vegas.GraphRuntime

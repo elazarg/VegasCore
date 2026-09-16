@@ -206,9 +206,4 @@ theorem FocalReplayCheckpoint.handle_focalReplayKey_congr
         (.failure : PublicationResult (L.Val payload)))
     · simp [Message.sender, accepted]
 
-/-- info: 'Vegas.GraphRuntime.FocalReplayCheckpoint.handle_focalReplayKey_congr' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.FocalReplayCheckpoint.handle_focalReplayKey_congr
-
 end Vegas.GraphRuntime

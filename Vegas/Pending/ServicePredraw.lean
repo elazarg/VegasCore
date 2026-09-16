@@ -322,9 +322,4 @@ theorem exists_joint_service_response_mixture_runPolicies_setup
       exact Classical.choose_spec (wireExists response)
     _ = _ := playerLaw
 
-/-- info: 'Vegas.GraphRuntime.exists_joint_service_response_mixture_runPolicies_setup' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.GraphRuntime.exists_joint_service_response_mixture_runPolicies_setup
-
 end Vegas.GraphRuntime

@@ -164,18 +164,3 @@ theorem isNash_compileProfile_iff (value : Observation → Player → ℝ)
 
 end MixtureSimulationOn
 end GameTheory.GameForm
-
-/-- info: 'GameTheory.GameForm.MixtureSimulationOn.guarantee' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.GameForm.MixtureSimulationOn.guarantee
-
-/-- info: 'GameTheory.GameForm.MixtureSimulationOn.isεNash_compileProfile_iff'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.GameForm.MixtureSimulationOn.isεNash_compileProfile_iff
-
-/-- info: 'GameTheory.GameForm.MixtureSimulationOn.isNash_compileProfile_iff'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms GameTheory.GameForm.MixtureSimulationOn.isNash_compileProfile_iff
