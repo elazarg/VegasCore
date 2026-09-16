@@ -34,6 +34,23 @@ def unopenable (A : Type) : BoundValue A :=
 def value {A : Type} (a : A) : BoundValue A :=
   ⟨.value a, by intro h; cases h⟩
 
+/-- A retained binding is either unopenable or contains one value. -/
+def resultEquiv (A : Type) : BoundValue A ≃ PublicationResult A where
+  toFun value := match hb : value.binding with
+    | .unbound => False.elim (value.isBound hb)
+    | .unopenable => .failure
+    | .value data => .success data
+  invFun
+    | .failure => .unopenable A
+    | .success data => .value data
+  left_inv value := by
+    rcases value with ⟨binding, bound⟩
+    cases binding with
+    | unbound => exact False.elim (bound rfl)
+    | unopenable => rfl
+    | value data => rfl
+  right_inv result := by cases result <;> rfl
+
 end BoundValue
 
 def CellVal {Player : Type} (L : IExpr) : CellTy Player L → Type

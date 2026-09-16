@@ -189,6 +189,29 @@ def boundResult {owner payload name} (s : State L Γ)
   | .unopenable => .failure
   | .value a => if disclose then .success a else .failure
 
+/-- Resolving a retained binding either returns its stored result or failure,
+according to the disclosure decision. -/
+theorem boundResult_eq_resultEquiv {Player : Type} {L : IExpr}
+    {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty} {name : VarId}
+    (state : State L Γ)
+    (source : HasVar Γ name (.privateData owner payload))
+    (disclose : Bool) :
+    boundResult state source disclose =
+      if disclose then BoundValue.resultEquiv _ (state.get source).1 else .failure := by
+  let propose : BoundValue (L.Val payload) → PublicationResult (L.Val payload) :=
+    fun value => match hb : value.binding with
+      | .unbound => False.elim (value.isBound hb)
+      | .unopenable => .failure
+      | .value data => if disclose then .success data else .failure
+  change propose (state.get source).1 =
+    if disclose then BoundValue.resultEquiv _ (state.get source).1 else .failure
+  generalize (state.get source).1 = value
+  rcases value with ⟨binding, bound⟩
+  cases binding with
+  | unbound => exact False.elim (bound rfl)
+  | unopenable => cases disclose <;> rfl
+  | value value => cases disclose <;> rfl
+
 def resultPublication {A : Type} : PublicationResult A → Publication A
   | .failure => .failed
   | .success a => .value a

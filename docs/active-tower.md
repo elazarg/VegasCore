@@ -57,20 +57,53 @@ The [EventGraph core](../Vegas/EventGraph.lean) provides a typed ready-event
 executor, public and player-local observations, behavioral policies, and
 public schedulers. Initial values are separate from the graph, so the same
 policy is used for every possible private setup draw. The executor proves
-finite completion; its canonical scheduler selects the least unfinished
-event. Independent commitments can execute in either order.
+finite completion; every supported canonical run completes events in source
+rank order. Independent commitments can execute in either order.
+
+The [full-source lowerer](../Vegas/Compile/EventGraphAssembly.lean) constructs
+an executable `EventGraph` for every source constructor, with typed initial
+inputs, heterogeneous payloads, deferred guards, conditional chance, and
+terminal payoff expressions. Its ranked node construction proves every read
+has an available producer. `Initial.eventGraph` and `Setup.eventGraph` expose
+the compiler without baking concrete private inputs into the graph.
+
+Supporting results are checked:
+
+- `EventGraph.stepThen_map_store_comm` equates the store laws of two independent
+  ready events with fixed actions, including their chance kernels. It does not
+  equate traces or establish policy-level scheduler invariance.
+- `EventGraph.stepThen_map_storeRecall_comm` also preserves every player's
+  original dependent action history under the graph's information discipline.
+- `EventGraph.BarrierOrdered.informationDiscipline` proves that the
+  public-barrier dependency policy gives every ready strategic event exactly
+  its source-prefix public values and own bindings, with the specified
+  own-action history. Foreign hidden commitments can complete out of order.
+- The compiler supplies this certificate unconditionally via
+  `toEventGraph_informationDiscipline`. Local evaluation laws relate compiled
+  public expressions and chance tables to the source state. `compileResolve_eval?`
+  equates the complete resolution kernel with the source's proposal, deferred
+  registry check, and failure-on-rejection result.
 
 Game outcomes are terminal configurations. A shared utility lift interprets
 their complete typed stores and ignores scheduling metadata; utilities on the
 full trace can instead use the configuration directly, with separate strategic
 proof obligations.
 
-This interface is not yet an edge of the checked compiler tower above.
-Full-source lowering, source-order correspondence, asynchronous scheduling
+The compiled-graph regressions include an actual step that completes the second
+source commitment before the first, and a mixed source program with private
+initial inputs, deferred guards, and chance.
+
+Canonical source-policy translation and the whole-run source law, asynchronous scheduling
 comparison, and the asynchronous pending-message strategic certificate are
 the remaining compiler/proof work described in the
 [EventGraph plan](event-graph-design.md). Source-order correspondence and
-equivalence under other schedules are distinct obligations.
+equivalence under other schedules are distinct obligations. The conservative
+barrier compiler targets exact honest and finite-mixture unilateral-deviation
+laws at both the ideal EventGraph and pending-message levels; these targets are
+not yet checked. A separate
+[failure-comparison contract](event-graph-failure-comparison.md) applies only
+to broader runtimes that expose genuinely new information before a failure
+choice, and is not a gate for that initial compiler.
 
 ## Outside the theorem
 

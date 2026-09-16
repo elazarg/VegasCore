@@ -76,27 +76,6 @@ theorem compilePublicDist_eval {Γ : SourceCtx Player L} {τ : L.Ty}
   funext name payload source
   exact publicField_get source map env
 
-omit [DecidableEq Player] R in
-theorem boundResult_eq_resultEquiv {Γ : SourceCtx Player L}
-    {owner : Player} {payload : L.Ty} {name : VarId}
-    (state : State L Γ) (source : HasVar Γ name (.privateData owner payload))
-    (disclose : Bool) :
-    boundResult state source disclose =
-      if disclose then BoundValue.resultEquiv _ (state.get source).1 else .failure := by
-  let propose : BoundValue (L.Val payload) → PublicationResult (L.Val payload) :=
-    fun value => match hb : value.binding with
-      | .unbound => False.elim (value.isBound hb)
-      | .unopenable => .failure
-      | .value data => if disclose then .success data else .failure
-  change propose (state.get source).1 =
-    if disclose then BoundValue.resultEquiv _ (state.get source).1 else .failure
-  generalize (state.get source).1 = value
-  rcases value with ⟨binding, bound⟩
-  cases binding with
-  | unbound => exact False.elim (bound rfl)
-  | unopenable => cases disclose <;> rfl
-  | value value => cases disclose <;> rfl
-
 omit [DecidableEq Player] in
 theorem boundResult_decode_eq_proposed {Γ : SourceCtx Player L}
     {owner : Player} {payload : L.Ty} {name : VarId}

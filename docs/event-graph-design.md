@@ -6,18 +6,22 @@ This document specifies an asynchronous compiler target and the work needed
 to prove its strategic correctness. The shared
 [EventGraph core](../Vegas/EventGraph.lean) implements typed dependency cuts,
 node execution, observations, public scheduling, and finite completion. The
-source compiler and asynchronous pending-message edge are not yet connected
-to it. The [active theorem map](active-tower.md) records the checked
+full-source lowerer constructs a certified executable graph. Its whole-run
+source correspondence and asynchronous pending-message edge remain unproved.
+The [active theorem map](active-tower.md) records the checked
 source-to-ordered-graph-to-pending-message results; those remain the current
 end-to-end guarantees.
 
-The shared interface is not fully frozen: a graph-local description of extra
-failure opportunities, feasible continuation repairs, and their utility
-condition remains to be fixed. Generic utility simulation supplies the eventual
-composition theorem, not this premise. Local commutation of ready event kernels
-also remains to prove. The node representation already confines reads to
-predecessors and writes to distinct outputs; no additional source-relative
-simulation assumption is required for that local proof.
+Independent ready event kernels commute for fixed event actions after
+projection to the typed store and each player's original action history
+(`stepThen_map_storeRecall_comm`). The full compiler constructs its read
+dependencies and supplies the logical information certificate
+(`toEventGraph_informationDiscipline`). Local evaluation theorems relate
+compiled expressions, distributions, and complete resolution kernels to source
+evaluation, including deferred validation and failure on rejection.
+The canonical scheduler's complete event sequence is also checked. These are
+local semantic and structural results; the source-order execution law and
+asynchronous strategic certificates remain to prove.
 
 The objective is one compilation tower:
 
@@ -34,11 +38,13 @@ which events may occur, not a separately maintained game tree. The pending
 application executes the graph. The source theorem is a composition of the
 source/graph and graph/native certificates.
 
-The asynchronous capstone is Nash preservation under an explicit condition
-disincentivizing additional failure choices. Preserve exact outcome laws where
-the implementation admits them; use a utility bound where the runtime adds
-selective failure. Exact simulation of every such failure law is not a
-prerequisite for this capstone.
+For the conservative public-barrier compiler, the asynchronous capstone targets
+exact honest laws and finite-mixture unilateral deviation laws at both the ideal
+EventGraph and pending-message levels. Bind failure and disclosure withholding
+are already graph actions. Prescribed bind traffic, including a source failure,
+must retain one value-oblivious opaque commitment shape. A later, more concurrent
+runtime that exposes genuinely new information before failure may instead need
+the separately specified utility-dependent capstone.
 
 The implementation must cover every current source constructor, heterogeneous
 payloads, arbitrary guards, unopenable bindings, explicit disclosure failure,
@@ -71,9 +77,10 @@ preservation. The prescribed opponents must project native observations and
 histories to their source decision inputs. An unrelated or premature packet
 does not make them abandon their source strategy and react to its contents.
 There need not be a source operation corresponding to every such packet.
-For Nash preservation, every native deviation must be bounded in utility by a
-legal source deviation against those unchanged opponents. An exact matching
-outcome law is stronger and is not required for additional failure choices.
+For the initial barrier compiler, every native deviation should have an exact
+finite source-policy mixture against those unchanged opponents. A utility bound
+is the fallback only when a broader runtime introduces a genuine additional
+informed-failure choice.
 
 The proof must also account for indirect effects: the environment may use the
 packet to change scheduling, and it may affect retries, candidate selection,
@@ -98,19 +105,19 @@ is outside unilateral Nash preservation. A stronger solution concept would
 require a separate incentive analysis; changed information alone does not
 establish a profitable deviation.
 
-The runtime permits earlier failure by silence and may expose additional
-information before a failure decision. Keep those choices in the model. The
-Nash argument uses the program's failure-disincentive condition to bound them,
-rather than requiring every selective failure law to be source-realizable.
-Weak continuation superiority suffices for Nash preservation; a strict margin
-can establish a strict loss from exercising the additional failure option.
+The runtime permits silence, expiry, and arbitrary early focal packets; none is
+deleted from the native policy space. Under the first compiler's public
+barriers, readiness-gated prescribed sends, value-oblivious opaque bind traffic,
+and deadline-relative service, expiry realizes bind failure or disclosure
+withholding already present in the graph. Exact replay/backtranslation must
+cover those behaviors and the adaptive environment's reactions.
 
-The condition is evaluated at the information available when failure is
-chosen. An unconditional comparison before an additional observation need
-not survive selective stopping. A pointwise comparison over the compatible
-semantic states is a sufficient source-level condition that survives any
-such refinement of information. Section 6 states the proof interface and
-distinguishes this utility guarantee from exact law simulation.
+If a later runtime permits failure after a genuinely new semantic observation,
+the condition is evaluated at the information available when failure is chosen.
+An unconditional comparison before that observation need not survive selective
+stopping. Section 6 and the
+[failure-comparison note](event-graph-failure-comparison.md) state that separate
+extension and distinguish it from the initial exact-law target.
 
 ## 2. Strategic dependencies
 
@@ -317,8 +324,10 @@ referring to source syntax.
 
 Failure disincentives are a separate predicate on utilities and feasible
 continuations, not a field of this structural certificate. A graph remains
-well formed and executable when a player prefers failure. Its utility-dependent
-Nash theorem then requires an incentive premise that may not hold.
+well formed and executable when a player prefers failure. Only the broader-
+runtime utility theorem for a genuinely additional informed-failure choice
+requires an incentive premise that may not hold; the initial exact compiler
+does not.
 
 ### 4.1 First dependency construction
 
@@ -386,7 +395,38 @@ public expression environment and execute the exact conditional kernel once.
 The source/graph compiler and its correctness proof must use this construction
 for every source profile, not just equilibrium or cooperative profiles.
 
-### 4.4 Further dependency reduction
+### 4.4 Source-order proof invariant
+
+The source-order proof follows the compiler's traversal state: the residual
+source program, typed context references, publication references, retained
+guard registry, and embedding of the remaining events into the whole graph.
+Relate its source state and history to a canonical graph configuration by:
+
+1. The completed cut and chronological event list are exactly the executed
+   source prefix.
+2. Every source cell agrees with its typed graph reference. For a private cell,
+   this part compares the immutable binding, not its publication status.
+3. Every private publication reference evaluates to that cell's source status:
+   literal pending before resolution, its result field afterward. During
+   validation, the selected cell uses the proposed result in both semantics.
+4. The event identifiers and original supplied actions decode to the same
+   per-player source action histories.
+5. Both sides retain the same guard registry.
+
+At initialization, the private-status clause uses `Initial.privatePending`;
+the binding encoder alone cannot reconstruct arbitrary publication statuses.
+Sample, commit, and reveal steps then use the local expression, distribution,
+and deferred-guard evaluation laws. Terminal context agreement gives decoded
+state equality and the payoff readout law. A separate policy translation and
+backtranslation must establish that the two step kernels are actually selected
+from corresponding observations; structural field availability alone does not
+prove that policy law.
+
+This induction concerns source-order execution. The asynchronous comparison
+uses the additional [scheduling coupling](event-graph-scheduling-proof.md),
+including actual scheduling observations and setup-wide finite mixtures.
+
+### 4.5 Further dependency reduction
 
 Possible subsequent passes include commutation of adjacent independent sample
 kernels and finer treatment of public operations with proven independent
@@ -516,7 +556,28 @@ honest law:
     = map some (source[P, rho].play sigma)
 ```
 
-Under the failure-disincentive condition below, the strategic capstone is:
+For the initial public-barrier pending compiler, the strategic capstone is the
+stronger exact statement:
+
+```text
+unilateral deviation law:
+  for every player i and arbitrary native policy tau_i,
+  there exists a finite law mu over legal source policies pi_i such that
+
+  map d (native[P, rho, E].play ((C sigma)[i <- tau_i]))
+    = bind mu (fun pi_i =>
+        map some (source[P, rho].play (sigma[i <- pi_i])))
+```
+
+The mixture is chosen before the private setup draw. Opponents are unchanged,
+and `E` is fixed as an adaptive policy rather than a preselected command trace.
+This target retains arbitrary focal packets. Its proof must use readiness-gated,
+value-oblivious prescribed traffic—including the same opaque bind shape for a
+source failure—and deadline-relative service; none of those properties is
+assumed merely from the graph syntax.
+
+For a broader runtime with a genuine additional informed-failure choice, the
+separate utility-dependent capstone is:
 
 ```text
 unilateral utility bound:
@@ -531,18 +592,22 @@ consequence:
     -> C sigma is epsilon-Nash in the asynchronous native game
 ```
 
-Honest-law equality for all compiled profiles also gives reflection at
+Either exact simulation or the displayed utility bound gives preservation;
+honest-law equality for all compiled profiles also gives reflection at
 compiled profiles, with the same error. No conclusion concerns native
 equilibria outside the compiler image.
 
-The source witness is chosen before the draw from rho. Opponents are
-unchanged. The witness can depend on sigma, E, tau_i, and u. E is fixed as a
-policy, not as a preselected command trace, and can react to the deviator's
-public messages. No finite payload-domain or guard-feasibility premise is
+For the utility variant, the source witness can depend on `sigma`, `E`,
+`tau_i`, and `u`. No finite payload-domain or guard-feasibility premise is
 intended. Every program compiles; an incentive theorem is conditional on its
 stated utility hypothesis, not a restriction on source syntax.
 
 ### Failure disincentives and feasible repair
+
+This subsection concerns the broader runtime variant, not the initial
+public-barrier compiler. See the
+[failure-comparison note](event-graph-failure-comparison.md) for the exact
+boundary.
 
 At an additional failure decision, compare the complete failure continuation
 with a feasible continuation that preserves already fixed commitments. For
@@ -639,8 +704,9 @@ Schedule-independent conclusions are separate theorems:
   observation and kernel-independence argument. An unchanged policy can react
   differently when the schedule changes what it observes.
 - Arbitrary-deviation and Nash comparisons quantify over the asynchronous
-  strategy space. They require the scheduling-information argument and, where
-  additional selective failure is possible, the explicit utility condition.
+  strategy space. They require the scheduling-information argument. The
+  initial barrier compiler targets an exact comparison; only a broader runtime
+  with additional informed failure uses the explicit utility condition.
 
 These statements have different hypotheses. Final-store commutation alone
 does not establish strategic preservation, and no equality of full transcripts
@@ -653,11 +719,12 @@ coarse graph scheduler's view. One cannot assume it factors through a single
 graph scheduling policy independent of player replacements.
 
 The safe initial backend interface compares each admitted native environment
-directly with the canonical EventGraph game, using graph-local causal,
-scheduling, and failure-normalization lemmas. Convert the exact source edge
-to utility simulation and compose using `UtilitySimulation.trans`; where
-both edges are exact, retain mixture composition instead. Transport the
-programmer's utility and failure condition through the source/graph edge.
+directly with the canonical EventGraph game, using graph-local causal and
+scheduling lemmas. For the conservative barrier compiler, both edges target
+exact finite-mixture simulation and compose through mixture composition. If a
+later concurrency extension demonstrably adds informed failure, convert the
+exact source edge to utility simulation, prove the separate feasible-repair
+bound, and compose using `UtilitySimulation.trans`.
 A separate native-to-asynchronous-graph certificate is
 appropriate only if its environment interface retains enough information and
 its quantifiers actually match. No source-relative backend proof is needed.
@@ -699,10 +766,12 @@ Replace the sequential-prefix relation by a relation on downward-closed cuts,
 causal pasts, and actual native histories. For a reached focal event, show that
 the ordinary choice extracted from its normalized continuation is determined
 by its allowed source information and the predrawn responses. Separate any
-additional selective-failure decision from that choice; its dependence on
-richer information belongs in the utility comparison, not a false exact-law
-claim. Source-incomparable opponent commitment completions must not reveal
-their candidate meanings.
+genuinely additional selective-failure decision from that choice. The initial
+barrier runtime is designed not to create one: a prescribed event is sent only
+when ready, public events wait for all earlier events, and prescribed bind
+traffic has the same opaque shape even when the source action is failure.
+Source-incomparable opponent commitment completions must not reveal their
+candidate meanings.
 The deviator's arbitrary raw announcements remain in the replayed public
 history; they are not assumed absent or harmless without proof.
 
@@ -710,13 +779,16 @@ Use immutable accepted bindings and verified publication results for action
 extraction, never untrusted focal cache entries. For source-representable
 failure, resolution can extract canonical withholding while the native policy
 remembers a different intention. The replay/locality relation must carry that
-native memory explicitly. Additional failure is compared with its feasible
-repair using the condition in Section 6.
+native memory explicitly. For the initial compiler, prove that every such
+failure is an existing graph bind failure or publication withholding choice.
+Only a broader runtime with a genuinely new informed-failure choice compares
+that choice with its feasible repair using the condition in Section 6.
 
 The first mathematical proof should handle two independent owners' commitment
 chains with adaptive inclusion, early focal disclosure, and a subsequent public
-barrier. Write the two-run relation for ordinary actions and the comparison
-for additional failure before porting whole-program inductions. If pointwise
+barrier. Write the two-run exact relation, including silence and expiry, before
+porting whole-program inductions. For a broader runtime, separately write the
+comparison for any additional failure. If pointwise
 locality fails for a normalized ordinary action, identify the exact
 counterexample; consider a conditional-law witness only with a concrete need,
 not as parallel speculative infrastructure.
@@ -728,19 +800,21 @@ and the extracted policy. State why available semantic commutations make it
 appropriate for the actual ready event. Retain unchanged opponents' sampled
 actions and original logical histories, including failed true intentions.
 
-Prove equality, or the failure-related utility inequality, at each actual
-native invocation: private preparation, submission, delivery, rejected
-inclusion, accepted inclusion, chance, clock, and expiry. Adaptive selection
-of one of several candidates is handled only
+For the initial barrier runtime, prove equality at each actual native
+invocation: private preparation, submission, delivery, rejected inclusion,
+accepted inclusion, chance, clock, and expiry. In a broader runtime, use a
+failure-related utility inequality only at a genuinely additional informed
+failure choice. Adaptive selection of one of several candidates is handled only
 for the actual command in the policy's support. Do not assert every pending
 packet would realize the same action.
 
-Completion identifies the terminal decoder. Backward utility comparisons
-eliminate the additional failure choices, and finite averaging supplies the
-arbitrary randomized deviation bound. Retain equality on edges for which it
-is proved. Invoke generic equilibrium transport once, rather than deriving
-Nash separately for each event kind. Do not infer bounds for another player's
-utility from a comparison only for the deviator's utility.
+Completion identifies the terminal decoder. For the initial compiler, compose
+the equalities and use finite-mixture simulation for arbitrary randomized
+deviations. For the broader-runtime extension, backward utility comparisons
+eliminate the additional failure choices before finite averaging supplies the
+deviation bound. Invoke generic equilibrium transport once, rather than
+deriving Nash separately for each event kind. Do not infer bounds for another
+player's utility from a comparison only for the deviator's utility.
 
 ### Gate D: a non-vacuous service witness
 
@@ -796,10 +870,9 @@ the semantic design to avoid an appropriate library addition.
 
 Deliver the two-owner asynchronous example, the information-edge and deferred-
 guard counterexamples, a precise local service construction, and the proposed
-cut/replay invariant. Specify the feasible failure normalization and its
-source-level incentive condition, including repeated opportunities and
-information refinement. Identify which comparisons remain exact. Check the
-needed generic APIs. This document specifies the work; its narrative examples
+cut/replay invariant. Identify the contracts that make the initial pending
+edge exact, and state feasible repair separately for any broader runtime that
+violates them. Check the needed generic APIs. This document specifies the work; its narrative examples
 are not a substitute for those proofs.
 
 Exit: the graph carrier, observation contract, and service obligations are
@@ -811,9 +884,9 @@ before implementing it. No source change is currently proposed.
 
 Implement typed identities, cuts, readiness, node transitions, public and
 private observations, own-action history, canonical and noncanonical runners,
-and terminal readout. Define the local causal-discipline certificate and the
-graph-level interface for failure comparisons. Wire every module into the
-build as it is added.
+and terminal readout. Define the local causal-discipline certificate. A
+failure-comparison interface is not an M1 gate for the initial exact barrier
+compiler. Wire every module into the build as it is added.
 
 Exercise all node kinds and terminal expressions with small hand-built graphs,
 including initial secrets, heterogeneous payloads, deferred guards, explicit
@@ -834,8 +907,8 @@ reconstruction, guard specialization, initial-state encoding, and terminal
 decoding. Prove that every source compiler output satisfies the graph's local
 causal-discipline certificate. Port exact canonical source correspondence,
 including arbitrary graph-policy backtranslation, private setup, and original
-own-action recall. Transport the programmer's utility and failure condition
-to the graph semantics.
+own-action recall. Preserve the distinction between source-order canonical
+execution and other ready schedules.
 
 Exit: every source constructor compiles, compiler outputs have the graph
 certificate, and source/canonical-graph strategic correspondence is checked.
@@ -860,19 +933,20 @@ deviation obligation explicit.
 ### M4: asynchronous native deviation capstone
 
 Prove information-safe commutation and the graph scheduling comparison, then
-cut-based native locality, feasible failure normalization, and the continuation
-utility bound. Lift through setup-wide predrawing and package the graph-relative
-certificate. The graph scheduler's observation interface remains distinct
+cut-based native locality and the exact finite-mixture deviation law for the
+initial public-barrier pending compiler. Lift through setup-wide predrawing and
+package the graph-relative certificate. The graph scheduler's observation interface remains distinct
 from the richer native wire scheduler; their identification is not assumed.
-The scheduling and failure mathematics can proceed while M3 establishes the
-native handlers and service facts it will consume.
+The scheduling mathematics can proceed while M3 establishes the native
+handlers and service facts it will consume.
 
-The backend theorem quantifies over independently certified EventGraphs and
-graph policies, utilities, and setup laws. It contains no source program or
-source-relative correctness hypothesis. Obtain its same-error Nash theorem
-under the graph-level failure-disincentive condition. Export exact-law and
-arbitrary source-observable unilateral guarantees only for scopes where the
-stronger simulation is actually proved.
+The backend theorem quantifies over independently certified EventGraphs, graph
+policies, and setup laws. It contains no source program or source-relative
+correctness hypothesis. Its initial exact law yields arbitrary
+source-observable unilateral guarantees and same-error Nash correspondence.
+A broader runtime that exposes new information before failure has a separate
+utility-dependent M4 extension using the feasible-repair contract; do not
+weaken the initial theorem preemptively.
 
 After both M2 and the backend certificate are complete, compose them by the
 generic simulation theorem and discharge the source-facing capstones. This
@@ -912,7 +986,7 @@ The milestone numbers identify deliverables, not a sequential work queue:
               |                       |
       M2: source -> graph      M3/M4: graph -> native
       lowering + exact         async runtime + service
-      correspondence           + strategic utility bound
+      correspondence           + exact deviation law
               |                       |
               +-----------+-----------+
                           |
@@ -936,11 +1010,12 @@ Freeze the following common meanings before the two edge proofs expand:
    discipline, origin consistency, and effect constraints. The source edge
    proves the certificate; the backend consumes it. It contains no assumed
    end-to-end law and no source syntax.
-5. **Failure comparison.** Source-independent, feasible continuation and
+5. **Failure comparison extension.** This is not required for the initial
+   exact barrier compiler. A broader runtime that exposes new semantic
+   information before failure must separately define feasible continuation and
    failure relations, their utility condition, and the information at which
-   the comparison holds. The source edge transports the programmer's
-   condition; the backend proves the native normalization satisfies it.
-   This interface is separate from structural graph well-formedness.
+   the comparison holds. See the
+   [failure-comparison note](event-graph-failure-comparison.md).
 6. **Certificate scope.** Matching strategy translations and outcome maps,
    all-profile versus profile-local premises, and the environment parameters
    of the exact or utility simulation being composed.
@@ -978,7 +1053,8 @@ registry. Strong source-facing statements remain in `Paper.lean`.
 | Independent A/B commitments | Both acceptance orders occur; compiled-profile terminal laws agree with source and the stated unilateral strategic guarantee holds. |
 | Multiple commitments by one owner | Logical choice history and sample-once caches are preserved. |
 | Focal early announcement | Packet is observable; compiled opponents retain their source kernels; deviation remains covered. |
-| Additional early or informed failure | Native behavior remains allowed; feasible normalization and the failure-disincentive premise yield a utility bound, without assuming exact law equality. |
+| Silence or expiry in the initial barrier runtime | Native behavior remains allowed and backtranslates exactly to graph failure/withholding under readiness-gated uniform traffic and service. |
+| Additional informed failure in a broader runtime | Feasible normalization and the failure-disincentive premise yield a utility bound; no exact law is claimed without proof. |
 | Prescribed premature opening | Rejected as a compiler behavior when it crosses an information barrier, even if application inclusion would reject it. |
 | Payload-inspecting environment | Excluded only when it inspects sealed private material; ordinary public-packet inspection remains allowed. |
 | Deferred equality/parity guard | Publication order and failure attribution match source; invalid reorderings are detected. |

@@ -39,23 +39,6 @@ def fieldRef : {Γ : SourceCtx Player L} → { name : VarId } →
   | (_, .privateData _ _) :: _, _, _, .there h => .there (fieldRef h)
   | (_, .publication _) :: _, _, _, .there h => .there (fieldRef h)
 
-/-- A bound source value is exactly a fallible immutable graph binding. -/
-def _root_.Vegas.BoundValue.resultEquiv (A : Type) : BoundValue A ≃ PublicationResult A where
-  toFun value := match hb : value.binding with
-    | .unbound => False.elim (value.isBound hb)
-    | .unopenable => .failure
-    | .value data => .success data
-  invFun
-    | .failure => .unopenable A
-    | .success data => .value data
-  left_inv value := by
-    rcases value with ⟨binding, bound⟩
-    cases binding with
-    | unbound => exact False.elim (bound rfl)
-    | unopenable => rfl
-    | value data => rfl
-  right_inv result := by cases result <;> rfl
-
 /-- Current public read selected for every retained private source cell. -/
 abbrev PublicationMap (Γ : SourceCtx Player L) :=
   ∀ {owner payload name}, HasVar Γ name (.privateData owner payload) →
