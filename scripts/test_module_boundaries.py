@@ -169,6 +169,18 @@ class ModuleBoundaryTests(unittest.TestCase):
             root = self.fixture(directory, modules)
             self.assertEqual(CHECKER.check(root), [])
 
+    def test_unclassified_vegas_top_level_layer_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory, {
+                "Vegas": "import Vegas.Experimental.Widget",
+                "Vegas.Experimental.Widget": "",
+            })
+            errors = CHECKER.check(root)
+            self.assertTrue(any(
+                "unclassified Vegas top-level layer Vegas.Experimental" in error
+                for error in errors
+            ))
+
     def test_umbrella_import_cannot_bypass_a_layer_contract(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory, {
@@ -233,11 +245,11 @@ class ModuleBoundaryTests(unittest.TestCase):
     def test_acyclic_diamond_is_accepted(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory, {
-                "Vegas": "import Vegas.Top",
-                "Vegas.Top": "import Vegas.Left Vegas.Right",
-                "Vegas.Left": "import Vegas.Bottom",
-                "Vegas.Right": "import Vegas.Bottom",
-                "Vegas.Bottom": "",
+                "Vegas": "import Vegas.Game.Top",
+                "Vegas.Game.Top": "import Vegas.Game.Left Vegas.Game.Right",
+                "Vegas.Game.Left": "import Vegas.Game.Bottom",
+                "Vegas.Game.Right": "import Vegas.Game.Bottom",
+                "Vegas.Game.Bottom": "",
             })
             self.assertEqual(CHECKER.check(root), [])
 

@@ -17,7 +17,8 @@ variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
 /-- A matching submission is selected by the reserved event slot immediately
-after `afterSubmit`, independently of all older pending traffic. -/
+after `Interaction.MessageApplication.afterSubmit`, independently of all older
+pending traffic. -/
 theorem latestEventSubmissionCommand_afterSubmit
     (runtime : EventGraphRuntime graph)
     (execution : runtime.application.PolicyExecution)

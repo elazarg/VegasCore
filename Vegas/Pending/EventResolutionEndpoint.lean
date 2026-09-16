@@ -20,15 +20,6 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-omit [DecidableEq Player] in
-private theorem EventCode.readFields_cast
-    {Field : Type} [DecidableEq Field]
-    {layout : Field → EventField Player L} {left right : EventField Player L}
-    (same : left = right) (code : EventCode layout left) :
-    (cast (congrArg (EventCode layout) same) code).readFields = code.readFields := by
-  cases same
-  rfl
-
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 private theorem option_value_cast_roundtrip
     {left right : EventField Player L} (same : left = right)

@@ -7,7 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Foundation.ExprInterface
 
 /-!
-# Visibility-tagged contexts
+# Visibility-tagged contexts for the surface-language prototype
 
 `Visibility`, typed bindings `BindTy`, visibility contexts `VCtx`, the
 intrinsic membership witness `VHasVar`, and visibility environments `VEnv`.

@@ -1,10 +1,5 @@
 import GameTheoryExtensions.Core.MixtureSimulation
 import GameTheoryExtensions.Core.MixtureSimulationComposition
-import GameTheoryExtensions.Core.QuitTransfer
 import GameTheoryExtensions.Math.SelectiveStopping
 import GameTheoryExtensions.Math.Probability.FinDist
-import GameTheoryExtensions.Math.Probability.DecisionObservation
-import GameTheoryExtensions.Math.Probability.SequentialDecisionObservation
-import GameTheoryExtensions.Math.Finset
 import GameTheoryExtensions.Core.UtilitySimulation
-import GameTheoryExtensions.Protocol.FiniteSupportPredraw

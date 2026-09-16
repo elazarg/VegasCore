@@ -41,7 +41,7 @@ environment through `PublicScheduler`.
 
 At a strategic event `e` owned by `p`, replace the actual
 `PlayerObservation.completionOrder` by the canonical source-ranked prefix.
-Retain the projected visible store and the original dependent `ownActions`.
+Retain the projected visible store and the original dependent `Vegas.EventGraph.PlayerObservation.ownActions`.
 Then call `sigma p e` on that normalized observation.
 
 Two existing facts justify this normalization at every reachable ready event:
@@ -117,7 +117,7 @@ honest law; an arbitrary focal policy need not obey normalization.
 against normalized opponents. Its right-hand side uses the original opponents
 under the canonical scheduler, where normalization is proved to leave the
 complete execution law unchanged. The theorem concerns the actual
-`runPolicies` executor and the complete typed terminal store.
+`Vegas.EventGraph.runPolicies` executor and the complete typed terminal store.
 
 `eventSchedulingSimulation` packages this law and the honest law as
 `MixtureSimulationOn` between the actual canonical and scheduled games.
@@ -207,7 +207,7 @@ The other players remain unchanged. `runPolicies_canonical_eq_of_reachable`
 lifts that equality to a full execution law, which composes with
 `canonical_terminalState_law` and the scheduler mixture in
 `EventLowering.scheduled_setup_deviation_law`.
-`Paper.source_event_graph_deviation_law` delegates to this result.
+`Vegas.Paper.source_event_graph_deviation_law` delegates to this result.
 `Setup.eventSimulation` exposes the composed certificate and yields same-error
 Nash correspondence and source-state deviation guarantees through the generic
 finite-mixture transport theorems.

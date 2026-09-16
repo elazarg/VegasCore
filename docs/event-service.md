@@ -58,7 +58,7 @@ Let `n` be the event count and `D` the maximum event deadline. The driver runs
 supported execution from an invariant state. `servicedEventGame_complete`
 specializes it to the actual game with private initial inputs sampled inside
 play; `servicedEventGame_outcome_total` gives total typed outcome readout.
-`Paper.event_pending_completion` directly delegates to that result.
+`Vegas.Paper.event_pending_completion` directly delegates to that result.
 
 The bound is deliberately uniform, not a claim of optimal latency. Completion
 alone does not prove preservation of honest outcomes: an environment can
@@ -196,7 +196,7 @@ both deadline protection and the next epoch's age invariant.
 the concrete service. At its proved completion horizon, the continuation is a
 point mass at the terminal semantic state. Projecting to the store yields the
 graph-to-native law; composing with the source-to-graph theorem gives
-`Paper.source_event_pending_honest_law`. Equality concerns semantic outcomes,
+`Vegas.Paper.source_event_pending_honest_law`. Equality concerns semantic outcomes,
 not chronological traces.
 
 ## Arbitrary unilateral deviations
@@ -208,8 +208,8 @@ policies. The setup-wide deviation theorem uses owner-local coherence and
 deadline protection for unchanged players. It translates every native
 unilateral policy into a finite mixture of canonical graph policies, with one
 mixture across private setup. Source backtranslation and the generic equilibrium
-transfer give `Paper.source_event_pending_deviation_law` and
-`Paper.source_event_pending_approximate_nash_iff`.
+transfer give `Vegas.Paper.source_event_pending_deviation_law` and
+`Vegas.Paper.source_event_pending_approximate_nash_iff`.
 The [deviation proof](event-pending-deviation.md) explains the direct
 native-to-canonical argument and its information-locality theorem.
 

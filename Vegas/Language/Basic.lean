@@ -17,8 +17,8 @@ that lowers to the generic `SurfaceCore simpleExpr`. This concrete
 specialization is deliberate: nullable yields rely on `BaseTy.option`,
 `CommitPayloadTy`, and `DefaultVal`.
 
-The surface keeps the existing core actions, adds administrative `let`
-bindings, and lowers guarded public `yield`s through internal `option T`
+The surface provides sampling, commitment, reveal, terminal payouts, and
+administrative `let` bindings. It lowers guarded public `yield`s through internal `option T`
 commitments. User-written commit payloads are restricted by `CommitPayloadTy`,
 so a surface program cannot explicitly commit an optional value.
 
@@ -28,7 +28,9 @@ instead generate the sealed commitment name during elaboration/lowering,
 translate ordinary reads to the public reveal, translate owner-private reads to
 the sealed commitment, and emit `SurfaceCore` directly.
 
-Quit handlers are deliberately not part of this syntax yet.
+Publication-failure handlers are not part of this syntax. Nullable values in
+the elaboration target do not by themselves implement the failure-aware
+`SourceProgram` semantics.
 -/
 
 namespace Vegas

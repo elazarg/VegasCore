@@ -21,7 +21,7 @@ variable {L : IExpr} [R : IExpr.ResultTypes L]
 
 /-- The event-graph field corresponding to one source cell.  In particular,
 the original payload remains present in bindings and publications even when
-`R.result` is not injective. -/
+`IExpr.ResultTypes.result` is not injective. -/
 def cellField : CellTy Player L → Vegas.EventGraph.EventField Player L
   | .publicData payload => .publicData payload
   | .privateData owner payload => .binding owner payload

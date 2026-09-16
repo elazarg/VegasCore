@@ -280,7 +280,7 @@ private theorem collectPublicReads_eq_of_reads {Field : Type}
           | here => exact False.elim (member used)
           | there ref => exact tailAgree ref used
 
-/-- Ordinary expression code whose inputs are public event fields. `readFields`
+/-- Ordinary expression code whose inputs are public event fields. `PublicExpr.readFields`
 is a finite scheduling footprint covering every semantically supported read. -/
 structure PublicExpr {Field : Type} [DecidableEq Field]
     (layout : Field → EventField Player L) (payload : L.Ty) where
@@ -814,6 +814,15 @@ def readFields {Field : Type} [DecidableEq Field]
   | .resolve _ _ binding checks =>
       insert binding.field (DeferredCheck.listReadFields checks)
   | .sample _ law => law.readFields
+
+/-- Casting an event code across an equality of output-field descriptions does
+not change its retained read footprint. -/
+theorem readFields_cast {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {left right : EventField Player L}
+    (same : left = right) (code : EventCode layout left) :
+    readFields (cast (congrArg (EventCode layout) same) code) = readFields code := by
+  cases same
+  rfl
 
 /-- Deterministic resolution output before it is embedded in the general
 finite-distribution evaluator.  Pending reads are represented by `none`;

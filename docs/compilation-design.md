@@ -90,3 +90,6 @@ require a separate observation correspondence. See
 The `Vegas.Language` surface-syntax prototype lowers to an internal `SurfaceCore`
 representation. A verified elaboration to `SourceProgram` is a separate edge;
 the prototype's typed lowering alone has no operational or strategic guarantee.
+Its optional guard-feasibility predicate differs from the failure-aware core's
+admission of unsatisfiable guards. The [frontend boundary](compiler-boundary.md)
+records the required semantic connection.

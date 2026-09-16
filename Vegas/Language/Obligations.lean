@@ -157,8 +157,6 @@ theorem RevealComplete.pending_revealed
     RevealComplete.pending_or_committed_revealed
       p hcomplete x (by simp [hx])
 
-instance : DecidableEq VarId := inferInstanceAs (DecidableEq Nat)
-
 def decidableRevealComplete {P : Type} [DecidableEq P]
     {L : Vegas.IExpr}
 :
@@ -278,6 +276,9 @@ theorem WFCtx.erasePubVCtx {P : Type} {L : IExpr}
   rw [← eraseVCtx_pubVCtx, eraseVCtx_map_fst]
   exact WFCtx.pubSubctx hctx
 
+/-- Every surface commitment guard has a satisfying value in every visible
+environment. This optional prototype side condition is not a well-formedness
+requirement of the failure-aware `SourceProgram`. -/
 def Legal {P : Type} [DecidableEq P]
     {L : Vegas.IExpr}
 :

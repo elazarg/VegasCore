@@ -119,14 +119,14 @@ initial inputs, deferred guards, and chance.
 The whole-run source-order theorem `EventLowering.canonical_setup_law` runs
 the actual compiled graph under its canonical public scheduler. Its decoded
 terminal-state law equals source execution, including a finite private setup
-law and one profile used across that law. `Paper.source_event_graph_canonical_law`
+law and one profile used across that law. `Vegas.Paper.source_event_graph_canonical_law`
 delegates to this result. It covers every source constructor and requires no
 guard-feasibility or failure-dominance premise.
 
 `EventLowering.scheduled_setup_law` composes this source-order law with graph
 scheduling independence. Every adaptive public schedule of the compiled
 profile has the full source terminal-state law, with one profile across the
-private setup distribution. `Paper.source_event_graph_honest_law` delegates
+private setup distribution. `Vegas.Paper.source_event_graph_honest_law` delegates
 to this result. No failure-dominance or finite-payload premise is required.
 
 `EventLowering.canonical_deviation_terminalState_law` backtranslates every
@@ -135,7 +135,7 @@ states. `EventLowering.scheduled_setup_deviation_law` composes this result with
 the graph-local scheduler mixture: every unilateral asynchronous graph
 deviation has exactly the terminal source-state law of a finite mixture of
 source deviations against unchanged opponents. One mixture is chosen before
-private setup. `Paper.source_event_graph_deviation_law` directly delegates to
+private setup. `Vegas.Paper.source_event_graph_deviation_law` directly delegates to
 this theorem.
 
 `Setup.eventSimulation` packages these laws in the shared finite-mixture
@@ -180,7 +180,7 @@ commands remain legal.
 terminality and total graph-outcome readout for every supported play, under
 arbitrary player policies. The horizon is `eventCount * (maxDeadline + 1)`
 epochs. The proof uses actual native transitions and deadline progress, not an
-assumed service-correctness certificate. `Paper.event_pending_completion`
+assumed service-correctness certificate. `Vegas.Paper.event_pending_completion`
 directly delegates to the totality theorem. The
 [service argument](event-service.md) gives the construction and timing boundary.
 
@@ -229,11 +229,11 @@ used as a substitute for this richer message-host argument.
 policy compiler, and terminal-state readout. `Paper.lean` audits the following
 capstones over these definitions:
 
-- `source_event_pending_honest_law`: equality with the source outcome law.
-- `source_event_pending_deviation_law`: every unilateral native deviation has
+- `Vegas.Paper.source_event_pending_honest_law`: equality with the source outcome law.
+- `Vegas.Paper.source_event_pending_deviation_law`: every unilateral native deviation has
   the law of one finite source-policy mixture across private setup, with all
   opponents unchanged.
-- `source_event_pending_approximate_nash_iff`: same-error Nash preservation
+- `Vegas.Paper.source_event_pending_approximate_nash_iff`: same-error Nash preservation
   and reflection at compiled profiles for source-state utilities.
 
 These statements assume the concrete epoch service with deadlines of at least

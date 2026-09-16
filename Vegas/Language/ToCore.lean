@@ -19,6 +19,11 @@ namespace Vegas
 
 variable {P : Type} [DecidableEq P]
 
+/-- Reinterpret a public expression in a player's visible erased context. -/
+private def Expr.publicToView {Γ : VCtx P simpleExpr} {b : BaseTy} (who : P)
+    (e : Expr (erasePubVCtx Γ) b) : Expr (eraseVCtx (viewVCtx who Γ)) b :=
+  e.substVars fun {x} {_} h => .var x (HasVar.pubToView (p := who) h)
+
 namespace VegasLang
 
 /-- Typed substitution environment used while lowering surface syntax. Public

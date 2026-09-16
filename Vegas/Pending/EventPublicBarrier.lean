@@ -114,17 +114,6 @@ theorem privateStep_remembered_of_some (state : State graph) (who : Player)
       · rw [privateStep, dif_neg owned]
         exact cached
 
-private theorem privateStep_accepted (state : State graph) (who : Player)
-    (command : PrivateCommand graph) :
-    (privateStep state who command).accepted = state.accepted := by
-  cases command with
-  | prepare => rfl
-  | remember event action =>
-      simp only [privateStep]
-      split
-      · split <;> rfl
-      · rfl
-
 /-- Until a ready public event completes, every native action preserves its
 semantic configuration, accepted handles, and any cached resolution action.
 Private work on unrelated candidate slots and caches remains unrestricted. -/

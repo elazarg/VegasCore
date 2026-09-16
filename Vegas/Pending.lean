@@ -12,9 +12,7 @@ import Vegas.Pending.EventResolutionBlock
 import Vegas.Pending.EventResolutionAcceptance
 import Vegas.Pending.EventInclusion
 import Vegas.Pending.EventPotential
-import Vegas.Pending.EventBindingPotential
 import Vegas.Pending.EventBindingPolicyService
-import Vegas.Pending.EventResolutionPotential
 import Vegas.Pending.EventDisclosure
 import Vegas.Pending.EventSubmission
 import Vegas.Pending.EventService

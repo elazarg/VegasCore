@@ -36,17 +36,6 @@ theorem State.canonicalResources_initial (inputs : graph.Inputs) (owner : Player
   have slots := congrArg Prod.snd impossible
   cases slots
 
-private theorem privateStep_accepted (state : State graph) (who : Player)
-    (command : PrivateCommand graph) :
-    (privateStep state who command).accepted = state.accepted := by
-  cases command with
-  | prepare => rfl
-  | remember event action =>
-      simp only [privateStep]
-      split
-      · split <;> rfl
-      · rfl
-
 theorem privateStep_canonicalResources (state : State graph) (owner who : Player)
     (command : PrivateCommand graph) (resources : state.CanonicalResources owner) :
     (privateStep state who command).CanonicalResources owner := by

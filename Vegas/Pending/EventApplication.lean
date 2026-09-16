@@ -350,6 +350,18 @@ def privateStep (state : State graph) (who : Player) :
         | none => { state with remembered := Function.update state.remembered event (some action) }
       else state
 
+/-- Private preparation and choice recall do not alter accepted handles. -/
+theorem privateStep_accepted (state : State graph) (who : Player)
+    (command : PrivateCommand graph) :
+    (privateStep state who command).accepted = state.accepted := by
+  cases command with
+  | prepare => rfl
+  | remember event action =>
+      by_cases owned : graph.actor? event = some who
+      · rw [privateStep, dif_pos owned]
+        cases state.remembered event <;> rfl
+      · rw [privateStep, dif_neg owned]
+
 /-- Install a binding handle and complete the bind with the immutable meaning
 already associated with that handle. Wrong-typed and unprepared candidates
 produce genuine binding failure without changing packet shape. -/
@@ -499,7 +511,7 @@ private theorem acceptResolution_publicView_replaceRemembered (state : State gra
       rfl
 
 /-- A node viewed through its output field. This performs the dependent
-transport from `graph.nodes` once, so every handler sees the same typed
+transport from `Vegas.EventGraph.nodes` once, so every handler sees the same typed
 constructor data. -/
 inductive NodeView (graph : Vegas.EventGraph Player L)
     (event : graph.EventId) where
@@ -578,14 +590,6 @@ private theorem resolve_complete_mem_step (state : State graph)
   · simp
   · rw [EventCode.resolve_eval?, resultEq]
     rfl
-
-omit [DecidableEq Player] in
-private theorem EventCode.readFields_cast {Field : Type} [DecidableEq Field]
-    {layout : Field → EventField Player L} {left right : EventField Player L}
-    (same : left = right) (code : EventCode layout left) :
-    (cast (congrArg (EventCode layout) same) code).readFields = code.readFields := by
-  cases same
-  rfl
 
 omit [DecidableEq Player] in
 private theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)

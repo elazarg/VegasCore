@@ -50,15 +50,6 @@ private theorem action_cast_roundtrip
   cases same
   rfl
 
-omit [DecidableEq Player] in
-private theorem EventCode.readFields_cast
-    {Field : Type} [DecidableEq Field]
-    {layout : Field → EventField Player L} {left right : EventField Player L}
-    (same : left = right) (code : EventCode layout left) :
-    (cast (congrArg (EventCode layout) same) code).readFields = code.readFields := by
-  cases same
-  rfl
-
 /-- The packet selected from an actual owner observation executes exactly the
 remembered resolution action and the deterministic graph result.  This covers
 false disclosure, rejected true disclosure, and a successful verified opening

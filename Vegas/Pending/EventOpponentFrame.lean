@@ -18,15 +18,6 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-omit [DecidableEq Player] in
-private theorem actor_cast (event : graph.EventId) (output : EventField Player L)
-    (same : graph.outputLayout event = output) :
-    EventCode.actor
-        (cast (congrArg (EventCode graph.layout) same) (graph.nodes event)) =
-      graph.actor? event := by
-  cases same
-  rfl
-
 /-- Acceptance authenticates the packet sender as the actor of the uniquely
 addressed event. Thus player-authored traffic can complete only that player's
 events; chance events are completed only by environment commands. -/
@@ -49,9 +40,9 @@ theorem handle_event_actor
               split at accepted
               · rename_i sender
                 have codeActor := congrArg EventCode.actor codeEq
-                rw [actor_cast event _ outputEq] at codeActor
+                rw [EventCode.actor_cast outputEq (graph.nodes event)] at codeActor
                 refine ⟨event, rfl, ?_⟩
-                simpa [EventCode.actor, Message.sender] using
+                simpa only [EventGraph.actor?, EventCode.actor, Message.sender] using
                   codeActor.trans (congrArg some sender.symm)
               · simp_all
         · simp [handle, ready, timely] at accepted
@@ -66,9 +57,9 @@ theorem handle_event_actor
               split at accepted
               · rename_i sender
                 have codeActor := congrArg EventCode.actor codeEq
-                rw [actor_cast event _ outputEq] at codeActor
+                rw [EventCode.actor_cast outputEq (graph.nodes event)] at codeActor
                 refine ⟨event, rfl, ?_⟩
-                simpa [EventCode.actor, Message.sender] using
+                simpa only [EventGraph.actor?, EventCode.actor, Message.sender] using
                   codeActor.trans (congrArg some sender.symm)
               · simp_all
         · simp [handle, ready, timely] at accepted
@@ -83,9 +74,9 @@ theorem handle_event_actor
               split at accepted
               · rename_i sender
                 have codeActor := congrArg EventCode.actor codeEq
-                rw [actor_cast event _ outputEq] at codeActor
+                rw [EventCode.actor_cast outputEq (graph.nodes event)] at codeActor
                 refine ⟨event, rfl, ?_⟩
-                simpa [EventCode.actor, Message.sender] using
+                simpa only [EventGraph.actor?, EventCode.actor, Message.sender] using
                   codeActor.trans (congrArg some sender.symm)
               · simp_all
         · simp [handle, ready, timely] at accepted

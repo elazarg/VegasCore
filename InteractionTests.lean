@@ -1,12 +1,6 @@
-import InteractionTests.ChoiceController
 import InteractionTests.Commitment
 import InteractionTests.CommitmentCandidates
-import InteractionTests.ConditionalPublication
 import InteractionTests.GuardedPublication
 import InteractionTests.GuardFailure
 import InteractionTests.MessageApplication
-import InteractionTests.MessageCounters
 import InteractionTests.Pending
-import InteractionTests.PolicyTrace
-import InteractionTests.PrivateChoice
-import InteractionTests.TimeoutGate

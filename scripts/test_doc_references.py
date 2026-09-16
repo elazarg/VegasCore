@@ -24,6 +24,86 @@ class DocReferenceTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("SomeNamespace.missing", result.stdout)
 
+    def test_declaration_docstrings_are_checked(self):
+        result = self.run_checker(
+            "/-- Uses `Vegas.missingDeclaration`. -/\n"
+            "def actualResult := 1\n"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Vegas.missingDeclaration", result.stdout)
+
+    def test_question_mark_and_bang_names_are_checked(self):
+        result = self.run_checker(
+            "namespace Vegas\n"
+            "def lookup? := 1\n"
+            "def lookup! := 1\n"
+            "/-- `Vegas.lookup?` and `Vegas.lookup!` exist; `Vegas.missing?` does not. -/\n"
+            "end Vegas\n"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Vegas.missing?", result.stdout)
+        self.assertNotIn("unknown name `Vegas.lookup", result.stdout)
+
+    def test_qualified_name_must_resolve_in_its_namespace(self):
+        result = self.run_checker(
+            "namespace Actual\n"
+            "def existing_name := 1\n"
+            "end Actual\n"
+            "/-! `Wrong.existing_name` is stale. -/\n"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Wrong.existing_name", result.stdout)
+
+    def test_relative_namespace_and_unqualified_camel_case_resolve(self):
+        result = self.run_checker(
+            "namespace Vegas.Example\n"
+            "def usefulResult := 1\n"
+            "/-! `Example.usefulResult` and `usefulResult` are current. -/\n"
+            "end Vegas.Example\n"
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_module_doc_uses_parent_namespace_without_arbitrary_suffixes(self):
+        result = self.run_checker(
+            "namespace Vegas\n"
+            "def usefulResult := 1\n"
+            "end Vegas\n"
+            "/-! `usefulResult` is current, but `Wrong.usefulResult` is not. -/\n"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("unknown name `usefulResult`", result.stdout)
+        self.assertIn("unknown name `Wrong.usefulResult`", result.stdout)
+
+    def test_receiver_notation_resolves_the_complete_member_suffix(self):
+        result = self.run_checker(
+            "namespace Vegas.Setup\n"
+            "def eventSimulation := 1\n"
+            "end Vegas.Setup\n"
+            "/-! `graph.Setup.eventSimulation` is current; "
+            "`graph.Wrong.eventSimulation` is not. -/\n"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("unknown name `graph.Setup.eventSimulation`", result.stdout)
+        self.assertIn("unknown name `graph.Wrong.eventSimulation`", result.stdout)
+
+    def test_top_level_paper_file_is_indexed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Vegas").mkdir()
+            (root / "Vegas/Test.lean").write_text(
+                "/-! `Vegas.Paper.mainResult` is current. -/\n", encoding="utf-8"
+            )
+            (root / "Paper.lean").write_text(
+                "namespace Vegas.Paper\n"
+                "theorem mainResult : True := by trivial\n"
+                "end Vegas.Paper\n", encoding="utf-8"
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT)], cwd=root,
+                capture_output=True, text=True,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout)
+
     def test_constructor_and_source_filename_are_accepted(self):
         result = self.run_checker(
             "inductive Participant where\n  | scheduler\n"
@@ -62,6 +142,28 @@ class DocReferenceTests(unittest.TestCase):
                                     capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("missing local file `Vegas/Pending/EventGraphRuntime.lean`", result.stdout)
+
+    def test_markdown_checks_lean_names_and_unqualified_camel_case(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Vegas").mkdir()
+            (root / "Vegas/Sample.lean").write_text(
+                "namespace Vegas.Sample\n"
+                "def actualResult := 1\n"
+                "end Vegas.Sample\n", encoding="utf-8"
+            )
+            (root / "README.md").write_text(
+                "Valid: `Vegas.Sample.actualResult`, `actualResult`. "
+                "Stale: `Vegas.Sample.missingResult`.\n", encoding="utf-8"
+            )
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "README.md"], check=True)
+            result = subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
+                                    capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Markdown cites unknown Lean name `Vegas.Sample.missingResult`",
+                      result.stdout)
+        self.assertNotIn("unknown Lean name `actualResult`", result.stdout)
 
     def test_relative_markdown_links_resolve_from_source_directory(self):
         with tempfile.TemporaryDirectory() as directory:

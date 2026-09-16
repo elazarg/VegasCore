@@ -15,105 +15,98 @@ open GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 
-/-- Transport one completion record without changing its event or action. -/
-private def toSequentialCompletion (graph : Vegas.EventGraph Player L)
-    (completion : graph.Completion) : graph.sequentialize.Completion :=
-  ⟨completion.event, completion.action⟩
+/-- Reinterpret one chronological completion under a dependency mode. -/
+def toModeCompletion (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
+    (completion : graph.Completion) : (graph.withMode mode).Completion where
+  event := completion.event
+  action := completion.action
 
-/-- Transport one sequential completion record back to the original graph. -/
-private def fromSequentialCompletion (graph : Vegas.EventGraph Player L)
-    (completion : graph.sequentialize.Completion) : graph.Completion :=
-  ⟨completion.event, completion.action⟩
+/-- Forget the dependency mode from one chronological completion. -/
+def fromModeCompletion (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
+    (completion : (graph.withMode mode).Completion) : graph.Completion where
+  event := completion.event
+  action := completion.action
 
-/-- Transport an original player observation to the sequential graph. -/
-def toSequentialObservation (graph : Vegas.EventGraph Player L) (who : Player)
-    (observation : graph.PlayerObservation who) :
-    graph.sequentialize.PlayerObservation who where
+/-- Reinterpret a player observation under a dependency mode. -/
+def toModeObservation (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
+    (who : Player) (observation : graph.PlayerObservation who) :
+    (graph.withMode mode).PlayerObservation who where
   completionOrder := observation.completionOrder
   store := observation.store
-  ownActions := observation.ownActions.map graph.toSequentialCompletion
+  ownActions := observation.ownActions.map (graph.toModeCompletion mode)
 
-/-- Transport a sequential player observation back to the original graph. -/
-private def fromSequentialObservation (graph : Vegas.EventGraph Player L) (who : Player)
-    (observation : graph.sequentialize.PlayerObservation who) :
+/-- Forget the dependency mode from a player observation. -/
+def fromModeObservation (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
+    (who : Player) (observation : (graph.withMode mode).PlayerObservation who) :
     graph.PlayerObservation who where
   completionOrder := observation.completionOrder
   store := observation.store
-  ownActions := observation.ownActions.map graph.fromSequentialCompletion
+  ownActions := observation.ownActions.map (graph.fromModeCompletion mode)
 
 omit [DecidableEq Player] in
-@[simp] private theorem fromSequentialCompletion_toSequentialCompletion
-    (graph : Vegas.EventGraph Player L) (completion : graph.Completion) :
-    graph.fromSequentialCompletion (graph.toSequentialCompletion completion) = completion := by
+@[simp] theorem fromModeCompletion_toModeCompletion
+    (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
+    (completion : graph.Completion) :
+    graph.fromModeCompletion mode (graph.toModeCompletion mode completion) =
+      completion := by
   cases completion
   rfl
 
 omit [DecidableEq Player] in
-@[simp] private theorem toSequentialCompletion_fromSequentialCompletion
-    (graph : Vegas.EventGraph Player L)
-    (completion : graph.sequentialize.Completion) :
-    graph.toSequentialCompletion (graph.fromSequentialCompletion completion) = completion := by
+@[simp] theorem toModeCompletion_fromModeCompletion
+    (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
+    (completion : (graph.withMode mode).Completion) :
+    graph.toModeCompletion mode (graph.fromModeCompletion mode completion) =
+      completion := by
   cases completion
   rfl
 
 omit [DecidableEq Player] in
-@[simp] private theorem fromSequentialObservation_toSequentialObservation
-    (graph : Vegas.EventGraph Player L) (who : Player)
+@[simp] theorem fromModeObservation_toModeObservation
+    (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
+    (who : Player)
     (observation : graph.PlayerObservation who) :
-    graph.fromSequentialObservation who
-      (graph.toSequentialObservation who observation) = observation := by
-  apply PlayerObservation.ext graph
-  · rfl
-  · rfl
-  · simp only [fromSequentialObservation, toSequentialObservation, List.map_map]
-    rw [show graph.fromSequentialCompletion ∘ graph.toSequentialCompletion = id by
-      funext completion
-      simp]
-    exact List.map_id observation.ownActions
+    graph.fromModeObservation mode who
+      (graph.toModeObservation mode who observation) = observation := by
+  cases observation
+  simp [toModeObservation, fromModeObservation, Function.comp_def]
 
 omit [DecidableEq Player] in
-@[simp] private theorem toSequentialObservation_fromSequentialObservation
-    (graph : Vegas.EventGraph Player L) (who : Player)
-    (observation : graph.sequentialize.PlayerObservation who) :
-    graph.toSequentialObservation who
-      (graph.fromSequentialObservation who observation) = observation := by
-  apply PlayerObservation.ext graph.sequentialize
-  · rfl
-  · rfl
-  · simp only [fromSequentialObservation, toSequentialObservation, List.map_map]
-    rw [show graph.toSequentialCompletion ∘ graph.fromSequentialCompletion = id by
-      funext completion
-      simp]
-    exact List.map_id observation.ownActions
+@[simp] theorem toModeObservation_fromModeObservation
+    (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
+    (who : Player) (observation : (graph.withMode mode).PlayerObservation who) :
+    graph.toModeObservation mode who
+      (graph.fromModeObservation mode who observation) = observation := by
+  cases observation
+  simp [toModeObservation, fromModeObservation, Function.comp_def]
 
-/-- Reuse a policy on the sequential dependency specialization after
-transporting its observation. -/
-def toSequentialPolicy (graph : Vegas.EventGraph Player L) (who : Player)
-    (policy : graph.BehavioralPolicy who) :
-  graph.sequentialize.BehavioralPolicy who :=
+/-- Reinterpret a policy on the mode-constrained graph. -/
+def toModePolicy (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
+    (who : Player) (policy : graph.BehavioralPolicy who) :
+    (graph.withMode mode).BehavioralPolicy who :=
   fun event actor observation =>
     policy event (by exact actor)
-      (graph.fromSequentialObservation who observation)
+      (graph.fromModeObservation mode who observation)
 
-/-- Reuse a sequential-specialization policy on the original graph. -/
-def fromSequentialPolicy (graph : Vegas.EventGraph Player L) (who : Player)
-    (policy : graph.sequentialize.BehavioralPolicy who) :
-  graph.BehavioralPolicy who :=
+/-- Forget a graph's dependency mode from a behavioral policy. -/
+def fromModePolicy (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
+    (who : Player) (policy : (graph.withMode mode).BehavioralPolicy who) :
+    graph.BehavioralPolicy who :=
   fun event actor observation =>
     policy event (by exact actor)
-      (graph.toSequentialObservation who observation)
+      (graph.toModeObservation mode who observation)
 
-/-- Transport a complete profile to the sequential dependency specialization. -/
-def toSequentialProfile (graph : Vegas.EventGraph Player L)
+/-- Reinterpret a complete behavioral profile on a dependency mode. -/
+def toModeProfile (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
     (profile : graph.BehavioralProfile) :
-    graph.sequentialize.BehavioralProfile :=
-  fun who => graph.toSequentialPolicy who (profile who)
+    (graph.withMode mode).BehavioralProfile :=
+  fun who => graph.toModePolicy mode who (profile who)
 
-/-- Transport a complete profile back to the original graph. -/
-def fromSequentialProfile (graph : Vegas.EventGraph Player L)
-    (profile : graph.sequentialize.BehavioralProfile) :
+/-- Forget a dependency mode from a complete behavioral profile. -/
+def fromModeProfile (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
+    (profile : (graph.withMode mode).BehavioralProfile) :
     graph.BehavioralProfile :=
-  fun who => graph.fromSequentialPolicy who (profile who)
+  fun who => graph.fromModePolicy mode who (profile who)
 
 /-- Forget the additional sequential dependencies in a coherent configuration.
 Every dependency of the original graph is an earlier event, hence is already
@@ -130,10 +123,10 @@ private def fromSequentialConfig (graph : Vegas.EventGraph Player L)
           (graph.order.predecessor_lt predecessorMem) }
   outputs := config.outputs
   output_available := config.output_available
-  history := config.history.map graph.fromSequentialCompletion
+  history := config.history.map (graph.fromModeCompletion .sequential)
   history_nodup := by
     have events :
-        (config.history.map graph.fromSequentialCompletion).map Completion.event =
+        (config.history.map (graph.fromModeCompletion .sequential)).map Completion.event =
           config.history.map Completion.event := by
       simp only [List.map_map]
       apply List.map_congr_left
@@ -144,7 +137,7 @@ private def fromSequentialConfig (graph : Vegas.EventGraph Player L)
   history_exact := by
     intro event
     have events :
-        (config.history.map graph.fromSequentialCompletion).map Completion.event =
+        (config.history.map (graph.fromModeCompletion .sequential)).map Completion.event =
           config.history.map Completion.event := by
       simp only [List.map_map]
       apply List.map_congr_left
@@ -209,12 +202,12 @@ omit [DecidableEq Player] in
 
 private theorem fromSequential_playerObserve (graph : Vegas.EventGraph Player L)
     (config : graph.sequentialize.Config) (who : Player) :
-    graph.fromSequentialObservation who
+    graph.fromModeObservation .sequential who
         (graph.sequentialize.playerObserve who config) =
       graph.playerObserve who (graph.fromSequentialConfig config) := by
   apply PlayerObservation.ext graph
   · change config.history.map Completion.event =
-      (config.history.map graph.fromSequentialCompletion).map Completion.event
+      (config.history.map (graph.fromModeCompletion .sequential)).map Completion.event
     rw [List.map_map]
     symm
     apply List.map_congr_left
@@ -223,7 +216,7 @@ private theorem fromSequential_playerObserve (graph : Vegas.EventGraph Player L)
   · change graph.playerStore who config.store =
       graph.playerStore who (graph.fromSequentialConfig config).store
     rw [fromSequentialConfig_store]
-  · simp only [fromSequentialObservation, playerObserve, ownCompletions,
+  · simp only [fromModeObservation, playerObserve, ownCompletions,
       fromSequentialConfig]
     induction config.history with
     | nil => rfl
@@ -232,15 +225,16 @@ private theorem fromSequential_playerObserve (graph : Vegas.EventGraph Player L)
         have actorEq : graph.sequentialize.actor? completion.event =
             graph.actor? completion.event := rfl
         rw [actorEq]
-        split <;> simp_all [fromSequentialCompletion]
+        split <;> simp_all [fromModeCompletion]
 
 omit [DecidableEq Player] in
-private theorem toSequentialObservation_normalizeObservation
+private theorem toModeObservation_normalizeObservation
     (graph : Vegas.EventGraph Player L) (event : graph.EventId) (who : Player)
     (observation : graph.PlayerObservation who) :
-    graph.toSequentialObservation who (graph.normalizeObservation event who observation) =
+    graph.toModeObservation .sequential who
+        (graph.normalizeObservation event who observation) =
       graph.sequentialize.normalizeObservation event who
-        (graph.toSequentialObservation who observation) := by
+        (graph.toModeObservation .sequential who observation) := by
   apply PlayerObservation.ext graph.sequentialize
   · rfl
   · rfl
@@ -249,14 +243,14 @@ private theorem toSequentialObservation_normalizeObservation
 private theorem normalizedObservation_fromSequentialConfig
     (graph : Vegas.EventGraph Player L) (config : graph.sequentialize.Config)
     (event : graph.EventId) (who : Player) :
-    graph.toSequentialObservation who
+    graph.toModeObservation .sequential who
         (graph.normalizeObservation event who
           (graph.playerObserve who (graph.fromSequentialConfig config))) =
       graph.sequentialize.normalizeObservation event who
         (graph.sequentialize.playerObserve who config) := by
   rw [← graph.fromSequential_playerObserve config who]
-  rw [graph.toSequentialObservation_normalizeObservation]
-  rw [toSequentialObservation_fromSequentialObservation]
+  rw [graph.toModeObservation_normalizeObservation]
+  rw [toModeObservation_fromModeObservation]
 
 omit [DecidableEq Player] in
 private theorem fromSequentialConfig_complete (graph : Vegas.EventGraph Player L)
@@ -271,7 +265,7 @@ private theorem fromSequentialConfig_complete (graph : Vegas.EventGraph Player L
   · apply EventOrder.Cut.ext
     rfl
   · rfl
-  · simp [fromSequentialConfig, Config.complete, fromSequentialCompletion]
+  · simp [fromSequentialConfig, Config.complete, fromModeCompletion]
 
 omit [DecidableEq Player] in
 private theorem fromSequentialConfig_step (graph : Vegas.EventGraph Player L)
@@ -306,7 +300,7 @@ private theorem normalizedPolicyStep_fromSequential (graph : Vegas.EventGraph Pl
     (ready : config.cut.Ready event) :
     (graph.sequentialize.normalizedPolicyStep profile config event ready).map
         graph.fromSequentialConfig =
-      graph.normalizedPolicyStep (graph.fromSequentialProfile profile)
+      graph.normalizedPolicyStep (graph.fromModeProfile .sequential profile)
         (graph.fromSequentialConfig config) event
         (graph.fromSequentialReady config event ready) := by
   unfold normalizedPolicyStep
@@ -318,7 +312,7 @@ private theorem normalizedPolicyStep_fromSequential (graph : Vegas.EventGraph Pl
       have same : originalWho = who := Option.some.inj (originalActor.symm.trans actor)
       subst originalWho
       simp only [FinDist.map_bind]
-      unfold normalizePolicy fromSequentialProfile fromSequentialPolicy
+      unfold normalizePolicy fromModeProfile fromModePolicy
       rw [graph.normalizedObservation_fromSequentialConfig config event who]
       apply FinDist.bind_congr
       intro action _
@@ -345,7 +339,7 @@ private theorem runPlan_canonical_fromSequential
         fuel config).map graph.fromSequentialConfig =
       graph.runPlan
         (graph.policyPlan
-          (graph.normalizeProfile (graph.fromSequentialProfile profile))
+          (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
           graph.canonicalScheduler)
         fuel (graph.fromSequentialConfig config) := by
   intro fuel
@@ -379,14 +373,14 @@ private theorem runPlan_canonical_fromSequential
         rw [graph.sequentialize.runPlan_canonical_normalized_step
           profile fuel config event ready least]
         rw [graph.runPlan_canonical_normalized_step
-          (graph.fromSequentialProfile profile) fuel
+          (graph.fromModeProfile .sequential profile) fuel
           (graph.fromSequentialConfig config) event originalReady originalLeast]
         rw [FinDist.map_bind]
         calc
           _ = (graph.sequentialize.normalizedPolicyStep profile config event ready).bind
                 (fun next => graph.runPlan
                   (graph.policyPlan
-                    (graph.normalizeProfile (graph.fromSequentialProfile profile))
+                    (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
                     graph.canonicalScheduler)
                   fuel (graph.fromSequentialConfig next)) := by
               apply FinDist.bind_congr
@@ -396,7 +390,7 @@ private theorem runPlan_canonical_fromSequential
                 graph.fromSequentialConfig).bind
                 (graph.runPlan
                   (graph.policyPlan
-                  (graph.normalizeProfile (graph.fromSequentialProfile profile))
+                  (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
                     graph.canonicalScheduler)
                   fuel) := by
               rw [FinDist.bind_map]
@@ -413,10 +407,10 @@ theorem canonical_fromSequential_store_law
     (graph.sequentialize.runPolicies graph.sequentialize.canonicalScheduler
       profile inputs).map Config.store =
     (graph.runPolicies graph.canonicalScheduler
-      (graph.fromSequentialProfile profile) inputs).map Config.store := by
+      (graph.fromModeProfile .sequential profile) inputs).map Config.store := by
   rw [graph.sequentialize.runPolicies_canonical_normalize_eq profile inputs]
   rw [graph.runPolicies_canonical_normalize_eq
-    (graph.fromSequentialProfile profile) inputs]
+    (graph.fromModeProfile .sequential profile) inputs]
   let law := graph.sequentialize.runPlan
       (graph.sequentialize.policyPlan
         (graph.sequentialize.normalizeProfile profile)
@@ -425,7 +419,7 @@ theorem canonical_fromSequential_store_law
   have transported : law.map graph.fromSequentialConfig =
       graph.runPlan
         (graph.policyPlan
-          (graph.normalizeProfile (graph.fromSequentialProfile profile))
+          (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
           graph.canonicalScheduler)
         graph.order.eventCount
           (graph.fromSequentialConfig (Config.initial inputs)) :=
@@ -434,7 +428,7 @@ theorem canonical_fromSequential_store_law
   change law.map Config.store =
     (graph.runPlan
       (graph.policyPlan
-        (graph.normalizeProfile (graph.fromSequentialProfile profile))
+        (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
         graph.canonicalScheduler)
       graph.order.eventCount (Config.initial inputs)).map Config.store
   calc

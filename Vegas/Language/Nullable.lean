@@ -58,7 +58,8 @@ theorem nullableGuard_satisfiable
       ∃ a : Val (.option b),
         evalGuard (Player := P) (L := simpleExpr)
           (Expr.nullableCommitGuard R) a env = true := by
-  exact nullableCommitGuard_satisfiable R
+  intro env
+  exact ⟨Option.none, nullableGuard_none_legal R env⟩
 
 end VegasLang
 

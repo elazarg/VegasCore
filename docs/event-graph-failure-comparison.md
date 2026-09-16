@@ -62,8 +62,8 @@ actually observe then: public application state, included and pending traffic,
 receipts and clocks, its private cache and earlier actions, and any public
 scheduler metadata.
 
-A feasible repair consists of one continuation policy `repair_I` for each
-supported information value `I`. It must:
+A feasible repair consists of one continuation policy for each supported
+information value `I`. It must:
 
 1. be chosen from `I`, not separately for hidden semantic states compatible
    with `I`;

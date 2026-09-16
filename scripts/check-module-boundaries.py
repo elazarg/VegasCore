@@ -184,6 +184,12 @@ def check(root: Path) -> list[str]:
         )
 
     for module, dependencies in modules.items():
+        if under(module, "Vegas") and module != "Vegas":
+            top_layer = ".".join(module.split(".")[:2])
+            if top_layer not in VEGAS_LAYERS:
+                failures.append(
+                    f"{module}: unclassified Vegas top-level layer {top_layer}"
+                )
         for dependency in dependencies:
             for layer, allowed in VEGAS_LAYERS.items():
                 if under(module, layer) and under(dependency, "Vegas") and not any(

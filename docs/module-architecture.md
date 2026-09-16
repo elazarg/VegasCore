@@ -3,9 +3,9 @@
 | Package | Responsibility |
 | --- | --- |
 | `GameTheory` | Pinned probability and game-theory foundation |
-| `GameTheoryExtensions` | Reusable simulations, mixtures, utility transport, and predrawing |
+| `GameTheoryExtensions` | Reusable simulations, mixtures, utility transport, and probability lemmas |
 | `Interaction` | Message pools, authenticated histories, policies, inclusion service, and ideal commitments |
-| `Vegas.Foundation` | Shared typed contexts, values, visibility, guards, and result interfaces |
+| `Vegas.Foundation` | Shared typed contexts, values, expressions, and result interfaces |
 | `Vegas.Expr` | Concrete typed expressions, distributions, and finite-value instances |
 | `Vegas.Source` | Failure-aware sequential source syntax, semantics, accounting, and safety |
 | `Vegas.EventGraph` | Dependency-driven typed events, cut-based execution, observations, and scheduler-parametric games |
@@ -54,11 +54,14 @@ backend has no source-syntax dependency. The [EventGraph plan](event-graph-desig
 separates source correspondence, scheduling laws, and pending-message guarantees.
 
 `Vegas.Language` prototypes surface notation for typed bindings and nullable
-guards. Its internal `SurfaceCore` representation and side conditions live in
-`Vegas.Language`; the concrete expression language in `Vegas.Expr` is shared
+guards. Its internal `SurfaceCore` representation, visibility environments,
+guard evaluator, and side conditions live in `Vegas.Language`; the concrete
+expression language in `Vegas.Expr` is shared
 with source and backend tests and has no frontend dependency. Connecting the
 prototype to `SourceProgram` requires a verified elaboration edge; type-correct
-lowering alone does not establish semantic refinement.
+lowering alone does not establish semantic refinement. In particular, the
+prototype's optional `Legal` predicate requires guard satisfiability, whereas
+the failure-aware source admits unsatisfiable guards.
 
 Concrete cryptography, ledgers, block production, and virtual machines belong
 in separate target packages with their own execution semantics and refinement

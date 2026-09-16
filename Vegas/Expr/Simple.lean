@@ -19,11 +19,7 @@ noncomputable section
 
 namespace Vegas
 
-abbrev Player : Type := Nat
-
-/-- The width of an EVM machine word, in bits.  Reducible so that
-`Val .word` unifies with the backend's `Word = BitVec 256` at instance
-transparency rather than only at default. -/
+/-- The width of the concrete word type, matching an EVM machine word. -/
 abbrev wordBits : Nat := 256
 
 /-- `BitVec` is a `Fin`-backed structure, so it is finite; neither core nor
@@ -647,81 +643,6 @@ noncomputable instance finiteType_result (b : BaseTy)
     change Fintype (PublicationResult (Val b))
     infer_instance
 
-abbrev BindTySimple : Type := Vegas.BindTy Player simpleExpr
-abbrev VCtxSimple : Type := Vegas.VCtx Player simpleExpr
-abbrev VHasVarSimple : VCtxSimple → VarId → BindTySimple → Type :=
-  Vegas.VHasVar
-abbrev VEnvSimple (Γ : VCtxSimple) : Type :=
-  Vegas.VEnv (Player := Player) simpleExpr Γ
-
-namespace BindTySimple
-
-abbrev base : BindTySimple → BaseTy := Vegas.BindTy.base
-
-end BindTySimple
-
-namespace VHasVarSimple
-
-abbrev here {Γ : VCtxSimple} {x : VarId} {τ : BindTySimple} :
-    VHasVarSimple ((x, τ) :: Γ) x τ :=
-  Vegas.VHasVar.here
-
-abbrev there {Γ : VCtxSimple} {x y : VarId} {τ τ' : BindTySimple}
-    (h : VHasVarSimple Γ x τ) : VHasVarSimple ((y, τ') :: Γ) x τ :=
-  Vegas.VHasVar.there h
-
-end VHasVarSimple
-
-namespace VEnvSimple
-
-abbrev empty : VEnvSimple [] :=
-  Vegas.VEnv.empty (Player := Player) simpleExpr
-
-abbrev cons {Γ : VCtxSimple} {x : VarId} {τ : BindTySimple}
-    (v : Val τ.base) (env : VEnvSimple Γ) : VEnvSimple ((x, τ) :: Γ) :=
-  Vegas.VEnv.cons v env
-
-abbrev get {Γ : VCtxSimple} {x : VarId} {τ : BindTySimple}
-    (env : VEnvSimple Γ) (h : VHasVarSimple Γ x τ) : Val τ.base :=
-  Vegas.VEnv.get env h
-
-@[simp] theorem cons_get_here {Γ : VCtxSimple} {x : VarId} {τ : BindTySimple}
-    {v : Val τ.base} {env : VEnvSimple Γ} :
-    (VEnvSimple.cons v env).get
-      (VHasVarSimple.here (Γ := Γ) (x := x) (τ := τ)) = v := by
-  exact Vegas.VEnv.cons_get_here
-
-@[simp] theorem cons_get_there {Γ : VCtxSimple} {x y : VarId}
-    {τ σ : BindTySimple}
-    {v : Val τ.base} {env : VEnvSimple Γ}
-    {h : VHasVarSimple Γ y σ} :
-    (VEnvSimple.cons (x := x) v env).get (VHasVarSimple.there h) =
-      env.get h := by
-  exact Vegas.VEnv.cons_get_there
-
-abbrev toView (p : Player) {Γ : VCtxSimple} (env : VEnvSimple Γ) :
-    VEnvSimple (Vegas.viewVCtx p Γ) :=
-  Vegas.VEnv.toView p env
-
-abbrev toPub {Γ : VCtxSimple} (env : VEnvSimple Γ) :
-    VEnvSimple (Vegas.pubVCtx Γ) :=
-  Vegas.VEnv.toPub env
-
-end VEnvSimple
-
-namespace VHasVarSimple
-
-abbrev ofViewVCtx {p : Player} {Γ : VCtxSimple} {x : VarId}
-    {τ : BindTySimple} :
-    VHasVarSimple (Vegas.viewVCtx p Γ) x τ → VHasVarSimple Γ x τ :=
-  Vegas.VHasVar.ofViewVCtx (p := p)
-
-abbrev ofPubVCtx {Γ : VCtxSimple} {x : VarId} {τ : BindTySimple} :
-    VHasVarSimple (Vegas.pubVCtx Γ) x τ → VHasVarSimple Γ x τ :=
-  Vegas.VHasVar.ofPubVCtx
-
-end VHasVarSimple
-
 def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BaseTy}
     (e : Expr Γ b) : Expr ((x, τ) :: Γ) b :=
   match e with
@@ -790,13 +711,6 @@ def DistExpr.substVars {Γ Δ : CtxSimple}
   | _, .weighted law => .weighted law
   | _, .ite c t f =>
       .ite (c.substVars σ) (t.substVars σ) (f.substVars σ)
-
-/-- Reinterpret a public expression in a player's visible erased context. -/
-def Expr.publicToView {P : Type} [DecidableEq P]
-    {Γ : VCtx P simpleExpr} {b : BaseTy} (who : P)
-    (e : Expr (erasePubVCtx Γ) b) :
-    Expr (eraseVCtx (viewVCtx who Γ)) b :=
-  e.substVars fun {x} {_} h => .var x (HasVar.pubToView (p := who) h)
 
 theorem evalExpr_weaken {Γ : CtxSimple} {b τ : BaseTy} {x : VarId}
     (e : Expr Γ b) (v : Val τ) (env : PlainEnv Γ) :
@@ -967,18 +881,9 @@ theorem evalExpr_replaceHeadWithGetD_some
   | ite c t f ihc iht ihf =>
       simp [Expr.replaceHeadWithGetD, evalExpr, ihc, iht, ihf]
 
-/-- The value a player submits to decline a nullable commitment.
-
-Named rather than written `Option.none`, because several different things around
-this development want that spelling and only this one is a *submitted value*: a
-participant who sent no submission at all is `Option.none` at the protocol's
-`joint`, and the scheduler used to be `Option.none` too before `Participant`
-gave it a constructor.  Conflating the first two has caused real errors, so the
-concept gets a name and the theorems below are stated with it.
-
-A decline is a transaction like any other.  The program sees it, continues, and
-may charge for it — which is exactly what distinguishes it from silence, where
-nothing is sent and the state does not move. -/
+/-- The absent value used by nullable surface commitments. It is an explicit
+payload value; an execution model separately describes message submission and
+silence. -/
 def declineValue (b : BaseTy) : Val (.option b) := Option.none
 
 def Expr.nullableCommitGuardWithFallback
@@ -1015,24 +920,6 @@ theorem evalExpr_nullableCommitGuard_some
       evalExpr R (Env.cons (x := x) v env) := by
   simp [Expr.nullableCommitGuard, Expr.nullableCommitGuardWithFallback, evalExpr,
     evalExpr_replaceHeadWithGetD_some DefaultVal.defaultVal R v env]
-
-/-- **Declining is always live.**  Whatever the environment, some submission is
-accepted — namely `declineValue`.  This is what makes a nullable `yield` a form
-a player can never be stuck on, in contrast to `commit`, whose non-nullable
-payload leaves satisfiability to be discharged elsewhere. -/
-theorem nullableCommitGuard_satisfiable
-    {P : Type} [DecidableEq P] {Γ : VCtx P simpleExpr}
-    {x : VarId} {b : BaseTy} [DefaultVal b]
-    (R : Expr ((x, b) :: eraseVCtx Γ) .bool) :
-    ∀ env : Env Val (eraseVCtx Γ),
-      ∃ a : Val (.option b),
-        Vegas.evalGuard (Player := P) (L := simpleExpr)
-          (Expr.nullableCommitGuard R) a env = true := by
-  intro env
-  refine ⟨declineValue b, ?_⟩
-  change evalExpr (Expr.nullableCommitGuard R)
-      (Env.cons (x := x) (declineValue b) env) = true
-  exact evalExpr_nullableCommitGuard_declineValue R env
 
 @[simp] theorem evalLawDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
     (law : RationalLaw (Val b)) (env : PlainEnv Γ) :

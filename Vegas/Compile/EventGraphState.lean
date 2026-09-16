@@ -293,7 +293,7 @@ theorem reveal_agrees {Field : Type} [DecidableEq Field]
       result resultStored⟩
 
 /-- The canonical reference to a completed compiled event reads exactly the
-value written by `Config.complete`. -/
+value written by `Vegas.EventGraph.Config.complete`. -/
 theorem outputRef_get?_complete {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
     (unique : (Γ.map Prod.fst).Nodup)

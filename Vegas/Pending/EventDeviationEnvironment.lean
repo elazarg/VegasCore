@@ -23,15 +23,6 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-omit [DecidableEq Player] in
-private theorem eventCode_actor_cast (event : graph.EventId) (output : EventField Player L)
-    (same : graph.outputLayout event = output) :
-    EventCode.actor
-        (cast (congrArg (EventCode graph.layout) same) (graph.nodes event)) =
-      graph.actor? event := by
-  cases same
-  rfl
-
 /-- The protocol facts needed only for unchanged players.  No coherence or
 cache condition is imposed on the focal player's native implementation. -/
 structure DeviationEnvironmentState (runtime : EventGraphRuntime graph)
@@ -183,7 +174,7 @@ theorem environmentStep_expire_deviationContinuation
       cases view : nodeView graph event with
       | bind owner payload outputEq codeEq | resolve owner payload binding checks outputEq codeEq =>
           have strategic : graph.actor? event = some owner :=
-            (eventCode_actor_cast event _ outputEq).symm.trans
+            (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
               (congrArg EventCode.actor codeEq)
           rw [actorEq] at strategic
           contradiction

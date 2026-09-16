@@ -37,9 +37,12 @@ also holds against every unilateral native deviation, with missing native
 outcomes represented explicitly.
 
 `Vegas.Language` is a surface-syntax prototype for typed bindings and nullable
-guard notation. It lowers to an internal `SurfaceCore` representation. A verified
-elaboration into `SourceProgram` remains to be supplied; the prototype carries
-no operational or strategic compilation claim.
+guard notation. It lowers to an internal `SurfaceCore` representation whose
+optional `Legal` predicate requires satisfiable commitment guards. This differs
+from `SourceProgram`, which admits unsatisfiable guards and represents their
+resolution as failure. The prototype has no execution semantics or verified
+elaboration into `SourceProgram`; its typed lowering carries no operational or
+strategic compilation claim. Its syntax and tests are maintained separately.
 
 Start with the [artifact guide](ARTIFACT.md), [theorem map](docs/active-tower.md),
 [module ownership](docs/module-architecture.md), and
@@ -48,6 +51,11 @@ Start with the [artifact guide](ARTIFACT.md), [theorem map](docs/active-tower.md
 [source semantics](docs/source-semantics.md),
 [source-to-graph edge](docs/source-graph-edge.md), and
 [pending-message proof](docs/event-pending-deviation.md). The
+[scheduling proof](docs/event-graph-scheduling-proof.md) and
+[public-opening boundary](docs/event-graph-public-observations.md) explain
+the information conditions. The [frontend boundary](docs/compiler-boundary.md)
+and [outcome/utility distinction](docs/outcomes-and-utilities.md) describe the
+interfaces to richer languages and analyses. The
 [road ahead](docs/a-road-ahead.md) describes target boundaries still to add.
 The [EventGraph design](docs/event-graph-design.md) specifies the asynchronous
 compilation boundary. The event-addressed pending-message game has checked

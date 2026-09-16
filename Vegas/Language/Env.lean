@@ -4,7 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Vegas.Foundation.Visibility
+import Vegas.Language.Visibility
 
 /-!
 # Context and environment projections

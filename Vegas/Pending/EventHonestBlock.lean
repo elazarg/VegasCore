@@ -18,17 +18,6 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-private theorem privateStep_accepted_eq (state : State graph) (who : Player)
-    (command : PrivateCommand graph) :
-    (privateStep state who command).accepted = state.accepted := by
-  cases command with
-  | prepare serial raw => rfl
-  | remember event action =>
-      by_cases owned : graph.actor? event = some who
-      · rw [privateStep, dif_pos owned]
-        cases state.remembered event <;> rfl
-      · rw [privateStep, dif_neg owned]
-
 private theorem privateStep_serviceGrant_eq (state : State graph) (who : Player)
     (command : PrivateCommand graph) :
     (privateStep state who command).serviceGrant = state.serviceGrant := by
@@ -374,8 +363,8 @@ theorem HonestBoundary.bind_ownerBlock_reactions_law
         simpa only [State.WithinDeadline, clockEq, activatedEq] using timely
       have acceptedFields : staged.native.application.accepted =
           execution.native.application.accepted := by
-        exact (privateStep_accepted_eq _ owner command).trans
-          (privateStep_accepted_eq _ owner (.remember event action))
+        exact (privateStep_accepted _ owner command).trans
+          (privateStep_accepted _ owner (.remember event action))
       have stagedVacant : staged.native.application.accepted (.inr event) = none := by
         simpa only [acceptedFields] using
           boundary.accepted_unfinished event unfinished
@@ -503,8 +492,8 @@ theorem HonestBoundary.bind_ownerBlock_reactions_boundary
         simpa only [State.WithinDeadline, clockEq, activatedEq] using timely
       have acceptedFields : staged.native.application.accepted =
           execution.native.application.accepted :=
-        (privateStep_accepted_eq _ owner command).trans
-          (privateStep_accepted_eq _ owner (.remember event action))
+        (privateStep_accepted _ owner command).trans
+          (privateStep_accepted _ owner (.remember event action))
       have stagedVacant : staged.native.application.accepted (.inr event) = none := by
         simpa only [acceptedFields] using boundary.accepted_unfinished event unfinished
       have stagedUnused : staged.native.application.HandleUnused

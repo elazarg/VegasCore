@@ -47,6 +47,17 @@ theorem lower_yieldProgram :
           SurfaceCore (Fin 1) simpleExpr []) := by
   rfl
 
+/-- Guard feasibility is a separate surface predicate: typed syntax admits
+this program, while `Legal` rejects its unsatisfiable commitment guard. -/
+theorem rejecting_commit_not_legal :
+    ¬ Legal (SurfaceCore.commit 0 (0 : Fin 1)
+      (Expr.constBool false : Expr [(0, .bool)] .bool)
+      (.reveal 1 0 0 .here (.ret [])) : SurfaceCore (Fin 1) simpleExpr []) := by
+  intro legal
+  obtain ⟨value, accepted⟩ := legal.1 (Env.empty Val)
+  change false = true at accepted
+  cases accepted
+
 /-- The synthesized decline remains legal even when the source guard rejects
 every ordinary value. -/
 theorem rejecting_yield_still_allows_none :

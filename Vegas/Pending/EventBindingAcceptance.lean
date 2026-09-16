@@ -21,17 +21,6 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-private theorem privateStep_accepted (state : State graph) (who : Player)
-    (command : PrivateCommand graph) :
-    (privateStep state who command).accepted = state.accepted := by
-  cases command with
-  | prepare => rfl
-  | remember event action =>
-      by_cases owned : graph.actor? event = some who
-      · rw [privateStep, dif_pos owned]
-        cases state.remembered event <;> rfl
-      · rw [privateStep, dif_neg owned]
-
 private theorem remember_candidates (state : State graph) (who : Player)
     (event : graph.EventId) (action : graph.Action event) :
     (privateStep state who (.remember event action)).candidates = state.candidates := by

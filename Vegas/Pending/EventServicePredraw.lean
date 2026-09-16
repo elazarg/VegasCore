@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.EventServiceProtocol
-import GameTheoryExtensions.Protocol.FiniteSupportPredraw
+import GameTheory.Protocol.Information
 
 /-! # Probability presentation of bounded event service
 

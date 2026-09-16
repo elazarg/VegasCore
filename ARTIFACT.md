@@ -24,7 +24,8 @@ the subsequent kernel-checked build.
 | Source execution and safety | `Vegas/Source/` |
 | Source to typed graph and canonical single-policy correspondence | `Vegas/Compile/EventGraphCanonical.lean`, `Vegas/Compile/EventGraphDeviation.lean` |
 | Sequential completion by dependency barriers | `Vegas/EventGraph/Sequential.lean` |
-| Pending-message runtime and service | `Interaction/MessageApplication*.lean`, `Vegas/Pending/` |
+| Message transport and player policies | `Interaction/MessageApplication.lean`, `Interaction/MessageApplicationPolicies.lean` |
+| Event-addressed runtime and service | `Vegas/Pending/EventApplication.lean`, `Vegas/Pending/EventService.lean` |
 | Full-source honest law under adaptive public graph scheduling | `Vegas/Compile/EventGraphScheduling.lean` |
 | Full-source asynchronous deviations and Nash correspondence | `Vegas/Compile/EventGraphDeviation.lean`, `Vegas/Game/EventCompilation.lean` |
 | Asynchronous pending-message service and arbitrary-player completion | `Vegas/Pending/EventService.lean`, `Vegas/Pending/EventServiceCompletion.lean` |
@@ -55,8 +56,11 @@ network theorem, and the artifact establishes neither computational
 cryptography nor an EVM/ledger implementation.
 
 `Vegas.Language` is a surface-syntax prototype with an internal `SurfaceCore`
-elaboration target. Its connection to `SourceProgram` is not proved; it is
-outside the active strategic tower.
+elaboration target. Its optional `Legal` predicate demands satisfiable guards;
+`SourceProgram` instead admits unsatisfiable guards with failure-aware
+resolution. Connecting the two requires an explicit semantic elaboration,
+including deferred guard checks and publication results. The prototype has no
+execution semantics and is outside the verified strategic tower.
 
 `Paper.lean` is a self-contained capstone audit. Its statements delegate to
 repository results and pin their proof dependencies; supporting lemmas remain

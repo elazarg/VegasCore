@@ -9,7 +9,6 @@ import Vegas.Expr
 import Vegas.Source
 import Vegas.EventGraph
 import Vegas.Pending
-import Vegas.Foundation.ViewExtension
 import Vegas.Language
 import Vegas.Compile
 import Vegas.Game

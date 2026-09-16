@@ -55,26 +55,18 @@ for using leaked information, which is not the intended source theorem.
 The example needs no empty payload type and no clairvoyant scheduler. An
 unsatisfiable guard is already part of the full source language.
 
-## What the checked sequential runtime does
+## Compiled emission and the checked theorem
 
-The existing pending compiler does **not** expose this rejected candidate.
-`Vegas.Pending.Policies.compileAt` computes
-`acceptedProposal checks publicValues proposal` before constructing the wire
-command. `disclosureCommand` sends an opening only for an accepted success and
-sends the uniform `withhold` packet for failure. The original disclosure
-Boolean remains in authenticated private command history. Consequently a
-source action `true` whose guards reject it has the same public packet shape as
-intentional withholding.
+The prescribed pending-message policies prevalidate openings.
+`Vegas.EventGraphRuntime.resolutionPayload` calls
+`Vegas.EventGraph.EventCode.resolveOutput?` before constructing a public
+payload. It sends an opening only for a successful result with an accepted
+handle belonging to the player; otherwise it sends the canonical withholding
+packet. The theorems `Vegas.EventGraphRuntime.resolutionSubmission_false` and
+`Vegas.EventGraphRuntime.resolutionSubmission_rejected` check the two failure
+cases. Both dependency modes use this policy compiler.
 
-This normalization is a proved property of the checked compiler used in the
-proof of `pendingGame_deviation_law`, not an external hypothesis of that
-theorem. It is also not a consequence of ideal commitment soundness or of the
-handler rejecting invalid data.
-
-## Exact boundary for the EventGraph backend
-
-The initial strong theorem should require the compiled unchanged-player
-emission rule:
+The emission rule is:
 
 ```text
 before public submission, evaluate the prospective EventGraph resolve step;
@@ -82,13 +74,12 @@ if its accepted output is failure, emit one value-oblivious failure packet;
 if it is success v, emit the typed verified opening of v.
 ```
 
-The failure packet may be a canonical withholding command or an opaque packet
-with a fixed public distribution. Its distribution must not depend on the raw
-candidate, on whether the retained Boolean was `false` or rejected `true`, or
-on which guard rejected it. The prescribed player's policy execution retains
-the original Bool in its private history, so later own decisions retain exact
-source recall. The simulation must relate the public transition to
-`Config.step`; it must not require a ledger to store that private decision.
+The failure packet is independent of the raw candidate, of whether the
+retained Boolean was false or rejected true, and of which guard rejected it.
+The prescribed player's private command history retains the original Boolean,
+so later own decisions retain source recall. The graph transition records the
+accepted publication result separately from this private action. No ledger is
+required to store the private decision.
 
 This restriction applies only to prescribed unchanged policies. The native
 policy space still admits arbitrary focal packets, premature disclosures,
@@ -96,11 +87,15 @@ malformed data, silence, and replays. A focal player revealing its own hidden
 value does not learn new information by doing so; its packets and the public
 environment's reactions must remain in the deviation coupling.
 
-Under this emission rule, the intended graph-relative statement can remain an
-exact finite-mixture law after mapping terminal native executions to
-`g.Outcome`. It should quantify over arbitrary focal policies and the admitted
-public environment, while opponents use the normalized compiler. It must not
-claim equality of transcripts or completion histories.
+The checked theorem
+`Vegas.SourceProgram.Setup.eventPendingGame_deviation_law` gives an exact
+finite-mixture law for decoded terminal source states. It quantifies over
+arbitrary focal policies and the concrete public service's wire and event-order
+policies, with opponents using the prescribed compiler. Prevalidation is part
+of this compiler, not an extra premise about arbitrary runtime policies.
+The result concerns outcomes, not equality of transcripts or completion histories.
+See the [pending-message proof](event-pending-deviation.md) and
+[service model](event-service.md).
 
 A host with public failed calldata does not by itself violate the contract:
 the compiled policy can prevalidate and submit the canonical withholding

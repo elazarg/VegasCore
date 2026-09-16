@@ -14,3 +14,17 @@ concrete source/target simulation certificate.
 Support correspondence, equality of outcome laws, expected-utility equality,
 and equilibrium transport are distinct claims. Active documentation and audits
 must name the strongest one actually proved.
+
+The checked pending-message compiler supplies an exact finite-mixture
+simulation. Besides Nash correspondence, it gives
+`Vegas.SourceProgram.Setup.eventPendingGame_deviation_utility_bound`: for a
+fixed profile, native deviation, and real-valued test of the terminal source
+state, some source deviation achieves at least the native expected test value.
+The witness may depend on that test; this does not identify a single source
+policy reproducing the entire outcome law.
+
+`GameTheory.GameForm.UtilitySimulation` is the reusable weaker interface for
+edges that bound expected utility rather than reproduce a law. It composes
+across successive edges and is obtained from the exact-mixture certificate
+when needed. It supplies no extra trace-utility theorem for Vegas without a
+concrete bound on those additional preferences.

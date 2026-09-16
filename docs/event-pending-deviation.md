@@ -2,7 +2,7 @@
 
 ## Statement and boundary
 
-`Paper.source_event_pending_deviation_law` proves that, for the actual
+`Vegas.Paper.source_event_pending_deviation_law` proves that, for the actual
 event-addressed service, every unilateral native policy has the terminal
 source-state law of a finite mixture of source policies, against unchanged
 opponents. The mixture is outside the private setup distribution. The theorem

@@ -20,14 +20,6 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-omit [DecidableEq Player] in
-private theorem eventCode_actor_cast
-    {left right : EventField Player L} (same : left = right)
-    (code : EventCode graph.layout left) :
-    (cast (congrArg (EventCode graph.layout) same) code).actor = code.actor := by
-  cases same
-  rfl
-
 /-- A submission emitted by the compiled policy at a binding event is the
 canonical commitment for that event. -/
 theorem compilePlayerPolicy_binding_submission
@@ -417,7 +409,7 @@ theorem handle_prescribed_owner_cached_action
   | sample payload law outputEq codeEq =>
       have impossible : graph.actor? event = none := by
         unfold EventGraph.actor?
-        exact (eventCode_actor_cast (graph := graph) outputEq (graph.nodes event)).symm.trans
+        exact (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
           (congrArg EventCode.actor codeEq)
       rw [impossible] at actor
       contradiction
@@ -425,7 +417,7 @@ theorem handle_prescribed_owner_cached_action
       have eventOwnerEq : eventOwner = owner := by
         unfold EventGraph.actor? at actor
         have transformed :=
-          (eventCode_actor_cast (graph := graph) outputEq (graph.nodes event)).symm.trans
+          (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
             (congrArg EventCode.actor codeEq)
         exact Option.some.inj (transformed.symm.trans actor)
       subst eventOwner
@@ -452,7 +444,7 @@ theorem handle_prescribed_owner_cached_action
       have eventOwnerEq : eventOwner = owner := by
         unfold EventGraph.actor? at actor
         have transformed :=
-          (eventCode_actor_cast (graph := graph) outputEq (graph.nodes event)).symm.trans
+          (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
             (congrArg EventCode.actor codeEq)
         exact Option.some.inj (transformed.symm.trans actor)
       subst eventOwner

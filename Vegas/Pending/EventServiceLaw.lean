@@ -426,15 +426,6 @@ private theorem applicationStep_support (runtime : EventGraphRuntime graph)
   rw [← same]
   exact supported
 
-omit [DecidableEq Player] in
-private theorem actor_cast (event : graph.EventId) (output : EventGraph.EventField Player L)
-    (same : graph.outputLayout event = output) :
-    EventGraph.EventCode.actor
-        (cast (congrArg (EventGraph.EventCode graph.layout) same) (graph.nodes event)) =
-      graph.actor? event := by
-  cases same
-  rfl
-
 /-- A reserved sample instruction completes a ready chance event. It executes
 the graph's distribution rather than choosing a sample value. -/
 theorem serviceStep_sample_complete (runtime : EventGraphRuntime graph)
@@ -449,8 +440,9 @@ theorem serviceStep_sample_complete (runtime : EventGraphRuntime graph)
   cases view : nodeView graph event with
   | bind owner payload outputEq codeEq | resolve owner payload binding checks outputEq codeEq =>
       have ownerEq := congrArg EventGraph.EventCode.actor codeEq
-      rw [actor_cast event _ outputEq] at ownerEq
-      simp only [EventGraph.EventCode.actor, chance] at ownerEq
+      rw [EventGraph.EventCode.actor_cast outputEq (graph.nodes event)] at ownerEq
+      change graph.actor? event = some owner at ownerEq
+      simp only [chance] at ownerEq
       contradiction
   | sample payload law outputEq codeEq =>
       rw [environmentStep_executeSample_eq runtime execution.native.application event ready
@@ -476,8 +468,8 @@ theorem serviceStep_expire_complete (runtime : EventGraphRuntime graph)
   cases view : nodeView graph event with
   | sample payload law outputEq codeEq =>
       have ownerEq := congrArg EventGraph.EventCode.actor codeEq
-      rw [actor_cast event _ outputEq] at ownerEq
-      simp only [EventGraph.EventCode.actor] at ownerEq
+      rw [EventGraph.EventCode.actor_cast outputEq (graph.nodes event)] at ownerEq
+      change graph.actor? event = none at ownerEq
       simp [ownerEq] at strategic
   | bind owner payload outputEq codeEq =>
       rw [environmentStep_expire_bind_eq runtime execution.native.application event ready

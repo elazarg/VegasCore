@@ -1,4 +1,4 @@
-"""Require central Lean options and keep admissions/axiom prints in the paper audit."""
+"""Enforce centralized options and reject unchecked Lean escape hatches."""
 
 from collections import Counter
 from pathlib import Path
@@ -85,13 +85,72 @@ def admission_tokens(text: str) -> list[tuple[int, str]]:
 
 
 def check_admissions(relative: Path, text: str) -> list[str]:
-    """Permit proof admissions only in the single root paper audit."""
-    if relative == Path("Paper.lean"):
+    """Permit Paper admissions only when their warning is explicitly guarded.
+
+    `warningAsError` rejects an ordinary `sorry`.  Paper may state an openly
+    prospective theorem only by wrapping that declaration in `#guard_msgs`,
+    which both documents and checks the expected diagnostic.
+    """
+    tokens = admission_tokens(text)
+    if relative != Path("Paper.lean"):
+        return [
+            f"{relative}:{number}: forbidden proof admission `{token}`"
+            for number, token in tokens
+        ]
+    if not tokens:
         return []
-    return [
-        f"{relative}:{number}: forbidden proof admission `{token}`"
-        for number, token in admission_tokens(text)
-    ]
+    clean = strip_lean_comments_and_strings(text)
+    commands = list(re.finditer(r"(?m)^\S[^\n]*", clean))
+    guarded_ranges: list[tuple[int, int]] = []
+    for index, command in enumerate(commands):
+        if not re.match(r"(?:theorem|lemma)\s+\w+\b", command.group()):
+            continue
+        previous = commands[index - 1].group() if index else ""
+        if not re.match(r"#guard_msgs\b[^\n]*\bin\s*$", previous):
+            continue
+        end = commands[index + 1].start() if index + 1 < len(commands) else len(clean)
+        guarded_ranges.append((command.start(), end))
+    failures = []
+    for number, token in tokens:
+        position = sum(len(line) + 1 for line in clean.splitlines()[:number - 1])
+        if not any(start <= position < end for start, end in guarded_ranges):
+            failures.append(
+                f"{relative}:{number}: Paper admission `{token}` must be wrapped "
+                "in #guard_msgs under warningAsError"
+            )
+    return failures
+
+
+def check_forbidden_constructs(relative: Path, text: str) -> list[str]:
+    """Reject local trust and code-generation escape hatches.
+
+    `#print axioms` is deliberately not an axiom declaration and remains the
+    dependency audit mechanism in root `Paper.lean`.
+    """
+    clean = strip_lean_comments_and_strings(text)
+    failures: list[str] = []
+    patterns = (
+        (r"\bset_option\b", "source-local `set_option`"),
+        (r"\bnative_decide\b", "`native_decide`"),
+        (r"\bunsafe\b", "`unsafe`"),
+        (r"\bimplemented_by\b", "`implemented_by`"),
+    )
+    for pattern, description in patterns:
+        for match in re.finditer(pattern, clean):
+            number = clean.count("\n", 0, match.start()) + 1
+            failures.append(f"{relative}:{number}: forbidden {description}")
+    # `axiom` is a command keyword, so any remaining occurrence is a bespoke
+    # declaration even when command combinators or attributes precede it on the
+    # same line. Remove the one legitimate non-declaration syntax first.
+    without_prints = re.sub(
+        r"#print\s+axioms\b",
+        lambda match: "".join("\n" if char == "\n" else " " for char in match.group()),
+        clean,
+    )
+    for match in re.finditer(r"\baxioms?\b", without_prints):
+        number = clean.count("\n", 0, match.start()) + 1
+        failures.append(f"{relative}:{number}: forbidden axiom declaration")
+    return failures
 
 
 def check_audit_pins(text: str) -> list[str]:
@@ -138,7 +197,6 @@ def check_axiom_prints(relative: Path, text: str) -> list[str]:
 
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
-    local_option = re.compile(r"^\s*set_option\b")
     with (root / "lakefile.toml").open("rb") as config:
         failures = check_central_options(tomllib.load(config).get("leanOptions", {}))
     paths = list(root.glob("*.lean"))
@@ -147,20 +205,19 @@ def main() -> int:
         paths.extend((root / directory).rglob("*.lean"))
     for path in sorted(paths):
         text = path.read_text(encoding="utf-8")
-        for number, line in enumerate(text.splitlines(), 1):
-            if local_option.match(line):
-                failures.append(f"{path.relative_to(root)}:{number}: {line.strip()}")
-        failures.extend(check_admissions(path.relative_to(root), text))
-        failures.extend(check_axiom_prints(path.relative_to(root), text))
-        if path.relative_to(root) == Path("Paper.lean"):
+        relative = path.relative_to(root)
+        failures.extend(check_forbidden_constructs(relative, text))
+        failures.extend(check_admissions(relative, text))
+        failures.extend(check_axiom_prints(relative, text))
+        if relative == Path("Paper.lean"):
             failures.extend(check_audit_pins(text))
     if failures:
         print("Lean source policy violations:")
         print("\n".join(failures))
         return 1
     print("Explicit binders and warning-strict compilation configured centrally; "
-          "no source-local Lean options or proof admissions outside Paper.lean; "
-          "axiom prints confined to Paper.lean with adjacent capstone pins.")
+          "no unchecked trust or code-generation escape hatches; guarded Paper "
+          "admissions only; axiom prints confined to adjacent Paper capstone pins.")
     return 0
 
 

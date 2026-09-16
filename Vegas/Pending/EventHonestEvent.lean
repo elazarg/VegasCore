@@ -89,14 +89,6 @@ private theorem append_sample (runtime : EventGraphRuntime graph)
     exact (sample_completed runtime inputs profile wire middle
       (boundaryLaw middle head) event (middleCompleted middle head)).2 next tail
 
-omit [DecidableEq Player] in
-private theorem actor_cast (event : graph.EventId) (output : EventField Player L)
-    (same : graph.outputLayout event = output) :
-    EventCode.actor (cast (congrArg (EventCode graph.layout) same) (graph.nodes event)) =
-      graph.actor? event := by
-  cases same
-  rfl
-
 /-- Every ready event block implements its graph kernel, for the actual
 adaptive wire and prescribed player policies, and restores the honest boundary. -/
 theorem HonestBoundary.ready_event_block (runtime : EventGraphRuntime graph)
@@ -123,7 +115,7 @@ theorem HonestBoundary.ready_event_block (runtime : EventGraphRuntime graph)
   | bind owner payload outputEq codeEq =>
       have actor : graph.actor? event = some owner := by
         have same := congrArg EventCode.actor codeEq
-        rwa [actor_cast event _ outputEq] at same
+        rwa [EventCode.actor_cast outputEq (graph.nodes event)] at same
       have plan : eventServicePlan roster reactionRounds event =
           .grant event ::
             ((List.replicate 3 (.player owner) ++
@@ -142,7 +134,7 @@ theorem HonestBoundary.ready_event_block (runtime : EventGraphRuntime graph)
   | resolve owner payload binding checks outputEq codeEq =>
       have actor : graph.actor? event = some owner := by
         have same := congrArg EventCode.actor codeEq
-        rwa [actor_cast event _ outputEq] at same
+        rwa [EventCode.actor_cast outputEq (graph.nodes event)] at same
       have plan : eventServicePlan roster reactionRounds event =
           .grant event ::
             ((List.replicate 3 (.player owner) ++
@@ -158,7 +150,7 @@ theorem HonestBoundary.ready_event_block (runtime : EventGraphRuntime graph)
   | sample payload law outputEq codeEq =>
       have ownerless : graph.actor? event = none := by
         have same := congrArg EventCode.actor codeEq
-        rwa [actor_cast event _ outputEq] at same
+        rwa [EventCode.actor_cast outputEq (graph.nodes event)] at same
       exact boundary.sample_block runtime inputs profile wire roster reactionRounds execution
         event ready ownerless payload law outputEq codeEq viewNode
 

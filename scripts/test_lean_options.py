@@ -60,6 +60,52 @@ class LeanOptionTests(unittest.TestCase):
         text = 'def note := "quoted \\\" sorryAx"\ntheorem open : True := by sorry\n'
         self.assertEqual(CHECKER.admission_tokens(text), [(2, "sorry")])
 
+    def test_set_option_is_found_anywhere_outside_comments_and_strings(self):
+        text = (
+            'def note := "set_option maxRecDepth 1"\n'
+            '-- set_option maxRecDepth 2\n'
+            '/- set_option maxRecDepth 3 -/\n'
+            'namespace Example\nsection; set_option maxRecDepth 4 in #check Nat\nend Example\n'
+        )
+        errors = CHECKER.check_forbidden_constructs(Path("Vegas/Test.lean"), text)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("source-local `set_option`", errors[0])
+        self.assertIn(":5:", errors[0])
+
+    def test_trust_and_codegen_escape_hatches_are_rejected(self):
+        text = (
+            "axiom trusted : True\n"
+            "axioms first : True\n"
+            "namespace Scoped in axiom nested : True\n"
+            "@[extern \"unchecked\"] axiom attributed : Nat\n"
+            "unsafe def unchecked := 1\n"
+            "example : True := by native_decide\n"
+            "@[implemented_by unchecked] def checked := 1\n"
+            '#print axioms checked\n'
+        )
+        errors = CHECKER.check_forbidden_constructs(Path("Vegas/Test.lean"), text)
+        self.assertEqual(sum("axiom declaration" in error for error in errors), 4)
+        self.assertEqual(sum("`unsafe`" in error for error in errors), 1)
+        self.assertEqual(sum("`native_decide`" in error for error in errors), 1)
+        self.assertEqual(sum("`implemented_by`" in error for error in errors), 1)
+
+    def test_forbidden_constructs_in_comments_and_strings_are_ignored(self):
+        text = (
+            '/- axiom hidden : True; unsafe def hidden := 0 -/\n'
+            '-- native_decide @[implemented_by hidden]\n'
+            'def note := "set_option axiom unsafe native_decide implemented_by"\n'
+        )
+        self.assertEqual(
+            CHECKER.check_forbidden_constructs(Path("Vegas/Test.lean"), text), []
+        )
+
+    def test_paper_axiom_pins_are_not_declarations(self):
+        text = (
+            "#guard_msgs in\n#print axioms Vegas.Paper.result\n"
+            "#print\n  axioms\n  Vegas.Paper.result\n"
+        )
+        self.assertEqual(CHECKER.check_forbidden_constructs(Path("Paper.lean"), text), [])
+
     def test_guarded_audit_pin_passes(self):
         text = ("theorem witness : True := True.intro\n"
                 "#guard_msgs (whitespace := lax) in\n"
@@ -79,6 +125,12 @@ class LeanOptionTests(unittest.TestCase):
         self.assertEqual(CHECKER.check_audit_pins(text), [])
         self.assertEqual(CHECKER.check_admissions(Path("Paper.lean"), text), [])
         self.assertEqual(CHECKER.admission_tokens(text), [(5, "sorry")])
+
+    def test_unguarded_paper_admission_fails_under_warning_strict_build(self):
+        text = "theorem target : True := by\n  sorry\n"
+        errors = CHECKER.check_admissions(Path("Paper.lean"), text)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("must be wrapped in #guard_msgs", errors[0])
 
     def test_audit_theorem_requires_guarded_pin(self):
         for pin in ("", "#print axioms Vegas.Paper.witness\n",
@@ -145,9 +197,10 @@ class LeanOptionTests(unittest.TestCase):
                 'def help := "#print axioms hidden"\n')
         self.assertEqual(CHECKER.check_axiom_prints(Path("Vegas/Help.lean"), text), [])
 
-    def test_only_root_paper_audit_may_admit(self):
+    def test_only_guarded_root_paper_audit_may_admit(self):
         admitted = "theorem target : True := by sorry\n"
-        self.assertEqual(CHECKER.check_admissions(Path("Paper.lean"), admitted), [])
+        guarded = "#guard_msgs in\n" + admitted
+        self.assertEqual(CHECKER.check_admissions(Path("Paper.lean"), guarded), [])
         for path in (Path("Vegas/Proof.lean"), Path("Paper/Source.lean"),
                      Path("Other.lean")):
             with self.subTest(path=path):

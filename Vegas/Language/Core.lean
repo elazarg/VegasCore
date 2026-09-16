@@ -5,12 +5,16 @@ Authors: VegasCore contributors
 -/
 
 import Vegas.Foundation.FiniteDomain
+import Vegas.Language.Guard
 
 /-!
 # Surface-language elaboration target
 
 Intrinsically typed syntax produced by the surface-language prototype. This
 representation has no verified elaboration into the failure-aware `SourceProgram`.
+Its declarations retain guards as syntax; the separate `Legal` predicate
+requires a satisfying value in every visible environment. These are prototype
+side conditions, not the deferred failure semantics of `SourceProgram`.
 -/
 
 namespace Vegas

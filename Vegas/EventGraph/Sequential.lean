@@ -102,6 +102,88 @@ def sequentialize (graph : Vegas.EventGraph Player L) : Vegas.EventGraph Player 
         exact graph.order.predecessor_lt (graph.reads_available event (.inr producer) read)
   payoffs := graph.payoffs
 
+/-- Dependency constraint used by an EventGraph execution. -/
+inductive ExecutionMode where
+  | concurrent
+  | sequential
+  deriving DecidableEq, Repr
+
+/-- Apply an execution mode by changing only the graph's dependency order. -/
+def withMode (graph : Vegas.EventGraph Player L)
+    (mode : ExecutionMode) : Vegas.EventGraph Player L where
+  inputCount := graph.inputCount
+  order := {
+    eventCount := graph.order.eventCount
+    predecessors := fun event => match mode with
+      | .concurrent => graph.order.predecessors event
+      | .sequential => (EventOrder.sequential graph.order.eventCount).predecessors event
+    predecessor_lt := by
+      intro event predecessor member
+      cases mode with
+      | concurrent => exact graph.order.predecessor_lt member
+      | sequential => exact (EventOrder.sequential.mem_predecessors predecessor event).1 member }
+  inputLayout := graph.inputLayout
+  outputLayout := graph.outputLayout
+  nodes := graph.nodes
+  reads_available := by
+    intro event field read
+    cases mode with
+    | concurrent => exact graph.reads_available event field read
+    | sequential =>
+        cases field with
+        | inl => trivial
+        | inr producer =>
+            apply (EventOrder.sequential.mem_predecessors producer event).2
+            exact graph.order.predecessor_lt
+              (graph.reads_available event (.inr producer) read)
+  payoffs := graph.payoffs
+
+omit [DecidableEq Player] in
+@[simp] theorem withMode_concurrent (graph : Vegas.EventGraph Player L) :
+    graph.withMode .concurrent = graph := by
+  cases graph
+  rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem withMode_sequential (graph : Vegas.EventGraph Player L) :
+    graph.withMode .sequential = graph.sequentialize := rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem withMode_inputCount (graph : Vegas.EventGraph Player L)
+    (mode : ExecutionMode) :
+    (graph.withMode mode).inputCount = graph.inputCount := by
+  cases mode <;> rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem withMode_eventCount (graph : Vegas.EventGraph Player L)
+    (mode : ExecutionMode) :
+    (graph.withMode mode).order.eventCount = graph.order.eventCount := by
+  cases mode <;> rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem withMode_inputLayout (graph : Vegas.EventGraph Player L)
+    (mode : ExecutionMode) (input : graph.InputId) :
+    (graph.withMode mode).inputLayout input = graph.inputLayout input := by
+  cases mode <;> rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem withMode_outputLayout (graph : Vegas.EventGraph Player L)
+    (mode : ExecutionMode) (event : graph.EventId) :
+    (graph.withMode mode).outputLayout event = graph.outputLayout event := by
+  cases mode <;> rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem withMode_nodes (graph : Vegas.EventGraph Player L)
+    (mode : ExecutionMode) (event : graph.EventId) :
+    (graph.withMode mode).nodes event = graph.nodes event := by
+  cases mode <;> rfl
+
+omit [DecidableEq Player] in
+@[simp] theorem withMode_payoffs (graph : Vegas.EventGraph Player L)
+    (mode : ExecutionMode) :
+    (graph.withMode mode).payoffs = graph.payoffs := by
+  cases mode <;> rfl
+
 omit [DecidableEq Player] in
 @[simp] theorem sequentialize_inputCount (graph : Vegas.EventGraph Player L) :
     graph.sequentialize.inputCount = graph.inputCount := rfl
@@ -138,6 +220,14 @@ theorem sequentialize_barrierOrdered (graph : Vegas.EventGraph Player L) :
   intro event predecessor member
   exact (EventOrder.sequential.mem_predecessors predecessor event).2
     ((mem_barrierOrder graph.outputLayout predecessor event).1 member).1
+
+/-- Required public barriers survive either dependency mode. -/
+theorem withMode_barrierOrdered (graph : Vegas.EventGraph Player L)
+    (ordered : graph.BarrierOrdered) (mode : ExecutionMode) :
+    (graph.withMode mode).BarrierOrdered := by
+  cases mode with
+  | concurrent => exact ordered
+  | sequential => exact graph.sequentialize_barrierOrdered
 
 omit [DecidableEq Player] in
 /-- The sequential specialization admits at most one ready event. -/

@@ -28,8 +28,8 @@ open GameTheory.Math.Probability
 Packages the concrete expression layer: types, values, expression syntax,
 distribution syntax, evaluation functions, dependency tracking, and
 dependency-soundness laws. Expressions and distributions are typed over plain
-`Ctx Ty` (no visibility annotations) — visibility is layered separately by the
-`VCtx` family below. -/
+`Ctx Ty` (no visibility annotations). Source and target languages determine
+which contexts each participant can observe. -/
 structure IExpr where
   /-- The universe of types in the embedded language. -/
   Ty : Type
