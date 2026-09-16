@@ -249,12 +249,12 @@ theorem BarrierOrdered.ready_pair_actors
           (graph.nodes event) (by simpa [EventGraph.actor?] using actor)
         rcases lt_or_gt_of_ne (Fin.val_ne_of_ne different) with before | after
         · have predecessor : event ∈ graph.order.predecessors other := by
-            rw [ordered other]
-            exact barrierOrder_public_prior graph.outputLayout before isPublic
+            exact ordered other
+              (barrierOrder_public_prior graph.outputLayout before isPublic)
           exact False.elim (eventReady.1 (otherReady.2 predecessor))
         · have predecessor : other ∈ graph.order.predecessors event := by
-            rw [ordered event]
-            exact barrierOrder_public_event graph.outputLayout after isPublic
+            exact ordered event
+              (barrierOrder_public_event graph.outputLayout after isPublic)
           exact False.elim (otherReady.1 (eventReady.2 predecessor))
   obtain ⟨leftOwner, leftActor⟩ := strategic left right leftReady rightReady different
   obtain ⟨rightOwner, rightActor⟩ :=

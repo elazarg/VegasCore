@@ -140,9 +140,8 @@ class ModuleBoundaryTests(unittest.TestCase):
         forbidden = {
             "Vegas.Foundation": ("Vegas.Expr", "Vegas.Language"),
             "Vegas.Expr": ("Vegas.Language", "Vegas.Source"),
-            "Vegas.Source": ("Vegas.Graph", "Vegas.EventGraph", "Vegas.Pending", "Vegas.Language"),
-            "Vegas.Graph": ("Vegas.Source", "Vegas.EventGraph", "Vegas.Pending", "Vegas.Compile"),
-            "Vegas.EventGraph": ("Vegas.Source", "Vegas.Graph", "Vegas.Pending", "Vegas.Compile"),
+            "Vegas.Source": ("Vegas.EventGraph", "Vegas.Pending", "Vegas.Language"),
+            "Vegas.EventGraph": ("Vegas.Source", "Vegas.Pending", "Vegas.Compile"),
             "Vegas.Pending": ("Vegas.Source", "Vegas.Compile", "Vegas.Game"),
             "Vegas.Compile": ("Vegas.Pending", "Vegas.Language"),
             "Vegas.Game": ("Vegas.Language",),
@@ -173,14 +172,14 @@ class ModuleBoundaryTests(unittest.TestCase):
     def test_umbrella_import_cannot_bypass_a_layer_contract(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory, {
-                "Vegas": "import Vegas.Graph.Example",
-                "Vegas.Graph.Example": "import Vegas",
+                "Vegas": "import Vegas.EventGraph.Example",
+                "Vegas.EventGraph.Example": "import Vegas",
             })
-            self.assertTrue(any("Vegas.Graph imports outside its layer contract: Vegas" in error
+            self.assertTrue(any("Vegas.EventGraph imports outside its layer contract: Vegas" in error
                                 for error in CHECKER.check(root)))
 
     def test_test_reachability_does_not_mask_incomplete_aggregator(self):
-        for layer in ("Vegas.Graph", "Vegas.Pending", "Vegas.Game", "Vegas.Expr", "Vegas.Language"):
+        for layer in ("Vegas.EventGraph", "Vegas.Pending", "Vegas.Game", "Vegas.Expr", "Vegas.Language"):
             with self.subTest(layer=layer), tempfile.TemporaryDirectory() as directory:
                 root = self.fixture(directory, {
                     "Vegas": f"import {layer}", layer: "",

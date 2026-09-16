@@ -50,18 +50,18 @@ class DocReferenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "Vegas/Pending").mkdir(parents=True)
-            (root / "Vegas/Pending/Application.lean").write_text(
-                "namespace Vegas.GraphRuntime\nend Vegas.GraphRuntime\n", encoding="utf-8"
+            (root / "Vegas/Pending/EventApplication.lean").write_text(
+                "namespace Vegas.EventGraphRuntime\nend Vegas.EventGraphRuntime\n", encoding="utf-8"
             )
             (root / "README.md").write_text(
-                "See `Vegas/Pending/GraphRuntime.lean`.", encoding="utf-8"
+                "See `Vegas/Pending/EventGraphRuntime.lean`.", encoding="utf-8"
             )
             subprocess.run(["git", "init", "-q", str(root)], check=True)
             subprocess.run(["git", "-C", str(root), "add", "README.md"], check=True)
             result = subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
                                     capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("missing local file `Vegas/Pending/GraphRuntime.lean`", result.stdout)
+        self.assertIn("missing local file `Vegas/Pending/EventGraphRuntime.lean`", result.stdout)
 
     def test_relative_markdown_links_resolve_from_source_directory(self):
         with tempfile.TemporaryDirectory() as directory:

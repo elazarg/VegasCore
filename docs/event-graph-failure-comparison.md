@@ -7,17 +7,16 @@ new opportunity to stop an otherwise feasible graph continuation. It is not a
 simulation certificate and does not assume the desired unilateral-deviation
 bound.
 
-For a public-barrier compiler output, the ideal `EventGraph` game is designed
-to admit an exact comparison. Bind failure and the disclosure Boolean are
+For a public-barrier compiler output, the ideal `EventGraph` game has a checked
+exact comparison. Bind failure and the disclosure Boolean are
 already graph actions in both canonical and asynchronous schedules. The
 information certificate guarantees the same declared public fields and own
 history at a ready strategic event, while different ready orders add completion
-metadata. The scheduling argument must show that this metadata creates no
-additional outcome laws against unchanged compiled opponents.
+metadata. The scheduling theorem represents every unilateral deviation by a
+finite mixture of canonical deviations against unchanged compiled opponents.
 
-The same conclusion applies to the **initial pending-message implementation**
-described by the barrier design, provided its stated policy and service
-contracts are actually proved:
+The pending-message implementation establishes the same comparison using
+these proved policy and service properties:
 
 - an honest bind or publication is prepared and submitted only when its event
   is ready;
@@ -35,7 +34,7 @@ At an enabled private bind, concurrently completing foreign binds reveal only
 value-independent completion metadata and opaque canonical handles. Adaptive
 environment reactions to the focal player's raw packets may supply additional
 public scheduling signals, but not information correlated with an opponent's
-hidden meaning under these contracts. A behavioral graph policy can absorb
+hidden meaning under these contracts. A finite mixture of graph policies absorbs
 such random signals in the exact replay/backtranslation; they do not justify a
 new clairvoyant stopping choice.
 
@@ -43,9 +42,8 @@ Expiry then realizes an action already present in the graph: failure at a bind,
 or `false` at a resolution. Repeated expiry choices occur at their corresponding
 barrier-separated graph decisions. No counterexample to exact pending-to-
 canonical deviation simulation follows merely from delaying those choices.
-Consequently the initial pending compiler should target the exact finite-mixture
-deviation law, retaining arbitrary focal packets and adaptive public scheduling.
-Failure comparison is not a blocking M1/M3 interface for that target.
+The checked pending deviation law is exact, retaining arbitrary focal packets
+and adaptive public scheduling. It needs no additional failure-incentive premise.
 
 A utility weakening becomes relevant only for a broader runtime that lets a
 player exercise failure after learning information unavailable at the matching

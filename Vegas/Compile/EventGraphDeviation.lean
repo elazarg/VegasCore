@@ -89,6 +89,28 @@ theorem canonical_setup_deviation_decode
   rw [terminalOutcomes_map_decode] at law
   exact law
 
+/-- A canonical graph replacement has exactly the distributed source law of
+one backtranslated policy. The policy is fixed before the private initial
+state is sampled, and every opponent policy remains unchanged. -/
+theorem canonical_setup_deviation_law
+    (setup : Setup (Player := Player) (L := L))
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (replacement : setup.eventGraph.BehavioralPolicy who) :
+    ((setup.eventGraph.canonicalGame
+        (setup.initialLaw.map fun initial => setup.eventInputs initial.1)).play
+      (Profile.update (sig := setup.eventGraph.gameSignature)
+        (compileEventProfile setup.program setup.namesNodup profile) who replacement)).map
+          (terminalState setup.program setup.namesNodup) =
+      setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
+        profile who
+          (backtranslateEventPolicy setup.program setup.namesNodup who replacement)) := by
+  unfold Vegas.EventGraph.canonicalGame Vegas.EventGraph.gameForm Setup.run
+  simp only [FinDist.map_bind, FinDist.bind_map]
+  apply FinDist.bind_congr
+  intro initial _
+  exact canonical_deviation_terminalState_law setup.program setup.namesNodup profile who
+    replacement initial.1 initial.2
+
 /-- Read the graph-local scheduler mixture through the compiler's total
 terminal-state decoder, retaining a single mixture across private setup. -/
 private theorem scheduled_canonical_deviation_mixture

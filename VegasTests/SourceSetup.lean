@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.GraphSetup
+import Vegas.Source.Setup
 import Vegas.Expr.Simple
 
 /-! # A shared-policy private setup regression -/
@@ -42,7 +42,11 @@ private def initialState (bit : Bool) : State simpleExpr InitialCtx :=
 
 private def checkedState (bit : Bool) :
     { state : State simpleExpr InitialCtx // SourceProgram.PrivatePending state } :=
-  ⟨initialState bit, by simp [SourceProgram.PrivatePending, initialState, Env.get, Env.cons]⟩
+  ⟨initialState bit, by
+    change ((initialState bit).get
+      (.here : HasVar InitialCtx secret (.privateData Player.alice .bool))).2 =
+        .pending ∧ True
+    exact ⟨rfl, trivial⟩⟩
 
 def fairSetup : SourceProgram.Setup (Player := Player) (L := simpleExpr) where
   context := InitialCtx
@@ -80,27 +84,6 @@ def profile (chosen : Bool) : SourceProgram.BehavioralProfile program := fun
       (fun _ _ => FinDist.pure (BoundValue.value chosen),
         (fun _ _ => FinDist.pure true,
           ((fun h => nomatch h), PUnit.unit)))
-
-/-- The full two-state setup law transfers through graph compilation without
-selecting an initial secret for the strategy compiler. -/
-theorem compiled_setup_law (chosen : Bool) :
-    (fairSetup.graphGameForm.play
-      (fairSetup.compileGraphProfile (profile chosen))).map fairSetup.decodeGraph =
-      fairSetup.run (profile chosen) :=
-  fairSetup.graph_honest_law (profile chosen)
-
-/-- A concrete native graph deviation has one source backtranslation shared
-across both states of the prior. -/
-theorem graph_deviation_uses_shared_prior (chosen : Bool) (who : Player)
-    (replacement : fairSetup.graphGameForm.sig.Strategy who) :
-    (fairSetup.graphGameForm.play
-      (Profile.update (fairSetup.compileGraphProfile (profile chosen)) who replacement)).map
-        fairSetup.decodeGraph =
-      fairSetup.run (Profile.update (sig := SourceProgram.gameSignature fairSetup.program)
-        (profile chosen) who
-        (SourceProgram.backtranslateGraphPolicy fairSetup.program fairSetup.namesNodup
-          SourceProgram.initialMap [] who replacement)) :=
-  fairSetup.graph_deviation_law (profile chosen) who replacement
 
 end
 end VegasTests.SourceSetup

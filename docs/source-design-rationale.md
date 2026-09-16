@@ -256,10 +256,10 @@ successful play from each failure case. A separate constant-false guard program
 demonstrates defined forced failure.
 
 The full `SourceProgram` compiler has exact outcome, payout, and arbitrary
-unilateral-deviation laws to the typed `Vegas.Graph`, and same-error Nash
+unilateral-deviation laws to the typed `Vegas.EventGraph`, and same-error Nash
 correspondence for source-outcome utilities. The
 [source-to-graph certificate](source-graph-edge.md) covers every constructor
 without a guard-feasibility or failure-dominance premise. The checked
-[public-message edge](typed-message-edge.md) preserves that complete graph,
+[public-message edge](event-pending-deviation.md) preserves that complete graph,
 yielding source-to-pending exact mixture simulation and same-error Nash
 equivalence under its explicit ideal-service contract.

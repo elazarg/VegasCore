@@ -316,4 +316,106 @@ theorem terminalPayoffs_eq_source {Γ : SourceCtx Player L}
     agree expression
   simp [evaluated]
 
+omit [DecidableEq Player] R in
+private theorem exists_decodeState_agrees {Field : Type} [DecidableEq Field]
+    {layout : Field → Vegas.EventGraph.EventField Player L} :
+    {Γ : SourceCtx Player L} → (refs : ContextRefs layout Γ) →
+    (publications : PublicationRefs layout Γ) →
+    (store : Vegas.EventGraph.Store layout) →
+    (∀ field, (store field).isSome = true) →
+    ∃ state, decodeState? refs publications store = some state ∧
+      refs.Agrees state store
+  | [], _, _, _, _ => by
+      refine ⟨Env.empty (CellVal L), rfl, ?_⟩
+      intro name cell source
+      nomatch source
+  | (name, .publicData payload) :: Γ, refs, publications, store, available => by
+      have headSome := (refs.get (HasVar.here :
+        HasVar ((name, .publicData payload) :: Γ) name (.publicData payload))).get?_isSome
+          store (available (refs.get HasVar.here).field)
+      cases headEq : (refs.get (HasVar.here :
+          HasVar ((name, .publicData payload) :: Γ) name
+            (.publicData payload))).get? store with
+      | none => simp [headEq] at headSome
+      | some head =>
+          obtain ⟨tail, tailEq, tailAgree⟩ :=
+            exists_decodeState_agrees refs.tail publications.tail store available
+          refine ⟨Env.cons head tail, ?_, ?_⟩
+          · simp [decodeState?, headEq, tailEq]
+          · intro readName readCell source
+            cases source with
+            | here => simpa [cellValue] using headEq
+            | there source => exact tailAgree source
+  | (name, .publication payload) :: Γ, refs, publications, store, available => by
+      have headSome := (refs.get (HasVar.here :
+        HasVar ((name, .publication payload) :: Γ) name (.publication payload))).get?_isSome
+          store (available (refs.get HasVar.here).field)
+      cases headEq : (refs.get (HasVar.here :
+          HasVar ((name, .publication payload) :: Γ) name
+            (.publication payload))).get? store with
+      | none => simp [headEq] at headSome
+      | some head =>
+          obtain ⟨tail, tailEq, tailAgree⟩ :=
+            exists_decodeState_agrees refs.tail publications.tail store available
+          refine ⟨Env.cons head tail, ?_, ?_⟩
+          · simp [decodeState?, headEq, tailEq]
+          · intro readName readCell source
+            cases source with
+            | here => simpa [cellValue] using headEq
+            | there source => exact tailAgree source
+  | (name, .privateData owner payload) :: Γ, refs, publications, store, available => by
+      have bindingSome := (refs.get (HasVar.here :
+        HasVar ((name, .privateData owner payload) :: Γ) name
+          (.privateData owner payload))).get?_isSome
+            store (available (refs.get HasVar.here).field)
+      cases bindingEq : (refs.get (HasVar.here :
+          HasVar ((name, .privateData owner payload) :: Γ) name
+            (.privateData owner payload))).get? store with
+      | none => simp [bindingEq] at bindingSome
+      | some binding =>
+          obtain ⟨tail, tailEq, tailAgree⟩ :=
+            exists_decodeState_agrees refs.tail publications.tail store available
+          cases statusEq : publicationStatus? (publications (HasVar.here :
+              HasVar ((name, .privateData owner payload) :: Γ) name
+                (.privateData owner payload))) store with
+          | none =>
+              have success := decodeState?_isSome_of_available refs publications store available
+              simp [decodeState?, bindingEq, statusEq] at success
+          | some status =>
+              refine ⟨Env.cons ((BoundValue.resultEquiv _).symm binding, status) tail,
+                ?_, ?_⟩
+              · simp [decodeState?, bindingEq, statusEq, tailEq]
+              · intro readName readCell source
+                cases source with
+                | here => simpa [cellValue] using bindingEq
+                | there source => exact tailAgree source
+
+/-- Integer payout readout of one completed compiled event execution. -/
+def terminalPayouts {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames)
+    (unique : (Γ.map Prod.fst).Nodup)
+    (result : {config : (toEventGraph program unique).Config //
+      config.cut.Terminal}) : List (Player × Int) :=
+  (result.1.terminalPayoffs result.2).map fun payoff => (payoff.1, L.toInt payoff.2)
+
+/-- Executable compiled payout readout agrees pointwise with evaluating the
+source payout expressions on the decoded complete source state. -/
+theorem terminalPayouts_eq_source {Γ : SourceCtx Player L}
+    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
+    (unique : (Γ.map Prod.fst).Nodup)
+    (result : {config : (toEventGraph program unique).Config //
+      config.cut.Terminal}) :
+    terminalPayouts program unique result =
+      program.evaluatePayoffs (terminalState program unique result) := by
+  let available : ∀ field, (result.1.store field).isSome = true :=
+    fun field => result.1.store_available_of_terminal result.2 field
+  obtain ⟨state, decoded, agree⟩ := exists_decodeState_agrees
+    (terminalRefs program) (terminalPublications program unique) result.1.store available
+  have stateEq : terminalState program unique result = state := by
+    unfold terminalState
+    simp [decoded]
+  rw [stateEq, terminalPayouts,
+    terminalPayoffs_eq_source program unique result.1 result.2 state agree]
+  simp [SourceProgram.evaluatePayoffs, List.map_map]
+
 end Vegas.SourceProgram.EventLowering

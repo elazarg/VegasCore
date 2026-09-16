@@ -166,13 +166,13 @@ def toEventGraph {Γ : SourceCtx Player L} {openNames : Finset VarId}
           before (code_isPublic_of_mem_readFields _ member)
   payoffs := payoffs program
 
-/-- The compiled graph uses exactly the public-barrier dependency policy. -/
+/-- The compiled graph contains the public-barrier dependency policy. -/
 theorem toEventGraph_barrierOrdered {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
     (unique : (Γ.map Prod.fst).Nodup) :
     (toEventGraph program unique).BarrierOrdered := by
   intro event
-  rfl
+  exact Finset.Subset.rfl
 
 /-- Full source lowering immediately inherits the generic local information
 certificate for every ready strategic cut. -/

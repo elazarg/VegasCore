@@ -135,12 +135,12 @@ theorem BarrierOrdered.simultaneous_foreign_hidden
     intro isPublic
     rcases lt_or_gt_of_ne (Fin.val_ne_of_ne different) with before | after
     · have predecessor : event ∈ graph.order.predecessors other := by
-        rw [ordered other]
-        exact barrierOrder_public_event graph.outputLayout before isPublic
+        exact ordered other
+          (barrierOrder_public_event graph.outputLayout before isPublic)
       exact eventReady.1 (otherReady.2 predecessor)
     · have predecessor : other ∈ graph.order.predecessors event := by
-        rw [ordered event]
-        exact barrierOrder_public_prior graph.outputLayout after isPublic
+        exact ordered event
+          (barrierOrder_public_prior graph.outputLayout after isPublic)
       exact otherReady.1 (eventReady.2 predecessor)
   have visibleForeign : (graph.outputLayout other).VisibleTo foreign :=
     actor_output_visible (graph.nodes other) foreign otherActor

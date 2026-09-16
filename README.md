@@ -16,6 +16,8 @@ own-action recall, and terminal payoffs. The compiler preserves honest outcome
 laws and translates every unilateral target deviation to a finite mixture of
 legal source policies while leaving opponents unchanged. The resulting
 pending-message profile preserves and reflects same-error epsilon-Nash.
+Sequential compilation adds predecessor barriers to the same event graph;
+both execution modes use the same pending-message runtime and strategic proof.
 
 The native target uses authenticated messages, ideal opaque commitments,
 public opening verification, and relative deadlines. Its concrete finite
@@ -45,7 +47,7 @@ Start with the [artifact guide](ARTIFACT.md), [theorem map](docs/active-tower.md
 [source rationale](docs/source-design-rationale.md),
 [source semantics](docs/source-semantics.md),
 [source-to-graph edge](docs/source-graph-edge.md), and
-[typed-message edge](docs/typed-message-edge.md). The
+[pending-message proof](docs/event-pending-deviation.md). The
 [road ahead](docs/a-road-ahead.md) describes target boundaries still to add.
 The [EventGraph design](docs/event-graph-design.md) specifies the asynchronous
 compilation boundary. The event-addressed pending-message game has checked

@@ -22,6 +22,12 @@ evaluating a deferred guard; resolution chooses disclosure or failure,
 evaluates the deferred checks, and records its publication result. Chance
 nodes retain their conditional public kernels.
 
+Sequential compilation adds predecessor barriers to the same event graph.
+Concurrent and sequential modes retain the same fields, node code, and payoffs;
+their source-to-message guarantees instantiate one mode-parameterized theorem.
+Canonical execution supplies the comparison between the dependency choices.
+This does not identify their native traffic or timing.
+
 The active native interface is `EventGraphRuntime` over
 `Interaction.MessageApplication`.
 Private preparation creates ideal candidate material; authenticated public

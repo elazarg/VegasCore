@@ -1,9 +1,8 @@
 # Active theorem map
 
-The asynchronous capstone path is `SourceProgram → EventGraph → EventGraphRuntime`.
-The ordered `Graph → GraphRuntime` path has a separate checked source composition.
-The two backends share generic message semantics and game-theoretic transport;
-neither strategic theorem substitutes one runtime's execution for the other's.
+The checked path is `SourceProgram → EventGraph → EventGraphRuntime`.
+Sequential compilation adds predecessor barriers to this same graph. The
+native executor and strategic proof are shared by both execution modes.
 
 ## Source semantics
 
@@ -15,46 +14,24 @@ are satisfied.
 See [source semantics](source-semantics.md) and the
 [source rationale](source-design-rationale.md).
 
-## Source to ordered typed graph
+## Sequential execution
 
-`Vegas.Game.GraphCompilation` packages the exact honest decoded-state law,
-unilateral deviation backtranslation against unchanged opponents, and
-same-error epsilon-Nash equivalence. `Vegas.Game.GraphSetup` transports these
-results through a finite private initial law using one policy independent of
-the sampled initial state.
+The canonical graph scheduler selects the least unfinished source rank. Its
+single-policy deviation correspondence is
+`EventLowering.canonical_setup_deviation_law`: the backtranslated policy is uniform over private
+initial setup and retains the unchanged opponents.
 
-The edge covers the full failure-aware source language and requires no finite
-action-domain, failure-dominance, or universal guard-feasibility premise. See
-[source-to-graph](source-graph-edge.md).
+For native execution, choosing a fixed order of service visits is insufficient
+to enforce completion order. `EventGraph.sequentialize` instead adds every
+source-earlier event as a predecessor. At a ready event the completed cut is
+exactly its strict source prefix, so no accepted packet, chance step, or expiry
+can complete a later event first. This construction retains typed fields,
+node code, payloads, and payoff expressions. It satisfies the same
+`BarrierOrdered` certificate used by the concurrent backend.
 
-## Ordered typed graph to pending messages
-
-`Vegas.GraphRuntime` is the concrete target. Its state and policies use
-the generic `Interaction.MessageApplication`; `Vegas.Pending` modules prove binding and
-opening soundness, history provenance, replay locality, service protection,
-progress, honest continuation laws, and unilateral deviation extraction.
-
-`Vegas.Game.GraphMessages` exposes the composed capstones:
-
-- `SourceProgram.Setup.pendingGame_complete` — every supported serviced play
-  terminates, including arbitrary player and wire policies.
-- `pendingGame_honest_law` — compiled play has the exact source terminal-state
-  law.
-- `pendingGame_deviation_law` — every unilateral native replacement has one
-  finite source-policy mixture chosen before private setup is sampled, with all
-  opponents unchanged.
-- `pendingGame_deviation_guarantee` — any real-valued terminal-state lower bound
-  valid for every legal source deviation survives every native deviation.
-- `pendingGame_deviation_utility_bound` — against fixed opponents, some source
-  deviation achieves at least the native deviation's expected test value;
-  the witness may depend on the profile and test.
-- `pendingGame_approximate_nash_iff` — compiled profiles preserve and reflect
-  same-error epsilon-Nash for every terminal-state utility.
-
-`Paper.lean` delegates to selected capstones and pins their axioms. The
-[typed-message edge](typed-message-edge.md) and
-[deviation extraction note](pending-deviation-extraction.md) explain the proof
-boundary.
+The canonical law relates the two dependency choices without identifying
+their native histories or packet schedules. Exact source-outcome deviation and
+Nash guarantees use the common pending-message theorem.
 
 ## Dependency-driven graph interface
 
@@ -176,7 +153,7 @@ finite-mixture deviation law for the concrete event-addressed message service.
 A separate
 [failure-comparison contract](event-graph-failure-comparison.md) applies only
 to broader runtimes that expose genuinely new information before a failure
-choice, and is not a gate for that initial compiler.
+choice; it is not a premise of the checked compiler theorem.
 
 ### Event-addressed pending application
 

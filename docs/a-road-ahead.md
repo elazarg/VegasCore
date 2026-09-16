@@ -12,7 +12,7 @@ grounding target, not the owner of runtime-general concepts.
 The checked chain is:
 
 ```text
-SourceProgram → typed ordered Graph → public pending-message application
+SourceProgram → dependency-driven EventGraph → public pending-message application
 ```
 
 It preserves honest outcome laws and simulates every unilateral native deviation
@@ -22,45 +22,37 @@ holds at compiled profiles, and source-outcome lower bounds transfer without any
 assumption about the adversary's preferences.
 
 The target uses ideal opaque commitments, authenticated commands, the declared
-public chance kernels, and a concrete finite ordered service. It permits raw
+public chance kernels, and a concrete finite adaptive epoch service. It permits raw
 submissions, competing candidates, failed openings, replay, delivery before
 inclusion, and adaptive wire choices. It does not implement cryptography, gas,
 transaction execution, ledger finality, or unrestricted fair scheduling.
 
 Every source constructor is covered, including heterogeneous values, rejecting
 guards, initial secrets, and dependent chance. Failure and disclosure are source
-choices. No quitting-dominance premise is needed for this exact ordered edge.
+choices. No quitting-dominance premise is needed for this exact barrier-preserving edge.
 
 The [source contract](source-semantics.md), [source rationale](source-design-rationale.md),
 [source/graph edge](source-graph-edge.md), and
-[message proof guide](typed-message-edge.md) specify these boundaries.
+[message proof guide](event-pending-deviation.md) specify these boundaries.
 
-## Next milestone: dependency-driven asynchronous execution
+## Scheduling and the refinement direction
 
-Implement the [EventGraph design and plan](event-graph-design.md): a typed
-ready-event semantics, source-derived information and effect dependencies,
-event-relative message service, and a full-source asynchronous deviation
-certificate. The native theorem must allow different acceptance orders for
-independent events, not only different packet-delivery orders.
+Concurrent and sequential compilation use the same graph and native runtime.
+Sequential compilation adds predecessor barriers rather than supplying another
+executor. The [EventGraph design](event-graph-design.md) states the operational
+and strategic correspondence.
 
-The Nash capstone allows additional early or informed failure and uses an
-explicit failure-disincentive condition to bound its utility. Exact outcome-law
-simulation remains the stronger result where available, not a prerequisite
-for preserving Nash. A utility bound for the deviator does not by itself
-protect other players against an adversary indifferent to that utility.
+Adding barriers is a compiler transformation, not an assertion that every host
+which admits concurrency already enforces sequential completion. The useful
+closure property is that a backend capable of honoring the graph's declared
+predecessors can execute either compilation mode.
 
-Arbitrary players may announce their own choices early. The strategic proof
-keeps unchanged opponents on their compiled source policies and accounts for
-the environment's reactions. Prescribed opening traffic respects the source
-information barriers; restricting arbitrary players from transmitting secrets
-is not an acceptable substitute.
+Further target levels should add meaningful operational structure while
+realizing the higher-level execution, observation, and strategic contracts.
+A single universal ordering of all features is not assumed. Complication-specific
+proofs may be independent where their contracts genuinely compose.
 
-The canonical ordered execution should be a scheduler specialization of the
-same EventGraph semantics. At completion of the migration, keep one active
-compiler/host path. The transaction/block boundary below then realizes that
-dependency-driven application's integrity, observation, and service contracts.
-
-## Following milestone: transaction and block execution
+## Next target: transaction and block execution
 
 Add an independently executable host with authenticated callers, transaction
 identities, nonces, atomic application state changes, rejection/revert receipts,
@@ -90,7 +82,7 @@ without excluding a source constructor or assuming the desired whole-run law.
 
 ### Protocol/host proof interface
 
-The current `GraphRuntime` executes the typed graph through the shared message
+The current `EventGraphRuntime` executes the typed graph through the shared message
 runner, and its strategic proof is graph-relative. A separate sealed-protocol
 language is not required for that result.
 
@@ -185,7 +177,7 @@ incentive condition. For example, play with fair payoff `+2/-2` has expectation
 whether to quit gives expectation `(2 - 1)/2 = 0.5`. Ex-ante quit dominance does
 not control this added information. The current source already has strategic
 disclosure/failure, so this example is a test for a *new* target capability, not
-an omitted hypothesis of the checked ordered theorem.
+an omitted hypothesis of the checked theorem.
 
 Similarly, an accepted-event set is not a sequential source prefix: independent
 events may finish out of order, and a sealed commitment does not publish its

@@ -8,7 +8,6 @@
 | `Vegas.Foundation` | Shared typed contexts, values, visibility, guards, and result interfaces |
 | `Vegas.Expr` | Concrete typed expressions, distributions, and finite-value instances |
 | `Vegas.Source` | Failure-aware sequential source syntax, semantics, accounting, and safety |
-| `Vegas.Graph` | Typed immutable graph syntax, semantics, observations, and binding discipline |
 | `Vegas.EventGraph` | Dependency-driven typed events, cut-based execution, observations, and scheduler-parametric games |
 | `Vegas.Pending` | Graph-directed pending-message runtime, strategy compilation, service, and correctness |
 | `Vegas.Compile` | Source-to-graph construction and correspondence proofs |
@@ -18,16 +17,18 @@
 
 Production libraries do not import tests or the paper audit. Generic
 game-theoretic results do not depend on Vegas. `Interaction` is independent of
-Vegas source syntax. Neither graph representation depends on the backend or
-on the other representation; `Vegas.Pending`
-imports the graph, not source syntax or its compiler. The boundary checker
+Vegas source syntax. `Vegas.EventGraph` is independent of the source language
+and backend; `Vegas.Pending` imports the graph, not source syntax or its compiler. The boundary checker
 enforces these directions and keeps the prototype frontend out of the verified
 compiler and shared expression modules.
 
-`Vegas.Graph` supplies the ordered IR. It retains typed expressions,
-observations, bindings, resolution results, and chance kernels. The native host
-in `Vegas.Pending` executes that graph directly. Source-to-graph composition
-belongs in `Vegas.Game`, above the backend theorem.
+Sequential and concurrent compilation share `Vegas.EventGraph` and
+`Vegas.Pending`. Sequential compilation adds every earlier event as a
+predecessor, enforcing completion order even under arbitrary native policies.
+The graph's `BarrierOrdered` certificate requires the public and own-action
+ordering edges, and permits additional dependencies. Both modes therefore use
+the same backend certificate. Canonical graph execution additionally has an
+exact single-source-policy deviation law in `Vegas.Compile.EventGraphDeviation`.
 
 `Vegas.EventGraph` supplies the IR and operational interface for dependency-driven
 compilation. `Vegas.Compile.EventGraphScheduling` proves full-source honest

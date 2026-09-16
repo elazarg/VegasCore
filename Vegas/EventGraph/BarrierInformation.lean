@@ -18,9 +18,12 @@ namespace Vegas.EventGraph
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 
-/-- The graph uses the compiler's public-barrier dependency policy. -/
+/-- The graph contains the compiler's public-barrier dependency policy.
+Additional source-ranked dependencies may serialize otherwise independent
+events without changing the logical information available at a ready event. -/
 def BarrierOrdered (graph : Vegas.EventGraph Player L) : Prop :=
-  ∀ event, graph.order.predecessors event = (barrierOrder graph.outputLayout).predecessors event
+  ∀ event,
+    (barrierOrder graph.outputLayout).predecessors event ⊆ graph.order.predecessors event
 
 omit [DecidableEq Player] R in
 private theorem ordering_symm (left right : EventField Player L)
@@ -66,13 +69,13 @@ theorem ready_public_unique (ordered : graph.BarrierOrdered)
     other = event := by
   rcases lt_trichotomy other.val event.val with earlier | same | later
   · have predecessor : other ∈ graph.order.predecessors event := by
-      rw [ordered event]
-      exact barrierOrder_public_event graph.outputLayout earlier isPublic
+      exact ordered event
+        (barrierOrder_public_event graph.outputLayout earlier isPublic)
     exact False.elim (otherReady.1 (ready.2 predecessor))
   · exact Fin.ext same
   · have predecessor : event ∈ graph.order.predecessors other := by
-      rw [ordered other]
-      exact barrierOrder_public_prior graph.outputLayout later isPublic
+      exact ordered other
+        (barrierOrder_public_prior graph.outputLayout later isPublic)
     exact False.elim (ready.1 (otherReady.2 predecessor))
 
 /-- Every earlier output visible to a strategic actor is a direct dependency. -/
@@ -81,8 +84,9 @@ theorem visible_predecessor (ordered : graph.BarrierOrdered)
     (actor : graph.actor? event = some who) (earlier : other.val < event.val)
     (visible : (graph.outputLayout other).VisibleTo who) :
     other ∈ graph.order.predecessors event := by
-  rw [ordered event, mem_barrierOrder]
-  exact ⟨earlier, visible_requires_order (graph.nodes event) who actor _ visible⟩
+  apply ordered event
+  exact (mem_barrierOrder graph.outputLayout other event).2
+    ⟨earlier, visible_requires_order (graph.nodes event) who actor _ visible⟩
 
 /-- At a ready strategic event, each visible output is available precisely
 when its producer is earlier in the source ranking. -/
@@ -98,9 +102,10 @@ theorem ready_visible_iff (ordered : graph.BarrierOrdered) (cut : graph.order.Cu
     · have eventEq : event = other := Fin.ext same
       exact ready.1 (eventEq ▸ completed)
     · have isPredecessor : event ∈ graph.order.predecessors other := by
-        rw [ordered other, mem_barrierOrder]
-        exact ⟨later, ordering_symm _ _
-          (visible_requires_order (graph.nodes event) who actor _ visible)⟩
+        apply ordered other
+        exact (mem_barrierOrder graph.outputLayout event other).2
+          ⟨later, ordering_symm _ _
+            (visible_requires_order (graph.nodes event) who actor _ visible)⟩
       exact ready.1 (cut.predecessor_closed completed isPredecessor)
   · intro earlier
     exact ready.2 (ordered.visible_predecessor actor earlier visible)
@@ -144,10 +149,12 @@ theorem BarrierOrdered.informationDiscipline {graph : Vegas.EventGraph Player L}
         cases field with
         | inl => trivial
         | inr prior =>
+            have member' := member
+            simp only [prefixSchema, actor, prefixFields, Finset.mem_filter,
+              Finset.mem_univ, true_and] at member'
             have facts : (graph.outputLayout prior).VisibleTo who ∧
-                prior.val < event.val := by
-              simpa [prefixSchema, actor, prefixFields, fieldVisibleTo, layout, fieldLayout]
-                using member
+                prior.val < event.val := ⟨by
+              simpa [fieldVisibleTo, layout, fieldLayout] using member'.1, member'.2⟩
             exact ordered.visible_predecessor actor facts.2 facts.1
   ready_fields_exact := by
     intro cut event who ready actor

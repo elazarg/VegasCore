@@ -7,7 +7,7 @@ constructors, typed result expressions, arbitrary binding and disclosure
 policies, private action recall, and dependent public chance. Checked terminal
 theorems establish resolution of every publication obligation and satisfaction
 of every retained guard, under arbitrary policies. The complete source also
-has a checked compiler to the typed sequential `Vegas.Graph` IR, with exact
+has a checked compiler to the dependency-driven `Vegas.EventGraph` IR, with exact
 honest and unilateral-deviation laws and same-error Nash equivalence. This edge
 has no failure-dominance or finite-domain premise. The full source-to-pending theorem composes this certificate with the
 checked graph-relative runtime simulation. The [active tower](active-tower.md)

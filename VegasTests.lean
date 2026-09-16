@@ -4,9 +4,8 @@ import VegasTests.EventGraphReadout
 import VegasTests.EventCompilation
 import VegasTests.EventStrategies
 import VegasTests.EventService
-import VegasTests.GraphBindingDiscipline
-import VegasTests.GraphMessagePolicies
-import VegasTests.GraphMessages
+import VegasTests.EventMessages
+import VegasTests.EventSequential
 import VegasTests.Language
 import VegasTests.ResultExpressions
 import VegasTests.SourceSemantics

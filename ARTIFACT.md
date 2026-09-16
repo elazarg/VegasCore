@@ -22,10 +22,9 @@ the subsequent kernel-checked build.
 | Boundary | Owning code |
 | --- | --- |
 | Source execution and safety | `Vegas/Source/` |
-| Source to typed graph | `Vegas/Compile/Graph*.lean`, `Vegas/Game/GraphCompilation.lean` |
-| Private setup transport | `Vegas/Game/GraphSetup.lean` |
+| Source to typed graph and canonical single-policy correspondence | `Vegas/Compile/EventGraphCanonical.lean`, `Vegas/Compile/EventGraphDeviation.lean` |
+| Sequential completion by dependency barriers | `Vegas/EventGraph/Sequential.lean` |
 | Pending-message runtime and service | `Interaction/MessageApplication*.lean`, `Vegas/Pending/` |
-| End-to-end completion, honest law, deviations, arbitrary observations, Nash | `Vegas/Game/GraphMessages.lean` |
 | Full-source honest law under adaptive public graph scheduling | `Vegas/Compile/EventGraphScheduling.lean` |
 | Full-source asynchronous deviations and Nash correspondence | `Vegas/Compile/EventGraphDeviation.lean`, `Vegas/Game/EventCompilation.lean` |
 | Asynchronous pending-message service and arbitrary-player completion | `Vegas/Pending/EventService.lean`, `Vegas/Pending/EventServiceCompletion.lean` |
@@ -36,7 +35,7 @@ the subsequent kernel-checked build.
 
 The proved capstones are universally quantified proofs, not conclusions
 inferred from tests.
-`VegasTests/GraphMessages.lean` and the retained source/graph tests are concrete
+`VegasTests/EventService.lean` and the source/event-graph tests are concrete
 execution regressions.
 
 ## Interpretation
