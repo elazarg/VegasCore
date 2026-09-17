@@ -457,8 +457,9 @@ theorem check_ne_pending_of_support_resolved (guard : DeferredGuardCode L subjec
       rw [guard.check_values subjectValue reads get subjectEq readsEq]
       split <;> decide
 
-/-- A partial disclosure of an assignment on which the retained code holds
-cannot reject the guard. -/
+/-- A guard cannot reject while every published value of its subject and code-read
+inputs agrees with an assignment on which the retained code holds. Pending and
+failed inputs are unconstrained. -/
 theorem check_compatible (guard : DeferredGuardCode L subject payload)
     (candidate : Publication (L.Val payload))
     (reads : ∀ {x τ}, HasVar guard.schema x τ → Publication (L.Val τ))
@@ -466,33 +467,40 @@ theorem check_compatible (guard : DeferredGuardCode L subject payload)
     (get : (x : VarId) → (σ : L.Ty) → HasVar ((subject, payload) :: guard.schema) x σ →
       x ∈ L.exprDeps guard.code → L.Val σ)
     (subjectEq : ∀ hx, get subject payload .here hx = subjectValue)
-    (subjectCompatible : candidate = .pending ∨ candidate = .value subjectValue)
-    (readsCompatible : ∀ {x τ} (h : HasVar guard.schema x τ)
-      (hx : x ∈ L.exprDeps guard.code),
-        reads h = .pending ∨ reads h = .value (get x τ (.there h) hx))
+    (subjectAgrees : ∀ value, candidate = .value value → value = subjectValue)
+    (readsAgree : ∀ {x τ} (h : HasVar guard.schema x τ)
+      (hx : x ∈ L.exprDeps guard.code) (value : L.Val τ),
+        reads h = .value value → value = get x τ (.there h) hx)
     (valid : L.toBool (L.evalDeps guard.code get) = true) :
     guard.check candidate reads ≠ .rejected := by
+  by_cases supportFailure : ∃ (x : VarId) (τ : L.Ty) (h : HasVar guard.schema x τ),
+      x ∈ L.exprDeps guard.code ∧ reads h = .failed
+  · obtain ⟨x, τ, h, flagged, failed⟩ := supportFailure
+    rw [guard.check_satisfied_of_failed_read candidate reads h flagged failed]
+    decide
   have supportNotFailed : ∀ {x τ} (h : HasVar guard.schema x τ),
-      x ∈ L.exprDeps guard.code → reads h ≠ .failed := by
-    intro x τ h hx failed
-    rcases readsCompatible h hx with waiting | present <;> simp_all
-  by_cases supportPending : ∃ (x : VarId) (τ : L.Ty) (h : HasVar guard.schema x τ),
-      x ∈ L.exprDeps guard.code ∧ reads h = .pending
-  · rw [guard.check_pending candidate reads
-      (by rcases subjectCompatible with rfl | rfl <;> simp)
-      supportNotFailed (Or.inr supportPending)]
-    decide
-  rcases subjectCompatible with rfl | rfl
-  · rw [guard.check_pending .pending reads (by simp) supportNotFailed (Or.inl rfl)]
-    decide
-  · have readsEq : ∀ {x τ} (h : HasVar guard.schema x τ) (hx : x ∈ L.exprDeps guard.code),
-        reads h = .value (get x τ (.there h) hx) := by
-      intro x τ h hx
-      rcases readsCompatible h hx with waiting | present
-      · exact absurd ⟨_, _, h, hx, waiting⟩ supportPending
-      · exact present
-    rw [guard.check_values subjectValue reads get subjectEq readsEq, if_pos valid]
-    decide
+      x ∈ L.exprDeps guard.code → reads h ≠ .failed :=
+    fun h flagged failed => supportFailure ⟨_, _, h, flagged, failed⟩
+  cases candidate with
+  | failed => rw [check_subject_failed]; decide
+  | pending =>
+      rw [guard.check_pending .pending reads (by simp) supportNotFailed (Or.inl rfl)]
+      decide
+  | value published =>
+      obtain rfl := subjectAgrees published rfl
+      by_cases supportPending : ∃ (x : VarId) (τ : L.Ty) (h : HasVar guard.schema x τ),
+          x ∈ L.exprDeps guard.code ∧ reads h = .pending
+      · rw [guard.check_pending _ reads (by simp) supportNotFailed (Or.inr supportPending)]
+        decide
+      have readsEq : ∀ {x τ} (h : HasVar guard.schema x τ) (hx : x ∈ L.exprDeps guard.code),
+          reads h = .value (get x τ (.there h) hx) := by
+        intro x τ h hx
+        cases readEq : reads h with
+        | pending => exact absurd ⟨_, _, h, hx, readEq⟩ supportPending
+        | failed => exact absurd readEq (supportNotFailed h hx)
+        | value value => rw [readsAgree h hx value readEq]
+      rw [guard.check_values published reads get subjectEq readsEq, if_pos valid]
+      decide
 
 end DeferredGuardCode
 

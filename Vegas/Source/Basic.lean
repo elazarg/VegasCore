@@ -216,15 +216,14 @@ theorem check_compatible
     (get : (x : VarId) → (σ : L.Ty) → HasVar ((subject, payload) :: guard.schema) x σ →
       x ∈ L.exprDeps guard.code → L.Val σ)
     (subjectEq : ∀ hx, get subject payload .here hx = subjectValue)
-    (subjectCompatible : candidate = .pending ∨ candidate = .value subjectValue)
-    (readsCompatible : ∀ {x τ} (h : HasVar guard.schema x τ)
-      (hx : x ∈ L.exprDeps guard.code),
-        (guard.reads h).get state = .pending ∨
-          (guard.reads h).get state = .value (get x τ (.there h) hx))
+    (subjectAgrees : ∀ value, candidate = .value value → value = subjectValue)
+    (readsAgree : ∀ {x τ} (h : HasVar guard.schema x τ)
+      (hx : x ∈ L.exprDeps guard.code) (value : L.Val τ),
+        (guard.reads h).get state = .value value → value = get x τ (.there h) hx)
     (valid : L.toBool (L.evalDeps guard.code get) = true) :
     guard.check candidate state ≠ .rejected :=
   DeferredGuardCode.check_compatible guard.toDeferredGuardCode candidate _ subjectValue get
-    subjectEq subjectCompatible readsCompatible valid
+    subjectEq subjectAgrees readsAgree valid
 
 end SourceGuard
 

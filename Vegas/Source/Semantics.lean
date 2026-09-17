@@ -44,6 +44,49 @@ def sourceObserve {Player : Type} [DecidableEq Player] {L : IExpr} (who : Player
       | .publication _ => s.get h
       | .privateData owner _ => if owner = who then some (s.get h) else none⟩
 
+section SourceObserve
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} {Γ : SourceCtx Player L}
+
+@[simp] theorem sourceObserve_publicData (who : Player) (state : State L Γ)
+    {x : VarId} {τ : L.Ty} (h : HasVar Γ x (.publicData τ)) :
+    (sourceObserve who state).cells x (.publicData τ) h = state.get h := rfl
+
+@[simp] theorem sourceObserve_publication (who : Player) (state : State L Γ)
+    {x : VarId} {τ : L.Ty} (h : HasVar Γ x (.publication τ)) :
+    (sourceObserve who state).cells x (.publication τ) h = state.get h := rfl
+
+@[simp] theorem sourceObserve_privateData (who : Player) (state : State L Γ)
+    {x : VarId} {owner : Player} {τ : L.Ty} (h : HasVar Γ x (.privateData owner τ)) :
+    (sourceObserve who state).cells x (.privateData owner τ) h =
+      if owner = who then some (state.get h) else none := rfl
+
+/-- A player's source observation depends only on public data, publication
+results, and that player's own private cells. -/
+theorem sourceObserve_congr (who : Player) (left right : State L Γ)
+    (publicEq : ∀ {x τ} (h : HasVar Γ x (.publicData τ)), left.get h = right.get h)
+    (publicationEq : ∀ {x τ} (h : HasVar Γ x (.publication τ)), left.get h = right.get h)
+    (ownEq : ∀ {x τ} (h : HasVar Γ x (.privateData who τ)), left.get h = right.get h) :
+    sourceObserve who left = sourceObserve who right := by
+  have cellsEq : (sourceObserve who left).cells = (sourceObserve who right).cells := by
+    funext x cell h
+    cases cell with
+    | publicData τ =>
+        rw [sourceObserve_publicData, sourceObserve_publicData, publicEq h]
+    | publication τ =>
+        rw [sourceObserve_publication, sourceObserve_publication, publicationEq h]
+    | privateData owner τ =>
+        rw [sourceObserve_privateData, sourceObserve_privateData]
+        by_cases same : owner = who
+        · subst same
+          simp [ownEq h]
+        · simp [same]
+  calc sourceObserve who left = ⟨(sourceObserve who left).cells⟩ := rfl
+    _ = ⟨(sourceObserve who right).cells⟩ := by rw [cellsEq]
+    _ = sourceObserve who right := rfl
+
+end SourceObserve
+
 namespace SourceProgram
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 variable {Γ : SourceCtx Player L} {O : Finset VarId} {name x : VarId} {owner : Player}
@@ -248,6 +291,87 @@ def runWith : {Γ : SourceCtx Player L} → {O : Finset VarId} →
 
 def run (p : SourceProgram Player L Γ O) (profile : BehavioralProfile p) (s : State L Γ) :=
   runWith p profile s [] (fun _ => [])
+
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+/-- No retained guard rejects a state in which, for each guard, every published
+value of its subject and code-read inputs agrees with an assignment on which its
+code holds. -/
+theorem Registry.ok_of_compatible (registry : Registry (Player := Player) (L := L) Γ)
+    (state : State L Γ)
+    (compatible : ∀ obligation ∈ registry,
+      ∃ (subjectValue : L.Val obligation.payload)
+        (get : (x : VarId) → (σ : L.Ty) →
+          HasVar ((obligation.subject, obligation.payload) :: obligation.guard.schema) x σ →
+            x ∈ L.exprDeps obligation.guard.code → L.Val σ),
+        (∀ hx, get obligation.subject obligation.payload .here hx = subjectValue) ∧
+        (∀ value, (state.get obligation.source).2 = .value value → value = subjectValue) ∧
+        (∀ {x τ} (h : HasVar obligation.guard.schema x τ)
+          (hx : x ∈ L.exprDeps obligation.guard.code) (value : L.Val τ),
+            (obligation.guard.reads h).get state = .value value →
+              value = get x τ (.there h) hx) ∧
+        L.toBool (L.evalDeps obligation.guard.code get) = true) :
+    registry.ok state = true := by
+  refine List.all_eq_true.mpr fun obligation member => ?_
+  obtain ⟨subjectValue, get, subjectEq, subjectAgrees, readsAgree, valid⟩ :=
+    compatible obligation member
+  exact bne_iff_ne.mpr (obligation.guard.check_compatible _ state subjectValue get subjectEq
+    subjectAgrees readsAgree valid)
+
+-- OPEN OBLIGATION: whole-run honest completion
+-- `runWith_reveal_compatible` covers a single disclosure. Still unstated: if every
+-- commitment binds a value, every reveal discloses, and the bound values satisfy
+-- every retained guard in every reachable state, then every terminal publication
+-- succeeds. Stating it requires a definition of honest profile under
+-- observation-dependent policies and dependent public chance; the generic analogue
+-- is `Interaction.GuardedPublication.run_honest_complete`.
+/-- Guards cannot override an honest disclosure: when the bound value keeps
+every retained guard compatible, the owner's choice alone decides the reveal,
+publishing the value on disclosure and failure on withholding. -/
+theorem runWith_reveal_compatible {published name : VarId} {owner : Player}
+    {fresh : published ∉ Γ.map Prod.fst}
+    {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
+    {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
+    (profile : BehavioralProfile (.reveal published owner name fresh source unresolved next))
+    (state : State L Γ) (registry : Registry Γ) (history : History Player L)
+    (value : L.Val payload) (bound : (state.get source).1.binding = .value value)
+    (compatible : ∀ obligation ∈ registry,
+      ∃ (subjectValue : L.Val obligation.payload)
+        (get : (x : VarId) → (σ : L.Ty) →
+          HasVar ((obligation.subject, obligation.payload) :: obligation.guard.schema) x σ →
+            x ∈ L.exprDeps obligation.guard.code → L.Val σ),
+        (∀ hx, get obligation.subject obligation.payload .here hx = subjectValue) ∧
+        (∀ published, ((updatePrivate state source (.value value)).get obligation.source).2 =
+          .value published → published = subjectValue) ∧
+        (∀ {x τ} (h : HasVar obligation.guard.schema x τ)
+          (hx : x ∈ L.exprDeps obligation.guard.code) (published : L.Val τ),
+            (obligation.guard.reads h).get (updatePrivate state source (.value value)) =
+              .value published → published = get x τ (.there h) hx) ∧
+        L.toBool (L.evalDeps obligation.guard.code get) = true) :
+    runWith (.reveal published owner name fresh source unresolved next) profile state registry
+        history =
+      (revealKernel profile (sourceObserve owner state, history owner)).bind fun disclose =>
+        runWith next (afterReveal profile)
+          (Env.cons (if disclose then .success value else .failure)
+            (updatePrivate state source
+              (resultPublication (if disclose then .success value else .failure))))
+          registry.weaken
+          (Function.update history owner
+            (history owner ++ [OwnAction.reveal owner name disclose])) := by
+  have accepted := registry.ok_of_compatible (updatePrivate state source (.value value)) compatible
+  simp only [runWith]
+  congr 1
+  funext disclose
+  have proposedEq : boundResult state source disclose =
+      if disclose then .success value else .failure := by
+    unfold boundResult
+    split
+    · next unbound => rw [bound] at unbound; cases unbound
+    · next unopenable => rw [bound] at unopenable; cases unopenable
+    · next stored storedEq => rw [bound] at storedEq; cases storedEq; rfl
+  rw [proposedEq]
+  cases disclose with
+  | false => simp
+  | true => simp [resultPublication, accepted]
 
 def Initial.run (initial : Initial (Player := Player) (L := L))
     (profile : BehavioralProfile initial.program) :=
