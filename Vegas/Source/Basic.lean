@@ -136,7 +136,8 @@ theorem check_subject_pending_ne_rejected
 @[simp] theorem check_subject_failed
     {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
     {author : Player} (guard : SourceGuard L Γ author subject payload)
-    (state : State L Γ) : guard.check .failed state = .satisfied := rfl
+    (state : State L Γ) : guard.check .failed state = .satisfied :=
+  DeferredGuardCode.check_subject_failed guard.toDeferredGuardCode _
 
 /-- Extend a guard across a newly introduced source cell. -/
 def weaken {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}

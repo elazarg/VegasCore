@@ -7,7 +7,8 @@ import Vegas.Foundation.ExprInterface
 
 Deferred guards retain ordinary typed expression code and consume typed
 publication statuses through an adapter supplied by their execution context.
-The subject is a separate required publication, including for constant code.
+The subject heads the guard's context and is a required publication of every
+guard, including for constant code.
 -/
 
 namespace Vegas
@@ -58,29 +59,45 @@ private def collectReads (deps : Finset VarId) :
             | .here => False.elim (member hx)
             | .there h => tailGet h hx
 
-/-- Evaluate retained guard code from publication statuses. Failure has
-precedence over pending; ordinary code runs only when all supported inputs and
-the separate subject carry values. -/
+/-- Publication statuses for the guard's whole context: the subject's own
+candidate publication in front of the retained schema reads. -/
+private def contextReads (guard : DeferredGuardCode L subject payload)
+    (candidate : Publication (L.Val payload))
+    (reads : ∀ {x τ}, HasVar guard.schema x τ → Publication (L.Val τ)) :
+    ∀ {x τ}, HasVar ((subject, payload) :: guard.schema) x τ →
+      Publication (L.Val τ) :=
+  fun h =>
+    match h with
+    | .here => candidate
+    | .there h => reads h
+
+/-- Evaluate retained guard code from publication statuses. The subject is a
+dependency of every guard, including constant code, so it is walked alongside
+the schema: failure has precedence over pending, and ordinary code runs only
+once every dependency carries a value. -/
 def check (guard : DeferredGuardCode L subject payload)
     (candidate : Publication (L.Val payload))
     (reads : ∀ {x τ}, HasVar guard.schema x τ → Publication (L.Val τ)) :
     PublicationGuard.Verdict :=
-  match candidate with
+  match collectReads (insert subject (L.exprDeps guard.code))
+      ((subject, payload) :: guard.schema)
+      (guard.contextReads candidate reads) with
   | .failed => .satisfied
-  | .pending =>
-      match collectReads (L.exprDeps guard.code) guard.schema reads with
-      | .failed => .satisfied
-      | .pending | .ready _ => .pending
-  | .value subjectValue =>
-      match collectReads (L.exprDeps guard.code) guard.schema reads with
-      | .failed => .satisfied
-      | .pending => .pending
-      | .ready get =>
-          let ordinary := L.evalDeps guard.code fun _ _ h hx =>
-            match h with
-            | .here => subjectValue
-            | .there h => get h hx
-          if L.toBool ordinary then .satisfied else .rejected
+  | .pending => .pending
+  | .ready get =>
+      let ordinary := L.evalDeps guard.code fun _ _ h hx =>
+        get h (Finset.mem_insert_of_mem hx)
+      if L.toBool ordinary then .satisfied else .rejected
+
+/-- A schema variable never names the subject, so the guard's dependency set
+flags it exactly when the retained code reads it. -/
+private theorem mem_exprDeps_of_schema (guard : DeferredGuardCode L subject payload)
+    {x : VarId} {τ : L.Ty} (h : HasVar guard.schema x τ)
+    (flagged : x ∈ insert subject (L.exprDeps guard.code)) :
+    x ∈ L.exprDeps guard.code := by
+  rcases Finset.mem_insert.mp flagged with rfl | flagged
+  · exact absurd h.mem_map_fst guard.subjectFresh
+  · exact flagged
 
 private theorem collectReads_congr (deps : Finset VarId) (schema : Ctx L.Ty)
     (left right : ∀ {x τ}, HasVar schema x τ → Publication (L.Val τ))
@@ -107,20 +124,16 @@ theorem check_congr (guard : DeferredGuardCode L subject payload)
       x ∈ L.exprDeps guard.code → left h = right h) :
     guard.check leftCandidate left = guard.check rightCandidate right := by
   subst rightCandidate
-  have collected := collectReads_congr (L.exprDeps guard.code) guard.schema left right supportEq
+  have collected := collectReads_congr (insert subject (L.exprDeps guard.code))
+    ((subject, payload) :: guard.schema)
+    (guard.contextReads leftCandidate left) (guard.contextReads leftCandidate right)
+    (by
+      intro x τ h flagged
+      cases h with
+      | here => rfl
+      | there h => exact supportEq h (guard.mem_exprDeps_of_schema h flagged))
   unfold check
   rw [collected]
-
-theorem check_subject_pending_ne_rejected (guard : DeferredGuardCode L subject payload)
-    (reads : ∀ {x τ}, HasVar guard.schema x τ → Publication (L.Val τ)) :
-    guard.check .pending reads ≠ .rejected := by
-  simp only [check]
-  generalize collectReads (L.exprDeps guard.code) guard.schema reads = result
-  cases result <;> simp
-
-@[simp] theorem check_subject_failed (guard : DeferredGuardCode L subject payload)
-    (reads : ∀ {x τ}, HasVar guard.schema x τ → Publication (L.Val τ)) :
-    guard.check .failed reads = .satisfied := rfl
 
 private theorem collectReads_failed_of_failed_read (deps : Finset VarId)
     (schema : Ctx L.Ty)
@@ -140,6 +153,30 @@ private theorem collectReads_failed_of_failed_read (deps : Finset VarId)
               simp [collectReads, member, hhead, tailFailed]
           · simp [collectReads, member, tailFailed]
 
+private theorem collectReads_unready_of_pending_read (deps : Finset VarId)
+    (schema : Ctx L.Ty)
+    (reads : ∀ {x τ}, HasVar schema x τ → Publication (L.Val τ))
+    {x : VarId} {τ : L.Ty} (h : HasVar schema x τ) (supported : x ∈ deps)
+    (pending : reads h = .pending) :
+    collectReads deps schema reads = .failed ∨
+      collectReads deps schema reads = .pending := by
+  induction schema with
+  | nil => exact nomatch h
+  | cons entry tail ih =>
+      obtain ⟨name, σ⟩ := entry
+      cases h with
+      | here =>
+          cases tailOutcome : collectReads deps tail (fun h => reads (.there h)) <;>
+            simp [collectReads, supported, pending, tailOutcome]
+      | there h =>
+          have tailUnready := ih (fun h => reads (.there h)) h pending
+          by_cases member : name ∈ deps
+          · cases hhead : reads (.here : HasVar ((name, σ) :: tail) name σ) <;>
+              rcases tailUnready with hrest | hrest <;>
+              simp [collectReads, member, hhead, hrest]
+          · rcases tailUnready with hrest | hrest <;>
+              simp [collectReads, member, hrest]
+
 theorem check_satisfied_of_failed_read (guard : DeferredGuardCode L subject payload)
     (candidate : Publication (L.Val payload))
     (reads : ∀ {x τ}, HasVar guard.schema x τ → Publication (L.Val τ))
@@ -147,8 +184,28 @@ theorem check_satisfied_of_failed_read (guard : DeferredGuardCode L subject payl
     (supported : x ∈ L.exprDeps guard.code) (failed : reads h = .failed) :
     guard.check candidate reads = .satisfied := by
   have collected := collectReads_failed_of_failed_read
-    (L.exprDeps guard.code) guard.schema reads h supported failed
-  cases candidate <;> simp [check, collected]
+    (insert subject (L.exprDeps guard.code)) ((subject, payload) :: guard.schema)
+    (guard.contextReads candidate reads) (.there h)
+    (Finset.mem_insert_of_mem supported) failed
+  simp [check, collected]
+
+@[simp] theorem check_subject_failed (guard : DeferredGuardCode L subject payload)
+    (reads : ∀ {x τ}, HasVar guard.schema x τ → Publication (L.Val τ)) :
+    guard.check .failed reads = .satisfied := by
+  have collected := collectReads_failed_of_failed_read
+    (insert subject (L.exprDeps guard.code)) ((subject, payload) :: guard.schema)
+    (guard.contextReads .failed reads) .here
+    (Finset.mem_insert_self subject (L.exprDeps guard.code)) rfl
+  simp [check, collected]
+
+theorem check_subject_pending_ne_rejected (guard : DeferredGuardCode L subject payload)
+    (reads : ∀ {x τ}, HasVar guard.schema x τ → Publication (L.Val τ)) :
+    guard.check .pending reads ≠ .rejected := by
+  rcases collectReads_unready_of_pending_read
+    (insert subject (L.exprDeps guard.code)) ((subject, payload) :: guard.schema)
+    (guard.contextReads .pending reads) .here
+    (Finset.mem_insert_self subject (L.exprDeps guard.code)) rfl with
+    collected | collected <;> simp [check, collected]
 
 private theorem collectReads_terminal (deps : Finset VarId) (schema : Ctx L.Ty)
     (reads : ∀ {x τ}, HasVar schema x τ → Publication (L.Val τ))
@@ -199,15 +256,20 @@ theorem check_ne_pending_of_support_resolved (guard : DeferredGuardCode L subjec
     (supportResolved : ∀ {x τ} (h : HasVar guard.schema x τ),
       x ∈ L.exprDeps guard.code → reads h ≠ .pending) :
     guard.check candidate reads ≠ .pending := by
-  rcases collectReads_terminal (L.exprDeps guard.code) guard.schema reads supportResolved with
+  have terminal : ∀ {x : VarId} {τ : L.Ty}
+      (h : HasVar ((subject, payload) :: guard.schema) x τ),
+      x ∈ insert subject (L.exprDeps guard.code) →
+        guard.contextReads candidate reads h ≠ .pending := by
+    intro x τ h flagged
+    cases h with
+    | here => exact subjectResolved
+    | there h => exact supportResolved h (guard.mem_exprDeps_of_schema h flagged)
+  rcases collectReads_terminal (insert subject (L.exprDeps guard.code))
+      ((subject, payload) :: guard.schema) (guard.contextReads candidate reads) terminal with
     failed | ⟨get, ready⟩
-  · cases candidate <;> simp_all [check]
-  · cases candidate with
-    | pending => exact False.elim (subjectResolved rfl)
-    | failed => simp [check]
-    | value value =>
-        simp only [check, ready]
-        split <;> decide
+  · simp [check, failed]
+  · simp only [check, ready]
+    split <;> decide
 
 end DeferredGuardCode
 
