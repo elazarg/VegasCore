@@ -111,6 +111,27 @@ class DocReferenceTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout)
 
+    def test_field_declared_with_binders_is_indexed(self):
+        result = self.run_checker(
+            "class ResultTypes where\n"
+            "  result : Nat\n"
+            "  valueEquiv (n : Nat) :\n"
+            "    Nat\n"
+            "/-! `ResultTypes.valueEquiv` names a field. -/\n"
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_field_assignment_is_not_indexed(self):
+        result = self.run_checker(
+            "structure Config where\n"
+            "  size : Nat\n"
+            "/-! `Config.build` is not a field. -/\n"
+            "def sample : Config where\n"
+            "  build (n : Nat) := n\n"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Config.build", result.stdout)
+
     def test_stale_lowercase_dotted_reference_fails(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

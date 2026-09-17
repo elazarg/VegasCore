@@ -46,7 +46,13 @@ DECL = re.compile(
     r"(theorem|lemma|def|abbrev|structure|inductive|class|instance|opaque)\s+"
     r"([A-Za-z_][A-Za-z0-9_.'!?]*)"
 )
-FIELD = re.compile(r"^\s+([a-z][A-Za-z0-9_']*)\s*:[^=]")
+# A structure or class field: a name, its binders, then the type ascription.
+# The lookahead keeps `field := value` assignments out of the index.
+FIELD = re.compile(
+    r"^\s+([a-z][A-Za-z0-9_']*)"
+    r"(?:\s*(?:\([^()]*\)|\{[^{}]*\}|\[[^\[\]]*\]|⦃[^⦃⦄]*⦄))*"
+    r"\s*:(?!=)"
+)
 CONSTRUCTOR = re.compile(
     r"^\s*\|\s*([A-Za-z_][A-Za-z0-9_']*)(?:\s*(?::|\(|\{)|\s*$)"
 )
