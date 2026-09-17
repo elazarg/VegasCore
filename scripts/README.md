@@ -14,6 +14,14 @@ Run these tools from the repository root.
   Every tracked Lean source belongs to a configured library; production
   libraries may not import test libraries.
 
+- `python scripts/report-open-obligations.py` lists every result recorded as
+  missing with a `-- OPEN OBLIGATION: <title>` Lean line comment, followed by
+  its description on the directly following `--` lines. It never fails: CI shows
+  each obligation as a warning annotation on every run, and a local
+  `pre-commit` hook that runs it prints them on every commit. Use it for a
+  result that cannot yet be stated precisely; a precisely stated prospective
+  theorem belongs in `Paper.lean` as described below. Remove the marker in the
+  commit that proves the result.
 - `lake --wfail build Paper` checks the single paper audit in root `Paper.lean`.
   Its proved statements delegate directly to repository theorems. Every audit
   theorem has a guarded axiom pin directly below it; axiom-print commands occur

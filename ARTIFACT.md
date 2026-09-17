@@ -10,6 +10,7 @@ lake exe cache get
 python scripts/check-doc-references.py
 python scripts/check-lean-options.py
 python scripts/check-module-boundaries.py
+python scripts/report-open-obligations.py
 python -m unittest discover -s scripts -p "test_*.py"
 lake --wfail build
 ```
