@@ -30,4 +30,8 @@ jobs:
       - uses: leanprover/lean-action@v1
       - name: Require a warning-free Lean build
         run: lake --wfail build
+      # docgen-action builds any existing `homepage` folder as a Jekyll site.
+      # `docs/` holds design notes, not a site, so the API docs get their own.
       - uses: leanprover-community/docgen-action@v1
+        with:
+          homepage: site
