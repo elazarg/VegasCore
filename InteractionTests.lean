@@ -1,6 +1,4 @@
 import InteractionTests.Commitment
 import InteractionTests.CommitmentCandidates
-import InteractionTests.GuardedPublication
-import InteractionTests.GuardFailure
 import InteractionTests.MessageApplication
 import InteractionTests.Pending

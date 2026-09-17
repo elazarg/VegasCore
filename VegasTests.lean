@@ -1,4 +1,3 @@
-import VegasTests.FailureGame
 import VegasTests.EventGraph
 import VegasTests.EventGraphReadout
 import VegasTests.EventCompilation

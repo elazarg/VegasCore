@@ -16,5 +16,3 @@ import Interaction.MessageApplicationAuthorship
 import Interaction.MessageApplicationSubmissionOrigin
 import Interaction.IdealCommitments
 import Interaction.CommitmentCandidates
-import Interaction.GuardedPublication
-import Interaction.BoundPublication

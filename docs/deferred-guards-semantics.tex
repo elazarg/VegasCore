@@ -4,12 +4,10 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,mathtools}
 
-\newcommand{\Pending}{\mathsf{pending}}
-\newcommand{\Failed}{\mathsf{failed}}
-\newcommand{\Value}{\mathsf{value}}
-\newcommand{\Sat}{\mathsf{satisfied}}
-\newcommand{\Reject}{\mathsf{rejected}}
-\newcommand{\Wait}{\mathsf{waiting}}
+\newcommand{\Failed}{\mathsf{fail}}
+\newcommand{\Value}{\mathsf{ok}}
+\newcommand{\Sat}{\mathsf{accept}}
+\newcommand{\Reject}{\mathsf{reject}}
 \newcommand{\owner}{\mathsf{owner}}
 \newcommand{\deps}{\mathsf{deps}}
 \newcommand{\subject}{\mathsf{subject}}
@@ -23,45 +21,49 @@
 \maketitle
 
 \paragraph{Scope and status.}
-This note specifies deferred guards and their failure-aware source execution.
-Sections \ref{sec:publications}--\ref{sec:invariant} describe the standalone
-\lean{Interaction.GuardedPublication} component, whose publication slots carry
-a runtime three-valued status. The Vegas source language (section
-\ref{sec:source}) no longer uses that component: because its syntax fixes
-which reveal publishes each private cell, each guard is checked exactly once,
-at the reveal completing it, with a binary verdict and no runtime status. Both
-are formalized in Lean. The compiler consumes the \lean{SourceProgram}
-semantics and has checked exact outcome and unilateral-deviation laws through
-the ordered graph to its ideal pending-message runtime.
+This note specifies deferred relational guards and their failure-aware source
+execution, as formalized in \lean{Vegas.Source}. A guard is declared at the
+commitment it constrains and checked later, when its inputs are public. The
+deferral is syntactic: the program text fixes which reveal publishes each
+private cell, hence which reveal completes each guard, so a guard is checked
+exactly once, with a binary verdict, and no publication carries a runtime
+status. The compiler consumes this \lean{SourceProgram} semantics and has
+checked exact outcome and unilateral-deviation laws through the ordered graph
+to its ideal pending-message runtime. This note isolates the source
+publication mathematics; the separate compiler certificates carry the runtime
+information and service obligations.
 
 \section{Heterogeneous publications}
 \label{sec:publications}
 
-Let $I$ be a finite set of publication slots.  Each slot $i:I$ has an ordinary
-value type $A_i$ and an owner $\owner(i)$.  Its public state is
+Let $I$ be a finite set of private cells.  Each cell $i:I$ has an ordinary
+value type $A_i$ and an owner $\owner(i)$.  Its binding is
 \[
-  P_i \in \mathsf{Publication}(A_i)
-      := \{\Pending,\Failed\}\;\mathbin{+}\;\{\Value(a):a\in A_i\}.
+  B_i \in \mathsf{Result}(A_i)
+      := \{\Failed\}\;\mathbin{+}\;\{\Value(a):a\in A_i\},
 \]
-The three cases have different meanings.  $\Pending$ means no source
-publication has finalized.  $\Value(a)$ is an ordinary public result.
-$\Failed$ is a public null outside $A_i$.  In particular, failure does not
-fabricate an inhabitant of an ordinary domain.
+where $\Value(a)$ is an ordinary candidate and $\Failed$ an unopenable one.
+The binding is fixed at commitment and never changes.
 
-A private commitment store, when present, is separate.  It may bind one raw
-candidate to slot $i$ and later authenticate an opening of exactly that value.
-Changing $P_i$ to $\Failed$ never changes the raw secret.  This distinction is
-essential for programs which retain and later use an original private value.
+A cell becomes public at its reveal, which creates a fresh public cell holding
+a $\mathsf{Result}(A_i)$: either the ordinary value that was disclosed and
+accepted, or $\Failed$, a public null outside $A_i$.  In particular, failure
+does not fabricate an inhabitant of an ordinary domain, and it does not change
+the raw binding.  This distinction is essential for programs which retain and
+later use an original private value.
 
-Publication is write-once.  A transition may resolve $\Pending$ to either
-$\Value(a)$ or $\Failed$, but no transition changes a resolved slot.  Hence a
-later guard failure never retracts an earlier public value.
+Public cells are immutable: a reveal writes one new cell and no transition
+rewrites an earlier one.  Hence a later guard failure never retracts an earlier
+public value.  Where a private cell's result is public is itself static: the
+syntax determines, for each cell, the public cell its reveal creates.  We write
+$P$ for the resulting public state and $P_i$ for the published result of cell
+$i$, defined once $i$ has been revealed.
 
 \section{Relational obligations}
 
 A publication guard $g$ consists of
 \begin{itemize}
-\item a subject slot $s_g$;
+\item a subject cell $s_g$;
 \item a finite support $D_g\subseteq I$, with $s_g\in D_g$; and
 \item a decidable relation
 \[
@@ -73,57 +75,51 @@ The subject records which guarded source choice introduced the obligation.
 Requiring $s_g\in D_g$ prevents a guard from becoming false before its own
 publication exists; it also handles unary and constant-false guards uniformly.
 
-The status of $g$ in public state $P$ is
+Because reveals are syntactic, the last member of $D_g$ to be revealed is fixed
+by the program text.  Call that reveal the one which \emph{completes} $g$: the
+reveal after which every member of $D_g$ is public and before which some member
+was not.  Every declared guard has exactly one completing reveal, and its
+verdict there is binary:
 \[
  \mathsf{check}_g(P)=
  \begin{cases}
    \Sat, & \text{if some $i\in D_g$ has $P_i=\Failed$},\\
-   \Wait, & \text{if none failed and some $i\in D_g$ is pending},\\
    \Sat, & \text{if all are ordinary values and $R_g$ is true},\\
    \Reject, & \text{if all are ordinary values and $R_g$ is false}.
  \end{cases}
 \]
 Thus failure is null-vacuous: a relation is evaluated only on an entirely
 ordinary tuple, and any failed member of its static support discharges it.
-Pending support waits; it never supplies an ordinary value extracted from an
-unopened private binding. Static support is semantic, including dependencies
-in dead branches, so ordinary Boolean equivalence alone does not permit a
-support-changing rewrite. A state is
-\emph{consistent} when no guard is rejected.  Waiting guards are consistent;
-they are real deferred obligations, not evidence that their relation is true.
+No case reads an unopened private binding, because at the completing reveal
+every member of $D_g$ is already public.  Static support is semantic, including
+dependencies in dead branches, so ordinary Boolean equivalence alone does not
+permit a support-changing rewrite: it can move the completing reveal.
 
-The separation between $\Wait$ and $\Sat$ is useful.  It records whether later
-publication can still discover a violation, while consistency remains the
-simple safety assertion ``nothing already decidable is false.''
-
-The primitive uses a fixed finite guard family.  An embedding which registers
-a guard later may preserve the same invariant by admitting the new guard only
-when its status in the current state is not $\Reject$.  Registration may
-therefore introduce either a waiting or an already satisfied obligation, but
-never an already false one.
+A state is \emph{consistent} when every guard whose support is entirely public
+accepts.  A guard whose support is not yet public is a real deferred
+obligation, neither evidence that its relation is true nor a violation.
 
 \section{Atomic resolution}
 
-Suppose slot $i$ is pending.  To resolve it with candidate $c\in
-\mathsf{Option}(A_i)$, form a tentative state
+Suppose cell $i$ has binding $B_i$ and is revealed, with disclosure decision
+$d\in\mathsf{Bool}$.  The proposal is
 \[
- P^{c}_i =
+ c =
  \begin{cases}
-   \Failed,&c=\mathsf{none},\\
-   \Value(a),&c=\mathsf{some}(a),
+   B_i,&d=\mathsf{true},\\
+   \Failed,&d=\mathsf{false},
  \end{cases}
- \qquad P^{c}_j=P_j\quad(j\ne i).
 \]
-If $c=\mathsf{some}(a)$ and no guard rejects $P^c$, commit the ordinary value.
-Otherwise commit $P'_i=\Failed$.  All other slots remain unchanged.  In an
-implementation, the tentative check and final write are one atomic application
-transition.
+so withholding and an unopenable binding propose the same thing.  Let $G_i$ be
+the guards this reveal completes, and $P^{c}$ the public state extended by
+$P_i=c$.  If every $g\in G_i$ has $\mathsf{check}_g(P^c)=\Sat$, publish $c$;
+otherwise publish $\Failed$.  No other cell changes.  In an implementation, the
+tentative check and final write are one atomic application transition.
 
 Candidate evaluation at this transition is public-only.  The relation receives
-ordinary values only from public support slots; if any required value is still
-pending, the guard waits rather than inspecting a private binding.  Binding-to-
-opening authentication is a separate check which supplies the candidate for
-the current slot.
+ordinary values only from public cells and from the current proposal; no
+private binding is inspected.  Binding-to-opening authentication is a separate
+check which supplies the candidate for the current cell.
 
 An invalid opening and a missing opening have the same source result only when
 the enclosing scheduler invokes this resolution at the same declared reveal or
@@ -138,49 +134,51 @@ source publication does not erase the observed payload or keep it secret.
 Those observations must remain in the target game and its deviation argument.
 
 \subsection{Constructive consistency invariant}
+\label{sec:invariant}
 
 The central lemma is local.
 
 \paragraph{Preservation lemma.}
-If $P$ is consistent and $P_i=\Pending$, then resolving $i$ by the rule above
-produces a consistent state $P'$ and changes no slot other than $i$.
+If $P$ is consistent and cell $i$ has not been revealed, then revealing $i$ by
+the rule above produces a consistent state $P'$ and adds exactly one public
+cell.
 
 \paragraph{Proof sketch.}
-If the ordinary tentative state has no rejected guard, it is already the chosen
-state.  Otherwise $i$ is written as failed.  Consider any guard $g$.
-If $i\notin D_g$, support locality gives
-$\mathsf{check}_g(P')=\mathsf{check}_g(P)$, so it is not rejected.  If
-$i\in D_g$, then $P'_i=\Failed$, so null-vacuity makes $g$ satisfied.  This
-covers all guards.  Notice that the proof never edits the subject of a guard
-retroactively: it fails the current publication which exposed the conflict.
+Consider any guard $g$ whose support is public in $P'$.  If $g\notin G_i$, its
+support was already public in $P$, its values are unchanged, and consistency of
+$P$ gives $\mathsf{check}_g(P')=\Sat$.  If $g\in G_i$ and the proposal was
+published, then $P'=P^c$ and $g$ accepted by the acceptance test.  If $g\in
+G_i$ and the proposal was rejected, then $P'_i=\Failed$ with $i\in D_g$, so
+null-vacuity makes $g$ accept.  This covers all guards.  Notice that the proof
+never edits the subject of a guard retroactively: it fails the current
+publication which exposed the conflict.
 
 Induction over the declared source reveal order gives consistency of every
-reachable state.  A finalizer can resolve each remaining pending slot to
-failure in that same order.  Once any support member fails, the corresponding
-guard is satisfied even if other support members remain pending.
+reachable state.  Since the syntax reveals every private cell, at return every
+guard's support is public, so every guard accepts.
 
 This theorem is not an arbitrary-order confluence result.  Reveal order can
-change which slot is the last closer and therefore which slot fails.  Source
+change which cell completes a guard and therefore which cell fails.  Source
 reveal order is part of the semantics and must be retained by a compiler.
 
 \section{Ownership and failure attribution}
 
 Consistency alone says nothing about whose deviation caused failure.  The
-needed local ownership condition at a state is
+needed local ownership condition is
 \[
-  P_i=\Pending\ \wedge\ i\in D_g
+  \text{$i$ not yet revealed}\ \wedge\ i\in D_g
   \quad\Longrightarrow\quad
   \owner(i)=\owner(s_g).
 \]
-Call this \emph{owned pending support}.  If tentatively resolving $i$ newly
-rejects $g$, then support locality implies $i\in D_g$: a guard not reading $i$
-could not change from nonrejected to rejected.  Owned pending support therefore
+Call this \emph{owned unrevealed support}.  A guard rejected at the reveal of
+$i$ satisfies $i\in D_g$, since only the guards this reveal completes are
+checked and every such guard reads $i$.  Owned unrevealed support therefore
 shows that the failed current publisher and the subject author have the same
 owner.  If several guards reject simultaneously, their subjects have that same
 owner as well.
 
-This is an equality of slot owners, not yet a proof of causal blame in a
-message runtime. The component has no caller-authentication or deadline
+This is an equality of cell owners, not yet a proof of causal blame in a
+message runtime. The source language has no caller-authentication or deadline
 service interface. A host must enforce who may bind, open, or decline a site's
 publication, and establish when failure can be attributed to that owner.
 In particular, an outsider's invalid message must not immediately fail someone
@@ -188,10 +186,10 @@ else's publication. Neither a timeout without timely service nor a reverted
 call establishes intentional withholding. Voluntary failure and unopenable
 bindings need this host-level attribution too; they need not falsify any guard.
 
-The condition matches the information discipline of the existing source
-language.  When a player makes a guarded choice, public dependencies in that
-player's view have already been published.  A dependency which remains sealed
-and is readable by the chooser is the chooser's own initial or committed value.
+The condition matches the information discipline of the source language.  When
+a player makes a guarded choice, public dependencies in that player's view have
+already been published.  A dependency which remains sealed and is readable by
+the chooser is the chooser's own initial or committed value.
 This provenance should be proved from source visibility and operation order.
 It must not be replaced by a blanket assertion that all arbitrary relational
 guards have good attribution.
@@ -200,7 +198,7 @@ Without the condition, the semantics is operationally consistent but not a
 unilateral quitting model.  For example, let player $p$ author a relation
 $R(y,x)$ whose still-hidden $x$ is owned by player $q$.  Publish $y$ first.
 Player $p$ can choose it so that $q$'s later publication of $x$ closes the
-relation falsely, causing $q$'s slot to fail.  The failure cannot honestly be
+relation falsely, causing $q$'s publication to fail.  The failure cannot honestly be
 charged to $p$'s source quit while the public state records $q$ as the last
 publisher, nor to $q$ if $q$ never had the relation in its information set.
 
@@ -215,8 +213,8 @@ consequence of null-vacuity alone.
 \subsection{Reverse disclosure}
 
 Let one player bind $x,y:\mathsf{Bool}$ with obligation $y=x$, then reveal $y$
-before $x$.  Publishing $y=b$ leaves the obligation waiting.  At the later
-publication of $x$,
+before $x$.  The reveal of $y$ completes no guard, so publishing $y=b$ leaves
+the obligation undecided.  The reveal of $x$ completes it, and there,
 \begin{itemize}
 \item $x=b$ publishes an ordinary value and satisfies the obligation;
 \item $x\ne b$ makes the tentative tuple reject, so the final publication of
@@ -227,14 +225,14 @@ publication of $x$,
 The earlier public $y=b$ is never retracted.  The final lifted relation is true
 vacuously in the failure branches.
 
-While the guard waits, the public value has its ordinary payload type but
-does not carry a certificate that $y=x$. A program may use the disclosed data,
+Before the completing reveal, the public value has its ordinary payload type
+but does not carry a certificate that $y=x$. A program may use the disclosed data,
 but a payment justified by the relation must account for the outstanding
 obligation. For example, settlement can wait for both publications and
 penalize the responsible owner's failure. Irrevocably paying for an unchecked
 claim without recoverable collateral would not be made safe by this semantics.
 
-Reversing the reveal order reverses which mismatching slot fails.  Both results
+Reversing the reveal order reverses which mismatching cell fails.  Both results
 are consistent.  They are different source outcomes, so a compiler may not
 reorder these reveals under a confluence argument.
 
@@ -246,10 +244,10 @@ publishes both ordinary values when parity matches and publishes a failed $x$
 when it does not.  No homogeneous universe or fabricated default member of
 $\mathsf{Bool}$ or $\mathsf{Fin}(3)$ is required.
 
-\subsection{Public chance after a waiting publication}
+\subsection{Public chance before a completing reveal}
 
-Suppose $y$ is public while its relation with hidden $x$ is still waiting, and
-a later public chance kernel reads $y$.  The draw is legitimately conditioned
+Suppose $y$ is public while its relation with the unrevealed $x$ is still
+undecided, and a later public chance kernel reads $y$.  The draw is legitimately conditioned
 on the already observed ordinary $y$.  If $x$ later closes the relation falsely,
 $x$ fails; neither $y$ nor the chance result is rewritten.  Thus the semantics
 is trace-sensitive.  A final-store interpretation which pretends the chance
@@ -258,19 +256,19 @@ had instead seen a null input is a different and generally false semantics.
 \subsection{Private initial input}
 
 An owner may know an initial private $x$ and choose $y$ satisfying a relation
-before $x$ is publicly disclosed.  The initial secret and its publication slot
-must remain distinct.  If a dishonest earlier $y$ causes the later disclosure
+before $x$ is publicly disclosed.  The initial secret and the public cell its
+reveal creates must remain distinct.  If a dishonest earlier $y$ causes the later disclosure
 to close the relation falsely, the publication of $x$ can fail while the ideal
 private input remains $x$.  Honest automatic disclosure is an availability
 assumption; null-vacuous guards do not establish it.
 
 \section{Optional ordinary feasibility}
 
-The all-failed state is consistent. A separate ordinary-feasibility witness consists of
-an ordinary assignment $a_i:A_i$ satisfying every $R_g$, together with bindings
-and openings that publish those same values.  Resolving the slots in declared
-order then never fails: a guard is waiting until all its support is present,
-and when it becomes fully ordinary its relation is true by the witness.
+The all-failed run is consistent. A separate ordinary-feasibility witness
+consists of an ordinary assignment $a_i:A_i$ satisfying every $R_g$, together
+with bindings and openings that publish those same values.  Revealing the cells
+in declared order then never fails: each guard is checked once, at which point
+its support is entirely ordinary and its relation is true by the witness.
 
 For a source compiler, the intended witness is the honest source execution.
 The proof must show that every deferred relation is the reification of the
@@ -291,27 +289,11 @@ across the comparison. Utility inequalities are needed only when a later target
 adds actions, observations, timing power, or costs absent from the source, and
 their strength must be justified separately.
 
-The finite regression in \texttt{VegasTests.FailureGame} separates these
-points.  Ordinary play is matching pennies.  The first player chooses failure
-or a bit before observing the second player's bit.  The second player's pure
-policy contains a bit fixed independently of that first choice and a complete
-disclosure plan which may depend on the first player's disclosed bit.  A
-failing player receives $-2$, whereas either ordinary continuation gives that
-player $-1$ or $1$.  Thus disclosure strictly beats the second player's
-informed failure for each fixed bit and observed first opening, and first-player
-failure is likewise worse than every ordinary continuation.  Fair independent
-bits with unconditional disclosure have expected utility zero.  The checked
-regression proves this profile is Nash against arbitrary finite mixtures of
-first-player failure/bit choices and arbitrary finite mixtures of the second
-player's fixed bit plus contingent disclosure plan. The checked
-\lean{execute_eq_terminal} lemma identifies the outcome of every such pure
-policy with an execution of \lean{BoundPublicationState}: both bindings are
-fixed first, then the second disclosure plan observes the first publication.
-The game uses no relational guard. The separate parity regression has a
-genuinely rejecting guard and a settlement which rewards successful ordinary
-play and penalizes inconsistent opening or withholding. These examples show
-useful play and failure penalties in the component; they are not a general
-compiler theorem.
+A finite incentive example separating these points is not part of the checked
+development. Whether informed failure is dominated is a property of a concrete
+payoff structure, not of this semantics: the source language admits both, which
+is why the compiler objective is an exact mixture law rather than a dominance
+premise.
 
 \section{Public implementation boundary}
 
@@ -319,21 +301,21 @@ The resolution rule has a direct smart-contract implementation when:
 \begin{enumerate}
 \item every guard has finite declared support and executable, deterministic
       typed code for $R_g$;
-\item every support slot eventually receives an ordinary or failed public
-      resolution;
-\item a value opening is authenticated against the slot's immutable binding;
+\item every support cell eventually receives an ordinary or failed public
+      result;
+\item a value opening is authenticated against the cell's immutable binding;
       and
 \item the contract finalizes invalid and absent openings at the declared
-      source reveal point, atomically checking the guards affected by that slot.
+      source reveal point, atomically checking the guards that reveal completes.
 \end{enumerate}
-The contract can store a tagged status for each heterogeneous slot, index guards
-by support slot, and maintain unresolved-support counts.  When the final count
-reaches zero, it evaluates the ordinary relation.  If any affected relation is
-false, it records failure for the current slot instead.  Failed support makes
-all affected guards vacuously satisfied, so no rollback or retraction is
-needed.
+The guards each reveal completes are known from the program text, so the
+contract needs no per-cell status word and no unresolved-support counters: each
+reveal carries its own fixed list of checks, evaluates their relations on the
+already public values and the current proposal, and records failure for the
+current cell if any is false.  Failed support makes the affected guards
+vacuously satisfied, so no rollback or retraction is needed.
 
-The semantic \lean{PublicationGuard.test} function is not itself a target-code
+The semantic \lean{GuardCode.accepts} function is not itself a target-code
 certificate. A compiler must provide publicly available expression code and
 prove that its value inputs are exactly the declared support; a closure which
 silently captures a secret is not an executable public validator. Ordinary
@@ -347,7 +329,7 @@ public evaluator cannot certify its nonvacuous truth.  A semantics demanding a
 fully resolved terminal guard then needs disclosure, an explicit proof system,
 an oracle, or another mechanism.  This is not a blanket runtime impossibility:
 the guard needs no ordinary evaluation if some support member has already
-failed and discharged it, and an application may explicitly permit a waiting
+failed and discharged it, and an application may explicitly permit an undecided
 guard at its terminal boundary.  Likewise, an unreified semantic function or
 unbounded evaluation cost requires an additional mechanism.  The finite model
 should represent these cases honestly rather than calling private evaluation
@@ -364,41 +346,35 @@ traffic are strategically indistinguishable nor that native deviations admit
 source-policy backtranslation.
 
 \section{Publication invariant and compiler boundary}
-\label{sec:invariant}
 
-The publication component establishes:
+The publication rule establishes:
 \begin{quote}
-Starting from a consistent heterogeneous publication state, resolving one
-pending slot by ordinary publication when all newly decidable guards accept,
-and by failed publication otherwise, preserves consistency, writes exactly one
-slot, and never retracts prior publication.  Under owned pending support, every
-newly rejecting guard which causes the fallback has a subject with the same
-owner as the failed current publisher.
+Starting from a consistent public state, revealing one private cell by ordinary
+publication when every guard that reveal completes accepts, and by failed
+publication otherwise, preserves consistency, writes exactly one public cell,
+and never retracts prior publication.  Under owned unrevealed support, every
+rejecting guard which causes the fallback has a subject with the same owner as
+the failed current publisher.
 \end{quote}
 
 Together with an optional ordinary witness, this shows that deferred relational
 guards are internally consistent and can have failure-free executions. Separate
-compiler obligations derive owned pending support from source visibility,
+compiler obligations derive owned unrevealed support from source visibility,
 prove exact honest source/publication correspondence, attribute each arbitrary
 failure to a legal source alternative at the retained information prefix, and
 transport the resulting outcome law. These obligations are discharged in the
-source, graph, and pending-message proofs; none is assumed as a field of the
+source, graph, and pending-message proofs; none is assumed as an axiom of the
 publication model.
 
 \section{Source execution}
 \label{sec:source}
 
-A source state contains ordinary public inputs, immutable private bindings,
-and publication results. A binding of type $A$ is a $\mathsf{Result}(A)$: an
-ordinary $a:A$, or $\mathsf{fail}$ for an unopenable candidate. It is distinct
-from the public cell its reveal creates. A published alias has type
-\[
- \mathsf{Result}(A)=\{\mathsf{fail}\}\mathbin{+}
-   \{\mathsf{ok}(a):a\in A\}.
-\]
-Thus $\mathsf{ok}(\mathsf{none})$ for $A=\mathsf{Option}(B)$ is a successful
-publication. Expressions eliminate results explicitly; no ordinary default
-is supplied on failure.
+A source state contains ordinary public inputs, the immutable private bindings
+and published results of section \ref{sec:publications}, and the values of
+chance draws. Both a binding and a publication of type $A$ are a
+$\mathsf{Result}(A)$, so $\mathsf{ok}(\mathsf{none})$ for
+$A=\mathsf{Option}(B)$ is a successful publication. Expressions eliminate
+results explicitly; no ordinary default is supplied on failure.
 
 Execution carries a registry of typed guards and, for each player, the ordered
 history of its own binding and disclosure decisions. A player's policy is a
@@ -453,39 +429,12 @@ were already public.
 
 \section{Checked interface}
 
-\lean{Interaction.GuardedPublication} contains the heterogeneous publication
-and guard definitions. Its principal lemmas are:
-\begin{itemize}
-\item \lean{GuardedPublication.resolve_consistent} and
-      \lean{run_consistent}: one-step and finite-run consistency;
-\item \lean{register_consistent_of_subject_pending}: a newly declared guard
-      may be registered while its subject is still pending, preserving consistency;
-\item \lean{PublicationGuard.check_satisfied_of_extends}: a satisfied guard
-      remains satisfied under write-once extension;
-\item \lean{check_ne_pending_of_resolved} and
-      \lean{satisfied_of_resolved}: fully resolved support
-      does not wait and every resolved consistent state satisfies its guards;
-\item \lean{resolve_extends}, \lean{run_extends}, and
-      \lean{resolve_idempotent}: immutable public results;
-\item \lean{PublicationGuard.rejection_owner}: attribution under owned
-      pending support;
-\item \lean{GuardedPublication.run_honest_complete}: publishing an entire
-      satisfying ordinary assignment succeeds in any prescribed covering order.
-\end{itemize}
-\lean{Interaction.BoundPublication} separates immutable private bindings from
-public results. Its reveal operation accepts a disclosure decision, never a
-replacement payload. The heterogeneous regressions in
-\lean{InteractionTests.GuardedPublication} bind a two-bit secret and Boolean
-parity, disclose the parity first, and check successful opening, inconsistent
-opening, withholding, immutable bindings, and reveal-order dependence.
-\lean{VegasTests.FailureGame.honest_isNash} provides the separate informed-failure
-incentive example described above. These files do not define a complete new
-Vegas policy semantics or establish a compiler edge.
-The regressions in \lean{InteractionTests.GuardFailure} check ordinary
-agreement, static-support-sensitive resolution, forced failure for a unary
-false guard, waiting on an unopenable dependency, and explicit treatment of a
-failed value rather than a vacuous comparison win. These too are component
-results, not a full source compiler theorem.
+\lean{Vegas.Foundation.Guard} contains the guard code and its verdict.
+\lean{GuardCode.accepts} takes the subject's published result and results for
+exactly the inputs its code reads; \lean{eq_accepts} characterizes it as the
+unique such verdict which discharges on a failed input and otherwise evaluates
+the code. \lean{Vegas.Source.Basic} adds the static revelation map
+\lean{Revelations}, with \lean{Revelation.result} reading a published cell.
 
 \lean{Vegas.Source} defines the typed source syntax, observation-local policies,
 and exact finite-distribution execution above. \lean{SourceProgram.Initial}
@@ -497,6 +446,9 @@ syntax, with no execution quantifier;
 failed publication or holds on its published inputs.
 \end{itemize}
 \lean{Paper.lean} delegates directly to them. They do not assume successful
-play or guard feasibility.
+play or guard feasibility. \lean{VegasTests.SourceSemantics} exercises every
+source constructor in one program with reverse disclosure, checking which
+reveal completes the guard, its verdict there, and the full terminal-state law
+under successful, rejecting, unopenable, and withholding policies.
 
 \end{document}

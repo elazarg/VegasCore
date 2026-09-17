@@ -225,13 +225,6 @@ fixes the observer's payoff before any guess about `z` can matter.
 
 ## Scope of current checked results
 
-`Interaction.GuardedPublication` checks a separate runtime publication
-component with heterogeneous pending/value/failure states, null-vacuous guard
-checking, write-once resolution, consistency preservation, and successful
-publication from a satisfying ordinary assignment. `Vegas` no longer uses it:
-the source language resolves guards statically, so it has no runtime
-publication status of its own.
-
 `Vegas.Source` defines all four source constructors, typed `Result` expressions,
 observation-local binding and disclosure policies with own-action recall,
 dependent public chance, and exact finite-distribution execution. Its strategy
