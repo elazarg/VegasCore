@@ -56,7 +56,9 @@ Start with the [artifact guide](ARTIFACT.md), [theorem map](docs/active-tower.md
 the information conditions. The [frontend boundary](docs/compiler-boundary.md)
 and [outcome/utility distinction](docs/outcomes-and-utilities.md) describe the
 interfaces to richer languages and analyses. The
-[road ahead](docs/a-road-ahead.md) describes target boundaries still to add.
+[road ahead](docs/a-road-ahead.md) describes target boundaries still to add, and
+the [auction discussion](docs/auctions-discussion.md) collects open questions on
+allocations, private values, and truthfulness.
 The [EventGraph design](docs/event-graph-design.md) specifies the asynchronous
 compilation boundary. The event-addressed pending-message game has checked
 arbitrary-player completion, honest outcome, unilateral-deviation mixture, and

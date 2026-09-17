@@ -1,0 +1,405 @@
+# Auctions: outcomes, private values, and truthfulness
+
+This is an open design discussion, not a specification. Only the section
+[Checked facts relied on](#checked-facts-relied-on) states established results,
+each with the Lean name it rests on. Everything else is a proposal, a proof
+sketch, or an open question. When a question resolves, move the decision
+into the document that owns it, such as the
+[source semantics](source-semantics.md), the
+[outcome/utility distinction](outcomes-and-utilities.md), or the
+[road ahead](a-road-ahead.md), and remove it here.
+
+## The problem
+
+A Vegas program settles with one integer per player. An auction outcome has
+more structure: who receives the good (allocation), what each player pays
+(transfers), and how much each bidder values the good (private values). An
+auction whose settlement is its only description falls into one of two failure
+modes:
+
+- **No value term.** Winning only costs money, so no bidder gains by winning,
+  and truthful bidding has no content. If every tied top bidder is charged, one
+  item is also sold several times.
+- **Value paid out as money.** The buyer's surplus becomes a transfer that no
+  participant deposited. With deposits of 100 each, a value of 10, and a price
+  b scaled by 10, the seller receives 100 + 10b and the buyer 100 + 10(10 − b):
+  300 paid from a pot of 200.
+
+The goal is to write auctions whose game-theoretic claims, truthfulness in
+particular, are stated about the source program and carried to the runtime.
+
+## Checked facts relied on
+
+- The source game form's outcome is the complete terminal state
+  (`Vegas.SourceProgram.gameSignature`). Payoffs are a separate projection
+  (`Vegas.SourceProgram.evaluatePayoffs`), and the utility is chosen outside
+  the game form.
+- Nash correspondence holds at compiled profiles for every real utility of the
+  terminal source state (`Vegas.Paper.source_event_graph_approximate_nash_iff`,
+  `Vegas.Paper.source_event_pending_approximate_nash_iff`).
+- The compiled honest profile has the source terminal-state law
+  (`Vegas.Paper.source_event_pending_honest_law`). For a fixed profile, a native
+  unilateral replacement, and a real-valued test of the terminal state, some
+  source policy does at least as well
+  (`Vegas.SourceProgram.Setup.eventPendingGame_deviation_utility_bound`). That
+  witness may depend on the profile and on the test.
+- The canonical graph deviation law uses an explicit backtranslation that
+  depends only on the program and the replacement policy
+  (`Vegas.Paper.source_event_graph_canonical_deviation_law`). The scheduled graph
+  and pending-message deviation laws are existential per profile.
+- A `Vegas.SourceProgram.Setup` carries a finite prior over initial states,
+  including private cells. A player observes exactly their own private cells.
+- Every initial private cell is a publication obligation, and `ret` requires no
+  open obligation, so the program must contain a `reveal` for each one.
+- `sample` binds public data only. There is no private chance.
+- `ret` payoffs are integer expressions over the public context. Nothing checks
+  conservation.
+- Every `commit` may bind failure and every `reveal` may withhold. A policy's
+  decision observes all earlier publications.
+- `GameTheory` has quasilinear and Bayesian direct mechanisms
+  (`GameTheory.Mechanism.QuasiLinearMechanism`,
+  `GameTheory.Languages.BayesianMechanism.IsIncentiveCompatible`), dominance over
+  arbitrary or restricted opponent classes (`IsDominant`, `StrictlyDominatesOn`),
+  and the finite revelation principle
+  (`GameTheory.BayesianGame.revelation_principle`). None of these is connected
+  to source programs.
+
+## Organizing principle: operational versus analysis data
+
+Private values, priors over them, utility functions, and the solution concept
+have no operational meaning. No contract reads a bidder's valuation. They belong
+to the analysis of a program, and need not appear in the executable language at
+all. Transfers, collateral, disclosure order, failure settlement, and the
+allocation *when the runtime must effect it* are operational and belong in the
+program.
+
+Consequences:
+
+- A reserve price is operational because settlement reads it. The seller's value
+  for the good is not. A hidden-reserve auction commits the former; the latter
+  is analysis data.
+- Removing values from the language does not remove them from the theorems.
+  Strategies still depend on them, and Bayesian notions still need a prior. The
+  analysis layer must supply both, and the transfer results must accommodate
+  them (see [Transfer to the runtime](#transfer-to-the-runtime)).
+- An allocation read only by a utility is analysis data too. It becomes
+  operational when something must deliver the good.
+
+## What the outcome must provide
+
+Position under discussion: the outcome is the final environment, or a
+declaration computed from it, and a payoff is one possible interpretation of it.
+The outcome needs no common-knowledge interpretation of its own. The utility
+*is* the interpretation, and it is the only common-knowledge requirement,
+because strategic reasoning about other players' reasoning goes through it.
+
+Refinements:
+
+- **Private values.** What is common knowledge is the type-indexed utility
+  family and, for Bayesian notions, the prior. The realized type is private.
+  Dominant-strategy notions need no knowledge of other players' utilities at all.
+- **The rules.** Reasoning about others maps profiles to outcome laws, so it also
+  uses the game form. For a Vegas program that is the program and its semantics,
+  both public. At compiled profiles, the compilation theorems let players reason
+  about the source game in place of the runtime game they actually play.
+- **No observation requirement.** Equilibrium reasoning evaluates expected
+  utility over outcome laws, so no player needs to observe the realized outcome.
+  A utility may read private bindings, such as a committed but withheld bid, that
+  no other player ever sees. The checked theorems already allow this.
+- **Epistemics are not hypotheses.** The Lean results make no epistemic
+  assumption. Common knowledge justifies using a solution concept; it is not a
+  premise of any theorem.
+- **Operational requirements are separate.** Whatever the runtime enforces must
+  be computable from what the runtime holds. That is why `ret` payoffs range over
+  the public context, and why a declared result (A3) or a delivery (A4, A5) would
+  need public determinability. The reason is operational, not game-theoretic.
+- **Payoffs are also effects.** A payoff is an interpretation for the analysis
+  and an enforced transfer for the runtime. Only the interpretive role is
+  optional.
+- **Completeness.** Preferences must factor through the outcome. A player who
+  cares about something outside it, such as timing, fees, or receipts, plays a
+  richer game (see the [outcome/utility distinction](outcomes-and-utilities.md)).
+- **Preservation.** The runtime result must decode to the outcome, so that
+  utilities of the outcome transfer.
+
+Open: should the game-form outcome shrink from the complete terminal state to a
+declared outcome? Common knowledge gives no reason to. What remains is a smaller
+preservation obligation and a named observable target result. The cost is
+excluding utilities that read private bindings, which would rule out reading
+private values from the state (V2) and leave them as analysis data (V1).
+
+## Encoding the allocation
+
+**A1. Read the allocation from the public terminal state.** The utility computes
+the winner from the published bids. Define the winner once as a public
+expression, use it inside the `ret` payoffs, and evaluate the same expression in
+the utility as `evaluatePayoffs` does. Allocation and payment then agree by
+construction, including tie-breaks and failure branches.
+
+- For: no language change, and the current theorems already cover it.
+- Against: the runtime never sees the allocation, so delivery is an off-model
+  assumption. Nothing forces the payoff code and the utility to share the
+  expression.
+
+**A2. Decode the allocation from the payoff vector.** For example, "a negative
+payoff means I won." Utilities of payouts are attractive: the payout readout is
+what the runtime enforces (`Vegas.Paper.source_event_graph_payout_readout`), and
+a later edge preserving only payouts would still preserve them. The decoding is
+valid only when the allocation is a function of the payoff vector. It fails for:
+
+- price zero (a second price with a zero second bid, or a zero reserve), which
+  decodes a winner as a loser;
+- all-pay auctions and entry fees, where losers pay;
+- failure penalties: a slashed bidder decodes as a winner, so with value above
+  the penalty, withholding scores above losing honestly, and the analysis would
+  recommend defecting;
+- ties that charge several bidders.
+
+The utility must also have the shape vᵢ·[i won] + payoffᵢ. Utility increasing in
+the amount paid would reward overpaying. Open: is there a natural program class
+(positive minimum price, winner-only charges, penalties distinguishable from
+prices) on which A2 is exact?
+
+**A3. Declared outcome alphabet.** `ret` additionally returns a public value of
+a program-declared finite result type, such as the winner, and the runtime
+publishes it. Utilities factor through the result and the payoffs.
+
+- For: the observable target result is named, as the
+  [outcome/utility distinction](outcomes-and-utilities.md) asks. An external
+  deliverer can act on it. Utilities that factor through it survive edges that
+  do not carry the full terminal state.
+- Against: a language change, and the result is still only data unless
+  something delivers.
+- Open: should payoffs be computed from the declared result, so that a price rule
+  is applied to an allocation rather than recomputing the winner?
+
+**A4. Several assets.** Payoffs become one column per asset: money and the good.
+The seller deposits the good, conservation holds per asset, and the runtime
+transfers both.
+
+- For: delivery is enforced rather than assumed.
+- Against: an asset model is needed (fungible versus indivisible, non-money
+  deposits, exactly one unit assigned), and the runtime obligation grows.
+
+**A5. Delivery as a later strategic action.** The seller transfers the good
+after settlement. The trust assumption becomes explicit and analyzable, since
+non-delivery is a failure branch. It reintroduces hold-up and needs escrow, and
+hence A4, to be credible.
+
+Open: do A1 and A3 differ enough to justify A3 before A4? Should VegasCore check
+payoff conservation?
+
+## Where private values live
+
+**V1. Analysis parameters.** Each player has a type space Θᵢ, the utility is
+indexed by the type profile, and a strategy is a family σᵢ : Θᵢ → source policy.
+The program is unchanged. Dominance and ex-post notions are per type and need no
+prior. Bayes-Nash needs a prior over types and a wrapper game at the analysis
+level; `GameTheory` already has Bayesian games. The Bayesian transfer is open
+(see below).
+
+**V2. Initial private cells in a `Setup`.** The prior draws the types, owners
+observe them, and the utility reads them from the terminal state. The existing
+Nash correspondence then applies directly: source Bayes-Nash holds exactly when
+runtime Nash holds at compiled profiles. The cost is an operational encoding of
+non-operational data:
+
+- the runtime must realize the private setup;
+- the publication obligation forces a `reveal` per type (withholding it at the
+  end, with payoffs independent of it, satisfies the obligation but is still a
+  runtime event);
+- types share the one prior with genuine protocol secrets.
+
+**V3. A private chance constructor.** Nature draws a value observed by one
+player. It has independent uses, such as dealt cards, and needs its own
+publication rule. For values it carries the same operational cost as V2.
+
+**V4. Ghost cells.** Initial private cells are marked as analysis-only: no
+publication obligation; unreadable by guards, payoffs, and public expressions;
+readable by the owner's policy and by utilities; and erased by compilation. This
+is V1 expressed inside the source game so that the V2 theorems can be reused.
+The erasure edge is the proof obligation.
+
+**Rejected: a value as a `commit`.** The player would choose their own type.
+
+**Interdependent values.** Utilities may depend on other players' types, as with
+common values and the winner's curse. V1 expresses this directly. Dominant
+strategies generally disappear, but ex-post notions remain definable.
+
+## Utility of money
+
+The Vegas theorems place no restriction on the shape of utility: any real
+function of the terminal state, with expected utility over chance and mixed
+policies. Linearity in money is therefore not needed for any transfer result. It
+enters elsewhere:
+
+- **Values as money.** Reading a value as a willingness to pay in payoff units
+  assumes quasilinearity, uᵢ = vᵢ(allocation) + payoffᵢ, with no wealth effects.
+- **Risk neutrality.** Randomized tie-breaking, mixed strategies, and chance are
+  evaluated by expected utility. With nonlinear money, a lottery over prices is
+  not equivalent to its expected price.
+- **Mechanism theory.** VCG, the Myerson characterization, revenue equivalence,
+  and the `GameTheory.Mechanism.QuasiLinearMechanism` bridge assume
+  quasilinearity. The single-object second-price auction is believed to remain
+  strategy-proof on general preference domains when a bid is read as willingness
+  to pay. Find and cite the precise result before relying on it.
+- **Net versus gross payoffs.** A settlement may pay gross amounts that include
+  refunded deposits rather than net transfers. A per-player constant offset changes no Nash or dominance comparison. A
+  branch-dependent offset, such as a forfeited deposit, is a transfer and must
+  be counted.
+- **Budgets.** Collateral bounds the bid domain. A bidder whose value exceeds the
+  largest payable bid cannot bid truthfully, and budget constraints break
+  second-price truthfulness in general.
+- **Discreteness.** Bid domains are finite. A value off the grid has no exact
+  truthful bid, and ties are common, so tie-breaking matters for weak dominance.
+
+Open: which of these are standing assumptions (for example quasilinear,
+risk-neutral, and values on the bid grid) and which are theorem parameters?
+
+## Defining truthfulness
+
+### Prescribed plans
+
+A source program is an indirect mechanism: bidders commit, then disclose, with
+failure available at each step. "Truthful" therefore names a prescribed
+type-indexed plan σ, not a single action. For a sealed-bid auction, σᵢ(θ)
+commits θ, or its image in the bid domain, and always discloses. Incentive
+properties are properties of σ, stated with existing `GameTheory` predicates on
+`Vegas.SourceProgram.Setup.gameForm`.
+
+Candidate notions:
+
+1. **Ex-post Nash.** For every type profile θ, σ(θ) is Nash under the utility
+   for θ.
+2. **Dominant strategy.** For every player and own type, σᵢ(θᵢ) is dominant
+   under that player's utility (private values).
+3. **Dominance over a restricted opponent class,** in the `StrictlyDominatesOn`
+   shape. Examples: opponents that always disclose, or whose disclosure ignores
+   other players' publications.
+4. **Iterated dominance.** First eliminate withholding where penalties make it
+   dominated, then require dominance among the survivors.
+5. **Bayes-Nash.** σ is Nash of the prior-averaged game.
+6. **Designated reports.** One `commit` per player is marked as the report, with
+   payload type Θᵢ. The truthful plan commits the true type and discloses. This
+   enables a bridge to direct mechanisms.
+
+### Withholding gives later revealers a free option
+
+With sequential disclosure, unrestricted dominance (notion 2) fails for a
+commit-reveal second-price auction.
+
+Take bidders A, with value 5, and B. The program commits both bids, then reveals
+A's bid, then B's. Settlement:
+
+- both disclose: the higher bid wins and pays the other bid;
+- B withholds: A wins at price 0 and B forfeits a deposit.
+
+B's policy commits 4 and discloses only if A's published bid is 5. Truthful A
+gets 5 − 4 = 1, while A bidding 6 gets 5 − 0 = 5, so truthful bidding is not
+dominant.
+
+In general, such a policy exists whenever some misreport's best case over the
+later revealer's disclosure beats the truthful report's worst case. Other
+withholding settlements, such as cancelling the sale or treating the withheld bid
+as the top bid, admit the same construction. A deposit deters rational
+withholding, but dominance quantifies over all opponent policies, including
+costly ones.
+
+Decisions this forces:
+
+- Accept notion 3 or 4 as the meaning of truthfulness for commit-reveal
+  programs, with the opponent class stated explicitly.
+- Or add a simultaneous-disclosure construct to the source, in which no reveal
+  decision observes another reveal of the same round. Its runtime counterpart
+  must keep a round's openings invisible until every opener has decided. That is
+  the same free-option problem at runtime: a hiding commitment does not help if
+  a pending or included opening is visible before another opener decides.
+- `GameTheory.Languages.BayesianMechanism.IsIncentiveCompatible` quantifies over
+  fixed opponent reports. A bridge from source programs must restrict opponents
+  (notion 3) or show that the program leaves opponents nothing to react to.
+
+### Bridge to direct mechanisms
+
+Under full disclosure, a program with designated reports (notion 6) induces a
+direct mechanism whose allocation and payment are computed from reports.
+Candidate statement: notion 3, with opponents that always disclose, holds
+exactly when the induced `GameTheory.Mechanism.QuasiLinearMechanism` is DSIC and
+the focal player's own failure or withholding is never profitable against
+disclosed opponents. The monotonicity results in `GameTheory.Mechanism`
+would then apply. Open: the exact statement, and how guard-rejected commitments
+enter.
+
+## Transfer to the runtime
+
+Status with types outside the program (V1):
+
+- **Ex-post Nash follows now.** Apply
+  `Vegas.Paper.source_event_pending_approximate_nash_iff` for each type profile θ,
+  with the utility for θ and the profile σ(θ). This is not yet a Lean corollary.
+- **Dominance against compiled opponents follows now.** Fix an own type, a
+  source opponent profile π, and a native replacement τ. The deviation utility
+  bound gives a source policy α, and:
+
+  ```text
+  runtime value of τ against compiled π
+    ≤ source value of α against π                    (deviation bound)
+    ≤ source value of σᵢ(θᵢ) against π               (source dominance)
+    = runtime value of compiled σᵢ(θᵢ) against compiled π   (honest law)
+  ```
+
+  The witness α may depend on π, which is harmless because dominance is checked
+  per opponent profile. The same argument transfers notion 3 against compiled
+  members of the opponent class. This is not yet stated in Lean.
+- **Dominance against arbitrary native opponents is open.** The current
+  certificates are unilateral: opponents are compiled source policies. A new
+  certificate must simulate every native opponent profile against a fixed
+  compiled focal plan. The free-option example shows why this is delicate:
+  source dominance depends on what opponents observe before disclosing, and
+  native opponents may observe more, such as pending openings or delivery order.
+  This connects to the coalition extension in the [road ahead](a-road-ahead.md).
+- **Bayes-Nash under V1 is open.** Averaging the per-type deviation bound over the
+  prior yields a source deviation that may depend on other players' types through
+  their policies, which is not a legal type-indexed deviation. There are two
+  routes:
+  - a backtranslation independent of opponents' policies, as the canonical graph
+    edge already has, extended to the scheduled graph and pending-message edges;
+  - V2 or V4, where the prior lives inside the `Setup` and the existing Nash
+    correspondence applies directly.
+- **Raw private bindings.** Utilities reading raw private bindings, such as a
+  committed but withheld bid, are covered today because the decoder recovers the
+  full terminal state. An edge that decodes less would not preserve them. A2 and
+  A3 utilities need less.
+
+## Test programs
+
+Each format exercises a different point:
+
+- **Second-price sealed bid:** dominance, the free option, and ties.
+- **First-price:** no truthfulness, and Bayes-Nash bidding needs a prior, so it
+  depends on the V1 transfer question.
+- **All-pay:** losers pay, which breaks A2, and withholding after seeing others
+  is tempting.
+- **Entry fee:** a participation decision before bidding.
+- **Hidden reserve:** the reserve is operational, while the seller's value is
+  analysis data.
+- **Randomized tie-breaking through `sample`:** the allocation depends on chance,
+  so risk attitude matters.
+- **Multi-unit and combinatorial:** `GameTheory` has VCG and knapsack mechanisms.
+  Deferred until the single-item questions resolve.
+
+## Open questions
+
+1. Is the game-form outcome the complete terminal state, or a declared public
+   outcome?
+2. Allocation encoding: A1, A3, or A4? Is A2 ever the right restriction?
+2. Should VegasCore check payoff conservation?
+3. Types: V1 alone, or V4 to reuse the prior inside the game?
+4. Money: which properties are standing assumptions and which are theorem
+   parameters?
+5. The truthfulness notion for commit-reveal programs, and whether the source
+   needs simultaneous disclosure.
+6. The bridge theorem to quasilinear direct mechanisms.
+7. Lean corollaries for the two transfers that already follow.
+8. A certificate for dominance against arbitrary native opponents.
+9. An opponent-independent backtranslation at the pending-message edge, for
+   Bayes-Nash under V1.

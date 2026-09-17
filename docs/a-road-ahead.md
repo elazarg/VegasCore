@@ -190,7 +190,7 @@ space, compiler, and strategic certificate. Keep source-specific code in Vegas,
 message/service semantics in Interaction, generic game theory in GameTheory,
 and chain/VM machinery in separate target libraries.
 
-The richer `../vegas` frontend should produce the checked source artifact through
+The richer Vegas (elazarg/vegas) frontend should produce the checked source artifact through
 a specified elaboration boundary. The `Vegas.Language` surface-syntax prototype is not
 yet that verified frontend; extending the minimal source with its entire syntax
 is not a prerequisite.
