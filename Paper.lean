@@ -49,20 +49,37 @@ theorem source_publications_resolved [IExpr.ResultTypes L]
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_publications_resolved
 
-/-- Every complete failure-aware source execution satisfies all retained
-guards, including executions with invalid bindings or withheld disclosures. -/
-theorem source_guards_satisfied [IExpr.ResultTypes L]
+/-- Every complete failure-aware source execution decides each retained guard
+by its code: either its subject or an input read by its code failed to publish,
+or all of them were published and the code holds on the published values. This
+includes executions with invalid bindings or withheld disclosures. -/
+theorem source_guards_hold [IExpr.ResultTypes L]
     (source : SourceProgram.Initial (Player := Player) (L := L))
     (profile : SourceProgram.BehavioralProfile source.program)
     (outcome : State L source.program.terminalCtx)
-    (supported : outcome ∈ (source.run profile).support) :
-    (SourceProgram.finalRegistry source.program []).Satisfied outcome :=
-  source.terminal_registry_satisfied profile outcome supported
+    (supported : outcome ∈ (source.run profile).support)
+    (obligation : SourceProgram.Obligation source.program.terminalCtx)
+    (member : obligation ∈ SourceProgram.finalRegistry source.program []) :
+    ((outcome.get obligation.source).2 = .failed ∨
+      ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
+        x ∈ L.exprDeps obligation.guard.code ∧
+          (obligation.guard.reads h).get outcome = .failed) ∨
+    ∃ (subjectValue : L.Val obligation.payload)
+      (get : (x : VarId) → (σ : L.Ty) →
+        HasVar ((obligation.subject, obligation.payload) :: obligation.guard.schema) x σ →
+          x ∈ L.exprDeps obligation.guard.code → L.Val σ),
+      (outcome.get obligation.source).2 = .value subjectValue ∧
+      (∀ hx, get obligation.subject obligation.payload .here hx = subjectValue) ∧
+      (∀ {x τ} (h : HasVar obligation.guard.schema x τ)
+        (hx : x ∈ L.exprDeps obligation.guard.code),
+          (obligation.guard.reads h).get outcome = .value (get x τ (.there h) hx)) ∧
+      L.toBool (L.evalDeps obligation.guard.code get) = true :=
+  source.terminal_guards_hold profile outcome supported obligation member
 
-/-- info: 'Vegas.Paper.source_guards_satisfied' depends on axioms:
+/-- info: 'Vegas.Paper.source_guards_hold' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_guards_satisfied
+#print axioms Vegas.Paper.source_guards_hold
 
 /-! ## Dependency-driven graph capstones -/
 

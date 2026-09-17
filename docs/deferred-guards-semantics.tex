@@ -478,7 +478,8 @@ and exact finite-distribution execution above. \lean{SourceProgram.Initial}
 packages initial resource accounting. Its principal safety theorems are:
 \begin{itemize}
 \item \lean{Initial.terminal_resolved}: all publication obligations resolve;
-\item \lean{Initial.terminal_registry_satisfied}: every retained guard is satisfied.
+\item \lean{Initial.terminal_guards_hold}: every retained guard is discharged by a
+failed input or holds on its published inputs.
 \end{itemize}
 \lean{Paper.lean} delegates directly to them. They do not assume successful
 play or guard feasibility.

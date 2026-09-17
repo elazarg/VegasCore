@@ -225,7 +225,7 @@ theorem runWith_registry_ok {Γ : SourceCtx Player L} {O : Finset VarId}
           registry.ok_updatePrivate_failed state source unique consistent
 
 /-- At a terminal state no retained guard is rejected. Resolution accounting
-strengthens this to satisfaction in `Initial.terminal_registry_satisfied`. -/
+strengthens this in `Initial.terminal_guards_hold`. -/
 theorem Initial.terminal_registry_consistent
     (initial : Initial (Player := Player) (L := L))
     (profile : BehavioralProfile initial.program)
@@ -235,21 +235,31 @@ theorem Initial.terminal_registry_consistent
   exact runWith_registry_ok initial.program profile initial.state [] (fun _ => [])
     initial.namesNodup rfl outcome supported
 
-def Registry.Satisfied {Γ : SourceCtx Player L}
-    (registry : Registry (Player := Player) (L := L) Γ)
-    (state : State L Γ) : Prop :=
-  ∀ obligation ∈ registry, obligation.check state = .satisfied
-
-/-- Complete execution leaves every retained relational obligation satisfied,
-not merely non-rejected: all private support has resolved by terminal accounting. -/
-theorem Initial.terminal_registry_satisfied
+/-- Complete execution decides every retained guard by its code: either the
+subject or an input read by the code failed to publish, or all of them were
+published and the code holds on the published values. -/
+theorem Initial.terminal_guards_hold
     (initial : Initial (Player := Player) (L := L))
     (profile : BehavioralProfile initial.program)
     (outcome : State L initial.program.terminalCtx)
-    (supported : outcome ∈ (initial.run profile).support) :
-    (finalRegistry initial.program []).Satisfied outcome := by
+    (supported : outcome ∈ (initial.run profile).support)
+    (obligation : Obligation initial.program.terminalCtx)
+    (member : obligation ∈ finalRegistry initial.program []) :
+    ((outcome.get obligation.source).2 = .failed ∨
+      ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
+        x ∈ L.exprDeps obligation.guard.code ∧
+          (obligation.guard.reads h).get outcome = .failed) ∨
+    ∃ (subjectValue : L.Val obligation.payload)
+      (get : (x : VarId) → (σ : L.Ty) →
+        HasVar ((obligation.subject, obligation.payload) :: obligation.guard.schema) x σ →
+          x ∈ L.exprDeps obligation.guard.code → L.Val σ),
+      (outcome.get obligation.source).2 = .value subjectValue ∧
+      (∀ hx, get obligation.subject obligation.payload .here hx = subjectValue) ∧
+      (∀ {x τ} (h : HasVar obligation.guard.schema x τ)
+        (hx : x ∈ L.exprDeps obligation.guard.code),
+          (obligation.guard.reads h).get outcome = .value (get x τ (.there h) hx)) ∧
+      L.toBool (L.evalDeps obligation.guard.code get) = true := by
   have consistent := initial.terminal_registry_consistent profile outcome supported
-  intro obligation member
   have notRejected : obligation.check outcome ≠ .rejected := by
     have checked := (List.all_eq_true.mp consistent) obligation member
     simpa [bne_iff_ne] using checked
@@ -267,11 +277,22 @@ theorem Initial.terminal_registry_satisfied
     | publication source =>
         cases valueEq : outcome.get source <;>
           simp [SourceGuardRead.get, valueEq]
-  have notPending := obligation.guard.check_ne_pending_of_support_resolved
-    (outcome.get obligation.source).2 outcome subjectResolved supportResolved
-  cases checked : obligation.check outcome with
-  | pending => exact False.elim (notPending checked)
-  | rejected => exact False.elim (notRejected checked)
-  | satisfied => rfl
+  by_cases supportFailure : ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
+      x ∈ L.exprDeps obligation.guard.code ∧ (obligation.guard.reads h).get outcome = .failed
+  · exact Or.inl (Or.inr supportFailure)
+  cases subjectEq : (outcome.get obligation.source).2 with
+  | failed => exact Or.inl (Or.inl rfl)
+  | pending => exact absurd subjectEq subjectResolved
+  | value subjectValue =>
+      obtain ⟨get, getSubject, readsEq⟩ :=
+        obligation.guard.toDeferredGuardCode.exists_get subjectValue
+          (fun h => (obligation.guard.reads h).get outcome) supportResolved
+          (fun h flagged failed => supportFailure ⟨_, _, h, flagged, failed⟩)
+      refine Or.inr ⟨subjectValue, get, rfl, getSubject, readsEq, ?_⟩
+      have verdict := obligation.guard.check_values subjectValue outcome get getSubject readsEq
+      simp only [Obligation.check, subjectEq] at notRejected
+      rw [verdict] at notRejected
+      by_contra invalid
+      exact notRejected (if_neg invalid)
 
 end Vegas.SourceProgram

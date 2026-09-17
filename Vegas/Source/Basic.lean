@@ -181,6 +181,51 @@ theorem check_ne_pending_of_support_resolved
   DeferredGuardCode.check_ne_pending_of_support_resolved
     guard.toDeferredGuardCode candidate _ subjectResolved supportResolved
 
+theorem check_pending
+    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
+    {author : Player} (guard : SourceGuard L Γ author subject payload)
+    (candidate : Publication (L.Val payload)) (state : State L Γ)
+    (subjectNotFailed : candidate ≠ .failed)
+    (supportNotFailed : ∀ {x τ} (h : HasVar guard.schema x τ),
+      x ∈ L.exprDeps guard.code → (guard.reads h).get state ≠ .failed)
+    (waiting : candidate = .pending ∨
+      ∃ (x : VarId) (τ : L.Ty) (h : HasVar guard.schema x τ),
+        x ∈ L.exprDeps guard.code ∧ (guard.reads h).get state = .pending) :
+    guard.check candidate state = .pending :=
+  DeferredGuardCode.check_pending guard.toDeferredGuardCode candidate _
+    subjectNotFailed supportNotFailed waiting
+
+theorem check_values
+    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
+    {author : Player} (guard : SourceGuard L Γ author subject payload)
+    (subjectValue : L.Val payload) (state : State L Γ)
+    (get : (x : VarId) → (σ : L.Ty) → HasVar ((subject, payload) :: guard.schema) x σ →
+      x ∈ L.exprDeps guard.code → L.Val σ)
+    (subjectEq : ∀ hx, get subject payload .here hx = subjectValue)
+    (readsEq : ∀ {x τ} (h : HasVar guard.schema x τ) (hx : x ∈ L.exprDeps guard.code),
+      (guard.reads h).get state = .value (get x τ (.there h) hx)) :
+    guard.check (.value subjectValue) state =
+      if L.toBool (L.evalDeps guard.code get) then .satisfied else .rejected :=
+  DeferredGuardCode.check_values guard.toDeferredGuardCode subjectValue _ get subjectEq readsEq
+
+theorem check_compatible
+    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
+    {author : Player} (guard : SourceGuard L Γ author subject payload)
+    (candidate : Publication (L.Val payload)) (state : State L Γ)
+    (subjectValue : L.Val payload)
+    (get : (x : VarId) → (σ : L.Ty) → HasVar ((subject, payload) :: guard.schema) x σ →
+      x ∈ L.exprDeps guard.code → L.Val σ)
+    (subjectEq : ∀ hx, get subject payload .here hx = subjectValue)
+    (subjectCompatible : candidate = .pending ∨ candidate = .value subjectValue)
+    (readsCompatible : ∀ {x τ} (h : HasVar guard.schema x τ)
+      (hx : x ∈ L.exprDeps guard.code),
+        (guard.reads h).get state = .pending ∨
+          (guard.reads h).get state = .value (get x τ (.there h) hx))
+    (valid : L.toBool (L.evalDeps guard.code get) = true) :
+    guard.check candidate state ≠ .rejected :=
+  DeferredGuardCode.check_compatible guard.toDeferredGuardCode candidate _ subjectValue get
+    subjectEq subjectCompatible readsCompatible valid
+
 end SourceGuard
 
 

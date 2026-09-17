@@ -152,6 +152,13 @@ private def falseGuard :
   intro state
   rfl
 
+/-- `.satisfied` includes vacuous discharge: a failed subject satisfies even
+constant-false code. -/
+private theorem false_guard_failed_satisfied :
+    ∀ state : State simpleExpr [], falseGuard.check .failed state = .satisfied := by
+  intro state
+  rfl
+
 /-- Structurally valid despite having no all-ordinary successful opening. -/
 def falseGuardProgram : SourceProgram Player simpleExpr [] ∅ :=
   .commit doomed .alice (by decide) falseGuard <|

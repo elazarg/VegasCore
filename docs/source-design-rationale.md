@@ -241,9 +241,10 @@ are separate interfaces.
 
 For every supported complete execution, `Initial.terminal_resolved` proves that
 all private publication obligations have resolved, and
-`Initial.terminal_registry_satisfied` proves that every retained guard checks as
-satisfied. Both quantify over arbitrary source policies, including failure
-choices. They are safety results, not failure-free feasibility or equilibrium
+`Initial.terminal_guards_hold` proves that every retained guard is decided by
+its code: either its subject or an input its code reads failed to publish, or
+all of them were published and the code holds on the published values. Both
+quantify over arbitrary source policies, including failure choices. They are safety results, not failure-free feasibility or equilibrium
 claims. `Paper.lean` delegates directly to these two capstones.
 
 `VegasTests.SourceSemantics` exercises every source constructor in one program:
