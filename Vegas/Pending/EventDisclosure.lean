@@ -25,7 +25,7 @@ omit [DecidableEq Player] in
 private theorem binding_success_of_resolve_success
     {owner : Player} {payload : L.Ty}
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (disclose : Bool) (store : Store graph.layout) (value : L.Val payload)
     (resolved : EventCode.resolveOutput? binding checks disclose store =
       some (.success value)) :
@@ -34,7 +34,7 @@ private theorem binding_success_of_resolve_success
   cases boundEq : binding.get? store with
   | none => simp [boundEq] at resolved
   | some bound =>
-      cases checksEq : DeferredCheck.allAccepted? checks store
+      cases checksEq : GuardCheck.allAccepted? checks store
           (if disclose then bound else .failure) with
       | none => simp [boundEq, checksEq] at resolved
       | some accepted =>
@@ -59,7 +59,7 @@ theorem handle_resolutionSubmission_eq
     (native : runtime.application.State)
     (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
@@ -86,7 +86,7 @@ theorem handle_resolutionSubmission_eq
       cast (congrArg EventField.Action outputEq.symm) disclose = action :=
     action_cast_roundtrip outputEq action
   have readsEq : (graph.nodes event).readFields =
-      insert binding.field (DeferredCheck.listReadFields checks) := by
+      insert binding.field (GuardCheck.listReadFields checks) := by
     calc
       (graph.nodes event).readFields =
           (cast (congrArg (EventCode graph.layout) outputEq)
@@ -94,9 +94,9 @@ theorem handle_resolutionSubmission_eq
         exact (EventCode.readFields_cast outputEq (graph.nodes event)).symm
       _ = (EventCode.resolve owner payload binding checks).readFields :=
         congrArg EventCode.readFields codeEq
-      _ = insert binding.field (DeferredCheck.listReadFields checks) := rfl
+      _ = insert binding.field (GuardCheck.listReadFields checks) := rfl
   have available : ∀ field ∈ insert binding.field
-      (DeferredCheck.listReadFields checks),
+      (GuardCheck.listReadFields checks),
       (native.application.config.store field).isSome = true := by
     intro field member
     apply native.application.config.read_available ready

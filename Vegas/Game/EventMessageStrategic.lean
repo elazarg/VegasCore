@@ -42,7 +42,7 @@ theorem eventPendingGame_deviation_law
   obtain ⟨mixture, law⟩ := runtime.exists_deviation_mixture_store_law feasible
     (setup.eventGraph.withMode_barrierOrdered
       (EventLowering.toEventGraph_barrierOrdered setup.program setup.namesNodup) mode)
-    (setup.initialLaw.map fun initial => setup.eventInputs initial.1)
+    (setup.initialLaw.map fun initial => setup.eventInputs initial)
     (setup.eventGraph.toModeProfile mode
       (EventLowering.compileEventProfile setup.program setup.namesNodup profile))
     roster reactionRounds who replacement wire order

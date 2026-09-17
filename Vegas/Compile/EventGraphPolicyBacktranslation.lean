@@ -191,7 +191,6 @@ theorem encodeDecisionView?_decodeActual_eq_normalizeObservation
     (whole : SourceProgram Player L wholeΓ wholeOpen)
     (unique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
-    (publications : PublicationRefs (graphLayout whole) Γ)
     (offset : Nat) (covered : refs.CoversPrefix whole offset)
     (inputs : (toEventGraph whole unique).Inputs)
     (config : (toEventGraph whole unique).Config)
@@ -200,7 +199,7 @@ theorem encodeDecisionView?_decodeActual_eq_normalizeObservation
     (event : Fin (eventCount whole)) (ready : config.cut.Ready event)
     (who : Player) (actor : (toEventGraph whole unique).actor? event = some who)
     (sourceObservation : SourceObservation L who Γ)
-    (decodedStore : decodeObservation? who refs publications
+    (decodedStore : decodeObservation? who refs
       ((toEventGraph whole unique).playerStore who config.store) =
         some sourceObservation) :
     encodeDecisionView? whole unique refs who event
@@ -236,7 +235,7 @@ theorem encodeDecisionView?_decodeActual_eq_normalizeObservation
     exact reconstructed
   have storeEq : encodeObservationStore who refs sourceObservation =
       graph.playerStore who config.store := by
-    apply encodeObservationStore_decodeObservation?_eq refs publications who
+    apply encodeObservationStore_decodeObservation?_eq refs who
       (graph.playerStore who config.store) sourceObservation decodedStore
     intro field absent
     exact ContextRefs.CoversPrefix.available_visible whole unique refs offset covered
@@ -291,11 +290,9 @@ def backtranslatePolicyTable
           have actor : (toEventGraph whole wholeUnique).actor? event = some who := by
             simpa [event, headIndex, eventOwner?, same] using actorEq headIndex
           match encodeDecisionView? whole wholeUnique refs who event view with
-          | none => FinDist.pure (BoundValue.unopenable _)
+          | none => FinDist.pure .failure
           | some observation =>
-              (policy event actor observation).map fun action =>
-                (BoundValue.resultEquiv _).symm
-                  (embedding.commitHeadAction action),
+              (policy event actor observation).map embedding.commitHeadAction,
         backtranslatePolicyTable whole wholeUnique who policy next
           (by simp [fresh, unique]) (refs.cons headRef) tailEmbedding
           (fun index => by
@@ -336,9 +333,9 @@ def backtranslateEventPolicy
     (ContextRefs.initial Γ (outputLayout program)) (outputEmbedding program)
     (fun index => (eventOwner?_eq_actor program unique index).symm)
 
-/-- At a commitment view that encodes successfully, recompiling the
-backtranslated choice gives the arbitrary graph-policy kernel, transported
-only across the suffix output-layout equality. -/
+/-- At a commitment view that encodes successfully, the backtranslated choice
+is the arbitrary graph-policy kernel, transported only across the suffix
+output-layout equality. -/
 theorem backtranslatePolicyTable_commit_kernel
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
@@ -361,20 +358,17 @@ theorem backtranslatePolicyTable_commit_kernel
     (observation : (toEventGraph whole wholeUnique).PlayerObservation who)
     (encoded : encodeDecisionView? whole wholeUnique refs who
       (embedding.event ⟨0, by simp [eventCount]⟩) view = some observation) :
-    ((backtranslatePolicyTable whole wholeUnique who policy
+    (backtranslatePolicyTable whole wholeUnique who policy
         (.commit name owner fresh guard next) unique refs embedding actorEq).1
-        same view).map (BoundValue.resultEquiv _) =
+        same view =
       (policy (embedding.event ⟨0, by simp [eventCount]⟩)
         (by simpa [eventOwner?, same] using actorEq ⟨0, by simp [eventCount]⟩)
         observation).map embedding.commitHeadAction := by
   simp only [backtranslatePolicyTable]
-  rw [encoded, FinDist.map_comp]
-  congr 1
-  funext action
-  exact Equiv.apply_symm_apply (BoundValue.resultEquiv _) _
+  rw [encoded]
 
-/-- The analogous resolution kernel needs no value equivalence: its Boolean
-action is merely transported across the suffix output-layout equality. -/
+/-- The analogous resolution kernel transports its Boolean action across the
+suffix output-layout equality. -/
 theorem backtranslatePolicyTable_reveal_kernel
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)

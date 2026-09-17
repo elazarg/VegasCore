@@ -17,7 +17,7 @@ variable {graph : Vegas.EventGraph Player L}
 private def focalWithholdingAction (state : State graph) (event : graph.EventId)
     (focal : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding focal payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload) : Bool :=
   match state.remembered event with
   | none => false
@@ -33,7 +33,7 @@ private def focalWithholdingAction (state : State graph) (event : graph.EventId)
 private theorem focalWithholdingAction_output (state : State graph)
     (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload) :
     EventCode.resolveOutput? binding checks
         (focalWithholdingAction state event owner payload binding checks outputEq)
@@ -67,7 +67,7 @@ private theorem focalResolveFalse_of_ready (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks) :
@@ -76,7 +76,7 @@ private theorem focalResolveFalse_of_ready (state : State graph)
   intro field read
   apply state.config.read_available ready
   have readsEq : (graph.nodes event).readFields =
-      insert binding.field (DeferredCheck.listReadFields checks) := by
+      insert binding.field (GuardCheck.listReadFields checks) := by
     calc
       (graph.nodes event).readFields =
           (cast (congrArg (EventCode graph.layout) outputEq)
@@ -84,14 +84,14 @@ private theorem focalResolveFalse_of_ready (state : State graph)
         (focalReadFields_cast outputEq (graph.nodes event)).symm
       _ = (EventCode.resolve owner payload binding checks).readFields :=
         congrArg EventCode.readFields codeEq
-      _ = insert binding.field (DeferredCheck.listReadFields checks) := rfl
+      _ = insert binding.field (GuardCheck.listReadFields checks) := rfl
   rw [readsEq]
   exact read
 
 private def focalAcceptResolution (state : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (focal : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding focal payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (disclose : Bool) : Option (State graph) := do
   let result ← EventCode.resolveOutput? binding checks disclose state.config.store

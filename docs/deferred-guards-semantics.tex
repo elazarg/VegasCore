@@ -23,15 +23,19 @@
 \maketitle
 
 \paragraph{Scope and status.}
-This note specifies deferred source guards and their failure-aware source
-execution. The publication component and the complete source safety theorems
-are formalized in Lean. The compiler consumes this \lean{SourceProgram}
+This note specifies deferred guards and their failure-aware source execution.
+Sections \ref{sec:publications}--\ref{sec:invariant} describe the standalone
+\lean{Interaction.GuardedPublication} component, whose publication slots carry
+a runtime three-valued status. The Vegas source language (section
+\ref{sec:source}) no longer uses that component: because its syntax fixes
+which reveal publishes each private cell, each guard is checked exactly once,
+at the reveal completing it, with a binary verdict and no runtime status. Both
+are formalized in Lean. The compiler consumes the \lean{SourceProgram}
 semantics and has checked exact outcome and unilateral-deviation laws through
-the ordered graph to its ideal pending-message runtime. This note isolates
-the source publication mathematics; the separate compiler certificates carry
-the runtime information and service obligations.
+the ordered graph to its ideal pending-message runtime.
 
 \section{Heterogeneous publications}
+\label{sec:publications}
 
 Let $I$ be a finite set of publication slots.  Each slot $i:I$ has an ordinary
 value type $A_i$ and an owner $\owner(i)$.  Its public state is
@@ -360,6 +364,7 @@ traffic are strategically indistinguishable nor that native deviations admit
 source-policy backtranslation.
 
 \section{Publication invariant and compiler boundary}
+\label{sec:invariant}
 
 The publication component establishes:
 \begin{quote}
@@ -381,11 +386,12 @@ source, graph, and pending-message proofs; none is assumed as a field of the
 publication model.
 
 \section{Source execution}
+\label{sec:source}
 
 A source state contains ordinary public inputs, immutable private bindings,
-and publication results. A binding of type $A$ is either an ordinary $a:A$
-or an unopenable candidate; it is distinct from its initially pending
-publication. A resolved public alias has type
+and publication results. A binding of type $A$ is a $\mathsf{Result}(A)$: an
+ordinary $a:A$, or $\mathsf{fail}$ for an unopenable candidate. It is distinct
+from the public cell its reveal creates. A published alias has type
 \[
  \mathsf{Result}(A)=\{\mathsf{fail}\}\mathbin{+}
    \{\mathsf{ok}(a):a\in A\}.
@@ -399,13 +405,16 @@ history of its own binding and disclosure decisions. A player's policy is a
 finite-distribution kernel on its public observations, its own private cells,
 and this own-action history. The four source operations are:
 \begin{itemize}
-\item \emph{Commit:} draw a binding from the owner's policy, create a pending
-publication, and register the written guard. No validity restriction is placed
-on the binding choice. Registration is consistent because the subject is pending.
+\item \emph{Commit:} draw a binding from the owner's policy and register the
+written guard. No validity restriction is placed on the binding choice. The
+guard is not evaluated here: its subject is not yet public.
 \item \emph{Reveal:} draw a disclosure Boolean from the owner's policy. A
 disclosure of an ordinary binding proposes its fixed value; withholding or an
-unopenable binding proposes failure. Apply atomic resolution against the retained
-registry and introduce a fresh public result alias. Remember the Boolean even
+unopenable binding proposes failure. Evaluate exactly the registered guards
+this reveal completes -- those whose subject and code-read cells are all public
+after it and were not all public before it -- against the proposal and the
+earlier publications. Publish the proposal if every such guard accepts, and
+failure otherwise, as a fresh public result alias. Remember the Boolean even
 when both choices produce failure.
 \item \emph{Sample:} draw an ordinary public value from the source's declared
 kernel evaluated on the public environment. This law holds conditional on the
@@ -415,27 +424,32 @@ disclosure choice for chance.
 payoff expressions are a separate projection; a game analysis supplies utility.
 \end{itemize}
 
-The syntax tracks a finite set of unresolved private resources. Every initial
-private resource is pending and accounted for; commitment adds one fresh
+The syntax tracks a finite set of unrevealed private resources. Every initial
+private resource is unrevealed and accounted for; commitment adds one fresh
 resource, reveal removes exactly one, and return requires the empty set.
-Guards may read public inputs and their author's private publication statuses,
-but not another player's hidden bindings. All guard support is static.
+Alongside it, the syntax carries a static map from each private cell to the
+public cell its reveal creates, if any. Guards may read public inputs and their
+author's own private cells, but not another player's bindings. All guard
+support is static.
+
+\paragraph{Static revelation.}
+For any accounted program, the terminal map reveals every private cell. This is
+a property of the syntax: no execution, policy, or chance outcome is involved,
+and it is what makes every guard's completing reveal well defined.
 
 \paragraph{Terminal safety.}
-For any accounted initial state and any source policy profile, every outcome
-in the support of complete execution has all private publications resolved
-and all registered guards satisfied. This includes invalid bindings,
-withholding, and unsatisfiable ordinary guards.
+For any accounted initial state and any source policy profile, every outcome in
+the support of complete execution decides each registered guard by its code:
+either the publication of its subject or of a cell its code reads failed, or all
+of them succeeded and the code holds on the published values. This includes
+invalid bindings, withholding, and unsatisfiable ordinary guards.
 
-For resolution, induct on source syntax: commitment adds exactly one pending
-name and reveal removes exactly its designated name. For guard consistency,
-registration adds a nonrejected guard; an accepted tentative publication is
-consistent by its check. On fallback, every supported guard affected by the
-current failed slot becomes satisfied vacuously, and unaffected guards retain
-their previous verdict. Samples and fresh aliases only extend environments.
-At return no supported private value remains pending; public inputs and
-result aliases are already resolved. A consistent guard therefore checks as
-satisfied, rather than merely waiting.
+The proof is an induction on source syntax carrying the invariant that every
+guard whose components are all public already accepts. A reveal that completes
+a guard publishes its proposal only when that guard accepts, and otherwise
+publishes failure, which discharges the guard. A reveal that completes no guard
+leaves every verdict unchanged, since accepted verdicts read only cells that
+were already public.
 
 \section{Checked interface}
 
@@ -477,9 +491,10 @@ results, not a full source compiler theorem.
 and exact finite-distribution execution above. \lean{SourceProgram.Initial}
 packages initial resource accounting. Its principal safety theorems are:
 \begin{itemize}
-\item \lean{Initial.terminal_resolved}: all publication obligations resolve;
+\item \lean{Initial.revealed}: every private cell is revealed by the end of the
+syntax, with no execution quantifier;
 \item \lean{Initial.terminal_guards_hold}: every retained guard is discharged by a
-failed input or holds on its published inputs.
+failed publication or holds on its published inputs.
 \end{itemize}
 \lean{Paper.lean} delegates directly to them. They do not assume successful
 play or guard feasibility.

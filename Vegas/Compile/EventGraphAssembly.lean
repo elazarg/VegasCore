@@ -53,38 +53,12 @@ theorem initialRefsBefore {Γ : SourceCtx Player L} {openNames : Finset VarId}
   intro name cell source index
   trivial
 
-omit [DecidableEq Player] R in
-@[simp] theorem initialPublications_field?_eq_none
-    {Field : Type} {layout : Field → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty} {name : VarId}
-    (source : HasVar Γ name (.privateData owner payload)) :
-    (initialPublications (Field := Field) (layout := layout) source).field? = none := by
-  induction Γ with
-  | nil => nomatch source
-  | cons entry tail ih =>
-      obtain ⟨headName, headCell⟩ := entry
-      cases source with
-      | here => rfl
-      | there source =>
-          cases headCell <;> exact ih source
-
-/-- Initial private cells are pending, so they name no event output. -/
-theorem initialPublicationsBefore {Γ : SourceCtx Player L}
-    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
-    PublicationsBeforeAll
-      (initialPublications (Field := Vegas.EventGraph.FieldId Γ.length (eventCount program)))
-      (outputEmbedding program) := by
-  intro index owner payload name source field found
-  rw [initialPublications_field?_eq_none source] at found
-  cases found
-
 /-- Lowered nodes paired with their constructed causal-read certificates. -/
 def rankedNodes {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     (unique : (Γ.map Prod.fst).Nodup) :=
   compileRankedNodes program unique (ContextRefs.initial Γ (outputLayout program))
-    initialPublications [] (outputEmbedding program) (initialRefsBefore program)
-    (initialPublicationsBefore program)
+    (Revelations.initial Γ) [] (outputEmbedding program) (initialRefsBefore program)
 
 /-- Executable node table obtained by projecting the jointly constructed
 code-and-causality carrier. -/

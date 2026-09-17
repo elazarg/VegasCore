@@ -8,7 +8,7 @@ import Vegas.EventGraph.Execution
 
 The input encoding preserves each source cell's typed binding or public value.
 Agreement is independent of event outputs, so it also holds after execution has
-started. Publication status for private cells is a separate compiler invariant.
+started.
 -/
 
 noncomputable section
@@ -17,31 +17,6 @@ namespace Vegas.SourceProgram.EventLowering
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
-
-omit [DecidableEq Player] R in
-/-- Every private cell in a `PrivatePending` source state has pending public
-status, not merely the private cell at the head of the context. -/
-theorem PrivatePending.get_private {Γ : SourceCtx Player L}
-    (state : State L Γ) (pending : PrivatePending state)
-    {owner : Player} {payload : L.Ty} {name : VarId}
-    (source : HasVar Γ name (.privateData owner payload)) :
-    (state.get source).2 = Interaction.Publication.pending := by
-  induction Γ with
-  | nil => nomatch source
-  | cons entry tail ih =>
-      obtain ⟨headName, headCell⟩ := entry
-      let tailState : State L tail := fun _ _ read => state.get (.there read)
-      cases headCell with
-      | publicData headPayload =>
-          cases source with
-          | there source => exact ih tailState pending source
-      | privateData headOwner headPayload =>
-          cases source with
-          | here => exact pending.1
-          | there source => exact ih tailState pending.2 source
-      | publication headPayload =>
-          cases source with
-          | there source => exact ih tailState pending source
 
 omit [DecidableEq Player] R in
 /-- Reading an encoded input at its source context position preserves its
@@ -76,25 +51,13 @@ theorem ContextRefs.initial_agrees {Γ : SourceCtx Player L}
   exact congrArg some (encodeInputs_get state source)
 
 /-- The actual initial configuration of the whole compiled graph represents
-the complete initial source state in both its immutable-cell and retained
-publication views. -/
+the complete initial source state. -/
 theorem initialConfig_agrees {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (state : State L Γ) (pending : PrivatePending state) :
-    let config := Vegas.EventGraph.Config.initial
-      (graph := toEventGraph program unique) (encodeInputs state)
-    (ContextRefs.initial Γ (outputLayout program)).Agrees state config.store ∧
-      PublicationRefs.Agree
-        (initialPublications (Field := Vegas.EventGraph.FieldId Γ.length
-          (eventCount program))) state config.store := by
-  dsimp only
-  constructor
-  · apply ContextRefs.initial_agrees (outputLayout program) state
-    intro input
-    rfl
-  · apply initialPublications_agree state
-    intro owner payload name source
-    exact PrivatePending.get_private state pending source
+    (unique : (Γ.map Prod.fst).Nodup) (state : State L Γ) :
+    (ContextRefs.initial Γ (outputLayout program)).Agrees state
+      (Vegas.EventGraph.Config.initial (graph := toEventGraph program unique)
+        (encodeInputs state)).store :=
+  ContextRefs.initial_agrees (outputLayout program) state _ fun _ => rfl
 
 end Vegas.SourceProgram.EventLowering

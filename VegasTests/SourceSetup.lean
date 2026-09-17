@@ -7,7 +7,7 @@ import Vegas.Expr.Simple
 
 namespace VegasTests.SourceSetup
 
-open GameTheory GameTheory.Math.Probability Interaction Vegas
+open GameTheory GameTheory.Math.Probability Vegas
 
 noncomputable section
 
@@ -38,21 +38,13 @@ def program : SourceProgram Player simpleExpr InitialCtx {secret} :=
   .ret []
 
 private def initialState (bit : Bool) : State simpleExpr InitialCtx :=
-  Env.cons (x := secret) (BoundValue.value bit, .pending) (Env.empty (CellVal simpleExpr))
-
-private def checkedState (bit : Bool) :
-    { state : State simpleExpr InitialCtx // SourceProgram.PrivatePending state } :=
-  ⟨initialState bit, by
-    change ((initialState bit).get
-      (.here : HasVar InitialCtx secret (.privateData Player.alice .bool))).2 =
-        .pending ∧ True
-    exact ⟨rfl, trivial⟩⟩
+  Env.cons (x := secret) (.success bit) (Env.empty (CellVal simpleExpr))
 
 def fairSetup : SourceProgram.Setup (Player := Player) (L := simpleExpr) where
   context := InitialCtx
   namesNodup := by decide
   initialLaw := FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-    (FinDist.pure (checkedState false)) (FinDist.pure (checkedState true))
+    (FinDist.pure (initialState false)) (FinDist.pure (initialState true))
   obligations := {secret}
   program := program
   accounts := rfl
@@ -72,7 +64,7 @@ theorem bob_initial_secret_hidden (bit : Bool) :
 theorem fairSetup_initialLaw :
     fairSetup.initialLaw =
       FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-        (FinDist.pure (checkedState false)) (FinDist.pure (checkedState true)) := by
+        (FinDist.pure (initialState false)) (FinDist.pure (initialState true)) := by
   rfl
 
 def profile (chosen : Bool) : SourceProgram.BehavioralProfile program := fun
@@ -81,7 +73,7 @@ def profile (chosen : Bool) : SourceProgram.BehavioralProfile program := fun
         ((fun h => nomatch h),
           (fun _ _ => FinDist.pure true, PUnit.unit)))
   | .bob =>
-      (fun _ _ => FinDist.pure (BoundValue.value chosen),
+      (fun _ _ => FinDist.pure (.success chosen),
         (fun _ _ => FinDist.pure true,
           ((fun h => nomatch h), PUnit.unit)))
 

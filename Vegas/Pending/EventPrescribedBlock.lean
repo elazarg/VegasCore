@@ -30,7 +30,7 @@ def ResolutionAuthoredPending (runtime : EventGraphRuntime graph)
     (before after : runtime.application.PolicyExecution)
     (who : Player) (event : graph.EventId) (payload : L.Ty)
     {owner : Player} (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload) : Prop :=
   ∃ action packet,
     after.native.application.remembered event = some action ∧
@@ -251,7 +251,7 @@ theorem runServicePlan_compiled_resolve_partial_submitted
     (execution next : runtime.application.PolicyExecution)
     (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)

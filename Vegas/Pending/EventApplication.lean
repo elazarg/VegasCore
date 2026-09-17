@@ -385,7 +385,7 @@ private def acceptBinding (state : State graph) (event : graph.EventId)
 private def acceptResolution (state : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (disclose : Bool) : Option (State graph) := do
   let result ← EventCode.resolveOutput? binding checks disclose state.config.store
@@ -401,7 +401,7 @@ is retained only when owner-local prevalidation gives it exactly the canonical
 private def withholdingAction (state : State graph) (event : graph.EventId)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload) : Bool :=
   match state.remembered event with
   | none => false
@@ -434,7 +434,7 @@ private theorem acceptResolution_publicView_congr (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (left right : Bool)
     (resultEq : EventCode.resolveOutput? binding checks left state.config.store =
@@ -459,7 +459,7 @@ private theorem acceptResolution_publicView_congr (state : State graph)
 private theorem withholdingAction_output (state : State graph)
     (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload) :
     EventCode.resolveOutput? binding checks
         (withholdingAction state event owner payload binding checks outputEq)
@@ -495,7 +495,7 @@ private theorem acceptResolution_publicView_replaceRemembered (state : State gra
     (memory : RememberedActions graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload) (disclose : Bool) :
     Option.map State.publicView
         (acceptResolution { state with remembered := memory }
@@ -521,7 +521,7 @@ inductive NodeView (graph : Vegas.EventGraph Player L)
         (graph.nodes event) = .bind owner payload)
   | resolve (owner : Player) (payload : L.Ty)
       (binding : FieldRef graph.layout (.binding owner payload))
-      (checks : List (DeferredCheck graph.layout payload))
+      (checks : List (GuardCheck graph.layout payload))
       (outputEq : graph.outputLayout event = .publication payload)
       (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
         (graph.nodes event) = .resolve owner payload binding checks)
@@ -572,7 +572,7 @@ private theorem resolve_complete_mem_step (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
@@ -596,7 +596,7 @@ private theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks) :
@@ -605,7 +605,7 @@ private theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
   intro field read
   apply state.config.read_available ready
   have readsEq : (graph.nodes event).readFields =
-      insert binding.field (DeferredCheck.listReadFields checks) := by
+      insert binding.field (GuardCheck.listReadFields checks) := by
     calc
       (graph.nodes event).readFields =
           (cast (congrArg (EventCode graph.layout) outputEq)
@@ -613,7 +613,7 @@ private theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
         (EventCode.readFields_cast outputEq (graph.nodes event)).symm
       _ = (EventCode.resolve owner payload binding checks).readFields :=
         congrArg EventCode.readFields codeEq
-      _ = insert binding.field (DeferredCheck.listReadFields checks) := rfl
+      _ = insert binding.field (GuardCheck.listReadFields checks) := rfl
   rw [readsEq]
   exact read
 
@@ -711,7 +711,7 @@ theorem handle_opening_eq
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
@@ -749,7 +749,7 @@ theorem handle_withhold_eq
     (id : MessageId Player) (event : graph.EventId)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
@@ -1490,7 +1490,7 @@ theorem environmentStep_expire_resolve_eq
     (due : runtime.deadline event ≤ state.clock - entered)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)

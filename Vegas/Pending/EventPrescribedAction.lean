@@ -322,7 +322,7 @@ theorem handle_prescribed_resolution_cached_action
     (invariant : execution.native.application.BindingInvariant)
     (event : graph.EventId) (payloadTy : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payloadTy))
-    (checks : List (DeferredCheck graph.layout payloadTy))
+    (checks : List (GuardCheck graph.layout payloadTy))
     (outputEq : graph.outputLayout event = .publication payloadTy)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payloadTy binding checks)

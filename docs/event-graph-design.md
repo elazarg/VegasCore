@@ -89,9 +89,10 @@ reveal P.y;
 reveal P.x;
 ```
 
-With mismatching bindings and attempted disclosures, y can succeed while x is
-pending, then x fails. Swapping the disclosures changes which publication fails.
-A storage-level commutation argument would miss this dependency.
+With mismatching bindings and attempted disclosures, y succeeds because its
+reveal does not complete the guard `x = y`; the later x reveal completes it and
+fails. Swapping the disclosures changes which publication fails. A storage-level
+commutation argument would miss this dependency.
 
 ### Own-action memory
 

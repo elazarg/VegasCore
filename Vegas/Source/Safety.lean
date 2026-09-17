@@ -2,148 +2,122 @@
 
 import Vegas.Source.Accounting
 
-/-! # Safety of source publication execution -/
+/-! # Safety of source publication execution
+
+Every retained obligation whose inputs are all published accepts the published
+state: a reveal fails exactly when an obligation it completes rejects, and that
+failure then discharges the obligation. At termination every input is published
+(`SourceProgram.Initial.revealed`), so every retained guard has a failed input or holds on the
+published values (`SourceProgram.Initial.terminal_guards_hold`).
+-/
 
 noncomputable section
 namespace Vegas.SourceProgram
 
-open Interaction GameTheory.Math.Probability
+open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
-theorem updatePrivate_get_of_name_ne {Γ : SourceCtx Player L} {owner : Player}
-    {payload : L.Ty} {name other : VarId}
-    (state : State L Γ) (source : HasVar Γ name (.privateData owner payload))
-    (status : Publication (L.Val payload)) {cell : CellTy Player L}
-    (read : HasVar Γ other cell) (different : other ≠ name) :
-    (updatePrivate state source status).get read = state.get read := by
-  induction Γ generalizing other cell with
-  | nil => nomatch source
-  | cons entry tail ih =>
-      cases source with
-      | here =>
-          cases read with
-          | here => exact False.elim (different rfl)
-          | there read => rfl
-      | there source =>
-          cases read with
-          | here => rfl
-          | there read => exact ih (fun _ _ h => state.get (.there h)) source read different
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-@[simp] theorem updatePrivate_get_source {Γ : SourceCtx Player L} {owner : Player}
-    {payload : L.Ty} {name : VarId} (state : State L Γ)
+/-- A reveal leaves every already published obligation's decision unchanged. -/
+theorem Obligation.accepts_reveal_of_revealed {Γ : SourceCtx Player L} {O : Finset VarId}
+    (obligation : Obligation (Player := Player) (L := L) Γ) (revelations : Revelations Γ)
+    {published name : VarId} {owner : Player} {payload : L.Ty}
     (source : HasVar Γ name (.privateData owner payload))
-    (status : Publication (L.Val payload)) :
-    (updatePrivate state source status).get source = ((state.get source).1, status) := by
-  induction Γ with
-  | nil => nomatch source
-  | cons entry tail ih =>
-      cases source with
-      | here => rfl
-      | there source => exact ih (fun _ _ h => state.get (.there h)) source
+    (accounted : Accounted revelations O) (unresolved : name ∈ O)
+    (revealed : obligation.revealed revelations = true)
+    (head : PublicationResult (L.Val payload)) (state : State L Γ) :
+    (obligation.weaken (x := published)).accepts
+        (revelations.reveal (published := published) source)
+        (Env.cons (Val := CellVal (Player := Player) L) (τ := .publication payload) head state) =
+      obligation.accepts revelations state := by
+  have unchanged : ∀ {readOwner : Player} {readPayload : L.Ty} {readName : VarId}
+      (h : HasVar Γ readName (.privateData readOwner readPayload)),
+      (revelations h).isRevealed = true →
+        revelations.reveal (published := published) source (.there h) = (revelations h).weaken := by
+    intro readOwner readPayload readName h readRevealed
+    exact Revelations.reveal_of_ne revelations source h
+      (fun same => (accounted h).mp readRevealed (same ▸ unresolved))
+  simp only [Obligation.revealed, Bool.and_eq_true, SourceGuard.readsRevealed] at revealed
+  obtain ⟨subjectRevealed, readsRevealed⟩ := revealed
+  simp only [Obligation.accepts, Obligation.weaken, SourceGuard.accepts, SourceGuard.weaken,
+    unchanged obligation.source subjectRevealed, Revelation.result_weaken]
+  apply GuardCode.accepts_congr
+  intro x τ h read
+  have readRevealed := (GuardCode.allReads_iff _ _).mp readsRevealed h read
+  cases readEq : obligation.guard.reads h with
+  | publicData cell => simp [SourceGuardRead.weaken, SourceGuardRead.result]
+  | publication cell => simp [SourceGuardRead.weaken, SourceGuardRead.result]
+  | privateData cell =>
+      rw [readEq] at readRevealed
+      simp [SourceGuardRead.weaken, SourceGuardRead.result, unchanged cell readRevealed]
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
-def _root_.Vegas.SourceGuardRead.References
-    {Γ : SourceCtx Player L} {author : Player} {τ : L.Ty}
-    (read : SourceGuardRead Γ author τ) (name : VarId) : Prop :=
-  match read with
-  | .publicData (x := x) _ => x = name
-  | .privateData (x := x) _ => x = name
-  | .publication (x := x) _ => x = name
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-theorem _root_.Vegas.SourceGuardRead.get_updatePrivate_failed_of_name_eq
-    {Γ : SourceCtx Player L} {author owner : Player} {τ payload : L.Ty}
-    {name : VarId} (read : SourceGuardRead Γ author τ) (state : State L Γ)
-    (source : HasVar Γ name (.privateData owner payload))
-    (unique : (Γ.map Prod.fst).Nodup) (same : read.References name) :
-    read.get (updatePrivate state source .failed) = .failed := by
-  cases read with
-  | publicData h =>
-      simp only [SourceGuardRead.References] at same
-      cases same
-      have typeEq := HasVar.type_unique unique h source
-      contradiction
-  | publication h =>
-      simp only [SourceGuardRead.References] at same
-      cases same
-      have typeEq := HasVar.type_unique unique h source
-      contradiction
-  | privateData h =>
-      simp only [SourceGuardRead.References] at same
-      cases same
-      have typeEq := HasVar.type_unique unique h source
-      cases typeEq
-      have proofEq := HasVar.eq_of_nodup unique h source
-      cases proofEq
-      simp [SourceGuardRead.get]
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-theorem Obligation.check_updatePrivate_failed_ne_rejected
-    {Γ : SourceCtx Player L} (obligation : Obligation (Player := Player) (L := L) Γ)
-    (state : State L Γ) {owner : Player} {payload : L.Ty} {name : VarId}
-    (source : HasVar Γ name (.privateData owner payload))
-    (unique : (Γ.map Prod.fst).Nodup) (before : obligation.check state ≠ .rejected) :
-    obligation.check (updatePrivate state source .failed) ≠ .rejected := by
-  by_cases subjectSame : obligation.subject = name
-  · have failed :
-        ((updatePrivate state source .failed).get obligation.source).2 = .failed := by
-      have same : (SourceGuardRead.privateData obligation.source).References name := by
-        simpa [SourceGuardRead.References] using subjectSame
-      have := SourceGuardRead.get_updatePrivate_failed_of_name_eq
-        (SourceGuardRead.privateData obligation.source) state source unique same
-      simpa [SourceGuardRead.get] using this
-    simp [Obligation.check, failed, SourceGuard.check_subject_failed]
-  · by_cases affected : (∃ (x : VarId) (τ : L.Ty)
-        (h : HasVar obligation.guard.schema x τ),
+/-- An obligation completed by a failed publication accepts it: the failed
+publication is one of its inputs. -/
+theorem Obligation.accepts_reveal_failure {Γ : SourceCtx Player L}
+    (obligation : Obligation (Player := Player) (L := L) Γ) (revelations : Revelations Γ)
+    {published name : VarId} {owner : Player} {payload : L.Ty}
+    (source : HasVar Γ name (.privateData owner payload)) (unique : (Γ.map Prod.fst).Nodup)
+    (before : obligation.revealed revelations = false)
+    (after : (obligation.weaken (x := published)).revealed
+      (revelations.reveal (published := published) source) = true)
+    (state : State L Γ) :
+    (obligation.weaken (x := published)).accepts
+        (revelations.reveal (published := published) source)
+        (Env.cons (Val := CellVal (Player := Player) L) (τ := .publication payload)
+          PublicationResult.failure state) = true := by
+  have changed : ∀ {readOwner : Player} {readPayload : L.Ty} {readName : VarId}
+      (h : HasVar Γ readName (.privateData readOwner readPayload)),
+      (revelations h).isRevealed = false →
+      (revelations.reveal (published := published) source (.there h)).isRevealed = true →
+      (revelations.reveal (published := published) source (.there h)).result
+        (Env.cons (Val := CellVal (Player := Player) L) (τ := .publication payload)
+          PublicationResult.failure state) = .failure := by
+    intro readOwner readPayload readName h unrevealed revealedAfter
+    by_cases same : readName = name
+    · subst readName
+      have cellEq := HasVar.type_unique unique h source
+      cases cellEq
+      cases HasVar.eq_of_nodup unique h source
+      simp [Revelation.result]
+    · simp only [Revelations.reveal_of_ne revelations source h same,
+        Revelation.isRevealed_weaken, unrevealed] at revealedAfter
+      cases revealedAfter
+  simp only [Obligation.revealed, Bool.and_eq_true, Bool.and_eq_false_iff,
+    SourceGuard.readsRevealed] at before after
+  obtain ⟨subjectAfter, readsAfter⟩ := after
+  simp only [Obligation.accepts, Obligation.weaken, SourceGuard.accepts, SourceGuard.weaken]
+  by_cases subjectBefore : (revelations obligation.source).isRevealed = true
+  · have readsBefore : obligation.guard.allReads
+        (fun h => (obligation.guard.reads h).revealed revelations) = false := by
+      rcases before with subjectFalse | readsFalse
+      · rw [subjectBefore] at subjectFalse; cases subjectFalse
+      · exact readsFalse
+    have missing : ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
         x ∈ L.exprDeps obligation.guard.code ∧
-          (obligation.guard.reads h).References name)
-    · obtain ⟨x, τ, h, supported, same⟩ := affected
-      have failed := (obligation.guard.reads h).get_updatePrivate_failed_of_name_eq
-        state source unique same
-      rw [Obligation.check,
-        obligation.guard.check_satisfied_of_failed_read _ _ h supported failed]
-      decide
-    · rw [Obligation.check, SourceGuard.check_congr obligation.guard _ _ _ _
-          (congrArg Prod.snd
-            (updatePrivate_get_of_name_ne state source .failed obligation.source subjectSame))]
-      · exact before
-      · intro x τ h supported
-        have different : ¬ (obligation.guard.reads h).References name := by
-          intro same
-          exact affected ⟨x, τ, h, supported, same⟩
-        cases readEq : obligation.guard.reads h with
-        | publicData read =>
-            simp only [SourceGuardRead.References, readEq] at different
-            exact congrArg Publication.value
-              (updatePrivate_get_of_name_ne state source .failed read different)
-        | privateData read =>
-            simp only [SourceGuardRead.References, readEq] at different
-            exact congrArg Prod.snd
-              (updatePrivate_get_of_name_ne state source .failed read different)
-        | publication read =>
-            simp only [SourceGuardRead.References, readEq] at different
-            rw [SourceGuardRead.get, SourceGuardRead.get]
-            congr 1
-            exact updatePrivate_get_of_name_ne state source .failed read different
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-theorem Registry.ok_updatePrivate_failed {Γ : SourceCtx Player L}
-    (registry : Registry (Player := Player) (L := L) Γ) (state : State L Γ)
-    {owner : Player} {payload : L.Ty} {name : VarId}
-    (source : HasVar Γ name (.privateData owner payload))
-    (unique : (Γ.map Prod.fst).Nodup) (before : registry.ok state = true) :
-    registry.ok (updatePrivate state source .failed) = true := by
-  induction registry with
-  | nil => rfl
-  | cons head tail ih =>
-      simp only [Registry.ok, List.all_cons, Bool.and_eq_true] at before ⊢
-      have beforeHead : head.check state ≠ .rejected := by simpa using before.1
-      have afterHead :=
-        head.check_updatePrivate_failed_ne_rejected state source unique beforeHead
-      exact ⟨by simpa using afterHead, ih before.2⟩
+          (obligation.guard.reads h).revealed revelations = false := by
+      by_contra none
+      simp only [not_exists, not_and, Bool.not_eq_false] at none
+      have all := (GuardCode.allReads_iff _ _).mpr fun h read => none _ _ h read
+      rw [readsBefore] at all
+      cases all
+    obtain ⟨x, τ, h, read, unrevealed⟩ := missing
+    have revealedAfter := (GuardCode.allReads_iff _ _).mp readsAfter h read
+    apply GuardCode.accepts_of_failure _ _ _ h read
+    cases readEq : obligation.guard.reads h with
+    | publicData cell => simp [readEq, SourceGuardRead.revealed] at unrevealed
+    | publication cell => simp [readEq, SourceGuardRead.revealed] at unrevealed
+    | privateData cell =>
+        simp only [readEq, SourceGuardRead.revealed] at unrevealed
+        have cellAfter : (revelations.reveal (published := published) source
+            (.there cell)).isRevealed = true := by
+          simpa [Obligation.weaken, SourceGuard.weaken, readEq, SourceGuardRead.weaken,
+            SourceGuardRead.revealed] using revealedAfter
+        simp only [SourceGuardRead.weaken, SourceGuardRead.result]
+        exact changed cell unrevealed cellAfter
+  · rw [changed obligation.source (by simpa using subjectBefore) subjectAfter]
+    exact GuardCode.accepts_subject_failure _ _
 
 /-- The guard registry obtained after following the remaining source syntax.
 It retains every original typed guard and its subject provenance. -/
@@ -159,84 +133,94 @@ def finalRegistry : {Γ : SourceCtx Player L} → {O : Finset VarId} →
       finalRegistry next (obligation :: registry.weaken)
   | _, _, .reveal _ _ _ _ _ _ next, registry => finalRegistry next registry.weaken
 
-/-- Every reachable state preserves consistency of every dynamically
-registered guard. -/
-theorem runWith_registry_ok {Γ : SourceCtx Player L} {O : Finset VarId}
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+private theorem consistent_weaken {Γ : SourceCtx Player L} {name : VarId}
+    {cell : CellTy Player L} (registry : Registry (Player := Player) (L := L) Γ)
+    (revelations : Revelations Γ) (head : CellVal L cell) (state : State L Γ)
+    (consistent : ∀ obligation ∈ registry, obligation.revealed revelations = true →
+      obligation.accepts revelations state = true) :
+    ∀ obligation ∈ registry.weaken (x := name) (c := cell),
+      obligation.revealed revelations.weaken = true →
+        obligation.accepts revelations.weaken (Env.cons head state) = true := by
+  intro obligation member revealed
+  obtain ⟨original, originalMember, rfl⟩ := List.mem_map.mp member
+  rw [Obligation.revealed_weaken] at revealed
+  rw [Obligation.accepts_weaken]
+  exact consistent original originalMember revealed
+
+/-- Every reachable terminal state keeps every published obligation accepted. -/
+theorem runWith_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) :
     ∀ (profile : BehavioralProfile program) (state : State L Γ)
-      (registry : Registry Γ) (history : History Player L),
-      (Γ.map Prod.fst).Nodup → registry.ok state = true →
-      ∀ outcome ∈ (runWith program profile state registry history).support,
-        (finalRegistry program registry).ok outcome = true := by
+      (registry : Registry Γ) (revelations : Revelations Γ) (history : History Player L),
+      (Γ.map Prod.fst).Nodup → Accounted revelations O →
+      (∀ obligation ∈ registry, obligation.revealed revelations = true →
+        obligation.accepts revelations state = true) →
+      ∀ outcome ∈ (runWith program profile state registry revelations history).support,
+        ∀ obligation ∈ finalRegistry program registry,
+          obligation.revealed (finalRevelations program revelations) = true →
+            obligation.accepts (finalRevelations program revelations) outcome = true := by
   induction program with
   | ret payoffs =>
-      intro profile state registry history unique consistent outcome supported
+      intro profile state registry revelations history _ _ consistent outcome supported
       have same := FinDist.mem_support_pure.mp supported
-      simpa [same, finalRegistry] using consistent
+      subst outcome
+      exact consistent
   | sample name fresh law next ih =>
-      intro profile state registry history unique consistent outcome supported
+      intro profile state registry revelations history unique accounted consistent
+        outcome supported
       simp only [runWith, FinDist.support_bind, Set.mem_iUnion] at supported
       obtain ⟨value, _, supported⟩ := supported
-      exact ih (afterSample profile) (Env.cons value state) registry.weaken history
-        (by simp [fresh, unique]) (by simpa using consistent) outcome supported
+      exact ih (afterSample profile) (Env.cons value state) registry.weaken revelations.weaken
+        history (by simp [fresh, unique])
+        (Accounted.weaken_public (by intro _ _ equal; cases equal) accounted)
+        (consistent_weaken (cell := .publicData _) registry revelations value state consistent)
+        outcome supported
   | commit name owner fresh guard next ih =>
-      intro profile state registry history unique consistent outcome supported
+      intro profile state registry revelations history unique accounted consistent
+        outcome supported
       simp only [runWith, FinDist.support_bind, Set.mem_iUnion] at supported
-      obtain ⟨value, _, supported⟩ := supported
-      let nextState := Env.cons (x := name) (τ := CellTy.privateData owner _)
-        (value, Publication.pending) state
-      let obligation : Obligation _ :=
-        { owner := owner, subject := name, payload := _, source := .here,
-          guard := guard.weaken }
-      apply ih (afterCommit profile) nextState (obligation :: registry.weaken) _
-        (by simp [fresh, unique]) _ outcome supported
-      have newOk : (obligation.check nextState != .rejected) = true := by
-        apply bne_iff_ne.mpr
-        simpa [obligation, nextState, Obligation.check] using
-          guard.check_subject_pending_ne_rejected state
-      have oldOk : (registry.weaken).ok nextState = true := by
-        simpa [nextState] using consistent
-      rw [show Registry.ok (obligation :: registry.weaken) nextState =
-          ((obligation.check nextState != .rejected) &&
-            (registry.weaken).ok nextState) from rfl,
-        newOk, oldOk]
-      rfl
+      obtain ⟨binding, _, supported⟩ := supported
+      apply ih (afterCommit profile) (Env.cons binding state) _ revelations.weaken _
+        (by simp [fresh, unique]) (Accounted.commit fresh accounted) _ outcome supported
+      intro obligation member revealed
+      rcases List.mem_cons.mp member with rfl | member
+      · simp [Obligation.revealed, Revelations.weaken, HasVar.tail?,
+          Revelation.isRevealed] at revealed
+      · exact consistent_weaken (cell := .privateData owner _) registry revelations binding
+          state consistent obligation member revealed
   | reveal published owner name fresh source unresolved next ih =>
-      intro profile state registry history unique consistent outcome supported
+      intro profile state registry revelations history unique accounted consistent
+        outcome supported
       simp only [runWith, FinDist.support_bind, Set.mem_iUnion] at supported
       obtain ⟨disclose, _, supported⟩ := supported
-      let proposedResult := boundResult state source disclose
-      let proposed := resultPublication proposedResult
-      let tentative := updatePrivate state source proposed
-      let acceptedResult :=
-        if registry.ok tentative then proposedResult else PublicationResult.failure
-      let accepted := resultPublication acceptedResult
-      let resolved := updatePrivate state source accepted
-      apply ih (afterReveal profile) (Env.cons acceptedResult resolved) registry.weaken _
-        (by simp [fresh, unique]) _ outcome supported
-      rw [Registry.ok_weaken]
-      by_cases acceptedTentative : registry.ok tentative = true
-      · have resultEq : acceptedResult = proposedResult := by
-          simp [acceptedResult, acceptedTentative]
-        simpa [resolved, accepted, tentative, resultEq] using acceptedTentative
-      · have resultEq : acceptedResult = .failure := by
-          simp [acceptedResult, acceptedTentative]
-        simpa [resolved, accepted, resultEq, resultPublication] using
-          registry.ok_updatePrivate_failed state source unique consistent
+      apply ih (afterReveal profile) _ registry.weaken
+        (revelations.reveal (published := published) source) _ (by simp [fresh, unique])
+        (Accounted.reveal source unique accounted) _ outcome supported
+      intro weakened member revealedAfter
+      obtain ⟨obligation, original, rfl⟩ := List.mem_map.mp member
+      by_cases revealedBefore : obligation.revealed revelations = true
+      · rw [obligation.accepts_reveal_of_revealed revelations source accounted unresolved
+          revealedBefore]
+        exact consistent obligation original revealedBefore
+      · have completed : obligation.weaken ∈ registry.completedBy (published := published)
+            revelations source :=
+          List.mem_map.mpr ⟨obligation, List.mem_filter.mpr ⟨original, by
+            simpa [Obligation.completedBy, revealedBefore] using revealedAfter⟩, rfl⟩
+        have failureAccepts := obligation.accepts_reveal_failure revelations source unique
+          (by simpa using revealedBefore) revealedAfter state
+        cases disclose with
+        | false =>
+            simp only [Bool.false_eq_true, ↓reduceIte, ite_self]
+            exact failureAccepts
+        | true =>
+            simp only [↓reduceIte]
+            split
+            · next allAccept => exact (List.all_eq_true.mp allAccept) _ completed
+            · exact failureAccepts
 
-/-- At a terminal state no retained guard is rejected. Resolution accounting
-strengthens this in `Initial.terminal_guards_hold`. -/
-theorem Initial.terminal_registry_consistent
-    (initial : Initial (Player := Player) (L := L))
-    (profile : BehavioralProfile initial.program)
-    (outcome : State L initial.program.terminalCtx)
-    (supported : outcome ∈ (initial.run profile).support) :
-    (finalRegistry initial.program []).ok outcome = true := by
-  exact runWith_registry_ok initial.program profile initial.state [] (fun _ => [])
-    initial.namesNodup rfl outcome supported
-
-/-- Complete execution decides every retained guard by its code: either the
-subject or an input read by the code failed to publish, or all of them were
+/-- Complete execution decides every retained guard by its code: either its
+subject or an input its code reads failed to publish, or all of them were
 published and the code holds on the published values. -/
 theorem Initial.terminal_guards_hold
     (initial : Initial (Player := Player) (L := L))
@@ -245,54 +229,54 @@ theorem Initial.terminal_guards_hold
     (supported : outcome ∈ (initial.run profile).support)
     (obligation : Obligation initial.program.terminalCtx)
     (member : obligation ∈ finalRegistry initial.program []) :
-    ((outcome.get obligation.source).2 = .failed ∨
+    (((finalRevelations initial.program (Revelations.initial initial.context))
+        obligation.source).result outcome = .failure ∨
       ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
         x ∈ L.exprDeps obligation.guard.code ∧
-          (obligation.guard.reads h).get outcome = .failed) ∨
+          (obligation.guard.reads h).result
+            (finalRevelations initial.program (Revelations.initial initial.context))
+            outcome = .failure) ∨
     ∃ (subjectValue : L.Val obligation.payload)
       (get : (x : VarId) → (σ : L.Ty) →
         HasVar ((obligation.subject, obligation.payload) :: obligation.guard.schema) x σ →
           x ∈ L.exprDeps obligation.guard.code → L.Val σ),
-      (outcome.get obligation.source).2 = .value subjectValue ∧
+      ((finalRevelations initial.program (Revelations.initial initial.context))
+        obligation.source).result outcome = .success subjectValue ∧
       (∀ hx, get obligation.subject obligation.payload .here hx = subjectValue) ∧
       (∀ {x τ} (h : HasVar obligation.guard.schema x τ)
         (hx : x ∈ L.exprDeps obligation.guard.code),
-          (obligation.guard.reads h).get outcome = .value (get x τ (.there h) hx)) ∧
+          (obligation.guard.reads h).result
+            (finalRevelations initial.program (Revelations.initial initial.context))
+            outcome = .success (get x τ (.there h) hx)) ∧
       L.toBool (L.evalDeps obligation.guard.code get) = true := by
-  have consistent := initial.terminal_registry_consistent profile outcome supported
-  have notRejected : obligation.check outcome ≠ .rejected := by
-    have checked := (List.all_eq_true.mp consistent) obligation member
-    simpa [bne_iff_ne] using checked
-  have subjectResolved : (outcome.get obligation.source).2 ≠ .pending :=
-    initial.terminal_resolved profile outcome supported obligation.source
-  have supportResolved : ∀ {x τ} (h : HasVar obligation.guard.schema x τ),
-      x ∈ L.exprDeps obligation.guard.code →
-        (obligation.guard.reads h).get outcome ≠ .pending := by
-    intro x τ h reads
-    cases readEq : obligation.guard.reads h with
-    | publicData source => simp [SourceGuardRead.get]
-    | privateData source =>
-        simpa [SourceGuardRead.get] using
-          initial.terminal_resolved profile outcome supported source
-    | publication source =>
-        cases valueEq : outcome.get source <;>
-          simp [SourceGuardRead.get, valueEq]
-  by_cases supportFailure : ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
-      x ∈ L.exprDeps obligation.guard.code ∧ (obligation.guard.reads h).get outcome = .failed
-  · exact Or.inl (Or.inr supportFailure)
-  cases subjectEq : (outcome.get obligation.source).2 with
-  | failed => exact Or.inl (Or.inl rfl)
-  | pending => exact absurd subjectEq subjectResolved
-  | value subjectValue =>
-      obtain ⟨get, getSubject, readsEq⟩ :=
-        obligation.guard.toDeferredGuardCode.exists_get subjectValue
-          (fun h => (obligation.guard.reads h).get outcome) supportResolved
-          (fun h flagged failed => supportFailure ⟨_, _, h, flagged, failed⟩)
-      refine Or.inr ⟨subjectValue, get, rfl, getSubject, readsEq, ?_⟩
-      have verdict := obligation.guard.check_values subjectValue outcome get getSubject readsEq
-      simp only [Obligation.check, subjectEq] at notRejected
-      rw [verdict] at notRejected
-      by_contra invalid
-      exact notRejected (if_neg invalid)
+  have revealed : obligation.revealed
+      (finalRevelations initial.program (Revelations.initial initial.context)) = true := by
+    simp only [Obligation.revealed, Bool.and_eq_true, SourceGuard.readsRevealed]
+    refine ⟨initial.revealed obligation.source, (GuardCode.allReads_iff _ _).mpr ?_⟩
+    intro x τ h _
+    cases obligation.guard.reads h with
+    | publicData cell | publication cell => rfl
+    | privateData cell => exact initial.revealed cell
+  have accepts := runWith_consistent initial.program profile initial.state []
+    (Revelations.initial initial.context) (fun _ => []) initial.namesNodup
+    (initial.accounts ▸ Accounted.initial initial.context) (by simp) outcome supported
+    obligation member revealed
+  simp only [Obligation.accepts, SourceGuard.accepts] at accepts
+  by_cases failedInput : ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
+      x ∈ L.exprDeps obligation.guard.code ∧
+        (obligation.guard.reads h).result
+          (finalRevelations initial.program (Revelations.initial initial.context))
+          outcome = .failure
+  · exact Or.inl (Or.inr failedInput)
+  cases subjectEq : ((finalRevelations initial.program (Revelations.initial initial.context))
+      obligation.source).result outcome with
+  | failure => exact Or.inl (Or.inl rfl)
+  | success subjectValue =>
+      obtain ⟨get, getSubject, resultsEq⟩ := obligation.guard.exists_get subjectValue _
+        (fun h read failed => failedInput ⟨_, _, h, read, failed⟩)
+      refine Or.inr ⟨subjectValue, get, rfl, getSubject, resultsEq, ?_⟩
+      rw [subjectEq, obligation.guard.accepts_success subjectValue _ get getSubject
+        resultsEq] at accepts
+      exact accepts
 
 end Vegas.SourceProgram

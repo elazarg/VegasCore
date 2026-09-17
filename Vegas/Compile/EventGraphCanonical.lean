@@ -26,7 +26,7 @@ theorem canonical_terminalState_law
     (program : SourceProgram Player L Γ openNames)
     (unique : (Γ.map Prod.fst).Nodup)
     (profile : BehavioralProfile program)
-    (state : State L Γ) (pending : PrivatePending state) :
+    (state : State L Γ) :
     ((toEventGraph program unique).terminalOutcomes
         (toEventGraph program unique).canonicalScheduler
         (compileEventProfile program unique profile) (encodeInputs state)).map
@@ -34,17 +34,15 @@ theorem canonical_terminalState_law
     SourceProgram.run program profile state := by
   apply FinDist.map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode]
-  have agreements := initialConfig_agrees program unique state pending
   have law := runWith_option_law program unique profile program unique profile
-    (ContextRefs.initial Γ (outputLayout program)) initialPublications []
-    (outputEmbedding program) (initialRefsBefore program)
-    (initialPublicationsBefore program) 0
+    (ContextRefs.initial Γ (outputLayout program)) (Revelations.initial Γ) []
+    (outputEmbedding program) (initialRefsBefore program) 0
     (CompiledPolicySuffix.whole program unique profile)
     (Vegas.EventGraph.Config.initial
       (graph := toEventGraph program unique) (encodeInputs state))
     (Vegas.EventOrder.Cut.empty_isPrefix (toEventGraph program unique).order)
-    state agreements.1 agreements.2 (fun _ => []) rfl
-  change _ = (runWith program profile state [] (fun _ => [])).map some
+    state (initialConfig_agrees program unique state) (fun _ => []) rfl
+  change _ = (runWith program profile state [] (Revelations.initial Γ) (fun _ => [])).map some
   rw [← law]
   rw [FinDist.map_comp]
   rfl
@@ -56,7 +54,7 @@ theorem canonical_payout_law
     (program : SourceProgram Player L Γ openNames)
     (unique : (Γ.map Prod.fst).Nodup)
     (profile : BehavioralProfile program)
-    (state : State L Γ) (pending : PrivatePending state) :
+    (state : State L Γ) :
     ((toEventGraph program unique).terminalOutcomes
         (toEventGraph program unique).canonicalScheduler
         (compileEventProfile program unique profile) (encodeInputs state)).map
@@ -75,7 +73,7 @@ theorem canonical_payout_law
       exact terminalPayouts_eq_source program unique result
     _ = _ := by
       rw [← FinDist.map_comp,
-        canonical_terminalState_law program unique profile state pending]
+        canonical_terminalState_law program unique profile state]
 
 /-- A single compiled graph and behavioral profile serve an entire finite law
 of private/public initial source states. -/
@@ -83,7 +81,7 @@ theorem canonical_setup_law
     (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
     ((setup.eventGraph.canonicalGame
-        (setup.initialLaw.map fun initial => setup.eventInputs initial.1)).play
+        (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
       (compileEventProfile setup.program setup.namesNodup profile)).map
         (terminalState setup.program setup.namesNodup) =
       setup.run profile := by
@@ -91,8 +89,7 @@ theorem canonical_setup_law
   simp only [FinDist.map_bind, FinDist.bind_map]
   apply FinDist.bind_congr
   intro initial member
-  exact canonical_terminalState_law setup.program setup.namesNodup profile
-    initial.1 initial.2
+  exact canonical_terminalState_law setup.program setup.namesNodup profile initial
 
 /-- One canonical compiled graph also preserves executable payout laws across
 a distributed private initial-state law. -/
@@ -100,19 +97,19 @@ theorem canonical_setup_payout_law
     (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
     ((setup.eventGraph.canonicalGame
-        (setup.initialLaw.map fun initial => setup.eventInputs initial.1)).play
+        (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
       (compileEventProfile setup.program setup.namesNodup profile)).map
         (terminalPayouts setup.program setup.namesNodup) =
       (setup.run profile).map setup.program.evaluatePayoffs := by
   calc
     _ = ((setup.eventGraph.canonicalGame
-          (setup.initialLaw.map fun initial => setup.eventInputs initial.1)).play
+          (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
         (compileEventProfile setup.program setup.namesNodup profile)).map
           (setup.program.evaluatePayoffs ∘
             terminalState setup.program setup.namesNodup) := by
       apply congrArg (fun readout =>
         ((setup.eventGraph.canonicalGame
-          (setup.initialLaw.map fun initial => setup.eventInputs initial.1)).play
+          (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
           (compileEventProfile setup.program setup.namesNodup profile)).map readout)
       funext result
       exact terminalPayouts_eq_source setup.program setup.namesNodup result

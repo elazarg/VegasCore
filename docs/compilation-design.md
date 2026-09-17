@@ -18,8 +18,9 @@ The dependency-driven compiler produces a typed immutable `Vegas.EventGraph`.
 Its nodes retain
 the source expression code and observation boundary. Bind and resolve are
 distinct graph actions: binding fixes a private value or failure without
-evaluating a deferred guard; resolution chooses disclosure or failure,
-evaluates the deferred checks, and records its publication result. Chance
+evaluating its declared guard; resolution chooses disclosure or failure,
+evaluates the checks that this reveal completes, and records its publication
+result. Chance
 nodes retain their conditional public kernels.
 
 Sequential compilation adds predecessor barriers to the same event graph.

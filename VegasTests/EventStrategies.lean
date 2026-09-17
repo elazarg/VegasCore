@@ -41,8 +41,7 @@ private def mixedSetup : SourceProgram.Setup
     (Player := SourceSemantics.Player) (L := simpleExpr) where
   context := SourceSemantics.mixedInitial.context
   namesNodup := SourceSemantics.mixedInitial.namesNodup
-  initialLaw := FinDist.pure
-    ⟨SourceSemantics.mixedInitial.state, SourceSemantics.mixedInitial.privatePending⟩
+  initialLaw := FinDist.pure SourceSemantics.mixedInitial.state
   obligations := SourceSemantics.mixedInitial.obligations
   program := SourceSemantics.mixedInitial.program
   accounts := SourceSemantics.mixedInitial.accounts

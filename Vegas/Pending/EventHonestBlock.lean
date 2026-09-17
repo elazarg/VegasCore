@@ -602,7 +602,7 @@ theorem HonestBoundary.resolve_ownerBlock_law
     (boundary : HonestBoundary runtime inputs execution)
     (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)

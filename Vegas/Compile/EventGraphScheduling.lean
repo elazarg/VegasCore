@@ -29,12 +29,12 @@ theorem scheduled_terminalState_law
     (unique : (Γ.map Prod.fst).Nodup)
     (scheduler : (toEventGraph program unique).PublicScheduler)
     (profile : BehavioralProfile program)
-    (state : State L Γ) (pending : PrivatePending state) :
+    (state : State L Γ) :
     ((toEventGraph program unique).terminalOutcomes scheduler
         (compileEventProfile program unique profile) (encodeInputs state)).map
       (terminalState program unique) =
     SourceProgram.run program profile state := by
-  rw [← canonical_terminalState_law program unique profile state pending]
+  rw [← canonical_terminalState_law program unique profile state]
   apply FinDist.map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode, terminalOutcomes_map_decode]
   have storeLaw := (toEventGraph_barrierOrdered program unique).runPolicies_store_eq_canonical
@@ -51,13 +51,12 @@ theorem scheduled_setup_law
     (setup.initialLaw.bind fun initial =>
       (setup.eventGraph.terminalOutcomes scheduler
         (compileEventProfile setup.program setup.namesNodup profile)
-        (setup.eventInputs initial.1)).map
+        (setup.eventInputs initial)).map
           (terminalState setup.program setup.namesNodup)) =
       setup.run profile := by
   unfold Setup.run
   apply FinDist.bind_congr
   intro initial _
-  exact scheduled_terminalState_law setup.program setup.namesNodup scheduler profile
-    initial.1 initial.2
+  exact scheduled_terminalState_law setup.program setup.namesNodup scheduler profile initial
 
 end Vegas.SourceProgram.EventLowering

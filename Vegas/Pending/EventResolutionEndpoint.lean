@@ -37,7 +37,7 @@ the evaluator's dependent casts. -/
 private theorem resolution_step_output
     (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
@@ -50,7 +50,7 @@ private theorem resolution_step_output
         (next.outputs event) := by
   let disclose := cast (congrArg EventField.Action outputEq) action
   have readsEq : (graph.nodes event).readFields =
-      insert binding.field (DeferredCheck.listReadFields checks) := by
+      insert binding.field (GuardCheck.listReadFields checks) := by
     calc
       (graph.nodes event).readFields =
           (cast (congrArg (EventCode graph.layout) outputEq)
@@ -58,9 +58,9 @@ private theorem resolution_step_output
         exact (EventCode.readFields_cast outputEq (graph.nodes event)).symm
       _ = (EventCode.resolve owner payload binding checks).readFields :=
         congrArg EventCode.readFields codeEq
-      _ = insert binding.field (DeferredCheck.listReadFields checks) := rfl
+      _ = insert binding.field (GuardCheck.listReadFields checks) := rfl
   have available : ∀ field ∈ insert binding.field
-      (DeferredCheck.listReadFields checks),
+      (GuardCheck.listReadFields checks),
       (config.store field).isSome = true := by
     intro field fieldMem
     apply config.read_available ready
@@ -94,7 +94,7 @@ theorem environmentPolicyStep_prescribed_resolution_completion
     (assumptions : DeviationEnvironmentState runtime execution focal)
     (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
@@ -237,7 +237,7 @@ theorem serviceControlStep_prescribed_resolution_completion
     (assumptions : DeviationEnvironmentState runtime before.execution focal)
     (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
@@ -345,7 +345,7 @@ theorem ServiceControlPath.prescribed_resolution_output
     (path : ServiceControlPath runtime roster reactionRounds players wire order before endpoint)
     (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
@@ -445,7 +445,7 @@ theorem ServiceControlPath.prescribed_resolutionPayload_eq_of_endpoint
       ServiceControlPath runtime roster reactionRounds players wire order right rightEnd)
     (target event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)

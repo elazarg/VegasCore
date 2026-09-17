@@ -14,8 +14,6 @@ noncomputable section
 
 namespace Vegas.SourceProgram.EventLowering
 
-open Interaction
-
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 
@@ -98,54 +96,8 @@ def initial (Γ : SourceCtx Player L) {eventCount : Nat}
 
 end ContextRefs
 
-/-- Public status retained for one private source cell.  An unresolved cell is
-literal pending; a resolved one names its public result field. -/
-inductive PublicationRef {Field : Type}
-    (layout : Field → Vegas.EventGraph.EventField Player L) (payload : L.Ty) where
-  | pending
-  | publication (ref : Vegas.EventGraph.FieldRef layout (.publication payload))
-
-/-- Public-status references for all retained private cells in a source
-prefix. -/
-abbrev PublicationRefs {Field : Type}
-    (layout : Field → Vegas.EventGraph.EventField Player L)
-    (Γ : SourceCtx Player L) :=
-  ∀ {owner payload name}, HasVar Γ name (.privateData owner payload) →
-    PublicationRef layout payload
-
-/-- Every initial private input starts unresolved. -/
-def initialPublications {Field : Type}
-    {layout : Field → Vegas.EventGraph.EventField Player L} :
-    {Γ : SourceCtx Player L} → PublicationRefs layout Γ
-  | [] => fun source => nomatch source
-  | (_, cell) :: _Γ => match cell with
-    | .publicData _ => fun
-        | .there source => initialPublications source
-    | .publication _ => fun
-        | .there source => initialPublications source
-    | .privateData _ _ => fun
-        | .here => .pending
-        | .there source => initialPublications source
-
-/-- Transport private publication references across a new source cell.  A new
-commitment contributes one literal-pending status. -/
-def weakenPublications {Field : Type}
-    {layout : Field → Vegas.EventGraph.EventField Player L} {Γ : SourceCtx Player L}
-    (publications : PublicationRefs layout Γ) :
-    ∀ {name : VarId} {cell : CellTy Player L},
-      PublicationRefs layout ((name, cell) :: Γ) :=
-  fun {_ cell} => match cell with
-    | .publicData _ => fun
-        | .there source => publications source
-    | .publication _ => fun
-        | .there source => publications source
-    | .privateData _ _ => fun
-        | .here => .pending
-        | .there source => publications source
-
-/-- Encode a concrete initial source state as graph inputs.  A private input's
-pending publication status is structural source accounting and is therefore
-not duplicated in its immutable binding field. -/
+/-- Encode a concrete initial source state as graph inputs. A private input is
+encoded by its immutable binding. -/
 def encodeInputs : {Γ : SourceCtx Player L} → State L Γ →
     (input : Fin Γ.length) → (inputLayout Γ input).Value
   | [], _, input => nomatch input
@@ -153,7 +105,7 @@ def encodeInputs : {Γ : SourceCtx Player L} → State L Γ →
       (state.get .here)
       (encodeInputs (fun _ _ source => state.get (.there source))) input
   | (_, .privateData _ _payload) :: _, state, input => Fin.cases
-      (BoundValue.resultEquiv _ (state.get .here).1)
+      (state.get .here)
       (encodeInputs (fun _ _ source => state.get (.there source))) input
   | (_, .publication _) :: _, state, input => Fin.cases
       (state.get .here)

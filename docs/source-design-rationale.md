@@ -30,20 +30,20 @@ branch receives. Expression evaluation stays total without inventing zero,
 ## Static guard support
 
 A guard is written over ordinary values, with a statically declared set of
-required components. Its lifted publication check has three cases:
+required components. It is declared at the commitment and checked once, at the
+reveal that publishes the last of its required components: which reveal that is
+follows from the syntax, not from the run. Its check is binary:
 
-1. if any statically required component has failed, the guard is satisfied
-   vacuously;
-2. otherwise, if any required component is pending, the guard waits; and
-3. otherwise, it evaluates the ordinary relation on the published values.
+1. if the subject's publication or any publication its code reads failed, the
+   guard is discharged; otherwise
+2. it evaluates the ordinary relation on the published values.
 
-Pending is not failure. While a component is pending, no ordinary value is
-extracted from its private binding to run public guard code.
+No ordinary value is extracted from a private binding to run public guard code:
+by the time the check runs, every component its code reads is already public.
 
-For example, for a guard `x = y`, public `x = true` and pending `y` produces
-`wait`. It does not read the sealed candidate for `y`. If `y` later fails, the
-guard becomes vacuously satisfied. If `y` publishes an ordinary value, the
-equality is evaluated.
+For example, for a guard `x = y`, the check runs at whichever of `x`, `y` is
+revealed second, with the other's published result already available. If either
+publication fails, the guard is discharged; otherwise the equality is evaluated.
 
 Static support is semantic, including support in a branch that is not selected
 at runtime. Consider:
@@ -54,17 +54,18 @@ guard 2: if true then y = true else y = x
 ```
 
 Both ordinary tests require `y = true`. The second guard also has static
-dependency `x`. If `x` has failed, that guard is waived and permits `y = false`;
-the first guard still rejects it. Removing the dead branch therefore changes
-failure behavior. A support-changing optimization needs a theorem for the
+dependency `x`, so it is checked only once `x` is public, and a failed `x`
+waives it and permits `y = false`; the first guard still rejects it. Removing
+the dead branch therefore changes both failure behavior and the reveal at which
+the guard is checked. A support-changing optimization needs a theorem for the
 lifted semantics, not only Boolean equivalence. This choice makes the required
 publication obligations explicit in the expression's static support.
 
-A unary constant-false guard illustrates the boundary. If its subject remains
-pending, the guard waits. Publishing any ordinary subject makes the relation
-false, so that publication fails. The resulting failed subject then discharges
-the guard vacuously. Such a program is executable even though it has no
-all-ordinary successful execution.
+A unary constant-false guard illustrates the boundary. Its only required
+component is its subject, so it is checked at the subject's own reveal.
+Publishing any ordinary subject makes the relation false, so that publication
+fails; withholding it discharges the guard instead. Such a program is executable
+even though it has no all-ordinary successful execution.
 
 ## Failure is part of the source game
 
@@ -224,13 +225,12 @@ fixes the observer's payoff before any guess about `z` can matter.
 
 ## Scope of current checked results
 
-`Interaction.GuardedPublication` currently checks a smaller deferred
-publication component: heterogeneous pending/value/failure states,
-null-vacuous guard checking, write-once resolution, consistency preservation,
-and successful publication from a satisfying ordinary assignment. Its examples
-include reverse disclosure and parity. `InteractionTests.GuardFailure` checks
-ordinary agreement, support-sensitive resolution, a unary false guard, an
-unopenable dependency, and that failure is not a winning comparison.
+`Interaction.GuardedPublication` checks a separate runtime publication
+component with heterogeneous pending/value/failure states, null-vacuous guard
+checking, write-once resolution, consistency preservation, and successful
+publication from a satisfying ordinary assignment. `Vegas` no longer uses it:
+the source language resolves guards statically, so it has no runtime
+publication status of its own.
 
 `Vegas.Source` defines all four source constructors, typed `Result` expressions,
 observation-local binding and disclosure policies with own-action recall,
@@ -239,12 +239,13 @@ space is inhabited even for empty ordinary payload types or unsatisfiable guards
 The detailed terminal outcome, payout projection, and externally chosen utility
 are separate interfaces.
 
-For every supported complete execution, `Initial.terminal_resolved` proves that
-all private publication obligations have resolved, and
-`Initial.terminal_guards_hold` proves that every retained guard is decided by
-its code: either its subject or an input its code reads failed to publish, or
-all of them were published and the code holds on the published values. Both
-quantify over arbitrary source policies, including failure choices. They are safety results, not failure-free feasibility or equilibrium
+`Initial.revealed` proves, from the syntax alone, that every private cell is
+revealed before `ret`; no execution is involved. For every supported complete
+execution, `Initial.terminal_guards_hold` proves that every retained guard is
+decided by its code: either the publication of its subject or of an input its
+code reads failed, or all of them succeeded and the code holds on the published
+values. The latter quantifies over arbitrary source policies, including failure
+choices. They are safety results, not failure-free feasibility or equilibrium
 claims. `Paper.lean` delegates directly to these two capstones.
 
 `VegasTests.SourceSemantics` exercises every source constructor in one program:

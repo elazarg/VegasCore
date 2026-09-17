@@ -7,7 +7,7 @@ An ideal EventGraph resolution retains two different facts:
 - the owner's original action is a private `Bool`, preserved in its own action
   history; and
 - the public output is the accepted `PublicationResult`, which is `failure`
-  when deferred guards reject the proposed opening.
+  when guards reject the proposed opening.
 
 If a public pending protocol broadcasts the raw proposed value before applying
 those guards, its transcript contains strictly more semantic information than

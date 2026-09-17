@@ -1,19 +1,21 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Interaction.BoundPublication
-import Vegas.Foundation.DeferredGuard
+import Vegas.Foundation.Guard
 
 /-! # Failure-aware source language
 
 The source context distinguishes ordinary public data, retained private bindings,
-and public publication results.  The `Open` index is linear accounting: every
-commitment (including an initial private input) has one publication obligation,
-and `ret` is available only after all obligations have been discharged.
+and public publication results. The `Open` index is linear accounting: every
+commitment, including an initial private input, is revealed exactly once, and
+`ret` is available only after all of them are revealed.
+
+A guard is declared at its subject's commitment, where it constrains the
+committing player: it reads public cells and that player's own private cells.
+It is checked once, at the reveal that publishes the last of its inputs.
+`Revelations` records statically where each private cell has been published.
 -/
 
 namespace Vegas
-
-open Interaction
 
 inductive CellTy (Player : Type) (L : IExpr) where
   | publicData (payload : L.Ty)
@@ -22,47 +24,109 @@ inductive CellTy (Player : Type) (L : IExpr) where
 
 abbrev SourceCtx (Player : Type) (L : IExpr) := Ctx (CellTy Player L)
 
-/-- A private input is already bound; `.unbound` is not a source action. -/
-structure BoundValue (A : Type) where
-  binding : Binding A
-  isBound : binding ≠ .unbound
-
-namespace BoundValue
-
-def unopenable (A : Type) : BoundValue A :=
-  ⟨.unopenable, by intro h; cases h⟩
-def value {A : Type} (a : A) : BoundValue A :=
-  ⟨.value a, by intro h; cases h⟩
-
-/-- A retained binding is either unopenable or contains one value. -/
-def resultEquiv (A : Type) : BoundValue A ≃ PublicationResult A where
-  toFun value := match hb : value.binding with
-    | .unbound => False.elim (value.isBound hb)
-    | .unopenable => .failure
-    | .value data => .success data
-  invFun
-    | .failure => .unopenable A
-    | .success data => .value data
-  left_inv value := by
-    rcases value with ⟨binding, bound⟩
-    cases binding with
-    | unbound => exact False.elim (bound rfl)
-    | unopenable => rfl
-    | value data => rfl
-  right_inv result := by cases result <;> rfl
-
-end BoundValue
-
-def CellVal {Player : Type} (L : IExpr) : CellTy Player L → Type
+/-- A private cell holds its binding: the result its owner's disclosure would
+publish. A `.failure` binding is unopenable. -/
+abbrev CellVal {Player : Type} (L : IExpr) : CellTy Player L → Type
   | .publicData τ => L.Val τ
-  | .privateData _ τ => BoundValue (L.Val τ) × Publication (L.Val τ)
+  | .privateData _ τ => PublicationResult (L.Val τ)
   | .publication τ => PublicationResult (L.Val τ)
 
 abbrev State {Player : Type} (L : IExpr) (Γ : SourceCtx Player L) :=
   Env (CellVal (Player := Player) L) Γ
 
-/-- A guard input is either permanently ordinary public data or the eventual
-publication of a private resource.  In particular it is never the raw binding. -/
+/-- Where a private cell's result is public: nowhere yet, or in a publication
+cell of the context. -/
+inductive Revelation {Player : Type} {L : IExpr} (Γ : SourceCtx Player L)
+    (payload : L.Ty) where
+  | unrevealed
+  | revealed {name : VarId} (cell : HasVar Γ name (.publication payload))
+
+namespace Revelation
+
+variable {Player : Type} {L : IExpr} {Γ : SourceCtx Player L} {payload : L.Ty}
+
+def isRevealed : Revelation Γ payload → Bool
+  | .unrevealed => false
+  | .revealed _ => true
+
+/-- The published result. An unrevealed cell reads as failure only to keep this
+function total: a guard is checked only once all of its inputs are revealed. -/
+def result (state : State L Γ) : Revelation Γ payload → PublicationResult (L.Val payload)
+  | .unrevealed => .failure
+  | .revealed cell => state.get cell
+
+def weaken {name : VarId} {cell : CellTy Player L} :
+    Revelation Γ payload → Revelation ((name, cell) :: Γ) payload
+  | .unrevealed => .unrevealed
+  | .revealed published => .revealed (.there published)
+
+@[simp] theorem isRevealed_weaken {name : VarId} {cell : CellTy Player L}
+    (revelation : Revelation Γ payload) :
+    (revelation.weaken (name := name) (cell := cell)).isRevealed = revelation.isRevealed := by
+  cases revelation <;> rfl
+
+@[simp] theorem result_weaken {name : VarId} {cell : CellTy Player L}
+    (revelation : Revelation Γ payload) (head : CellVal L cell) (state : State L Γ) :
+    (revelation.weaken (name := name)).result (Env.cons head state) =
+      revelation.result state := by
+  cases revelation <;> rfl
+
+end Revelation
+
+/-- The static publication status of every private cell in scope. -/
+abbrev Revelations {Player : Type} {L : IExpr} (Γ : SourceCtx Player L) :=
+  ∀ {owner : Player} {payload : L.Ty} {name : VarId},
+    HasVar Γ name (.privateData owner payload) → Revelation Γ payload
+
+namespace Revelations
+
+variable {Player : Type} {L : IExpr} {Γ : SourceCtx Player L}
+
+/-- No private cell is revealed. -/
+def initial (Γ : SourceCtx Player L) : Revelations Γ := fun _ => .unrevealed
+
+/-- Extend across a new cell. A new private cell is unrevealed. -/
+def weaken {name : VarId} {cell : CellTy Player L} (revelations : Revelations Γ) :
+    Revelations ((name, cell) :: Γ) :=
+  fun h =>
+    match h.tail? with
+    | none => .unrevealed
+    | some h => (revelations h).weaken
+
+/-- Reveal `source` into the publication cell at the head of the context. -/
+def reveal {owner : Player} {payload : L.Ty} {name published : VarId}
+    (revelations : Revelations Γ) (source : HasVar Γ name (.privateData owner payload)) :
+    Revelations ((published, .publication payload) :: Γ) :=
+  fun h =>
+    match h.tail? with
+    | none => .unrevealed
+    | some h =>
+        match h.sameCell? source with
+        | some same => (CellTy.privateData.inj same.down.2).2 ▸ .revealed .here
+        | none => (revelations h).weaken
+
+@[simp] theorem weaken_there {name : VarId} {cell : CellTy Player L}
+    (revelations : Revelations Γ) {owner : Player} {payload : L.Ty} {private_ : VarId}
+    (h : HasVar Γ private_ (.privateData owner payload)) :
+    revelations.weaken (name := name) (cell := cell) (.there h) = (revelations h).weaken :=
+  rfl
+
+@[simp] theorem reveal_source {owner : Player} {payload : L.Ty} {name published : VarId}
+    (revelations : Revelations Γ) (source : HasVar Γ name (.privateData owner payload)) :
+    revelations.reveal (published := published) source (.there source) = .revealed .here := by
+  simp only [reveal, HasVar.tail?_there, HasVar.sameCell?_self]
+
+theorem reveal_of_ne {owner : Player} {payload : L.Ty} {name published : VarId}
+    (revelations : Revelations Γ) (source : HasVar Γ name (.privateData owner payload))
+    {readOwner : Player} {readPayload : L.Ty} {readName : VarId}
+    (h : HasVar Γ readName (.privateData readOwner readPayload)) (different : readName ≠ name) :
+    revelations.reveal (published := published) source (.there h) = (revelations h).weaken := by
+  simp only [reveal, HasVar.tail?_there, HasVar.sameCell?_eq_none_of_ne h source different]
+
+end Revelations
+
+/-- A guard input is ordinary public data, a publication result, or the eventual
+publication of the guard author's own private cell. It is never a raw binding. -/
 inductive SourceGuardRead {Player : Type} {L : IExpr} (Γ : SourceCtx Player L)
     (author : Player) :
     L.Ty → Type where
@@ -72,161 +136,84 @@ inductive SourceGuardRead {Player : Type} {L : IExpr} (Γ : SourceCtx Player L)
 
 namespace SourceGuardRead
 
-def get {Player : Type} {L : IExpr}
-    {Γ : SourceCtx Player L} {author : Player} {τ : L.Ty} :
-      SourceGuardRead Γ author τ → State L Γ → Publication (L.Val τ)
-  | .publicData h, state => .value (state.get h)
-  | .privateData h, state => (state.get h).2
-  | .publication h, state =>
-      match state.get h with
-      | .failure => .failed
-      | .success value => .value value
+variable {Player : Type} {L : IExpr} {Γ : SourceCtx Player L} {author : Player} {τ : L.Ty}
 
-def weaken {Player : Type} {L : IExpr} {Γ : SourceCtx Player L} {τ : L.Ty}
-    {author : Player} {x : VarId} {cell : CellTy Player L} :
-      SourceGuardRead Γ author τ → SourceGuardRead ((x, cell) :: Γ) author τ
+def revealed (revelations : Revelations Γ) : SourceGuardRead Γ author τ → Bool
+  | .publicData _ | .publication _ => true
+  | .privateData h => (revelations h).isRevealed
+
+def result (revelations : Revelations Γ) (state : State L Γ) :
+    SourceGuardRead Γ author τ → PublicationResult (L.Val τ)
+  | .publicData h => .success (state.get h)
+  | .privateData h => (revelations h).result state
+  | .publication h => state.get h
+
+def weaken {x : VarId} {cell : CellTy Player L} :
+    SourceGuardRead Γ author τ → SourceGuardRead ((x, cell) :: Γ) author τ
   | .publicData h => .publicData (.there h)
   | .privateData h => .privateData (.there h)
   | .publication h => .publication (.there h)
 
-@[simp] theorem get_weaken {Player : Type} {L : IExpr}
-    {Γ : SourceCtx Player L} {τ : L.Ty} {author : Player}
-    {name : VarId} {cell : CellTy Player L} (read : SourceGuardRead Γ author τ)
+@[simp] theorem revealed_weaken {x : VarId} {cell : CellTy Player L}
+    (read : SourceGuardRead Γ author τ) (revelations : Revelations Γ) :
+    (read.weaken (x := x) (cell := cell)).revealed revelations.weaken =
+      read.revealed revelations := by
+  cases read <;> simp [revealed, weaken]
+
+@[simp] theorem result_weaken {x : VarId} {cell : CellTy Player L}
+    (read : SourceGuardRead Γ author τ) (revelations : Revelations Γ)
     (head : CellVal L cell) (state : State L Γ) :
-    read.weaken.get (Env.cons (x := name) head state) = read.get state := by
-  cases read <;> rfl
+    (read.weaken (x := x)).result revelations.weaken (Env.cons head state) =
+      read.result revelations state := by
+  cases read <;> simp [result, weaken]
 
 end SourceGuardRead
 
-/-- A retained guard whose executable code is independent of source state. -/
+/-- A guard retained at a commitment: its code and where each input is read. -/
 structure SourceGuard {Player : Type} (L : IExpr) (Γ : SourceCtx Player L)
     (author : Player) (subject : VarId) (payload : L.Ty)
-    extends DeferredGuardCode L subject payload where
+    extends GuardCode L subject payload where
   reads : ∀ {x τ}, HasVar schema x τ → SourceGuardRead Γ author τ
 
 namespace SourceGuard
 
-variable {Player : Type} {L : IExpr}
+variable {Player : Type} {L : IExpr} {Γ : SourceCtx Player L}
+variable {author : Player} {subject : VarId} {payload : L.Ty}
 
-/-- Evaluate shared deferred-guard code through a source-state read adapter. -/
-def check {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
-    {author : Player} (guard : SourceGuard L Γ author subject payload)
-    (candidate : Publication (L.Val payload)) (state : State L Γ) :
-    PublicationGuard.Verdict :=
-  guard.toDeferredGuardCode.check candidate fun h => (guard.reads h).get state
+/-- Whether every input read by the code is published. The subject is tracked
+by the obligation that retains the guard. -/
+def readsRevealed (guard : SourceGuard L Γ author subject payload)
+    (revelations : Revelations Γ) : Bool :=
+  guard.allReads fun h => (guard.reads h).revealed revelations
 
-theorem check_congr
-    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
-    {author : Player} (guard : SourceGuard L Γ author subject payload)
-    (leftCandidate rightCandidate : Publication (L.Val payload))
-    (leftState rightState : State L Γ)
-    (candidateEq : leftCandidate = rightCandidate)
-    (supportEq : ∀ {x τ} (h : HasVar guard.schema x τ),
-      x ∈ L.exprDeps guard.code →
-        (guard.reads h).get leftState = (guard.reads h).get rightState) :
-    guard.check leftCandidate leftState = guard.check rightCandidate rightState :=
-  DeferredGuardCode.check_congr guard.toDeferredGuardCode _ _ _ _ candidateEq supportEq
-
-theorem check_subject_pending_ne_rejected
-    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
-    {author : Player} (guard : SourceGuard L Γ author subject payload)
-    (state : State L Γ) : guard.check .pending state ≠ .rejected :=
-  DeferredGuardCode.check_subject_pending_ne_rejected guard.toDeferredGuardCode _
-
-@[simp] theorem check_subject_failed
-    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
-    {author : Player} (guard : SourceGuard L Γ author subject payload)
-    (state : State L Γ) : guard.check .failed state = .satisfied :=
-  DeferredGuardCode.check_subject_failed guard.toDeferredGuardCode _
+/-- Decide the guard on its subject's result and its inputs' published results. -/
+def accepts (guard : SourceGuard L Γ author subject payload)
+    (subjectResult : PublicationResult (L.Val payload)) (revelations : Revelations Γ)
+    (state : State L Γ) : Bool :=
+  guard.toGuardCode.accepts subjectResult fun h _ => (guard.reads h).result revelations state
 
 /-- Extend a guard across a newly introduced source cell. -/
-def weaken {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
-    {author : Player} {name : VarId} {cell : CellTy Player L}
+def weaken {name : VarId} {cell : CellTy Player L}
     (guard : SourceGuard L Γ author subject payload) :
     SourceGuard L ((name, cell) :: Γ) author subject payload where
-  toDeferredGuardCode := guard.toDeferredGuardCode
+  toGuardCode := guard.toGuardCode
   reads := fun h => (guard.reads h).weaken
 
-@[simp] theorem check_weaken
-    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
-    {author : Player} {name : VarId} {cell : CellTy Player L}
+@[simp] theorem readsRevealed_weaken {name : VarId} {cell : CellTy Player L}
+    (guard : SourceGuard L Γ author subject payload) (revelations : Revelations Γ) :
+    (guard.weaken (name := name) (cell := cell)).readsRevealed revelations.weaken =
+      guard.readsRevealed revelations := by
+  simp only [readsRevealed, weaken, SourceGuardRead.revealed_weaken]
+
+@[simp] theorem accepts_weaken {name : VarId} {cell : CellTy Player L}
     (guard : SourceGuard L Γ author subject payload)
-    (candidate : Publication (L.Val payload))
+    (subjectResult : PublicationResult (L.Val payload)) (revelations : Revelations Γ)
     (head : CellVal L cell) (state : State L Γ) :
-    guard.weaken.check candidate (Env.cons (x := name) head state) =
-      guard.check candidate state := by
-  apply DeferredGuardCode.check_congr guard.toDeferredGuardCode <;> try rfl
-  intro x τ h _
-  exact SourceGuardRead.get_weaken (guard.reads h) head state
-
-theorem check_satisfied_of_failed_read
-    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
-    {author : Player} (guard : SourceGuard L Γ author subject payload)
-    (candidate : Publication (L.Val payload)) (state : State L Γ)
-    {x : VarId} {τ : L.Ty} (h : HasVar guard.schema x τ)
-    (supported : x ∈ L.exprDeps guard.code)
-    (failed : (guard.reads h).get state = .failed) :
-    guard.check candidate state = .satisfied :=
-  DeferredGuardCode.check_satisfied_of_failed_read
-    guard.toDeferredGuardCode candidate _ h supported failed
-
-theorem check_ne_pending_of_support_resolved
-    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
-    {author : Player} (guard : SourceGuard L Γ author subject payload)
-    (candidate : Publication (L.Val payload)) (state : State L Γ)
-    (subjectResolved : candidate ≠ .pending)
-    (supportResolved : ∀ {x τ} (h : HasVar guard.schema x τ),
-      x ∈ L.exprDeps guard.code → (guard.reads h).get state ≠ .pending) :
-    guard.check candidate state ≠ .pending :=
-  DeferredGuardCode.check_ne_pending_of_support_resolved
-    guard.toDeferredGuardCode candidate _ subjectResolved supportResolved
-
-theorem check_pending
-    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
-    {author : Player} (guard : SourceGuard L Γ author subject payload)
-    (candidate : Publication (L.Val payload)) (state : State L Γ)
-    (subjectNotFailed : candidate ≠ .failed)
-    (supportNotFailed : ∀ {x τ} (h : HasVar guard.schema x τ),
-      x ∈ L.exprDeps guard.code → (guard.reads h).get state ≠ .failed)
-    (waiting : candidate = .pending ∨
-      ∃ (x : VarId) (τ : L.Ty) (h : HasVar guard.schema x τ),
-        x ∈ L.exprDeps guard.code ∧ (guard.reads h).get state = .pending) :
-    guard.check candidate state = .pending :=
-  DeferredGuardCode.check_pending guard.toDeferredGuardCode candidate _
-    subjectNotFailed supportNotFailed waiting
-
-theorem check_values
-    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
-    {author : Player} (guard : SourceGuard L Γ author subject payload)
-    (subjectValue : L.Val payload) (state : State L Γ)
-    (get : (x : VarId) → (σ : L.Ty) → HasVar ((subject, payload) :: guard.schema) x σ →
-      x ∈ L.exprDeps guard.code → L.Val σ)
-    (subjectEq : ∀ hx, get subject payload .here hx = subjectValue)
-    (readsEq : ∀ {x τ} (h : HasVar guard.schema x τ) (hx : x ∈ L.exprDeps guard.code),
-      (guard.reads h).get state = .value (get x τ (.there h) hx)) :
-    guard.check (.value subjectValue) state =
-      if L.toBool (L.evalDeps guard.code get) then .satisfied else .rejected :=
-  DeferredGuardCode.check_values guard.toDeferredGuardCode subjectValue _ get subjectEq readsEq
-
-theorem check_compatible
-    {Γ : SourceCtx Player L} {subject : VarId} {payload : L.Ty}
-    {author : Player} (guard : SourceGuard L Γ author subject payload)
-    (candidate : Publication (L.Val payload)) (state : State L Γ)
-    (subjectValue : L.Val payload)
-    (get : (x : VarId) → (σ : L.Ty) → HasVar ((subject, payload) :: guard.schema) x σ →
-      x ∈ L.exprDeps guard.code → L.Val σ)
-    (subjectEq : ∀ hx, get subject payload .here hx = subjectValue)
-    (subjectAgrees : ∀ value, candidate = .value value → value = subjectValue)
-    (readsAgree : ∀ {x τ} (h : HasVar guard.schema x τ)
-      (hx : x ∈ L.exprDeps guard.code) (value : L.Val τ),
-        (guard.reads h).get state = .value value → value = get x τ (.there h) hx)
-    (valid : L.toBool (L.evalDeps guard.code get) = true) :
-    guard.check candidate state ≠ .rejected :=
-  DeferredGuardCode.check_compatible guard.toDeferredGuardCode candidate _ subjectValue get
-    subjectEq subjectAgrees readsAgree valid
+    (guard.weaken (name := name)).accepts subjectResult revelations.weaken
+        (Env.cons head state) = guard.accepts subjectResult revelations state := by
+  simp only [accepts, weaken, SourceGuardRead.result_weaken]
 
 end SourceGuard
-
 
 def SourcePublicCtx {Player : Type} (L : IExpr) [R : IExpr.ResultTypes L] :
     SourceCtx Player L → Ctx L.Ty
@@ -265,24 +252,12 @@ def privateNames : SourceCtx Player L → Finset VarId
   | (name, .privateData _ _) :: Γ => insert name (privateNames Γ)
   | (_, .publicData _) :: Γ | (_, .publication _) :: Γ => privateNames Γ
 
-/-- Initially retained private inputs have not yet been published. -/
-def PrivatePending : {Γ : SourceCtx Player L} → State L Γ → Prop
-  | [], _ => True
-  | (_, .publicData _) :: Γ, state =>
-      PrivatePending (Γ := Γ) (fun _ _ h => state.get (.there h))
-  | (_, .publication _) :: Γ, state =>
-      PrivatePending (Γ := Γ) (fun _ _ h => state.get (.there h))
-  | (_, .privateData _ _) :: Γ, state =>
-      (state.get .here).2 = .pending ∧
-        PrivatePending (Γ := Γ) (fun _ _ h => state.get (.there h))
-
 /-- A runnable source program together with its typed initial state and exact
-accounting for the publication obligations contributed by private inputs. -/
+accounting for the reveals owed by initial private inputs. -/
 structure Initial where
   context : SourceCtx Player L
   namesNodup : (context.map Prod.fst).Nodup
   state : State L context
-  privatePending : PrivatePending state
   obligations : Finset VarId
   program : SourceProgram Player L context obligations
   accounts : obligations = privateNames context

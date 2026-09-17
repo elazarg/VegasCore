@@ -84,20 +84,15 @@ private def firstRefs : ContextRefs pairGraph.layout
   ContextRefs.cons (outputRef pairSource first)
     (ContextRefs.initial [] (outputLayout pairSource))
 
-private def firstPublications : PublicationRefs pairGraph.layout
-    [(0, CellTy.privateData false simpleExpr.bool)] := initialPublications
-
 private def firstState (choice : Bool) :
     State simpleExpr [(0, CellTy.privateData false simpleExpr.bool)] :=
-  Env.cons (BoundValue.value choice, Interaction.Publication.pending)
-    (Env.empty (CellVal simpleExpr))
+  Env.cons (PublicationResult.success choice) (Env.empty (CellVal simpleExpr))
 
 /-- The second player can reconstruct its source decision view before the
 foreign commitment has completed. Hidden entries require neither a value nor
 a fabricated in-domain default. -/
 example (choice : Bool) :
-    decodeObservation? true firstRefs firstPublications
-        (pairGraph.playerStore true pairConfig.store) =
+    decodeObservation? true firstRefs (pairGraph.playerStore true pairConfig.store) =
       some (sourceObserve true (firstState choice)) := by
   apply congrArg some
   apply congrArg SourceObservation.mk
@@ -108,13 +103,13 @@ example (choice : Bool) :
 
 /-- An unavailable own binding is genuinely unavailable, rather than silently
 decoded as a payload value. -/
-example : decodeObservation? false firstRefs firstPublications
-    (pairGraph.playerStore false pairConfig.store) = none := rfl
+example : decodeObservation? (Γ := [(0, CellTy.privateData false simpleExpr.bool)])
+    false firstRefs (pairGraph.playerStore false pairConfig.store) = none := rfl
 
 private def pairProfile : SourceProgram.BehavioralProfile pairSource :=
   fun _ =>
-    (fun _ _ => FinDist.pure (BoundValue.value false),
-     (fun _ _ => FinDist.pure (BoundValue.value true),
+    (fun _ _ => FinDist.pure (.success false),
+     (fun _ _ => FinDist.pure (.success true),
       (fun _ _ => FinDist.pure true,
        (fun _ _ => FinDist.pure true, PUnit.unit))))
 
@@ -159,7 +154,7 @@ example (inputs : FinDist pairGraph.Inputs) (scheduler : pairGraph.PublicSchedul
 private def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) where
   context := []
   namesNodup := by decide
-  initialLaw := FinDist.pure ⟨Env.empty (CellVal simpleExpr), trivial⟩
+  initialLaw := FinDist.pure (Env.empty (CellVal simpleExpr))
   obligations := ∅
   program := pairSource
   accounts := rfl
@@ -173,7 +168,7 @@ example (scheduler : pairSetup.eventGraph.PublicScheduler) :
           (GameTheory.Profile.update (sig := pairSetup.eventGraph.gameSignature)
             (compileEventProfile pairSource pairSetup.namesNodup pairProfile)
             false orderSensitiveFirst)
-          (pairSetup.eventInputs initial.1)).map
+          (pairSetup.eventInputs initial)).map
             (terminalState pairSource pairSetup.namesNodup)) =
         mixture.bind fun alternative =>
           pairSetup.run (GameTheory.Profile.update
@@ -185,8 +180,6 @@ for the foreign binding merely to reconstruct its source observation. -/
 example : compileEventProfile pairSource (by decide) pairProfile true second rfl
       (pairGraph.playerObserve true pairConfig) =
     FinDist.pure (PublicationResult.success true) := by
-  change (FinDist.pure (BoundValue.value true)).map (BoundValue.resultEquiv _) = _
-  rw [FinDist.map_pure]
   rfl
 
 /-- Publicly completing the other hidden commitment first does not alter the
@@ -259,7 +252,7 @@ example (scheduler : SourceSemantics.mixedInitial.eventGraph.PublicScheduler)
       SourceSemantics.mixedInitial.run profile :=
   scheduled_terminalState_law SourceSemantics.mixedInitial.program
     SourceSemantics.mixedInitial.namesNodup scheduler profile
-    SourceSemantics.mixedInitial.state SourceSemantics.mixedInitial.privatePending
+    SourceSemantics.mixedInitial.state
 
 private def rejectingGraph := toEventGraph SourceSemantics.falseGuardProgram (by decide)
 
@@ -286,7 +279,7 @@ from its own recall. -/
 example : decodeHistory SourceSemantics.falseGuardProgram (by decide)
       rejected.history SourceSemantics.Player.alice =
     [SourceProgram.OwnAction.commit (L := simpleExpr) SourceSemantics.Player.alice 20 .bool
-      (BoundValue.value true),
+      (PublicationResult.success true),
      SourceProgram.OwnAction.reveal SourceSemantics.Player.alice 20 true] := by
   rfl
 

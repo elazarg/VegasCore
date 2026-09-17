@@ -14,8 +14,6 @@ noncomputable section
 
 namespace Vegas.SourceProgram.EventLowering
 
-open Interaction
-
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 
@@ -91,67 +89,35 @@ def compilePublicDist {Field : Type} [DecidableEq Field]
   readFields := publicReadFields (L.distDeps law) _ (publicRead refs)
   reads_mem source used := publicReadFields_mem _ _ _ source used
 
-namespace PublicationRef
-
-/-- Concrete field named by a retained status, when already published. -/
-def field? {Field : Type}
-    {layout : Field → Vegas.EventGraph.EventField Player L} {payload : L.Ty} :
-    PublicationRef layout payload → Option Field
-  | .pending => none
-  | .publication ref => some ref.field
-
-omit [DecidableEq Player] R in
-@[simp] theorem field?_cast {Field : Type}
-    {layout : Field → Vegas.EventGraph.EventField Player L} {left right : L.Ty}
-    (same : left = right) (publication : PublicationRef layout left) :
-    (cast (congrArg (PublicationRef layout) same) publication).field? =
-      publication.field? := by
-  cases same
-  rfl
-
-/-- Use a retained private publication status as a deferred-check operand. -/
-def operand {Field : Type} [DecidableEq Field]
+/-- Operand for a publication cell at a reveal: the reveal's own publication is
+its proposal, and every earlier publication is its public field. -/
+def revealOperand {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
-    {currentPayload payload : L.Ty} :
-    PublicationRef layout payload →
-      Vegas.EventGraph.GuardOperand layout currentPayload payload
-  | .pending => .pending
-  | .publication ref => .publication ref
+    {Γ : SourceCtx Player L} {published : VarId} {payload : L.Ty}
+    (refs : ContextRefs layout Γ) :
+    {name : VarId} → {τ : L.Ty} →
+      HasVar ((published, .publication payload) :: Γ) name (.publication τ) →
+        Vegas.EventGraph.GuardOperand layout payload τ
+  | _, _, .here => .proposed
+  | _, _, .there cell => .publication (refs.get cell)
 
-end PublicationRef
-
-/-- At a resolution, replace exactly the selected private source by the atomic
-proposal operand. Other unresolved cells remain literal pending and earlier
-resolutions remain typed publication references. -/
-def proposedOperands {Field : Type} [DecidableEq Field]
-    {layout : Field → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} (publications : PublicationRefs layout Γ)
-    (unique : (Γ.map Prod.fst).Nodup)
-    {owner : Player} {payload : L.Ty} {name : VarId}
-    (selected : HasVar Γ name (.privateData owner payload)) :
-    ∀ {readOwner readPayload readName},
-      HasVar Γ readName (.privateData readOwner readPayload) →
-        Vegas.EventGraph.GuardOperand layout payload readPayload :=
-  fun {_readOwner _readPayload readName} source =>
-    if same : readName = name then
-      let cellEq := HasVar.type_unique unique (same ▸ source) selected
-      let payloadEq := (CellTy.privateData.inj cellEq).2
-      payloadEq.symm ▸ Vegas.EventGraph.GuardOperand.proposed
-    else (publications source).operand
-
-/-- Specialize one source guard read for the current atomic resolution. -/
+/-- Lower a published guard input at a reveal. The proof that it is published
+rules out an unrevealed private cell. -/
 def compileGuardRead {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} {author : Player} {currentPayload input : L.Ty}
+    {Γ : SourceCtx Player L} {published : VarId} {payload : L.Ty}
+    {author : Player} {τ : L.Ty}
     (refs : ContextRefs layout Γ)
-    (operands : ∀ {owner payload name},
-      HasVar Γ name (.privateData owner payload) →
-        Vegas.EventGraph.GuardOperand layout currentPayload payload) :
-    SourceGuardRead Γ author input →
-      Vegas.EventGraph.GuardOperand layout currentPayload input
-  | .publicData source => .publicData (refs.get source)
-  | .privateData source => operands source
-  | .publication source => .publication (refs.get source)
+    (revealed : Revelations ((published, .publication payload) :: Γ)) :
+    (read : SourceGuardRead ((published, .publication payload) :: Γ) author τ) →
+      read.revealed revealed = true → Vegas.EventGraph.GuardOperand layout payload τ
+  | .publicData (.there cell), _ => .publicData (refs.get cell)
+  | .publication cell, _ => revealOperand refs cell
+  | .privateData cell, isRevealed =>
+      match revelation : revealed cell with
+      | .revealed publication => revealOperand refs publication
+      | .unrevealed => absurd isRevealed (by
+          simp [SourceGuardRead.revealed, revelation, Revelation.isRevealed])
 
 private def operandField {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
@@ -163,13 +129,14 @@ private def operandField {Field : Type} [DecidableEq Field]
 
 private def guardReadFields {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
-    {currentPayload : L.Ty} :
+    {currentPayload : L.Ty} (deps : Finset VarId) :
     (schema : Ctx L.Ty) →
-      (∀ {name payload}, HasVar schema name payload →
+      (∀ {name payload}, HasVar schema name payload → name ∈ deps →
         Vegas.EventGraph.GuardOperand layout currentPayload payload) → Finset Field
   | [], _ => ∅
-  | (_, _) :: tail, reads => operandField (reads .here) ∪
-      guardReadFields tail (fun source => reads (.there source))
+  | (name, _) :: tail, reads =>
+      (if member : name ∈ deps then operandField (reads .here member) else ∅) ∪
+        guardReadFields deps tail (fun source read => reads (.there source) read)
 
 omit [DecidableEq Player] R in
 private theorem operandField_mem {Field : Type} [DecidableEq Field]
@@ -194,63 +161,79 @@ private theorem mem_operandField_iff {Field : Type} [DecidableEq Field]
 omit [DecidableEq Player] R in
 private theorem guardReadFields_mem {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
-    {currentPayload : L.Ty} (schema : Ctx L.Ty)
-    (reads : ∀ {name payload}, HasVar schema name payload →
+    {currentPayload : L.Ty} (deps : Finset VarId) (schema : Ctx L.Ty)
+    (reads : ∀ {name payload}, HasVar schema name payload → name ∈ deps →
       Vegas.EventGraph.GuardOperand layout currentPayload payload)
-    {name payload} (source : HasVar schema name payload) (field : Field)
-    (found : (reads source).field? = some field) :
-    field ∈ guardReadFields schema reads := by
+    {name payload} (source : HasVar schema name payload) (read : name ∈ deps)
+    (field : Field) (found : (reads source read).field? = some field) :
+    field ∈ guardReadFields deps schema reads := by
   induction source with
-  | here => exact Finset.mem_union_left _ (operandField_mem _ _ found)
+  | @here tail name payload =>
+      apply Finset.mem_union_left
+      simpa [read] using operandField_mem _ _ found
   | there source ih =>
       apply Finset.mem_union_right
-      exact ih (fun source => reads (.there source)) found
+      exact ih (fun source read => reads (.there source) read) read found
 
-/-- Lower one retained source obligation to an executable deferred check. -/
+omit [DecidableEq Player] R in
+private theorem mem_guardReadFields {Field : Type} [DecidableEq Field]
+    {layout : Field → Vegas.EventGraph.EventField Player L}
+    {currentPayload : L.Ty} (deps : Finset VarId) (schema : Ctx L.Ty)
+    (reads : ∀ {name payload}, HasVar schema name payload → name ∈ deps →
+      Vegas.EventGraph.GuardOperand layout currentPayload payload)
+    (field : Field) (member : field ∈ guardReadFields deps schema reads) :
+    ∃ (name : VarId) (payload : L.Ty) (source : HasVar schema name payload)
+      (read : name ∈ deps), (reads source read).field? = some field := by
+  induction schema with
+  | nil => simp [guardReadFields] at member
+  | cons entry tail ih =>
+      obtain ⟨name, payload⟩ := entry
+      rw [guardReadFields, Finset.mem_union] at member
+      rcases member with head | rest
+      · by_cases flagged : name ∈ deps
+        · rw [dif_pos flagged] at head
+          exact ⟨name, payload, .here, flagged, (mem_operandField_iff _ _).mp head⟩
+        · simp [flagged] at head
+      · obtain ⟨readName, readPayload, source, read, found⟩ :=
+          ih (fun source read => reads (.there source) read) rest
+        exact ⟨readName, readPayload, .there source, read, found⟩
+
+/-- Lower one obligation completed by a reveal to an executable guard check. -/
 def compileGuard {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} {currentPayload : L.Ty}
-    (refs : ContextRefs layout Γ)
-    (operands : ∀ {owner payload name},
-      HasVar Γ name (.privateData owner payload) →
-        Vegas.EventGraph.GuardOperand layout currentPayload payload)
-    (obligation : Obligation (Player := Player) (L := L) Γ) :
-    Vegas.EventGraph.DeferredCheck layout currentPayload :=
-  let subjectRead := operands obligation.source
-  let reads : ∀ {name payload}, HasVar obligation.guard.schema name payload →
-      Vegas.EventGraph.GuardOperand layout currentPayload payload :=
-    fun source => compileGuardRead refs operands (obligation.guard.reads source)
+    {Γ : SourceCtx Player L} {published : VarId} {payload : L.Ty}
+    (refs : ContextRefs layout Γ) (revealed : Revelations ((published, .publication payload) :: Γ))
+    (obligation : Obligation (Player := Player) (L := L) ((published, .publication payload) :: Γ))
+    (isRevealed : obligation.revealed revealed = true) :
+    Vegas.EventGraph.GuardCheck layout payload :=
+  let published := (Bool.and_eq_true _ _).mp isRevealed
+  let subjectRead := compileGuardRead refs revealed (.privateData obligation.source) published.1
+  let reads : ∀ {name input}, HasVar obligation.guard.schema name input →
+      name ∈ L.exprDeps obligation.guard.code →
+        Vegas.EventGraph.GuardOperand layout payload input :=
+    fun source read => compileGuardRead refs revealed (obligation.guard.reads source)
+      ((GuardCode.allReads_iff _ _).mp published.2 source read)
   { subject := obligation.subject
     payload := obligation.payload
-    code := obligation.guard.toDeferredGuardCode
+    code := obligation.guard.toGuardCode
     subjectRead := subjectRead
     reads := reads
-    readFields := operandField subjectRead ∪ guardReadFields _ reads
+    readFields := operandField subjectRead ∪ guardReadFields _ _ reads
     subject_mem := fun field found =>
       Finset.mem_union_left _ (operandField_mem subjectRead field found)
-    reads_mem := fun source field found =>
-      Finset.mem_union_right _ (guardReadFields_mem _ reads source field found) }
+    reads_mem := fun source read field found =>
+      Finset.mem_union_right _ (guardReadFields_mem _ _ reads source read field found) }
 
-/-- Install the selected resolution's new public field while retaining every
-other private cell's previous status. -/
-def resolvePublications {Field : Type} [DecidableEq Field]
+/-- The checks a reveal performs: one for each obligation it completes. -/
+def compileChecks {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} (publications : PublicationRefs layout Γ)
-    (unique : (Γ.map Prod.fst).Nodup)
-    {owner : Player} {payload : L.Ty} {name published : VarId}
-    (selected : HasVar Γ name (.privateData owner payload))
-    (result : Vegas.EventGraph.FieldRef layout (.publication payload)) :
-    PublicationRefs layout ((published, .publication payload) :: Γ) :=
-  fun {_readOwner _readPayload readName} source => match source with
-    | .there source =>
-      if same : readName = name then
-        let cellEq := HasVar.type_unique unique (same ▸ source) selected
-        let payloadEq := (CellTy.privateData.inj cellEq).2
-        cast (congrArg (PublicationRef layout) payloadEq.symm)
-          (PublicationRef.publication result)
-      else publications source
-
-/-! ## Structural read-rank certificate -/
+    {Γ : SourceCtx Player L} {published name : VarId} {owner : Player} {payload : L.Ty}
+    (refs : ContextRefs layout Γ) (registry : Registry (Player := Player) (L := L) Γ)
+    (revelations : Revelations Γ) (selected : HasVar Γ name (.privateData owner payload)) :
+    List (Vegas.EventGraph.GuardCheck layout payload) :=
+  (registry.completedBy (published := published) revelations selected).attach.map
+    fun obligation => compileGuard refs (revelations.reveal selected) obligation.1
+      (registry.revealed_of_mem_completedBy revelations selected obligation.2)
 
 /-- A combined-layout field is available before `event` when it is an input,
 or when its producing event has smaller source rank. -/
@@ -334,157 +317,105 @@ def OperandBefore {inputCount eventCount : Nat}
       (Vegas.EventGraph.fieldLayout inputs outputs) currentPayload payload) : Prop :=
   ∀ field, operand.field? = some field → FieldBefore target field
 
-/-- Every retained publication reference precedes the target event. -/
-def PublicationsBefore {inputCount eventCount : Nat}
-    {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
-    {outputs : Fin eventCount → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L}
-    (publications : PublicationRefs (Vegas.EventGraph.fieldLayout inputs outputs) Γ)
-    (target : Fin eventCount) : Prop :=
-  ∀ {owner payload name} (source : HasVar Γ name (.privateData owner payload)),
-    ∀ field, (publications source).field? = some field → FieldBefore target field
-
 omit [DecidableEq Player] R in
-private theorem PublicationRef.operand_before {inputCount eventCount : Nat}
+private theorem revealOperand_before {inputCount eventCount : Nat}
     {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
     {outputs : Fin eventCount → Vegas.EventGraph.EventField Player L}
-    {target : Fin eventCount} {currentPayload payload : L.Ty}
-    (publication : PublicationRef
-      (Vegas.EventGraph.fieldLayout inputs outputs) payload)
-    (before : ∀ field, publication.field? = some field → FieldBefore target field) :
-    OperandBefore target (publication.operand (currentPayload := currentPayload)) := by
+    {Γ : SourceCtx Player L} {published : VarId} {payload : L.Ty}
+    (target : Fin eventCount)
+    (refs : ContextRefs (Vegas.EventGraph.fieldLayout inputs outputs) Γ)
+    (refsBefore : ∀ {name cell} (source : HasVar Γ name cell),
+      FieldBefore target (refs.get source).field)
+    {name : VarId} {τ : L.Ty}
+    (cell : HasVar ((published, .publication payload) :: Γ) name (.publication τ)) :
+    OperandBefore target (revealOperand refs cell) := by
   intro field found
-  apply before field
-  cases publication <;> exact found
-
-omit [DecidableEq Player] R in
-private theorem proposedOperands_before {inputCount eventCount : Nat}
-    {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
-    {outputs : Fin eventCount → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L}
-    (publications : PublicationRefs (Vegas.EventGraph.fieldLayout inputs outputs) Γ)
-    (unique : (Γ.map Prod.fst).Nodup)
-    {owner : Player} {payload : L.Ty} {name : VarId}
-    (selected : HasVar Γ name (.privateData owner payload))
-    (target : Fin eventCount) (before : PublicationsBefore publications target) :
-    ∀ {readOwner readPayload readName}
-      (source : HasVar Γ readName (.privateData readOwner readPayload)),
-      OperandBefore target (proposedOperands publications unique selected source) := by
-  intro readOwner readPayload readName source
-  by_cases same : readName = name
-  · subst readName
-    have cellEq := HasVar.type_unique unique source selected
-    cases cellEq
-    simp [proposedOperands, OperandBefore, Vegas.EventGraph.GuardOperand.field?]
-  · simp only [proposedOperands, dif_neg same]
-    exact (publications source).operand_before (before source)
+  cases cell with
+  | here => cases found
+  | there cell =>
+      simp only [revealOperand, Vegas.EventGraph.GuardOperand.field?,
+        Option.some.injEq] at found
+      subst field
+      exact refsBefore cell
 
 omit [DecidableEq Player] R in
 private theorem compileGuardRead_before {inputCount eventCount : Nat}
     {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
     {outputs : Fin eventCount → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} {author : Player} {currentPayload input : L.Ty}
-    (target : Fin eventCount)
+    {Γ : SourceCtx Player L} {published : VarId} {payload : L.Ty}
+    {author : Player} {τ : L.Ty} (target : Fin eventCount)
     (refs : ContextRefs (Vegas.EventGraph.fieldLayout inputs outputs) Γ)
     (refsBefore : ∀ {name cell} (source : HasVar Γ name cell),
       FieldBefore target (refs.get source).field)
-    (operands : ∀ {owner payload name},
-      HasVar Γ name (.privateData owner payload) →
-        Vegas.EventGraph.GuardOperand
-          (Vegas.EventGraph.fieldLayout inputs outputs) currentPayload payload)
-    (operandsBefore : ∀ {owner payload name}
-      (source : HasVar Γ name (.privateData owner payload)),
-      OperandBefore target (operands source))
-    (read : SourceGuardRead Γ author input) :
-    OperandBefore target (compileGuardRead refs operands read) := by
+    (revealed : Revelations ((published, .publication payload) :: Γ))
+    (read : SourceGuardRead ((published, .publication payload) :: Γ) author τ)
+    (isRevealed : read.revealed revealed = true) :
+    OperandBefore target (compileGuardRead refs revealed read isRevealed) := by
   cases read with
-  | publicData source | publication source =>
-      intro field found
-      simp only [compileGuardRead, Vegas.EventGraph.GuardOperand.field?,
-        Option.some.injEq] at found
-      subst field
-      exact refsBefore source
-  | privateData source => exact operandsBefore source
-
-omit [DecidableEq Player] R in
-private theorem guardReadFields_before {inputCount eventCount : Nat}
-    {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
-    {outputs : Fin eventCount → Vegas.EventGraph.EventField Player L}
-    {target : Fin eventCount} {currentPayload : L.Ty}
-    (schema : Ctx L.Ty)
-    (reads : ∀ {name payload}, HasVar schema name payload →
-      Vegas.EventGraph.GuardOperand
-        (Vegas.EventGraph.fieldLayout inputs outputs) currentPayload payload)
-    (before : ∀ {name payload} (source : HasVar schema name payload),
-      OperandBefore target (reads source)) :
-    ∀ field, field ∈ guardReadFields schema reads → FieldBefore target field := by
-  induction schema with
-  | nil => simp [guardReadFields]
-  | cons entry tail ih =>
-      intro field member
-      rw [guardReadFields, Finset.mem_union] at member
-      rcases member with head | rest
-      · exact before (HasVar.here : HasVar (entry :: tail) entry.1 entry.2)
-          field ((mem_operandField_iff _ _).mp head)
-      · exact ih (fun source => reads (.there source))
-          (fun source => before (.there source)) field rest
+  | publicData cell =>
+      cases cell with
+      | there cell =>
+          intro field found
+          simp only [compileGuardRead, Vegas.EventGraph.GuardOperand.field?,
+            Option.some.injEq] at found
+          subst field
+          exact refsBefore cell
+  | publication cell => exact revealOperand_before target refs refsBefore cell
+  | privateData cell =>
+      simp only [compileGuardRead]
+      split
+      · exact revealOperand_before target refs refsBefore _
+      · next revelation =>
+          simp [SourceGuardRead.revealed, revelation, Revelation.isRevealed] at isRevealed
 
 omit [DecidableEq Player] R in
 private theorem compileGuard_before {inputCount eventCount : Nat}
     {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
     {outputs : Fin eventCount → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} {currentPayload : L.Ty}
+    {Γ : SourceCtx Player L} {published : VarId} {payload : L.Ty}
     (target : Fin eventCount)
     (refs : ContextRefs (Vegas.EventGraph.fieldLayout inputs outputs) Γ)
     (refsBefore : ∀ {name cell} (source : HasVar Γ name cell),
       FieldBefore target (refs.get source).field)
-    (operands : ∀ {owner payload name},
-      HasVar Γ name (.privateData owner payload) →
-        Vegas.EventGraph.GuardOperand
-          (Vegas.EventGraph.fieldLayout inputs outputs) currentPayload payload)
-    (operandsBefore : ∀ {owner payload name}
-      (source : HasVar Γ name (.privateData owner payload)),
-      OperandBefore target (operands source))
-    (obligation : Obligation (Player := Player) (L := L) Γ) :
-    ∀ field, field ∈ (compileGuard refs operands obligation).readFields →
+    (revealed : Revelations ((published, .publication payload) :: Γ))
+    (obligation : Obligation (Player := Player) (L := L)
+      ((published, .publication payload) :: Γ))
+    (isRevealed : obligation.revealed revealed = true) :
+    ∀ field, field ∈ (compileGuard refs revealed obligation isRevealed).readFields →
       FieldBefore target field := by
   intro field member
   rw [compileGuard, Finset.mem_union] at member
   rcases member with subject | reads
-  · exact operandsBefore obligation.source field
+  · exact compileGuardRead_before target refs refsBefore revealed _ _ field
       ((mem_operandField_iff _ _).mp subject)
-  · exact guardReadFields_before _ _ (fun source =>
-      compileGuardRead_before target refs refsBefore operands operandsBefore
-        (obligation.guard.reads source)) field reads
+  · obtain ⟨name, input, source, read, found⟩ := mem_guardReadFields _ _ _ field reads
+    exact compileGuardRead_before target refs refsBefore revealed _ _ field found
 
 omit [DecidableEq Player] R in
-private theorem compileGuards_before {inputCount eventCount : Nat}
+private theorem compileChecks_before {inputCount eventCount : Nat}
     {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
     {outputs : Fin eventCount → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} {currentPayload : L.Ty}
+    {Γ : SourceCtx Player L} {published name : VarId} {owner : Player} {payload : L.Ty}
     (target : Fin eventCount)
     (refs : ContextRefs (Vegas.EventGraph.fieldLayout inputs outputs) Γ)
     (refsBefore : ∀ {name cell} (source : HasVar Γ name cell),
       FieldBefore target (refs.get source).field)
-    (operands : ∀ {owner payload name},
-      HasVar Γ name (.privateData owner payload) →
-        Vegas.EventGraph.GuardOperand
-          (Vegas.EventGraph.fieldLayout inputs outputs) currentPayload payload)
-    (operandsBefore : ∀ {owner payload name}
-      (source : HasVar Γ name (.privateData owner payload)),
-      OperandBefore target (operands source)) :
-    (registry : Registry Γ) → ∀ field,
-      field ∈ Vegas.EventGraph.DeferredCheck.listReadFields
-        (registry.map (compileGuard refs operands)) → FieldBefore target field
-  | [], field, member => by simp [Vegas.EventGraph.DeferredCheck.listReadFields] at member
-  | obligation :: registry, field, member => by
-      rw [List.map_cons, Vegas.EventGraph.DeferredCheck.listReadFields,
+    (registry : Registry (Player := Player) (L := L) Γ) (revelations : Revelations Γ)
+    (selected : HasVar Γ name (.privateData owner payload)) :
+    ∀ field, field ∈ Vegas.EventGraph.GuardCheck.listReadFields
+      (compileChecks (published := published) refs registry revelations selected) →
+        FieldBefore target field := by
+  unfold compileChecks
+  generalize (registry.completedBy (published := published) revelations selected).attach = checks
+  intro field member
+  induction checks with
+  | nil => simp [Vegas.EventGraph.GuardCheck.listReadFields] at member
+  | cons check checks ih =>
+      rw [List.map_cons, Vegas.EventGraph.GuardCheck.listReadFields,
         Finset.mem_union] at member
       rcases member with head | tail
-      · exact compileGuard_before target refs refsBefore operands operandsBefore
-          obligation field head
-      · exact compileGuards_before target refs refsBefore operands operandsBefore
-          registry field tail
+      · exact compileGuard_before target refs refsBefore _ _ _ field head
+      · exact ih tail
 
 /-- A source suffix's outputs embedded, in order, into one whole graph. -/
 structure OutputEmbedding {inputCount totalCount : Nat}
@@ -546,16 +477,6 @@ def ContextRefsBefore {inputCount totalCount : Nat}
   ∀ {name cell} (source : HasVar Γ name cell) index,
     FieldBefore (embedding.event index) (refs.get source).field
 
-/-- The same prefix-rank invariant for retained private publication refs. -/
-def PublicationsBeforeAll {inputCount totalCount : Nat}
-    {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
-    {outputs : Fin totalCount → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    {program : SourceProgram Player L Γ openNames}
-    (publications : PublicationRefs (Vegas.EventGraph.fieldLayout inputs outputs) Γ)
-    (embedding : OutputEmbedding inputs outputs program) : Prop :=
-  ∀ index, PublicationsBefore publications (embedding.event index)
-
 /-- Executable node code paired with its locally constructed causal read
 certificate. The certificate is derived during lowering, not assumed of the
 finished graph. -/
@@ -575,15 +496,14 @@ def compileRankedNodes {inputCount totalCount : Nat}
     (program : SourceProgram Player L Γ openNames) →
     (unique : (Γ.map Prod.fst).Nodup) →
     (refs : ContextRefs (Vegas.EventGraph.fieldLayout inputs outputs) Γ) →
-    (publications : PublicationRefs
-      (Vegas.EventGraph.fieldLayout inputs outputs) Γ) →
+    (revelations : Revelations Γ) →
     (registry : Registry Γ) →
     (embedding : OutputEmbedding inputs outputs program) →
-    ContextRefsBefore refs embedding → PublicationsBeforeAll publications embedding →
+    ContextRefsBefore refs embedding →
     ∀ index, RankedNode inputs outputs (embedding.event index) (outputLayout program index)
-  | _, _, .ret _, _, _, _, _, _, _, _, index => nomatch index
-  | _, _, .sample name fresh law next, unique, refs, publications, registry,
-      embedding, refsBefore, publicationsBefore, index =>
+  | _, _, .ret _, _, _, _, _, _, _, index => nomatch index
+  | _, _, .sample name fresh law next, unique, refs, revelations, registry,
+      embedding, refsBefore, index =>
       let headIndex : Fin (eventCount (.sample name fresh law next)) :=
         ⟨0, by simp [eventCount]⟩
       let head : RankedNode inputs outputs (embedding.event headIndex) (.publicData _) :=
@@ -601,21 +521,11 @@ def compileRankedNodes {inputCount totalCount : Nat}
             apply embedding.strictMono
             exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
         | there source => exact refsBefore source (Fin.succ remaining)
-      let tailPublications : PublicationRefs
-          (Vegas.EventGraph.fieldLayout inputs outputs)
-          ((name, .publicData _) :: _) := weakenPublications publications
-      let tailPublicationsBefore : PublicationsBeforeAll
-          tailPublications tailEmbedding := by
-        intro remaining readOwner readPayload readName source field found
-        cases source with
-        | there source =>
-            change FieldBefore (embedding.event (Fin.succ remaining)) field
-            exact publicationsBefore (Fin.succ remaining) source field found
       Fin.cases head
-        (compileRankedNodes next (by simp [fresh, unique]) tailRefs tailPublications
-          registry.weaken tailEmbedding tailRefsBefore tailPublicationsBefore) index
-  | _, _, .commit name owner fresh guard next, unique, refs, publications, registry,
-      embedding, refsBefore, publicationsBefore, index =>
+        (compileRankedNodes next (by simp [fresh, unique]) tailRefs revelations.weaken
+          registry.weaken tailEmbedding tailRefsBefore) index
+  | _, _, .commit name owner fresh guard next, unique, refs, revelations, registry,
+      embedding, refsBefore, index =>
       let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
         ⟨0, by simp [eventCount]⟩
       let head : RankedNode inputs outputs (embedding.event headIndex) (.binding owner _) :=
@@ -635,32 +545,15 @@ def compileRankedNodes {inputCount totalCount : Nat}
             apply embedding.strictMono
             exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
         | there source => exact refsBefore source (Fin.succ remaining)
-      let tailPublications : PublicationRefs
-          (Vegas.EventGraph.fieldLayout inputs outputs)
-          ((name, .privateData owner _) :: _) := weakenPublications publications
-      let tailPublicationsBefore : PublicationsBeforeAll
-          tailPublications tailEmbedding := by
-        intro remaining readOwner readPayload readName source field found
-        cases source with
-        | here => cases found
-        | there source =>
-            change FieldBefore (embedding.event (Fin.succ remaining)) field
-            exact publicationsBefore (Fin.succ remaining) source field found
       Fin.cases head
-        (compileRankedNodes next (by simp [fresh, unique]) tailRefs tailPublications
-          (obligation :: registry.weaken) tailEmbedding tailRefsBefore
-          tailPublicationsBefore) index
+        (compileRankedNodes next (by simp [fresh, unique]) tailRefs revelations.weaken
+          (obligation :: registry.weaken) tailEmbedding tailRefsBefore) index
   | Γ, _, .reveal published owner name fresh selected unresolved next, unique, refs,
-      publications, registry, embedding, refsBefore, publicationsBefore, index =>
+      revelations, registry, embedding, refsBefore, index =>
       let headIndex : Fin (eventCount
           (.reveal published owner name fresh selected unresolved next)) :=
         ⟨0, by simp [eventCount]⟩
-      let operands : ∀ {readOwner readPayload readName},
-          HasVar Γ readName (.privateData readOwner readPayload) →
-            Vegas.EventGraph.GuardOperand
-              (Vegas.EventGraph.fieldLayout inputs outputs) _ readPayload :=
-        proposedOperands publications unique selected
-      let checks := registry.map (compileGuard refs operands)
+      let checks := compileChecks (published := published) refs registry revelations selected
       let head : RankedNode inputs outputs (embedding.event headIndex) (.publication _) :=
         { code := .resolve owner _ (refs.get selected) checks
           reads_before := by
@@ -670,10 +563,9 @@ def compileRankedNodes {inputCount totalCount : Nat}
             rcases member with binding | checksMember
             · subst field
               exact refsBefore selected headIndex
-            · exact compileGuards_before (embedding.event headIndex) refs
-                (fun source => refsBefore source headIndex) operands
-                (proposedOperands_before publications unique selected _
-                  (publicationsBefore headIndex)) registry field checksMember }
+            · exact compileChecks_before (embedding.event headIndex) refs
+                (fun source => refsBefore source headIndex) registry revelations selected
+                field checksMember }
       let resultRef : Vegas.EventGraph.FieldRef
           (Vegas.EventGraph.fieldLayout inputs outputs) (.publication _) := by
         simpa [headIndex, outputLayout, eventCount] using embedding.ref headIndex
@@ -688,30 +580,9 @@ def compileRankedNodes {inputCount totalCount : Nat}
             apply embedding.strictMono
             exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
         | there source => exact refsBefore source (Fin.succ remaining)
-      let tailPublications : PublicationRefs
-          (Vegas.EventGraph.fieldLayout inputs outputs)
-          ((published, .publication _) :: Γ) :=
-        resolvePublications publications unique selected resultRef
-      let tailPublicationsBefore : PublicationsBeforeAll
-          tailPublications tailEmbedding := by
-        intro remaining readOwner readPayload readName source field found
-        cases source with
-        | there source =>
-            change FieldBefore (embedding.event (Fin.succ remaining)) field
-            by_cases same : readName = name
-            · subst readName
-              have cellEq := HasVar.type_unique unique source selected
-              cases cellEq
-              have sameField : resultRef.field = field := by
-                simpa [tailPublications, resolvePublications,
-                  PublicationRef.field?] using found
-              subst field
-              apply embedding.strictMono
-              exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
-            · exact publicationsBefore (Fin.succ remaining) source field (by
-                simpa [tailPublications, resolvePublications, same] using found)
       Fin.cases head
-        (compileRankedNodes next (by simp [fresh, unique]) tailRefs tailPublications
-          registry.weaken tailEmbedding tailRefsBefore tailPublicationsBefore) index
+        (compileRankedNodes next (by simp [fresh, unique]) tailRefs
+          (revelations.reveal (published := published) selected) registry.weaken
+          tailEmbedding tailRefsBefore) index
 
 end Vegas.SourceProgram.EventLowering

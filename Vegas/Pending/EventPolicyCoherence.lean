@@ -487,7 +487,7 @@ def CommandAt (runtime : EventGraphRuntime graph) (event : graph.EventId)
 @[simp] theorem resolutionPayload_event
     (runtime : EventGraphRuntime graph) (owner who : Player) (event : graph.EventId)
     (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : runtime.application.View) :
     (runtime.resolutionPayload who event payload binding checks outputEq action view).event?

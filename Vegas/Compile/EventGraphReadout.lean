@@ -20,124 +20,37 @@ open GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 
-/-- Reconstruct a complete source prefix from its immutable cell references
-and retained private-publication references. -/
-def decodeState? {Field : Type} [DecidableEq Field]
+/-- Reconstruct a complete source prefix from its cell references. -/
+def decodeState? {Field : Type}
     {layout : Field → Vegas.EventGraph.EventField Player L} :
-    {Γ : SourceCtx Player L} → ContextRefs layout Γ → PublicationRefs layout Γ →
+    {Γ : SourceCtx Player L} → ContextRefs layout Γ →
       Vegas.EventGraph.Store layout → Option (State L Γ)
-  | [], _, _, _ => some (Env.empty (CellVal L))
-  | (name, .publicData payload) :: Γ, refs, publications, store => do
+  | [], _, _ => some (Env.empty (CellVal L))
+  | (name, .publicData payload) :: Γ, refs, store => do
       let head ← (refs.get (HasVar.here :
         HasVar ((name, .publicData payload) :: Γ) name (.publicData payload))).get? store
-      let tail ← decodeState? refs.tail publications.tail store
+      let tail ← decodeState? refs.tail store
       pure (Env.cons head tail)
-  | (name, .publication payload) :: Γ, refs, publications, store => do
+  | (name, .publication payload) :: Γ, refs, store => do
       let head ← (refs.get (HasVar.here :
         HasVar ((name, .publication payload) :: Γ) name (.publication payload))).get? store
-      let tail ← decodeState? refs.tail publications.tail store
+      let tail ← decodeState? refs.tail store
       pure (Env.cons head tail)
-  | (name, .privateData owner payload) :: Γ, refs, publications, store => do
+  | (name, .privateData owner payload) :: Γ, refs, store => do
       let binding ← (refs.get (HasVar.here :
         HasVar ((name, .privateData owner payload) :: Γ) name
           (.privateData owner payload))).get? store
-      let status ← publicationStatus? (publications
-        (HasVar.here : HasVar ((name, .privateData owner payload) :: Γ) name
-          (.privateData owner payload))) store
-      let tail ← decodeState? refs.tail publications.tail store
-      pure (Env.cons ((BoundValue.resultEquiv _).symm binding, status) tail)
+      let tail ← decodeState? refs.tail store
+      pure (Env.cons binding tail)
 
 omit [DecidableEq Player] R in
-private theorem publicationStatus?_isSome_of_available {Field : Type}
-    {layout : Field → Vegas.EventGraph.EventField Player L} {payload : L.Ty}
-    (publication : PublicationRef layout payload)
-    (store : Vegas.EventGraph.Store layout)
-    (available : ∀ field, (store field).isSome = true) :
-    (publicationStatus? publication store).isSome = true := by
-  cases publication with
-  | pending => rfl
-  | publication ref =>
-      have present := ref.get?_isSome store (available ref.field)
-      change ((ref.get? store).map Vegas.EventGraph.publicationOfResult).isSome = true
-      cases found : ref.get? store with
-      | none => simp [found] at present
-      | some result => rfl
-
-omit [DecidableEq Player] R in
-/-- If every graph field is present, full-state decoding succeeds without any
-default value. -/
-theorem decodeState?_isSome_of_available {Field : Type} [DecidableEq Field]
-    {layout : Field → Vegas.EventGraph.EventField Player L} :
-    {Γ : SourceCtx Player L} → (refs : ContextRefs layout Γ) →
-    (publications : PublicationRefs layout Γ) →
-    (store : Vegas.EventGraph.Store layout) →
-    (∀ field, (store field).isSome = true) →
-      (decodeState? refs publications store).isSome = true
-  | [], _, _, _, _ => rfl
-  | (name, .publicData payload) :: Γ, refs, publications, store, available => by
-      have head := (refs.get (HasVar.here :
-        HasVar ((name, .publicData payload) :: Γ) name
-          (.publicData payload))).get?_isSome store
-            (available (refs.get HasVar.here).field)
-      have tail := decodeState?_isSome_of_available refs.tail publications.tail store available
-      cases headFound : (refs.get (HasVar.here :
-          HasVar ((name, .publicData payload) :: Γ) name
-            (.publicData payload))).get? store with
-      | none => simp [headFound] at head
-      | some headValue =>
-          cases tailFound : decodeState? refs.tail publications.tail store with
-          | none => simp [tailFound] at tail
-          | some tailState => simp [decodeState?, headFound, tailFound]
-  | (name, .publication payload) :: Γ, refs, publications, store, available => by
-      have head := (refs.get (HasVar.here :
-        HasVar ((name, .publication payload) :: Γ) name
-          (.publication payload))).get?_isSome store
-            (available (refs.get HasVar.here).field)
-      have tail := decodeState?_isSome_of_available refs.tail publications.tail store available
-      cases headFound : (refs.get (HasVar.here :
-          HasVar ((name, .publication payload) :: Γ) name
-            (.publication payload))).get? store with
-      | none => simp [headFound] at head
-      | some headValue =>
-          cases tailFound : decodeState? refs.tail publications.tail store with
-          | none => simp [tailFound] at tail
-          | some tailState => simp [decodeState?, headFound, tailFound]
-  | (name, .privateData owner payload) :: Γ, refs, publications, store,
-      available => by
-      have binding := (refs.get (HasVar.here :
-        HasVar ((name, .privateData owner payload) :: Γ) name
-          (.privateData owner payload))).get?_isSome store
-            (available (refs.get HasVar.here).field)
-      have status := publicationStatus?_isSome_of_available
-        (publications (HasVar.here :
-          HasVar ((name, .privateData owner payload) :: Γ) name
-            (.privateData owner payload))) store available
-      have tail := decodeState?_isSome_of_available refs.tail publications.tail store available
-      cases bindingFound : (refs.get (HasVar.here :
-          HasVar ((name, .privateData owner payload) :: Γ) name
-            (.privateData owner payload))).get? store with
-      | none => simp [bindingFound] at binding
-      | some bindingValue =>
-          cases statusFound : publicationStatus? (publications (HasVar.here :
-              HasVar ((name, .privateData owner payload) :: Γ) name
-                (.privateData owner payload))) store with
-          | none => simp [statusFound] at status
-          | some publicationValue =>
-              cases tailFound : decodeState? refs.tail publications.tail store with
-              | none => simp [tailFound] at tail
-              | some tailState =>
-                  simp [decodeState?, bindingFound, statusFound, tailFound]
-
-omit [DecidableEq Player] R in
-/-- The two compiler agreement relations make full-state readout exact. -/
-theorem decodeState?_eq_some {Field : Type} [DecidableEq Field]
+/-- Context-reference agreement makes full-state readout exact. -/
+theorem decodeState?_eq_some {Field : Type}
     {layout : Field → Vegas.EventGraph.EventField Player L}
     {Γ : SourceCtx Player L} (refs : ContextRefs layout Γ)
-    (publications : PublicationRefs layout Γ)
     (state : State L Γ) (store : Vegas.EventGraph.Store layout)
-    (refsAgree : refs.Agrees state store)
-    (publicationsAgree : publications.Agree state store) :
-    decodeState? refs publications store = some state := by
+    (refsAgree : refs.Agrees state store) :
+    decodeState? refs store = some state := by
   induction Γ with
   | nil =>
       apply congrArg some
@@ -145,101 +58,51 @@ theorem decodeState?_eq_some {Field : Type} [DecidableEq Field]
       nomatch source
   | cons entry Γ ih =>
       obtain ⟨name, cell⟩ := entry
-      have tailRefs : refs.tail.Agrees
-          (fun _ _ source => state.get (.there source)) store := by
-        intro readName readCell source
-        exact refsAgree (.there source)
-      have tailPublications : PublicationRefs.Agree
-          (PublicationRefs.tail publications)
-          (fun _ _ source => state.get (.there source)) store := by
-        intro readOwner readPayload readName source
-        exact publicationsAgree (.there source)
-      cases cell with
-      | publicData payload =>
-          have head := refsAgree (HasVar.here :
-            HasVar ((name, .publicData payload) :: Γ) name (.publicData payload))
-          rw [decodeState?, head,
-            ih refs.tail publications.tail
-              (fun _ _ source => state.get (.there source)) tailRefs tailPublications]
-          simp only [cellValue]
-          apply congrArg some
-          funext readName readCell source
-          cases source with
-          | here => rfl
-          | there source => rfl
-      | publication payload =>
-          have head := refsAgree (HasVar.here :
-            HasVar ((name, .publication payload) :: Γ) name (.publication payload))
-          rw [decodeState?, head,
-            ih refs.tail publications.tail
-              (fun _ _ source => state.get (.there source)) tailRefs tailPublications]
-          simp only [cellValue]
-          apply congrArg some
-          funext readName readCell source
-          cases source with
-          | here => rfl
-          | there source => rfl
-      | privateData owner payload =>
-          have bindingStored := refsAgree (HasVar.here :
-            HasVar ((name, .privateData owner payload) :: Γ) name
-              (.privateData owner payload))
-          have statusStored := publicationsAgree (HasVar.here :
-            HasVar ((name, .privateData owner payload) :: Γ) name
-              (.privateData owner payload))
-          change publicationStatus? (publications HasVar.here) store =
-            some (state.get HasVar.here).2 at statusStored
-          rw [decodeState?, bindingStored, statusStored,
-            ih refs.tail publications.tail
-              (fun _ _ source => state.get (.there source)) tailRefs tailPublications]
-          simp only [cellValue]
-          apply congrArg some
-          funext readName readCell source
-          cases source with
-          | here =>
-              rw [Equiv.symm_apply_apply]
-              generalize valueEq : state.get (HasVar.here :
-                HasVar ((name, .privateData owner payload) :: Γ) name
-                  (.privateData owner payload)) = value at *
-              change BoundValue (L.Val payload) ×
-                Interaction.Publication (L.Val payload) at value
-              rcases value with ⟨binding, status⟩
-              change (binding, status) = state.get (HasVar.here :
-                HasVar ((name, .privateData owner payload) :: Γ) name
-                  (.privateData owner payload))
-              exact valueEq.symm
-          | there source => rfl
+      have tail := ih refs.tail (fun _ _ source => state.get (.there source))
+        fun source => refsAgree (.there source)
+      have head := refsAgree (HasVar.here : HasVar ((name, cell) :: Γ) name cell)
+      cases cell <;>
+      · rw [decodeState?, head, tail]
+        apply congrArg some
+        funext readName readCell source
+        cases source <;> rfl
 
-/-- Carry retained private-publication references through the complete source
-program, installing each reveal's concrete output reference. -/
-def terminalPublicationsWith {Field : Type} [DecidableEq Field]
+omit [DecidableEq Player] R in
+private theorem exists_decodeState_agrees {Field : Type}
     {layout : Field → Vegas.EventGraph.EventField Player L} :
-    {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
-    (program : SourceProgram Player L Γ openNames) →
-    (Γ.map Prod.fst).Nodup → PublicationRefs layout Γ →
-    (∀ event, Vegas.EventGraph.FieldRef layout (outputLayout program event)) →
-      PublicationRefs layout program.terminalCtx
-  | _, _, .ret _, _, publications, _ => publications
-  | _, _, .sample name fresh _ next, unique, publications, outputs =>
-      terminalPublicationsWith next (by simp [fresh, unique])
-        (weakenPublications publications)
-        (fun tailEvent => outputs (Fin.succ tailEvent))
-  | _, _, .commit name owner fresh _ next, unique, publications, outputs =>
-      terminalPublicationsWith next (by simp [fresh, unique])
-        (weakenPublications publications)
-        (fun tailEvent => outputs (Fin.succ tailEvent))
-  | Γ, _, .reveal published _ _ fresh selected _ next, unique, publications, outputs =>
-      let headRef : Vegas.EventGraph.FieldRef layout (.publication _) := by
-        simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
-      terminalPublicationsWith next (by simp [fresh, unique])
-        (resolvePublications publications unique selected headRef)
-        (fun tailEvent => outputs (Fin.succ tailEvent))
+    {Γ : SourceCtx Player L} → (refs : ContextRefs layout Γ) →
+    (store : Vegas.EventGraph.Store layout) →
+    (∀ field, (store field).isSome = true) →
+    ∃ state, decodeState? refs store = some state ∧ refs.Agrees state store
+  | [], _, _, _ => by
+      refine ⟨Env.empty (CellVal L), rfl, ?_⟩
+      intro name cell source
+      nomatch source
+  | (name, cell) :: Γ, refs, store, available => by
+      have headSome := (refs.get (HasVar.here : HasVar ((name, cell) :: Γ) name cell)).get?_isSome
+        store (available (refs.get HasVar.here).field)
+      obtain ⟨tail, tailEq, tailAgree⟩ := exists_decodeState_agrees refs.tail store available
+      cases cell <;>
+      · cases headEq : (refs.get HasVar.here).get? store with
+        | none => simp [headEq] at headSome
+        | some head =>
+            refine ⟨Env.cons head tail, by simp [decodeState?, headEq, tailEq], ?_⟩
+            intro readName readCell source
+            cases source with
+            | here => simpa [cellValue] using headEq
+            | there source => exact tailAgree source
 
-/-- Terminal private-publication references in the whole compiled graph. -/
-def terminalPublications {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) :
-    PublicationRefs (graphLayout program) program.terminalCtx :=
-  terminalPublicationsWith program unique initialPublications (outputRef program)
+omit [DecidableEq Player] R in
+/-- If every graph field is present, full-state decoding succeeds without any
+default value. -/
+theorem decodeState?_isSome_of_available {Field : Type}
+    {layout : Field → Vegas.EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} (refs : ContextRefs layout Γ)
+    (store : Vegas.EventGraph.Store layout)
+    (available : ∀ field, (store field).isSome = true) :
+    (decodeState? refs store).isSome = true := by
+  obtain ⟨state, decoded, _⟩ := exists_decodeState_agrees refs store available
+  simp [decoded]
 
 /-- Decode one terminal compiled configuration to its exact typed source
 state. Totality follows from terminal store availability, not from a default. -/
@@ -248,8 +111,8 @@ def terminalState {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (unique : (Γ.map Prod.fst).Nodup)
     (result : {config : (toEventGraph program unique).Config //
       config.cut.Terminal}) : State L program.terminalCtx :=
-  (decodeState? (terminalRefs program) (terminalPublications program unique)
-    result.1.store).get (decodeState?_isSome_of_available _ _ result.1.store
+  (decodeState? (terminalRefs program) result.1.store).get
+    (decodeState?_isSome_of_available _ result.1.store
       (fun field => result.1.store_available_of_terminal result.2 field))
 
 /-- Decoding completed plays depends only on their store law, not on their
@@ -266,9 +129,9 @@ theorem terminalOutcomes_map_decode
         (terminalState program unique)).map some =
       (((toEventGraph program unique).runPolicies scheduler profile inputs).map
         Vegas.EventGraph.Config.store).map
-          (decodeState? (terminalRefs program) (terminalPublications program unique)) := by
+          (decodeState? (terminalRefs program)) := by
   have decodeTerminal : (some ∘ terminalState program unique) =
-      (decodeState? (terminalRefs program) (terminalPublications program unique) ∘
+      (decodeState? (terminalRefs program) ∘
         Vegas.EventGraph.Config.store) ∘ Subtype.val := by
     funext result
     exact Option.some_get _
@@ -284,13 +147,10 @@ theorem terminalState_eq {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (result : {config : (toEventGraph program unique).Config //
       config.cut.Terminal})
     (state : State L program.terminalCtx)
-    (refsAgree : (terminalRefs program).Agrees state result.1.store)
-    (publicationsAgree : PublicationRefs.Agree
-      (terminalPublications program unique) state result.1.store) :
+    (refsAgree : (terminalRefs program).Agrees state result.1.store) :
     terminalState program unique result = state := by
   unfold terminalState
-  have decoded := decodeState?_eq_some (terminalRefs program)
-    (terminalPublications program unique) state result.1.store refsAgree publicationsAgree
+  have decoded := decodeState?_eq_some (terminalRefs program) state result.1.store refsAgree
   simp [decoded]
 
 /-- Under terminal context-reference agreement, the compiled graph payoff
@@ -316,80 +176,6 @@ theorem terminalPayoffs_eq_source {Γ : SourceCtx Player L}
     agree expression
   simp [evaluated]
 
-omit [DecidableEq Player] R in
-private theorem exists_decodeState_agrees {Field : Type} [DecidableEq Field]
-    {layout : Field → Vegas.EventGraph.EventField Player L} :
-    {Γ : SourceCtx Player L} → (refs : ContextRefs layout Γ) →
-    (publications : PublicationRefs layout Γ) →
-    (store : Vegas.EventGraph.Store layout) →
-    (∀ field, (store field).isSome = true) →
-    ∃ state, decodeState? refs publications store = some state ∧
-      refs.Agrees state store
-  | [], _, _, _, _ => by
-      refine ⟨Env.empty (CellVal L), rfl, ?_⟩
-      intro name cell source
-      nomatch source
-  | (name, .publicData payload) :: Γ, refs, publications, store, available => by
-      have headSome := (refs.get (HasVar.here :
-        HasVar ((name, .publicData payload) :: Γ) name (.publicData payload))).get?_isSome
-          store (available (refs.get HasVar.here).field)
-      cases headEq : (refs.get (HasVar.here :
-          HasVar ((name, .publicData payload) :: Γ) name
-            (.publicData payload))).get? store with
-      | none => simp [headEq] at headSome
-      | some head =>
-          obtain ⟨tail, tailEq, tailAgree⟩ :=
-            exists_decodeState_agrees refs.tail publications.tail store available
-          refine ⟨Env.cons head tail, ?_, ?_⟩
-          · simp [decodeState?, headEq, tailEq]
-          · intro readName readCell source
-            cases source with
-            | here => simpa [cellValue] using headEq
-            | there source => exact tailAgree source
-  | (name, .publication payload) :: Γ, refs, publications, store, available => by
-      have headSome := (refs.get (HasVar.here :
-        HasVar ((name, .publication payload) :: Γ) name (.publication payload))).get?_isSome
-          store (available (refs.get HasVar.here).field)
-      cases headEq : (refs.get (HasVar.here :
-          HasVar ((name, .publication payload) :: Γ) name
-            (.publication payload))).get? store with
-      | none => simp [headEq] at headSome
-      | some head =>
-          obtain ⟨tail, tailEq, tailAgree⟩ :=
-            exists_decodeState_agrees refs.tail publications.tail store available
-          refine ⟨Env.cons head tail, ?_, ?_⟩
-          · simp [decodeState?, headEq, tailEq]
-          · intro readName readCell source
-            cases source with
-            | here => simpa [cellValue] using headEq
-            | there source => exact tailAgree source
-  | (name, .privateData owner payload) :: Γ, refs, publications, store, available => by
-      have bindingSome := (refs.get (HasVar.here :
-        HasVar ((name, .privateData owner payload) :: Γ) name
-          (.privateData owner payload))).get?_isSome
-            store (available (refs.get HasVar.here).field)
-      cases bindingEq : (refs.get (HasVar.here :
-          HasVar ((name, .privateData owner payload) :: Γ) name
-            (.privateData owner payload))).get? store with
-      | none => simp [bindingEq] at bindingSome
-      | some binding =>
-          obtain ⟨tail, tailEq, tailAgree⟩ :=
-            exists_decodeState_agrees refs.tail publications.tail store available
-          cases statusEq : publicationStatus? (publications (HasVar.here :
-              HasVar ((name, .privateData owner payload) :: Γ) name
-                (.privateData owner payload))) store with
-          | none =>
-              have success := decodeState?_isSome_of_available refs publications store available
-              simp [decodeState?, bindingEq, statusEq] at success
-          | some status =>
-              refine ⟨Env.cons ((BoundValue.resultEquiv _).symm binding, status) tail,
-                ?_, ?_⟩
-              · simp [decodeState?, bindingEq, statusEq, tailEq]
-              · intro readName readCell source
-                cases source with
-                | here => simpa [cellValue] using bindingEq
-                | there source => exact tailAgree source
-
 /-- Integer payout readout of one completed compiled event execution. -/
 def terminalPayouts {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
@@ -410,7 +196,7 @@ theorem terminalPayouts_eq_source {Γ : SourceCtx Player L}
   let available : ∀ field, (result.1.store field).isSome = true :=
     fun field => result.1.store_available_of_terminal result.2 field
   obtain ⟨state, decoded, agree⟩ := exists_decodeState_agrees
-    (terminalRefs program) (terminalPublications program unique) result.1.store available
+    (terminalRefs program) result.1.store available
   have stateEq : terminalState program unique result = state := by
     unfold terminalState
     simp [decoded]

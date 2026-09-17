@@ -36,7 +36,7 @@ def eventPendingGame (setup : Setup (Player := Player) (L := L))
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     GameForm Player :=
   runtime.servicedEventGame
-    (setup.initialLaw.map fun initial => setup.eventInputs initial.1)
+    (setup.initialLaw.map fun initial => setup.eventInputs initial)
     roster reactionRounds wire order
 
 /-- Compose source policy compilation with the actual event-addressed native
@@ -60,9 +60,8 @@ def eventPendingOutcome (setup : Setup (Player := Player) (L := L))
     Option (State L setup.program.terminalCtx) :=
   if terminal : execution.native.application.config.cut.Terminal then
     some ((EventLowering.decodeState? (EventLowering.terminalRefs setup.program)
-      (EventLowering.terminalPublications setup.program setup.namesNodup)
       execution.native.application.config.store).get
-        (EventLowering.decodeState?_isSome_of_available _ _ _
+        (EventLowering.decodeState?_isSome_of_available _ _
           (fun field => execution.native.application.config.store_available_of_terminal
             terminal field)))
   else none
@@ -80,8 +79,7 @@ theorem eventPendingGame_map_outcome (setup : Setup (Player := Player) (L := L))
         (setup.eventPendingOutcome mode runtime) =
       (((setup.eventPendingGame mode runtime roster reactionRounds wire order).play players).map
         (fun execution => execution.native.application.config.store)).map
-          (EventLowering.decodeState? (EventLowering.terminalRefs setup.program)
-            (EventLowering.terminalPublications setup.program setup.namesNodup)) := by
+          (EventLowering.decodeState? (EventLowering.terminalRefs setup.program)) := by
   rw [FinDist.map_comp]
   apply FinDist.map_congr_of_eq_on_support
   intro execution supported

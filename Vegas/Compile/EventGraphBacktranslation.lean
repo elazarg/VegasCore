@@ -38,7 +38,7 @@ def encodeEventAction? : {Γ : SourceCtx Player L} → {openNames : Finset VarId
               if _ownerEq : actionOwner = owner then
                 if _nameEq : actionName = name then
                   if payloadEq : actionPayload = payload then
-                    some (BoundValue.resultEquiv _ (payloadEq ▸ choice))
+                    some (payloadEq ▸ choice)
                   else none
                 else none
               else none

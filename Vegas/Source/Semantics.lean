@@ -6,15 +6,17 @@ import GameTheory.Core.Form
 /-! # Source policies and exact execution
 
 Observation-local policies choose immutable bindings and disclosure decisions.
-Execution follows source order, retains typed guard obligations, and interprets
-chance through the exact finite law carried by source syntax.  The game form's
+Execution follows source order and interprets chance through the exact finite
+law carried by source syntax. Each retained guard obligation is checked once, at
+the reveal that publishes the last of its inputs; a rejected check makes that
+publication fail.  The game form's
 outcome is the detailed terminal state; `evaluatePayoffs` is a separate,
 explicit settlement projection and does not itself impose utilities.
 -/
 
 noncomputable section
 namespace Vegas
-open GameTheory GameTheory.Math.Probability Interaction
+open GameTheory GameTheory.Math.Probability
 
 def sourcePublicEnv {Player : Type} {L : IExpr} [R : IExpr.ResultTypes L] :
     {Γ : SourceCtx Player L} → State L Γ → Env L.Val (SourcePublicCtx L Γ)
@@ -87,13 +89,15 @@ theorem sourceObserve_congr (who : Player) (left right : State L Γ)
 
 end SourceObserve
 
+
 namespace SourceProgram
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 variable {Γ : SourceCtx Player L} {O : Finset VarId} {name x : VarId} {owner : Player}
 variable {payload : L.Ty} {c : CellTy Player L}
 
 inductive OwnAction (Player : Type) (L : IExpr) where
-  | commit (owner : Player) (name : VarId) (payload : L.Ty) (choice : BoundValue (L.Val payload))
+  | commit (owner : Player) (name : VarId) (payload : L.Ty)
+      (choice : PublicationResult (L.Val payload))
   | reveal (owner : Player) (name : VarId) (disclose : Bool)
 
 abbrev History (Player : Type) (L : IExpr) := Player → List (OwnAction Player L)
@@ -106,7 +110,7 @@ def BehavioralPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset 
   | _, _, .sample _ _ _ k => BehavioralPolicy who k
   | Γ, _, .commit (payload := payload) _ owner _ _ k =>
       ((owner = who) → DecisionView who Γ →
-        FinDist (BoundValue (L.Val payload))) × BehavioralPolicy who k
+        FinDist (PublicationResult (L.Val payload))) × BehavioralPolicy who k
   | Γ, _, .reveal _ owner _ _ _ _ k =>
       ((owner = who) → DecisionView who Γ → FinDist Bool) ×
         BehavioralPolicy who k
@@ -121,7 +125,7 @@ def failurePolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset Var
   | _, _, .ret _ => PUnit.unit
   | _, _, .sample _ _ _ k => failurePolicy who k
   | _, _, .commit _ _ _ _ k =>
-      (fun _ _ => FinDist.pure (BoundValue.unopenable _), failurePolicy who k)
+      (fun _ _ => FinDist.pure .failure, failurePolicy who k)
   | _, _, .reveal _ _ _ _ _ _ k =>
       (fun _ _ => FinDist.pure false, failurePolicy who k)
 
@@ -154,7 +158,7 @@ def commitKernel {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {ow
     {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst} {g : SourceGuard L Γ owner name payload}
     {k : SourceProgram Player L ((name, .privateData owner payload) :: Γ) (insert name O)}
     (p : BehavioralProfile (SourceProgram.commit name owner fresh g k)) :
-    DecisionView owner Γ → FinDist (BoundValue (L.Val payload)) :=
+    DecisionView owner Γ → FinDist (PublicationResult (L.Val payload)) :=
   (p owner).1 rfl
 
 def revealKernel {Γ : SourceCtx Player L} {O : Finset VarId} {published name : VarId}
@@ -180,6 +184,7 @@ def terminalPayoffs : {Γ : SourceCtx Player L} → {O : Finset VarId} →
   | _, _, .commit _ _ _ _ k => terminalPayoffs k
   | _, _, .reveal _ _ _ _ _ _ k => terminalPayoffs k
 
+/-- A guard retained at the commitment of its subject. -/
 structure Obligation (Γ : SourceCtx Player L) where
   owner : Player
   subject : VarId
@@ -187,191 +192,185 @@ structure Obligation (Γ : SourceCtx Player L) where
   source : HasVar Γ subject (.privateData owner payload)
   guard : SourceGuard L Γ owner subject payload
 
-def Obligation.check (o : Obligation (Player := Player) (L := L) Γ) (s : State L Γ) :=
-  o.guard.check (s.get o.source |>.2) s
+namespace Obligation
 
-def Obligation.weaken {x c} (o : Obligation (Player := Player) (L := L) Γ) :
+omit [DecidableEq Player] [IExpr.ResultTypes L]
+
+/-- Whether the subject and every input read by the guard's code are published. -/
+def revealed (obligation : Obligation (Player := Player) (L := L) Γ)
+    (revelations : Revelations Γ) : Bool :=
+  (revelations obligation.source).isRevealed && obligation.guard.readsRevealed revelations
+
+/-- Decide the obligation on the published results of its subject and inputs. -/
+def accepts (obligation : Obligation (Player := Player) (L := L) Γ)
+    (revelations : Revelations Γ) (state : State L Γ) : Bool :=
+  obligation.guard.accepts ((revelations obligation.source).result state) revelations state
+
+def weaken {x c} (obligation : Obligation (Player := Player) (L := L) Γ) :
     Obligation ((x, c) :: Γ) where
-  owner := o.owner; subject := o.subject; payload := o.payload
-  source := .there o.source; guard := o.guard.weaken
+  owner := obligation.owner; subject := obligation.subject; payload := obligation.payload
+  source := .there obligation.source; guard := obligation.guard.weaken
 
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-@[simp] theorem Obligation.check_weaken {x c}
-    (o : Obligation (Player := Player) (L := L) Γ)
-    (head : CellVal L c) (s : State L Γ) :
-    o.weaken.check (Env.cons (x := x) head s) = o.check s := by
-  simp [Obligation.check, Obligation.weaken, SourceGuard.check_weaken]
+@[simp] theorem revealed_weaken {x c} (obligation : Obligation (Player := Player) (L := L) Γ)
+    (revelations : Revelations Γ) :
+    (obligation.weaken (x := x) (c := c)).revealed revelations.weaken =
+      obligation.revealed revelations := by
+  simp [revealed, weaken]
+
+@[simp] theorem accepts_weaken {x c} (obligation : Obligation (Player := Player) (L := L) Γ)
+    (revelations : Revelations Γ) (head : CellVal L c) (state : State L Γ) :
+    (obligation.weaken (x := x)).accepts revelations.weaken (Env.cons head state) =
+      obligation.accepts revelations state := by
+  simp [accepts, weaken]
+
+/-- Whether a reveal of `source` completes the obligation: some input was
+unpublished before the reveal, and all of them are published after it. -/
+def completedBy {published : VarId} (obligation : Obligation (Player := Player) (L := L) Γ)
+    (revelations : Revelations Γ) (source : HasVar Γ name (.privateData owner payload)) :
+    Bool :=
+  !obligation.revealed revelations &&
+    (obligation.weaken (x := published)).revealed
+      (revelations.reveal (published := published) source)
+
+/-- An obligation accepts when every successful result among its subject and
+code-read inputs agrees with an assignment on which its code holds. -/
+theorem accepts_of_compatible (obligation : Obligation (Player := Player) (L := L) Γ)
+    (revelations : Revelations Γ) (state : State L Γ)
+    (subjectValue : L.Val obligation.payload)
+    (get : (x : VarId) → (σ : L.Ty) →
+      HasVar ((obligation.subject, obligation.payload) :: obligation.guard.schema) x σ →
+        x ∈ L.exprDeps obligation.guard.code → L.Val σ)
+    (subjectEq : ∀ hx, get obligation.subject obligation.payload .here hx = subjectValue)
+    (subjectAgrees : ∀ value,
+      (revelations obligation.source).result state = .success value → value = subjectValue)
+    (readsAgree : ∀ {x τ} (h : HasVar obligation.guard.schema x τ)
+      (hx : x ∈ L.exprDeps obligation.guard.code) (value : L.Val τ),
+        (obligation.guard.reads h).result revelations state = .success value →
+          value = get x τ (.there h) hx)
+    (valid : L.toBool (L.evalDeps obligation.guard.code get) = true) :
+    obligation.accepts revelations state = true :=
+  obligation.guard.accepts_of_compatible _ _ subjectValue get subjectEq subjectAgrees
+    readsAgree valid
+
+end Obligation
 
 abbrev Registry (Γ : SourceCtx Player L) := List (Obligation (Player := Player) (L := L) Γ)
-def Registry.weaken {x c} (r : Registry (Player := Player) (L := L) Γ) : Registry ((x,c)::Γ) :=
-  r.map Obligation.weaken
-def Registry.ok (r : Registry (Player := Player) (L := L) Γ) (s : State L Γ) : Bool :=
-  r.all fun o => o.check s != .rejected
 
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-@[simp] theorem Registry.ok_weaken {x c} (r : Registry (Player := Player) (L := L) Γ)
-    (head : CellVal L c) (s : State L Γ) : r.weaken.ok (Env.cons (x := x) head s) = r.ok s := by
-  induction r with
-  | nil => rfl
-  | cons head tail ih =>
-      simp only [Registry.weaken, Registry.ok, List.map_cons, List.all_cons,
-        Obligation.check_weaken]
-      congr 1
+namespace Registry
 
-def updatePrivate {owner payload name} : {Γ : SourceCtx Player L} → State L Γ →
-    HasVar Γ name (.privateData owner payload) → Publication (L.Val payload) → State L Γ
-  | _ :: _, s, .here, v => Env.cons ((s.get .here).1, v) (fun _ _ h => s.get (.there h))
-  | _ :: _, s, .there h, v => Env.cons (s.get .here)
-      (updatePrivate (fun _ _ h' => s.get (.there h')) h v)
+omit [DecidableEq Player] [IExpr.ResultTypes L]
 
-def boundResult {owner payload name} (s : State L Γ)
-    (h : HasVar Γ name (.privateData owner payload)) (disclose : Bool) :
-    PublicationResult (L.Val payload) :=
-  match hb : (s.get h).1.binding with
-  | .unbound => False.elim ((s.get h).1.isBound hb)
-  | .unopenable => .failure
-  | .value a => if disclose then .success a else .failure
+def weaken {x c} (registry : Registry (Player := Player) (L := L) Γ) : Registry ((x, c) :: Γ) :=
+  registry.map Obligation.weaken
 
-/-- Resolving a retained binding either returns its stored result or failure,
-according to the disclosure decision. -/
-theorem boundResult_eq_resultEquiv {Player : Type} {L : IExpr}
-    {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty} {name : VarId}
-    (state : State L Γ)
+/-- The obligations a reveal completes, in the context after the reveal. -/
+def completedBy {published : VarId} (registry : Registry (Player := Player) (L := L) Γ)
+    (revelations : Revelations Γ) (source : HasVar Γ name (.privateData owner payload)) :
+    Registry ((published, .publication payload) :: Γ) :=
+  (registry.filter (·.completedBy (published := published) revelations source)).map
+    Obligation.weaken
+
+/-- Every obligation a reveal completes has all of its inputs published. -/
+theorem revealed_of_mem_completedBy {published : VarId}
+    (registry : Registry (Player := Player) (L := L) Γ) (revelations : Revelations Γ)
     (source : HasVar Γ name (.privateData owner payload))
-    (disclose : Bool) :
-    boundResult state source disclose =
-      if disclose then BoundValue.resultEquiv _ (state.get source).1 else .failure := by
-  let propose : BoundValue (L.Val payload) → PublicationResult (L.Val payload) :=
-    fun value => match hb : value.binding with
-      | .unbound => False.elim (value.isBound hb)
-      | .unopenable => .failure
-      | .value data => if disclose then .success data else .failure
-  change propose (state.get source).1 =
-    if disclose then BoundValue.resultEquiv _ (state.get source).1 else .failure
-  generalize (state.get source).1 = value
-  rcases value with ⟨binding, bound⟩
-  cases binding with
-  | unbound => exact False.elim (bound rfl)
-  | unopenable => cases disclose <;> rfl
-  | value value => cases disclose <;> rfl
+    {obligation : Obligation ((published, .publication payload) :: Γ)}
+    (member : obligation ∈ registry.completedBy revelations source) :
+    obligation.revealed (revelations.reveal (published := published) source) = true := by
+  obtain ⟨original, filtered, rfl⟩ := List.mem_map.mp member
+  have completed := (List.mem_filter.mp filtered).2
+  simp only [Obligation.completedBy, Bool.and_eq_true] at completed
+  exact completed.2
 
-def resultPublication {A : Type} : PublicationResult A → Publication A
-  | .failure => .failed
-  | .success a => .value a
-
-@[simp] theorem resultPublication_ne_pending {A : Type} (result : PublicationResult A) :
-    resultPublication result ≠ .pending := by cases result <;> simp [resultPublication]
+end Registry
 
 def runWith : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (p : SourceProgram Player L Γ O) → BehavioralProfile p → State L Γ →
-    Registry Γ → History Player L → FinDist (State L (terminalCtx p))
-  | _, _, .ret _, _, s, _, _ => FinDist.pure s
-  | _, _, .sample _ _ d k, profile, s, r, history =>
+    Registry Γ → Revelations Γ → History Player L → FinDist (State L (terminalCtx p))
+  | _, _, .ret _, _, s, _, _, _ => FinDist.pure s
+  | _, _, .sample _ _ d k, profile, s, r, revelations, history =>
       (L.evalDist d (sourcePublicEnv s)).bind fun a =>
-        runWith k (afterSample profile) (Env.cons a s) r.weaken history
-  | _, _, .commit name owner _ g k, profile, s, r, history =>
+        runWith k (afterSample profile) (Env.cons a s) r.weaken revelations.weaken history
+  | _, _, .commit name owner _ g k, profile, s, r, revelations, history =>
       (commitKernel profile (sourceObserve owner s, history owner)).bind fun b =>
-        let s' := Env.cons (b, Publication.pending) s
         let obligation : Obligation _ :=
           { owner := owner, subject := name, payload := _, source := .here, guard := g.weaken }
         let history' := Function.update history owner
           (history owner ++ [OwnAction.commit owner name _ b])
-        runWith k (afterCommit profile) s' (obligation :: r.weaken) history'
-  | _, _, .reveal _ owner name _ h _ k, profile, s, r, history =>
+        runWith k (afterCommit profile) (Env.cons b s) (obligation :: r.weaken)
+          revelations.weaken history'
+  | _, _, .reveal published owner name _ h _ k, profile, s, r, revelations, history =>
       (revealKernel profile (sourceObserve owner s, history owner)).bind fun disclose =>
-        let proposedResult := boundResult s h disclose
-        let proposed := resultPublication proposedResult
-        let tentative := updatePrivate s h proposed
-        let acceptedResult := if r.ok tentative then proposedResult else PublicationResult.failure
-        let accepted := resultPublication acceptedResult
-        let resolved := updatePrivate s h accepted
+        let proposal := if disclose then s.get h else .failure
+        let revealed : Revelations _ := revelations.reveal (published := published) h
+        let accepted :=
+          if (r.completedBy (published := published) revelations h).all
+            (·.accepts revealed (Env.cons proposal s))
+          then proposal else .failure
         let history' := Function.update history owner
           (history owner ++ [OwnAction.reveal owner name disclose])
-        runWith k (afterReveal profile) (Env.cons acceptedResult resolved) r.weaken history'
+        runWith k (afterReveal profile) (Env.cons accepted s) r.weaken revealed history'
 
 def run (p : SourceProgram Player L Γ O) (profile : BehavioralProfile p) (s : State L Γ) :=
-  runWith p profile s [] (fun _ => [])
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-/-- No retained guard rejects a state in which, for each guard, every published
-value of its subject and code-read inputs agrees with an assignment on which its
-code holds. -/
-theorem Registry.ok_of_compatible (registry : Registry (Player := Player) (L := L) Γ)
-    (state : State L Γ)
-    (compatible : ∀ obligation ∈ registry,
-      ∃ (subjectValue : L.Val obligation.payload)
-        (get : (x : VarId) → (σ : L.Ty) →
-          HasVar ((obligation.subject, obligation.payload) :: obligation.guard.schema) x σ →
-            x ∈ L.exprDeps obligation.guard.code → L.Val σ),
-        (∀ hx, get obligation.subject obligation.payload .here hx = subjectValue) ∧
-        (∀ value, (state.get obligation.source).2 = .value value → value = subjectValue) ∧
-        (∀ {x τ} (h : HasVar obligation.guard.schema x τ)
-          (hx : x ∈ L.exprDeps obligation.guard.code) (value : L.Val τ),
-            (obligation.guard.reads h).get state = .value value →
-              value = get x τ (.there h) hx) ∧
-        L.toBool (L.evalDeps obligation.guard.code get) = true) :
-    registry.ok state = true := by
-  refine List.all_eq_true.mpr fun obligation member => ?_
-  obtain ⟨subjectValue, get, subjectEq, subjectAgrees, readsAgree, valid⟩ :=
-    compatible obligation member
-  exact bne_iff_ne.mpr (obligation.guard.check_compatible _ state subjectValue get subjectEq
-    subjectAgrees readsAgree valid)
+  runWith p profile s [] (Revelations.initial Γ) (fun _ => [])
 
 -- OPEN OBLIGATION: whole-run honest completion
 -- `runWith_reveal_compatible` covers a single disclosure. Still unstated: if every
 -- commitment binds a value, every reveal discloses, and the bound values satisfy
--- every retained guard in every reachable state, then every terminal publication
--- succeeds. Stating it requires a definition of honest profile under
--- observation-dependent policies and dependent public chance; the generic analogue
--- is `Interaction.GuardedPublication.run_honest_complete`.
-/-- Guards cannot override an honest disclosure: when the bound value keeps
-every retained guard compatible, the owner's choice alone decides the reveal,
-publishing the value on disclosure and failure on withholding. -/
+-- every retained guard, then every terminal publication succeeds. Stating it
+-- requires a definition of honest profile under observation-dependent policies and
+-- dependent public chance.
+/-- Guards cannot override an honest disclosure: when the bound value keeps every
+obligation the reveal completes compatible, the owner's choice alone decides the
+reveal, publishing the value on disclosure and failure on withholding. -/
 theorem runWith_reveal_compatible {published name : VarId} {owner : Player}
     {fresh : published ∉ Γ.map Prod.fst}
     {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
     {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     (profile : BehavioralProfile (.reveal published owner name fresh source unresolved next))
-    (state : State L Γ) (registry : Registry Γ) (history : History Player L)
-    (value : L.Val payload) (bound : (state.get source).1.binding = .value value)
-    (compatible : ∀ obligation ∈ registry,
+    (state : State L Γ) (registry : Registry Γ) (revelations : Revelations Γ)
+    (history : History Player L)
+    (value : L.Val payload) (bound : state.get source = .success value)
+    (compatible : ∀ obligation ∈ registry.completedBy (published := published) revelations source,
       ∃ (subjectValue : L.Val obligation.payload)
         (get : (x : VarId) → (σ : L.Ty) →
           HasVar ((obligation.subject, obligation.payload) :: obligation.guard.schema) x σ →
             x ∈ L.exprDeps obligation.guard.code → L.Val σ),
         (∀ hx, get obligation.subject obligation.payload .here hx = subjectValue) ∧
-        (∀ published, ((updatePrivate state source (.value value)).get obligation.source).2 =
-          .value published → published = subjectValue) ∧
+        (∀ value', (revelations.reveal (published := published) source obligation.source).result
+          (Env.cons (Val := CellVal (Player := Player) L) (x := published)
+            (τ := .publication payload) (PublicationResult.success value) state) =
+              .success value' → value' = subjectValue) ∧
         (∀ {x τ} (h : HasVar obligation.guard.schema x τ)
-          (hx : x ∈ L.exprDeps obligation.guard.code) (published : L.Val τ),
-            (obligation.guard.reads h).get (updatePrivate state source (.value value)) =
-              .value published → published = get x τ (.there h) hx) ∧
+          (hx : x ∈ L.exprDeps obligation.guard.code) (value' : L.Val τ),
+            (obligation.guard.reads h).result (revelations.reveal (published := published) source)
+              (Env.cons (Val := CellVal (Player := Player) L) (x := published)
+            (τ := .publication payload) (PublicationResult.success value) state) = .success value' →
+                value' = get x τ (.there h) hx) ∧
         L.toBool (L.evalDeps obligation.guard.code get) = true) :
     runWith (.reveal published owner name fresh source unresolved next) profile state registry
-        history =
+        revelations history =
       (revealKernel profile (sourceObserve owner state, history owner)).bind fun disclose =>
         runWith next (afterReveal profile)
-          (Env.cons (if disclose then .success value else .failure)
-            (updatePrivate state source
-              (resultPublication (if disclose then .success value else .failure))))
-          registry.weaken
+          (Env.cons (if disclose then PublicationResult.success value else .failure) state)
+          registry.weaken (revelations.reveal (published := published) source)
           (Function.update history owner
             (history owner ++ [OwnAction.reveal owner name disclose])) := by
-  have accepted := registry.ok_of_compatible (updatePrivate state source (.value value)) compatible
+  have accepted : (registry.completedBy (published := published) revelations source).all
+      (·.accepts (revelations.reveal (published := published) source)
+        (Env.cons (Val := CellVal (Player := Player) L) (x := published)
+            (τ := .publication payload) (PublicationResult.success value) state)) = true := by
+    refine List.all_eq_true.mpr fun obligation member => ?_
+    obtain ⟨subjectValue, get, subjectEq, subjectAgrees, readsAgree, valid⟩ :=
+      compatible obligation member
+    exact obligation.accepts_of_compatible _ _ subjectValue get subjectEq subjectAgrees
+      readsAgree valid
   simp only [runWith]
   congr 1
   funext disclose
-  have proposedEq : boundResult state source disclose =
-      if disclose then .success value else .failure := by
-    unfold boundResult
-    split
-    · next unbound => rw [bound] at unbound; cases unbound
-    · next unopenable => rw [bound] at unopenable; cases unopenable
-    · next stored storedEq => rw [bound] at storedEq; cases storedEq; rfl
-  rw [proposedEq]
   cases disclose with
   | false => simp
-  | true => simp [resultPublication, accepted]
+  | true => simp [bound, accepted]
 
 def Initial.run (initial : Initial (Player := Player) (L := L))
     (profile : BehavioralProfile initial.program) :=

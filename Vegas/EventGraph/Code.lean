@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Foundation.DeferredGuard
+import Vegas.Foundation.Guard
 
 /-! # Typed node code for dependency-driven event graphs
 
@@ -14,7 +14,7 @@ noncomputable section
 
 namespace Vegas.EventGraph
 
-open GameTheory.Math.Probability Interaction
+open GameTheory.Math.Probability
 
 variable {Player : Type} {L : IExpr} [R : IExpr.ResultTypes L]
 
@@ -434,16 +434,11 @@ theorem eval?_congr {Field : Type} [DecidableEq Field]
 
 end PublicDist
 
-/-- Turn a stored publication result into a resolved deferred-guard operand. -/
-def publicationOfResult {A : Type} : PublicationResult A → Publication A
-  | .failure => .failed
-  | .success value => .value value
-
-/-- Deferred-guard operands available while validating a resolution. The
-`proposed` constructor is intrinsically tied to that resolution's payload. -/
+/-- Guard operands available while validating a resolution: public fields and
+the resolution's own proposal. Every operand is published when the check runs.
+The `proposed` constructor is intrinsically tied to that resolution's payload. -/
 inductive GuardOperand {Field : Type} (layout : Field → EventField Player L)
     (currentPayload : L.Ty) : L.Ty → Type
-  | pending {payload : L.Ty} : GuardOperand layout currentPayload payload
   | publicData {payload : L.Ty}
       (ref : FieldRef layout (.publicData payload)) : GuardOperand layout currentPayload payload
   | publication {payload : L.Ty}
@@ -455,21 +450,20 @@ namespace GuardOperand
 def field? {Field : Type} {layout : Field → EventField Player L}
     {currentPayload payload : L.Ty} :
     GuardOperand layout currentPayload payload → Option Field
-  | .pending | .proposed => none
+  | .proposed => none
   | .publicData ref | .publication ref => some ref.field
 
-/-- Evaluate an operand. Explicit pending and the current proposal do not read
-the store; referenced public fields must be available. -/
+/-- Evaluate an operand. The current proposal does not read the store;
+referenced public fields must be available. -/
 def get? {Field : Type} {layout : Field → EventField Player L}
     {currentPayload payload : L.Ty}
     (operand : GuardOperand layout currentPayload payload) (store : Store layout)
     (proposal : PublicationResult (L.Val currentPayload)) :
-    Option (Publication (L.Val payload)) :=
+    Option (PublicationResult (L.Val payload)) :=
   match operand with
-  | .pending => some .pending
-  | .publicData ref => (ref.get? store).map .value
-  | .publication ref => (ref.get? store).map publicationOfResult
-  | .proposed => some (publicationOfResult proposal)
+  | .publicData ref => (ref.get? store).map .success
+  | .publication ref => ref.get? store
+  | .proposed => some proposal
 
 omit R in theorem get?_congr {Field : Type} {layout : Field → EventField Player L}
     {currentPayload payload : L.Ty}
@@ -478,7 +472,7 @@ omit R in theorem get?_congr {Field : Type} {layout : Field → EventField Playe
     (agree : ∀ field, operand.field? = some field → left field = right field) :
     operand.get? left proposal = operand.get? right proposal := by
   cases operand with
-  | pending | proposed => rfl
+  | proposed => rfl
   | publicData ref =>
       simp only [get?]
       rw [ref.get?_congr left right (agree ref.field rfl)]
@@ -494,110 +488,123 @@ omit R in theorem get?_isSome {Field : Type} {layout : Field → EventField Play
       (store field).isSome = true) :
     (operand.get? store proposal).isSome = true := by
   cases operand with
-  | pending | proposed => rfl
+  | proposed => rfl
   | publicData ref =>
       have present := ref.get?_isSome store (available ref.field rfl)
-      change ((ref.get? store).map Publication.value).isSome = true
+      change ((ref.get? store).map PublicationResult.success).isSome = true
       rw [Option.isSome_map]
       exact present
-  | publication ref =>
-      have present := ref.get?_isSome store (available ref.field rfl)
-      change ((ref.get? store).map publicationOfResult).isSome = true
-      rw [Option.isSome_map]
-      exact present
+  | publication ref => exact ref.get?_isSome store (available ref.field rfl)
 
 end GuardOperand
 
-/-- One retained deferred check for the proposal currently being resolved. -/
-structure DeferredCheck {Field : Type} [DecidableEq Field]
+/-- One guard check completed by the resolution currently being evaluated. It
+names an operand for its subject and for every input its code reads; every
+operand is published or is the proposal itself. -/
+structure GuardCheck {Field : Type} [DecidableEq Field]
     (layout : Field → EventField Player L) (currentPayload : L.Ty) where
   subject : VarId
   payload : L.Ty
-  code : DeferredGuardCode L subject payload
+  code : GuardCode L subject payload
   subjectRead : GuardOperand layout currentPayload payload
-  reads : ∀ {name input}, HasVar code.schema name input →
+  reads : ∀ {name input}, HasVar code.schema name input → name ∈ L.exprDeps code.code →
     GuardOperand layout currentPayload input
   readFields : Finset Field
   subject_mem : ∀ field, subjectRead.field? = some field → field ∈ readFields
-  reads_mem : ∀ {name input} (ref : HasVar code.schema name input) field,
-    (reads ref).field? = some field → field ∈ readFields
+  reads_mem : ∀ {name input} (ref : HasVar code.schema name input)
+    (read : name ∈ L.exprDeps code.code) field,
+    (reads ref read).field? = some field → field ∈ readFields
 
-namespace DeferredCheck
+namespace GuardCheck
 
 private def collectReads {Field : Type} {layout : Field → EventField Player L}
     {currentPayload : L.Ty} (store : Store layout)
-    (proposal : PublicationResult (L.Val currentPayload)) :
+    (proposal : PublicationResult (L.Val currentPayload)) (deps : Finset VarId) :
     (schema : Ctx L.Ty) →
-      (∀ {name input}, HasVar schema name input → GuardOperand layout currentPayload input) →
-      Option (∀ {name input}, HasVar schema name input → Publication (L.Val input))
-  | [], _ => some fun h => nomatch h
+      (∀ {name input}, HasVar schema name input → name ∈ deps →
+        GuardOperand layout currentPayload input) →
+      Option (∀ {name input}, HasVar schema name input → name ∈ deps →
+        PublicationResult (L.Val input))
+  | [], _ => some fun h _ => nomatch h
   | (name, input) :: tail, reads =>
       do
-      let head ← (reads (HasVar.here : HasVar ((name, input) :: tail) name input)).get?
-        store proposal
-      let tailGet ← collectReads store proposal tail (fun ref => reads (.there ref))
-      pure fun {_ _} ref => match ref with
-        | .here => head
-        | .there ref => tailGet ref
+      let tailGet ← collectReads store proposal deps tail (fun ref read => reads (.there ref) read)
+      if member : name ∈ deps then
+        let head ← (reads (HasVar.here : HasVar ((name, input) :: tail) name input) member).get?
+          store proposal
+        pure fun {_ _} ref read => match ref with
+          | .here => head
+          | .there ref => tailGet ref read
+      else
+        pure fun {_ _} ref read => match ref with
+          | .here => False.elim (member read)
+          | .there ref => tailGet ref read
 
 omit R in private theorem collectReads_congr {Field : Type}
     {layout : Field → EventField Player L} {currentPayload : L.Ty}
     (left right : Store layout) (proposal : PublicationResult (L.Val currentPayload))
-    (schema : Ctx L.Ty)
-    (reads : ∀ {name input}, HasVar schema name input →
+    (deps : Finset VarId) (schema : Ctx L.Ty)
+    (reads : ∀ {name input}, HasVar schema name input → name ∈ deps →
       GuardOperand layout currentPayload input)
-    (agree : ∀ {name input} (ref : HasVar schema name input) field,
-      (reads ref).field? = some field → left field = right field) :
-    collectReads left proposal schema reads = collectReads right proposal schema reads := by
+    (agree : ∀ {name input} (ref : HasVar schema name input) (read : name ∈ deps) field,
+      (reads ref read).field? = some field → left field = right field) :
+    collectReads left proposal deps schema reads =
+      collectReads right proposal deps schema reads := by
   induction schema with
   | nil => rfl
   | cons entry tail ih =>
       obtain ⟨name, input⟩ := entry
-      let headRead := reads
-        (HasVar.here : HasVar ((name, input) :: tail) name input)
-      have headEq := GuardOperand.get?_congr headRead left right proposal
-        (fun field found => agree HasVar.here field found)
-      have tailEq := ih (fun ref => reads (.there ref))
-        (fun ref field found => agree (.there ref) field found)
-      simp only [collectReads]
-      rw [headEq, tailEq]
+      have tailEq := ih (fun ref read => reads (.there ref) read)
+        (fun ref read field found => agree (.there ref) read field found)
+      by_cases member : name ∈ deps
+      · have headEq := GuardOperand.get?_congr
+          (reads (HasVar.here : HasVar ((name, input) :: tail) name input) member)
+          left right proposal (fun field found => agree HasVar.here member field found)
+        simp only [collectReads, tailEq, dif_pos member, headEq]
+      · simp only [collectReads, tailEq, dif_neg member]
 
 omit R in private theorem collectReads_isSome {Field : Type}
     {layout : Field → EventField Player L} {currentPayload : L.Ty}
     (store : Store layout) (proposal : PublicationResult (L.Val currentPayload))
-    (schema : Ctx L.Ty)
-    (reads : ∀ {name input}, HasVar schema name input →
+    (deps : Finset VarId) (schema : Ctx L.Ty)
+    (reads : ∀ {name input}, HasVar schema name input → name ∈ deps →
       GuardOperand layout currentPayload input)
-    (available : ∀ {name input} (ref : HasVar schema name input) field,
-      (reads ref).field? = some field → (store field).isSome = true) :
-    (collectReads store proposal schema reads).isSome = true := by
+    (available : ∀ {name input} (ref : HasVar schema name input) (read : name ∈ deps) field,
+      (reads ref read).field? = some field → (store field).isSome = true) :
+    (collectReads store proposal deps schema reads).isSome = true := by
   induction schema with
   | nil => rfl
   | cons entry tail ih =>
       obtain ⟨name, input⟩ := entry
-      let headRead := reads (HasVar.here : HasVar ((name, input) :: tail) name input)
-      have headPresent := GuardOperand.get?_isSome headRead store proposal
-        (fun field found => available HasVar.here field found)
-      have tailPresent := ih (fun ref => reads (.there ref))
-        (fun ref field found => available (.there ref) field found)
-      cases hhead : headRead.get? store proposal with
-      | none => simp [hhead] at headPresent
-      | some head =>
-          cases htail : collectReads store proposal tail (fun ref => reads (.there ref)) with
-          | none => simp [htail] at tailPresent
-          | some tailGet => simp [collectReads, hhead, htail, headRead]
+      have tailPresent := ih (fun ref read => reads (.there ref) read)
+        (fun ref read field found => available (.there ref) read field found)
+      cases htail : collectReads store proposal deps tail (fun ref read => reads (.there ref) read)
+        with
+      | none => simp [htail] at tailPresent
+      | some tailGet =>
+          by_cases member : name ∈ deps
+          · have headPresent := GuardOperand.get?_isSome
+              (reads (HasVar.here : HasVar ((name, input) :: tail) name input) member)
+              store proposal (fun field found => available HasVar.here member field found)
+            cases hhead : (reads (HasVar.here : HasVar ((name, input) :: tail) name input)
+                member).get? store proposal with
+            | none => simp [hhead] at headPresent
+            | some head => simp [collectReads, htail, dif_pos member, hhead]
+          · simp [collectReads, htail, dif_neg member]
 
 omit R in private theorem collectReads_eq_of_reads {Field : Type}
     {layout : Field → EventField Player L} {currentPayload : L.Ty}
     (store : Store layout) (proposal : PublicationResult (L.Val currentPayload))
-    (schema : Ctx L.Ty)
-    (reads : ∀ {name input}, HasVar schema name input →
+    (deps : Finset VarId) (schema : Ctx L.Ty)
+    (reads : ∀ {name input}, HasVar schema name input → name ∈ deps →
       GuardOperand layout currentPayload input)
-    (env : ∀ {name input}, HasVar schema name input → Publication (L.Val input))
-    (agree : ∀ {name input} (ref : HasVar schema name input),
-      (reads ref).get? store proposal = some (env ref)) :
-    collectReads store proposal schema reads =
-      some (fun {_ _} ref => env ref) := by
+    (env : ∀ {name input}, HasVar schema name input → name ∈ deps →
+      PublicationResult (L.Val input))
+    (agree : ∀ {name input} (ref : HasVar schema name input) (read : name ∈ deps),
+      (reads ref read).get? store proposal = some (env ref read)) :
+    collectReads store proposal deps schema reads =
+      (some env : Option (∀ {name input}, HasVar schema name input → name ∈ deps →
+        PublicationResult (L.Val input))) := by
   induction schema with
   | nil =>
       apply congrArg some
@@ -605,116 +612,123 @@ omit R in private theorem collectReads_eq_of_reads {Field : Type}
       nomatch ref
   | cons entry tail ih =>
       obtain ⟨name, input⟩ := entry
-      let tailEnv : ∀ {refName refInput}, HasVar tail refName refInput →
-          Publication (L.Val refInput) := fun ref => env (.there ref)
-      have tailCollected := ih (fun ref => reads (.there ref)) tailEnv
-        (fun ref => agree (.there ref))
-      simp only [collectReads]
-      rw [agree HasVar.here, tailCollected]
-      apply congrArg some
-      funext refName refInput ref
-      cases ref <;> rfl
+      have tailCollected := ih (fun ref read => reads (.there ref) read)
+        (fun ref read => env (.there ref) read) (fun ref read => agree (.there ref) read)
+      by_cases member : name ∈ deps
+      · simp only [collectReads, tailCollected, dif_pos member, agree HasVar.here member]
+        apply congrArg some
+        funext refName refInput ref read
+        cases ref <;> rfl
+      · simp only [collectReads, tailCollected, dif_neg member]
+        apply congrArg some
+        funext refName refInput ref read
+        cases ref with
+        | here => exact absurd read member
+        | there ref => rfl
 
-/-- Evaluate a deferred check if every referenced field operand is available. -/
+/-- Decide a check if every referenced field operand is available. -/
 def eval? {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {currentPayload : L.Ty}
-    (check : DeferredCheck layout currentPayload) (store : Store layout)
-    (proposal : PublicationResult (L.Val currentPayload)) :
-    Option PublicationGuard.Verdict := do
-  let subjectValue ← check.subjectRead.get? store proposal
-  let inputs ← collectReads store proposal check.code.schema check.reads
-  pure (check.code.check subjectValue inputs)
+    (check : GuardCheck layout currentPayload) (store : Store layout)
+    (proposal : PublicationResult (L.Val currentPayload)) : Option Bool := do
+  let subjectResult ← check.subjectRead.get? store proposal
+  let inputs ← collectReads store proposal (L.exprDeps check.code.code) check.code.schema
+    check.reads
+  pure (check.code.accepts subjectResult inputs)
 
 omit R in
-/-- Deferred-check evaluation is exact when its subject and every typed guard
-operand read return the supplied source publications. -/
+/-- Check evaluation is exact when its subject and every code-read operand return
+the supplied published results. -/
 theorem eval?_eq_of_reads {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {currentPayload : L.Ty}
-    (check : DeferredCheck layout currentPayload) (store : Store layout)
+    (check : GuardCheck layout currentPayload) (store : Store layout)
     (proposal : PublicationResult (L.Val currentPayload))
-    (subjectValue : Publication (L.Val check.payload))
+    (subjectResult : PublicationResult (L.Val check.payload))
     (env : ∀ {name input}, HasVar check.code.schema name input →
-      Publication (L.Val input))
-    (subjectEq : check.subjectRead.get? store proposal = some subjectValue)
-    (readsEq : ∀ {name input} (ref : HasVar check.code.schema name input),
-      (check.reads ref).get? store proposal = some (env ref)) :
-    check.eval? store proposal = some (check.code.check subjectValue env) := by
+      name ∈ L.exprDeps check.code.code → PublicationResult (L.Val input))
+    (subjectEq : check.subjectRead.get? store proposal = some subjectResult)
+    (readsEq : ∀ {name input} (ref : HasVar check.code.schema name input)
+      (read : name ∈ L.exprDeps check.code.code),
+      (check.reads ref read).get? store proposal = some (env ref read)) :
+    check.eval? store proposal = some (check.code.accepts subjectResult env) := by
   unfold eval?
-  rw [subjectEq, collectReads_eq_of_reads store proposal check.code.schema
+  rw [subjectEq, collectReads_eq_of_reads store proposal _ check.code.schema
     check.reads env readsEq]
   rfl
 
 omit R in
-/-- Only the operand fields actually read by a deferred check matter. A
-declared read footprint may conservatively contain additional fields. -/
+/-- Only the operand fields actually read by a check matter. A declared read
+footprint may conservatively contain additional fields. -/
 theorem eval?_congr_reads {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {currentPayload : L.Ty}
-    (check : DeferredCheck layout currentPayload) (left right : Store layout)
+    (check : GuardCheck layout currentPayload) (left right : Store layout)
     (proposal : PublicationResult (L.Val currentPayload))
     (subject : ∀ field, check.subjectRead.field? = some field → left field = right field)
-    (reads : ∀ {name input} (ref : HasVar check.code.schema name input) field,
-      (check.reads ref).field? = some field → left field = right field) :
+    (reads : ∀ {name input} (ref : HasVar check.code.schema name input)
+      (read : name ∈ L.exprDeps check.code.code) field,
+      (check.reads ref read).field? = some field → left field = right field) :
     check.eval? left proposal = check.eval? right proposal := by
   unfold eval?
   have subjectEq := GuardOperand.get?_congr check.subjectRead left right proposal subject
-  have inputsEq := collectReads_congr left right proposal check.code.schema check.reads
+  have inputsEq := collectReads_congr left right proposal _ check.code.schema check.reads
     reads
   rw [subjectEq, inputsEq]
 
 omit R in theorem eval?_congr {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {currentPayload : L.Ty}
-    (check : DeferredCheck layout currentPayload) (left right : Store layout)
+    (check : GuardCheck layout currentPayload) (left right : Store layout)
     (proposal : PublicationResult (L.Val currentPayload))
     (agree : Store.AgreeOn left right check.readFields) :
     check.eval? left proposal = check.eval? right proposal :=
   check.eval?_congr_reads left right proposal
     (fun field found => agree field (check.subject_mem field found))
-    (fun ref field found => agree field (check.reads_mem ref field found))
+    (fun ref read field found => agree field (check.reads_mem ref read field found))
 
 omit R in theorem eval?_isSome {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {currentPayload : L.Ty}
-    (check : DeferredCheck layout currentPayload) (store : Store layout)
+    (check : GuardCheck layout currentPayload) (store : Store layout)
     (proposal : PublicationResult (L.Val currentPayload))
     (available : ∀ field ∈ check.readFields, (store field).isSome = true) :
     (check.eval? store proposal).isSome = true := by
   have subjectPresent := GuardOperand.get?_isSome check.subjectRead store proposal
     (fun field found => available field (check.subject_mem field found))
-  have inputsPresent := collectReads_isSome store proposal check.code.schema check.reads
-    (fun ref field found => available field (check.reads_mem ref field found))
+  have inputsPresent := collectReads_isSome store proposal _ check.code.schema check.reads
+    (fun ref read field found => available field (check.reads_mem ref read field found))
   cases hsubject : check.subjectRead.get? store proposal with
   | none => simp [hsubject] at subjectPresent
-  | some subjectValue =>
-      cases hinputs : collectReads store proposal check.code.schema check.reads with
+  | some subjectResult =>
+      cases hinputs : collectReads store proposal (L.exprDeps check.code.code)
+          check.code.schema check.reads with
       | none => simp [hinputs] at inputsPresent
       | some inputs => simp [eval?, hsubject, hinputs]
 
-/-- Union of the public field footprints of a list of deferred checks. -/
+/-- Union of the public field footprints of a list of checks. -/
 def listReadFields {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty} :
-    List (DeferredCheck layout payload) → Finset Field
+    List (GuardCheck layout payload) → Finset Field
   | [] => ∅
   | check :: checks => check.readFields ∪ listReadFields checks
 
-end DeferredCheck
+end GuardCheck
 
-namespace DeferredCheck
+namespace GuardCheck
 
-/-- Evaluate every retained check and accept exactly when none rejects. -/
+/-- Evaluate every completed check and accept exactly when all accept. -/
 def allAccepted? {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
-    (checks : List (DeferredCheck layout payload)) (store : Store layout)
+    (checks : List (GuardCheck layout payload)) (store : Store layout)
     (proposal : PublicationResult (L.Val payload)) : Option Bool := match checks with
   | [] => some true
   | check :: rest => do
-      let verdict ← check.eval? store proposal
+      let accepts ← check.eval? store proposal
       let accepted ← allAccepted? rest store proposal
-      pure (verdict != .rejected && accepted)
+      pure (accepts && accepted)
 
 omit R in theorem allAccepted?_congr {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
-    (checks : List (DeferredCheck layout payload)) (left right : Store layout)
+    (checks : List (GuardCheck layout payload)) (left right : Store layout)
     (proposal : PublicationResult (L.Val payload))
-    (agree : Store.AgreeOn left right (DeferredCheck.listReadFields checks)) :
+    (agree : Store.AgreeOn left right (GuardCheck.listReadFields checks)) :
     allAccepted? checks left proposal = allAccepted? checks right proposal := by
   induction checks with
   | nil => rfl
@@ -728,9 +742,9 @@ omit R in theorem allAccepted?_congr {Field : Type} [DecidableEq Field]
 
 omit R in theorem allAccepted?_isSome {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
-    (checks : List (DeferredCheck layout payload)) (store : Store layout)
+    (checks : List (GuardCheck layout payload)) (store : Store layout)
     (proposal : PublicationResult (L.Val payload))
-    (available : ∀ field ∈ DeferredCheck.listReadFields checks,
+    (available : ∀ field ∈ GuardCheck.listReadFields checks,
       (store field).isSome = true) :
     (allAccepted? checks store proposal).isSome = true := by
   induction checks with
@@ -748,15 +762,14 @@ omit R in theorem allAccepted?_isSome {Field : Type} [DecidableEq Field]
           | some accepted => simp [allAccepted?, hcheck, hrest]
 
 omit R in
-/-- Exact per-check verdicts determine the acceptance fold. -/
+/-- Exact per-check decisions determine the acceptance fold. -/
 theorem allAccepted?_eq_of_map_eval? {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
-    (checks : List (DeferredCheck layout payload)) (store : Store layout)
+    (checks : List (GuardCheck layout payload)) (store : Store layout)
     (proposal : PublicationResult (L.Val payload))
-    (verdicts : List PublicationGuard.Verdict)
+    (verdicts : List Bool)
     (exact : checks.map (fun check => check.eval? store proposal) = verdicts.map some) :
-    allAccepted? checks store proposal =
-      some (verdicts.all fun verdict => verdict != .rejected) := by
+    allAccepted? checks store proposal = some (verdicts.all id) := by
   induction checks generalizing verdicts with
   | nil =>
       cases verdicts with
@@ -770,7 +783,7 @@ theorem allAccepted?_eq_of_map_eval? {Field : Type} [DecidableEq Field]
           rw [allAccepted?, exact.1, ih verdicts exact.2]
           rfl
 
-end DeferredCheck
+end GuardCheck
 
 /-- Source-independent code for one event. Its index is exactly the kind of
 field produced by the event. -/
@@ -779,7 +792,7 @@ inductive EventCode {Field : Type} [DecidableEq Field]
   | bind (owner : Player) (payload : L.Ty) : EventCode layout (.binding owner payload)
   | resolve (owner : Player) (payload : L.Ty)
       (binding : FieldRef layout (.binding owner payload))
-      (checks : List (DeferredCheck layout payload)) : EventCode layout (.publication payload)
+      (checks : List (GuardCheck layout payload)) : EventCode layout (.publication payload)
   | sample (payload : L.Ty) (law : PublicDist layout payload) :
       EventCode layout (.publicData payload)
 
@@ -812,7 +825,7 @@ def readFields {Field : Type} [DecidableEq Field]
     EventCode layout output → Finset Field
   | .bind _ _ => ∅
   | .resolve _ _ binding checks =>
-      insert binding.field (DeferredCheck.listReadFields checks)
+      insert binding.field (GuardCheck.listReadFields checks)
   | .sample _ law => law.readFields
 
 /-- Casting an event code across an equality of output-field descriptions does
@@ -830,11 +843,11 @@ binding failure and rejected publication remain ordinary output values. -/
 def resolveOutput? {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {owner : Player} {payload : L.Ty}
     (binding : FieldRef layout (.binding owner payload))
-    (checks : List (DeferredCheck layout payload)) (disclose : Bool)
+    (checks : List (GuardCheck layout payload)) (disclose : Bool)
     (store : Store layout) : Option (PublicationResult (L.Val payload)) := do
   let bound ← binding.get? store
   let proposal := if disclose then bound else .failure
-  let accepted ← DeferredCheck.allAccepted? checks store proposal
+  let accepted ← GuardCheck.allAccepted? checks store proposal
   pure (if accepted then proposal else .failure)
 
 omit R in
@@ -843,20 +856,20 @@ deterministic output defined. -/
 theorem resolveOutput?_isSome {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {owner : Player} {payload : L.Ty}
     (binding : FieldRef layout (.binding owner payload))
-    (checks : List (DeferredCheck layout payload)) (disclose : Bool)
+    (checks : List (GuardCheck layout payload)) (disclose : Bool)
     (store : Store layout)
     (available : ∀ field ∈ insert binding.field
-      (DeferredCheck.listReadFields checks), (store field).isSome = true) :
+      (GuardCheck.listReadFields checks), (store field).isSome = true) :
     (resolveOutput? binding checks disclose store).isSome = true := by
   have bindingPresent := binding.get?_isSome store
     (available binding.field (Finset.mem_insert_self _ _))
   cases hbinding : binding.get? store with
   | none => simp [hbinding] at bindingPresent
   | some bound =>
-      have checksPresent := DeferredCheck.allAccepted?_isSome checks store
+      have checksPresent := GuardCheck.allAccepted?_isSome checks store
         (if disclose then bound else .failure)
         (fun field member => available field (Finset.mem_insert_of_mem member))
-      cases hchecks : DeferredCheck.allAccepted? checks store
+      cases hchecks : GuardCheck.allAccepted? checks store
           (if disclose then bound else .failure) with
       | none => simp [hchecks] at checksPresent
       | some accepted => simp [resolveOutput?, hbinding, hchecks]
@@ -867,9 +880,9 @@ footprint is available. -/
 theorem resolveOutput?_false_eq_failure {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {owner : Player} {payload : L.Ty}
     (binding : FieldRef layout (.binding owner payload))
-    (checks : List (DeferredCheck layout payload)) (store : Store layout)
+    (checks : List (GuardCheck layout payload)) (store : Store layout)
     (available : ∀ field ∈ insert binding.field
-      (DeferredCheck.listReadFields checks), (store field).isSome = true) :
+      (GuardCheck.listReadFields checks), (store field).isSome = true) :
     resolveOutput? binding checks false store = some .failure := by
   have defined := resolveOutput?_isSome binding checks false store available
   cases outputEq : resolveOutput? binding checks false store with
@@ -878,21 +891,21 @@ theorem resolveOutput?_false_eq_failure {Field : Type} [DecidableEq Field]
       cases bindingEq : binding.get? store with
       | none => simp [resolveOutput?, bindingEq] at outputEq
       | some bound =>
-          cases checksEq : DeferredCheck.allAccepted? checks store .failure with
+          cases checksEq : GuardCheck.allAccepted? checks store .failure with
           | none => simp [resolveOutput?, bindingEq, checksEq] at outputEq
           | some accepted =>
               simpa [resolveOutput?, bindingEq, checksEq] using outputEq.symm
 
 omit R in
 /-- The deterministic resolution output depends only on the binding and
-deferred-check footprint retained by the node. -/
+check footprint retained by the node. -/
 theorem resolveOutput?_congr {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {owner : Player} {payload : L.Ty}
     (binding : FieldRef layout (.binding owner payload))
-    (checks : List (DeferredCheck layout payload)) (disclose : Bool)
+    (checks : List (GuardCheck layout payload)) (disclose : Bool)
     (left right : Store layout)
     (agree : Store.AgreeOn left right
-      (insert binding.field (DeferredCheck.listReadFields checks))) :
+      (insert binding.field (GuardCheck.listReadFields checks))) :
     resolveOutput? binding checks disclose left =
       resolveOutput? binding checks disclose right := by
   have bindingEq := binding.get?_congr left right
@@ -903,7 +916,7 @@ theorem resolveOutput?_congr {Field : Type} [DecidableEq Field]
       simp [resolveOutput?, hbound, ← bindingEq]
   | some bound =>
       rw [hbound] at bindingEq
-      have checksEq := DeferredCheck.allAccepted?_congr checks left right
+      have checksEq := GuardCheck.allAccepted?_congr checks left right
         (if disclose then bound else .failure)
         (fun field member => agree field (Finset.mem_insert_of_mem member))
       simp [resolveOutput?, hbound, ← bindingEq, checksEq]
@@ -925,7 +938,7 @@ their transition law against `eval?` through this equation. -/
 @[simp] theorem resolve_eval? {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {owner : Player} {payload : L.Ty}
     (binding : FieldRef layout (.binding owner payload))
-    (checks : List (DeferredCheck layout payload)) (disclose : Bool)
+    (checks : List (GuardCheck layout payload)) (disclose : Bool)
     (store : Store layout) :
     (EventCode.resolve owner payload binding checks).eval? disclose store =
       (resolveOutput? binding checks disclose store).map FinDist.pure := rfl

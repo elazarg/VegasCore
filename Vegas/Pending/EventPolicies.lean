@@ -167,7 +167,7 @@ accepted owner handle opens; every other case withholds. -/
 def resolutionPayload (runtime : EventGraphRuntime graph)
     {owner : Player} (who : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : runtime.application.View) : Payload graph :=
   let disclose : Bool := cast (congrArg EventField.Action outputEq) action
@@ -189,7 +189,7 @@ event. -/
 def resolutionSubmission (runtime : EventGraphRuntime graph)
     {owner : Player} (who : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : runtime.application.View) : Command runtime :=
   .submit (runtime.resolutionPayload who event payload binding checks outputEq action view)
@@ -198,7 +198,7 @@ def resolutionSubmission (runtime : EventGraphRuntime graph)
 theorem resolutionSubmission_false (runtime : EventGraphRuntime graph)
     {owner : Player} (who : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : runtime.application.View)
     (withholds : cast (congrArg EventField.Action outputEq) action = false) :
@@ -210,7 +210,7 @@ theorem resolutionSubmission_false (runtime : EventGraphRuntime graph)
 theorem resolutionSubmission_rejected (runtime : EventGraphRuntime graph)
     {owner : Player} (who : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : runtime.application.View)
     (discloses : cast (congrArg EventField.Action outputEq) action = true)
@@ -225,7 +225,7 @@ event, whether it opens successfully or withholds. -/
 theorem resolutionSubmission_address (runtime : EventGraphRuntime graph)
     {owner : Player} (who : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : runtime.application.View) :
     ∃ packet, runtime.resolutionSubmission who event payload binding checks

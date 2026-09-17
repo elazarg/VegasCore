@@ -32,27 +32,28 @@ open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
-/-- Every complete execution of a failure-aware source program resolves all
-publication obligations, without assuming successful or guard-valid play. -/
-theorem source_publications_resolved [IExpr.ResultTypes L]
+/-- Every private cell of a checked source program is revealed by the end of its
+syntax. This is a static property: no execution, profile, or successful play is
+involved. -/
+theorem source_private_cells_revealed [IExpr.ResultTypes L]
     (source : SourceProgram.Initial (Player := Player) (L := L))
-    (profile : SourceProgram.BehavioralProfile source.program)
-    (outcome : State L source.program.terminalCtx)
-    (supported : outcome ∈ (source.run profile).support)
     {owner : Player} {payload : L.Ty} {name : VarId}
     (resource : HasVar source.program.terminalCtx name (.privateData owner payload)) :
-    (outcome.get resource).2 ≠ Publication.pending :=
-  source.terminal_resolved profile outcome supported resource
+    (SourceProgram.finalRevelations source.program
+      (Revelations.initial source.context) resource).isRevealed = true :=
+  source.revealed resource
 
-/-- info: 'Vegas.Paper.source_publications_resolved' depends on axioms:
+/-- info: 'Vegas.Paper.source_private_cells_revealed' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_publications_resolved
+#print axioms Vegas.Paper.source_private_cells_revealed
 
 /-- Every complete failure-aware source execution decides each retained guard
-by its code: either its subject or an input read by its code failed to publish,
-or all of them were published and the code holds on the published values. This
-includes executions with invalid bindings or withheld disclosures. -/
+by its code: either the publication of its subject or of an input read by its
+code failed, or all of them succeeded and the code holds on the published
+values. Publications are read through the final revelations, which reveal every
+private cell (`source_private_cells_revealed`). This includes executions with
+invalid bindings or withheld disclosures. -/
 theorem source_guards_hold [IExpr.ResultTypes L]
     (source : SourceProgram.Initial (Player := Player) (L := L))
     (profile : SourceProgram.BehavioralProfile source.program)
@@ -60,19 +61,23 @@ theorem source_guards_hold [IExpr.ResultTypes L]
     (supported : outcome ∈ (source.run profile).support)
     (obligation : SourceProgram.Obligation source.program.terminalCtx)
     (member : obligation ∈ SourceProgram.finalRegistry source.program []) :
-    ((outcome.get obligation.source).2 = .failed ∨
+    let revelations : Revelations source.program.terminalCtx :=
+      SourceProgram.finalRevelations source.program
+      (Revelations.initial source.context)
+    ((revelations obligation.source).result outcome = .failure ∨
       ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
         x ∈ L.exprDeps obligation.guard.code ∧
-          (obligation.guard.reads h).get outcome = .failed) ∨
+          (obligation.guard.reads h).result revelations outcome = .failure) ∨
     ∃ (subjectValue : L.Val obligation.payload)
       (get : (x : VarId) → (σ : L.Ty) →
         HasVar ((obligation.subject, obligation.payload) :: obligation.guard.schema) x σ →
           x ∈ L.exprDeps obligation.guard.code → L.Val σ),
-      (outcome.get obligation.source).2 = .value subjectValue ∧
+      (revelations obligation.source).result outcome = .success subjectValue ∧
       (∀ hx, get obligation.subject obligation.payload .here hx = subjectValue) ∧
       (∀ {x τ} (h : HasVar obligation.guard.schema x τ)
         (hx : x ∈ L.exprDeps obligation.guard.code),
-          (obligation.guard.reads h).get outcome = .value (get x τ (.there h) hx)) ∧
+          (obligation.guard.reads h).result revelations outcome =
+            .success (get x τ (.there h) hx)) ∧
       L.toBool (L.evalDeps obligation.guard.code get) = true :=
   source.terminal_guards_hold profile outcome supported obligation member
 
@@ -90,7 +95,7 @@ theorem source_event_graph_canonical_law [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
     (profile : SourceProgram.BehavioralProfile setup.program) :
     ((setup.eventGraph.canonicalGame
-        (setup.initialLaw.map fun initial => setup.eventInputs initial.1)).play
+        (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
       (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup
         profile)).map
           (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup) =
@@ -109,7 +114,7 @@ theorem source_event_graph_canonical_deviation_law [IExpr.ResultTypes L]
     (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
     (replacement : setup.eventGraph.BehavioralPolicy who) :
     ((setup.eventGraph.canonicalGame
-        (setup.initialLaw.map fun initial => setup.eventInputs initial.1)).play
+        (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
       (Profile.update (sig := setup.eventGraph.gameSignature)
         (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup profile)
         who replacement)).map
@@ -177,7 +182,7 @@ theorem source_event_graph_honest_law [IExpr.ResultTypes L]
     (setup.initialLaw.bind fun initial =>
       (setup.eventGraph.terminalOutcomes scheduler
         (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup profile)
-        (setup.eventInputs initial.1)).map
+        (setup.eventInputs initial)).map
           (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup)) =
       setup.run profile :=
   SourceProgram.EventLowering.scheduled_setup_law setup scheduler profile
@@ -200,7 +205,7 @@ theorem source_event_graph_deviation_law [IExpr.ResultTypes L]
           (Profile.update (sig := setup.eventGraph.gameSignature)
             (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup profile)
             who replacement)
-          (setup.eventInputs initial.1)).map
+          (setup.eventInputs initial)).map
             (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup)) =
         mixture.bind fun alternative =>
           setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)

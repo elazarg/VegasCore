@@ -110,9 +110,10 @@ These guide the implementation independently of its representation:
    choices in the source operational game.
 3. Opening cannot replace the private candidate. Guard rejection changes the
    public result, not the player's retained private knowledge.
-4. Deferred guards are ordinary relations with static required support. Their
-   lifting is vacuous when any required component fails and waiting when none
-   has failed but some remain pending. No ordinary value is extracted from an
+4. Guards are ordinary relations with static required support. Each is checked
+   once, at the reveal that publishes the last of its required components; that
+   reveal is determined by the syntax. The check is discharged when any required
+   component's publication failed. No ordinary value is extracted from an
    unopened binding. Static support, including dead branches, is semantic;
    ordinary Boolean equivalence alone does not justify changing it.
 5. A public value with an outstanding relational obligation is observable

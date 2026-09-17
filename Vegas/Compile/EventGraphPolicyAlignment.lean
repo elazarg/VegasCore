@@ -59,10 +59,8 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
       (program : SourceProgram Player L Γ openNames)
       (unique : (Γ.map Prod.fst).Nodup)
       (refs : ContextRefs (graphLayout whole) Γ)
-      (publications : PublicationRefs (graphLayout whole) Γ)
       (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
       (_refsBefore : ContextRefsBefore refs embedding)
-      (_publicationsBefore : PublicationsBeforeAll publications embedding)
       (suffixOffset : Nat),
       (actorEq : ∀ index,
         (toEventGraph whole wholeUnique).actor? (embedding.event index) =
@@ -78,7 +76,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
       (ready : config.cut.Ready (embedding.event index)) →
       (actor : (toEventGraph whole wholeUnique).actor?
         (embedding.event index) = some who) →
-      compilePolicyTable program unique refs publications embedding.ref who
+      compilePolicyTable program unique refs embedding.ref who
           (backtranslatePolicyTable whole wholeUnique who replacement program unique refs
             embedding actorEq)
           index ((toEventGraph whole wholeUnique).playerObserve who config).store
@@ -92,11 +90,11 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
   intro Γ openNames program
   induction program with
   | ret payoffs =>
-      intro unique refs publications embedding refsBefore publicationsBefore
+      intro unique refs embedding refsBefore
         suffixOffset actorEq rankEq covered inputs config reachable selectedOffset ordered index
       exact nomatch index
   | sample name fresh law next ih =>
-      intro unique refs publications embedding refsBefore publicationsBefore
+      intro unique refs embedding refsBefore
         suffixOffset actorEq rankEq covered inputs config reachable selectedOffset ordered index
       refine Fin.cases ?_ (fun tail => ?_) index <;> intro rank ready actor
       · let headIndex : Fin (eventCount (.sample name fresh law next)) :=
@@ -122,13 +120,6 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
                 (embedding.event (Fin.succ remaining)).val
               exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
           | there source => exact refsBefore source (Fin.succ remaining)
-        have tailPublicationsBefore :
-            PublicationsBeforeAll (weakenPublications publications) tailEmbedding := by
-          intro remaining readOwner readPayload readName source field found
-          cases source with
-          | there source =>
-              change FieldBefore (embedding.event (Fin.succ remaining)) field
-              exact publicationsBefore (Fin.succ remaining) source field found
         have tailActorEq : ∀ current,
             (toEventGraph whole wholeUnique).actor? (tailEmbedding.event current) =
               eventOwner? next current := by
@@ -148,8 +139,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
           covered.cons whole (tailRefs.get HasVar.here) (embedding.event headIndex)
             rfl headRank
         have current :=
-          ih (by simp [fresh, unique]) tailRefs (weakenPublications publications)
-            tailEmbedding tailRefsBefore tailPublicationsBefore (suffixOffset + 1)
+          ih (by simp [fresh, unique]) tailRefs tailEmbedding tailRefsBefore (suffixOffset + 1)
             tailActorEq tailRankEq tailCovered inputs config reachable selectedOffset
             ordered tail rank ready actor
         have outputsEq : (fun remaining => embedding.ref (Fin.succ remaining)) =
@@ -162,7 +152,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
           eventCount, Fin.cases_succ, compilePolicyTable, backtranslatePolicyTable,
           outputLayout] using current
   | commit name owner fresh guard next ih =>
-      intro unique refs publications embedding refsBefore publicationsBefore
+      intro unique refs embedding refsBefore
         suffixOffset actorEq rankEq covered inputs config reachable selectedOffset ordered index
       refine Fin.cases ?_ (fun tail => ?_) index <;> intro rank ready actor
       · let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
@@ -183,19 +173,19 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
         have headReady : config.cut.Ready (embedding.event headIndex) := by
           simpa [headIndex] using ready
         obtain ⟨sourceObservation, decodedStore⟩ :=
-          exists_decodeObservation_of_prefix whole wholeUnique refs publications embedding
-            refsBefore publicationsBefore headIndex suffixOffset config ordered headRank who
+          exists_decodeObservation_of_prefix whole wholeUnique refs embedding
+            refsBefore headIndex suffixOffset config ordered headRank who
         let view :=
           (sourceObservation, decodeCompletions whole wholeUnique
             ((toEventGraph whole wholeUnique).playerObserve who config).ownActions)
         have encoded := encodeDecisionView?_decodeActual_eq_normalizeObservation
-          whole wholeUnique refs publications suffixOffset covered inputs config reachable
+          whole wholeUnique refs suffixOffset covered inputs config reachable
           ordered (embedding.event headIndex) headReady who headActor sourceObservation decodedStore
         have kernel := backtranslatePolicyTable_commit_kernel whole wholeUnique who replacement
           unique refs embedding actorEq
           ownerEq view _ encoded
         change compilePolicyTable (.commit name owner fresh guard next) unique refs
-            publications embedding.ref who
+            embedding.ref who
             (backtranslatePolicyTable whole wholeUnique who replacement
               (.commit name owner fresh guard next) unique refs embedding actorEq)
             headIndex ((toEventGraph whole wholeUnique).playerStore who config.store)
@@ -207,7 +197,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
               ((toEventGraph whole wholeUnique).normalizeObservation
                 (embedding.event headIndex) who
                 ((toEventGraph whole wholeUnique).playerObserve who config)))
-        rw [compilePolicyTable_commit_of_decode unique refs publications embedding.ref
+        rw [compilePolicyTable_commit_of_decode unique refs embedding.ref
           (backtranslatePolicyTable whole wholeUnique who replacement
             (.commit name owner fresh guard next) unique refs embedding actorEq)
           ownerEq _ _ sourceObservation decodedStore]
@@ -231,14 +221,6 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
                 (embedding.event (Fin.succ remaining)).val
               exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
           | there source => exact refsBefore source (Fin.succ remaining)
-        have tailPublicationsBefore :
-            PublicationsBeforeAll (weakenPublications publications) tailEmbedding := by
-          intro remaining readOwner readPayload readName source field found
-          cases source with
-          | here => cases found
-          | there source =>
-              change FieldBefore (embedding.event (Fin.succ remaining)) field
-              exact publicationsBefore (Fin.succ remaining) source field found
         have tailActorEq : ∀ current,
             (toEventGraph whole wholeUnique).actor? (tailEmbedding.event current) =
               eventOwner? next current := by
@@ -258,8 +240,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
           covered.cons whole (tailRefs.get HasVar.here) (embedding.event headIndex)
             rfl headRank
         have current :=
-          ih (by simp [fresh, unique]) tailRefs (weakenPublications publications)
-            tailEmbedding tailRefsBefore tailPublicationsBefore (suffixOffset + 1)
+          ih (by simp [fresh, unique]) tailRefs tailEmbedding tailRefsBefore (suffixOffset + 1)
             tailActorEq tailRankEq tailCovered inputs config reachable selectedOffset
             ordered tail rank ready actor
         have outputsEq : (fun remaining => embedding.ref (Fin.succ remaining)) =
@@ -271,7 +252,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
           OutputEmbedding.tail, OutputEmbedding.ref, eventCount, Fin.cases_succ, compilePolicyTable,
           backtranslatePolicyTable, outputLayout] using current
   | reveal published owner name fresh selected unresolved next ih =>
-      intro unique refs publications embedding refsBefore publicationsBefore
+      intro unique refs embedding refsBefore
         suffixOffset actorEq rankEq covered inputs config reachable selectedOffset ordered index
       refine Fin.cases ?_ (fun tail => ?_) index <;> intro rank ready actor
       · let headIndex : Fin (eventCount
@@ -294,20 +275,20 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
         have headReady : config.cut.Ready (embedding.event headIndex) := by
           simpa [headIndex] using ready
         obtain ⟨sourceObservation, decodedStore⟩ :=
-          exists_decodeObservation_of_prefix whole wholeUnique refs publications embedding
-            refsBefore publicationsBefore headIndex suffixOffset config ordered headRank who
+          exists_decodeObservation_of_prefix whole wholeUnique refs embedding
+            refsBefore headIndex suffixOffset config ordered headRank who
         let view :=
           (sourceObservation, decodeCompletions whole wholeUnique
             ((toEventGraph whole wholeUnique).playerObserve who config).ownActions)
         have encoded := encodeDecisionView?_decodeActual_eq_normalizeObservation
-          whole wholeUnique refs publications suffixOffset covered inputs config reachable
+          whole wholeUnique refs suffixOffset covered inputs config reachable
           ordered (embedding.event headIndex) headReady who headActor sourceObservation decodedStore
         have kernel := backtranslatePolicyTable_reveal_kernel whole wholeUnique who replacement
           unique refs embedding actorEq
           ownerEq view _ encoded
         change compilePolicyTable
             (.reveal published owner name fresh selected unresolved next) unique refs
-            publications embedding.ref who
+            embedding.ref who
             (backtranslatePolicyTable whole wholeUnique who replacement
               (.reveal published owner name fresh selected unresolved next) unique refs
                 embedding actorEq)
@@ -320,7 +301,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
               ((toEventGraph whole wholeUnique).normalizeObservation
                 (embedding.event headIndex) who
                 ((toEventGraph whole wholeUnique).playerObserve who config)))
-        rw [compilePolicyTable_reveal_of_decode unique refs publications embedding.ref
+        rw [compilePolicyTable_reveal_of_decode unique refs embedding.ref
           (backtranslatePolicyTable whole wholeUnique who replacement
             (.reveal published owner name fresh selected unresolved next) unique refs
               embedding actorEq)
@@ -348,25 +329,6 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
                 (embedding.event (Fin.succ remaining)).val
               exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
           | there source => exact refsBefore source (Fin.succ remaining)
-        have tailPublicationsBefore :
-            PublicationsBeforeAll
-              (resolvePublications publications unique selected resultRef)
-              tailEmbedding := by
-          intro remaining readOwner readPayload readName source field found
-          cases source with
-          | there source =>
-              change FieldBefore (embedding.event (Fin.succ remaining)) field
-              by_cases same : readName = name
-              · subst readName
-                have cellEq := HasVar.type_unique unique source selected
-                cases cellEq
-                have sameField : resultRef.field = field := by
-                  simpa [resolvePublications,
-                    PublicationRef.field?] using found
-                subst field
-                exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
-              · exact publicationsBefore (Fin.succ remaining) source field (by
-                  simpa [resolvePublications, same] using found)
         have tailActorEq : ∀ current,
             (toEventGraph whole wholeUnique).actor? (tailEmbedding.event current) =
               eventOwner? next current := by
@@ -386,9 +348,8 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
           covered.cons whole (tailRefs.get HasVar.here) (embedding.event headIndex)
             rfl headRank
         have current :=
-          ih (by simp [fresh, unique]) tailRefs
-            (resolvePublications publications unique selected resultRef) tailEmbedding
-            tailRefsBefore tailPublicationsBefore (suffixOffset + 1) tailActorEq tailRankEq
+          ih (by simp [fresh, unique]) tailRefs tailEmbedding
+            tailRefsBefore (suffixOffset + 1) tailActorEq tailRankEq
             tailCovered inputs config reachable selectedOffset ordered tail rank ready actor
         have outputsEq : (fun remaining => embedding.ref (Fin.succ remaining)) =
             tailEmbedding.ref := by
@@ -421,9 +382,8 @@ theorem compileEventPolicy_backtranslate_at_prefix
         event actor ((toEventGraph program unique).playerObserve who config) := by
   have aligned := compilePolicyTable_backtranslate_eq_normalized
     program unique who replacement program unique
-    (ContextRefs.initial Γ (outputLayout program)) initialPublications
-    (outputEmbedding program) (initialRefsBefore program)
-    (initialPublicationsBefore program) 0
+    (ContextRefs.initial Γ (outputLayout program))
+    (outputEmbedding program) (initialRefsBefore program) 0
     (fun current => (eventOwner?_eq_actor program unique current).symm)
     (fun current => by simp [outputEmbedding])
     (ContextRefs.initial_coversPrefix program) inputs config reachable offset ordered

@@ -18,14 +18,14 @@ omit [DecidableEq Player] in
 private theorem resolveOutput_false_ne_success
     {owner : Player} {payload : L.Ty}
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (store : Store graph.layout) (value : L.Val payload) :
     EventCode.resolveOutput? binding checks false store ≠ some (.success value) := by
   unfold EventCode.resolveOutput?
   cases bound : binding.get? store with
   | none => simp
   | some result =>
-      cases accepted : DeferredCheck.allAccepted? checks store .failure <;> simp [accepted]
+      cases accepted : GuardCheck.allAccepted? checks store .failure <;> simp [accepted]
 
 /-- Resolution packet selection depends only on the effective publication
 result and the public accepted handle at the referenced binding. In
@@ -35,7 +35,7 @@ theorem resolutionPayload_eq_of_effectiveResult_eq
     (runtime : EventGraphRuntime graph)
     {owner : Player} (who : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (leftAction rightAction : graph.Action event)
     (leftView rightView : runtime.application.View)
@@ -102,7 +102,7 @@ theorem resolutionPayload_false_eq_rejected
     (runtime : EventGraphRuntime graph)
     {owner : Player} (who : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (DeferredCheck graph.layout payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (falseAction trueAction : graph.Action event)
     (falseView trueView : runtime.application.View)

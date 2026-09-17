@@ -24,7 +24,7 @@ sampled inside execution and one public scheduling policy fixed for the game. -/
 def eventGame (setup : Setup (Player := Player) (L := L))
     (scheduler : setup.eventGraph.PublicScheduler) : GameForm Player :=
   setup.eventGraph.gameForm
-    (setup.initialLaw.map fun initial => setup.eventInputs initial.1) scheduler
+    (setup.initialLaw.map fun initial => setup.eventInputs initial) scheduler
 
 /-- The full-source compiler simulates every unilateral asynchronous graph
 deviation by a finite mixture of source policies. -/

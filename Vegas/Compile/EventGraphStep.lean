@@ -39,41 +39,43 @@ theorem sample_step {Γ : SourceCtx Player L} {payload : L.Ty}
   rw [PublicDist.eval?, compilePublicDist_evalLaw? refs state config.store agrees law]
   rfl
 
-/-- A compiled commit stores the selected bound value, including an unopenable
-binding. No guard is evaluated at this step. -/
+/-- A compiled commit stores the selected binding, including an unopenable one.
+No guard is evaluated at this step. -/
 theorem commit_step {owner : Player} {payload : L.Ty}
     (config : graph.Config) (event : graph.EventId) (ready : config.cut.Ready event)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
       .bind owner payload)
-    (binding : BoundValue (L.Val payload)) :
-    let choice := BoundValue.resultEquiv _ binding
-    config.step event ready (cast (congrArg EventField.Action outputEq.symm) choice) =
+    (binding : PublicationResult (L.Val payload)) :
+    config.step event ready (cast (congrArg EventField.Action outputEq.symm) binding) =
       FinDist.pure (config.complete event ready
-        (cast (congrArg EventField.Action outputEq.symm) choice)
-        (cast (congrArg EventField.Value outputEq.symm) choice)) := by
-  dsimp only
+        (cast (congrArg EventField.Action outputEq.symm) binding)
+        (cast (congrArg EventField.Value outputEq.symm) binding)) := by
   rw [config.step_eq_map_of_code event ready outputEq _ codeEq _
-    (FinDist.pure (BoundValue.resultEquiv _ binding)) rfl, FinDist.map_pure]
+    (FinDist.pure binding) rfl, FinDist.map_pure]
 
-/-- A compiled reveal executes the source's tentative validation and publishes
-its accepted result. The completion retains the original disclosure decision,
-including a `true` decision rejected by the retained guard registry. -/
+/-- A compiled reveal performs the checks of the obligations the reveal completes
+and publishes the accepted result. The completion retains the original
+disclosure decision, including a `true` decision whose publication is rejected. -/
 theorem reveal_step
-    {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty} {name : VarId}
+    {Γ : SourceCtx Player L} {published : VarId} {owner : Player} {payload : L.Ty}
+    {name : VarId}
     (config : graph.Config) (event : graph.EventId) (ready : config.cut.Ready event)
     (outputEq : graph.outputLayout event = .publication payload)
-    (refs : ContextRefs graph.layout Γ) (publications : PublicationRefs graph.layout Γ)
-    (unique : (Γ.map Prod.fst).Nodup) (registry : Registry Γ)
+    (refs : ContextRefs graph.layout Γ) (revelations : Revelations Γ) (registry : Registry Γ)
     (selected : HasVar Γ name (.privateData owner payload))
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
       .resolve owner payload (refs.get selected)
-        (registry.map (compileGuard refs (proposedOperands publications unique selected))))
-    (state : State L Γ) (refsAgree : refs.Agrees state config.store)
-    (publicationsAgree : publications.Agree state config.store) (disclose : Bool) :
-    let proposed := boundResult state selected disclose
-    let accepted := if registry.ok (updatePrivate state selected (resultPublication proposed))
-      then proposed else PublicationResult.failure
+        (compileChecks (published := published) refs registry revelations selected))
+    (state : State L Γ) (refsAgree : refs.Agrees state config.store) (disclose : Bool) :
+    let proposal : PublicationResult (L.Val payload) :=
+      if disclose then state.get selected else .failure
+    let accepted :=
+      if (registry.completedBy (published := published) revelations selected).all
+          (·.accepts (revelations.reveal (published := published) selected)
+            (Env.cons (Val := CellVal (Player := Player) L) (τ := .publication payload)
+              proposal state))
+        then proposal else PublicationResult.failure
     config.step event ready (cast (congrArg EventField.Action outputEq.symm) disclose) =
       FinDist.pure (config.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) disclose)
@@ -81,7 +83,7 @@ theorem reveal_step
   classical
   dsimp only
   rw [config.step_eq_map_of_code event ready outputEq _ codeEq _ _
-    (compileResolve_eval? refs publications unique registry state config.store
-      refsAgree publicationsAgree selected disclose), FinDist.map_pure]
+    (compileResolve_eval? refs registry revelations state config.store refsAgree selected
+      disclose), FinDist.map_pure]
 
 end Vegas.SourceProgram.EventLowering

@@ -7,8 +7,7 @@ import Vegas.EventGraph.CanonicalStep
 /-! # Constructive encoding of source observations
 
 Source observations determine exactly the public fields and the observing
-player's private bindings. Resolved publication status is represented once,
-by the public publication cell already present in the source context.
+player's private bindings.
 -/
 
 noncomputable section
@@ -77,8 +76,7 @@ def encodeObservationStore {Field : Type} [DecidableEq Field]
           HasVar ((name, .privateData owner payload) :: Γ) name
             (.privateData owner payload)) with
         | none => tail
-        | some value => writeField (refs.get HasVar.here)
-            (BoundValue.resultEquiv _ value.1) tail
+        | some value => writeField (refs.get HasVar.here) value tail
       else tail
 
 /-- A reference environment covers a visible graph field when some visible
@@ -194,7 +192,7 @@ private theorem encodeObservationStore_apply_eq_playerStore
           change (if owner = who then some (state.get source) else none) = _
           simp [ownerEq]
         rw [headObserved, observationTail_sourceObserve]
-        change writeField headRef (BoundValue.resultEquiv _ (state.get source).1)
+        change writeField headRef (state.get source)
             (encodeObservationStore who refs.tail (sourceObserve who tailState)) field = _
         by_cases same : field = headRef.field
         · subst field
@@ -203,10 +201,8 @@ private theorem encodeObservationStore_apply_eq_playerStore
             rw [headRef.layout_eq]
             exact ownerEq
           rw [graph.playerStore_of_visible who store headRef.field visible]
-          exact writeField_eq_of_get? headRef
-            (BoundValue.resultEquiv _ (state.get source).1) _ store (agree source)
-        · rw [writeField_of_ne headRef
-            (BoundValue.resultEquiv _ (state.get source).1) _ field same]
+          exact writeField_eq_of_get? headRef (state.get source) _ store (agree source)
+        · rw [writeField_of_ne headRef (state.get source) _ field same]
           apply encodeObservationStore_apply_eq_playerStore who refs.tail tailState store
             field (fun read => agree (.there read))
           intro absent
@@ -249,20 +245,19 @@ private theorem encodeObservationStore_decode_apply
     {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L} (who : Player) :
     {Γ : SourceCtx Player L} →
-    (refs : ContextRefs layout Γ) → (publications : PublicationRefs layout Γ) →
-    (store : Vegas.EventGraph.Store layout) →
+    (refs : ContextRefs layout Γ) → (store : Vegas.EventGraph.Store layout) →
     (observation : SourceObservation L who Γ) →
-    decodeObservation? who refs publications store = some observation →
+    decodeObservation? who refs store = some observation →
     (field : Field) →
     (¬ refs.CoversVisible who field → store field = none) →
     encodeObservationStore who refs observation field = store field
-  | [], refs, publications, store, observation, decoded, field, coverage => by
+  | [], refs, store, observation, decoded, field, coverage => by
       have observationEq : observation = ⟨Env.empty _⟩ := Option.some.inj decoded.symm
       subst observation
       exact (coverage (by
         rintro ⟨name, cell, source, _, _⟩
         nomatch source)).symm
-  | (name, .publicData payload) :: Γ, refs, publications, store, observation,
+  | (name, .publicData payload) :: Γ, refs, store, observation,
       decoded, field, coverage => by
       let source : HasVar ((name, .publicData payload) :: Γ) name
           (.publicData payload) := .here
@@ -275,7 +270,7 @@ private theorem encodeObservationStore_decode_apply
         contradiction
       | some head =>
         change (refs.get HasVar.here).get? store = some head at headEq
-        cases tailEq : decodeObservation? who refs.tail publications.tail store with
+        cases tailEq : decodeObservation? who refs.tail store with
         | none =>
           rw [headEq, tailEq] at decoded
           contradiction
@@ -288,15 +283,14 @@ private theorem encodeObservationStore_decode_apply
           · subst field
             exact writeField_eq_of_get? headRef head _ store headEq
           · rw [writeField_of_ne headRef head _ field same]
-            apply encodeObservationStore_decode_apply who refs.tail publications.tail store
-              tail tailEq field
+            apply encodeObservationStore_decode_apply who refs.tail store tail tailEq field
             intro absent
             apply coverage
             rintro ⟨readName, cell, read, visible, found⟩
             cases read with
             | here => exact same found.symm
             | there read => exact absent ⟨readName, cell, read, visible, found⟩
-  | (name, .publication payload) :: Γ, refs, publications, store, observation,
+  | (name, .publication payload) :: Γ, refs, store, observation,
       decoded, field, coverage => by
       let source : HasVar ((name, .publication payload) :: Γ) name
           (.publication payload) := .here
@@ -309,7 +303,7 @@ private theorem encodeObservationStore_decode_apply
         contradiction
       | some head =>
         change (refs.get HasVar.here).get? store = some head at headEq
-        cases tailEq : decodeObservation? who refs.tail publications.tail store with
+        cases tailEq : decodeObservation? who refs.tail store with
         | none =>
           rw [headEq, tailEq] at decoded
           contradiction
@@ -322,15 +316,14 @@ private theorem encodeObservationStore_decode_apply
           · subst field
             exact writeField_eq_of_get? headRef head _ store headEq
           · rw [writeField_of_ne headRef head _ field same]
-            apply encodeObservationStore_decode_apply who refs.tail publications.tail store
-              tail tailEq field
+            apply encodeObservationStore_decode_apply who refs.tail store tail tailEq field
             intro absent
             apply coverage
             rintro ⟨readName, cell, read, visible, found⟩
             cases read with
             | here => exact same found.symm
             | there read => exact absent ⟨readName, cell, read, visible, found⟩
-  | (name, .privateData owner payload) :: Γ, refs, publications, store, observation,
+  | (name, .privateData owner payload) :: Γ, refs, store, observation,
       decoded, field, coverage => by
       let source : HasVar ((name, .privateData owner payload) :: Γ) name
           (.privateData owner payload) := .here
@@ -345,40 +338,30 @@ private theorem encodeObservationStore_decode_apply
           contradiction
         | some binding =>
           change (refs.get HasVar.here).get? store = some binding at bindingEq
-          cases statusEq : publicationStatus? (publications source) store with
+          cases tailEq : decodeObservation? who refs.tail store with
           | none =>
-            change publicationStatus? (publications HasVar.here) store = none at statusEq
-            rw [bindingEq, statusEq] at decoded
+            rw [bindingEq, tailEq] at decoded
             contradiction
-          | some status =>
-            change publicationStatus? (publications HasVar.here) store = some status at statusEq
-            cases tailEq : decodeObservation? who refs.tail publications.tail store with
-            | none =>
-              rw [bindingEq, statusEq, tailEq] at decoded
-              contradiction
-            | some tail =>
-              rw [bindingEq, statusEq, tailEq] at decoded
-              cases decoded
-              rw [encodeObservationStore]
-              simp only [ownerEq, ↓reduceDIte]
-              change writeField headRef
-                  (BoundValue.resultEquiv _ ((BoundValue.resultEquiv _).symm binding))
-                  (encodeObservationStore who refs.tail tail) field = store field
-              rw [Equiv.apply_symm_apply]
-              by_cases same : field = headRef.field
-              · subst field
-                exact writeField_eq_of_get? headRef binding _ store bindingEq
-              · rw [writeField_of_ne headRef binding _ field same]
-                apply encodeObservationStore_decode_apply who refs.tail publications.tail
-                  store tail tailEq field
-                intro absent
-                apply coverage
-                rintro ⟨readName, cell, read, visible, found⟩
-                cases read with
-                | here => exact same found.symm
-                | there read => exact absent ⟨readName, cell, read, visible, found⟩
+          | some tail =>
+            rw [bindingEq, tailEq] at decoded
+            cases decoded
+            rw [encodeObservationStore]
+            simp only [ownerEq, ↓reduceDIte]
+            change writeField headRef binding
+                (encodeObservationStore who refs.tail tail) field = store field
+            by_cases same : field = headRef.field
+            · subst field
+              exact writeField_eq_of_get? headRef binding _ store bindingEq
+            · rw [writeField_of_ne headRef binding _ field same]
+              apply encodeObservationStore_decode_apply who refs.tail store tail tailEq field
+              intro absent
+              apply coverage
+              rintro ⟨readName, cell, read, visible, found⟩
+              cases read with
+              | here => exact same found.symm
+              | there read => exact absent ⟨readName, cell, read, visible, found⟩
       · simp only [ownerEq, ↓reduceDIte] at decoded
-        cases tailEq : decodeObservation? who refs.tail publications.tail store with
+        cases tailEq : decodeObservation? who refs.tail store with
         | none =>
           rw [tailEq] at decoded
           contradiction
@@ -387,8 +370,7 @@ private theorem encodeObservationStore_decode_apply
           cases decoded
           rw [encodeObservationStore]
           simp only [ownerEq, ↓reduceDIte]
-          apply encodeObservationStore_decode_apply who refs.tail publications.tail store
-            tail tailEq field
+          apply encodeObservationStore_decode_apply who refs.tail store tail tailEq field
           intro absent
           apply coverage
           rintro ⟨readName, cell, read, visible, found⟩
@@ -402,88 +384,63 @@ encoder whenever all available fields are covered by visible source refs. -/
 theorem encodeObservationStore_decodeObservation?_eq
     {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} (refs : ContextRefs layout Γ)
-    (publications : PublicationRefs layout Γ) (who : Player)
+    {Γ : SourceCtx Player L} (refs : ContextRefs layout Γ) (who : Player)
     (store : Vegas.EventGraph.Store layout)
     (observation : SourceObservation L who Γ)
-    (decoded : decodeObservation? who refs publications store = some observation)
+    (decoded : decodeObservation? who refs store = some observation)
     (coverage : ∀ field, ¬ refs.CoversVisible who field → store field = none) :
     encodeObservationStore who refs observation = store := by
   funext field
-  exact encodeObservationStore_decode_apply who refs publications store observation decoded
+  exact encodeObservationStore_decode_apply who refs store observation decoded
     field (coverage field)
 
 omit R in
 /-- The observation decoder succeeds whenever every visible source reference
-and retained publication-status reference is available. -/
+is available. -/
 theorem exists_decodeObservation_of_available
-    {Field : Type} [DecidableEq Field]
-    {layout : Field → Vegas.EventGraph.EventField Player L} (who : Player) :
-    {Γ : SourceCtx Player L} →
-    (refs : ContextRefs layout Γ) → (publications : PublicationRefs layout Γ) →
+    {Field : Type} {layout : Field → Vegas.EventGraph.EventField Player L} (who : Player) :
+    {Γ : SourceCtx Player L} → (refs : ContextRefs layout Γ) →
     (store : Vegas.EventGraph.Store layout) →
     (∀ {name cell} (source : HasVar Γ name cell), cellVisibleTo who cell →
       ((refs.get source).get? store).isSome = true) →
-    (∀ {owner payload name}
-      (source : HasVar Γ name (.privateData owner payload)),
-      (publicationStatus? (publications source) store).isSome = true) →
-    ∃ observation, decodeObservation? who refs publications store = some observation
-  | [], refs, publications, store, refsAvailable, publicationsAvailable =>
-      ⟨⟨Env.empty _⟩, rfl⟩
-  | (name, .publicData payload) :: Γ, refs, publications, store, refsAvailable,
-      publicationsAvailable => by
-      have headAvailable := refsAvailable (HasVar.here :
+    ∃ observation, decodeObservation? who refs store = some observation
+  | [], refs, store, available => ⟨⟨Env.empty _⟩, rfl⟩
+  | (name, .publicData payload) :: Γ, refs, store, available => by
+      have headAvailable := available (HasVar.here :
         HasVar ((name, .publicData payload) :: Γ) name (.publicData payload)) trivial
       cases headEq : (refs.get (HasVar.here :
           HasVar ((name, .publicData payload) :: Γ) name
             (.publicData payload))).get? store with
       | none => simp [headEq] at headAvailable
       | some head =>
-        obtain ⟨tail, tailEq⟩ := exists_decodeObservation_of_available who refs.tail
-          publications.tail store
-          (fun source visible => refsAvailable (.there source) visible)
-          (fun source => publicationsAvailable (.there source))
+        obtain ⟨tail, tailEq⟩ := exists_decodeObservation_of_available who refs.tail store
+          (fun source visible => available (.there source) visible)
         exact ⟨⟨Env.cons head tail.cells⟩, by simp [decodeObservation?, headEq, tailEq]⟩
-  | (name, .publication payload) :: Γ, refs, publications, store, refsAvailable,
-      publicationsAvailable => by
-      have headAvailable := refsAvailable (HasVar.here :
+  | (name, .publication payload) :: Γ, refs, store, available => by
+      have headAvailable := available (HasVar.here :
         HasVar ((name, .publication payload) :: Γ) name (.publication payload)) trivial
       cases headEq : (refs.get (HasVar.here :
           HasVar ((name, .publication payload) :: Γ) name
             (.publication payload))).get? store with
       | none => simp [headEq] at headAvailable
       | some head =>
-        obtain ⟨tail, tailEq⟩ := exists_decodeObservation_of_available who refs.tail
-          publications.tail store
-          (fun source visible => refsAvailable (.there source) visible)
-          (fun source => publicationsAvailable (.there source))
+        obtain ⟨tail, tailEq⟩ := exists_decodeObservation_of_available who refs.tail store
+          (fun source visible => available (.there source) visible)
         exact ⟨⟨Env.cons head tail.cells⟩, by simp [decodeObservation?, headEq, tailEq]⟩
-  | (name, .privateData owner payload) :: Γ, refs, publications, store,
-      refsAvailable, publicationsAvailable => by
-      obtain ⟨tail, tailEq⟩ := exists_decodeObservation_of_available who refs.tail
-        publications.tail store
-        (fun source visible => refsAvailable (.there source) visible)
-        (fun source => publicationsAvailable (.there source))
+  | (name, .privateData owner payload) :: Γ, refs, store, available => by
+      obtain ⟨tail, tailEq⟩ := exists_decodeObservation_of_available who refs.tail store
+        (fun source visible => available (.there source) visible)
       by_cases same : owner = who
-      · have bindingAvailable := refsAvailable (HasVar.here :
+      · have bindingAvailable := available (HasVar.here :
           HasVar ((name, .privateData owner payload) :: Γ) name
             (.privateData owner payload)) same
-        have statusAvailable := publicationsAvailable (HasVar.here :
-          HasVar ((name, .privateData owner payload) :: Γ) name
-            (.privateData owner payload))
         cases bindingEq : (refs.get (HasVar.here :
             HasVar ((name, .privateData owner payload) :: Γ) name
               (.privateData owner payload))).get? store with
         | none => simp [bindingEq] at bindingAvailable
         | some binding =>
-          cases statusEq : publicationStatus? (publications (HasVar.here :
-              HasVar ((name, .privateData owner payload) :: Γ) name
-                (.privateData owner payload))) store with
-          | none => simp [statusEq] at statusAvailable
-          | some status =>
-            exact ⟨⟨Env.cons (some ((BoundValue.resultEquiv _).symm binding, status))
-              tail.cells⟩, by
-                simp [decodeObservation?, same, bindingEq, statusEq, tailEq]⟩
+          exact ⟨⟨Env.cons (some binding) tail.cells⟩, by
+            simp [decodeObservation?, same, bindingEq, tailEq]⟩
       · exact ⟨⟨Env.cons none tail.cells⟩, by
           simp [decodeObservation?, same, tailEq]⟩
 
@@ -507,7 +464,7 @@ private theorem store_isSome_of_before
 
 /-- At a canonical compiled prefix, the source observation decoder succeeds
 on the actual masked player store. This is purely structural: references to
-visible cells and retained publication results all precede the current event. -/
+visible cells all precede the current event. -/
 theorem exists_decodeObservation_of_prefix
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
@@ -515,42 +472,24 @@ theorem exists_decodeObservation_of_prefix
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {program : SourceProgram Player L Γ openNames}
     (refs : ContextRefs (graphLayout whole) Γ)
-    (publications : PublicationRefs (graphLayout whole) Γ)
     (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
     (refsBefore : ContextRefsBefore refs embedding)
-    (publicationsBefore : PublicationsBeforeAll publications embedding)
     (index : Fin (eventCount program)) (offset : Nat)
     (config : (toEventGraph whole unique).Config)
     (ordered : config.cut.IsPrefix offset)
     (rank : (embedding.event index).val = offset) (who : Player) :
-    ∃ observation, decodeObservation? who refs publications
+    ∃ observation, decodeObservation? who refs
         ((toEventGraph whole unique).playerStore who config.store) = some observation := by
-  apply exists_decodeObservation_of_available who refs publications
-  · intro name cell source visible
-    let ref := refs.get source
-    have visibleKind : (cellField cell).VisibleTo who := by
-      cases cell <;> exact visible
-    rw [ref.get?_playerStore (graph := toEventGraph whole unique) who config.store
-      visibleKind]
-    exact ref.get?_isSome config.store
-      (store_isSome_of_before whole unique config ordered (embedding.event index) rank
-        ref.field (refsBefore source index))
-  · intro owner payload name source
-    rw [publicationStatus?_playerStore (graph := toEventGraph whole unique)
-      (publications source) who config.store]
-    cases publicationEq : publications source with
-    | pending => rfl
-    | publication ref =>
-        have found : (publications source).field? = some ref.field := by
-          simp [publicationEq, PublicationRef.field?]
-        have available := ref.get?_isSome config.store
-          (store_isSome_of_before whole unique config ordered (embedding.event index) rank
-            ref.field (publicationsBefore index source ref.field found))
-        change ((ref.get? config.store).map
-          Vegas.EventGraph.publicationOfResult).isSome = true
-        cases found : ref.get? config.store with
-        | none => simp [found] at available
-        | some value => rfl
+  apply exists_decodeObservation_of_available who refs
+  intro name cell source visible
+  let ref := refs.get source
+  have visibleKind : (cellField cell).VisibleTo who := by
+    cases cell <;> exact visible
+  rw [ref.get?_playerStore (graph := toEventGraph whole unique) who config.store
+    visibleKind]
+  exact ref.get?_isSome config.store
+    (store_isSome_of_before whole unique config ordered (embedding.event index) rank
+      ref.field (refsBefore source index))
 
 omit [DecidableEq Player] R in
 @[simp] theorem cellVisibleTo_iff_fieldVisibleTo (who : Player)
@@ -695,19 +634,17 @@ theorem decodeObservation?_encodeObservationStore_of_prefix
     (whole : SourceProgram Player L wholeΓ wholeOpen)
     (unique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
-    (publications : PublicationRefs (graphLayout whole) Γ)
     (offset : Nat) (covered : refs.CoversPrefix whole offset)
     (config : (toEventGraph whole unique).Config)
     (ordered : config.cut.IsPrefix offset) (state : State L Γ)
-    (refsAgree : refs.Agrees state config.store)
-    (publicationsAgree : publications.Agree state config.store) (who : Player) :
-    decodeObservation? who refs publications
+    (refsAgree : refs.Agrees state config.store) (who : Player) :
+    decodeObservation? who refs
         (encodeObservationStore who refs (sourceObserve who state)) =
       some (sourceObserve who state) := by
   rw [encodeObservationStore_eq_playerStore_of_prefix whole unique refs offset covered
     config ordered state refsAgree who]
   exact decodeObservation?_playerStore_eq_some (graph := toEventGraph whole unique)
-    refs publications who state config.store refsAgree publicationsAgree
+    refs who state config.store refsAgree
 
 /-- Conversely, every observation decoded from the actual canonical player
 store re-encodes to that exact masked store. This is the store component of
@@ -717,20 +654,17 @@ theorem encodeObservationStore_decodeObservation?_eq_playerStore_of_prefix
     (whole : SourceProgram Player L wholeΓ wholeOpen)
     (unique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
-    (publications : PublicationRefs (graphLayout whole) Γ)
     (offset : Nat) (covered : refs.CoversPrefix whole offset)
     (config : (toEventGraph whole unique).Config)
     (ordered : config.cut.IsPrefix offset) (state : State L Γ)
-    (refsAgree : refs.Agrees state config.store)
-    (publicationsAgree : publications.Agree state config.store) (who : Player)
+    (refsAgree : refs.Agrees state config.store) (who : Player)
     (observation : SourceObservation L who Γ)
-    (decoded : decodeObservation? who refs publications
+    (decoded : decodeObservation? who refs
       ((toEventGraph whole unique).playerStore who config.store) = some observation) :
     encodeObservationStore who refs observation =
       (toEventGraph whole unique).playerStore who config.store := by
   have exactObservation := decodeObservation?_playerStore_eq_some
-    (graph := toEventGraph whole unique) refs publications who state config.store
-    refsAgree publicationsAgree
+    (graph := toEventGraph whole unique) refs who state config.store refsAgree
   rw [decoded] at exactObservation
   have observationEq : observation = sourceObserve who state :=
     Option.some.inj exactObservation

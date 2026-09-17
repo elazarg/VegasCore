@@ -13,20 +13,22 @@ available to a deviating player. Both use the same graph executor.
 ## Operations and guards
 
 A binding chooses an ordinary payload or unopenability and stores it privately.
-It does not execute its deferred guard. An atomic resolution chooses disclosure
-or withholding, evaluates the retained checks, and publishes a typed success or
-failure. It preserves the original disclosure Boolean in the actor's history:
+It does not execute its declared guard. An atomic resolution chooses disclosure
+or withholding, evaluates the checks that this reveal completes, and publishes a
+typed success or failure. It preserves the original disclosure Boolean in the actor's history:
 a rejected `true` and a withheld `false` can have the same public result.
 
-The shared `DeferredGuardCode` evaluator gives failure precedence over pending,
-and executes ordinary guard code only when every required operand has a payload.
-The guard subject is required even for a constant expression. No satisfying-value
-or finite-payload assumption is imposed.
+The shared `GuardCode` evaluator is binary: a failed subject or a failed input
+read by the code discharges the check, and otherwise the ordinary guard code
+decides. The guard subject is required even for a constant expression. No
+satisfying-value or finite-payload assumption is imposed. A check is evaluated
+exactly once, so the compiled node carries operands for its code's reads only;
+there is no pending operand.
 
-The compiler tracks each private resource as pending until resolution, then as
-its immutable public result field. At a resolution it specializes the retained
-guard registry with the current proposal and prior results. This includes guards
-whose subject is another resource. For example:
+The compiler knows statically which reveal publishes each private resource, so
+a resolution node carries exactly the checks that reveal completes, with each
+operand resolved to the current proposal or to an earlier publication field.
+This includes guards whose subject is another resource. For example:
 
 ```text
 commit P.x;
@@ -35,9 +37,9 @@ reveal P.y;
 reveal P.x;
 ```
 
-With P's mismatching bindings, disclosing y first
-can succeed while x is pending; the later x disclosure fails its retained
-relation. Exchanging the resolutions can change which publication fails.
+With P's mismatching bindings, disclosing y first succeeds, because the guard
+`x = y` is not yet complete; the later x disclosure completes it and fails.
+Exchanging the resolutions can change which publication fails.
 The compiler therefore preserves their order. Rejection replaces only the
 current proposal with failure, not an earlier successful publication.
 
@@ -72,9 +74,8 @@ Arbitrary graph deviations may also use completion-order information.
 ## Canonical and asynchronous correspondence
 
 `EventLowering.canonical_setup_law` proves exact decoded terminal-state laws for
-the canonical source-order execution. The state decoder reconstructs publication
-status and public aliases from the immutable graph fields, without inventing
-payload defaults.
+the canonical source-order execution. The state decoder reconstructs every source
+cell from the immutable graph fields, without inventing payload defaults.
 
 `EventLowering.canonical_deviation_terminalState_law` gives every canonical
 graph replacement one source-policy backtranslation, uniformly over concrete

@@ -65,13 +65,13 @@ example : openBinding.eval? true (fun _ => some (.success true)) =
 example : openBinding.eval? false (fun _ => some (.success true)) =
     some (FinDist.pure .failure) := rfl
 
-private def falseCheck : Vegas.EventGraph.DeferredCheck BindingLayout .bool where
+private def falseCheck : Vegas.EventGraph.GuardCheck BindingLayout .bool where
   subject := 7
   payload := .bool
   code := { schema := [], schemaNames := by decide, subjectFresh := by decide,
             code := .constBool false }
   subjectRead := .proposed
-  reads := fun ref => nomatch ref
+  reads := fun ref _ => nomatch ref
   readFields := ∅
   subject_mem := by intro field impossible; cases impossible
   reads_mem := fun ref => nomatch ref
@@ -84,7 +84,7 @@ example : guardedOpening.eval? true (fun _ => some (.success true)) =
     some (FinDist.pure .failure) := rfl
 
 /-- Failure vacuously satisfies the same retained check. -/
-example : falseCheck.eval? (fun _ => none) .failure = some .satisfied := rfl
+example : falseCheck.eval? (fun _ => none) .failure = some true := rfl
 
 private def emptyDomainBinding :
     Vegas.EventGraph.EventCode BindingLayout (.binding false (.range 1 0)) :=
@@ -97,37 +97,41 @@ example : emptyDomainBinding.eval? .failure (fun _ => none) =
 private abbrev DeferredLayout : Fin 2 → Vegas.EventGraph.EventField Bool simpleExpr :=
   Fin.cases (.binding false .bool) (fun _ => .publication .bool)
 
-/-- The relation y = x is still pending when y is proposed before x. -/
-private def pendingEquality : Vegas.EventGraph.DeferredCheck DeferredLayout .bool where
+/-- A schema input the code never reads needs no operand and no stored field. -/
+private def unreadInput : Vegas.EventGraph.GuardCheck DeferredLayout .bool where
+  subject := 2
+  payload := .bool
+  code := { schema := [(1, .bool)], schemaNames := by decide, subjectFresh := by decide,
+            code := .constBool true }
+  subjectRead := .proposed
+  reads := fun ref unread => by
+    cases ref with
+    | here => exact absurd unread (by decide)
+    | there ref => nomatch ref
+  readFields := ∅
+  subject_mem := by intro field impossible; cases impossible
+  reads_mem := by
+    intro name input ref read field impossible
+    cases ref with
+    | here => exact absurd read (by decide)
+    | there ref => nomatch ref
+
+example : unreadInput.eval? (fun _ => none) (.success true) = some true := rfl
+
+/-- The relation y = x is checked when x is proposed after y is public. -/
+private def closingEquality : Vegas.EventGraph.GuardCheck DeferredLayout .bool where
   subject := 2
   payload := .bool
   code := { schema := [(1, .bool)], schemaNames := by decide, subjectFresh := by decide,
             code := .eq (.var 2 .here) (.var 1 (.there .here)) }
-  subjectRead := .proposed
-  reads := fun ref => match ref with | .here => .pending
-  readFields := ∅
-  subject_mem := by intro field impossible; cases impossible
-  reads_mem := by
-    intro name input ref field impossible
-    cases ref with
-    | here => cases impossible
-    | there ref => nomatch ref
-
-example : pendingEquality.eval? (fun _ => none) (.success true) = some .pending := rfl
-
-/-- Once y is public, proposing x closes that retained relation. -/
-private def closingEquality : Vegas.EventGraph.DeferredCheck DeferredLayout .bool where
-  subject := 2
-  payload := .bool
-  code := pendingEquality.code
   subjectRead := .publication ⟨1, rfl⟩
-  reads := fun ref => match ref with | .here => .proposed
+  reads := fun ref _ => match ref with | .here => .proposed
   readFields := {1}
   subject_mem := by
     intro field same
     simpa [Vegas.EventGraph.GuardOperand.field?] using same.symm
   reads_mem := by
-    intro name input ref field impossible
+    intro name input ref read field impossible
     cases ref with
     | here => cases impossible
     | there ref => nomatch ref
@@ -135,9 +139,9 @@ private def closingEquality : Vegas.EventGraph.DeferredCheck DeferredLayout .boo
 private def publishedTrue : Vegas.EventGraph.Store DeferredLayout :=
   Fin.cases (some (.success false)) (fun _ => some (.success true))
 
-example : closingEquality.eval? publishedTrue (.success false) = some .rejected := rfl
+example : closingEquality.eval? publishedTrue (.success false) = some false := rfl
 
-example : closingEquality.eval? publishedTrue (.success true) = some .satisfied := rfl
+example : closingEquality.eval? publishedTrue (.success true) = some true := rfl
 
 private def closeRelation : Vegas.EventGraph.EventCode DeferredLayout (.publication .bool) :=
   Vegas.EventGraph.EventCode.resolve (layout := DeferredLayout) false .bool ⟨0, rfl⟩

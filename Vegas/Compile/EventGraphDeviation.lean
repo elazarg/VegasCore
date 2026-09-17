@@ -22,7 +22,7 @@ theorem canonical_deviation_terminalState_law
     (program : SourceProgram Player L Γ openNames)
     (unique : (Γ.map Prod.fst).Nodup) (profile : BehavioralProfile program)
     (who : Player) (replacement : (toEventGraph program unique).BehavioralPolicy who)
-    (state : State L Γ) (pending : PrivatePending state) :
+    (state : State L Γ) :
     ((toEventGraph program unique).terminalOutcomes
       (toEventGraph program unique).canonicalScheduler
       (Profile.update (sig := (toEventGraph program unique).gameSignature)
@@ -59,7 +59,7 @@ theorem canonical_deviation_terminalState_law
       (compileEventProfile program unique profile) who replacement) (encodeInputs state)
   rw [Vegas.EventGraph.normalizeProfile_update, normalizeProfile_compileEventProfile,
     ← kernelLaw] at normalized
-  rw [← canonical_terminalState_law program unique translated state pending]
+  rw [← canonical_terminalState_law program unique translated state]
   apply FinDist.map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode, terminalOutcomes_map_decode, normalized]
 
@@ -74,9 +74,8 @@ theorem canonical_setup_deviation_decode
         (setup.eventGraph.normalizeProfile
           (Profile.update (sig := setup.eventGraph.gameSignature)
             (compileEventProfile setup.program setup.namesNodup profile) who replacement))
-        (setup.eventInputs initial.1)).map (fun config => config.store)).map
-          (decodeState? (terminalRefs setup.program)
-            (terminalPublications setup.program setup.namesNodup))) =
+        (setup.eventInputs initial)).map (fun config => config.store)).map
+          (decodeState? (terminalRefs setup.program))) =
       (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program) profile who
         (backtranslateEventPolicy setup.program setup.namesNodup who replacement))).map some := by
   rw [Setup.run, FinDist.map_bind]
@@ -85,7 +84,7 @@ theorem canonical_setup_deviation_decode
   rw [← setup.eventGraph.runPolicies_canonical_normalize_eq]
   have law := congrArg (fun measure => measure.map some)
     (canonical_deviation_terminalState_law setup.program setup.namesNodup profile who replacement
-      initial.1 initial.2)
+      initial)
   rw [terminalOutcomes_map_decode] at law
   exact law
 
@@ -97,7 +96,7 @@ theorem canonical_setup_deviation_law
     (profile : BehavioralProfile setup.program) (who : Player)
     (replacement : setup.eventGraph.BehavioralPolicy who) :
     ((setup.eventGraph.canonicalGame
-        (setup.initialLaw.map fun initial => setup.eventInputs initial.1)).play
+        (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
       (Profile.update (sig := setup.eventGraph.gameSignature)
         (compileEventProfile setup.program setup.namesNodup profile) who replacement)).map
           (terminalState setup.program setup.namesNodup) =
@@ -109,7 +108,7 @@ theorem canonical_setup_deviation_law
   apply FinDist.bind_congr
   intro initial _
   exact canonical_deviation_terminalState_law setup.program setup.namesNodup profile who
-    replacement initial.1 initial.2
+    replacement initial
 
 /-- Read the graph-local scheduler mixture through the compiler's total
 terminal-state decoder, retaining a single mixture across private setup. -/
@@ -123,19 +122,19 @@ private theorem scheduled_canonical_deviation_mixture
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
             (compileEventProfile setup.program setup.namesNodup profile) who replacement)
-          (setup.eventInputs initial.1)).map
+          (setup.eventInputs initial)).map
             (terminalState setup.program setup.namesNodup)) =
         mixture.bind fun alternative =>
           setup.initialLaw.bind fun initial =>
             (setup.eventGraph.terminalOutcomes setup.eventGraph.canonicalScheduler
               (Profile.update (sig := setup.eventGraph.gameSignature)
                 (compileEventProfile setup.program setup.namesNodup profile) who alternative)
-              (setup.eventInputs initial.1)).map
+              (setup.eventInputs initial)).map
                 (terminalState setup.program setup.namesNodup) := by
   dsimp only [Setup.eventGraph] at *
   let ordered := toEventGraph_barrierOrdered setup.program setup.namesNodup
   obtain ⟨mixture, law⟩ := ordered.exists_deviation_mixture
-      (setup.initialLaw.map fun initial => setup.eventInputs initial.1) scheduler
+      (setup.initialLaw.map fun initial => setup.eventInputs initial) scheduler
       (compileEventProfile setup.program setup.namesNodup profile) who replacement
   rw [normalizeProfile_compileEventProfile] at law
   refine ⟨mixture, ?_⟩
@@ -144,8 +143,7 @@ private theorem scheduled_canonical_deviation_mixture
   simp_rw [terminalOutcomes_map_decode]
   have decoded := congrArg
     (fun distribution => distribution.map
-      (decodeState? (terminalRefs setup.program)
-        (terminalPublications setup.program setup.namesNodup))) law
+      (decodeState? (terminalRefs setup.program))) law
   simpa only [FinDist.map_bind, FinDist.bind_map] using decoded
 
 /-- Every unilateral asynchronous graph deviation has the law of a finite
@@ -161,7 +159,7 @@ theorem scheduled_setup_deviation_law
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
             (compileEventProfile setup.program setup.namesNodup profile) who replacement)
-          (setup.eventInputs initial.1)).map
+          (setup.eventInputs initial)).map
             (terminalState setup.program setup.namesNodup)) =
         mixture.bind fun alternative =>
           setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
@@ -176,6 +174,6 @@ theorem scheduled_setup_deviation_law
   apply FinDist.bind_congr
   intro initial _
   exact canonical_deviation_terminalState_law setup.program setup.namesNodup profile
-    who alternative initial.1 initial.2
+    who alternative initial
 
 end Vegas.SourceProgram.EventLowering

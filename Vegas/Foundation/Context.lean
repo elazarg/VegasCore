@@ -80,6 +80,39 @@ theorem HasVar.type_unique {Ty : Type} {Γ : Ctx Ty} {x : VarId} {τ₁ τ₂ : 
     | there h₂' =>
       exact ih (List.nodup_cons.mp hnodup).2 h₂'
 
+/-- The witness into the tail, unless the witness denotes the head. -/
+def HasVar.tail? {Ty : Type} {Γ : Ctx Ty} {x y : VarId} {τ σ : Ty} :
+    HasVar ((y, σ) :: Γ) x τ → Option (HasVar Γ x τ)
+  | .here => none
+  | .there h => some h
+
+@[simp] theorem HasVar.tail?_there {Ty : Type} {Γ : Ctx Ty} {x y : VarId} {τ σ : Ty}
+    (h : HasVar Γ x τ) : (HasVar.there h : HasVar ((y, σ) :: Γ) x τ).tail? = some h := rfl
+
+/-- Decide whether two membership witnesses denote the same position. At one
+position the context fixes both the name and the type. No uniqueness of names
+is assumed: equal names at different positions are different variables. -/
+def HasVar.sameCell? {Ty : Type} : {Γ : Ctx Ty} → {x y : VarId} → {τ σ : Ty} →
+    HasVar Γ x τ → HasVar Γ y σ → Option (PLift (x = y ∧ τ = σ))
+  | _, _, _, _, _, .here, .here => some ⟨⟨rfl, rfl⟩⟩
+  | _, _, _, _, _, .there left, .there right => HasVar.sameCell? left right
+  | _, _, _, _, _, .here, .there _ => none
+  | _, _, _, _, _, .there _, .here => none
+
+@[simp] theorem HasVar.sameCell?_self {Ty : Type} {Γ : Ctx Ty} {x : VarId} {τ : Ty}
+    (h : HasVar Γ x τ) : h.sameCell? h = some ⟨⟨rfl, rfl⟩⟩ := by
+  induction h with
+  | here => rfl
+  | there h ih => exact ih
+
+/-- Witnesses for different names never denote the same position. -/
+theorem HasVar.sameCell?_eq_none_of_ne {Ty : Type} {Γ : Ctx Ty} {x y : VarId} {τ σ : Ty}
+    (left : HasVar Γ x τ) (right : HasVar Γ y σ) (different : x ≠ y) :
+    left.sameCell? right = none := by
+  cases found : left.sameCell? right with
+  | none => rfl
+  | some same => exact absurd same.down.1 different
+
 /-- In a context with unique names, `Env` lookups are proof-irrelevant:
 the value depends only on `x` and `τ`, not on the `HasVar` proof. -/
 theorem Env.get_eq_of_nodup {Ty : Type} {Val : Ty → Type} {Γ : Ctx Ty}
