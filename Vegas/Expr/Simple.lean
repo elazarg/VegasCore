@@ -742,7 +742,7 @@ theorem evalExpr_weaken {Γ : CtxSimple} {b τ : BaseTy} {x : VarId}
   | notBool e ih => simp [Expr.weaken, evalExpr, ih]
   | ite c t f ihc iht ihf => simp [Expr.weaken, evalExpr, ihc, iht, ihf]
 
-def Expr.constVal {Γ : CtxSimple} : {b : BaseTy} → Val b → Expr Γ b
+private def Expr.constVal {Γ : CtxSimple} : {b : BaseTy} → Val b → Expr Γ b
   | .int, i => .constInt i
   | .bool, b => .constBool b
   | .word, w => .constWord w
@@ -752,7 +752,7 @@ def Expr.constVal {Γ : CtxSimple} : {b : BaseTy} → Val b → Expr Γ b
   | .result _, .failure => .failure
   | .result _, .success v => .success (Expr.constVal v)
 
-def Expr.replaceHeadWithGetD
+private def Expr.replaceHeadWithGetD
     {Γ : CtxSimple} {x : VarId} {b c : BaseTy}
     (fallback : Val b) :
     Expr ((x, b) :: Γ) c → Expr ((x, .option b) :: Γ) c
@@ -806,7 +806,7 @@ def Expr.replaceHeadWithGetD
         (t.replaceHeadWithGetD fallback)
         (f.replaceHeadWithGetD fallback)
 
-theorem evalExpr_constVal {Γ : CtxSimple} {b : BaseTy}
+private theorem evalExpr_constVal {Γ : CtxSimple} {b : BaseTy}
     (v : Val b) (env : PlainEnv Γ) :
     evalExpr (Expr.constVal v) env = v := by
   induction b with
@@ -824,7 +824,7 @@ theorem evalExpr_constVal {Γ : CtxSimple} {b : BaseTy}
       | failure => simp [Expr.constVal, evalExpr]
       | success v => simp [Expr.constVal, evalExpr, ih]
 
-theorem evalExpr_replaceHeadWithGetD_some
+private theorem evalExpr_replaceHeadWithGetD_some
     {Γ : CtxSimple} {x : VarId} {b c : BaseTy}
     (fallback : Val b) (e : Expr ((x, b) :: Γ) c)
     (v : Val b) (env : PlainEnv Γ) :
@@ -884,9 +884,9 @@ theorem evalExpr_replaceHeadWithGetD_some
 /-- The absent value used by nullable surface commitments. It is an explicit
 payload value; an execution model separately describes message submission and
 silence. -/
-def declineValue (b : BaseTy) : Val (.option b) := Option.none
+private def declineValue (b : BaseTy) : Val (.option b) := Option.none
 
-def Expr.nullableCommitGuardWithFallback
+private def Expr.nullableCommitGuardWithFallback
     {Γ : CtxSimple} {x : VarId} {b : BaseTy}
     (fallback : Val b) (R : Expr ((x, b) :: Γ) .bool) :
     Expr ((x, .option b) :: Γ) .bool :=
@@ -921,17 +921,17 @@ theorem evalExpr_nullableCommitGuard_some
   simp [Expr.nullableCommitGuard, Expr.nullableCommitGuardWithFallback, evalExpr,
     evalExpr_replaceHeadWithGetD_some DefaultVal.defaultVal R v env]
 
-@[simp] theorem evalLawDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
+@[simp] private theorem evalLawDistExpr_weighted {Γ : CtxSimple} {b : BaseTy}
     (law : RationalLaw (Val b)) (env : PlainEnv Γ) :
     evalLawDistExpr (.weighted law) env = law := rfl
 
-theorem evalLawDistExpr_ite_true {Γ : CtxSimple} {b : BaseTy}
+private theorem evalLawDistExpr_ite_true {Γ : CtxSimple} {b : BaseTy}
     {c : Expr Γ .bool} {t f : DistExpr Γ b} {env : PlainEnv Γ}
     (hc : evalExpr c env = true) :
     evalLawDistExpr (.ite c t f) env = evalLawDistExpr t env := by
   simp [evalLawDistExpr, hc]
 
-theorem evalLawDistExpr_ite_false {Γ : CtxSimple} {b : BaseTy}
+private theorem evalLawDistExpr_ite_false {Γ : CtxSimple} {b : BaseTy}
     {c : Expr Γ .bool} {t f : DistExpr Γ b} {env : PlainEnv Γ}
     (hc : evalExpr c env = false) :
     evalLawDistExpr (.ite c t f) env = evalLawDistExpr f env := by
