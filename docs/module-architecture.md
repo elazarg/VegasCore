@@ -6,7 +6,7 @@
 | `GameTheoryExtensions` | Reusable simulations, mixtures, utility transport, and probability lemmas |
 | `Interaction` | Message pools, authenticated histories, policies, inclusion service, and ideal commitments |
 | `Vegas.Foundation` | Shared typed contexts, values, expressions, and result interfaces |
-| `Vegas.Expr` | Concrete typed expressions, distributions, and finite-value instances |
+| `Vegas.Expr` | Concrete typed expressions and distributions |
 | `Vegas.Source` | Failure-aware sequential source syntax, semantics, accounting, and safety |
 | `Vegas.EventGraph` | Dependency-driven typed events, cut-based execution, observations, and scheduler-parametric games |
 | `Vegas.Pending` | Graph-directed pending-message runtime, strategy compilation, service, and correctness |

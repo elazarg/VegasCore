@@ -4,8 +4,7 @@ Released under MIT license as described in the file LICENSE.
 Authors: VegasCore contributors
 -/
 
-import Mathlib.Data.Int.Interval
-import Vegas.Foundation.FiniteDomain
+import Vegas.Foundation.ExprInterface
 
 /-!
 # Concrete Vegas expression layer
@@ -21,13 +20,6 @@ namespace Vegas
 
 /-- The width of the concrete word type, matching an EVM machine word. -/
 abbrev wordBits : Nat := 256
-
-/-- `BitVec` is a `Fin`-backed structure, so it is finite; neither core nor
-Mathlib supplies the instance. It is what makes `word` an enumerable action
-domain, unlike the unbounded `int`. -/
-instance instFintypeBitVec (n : Nat) : Fintype (BitVec n) :=
-  Fintype.ofEquiv (Fin (2 ^ n))
-    ⟨BitVec.ofFin, BitVec.toFin, fun _ => rfl, fun _ => rfl⟩
 
 inductive BaseTy where
   | int : BaseTy
@@ -609,39 +601,6 @@ theorem evalLawDistExprDeps_eq_evalLaw {Γ : CtxSimple} {b : BaseTy}
 instance simpleExprResultTypes : IExpr.ResultTypes simpleExpr where
   result := BaseTy.result
   valueEquiv := fun _ => Equiv.refl _
-
-noncomputable instance finiteType_bool : FiniteType simpleExpr .bool where
-  fintype := by
-    change Fintype Bool
-    infer_instance
-
-/-- Machine words are an enumerable action domain. This is what lets a program
-sample, commit, and reveal words, which the unbounded `int` can never support:
-there is deliberately no `FiniteType simpleExpr .int`. -/
-noncomputable instance finiteType_word : FiniteType simpleExpr .word where
-  fintype := by
-    change Fintype (BitVec wordBits)
-    infer_instance
-
-noncomputable instance finiteType_range (lo hi : Int) :
-    FiniteType simpleExpr (.range lo hi) where
-  fintype := by
-    change Fintype (Set.Icc lo hi)
-    infer_instance
-
-noncomputable instance finiteType_option (b : BaseTy)
-    [FiniteType simpleExpr b] : FiniteType simpleExpr (.option b) where
-  fintype := by
-    letI : Fintype (Val b) := FiniteType.fintype (L := simpleExpr) (τ := b)
-    change Fintype (Option (Val b))
-    infer_instance
-
-noncomputable instance finiteType_result (b : BaseTy)
-    [FiniteType simpleExpr b] : FiniteType simpleExpr (.result b) where
-  fintype := by
-    letI : Fintype (Val b) := FiniteType.fintype (L := simpleExpr) (τ := b)
-    change Fintype (PublicationResult (Val b))
-    infer_instance
 
 def Expr.weaken {Γ : CtxSimple} {b : BaseTy} {x : VarId} {τ : BaseTy}
     (e : Expr Γ b) : Expr ((x, τ) :: Γ) b :=

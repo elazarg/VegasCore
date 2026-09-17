@@ -12,17 +12,6 @@ namespace VegasTests.Language
 
 open Vegas
 
-/-- Finite-domain evidence for the prototype remains separate from the shared
-expression instances and does not require finite integer-valued payoffs. -/
-example : Nonempty (FiniteProgram
-    (SurfaceCore.ret [(0, .constInt 7)] : SurfaceCore (Fin 1) simpleExpr [])) :=
-  ⟨inferInstance⟩
-
-example : Nonempty (FiniteProgram
-    (SurfaceCore.commit 0 0 (Expr.constBool true : Expr [(0, .bool)] .bool)
-      (.reveal 1 0 0 .here (.ret [])) : SurfaceCore (Fin 1) simpleExpr [])) :=
-  ⟨inferInstance⟩
-
 def letProgram : VegasLang (Fin 1) [] :=
   .letExpr 0 (.constInt 7) (.ret [(0, .var 0 .here)])
 
