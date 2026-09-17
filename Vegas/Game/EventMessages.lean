@@ -48,7 +48,7 @@ def compileEventPendingStrategy (setup : Setup (Player := Player) (L := L))
     runtime.application.PlayerPolicy :=
   runtime.compilePlayerPolicy who
     (setup.eventGraph.toModePolicy mode who
-      (EventLowering.compileEventPolicy setup.program setup.namesNodup who policy))
+      (EventLowering.compileEventPolicy setup.program who policy))
 
 /-- Decode the complete terminal source state, retaining missing outcomes
 explicitly. This semantic readout includes undisclosed private values; it is
@@ -104,11 +104,11 @@ theorem eventPendingGame_honest_law (setup : Setup (Player := Player) (L := L))
   change (((runtime.servicedEventGame _ roster reactionRounds wire order).play
     (runtime.compileProfile
       (setup.eventGraph.toModeProfile mode
-        (EventLowering.compileEventProfile setup.program setup.namesNodup profile)))).map
+        (EventLowering.compileEventProfile setup.program profile)))).map
         (fun execution => execution.native.application.config.store)).map _ = _
   rw [runtime.servicedEventGame_honest_store_law
     (setup.eventGraph.withMode_barrierOrdered
-      (EventLowering.toEventGraph_barrierOrdered setup.program setup.namesNodup) mode) feasible]
+      (EventLowering.toEventGraph_barrierOrdered setup.program) mode) feasible]
   simp only [FinDist.bind_map, FinDist.map_bind]
   simp_rw [← (setup.eventGraph.withMode mode).runPolicies_canonical_normalize_eq,
     setup.eventGraph.runPolicies_withMode_store,

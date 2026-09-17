@@ -78,11 +78,10 @@ end ContextRefs
 value written by `Vegas.EventGraph.Config.complete`. -/
 theorem outputRef_get?_complete {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (config : (toEventGraph program unique).Config)
+    (config : (toEventGraph program).Config)
     (event : Fin (eventCount program))
     (ready : config.cut.Ready event)
-    (action : (toEventGraph program unique).Action event)
+    (action : (toEventGraph program).Action event)
     (value : (outputLayout program event).Value) :
     (outputRef program event).get?
         (config.complete event ready action value).store = some value := by
@@ -94,15 +93,14 @@ written at its whole-graph event. -/
 theorem OutputEmbedding.ref_get?_complete
     {Γ0 : SourceCtx Player L} {open0 : Finset VarId}
     (whole : SourceProgram Player L Γ0 open0)
-    (wholeUnique : (Γ0.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {program : SourceProgram Player L Γ openNames}
     (embedding : OutputEmbedding (inputLayout Γ0) (outputLayout whole) program)
-    (config : (toEventGraph whole wholeUnique).Config)
+    (config : (toEventGraph whole).Config)
     (index : Fin (eventCount program))
     (ready : config.cut.Ready (embedding.event index))
-    (action : (toEventGraph whole wholeUnique).Action (embedding.event index))
-    (outputEq : (toEventGraph whole wholeUnique).outputLayout (embedding.event index) =
+    (action : (toEventGraph whole).Action (embedding.event index))
+    (outputEq : (toEventGraph whole).outputLayout (embedding.event index) =
       outputLayout program index)
     (value : (outputLayout program index).Value) :
     (embedding.ref index).get?

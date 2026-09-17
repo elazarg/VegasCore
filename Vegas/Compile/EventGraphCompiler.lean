@@ -494,15 +494,14 @@ def compileRankedNodes {inputCount totalCount : Nat}
     {outputs : Fin totalCount → Vegas.EventGraph.EventField Player L} :
     {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
     (program : SourceProgram Player L Γ openNames) →
-    (unique : (Γ.map Prod.fst).Nodup) →
     (refs : ContextRefs (Vegas.EventGraph.fieldLayout inputs outputs) Γ) →
     (revelations : Revelations Γ) →
     (registry : Registry Γ) →
     (embedding : OutputEmbedding inputs outputs program) →
     ContextRefsBefore refs embedding →
     ∀ index, RankedNode inputs outputs (embedding.event index) (outputLayout program index)
-  | _, _, .ret _, _, _, _, _, _, _, index => nomatch index
-  | _, _, .sample name fresh law next, unique, refs, revelations, registry,
+  | _, _, .ret _, _, _, _, _, _, index => nomatch index
+  | _, _, .sample name fresh law next, refs, revelations, registry,
       embedding, refsBefore, index =>
       let headIndex : Fin (eventCount (.sample name fresh law next)) :=
         ⟨0, by simp [eventCount]⟩
@@ -522,9 +521,9 @@ def compileRankedNodes {inputCount totalCount : Nat}
             exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
         | there source => exact refsBefore source (Fin.succ remaining)
       Fin.cases head
-        (compileRankedNodes next (by simp [fresh, unique]) tailRefs revelations.weaken
+        (compileRankedNodes next tailRefs revelations.weaken
           registry.weaken tailEmbedding tailRefsBefore) index
-  | _, _, .commit name owner fresh guard next, unique, refs, revelations, registry,
+  | _, _, .commit name owner fresh guard next, refs, revelations, registry,
       embedding, refsBefore, index =>
       let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
         ⟨0, by simp [eventCount]⟩
@@ -546,9 +545,9 @@ def compileRankedNodes {inputCount totalCount : Nat}
             exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
         | there source => exact refsBefore source (Fin.succ remaining)
       Fin.cases head
-        (compileRankedNodes next (by simp [fresh, unique]) tailRefs revelations.weaken
+        (compileRankedNodes next tailRefs revelations.weaken
           (obligation :: registry.weaken) tailEmbedding tailRefsBefore) index
-  | Γ, _, .reveal published owner name fresh selected unresolved next, unique, refs,
+  | Γ, _, .reveal published owner name fresh selected unresolved next, refs,
       revelations, registry, embedding, refsBefore, index =>
       let headIndex : Fin (eventCount
           (.reveal published owner name fresh selected unresolved next)) :=
@@ -581,7 +580,7 @@ def compileRankedNodes {inputCount totalCount : Nat}
             exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
         | there source => exact refsBefore source (Fin.succ remaining)
       Fin.cases head
-        (compileRankedNodes next (by simp [fresh, unique]) tailRefs
+        (compileRankedNodes next tailRefs
           (revelations.reveal (published := published) selected) registry.weaken
           tailEmbedding tailRefsBefore) index
 

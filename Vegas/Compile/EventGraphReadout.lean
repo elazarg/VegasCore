@@ -108,8 +108,7 @@ theorem decodeState?_isSome_of_available {Field : Type}
 state. Totality follows from terminal store availability, not from a default. -/
 def terminalState {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (result : {config : (toEventGraph program unique).Config //
+    (result : {config : (toEventGraph program).Config //
       config.cut.Terminal}) : State L program.terminalCtx :=
   (decodeState? (terminalRefs program) result.1.store).get
     (decodeState?_isSome_of_available _ result.1.store
@@ -121,34 +120,32 @@ the left side exposes this without introducing a payload default. -/
 theorem terminalOutcomes_map_decode
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (scheduler : (toEventGraph program unique).PublicScheduler)
-    (profile : (toEventGraph program unique).BehavioralProfile)
-    (inputs : (toEventGraph program unique).Inputs) :
-    (((toEventGraph program unique).terminalOutcomes scheduler profile inputs).map
-        (terminalState program unique)).map some =
-      (((toEventGraph program unique).runPolicies scheduler profile inputs).map
+    (scheduler : (toEventGraph program).PublicScheduler)
+    (profile : (toEventGraph program).BehavioralProfile)
+    (inputs : (toEventGraph program).Inputs) :
+    (((toEventGraph program).terminalOutcomes scheduler profile inputs).map
+        (terminalState program)).map some =
+      (((toEventGraph program).runPolicies scheduler profile inputs).map
         Vegas.EventGraph.Config.store).map
           (decodeState? (terminalRefs program)) := by
-  have decodeTerminal : (some ∘ terminalState program unique) =
+  have decodeTerminal : (some ∘ terminalState program) =
       (decodeState? (terminalRefs program) ∘
         Vegas.EventGraph.Config.store) ∘ Subtype.val := by
     funext result
     exact Option.some_get _
   rw [FinDist.map_comp, decodeTerminal, ← FinDist.map_comp,
-    (toEventGraph program unique).terminalOutcomes_map_val,
+    (toEventGraph program).terminalOutcomes_map_val,
     FinDist.map_comp]
 
 /-- Agreement identifies the no-default terminal decoder with the simulated
 source terminal state. -/
 theorem terminalState_eq {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (result : {config : (toEventGraph program unique).Config //
+    (result : {config : (toEventGraph program).Config //
       config.cut.Terminal})
     (state : State L program.terminalCtx)
     (refsAgree : (terminalRefs program).Agrees state result.1.store) :
-    terminalState program unique result = state := by
+    terminalState program result = state := by
   unfold terminalState
   have decoded := decodeState?_eq_some (terminalRefs program) state result.1.store refsAgree
   simp [decoded]
@@ -157,8 +154,7 @@ theorem terminalState_eq {Γ : SourceCtx Player L} {openNames : Finset VarId}
 readout is exactly the source terminal expression evaluation. -/
 theorem terminalPayoffs_eq_source {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (config : (toEventGraph program unique).Config)
+    (config : (toEventGraph program).Config)
     (terminal : config.cut.Terminal)
     (state : State L program.terminalCtx)
     (agree : (terminalRefs program).Agrees state config.store) :
@@ -179,8 +175,7 @@ theorem terminalPayoffs_eq_source {Γ : SourceCtx Player L}
 /-- Integer payout readout of one completed compiled event execution. -/
 def terminalPayouts {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (result : {config : (toEventGraph program unique).Config //
+    (result : {config : (toEventGraph program).Config //
       config.cut.Terminal}) : List (Player × Int) :=
   (result.1.terminalPayoffs result.2).map fun payoff => (payoff.1, L.toInt payoff.2)
 
@@ -188,20 +183,19 @@ def terminalPayouts {Γ : SourceCtx Player L} {openNames : Finset VarId}
 source payout expressions on the decoded complete source state. -/
 theorem terminalPayouts_eq_source {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (result : {config : (toEventGraph program unique).Config //
+    (result : {config : (toEventGraph program).Config //
       config.cut.Terminal}) :
-    terminalPayouts program unique result =
-      program.evaluatePayoffs (terminalState program unique result) := by
+    terminalPayouts program result =
+      program.evaluatePayoffs (terminalState program result) := by
   let available : ∀ field, (result.1.store field).isSome = true :=
     fun field => result.1.store_available_of_terminal result.2 field
   obtain ⟨state, decoded, agree⟩ := exists_decodeState_agrees
     (terminalRefs program) result.1.store available
-  have stateEq : terminalState program unique result = state := by
+  have stateEq : terminalState program result = state := by
     unfold terminalState
     simp [decoded]
   rw [stateEq, terminalPayouts,
-    terminalPayoffs_eq_source program unique result.1 result.2 state agree]
+    terminalPayoffs_eq_source program result.1 result.2 state agree]
   simp [SourceProgram.evaluatePayoffs, List.map_map]
 
 end Vegas.SourceProgram.EventLowering

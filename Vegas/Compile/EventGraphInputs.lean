@@ -54,9 +54,9 @@ theorem ContextRefs.initial_agrees {Γ : SourceCtx Player L}
 the complete initial source state. -/
 theorem initialConfig_agrees {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) (state : State L Γ) :
+    (state : State L Γ) :
     (ContextRefs.initial Γ (outputLayout program)).Agrees state
-      (Vegas.EventGraph.Config.initial (graph := toEventGraph program unique)
+      (Vegas.EventGraph.Config.initial (graph := toEventGraph program)
         (encodeInputs state)).store :=
   ContextRefs.initial_agrees (outputLayout program) state _ fun _ => rfl
 

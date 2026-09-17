@@ -23,10 +23,8 @@ the whole graph's output layout to the residual program's output layout. -/
 structure CompiledSuffix
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
     (refs : ContextRefs (graphLayout whole) Γ)
     (revelations : Revelations Γ)
     (registry : Registry Γ)
@@ -38,16 +36,15 @@ structure CompiledSuffix
   nodeEq : ∀ index,
     cast (congrArg (Vegas.EventGraph.EventCode (graphLayout whole))
         (embedding.layout_eq index))
-      ((toEventGraph whole wholeUnique).nodes (embedding.event index)) =
-      (compileRankedNodes program unique refs revelations registry embedding
+      ((toEventGraph whole).nodes (embedding.event index)) =
+      (compileRankedNodes program refs revelations registry embedding
         refsBefore index).code
 
 /-- The complete program is its own initial compiled suffix. -/
 theorem CompiledSuffix.whole
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) :
-    CompiledSuffix program unique program unique
+    (program : SourceProgram Player L Γ openNames) :
+    CompiledSuffix program program
       (ContextRefs.initial Γ (outputLayout program)) (Revelations.initial Γ) []
       (outputEmbedding program) (initialRefsBefore program) 0 := by
   constructor
@@ -63,13 +60,11 @@ sampling branch. -/
 theorem CompiledSuffix.sampleTail
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} {_openNames nextOpen : Finset VarId}
     {name : VarId} {payload : L.Ty}
     (fresh : name ∉ Γ.map Prod.fst)
     (law : L.DistExpr (SourcePublicCtx L Γ) payload)
     (next : SourceProgram Player L ((name, .publicData payload) :: Γ) nextOpen)
-    (unique : (Γ.map Prod.fst).Nodup)
     (refs : ContextRefs (graphLayout whole) Γ)
     (revelations : Revelations Γ)
     (registry : Registry Γ)
@@ -77,8 +72,8 @@ theorem CompiledSuffix.sampleTail
       (.sample name fresh law next))
     (refsBefore : ContextRefsBefore refs embedding)
     (offset : Nat)
-    (suffix : CompiledSuffix whole wholeUnique (.sample name fresh law next)
-      unique refs revelations registry embedding refsBefore offset) :
+    (suffix : CompiledSuffix whole (.sample name fresh law next)
+      refs revelations registry embedding refsBefore offset) :
     let headIndex : Fin (eventCount (.sample name fresh law next)) :=
       ⟨0, by simp [eventCount]⟩
     let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
@@ -92,7 +87,7 @@ theorem CompiledSuffix.sampleTail
           apply embedding.strictMono
           exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
       | there source => exact refsBefore source (Fin.succ remaining)
-    CompiledSuffix whole wholeUnique next (by simp [fresh, unique]) tailRefs
+    CompiledSuffix whole next tailRefs
       revelations.weaken registry.weaken tailEmbedding tailRefsBefore (offset + 1) := by
   dsimp only
   constructor
@@ -112,14 +107,12 @@ theorem CompiledSuffix.sampleTail
 theorem CompiledSuffix.commitTail
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : name ∉ Γ.map Prod.fst)
     (guard : SourceGuard L Γ owner name payload)
     (next : SourceProgram Player L ((name, .privateData owner payload) :: Γ)
       (insert name openNames))
-    (unique : (Γ.map Prod.fst).Nodup)
     (refs : ContextRefs (graphLayout whole) Γ)
     (revelations : Revelations Γ)
     (registry : Registry Γ)
@@ -127,8 +120,8 @@ theorem CompiledSuffix.commitTail
       (.commit name owner fresh guard next))
     (refsBefore : ContextRefsBefore refs embedding)
     (offset : Nat)
-    (suffix : CompiledSuffix whole wholeUnique (.commit name owner fresh guard next)
-      unique refs revelations registry embedding refsBefore offset) :
+    (suffix : CompiledSuffix whole (.commit name owner fresh guard next)
+      refs revelations registry embedding refsBefore offset) :
     let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
       ⟨0, by simp [eventCount]⟩
     let obligation : Obligation _ :=
@@ -145,7 +138,7 @@ theorem CompiledSuffix.commitTail
           apply embedding.strictMono
           exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
       | there source => exact refsBefore source (Fin.succ remaining)
-    CompiledSuffix whole wholeUnique next (by simp [fresh, unique]) tailRefs
+    CompiledSuffix whole next tailRefs
       revelations.weaken (obligation :: registry.weaken) tailEmbedding tailRefsBefore
       (offset + 1) := by
   dsimp only
@@ -166,7 +159,6 @@ theorem CompiledSuffix.commitTail
 theorem CompiledSuffix.revealTail
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {published name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : published ∉ Γ.map Prod.fst)
@@ -174,7 +166,6 @@ theorem CompiledSuffix.revealTail
     (unresolved : name ∈ openNames)
     (next : SourceProgram Player L ((published, .publication payload) :: Γ)
       (openNames.erase name))
-    (unique : (Γ.map Prod.fst).Nodup)
     (refs : ContextRefs (graphLayout whole) Γ)
     (revelations : Revelations Γ)
     (registry : Registry Γ)
@@ -182,9 +173,9 @@ theorem CompiledSuffix.revealTail
       (.reveal published owner name fresh selected unresolved next))
     (refsBefore : ContextRefsBefore refs embedding)
     (offset : Nat)
-    (suffix : CompiledSuffix whole wholeUnique
+    (suffix : CompiledSuffix whole
       (.reveal published owner name fresh selected unresolved next)
-      unique refs revelations registry embedding refsBefore offset) :
+      refs revelations registry embedding refsBefore offset) :
     let headIndex : Fin (eventCount
         (.reveal published owner name fresh selected unresolved next)) :=
       ⟨0, by simp [eventCount]⟩
@@ -202,7 +193,7 @@ theorem CompiledSuffix.revealTail
           apply embedding.strictMono
           exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
       | there source => exact refsBefore source (Fin.succ remaining)
-    CompiledSuffix whole wholeUnique next (by simp [fresh, unique]) tailRefs
+    CompiledSuffix whole next tailRefs
       (revelations.reveal (published := published) selected) registry.weaken tailEmbedding
       tailRefsBefore (offset + 1) := by
   dsimp only

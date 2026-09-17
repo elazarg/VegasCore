@@ -43,7 +43,7 @@ private def pairSource : SourceProgram Bool simpleExpr [] ∅ :=
 
 private abbrev pairOrder := Vegas.EventGraph.barrierOrder (outputLayout pairSource)
 
-private def pairGraph := toEventGraph pairSource (by decide)
+private def pairGraph := toEventGraph pairSource
 
 private def pairConfig : pairGraph.Config := .initial (fun input => nomatch input)
 
@@ -56,7 +56,7 @@ private theorem second_ready : pairConfig.cut.Ready second := by decide
 
 /-- These are the compiler's actual certified nodes, not a hand-built graph. -/
 example : pairGraph.InformationDiscipline pairGraph.prefixSchema :=
-  toEventGraph_informationDiscipline pairSource (by decide)
+  toEventGraph_informationDiscipline pairSource
 
 private def completedSecond : pairGraph.Config :=
   pairConfig.complete second second_ready (.success true) (.success true)
@@ -118,7 +118,7 @@ private def orderSensitiveFirst : pairGraph.BehavioralPolicy false :=
     if same : event = first then by
       subst event
       exact FinDist.pure (.success (decide (second ∈ observation.completionOrder)))
-    else compileEventProfile pairSource (by decide) pairProfile false event actor observation
+    else compileEventProfile pairSource pairProfile false event actor observation
 
 /-- The arbitrary policy class really can use public completion order. -/
 example : orderSensitiveFirst first rfl (pairGraph.playerObserve false pairConfig) =
@@ -137,16 +137,16 @@ example (inputs : FinDist pairGraph.Inputs) (scheduler : pairGraph.PublicSchedul
     ∃ mixture : FinDist (pairGraph.BehavioralPolicy false),
       (inputs.bind fun initial => pairGraph.runPolicies scheduler
         (GameTheory.Profile.update (sig := pairGraph.gameSignature)
-          (compileEventProfile pairSource (by decide) pairProfile)
+          (compileEventProfile pairSource pairProfile)
           false orderSensitiveFirst) initial).map Vegas.EventGraph.Config.store =
         mixture.bind fun alternative =>
           (inputs.bind fun initial => pairGraph.runPolicies pairGraph.canonicalScheduler
             (GameTheory.Profile.update (sig := pairGraph.gameSignature)
-              (compileEventProfile pairSource (by decide) pairProfile)
+              (compileEventProfile pairSource pairProfile)
               false alternative) initial).map Vegas.EventGraph.Config.store := by
   obtain ⟨mixture, law⟩ :=
-    (toEventGraph_barrierOrdered pairSource (by decide)).exists_deviation_mixture
-      inputs scheduler (compileEventProfile pairSource (by decide) pairProfile)
+    (toEventGraph_barrierOrdered pairSource).exists_deviation_mixture
+      inputs scheduler (compileEventProfile pairSource pairProfile)
       false orderSensitiveFirst
   rw [normalizeProfile_compileEventProfile] at law
   exact ⟨mixture, law⟩
@@ -166,10 +166,10 @@ example (scheduler : pairSetup.eventGraph.PublicScheduler) :
       (pairSetup.initialLaw.bind fun initial =>
         (pairSetup.eventGraph.terminalOutcomes scheduler
           (GameTheory.Profile.update (sig := pairSetup.eventGraph.gameSignature)
-            (compileEventProfile pairSource pairSetup.namesNodup pairProfile)
+            (compileEventProfile pairSource pairProfile)
             false orderSensitiveFirst)
           (pairSetup.eventInputs initial)).map
-            (terminalState pairSource pairSetup.namesNodup)) =
+            (terminalState pairSource)) =
         mixture.bind fun alternative =>
           pairSetup.run (GameTheory.Profile.update
             (sig := SourceProgram.gameSignature pairSource) pairProfile false alternative) :=
@@ -177,7 +177,7 @@ example (scheduler : pairSetup.eventGraph.PublicScheduler) :
 
 /-- The actual compiled second-player policy can act first. It does not wait
 for the foreign binding merely to reconstruct its source observation. -/
-example : compileEventProfile pairSource (by decide) pairProfile true second rfl
+example : compileEventProfile pairSource pairProfile true second rfl
       (pairGraph.playerObserve true pairConfig) =
     FinDist.pure (PublicationResult.success true) := by
   rfl
@@ -185,11 +185,11 @@ example : compileEventProfile pairSource (by decide) pairProfile true second rfl
 /-- Publicly completing the other hidden commitment first does not alter the
 first player's prescribed decision. Arbitrary policies may still use that
 completion-order signal. -/
-example : compileEventProfile pairSource (by decide) pairProfile false first rfl
+example : compileEventProfile pairSource pairProfile false first rfl
       (pairGraph.playerObserve false completedSecond) =
-    compileEventProfile pairSource (by decide) pairProfile false first rfl
+    compileEventProfile pairSource pairProfile false first rfl
       (pairGraph.playerObserve false pairConfig) := by
-  exact compileEventPolicy_complete_hidden pairSource (by decide) false
+  exact compileEventPolicy_complete_hidden pairSource false
     (pairProfile false) pairConfig second first second_ready
     (.success true) (.success true) (by decide) (by decide) rfl
 
@@ -228,7 +228,7 @@ deferred guard; no sample-free or homogeneous-payload restriction is needed. -/
 example : SourceSemantics.mixedInitial.eventGraph.InformationDiscipline
     SourceSemantics.mixedInitial.eventGraph.prefixSchema :=
   toEventGraph_informationDiscipline SourceSemantics.mixedInitial.program
-    SourceSemantics.mixedInitial.namesNodup
+
 
 example : SourceSemantics.mixedInitial.eventGraph.order.eventCount = 4 := rfl
 
@@ -244,17 +244,14 @@ scheduler, not just under the canonical schedule. -/
 example (scheduler : SourceSemantics.mixedInitial.eventGraph.PublicScheduler)
     (profile : SourceProgram.BehavioralProfile SourceSemantics.mixedInitial.program) :
     (SourceSemantics.mixedInitial.eventGraph.terminalOutcomes scheduler
-      (compileEventProfile SourceSemantics.mixedInitial.program
-        SourceSemantics.mixedInitial.namesNodup profile)
+      (compileEventProfile SourceSemantics.mixedInitial.program profile)
       (encodeInputs SourceSemantics.mixedInitial.state)).map
-        (terminalState SourceSemantics.mixedInitial.program
-          SourceSemantics.mixedInitial.namesNodup) =
+        (terminalState SourceSemantics.mixedInitial.program) =
       SourceSemantics.mixedInitial.run profile :=
-  scheduled_terminalState_law SourceSemantics.mixedInitial.program
-    SourceSemantics.mixedInitial.namesNodup scheduler profile
+  scheduled_terminalState_law SourceSemantics.mixedInitial.program scheduler profile
     SourceSemantics.mixedInitial.state
 
-private def rejectingGraph := toEventGraph SourceSemantics.falseGuardProgram (by decide)
+private def rejectingGraph := toEventGraph SourceSemantics.falseGuardProgram
 
 private abbrev rejectingBind : rejectingGraph.EventId := ⟨0, by decide⟩
 private abbrev rejectingReveal : rejectingGraph.EventId := ⟨1, by decide⟩
@@ -276,7 +273,7 @@ private def rejected : rejectingGraph.Config :=
 
 /-- Public rejection does not erase the player's original disclosure choice
 from its own recall. -/
-example : decodeHistory SourceSemantics.falseGuardProgram (by decide)
+example : decodeHistory SourceSemantics.falseGuardProgram
       rejected.history SourceSemantics.Player.alice =
     [SourceProgram.OwnAction.commit (L := simpleExpr) SourceSemantics.Player.alice 20 .bool
       (PublicationResult.success true),

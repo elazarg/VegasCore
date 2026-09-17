@@ -24,11 +24,9 @@ behavioral profile compiled for the whole program. -/
 structure CompiledPolicySuffix
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup)
     (wholeProfile : BehavioralProfile whole)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
     (profile : BehavioralProfile program)
     (refs : ContextRefs (graphLayout whole) Γ)
     (revelations : Revelations Γ)
@@ -36,21 +34,21 @@ structure CompiledPolicySuffix
     (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
     (refsBefore : ContextRefsBefore refs embedding)
     (offset : Nat) : Prop where
-  graphSuffix : CompiledSuffix whole wholeUnique program unique refs revelations registry
+  graphSuffix : CompiledSuffix whole program refs revelations registry
     embedding refsBefore offset
   actorEq : ∀ index,
-    (toEventGraph whole wholeUnique).actor? (embedding.event index) =
+    (toEventGraph whole).actor? (embedding.event index) =
       eventOwner? program index
   policyEq : ∀ (who : Player) (index : Fin (eventCount program))
-      (actor : (toEventGraph whole wholeUnique).actor? (embedding.event index) = some who)
-      (observation : (toEventGraph whole wholeUnique).PlayerObservation who),
+      (actor : (toEventGraph whole).actor? (embedding.event index) = some who)
+      (observation : (toEventGraph whole).PlayerObservation who),
     cast (congrArg FinDist
       (congrArg Vegas.EventGraph.EventField.Action (embedding.layout_eq index)))
-      ((compileEventProfile whole wholeUnique wholeProfile) who
+      ((compileEventProfile whole wholeProfile) who
         (embedding.event index) actor observation) =
-    compilePolicyTable program unique refs embedding.ref who
+    compilePolicyTable program refs embedding.ref who
       (profile who) index observation.store
-      (decodeCompletions whole wholeUnique observation.ownActions)
+      (decodeCompletions whole observation.ownActions)
   actionEq : ∀ (index : Fin (eventCount program))
       (action : Vegas.EventGraph.EventField.Action
         (outputLayout whole (embedding.event index))),
@@ -63,14 +61,14 @@ structure CompiledPolicySuffix
 theorem CompiledPolicySuffix.whole
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) (profile : BehavioralProfile program) :
-    CompiledPolicySuffix program unique profile program unique profile
+    (profile : BehavioralProfile program) :
+    CompiledPolicySuffix program profile program profile
       (ContextRefs.initial Γ (outputLayout program)) (Revelations.initial Γ) []
       (outputEmbedding program) (initialRefsBefore program) 0 := by
   constructor
-  · exact CompiledSuffix.whole program unique
+  · exact CompiledSuffix.whole program
   · intro index
-    exact (eventOwner?_eq_actor program unique index).symm
+    exact (eventOwner?_eq_actor program index).symm
   · intro who index actor observation
     rfl
   · intro index action
@@ -81,14 +79,12 @@ typed suffix state as node lowering. -/
 theorem CompiledPolicySuffix.sampleTail
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup)
     (wholeProfile : BehavioralProfile whole)
     {Γ : SourceCtx Player L} {_openNames nextOpen : Finset VarId}
     {name : VarId} {payload : L.Ty}
     (fresh : name ∉ Γ.map Prod.fst)
     (law : L.DistExpr (SourcePublicCtx L Γ) payload)
     (next : SourceProgram Player L ((name, .publicData payload) :: Γ) nextOpen)
-    (unique : (Γ.map Prod.fst).Nodup)
     (profile : BehavioralProfile (.sample name fresh law next))
     (refs : ContextRefs (graphLayout whole) Γ)
     (revelations : Revelations Γ)
@@ -97,8 +93,8 @@ theorem CompiledPolicySuffix.sampleTail
       (.sample name fresh law next))
     (refsBefore : ContextRefsBefore refs embedding)
     (offset : Nat)
-    (aligned : CompiledPolicySuffix whole wholeUnique wholeProfile
-      (.sample name fresh law next) unique profile refs revelations registry
+    (aligned : CompiledPolicySuffix whole wholeProfile
+      (.sample name fresh law next) profile refs revelations registry
       embedding refsBefore offset) :
     let headIndex : Fin (eventCount (.sample name fresh law next)) :=
       ⟨0, by simp [eventCount]⟩
@@ -113,23 +109,23 @@ theorem CompiledPolicySuffix.sampleTail
           apply embedding.strictMono
           exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
       | there source => exact refsBefore source (Fin.succ remaining)
-    CompiledPolicySuffix whole wholeUnique wholeProfile next
-      (by simp [fresh, unique]) (afterSample profile) tailRefs revelations.weaken
+    CompiledPolicySuffix whole wholeProfile next
+      (afterSample profile) tailRefs revelations.weaken
       registry.weaken tailEmbedding tailRefsBefore (offset + 1) := by
   dsimp only
   constructor
-  · exact aligned.graphSuffix.sampleTail (whole := whole) (wholeUnique := wholeUnique)
-      (_openNames := _openNames) fresh law next unique refs revelations registry
+  · exact aligned.graphSuffix.sampleTail (whole := whole)
+      (_openNames := _openNames) fresh law next refs revelations registry
       embedding refsBefore offset
   · intro index
     simpa [OutputEmbedding.tail, eventOwner?, eventCount, Fin.cases_succ] using
       aligned.actorEq (Fin.succ index)
   · intro who index actor observation
     have current := aligned.policyEq who (Fin.succ index) actor observation
-    change _ = compilePolicyTable next (by simp [fresh, unique])
+    change _ = compilePolicyTable next
       (refs.cons (embedding.ref ⟨0, by simp [eventCount]⟩))
       (fun tail => embedding.ref (Fin.succ tail)) who (profile who) index
-      observation.store (decodeCompletions whole wholeUnique observation.ownActions) at current
+      observation.store (decodeCompletions whole observation.ownActions) at current
     have outputsEq : (fun tail => embedding.ref (Fin.succ tail)) =
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl)).ref := by
       funext tail
@@ -146,7 +142,6 @@ theorem CompiledPolicySuffix.sampleTail
 theorem CompiledPolicySuffix.commitTail
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup)
     (wholeProfile : BehavioralProfile whole)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
@@ -154,7 +149,6 @@ theorem CompiledPolicySuffix.commitTail
     (guard : SourceGuard L Γ owner name payload)
     (next : SourceProgram Player L ((name, .privateData owner payload) :: Γ)
       (insert name openNames))
-    (unique : (Γ.map Prod.fst).Nodup)
     (profile : BehavioralProfile (.commit name owner fresh guard next))
     (refs : ContextRefs (graphLayout whole) Γ)
     (revelations : Revelations Γ)
@@ -163,8 +157,8 @@ theorem CompiledPolicySuffix.commitTail
       (.commit name owner fresh guard next))
     (refsBefore : ContextRefsBefore refs embedding)
     (offset : Nat)
-    (aligned : CompiledPolicySuffix whole wholeUnique wholeProfile
-      (.commit name owner fresh guard next) unique profile refs revelations registry
+    (aligned : CompiledPolicySuffix whole wholeProfile
+      (.commit name owner fresh guard next) profile refs revelations registry
       embedding refsBefore offset) :
     let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
       ⟨0, by simp [eventCount]⟩
@@ -182,22 +176,22 @@ theorem CompiledPolicySuffix.commitTail
           apply embedding.strictMono
           exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
       | there source => exact refsBefore source (Fin.succ remaining)
-    CompiledPolicySuffix whole wholeUnique wholeProfile next
-      (by simp [fresh, unique]) (afterCommit profile) tailRefs revelations.weaken
+    CompiledPolicySuffix whole wholeProfile next
+      (afterCommit profile) tailRefs revelations.weaken
       (obligation :: registry.weaken) tailEmbedding tailRefsBefore (offset + 1) := by
   dsimp only
   constructor
-  · exact aligned.graphSuffix.commitTail (whole := whole) (wholeUnique := wholeUnique)
-      fresh guard next unique refs revelations registry embedding refsBefore offset
+  · exact aligned.graphSuffix.commitTail (whole := whole)
+      fresh guard next refs revelations registry embedding refsBefore offset
   · intro index
     simpa [OutputEmbedding.tail, eventOwner?, eventCount, Fin.cases_succ] using
       aligned.actorEq (Fin.succ index)
   · intro who index actor observation
     have current := aligned.policyEq who (Fin.succ index) actor observation
-    change _ = compilePolicyTable next (by simp [fresh, unique])
+    change _ = compilePolicyTable next
       (refs.cons (embedding.ref ⟨0, by simp [eventCount]⟩))
       (fun tail => embedding.ref (Fin.succ tail)) who ((profile who).2) index
-      observation.store (decodeCompletions whole wholeUnique observation.ownActions) at current
+      observation.store (decodeCompletions whole observation.ownActions) at current
     have outputsEq : (fun tail => embedding.ref (Fin.succ tail)) =
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl)).ref := by
       funext tail
@@ -214,7 +208,6 @@ theorem CompiledPolicySuffix.commitTail
 theorem CompiledPolicySuffix.revealTail
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup)
     (wholeProfile : BehavioralProfile whole)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {published name : VarId} {owner : Player} {payload : L.Ty}
@@ -223,7 +216,6 @@ theorem CompiledPolicySuffix.revealTail
     (unresolved : name ∈ openNames)
     (next : SourceProgram Player L ((published, .publication payload) :: Γ)
       (openNames.erase name))
-    (unique : (Γ.map Prod.fst).Nodup)
     (profile : BehavioralProfile
       (.reveal published owner name fresh selected unresolved next))
     (refs : ContextRefs (graphLayout whole) Γ)
@@ -233,8 +225,8 @@ theorem CompiledPolicySuffix.revealTail
       (.reveal published owner name fresh selected unresolved next))
     (refsBefore : ContextRefsBefore refs embedding)
     (offset : Nat)
-    (aligned : CompiledPolicySuffix whole wholeUnique wholeProfile
-      (.reveal published owner name fresh selected unresolved next) unique profile refs
+    (aligned : CompiledPolicySuffix whole wholeProfile
+      (.reveal published owner name fresh selected unresolved next) profile refs
       revelations registry embedding refsBefore offset) :
     let headIndex : Fin (eventCount
         (.reveal published owner name fresh selected unresolved next)) :=
@@ -253,14 +245,14 @@ theorem CompiledPolicySuffix.revealTail
           apply embedding.strictMono
           exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
       | there source => exact refsBefore source (Fin.succ remaining)
-    CompiledPolicySuffix whole wholeUnique wholeProfile next
-      (by simp [fresh, unique]) (afterReveal profile) tailRefs
+    CompiledPolicySuffix whole wholeProfile next
+      (afterReveal profile) tailRefs
       (revelations.reveal (published := published) selected) registry.weaken tailEmbedding
       tailRefsBefore (offset + 1) := by
   dsimp only
   constructor
-  · exact aligned.graphSuffix.revealTail (whole := whole) (wholeUnique := wholeUnique)
-      fresh selected unresolved next unique refs revelations registry embedding
+  · exact aligned.graphSuffix.revealTail (whole := whole)
+      fresh selected unresolved next refs revelations registry embedding
       refsBefore offset
   · intro index
     simpa [OutputEmbedding.tail, eventOwner?, eventCount, Fin.cases_succ] using
@@ -271,20 +263,20 @@ theorem CompiledPolicySuffix.revealTail
       simpa [outputLayout, eventCount] using
         embedding.ref ⟨0, by simp [eventCount]⟩
     have current := aligned.policyEq who (Fin.succ index) actor observation
-    change _ = compilePolicyTable next (by simp [fresh, unique])
+    change _ = compilePolicyTable next
       (refs.cons resultRef)
       (fun tail => embedding.ref (Fin.succ tail)) who ((profile who).2) index
-      observation.store (decodeCompletions whole wholeUnique observation.ownActions) at current
+      observation.store (decodeCompletions whole observation.ownActions) at current
     have outputsEq : (fun tail => embedding.ref (Fin.succ tail)) =
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl)).ref := by
       funext tail
       rfl
     rw [outputsEq] at current
-    change _ = compilePolicyTable next (by simp [fresh, unique])
+    change _ = compilePolicyTable next
       (refs.cons resultRef)
       (embedding.tail next (by simp [eventCount]) (fun _ => rfl)).ref who
       ((profile who).2) index observation.store
-      (decodeCompletions whole wholeUnique observation.ownActions)
+      (decodeCompletions whole observation.ownActions)
     exact current
   · intro index action
     have current := aligned.actionEq (Fin.succ index) action
@@ -296,11 +288,10 @@ player's component of the decoded whole source history. -/
 @[simp] theorem decodeCompletions_playerObserve
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (config : (toEventGraph program unique).Config) (who : Player) :
-    decodeCompletions program unique
-        ((toEventGraph program unique).playerObserve who config).ownActions =
-      decodeHistory program unique config.history who := by
+    (config : (toEventGraph program).Config) (who : Player) :
+    decodeCompletions program
+        ((toEventGraph program).playerObserve who config).ownActions =
+      decodeHistory program config.history who := by
   rfl
 
 end Vegas.SourceProgram.EventLowering

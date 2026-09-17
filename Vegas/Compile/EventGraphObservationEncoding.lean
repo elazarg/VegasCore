@@ -449,8 +449,7 @@ the corresponding completed graph prefix. -/
 private theorem store_isSome_of_before
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (unique : (wholeΓ.map Prod.fst).Nodup)
-    (config : (toEventGraph whole unique).Config) {offset : Nat}
+    (config : (toEventGraph whole).Config) {offset : Nat}
     (ordered : config.cut.IsPrefix offset)
     (event : Fin (eventCount whole)) (rank : event.val = offset)
     (field : Vegas.EventGraph.FieldId wholeΓ.length (eventCount whole))
@@ -468,27 +467,26 @@ visible cells all precede the current event. -/
 theorem exists_decodeObservation_of_prefix
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (unique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {program : SourceProgram Player L Γ openNames}
     (refs : ContextRefs (graphLayout whole) Γ)
     (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
     (refsBefore : ContextRefsBefore refs embedding)
     (index : Fin (eventCount program)) (offset : Nat)
-    (config : (toEventGraph whole unique).Config)
+    (config : (toEventGraph whole).Config)
     (ordered : config.cut.IsPrefix offset)
     (rank : (embedding.event index).val = offset) (who : Player) :
     ∃ observation, decodeObservation? who refs
-        ((toEventGraph whole unique).playerStore who config.store) = some observation := by
+        ((toEventGraph whole).playerStore who config.store) = some observation := by
   apply exists_decodeObservation_of_available who refs
   intro name cell source visible
   let ref := refs.get source
   have visibleKind : (cellField cell).VisibleTo who := by
     cases cell <;> exact visible
-  rw [ref.get?_playerStore (graph := toEventGraph whole unique) who config.store
+  rw [ref.get?_playerStore (graph := toEventGraph whole) who config.store
     visibleKind]
   exact ref.get?_isSome config.store
-    (store_isSome_of_before whole unique config ordered (embedding.event index) rank
+    (store_isSome_of_before whole config ordered (embedding.event index) rank
       ref.field (refsBefore source index))
 
 omit [DecidableEq Player] R in
@@ -567,15 +565,14 @@ by a visible source cell. -/
 theorem ContextRefs.CoversPrefix.available_visible
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (unique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
     (offset : Nat) (covered : refs.CoversPrefix whole offset)
-    (config : (toEventGraph whole unique).Config)
+    (config : (toEventGraph whole).Config)
     (ordered : config.cut.IsPrefix offset) (who : Player)
-    (field : (toEventGraph whole unique).Field)
+    (field : (toEventGraph whole).Field)
     (absent : ¬ refs.CoversVisible who field) :
-    (toEventGraph whole unique).playerStore who config.store field = none := by
-  let graph := toEventGraph whole unique
+    (toEventGraph whole).playerStore who config.store field = none := by
+  let graph := toEventGraph whole
   by_cases visible : graph.fieldVisibleTo who field
   · rw [graph.playerStore_of_visible who config.store field visible]
     cases field with
@@ -614,17 +611,16 @@ exactly the actual player-visible graph store. -/
 theorem encodeObservationStore_eq_playerStore_of_prefix
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (unique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
     (offset : Nat) (covered : refs.CoversPrefix whole offset)
-    (config : (toEventGraph whole unique).Config)
+    (config : (toEventGraph whole).Config)
     (ordered : config.cut.IsPrefix offset) (state : State L Γ)
     (agree : refs.Agrees state config.store) (who : Player) :
     encodeObservationStore who refs (sourceObserve who state) =
-      (toEventGraph whole unique).playerStore who config.store := by
-  apply encodeObservationStore_eq_playerStore (graph := toEventGraph whole unique)
+      (toEventGraph whole).playerStore who config.store := by
+  apply encodeObservationStore_eq_playerStore (graph := toEventGraph whole)
     who refs state config.store agree
-  exact ContextRefs.CoversPrefix.available_visible whole unique refs offset covered
+  exact ContextRefs.CoversPrefix.available_visible whole refs offset covered
     config ordered who
 
 /-- The constructive observation encoder is a decoder inverse at every
@@ -632,18 +628,17 @@ canonical reachable prefix represented by the compiler references. -/
 theorem decodeObservation?_encodeObservationStore_of_prefix
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (unique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
     (offset : Nat) (covered : refs.CoversPrefix whole offset)
-    (config : (toEventGraph whole unique).Config)
+    (config : (toEventGraph whole).Config)
     (ordered : config.cut.IsPrefix offset) (state : State L Γ)
     (refsAgree : refs.Agrees state config.store) (who : Player) :
     decodeObservation? who refs
         (encodeObservationStore who refs (sourceObserve who state)) =
       some (sourceObserve who state) := by
-  rw [encodeObservationStore_eq_playerStore_of_prefix whole unique refs offset covered
+  rw [encodeObservationStore_eq_playerStore_of_prefix whole refs offset covered
     config ordered state refsAgree who]
-  exact decodeObservation?_playerStore_eq_some (graph := toEventGraph whole unique)
+  exact decodeObservation?_playerStore_eq_some (graph := toEventGraph whole)
     refs who state config.store refsAgree
 
 /-- Conversely, every observation decoded from the actual canonical player
@@ -652,24 +647,23 @@ the canonical graph-policy decision-view inverse. -/
 theorem encodeObservationStore_decodeObservation?_eq_playerStore_of_prefix
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (unique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
     (offset : Nat) (covered : refs.CoversPrefix whole offset)
-    (config : (toEventGraph whole unique).Config)
+    (config : (toEventGraph whole).Config)
     (ordered : config.cut.IsPrefix offset) (state : State L Γ)
     (refsAgree : refs.Agrees state config.store) (who : Player)
     (observation : SourceObservation L who Γ)
     (decoded : decodeObservation? who refs
-      ((toEventGraph whole unique).playerStore who config.store) = some observation) :
+      ((toEventGraph whole).playerStore who config.store) = some observation) :
     encodeObservationStore who refs observation =
-      (toEventGraph whole unique).playerStore who config.store := by
+      (toEventGraph whole).playerStore who config.store := by
   have exactObservation := decodeObservation?_playerStore_eq_some
-    (graph := toEventGraph whole unique) refs who state config.store refsAgree
+    (graph := toEventGraph whole) refs who state config.store refsAgree
   rw [decoded] at exactObservation
   have observationEq : observation = sourceObserve who state :=
     Option.some.inj exactObservation
   subst observation
-  exact encodeObservationStore_eq_playerStore_of_prefix whole unique refs offset covered
+  exact encodeObservationStore_eq_playerStore_of_prefix whole refs offset covered
     config ordered state refsAgree who
 
 end Vegas.SourceProgram.EventLowering

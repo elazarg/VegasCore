@@ -20,46 +20,46 @@ backtranslation, uniformly over the concrete initial source state. -/
 theorem canonical_deviation_terminalState_law
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) (profile : BehavioralProfile program)
-    (who : Player) (replacement : (toEventGraph program unique).BehavioralPolicy who)
+    (profile : BehavioralProfile program)
+    (who : Player) (replacement : (toEventGraph program).BehavioralPolicy who)
     (state : State L Γ) :
-    ((toEventGraph program unique).terminalOutcomes
-      (toEventGraph program unique).canonicalScheduler
-      (Profile.update (sig := (toEventGraph program unique).gameSignature)
-        (compileEventProfile program unique profile) who replacement)
-      (encodeInputs state)).map (terminalState program unique) =
+    ((toEventGraph program).terminalOutcomes
+      (toEventGraph program).canonicalScheduler
+      (Profile.update (sig := (toEventGraph program).gameSignature)
+        (compileEventProfile program profile) who replacement)
+      (encodeInputs state)).map (terminalState program) =
         SourceProgram.run program
           (Profile.update (sig := SourceProgram.gameSignature program) profile who
-            (backtranslateEventPolicy program unique who replacement)) state := by
-  let graph := toEventGraph program unique
+            (backtranslateEventPolicy program who replacement)) state := by
+  let graph := toEventGraph program
   let translated := Profile.update (sig := SourceProgram.gameSignature program) profile who
-    (backtranslateEventPolicy program unique who replacement)
+    (backtranslateEventPolicy program who replacement)
   have kernelLaw :
-      graph.runPolicies graph.canonicalScheduler (compileEventProfile program unique translated)
+      graph.runPolicies graph.canonicalScheduler (compileEventProfile program translated)
           (encodeInputs state) =
         graph.runPolicies graph.canonicalScheduler
           (Profile.update (sig := graph.gameSignature)
-            (compileEventProfile program unique profile) who
+            (compileEventProfile program profile) who
             (graph.normalizePolicy who replacement)) (encodeInputs state) := by
     apply Vegas.EventGraph.runPolicies_canonical_eq_of_reachable
     intro config reachable offset ordered event ready rank owner actor
-    rw [show compileEventProfile program unique translated =
-        Profile.update (sig := graph.gameSignature) (compileEventProfile program unique profile)
-          who (compileEventPolicy program unique who
-            (backtranslateEventPolicy program unique who replacement)) from
-      compileEventProfile_update program unique profile who _]
+    rw [show compileEventProfile program translated =
+        Profile.update (sig := graph.gameSignature) (compileEventProfile program profile)
+          who (compileEventPolicy program who
+            (backtranslateEventPolicy program who replacement)) from
+      compileEventProfile_update program profile who _]
     by_cases same : owner = who
     · subst owner
       simp only [Profile.update_same]
-      exact compileEventPolicy_backtranslate_at_prefix program unique who replacement
+      exact compileEventPolicy_backtranslate_at_prefix program who replacement
         (encodeInputs state) config reachable offset ordered event ready rank actor
     · simp only [Profile.update_of_ne _ _ same]
   have normalized := graph.runPolicies_canonical_normalize_eq
     (Profile.update (sig := graph.gameSignature)
-      (compileEventProfile program unique profile) who replacement) (encodeInputs state)
+      (compileEventProfile program profile) who replacement) (encodeInputs state)
   rw [Vegas.EventGraph.normalizeProfile_update, normalizeProfile_compileEventProfile,
     ← kernelLaw] at normalized
-  rw [← canonical_terminalState_law program unique translated state]
+  rw [← canonical_terminalState_law program translated state]
   apply FinDist.map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode, terminalOutcomes_map_decode, normalized]
 
@@ -73,17 +73,17 @@ theorem canonical_setup_deviation_decode
       ((setup.eventGraph.runPolicies setup.eventGraph.canonicalScheduler
         (setup.eventGraph.normalizeProfile
           (Profile.update (sig := setup.eventGraph.gameSignature)
-            (compileEventProfile setup.program setup.namesNodup profile) who replacement))
+            (compileEventProfile setup.program profile) who replacement))
         (setup.eventInputs initial)).map (fun config => config.store)).map
           (decodeState? (terminalRefs setup.program))) =
       (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program) profile who
-        (backtranslateEventPolicy setup.program setup.namesNodup who replacement))).map some := by
+        (backtranslateEventPolicy setup.program who replacement))).map some := by
   rw [Setup.run, FinDist.map_bind]
   apply FinDist.bind_congr
   intro initial _
   rw [← setup.eventGraph.runPolicies_canonical_normalize_eq]
   have law := congrArg (fun measure => measure.map some)
-    (canonical_deviation_terminalState_law setup.program setup.namesNodup profile who replacement
+    (canonical_deviation_terminalState_law setup.program profile who replacement
       initial)
   rw [terminalOutcomes_map_decode] at law
   exact law
@@ -98,16 +98,16 @@ theorem canonical_setup_deviation_law
     ((setup.eventGraph.canonicalGame
         (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
       (Profile.update (sig := setup.eventGraph.gameSignature)
-        (compileEventProfile setup.program setup.namesNodup profile) who replacement)).map
-          (terminalState setup.program setup.namesNodup) =
+        (compileEventProfile setup.program profile) who replacement)).map
+          (terminalState setup.program) =
       setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
         profile who
-          (backtranslateEventPolicy setup.program setup.namesNodup who replacement)) := by
+          (backtranslateEventPolicy setup.program who replacement)) := by
   unfold Vegas.EventGraph.canonicalGame Vegas.EventGraph.gameForm Setup.run
   simp only [FinDist.map_bind, FinDist.bind_map]
   apply FinDist.bind_congr
   intro initial _
-  exact canonical_deviation_terminalState_law setup.program setup.namesNodup profile who
+  exact canonical_deviation_terminalState_law setup.program profile who
     replacement initial
 
 /-- Read the graph-local scheduler mixture through the compiler's total
@@ -121,21 +121,21 @@ private theorem scheduled_canonical_deviation_mixture
       (setup.initialLaw.bind fun initial =>
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
-            (compileEventProfile setup.program setup.namesNodup profile) who replacement)
+            (compileEventProfile setup.program profile) who replacement)
           (setup.eventInputs initial)).map
-            (terminalState setup.program setup.namesNodup)) =
+            (terminalState setup.program)) =
         mixture.bind fun alternative =>
           setup.initialLaw.bind fun initial =>
             (setup.eventGraph.terminalOutcomes setup.eventGraph.canonicalScheduler
               (Profile.update (sig := setup.eventGraph.gameSignature)
-                (compileEventProfile setup.program setup.namesNodup profile) who alternative)
+                (compileEventProfile setup.program profile) who alternative)
               (setup.eventInputs initial)).map
-                (terminalState setup.program setup.namesNodup) := by
+                (terminalState setup.program) := by
   dsimp only [Setup.eventGraph] at *
-  let ordered := toEventGraph_barrierOrdered setup.program setup.namesNodup
+  let ordered := toEventGraph_barrierOrdered setup.program
   obtain ⟨mixture, law⟩ := ordered.exists_deviation_mixture
       (setup.initialLaw.map fun initial => setup.eventInputs initial) scheduler
-      (compileEventProfile setup.program setup.namesNodup profile) who replacement
+      (compileEventProfile setup.program profile) who replacement
   rw [normalizeProfile_compileEventProfile] at law
   refine ⟨mixture, ?_⟩
   apply FinDist.map_injective (f := some) (Option.some_injective _)
@@ -158,22 +158,22 @@ theorem scheduled_setup_deviation_law
       (setup.initialLaw.bind fun initial =>
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
-            (compileEventProfile setup.program setup.namesNodup profile) who replacement)
+            (compileEventProfile setup.program profile) who replacement)
           (setup.eventInputs initial)).map
-            (terminalState setup.program setup.namesNodup)) =
+            (terminalState setup.program)) =
         mixture.bind fun alternative =>
           setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
             profile who alternative) := by
   obtain ⟨mixture, law⟩ := scheduled_canonical_deviation_mixture setup scheduler
     profile who replacement
-  refine ⟨mixture.map (backtranslateEventPolicy setup.program setup.namesNodup who), ?_⟩
+  refine ⟨mixture.map (backtranslateEventPolicy setup.program who), ?_⟩
   rw [law, FinDist.bind_map]
   apply FinDist.bind_congr
   intro alternative _
   unfold Setup.run
   apply FinDist.bind_congr
   intro initial _
-  exact canonical_deviation_terminalState_law setup.program setup.namesNodup profile
+  exact canonical_deviation_terminalState_law setup.program profile
     who alternative initial
 
 end Vegas.SourceProgram.EventLowering

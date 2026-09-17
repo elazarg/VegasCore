@@ -26,19 +26,18 @@ public store and completion order. -/
 theorem scheduled_terminalState_law
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (scheduler : (toEventGraph program unique).PublicScheduler)
+    (scheduler : (toEventGraph program).PublicScheduler)
     (profile : BehavioralProfile program)
     (state : State L Γ) :
-    ((toEventGraph program unique).terminalOutcomes scheduler
-        (compileEventProfile program unique profile) (encodeInputs state)).map
-      (terminalState program unique) =
+    ((toEventGraph program).terminalOutcomes scheduler
+        (compileEventProfile program profile) (encodeInputs state)).map
+      (terminalState program) =
     SourceProgram.run program profile state := by
-  rw [← canonical_terminalState_law program unique profile state]
+  rw [← canonical_terminalState_law program profile state]
   apply FinDist.map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode, terminalOutcomes_map_decode]
-  have storeLaw := (toEventGraph_barrierOrdered program unique).runPolicies_store_eq_canonical
-    (compileEventProfile program unique profile) scheduler (encodeInputs state)
+  have storeLaw := (toEventGraph_barrierOrdered program).runPolicies_store_eq_canonical
+    (compileEventProfile program profile) scheduler (encodeInputs state)
   simp only [normalizeProfile_compileEventProfile] at storeLaw
   rw [storeLaw]
 
@@ -50,13 +49,13 @@ theorem scheduled_setup_law
     (profile : BehavioralProfile setup.program) :
     (setup.initialLaw.bind fun initial =>
       (setup.eventGraph.terminalOutcomes scheduler
-        (compileEventProfile setup.program setup.namesNodup profile)
+        (compileEventProfile setup.program profile)
         (setup.eventInputs initial)).map
-          (terminalState setup.program setup.namesNodup)) =
+          (terminalState setup.program)) =
       setup.run profile := by
   unfold Setup.run
   apply FinDist.bind_congr
   intro initial _
-  exact scheduled_terminalState_law setup.program setup.namesNodup scheduler profile initial
+  exact scheduled_terminalState_law setup.program scheduler profile initial
 
 end Vegas.SourceProgram.EventLowering

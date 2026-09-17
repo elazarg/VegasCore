@@ -88,15 +88,14 @@ The store construction is total; history encoding fails rather than inventing
 an event identity or dependent action. -/
 def encodeDecisionView? {Γ₀ : SourceCtx Player L} {open₀ : Finset VarId}
     (whole : SourceProgram Player L Γ₀ open₀)
-    (unique : (Γ₀.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
     (who : Player) (event : Fin (eventCount whole))
     (view : DecisionView who Γ) :
-    Option ((toEventGraph whole unique).PlayerObservation who) := do
-  let ownActions ← encodeCompletions? whole unique
-    ((toEventGraph whole unique).prefixSchema.ownHistory event) view.2
+    Option ((toEventGraph whole).PlayerObservation who) := do
+  let ownActions ← encodeCompletions? whole
+    ((toEventGraph whole).prefixSchema.ownHistory event) view.2
   pure
-    { completionOrder := (toEventGraph whole unique).rankPrefix event
+    { completionOrder := (toEventGraph whole).rankPrefix event
       store := encodeObservationStore who refs view.1
       ownActions := ownActions }
 
@@ -104,23 +103,22 @@ def encodeDecisionView? {Γ₀ : SourceCtx Player L} {open₀ : Finset VarId}
 theorem encodeDecisionView?_history
     {Γ₀ : SourceCtx Player L} {open₀ : Finset VarId}
     (whole : SourceProgram Player L Γ₀ open₀)
-    (unique : (Γ₀.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
     (who : Player) (event : Fin (eventCount whole))
     (view : DecisionView who Γ)
-    (observation : (toEventGraph whole unique).PlayerObservation who)
-    (encoded : encodeDecisionView? whole unique refs who event view = some observation) :
-    decodeCompletions whole unique observation.ownActions = view.2 := by
+    (observation : (toEventGraph whole).PlayerObservation who)
+    (encoded : encodeDecisionView? whole refs who event view = some observation) :
+    decodeCompletions whole observation.ownActions = view.2 := by
   unfold encodeDecisionView? at encoded
-  cases historyEncoded : encodeCompletions? whole unique
-      ((toEventGraph whole unique).prefixSchema.ownHistory event) view.2 with
+  cases historyEncoded : encodeCompletions? whole
+      ((toEventGraph whole).prefixSchema.ownHistory event) view.2 with
   | none =>
       rw [historyEncoded] at encoded
       contradiction
   | some completions =>
       rw [historyEncoded] at encoded
       cases encoded
-      exact decodeCompletions_encodeCompletions?_eq whole unique _ view.2 completions
+      exact decodeCompletions_encodeCompletions?_eq whole _ view.2 completions
         historyEncoded
 
 /-- At an actual reachable canonical source prefix, encoding the decoded
@@ -129,30 +127,29 @@ exactly: fixed rank prefix, actual visible store, and original own actions. -/
 theorem encodeDecisionView?_eq_normalizeObservation
     {Γ₀ : SourceCtx Player L} {open₀ : Finset VarId}
     (whole : SourceProgram Player L Γ₀ open₀)
-    (unique : (Γ₀.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
     (offset : Nat) (covered : refs.CoversPrefix whole offset)
-    (inputs : (toEventGraph whole unique).Inputs)
-    (config : (toEventGraph whole unique).Config)
+    (inputs : (toEventGraph whole).Inputs)
+    (config : (toEventGraph whole).Config)
     (reachable : config.Reachable inputs)
     (ordered : config.cut.IsPrefix offset) (state : State L Γ)
     (refsAgree : refs.Agrees state config.store)
     (history : History Player L)
-    (historyAgree : decodeHistory whole unique config.history = history)
+    (historyAgree : decodeHistory whole config.history = history)
     (event : Fin (eventCount whole)) (ready : config.cut.Ready event)
-    (who : Player) (actor : (toEventGraph whole unique).actor? event = some who) :
-    encodeDecisionView? whole unique refs who event
+    (who : Player) (actor : (toEventGraph whole).actor? event = some who) :
+    encodeDecisionView? whole refs who event
         (sourceObserve who state, history who) =
-      some ((toEventGraph whole unique).normalizeObservation event who
-        ((toEventGraph whole unique).playerObserve who config)) := by
-  let graph := toEventGraph whole unique
+      some ((toEventGraph whole).normalizeObservation event who
+        ((toEventGraph whole).playerObserve who config)) := by
+  let graph := toEventGraph whole
   let own := graph.ownCompletions who config.history
   have ownIds : own.map Vegas.EventGraph.Completion.event =
       graph.prefixSchema.ownHistory event := by
-    exact (toEventGraph_barrierOrdered whole unique).informationDiscipline.ready_ownEventIds
+    exact (toEventGraph_barrierOrdered whole).informationDiscipline.ready_ownEventIds
       reachable ready actor
-  have decodedOwn : decodeCompletions whole unique own = history who := by
-    change decodeHistory whole unique config.history who = history who
+  have decodedOwn : decodeCompletions whole own = history who := by
+    change decodeHistory whole config.history who = history who
     exact congrFun historyAgree who
   have strategic : ∀ completion ∈ own,
       ∃ sourceAction,
@@ -162,17 +159,17 @@ theorem encodeDecisionView?_eq_normalizeObservation
     have ownerLaw := decodeEventAction_owner whole completion.event completion.action
     have actorLaw : graph.actor? completion.event = some who :=
       of_decide_eq_true filtered.2
-    rw [eventOwner?_eq_actor whole unique completion.event, actorLaw] at ownerLaw
+    rw [eventOwner?_eq_actor whole completion.event, actorLaw] at ownerLaw
     cases decoded : decodeEventAction whole completion.event completion.action with
     | none => simp [decoded] at ownerLaw
     | some sourceAction => exact ⟨sourceAction, rfl⟩
-  have historyEncoded : encodeCompletions? whole unique
+  have historyEncoded : encodeCompletions? whole
       (graph.prefixSchema.ownHistory event) (history who) = some own := by
-    have reconstructed := encodeCompletions?_decodeCompletions_eq_some whole unique own
+    have reconstructed := encodeCompletions?_decodeCompletions_eq_some whole own
       strategic
     rw [ownIds, decodedOwn] at reconstructed
     exact reconstructed
-  have storeEq := encodeObservationStore_eq_playerStore_of_prefix whole unique refs
+  have storeEq := encodeObservationStore_eq_playerStore_of_prefix whole refs
     offset covered config ordered state refsAgree who
   unfold encodeDecisionView?
   rw [historyEncoded]
@@ -189,30 +186,29 @@ version needs no source-state simulation invariant. -/
 theorem encodeDecisionView?_decodeActual_eq_normalizeObservation
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (unique : (wholeΓ.map Prod.fst).Nodup)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
     (offset : Nat) (covered : refs.CoversPrefix whole offset)
-    (inputs : (toEventGraph whole unique).Inputs)
-    (config : (toEventGraph whole unique).Config)
+    (inputs : (toEventGraph whole).Inputs)
+    (config : (toEventGraph whole).Config)
     (reachable : config.Reachable inputs)
     (ordered : config.cut.IsPrefix offset)
     (event : Fin (eventCount whole)) (ready : config.cut.Ready event)
-    (who : Player) (actor : (toEventGraph whole unique).actor? event = some who)
+    (who : Player) (actor : (toEventGraph whole).actor? event = some who)
     (sourceObservation : SourceObservation L who Γ)
     (decodedStore : decodeObservation? who refs
-      ((toEventGraph whole unique).playerStore who config.store) =
+      ((toEventGraph whole).playerStore who config.store) =
         some sourceObservation) :
-    encodeDecisionView? whole unique refs who event
+    encodeDecisionView? whole refs who event
         (sourceObservation,
-          decodeCompletions whole unique
-            ((toEventGraph whole unique).ownCompletions who config.history)) =
-      some ((toEventGraph whole unique).normalizeObservation event who
-        ((toEventGraph whole unique).playerObserve who config)) := by
-  let graph := toEventGraph whole unique
+          decodeCompletions whole
+            ((toEventGraph whole).ownCompletions who config.history)) =
+      some ((toEventGraph whole).normalizeObservation event who
+        ((toEventGraph whole).playerObserve who config)) := by
+  let graph := toEventGraph whole
   let own := graph.ownCompletions who config.history
   have ownIds : own.map Vegas.EventGraph.Completion.event =
       graph.prefixSchema.ownHistory event :=
-    (toEventGraph_barrierOrdered whole unique).informationDiscipline.ready_ownEventIds
+    (toEventGraph_barrierOrdered whole).informationDiscipline.ready_ownEventIds
       reachable ready actor
   have strategic : ∀ completion ∈ own,
       ∃ sourceAction,
@@ -222,14 +218,14 @@ theorem encodeDecisionView?_decodeActual_eq_normalizeObservation
     have ownerLaw := decodeEventAction_owner whole completion.event completion.action
     have actorLaw : graph.actor? completion.event = some who :=
       of_decide_eq_true filtered.2
-    rw [eventOwner?_eq_actor whole unique completion.event, actorLaw] at ownerLaw
+    rw [eventOwner?_eq_actor whole completion.event, actorLaw] at ownerLaw
     cases decoded : decodeEventAction whole completion.event completion.action with
     | none => simp [decoded] at ownerLaw
     | some sourceAction => exact ⟨sourceAction, rfl⟩
-  have historyEncoded : encodeCompletions? whole unique
-      (graph.prefixSchema.ownHistory event) (decodeCompletions whole unique own) =
+  have historyEncoded : encodeCompletions? whole
+      (graph.prefixSchema.ownHistory event) (decodeCompletions whole own) =
         some own := by
-    have reconstructed := encodeCompletions?_decodeCompletions_eq_some whole unique own
+    have reconstructed := encodeCompletions?_decodeCompletions_eq_some whole own
       strategic
     rw [ownIds] at reconstructed
     exact reconstructed
@@ -238,7 +234,7 @@ theorem encodeDecisionView?_decodeActual_eq_normalizeObservation
     apply encodeObservationStore_decodeObservation?_eq refs who
       (graph.playerStore who config.store) sourceObservation decodedStore
     intro field absent
-    exact ContextRefs.CoversPrefix.available_visible whole unique refs offset covered
+    exact ContextRefs.CoversPrefix.available_visible whole refs offset covered
       config ordered who field absent
   unfold encodeDecisionView?
   rw [historyEncoded]
@@ -253,31 +249,29 @@ the single graph compiled from `whole`. -/
 def backtranslatePolicyTable
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup)
-    (who : Player) (policy : (toEventGraph whole wholeUnique).BehavioralPolicy who) :
+    (who : Player) (policy : (toEventGraph whole).BehavioralPolicy who) :
     {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
     (program : SourceProgram Player L Γ openNames) →
-    (unique : (Γ.map Prod.fst).Nodup) →
     (refs : ContextRefs (graphLayout whole) Γ) →
     (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program) →
     (actorEq : ∀ index,
-      (toEventGraph whole wholeUnique).actor? (embedding.event index) =
+      (toEventGraph whole).actor? (embedding.event index) =
         eventOwner? program index) →
       BehavioralPolicy who program
-  | _, _, .ret _, _, _, _, _ => PUnit.unit
-  | _, _, .sample name fresh law next, unique, refs, embedding, actorEq =>
+  | _, _, .ret _, _, _, _ => PUnit.unit
+  | _, _, .sample name fresh law next, refs, embedding, actorEq =>
       let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
       let headIndex : Fin (eventCount (.sample name fresh law next)) :=
         ⟨0, by simp [eventCount]⟩
       let headRef : Vegas.EventGraph.FieldRef (graphLayout whole)
           (.publicData _) := by
         simpa [headIndex, outputLayout, eventCount] using embedding.ref headIndex
-      backtranslatePolicyTable whole wholeUnique who policy next
-        (by simp [fresh, unique]) (refs.cons headRef) tailEmbedding
+      backtranslatePolicyTable whole who policy next
+        (refs.cons headRef) tailEmbedding
         (fun index => by
           simpa [tailEmbedding, OutputEmbedding.tail, eventOwner?, eventCount,
             Fin.cases_succ] using actorEq (Fin.succ index))
-  | _, _, .commit (payload := payload) name owner fresh guard next, unique, refs,
+  | _, _, .commit (payload := payload) name owner fresh guard next, refs,
       embedding, actorEq =>
       let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
         ⟨0, by simp [eventCount]⟩
@@ -287,19 +281,19 @@ def backtranslatePolicyTable
         simpa [headIndex, outputLayout, eventCount] using embedding.ref headIndex
       let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
       (fun same view =>
-          have actor : (toEventGraph whole wholeUnique).actor? event = some who := by
+          have actor : (toEventGraph whole).actor? event = some who := by
             simpa [event, headIndex, eventOwner?, same] using actorEq headIndex
-          match encodeDecisionView? whole wholeUnique refs who event view with
+          match encodeDecisionView? whole refs who event view with
           | none => FinDist.pure .failure
           | some observation =>
               (policy event actor observation).map embedding.commitHeadAction,
-        backtranslatePolicyTable whole wholeUnique who policy next
-          (by simp [fresh, unique]) (refs.cons headRef) tailEmbedding
+        backtranslatePolicyTable whole who policy next
+          (refs.cons headRef) tailEmbedding
           (fun index => by
             simpa [tailEmbedding, OutputEmbedding.tail, eventOwner?, eventCount,
               Fin.cases_succ] using actorEq (Fin.succ index)))
   | Γ, _, .reveal (payload := payload) published owner name fresh selected unresolved
-      next, unique, refs, embedding, actorEq =>
+      next, refs, embedding, actorEq =>
       let headIndex : Fin (eventCount
           (.reveal published owner name fresh selected unresolved next)) :=
         ⟨0, by simp [eventCount]⟩
@@ -309,14 +303,14 @@ def backtranslatePolicyTable
         simpa [headIndex, outputLayout, eventCount] using embedding.ref headIndex
       let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
       (fun same view =>
-          have actor : (toEventGraph whole wholeUnique).actor? event = some who := by
+          have actor : (toEventGraph whole).actor? event = some who := by
             simpa [event, headIndex, eventOwner?, same] using actorEq headIndex
-          match encodeDecisionView? whole wholeUnique refs who event view with
+          match encodeDecisionView? whole refs who event view with
           | none => FinDist.pure false
           | some observation =>
               (policy event actor observation).map embedding.revealHeadAction,
-        backtranslatePolicyTable whole wholeUnique who policy next
-          (by simp [fresh, unique]) (refs.cons resultRef) tailEmbedding
+        backtranslatePolicyTable whole who policy next
+          (refs.cons resultRef) tailEmbedding
           (fun index => by
             simpa [tailEmbedding, OutputEmbedding.tail, eventOwner?, eventCount,
               Fin.cases_succ] using actorEq (Fin.succ index)))
@@ -326,12 +320,12 @@ source policy. -/
 def backtranslateEventPolicy
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) (who : Player)
-    (policy : (toEventGraph program unique).BehavioralPolicy who) :
+    (who : Player)
+    (policy : (toEventGraph program).BehavioralPolicy who) :
     BehavioralPolicy who program :=
-  backtranslatePolicyTable program unique who policy program unique
+  backtranslatePolicyTable program who policy program
     (ContextRefs.initial Γ (outputLayout program)) (outputEmbedding program)
-    (fun index => (eventOwner?_eq_actor program unique index).symm)
+    (fun index => (eventOwner?_eq_actor program index).symm)
 
 /-- At a commitment view that encodes successfully, the backtranslated choice
 is the arbitrary graph-policy kernel, transported only across the suffix
@@ -339,27 +333,26 @@ output-layout equality. -/
 theorem backtranslatePolicyTable_commit_kernel
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup) (who : Player)
-    (policy : (toEventGraph whole wholeUnique).BehavioralPolicy who)
+    (who : Player)
+    (policy : (toEventGraph whole).BehavioralPolicy who)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
     {fresh : name ∉ Γ.map Prod.fst}
     {guard : SourceGuard L Γ owner name payload}
     {next : SourceProgram Player L ((name, .privateData owner payload) :: Γ)
       (insert name openNames)}
-    (unique : (Γ.map Prod.fst).Nodup)
     (refs : ContextRefs (graphLayout whole) Γ)
     (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole)
       (.commit name owner fresh guard next))
     (actorEq : ∀ index,
-      (toEventGraph whole wholeUnique).actor? (embedding.event index) =
+      (toEventGraph whole).actor? (embedding.event index) =
         eventOwner? (.commit name owner fresh guard next) index)
     (same : owner = who) (view : DecisionView who Γ)
-    (observation : (toEventGraph whole wholeUnique).PlayerObservation who)
-    (encoded : encodeDecisionView? whole wholeUnique refs who
+    (observation : (toEventGraph whole).PlayerObservation who)
+    (encoded : encodeDecisionView? whole refs who
       (embedding.event ⟨0, by simp [eventCount]⟩) view = some observation) :
-    (backtranslatePolicyTable whole wholeUnique who policy
-        (.commit name owner fresh guard next) unique refs embedding actorEq).1
+    (backtranslatePolicyTable whole who policy
+        (.commit name owner fresh guard next) refs embedding actorEq).1
         same view =
       (policy (embedding.event ⟨0, by simp [eventCount]⟩)
         (by simpa [eventOwner?, same] using actorEq ⟨0, by simp [eventCount]⟩)
@@ -372,8 +365,8 @@ suffix output-layout equality. -/
 theorem backtranslatePolicyTable_reveal_kernel
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup) (who : Player)
-    (policy : (toEventGraph whole wholeUnique).BehavioralPolicy who)
+    (who : Player)
+    (policy : (toEventGraph whole).BehavioralPolicy who)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {published name : VarId} {owner : Player} {payload : L.Ty}
     {fresh : published ∉ Γ.map Prod.fst}
@@ -381,19 +374,18 @@ theorem backtranslatePolicyTable_reveal_kernel
     {unresolved : name ∈ openNames}
     {next : SourceProgram Player L ((published, .publication payload) :: Γ)
       (openNames.erase name)}
-    (unique : (Γ.map Prod.fst).Nodup)
     (refs : ContextRefs (graphLayout whole) Γ)
     (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole)
       (.reveal published owner name fresh selected unresolved next))
     (actorEq : ∀ index,
-      (toEventGraph whole wholeUnique).actor? (embedding.event index) =
+      (toEventGraph whole).actor? (embedding.event index) =
         eventOwner? (.reveal published owner name fresh selected unresolved next) index)
     (same : owner = who) (view : DecisionView who Γ)
-    (observation : (toEventGraph whole wholeUnique).PlayerObservation who)
-    (encoded : encodeDecisionView? whole wholeUnique refs who
+    (observation : (toEventGraph whole).PlayerObservation who)
+    (encoded : encodeDecisionView? whole refs who
       (embedding.event ⟨0, by simp [eventCount]⟩) view = some observation) :
-    (backtranslatePolicyTable whole wholeUnique who policy
-        (.reveal published owner name fresh selected unresolved next) unique refs
+    (backtranslatePolicyTable whole who policy
+        (.reveal published owner name fresh selected unresolved next) refs
         embedding actorEq).1 same view =
       (policy (embedding.event ⟨0, by simp [eventCount]⟩)
         (by simpa [eventOwner?, same] using actorEq ⟨0, by simp [eventCount]⟩)

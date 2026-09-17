@@ -24,36 +24,36 @@ profile unchanged, on every observation rather than only reachable ones. -/
 theorem normalizeProfile_compileEventProfile
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) (profile : BehavioralProfile program) :
-    (toEventGraph program unique).normalizeProfile
-        (compileEventProfile program unique profile) =
-      compileEventProfile program unique profile := rfl
+    (profile : BehavioralProfile program) :
+    (toEventGraph program).normalizeProfile
+        (compileEventProfile program profile) =
+      compileEventProfile program profile := rfl
 
 /-- Advancing an event hidden from the player and absent from its own-action
 history leaves the player's actual compiled decision kernel unchanged. -/
 theorem compileEventPolicy_complete_hidden
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) (who : Player)
+    (who : Player)
     (policy : BehavioralPolicy who program)
-    (config : (toEventGraph program unique).Config)
+    (config : (toEventGraph program).Config)
     (completed event : Fin (eventCount program))
     (ready : config.cut.Ready completed)
-    (action : (toEventGraph program unique).Action completed)
+    (action : (toEventGraph program).Action completed)
     (value : (outputLayout program completed).Value)
-    (hidden : ¬ (toEventGraph program unique).fieldVisibleTo who (.inr completed))
-    (notOwned : (toEventGraph program unique).actor? completed ≠ some who)
-    (actor : (toEventGraph program unique).actor? event = some who) :
-    compileEventPolicy program unique who policy event actor
-        ((toEventGraph program unique).playerObserve who
+    (hidden : ¬ (toEventGraph program).fieldVisibleTo who (.inr completed))
+    (notOwned : (toEventGraph program).actor? completed ≠ some who)
+    (actor : (toEventGraph program).actor? event = some who) :
+    compileEventPolicy program who policy event actor
+        ((toEventGraph program).playerObserve who
           (config.complete completed ready action value)) =
-      compileEventPolicy program unique who policy event actor
-        ((toEventGraph program unique).playerObserve who config) := by
+      compileEventPolicy program who policy event actor
+        ((toEventGraph program).playerObserve who config) := by
   unfold compileEventPolicy Vegas.EventGraph.playerObserve
   dsimp only
-  rw [(toEventGraph program unique).playerStore_complete_of_hidden who config
+  rw [(toEventGraph program).playerStore_complete_of_hidden who config
       completed ready action value hidden,
-    (toEventGraph program unique).ownCompletions_complete_of_not_actor who config
+    (toEventGraph program).ownCompletions_complete_of_not_actor who config
       completed ready action value notOwned]
 
 end Vegas.SourceProgram.EventLowering

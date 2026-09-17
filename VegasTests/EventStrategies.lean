@@ -24,9 +24,9 @@ example (scheduler : SourceSetup.fairSetup.eventGraph.PublicScheduler)
         (SourceProgram.BehavioralPolicy who SourceSetup.fairSetup.program),
       ((SourceSetup.fairSetup.eventGame scheduler).play
         (Profile.update (sig := SourceSetup.fairSetup.eventGraph.gameSignature)
-          (compileEventProfile SourceSetup.fairSetup.program SourceSetup.fairSetup.namesNodup
+          (compileEventProfile SourceSetup.fairSetup.program
             (SourceSetup.profile chosen)) who replacement)).map
-              (terminalState SourceSetup.fairSetup.program SourceSetup.fairSetup.namesNodup) =
+              (terminalState SourceSetup.fairSetup.program) =
         mixture.bind fun alternative =>
           SourceSetup.fairSetup.run
             (Profile.update
@@ -53,8 +53,8 @@ example (scheduler : mixedSetup.eventGraph.PublicScheduler)
     (ε : ℝ) (profile : SourceProgram.BehavioralProfile mixedSetup.program) :
     IsεNash (mixedSetup.eventGame scheduler)
         (fun outcome who => utility
-          (terminalState mixedSetup.program mixedSetup.namesNodup outcome) who)
-        ε (compileEventProfile mixedSetup.program mixedSetup.namesNodup profile) ↔
+          (terminalState mixedSetup.program outcome) who)
+        ε (compileEventProfile mixedSetup.program profile) ↔
       IsεNash mixedSetup.gameForm utility ε profile :=
   mixedSetup.eventGame_approximate_nash_iff scheduler utility ε profile
 

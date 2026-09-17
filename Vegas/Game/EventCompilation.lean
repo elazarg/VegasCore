@@ -31,12 +31,12 @@ deviation by a finite mixture of source policies. -/
 def eventSimulation (setup : Setup (Player := Player) (L := L))
     (scheduler : setup.eventGraph.PublicScheduler) :
     GameForm.MixtureSimulationOn setup.gameForm (setup.eventGame scheduler) id
-      (terminalState setup.program setup.namesNodup) (fun _ _ => True) where
-  compileStrategy := compileEventPolicy setup.program setup.namesNodup
+      (terminalState setup.program) (fun _ _ => True) where
+  compileStrategy := compileEventPolicy setup.program
   honest_law profile := by
     change ((setup.eventGame scheduler).play
-      (compileEventProfile setup.program setup.namesNodup profile)).map
-        (terminalState setup.program setup.namesNodup) = (setup.run profile).map id
+      (compileEventProfile setup.program profile)).map
+        (terminalState setup.program) = (setup.run profile).map id
     rw [FinDist.map_id]
     simpa only [eventGame, Vegas.EventGraph.gameForm, FinDist.map_bind,
       FinDist.bind_map] using scheduled_setup_law setup scheduler profile
@@ -47,8 +47,8 @@ def eventSimulation (setup : Setup (Player := Player) (L := L))
     refine ⟨mixture, ?_⟩
     change ((setup.eventGame scheduler).play
       (Profile.update (sig := setup.eventGraph.gameSignature)
-        (compileEventProfile setup.program setup.namesNodup profile) who replacement)).map
-          (terminalState setup.program setup.namesNodup) =
+        (compileEventProfile setup.program profile) who replacement)).map
+          (terminalState setup.program) =
         mixture.bind fun alternative =>
           (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
             profile who alternative)).map id
@@ -63,8 +63,8 @@ theorem eventGame_approximate_nash_iff
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
     IsεNash (setup.eventGame scheduler)
-        (fun outcome who => utility (terminalState setup.program setup.namesNodup outcome) who)
-        ε (compileEventProfile setup.program setup.namesNodup profile) ↔
+        (fun outcome who => utility (terminalState setup.program outcome) who)
+        ε (compileEventProfile setup.program profile) ↔
       IsεNash setup.gameForm utility ε profile :=
   (setup.eventSimulation scheduler).isεNash_compileProfile_iff utility ε profile
     (fun _ _ => trivial)
@@ -82,8 +82,8 @@ theorem eventGame_deviation_guarantee
     (replacement : setup.eventGraph.BehavioralPolicy who) :
     bound ≤ ((setup.eventGame scheduler).play
       (Profile.update (sig := setup.eventGraph.gameSignature)
-        (compileEventProfile setup.program setup.namesNodup profile) who replacement)).expect
-          (fun outcome => value (terminalState setup.program setup.namesNodup outcome)) :=
+        (compileEventProfile setup.program profile) who replacement)).expect
+          (fun outcome => value (terminalState setup.program outcome)) :=
   (setup.eventSimulation scheduler).guarantee profile who value bound sourceBound replacement
     trivial
 

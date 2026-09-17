@@ -200,14 +200,13 @@ theorem encodeEventAction?_decodeEventAction_eq_some :
 /-- Encode a source action list against a concrete list of source-ranked event
 identities. Length or event/action mismatches fail explicitly. -/
 def encodeCompletions? {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) :
+    (program : SourceProgram Player L Γ openNames) :
     List (Fin (eventCount program)) → List (OwnAction Player L) →
-      Option (List (toEventGraph program unique).Completion)
+      Option (List (toEventGraph program).Completion)
   | [], [] => some []
   | event :: events, action :: actions => do
       let encoded ← encodeEventAction? program event action
-      let tail ← encodeCompletions? program unique events actions
+      let tail ← encodeCompletions? program events actions
       pure (⟨event, encoded⟩ :: tail)
   | _, _ => none
 
@@ -216,24 +215,23 @@ decoding whenever it succeeds. -/
 theorem decodeCompletions_encodeCompletions?_eq :
     {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
     (program : SourceProgram Player L Γ openNames) →
-    (unique : (Γ.map Prod.fst).Nodup) →
     (events : List (Fin (eventCount program))) →
     (actions : List (OwnAction Player L)) →
-    (completions : List (toEventGraph program unique).Completion) →
-    encodeCompletions? program unique events actions = some completions →
-      decodeCompletions program unique completions = actions
-  | _, _, program, unique, [], [], completions, encoded => by
+    (completions : List (toEventGraph program).Completion) →
+    encodeCompletions? program events actions = some completions →
+      decodeCompletions program completions = actions
+  | _, _, program, [], [], completions, encoded => by
       simp [encodeCompletions?] at encoded
       subst completions
       rfl
-  | _, _, program, unique, event :: events, action :: actions, completions,
+  | _, _, program, event :: events, action :: actions, completions,
       encoded => by
       cases actionEncoded : encodeEventAction? program event action with
       | none =>
         rw [encodeCompletions?, actionEncoded] at encoded
         contradiction
       | some graphAction =>
-        cases tailEncoded : encodeCompletions? program unique events actions with
+        cases tailEncoded : encodeCompletions? program events actions with
         | none =>
           rw [encodeCompletions?, actionEncoded, tailEncoded] at encoded
           contradiction
@@ -243,13 +241,13 @@ theorem decodeCompletions_encodeCompletions?_eq :
           simp only [decodeCompletions, List.filterMap_cons]
           rw [decodeEventAction_encodeEventAction?_eq_some program event action
             graphAction actionEncoded]
-          change action :: decodeCompletions program unique tail = action :: actions
+          change action :: decodeCompletions program tail = action :: actions
           congr 1
-          exact decodeCompletions_encodeCompletions?_eq program unique events actions
+          exact decodeCompletions_encodeCompletions?_eq program events actions
             tail tailEncoded
-  | _, _, _, _, [], _ :: _, _, encoded => by
+  | _, _, _, [], _ :: _, _, encoded => by
       simp [encodeCompletions?] at encoded
-  | _, _, _, _, _ :: _, [], _, encoded => by
+  | _, _, _, _ :: _, [], _, encoded => by
       simp [encodeCompletions?] at encoded
 
 /-- A completion list containing only strategic events is reconstructed exactly
@@ -257,14 +255,13 @@ from its source-ranked event identities and decoded original actions. -/
 theorem encodeCompletions?_decodeCompletions_eq_some
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup)
-    (completions : List (toEventGraph program unique).Completion)
+    (completions : List (toEventGraph program).Completion)
     (strategic : ∀ completion ∈ completions,
       ∃ sourceAction,
         decodeEventAction program completion.event completion.action =
           some sourceAction) :
-    encodeCompletions? program unique (completions.map (·.event))
-        (decodeCompletions program unique completions) = some completions := by
+    encodeCompletions? program (completions.map (·.event))
+        (decodeCompletions program completions) = some completions := by
   induction completions with
   | nil => rfl
   | cons completion completions ih =>
@@ -277,9 +274,9 @@ theorem encodeCompletions?_decodeCompletions_eq_some
         exact strategic candidate (by simp [member])
       have tailEncoded := ih tailStrategic
       simp only [decodeCompletions, List.filterMap_cons, decoded]
-      change encodeCompletions? program unique
+      change encodeCompletions? program
           (completion.event :: completions.map (·.event))
-          (sourceAction :: decodeCompletions program unique completions) =
+          (sourceAction :: decodeCompletions program completions) =
         some (completion :: completions)
       rw [encodeCompletions?,
         encodeEventAction?_decodeEventAction_eq_some program completion.event

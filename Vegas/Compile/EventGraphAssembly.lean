@@ -55,18 +55,16 @@ theorem initialRefsBefore {Γ : SourceCtx Player L} {openNames : Finset VarId}
 
 /-- Lowered nodes paired with their constructed causal-read certificates. -/
 def rankedNodes {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) :=
-  compileRankedNodes program unique (ContextRefs.initial Γ (outputLayout program))
+    (program : SourceProgram Player L Γ openNames) :=
+  compileRankedNodes program (ContextRefs.initial Γ (outputLayout program))
     (Revelations.initial Γ) [] (outputEmbedding program) (initialRefsBefore program)
 
 /-- Executable node table obtained by projecting the jointly constructed
 code-and-causality carrier. -/
 def nodes {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) :
+    (program : SourceProgram Player L Γ openNames) :
     ∀ event, Vegas.EventGraph.EventCode (graphLayout program) (outputLayout program event) :=
-  fun event => (rankedNodes program unique event).code
+  fun event => (rankedNodes program event).code
 
 /-- Carry typed source-cell references through the complete source program. -/
 def terminalRefsWith {Field : Type} [DecidableEq Field]
@@ -123,16 +121,16 @@ private theorem code_isPublic_of_mem_readFields {Field : Type} [DecidableEq Fiel
 event graph. Node code and `reads_available` come from one ranked recursion. -/
 def toEventGraph {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) : Vegas.EventGraph Player L where
+    : Vegas.EventGraph Player L where
   inputCount := Γ.length
   order := Vegas.EventGraph.barrierOrder (outputLayout program)
   inputLayout := inputLayout Γ
   outputLayout := outputLayout program
-  nodes := nodes program unique
+  nodes := nodes program
   reads_available := by
     intro event field member
-    change field ∈ (rankedNodes program unique event).code.readFields at member
-    have before := (rankedNodes program unique event).reads_before field member
+    change field ∈ (rankedNodes program event).code.readFields at member
+    have before := (rankedNodes program event).reads_before field member
     cases field with
     | inl => trivial
     | inr producer =>
@@ -142,25 +140,23 @@ def toEventGraph {Γ : SourceCtx Player L} {openNames : Finset VarId}
 
 /-- The compiled graph contains the public-barrier dependency policy. -/
 theorem toEventGraph_barrierOrdered {Γ : SourceCtx Player L}
-    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) :
-    (toEventGraph program unique).BarrierOrdered := by
+    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
+    (toEventGraph program).BarrierOrdered := by
   intro event
   exact Finset.Subset.rfl
 
 /-- Full source lowering immediately inherits the generic local information
 certificate for every ready strategic cut. -/
 theorem toEventGraph_informationDiscipline {Γ : SourceCtx Player L}
-    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
-    (unique : (Γ.map Prod.fst).Nodup) :
-    (toEventGraph program unique).InformationDiscipline
-      (toEventGraph program unique).prefixSchema :=
-  (toEventGraph_barrierOrdered program unique).informationDiscipline
+    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
+    (toEventGraph program).InformationDiscipline
+      (toEventGraph program).prefixSchema :=
+  (toEventGraph_barrierOrdered program).informationDiscipline
 
 /-- Entry point for a source program with one concrete initial state. -/
 def _root_.Vegas.SourceProgram.Initial.eventGraph
     (source : Initial (Player := Player) (L := L)) : Vegas.EventGraph Player L :=
-  toEventGraph source.program source.namesNodup
+  toEventGraph source.program
 
 /-- Encode the concrete initial state separately from its compiled graph. -/
 def _root_.Vegas.SourceProgram.Initial.eventInputs
@@ -170,7 +166,7 @@ def _root_.Vegas.SourceProgram.Initial.eventInputs
 /-- Entry point shared by every state in a distributed initial setup law. -/
 def _root_.Vegas.SourceProgram.Setup.eventGraph
     (source : Setup (Player := Player) (L := L)) : Vegas.EventGraph Player L :=
-  toEventGraph source.program source.namesNodup
+  toEventGraph source.program
 
 /-- Encode one setup state for the single setup-wide compiled graph. -/
 def _root_.Vegas.SourceProgram.Setup.eventInputs

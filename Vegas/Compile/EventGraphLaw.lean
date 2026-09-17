@@ -69,11 +69,9 @@ law rather than choosing a default for malformed stores. -/
 theorem runWith_option_law
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
-    (wholeUnique : (wholeΓ.map Prod.fst).Nodup)
     (wholeProfile : BehavioralProfile whole) :
     ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
       (program : SourceProgram Player L Γ openNames)
-      (unique : (Γ.map Prod.fst).Nodup)
       (profile : BehavioralProfile program)
       (refs : ContextRefs (graphLayout whole) Γ)
       (revelations : Revelations Γ)
@@ -81,17 +79,17 @@ theorem runWith_option_law
       (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
       (refsBefore : ContextRefsBefore refs embedding)
       (offset : Nat),
-      CompiledPolicySuffix whole wholeUnique wholeProfile program unique profile
+      CompiledPolicySuffix whole wholeProfile program profile
         refs revelations registry embedding refsBefore offset →
-      ∀ (config : (toEventGraph whole wholeUnique).Config),
+      ∀ (config : (toEventGraph whole).Config),
       config.cut.IsPrefix offset →
       ∀ (state : State L Γ), refs.Agrees state config.store →
       ∀ (history : History Player L),
-      decodeHistory whole wholeUnique config.history = history →
-      ((toEventGraph whole wholeUnique).runPlan
-          ((toEventGraph whole wholeUnique).policyPlan
-            (compileEventProfile whole wholeUnique wholeProfile)
-            (toEventGraph whole wholeUnique).canonicalScheduler)
+      decodeHistory whole config.history = history →
+      ((toEventGraph whole).runPlan
+          ((toEventGraph whole).policyPlan
+            (compileEventProfile whole wholeProfile)
+            (toEventGraph whole).canonicalScheduler)
           (eventCount program) config).map
         (fun final => decodeState? (terminalRefsWith program refs embedding.ref)
           final.store) =
@@ -99,13 +97,13 @@ theorem runWith_option_law
   intro Γ openNames program
   induction program with
   | ret payoffs =>
-      intro unique profile refs revelations registry embedding refsBefore offset aligned
+      intro profile refs revelations registry embedding refsBefore offset aligned
         config ordered state refsAgree history historyAgree
       simp only [eventCount, Vegas.EventGraph.runPlan, FinDist.map_pure,
         terminalRefsWith, runWith]
       rw [decodeState?_eq_some refs state config.store refsAgree]
   | sample name fresh law next ih =>
-      intro unique profile refs revelations registry embedding refsBefore offset aligned
+      intro profile refs revelations registry embedding refsBefore offset aligned
         config ordered state refsAgree history historyAgree
       let headIndex : Fin (eventCount (.sample name fresh law next)) :=
         ⟨0, by simp [eventCount]⟩
@@ -113,28 +111,28 @@ theorem runWith_option_law
       have rank : event.val = offset := by
         simpa [event, headIndex] using aligned.graphSuffix.rankEq headIndex
       obtain ⟨ready, least⟩ := canonical_ready_least ordered event rank
-      have outputEq : (toEventGraph whole wholeUnique).outputLayout event =
+      have outputEq : (toEventGraph whole).outputLayout event =
           outputLayout (.sample name fresh law next) headIndex := by
         simpa [event, toEventGraph] using embedding.layout_eq headIndex
       have codeEq : cast
           (congrArg (Vegas.EventGraph.EventCode (graphLayout whole)) outputEq)
-          ((toEventGraph whole wholeUnique).nodes event) =
+          ((toEventGraph whole).nodes event) =
           .sample _ (compilePublicDist refs law) := by
         simpa [event, headIndex, compileRankedNodes] using
           aligned.graphSuffix.nodeEq headIndex
-      have ownerless : (toEventGraph whole wholeUnique).actor? event = none := by
+      have ownerless : (toEventGraph whole).actor? event = none := by
         simpa [event, headIndex, eventOwner?] using aligned.actorEq headIndex
       have suppliedAction :
           Vegas.EventGraph.EventCode.actionOfActorNone
-              ((toEventGraph whole wholeUnique).nodes event) ownerless =
+              ((toEventGraph whole).nodes event) ownerless =
             cast (congrArg Vegas.EventGraph.EventField.Action outputEq.symm)
               PUnit.unit :=
         EventCode.actionOfActorNone_eq_sample
-          ((toEventGraph whole wholeUnique).nodes event) _ _ outputEq codeEq ownerless
+          ((toEventGraph whole).nodes event) _ _ outputEq codeEq ownerless
       rw [show eventCount (.sample name fresh law next) = eventCount next + 1 by
         simp [eventCount]]
       rw [Vegas.EventGraph.runPlan_canonical_ownerless
-        (compileEventProfile whole wholeUnique wholeProfile) (eventCount next)
+        (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least ownerless, suppliedAction]
       rw [sample_step config event ready outputEq refs law codeEq state refsAgree]
       simp only [FinDist.bind_map, FinDist.map_bind, runWith]
@@ -148,12 +146,12 @@ theorem runWith_option_law
         apply ContextRefs.Agrees.complete ready action stored refs state refsAgree
         exact fun source => refsBefore source headIndex
       have storedResult : (embedding.ref headIndex).get? nextConfig.store = some value := by
-        exact embedding.ref_get?_complete whole wholeUnique config headIndex ready action
+        exact embedding.ref_get?_complete whole config headIndex ready action
           outputEq value
       have nextPrefix : nextConfig.cut.IsPrefix (offset + 1) := by
         exact ordered.complete_at event ready rank
       have nextHistory :
-          decodeHistory whole wholeUnique nextConfig.history = history := by
+          decodeHistory whole nextConfig.history = history := by
         have chance : decodeEventAction whole event action = none := by
           have embedded := aligned.actionEq headIndex action
           simpa [event, headIndex, action, outputEq, decodeEventAction] using embedded
@@ -161,13 +159,13 @@ theorem runWith_option_law
           rw [sample_step config event ready outputEq refs law codeEq state refsAgree,
             FinDist.support_map]
           exact ⟨value, valueMem, rfl⟩
-        exact (decodeHistory_step_of_none whole wholeUnique config nextConfig event ready
+        exact (decodeHistory_step_of_none whole config nextConfig event ready
           action chance supported).trans historyAgree
       have tailAligned := aligned.sampleTail (whole := whole)
-        (wholeUnique := wholeUnique) (wholeProfile := wholeProfile)
-        (_openNames := ∅) fresh law next unique profile refs revelations registry embedding
+        (wholeProfile := wholeProfile)
+        (_openNames := ∅) fresh law next profile refs revelations registry embedding
         refsBefore offset
-      exact ih (by simp [fresh, unique]) (afterSample profile)
+      exact ih (afterSample profile)
         (refs.cons (embedding.ref headIndex)) revelations.weaken registry.weaken
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl))
         (by
@@ -185,7 +183,7 @@ theorem runWith_option_law
           (name := name) (cell := .publicData _) (embedding.ref headIndex) value storedResult)
         history nextHistory
   | commit name owner fresh guard next ih =>
-      intro unique profile refs revelations registry embedding refsBefore offset aligned
+      intro profile refs revelations registry embedding refsBefore offset aligned
         config ordered state refsAgree history historyAgree
       let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
         ⟨0, by simp [eventCount]⟩
@@ -193,34 +191,34 @@ theorem runWith_option_law
       have rank : event.val = offset := by
         simpa [event, headIndex] using aligned.graphSuffix.rankEq headIndex
       obtain ⟨ready, least⟩ := canonical_ready_least ordered event rank
-      have outputEq : (toEventGraph whole wholeUnique).outputLayout event =
+      have outputEq : (toEventGraph whole).outputLayout event =
           outputLayout (.commit name owner fresh guard next) headIndex := by
         simpa [event, toEventGraph] using embedding.layout_eq headIndex
       have codeEq : cast
           (congrArg (Vegas.EventGraph.EventCode (graphLayout whole)) outputEq)
-          ((toEventGraph whole wholeUnique).nodes event) =
+          ((toEventGraph whole).nodes event) =
           .bind owner _ := by
         simpa [event, headIndex, compileRankedNodes] using
           aligned.graphSuffix.nodeEq headIndex
-      have actor : (toEventGraph whole wholeUnique).actor? event = some owner := by
+      have actor : (toEventGraph whole).actor? event = some owner := by
         simpa [event, headIndex, eventOwner?] using aligned.actorEq headIndex
       have decodedObservation := decodeObservation?_playerStore_eq_some
-        (graph := toEventGraph whole wholeUnique) refs owner state config.store refsAgree
+        (graph := toEventGraph whole) refs owner state config.store refsAgree
       have policyLaw := aligned.policyEq owner headIndex actor
-        ((toEventGraph whole wholeUnique).playerObserve owner config)
-      rw [decodeCompletions_playerObserve whole wholeUnique config owner, historyAgree] at policyLaw
-      change _ = compilePolicyTable (.commit name owner fresh guard next) unique refs
+        ((toEventGraph whole).playerObserve owner config)
+      rw [decodeCompletions_playerObserve whole config owner, historyAgree] at policyLaw
+      change _ = compilePolicyTable (.commit name owner fresh guard next) refs
         embedding.ref owner (profile owner)
         ⟨0, by simp [eventCount]⟩
-        ((toEventGraph whole wholeUnique).playerStore owner config.store)
+        ((toEventGraph whole).playerStore owner config.store)
         (history owner) at policyLaw
-      rw [compilePolicyTable_commit_of_decode unique refs embedding.ref
+      rw [compilePolicyTable_commit_of_decode refs embedding.ref
           (profile owner) rfl _ _ (sourceObserve owner state) decodedObservation] at policyLaw
       change cast _ _ =
         commitKernel profile (sourceObserve owner state, history owner) at policyLaw
       have policyLaw' :
-          (compileEventProfile whole wholeUnique wholeProfile) owner event actor
-              ((toEventGraph whole wholeUnique).playerObserve owner config) =
+          (compileEventProfile whole wholeProfile) owner event actor
+              ((toEventGraph whole).playerObserve owner config) =
             (commitKernel profile (sourceObserve owner state, history owner)).map
               (fun binding => cast
                 (congrArg Vegas.EventGraph.EventField.Action outputEq.symm) binding) :=
@@ -229,7 +227,7 @@ theorem runWith_option_law
       rw [show eventCount (.commit name owner fresh guard next) =
           eventCount next + 1 by simp [eventCount]]
       rw [Vegas.EventGraph.runPlan_canonical_actor
-        (compileEventProfile whole wholeUnique wholeProfile) (eventCount next)
+        (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least owner actor, policyLaw']
       simp only [FinDist.bind_map, FinDist.map_bind, runWith]
       apply FinDist.bind_congr
@@ -246,7 +244,7 @@ theorem runWith_option_law
         exact fun source => refsBefore source headIndex
       have storedResult : (embedding.ref headIndex).get? nextConfig.store =
           some binding := by
-        exact embedding.ref_get?_complete whole wholeUnique config headIndex ready action
+        exact embedding.ref_get?_complete whole config headIndex ready action
           outputEq binding
       have nextPrefix : nextConfig.cut.IsPrefix (offset + 1) := by
         exact ordered.complete_at event ready rank
@@ -258,18 +256,18 @@ theorem runWith_option_law
       have supported : nextConfig ∈ (config.step event ready action).support := by
         rw [commit_step config event ready outputEq codeEq binding]
         simp [nextConfig, action, stored]
-      have nextHistory : decodeHistory whole wholeUnique nextConfig.history =
+      have nextHistory : decodeHistory whole nextConfig.history =
           Function.update history owner
             (history owner ++ [OwnAction.commit owner name _ binding]) := by
-        rw [decodeHistory_step_of_some whole wholeUnique config nextConfig event ready
+        rw [decodeHistory_step_of_some whole config nextConfig event ready
           action sourceAction decodedAction supported]
         simp [sourceAction, sourceActionOwner, historyAgree]
-      have tailAligned := aligned.commitTail whole wholeUnique wholeProfile fresh guard next
-        unique profile refs revelations registry embedding refsBefore offset
+      have tailAligned := aligned.commitTail whole wholeProfile fresh guard next
+        profile refs revelations registry embedding refsBefore offset
       let obligation : Obligation _ :=
         { owner := owner, subject := name, payload := _, source := .here,
           guard := guard.weaken }
-      exact ih (by simp [fresh, unique]) (afterCommit profile)
+      exact ih (afterCommit profile)
         (refs.cons (embedding.ref headIndex)) revelations.weaken
         (obligation :: registry.weaken)
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl))
@@ -290,7 +288,7 @@ theorem runWith_option_law
         (Function.update history owner
           (history owner ++ [OwnAction.commit owner name _ binding])) nextHistory
   | reveal published owner name fresh selected unresolved next ih =>
-      intro unique profile refs revelations registry embedding refsBefore offset aligned
+      intro profile refs revelations registry embedding refsBefore offset aligned
         config ordered state refsAgree history historyAgree
       let headIndex : Fin (eventCount
           (.reveal published owner name fresh selected unresolved next)) :=
@@ -299,37 +297,37 @@ theorem runWith_option_law
       have rank : event.val = offset := by
         simpa [event, headIndex] using aligned.graphSuffix.rankEq headIndex
       obtain ⟨ready, least⟩ := canonical_ready_least ordered event rank
-      have outputEq : (toEventGraph whole wholeUnique).outputLayout event =
+      have outputEq : (toEventGraph whole).outputLayout event =
           outputLayout (.reveal published owner name fresh selected unresolved next)
             headIndex := by
         simpa [event, toEventGraph] using embedding.layout_eq headIndex
       have codeEq : cast
           (congrArg (Vegas.EventGraph.EventCode (graphLayout whole)) outputEq)
-          ((toEventGraph whole wholeUnique).nodes event) =
+          ((toEventGraph whole).nodes event) =
           .resolve owner _ (refs.get selected)
             (compileChecks (published := published) refs registry revelations selected) := by
         simpa [event, headIndex, compileRankedNodes] using
           aligned.graphSuffix.nodeEq headIndex
-      have actor : (toEventGraph whole wholeUnique).actor? event = some owner := by
+      have actor : (toEventGraph whole).actor? event = some owner := by
         simpa [event, headIndex, eventOwner?] using aligned.actorEq headIndex
       have decodedObservation := decodeObservation?_playerStore_eq_some
-        (graph := toEventGraph whole wholeUnique) refs owner state config.store refsAgree
+        (graph := toEventGraph whole) refs owner state config.store refsAgree
       have policyLaw := aligned.policyEq owner headIndex actor
-        ((toEventGraph whole wholeUnique).playerObserve owner config)
-      rw [decodeCompletions_playerObserve whole wholeUnique config owner, historyAgree] at policyLaw
+        ((toEventGraph whole).playerObserve owner config)
+      rw [decodeCompletions_playerObserve whole config owner, historyAgree] at policyLaw
       change _ = compilePolicyTable
-        (.reveal published owner name fresh selected unresolved next) unique refs
+        (.reveal published owner name fresh selected unresolved next) refs
         embedding.ref owner (profile owner)
         ⟨0, by simp [eventCount]⟩
-        ((toEventGraph whole wholeUnique).playerStore owner config.store)
+        ((toEventGraph whole).playerStore owner config.store)
         (history owner) at policyLaw
-      rw [compilePolicyTable_reveal_of_decode unique refs embedding.ref
+      rw [compilePolicyTable_reveal_of_decode refs embedding.ref
           (profile owner) rfl _ _ (sourceObserve owner state) decodedObservation] at policyLaw
       change cast _ _ =
         revealKernel profile (sourceObserve owner state, history owner) at policyLaw
       have policyLaw' :
-          (compileEventProfile whole wholeUnique wholeProfile) owner event actor
-              ((toEventGraph whole wholeUnique).playerObserve owner config) =
+          (compileEventProfile whole wholeProfile) owner event actor
+              ((toEventGraph whole).playerObserve owner config) =
             (revealKernel profile (sourceObserve owner state, history owner)).map
               (fun disclose => cast
                 (congrArg Vegas.EventGraph.EventField.Action outputEq.symm) disclose) :=
@@ -339,7 +337,7 @@ theorem runWith_option_law
           (.reveal published owner name fresh selected unresolved next) =
           eventCount next + 1 by simp [eventCount]]
       rw [Vegas.EventGraph.runPlan_canonical_actor
-        (compileEventProfile whole wholeUnique wholeProfile) (eventCount next)
+        (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least owner actor, policyLaw']
       simp only [FinDist.bind_map, FinDist.map_bind, runWith]
       apply FinDist.bind_congr
@@ -365,7 +363,7 @@ theorem runWith_option_law
         exact fun source => refsBefore source headIndex
       have storedResult : (embedding.ref headIndex).get? nextConfig.store =
           some accepted := by
-        exact embedding.ref_get?_complete whole wholeUnique config headIndex ready action
+        exact embedding.ref_get?_complete whole config headIndex ready action
           outputEq accepted
       have nextPrefix : nextConfig.cut.IsPrefix (offset + 1) := by
         exact ordered.complete_at event ready rank
@@ -378,16 +376,16 @@ theorem runWith_option_law
         rw [reveal_step config event ready outputEq refs revelations registry selected codeEq
           state refsAgree disclose]
         simp [nextConfig, action, stored, accepted, proposal]
-      have nextHistory : decodeHistory whole wholeUnique nextConfig.history =
+      have nextHistory : decodeHistory whole nextConfig.history =
           Function.update history owner
             (history owner ++ [OwnAction.reveal owner name disclose]) := by
-        rw [decodeHistory_step_of_some whole wholeUnique config nextConfig event ready
+        rw [decodeHistory_step_of_some whole config nextConfig event ready
           action sourceAction decodedAction supported]
         simp [sourceAction, sourceActionOwner, historyAgree]
       have tailAligned := aligned.revealTail (whole := whole)
-        (wholeUnique := wholeUnique) (wholeProfile := wholeProfile) fresh selected unresolved
-        next unique profile refs revelations registry embedding refsBefore offset
-      exact ih (by simp [fresh, unique]) (afterReveal profile)
+        (wholeProfile := wholeProfile) fresh selected unresolved
+        next profile refs revelations registry embedding refsBefore offset
+      exact ih (afterReveal profile)
         (refs.cons (embedding.ref headIndex))
         (revelations.reveal (published := published) selected) registry.weaken
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl))

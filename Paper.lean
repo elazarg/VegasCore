@@ -96,9 +96,9 @@ theorem source_event_graph_canonical_law [IExpr.ResultTypes L]
     (profile : SourceProgram.BehavioralProfile setup.program) :
     ((setup.eventGraph.canonicalGame
         (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
-      (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup
+      (SourceProgram.EventLowering.compileEventProfile setup.program
         profile)).map
-          (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup) =
+          (SourceProgram.EventLowering.terminalState setup.program) =
       setup.run profile :=
   SourceProgram.EventLowering.canonical_setup_law setup profile
 
@@ -116,11 +116,11 @@ theorem source_event_graph_canonical_deviation_law [IExpr.ResultTypes L]
     ((setup.eventGraph.canonicalGame
         (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
       (Profile.update (sig := setup.eventGraph.gameSignature)
-        (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup profile)
+        (SourceProgram.EventLowering.compileEventProfile setup.program profile)
         who replacement)).map
-          (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup) =
+          (SourceProgram.EventLowering.terminalState setup.program) =
       setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program) profile who
-        (SourceProgram.EventLowering.backtranslateEventPolicy setup.program setup.namesNodup
+        (SourceProgram.EventLowering.backtranslateEventPolicy setup.program
           who replacement)) :=
   SourceProgram.EventLowering.canonical_setup_deviation_law setup profile who replacement
 
@@ -135,10 +135,10 @@ interpretation of outcomes. -/
 theorem source_event_graph_payout_readout [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
     (result : {config : setup.eventGraph.Config // config.cut.Terminal}) :
-    SourceProgram.EventLowering.terminalPayouts setup.program setup.namesNodup result =
+    SourceProgram.EventLowering.terminalPayouts setup.program result =
       setup.program.evaluatePayoffs
-        (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup result) :=
-  SourceProgram.EventLowering.terminalPayouts_eq_source setup.program setup.namesNodup result
+        (SourceProgram.EventLowering.terminalState setup.program result) :=
+  SourceProgram.EventLowering.terminalPayouts_eq_source setup.program result
 
 /-- info: 'Vegas.Paper.source_event_graph_payout_readout' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -181,9 +181,9 @@ theorem source_event_graph_honest_law [IExpr.ResultTypes L]
     (profile : SourceProgram.BehavioralProfile setup.program) :
     (setup.initialLaw.bind fun initial =>
       (setup.eventGraph.terminalOutcomes scheduler
-        (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup profile)
+        (SourceProgram.EventLowering.compileEventProfile setup.program profile)
         (setup.eventInputs initial)).map
-          (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup)) =
+          (SourceProgram.EventLowering.terminalState setup.program)) =
       setup.run profile :=
   SourceProgram.EventLowering.scheduled_setup_law setup scheduler profile
 
@@ -203,10 +203,10 @@ theorem source_event_graph_deviation_law [IExpr.ResultTypes L]
       (setup.initialLaw.bind fun initial =>
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
-            (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup profile)
+            (SourceProgram.EventLowering.compileEventProfile setup.program profile)
             who replacement)
           (setup.eventInputs initial)).map
-            (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup)) =
+            (SourceProgram.EventLowering.terminalState setup.program)) =
         mixture.bind fun alternative =>
           setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
             profile who alternative) :=
@@ -227,8 +227,8 @@ theorem source_event_graph_approximate_nash_iff [IExpr.ResultTypes L]
     (ε : ℝ) (profile : SourceProgram.BehavioralProfile setup.program) :
     IsεNash (setup.eventGame scheduler)
         (fun outcome who => utility
-          (SourceProgram.EventLowering.terminalState setup.program setup.namesNodup outcome) who)
-        ε (SourceProgram.EventLowering.compileEventProfile setup.program setup.namesNodup
+          (SourceProgram.EventLowering.terminalState setup.program outcome) who)
+        ε (SourceProgram.EventLowering.compileEventProfile setup.program
           profile) ↔
       IsεNash setup.gameForm utility ε profile :=
   setup.eventGame_approximate_nash_iff scheduler utility ε profile
