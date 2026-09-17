@@ -11,6 +11,19 @@ import Mathlib.Data.Fintype.Option
 
 A source-level publication outcome. Failure is distinct from every successful
 payload, including an optional payload whose value is `none`.
+
+`PublicationResult α` is isomorphic to `Option α`, by `equivOption`. It is a
+separate type because `Option` already means something else wherever
+publication results occur. A graph store reports an unwritten field as `none`,
+so a stored publication is an `Option (PublicationResult α)` whose outer layer
+is availability and whose inner layer is a completed failure; unifying them
+would let `Option`'s combinators and simp lemmas cross the two. An expression
+language has both an optional and a result type constructor, and
+`IExpr.ResultTypes` pins the second to this type; unifying them would give the
+two constructors one denotation and one set of eliminators.
+
+Those are the only reasons. A development with a total store and no optional
+payloads could use `Option` directly.
 -/
 
 namespace Vegas
