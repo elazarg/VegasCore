@@ -31,9 +31,16 @@ def run (setup : Setup (Player := Player) (L := L))
     FinDist (State L setup.program.terminalCtx) :=
   setup.initialLaw.bind fun initial => SourceProgram.run setup.program profile initial
 
+/-- The public result law of a profile. `run` keeps the complete terminal
+state; only this projection is an outcome. -/
+def publicRun (setup : Setup (Player := Player) (L := L))
+    (profile : BehavioralProfile setup.program) :
+    FinDist (SourceProgram.PublicOutcome setup.program) :=
+  (setup.run profile).map (SourceProgram.publicOutcome setup.program)
+
 def gameForm (setup : Setup (Player := Player) (L := L)) : GameForm Player where
   sig := SourceProgram.gameSignature setup.program
-  play := setup.run
+  play := setup.publicRun
 
 end Setup
 end Vegas.SourceProgram

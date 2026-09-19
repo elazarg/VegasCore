@@ -219,15 +219,16 @@ theorem source_event_graph_deviation_law [IExpr.ResultTypes L]
 #print axioms Vegas.Paper.source_event_graph_deviation_law
 
 /-- Full-source compilation preserves and reflects same-error Nash at the
-actual asynchronously scheduled graph profile, for every source-state utility. -/
+actual asynchronously scheduled graph profile, for every utility of the public
+source result. -/
 theorem source_event_graph_approximate_nash_iff [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
     (scheduler : setup.eventGraph.PublicScheduler)
-    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : SourceProgram.BehavioralProfile setup.program) :
     IsεNash (setup.eventGame scheduler)
-        (fun outcome who => utility
-          (SourceProgram.EventLowering.terminalState setup.program outcome) who)
+        (fun outcome who => utility (SourceProgram.publicOutcome setup.program
+          (SourceProgram.EventLowering.terminalState setup.program outcome)) who)
         ε (SourceProgram.EventLowering.compileEventProfile setup.program
           profile) ↔
       IsεNash setup.gameForm utility ε profile :=
@@ -349,12 +350,12 @@ theorem source_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
-    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ)
     (missing : Player → ℝ) (ε : ℝ)
     (profile : SourceProgram.BehavioralProfile setup.program) :
     IsεNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
-        (fun outcome who => (setup.eventPendingOutcome mode runtime outcome).elim
-          (missing who) (fun state => utility state who))
+        (fun outcome who => (setup.eventPendingPublicOutcome mode runtime outcome).elim
+          (missing who) (fun result => utility result who))
         ε (fun who => setup.compileEventPendingStrategy mode runtime who (profile who)) ↔
       IsεNash setup.gameForm utility ε profile :=
   setup.eventPendingGame_approximate_nash_iff mode runtime feasible roster reactionRounds wire order
@@ -365,7 +366,7 @@ theorem source_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_pending_approximate_nash_iff
 
-/-- Source-outcome lower bounds survive arbitrary unilateral native deviations
+/-- Public-result lower bounds survive arbitrary unilateral native deviations
 in either dependency mode, independently of adversary preferences. -/
 theorem source_event_pending_deviation_guarantee [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
@@ -375,9 +376,9 @@ theorem source_event_pending_deviation_guarantee [IExpr.ResultTypes L]
     (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
-    (value : State L setup.program.terminalCtx → ℝ) (missing bound : ℝ)
+    (value : SourceProgram.PublicOutcome setup.program → ℝ) (missing bound : ℝ)
     (sourceBound : ∀ alternative : SourceProgram.BehavioralPolicy who setup.program,
-      bound ≤ (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
+      bound ≤ (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
         profile who alternative)).expect value)
     (replacement : runtime.application.PlayerPolicy) :
     bound ≤ ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
@@ -385,7 +386,8 @@ theorem source_event_pending_deviation_guarantee [IExpr.ResultTypes L]
         roster reactionRounds wire order).sig)
         (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))
         who replacement)).expect
-          (fun outcome => (setup.eventPendingOutcome mode runtime outcome).elim missing value) :=
+          (fun outcome =>
+            (setup.eventPendingPublicOutcome mode runtime outcome).elim missing value) :=
   setup.eventPendingGame_deviation_guarantee mode runtime feasible roster reactionRounds wire order
     profile who value missing bound sourceBound replacement
 

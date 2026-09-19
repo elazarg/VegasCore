@@ -78,14 +78,22 @@ def eventPendingSimulation (setup : Setup (Player := Player) (L := L))
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     GameForm.MixtureSimulationOn setup.gameForm
       (setup.eventPendingGame mode runtime roster reactionRounds wire order) some
-      (setup.eventPendingOutcome mode runtime) (fun _ _ => True) where
+      (setup.eventPendingPublicOutcome mode runtime) (fun _ _ => True) where
   compileStrategy := setup.compileEventPendingStrategy mode runtime
-  honest_law profile :=
-    setup.eventPendingGame_honest_law mode runtime feasible roster reactionRounds wire order profile
+  honest_law profile := by
+    rw [eventPendingPublicOutcome_eq, ← FinDist.map_comp,
+      setup.eventPendingGame_honest_law mode runtime feasible roster reactionRounds wire order
+        profile]
+    simp only [gameForm, publicRun, FinDist.map_comp, Function.comp_def, Option.map_some]
   compiled_considered _ _ := trivial
-  deviation_mixture profile who replacement _ :=
-    setup.eventPendingGame_deviation_law mode runtime feasible roster reactionRounds wire order
-      profile who replacement
+  deviation_mixture profile who replacement _ := by
+    obtain ⟨mixture, law⟩ := setup.eventPendingGame_deviation_law mode runtime feasible roster
+      reactionRounds wire order profile who replacement
+    refine ⟨mixture, ?_⟩
+    rw [eventPendingPublicOutcome_eq, ← FinDist.map_comp, law]
+    simp only [gameForm, publicRun, FinDist.map_bind, FinDist.map_comp, Function.comp_def,
+      Option.map_some]
+    rfl
 
 /-- Every lower bound on a terminal-state observation against unilateral
 source deviations holds against arbitrary unilateral native deviations. The
@@ -98,9 +106,9 @@ theorem eventPendingGame_deviation_guarantee
     (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (profile : BehavioralProfile setup.program) (who : Player)
-    (value : State L setup.program.terminalCtx → ℝ) (missing bound : ℝ)
+    (value : PublicOutcome setup.program → ℝ) (missing bound : ℝ)
     (sourceBound : ∀ alternative : BehavioralPolicy who setup.program,
-      bound ≤ (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
+      bound ≤ (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
         profile who alternative)).expect value)
     (replacement : runtime.application.PlayerPolicy) :
     bound ≤ ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
@@ -108,8 +116,9 @@ theorem eventPendingGame_deviation_guarantee
         roster reactionRounds wire order).sig)
         (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))
         who replacement)).expect
-          (fun outcome => (setup.eventPendingOutcome mode runtime outcome).elim missing value) := by
-  let optionValue : Option (State L setup.program.terminalCtx) → ℝ :=
+          (fun outcome =>
+            (setup.eventPendingPublicOutcome mode runtime outcome).elim missing value) := by
+  let optionValue : Option (PublicOutcome setup.program) → ℝ :=
     fun outcome => outcome.elim missing value
   let simulation :=
     setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire order
@@ -129,7 +138,7 @@ theorem eventPendingGame_deviation_utility_bound
     (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (profile : BehavioralProfile setup.program) (who : Player)
-    (value : State L setup.program.terminalCtx → ℝ) (missing : ℝ)
+    (value : PublicOutcome setup.program → ℝ) (missing : ℝ)
     (replacement : runtime.application.PlayerPolicy) :
     ∃ alternative : BehavioralPolicy who setup.program,
       ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
@@ -137,10 +146,11 @@ theorem eventPendingGame_deviation_utility_bound
           (sig := (setup.eventPendingGame mode runtime roster reactionRounds wire order).sig)
           (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))
           who replacement)).expect
-            (fun outcome => (setup.eventPendingOutcome mode runtime outcome).elim missing value) ≤
-      (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
-        profile who alternative)).expect (fun state => value state) := by
-  let optionValue : Option (State L setup.program.terminalCtx) → Player → ℝ :=
+            (fun outcome =>
+              (setup.eventPendingPublicOutcome mode runtime outcome).elim missing value) ≤
+      (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
+        profile who alternative)).expect (fun result => value result) := by
+  let optionValue : Option (PublicOutcome setup.program) → Player → ℝ :=
     fun outcome _ => outcome.elim missing value
   let simulation :=
     setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire order
@@ -154,9 +164,9 @@ theorem eventPendingGame_deviation_utility_bound
         (sig := (setup.eventPendingGame mode runtime roster reactionRounds wire order).sig)
         (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))
         who replacement)).expect
-          (fun outcome => optionValue (setup.eventPendingOutcome mode runtime outcome) who) ≤
+          (fun outcome => optionValue (setup.eventPendingPublicOutcome mode runtime outcome) who) ≤
       (setup.gameForm.play (Profile.update profile who alternative)).expect
-        (fun state => optionValue (some state) who) at hbound
+        (fun result => optionValue (some result) who) at hbound
   exact hbound
 
 /-- Same-error Nash preservation and reflection at compiled profiles for every
@@ -168,15 +178,15 @@ theorem eventPendingGame_approximate_nash_iff
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
-    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (utility : PublicOutcome setup.program → Player → ℝ)
     (missing : Player → ℝ) (ε : ℝ) (profile : BehavioralProfile setup.program) :
     IsεNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
-        (fun outcome who => (setup.eventPendingOutcome mode runtime outcome).elim
-          (missing who) (fun state => utility state who))
+        (fun outcome who => (setup.eventPendingPublicOutcome mode runtime outcome).elim
+          (missing who) (fun result => utility result who))
         ε (fun who => setup.compileEventPendingStrategy mode runtime who (profile who)) ↔
       IsεNash setup.gameForm utility ε profile := by
-  let optionUtility : Option (State L setup.program.terminalCtx) → Player → ℝ :=
-    fun outcome who => outcome.elim (missing who) (fun state => utility state who)
+  let optionUtility : Option (PublicOutcome setup.program) → Player → ℝ :=
+    fun outcome who => outcome.elim (missing who) (fun result => utility result who)
   exact GameForm.MixtureSimulationOn.isεNash_compileProfile_iff
     (setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire order)
     optionUtility ε profile (fun _ _ => trivial)
@@ -191,17 +201,17 @@ theorem eventPendingGame_isBestResponse_compileProfile
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
-    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (utility : PublicOutcome setup.program → Player → ℝ)
     (missing : Player → ℝ) (profile : BehavioralProfile setup.program) (who : Player)
     (best : IsBestResponse setup.gameForm (euPreference utility) who profile (profile who)) :
     IsBestResponse (setup.eventPendingGame mode runtime roster reactionRounds wire order)
       (euPreference fun outcome actor =>
-        (setup.eventPendingOutcome mode runtime outcome).elim (missing actor)
-          (fun state => utility state actor)) who
+        (setup.eventPendingPublicOutcome mode runtime outcome).elim
+          (missing actor) (fun result => utility result actor)) who
       (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))
       (setup.compileEventPendingStrategy mode runtime who (profile who)) := by
-  let optionUtility : Option (State L setup.program.terminalCtx) → Player → ℝ :=
-    fun outcome actor => outcome.elim (missing actor) (fun state => utility state actor)
+  let optionUtility : Option (PublicOutcome setup.program) → Player → ℝ :=
+    fun outcome actor => outcome.elim (missing actor) (fun result => utility result actor)
   exact ((setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire
     order).toUtilitySimulation optionUtility
       (fun _ _ => trivial)).isBestResponse_compileProfile subset_rfl profile who best
@@ -217,18 +227,18 @@ theorem eventPendingGame_isBestResponse_of_isDominant
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
-    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (utility : PublicOutcome setup.program → Player → ℝ)
     (missing : Player → ℝ) (who : Player) (policy : BehavioralPolicy who setup.program)
     (dominant : IsDominant setup.gameForm (euPreference utility) who policy)
     (opponents : BehavioralProfile setup.program) :
     IsBestResponse (setup.eventPendingGame mode runtime roster reactionRounds wire order)
       (euPreference fun outcome actor =>
-        (setup.eventPendingOutcome mode runtime outcome).elim (missing actor)
-          (fun state => utility state actor)) who
+        (setup.eventPendingPublicOutcome mode runtime outcome).elim
+          (missing actor) (fun result => utility result actor)) who
       (fun actor => setup.compileEventPendingStrategy mode runtime actor (opponents actor))
       (setup.compileEventPendingStrategy mode runtime who policy) := by
-  let optionUtility : Option (State L setup.program.terminalCtx) → Player → ℝ :=
-    fun outcome actor => outcome.elim (missing actor) (fun state => utility state actor)
+  let optionUtility : Option (PublicOutcome setup.program) → Player → ℝ :=
+    fun outcome actor => outcome.elim (missing actor) (fun result => utility result actor)
   exact ((setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire
     order).toUtilitySimulation optionUtility
       (fun _ _ => trivial)).isBestResponse_compileStrategy_of_isDominant subset_rfl who
@@ -246,16 +256,16 @@ theorem eventPendingGame_isStrongNash_of_compileProfile
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
-    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (utility : PublicOutcome setup.program → Player → ℝ)
     (missing : Player → ℝ) (ε : ℝ) (profile : BehavioralProfile setup.program)
     (strong : IsStrongNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
       (euPreferenceWithin ε fun outcome actor =>
-        (setup.eventPendingOutcome mode runtime outcome).elim (missing actor)
-          (fun state => utility state actor))
+        (setup.eventPendingPublicOutcome mode runtime outcome).elim
+          (missing actor) (fun result => utility result actor))
       (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))) :
     IsStrongNash setup.gameForm (euPreferenceWithin ε utility) profile := by
-  let optionUtility : Option (State L setup.program.terminalCtx) → Player → ℝ :=
-    fun outcome actor => outcome.elim (missing actor) (fun state => utility state actor)
+  let optionUtility : Option (PublicOutcome setup.program) → Player → ℝ :=
+    fun outcome actor => outcome.elim (missing actor) (fun result => utility result actor)
   exact ((setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire
     order).toUtilitySimulation optionUtility
       (fun _ _ => trivial)).isStrongNash_of_compileProfile ε profile strong

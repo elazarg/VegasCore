@@ -49,11 +49,11 @@ private def mixedSetup : SourceProgram.Setup
 /-- The strategic theorem does not require sample-free code, homogeneous
 payloads, universally accepting guards, or commitments created during play. -/
 example (scheduler : mixedSetup.eventGraph.PublicScheduler)
-    (utility : State simpleExpr mixedSetup.program.terminalCtx → SourceSemantics.Player → ℝ)
+    (utility : SourceProgram.PublicOutcome mixedSetup.program → SourceSemantics.Player → ℝ)
     (ε : ℝ) (profile : SourceProgram.BehavioralProfile mixedSetup.program) :
     IsεNash (mixedSetup.eventGame scheduler)
-        (fun outcome who => utility
-          (terminalState mixedSetup.program outcome) who)
+        (fun outcome who => utility (SourceProgram.publicOutcome mixedSetup.program
+          (terminalState mixedSetup.program outcome)) who)
         ε (compileEventProfile mixedSetup.program profile) ↔
       IsεNash mixedSetup.gameForm utility ε profile :=
   mixedSetup.eventGame_approximate_nash_iff scheduler utility ε profile

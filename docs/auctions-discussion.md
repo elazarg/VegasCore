@@ -30,12 +30,15 @@ particular, are stated about the source program and carried to the runtime.
 
 ## Checked facts relied on
 
-- The source game form's outcome is the complete terminal state
-  (`Vegas.SourceProgram.gameSignature`). Payoffs are a separate projection
-  (`Vegas.SourceProgram.evaluatePayoffs`), and the utility is chosen outside
-  the game form.
-- Nash correspondence holds at compiled profiles for every real utility of the
-  terminal source state (`Vegas.Paper.source_event_graph_approximate_nash_iff`,
+- The source game form's outcome is the public source result
+  (`Vegas.SourceProgram.gameSignature`, `Vegas.SourceProgram.PublicOutcome`):
+  the publications and public samples, projected by
+  `Vegas.SourceProgram.publicOutcome`. Payoffs are a separate reading of the
+  same context (`Vegas.SourceProgram.evaluatePayoffs`), and the utility is
+  chosen outside the game form. The complete terminal state remains the
+  internal object that `Vegas.SourceProgram.Setup.run` produces.
+- Nash correspondence holds at compiled profiles for every real utility of that
+  result (`Vegas.Paper.source_event_graph_approximate_nash_iff`,
   `Vegas.Paper.source_event_pending_approximate_nash_iff`).
 - The compiled honest profile has the source terminal-state law
   (`Vegas.Paper.source_event_pending_honest_law`). For a fixed profile, a native
@@ -104,8 +107,9 @@ Refinements:
   about the source game in place of the runtime game they actually play.
 - **No observation requirement.** Equilibrium reasoning evaluates expected
   utility over outcome laws, so no player needs to observe the realized outcome.
-  A utility may read private bindings, such as a committed but withheld bid, that
-  no other player ever sees. The checked theorems already allow this.
+  That is a fact about the reasoning, not a licence to prefer outcomes by what
+  stayed hidden: under the decision below, a utility cannot read a committed but
+  withheld bid, because such a binding is not part of an outcome at all.
 - **Epistemics are not hypotheses.** The Lean results make no epistemic
   assumption. Common knowledge justifies using a solution concept; it is not a
   premise of any theorem.
@@ -147,9 +151,12 @@ Consequences:
 - The executable language does not change. This is a decision about the
   analysis surface, not about what a program may do.
 
-Pending: the Lean restatement, changing the game signature's outcome to the
-public result and re-deriving the capstones through the projection. Until that
-lands, the checked statements are the stronger state-level ones.
+This is now the checked statement. `Vegas.SourceProgram.gameSignature` carries
+the public result, `Vegas.SourceProgram.Setup.publicRun` is the law a profile
+induces, and the capstones quantify over utilities of it. The state-level laws
+stayed where they were: `Vegas.SourceProgram.Setup.run` and
+`Vegas.SourceProgram.Setup.eventPendingGame_deviation_law` still speak of the
+complete terminal state, and the public forms are derived from them.
 
 ## Encoding the allocation
 
@@ -410,10 +417,10 @@ Status with types outside the program (V1):
     edge already has, extended to the scheduled graph and pending-message edges;
   - V2 or V4, where the prior lives inside the `Setup` and the existing Nash
     correspondence applies directly.
-- **Raw private bindings.** Utilities reading raw private bindings, such as a
-  committed but withheld bid, are covered today because the decoder recovers the
-  full terminal state. An edge that decodes less would not preserve them. A2 and
-  A3 utilities need less.
+- **Raw private bindings are gone.** A utility can no longer read a committed
+  but withheld bid: the decoder now recovers the public result only, so nothing
+  a player kept to itself is available to prefer over. A2 and A3 utilities need
+  less still.
 
 ## Channels, and where they belong
 

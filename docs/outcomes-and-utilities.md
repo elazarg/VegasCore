@@ -5,6 +5,11 @@ decoder to the source result. Utility preservation then follows only for
 utilities that factor through that decoder, or under an additional bound for
 target-specific costs and signals.
 
+A Vegas source outcome is the public result of a completed program: its
+publications and public samples, and nothing a player kept to itself. A
+preference over what was never published is not a preference over anything the
+program produced, and every later edge would owe a decoder for it.
+
 Runtime traces may contain timing, retries, receipts, message order, fees, and
 failure information absent from the source outcome. Players who value those
 features are playing a richer game. Generic simulation and equilibrium

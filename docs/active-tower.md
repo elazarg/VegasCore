@@ -141,8 +141,9 @@ this theorem.
 `Setup.eventSimulation` packages these laws in the shared finite-mixture
 interface. `Setup.eventGame_approximate_nash_iff` proves same-error Nash
 preservation and reflection at compiled source profiles, for arbitrary
-utilities of the complete terminal source state.
-`Setup.eventGame_deviation_guarantee` transports source-state lower bounds
+utilities of the public source result — the publications and public samples a
+completed run produces, which is what an outcome is.
+`Setup.eventGame_deviation_guarantee` transports lower bounds on that result
 against unilateral deviations independently of the deviator's preferences.
 These results cover the full source language and need no failure-dominance
 or finite-payload premise.
@@ -234,7 +235,7 @@ capstones over these definitions:
   the law of one finite source-policy mixture across private setup, with all
   opponents unchanged.
 - `Vegas.Paper.source_event_pending_approximate_nash_iff`: same-error Nash preservation
-  and reflection at compiled profiles for source-state utilities.
+  and reflection at compiled profiles for utilities of the public source result.
 
 Two per-player transfers accompany these profile-level capstones.
 `Setup.eventPendingGame_isBestResponse_compileProfile` carries a source best

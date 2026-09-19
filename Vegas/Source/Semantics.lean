@@ -376,14 +376,25 @@ def Initial.run (initial : Initial (Player := Player) (L := L))
     (profile : BehavioralProfile initial.program) :=
   SourceProgram.run initial.program profile initial.state
 
+/-- What a completed program produces: its publications and public samples,
+and nothing a player kept to itself. This is exactly the context settlement
+reads, so no payoff can depend on more than an outcome records. -/
+abbrev PublicOutcome (p : SourceProgram Player L Γ O) :=
+  Env L.Val (SourcePublicCtx L (terminalCtx p))
+
+/-- The public result of a terminal state. -/
+def publicOutcome (p : SourceProgram Player L Γ O) (s : State L (terminalCtx p)) :
+    PublicOutcome p :=
+  sourcePublicEnv s
+
 def gameSignature (p : SourceProgram Player L Γ O) : GameSignature Player where
   Strategy := fun who => BehavioralPolicy who p
-  Outcome := State L (terminalCtx p)
+  Outcome := PublicOutcome p
 
 def gameForm (p : SourceProgram Player L Γ O) (s : State L Γ) :
     GameForm Player where
   sig := gameSignature p
-  play profile := run p profile s
+  play profile := (run p profile s).map (publicOutcome p)
 
 def evaluatePayoffs (p : SourceProgram Player L Γ O)
     (s : State L (terminalCtx p)) : List (Player × Int) :=

@@ -66,6 +66,21 @@ def eventPendingOutcome (setup : Setup (Player := Player) (L := L))
             terminal field)))
   else none
 
+/-- The readout an outcome carries: the public source result of a completed
+execution, and nothing from a run that did not complete. -/
+def eventPendingPublicOutcome (setup : Setup (Player := Player) (L := L))
+    (mode : Vegas.EventGraph.ExecutionMode)
+    (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
+    (execution : runtime.application.PolicyExecution) :
+    Option (SourceProgram.PublicOutcome setup.program) :=
+  (setup.eventPendingOutcome mode runtime execution).map (publicOutcome setup.program)
+
+theorem eventPendingPublicOutcome_eq (setup : Setup (Player := Player) (L := L))
+    (mode : Vegas.EventGraph.ExecutionMode)
+    (runtime : EventGraphRuntime (setup.eventGraph.withMode mode)) :
+    setup.eventPendingPublicOutcome mode runtime =
+      Option.map (publicOutcome setup.program) ∘ setup.eventPendingOutcome mode runtime := rfl
+
 /-- On every serviced play, the optional source-state readout is exactly the
 partial store decoder. Completion discharges its terminality test, even under
 arbitrary native policies; no honest-execution law is assumed. -/

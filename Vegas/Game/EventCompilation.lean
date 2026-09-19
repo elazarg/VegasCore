@@ -31,15 +31,19 @@ deviation by a finite mixture of source policies. -/
 def eventSimulation (setup : Setup (Player := Player) (L := L))
     (scheduler : setup.eventGraph.PublicScheduler) :
     GameForm.MixtureSimulationOn setup.gameForm (setup.eventGame scheduler) id
-      (terminalState setup.program) (fun _ _ => True) where
+      (fun outcome => publicOutcome setup.program (terminalState setup.program outcome))
+      (fun _ _ => True) where
   compileStrategy := compileEventPolicy setup.program
   honest_law profile := by
     change ((setup.eventGame scheduler).play
       (compileEventProfile setup.program profile)).map
-        (terminalState setup.program) = (setup.run profile).map id
+        (fun outcome => publicOutcome setup.program (terminalState setup.program outcome)) =
+      (setup.publicRun profile).map id
     rw [FinDist.map_id]
-    simpa only [eventGame, Vegas.EventGraph.gameForm, FinDist.map_bind,
-      FinDist.bind_map] using scheduled_setup_law setup scheduler profile
+    simpa only [eventGame, Vegas.EventGraph.gameForm, publicRun, FinDist.map_bind,
+      FinDist.bind_map, FinDist.map_comp, Function.comp_def, id_eq] using
+      congrArg (FinDist.map (publicOutcome setup.program))
+        (scheduled_setup_law setup scheduler profile)
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
     obtain ⟨mixture, law⟩ := scheduled_setup_deviation_law setup scheduler
@@ -48,42 +52,45 @@ def eventSimulation (setup : Setup (Player := Player) (L := L))
     change ((setup.eventGame scheduler).play
       (Profile.update (sig := setup.eventGraph.gameSignature)
         (compileEventProfile setup.program profile) who replacement)).map
-          (terminalState setup.program) =
+          (fun outcome => publicOutcome setup.program (terminalState setup.program outcome)) =
         mixture.bind fun alternative =>
-          (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
+          (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
             profile who alternative)).map id
-    simpa only [eventGame, Vegas.EventGraph.gameForm, FinDist.map_bind,
-      FinDist.bind_map, FinDist.map_id] using law
+    simpa only [eventGame, Vegas.EventGraph.gameForm, publicRun, FinDist.map_bind,
+      FinDist.bind_map, FinDist.map_id, FinDist.map_comp, Function.comp_def, id_eq] using
+      congrArg (FinDist.map (publicOutcome setup.program)) law
 
 /-- Same-error Nash preservation and reflection at compiled source profiles
-for every real-valued utility of the complete terminal source state. -/
+for every real-valued utility of the public source result. -/
 theorem eventGame_approximate_nash_iff
     (setup : Setup (Player := Player) (L := L))
     (scheduler : setup.eventGraph.PublicScheduler)
-    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (utility : PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
     IsεNash (setup.eventGame scheduler)
-        (fun outcome who => utility (terminalState setup.program outcome) who)
+        (fun outcome who =>
+          utility (publicOutcome setup.program (terminalState setup.program outcome)) who)
         ε (compileEventProfile setup.program profile) ↔
       IsεNash setup.gameForm utility ε profile :=
   (setup.eventSimulation scheduler).isεNash_compileProfile_iff utility ε profile
     (fun _ _ => trivial)
 
-/-- Every source terminal-state lower bound against unilateral deviations
-holds against arbitrary asynchronous graph replacements as well. -/
+/-- Every source lower bound against unilateral deviations holds against
+arbitrary asynchronous graph replacements as well. -/
 theorem eventGame_deviation_guarantee
     (setup : Setup (Player := Player) (L := L))
     (scheduler : setup.eventGraph.PublicScheduler)
     (profile : BehavioralProfile setup.program) (who : Player)
-    (value : State L setup.program.terminalCtx → ℝ) (bound : ℝ)
+    (value : PublicOutcome setup.program → ℝ) (bound : ℝ)
     (sourceBound : ∀ alternative : BehavioralPolicy who setup.program,
-      bound ≤ (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
+      bound ≤ (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
         profile who alternative)).expect value)
     (replacement : setup.eventGraph.BehavioralPolicy who) :
     bound ≤ ((setup.eventGame scheduler).play
       (Profile.update (sig := setup.eventGraph.gameSignature)
         (compileEventProfile setup.program profile) who replacement)).expect
-          (fun outcome => value (terminalState setup.program outcome)) :=
+          (fun outcome =>
+            value (publicOutcome setup.program (terminalState setup.program outcome))) :=
   (setup.eventSimulation scheduler).guarantee profile who value bound sourceBound replacement
     trivial
 
