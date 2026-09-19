@@ -3,8 +3,8 @@
 This is an open design discussion, not a specification. A claim is established
 only where a Lean name is given, as in
 [Checked facts relied on](#checked-facts-relied-on). Everything else is a
-proposal, a proof sketch, or an open question. When a question resolves, move the decision
-into the document that owns it, such as the
+proposal, a proof sketch, or an open question. When a question resolves, move
+the decision into the document that owns it, such as the
 [source semantics](source-semantics.md), the
 [outcome/utility distinction](outcomes-and-utilities.md), or the
 [road ahead](a-road-ahead.md), and remove it here.
@@ -244,9 +244,9 @@ enters elsewhere:
   strategy-proof on general preference domains when a bid is read as willingness
   to pay. Find and cite the precise result before relying on it.
 - **Net versus gross payoffs.** A settlement may pay gross amounts that include
-  refunded deposits rather than net transfers. A per-player constant offset changes no Nash or dominance comparison. A
-  branch-dependent offset, such as a forfeited deposit, is a transfer and must
-  be counted.
+  refunded deposits rather than net transfers. A per-player constant offset
+  changes no Nash or dominance comparison. A branch-dependent offset, such as a
+  forfeited deposit, is a transfer and must be counted.
 - **Budgets.** Collateral bounds the bid domain. A bidder whose value exceeds the
   largest payable bid cannot bid truthfully, and budget constraints break
   second-price truthfulness in general.
@@ -392,6 +392,57 @@ Status with types outside the program (V1):
   full terminal state. An edge that decodes less would not preserve them. A2 and
   A3 utilities need less.
 
+## Channels, and where they belong
+
+The coalition obstruction is checked, and it quantifies over every strategy
+translation: `GameTheory.GameForm.UtilitySimulation.isEmpty_of_grandCoalitionValue`
+compares one target profile against every source profile, and the grand
+coalition overwrites whatever the compiler did. So this is not a statement
+about our compiler, and no better one would repair it. It is a statement about
+the medium: a runtime where one player acts on private information and another
+observes that action before acting cannot implement a game whose analysis
+assumes players cannot correlate.
+
+Payload secrecy does not help. In `InteractionTests.CoalitionChannel` the
+application rejects every message, so nothing a player sends reaches
+application state, and existence, timing, ordering, delivery and receipts still
+carry the secret. Capacity can be reduced — encrypted submission, fixed
+cadence, padded messages, anonymity, forced participation — but it does not
+reach zero while players choose whether and when to act, and an auction is made
+of such choices. Collusion-free protocols are known to need physical
+assumptions for this reason; find and cite the precise result before relying on
+it.
+
+Position, to be settled rather than assumed here: the mismatch belongs in the
+adversary a claim quantifies over, not in the executable language.
+
+- **Keep the language medium-general.** A correlation device is not a program
+  construct. No contract offers one, and the same language should compile to
+  media whose channels differ. Adding one would bake a property of one target
+  into the source of all of them.
+- **Widen the deviation class instead.** A coalition claim is made against
+  source coalitions that may correlate and pool their private observations. A
+  dominance claim is made against source opponents that observe what the medium
+  exposes. This is the operational/analysis split this document already uses:
+  the channel is a property of the target, its consequence is a property of the
+  analysis, and neither is a feature of the program.
+- **The resulting statements are weaker, and honest.** They establish guarantees
+  against an adversary the medium actually permits, instead of against one the
+  medium quietly refutes.
+
+For auctions this changes the target property. Collusion-impossibility is not
+available on this medium. What can be proved is collusion-resistance: that the
+settlement leaves a colluding coalition nothing worth having, which is the
+realistic requirement for shill bidding and bidder rings in any case. The same
+move applies to truthfulness, where the free-option example already showed the
+opponent class to be the delicate part.
+
+Open work under this position: a correlated coalition deviation class on the
+source side and a certificate for it at the pending-message edge; the matching
+opponent class for dominance; and collusion-resistance for whichever settlement
+the auction design settles on. The reflection direction and the refutation
+criterion are already checked.
+
 ## Test programs
 
 Each format exercises a different point:
@@ -421,6 +472,13 @@ Each format exercises a different point:
 6. The truthfulness notion for commit-reveal programs, and whether the source
    needs simultaneous disclosure.
 7. The bridge theorem to quasilinear direct mechanisms.
-8. A certificate for dominance against arbitrary native opponents.
-9. An opponent-independent backtranslation at the pending-message edge, for
-   Bayes-Nash under V1.
+8. Whether the medium's channels are answered by widening the source-side
+   adversary, as the position above proposes, or by some change to the language
+   itself. This is the open design question, not whether the channels exist.
+9. Under that position: a source opponent class matching the medium's
+   observations and a dominance certificate against it; a correlated coalition
+   deviation class and a coalition certificate at the pending-message edge.
+10. Collusion-resistance of the chosen settlement, which replaces
+    collusion-impossibility.
+11. An opponent-independent backtranslation at the pending-message edge, for
+    Bayes-Nash under V1.
