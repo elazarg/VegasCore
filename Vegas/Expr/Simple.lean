@@ -28,7 +28,9 @@ inductive BaseTy where
   `int` this is a finite type, so it may be sampled, committed, and revealed,
   and it encodes into storage without loss. -/
   | word : BaseTy
-  | range (lo hi : Int) : BaseTy
+  /-- A contiguous integer domain, given by its least element and its length.
+  Every such type has `lo` in it, so no payload type is empty. -/
+  | range (lo : Int) (len : Nat) : BaseTy
   | option (b : BaseTy) : BaseTy
   | result (b : BaseTy) : BaseTy
 deriving Repr, DecidableEq
@@ -37,7 +39,7 @@ abbrev Val : BaseTy → Type
   | .int => Int
   | .bool => Bool
   | .word => BitVec wordBits
-  | .range lo hi => Set.Icc lo hi
+  | .range lo len => Set.Icc lo (lo + len)
   | .option b => Option (Val b)
   | .result b => PublicationResult (Val b)
 
@@ -84,12 +86,21 @@ instance : DefaultVal .word where
 instance : DefaultVal .bool where
   defaultVal := false
 
-instance (lo hi : Int) : CommitPayloadTy (.range lo hi) where
+instance (lo : Int) (len : Nat) : CommitPayloadTy (.range lo len) where
   nonNullable := trivial
 
-noncomputable instance (lo hi : Int) [h : Nonempty (Val (.range lo hi))] :
-    DefaultVal (.range lo hi) where
-  defaultVal := Classical.choice h
+instance (lo : Int) (len : Nat) : DefaultVal (.range lo len) where
+  defaultVal := ⟨lo, by simp⟩
+
+/-- A canonical value of every type. No type in this language is empty, so a
+binding always has something to bind. -/
+def defaultValue : (b : BaseTy) → Val b
+  | .int => 0
+  | .bool => false
+  | .word => 0
+  | .range lo _ => ⟨lo, by simp⟩
+  | .option _ => none
+  | .result _ => .failure
 
 /-- Plain (non-visibility) context over `BaseTy`. -/
 abbrev CtxSimple : Type := Vegas.Ctx BaseTy
@@ -103,8 +114,8 @@ inductive Expr : CtxSimple → BaseTy → Type where
   | constInt {Γ : CtxSimple} (i : Int) : Expr Γ .int
   | constBool {Γ : CtxSimple} (b : Bool) : Expr Γ .bool
   | constWord {Γ : CtxSimple} (w : Val .word) : Expr Γ .word
-  | constRange {Γ : CtxSimple} {lo hi : Int} (v : Val (.range lo hi)) :
-      Expr Γ (.range lo hi)
+  | constRange {Γ : CtxSimple} {lo : Int} {len : Nat} (v : Val (.range lo len)) :
+      Expr Γ (.range lo len)
   | none {Γ : CtxSimple} {b : BaseTy} : Expr Γ (.option b)
   | some {Γ : CtxSimple} {b : BaseTy} (e : Expr Γ b) : Expr Γ (.option b)
   | isSome {Γ : CtxSimple} {b : BaseTy} (e : Expr Γ (.option b)) : Expr Γ .bool
@@ -579,6 +590,7 @@ theorem evalLawDistExprDeps_eq_evalLaw {Γ : CtxSimple} {b : BaseTy}
   decEqTy := inferInstance
   Val := Val
   decEqVal := by intro τ; cases τ <;> infer_instance
+  someValue := defaultValue
   bool := .bool
   toBool := id
   int := .int
@@ -772,7 +784,7 @@ private theorem evalExpr_constVal {Γ : CtxSimple} {b : BaseTy}
   | int => simp [Expr.constVal, evalExpr]
   | bool => simp [Expr.constVal, evalExpr]
   | word => simp [Expr.constVal, evalExpr]
-  | range lo hi => simp [Expr.constVal, evalExpr]
+  | range lo len => simp [Expr.constVal, evalExpr]
   | option b ih =>
       cases v with
       | none => simp [Expr.constVal, evalExpr]

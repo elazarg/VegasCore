@@ -86,12 +86,13 @@ example : guardedOpening.eval? true (fun _ => some (.success true)) =
 /-- Failure vacuously satisfies the same retained check. -/
 example : falseCheck.eval? (fun _ => none) .failure = some true := rfl
 
-private def emptyDomainBinding :
+private def rangeBinding :
     Vegas.EventGraph.EventCode BindingLayout (.binding false (.range 1 0)) :=
   Vegas.EventGraph.EventCode.bind (layout := BindingLayout) false (.range 1 0)
 
-/-- Binding remains defined even when the ordinary payload domain is empty. -/
-example : emptyDomainBinding.eval? .failure (fun _ => none) =
+/-- A native candidate that will never open binds to failure. No source policy
+produces one, and the graph still has to represent it. -/
+example : rangeBinding.eval? .failure (fun _ => none) =
     some (FinDist.pure .failure) := rfl
 
 private abbrev DeferredLayout : Fin 2 → Vegas.EventGraph.EventField Bool simpleExpr :=

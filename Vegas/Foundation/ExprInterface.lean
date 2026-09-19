@@ -37,6 +37,9 @@ structure IExpr where
   Val : Ty → Type
   decEqTy : DecidableEq Ty
   decEqVal : ∀ {τ : Ty}, DecidableEq (Val τ)
+  /-- A canonical value of every type. Types are inhabited, so a binding always
+  has something to bind and a decoder always has something to read. -/
+  someValue : (τ : Ty) → Val τ
   /-- A distinguished Boolean-representing type. Used for commit guards. -/
   bool : Ty
   /-- Project a value of `bool` into Lean's `Bool`. -/
