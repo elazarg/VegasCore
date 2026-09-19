@@ -1,3 +1,4 @@
+import InteractionTests.CoalitionChannel
 import InteractionTests.Commitment
 import InteractionTests.CommitmentCandidates
 import InteractionTests.MessageApplication

@@ -180,7 +180,10 @@ witness, and `Setup.eventPendingGame_isStrongNash_of_compileProfile` is the
 reflection direction for the pending-message edge. A coalition result therefore
 needs a simulation of joint native deviations, which the message pool's timing,
 pre-inclusion delivery, and receipts make a real obligation rather than a
-bookkeeping step.
+bookkeeping step. `InteractionTests.CoalitionChannel` checks that obligation is
+live for the actual host: with every message rejected by the application, the
+pool still carries one principal's private draw to another before inclusion,
+and the pair beats everything the channel-free game can reach.
 
 A future edge that adds an informed quitting opportunity may require a stronger
 incentive condition. For example, play with fair payoff `+2/-2` has expectation

@@ -375,6 +375,10 @@ Status with types outside the program (V1):
   another. For an auction this is the difference between bidders who each
   deviate alone and bidders who collude through the runtime, which the timing,
   pre-inclusion delivery, and receipts of the message pool make available.
+  `InteractionTests.CoalitionChannel` checks that the pool really is such a
+  channel: with every message rejected by the application, it still carries one
+  principal's private draw to another before inclusion. Colluding bidders are
+  therefore outside every certificate the tower currently has.
 - **Bayes-Nash under V1 is open.** Averaging the per-type deviation bound over the
   prior yields a source deviation that may depend on other players' types through
   their policies, which is not a legal type-indexed deviation. There are two

@@ -46,6 +46,13 @@ private information to another. The witness is
 claims therefore need their own certificate, never a corollary of the
 unilateral one.
 
+The channel is not a modelling flourish. `InteractionTests.CoalitionChannel`
+runs the same comparison against the actual message application: nature draws a
+secret, the first principal alone observes it, and the host's `handle` rejects
+every message, so the pool alone carries the secret to the second principal
+before any inclusion. That coalition is worth one against a base value of one
+half, so no coalition certificate relates the two.
+
 Refuting a new target needs no equilibrium computation.
 `UtilitySimulation.isEmpty_of_unmatchedValue` asks for one coalition, one
 member, and a target replacement whose value for that member exceeds every
