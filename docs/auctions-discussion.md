@@ -473,6 +473,56 @@ opponent class for dominance; and collusion-resistance for whichever settlement
 the auction design settles on. The reflection direction and the refutation
 criterion are already checked.
 
+## Retiring commit-time failure
+
+A source policy may bind an unopenable candidate, and it may bind a value and
+then refuse to open it. Publicly these coincide: `runWith` proposes
+`if disclose then state.get source else .failure`, so a cell bound to failure
+publishes failure whatever its owner decides
+(`Vegas.SourceProgram.runWith_reveal_of_failure_bound`). Now that an outcome is
+the public result, nothing distinguishes them.
+
+The action stays in the syntax anyway, for a reason that only appeared when the
+alternative was attempted. `ContextRefs.Agrees` is an *exact* store-to-state
+correspondence that holds for arbitrary stores, including those a native
+deviator produces with a failed binding, precisely because the source can
+represent one. Remove the action and the decoder becomes lossy, so agreement
+has to be re-based on public cells throughout the compile layer — churn in
+proofs that are currently correct, in exchange for a redundancy that is better
+stated than deleted.
+
+So the redundancy becomes a theorem instead. `Vegas.SourceProgram.ValueBinding`
+names the policies that never bind failure, and
+`Vegas.SourceProgram.exists_valueBinding` shows the class is inhabited. The
+edge to prove above it is a mixture simulation from the value-binding game to
+the full source game, with the inclusion as its strategy map, a trivial honest
+law, and this deviation certificate:
+
+> for every policy there is a value-binding one with the same public outcome
+> law, against every fixed opponent profile.
+
+That composes with the existing tower, so an analysis carried out where failure
+is only ever a disclosure decision transports to the runtime unchanged.
+
+The proof is not the obvious translation. Replacing a failed binding by the
+canonical value and refusing at that reveal is correct for one cell, but the
+translated policy cannot tell a patched cell from one where the original
+genuinely bound the canonical value, and it must refuse in the first case and
+follow the original in the second. A mixture is allowed in the certificate, and
+a pre-drawn component cannot depend on the view, so the mixture has to range
+over deterministic policies: for those the ambiguity disappears, since a
+deterministic policy's own past decisions are recomputable from the current
+observation and history. The missing ingredient is therefore a source-policy
+predraw — the Kuhn-style statement that a behavioral profile's law is a finite
+mixture of deterministic ones. `GameTheory.Protocol.Information` has that
+machinery generically, and `Vegas/EventGraph/SchedulerProtocol.lean` is a
+worked instantiation of it for schedulers.
+
+The same construction is what a later "honest play" layer would need, where
+players never refuse to open. Compilation cannot preserve that class
+unconditionally, since a native player may always withhold; the interesting
+statement there is a conditional one.
+
 ## Test programs
 
 Each format exercises a different point:
@@ -492,14 +542,15 @@ Each format exercises a different point:
 
 ## Open questions
 
-1. Whether commit-time failure is still needed. A guard is checked at the
-   reveal that completes it, never at the binding, so an unsatisfiable guard
-   never blocks committing an ordinary value: the failure lands at the reveal.
-   The only remaining case is a payload type with no ordinary value at all.
-   Requiring commitment payloads to be inhabited would retire the action and
-   make failure purely a disclosure decision, at the price of an inhabitance
-   condition on the expression interface and a new backtranslation for native
-   unopenable bindings — proof work, not a restatement.
+1. The value-binding edge. Commit-time failure stays in the syntax, because the
+   source state space is then closed under what the runtime can produce, and
+   that closure is what gives the compile layer its exact store-to-state
+   agreement for arbitrary native behavior. What is missing is the edge above
+   it: a simulation from the game whose policies never bind failure to the full
+   source game, with the inclusion as its strategy map. Its deviation
+   certificate is the claim that every policy has a value-binding one with the
+   same public outcome law. See [Retiring commit-time
+   failure](#retiring-commit-time-failure).
 2. Allocation encoding: A1, A3, or A4? Is A2 ever the right restriction?
 3. Should VegasCore check payoff conservation?
 4. Types: V1 alone, or V4 to reuse the prior inside the game?
