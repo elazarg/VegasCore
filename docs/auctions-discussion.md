@@ -1,9 +1,9 @@
 # Auctions: outcomes, private values, and truthfulness
 
-This is an open design discussion, not a specification. Only the section
-[Checked facts relied on](#checked-facts-relied-on) states established results,
-each with the Lean name it rests on. Everything else is a proposal, a proof
-sketch, or an open question. When a question resolves, move the decision
+This is an open design discussion, not a specification. A claim is established
+only where a Lean name is given, as in
+[Checked facts relied on](#checked-facts-relied-on). Everything else is a
+proposal, a proof sketch, or an open question. When a question resolves, move the decision
 into the document that owns it, such as the
 [source semantics](source-semantics.md), the
 [outcome/utility distinction](outcomes-and-utilities.md), or the
@@ -333,23 +333,31 @@ enter.
 
 Status with types outside the program (V1):
 
-- **Ex-post Nash follows now.** Apply
-  `Vegas.Paper.source_event_pending_approximate_nash_iff` for each type profile θ,
-  with the utility for θ and the profile σ(θ). This is not yet a Lean corollary.
-- **Dominance against compiled opponents follows now.** Fix an own type, a
-  source opponent profile π, and a native replacement τ. The deviation utility
-  bound gives a source policy α, and:
+- **Ex-post Nash needs no new result.** It is
+  `Vegas.Paper.source_event_pending_approximate_nash_iff` applied at each type
+  profile θ, with the utility for θ and the profile σ(θ). A type-indexed wrapper
+  would add nothing.
+- **Dominance against compiled opponents is checked.**
+  `Vegas.SourceProgram.Setup.eventPendingGame_isBestResponse_of_isDominant`: a
+  dominant source policy compiles to a best response against every compiled
+  opponent profile, against arbitrary native deviations. The per-profile
+  version,
+  `Vegas.SourceProgram.Setup.eventPendingGame_isBestResponse_compileProfile`,
+  carries a source best response at one fixed profile, so notion 3 transfers
+  profile by profile for any opponent class, with no dominance needed off it.
+  Both specialize the simulation-generic
+  `GameTheory.GameForm.UtilitySimulation.isBestResponse_compileProfile`, whose
+  proof is the chain
 
   ```text
   runtime value of τ against compiled π
     ≤ source value of α against π                    (deviation bound)
-    ≤ source value of σᵢ(θᵢ) against π               (source dominance)
+    ≤ source value of σᵢ(θᵢ) against π               (source best response)
     = runtime value of compiled σᵢ(θᵢ) against compiled π   (honest law)
   ```
 
-  The witness α may depend on π, which is harmless because dominance is checked
-  per opponent profile. The same argument transfers notion 3 against compiled
-  members of the opponent class. This is not yet stated in Lean.
+  The source witness α may depend on π, which is harmless because a best
+  response is checked at a fixed profile.
 - **Dominance against arbitrary native opponents is open.** The current
   certificates are unilateral: opponents are compiled source policies. A new
   certificate must simulate every native opponent profile against a fixed
@@ -392,14 +400,13 @@ Each format exercises a different point:
 1. Is the game-form outcome the complete terminal state, or a declared public
    outcome?
 2. Allocation encoding: A1, A3, or A4? Is A2 ever the right restriction?
-2. Should VegasCore check payoff conservation?
-3. Types: V1 alone, or V4 to reuse the prior inside the game?
-4. Money: which properties are standing assumptions and which are theorem
+3. Should VegasCore check payoff conservation?
+4. Types: V1 alone, or V4 to reuse the prior inside the game?
+5. Money: which properties are standing assumptions and which are theorem
    parameters?
-5. The truthfulness notion for commit-reveal programs, and whether the source
+6. The truthfulness notion for commit-reveal programs, and whether the source
    needs simultaneous disclosure.
-6. The bridge theorem to quasilinear direct mechanisms.
-7. Lean corollaries for the two transfers that already follow.
+7. The bridge theorem to quasilinear direct mechanisms.
 8. A certificate for dominance against arbitrary native opponents.
 9. An opponent-independent backtranslation at the pending-message edge, for
    Bayes-Nash under V1.

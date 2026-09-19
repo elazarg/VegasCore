@@ -68,4 +68,35 @@ example : IsεNash target
   cases alternative <;>
     norm_num [source, sourceObserve, booleanUtility, expectedUtility]
 
+/-- The source strategy worth two dominates, so its compiled image answers every
+target strategy against the compiled opponents, the genuinely mixed one
+included. -/
+theorem compiled_dominant_isBestResponse :
+    IsBestResponse target
+      (euPreference fun outcome player => booleanUtility (targetObserve outcome) player) ()
+      (layeredUtility.compileProfile (fun _ => false))
+      (layeredUtility.compileStrategy () true) := by
+  refine layeredUtility.isBestResponse_compileStrategy_of_isDominant () true ?_ (fun _ => false)
+  intro alternative profile
+  cases alternative <;>
+    norm_num [source, sourceObserve, booleanUtility, expectedUtility, euPreference]
+
+/-- The mixed target deviation really is worth less, so the best-response
+conclusion is not an equality in disguise. -/
+example :
+    expectedUtility (fun outcome player => booleanUtility (targetObserve outcome) player) ()
+        (target.play (Profile.update (layeredUtility.compileProfile (fun _ => false)) ()
+          (2 : Fin 3))) = 1 ∧
+      expectedUtility (fun outcome player => booleanUtility (targetObserve outcome) player) ()
+        (target.play (Profile.update (layeredUtility.compileProfile (fun _ => false)) ()
+          (layeredUtility.compileStrategy () true))) = 2 := by
+  have hcompile : layeredUtility.compileStrategy () true = (1 : Fin 3) := rfl
+  constructor
+  · simp only [target, Profile.update_same, show (2 : Fin 3) ≠ 0 by decide,
+      show (2 : Fin 3) ≠ 1 by decide, if_false]
+    norm_num [targetObserve, booleanUtility, coin, expectedUtility,
+      FinDist.expect_map, FinDist.expect_mix]
+  · rw [hcompile]
+    norm_num [target, targetObserve, booleanUtility, expectedUtility, Profile.update_same]
+
 end GameTheory.GameForm.MixtureSimulationOn.Tests

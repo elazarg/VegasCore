@@ -150,6 +150,66 @@ theorem isNash_compileProfile_iff
       IsNash source (euPreference sourceUtility) profile := by
   simpa only [isNash_iff_isεNash_zero] using simulation.isεNash_compileProfile_iff 0 profile
 
+/-- Compiling opponents ignores the deviator's own coordinate, which the
+best-response comparison overwrites on both sides. -/
+private theorem update_compileProfile_update
+    (simulation : UtilitySimulation source target sourceUtility targetUtility)
+    (profile : Profile source.sig) (who : Player)
+    (strategy : source.sig.Strategy who) (replacement : target.sig.Strategy who) :
+    Profile.update (simulation.compileProfile (Profile.update profile who strategy))
+        who replacement =
+      Profile.update (simulation.compileProfile profile) who replacement := by
+  funext player
+  by_cases h : player = who
+  · subst player; simp
+  · simp [compileProfile, Profile.update_of_ne, h]
+
+/-- A source best response compiles to a best response against the compiled
+opponents, now against arbitrary target deviations. Unlike the Nash transfer
+this fixes one player, so the opponents need not be best responding. Target
+profiles outside the compiler image are not covered. -/
+theorem isBestResponse_compileProfile
+    (simulation : UtilitySimulation source target sourceUtility targetUtility)
+    (profile : Profile source.sig) (who : Player)
+    (best : IsBestResponse source (euPreference sourceUtility) who profile (profile who)) :
+    IsBestResponse target (euPreference targetUtility) who
+      (simulation.compileProfile profile)
+      (simulation.compileStrategy who (profile who)) := by
+  intro replacement
+  obtain ⟨alternative, hbound⟩ := simulation.deviation_bound profile who replacement
+  have hbest := best alternative
+  rw [euPreference_apply, Profile.update_eq_self] at hbest
+  rw [euPreference_apply, simulation.compileProfile_update profile who (profile who),
+    Profile.update_eq_self]
+  exact hbound.trans (hbest.trans (simulation.honest_utility profile who).symm.le)
+
+/-- A dominant source strategy compiles to a best response against every
+compiled opponent profile. Arbitrary target deviations are admitted, whereas
+opponents outside the compiler image are not: this is dominance relative to the
+source-expressible environments, not target dominance. -/
+theorem isBestResponse_compileStrategy_of_isDominant
+    (simulation : UtilitySimulation source target sourceUtility targetUtility)
+    (who : Player) (strategy : source.sig.Strategy who)
+    (dominant : IsDominant source (euPreference sourceUtility) who strategy)
+    (opponents : Profile source.sig) :
+    IsBestResponse target (euPreference targetUtility) who
+      (simulation.compileProfile opponents) (simulation.compileStrategy who strategy) := by
+  have hown : (Profile.update opponents who strategy) who = strategy :=
+    Profile.update_same opponents who strategy
+  have best : IsBestResponse source (euPreference sourceUtility) who
+      (Profile.update opponents who strategy)
+      ((Profile.update opponents who strategy) who) := by
+    intro alternative
+    rw [hown]
+    exact dominant alternative (Profile.update opponents who strategy)
+  have transferred :=
+    simulation.isBestResponse_compileProfile (Profile.update opponents who strategy) who best
+  rw [hown] at transferred
+  intro replacement
+  have hstep := transferred replacement
+  simp only [simulation.update_compileProfile_update] at hstep
+  exact hstep
+
 /-- A simulation is unchanged by utility interpretations with the same
 expectation at every game profile. Values at unreachable outcomes can differ;
 the strategy translation is retained exactly. -/

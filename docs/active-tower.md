@@ -236,6 +236,16 @@ capstones over these definitions:
 - `Vegas.Paper.source_event_pending_approximate_nash_iff`: same-error Nash preservation
   and reflection at compiled profiles for source-state utilities.
 
+Two per-player transfers accompany these profile-level capstones.
+`Setup.eventPendingGame_isBestResponse_compileProfile` carries a source best
+response at a fixed profile to the compiled profile, against arbitrary native
+deviations, without requiring the opponents to be best responding themselves.
+`Setup.eventPendingGame_isBestResponse_of_isDominant` carries a dominant source
+policy to a best response against every compiled opponent profile. Both
+specialize `UtilitySimulation.isBestResponse_compileProfile`. The environment
+ranges over compiled source profiles, so neither states dominance against
+native opponents outside the compiler image.
+
 These statements assume the concrete epoch service with deadlines of at least
 two ticks; they do not assume a strategic certificate or generalized network
 fairness. Their axiom pins contain only the standard Lean axioms. The deviation

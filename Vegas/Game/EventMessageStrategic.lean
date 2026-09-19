@@ -181,4 +181,57 @@ theorem eventPendingGame_approximate_nash_iff
     (setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire order)
     optionUtility ε profile (fun _ _ => trivial)
 
+/-- A source best response compiles to a best response against the same
+opponents compiled, now against arbitrary native deviations. Only one player is
+fixed, so the opponents need not be best responding themselves. -/
+theorem eventPendingGame_isBestResponse_compileProfile
+    (setup : Setup (Player := Player) (L := L))
+    (mode : Vegas.EventGraph.ExecutionMode)
+    (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (missing : Player → ℝ) (profile : BehavioralProfile setup.program) (who : Player)
+    (best : IsBestResponse setup.gameForm (euPreference utility) who profile (profile who)) :
+    IsBestResponse (setup.eventPendingGame mode runtime roster reactionRounds wire order)
+      (euPreference fun outcome actor =>
+        (setup.eventPendingOutcome mode runtime outcome).elim (missing actor)
+          (fun state => utility state actor)) who
+      (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))
+      (setup.compileEventPendingStrategy mode runtime who (profile who)) := by
+  let optionUtility : Option (State L setup.program.terminalCtx) → Player → ℝ :=
+    fun outcome actor => outcome.elim (missing actor) (fun state => utility state actor)
+  exact ((setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire
+    order).toUtilitySimulation optionUtility
+      (fun _ _ => trivial)).isBestResponse_compileProfile profile who best
+
+/-- A dominant source policy compiles to a best response against every compiled
+opponent profile, against arbitrary native deviations. The environment ranges
+over compiled source profiles only, so this is dominance relative to
+source-expressible opponents, not native dominance. -/
+theorem eventPendingGame_isBestResponse_of_isDominant
+    (setup : Setup (Player := Player) (L := L))
+    (mode : Vegas.EventGraph.ExecutionMode)
+    (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (missing : Player → ℝ) (who : Player) (policy : BehavioralPolicy who setup.program)
+    (dominant : IsDominant setup.gameForm (euPreference utility) who policy)
+    (opponents : BehavioralProfile setup.program) :
+    IsBestResponse (setup.eventPendingGame mode runtime roster reactionRounds wire order)
+      (euPreference fun outcome actor =>
+        (setup.eventPendingOutcome mode runtime outcome).elim (missing actor)
+          (fun state => utility state actor)) who
+      (fun actor => setup.compileEventPendingStrategy mode runtime actor (opponents actor))
+      (setup.compileEventPendingStrategy mode runtime who policy) := by
+  let optionUtility : Option (State L setup.program.terminalCtx) → Player → ℝ :=
+    fun outcome actor => outcome.elim (missing actor) (fun state => utility state actor)
+  exact ((setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire
+    order).toUtilitySimulation optionUtility
+      (fun _ _ => trivial)).isBestResponse_compileStrategy_of_isDominant who policy
+        dominant opponents
+
 end Vegas.SourceProgram.Setup
