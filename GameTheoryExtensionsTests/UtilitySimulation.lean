@@ -22,17 +22,20 @@ def booleanUtility (value : Bool) (_player : Unit) : ℝ :=
 
 def firstUtility : UtilitySimulation source middle
     (fun outcome player => booleanUtility (sourceObserve outcome) player)
-    (fun outcome player => booleanUtility (middleObserve outcome) player) :=
+    (fun outcome player => booleanUtility (middleObserve outcome) player)
+    (singletonGroups Unit) :=
   first.toUtilitySimulation booleanUtility (fun _ _ => trivial)
 
 def secondUtility : UtilitySimulation middle target
     (fun outcome player => booleanUtility (middleObserve outcome) player)
-    (fun outcome player => booleanUtility (targetObserve outcome) player) :=
+    (fun outcome player => booleanUtility (targetObserve outcome) player)
+    (singletonGroups Unit) :=
   second.toUtilitySimulation booleanUtility (fun _ _ => trivial)
 
 def layeredUtility : UtilitySimulation source target
     (fun outcome player => booleanUtility (sourceObserve outcome) player)
-    (fun outcome player => booleanUtility (targetObserve outcome) player) :=
+    (fun outcome player => booleanUtility (targetObserve outcome) player)
+    (singletonGroups Unit) :=
   firstUtility.trans secondUtility
 
 /-- The fair target deviation has utility one, so the composed bound must pick
@@ -45,7 +48,7 @@ example :
         (source.play (Profile.update (fun _ => false) () alternative)).expect
           (fun outcome => booleanUtility (sourceObserve outcome) ()) := by
   obtain ⟨alternative, bound⟩ :=
-    layeredUtility.deviation_bound (fun _ => false) () (2 : Fin 3)
+    layeredUtility.unilateral_bound subset_rfl (fun _ => false) () (2 : Fin 3)
   refine ⟨alternative, ?_, bound⟩
   cases alternative
   · norm_num [source, target, targetObserve, sourceObserve, booleanUtility, coin,
@@ -76,7 +79,8 @@ theorem compiled_dominant_isBestResponse :
       (euPreference fun outcome player => booleanUtility (targetObserve outcome) player) ()
       (layeredUtility.compileProfile (fun _ => false))
       (layeredUtility.compileStrategy () true) := by
-  refine layeredUtility.isBestResponse_compileStrategy_of_isDominant () true ?_ (fun _ => false)
+  refine layeredUtility.isBestResponse_compileStrategy_of_isDominant subset_rfl () true ?_
+    (fun _ => false)
   intro alternative profile
   cases alternative <;>
     norm_num [source, sourceObserve, booleanUtility, expectedUtility, euPreference]

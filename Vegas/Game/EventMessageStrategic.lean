@@ -145,8 +145,8 @@ theorem eventPendingGame_deviation_utility_bound
   let simulation :=
     setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire order
   obtain ⟨alternative, hbound⟩ :=
-    (simulation.toUtilitySimulation optionValue (fun _ _ => trivial)).deviation_bound
-      profile who replacement
+    (simulation.toUtilitySimulation optionValue (fun _ _ => trivial)).unilateral_bound
+      subset_rfl profile who replacement
   refine ⟨alternative, ?_⟩
   change
     ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
@@ -204,7 +204,7 @@ theorem eventPendingGame_isBestResponse_compileProfile
     fun outcome actor => outcome.elim (missing actor) (fun state => utility state actor)
   exact ((setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire
     order).toUtilitySimulation optionUtility
-      (fun _ _ => trivial)).isBestResponse_compileProfile profile who best
+      (fun _ _ => trivial)).isBestResponse_compileProfile subset_rfl profile who best
 
 /-- A dominant source policy compiles to a best response against every compiled
 opponent profile, against arbitrary native deviations. The environment ranges
@@ -231,7 +231,33 @@ theorem eventPendingGame_isBestResponse_of_isDominant
     fun outcome actor => outcome.elim (missing actor) (fun state => utility state actor)
   exact ((setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire
     order).toUtilitySimulation optionUtility
-      (fun _ _ => trivial)).isBestResponse_compileStrategy_of_isDominant who policy
-        dominant opponents
+      (fun _ _ => trivial)).isBestResponse_compileStrategy_of_isDominant subset_rfl who
+        policy dominant opponents
+
+/-- Strong Nash reflects from a compiled profile: if no native coalition gains
+at the compiled profile, then no source coalition gains at the source profile.
+Only the honest law is used. The converse direction fails in general, because a
+target may offer a coalition a channel the source lacks; see
+`GameTheory.GameForm.CoalitionWitness.isEmpty_coalitionSimulation`. -/
+theorem eventPendingGame_isStrongNash_of_compileProfile
+    (setup : Setup (Player := Player) (L := L))
+    (mode : Vegas.EventGraph.ExecutionMode)
+    (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (utility : State L setup.program.terminalCtx → Player → ℝ)
+    (missing : Player → ℝ) (ε : ℝ) (profile : BehavioralProfile setup.program)
+    (strong : IsStrongNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
+      (euPreferenceWithin ε fun outcome actor =>
+        (setup.eventPendingOutcome mode runtime outcome).elim (missing actor)
+          (fun state => utility state actor))
+      (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))) :
+    IsStrongNash setup.gameForm (euPreferenceWithin ε utility) profile := by
+  let optionUtility : Option (State L setup.program.terminalCtx) → Player → ℝ :=
+    fun outcome actor => outcome.elim (missing actor) (fun state => utility state actor)
+  exact ((setup.eventPendingSimulation mode runtime feasible roster reactionRounds wire
+    order).toUtilitySimulation optionUtility
+      (fun _ _ => trivial)).isStrongNash_of_compileProfile ε profile strong
 
 end Vegas.SourceProgram.Setup

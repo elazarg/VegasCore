@@ -28,3 +28,20 @@ edges that bound expected utility rather than reproduce a law. It composes
 across successive edges and is obtained from the exact-mixture certificate
 when needed. It supplies no extra trace-utility theorem for Vegas without a
 concrete bound on those additional preferences.
+
+The interface is indexed by the coalitions whose joint deviations it bounds.
+At one-player coalitions it transfers approximate Nash; at every nonempty
+coalition it would transfer strong Nash. Honest utility equality alone
+reflects either predicate from a compiled profile, so only preservation needs
+a bound. The exact-mixture certificate supplies the one-player index only: a
+mixture has a component at least as good as its mean for one player, while a
+coalition bound needs a single source witness serving every member at once.
+
+That gap is not an artifact. A target that adds a communication channel to the
+source carries an exact one-player certificate and admits no coalition
+certificate at all, for any strategy translation, because one member can route
+private information to another. The witness is
+`GameTheory.GameForm.CoalitionWitness.isEmpty_coalitionSimulation`, with
+`compiled_not_isStrongNash` recording that strong Nash is lost. Coalition
+claims therefore need their own certificate, never a corollary of the
+unilateral one.

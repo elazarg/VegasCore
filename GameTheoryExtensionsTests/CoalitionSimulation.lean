@@ -1,0 +1,153 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import GameTheoryExtensions.Core.UtilitySimulation
+
+/-! # A channel that only a coalition can use
+
+The base game draws a fair coin, one player has nothing to do, and the other is
+paid for guessing the coin. No strategy sees the draw, so every profile is worth
+one half to both players, and every profile is strong Nash.
+
+The target game is the same draw with a channel: the first player's strategy is
+a message chosen as a function of the coin, and the second player's strategy is
+a guess chosen as a function of the received message. Compiling a base strategy
+sends a constant message and ignores the received one.
+
+A lone deviator gains nothing: against a constant message the guess is constant,
+and a message nobody listens to changes no outcome. So the compiled embedding
+carries an exact one-player certificate. The two-player coalition that sends the
+coin and copies it is worth one, so no coalition certificate exists at all, for
+any strategy translation, and strong Nash is not preserved.
+
+This is why `UtilitySimulation` is indexed by the coalitions it covers: the
+one-player certificate does not supply the coalition one, and exactness at one
+player does not help.
+-/
+
+noncomputable section
+
+namespace GameTheory.GameForm.CoalitionWitness
+
+open GameTheory.Math.Probability
+
+/-- The fair draw both games share. -/
+def fairCoin : FinDist Bool :=
+  FinDist.mix (1 / 2) (by norm_num) (by norm_num) (FinDist.pure false) (FinDist.pure true)
+
+/-- The base game: player `1` guesses the coin without observing anything. -/
+abbrev baseGame : GameForm (Fin 2) where
+  sig := { Strategy := fun _ => Bool, Outcome := Bool × Bool }
+  play profile := fairCoin.map fun coin => (coin, profile 1)
+
+/-- The same draw with a channel: player `0` sends a message chosen from the
+coin, and player `1` guesses from the message. -/
+abbrev channelGame : GameForm (Fin 2) where
+  sig := { Strategy := fun _ => Bool → Bool, Outcome := Bool × Bool }
+  play profile := fairCoin.map fun coin => (coin, profile 1 (profile 0 coin))
+
+/-- Both players are paid exactly when the guess matches the coin. -/
+def matchUtility (outcome : Bool × Bool) (_player : Fin 2) : ℝ :=
+  if outcome.1 = outcome.2 then 1 else 0
+
+/-- Compiling ignores the channel: a constant message, and a guess that does not
+read the message it receives. -/
+def compileConstant : (who : Fin 2) → baseGame.sig.Strategy who → channelGame.sig.Strategy who :=
+  fun _ strategy _ => strategy
+
+/-- A guess that does not depend on the coin is right half the time. -/
+theorem expect_constantGuess (guess : Bool) (who : Fin 2) :
+    (fairCoin.map fun coin => ((coin, guess) : Bool × Bool)).expect
+        (fun outcome => matchUtility outcome who) = 1 / 2 := by
+  cases guess <;>
+    norm_num [fairCoin, matchUtility, FinDist.expect_map, FinDist.expect_mix]
+
+/-- A guess that copies the coin is always right. -/
+theorem expect_copyCoin (who : Fin 2) :
+    (fairCoin.map fun coin => ((coin, coin) : Bool × Bool)).expect
+        (fun outcome => matchUtility outcome who) = 1 := by
+  norm_num [fairCoin, matchUtility, FinDist.expect_map, FinDist.expect_mix]
+
+/-- Every base profile is worth one half to both players. -/
+theorem base_expect (profile : Profile baseGame.sig) (who : Fin 2) :
+    (baseGame.play profile).expect (fun outcome => matchUtility outcome who) = 1 / 2 :=
+  expect_constantGuess (profile 1) who
+
+/-- Against compiled opponents a single deviation still produces a guess that
+does not depend on the coin. -/
+theorem update_compileConstant_play (profile : Profile baseGame.sig) (who : Fin 2)
+    (replacement : channelGame.sig.Strategy who) :
+    ∃ guess : Bool,
+      channelGame.play (Profile.update
+          (fun player => compileConstant player (profile player)) who replacement) =
+        fairCoin.map fun coin => ((coin, guess) : Bool × Bool) := by
+  fin_cases who
+  · exact ⟨profile 1, by simp [compileConstant, Profile.update_of_ne]⟩
+  · exact ⟨replacement (profile 0), by simp [compileConstant, Profile.update_of_ne]⟩
+
+/-- The embedding carries an exact one-player certificate. -/
+def unilateralSimulation :
+    UtilitySimulation baseGame channelGame matchUtility matchUtility
+      (singletonGroups (Fin 2)) :=
+  UtilitySimulation.ofUnilateral compileConstant
+    (fun profile who => by
+      obtain ⟨guess, hplay⟩ := update_compileConstant_play profile who (compileConstant who
+        (profile who))
+      rw [Profile.update_eq_self] at hplay
+      rw [hplay, expect_constantGuess, base_expect])
+    (fun profile who replacement => by
+      refine ⟨profile who, ?_⟩
+      obtain ⟨guess, hplay⟩ := update_compileConstant_play profile who replacement
+      rw [hplay, expect_constantGuess, Profile.update_eq_self, base_expect])
+
+/-- The grand coalition sends the coin and copies it, which is worth one. -/
+theorem coalition_expect (profile : Profile channelGame.sig) (who : Fin 2) :
+    (channelGame.play (Profile.override Finset.univ (fun _ => id) profile)).expect
+        (fun outcome => matchUtility outcome who) = 1 := by
+  have hplay : channelGame.play (Profile.override Finset.univ (fun _ => id) profile) =
+      fairCoin.map fun coin => ((coin, coin) : Bool × Bool) := by
+    simp [Profile.override]
+  rw [hplay, expect_copyCoin]
+
+/-- No coalition certificate exists, for any strategy translation. The grand
+coalition reaches one in the target, while every base profile is worth one
+half, so the bound would assert `1 ≤ 1 / 2`. -/
+theorem isEmpty_coalitionSimulation :
+    IsEmpty (UtilitySimulation baseGame channelGame matchUtility matchUtility
+      (nonemptyGroups (Fin 2))) := by
+  constructor
+  intro simulation
+  obtain ⟨alternative, hbound⟩ :=
+    simulation.deviation_bound Finset.univ Finset.univ_nonempty (fun _ => false) (fun _ => id)
+  have hstep := hbound 0 (Finset.mem_univ 0)
+  rw [coalition_expect, base_expect] at hstep
+  norm_num at hstep
+
+/-- Every base profile is strong Nash: no coalition can beat one half. -/
+theorem base_isStrongNash (profile : Profile baseGame.sig) :
+    IsStrongNash baseGame (euPreference matchUtility) profile := by
+  rw [isStrongNash_iff]
+  intro coalition hne replacement
+  obtain ⟨member, hmember⟩ := hne
+  refine ⟨member, hmember, ?_⟩
+  simp only [euPreference_apply, expectedUtility]
+  rw [expect_constantGuess, expect_constantGuess]
+
+/-- Its compilation is not: the coalition that uses the channel gains. -/
+theorem compiled_not_isStrongNash (profile : Profile baseGame.sig) :
+    ¬ IsStrongNash channelGame (euPreference matchUtility)
+      (fun player => compileConstant player (profile player)) := by
+  rw [isStrongNash_iff]
+  intro h
+  obtain ⟨member, _, hprefer⟩ := h Finset.univ Finset.univ_nonempty (fun _ => id)
+  rw [euPreference_apply, expectedUtility, expectedUtility, coalition_expect] at hprefer
+  have hhonest : (channelGame.play
+      (fun player => compileConstant player (profile player))).expect
+        (fun outcome => matchUtility outcome member) = 1 / 2 := by
+    obtain ⟨guess, hplay⟩ := update_compileConstant_play profile member
+      (compileConstant member (profile member))
+    rw [Profile.update_eq_self] at hplay
+    rw [hplay, expect_constantGuess]
+  rw [hhonest] at hprefer
+  norm_num at hprefer
+
+end GameTheory.GameForm.CoalitionWitness

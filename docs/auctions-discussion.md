@@ -365,6 +365,16 @@ Status with types outside the program (V1):
   source dominance depends on what opponents observe before disclosing, and
   native opponents may observe more, such as pending openings or delivery order.
   This connects to the coalition extension in the [road ahead](a-road-ahead.md).
+- **Coalition-proofness is reflected, never preserved.**
+  `Vegas.SourceProgram.Setup.eventPendingGame_isStrongNash_of_compileProfile`
+  carries strong Nash back from the compiled profile, using the honest law
+  alone. The forward direction is impossible in general, not merely unproved:
+  `GameTheory.GameForm.CoalitionWitness.isEmpty_coalitionSimulation` exhibits a
+  target with an exact one-player certificate and no coalition certificate for
+  any strategy translation, because one member can route private information to
+  another. For an auction this is the difference between bidders who each
+  deviate alone and bidders who collude through the runtime, which the timing,
+  pre-inclusion delivery, and receipts of the message pool make available.
 - **Bayes-Nash under V1 is open.** Averaging the per-type deviation bound over the
   prior yields a source deviation that may depend on other players' types through
   their policies, which is not a legal type-indexed deviation. There are two

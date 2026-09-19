@@ -171,6 +171,17 @@ comparisons; it is not a builder/player coalition theorem. An outcome-law
 certificate transports utilities of the decoded source result, not arbitrary
 preferences over timing, fees, receipts, or message traffic.
 
+A coalition edge cannot be obtained by strengthening the unilateral certificate.
+A target that adds a communication channel carries an exact one-player
+certificate and admits no coalition certificate at all, since one member can
+route private information to another, and strong Nash is then lost even though
+it is always reflected back. `GameTheory.GameForm.CoalitionWitness` is that
+witness, and `Setup.eventPendingGame_isStrongNash_of_compileProfile` is the
+reflection direction for the pending-message edge. A coalition result therefore
+needs a simulation of joint native deviations, which the message pool's timing,
+pre-inclusion delivery, and receipts make a real obligation rather than a
+bookkeeping step.
+
 A future edge that adds an informed quitting opportunity may require a stronger
 incentive condition. For example, play with fair payoff `+2/-2` has expectation
 `0`, exceeding an ex-ante quit payoff `-1`. Learning the payoff before deciding
