@@ -122,11 +122,34 @@ Refinements:
 - **Preservation.** The runtime result must decode to the outcome, so that
   utilities of the outcome transfer.
 
-Open: should the game-form outcome shrink from the complete terminal state to a
-declared outcome? Common knowledge gives no reason to. What remains is a smaller
-preservation obligation and a named observable target result. The cost is
-excluding utilities that read private bindings, which would rule out reading
-private values from the state (V2) and leave them as analysis data (V1).
+**Decision.** The game-form outcome is the public source result: the
+publications and the public samples, exactly what `sourcePublicEnv` projects
+out of the terminal state and exactly what settlement itself reads. Private
+bindings leave the outcome. Common knowledge was never the reason to shrink it;
+the reasons are that a preference over what a player kept secret is not a
+preference over anything the protocol produced, and that every later edge then
+owes a smaller decoder.
+
+Consequences:
+
+- Commit failure and reveal refusal induce the same outcome. A native
+  unopenable binding may be backtranslated to a refusal, so the tower carries
+  fewer failure modes.
+- Utilities may not read what a player kept secret. Private values are analysis
+  parameters (V1). V2 loses its one advantage, that a prior inside a `Setup`
+  let the existing correspondence cover Bayes-Nash directly — an advantage
+  already weakened by the rule that every initial private cell must be
+  revealed.
+- Nothing needs reproving. Each checked law is stated at the complete terminal
+  state, and its public form follows by instantiating the utility at
+  `utility ∘ project` or by mapping both sides of a law through the projection.
+  The state-level law stays as the internal lemma.
+- The executable language does not change. This is a decision about the
+  analysis surface, not about what a program may do.
+
+Pending: the Lean restatement, changing the game signature's outcome to the
+public result and re-deriving the capstones through the projection. Until that
+lands, the checked statements are the stronger state-level ones.
 
 ## Encoding the allocation
 
@@ -462,8 +485,14 @@ Each format exercises a different point:
 
 ## Open questions
 
-1. Is the game-form outcome the complete terminal state, or a declared public
-   outcome?
+1. Whether commit-time failure is still needed. A guard is checked at the
+   reveal that completes it, never at the binding, so an unsatisfiable guard
+   never blocks committing an ordinary value: the failure lands at the reveal.
+   The only remaining case is a payload type with no ordinary value at all.
+   Requiring commitment payloads to be inhabited would retire the action and
+   make failure purely a disclosure decision, at the price of an inhabitance
+   condition on the expression interface and a new backtranslation for native
+   unopenable bindings — proof work, not a restatement.
 2. Allocation encoding: A1, A3, or A4? Is A2 ever the right restriction?
 3. Should VegasCore check payoff conservation?
 4. Types: V1 alone, or V4 to reuse the prior inside the game?
