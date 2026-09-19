@@ -328,6 +328,51 @@ theorem isBestResponse_compileStrategy_of_isDominant
   simp only [simulation.update_compileProfile_update] at hstep
   exact hstep
 
+/-- Overriding every coordinate discards the profile that was there. -/
+private theorem override_univ [Fintype Player] {sig : GameSignature Player}
+    (replacement profile : Profile sig) :
+    Profile.override Finset.univ (fun i => replacement i.1) profile = replacement := by
+  funext player
+  simp [Profile.override]
+
+/-- A coalition value that no source deviation matches for one member refutes
+every certificate covering that coalition, whatever the strategy translation.
+The hypothesis quantifies over the nonmembers' target strategies, which the
+certificate is free to choose. -/
+theorem isEmpty_of_unmatchedValue {groups : Set (Finset Player)}
+    (members : Finset Player) (hmembers : members ∈ groups)
+    (member : Player) (hmember : member ∈ members)
+    (profile : Profile source.sig) (replacement : Subprofile target.sig members)
+    (hgain : ∀ (opponents : Profile target.sig) (alternative : Subprofile source.sig members),
+      (source.play (Profile.override members alternative profile)).expect
+          (fun outcome => sourceUtility outcome member) <
+        (target.play (Profile.override members replacement opponents)).expect
+          (fun outcome => targetUtility outcome member)) :
+    IsEmpty (UtilitySimulation source target sourceUtility targetUtility groups) := by
+  constructor
+  intro simulation
+  obtain ⟨alternative, hbound⟩ :=
+    simulation.deviation_bound members hmembers profile replacement
+  exact absurd (hbound member hmember) (not_le.mpr
+    (hgain (fun player => simulation.compileStrategy player (profile player)) alternative))
+
+/-- A target profile worth more to one player than every source profile refutes
+every certificate covering the grand coalition. No property of the strategy
+translation is used, because the grand coalition overwrites all of it. -/
+theorem isEmpty_of_grandCoalitionValue [Fintype Player] {groups : Set (Finset Player)}
+    (hgroups : Finset.univ ∈ groups) (profile : Profile source.sig) (member : Player)
+    (targetProfile : Profile target.sig) (bound : ℝ)
+    (hsource : ∀ alternative : Profile source.sig,
+      (source.play alternative).expect (fun outcome => sourceUtility outcome member) ≤ bound)
+    (htarget : bound < (target.play targetProfile).expect
+      (fun outcome => targetUtility outcome member)) :
+    IsEmpty (UtilitySimulation source target sourceUtility targetUtility groups) := by
+  refine isEmpty_of_unmatchedValue Finset.univ hgroups member (Finset.mem_univ member)
+    profile (fun i => targetProfile i.1) ?_
+  intro opponents alternative
+  rw [override_univ]
+  exact lt_of_le_of_lt (hsource _) htarget
+
 /-- Build the one-player certificate from a bound stated per deviating
 player. -/
 def ofUnilateral

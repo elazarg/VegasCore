@@ -45,3 +45,12 @@ private information to another. The witness is
 `compiled_not_isStrongNash` recording that strong Nash is lost. Coalition
 claims therefore need their own certificate, never a corollary of the
 unilateral one.
+
+Refuting a new target needs no equilibrium computation.
+`UtilitySimulation.isEmpty_of_unmatchedValue` asks for one coalition, one
+member, and a target replacement whose value for that member exceeds every
+source deviation's, whatever the nonmembers play.
+`UtilitySimulation.isEmpty_of_grandCoalitionValue` is the case where the
+coalition is everyone, and then the strategy translation drops out entirely:
+it is enough that one target profile is worth more to one player than every
+source profile.

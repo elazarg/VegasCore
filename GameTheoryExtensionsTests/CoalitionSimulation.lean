@@ -99,28 +99,30 @@ def unilateralSimulation :
       obtain ⟨guess, hplay⟩ := update_compileConstant_play profile who replacement
       rw [hplay, expect_constantGuess, Profile.update_eq_self, base_expect])
 
-/-- The grand coalition sends the coin and copies it, which is worth one. -/
-theorem coalition_expect (profile : Profile channelGame.sig) (who : Fin 2) :
-    (channelGame.play (Profile.override Finset.univ (fun _ => id) profile)).expect
-        (fun outcome => matchUtility outcome who) = 1 := by
-  have hplay : channelGame.play (Profile.override Finset.univ (fun _ => id) profile) =
-      fairCoin.map fun coin => ((coin, coin) : Bool × Bool) := by
-    simp [Profile.override]
-  rw [hplay, expect_copyCoin]
+/-- Send the coin, then copy the message received. -/
+def copyProfile : Profile channelGame.sig := fun _ => id
+
+/-- The coalition that sends the coin and copies it is always right. -/
+theorem copyProfile_expect (who : Fin 2) :
+    (channelGame.play copyProfile).expect (fun outcome => matchUtility outcome who) = 1 :=
+  expect_copyCoin who
+
+/-- Overriding both coordinates is that coalition, whatever was there. -/
+theorem override_copyProfile (profile : Profile channelGame.sig) :
+    Profile.override Finset.univ (fun i => copyProfile i.1) profile = copyProfile := by
+  funext player
+  simp [Profile.override]
 
 /-- No coalition certificate exists, for any strategy translation. The grand
 coalition reaches one in the target, while every base profile is worth one
 half, so the bound would assert `1 ≤ 1 / 2`. -/
 theorem isEmpty_coalitionSimulation :
     IsEmpty (UtilitySimulation baseGame channelGame matchUtility matchUtility
-      (nonemptyGroups (Fin 2))) := by
-  constructor
-  intro simulation
-  obtain ⟨alternative, hbound⟩ :=
-    simulation.deviation_bound Finset.univ Finset.univ_nonempty (fun _ => false) (fun _ => id)
-  have hstep := hbound 0 (Finset.mem_univ 0)
-  rw [coalition_expect, base_expect] at hstep
-  norm_num at hstep
+      (nonemptyGroups (Fin 2))) :=
+  UtilitySimulation.isEmpty_of_grandCoalitionValue Finset.univ_nonempty
+    (fun _ => false) 0 copyProfile (1 / 2)
+    (fun alternative => le_of_eq (base_expect alternative 0))
+    (by rw [copyProfile_expect]; norm_num)
 
 /-- Every base profile is strong Nash: no coalition can beat one half. -/
 theorem base_isStrongNash (profile : Profile baseGame.sig) :
@@ -138,8 +140,10 @@ theorem compiled_not_isStrongNash (profile : Profile baseGame.sig) :
       (fun player => compileConstant player (profile player)) := by
   rw [isStrongNash_iff]
   intro h
-  obtain ⟨member, _, hprefer⟩ := h Finset.univ Finset.univ_nonempty (fun _ => id)
-  rw [euPreference_apply, expectedUtility, expectedUtility, coalition_expect] at hprefer
+  obtain ⟨member, _, hprefer⟩ :=
+    h Finset.univ Finset.univ_nonempty (fun i => copyProfile i.1)
+  rw [euPreference_apply, expectedUtility, expectedUtility, override_copyProfile,
+    copyProfile_expect] at hprefer
   have hhonest : (channelGame.play
       (fun player => compileConstant player (profile player))).expect
         (fun outcome => matchUtility outcome member) = 1 / 2 := by
