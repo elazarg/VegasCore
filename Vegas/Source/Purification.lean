@@ -1,0 +1,416 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Source.Setup
+
+/-! # Every policy is a mixture of pure ones
+
+A deviation certificate may answer a behavioral policy with a *mixture* of
+policies, but the mixture is drawn once, before the private setup law and before
+any chance step, so a component has to serve every branch at once. That is what
+stops the naive induction: a mixture chosen per branch is not a mixture chosen
+in advance.
+
+The construction here draws the actions of the whole program up front. A source
+program is a straight line — every decision point of a player occurs exactly
+once in every run — so a draw at a decision point may be coupled arbitrarily
+across the views reachable there, and only independence *between* decision
+points is needed. The draws at one point therefore come from a fold over the
+finitely many reachable configurations, which needs no product construction.
+
+The induction runs over a list of configurations rather than one, so that a
+single mixture serves every branch created before the point reached.
+-/
+
+noncomputable section
+
+namespace Vegas.SourceProgram
+
+open GameTheory GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- Everything `runWith` threads through a program point. -/
+structure Configuration (Player : Type) (L : IExpr) (Γ : SourceCtx Player L) where
+  /-- The cells bound so far. -/
+  state : State L Γ
+  /-- The obligations retained so far. -/
+  registry : Registry Γ
+  /-- What has been published so far. -/
+  revelations : Revelations Γ
+  /-- What each player did so far. -/
+  history : History Player L
+
+/-- Run a program from a configuration. -/
+def runFrom {Γ : SourceCtx Player L} {O : Finset VarId} (p : SourceProgram Player L Γ O)
+    (profile : BehavioralProfile p) (config : Configuration Player L Γ) :
+    FinDist (State L (terminalCtx p)) :=
+  runWith p profile config.state config.registry config.revelations config.history
+
+/-- What a player sees at a configuration. -/
+def Configuration.view {Γ : SourceCtx Player L} (who : Player)
+    (config : Configuration Player L Γ) : DecisionView who Γ :=
+  (sourceObserve who config.state, config.history who)
+
+/-! ## One step, as a configuration transformer -/
+
+section Successors
+
+variable {Γ : SourceCtx Player L} {name : VarId} {payload : L.Ty}
+
+/-- The configuration a public sample reaches. -/
+def sampleSuccessor (name : VarId) (config : Configuration Player L Γ) (value : L.Val payload) :
+    Configuration Player L ((name, .publicData payload) :: Γ) :=
+  ⟨Env.cons value config.state, Registry.weaken config.registry,
+    Revelations.weaken config.revelations, config.history⟩
+
+/-- The configuration a binding reaches. -/
+def commitSuccessor {owner : Player} (name : VarId)
+    (guard : SourceGuard L Γ owner name payload) (config : Configuration Player L Γ)
+    (choice : PublicationResult (L.Val payload)) :
+    Configuration Player L ((name, .privateData owner payload) :: Γ) :=
+  ⟨Env.cons choice config.state,
+    { owner := owner, subject := name, payload := payload, source := .here,
+      guard := guard.weaken } :: Registry.weaken config.registry,
+    Revelations.weaken config.revelations,
+    Function.update config.history owner
+      (config.history owner ++ [OwnAction.commit owner name payload choice])⟩
+
+/-- The configuration a publication reaches, guards included. -/
+def revealSuccessor {owner : Player} (published : VarId)
+    (source : HasVar Γ name (.privateData owner payload))
+    (config : Configuration Player L Γ) (disclose : Bool) :
+    Configuration Player L ((published, .publication payload) :: Γ) :=
+  let proposal : PublicationResult (L.Val payload) :=
+    if disclose then config.state.get source else .failure
+  let revealed : Revelations ((published, .publication payload) :: Γ) :=
+    Revelations.reveal (published := published) config.revelations source
+  ⟨Env.cons
+      (if (Registry.completedBy (published := published) config.registry config.revelations
+          source).all (·.accepts revealed (Env.cons proposal config.state))
+        then proposal else .failure)
+      config.state,
+    Registry.weaken config.registry, revealed,
+    Function.update config.history owner
+      (config.history owner ++ [OwnAction.reveal owner name disclose])⟩
+
+variable {O : Finset VarId}
+
+theorem runFrom_sample {fresh : name ∉ Γ.map Prod.fst}
+    {law : L.DistExpr (SourcePublicCtx L Γ) payload}
+    {k : SourceProgram Player L ((name, .publicData payload) :: Γ) O}
+    (profile : BehavioralProfile (SourceProgram.sample name fresh law k))
+    (config : Configuration Player L Γ) :
+    runFrom (SourceProgram.sample name fresh law k) profile config =
+      (L.evalDist law (sourcePublicEnv config.state)).bind fun value =>
+        runFrom k (afterSample profile) (sampleSuccessor name config value) := rfl
+
+theorem runFrom_commit {owner : Player} {fresh : name ∉ Γ.map Prod.fst}
+    {guard : SourceGuard L Γ owner name payload}
+    {k : SourceProgram Player L ((name, .privateData owner payload) :: Γ) (insert name O)}
+    (profile : BehavioralProfile (SourceProgram.commit name owner fresh guard k))
+    (config : Configuration Player L Γ) :
+    runFrom (SourceProgram.commit name owner fresh guard k) profile config =
+      (commitKernel profile (Configuration.view owner config)).bind fun choice =>
+        runFrom k (afterCommit profile) (commitSuccessor name guard config choice) := rfl
+
+theorem runFrom_reveal {published : VarId} {owner : Player}
+    {fresh : published ∉ Γ.map Prod.fst}
+    {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
+    {k : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
+    (profile : BehavioralProfile
+      (SourceProgram.reveal published owner name fresh source unresolved k))
+    (config : Configuration Player L Γ) :
+    runFrom (SourceProgram.reveal published owner name fresh source unresolved k)
+        profile config =
+      (revealKernel profile (Configuration.view owner config)).bind fun disclose =>
+        runFrom k (afterReveal profile) (revealSuccessor published source config disclose) := rfl
+
+end Successors
+
+/-! ## Replacing one policy commutes with taking a step -/
+
+section Steps
+
+variable {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {payload : L.Ty}
+
+theorem afterSample_update {fresh : name ∉ Γ.map Prod.fst}
+    {law : L.DistExpr (SourcePublicCtx L Γ) payload}
+    {k : SourceProgram Player L ((name, .publicData payload) :: Γ) O}
+    (profile : BehavioralProfile (SourceProgram.sample name fresh law k)) (who : Player)
+    (policy : BehavioralPolicy who (SourceProgram.sample name fresh law k)) :
+    afterSample (Function.update profile who policy) =
+      Function.update (afterSample profile) who policy := rfl
+
+theorem afterCommit_update {owner : Player} {fresh : name ∉ Γ.map Prod.fst}
+    {guard : SourceGuard L Γ owner name payload}
+    {k : SourceProgram Player L ((name, .privateData owner payload) :: Γ) (insert name O)}
+    (profile : BehavioralProfile (SourceProgram.commit name owner fresh guard k))
+    (who : Player)
+    (policy : BehavioralPolicy who (SourceProgram.commit name owner fresh guard k)) :
+    afterCommit (Function.update profile who policy) =
+      Function.update (afterCommit profile) who policy.2 := by
+  funext actor
+  by_cases h : actor = who
+  · subst h; simp [afterCommit]
+  · simp [afterCommit, Function.update_of_ne h]
+
+theorem afterReveal_update {published : VarId} {owner : Player}
+    {fresh : published ∉ Γ.map Prod.fst}
+    {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
+    {k : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
+    (profile : BehavioralProfile
+      (SourceProgram.reveal published owner name fresh source unresolved k))
+    (who : Player)
+    (policy : BehavioralPolicy who
+      (SourceProgram.reveal published owner name fresh source unresolved k)) :
+    afterReveal (Function.update profile who policy) =
+      Function.update (afterReveal profile) who policy.2 := by
+  funext actor
+  by_cases h : actor = who
+  · subst h; simp [afterReveal]
+  · simp [afterReveal, Function.update_of_ne h]
+
+end Steps
+
+/-! ## Drawing a decision point's actions in advance -/
+
+/-- Draw an action for each listed view, and act by default elsewhere. The draws
+are made in sequence rather than independently: any coupling will do, because a
+run visits a decision point once and so reads exactly one of them. -/
+def pointMixture {View : Type} {Action : Type} [DecidableEq View]
+    (kernel : View → FinDist Action) (fallback : View → Action) :
+    List View → FinDist (View → Action)
+  | [] => FinDist.pure fallback
+  | view :: rest => (pointMixture kernel fallback rest).bind fun choice =>
+      (kernel view).map fun action => Function.update choice view action
+
+/-- What a listed view is assigned is distributed by the kernel there. -/
+theorem pointMixture_map_apply {View : Type} {Action : Type} [DecidableEq View]
+    (kernel : View → FinDist Action) (fallback : View → Action) :
+    (views : List View) → (view : View) → view ∈ views →
+    (pointMixture kernel fallback views).map (fun choice => choice view) = kernel view
+  | head :: rest, view, member => by
+      rw [pointMixture, FinDist.map_bind]
+      by_cases h : view = head
+      · subst h
+        have step : ∀ choice : View → Action,
+            ((kernel view).map fun action => Function.update choice view action).map
+              (fun assigned => assigned view) = kernel view := by
+          intro choice
+          rw [FinDist.map_comp]
+          simp only [Function.comp_def, Function.update_self]
+          exact FinDist.map_id _
+        simp only [step, FinDist.bind_const]
+      · have step : ∀ choice : View → Action,
+            ((kernel head).map fun action => Function.update choice head action).map
+              (fun assigned => assigned view) = FinDist.pure (choice view) := by
+          intro choice
+          rw [FinDist.map_comp]
+          simp only [Function.comp_def, Function.update_of_ne h]
+          exact FinDist.map_const _ _
+        simp only [step]
+        exact pointMixture_map_apply kernel fallback rest view
+          ((List.mem_cons.mp member).resolve_left h)
+
+/-- A continuation that reads one listed view sees the kernel there. -/
+theorem pointMixture_bind_apply {View : Type} {Action : Type} {β : Type} [DecidableEq View]
+    (kernel : View → FinDist Action) (fallback : View → Action) (views : List View)
+    (view : View) (member : view ∈ views) (continuation : Action → FinDist β) :
+    (pointMixture kernel fallback views).bind
+        (fun assigned => continuation (assigned view)) =
+      (kernel view).bind continuation := by
+  rw [← pointMixture_map_apply kernel fallback views view member, FinDist.map_eq_bind,
+    FinDist.bind_bind]
+  exact FinDist.bind_congr fun _ _ => (FinDist.pure_bind _ _).symm
+
+/-! ## Every policy is a mixture of pure ones -/
+
+/-- One mixture of pure policies reproduces a behavioral policy's law from every
+configuration in a list, against unchanged opponents. The list is what lets a
+single mixture serve every branch: the successors of a chance step, or of
+another player's action, go into the list for the rest of the program. -/
+theorem exists_pureMixture {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} → (p : SourceProgram Player L Γ O) →
+    (profile : BehavioralProfile p) → (policy : BehavioralPolicy who p) →
+    (configs : List (Configuration Player L Γ)) →
+    ∃ mixture : FinDist (PurePolicy who p), ∀ config ∈ configs,
+      runFrom p (Function.update profile who policy) config =
+        mixture.bind fun choice =>
+          runFrom p (Function.update profile who (PurePolicy.toBehavioral p choice)) config
+  | _, _, .ret _, _, _, _ =>
+      ⟨FinDist.pure PUnit.unit, fun config _ => by simp [runFrom, runWith]⟩
+  | Γ, _, .sample name (payload := payload) fresh law k, profile, policy, configs => by
+      obtain ⟨mixture, hmixture⟩ := exists_pureMixture k (afterSample profile) policy
+        (configs.flatMap fun config =>
+          ((L.evalDist law (sourcePublicEnv config.state)).supportFinset.toList).map
+            (sampleSuccessor name config))
+      refine ⟨mixture, fun config hconfig => ?_⟩
+      have member : ∀ value ∈ (L.evalDist law (sourcePublicEnv config.state)).support,
+          sampleSuccessor name config value ∈ configs.flatMap fun other =>
+            ((L.evalDist law (sourcePublicEnv other.state)).supportFinset.toList).map
+              (sampleSuccessor name other) := fun value hvalue =>
+        List.mem_flatMap.mpr ⟨config, hconfig,
+          List.mem_map.mpr ⟨value, Finset.mem_toList.mpr
+            (FinDist.mem_supportFinset.mpr hvalue), rfl⟩⟩
+      simp only [runFrom_sample, afterSample_update]
+      rw [FinDist.bind_congr fun value hvalue => hmixture _ (member value hvalue),
+        FinDist.bind_comm]
+      rfl
+  | Γ, _, .commit (payload := payload) name owner fresh guard k, profile, policy, configs => by
+      classical
+      by_cases hown : owner = who
+      · subst hown
+        obtain ⟨tail, htail⟩ := exists_pureMixture k (afterCommit profile) policy.2
+          (configs.flatMap fun config =>
+            ((policy.1 rfl (Configuration.view owner config)).supportFinset.toList).map
+              (commitSuccessor name guard config))
+        refine ⟨(pointMixture (policy.1 rfl) (fun _ => .failure)
+            (configs.map (Configuration.view owner))).bind fun assigned =>
+          tail.bind fun rest => FinDist.pure (fun _ => assigned, rest),
+          fun config hconfig => ?_⟩
+        have hview : Configuration.view owner config ∈ configs.map (Configuration.view owner) :=
+          List.mem_map.mpr ⟨config, hconfig, rfl⟩
+        have hmember : ∀ choice ∈ (policy.1 rfl (Configuration.view owner config)).support,
+            commitSuccessor name guard config choice ∈ configs.flatMap fun other =>
+              ((policy.1 rfl (Configuration.view owner other)).supportFinset.toList).map
+                (commitSuccessor name guard other) := fun choice hchoice =>
+          List.mem_flatMap.mpr ⟨config, hconfig, List.mem_map.mpr ⟨choice,
+            Finset.mem_toList.mpr (FinDist.mem_supportFinset.mpr hchoice), rfl⟩⟩
+        have hkernel : commitKernel (Function.update profile owner policy) = policy.1 rfl := by
+          simp [commitKernel]
+        have hpure : ∀ choice : PurePolicy owner (.commit name owner fresh guard k),
+            commitKernel (Function.update profile owner (PurePolicy.toBehavioral _ choice)) =
+              fun view => FinDist.pure (choice.1 rfl view) := by
+          intro choice
+          simp [commitKernel, PurePolicy.toBehavioral, Function.update_self]
+        have hsnd : ∀ choice : PurePolicy owner (.commit name owner fresh guard k),
+            (PurePolicy.toBehavioral (.commit name owner fresh guard k) choice).2 =
+              PurePolicy.toBehavioral k choice.2 := fun _ => rfl
+        simp only [runFrom_commit, hkernel, hpure, hsnd, afterCommit_update, FinDist.bind_bind,
+          FinDist.pure_bind]
+        rw [pointMixture_bind_apply (policy.1 rfl) (fun _ => PublicationResult.failure)
+          (configs.map (Configuration.view owner)) (Configuration.view owner config) hview
+          (fun choice => tail.bind fun rest =>
+            runFrom k (Function.update (afterCommit profile) owner
+              (PurePolicy.toBehavioral k rest)) (commitSuccessor name guard config choice))]
+        exact FinDist.bind_congr fun choice hchoice => htail _ (hmember choice hchoice)
+      · obtain ⟨tail, htail⟩ := exists_pureMixture k (afterCommit profile) policy.2
+          (configs.flatMap fun config =>
+            ((commitKernel profile (Configuration.view owner config)).supportFinset.toList).map
+              (commitSuccessor name guard config))
+        refine ⟨tail.bind fun rest => FinDist.pure (fun own => absurd own hown, rest),
+          fun config hconfig => ?_⟩
+        have hmember : ∀ choice ∈ (commitKernel profile (Configuration.view owner config)).support,
+            commitSuccessor name guard config choice ∈ configs.flatMap fun other =>
+              ((commitKernel profile (Configuration.view owner other)).supportFinset.toList).map
+                (commitSuccessor name guard other) := fun choice hchoice =>
+          List.mem_flatMap.mpr ⟨config, hconfig, List.mem_map.mpr ⟨choice,
+            Finset.mem_toList.mpr (FinDist.mem_supportFinset.mpr hchoice), rfl⟩⟩
+        have hkernel : ∀ replacement : BehavioralPolicy who (.commit name owner fresh guard k),
+            commitKernel (Function.update profile who replacement) = commitKernel profile := by
+          intro replacement
+          simp [commitKernel, Function.update_of_ne hown]
+        have hsnd : ∀ choice : PurePolicy who (.commit name owner fresh guard k),
+            (PurePolicy.toBehavioral (.commit name owner fresh guard k) choice).2 =
+              PurePolicy.toBehavioral k choice.2 := fun _ => rfl
+        simp only [runFrom_commit, hkernel, hsnd, afterCommit_update, FinDist.bind_bind,
+          FinDist.pure_bind]
+        rw [FinDist.bind_congr fun choice hchoice => htail _ (hmember choice hchoice),
+          FinDist.bind_comm]
+  | Γ, _, .reveal (payload := payload) published owner name fresh source unresolved k,
+      profile, policy, configs => by
+      classical
+      by_cases hown : owner = who
+      · subst hown
+        obtain ⟨tail, htail⟩ := exists_pureMixture k (afterReveal profile) policy.2
+          (configs.flatMap fun config =>
+            ((policy.1 rfl (Configuration.view owner config)).supportFinset.toList).map
+              (revealSuccessor published source config))
+        refine ⟨(pointMixture (policy.1 rfl) (fun _ => false)
+            (configs.map (Configuration.view owner))).bind fun assigned =>
+          tail.bind fun rest => FinDist.pure (fun _ => assigned, rest),
+          fun config hconfig => ?_⟩
+        have hview : Configuration.view owner config ∈ configs.map (Configuration.view owner) :=
+          List.mem_map.mpr ⟨config, hconfig, rfl⟩
+        have hmember : ∀ disclose ∈ (policy.1 rfl (Configuration.view owner config)).support,
+            revealSuccessor published source config disclose ∈ configs.flatMap fun other =>
+              ((policy.1 rfl (Configuration.view owner other)).supportFinset.toList).map
+                (revealSuccessor published source other) := fun disclose hdisclose =>
+          List.mem_flatMap.mpr ⟨config, hconfig, List.mem_map.mpr ⟨disclose,
+            Finset.mem_toList.mpr (FinDist.mem_supportFinset.mpr hdisclose), rfl⟩⟩
+        have hkernel : revealKernel (Function.update profile owner policy) = policy.1 rfl := by
+          simp [revealKernel]
+        have hpure : ∀ choice :
+            PurePolicy owner (.reveal published owner name fresh source unresolved k),
+            revealKernel (Function.update profile owner (PurePolicy.toBehavioral _ choice)) =
+              fun view => FinDist.pure (choice.1 rfl view) := by
+          intro choice
+          simp [revealKernel, PurePolicy.toBehavioral, Function.update_self]
+        have hsnd : ∀ choice :
+            PurePolicy owner (.reveal published owner name fresh source unresolved k),
+            (PurePolicy.toBehavioral
+              (.reveal published owner name fresh source unresolved k) choice).2 =
+              PurePolicy.toBehavioral k choice.2 := fun _ => rfl
+        simp only [runFrom_reveal, hkernel, hpure, hsnd, afterReveal_update, FinDist.bind_bind,
+          FinDist.pure_bind]
+        rw [pointMixture_bind_apply (policy.1 rfl) (fun _ => false)
+          (configs.map (Configuration.view owner)) (Configuration.view owner config) hview
+          (fun disclose => tail.bind fun rest =>
+            runFrom k (Function.update (afterReveal profile) owner
+              (PurePolicy.toBehavioral k rest))
+              (revealSuccessor published source config disclose))]
+        exact FinDist.bind_congr fun disclose hdisclose => htail _ (hmember disclose hdisclose)
+      · obtain ⟨tail, htail⟩ := exists_pureMixture k (afterReveal profile) policy.2
+          (configs.flatMap fun config =>
+            ((revealKernel profile (Configuration.view owner config)).supportFinset.toList).map
+              (revealSuccessor published source config))
+        refine ⟨tail.bind fun rest => FinDist.pure (fun own => absurd own hown, rest),
+          fun config hconfig => ?_⟩
+        have hmember : ∀ disclose ∈
+            (revealKernel profile (Configuration.view owner config)).support,
+            revealSuccessor published source config disclose ∈ configs.flatMap fun other =>
+              ((revealKernel profile (Configuration.view owner other)).supportFinset.toList).map
+                (revealSuccessor published source other) := fun disclose hdisclose =>
+          List.mem_flatMap.mpr ⟨config, hconfig, List.mem_map.mpr ⟨disclose,
+            Finset.mem_toList.mpr (FinDist.mem_supportFinset.mpr hdisclose), rfl⟩⟩
+        have hkernel : ∀ replacement : BehavioralPolicy who
+              (.reveal published owner name fresh source unresolved k),
+            revealKernel (Function.update profile who replacement) = revealKernel profile := by
+          intro replacement
+          simp [revealKernel, Function.update_of_ne hown]
+        have hsnd : ∀ choice :
+            PurePolicy who (.reveal published owner name fresh source unresolved k),
+            (PurePolicy.toBehavioral
+              (.reveal published owner name fresh source unresolved k) choice).2 =
+              PurePolicy.toBehavioral k choice.2 := fun _ => rfl
+        simp only [runFrom_reveal, hkernel, hsnd, afterReveal_update, FinDist.bind_bind,
+          FinDist.pure_bind]
+        rw [FinDist.bind_congr fun disclose hdisclose => htail _ (hmember disclose hdisclose),
+          FinDist.bind_comm]
+
+/-- One mixture of pure policies reproduces a behavioral policy's public result
+law across a whole setup, against unchanged opponents. The draw precedes the
+private initial law, which is what a deviation certificate needs. -/
+theorem exists_pureMixture_publicRun {who : Player} (setup : Setup (Player := Player) (L := L))
+    (profile : BehavioralProfile setup.program) (policy : BehavioralPolicy who setup.program) :
+    ∃ mixture : FinDist (PurePolicy who setup.program),
+      setup.publicRun (Function.update profile who policy) =
+        mixture.bind fun choice =>
+          setup.publicRun (Function.update profile who
+            (PurePolicy.toBehavioral setup.program choice)) := by
+  obtain ⟨mixture, hmixture⟩ := exists_pureMixture setup.program profile policy
+    (setup.initialLaw.supportFinset.toList.map fun initial =>
+      ⟨initial, [], Revelations.initial setup.context, fun _ => []⟩)
+  refine ⟨mixture, ?_⟩
+  have hrun : ∀ initial ∈ setup.initialLaw.support,
+      SourceProgram.run setup.program (Function.update profile who policy) initial =
+        mixture.bind fun choice =>
+          SourceProgram.run setup.program
+            (Function.update profile who (PurePolicy.toBehavioral setup.program choice))
+            initial := fun initial hinitial =>
+    hmixture _ (List.mem_map.mpr ⟨initial,
+      Finset.mem_toList.mpr (FinDist.mem_supportFinset.mpr hinitial), rfl⟩)
+  simp only [Setup.publicRun, Setup.run]
+  rw [FinDist.bind_congr hrun, FinDist.bind_comm, FinDist.map_bind]
+
+end Vegas.SourceProgram

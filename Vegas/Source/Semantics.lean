@@ -104,7 +104,7 @@ abbrev History (Player : Type) (L : IExpr) := Player → List (OwnAction Player 
 abbrev DecisionView (who : Player) (Γ : SourceCtx Player L) :=
   SourceObservation L who Γ × List (OwnAction Player L)
 
-def BehavioralPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+@[reducible] def BehavioralPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     SourceProgram Player L Γ O → Type
   | _, _, .ret _ => PUnit
   | _, _, .sample _ _ _ k => BehavioralPolicy who k
@@ -117,6 +117,33 @@ def BehavioralPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset 
 
 abbrev BehavioralProfile {Γ : SourceCtx Player L} {O : Finset VarId}
     (p : SourceProgram Player L Γ O) := ∀ who, BehavioralPolicy who p
+
+/-! ## Pure policies
+
+A pure policy chooses an action outright rather than a law over actions. These
+are what a predraw produces, and they are the policies whose own past decisions
+can be recomputed rather than remembered. -/
+
+/-- A policy that acts without randomizing. -/
+@[reducible] def PurePolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    SourceProgram Player L Γ O → Type
+  | _, _, .ret _ => PUnit
+  | _, _, .sample _ _ _ k => PurePolicy who k
+  | Γ, _, .commit (payload := payload) _ owner _ _ k =>
+      ((owner = who) → DecisionView who Γ → PublicationResult (L.Val payload)) ×
+        PurePolicy who k
+  | Γ, _, .reveal _ owner _ _ _ _ k =>
+      ((owner = who) → DecisionView who Γ → Bool) × PurePolicy who k
+
+/-- Read a pure policy as a behavioral one. -/
+def PurePolicy.toBehavioral {who : Player} : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (p : SourceProgram Player L Γ O) → PurePolicy who p → BehavioralPolicy who p
+  | _, _, .ret _, _ => PUnit.unit
+  | _, _, .sample _ _ _ k, policy => toBehavioral k policy
+  | _, _, .commit _ _ _ _ k, policy =>
+      (fun own view => FinDist.pure (policy.1 own view), toBehavioral k policy.2)
+  | _, _, .reveal _ _ _ _ _ _ k, policy =>
+      (fun own view => FinDist.pure (policy.1 own view), toBehavioral k policy.2)
 
 /-- Failure actions make the policy space inhabited without any payload or
 guard satisfiability assumption. -/

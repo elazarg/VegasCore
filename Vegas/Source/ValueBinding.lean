@@ -61,34 +61,6 @@ theorem exists_valueBinding (who : Player) {Γ : SourceCtx Player L} {O : Finset
     ∃ policy : BehavioralPolicy who p, ValueBinding p policy :=
   ⟨bindingPolicy who p, valueBinding_bindingPolicy who p⟩
 
-/-! ## Pure policies
-
-A pure policy chooses an action outright rather than a law over actions. These
-are what a predraw produces, and they are the policies whose own past decisions
-can be recomputed rather than remembered, which is what lets a translation
-detect the bindings it replaced. -/
-
-/-- A policy that acts without randomizing. -/
-def PurePolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    SourceProgram Player L Γ O → Type
-  | _, _, .ret _ => PUnit
-  | _, _, .sample _ _ _ k => PurePolicy who k
-  | Γ, _, .commit (payload := payload) _ owner _ _ k =>
-      ((owner = who) → DecisionView who Γ → PublicationResult (L.Val payload)) ×
-        PurePolicy who k
-  | Γ, _, .reveal _ owner _ _ _ _ k =>
-      ((owner = who) → DecisionView who Γ → Bool) × PurePolicy who k
-
-/-- Read a pure policy as a behavioral one. -/
-def PurePolicy.toBehavioral {who : Player} : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (p : SourceProgram Player L Γ O) → PurePolicy who p → BehavioralPolicy who p
-  | _, _, .ret _, _ => PUnit.unit
-  | _, _, .sample _ _ _ k, policy => toBehavioral k policy
-  | _, _, .commit _ _ _ _ k, policy =>
-      (fun own view => FinDist.pure (policy.1 own view), toBehavioral k policy.2)
-  | _, _, .reveal _ _ _ _ _ _ k, policy =>
-      (fun own view => FinDist.pure (policy.1 own view), toBehavioral k policy.2)
-
 /-- The decision view one step earlier: drop the newest cell, and drop the
 newest own action when that step was this player's own. How far back a view has
 to be carried is fixed by position in the program, which is why a pure policy
