@@ -512,11 +512,32 @@ follow the original in the second. A mixture is allowed in the certificate, and
 a pre-drawn component cannot depend on the view, so the mixture has to range
 over deterministic policies: for those the ambiguity disappears, since a
 deterministic policy's own past decisions are recomputable from the current
-observation and history. The missing ingredient is therefore a source-policy
-predraw — the Kuhn-style statement that a behavioral profile's law is a finite
-mixture of deterministic ones. `GameTheory.Protocol.Information` has that
-machinery generically, and `Vegas/EventGraph/SchedulerProtocol.lean` is a
-worked instantiation of it for schedulers.
+observation and history. `Vegas.SourceProgram.PurePolicy` names them, with
+`PurePolicy.toBehavioral` reading one as an ordinary policy.
+
+Recomputation is what the translation has to be built around, and it is why the
+obvious structural recursion does not suffice. At a reveal, the translated
+policy must decide whether *that* cell was patched, which is the original's
+decision at the view it held at the commit. That view is the current one with
+the cells added since dropped, and with the own-action history truncated by one
+per own decision point — both a fixed number of steps, determined by position in
+the program. It is also the *un-patched* view: in the translated run the
+player's own cell and its own recorded action differ exactly at patched cells.
+
+So the recursion carries two maps and extends each by one step per constructor:
+which private cells were replaced, as a function of the current view; and the
+view the original policy would have held. The correctness proof is then a
+simulation over `runWith` whose invariant is that the two states agree except at
+patched private cells, the own histories are related by the un-patch map, and
+every publication agrees — from which the public outcomes agree.
+
+The remaining ingredient, for policies that are not pure, is a source-policy
+predraw: the Kuhn-style statement that a behavioral profile's law is a finite
+mixture of deterministic ones. Only the deviator randomizes in the certificate,
+so the single-agent case suffices. `GameTheory.Protocol.Information` has the
+machinery generically, and `Vegas/EventGraph/SchedulerProtocol.lean` is a worked
+instantiation of it, at the cost of first giving source execution a
+state-machine presentation.
 
 The same construction is what a later "honest play" layer would need, where
 players never refuse to open. Compilation cannot preserve that class
