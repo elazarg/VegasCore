@@ -44,6 +44,17 @@ once. `PurePolicy.bindValues` then translates a pure policy into one that binds
 values and refuses where it replaced a binding, with `bindValues_publicRun_eq`
 its law. See [the auctions discussion](auctions-discussion.md).
 
+### The pure-strategy edge
+
+The predraw has the same shape as an edge of its own. `Setup.pureGame` is the
+game whose strategies never randomize, and `Setup.pureSimulation` simulates the
+full source game from it, again with every deviation considered, so
+`isεNash_pureGame_iff` reads: a pure profile is ε-Nash in the source game
+exactly when it is ε-Nash among pure deviations. The profile being checked must
+be pure; the deviations it is checked against need not be.
+`Setup.purePendingSimulation` composes it onto the message host in the same way,
+with `purePendingGame_approximate_nash_iff`.
+
 ## Sequential execution
 
 The canonical graph scheduler selects the least unfinished source rank. Its

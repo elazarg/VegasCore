@@ -340,15 +340,15 @@ theorem exists_pureMixture {who : Player} :
         rw [FinDist.bind_congr fun disclose hdisclose => htail _ (hmember disclose hdisclose),
           FinDist.bind_comm]
 
-/-- One mixture of pure policies reproduces a behavioral policy's public result
+/-- One mixture of pure policies reproduces a behavioral policy's terminal state
 law across a whole setup, against unchanged opponents. The draw precedes the
 private initial law, which is what a deviation certificate needs. -/
-theorem exists_pureMixture_publicRun {who : Player} (setup : Setup (Player := Player) (L := L))
+theorem exists_pureMixture_run {who : Player} (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (policy : BehavioralPolicy who setup.program) :
     ∃ mixture : FinDist (PurePolicy who setup.program),
-      setup.publicRun (Function.update profile who policy) =
+      setup.run (Function.update profile who policy) =
         mixture.bind fun choice =>
-          setup.publicRun (Function.update profile who
+          setup.run (Function.update profile who
             (PurePolicy.toBehavioral setup.program choice)) := by
   obtain ⟨mixture, hmixture⟩ := exists_pureMixture setup.program profile policy
     (setup.initialLaw.supportFinset.toList.map fun initial =>
@@ -362,7 +362,57 @@ theorem exists_pureMixture_publicRun {who : Player} (setup : Setup (Player := Pl
             initial := fun initial hinitial =>
     hmixture _ (List.mem_map.mpr ⟨initial,
       Finset.mem_toList.mpr (FinDist.mem_supportFinset.mpr hinitial), rfl⟩)
-  simp only [Setup.publicRun, Setup.run]
-  rw [FinDist.bind_congr hrun, FinDist.bind_comm, FinDist.map_bind]
+  simp only [Setup.run]
+  rw [FinDist.bind_congr hrun, FinDist.bind_comm]
+
+/-- The public result law is a pushforward of that one, so the same mixture
+serves it. -/
+theorem exists_pureMixture_publicRun {who : Player} (setup : Setup (Player := Player) (L := L))
+    (profile : BehavioralProfile setup.program) (policy : BehavioralPolicy who setup.program) :
+    ∃ mixture : FinDist (PurePolicy who setup.program),
+      setup.publicRun (Function.update profile who policy) =
+        mixture.bind fun choice =>
+          setup.publicRun (Function.update profile who
+            (PurePolicy.toBehavioral setup.program choice)) := by
+  obtain ⟨mixture, hmixture⟩ := exists_pureMixture_run setup profile policy
+  exact ⟨mixture, by simp only [Setup.publicRun, hmixture, FinDist.map_bind]⟩
+
+/-! ## The pure-strategy game
+
+The game a source program presents when a policy may not randomize. Only the
+strategies change, so the two games are compared by the identity on outcomes. -/
+
+/-- The behavioral policies underlying a pure profile. -/
+def pureProfile {Γ : SourceCtx Player L} {O : Finset VarId}
+    {p : SourceProgram Player L Γ O} (profile : ∀ who, PurePolicy who p) :
+    BehavioralProfile p := fun who => PurePolicy.toBehavioral p (profile who)
+
+namespace Setup
+
+/-- The pure-strategy game of a setup. -/
+@[reducible] def pureGame (setup : Setup (Player := Player) (L := L)) :
+    GameForm Player where
+  sig :=
+    { Strategy := fun who => PurePolicy who setup.program
+      Outcome := SourceProgram.PublicOutcome setup.program }
+  play profile := setup.publicRun (pureProfile profile)
+
+@[simp] theorem pureGame_play (setup : Setup (Player := Player) (L := L))
+    (profile : Profile setup.pureGame.sig) :
+    setup.pureGame.play profile = setup.publicRun (pureProfile profile) := rfl
+
+/-- Replacing one strategy of a pure profile replaces one policy. -/
+@[simp] theorem pureProfile_update (setup : Setup (Player := Player) (L := L))
+    (profile : Profile setup.pureGame.sig) (who : Player)
+    (replacement : setup.pureGame.sig.Strategy who) :
+    pureProfile (Profile.update profile who replacement) =
+      Function.update (pureProfile profile) who
+        (PurePolicy.toBehavioral setup.program replacement) := by
+  funext actor
+  by_cases h : actor = who
+  · subst h; simp [pureProfile]
+  · simp [pureProfile, Profile.update_of_ne _ _ h, Function.update_of_ne h]
+
+end Setup
 
 end Vegas.SourceProgram
