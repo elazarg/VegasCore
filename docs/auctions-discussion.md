@@ -515,29 +515,40 @@ deterministic policy's own past decisions are recomputable from the current
 observation and history. `Vegas.SourceProgram.PurePolicy` names them, with
 `PurePolicy.toBehavioral` reading one as an ordinary policy.
 
-Recomputation is what the translation has to be built around, and it is why the
-obvious structural recursion does not suffice. At a reveal, the translated
-policy must decide whether *that* cell was patched, which is the original's
-decision at the view it held at the commit. That view is the current one with
-the cells added since dropped, and with the own-action history truncated by one
-per own decision point — both a fixed number of steps, determined by position in
-the program. It is also the *un-patched* view: in the translated run the
-player's own cell and its own recorded action differ exactly at patched cells.
+Recomputation is what the translation is built around, and it is why the obvious
+structural recursion does not suffice. At a reveal, the translated policy must
+decide whether *that* cell was replaced, which is the original's decision at the
+view it held at the commit. That view is the current one with the cells added
+since dropped, and with the own-action history truncated by one per own decision
+point — both a fixed number of steps, determined by position in the program. It
+is also the *un-patched* view: in the translated run the player's own cell and
+its own recorded action differ exactly at replaced cells.
 
-So the recursion carries two maps and extends each by one step per constructor:
-which private cells were replaced, as a function of the current view; and the
-view the original policy would have held. The correctness proof is then a
-simulation over `runWith` whose invariant is that the two states agree except at
-patched private cells, the own histories are related by the un-patch map, and
-every publication agrees — from which the public outcomes agree.
+`PurePolicy.bindValuesFrom` is that translation, carrying the two maps the
+reconstruction needs, and `bindValues_publicOutcome_eq` proves it preserves the
+public outcome law against any fixed opponents. The proof runs the step
+invariant `Patched` through the program: a public sample and the other players'
+steps change nothing either run can distinguish, the replacement is made at the
+translated player's own binding, and at its own reveal the refusal lands where
+the original published failure anyway. Guard checks agree because
+`Obligation.accepts` reads publications, never a raw binding.
 
-The remaining ingredient, for policies that are not pure, is a source-policy
-predraw: the Kuhn-style statement that a behavioral profile's law is a finite
-mixture of deterministic ones. Only the deviator randomizes in the certificate,
-so the single-agent case suffices. `GameTheory.Protocol.Information` has the
-machinery generically, and `Vegas/EventGraph/SchedulerProtocol.lean` is a worked
-instantiation of it, at the cost of first giving source execution a
-state-machine presentation.
+What remains is the predraw: the Kuhn-style statement that a behavioral policy's
+law is a finite mixture of pure ones. Only the deviator randomizes in the
+certificate, so the single-agent case suffices — but not a per-configuration
+one. The mixture has to be drawn before the private initial law, and a single
+pure policy has to serve every branch of every chance draw and of every other
+player's action. So the naive induction fails: a mixture chosen per branch is
+not a mixture chosen in advance.
+
+The standard construction draws independently per *view* rather than per branch:
+branches a player cannot distinguish share the draw, and a player meets each
+view at most once because each decision point occurs once and views at different
+points have different contexts. That needs the finite set of views reachable at
+a decision point, which is what `GameTheory.Protocol.Information` supplies
+generically through its support-site machinery.
+`Vegas/EventGraph/SchedulerProtocol.lean` is a worked instantiation of it, at
+the cost of first giving source execution a state-machine presentation.
 
 The same construction is what a later "honest play" layer would need, where
 players never refuse to open. Compilation cannot preserve that class
