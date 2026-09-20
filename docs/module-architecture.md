@@ -15,6 +15,14 @@
 | test libraries | Executable regressions and theorem instances |
 | `Paper` | Direct paper-visible theorem restatements and axiom pins |
 
+Not all of `Interaction` is load-bearing. The Vegas capstones are parametric in
+the application, and the instance they are used with is
+`EventGraphRuntime.application`, so a dependency walk from `Paper` reaches the
+pool, the policies and the invariants, but not `IdealCommitments`,
+`MessageReplay`, `MessageApplicationPending` or `MessageApplicationLocality`.
+Those characterize what the host permits, which is worth stating and worth not
+mistaking for a step in a proof; their module headers say so.
+
 Production libraries do not import tests or the paper audit. Generic
 game-theoretic results do not depend on Vegas. `Interaction` is independent of
 Vegas source syntax. `Vegas.EventGraph` is independent of the source language

@@ -15,6 +15,9 @@ pool. Other players learn of that traffic through later delivery or inclusion,
 not through the polling invocation itself. If private application commands also
 preserve another player's view, a sequence of other-player polls preserves
 that player's entire policy input. The policies being polled are unrestricted.
+
+This characterizes the model rather than supporting the tower: no Vegas
+capstone reaches it.
 -/
 
 noncomputable section

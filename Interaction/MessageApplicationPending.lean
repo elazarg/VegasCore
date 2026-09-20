@@ -6,7 +6,10 @@ Authors: VegasCore contributors
 
 import Interaction.MessageApplicationPolicies
 
-/-! # Pending messages across adversarial player reactions -/
+/-! # Pending messages across adversarial player reactions
+
+A characterization of the model rather than a step in the tower: no Vegas
+capstone reaches these, and they are here to say what the host permits. -/
 
 noncomputable section
 

@@ -6,7 +6,12 @@ Authors: VegasCore contributors
 
 import Interaction.MessagePool
 
-/-! # Replay laws for the native message pool -/
+/-! # Replay laws for the native message pool
+
+These characterize the pool: rebroadcasting a message anyone already knows
+changes nothing observable. No tower theorem depends on them — the Vegas
+capstones are parametric in the application — so read them as a statement about
+what the model permits, not as a step in a proof. -/
 
 namespace Interaction.MessagePool
 

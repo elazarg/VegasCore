@@ -6,6 +6,11 @@ Authors: VegasCore contributors
 
 /-! # Ideal write-once commitments
 
+This is a model study, not the mechanism its users end up with: the Vegas host
+builds its own application, hiding a binding inside that application's public
+projection, and no capstone of theirs reaches this module. It is kept as a reference functionality and is
+exercised by its own regressions.
+
 This is an ideal hidden write-once functionality with a private registration
 interface. A handle contains only an owner and slot, independently of the
 registered value. Opening messages carry a claimed value. An operational
