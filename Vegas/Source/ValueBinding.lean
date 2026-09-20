@@ -87,6 +87,121 @@ def PurePolicy.toBehavioral {who : Player} : {Γ : SourceCtx Player L} → {O : 
   | _, _, .reveal _ _ _ _ _ _ k, policy =>
       (fun own view => FinDist.pure (policy.1 own view), toBehavioral k policy.2)
 
+/-- The decision view one step earlier: drop the newest cell, and drop the
+newest own action when that step was this player's own. How far back a view has
+to be carried is fixed by position in the program, which is why a pure policy
+can recompute a decision it made earlier instead of remembering it. -/
+def DecisionView.back {who : Player} {Γ : SourceCtx Player L} {x : VarId}
+    {c : CellTy Player L} (ownStep : Bool) (view : DecisionView who ((x, c) :: Γ)) :
+    DecisionView who Γ :=
+  (⟨fun _ cell h => view.1.cells _ cell (.there h)⟩,
+    if ownStep then view.2.dropLast else view.2)
+
+/-- Which private cells hold a binding the translation put there, as a function
+of the translated player's current view. -/
+abbrev PatchMap (who : Player) (Γ : SourceCtx Player L) :=
+  ∀ {n : VarId} {o : Player} {pay : L.Ty}, HasVar Γ n (.privateData o pay) →
+    DecisionView who Γ → Bool
+
+/-- The view the original policy would have held, read off the translated one. -/
+abbrev ViewMap (who : Player) (Γ : SourceCtx Player L) :=
+  DecisionView who Γ → DecisionView who Γ
+
+/-- Replace every unopenable binding by the canonical value of its payload, and
+refuse to open exactly the cells that were replaced. Both are decided by
+recomputing the original policy's decision at the view it held, which the two
+carried maps reconstruct: `patched` says which bindings were replaced, and
+`unpatch` undoes the replacement in the view before the original sees it.
+
+The translation lands in `ValueBinding`. That it preserves the public outcome
+law is the edge's deviation certificate and is not proved here. -/
+def PurePolicy.bindValuesFrom {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} → (p : SourceProgram Player L Γ O) →
+    ViewMap who Γ → PatchMap who Γ → PurePolicy who p → PurePolicy who p
+  | _, _, .ret _, _, _, _ => PUnit.unit
+  | _, _, .sample _ _ _ k, unpatch, patched, policy =>
+      bindValuesFrom k
+        (fun view =>
+          let earlier := unpatch (view.back false)
+          (⟨fun _ cell h =>
+            match h with
+            | .here => view.1.cells _ _ .here
+            | .there h' => earlier.1.cells _ cell h'⟩, earlier.2))
+        (fun h view =>
+          match h with
+          | .there h' => patched h' (view.back false))
+        policy
+  | _, _, .commit (payload := payload) cellName owner _ _ k, unpatch, patched, policy =>
+      let ownStep : Bool := decide (owner = who)
+      let original : DecisionView who _ → Option (PublicationResult (L.Val payload)) :=
+        fun view => if own : owner = who then some (policy.1 own (unpatch view)) else none
+      (fun own view =>
+        match policy.1 own (unpatch view) with
+        | .failure => .success (L.someValue payload)
+        | .success value => .success value,
+       bindValuesFrom k
+        (fun view =>
+          let earlier := unpatch (view.back ownStep)
+          let replaced : Bool := original (view.back ownStep) = some .failure
+          (⟨fun _ cell h =>
+            match h with
+            | .here => if replaced then some .failure else view.1.cells _ _ .here
+            | .there h' => earlier.1.cells _ cell h'⟩,
+            if ownStep then
+              earlier.2 ++ ((original (view.back ownStep)).toList.map
+                (OwnAction.commit owner cellName payload))
+            else earlier.2))
+        (fun h view =>
+          match h with
+          | .here => original (view.back ownStep) = some .failure
+          | .there h' => patched h' (view.back ownStep))
+        policy.2)
+  | _, _, .reveal _ owner cellName _ source _ k, unpatch, patched, policy =>
+      let ownStep : Bool := decide (owner = who)
+      let original : DecisionView who _ → Option Bool :=
+        fun view => if own : owner = who then some (policy.1 own (unpatch view)) else none
+      (fun own view => if patched source view then false else policy.1 own (unpatch view),
+       bindValuesFrom k
+        (fun view =>
+          let earlier := unpatch (view.back ownStep)
+          (⟨fun _ cell h =>
+            match h with
+            | .here => view.1.cells _ _ .here
+            | .there h' => earlier.1.cells _ cell h'⟩,
+            if ownStep then
+              earlier.2 ++ ((original (view.back ownStep)).toList.map
+                (OwnAction.reveal owner cellName))
+            else earlier.2))
+        (fun h view =>
+          match h with
+          | .there h' => patched h' (view.back ownStep))
+        policy.2)
+
+/-- The translation of a pure policy, starting from a context in which nothing
+has been replaced yet. -/
+def PurePolicy.bindValues {who : Player} {Γ : SourceCtx Player L} {O : Finset VarId}
+    (p : SourceProgram Player L Γ O) (policy : PurePolicy who p) : PurePolicy who p :=
+  bindValuesFrom p id (fun _ _ => false) policy
+
+theorem valueBinding_bindValuesFrom {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} → (p : SourceProgram Player L Γ O) →
+    (unpatch : ViewMap who Γ) → (patched : PatchMap who Γ) → (policy : PurePolicy who p) →
+    ValueBinding p
+      (PurePolicy.toBehavioral p (PurePolicy.bindValuesFrom p unpatch patched policy))
+  | _, _, .ret _, _, _, _ => trivial
+  | _, _, .sample _ _ _ k, _, _, policy => valueBinding_bindValuesFrom k _ _ policy
+  | _, _, .commit _ _ _ _ k, unpatch, _, policy => by
+      refine ⟨fun own view => ?_, valueBinding_bindValuesFrom k _ _ policy.2⟩
+      simp only [PurePolicy.toBehavioral, PurePolicy.bindValuesFrom, FinDist.mem_support_pure]
+      cases policy.1 own (unpatch view) <;> simp
+  | _, _, .reveal _ _ _ _ _ _ k, _, _, policy => valueBinding_bindValuesFrom k _ _ policy.2
+
+/-- The translation of any pure policy never binds an unopenable candidate. -/
+theorem valueBinding_bindValues {who : Player} {Γ : SourceCtx Player L} {O : Finset VarId}
+    (p : SourceProgram Player L Γ O) (policy : PurePolicy who p) :
+    ValueBinding p (PurePolicy.toBehavioral p (PurePolicy.bindValues p policy)) :=
+  valueBinding_bindValuesFrom p _ _ policy
+
 variable {Γ : SourceCtx Player L} {O : Finset VarId} {published name : VarId} {owner : Player}
 variable {payload : L.Ty}
 
