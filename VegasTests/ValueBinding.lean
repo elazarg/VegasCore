@@ -12,7 +12,8 @@ value instead and must therefore refuse to open it, or the published value would
 change the payoff.
 
 This is the concrete check that the translation refuses at exactly the cells it
-replaced. The general law it is meant to satisfy is not proved yet.
+replaced, under the law `Vegas.SourceProgram.bindValues_publicOutcome_eq`
+proves in general.
 -/
 
 namespace VegasTests.ValueBinding
@@ -94,6 +95,18 @@ example :
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
     FinDist.pure_bind, FinDist.map_pure]
   rfl
+
+/-- The class is not vacuous: the policy the translation has to repair is
+outside it, and its translation is inside. -/
+example : ¬ ValueBinding program (PurePolicy.toBehavioral program failingPolicy) := by
+  intro h
+  exact h.1 rfl (sourceObserve () (Env.empty (CellVal simpleExpr)), [])
+    (by simp [program, PurePolicy.toBehavioral, failingPolicy])
+
+example :
+    ValueBinding program
+      (PurePolicy.toBehavioral program (PurePolicy.bindValues program failingPolicy)) :=
+  valueBinding_bindValues program failingPolicy
 
 end
 

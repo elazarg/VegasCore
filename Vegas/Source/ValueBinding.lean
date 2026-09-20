@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Source.Semantics
+import Vegas.Source.Setup
 
 /-! # Policies that bind a value
 
@@ -800,5 +800,107 @@ theorem bindValues_publicOutcome_eq {who : Player} :
           (congrArg Prod.snd isOrig) (congrArg Prod.snd isTrans) _ _ _ _ _ _
           (patched_reveal_foreign inv published cellName owner payload hw _ disclose
             (PurePolicy.revealChoice unpatch owner policy.1))
+
+/-! ## From a fixed start, and across a private setup law -/
+
+omit [L.ResultTypes] in
+/-- Before anything is bound, nothing has been replaced. -/
+theorem patched_initial {who : Player} {Γ : SourceCtx Player L} (state : State L Γ) :
+    Patched (who := who) id (fun _ _ => false) state state (fun _ => []) (fun _ => []) where
+  publicEq := fun _ => rfl
+  publicationEq := fun _ => rfl
+  foreignEq := fun _ _ => rfl
+  replacedEq := fun _ hp => absurd hp (by simp)
+  keptEq := fun _ _ => rfl
+  historyEq := fun _ _ => rfl
+  unpatchEq := rfl
+
+/-- A pure policy and its value-binding translation induce the same public
+result law from any starting state, against unchanged opponents. -/
+theorem bindValues_run_publicOutcome_eq {who : Player} {Γ : SourceCtx Player L}
+    {O : Finset VarId} (p : SourceProgram Player L Γ O) (profile : BehavioralProfile p)
+    (policy : PurePolicy who p) (state : State L Γ) :
+    (run p (Function.update profile who
+        (PurePolicy.toBehavioral p (PurePolicy.bindValues p policy))) state).map
+        (publicOutcome p) =
+      (run p (Function.update profile who (PurePolicy.toBehavioral p policy)) state).map
+        (publicOutcome p) :=
+  bindValues_publicOutcome_eq p id (fun _ _ => false) policy _ _
+    (fun other hne => by
+      simp only [Function.update_of_ne hne])
+    (Function.update_self ..) (Function.update_self ..) state state _ _ _ _
+    (patched_initial state)
+
+/-- The same across a private setup law: one translation serves the whole law,
+because it never consults the draw. -/
+theorem bindValues_publicRun_eq {who : Player} (setup : Setup (Player := Player) (L := L))
+    (profile : BehavioralProfile setup.program) (policy : PurePolicy who setup.program) :
+    setup.publicRun (Function.update profile who
+        (PurePolicy.toBehavioral setup.program (PurePolicy.bindValues setup.program policy))) =
+      setup.publicRun (Function.update profile who
+        (PurePolicy.toBehavioral setup.program policy)) := by
+  simp only [Setup.publicRun, Setup.run, FinDist.map_bind]
+  exact FinDist.bind_congr fun initial _ =>
+    bindValues_run_publicOutcome_eq setup.program profile policy initial
+
+/-- Every pure policy is matched by a policy that binds a value and has the
+same public result law, against unchanged opponents. Binding an unopenable
+candidate buys a pure deviator nothing. -/
+theorem exists_valueBinding_publicRun_eq {who : Player}
+    (setup : Setup (Player := Player) (L := L)) (profile : BehavioralProfile setup.program)
+    (policy : PurePolicy who setup.program) :
+    ∃ alternative : BehavioralPolicy who setup.program, ValueBinding setup.program alternative ∧
+      setup.publicRun (Function.update profile who alternative) =
+        setup.publicRun (Function.update profile who
+          (PurePolicy.toBehavioral setup.program policy)) :=
+  ⟨PurePolicy.toBehavioral setup.program (PurePolicy.bindValues setup.program policy),
+    valueBinding_bindValues setup.program policy,
+    bindValues_publicRun_eq setup profile policy⟩
+
+/-! ## The value-binding game
+
+The game a source program presents once a binding must carry a value. Only the
+strategies change: the program, the setup law and the public outcome are the
+same, so the two games are compared by the identity on outcomes. -/
+
+/-- A policy that never binds an unopenable candidate, as a strategy. -/
+def ValueBindingPolicy (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
+    (p : SourceProgram Player L Γ O) : Type :=
+  {policy : BehavioralPolicy who p // ValueBinding p policy}
+
+instance {who : Player} {Γ : SourceCtx Player L} {O : Finset VarId}
+    {p : SourceProgram Player L Γ O} : Inhabited (ValueBindingPolicy who p) :=
+  ⟨bindingPolicy who p, valueBinding_bindingPolicy who p⟩
+
+/-- The policies underlying a value-binding profile. -/
+def valueBindingProfile {Γ : SourceCtx Player L} {O : Finset VarId}
+    {p : SourceProgram Player L Γ O} (profile : ∀ who, ValueBindingPolicy who p) :
+    BehavioralProfile p := fun who => (profile who).val
+
+namespace Setup
+
+/-- The value-binding game of a setup. -/
+def valueBindingGame (setup : Setup (Player := Player) (L := L)) : GameForm Player where
+  sig :=
+    { Strategy := fun who => ValueBindingPolicy who setup.program
+      Outcome := SourceProgram.PublicOutcome setup.program }
+  play profile := setup.publicRun (valueBindingProfile profile)
+
+@[simp] theorem valueBindingGame_play (setup : Setup (Player := Player) (L := L))
+    (profile : Profile setup.valueBindingGame.sig) :
+    setup.valueBindingGame.play profile = setup.publicRun (valueBindingProfile profile) := rfl
+
+/-- Replacing one strategy of a value-binding profile replaces one policy. -/
+@[simp] theorem valueBindingProfile_update (setup : Setup (Player := Player) (L := L))
+    (profile : Profile setup.valueBindingGame.sig) (who : Player)
+    (replacement : setup.valueBindingGame.sig.Strategy who) :
+    valueBindingProfile (Profile.update profile who replacement) =
+      Function.update (valueBindingProfile profile) who replacement.val := by
+  funext actor
+  by_cases h : actor = who
+  · subst h; simp [valueBindingProfile]
+  · simp [valueBindingProfile, Profile.update_of_ne _ _ h, Function.update_of_ne h]
+
+end Setup
 
 end Vegas.SourceProgram
