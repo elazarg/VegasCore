@@ -169,7 +169,7 @@ def revealKernel {Γ : SourceCtx Player L} {O : Finset VarId} {published name : 
     DecisionView owner Γ → FinDist Bool :=
   (p owner).1 rfl
 
-def terminalCtx : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+@[reducible] def terminalCtx : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     SourceProgram Player L Γ O → SourceCtx Player L
   | terminal, _, .ret _ => terminal
   | _, _, .sample _ _ _ k => terminalCtx k

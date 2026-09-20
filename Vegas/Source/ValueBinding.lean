@@ -11,9 +11,11 @@ content of its own: a cell bound to failure publishes failure whatever its
 owner later decides, exactly as a bound value that is never disclosed does.
 
 This module names the policies that never bind failure, shows that class is
-inhabited, and proves the semantic fact the redundancy rests on. The strategic
-statement — that every policy has a value-binding one with the same public
-outcome law — is a separate edge and is not proved here.
+inhabited, and proves that every *pure* policy has a value-binding one with the
+same public outcome law, against any fixed opponents. That is the deviation
+certificate the edge from the value-binding game needs, for the policies a
+predraw would supply; carrying it to arbitrary behavioral policies is the
+remaining step.
 -/
 
 noncomputable section
@@ -172,14 +174,29 @@ def PatchMap.afterReveal {who : Player} {Γ : SourceCtx Player L} (patched : Pat
   match h with
   | .there h' => patched h' (view.back ownStep)
 
+/-- The binding the untranslated policy would choose, when the cell is this
+player's own. -/
+def PurePolicy.commitChoice {who : Player} {Γ : SourceCtx Player L} (unpatch : ViewMap who Γ)
+    (owner : Player) (payload : L.Ty)
+    (kernel : (owner = who) → DecisionView who Γ → PublicationResult (L.Val payload)) :
+    DecisionView who Γ → Option (PublicationResult (L.Val payload)) :=
+  fun view => if own : owner = who then some (kernel own (unpatch view)) else none
+
+/-- The disclosure the untranslated policy would choose, when the cell is this
+player's own. -/
+def PurePolicy.revealChoice {who : Player} {Γ : SourceCtx Player L} (unpatch : ViewMap who Γ)
+    (owner : Player) (kernel : (owner = who) → DecisionView who Γ → Bool) :
+    DecisionView who Γ → Option Bool :=
+  fun view => if own : owner = who then some (kernel own (unpatch view)) else none
+
 /-- Replace every unopenable binding by the canonical value of its payload, and
 refuse to open exactly the cells that were replaced. Both are decided by
 recomputing the original policy's decision at the view it held, which the two
 carried maps reconstruct: `patched` says which bindings were replaced, and
 `unpatch` undoes the replacement in the view before the original sees it.
 
-The translation lands in `ValueBinding`. That it preserves the public outcome
-law is the edge's deviation certificate and is not proved here. -/
+The translation lands in `ValueBinding`, and preserves the public outcome law:
+see `bindValues_publicOutcome_eq`. -/
 def PurePolicy.bindValuesFrom {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} → (p : SourceProgram Player L Γ O) →
     ViewMap who Γ → PatchMap who Γ → PurePolicy who p → PurePolicy who p
@@ -189,8 +206,7 @@ def PurePolicy.bindValuesFrom {who : Player} :
         (patched.afterSample sampleName payload) policy
   | _, _, .commit (payload := payload) cellName owner _ _ k, unpatch, patched, policy =>
       let ownStep : Bool := decide (owner = who)
-      let original : DecisionView who _ → Option (PublicationResult (L.Val payload)) :=
-        fun view => if own : owner = who then some (policy.1 own (unpatch view)) else none
+      let original := PurePolicy.commitChoice unpatch owner payload policy.1
       (fun own view =>
         match policy.1 own (unpatch view) with
         | .failure => .success (L.someValue payload)
@@ -200,8 +216,7 @@ def PurePolicy.bindValuesFrom {who : Player} :
   | _, _, .reveal (payload := payload) published owner cellName _ source _ k,
       unpatch, patched, policy =>
       let ownStep : Bool := decide (owner = who)
-      let original : DecisionView who _ → Option Bool :=
-        fun view => if own : owner = who then some (policy.1 own (unpatch view)) else none
+      let original := PurePolicy.revealChoice unpatch owner policy.1
       (fun own view => if patched source view then false else policy.1 own (unpatch view),
        bindValuesFrom k
         (unpatch.afterReveal ownStep published cellName owner payload original)
@@ -377,7 +392,11 @@ theorem patched_commit_own {who : Player} {Γ : SourceCtx Player L}
     {state state' : State L Γ} {history history' : History Player L}
     (inv : Patched unpatch patched state state' history history')
     (cellName : VarId) (payload : L.Ty)
-    (binding : PublicationResult (L.Val payload))
+    (binding translated : PublicationResult (L.Val payload))
+    (hTranslated : translated =
+      match binding with
+      | .failure => .success (L.someValue payload)
+      | .success value => .success value)
     (original : DecisionView who Γ → Option (PublicationResult (L.Val payload)))
     (hOriginal : original (sourceObserve who state', history' who) = some binding) :
     Patched (who := who)
@@ -386,16 +405,11 @@ theorem patched_commit_own {who : Player} {Γ : SourceCtx Player L}
       (Env.cons (x := cellName) (Val := CellVal L) (τ := .privateData who payload)
         binding state)
       (Env.cons (x := cellName) (Val := CellVal L) (τ := .privateData who payload)
-        (match binding with
-          | .failure => .success (L.someValue payload)
-          | .success value => .success value) state')
+        translated state')
       (Function.update history who
         (history who ++ [OwnAction.commit who cellName payload binding]))
       (Function.update history' who
-        (history' who ++ [OwnAction.commit who cellName payload
-          (match binding with
-            | .failure => .success (L.someValue payload)
-            | .success value => .success value)])) where
+        (history' who ++ [OwnAction.commit who cellName payload translated])) where
   publicEq := fun h => match h with | .there h' => inv.publicEq h'
   publicationEq := fun h => match h with | .there h' => inv.publicationEq h'
   foreignEq := fun h hne => by
@@ -403,6 +417,7 @@ theorem patched_commit_own {who : Player} {Γ : SourceCtx Player L}
     | here => exact absurd rfl hne
     | there h' => exact inv.foreignEq h' hne
   ownEq := fun h => by
+    subst hTranslated
     cases h with
     | here => cases binding <;> simp
     | there h' => exact inv.ownEq h'
@@ -410,6 +425,7 @@ theorem patched_commit_own {who : Player} {Γ : SourceCtx Player L}
     intro other hne
     simp only [Function.update_of_ne hne, inv.historyEq other hne]
   unpatchEq := by
+    subst hTranslated
     simp only [ViewMap.afterCommit, decide_true, back_sourceObserve, if_true,
       Function.update_self, List.dropLast_concat, hOriginal]
     rw [inv.unpatchEq]
@@ -420,6 +436,7 @@ theorem patched_commit_own {who : Player} {Γ : SourceCtx Player L}
     | here => cases binding <;> simp
     | there h' => cases cell <;> rfl
   patchedEq := fun h => by
+    subst hTranslated
     cases h with
     | here =>
         simp only [PatchMap.afterCommit, decide_true, back_sourceObserve, if_true,
@@ -579,5 +596,189 @@ theorem runWith_reveal_of_failure_bound
           (Function.update history owner
             (history owner ++ [OwnAction.reveal owner name disclose])) := by
   simp only [runWith, bound, ite_self]
+
+/-! ## The certificate: the translation preserves the public outcome law -/
+
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+theorem Revelation.result_congr {payload : L.Ty} (revelation : Revelation Γ payload)
+    (left right : State L Γ)
+    (publicationEq : ∀ {x τ} (h : HasVar Γ x (.publication τ)), left.get h = right.get h) :
+    revelation.result left = revelation.result right := by
+  cases revelation with
+  | unrevealed => rfl
+  | revealed cell => exact publicationEq cell
+
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+theorem SourceGuardRead.result_congr {author : Player} {τ : L.Ty}
+    (read : SourceGuardRead Γ author τ) (revelations : Revelations Γ)
+    (left right : State L Γ)
+    (publicEq : ∀ {x τ} (h : HasVar Γ x (.publicData τ)), left.get h = right.get h)
+    (publicationEq : ∀ {x τ} (h : HasVar Γ x (.publication τ)), left.get h = right.get h) :
+    read.result revelations left = read.result revelations right := by
+  cases read with
+  | publicData h => exact congrArg _ (publicEq h)
+  | privateData h => exact Revelation.result_congr _ _ _ publicationEq
+  | publication h => exact publicationEq h
+
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+theorem Obligation.accepts_congr (obligation : Obligation Γ) (revelations : Revelations Γ)
+    (left right : State L Γ)
+    (publicEq : ∀ {x τ} (h : HasVar Γ x (.publicData τ)), left.get h = right.get h)
+    (publicationEq : ∀ {x τ} (h : HasVar Γ x (.publication τ)), left.get h = right.get h) :
+    obligation.accepts revelations left = obligation.accepts revelations right := by
+  simp only [Obligation.accepts, SourceGuard.accepts,
+    Revelation.result_congr _ left right publicationEq]
+  refine congrArg _ ?_
+  funext x τ h hx
+  exact SourceGuardRead.result_congr _ _ left right publicEq publicationEq
+
+omit [IExpr.ResultTypes L] in
+/-- The two runs propose the same publication at the translated player's own
+reveal: a replaced binding is refused, and any other binding is unchanged. -/
+theorem proposal_eq {who : Player} {Γ : SourceCtx Player L}
+    {unpatch : ViewMap who Γ} {patched : PatchMap who Γ}
+    {state state' : State L Γ} {history history' : History Player L}
+    (inv : Patched unpatch patched state state' history history')
+    {name : VarId} {payload : L.Ty} (source : HasVar Γ name (.privateData who payload))
+    (disclose : Bool) :
+    (if (if decide (state.get source = .failure) then false else disclose) then
+        state'.get source else .failure) =
+      (if disclose then state.get source else .failure) := by
+  by_cases hfail : state.get source = .failure
+  · simp [hfail]
+  · have hown := inv.ownEq source
+    cases hget : state.get source with
+    | failure => exact absurd hget hfail
+    | success value =>
+        rw [hget] at hown
+        simp [hown]
+
+theorem bindValues_publicOutcome_eq {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} → (p : SourceProgram Player L Γ O) →
+    (unpatch : ViewMap who Γ) → (patched : PatchMap who Γ) → (policy : PurePolicy who p) →
+    (profile profile' : BehavioralProfile p) →
+    (∀ other, other ≠ who → profile' other = profile other) →
+    profile who = PurePolicy.toBehavioral p policy →
+    profile' who =
+      PurePolicy.toBehavioral p (PurePolicy.bindValuesFrom p unpatch patched policy) →
+    (state state' : State L Γ) → (registry : Registry Γ) → (revelations : Revelations Γ) →
+    (history history' : History Player L) →
+    Patched unpatch patched state state' history history' →
+    (runWith p profile' state' registry revelations history').map (publicOutcome p) =
+      (runWith p profile state registry revelations history).map (publicOutcome p)
+  | _, _, .ret payoffs, _, _, _, profile, profile', _, _, _, state, state', registry,
+      revelations, history, history', inv => by
+      simp only [runWith, FinDist.map_pure]
+      exact congrArg FinDist.pure
+        (sourcePublicEnv_congr state' state inv.publicEq inv.publicationEq)
+  | _, _, .sample sampleName fresh law k, unpatch, patched, policy, profile, profile',
+      agree, isOrig, isTrans, state, state', registry, revelations, history, history', inv => by
+      simp only [runWith, FinDist.map_bind]
+      rw [sourcePublicEnv_congr state' state inv.publicEq inv.publicationEq]
+      refine FinDist.bind_congr fun a _ => ?_
+      exact bindValues_publicOutcome_eq k (unpatch.afterSample sampleName _)
+        (patched.afterSample sampleName _) policy (afterSample profile) (afterSample profile')
+        agree isOrig isTrans _ _ _ _ _ _ (patched_sample inv sampleName _ a)
+  | _, _, .commit (payload := payload) cellName owner fresh guard k, unpatch, patched, policy,
+      profile, profile', agree, isOrig, isTrans, state, state', registry, revelations,
+      history, history', inv => by
+      simp only [runWith, FinDist.map_bind]
+      by_cases hw : owner = who
+      · subst hw
+        have hview : unpatch (sourceObserve owner state', history' owner) =
+            (sourceObserve owner state, history owner) := inv.unpatchEq
+        have hl : commitKernel profile' (sourceObserve owner state', history' owner) =
+            FinDist.pure (match policy.1 rfl (sourceObserve owner state, history owner) with
+              | .failure => .success (L.someValue payload)
+              | .success value => .success value) := by
+          rw [commitKernel, isTrans]
+          simp only [PurePolicy.toBehavioral, PurePolicy.bindValuesFrom, hview]
+        have hr : commitKernel profile (sourceObserve owner state, history owner) =
+            FinDist.pure (policy.1 rfl (sourceObserve owner state, history owner)) := by
+          rw [commitKernel, isOrig]
+          rfl
+        rw [hl, hr, FinDist.pure_bind, FinDist.pure_bind]
+        refine bindValues_publicOutcome_eq k _ _ policy.2 (afterCommit profile)
+          (afterCommit profile') (fun other hne => congrArg Prod.snd (agree other hne))
+          (congrArg Prod.snd isOrig) (congrArg Prod.snd isTrans) _ _ _ _ _ _
+          (patched_commit_own inv cellName payload
+            (policy.1 rfl (sourceObserve owner state, history owner)) _ rfl
+            (PurePolicy.commitChoice unpatch owner payload policy.1) ?_)
+        simp [PurePolicy.commitChoice, hview]
+      · have hobs : sourceObserve owner state' = sourceObserve owner state :=
+          sourceObserve_congr owner state' state inv.publicEq inv.publicationEq
+            (fun h => inv.foreignEq h hw)
+        have hhist : history' owner = history owner := inv.historyEq owner hw
+        have hkernel : commitKernel profile' (sourceObserve owner state', history' owner) =
+            commitKernel profile (sourceObserve owner state, history owner) := by
+          rw [commitKernel, commitKernel, hobs, hhist, agree owner hw]
+        rw [hkernel]
+        refine FinDist.bind_congr fun b _ => ?_
+        exact bindValues_publicOutcome_eq k _ _ policy.2 (afterCommit profile)
+          (afterCommit profile') (fun other hne => congrArg Prod.snd (agree other hne))
+          (congrArg Prod.snd isOrig) (congrArg Prod.snd isTrans) _ _ _ _ _ _
+          (patched_commit_foreign inv cellName owner payload hw b
+            (PurePolicy.commitChoice unpatch owner payload policy.1)
+            (fun view => dif_neg hw))
+  | _, _, .reveal (payload := payload) published owner cellName fresh source unresolved k,
+      unpatch, patched, policy, profile, profile', agree, isOrig, isTrans, state, state',
+      registry, revelations, history, history', inv => by
+      have haccept : ∀ (proposal : PublicationResult (L.Val payload)),
+          (registry.completedBy (published := published) revelations source).all
+              (·.accepts (revelations.reveal (published := published) source)
+                (Env.cons (Val := CellVal (Player := Player) L) (x := published)
+                  (τ := .publication payload) proposal state')) =
+            (registry.completedBy (published := published) revelations source).all
+              (·.accepts (revelations.reveal (published := published) source)
+                (Env.cons (Val := CellVal (Player := Player) L) (x := published)
+                  (τ := .publication payload) proposal state)) := by
+        intro proposal
+        refine congrArg (List.all _) (funext fun obligation => ?_)
+        exact Obligation.accepts_congr obligation _ _ _
+          (fun h => match h with
+            | .there h' => inv.publicEq h')
+          (fun h => match h with
+            | .here => rfl
+            | .there h' => inv.publicationEq h')
+      simp only [runWith, FinDist.map_bind]
+      by_cases hw : owner = who
+      · subst hw
+        have hview : unpatch (sourceObserve owner state', history' owner) =
+            (sourceObserve owner state, history owner) := inv.unpatchEq
+        have hl : revealKernel profile' (sourceObserve owner state', history' owner) =
+            FinDist.pure (if decide (state.get source = .failure) then false
+              else policy.1 rfl (sourceObserve owner state, history owner)) := by
+          rw [revealKernel, isTrans]
+          simp only [PurePolicy.toBehavioral, PurePolicy.bindValuesFrom, inv.patchedEq source,
+            hview]
+        have hr : revealKernel profile (sourceObserve owner state, history owner) =
+            FinDist.pure (policy.1 rfl (sourceObserve owner state, history owner)) := by
+          rw [revealKernel, isOrig]
+          rfl
+        rw [hl, hr, FinDist.pure_bind, FinDist.pure_bind,
+          proposal_eq inv source (policy.1 rfl (sourceObserve owner state, history owner)),
+          haccept]
+        exact bindValues_publicOutcome_eq k _ _ policy.2 (afterReveal profile)
+          (afterReveal profile') (fun other hne => congrArg Prod.snd (agree other hne))
+          (congrArg Prod.snd isOrig) (congrArg Prod.snd isTrans) _ _ _ _ _ _
+          (patched_reveal_own inv published cellName payload _ _ _
+            (PurePolicy.revealChoice unpatch owner policy.1) (by
+              simp [PurePolicy.revealChoice, hview]))
+      · have hobs : sourceObserve owner state' = sourceObserve owner state :=
+          sourceObserve_congr owner state' state inv.publicEq inv.publicationEq
+            (fun h => inv.foreignEq h hw)
+        have hhist : history' owner = history owner := inv.historyEq owner hw
+        have hkernel : revealKernel profile' (sourceObserve owner state', history' owner) =
+            revealKernel profile (sourceObserve owner state, history owner) := by
+          rw [revealKernel, revealKernel, hobs, hhist, agree owner hw]
+        have hcell : state'.get source = state.get source := inv.foreignEq source hw
+        rw [hkernel]
+        refine FinDist.bind_congr fun disclose _ => ?_
+        rw [hcell, haccept]
+        exact bindValues_publicOutcome_eq k _ _ policy.2 (afterReveal profile)
+          (afterReveal profile') (fun other hne => congrArg Prod.snd (agree other hne))
+          (congrArg Prod.snd isOrig) (congrArg Prod.snd isTrans) _ _ _ _ _ _
+          (patched_reveal_foreign inv published cellName owner payload hw _ disclose
+            (PurePolicy.revealChoice unpatch owner policy.1))
 
 end Vegas.SourceProgram
