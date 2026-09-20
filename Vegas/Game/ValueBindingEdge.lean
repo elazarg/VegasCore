@@ -28,10 +28,15 @@ open GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- The value-binding game simulates the source game, on the identity of
-outcomes and with no restriction on the deviations considered. -/
-def valueBindingSimulation (setup : Setup (Player := Player) (L := L)) :
-    GameForm.MixtureSimulationOn setup.valueBindingGame setup.gameForm id id
+/-- The value-binding game simulates the source game, under any reading of the
+outcome and with no restriction on the deviations considered. Both games have
+the same outcome, and the certificate equates laws rather than expectations, so
+the reading is a parameter: at `id` it is the edge itself, and at whatever map a
+later edge observes it is the left half of a composition. -/
+def valueBindingSimulationOn {Observation : Type}
+    (setup : Setup (Player := Player) (L := L))
+    (observe : SourceProgram.PublicOutcome setup.program → Observation) :
+    GameForm.MixtureSimulationOn setup.valueBindingGame setup.gameForm observe observe
       (fun _ _ => True) where
   compileStrategy _ strategy := strategy.val
   honest_law _ := rfl
@@ -43,12 +48,18 @@ def valueBindingSimulation (setup : Setup (Player := Player) (L := L)) :
       ⟨PurePolicy.toBehavioral setup.program (PurePolicy.bindValues setup.program choice),
         valueBinding_bindValues setup.program choice⟩, ?_⟩
     change (setup.publicRun
-      (Function.update (valueBindingProfile profile) who replacement)).map id = _
+      (Function.update (valueBindingProfile profile) who replacement)).map observe = _
     rw [hmixture, FinDist.map_bind, FinDist.bind_map]
     refine FinDist.bind_congr fun choice _ => ?_
     rw [valueBindingGame_play, valueBindingProfile_update]
     exact congrArg _
       (bindValues_publicRun_eq setup (valueBindingProfile profile) choice).symm
+
+/-- The edge read on the source outcome itself. -/
+def valueBindingSimulation (setup : Setup (Player := Player) (L := L)) :
+    GameForm.MixtureSimulationOn setup.valueBindingGame setup.gameForm id id
+      (fun _ _ => True) :=
+  setup.valueBindingSimulationOn id
 
 /-- Binding an unopenable candidate is worth nothing: a value-binding profile is
 ε-Nash in the full source game exactly when it is ε-Nash among policies that

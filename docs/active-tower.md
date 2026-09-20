@@ -27,6 +27,14 @@ every policy, so `Setup.isεNash_valueBindingGame_iff` and
 `valueBindingUtilitySimulation` gives the composable form at one-player
 coalitions.
 
+Because the edge considers every deviation, it composes: reading it on whatever
+map the next edge observes (`valueBindingSimulationOn`) and composing with the
+pending-message certificate gives `Setup.valueBindingPendingSimulation`, from
+the value-binding game straight to the public message service, with
+`valueBindingPendingGame_approximate_nash_iff` its same-error Nash equivalence
+against arbitrary native deviations. Commit-time failure is therefore absent
+from the source side of the whole tower at no cost.
+
 The certificate is two steps. `exists_pureMixture_publicRun` makes a behavioral
 deviation a finite mixture of pure policies, drawn before the private setup law:
 the induction carries a list of configurations, and `pointMixture` draws a

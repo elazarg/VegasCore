@@ -514,6 +514,12 @@ exactly when it is ε-Nash among policies that always bind a value.
 `valueBindingUtilitySimulation` puts the edge in the composable interface at
 one-player coalitions.
 
+Considering every deviation is also what lets the edge compose. Read on the map
+the next edge observes, it composes with the pending-message certificate into
+`Vegas.SourceProgram.Setup.valueBindingPendingSimulation`, and
+`valueBindingPendingGame_approximate_nash_iff` is the resulting equivalence
+between the value-binding game and the real message host.
+
 The proof is not the obvious translation. Replacing a failed binding by the
 canonical value and refusing at that reveal is correct for one cell, but the
 translated policy cannot tell a patched cell from one where the original
