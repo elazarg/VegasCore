@@ -605,6 +605,12 @@ against the continuation in which it opens from then on.
 — under that premise the player gives up nothing by joining
 `Vegas.SourceProgram.Disclosing`, the policies that never withhold.
 
+`Vegas.SourceProgram.Honest` is the two classes together — bind a value, then
+open it — and `Vegas.SourceProgram.run_successful` is what honest play produces:
+given that the retained guards accept, no cell of a completed run records a
+failure. That was the standing open obligation of the source semantics, and
+naming the two classes for the edges above is what made it statable.
+
 Quantified over every configuration the premise is also necessary, by
 `GameTheory.Math.Probability.FinDist.selective_stopping_le_iff`. So an honest-play
 layer is conditional by nature, not by weakness of the proof: compilation cannot

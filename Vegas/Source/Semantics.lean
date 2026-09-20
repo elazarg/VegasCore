@@ -496,15 +496,11 @@ theorem afterReveal_update {published : VarId} {owner : Player}
 
 end Steps
 
--- OPEN OBLIGATION: whole-run honest completion
--- `runWith_reveal_compatible` covers a single disclosure. Still unstated: if every
--- commitment binds a value, every reveal discloses, and the bound values satisfy
--- every retained guard, then every terminal publication succeeds. Stating it
--- requires a definition of honest profile under observation-dependent policies and
--- dependent public chance.
 /-- Guards cannot override an honest disclosure: when the bound value keeps every
 obligation the reveal completes compatible, the owner's choice alone decides the
-reveal, publishing the value on disclosure and failure on withholding. -/
+reveal, publishing the value on disclosure and failure on withholding. This is
+one disclosure; `GuardsAccept` asks for the acceptance it derives, at every
+reveal, and `run_successful` is the whole-run consequence. -/
 theorem runWith_reveal_compatible {published name : VarId} {owner : Player}
     {fresh : published ∉ Γ.map Prod.fst}
     {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}

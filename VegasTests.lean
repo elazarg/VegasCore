@@ -9,6 +9,7 @@ import VegasTests.Language
 import VegasTests.ResultExpressions
 import VegasTests.ValueBinding
 import VegasTests.Disclosure
+import VegasTests.Honest
 import VegasTests.SourceSemantics
 import VegasTests.SourceSetup
 

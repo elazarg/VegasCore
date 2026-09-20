@@ -11,6 +11,16 @@ terminal states. `Vegas.Source.Accounting` proves that complete executions
 resolve their obligations; `Vegas.Source.Safety` proves retained public guards
 are satisfied.
 
+`Vegas.Source.Honest` says what honest play produces. A policy is `Honest` when
+it binds a value everywhere it commits and opens everywhere it reveals, which is
+`ValueBinding` and `Disclosing` together. Honesty alone is not enough, because a
+retained guard may still reject, so `GuardsAccept` carries that premise where it
+is decided — at each reveal, in any state in which nothing has failed yet, with
+the obligations and publications threaded exactly as execution threads them.
+Under both, `run_successful`: no cell of a completed run records a failure.
+`VegasTests.Honest` discharges the premise on a concrete program, so it is a
+premise that can hold.
+
 See [source semantics](source-semantics.md) and the
 [source rationale](source-design-rationale.md).
 
