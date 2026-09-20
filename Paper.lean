@@ -4,6 +4,8 @@ import Vegas.Game.EventScheduling
 import Vegas.Game.EventCompilation
 import Vegas.Game.EventMessages
 import Vegas.Game.EventMessageStrategic
+import Vegas.Game.PendingCompositions
+import Vegas.Source.Honest
 import Vegas.Source.Safety
 import Vegas.Compile.EventGraphPolicy
 import Vegas.Compile.EventGraphReadout
@@ -395,5 +397,83 @@ theorem source_event_pending_deviation_guarantee [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_pending_deviation_guarantee
+
+/-! ## Source-side restrictions
+
+Two moves the source language offers are worth nothing to a player: binding a
+candidate that will never open, and randomizing. Each restriction is a game of
+its own, each simulates the full source game with every deviation considered,
+and each therefore composes onto the same message host. -/
+
+/-- Same-error Nash preservation and reflection between the game whose policies
+always bind a value and the pending-message service, against arbitrary native
+deviations. Commit-time failure is not among the source moves here. -/
+theorem value_binding_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode)
+    (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ)
+    (missing : Player → ℝ) (ε : ℝ)
+    (profile : Profile setup.valueBindingGame.sig) :
+    IsεNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
+        (fun outcome who => (setup.eventPendingPublicOutcome mode runtime outcome).elim
+          (missing who) (fun result => utility result who))
+        ε (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who)) ↔
+      IsεNash setup.valueBindingGame utility ε profile :=
+  setup.valueBindingPendingGame_approximate_nash_iff mode runtime feasible roster reactionRounds
+    wire order utility missing ε profile
+
+/-- info: 'Vegas.Paper.value_binding_event_pending_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.value_binding_event_pending_approximate_nash_iff
+
+/-- The same for the game whose policies never randomize: checking a pure source
+profile against the real host needs only pure source deviations. -/
+theorem pure_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode)
+    (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ)
+    (missing : Player → ℝ) (ε : ℝ)
+    (profile : Profile setup.pureGame.sig) :
+    IsεNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
+        (fun outcome who => (setup.eventPendingPublicOutcome mode runtime outcome).elim
+          (missing who) (fun result => utility result who))
+        ε (fun who => setup.compilePurePendingProfile mode runtime who (profile who)) ↔
+      IsεNash setup.pureGame utility ε profile :=
+  setup.purePendingGame_approximate_nash_iff mode runtime feasible roster reactionRounds
+    wire order utility missing ε profile
+
+/-- info: 'Vegas.Paper.pure_event_pending_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.pure_event_pending_approximate_nash_iff
+
+/-! ## Honest play -/
+
+/-- An honest profile -- one that binds a value at every commitment and opens at
+every reveal -- completes with no failure recorded anywhere, provided the guards
+it retains accept what it opens. -/
+theorem source_honest_run_successful [IExpr.ResultTypes L]
+    {Γ : SourceCtx Player L} {O : Finset VarId}
+    (p : SourceProgram Player L Γ O) (profile : SourceProgram.BehavioralProfile p)
+    (honest : ∀ who, SourceProgram.Honest p (profile who))
+    (guards : SourceProgram.GuardsAccept p [] (Revelations.initial Γ))
+    (state : State L Γ) (hstate : SourceProgram.Successful state) :
+    ∀ terminal ∈ (SourceProgram.run p profile state).support,
+      SourceProgram.Successful terminal :=
+  SourceProgram.run_successful p profile honest guards state hstate
+
+/-- info: 'Vegas.Paper.source_honest_run_successful' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_honest_run_successful
 
 end Vegas.Paper

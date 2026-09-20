@@ -21,6 +21,9 @@ Under both, `run_successful`: no cell of a completed run records a failure.
 `VegasTests.Honest` discharges the premise on a concrete program, so it is a
 premise that can hold.
 
+The three results are pinned on the audit surface: the two restricted games
+against the message host, and honest completion.
+
 See [source semantics](source-semantics.md) and the
 [source rationale](source-design-rationale.md).
 
