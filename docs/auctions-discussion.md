@@ -514,6 +514,11 @@ exactly when it is ε-Nash among policies that always bind a value.
 `valueBindingUtilitySimulation` puts the edge in the composable interface at
 one-player coalitions.
 
+What the edge does not give is coalitions. It adds no device a coalition could
+exploit, but its certificate answers a behavioral deviation with a purification
+mixture, and a coalition bound needs one source witness serving every member at
+once. See [outcomes and utilities](outcomes-and-utilities.md).
+
 Considering every deviation is also what lets the edge compose. Read on the map
 the next edge observes, it composes with the pending-message certificate into
 `Vegas.SourceProgram.Setup.valueBindingPendingSimulation`, and

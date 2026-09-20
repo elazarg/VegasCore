@@ -51,6 +51,18 @@ private information to another. The witness is
 claims therefore need their own certificate, never a corollary of the
 unilateral one.
 
+Channels are not the only obstruction, and reading them as the only one invites
+a wrong inference. The value-binding edge adds nothing to the source game — it
+is an inclusion on strategies, with the identity on outcomes, so there is no
+device for a coalition to exploit — and it still carries only the one-player
+index. Its certificate answers a behavioral deviation with a purification
+mixture, and the coalition predicate asks only that *some* member fail to gain;
+that member may differ between components, so component-wise coalition bounds do
+not average. Against *pure* coalition deviations the translation is a point mass
+and the obstruction disappears, but the interface has no place to record such a
+restriction. So a channel-free edge is not thereby a coalition edge, and the
+reason to check is the shape of the certificate, not the presence of a channel.
+
 The channel is not a modelling flourish. `InteractionTests.CoalitionChannel`
 runs the same comparison against the actual message application: nature draws a
 secret, the first principal alone observes it, and the host's `handle` rejects
