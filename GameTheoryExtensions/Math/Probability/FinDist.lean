@@ -166,4 +166,64 @@ theorem probOf_eq_expect_of_weighting (law reference : FinDist α) (event : Set 
   rw [mul_comm (reference.prob outcome), ← hweight]
   split_ifs <;> simp only [mul_one, mul_zero]
 
+/-! ## Couplings with prescribed marginals
+
+A decision point read once per run needs a law over whole assignments whose
+marginal at each point of interest is the kernel there. Nothing constrains how
+the draws at different points relate, because only one of them is ever read, so
+a sequential fold serves and no product construction is required. Finitely many
+points is what makes a finite law possible at all: with unboundedly many
+prescribed marginals no finite coupling exists. -/
+
+/-- Draw a value for each listed point, and fall back elsewhere. The draws are
+made in sequence, so they are coupled rather than independent. -/
+def pointCoupling {Point : Type*} {Value : Point → Type*} [DecidableEq Point]
+    (kernel : (point : Point) → FinDist (Value point))
+    (fallback : (point : Point) → Value point) :
+    List Point → FinDist ((point : Point) → Value point)
+  | [] => pure fallback
+  | point :: rest => (pointCoupling kernel fallback rest).bind fun assigned =>
+      (kernel point).map fun value => Function.update assigned point value
+
+/-- The marginal at a listed point is the kernel there. -/
+theorem pointCoupling_map_apply {Point : Type*} {Value : Point → Type*} [DecidableEq Point]
+    (kernel : (point : Point) → FinDist (Value point))
+    (fallback : (point : Point) → Value point) :
+    (points : List Point) → (point : Point) → point ∈ points →
+    (pointCoupling kernel fallback points).map (fun assigned => assigned point) = kernel point
+  | head :: rest, point, member => by
+      rw [pointCoupling, map_bind]
+      by_cases h : point = head
+      · subst h
+        have step : ∀ assigned : (point : Point) → Value point,
+            ((kernel point).map fun value => Function.update assigned point value).map
+              (fun assigned => assigned point) = kernel point := by
+          intro assigned
+          rw [map_comp]
+          simp only [Function.comp_def, Function.update_self]
+          exact map_id _
+        simp only [step, bind_const]
+      · have step : ∀ assigned : (point : Point) → Value point,
+            ((kernel head).map fun value => Function.update assigned head value).map
+              (fun assigned => assigned point) = pure (assigned point) := by
+          intro assigned
+          rw [map_comp]
+          simp only [Function.comp_def, Function.update_of_ne h]
+          exact map_const _ _
+        simp only [step]
+        exact pointCoupling_map_apply kernel fallback rest point
+          ((List.mem_cons.mp member).resolve_left h)
+
+/-- A continuation that reads one listed point sees exactly the kernel there. -/
+theorem pointCoupling_bind_apply {Point : Type*} {Value : Point → Type*} {γ : Type*}
+    [DecidableEq Point] (kernel : (point : Point) → FinDist (Value point))
+    (fallback : (point : Point) → Value point) (points : List Point)
+    (point : Point) (member : point ∈ points)
+    (continuation : Value point → FinDist γ) :
+    (pointCoupling kernel fallback points).bind
+        (fun assigned => continuation (assigned point)) =
+      (kernel point).bind continuation := by
+  rw [← pointCoupling_map_apply kernel fallback points point member, map_eq_bind, bind_bind]
+  exact bind_congr fun _ _ => (pure_bind _ _).symm
+
 end GameTheory.Math.Probability.FinDist

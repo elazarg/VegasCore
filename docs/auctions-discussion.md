@@ -561,14 +561,18 @@ per branch is not a mixture chosen in advance.
 configurations rather than one. A chance step, or another player's action, pushes
 each of its successors onto the list, and the rest of the program is then served
 by a single mixture. At the deviator's own decision point the actions of the
-listed configurations are drawn in advance, by `pointMixture`, which folds over
-the views those configurations present.
+listed configurations are drawn in advance, by
+`GameTheory.Math.Probability.FinDist.pointCoupling`, which folds over the views
+those configurations present.
 
 Two things make that fold enough, and both are facts about source programs
 rather than about games in general. A run visits a decision point once, so it
 reads one drawn action and the draws at the other views may be coupled
 arbitrarily — no product construction, no independence, and no need for the
-views at a point to be distinguishable. And decision points at different program
+views at a point to be distinguishable. That is why a coupling suffices and why
+it is generic probability rather than anything about games: the construction
+prescribes marginals at finitely many points and says nothing about their joint
+law. And decision points at different program
 positions have different contexts, hence different types, so independence
 *between* points is what the syntax already gives. The generic route is the
 reachable-information-set machinery of `GameTheory.Protocol.Information`, used

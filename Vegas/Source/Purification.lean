@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.Setup
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # Every policy is a mixture of pure ones
 
@@ -14,8 +15,10 @@ The construction here draws the actions of the whole program up front. A source
 program is a straight line — every decision point of a player occurs exactly
 once in every run — so a draw at a decision point may be coupled arbitrarily
 across the views reachable there, and only independence *between* decision
-points is needed. The draws at one point therefore come from a fold over the
-finitely many reachable configurations, which needs no product construction.
+points is needed. The draws at one point therefore come from a coupling with
+prescribed marginals over the finitely many reachable configurations, which
+`GameTheory.Math.Probability.FinDist.pointCoupling` builds by a fold and which
+needs no product.
 
 The induction runs over a list of configurations rather than one, so that a
 single mixture serves every branch created before the point reached.
@@ -172,57 +175,6 @@ theorem afterReveal_update {published : VarId} {owner : Player}
 
 end Steps
 
-/-! ## Drawing a decision point's actions in advance -/
-
-/-- Draw an action for each listed view, and act by default elsewhere. The draws
-are made in sequence rather than independently: any coupling will do, because a
-run visits a decision point once and so reads exactly one of them. -/
-def pointMixture {View : Type} {Action : Type} [DecidableEq View]
-    (kernel : View → FinDist Action) (fallback : View → Action) :
-    List View → FinDist (View → Action)
-  | [] => FinDist.pure fallback
-  | view :: rest => (pointMixture kernel fallback rest).bind fun choice =>
-      (kernel view).map fun action => Function.update choice view action
-
-/-- What a listed view is assigned is distributed by the kernel there. -/
-theorem pointMixture_map_apply {View : Type} {Action : Type} [DecidableEq View]
-    (kernel : View → FinDist Action) (fallback : View → Action) :
-    (views : List View) → (view : View) → view ∈ views →
-    (pointMixture kernel fallback views).map (fun choice => choice view) = kernel view
-  | head :: rest, view, member => by
-      rw [pointMixture, FinDist.map_bind]
-      by_cases h : view = head
-      · subst h
-        have step : ∀ choice : View → Action,
-            ((kernel view).map fun action => Function.update choice view action).map
-              (fun assigned => assigned view) = kernel view := by
-          intro choice
-          rw [FinDist.map_comp]
-          simp only [Function.comp_def, Function.update_self]
-          exact FinDist.map_id _
-        simp only [step, FinDist.bind_const]
-      · have step : ∀ choice : View → Action,
-            ((kernel head).map fun action => Function.update choice head action).map
-              (fun assigned => assigned view) = FinDist.pure (choice view) := by
-          intro choice
-          rw [FinDist.map_comp]
-          simp only [Function.comp_def, Function.update_of_ne h]
-          exact FinDist.map_const _ _
-        simp only [step]
-        exact pointMixture_map_apply kernel fallback rest view
-          ((List.mem_cons.mp member).resolve_left h)
-
-/-- A continuation that reads one listed view sees the kernel there. -/
-theorem pointMixture_bind_apply {View : Type} {Action : Type} {β : Type} [DecidableEq View]
-    (kernel : View → FinDist Action) (fallback : View → Action) (views : List View)
-    (view : View) (member : view ∈ views) (continuation : Action → FinDist β) :
-    (pointMixture kernel fallback views).bind
-        (fun assigned => continuation (assigned view)) =
-      (kernel view).bind continuation := by
-  rw [← pointMixture_map_apply kernel fallback views view member, FinDist.map_eq_bind,
-    FinDist.bind_bind]
-  exact FinDist.bind_congr fun _ _ => (FinDist.pure_bind _ _).symm
-
 /-! ## Every policy is a mixture of pure ones -/
 
 /-- One mixture of pure policies reproduces a behavioral policy's law from every
@@ -264,7 +216,7 @@ theorem exists_pureMixture {who : Player} :
           (configs.flatMap fun config =>
             ((policy.1 rfl (Configuration.view owner config)).supportFinset.toList).map
               (commitSuccessor name guard config))
-        refine ⟨(pointMixture (policy.1 rfl) (fun _ => .failure)
+        refine ⟨(FinDist.pointCoupling (policy.1 rfl) (fun _ => .failure)
             (configs.map (Configuration.view owner))).bind fun assigned =>
           tail.bind fun rest => FinDist.pure (fun _ => assigned, rest),
           fun config hconfig => ?_⟩
@@ -288,7 +240,7 @@ theorem exists_pureMixture {who : Player} :
               PurePolicy.toBehavioral k choice.2 := fun _ => rfl
         simp only [runFrom_commit, hkernel, hpure, hsnd, afterCommit_update, FinDist.bind_bind,
           FinDist.pure_bind]
-        rw [pointMixture_bind_apply (policy.1 rfl) (fun _ => PublicationResult.failure)
+        rw [FinDist.pointCoupling_bind_apply (policy.1 rfl) (fun _ => PublicationResult.failure)
           (configs.map (Configuration.view owner)) (Configuration.view owner config) hview
           (fun choice => tail.bind fun rest =>
             runFrom k (Function.update (afterCommit profile) owner
@@ -326,7 +278,7 @@ theorem exists_pureMixture {who : Player} :
           (configs.flatMap fun config =>
             ((policy.1 rfl (Configuration.view owner config)).supportFinset.toList).map
               (revealSuccessor published source config))
-        refine ⟨(pointMixture (policy.1 rfl) (fun _ => false)
+        refine ⟨(FinDist.pointCoupling (policy.1 rfl) (fun _ => false)
             (configs.map (Configuration.view owner))).bind fun assigned =>
           tail.bind fun rest => FinDist.pure (fun _ => assigned, rest),
           fun config hconfig => ?_⟩
@@ -353,7 +305,7 @@ theorem exists_pureMixture {who : Player} :
               PurePolicy.toBehavioral k choice.2 := fun _ => rfl
         simp only [runFrom_reveal, hkernel, hpure, hsnd, afterReveal_update, FinDist.bind_bind,
           FinDist.pure_bind]
-        rw [pointMixture_bind_apply (policy.1 rfl) (fun _ => false)
+        rw [FinDist.pointCoupling_bind_apply (policy.1 rfl) (fun _ => false)
           (configs.map (Configuration.view owner)) (Configuration.view owner config) hview
           (fun disclose => tail.bind fun rest =>
             runFrom k (Function.update (afterReveal profile) owner
