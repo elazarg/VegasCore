@@ -21,15 +21,20 @@ binding a value and refusing to open it. `SourceProgram.ValueBinding` names the
 policies that never do it, and `Setup.valueBindingGame` is the game they play:
 same program, same setup law, same public outcome, fewer strategies.
 `Setup.valueBindingSimulation` is the simulation to the full source game —
-inclusion on strategies, identity on outcomes, and a deviation certificate that
-matches each covered deviation by a single value-binding policy
-(`exists_valueBinding_publicRun_eq`, from the translation
-`PurePolicy.bindValues` and its law `bindValues_publicRun_eq`). Covered means
-value-binding or pure (`Setup.BindingConsidered`); a policy randomizing between
-binding failure and binding a value is neither, so the transfer is the
-class-relative `Setup.isεNash_valueBindingGame_iff`, not an unconditional one.
-Widening it is the single-agent predraw, discussed in
-[the auctions discussion](auctions-discussion.md).
+inclusion on strategies, identity on outcomes, and a deviation certificate for
+every policy, so `Setup.isεNash_valueBindingGame_iff` and
+`isNash_valueBindingGame_iff` hold with no side condition and
+`valueBindingUtilitySimulation` gives the composable form at one-player
+coalitions.
+
+The certificate is two steps. `exists_pureMixture_publicRun` makes a behavioral
+deviation a finite mixture of pure policies, drawn before the private setup law:
+the induction carries a list of configurations, and `pointMixture` draws a
+decision point's actions in advance by folding over the views those
+configurations present, which suffices because a run visits a decision point
+once. `PurePolicy.bindValues` then translates a pure policy into one that binds
+values and refuses where it replaced a binding, with `bindValues_publicRun_eq`
+its law. See [the auctions discussion](auctions-discussion.md).
 
 ## Sequential execution
 

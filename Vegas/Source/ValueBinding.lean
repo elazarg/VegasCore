@@ -836,7 +836,7 @@ strategies change: the program, the setup law and the public outcome are the
 same, so the two games are compared by the identity on outcomes. -/
 
 /-- A policy that never binds an unopenable candidate, as a strategy. -/
-def ValueBindingPolicy (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
+@[reducible] def ValueBindingPolicy (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
     (p : SourceProgram Player L Γ O) : Type :=
   {policy : BehavioralPolicy who p // ValueBinding p policy}
 
@@ -852,7 +852,8 @@ def valueBindingProfile {Γ : SourceCtx Player L} {O : Finset VarId}
 namespace Setup
 
 /-- The value-binding game of a setup. -/
-def valueBindingGame (setup : Setup (Player := Player) (L := L)) : GameForm Player where
+@[reducible] def valueBindingGame (setup : Setup (Player := Player) (L := L)) :
+    GameForm Player where
   sig :=
     { Strategy := fun who => ValueBindingPolicy who setup.program
       Outcome := SourceProgram.PublicOutcome setup.program }

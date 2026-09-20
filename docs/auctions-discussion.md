@@ -506,14 +506,13 @@ covered deviation is matched by a *single* value-binding policy, which is
 out where failure is only ever a disclosure decision transports along the rest
 of the tower unchanged.
 
-What the edge covers is named rather than assumed.
-`Vegas.SourceProgram.Setup.BindingConsidered` is the deviation class: every
-value-binding policy, and every pure one. Neither contains the other, and their
-union is not every policy — one that randomizes between binding failure and
-binding a value is in neither. At that class
-`Vegas.SourceProgram.Setup.isεNash_valueBindingGame_iff` reads: a value-binding
-profile is ε-Nash in the value-binding game exactly when no covered deviation in
-the full source game beats it by more than ε.
+The edge covers every deviation, so
+`Vegas.SourceProgram.Setup.isεNash_valueBindingGame_iff` reads without a
+side condition: a value-binding profile is ε-Nash in the full source game
+exactly when it is ε-Nash among policies that always bind a value.
+`isNash_valueBindingGame_iff` is the same at ε zero, and
+`valueBindingUtilitySimulation` puts the edge in the composable interface at
+one-player coalitions.
 
 The proof is not the obvious translation. Replacing a failed binding by the
 canonical value and refusing at that reveal is correct for one cell, but the
@@ -544,25 +543,37 @@ translated player's own binding, and at its own reveal the refusal lands where
 the original published failure anyway. Guard checks agree because
 `Obligation.accepts` reads publications, never a raw binding.
 
-What remains is the predraw, and it is exactly what would widen the deviation
-class to every policy: the Kuhn-style statement that a behavioral policy's
-law is a finite mixture of pure ones. Only the deviator randomizes in the
-certificate, so the single-agent case suffices — but not a per-configuration
-one. The mixture has to be drawn before the private initial law, and a single
-pure policy has to serve every branch of every chance draw and of every other
-player's action. So the naive induction fails: a mixture chosen per branch is
-not a mixture chosen in advance.
+The other half of the certificate is the predraw: the Kuhn-style statement that
+a behavioral policy's law is a finite mixture of pure ones. Only the deviator
+randomizes in the certificate, so the single-agent case suffices — but not a
+per-configuration one. The mixture has to be drawn before the private initial
+law, and a single pure policy has to serve every branch of every chance draw and
+of every other player's action. So the naive induction fails: a mixture chosen
+per branch is not a mixture chosen in advance.
 
-The standard construction draws independently per *view* rather than per branch:
-branches a player cannot distinguish share the draw, and a player meets each
-view at most once because each decision point occurs once and views at different
-points have different contexts. That needs the finite set of views reachable at
-a decision point, which is what `GameTheory.Protocol.Information` supplies
-generically through its support-site machinery.
-`Vegas/EventGraph/SchedulerProtocol.lean` is a worked instantiation of it, at
-the cost of first giving source execution a state-machine presentation.
+`Vegas.SourceProgram.exists_pureMixture` proves it by inducting over a *list* of
+configurations rather than one. A chance step, or another player's action, pushes
+each of its successors onto the list, and the rest of the program is then served
+by a single mixture. At the deviator's own decision point the actions of the
+listed configurations are drawn in advance, by `pointMixture`, which folds over
+the views those configurations present.
 
-The same construction is what a later "honest play" layer would need, where
+Two things make that fold enough, and both are facts about source programs
+rather than about games in general. A run visits a decision point once, so it
+reads one drawn action and the draws at the other views may be coupled
+arbitrarily — no product construction, no independence, and no need for the
+views at a point to be distinguishable. And decision points at different program
+positions have different contexts, hence different types, so independence
+*between* points is what the syntax already gives. The generic route is the
+reachable-information-set machinery of `GameTheory.Protocol.Information`, used
+at the service layer; it is not needed here, and would have cost source
+execution a state-machine presentation first.
+
+`Vegas.SourceProgram.exists_pureMixture_publicRun` is the setup-level form: the
+list is the support of the initial law, so the mixture precedes the private
+draw.
+
+The same two pieces are what a later "honest play" layer would reuse, where
 players never refuse to open. Compilation cannot preserve that class
 unconditionally, since a native player may always withhold; the interesting
 statement there is a conditional one.
@@ -586,28 +597,21 @@ Each format exercises a different point:
 
 ## Open questions
 
-1. The value-binding edge covers pure deviations and value-binding ones, not a
-   policy that randomizes between binding failure and binding a value. Closing
-   that needs the single-agent predraw, whose mixture is drawn before the
-   private setup law and per view rather than per branch. Until then the
-   edge yields the class-relative ε-Nash reading, not the unconditional
-   transfer. See [Retiring commit-time
-   failure](#retiring-commit-time-failure).
-2. Allocation encoding: A1, A3, or A4? Is A2 ever the right restriction?
-3. Should VegasCore check payoff conservation?
-4. Types: V1 alone, or V4 to reuse the prior inside the game?
-5. Money: which properties are standing assumptions and which are theorem
+1. Allocation encoding: A1, A3, or A4? Is A2 ever the right restriction?
+2. Should VegasCore check payoff conservation?
+3. Types: V1 alone, or V4 to reuse the prior inside the game?
+4. Money: which properties are standing assumptions and which are theorem
    parameters?
-6. The truthfulness notion for commit-reveal programs, and whether the source
+5. The truthfulness notion for commit-reveal programs, and whether the source
    needs simultaneous disclosure.
-7. The bridge theorem to quasilinear direct mechanisms.
-8. Whether the medium's channels are answered by widening the source-side
+6. The bridge theorem to quasilinear direct mechanisms.
+7. Whether the medium's channels are answered by widening the source-side
    adversary, as the position above proposes, or by some change to the language
    itself. This is the open design question, not whether the channels exist.
-9. Under that position: a source opponent class matching the medium's
+8. Under that position: a source opponent class matching the medium's
    observations and a dominance certificate against it; a correlated coalition
    deviation class and a coalition certificate at the pending-message edge.
-10. Collusion-resistance of the chosen settlement, which replaces
-    collusion-impossibility.
-11. An opponent-independent backtranslation at the pending-message edge, for
+9. Collusion-resistance of the chosen settlement, which replaces
+   collusion-impossibility.
+10. An opponent-independent backtranslation at the pending-message edge, for
     Bayes-Nash under V1.
