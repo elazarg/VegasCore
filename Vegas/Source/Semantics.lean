@@ -104,7 +104,10 @@ abbrev History (Player : Type) (L : IExpr) := Player → List (OwnAction Player 
 abbrev DecisionView (who : Player) (Γ : SourceCtx Player L) :=
   SourceObservation L who Γ × List (OwnAction Player L)
 
-@[reducible] def BehavioralPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+/-- A policy prescribing a law over actions at every decision point this player
+owns. Reducible on purpose: its projections have to line up at reducible
+transparency, or rewriting under a `.1`/`.2` silently declines to fire. -/
+abbrev BehavioralPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     SourceProgram Player L Γ O → Type
   | _, _, .ret _ => PUnit
   | _, _, .sample _ _ _ k => BehavioralPolicy who k
@@ -115,6 +118,11 @@ abbrev DecisionView (who : Player) (Γ : SourceCtx Player L) :=
       ((owner = who) → DecisionView who Γ → FinDist Bool) ×
         BehavioralPolicy who k
 
+/-- One policy per player. A profile here is a plain function, so a deviation
+updates it at one coordinate; the game-form layer says the same thing as
+`Profile.update`, which is definitionally equal. Bridge lemmas rewrite toward
+the plain function update, because that is the form the laws below are stated
+in. -/
 abbrev BehavioralProfile {Γ : SourceCtx Player L} {O : Finset VarId}
     (p : SourceProgram Player L Γ O) := ∀ who, BehavioralPolicy who p
 
@@ -124,8 +132,9 @@ A pure policy chooses an action outright rather than a law over actions. These
 are what a predraw produces, and they are the policies whose own past decisions
 can be recomputed rather than remembered. -/
 
-/-- A policy that acts without randomizing. -/
-@[reducible] def PurePolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+/-- A policy that acts without randomizing. Reducible for the same reason as
+`BehavioralPolicy`. -/
+abbrev PurePolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     SourceProgram Player L Γ O → Type
   | _, _, .ret _ => PUnit
   | _, _, .sample _ _ _ k => PurePolicy who k
@@ -340,6 +349,152 @@ def runWith : {Γ : SourceCtx Player L} → {O : Finset VarId} →
 
 def run (p : SourceProgram Player L Γ O) (profile : BehavioralProfile p) (s : State L Γ) :=
   runWith p profile s [] (Revelations.initial Γ) (fun _ => [])
+
+/-! ## Execution as a configuration transformer
+
+The same steps `runWith` takes, named: what a program point threads, what each
+constructor does to it, and that replacing one player's policy commutes with
+taking a step. Reasoning about a run proceeds by these rather than by unfolding
+`runWith` at each use. -/
+
+/-- Everything `runWith` threads through a program point. -/
+structure Config (Player : Type) (L : IExpr) (Γ : SourceCtx Player L) where
+  /-- The cells bound so far. -/
+  state : State L Γ
+  /-- The obligations retained so far. -/
+  registry : Registry Γ
+  /-- What has been published so far. -/
+  revelations : Revelations Γ
+  /-- What each player did so far. -/
+  history : History Player L
+
+/-- Run a program from a configuration. -/
+def runFrom {Γ : SourceCtx Player L} {O : Finset VarId} (p : SourceProgram Player L Γ O)
+    (profile : BehavioralProfile p) (config : Config Player L Γ) :
+    FinDist (State L (terminalCtx p)) :=
+  runWith p profile config.state config.registry config.revelations config.history
+
+/-- What a player sees at a configuration. -/
+def Config.view {Γ : SourceCtx Player L} (who : Player)
+    (config : Config Player L Γ) : DecisionView who Γ :=
+  (sourceObserve who config.state, config.history who)
+
+section Successors
+
+variable {Γ : SourceCtx Player L} {name : VarId} {payload : L.Ty}
+
+/-- The configuration a public sample reaches. -/
+def sampleSuccessor (name : VarId) (config : Config Player L Γ) (value : L.Val payload) :
+    Config Player L ((name, .publicData payload) :: Γ) :=
+  ⟨Env.cons value config.state, Registry.weaken config.registry,
+    Revelations.weaken config.revelations, config.history⟩
+
+/-- The configuration a binding reaches. -/
+def commitSuccessor {owner : Player} (name : VarId)
+    (guard : SourceGuard L Γ owner name payload) (config : Config Player L Γ)
+    (choice : PublicationResult (L.Val payload)) :
+    Config Player L ((name, .privateData owner payload) :: Γ) :=
+  ⟨Env.cons choice config.state,
+    { owner := owner, subject := name, payload := payload, source := .here,
+      guard := guard.weaken } :: Registry.weaken config.registry,
+    Revelations.weaken config.revelations,
+    Function.update config.history owner
+      (config.history owner ++ [OwnAction.commit owner name payload choice])⟩
+
+/-- The configuration a publication reaches, guards included. -/
+def revealSuccessor {owner : Player} (published : VarId)
+    (source : HasVar Γ name (.privateData owner payload))
+    (config : Config Player L Γ) (disclose : Bool) :
+    Config Player L ((published, .publication payload) :: Γ) :=
+  let proposal : PublicationResult (L.Val payload) :=
+    if disclose then config.state.get source else .failure
+  let revealed : Revelations ((published, .publication payload) :: Γ) :=
+    Revelations.reveal (published := published) config.revelations source
+  ⟨Env.cons
+      (if (Registry.completedBy (published := published) config.registry config.revelations
+          source).all (·.accepts revealed (Env.cons proposal config.state))
+        then proposal else .failure)
+      config.state,
+    Registry.weaken config.registry, revealed,
+    Function.update config.history owner
+      (config.history owner ++ [OwnAction.reveal owner name disclose])⟩
+
+variable {O : Finset VarId}
+
+theorem runFrom_sample {fresh : name ∉ Γ.map Prod.fst}
+    {law : L.DistExpr (SourcePublicCtx L Γ) payload}
+    {k : SourceProgram Player L ((name, .publicData payload) :: Γ) O}
+    (profile : BehavioralProfile (SourceProgram.sample name fresh law k))
+    (config : Config Player L Γ) :
+    runFrom (SourceProgram.sample name fresh law k) profile config =
+      (L.evalDist law (sourcePublicEnv config.state)).bind fun value =>
+        runFrom k (afterSample profile) (sampleSuccessor name config value) := rfl
+
+theorem runFrom_commit {owner : Player} {fresh : name ∉ Γ.map Prod.fst}
+    {guard : SourceGuard L Γ owner name payload}
+    {k : SourceProgram Player L ((name, .privateData owner payload) :: Γ) (insert name O)}
+    (profile : BehavioralProfile (SourceProgram.commit name owner fresh guard k))
+    (config : Config Player L Γ) :
+    runFrom (SourceProgram.commit name owner fresh guard k) profile config =
+      (commitKernel profile (Config.view owner config)).bind fun choice =>
+        runFrom k (afterCommit profile) (commitSuccessor name guard config choice) := rfl
+
+theorem runFrom_reveal {published : VarId} {owner : Player}
+    {fresh : published ∉ Γ.map Prod.fst}
+    {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
+    {k : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
+    (profile : BehavioralProfile
+      (SourceProgram.reveal published owner name fresh source unresolved k))
+    (config : Config Player L Γ) :
+    runFrom (SourceProgram.reveal published owner name fresh source unresolved k)
+        profile config =
+      (revealKernel profile (Config.view owner config)).bind fun disclose =>
+        runFrom k (afterReveal profile) (revealSuccessor published source config disclose) := rfl
+
+end Successors
+
+section Steps
+
+variable {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {payload : L.Ty}
+
+theorem afterSample_update {fresh : name ∉ Γ.map Prod.fst}
+    {law : L.DistExpr (SourcePublicCtx L Γ) payload}
+    {k : SourceProgram Player L ((name, .publicData payload) :: Γ) O}
+    (profile : BehavioralProfile (SourceProgram.sample name fresh law k)) (who : Player)
+    (policy : BehavioralPolicy who (SourceProgram.sample name fresh law k)) :
+    afterSample (Function.update profile who policy) =
+      Function.update (afterSample profile) who policy := rfl
+
+theorem afterCommit_update {owner : Player} {fresh : name ∉ Γ.map Prod.fst}
+    {guard : SourceGuard L Γ owner name payload}
+    {k : SourceProgram Player L ((name, .privateData owner payload) :: Γ) (insert name O)}
+    (profile : BehavioralProfile (SourceProgram.commit name owner fresh guard k))
+    (who : Player)
+    (policy : BehavioralPolicy who (SourceProgram.commit name owner fresh guard k)) :
+    afterCommit (Function.update profile who policy) =
+      Function.update (afterCommit profile) who policy.2 := by
+  funext actor
+  by_cases h : actor = who
+  · subst h; simp [afterCommit]
+  · simp [afterCommit, Function.update_of_ne h]
+
+theorem afterReveal_update {published : VarId} {owner : Player}
+    {fresh : published ∉ Γ.map Prod.fst}
+    {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
+    {k : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
+    (profile : BehavioralProfile
+      (SourceProgram.reveal published owner name fresh source unresolved k))
+    (who : Player)
+    (policy : BehavioralPolicy who
+      (SourceProgram.reveal published owner name fresh source unresolved k)) :
+    afterReveal (Function.update profile who policy) =
+      Function.update (afterReveal profile) who policy.2 := by
+  funext actor
+  by_cases h : actor = who
+  · subst h; simp [afterReveal]
+  · simp [afterReveal, Function.update_of_ne h]
+
+end Steps
 
 -- OPEN OBLIGATION: whole-run honest completion
 -- `runWith_reveal_compatible` covers a single disclosure. Still unstated: if every

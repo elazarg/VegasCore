@@ -835,7 +835,8 @@ The game a source program presents once a binding must carry a value. Only the
 strategies change: the program, the setup law and the public outcome are the
 same, so the two games are compared by the identity on outcomes. -/
 
-/-- A policy that never binds an unopenable candidate, as a strategy. -/
+/-- A policy that never binds an unopenable candidate, as a strategy. Reducible
+so that the game's strategy type and this one are the same term to a rewrite. -/
 @[reducible] def ValueBindingPolicy (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
     (p : SourceProgram Player L Γ O) : Type :=
   {policy : BehavioralPolicy who p // ValueBinding p policy}
@@ -851,7 +852,9 @@ def valueBindingProfile {Γ : SourceCtx Player L} {O : Finset VarId}
 
 namespace Setup
 
-/-- The value-binding game of a setup. -/
+/-- The value-binding game of a setup. Reducible so that `sig.Strategy` reduces
+to `ValueBindingPolicy`, which is what rewriting through the game's laws needs.
+-/
 @[reducible] def valueBindingGame (setup : Setup (Player := Player) (L := L)) :
     GameForm Player where
   sig :=
