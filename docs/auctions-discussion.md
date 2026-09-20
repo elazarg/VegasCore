@@ -492,17 +492,28 @@ proofs that are currently correct, in exchange for a redundancy that is better
 stated than deleted.
 
 So the redundancy becomes a theorem instead. `Vegas.SourceProgram.ValueBinding`
-names the policies that never bind failure, and
-`Vegas.SourceProgram.exists_valueBinding` shows the class is inhabited. The
-edge to prove above it is a mixture simulation from the value-binding game to
-the full source game, with the inclusion as its strategy map, a trivial honest
-law, and this deviation certificate:
+names the policies that never bind failure,
+`Vegas.SourceProgram.exists_valueBinding` shows the class is inhabited, and
+`Vegas.SourceProgram.Setup.valueBindingGame` is the game they play: the same
+program, the same setup law, the same public outcome, only fewer strategies.
 
-> for every policy there is a value-binding one with the same public outcome
-> law, against every fixed opponent profile.
+`Vegas.SourceProgram.Setup.valueBindingSimulation` is the edge above it, a
+mixture simulation to the full source game whose strategy map is the inclusion
+and whose outcome map is the identity, so its honest law is reflexivity. Its
+deviation certificate is stronger than the mixture the interface allows: each
+covered deviation is matched by a *single* value-binding policy, which is
+`Vegas.SourceProgram.exists_valueBinding_publicRun_eq`. So an analysis carried
+out where failure is only ever a disclosure decision transports along the rest
+of the tower unchanged.
 
-That composes with the existing tower, so an analysis carried out where failure
-is only ever a disclosure decision transports to the runtime unchanged.
+What the edge covers is named rather than assumed.
+`Vegas.SourceProgram.Setup.BindingConsidered` is the deviation class: every
+value-binding policy, and every pure one. Neither contains the other, and their
+union is not every policy — one that randomizes between binding failure and
+binding a value is in neither. At that class
+`Vegas.SourceProgram.Setup.isεNash_valueBindingGame_iff` reads: a value-binding
+profile is ε-Nash in the value-binding game exactly when no covered deviation in
+the full source game beats it by more than ε.
 
 The proof is not the obvious translation. Replacing a failed binding by the
 canonical value and refusing at that reveal is correct for one cell, but the
@@ -533,7 +544,8 @@ translated player's own binding, and at its own reveal the refusal lands where
 the original published failure anyway. Guard checks agree because
 `Obligation.accepts` reads publications, never a raw binding.
 
-What remains is the predraw: the Kuhn-style statement that a behavioral policy's
+What remains is the predraw, and it is exactly what would widen the deviation
+class to every policy: the Kuhn-style statement that a behavioral policy's
 law is a finite mixture of pure ones. Only the deviator randomizes in the
 certificate, so the single-agent case suffices — but not a per-configuration
 one. The mixture has to be drawn before the private initial law, and a single
@@ -574,14 +586,12 @@ Each format exercises a different point:
 
 ## Open questions
 
-1. The value-binding edge. Commit-time failure stays in the syntax, because the
-   source state space is then closed under what the runtime can produce, and
-   that closure is what gives the compile layer its exact store-to-state
-   agreement for arbitrary native behavior. What is missing is the edge above
-   it: a simulation from the game whose policies never bind failure to the full
-   source game, with the inclusion as its strategy map. Its deviation
-   certificate is the claim that every policy has a value-binding one with the
-   same public outcome law. See [Retiring commit-time
+1. The value-binding edge covers pure deviations and value-binding ones, not a
+   policy that randomizes between binding failure and binding a value. Closing
+   that needs the single-agent predraw, whose mixture is drawn before the
+   private setup law and per view rather than per branch. Until then the
+   edge yields the class-relative ε-Nash reading, not the unconditional
+   transfer. See [Retiring commit-time
    failure](#retiring-commit-time-failure).
 2. Allocation encoding: A1, A3, or A4? Is A2 ever the right restriction?
 3. Should VegasCore check payoff conservation?

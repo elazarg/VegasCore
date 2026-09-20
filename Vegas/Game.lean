@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Game.ValueBindingEdge
 import Vegas.Game.EventScheduling
 import Vegas.Game.EventCompilation
 import Vegas.Game.EventMessages
