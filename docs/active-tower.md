@@ -55,6 +55,20 @@ be pure; the deviations it is checked against need not be.
 `Setup.purePendingSimulation` composes it onto the message host in the same way,
 with `purePendingGame_approximate_nash_iff`.
 
+### Refusing to open
+
+`SourceProgram.Disclosing` names the policies that never withhold what they
+bound — the dual of `ValueBinding`, and with it what an honest profile means.
+That class is not preserved by any translation, because the two branches of a
+reveal publish different things. What holds is conditional:
+`forceDisclose_expect_le` bounds a player's expected value by the value of
+opening from then on, given that opening is at least as good at every decision
+it could face, and `exists_disclosing_expect_le` reads that as "some disclosing
+policy is at least as good". A reveal is an informed stop-or-continue decision,
+so this is `FinDist.selective_stopping_le` instantiated at the source reveal,
+and `selective_stopping_le_iff` says the premise is also necessary once
+quantified over every configuration.
+
 ## Sequential execution
 
 The canonical graph scheduler selects the least unfinished source rank. Its

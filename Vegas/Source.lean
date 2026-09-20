@@ -9,5 +9,6 @@ import Vegas.Source.Semantics
 import Vegas.Source.Setup
 import Vegas.Source.Purification
 import Vegas.Source.ValueBinding
+import Vegas.Source.Disclosure
 import Vegas.Source.Accounting
 import Vegas.Source.Safety

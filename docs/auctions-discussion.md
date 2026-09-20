@@ -588,10 +588,31 @@ execution a state-machine presentation first.
 list is the support of the initial law, so the mixture precedes the private
 draw.
 
-The same two pieces are what a later "honest play" layer would reuse, where
-players never refuse to open. Compilation cannot preserve that class
-unconditionally, since a native player may always withhold; the interesting
-statement there is a conditional one.
+## Refusing to open
+
+Withholding is not redundant the way binding an unopenable candidate is: the two
+branches of a reveal differ in what the program publishes, so no translation
+removes the option and preserves the outcome law. What can be removed is the
+option's *value*, and only under a premise.
+
+A reveal is an informed stop-or-continue decision, taken after the player has
+seen everything published so far, so the general selective-stopping statement
+applies verbatim. `Vegas.SourceProgram.forceDisclose_expect_le` is its
+instantiation: forcing a player to open never lowers its expected value,
+provided opening is at least as good at every decision it could face, measured
+against the continuation in which it opens from then on.
+`Vegas.SourceProgram.exists_disclosing_expect_le` reads it as a class statement
+— under that premise the player gives up nothing by joining
+`Vegas.SourceProgram.Disclosing`, the policies that never withhold.
+
+Quantified over every configuration the premise is also necessary, by
+`GameTheory.Math.Probability.FinDist.selective_stopping_le_iff`. So an honest-play
+layer is conditional by nature, not by weakness of the proof: compilation cannot
+preserve the no-refusal class, because a native player may always withhold, and
+what is true instead is that a player who prefers opening at every decision
+loses nothing by being held to it. `VegasTests.Disclosure` runs both sides — the
+same forcing that collects a payoff in one program destroys it in the program
+with the payoff reversed.
 
 ## Test programs
 
