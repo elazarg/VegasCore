@@ -83,9 +83,17 @@ for defining or executing the game.
 The constant-false example consequently has a defined failure settlement,
 without an ordinary successful execution.
 
-An empty ordinary payload type has the same treatment: the player can bind an
-unopenable candidate and the publication fails. Neither execution nor guard
-evaluation needs an invented inhabitant of that type.
+Payload types, by contrast, are required to be inhabited. `IExpr` carries a
+canonical value of every type, so an expression language with an empty ordinary
+payload type does not instantiate the interface. This is a language decision,
+taken for the value-binding edge: translating a policy that binds an unopenable
+candidate into one that binds a value needs a value to bind.
+
+It costs the empty payload type and nothing else. Binding an unopenable
+candidate remains expressible — commit-time failure stays in the syntax, and the
+edge above it is what proves it publicly redundant — it is simply no longer
+forced on a player by the absence of any inhabitant. Execution and guard
+evaluation still never invent an inhabitant; only the interface asks for one.
 
 Nor does guard failure decide utility. One program may penalize failure, one
 may reward it, and another may continue through later operations. The payoff

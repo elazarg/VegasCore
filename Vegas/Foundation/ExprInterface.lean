@@ -38,7 +38,10 @@ structure IExpr where
   decEqTy : DecidableEq Ty
   decEqVal : ∀ {τ : Ty}, DecidableEq (Val τ)
   /-- A canonical value of every type. Types are inhabited, so a binding always
-  has something to bind and a decoder always has something to read. -/
+  has something to bind and a decoder always has something to read. This is a
+  language decision and it excludes empty payload types: what needs it is the
+  value-binding edge, which translates a policy binding an unopenable candidate
+  into one binding a value. The source design rationale records the trade. -/
   someValue : (τ : Ty) → Val τ
   /-- A distinguished Boolean-representing type. Used for commit guards. -/
   bool : Ty
