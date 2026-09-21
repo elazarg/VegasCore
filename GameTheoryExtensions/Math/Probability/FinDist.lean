@@ -172,8 +172,12 @@ theorem probOf_eq_expect_of_weighting (law reference : FinDist α) (event : Set 
 assignment. A decision point read once per run needs exactly that: a law over
 whole assignments whose marginal at the site read is the law there. Nothing
 constrains how the draws at different sites relate, because only one of them is
-ever read. Finitely many sites is what makes a finite law possible at all —
-with unboundedly many prescribed marginals no finite coupling exists. -/
+ever read. Finitely many sites is what makes the construction work for
+arbitrary kernels; it is sufficient and not necessary, since one law over the
+two constant assignments already supplies a fair coin at every site of an
+infinite family. What fails in general is infinitely many *arbitrary* kernels: a
+finite law has finitely many atoms, so every marginal's weights are sums over
+one fixed finite set of numbers. -/
 
 /-- A continuation that reads one drawn site sees exactly the law there,
 whatever the draws at the other sites do. -/

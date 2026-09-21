@@ -30,7 +30,7 @@ network is assumed. The repository does not provide computational
 cryptographic security, censorship resistance, ledger refinement, or EVM
 deployment.
 
-An arbitrary real-valued observation of the terminal source state may be used
+An arbitrary real-valued observation of the public source result may be used
 in the deviation guarantee; it need not be a player's declared payoff. Thus a
 source lower bound that holds against every legal unilateral source deviation
 also holds against every unilateral native deviation, with missing native

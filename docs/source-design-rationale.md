@@ -236,7 +236,8 @@ fixes the observer's payoff before any guess about `z` can matter.
 `Vegas.Source` defines all four source constructors, typed `Result` expressions,
 observation-local binding and disclosure policies with own-action recall,
 dependent public chance, and exact finite-distribution execution. Its strategy
-space is inhabited even for empty ordinary payload types or unsatisfiable guards.
+space is inhabited whatever the guards say, satisfiable or not; payload types
+are inhabited by the interface decision recorded above.
 The detailed terminal outcome, payout projection, and externally chosen utility
 are separate interfaces.
 

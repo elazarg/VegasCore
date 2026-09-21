@@ -69,9 +69,10 @@ in their owning modules. The pins contain only `propext`, `Classical.choice`,
 and `Quot.sound`. No library module or paper capstone contains a proof
 admission.
 The asynchronous graph compiler preserves and reflects same-error Nash at
-compiled source profiles for utilities of the complete terminal source state.
-Its unilateral deviation witness is one source-policy mixture chosen before
-private setup. The graph-local scheduling theorem is separately audited.
+compiled source profiles for utilities of the public source result, which is
+what an outcome is. Its unilateral deviation witness is one source-policy
+mixture chosen before private setup, and that deviation law is the stronger
+statement, over decoded terminal source states. The graph-local scheduling theorem is separately audited.
 The asynchronous pending-message game has checked completion, full-source
 honest outcome, exact unilateral-deviation mixture, and same-error Nash laws
 under the concrete public epoch service. The finite source-policy mixture is
