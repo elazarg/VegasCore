@@ -82,6 +82,23 @@ so this is `FinDist.selective_stopping_le` instantiated at the source reveal,
 and `selective_stopping_le_iff` says the premise is also necessary once
 quantified over every configuration.
 
+## The canonical graph as the hub
+
+Backtranslation runs through the canonical graph, and the strategic edges say so.
+`Setup.canonicalEventSimulation` is the compiler's own edge, from the source game
+to `Setup.canonicalEventGame`: its deviation certificate is a point mass, because
+a canonical graph deviation *is* one backtranslated source policy
+(`EventLowering.canonical_setup_deviation_law`). Everything above it is a
+separate edge, and every mixture in the tower is contributed there rather than
+by the compiler.
+
+`EventGraph.eventSchedulingSimulationOn` is the first such edge: canonical
+execution against execution under an arbitrary adaptive public scheduler, read
+through any observation the terminal store determines. That restriction is the
+content — schedulers agree on stores and disagree about completion order — and
+it is what makes the edge composable. `Setup.eventSimulation` is now literally
+the composition of the two.
+
 ## Sequential execution
 
 The canonical graph scheduler selects the least unfinished source rank. Its

@@ -89,6 +89,51 @@ def eventSchedulingSimulation (ordered : graph.BarrierOrdered)
         exact (gameForm_play_map_terminalStore inputs graph.canonicalScheduler
           (Profile.update (sig := graph.gameSignature) profile who alternative)).symm
 
+omit [DecidableEq Player] in
+/-- An observation the terminal store determines, presented as a total decoder
+that succeeds on every play. Stating it this way introduces no payload default,
+and it is exactly the restriction the edge needs: schedulers agree on stores,
+and disagree about completion order, so an observation of the order is not
+recoverable. -/
+private theorem map_some_observe {Ω : Type}
+    (observe : graph.gameSignature.Outcome → Ω)
+    (decode : EventGraph.Store graph.layout → Option Ω)
+    (factors : ∀ outcome, decode (graph.terminalStore outcome) = some (observe outcome))
+    (law : FinDist graph.gameSignature.Outcome) :
+    (law.map observe).map some = (law.map graph.terminalStore).map decode := by
+  rw [FinDist.map_comp, FinDist.map_comp]
+  congr 1
+  funext outcome
+  exact (factors outcome).symm
+
+/-- The canonical-to-scheduled edge read through any observation the terminal
+store determines. This is what composes: an edge below supplies its own reading
+of a completed play, and the scheduler is invisible to it. -/
+def eventSchedulingSimulationOn {Ω : Type} (ordered : graph.BarrierOrdered)
+    (inputs : FinDist graph.Inputs) (scheduler : graph.PublicScheduler)
+    (observe : graph.gameSignature.Outcome → Ω)
+    (decode : EventGraph.Store graph.layout → Option Ω)
+    (factors : ∀ outcome, decode (graph.terminalStore outcome) = some (observe outcome)) :
+    GameForm.MixtureSimulationOn (graph.canonicalGame inputs)
+      (graph.gameForm inputs scheduler) observe observe (fun _ _ => True) where
+  compileStrategy := graph.normalizePolicy
+  honest_law profile := by
+    have base := (graph.eventSchedulingSimulation ordered inputs scheduler).honest_law profile
+    simp only [eventSchedulingSimulation] at base
+    refine FinDist.map_injective (Option.some_injective _) ?_
+    rw [graph.map_some_observe observe decode factors,
+      graph.map_some_observe observe decode factors, base]
+  compiled_considered _ _ := trivial
+  deviation_mixture profile who replacement considered := by
+    obtain ⟨mixture, law⟩ := (graph.eventSchedulingSimulation ordered inputs scheduler
+      ).deviation_mixture profile who replacement considered
+    simp only [eventSchedulingSimulation] at law
+    refine ⟨mixture, FinDist.map_injective (Option.some_injective _) ?_⟩
+    rw [graph.map_some_observe observe decode factors, law, FinDist.map_bind]
+    rw [FinDist.map_bind]
+    exact FinDist.bind_congr fun alternative _ =>
+      (graph.map_some_observe observe decode factors _).symm
+
 /-- Same-error Nash correspondence for every utility of the typed terminal
 store. -/
 theorem eventScheduling_approximate_nash_iff
