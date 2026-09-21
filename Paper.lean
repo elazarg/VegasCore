@@ -460,16 +460,18 @@ theorem pure_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
 
 /-- An honest profile -- one that binds a value at every commitment and opens at
 every reveal -- completes with no failure recorded anywhere, provided the guards
-it retains accept what it opens. -/
+it retains accept what it actually binds. The premise follows the run: a guard
+that rejects a value this profile never binds is no obstacle. -/
 theorem source_honest_run_successful [IExpr.ResultTypes L]
     {Γ : SourceCtx Player L} {O : Finset VarId}
     (p : SourceProgram Player L Γ O) (profile : SourceProgram.BehavioralProfile p)
     (honest : ∀ who, SourceProgram.Honest p (profile who))
-    (guards : SourceProgram.GuardsAccept p [] (Revelations.initial Γ))
-    (state : State L Γ) (hstate : SourceProgram.Successful state) :
+    (state : State L Γ) (hstate : SourceProgram.Successful state)
+    (guards : SourceProgram.GuardsAcceptFrom p profile
+      ⟨state, [], Revelations.initial Γ, fun _ => []⟩) :
     ∀ terminal ∈ (SourceProgram.run p profile state).support,
       SourceProgram.Successful terminal :=
-  SourceProgram.run_successful p profile honest guards state hstate
+  SourceProgram.run_successful p profile honest state hstate guards
 
 /-- info: 'Vegas.Paper.source_honest_run_successful' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

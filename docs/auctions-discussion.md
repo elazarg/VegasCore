@@ -607,9 +607,18 @@ against the continuation in which it opens from then on.
 
 `Vegas.SourceProgram.Honest` is the two classes together — bind a value, then
 open it — and `Vegas.SourceProgram.run_successful` is what honest play produces:
-given that the retained guards accept, no cell of a completed run records a
-failure. That was the standing open obligation of the source semantics, and
-naming the two classes for the edges above is what made it statable.
+given that the retained guards accept what this profile actually binds, no cell
+of a completed run records a failure. That was the standing open obligation of
+the source semantics, and naming the two classes for the edges above is what
+made it statable.
+
+The premise has to follow the run. Quantified instead over every failure-free
+state it would be false for any guard that rejects something, since a state
+binding the rejected value is failure-free and no profile need ever produce it —
+which is why `Vegas.SourceProgram.GuardsAcceptFrom` takes the profile and walks
+the configurations it reaches. The comparison premise above survives the same
+question: `VegasTests.Disclosure` proves it for the program where opening pays
+and refutes it for the program where refusing pays.
 
 Quantified over every configuration the premise is also necessary, by
 `GameTheory.Math.Probability.FinDist.selective_stopping_le_iff`. So an honest-play

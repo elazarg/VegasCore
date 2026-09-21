@@ -10,10 +10,12 @@ reveal it owns. Those are the two classes named alongside the edges that need
 them: `ValueBinding` and `Disclosing`.
 
 Honesty alone does not make a run succeed, because a retained guard may still
-reject what was opened. The premise that it does not is stated where it is
-decided — at each reveal, at any configuration in which nothing has failed yet —
-rather than as a property of the program alone, since whether a guard accepts
-depends on the values bound.
+reject what was opened. The premise that it does not follows the run: at each
+reveal, at the configurations this profile can actually be in when it gets
+there. It cannot be a property of the program alone, and it cannot quantify over
+every failure-free state either — a state binding a value the guard rejects is
+failure-free, and no profile need ever produce it, so that reading would be
+false for every guard that rejects anything.
 
 Under both, no cell of a completed run records a failure.
 -/
@@ -46,26 +48,30 @@ theorem successful_empty : Successful (Player := Player) (L := L) (Env.empty _) 
   bindings := fun h => nomatch h
   publications := fun h => nomatch h
 
-/-- Every guard retained at a reveal accepts the value opened there, in any
-state in which nothing has failed yet. The obligations and publications are
-threaded exactly as execution threads them, so this asks about the guards the
-program actually retains rather than about an arbitrary registry. -/
-def GuardsAccept : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    SourceProgram Player L Γ O → Registry Γ → Revelations Γ → Prop
+/-- Every guard retained at a reveal accepts what this profile opens there, at
+every configuration the run can reach when it gets there.
+
+The premise follows the run. Quantifying instead over every failure-free state
+would be false for any guard that rejects something: a state binding the
+rejected value is failure-free, and no profile need ever produce it. What a
+guard has to accept is what is actually bound. -/
+def GuardsAcceptFrom : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (p : SourceProgram Player L Γ O) → BehavioralProfile p → Config Player L Γ → Prop
   | _, _, .ret _, _, _ => True
-  | _, _, .sample _ _ _ k, registry, revelations =>
-      GuardsAccept k registry.weaken revelations.weaken
-  | _, _, .commit name owner _ guard k, registry, revelations =>
-      GuardsAccept k
-        ({ owner := owner, subject := name, payload := _, source := .here,
-            guard := guard.weaken } :: registry.weaken) revelations.weaken
-  | _, _, .reveal published _ _ _ source _ k, registry, revelations =>
-      (∀ state : State L _, Successful state → ∀ value,
-        state.get source = .success value →
-        (Registry.completedBy (published := published) registry revelations source).all
-          (·.accepts (Revelations.reveal revelations source)
-            (Env.cons (.success value) state)) = true) ∧
-        GuardsAccept k registry.weaken (Revelations.reveal revelations source)
+  | _, _, .sample sampleName _ law k, profile, config =>
+      ∀ value ∈ (L.evalDist law (sourcePublicEnv config.state)).support,
+        GuardsAcceptFrom k (afterSample profile) (sampleSuccessor sampleName config value)
+  | _, _, .commit cellName owner _ guard k, profile, config =>
+      ∀ choice ∈ (commitKernel profile (Config.view owner config)).support,
+        GuardsAcceptFrom k (afterCommit profile) (commitSuccessor cellName guard config choice)
+  | _, _, .reveal published owner _ _ source _ k, profile, config =>
+      (∀ value, config.state.get source = .success value →
+        (Registry.completedBy (published := published) config.registry config.revelations
+          source).all (·.accepts (Revelations.reveal config.revelations source)
+            (Env.cons (.success value) config.state)) = true) ∧
+      ∀ disclose ∈ (revealKernel profile (Config.view owner config)).support,
+        GuardsAcceptFrom k (afterReveal profile)
+          (revealSuccessor published source config disclose)
 
 /-- Honest play from a configuration in which nothing has failed reaches only
 terminal states in which nothing has failed. Every publication of a completed
@@ -74,7 +80,7 @@ theorem runFrom_successful :
     {Γ : SourceCtx Player L} → {O : Finset VarId} → (p : SourceProgram Player L Γ O) →
     (profile : BehavioralProfile p) → (∀ who, Honest p (profile who)) →
     (config : Config Player L Γ) → Successful config.state →
-    GuardsAccept p config.registry config.revelations →
+    GuardsAcceptFrom p profile config →
     ∀ terminal ∈ (runFrom p profile config).support, Successful terminal
   | _, _, .ret _, _, _, _, hconfig, _, terminal, hterminal => by
       rw [runFrom, runWith, FinDist.mem_support_pure] at hterminal
@@ -82,9 +88,9 @@ theorem runFrom_successful :
   | _, _, .sample sampleName _ _ k, profile, honest, config, hconfig, guards,
       terminal, hterminal => by
       rw [runFrom_sample, FinDist.support_bind] at hterminal
-      obtain ⟨value, _, hmem⟩ := Set.mem_iUnion₂.mp hterminal
+      obtain ⟨value, hvalue, hmem⟩ := Set.mem_iUnion₂.mp hterminal
       refine runFrom_successful k (afterSample profile) (fun who => honest who)
-        (sampleSuccessor sampleName config value) ?_ guards terminal hmem
+        (sampleSuccessor sampleName config value) ?_ (guards value hvalue) terminal hmem
       exact
         { bindings := fun h => match h with
             | .there h' => hconfig.bindings h'
@@ -102,7 +108,8 @@ theorem runFrom_successful :
       obtain ⟨value, rfl⟩ := hvalue
       refine runFrom_successful k (afterCommit profile)
         (fun who => ⟨(honest who).1.2, (honest who).2⟩)
-        (commitSuccessor cellName guard config (.success value)) ?_ guards terminal hmem
+        (commitSuccessor cellName guard config (.success value)) ?_
+        (guards (.success value) hchoice) terminal hmem
       exact
         { bindings := fun h => match h with
             | .here => ⟨value, rfl⟩
@@ -119,10 +126,11 @@ theorem runFrom_successful :
         | true => rfl
       subst hopen
       obtain ⟨value, hbound⟩ := hconfig.bindings source
-      have haccepts := guards.1 config.state hconfig value hbound
+      have haccepts := guards.1 value hbound
       refine runFrom_successful k (afterReveal profile)
         (fun who => ⟨(honest who).1, (honest who).2.2⟩)
-        (revealSuccessor published source config true) ?_ guards.2 terminal hmem
+        (revealSuccessor published source config true) ?_ (guards.2 true hdisclose)
+        terminal hmem
       have hhead : (revealSuccessor published source config true).state.get
           (HasVar.here (x := published)) = .success value := by
         simp only [revealSuccessor, Env.cons_get_here, if_true, hbound, haccepts]
@@ -138,8 +146,8 @@ value in every publication cell. -/
 theorem run_successful {Γ : SourceCtx Player L} {O : Finset VarId}
     (p : SourceProgram Player L Γ O) (profile : BehavioralProfile p)
     (honest : ∀ who, Honest p (profile who))
-    (guards : GuardsAccept p [] (Revelations.initial Γ))
-    (state : State L Γ) (hstate : Successful state) :
+    (state : State L Γ) (hstate : Successful state)
+    (guards : GuardsAcceptFrom p profile ⟨state, [], Revelations.initial Γ, fun _ => []⟩) :
     ∀ terminal ∈ (run p profile state).support, Successful terminal :=
   runFrom_successful p profile honest ⟨state, [], Revelations.initial Γ, fun _ => []⟩
     hstate guards

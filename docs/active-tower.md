@@ -14,12 +14,15 @@ are satisfied.
 `Vegas.Source.Honest` says what honest play produces. A policy is `Honest` when
 it binds a value everywhere it commits and opens everywhere it reveals, which is
 `ValueBinding` and `Disclosing` together. Honesty alone is not enough, because a
-retained guard may still reject, so `GuardsAccept` carries that premise where it
-is decided — at each reveal, in any state in which nothing has failed yet, with
-the obligations and publications threaded exactly as execution threads them.
-Under both, `run_successful`: no cell of a completed run records a failure.
-`VegasTests.Honest` discharges the premise on a concrete program, so it is a
-premise that can hold.
+retained guard may still reject, so `GuardsAcceptFrom` carries that premise
+along the run: at each reveal, at the configurations this profile can reach when
+it gets there. It cannot quantify over every failure-free state — a state
+binding a rejected value is failure-free, and no profile need produce it — which
+would make the premise false for every guard that rejects anything. Under both,
+`run_successful`: no cell of a completed run records a failure.
+`VegasTests.Honest` checks both directions on a program whose guard accepts only
+one value: the premise holds for the profile that binds it and fails for the
+equally honest profile that does not.
 
 The three results are pinned on the audit surface: the two restricted games
 against the message host, and honest completion.

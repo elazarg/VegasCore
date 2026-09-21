@@ -95,6 +95,51 @@ example :
     SourceProgram.revealKernel, SourceProgram.afterCommit, FinDist.pure_bind, FinDist.map_pure]
   rfl
 
+/-- A published value pays; a failure does not. -/
+private def payOnSuccess (result : PublicationResult (simpleExpr.Val BaseTy.bool)) : ℝ :=
+  match result with
+  | .failure => 0
+  | .success _ => 1
+
+/-- The value of a completed run to the owner, where opening is what pays. -/
+private def publishedPays
+    (state : State simpleExpr [(bidOut, CellTy.publication BaseTy.bool),
+      (bid, CellTy.privateData () BaseTy.bool)]) : ℝ :=
+  payOnSuccess (state.get HasVar.here)
+
+/-- The reversed reading, for the program whose payoff rewards refusing. -/
+private def refusalPaysValue
+    (state : State simpleExpr [(bidOut, CellTy.publication BaseTy.bool),
+      (bid, CellTy.privateData () BaseTy.bool)]) : ℝ :=
+  1 - payOnSuccess (state.get HasVar.here)
+
+/-- The premise of `forceDisclose_expect_le` is satisfiable: where opening is
+what pays, opening is at least as good at every decision the owner could face. -/
+example :
+    DisclosesProfitably (who := ()) openPays publishedPays
+      (fun _ => withholdOpen) withholdOpen := by
+  have nonneg : ∀ result, (0 : ℝ) ≤ payOnSuccess result := by
+    intro result
+    unfold payOnSuccess
+    split <;> norm_num
+  refine ⟨fun _ config => ?_, trivial⟩
+  simp only [runFrom, runWith, FinDist.expect_pure, publishedPays, revealSuccessor,
+    Env.cons_get_here, Bool.false_eq_true, if_false, ite_self]
+  exact nonneg _
+
+/-- And it has content: where refusing is what pays, it fails. -/
+example :
+    ¬ DisclosesProfitably (who := ()) refusalPays refusalPaysValue
+      (fun _ => withholdRefusal) withholdRefusal := by
+  intro premise
+  have applied := premise.1 rfl
+    ⟨Env.cons (Val := CellVal simpleExpr) (x := bid) (τ := .privateData () .bool)
+      (.success false) (Env.empty (CellVal simpleExpr)),
+      [], Revelations.initial _, fun _ => []⟩
+  simp [runFrom, runWith, refusalPaysValue, revealSuccessor, payOnSuccess,
+    Registry.completedBy] at applied
+  norm_num at applied
+
 end
 
 end VegasTests.Disclosure
