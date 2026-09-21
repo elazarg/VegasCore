@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.EventGraph.SchedulerMixture
+import Vegas.EventGraph.ExecutionMode
 import GameTheoryExtensions.Core.MixtureSimulation
 
 /-! # Strategic equivalence of canonical and publicly scheduled EventGraphs -/
@@ -20,7 +21,9 @@ certificate and chronological trace. -/
 def terminalStore (result : graph.gameSignature.Outcome) :
     EventGraph.Store graph.layout := result.1.store
 
-private theorem gameForm_play_map_terminalStore
+/-- The store law of a play, with the outcome's terminality certificate and
+chronological trace forgotten. -/
+theorem gameForm_play_map_terminalStore
     (inputs : FinDist graph.Inputs) (scheduler : graph.PublicScheduler)
     (profile : graph.BehavioralProfile) :
     ((graph.gameForm inputs scheduler).play profile).map graph.terminalStore =
@@ -88,6 +91,37 @@ def eventSchedulingSimulation (ordered : graph.BarrierOrdered)
         intro alternative _
         exact (gameForm_play_map_terminalStore inputs graph.canonicalScheduler
           (Profile.update (sig := graph.gameSignature) profile who alternative)).symm
+
+/-- Concurrent and sequential dependency choices are one game on typed terminal
+stores, and the correspondence needs no mixture: a deviation in the mode graph
+is one policy of the graph it was built from. -/
+def eventModeSimulation (mode : ExecutionMode) (inputs : FinDist graph.Inputs) :
+    GameForm.MixtureSimulationOn (graph.canonicalGame inputs)
+      ((graph.withMode mode).canonicalGame inputs)
+      graph.terminalStore (graph.withMode mode).terminalStore (fun _ _ => True) where
+  compileStrategy := graph.toModePolicy mode
+  honest_law profile := by
+    change graph.BehavioralProfile at profile
+    have toProfile : (fun who => graph.toModePolicy mode who (profile who)) =
+        graph.toModeProfile mode profile := rfl
+    unfold canonicalGame
+    rw [toProfile, (graph.withMode mode).gameForm_play_map_terminalStore,
+      graph.gameForm_play_map_terminalStore]
+    refine FinDist.bind_congr fun initial _ => ?_
+    rw [graph.runPolicies_withMode_store mode (graph.toModeProfile mode profile) initial,
+      graph.fromModeProfile_toModeProfile]
+  compiled_considered _ _ := trivial
+  deviation_mixture profile who replacement _ := by
+    change graph.BehavioralProfile at profile
+    refine ⟨FinDist.pure (graph.fromModePolicy mode who replacement), ?_⟩
+    have toProfile : (fun player => graph.toModePolicy mode player (profile player)) =
+        graph.toModeProfile mode profile := rfl
+    unfold canonicalGame
+    rw [FinDist.pure_bind, toProfile, (graph.withMode mode).gameForm_play_map_terminalStore,
+      graph.gameForm_play_map_terminalStore]
+    refine FinDist.bind_congr fun initial _ => ?_
+    rw [graph.runPolicies_withMode_store mode _ initial, graph.fromModeProfile_update,
+      graph.fromModeProfile_toModeProfile]
 
 omit [DecidableEq Player] in
 /-- An observation the terminal store determines, presented as a total decoder

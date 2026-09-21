@@ -92,12 +92,28 @@ a canonical graph deviation *is* one backtranslated source policy
 separate edge, and every mixture in the tower is contributed there rather than
 by the compiler.
 
-`EventGraph.eventSchedulingSimulationOn` is the first such edge: canonical
-execution against execution under an arbitrary adaptive public scheduler, read
-through any observation the terminal store determines. That restriction is the
-content — schedulers agree on stores and disagree about completion order — and
-it is what makes the edge composable. `Setup.eventSimulation` is now literally
-the composition of the two.
+Three edges sit above it, each with its own content, and every strategic
+statement in the tower is a composition of some of them.
+
+- `EventGraph.eventSchedulingSimulationOn`: canonical execution against
+  execution under an arbitrary adaptive public scheduler, read through any
+  observation the terminal store determines. That restriction is the content —
+  schedulers agree on stores and disagree about completion order — and it is
+  what makes the edge composable. `Setup.eventSimulation` is the compiler's
+  edge composed with this one.
+- `EventGraph.eventModeSimulation`: the concurrent and sequential dependency
+  choices, again a point mass, because a deviation in the mode graph is one
+  policy of the graph it was built from.
+- `EventGraphRuntime.servicedCanonicalSimulation`: the public message service.
+  Everything the host adds — raw submissions, competing candidates, replay,
+  delivery before inclusion, adaptive wire and ordering — is this edge, and so
+  is the mixture. `Setup.eventPendingSimulation` is the compiler, the mode and
+  the service composed, with a final step replacing the store reading by the
+  semantic one; the two agree on every serviced play, because completion
+  discharges the terminality test, and differ only where the game never goes.
+
+That last step is `MixtureSimulationOn.reobserveTarget`, and bringing edges to a
+common reading is `MixtureSimulationOn.reobserve`; both are generic.
 
 ## Sequential execution
 

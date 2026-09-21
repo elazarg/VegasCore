@@ -4,6 +4,7 @@ import Vegas.Game.PurificationEdge
 import Vegas.Game.ValueBindingEdge
 import Vegas.Game.EventScheduling
 import Vegas.Game.EventCompilation
+import Vegas.Game.EventServiceEdge
 import Vegas.Game.EventMessages
 import Vegas.Game.EventMessageStrategic
 import Vegas.Game.PendingCompositions

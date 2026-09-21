@@ -1,13 +1,21 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.EventMessages
+import Vegas.Game.EventServiceEdge
 import Vegas.Pending.EventStrategicLaw
 import GameTheoryExtensions.Core.UtilitySimulation
+import GameTheoryExtensions.Core.MixtureSimulationComposition
 
 /-! # Strategic correctness of asynchronous source-to-message compilation
 
-The graph-relative native deviation law composes with canonical graph-to-source
-backtranslation. Both edges retain one deviation mixture across private setup.
+The certificate is three edges composed. The compiler reaches the canonical
+graph with a single backtranslated policy; the execution mode is a second edge,
+also a single policy; the message service is the third, and the only one that
+needs a mixture. Each retains one deviation across private setup.
+
+The last step replaces the store reading by the semantic one. They agree on
+every serviced play -- completion discharges the terminality test -- and differ
+only where the game never goes.
 -/
 
 noncomputable section
@@ -68,8 +76,29 @@ theorem eventPendingGame_deviation_law
   simp only [← Vegas.EventGraph.runPolicies_canonical_normalize_eq] at canonical
   exact canonical
 
+/-- The semantic readout and the store decoder induce the same law on every
+serviced play, whatever the players do. -/
+private theorem eventPendingGame_map_publicOutcome (setup : Setup (Player := Player) (L := L))
+    (mode : Vegas.EventGraph.ExecutionMode)
+    (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (players : Profile
+      (setup.eventPendingGame mode runtime roster reactionRounds wire order).sig) :
+    ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play players).map
+        (setup.eventPendingPublicOutcome mode runtime) =
+      ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play players).map
+        (fun execution => setup.eventPublicDecode execution.native.application.config.store) := by
+  have base := congrArg (FinDist.map (Option.map (publicOutcome setup.program)))
+    (setup.eventPendingGame_map_outcome mode runtime roster reactionRounds wire order players)
+  rw [eventPendingPublicOutcome_eq, ← FinDist.map_comp, base]
+  simp only [FinDist.map_comp, Function.comp_def, eventPublicDecode]
+
 /-- A composable exact strategic certificate for the concrete source compiler
-and public pending-message service. All native unilateral policies are admitted. -/
+and public pending-message service: the compiler's edge to the canonical graph,
+the execution mode's edge above it, and the message service's edge above that.
+All native unilateral policies are admitted, and the mixture is the service's
+contribution. -/
 def eventPendingSimulation (setup : Setup (Player := Player) (L := L))
     (mode : Vegas.EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
@@ -78,22 +107,24 @@ def eventPendingSimulation (setup : Setup (Player := Player) (L := L))
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     GameForm.MixtureSimulationOn setup.gameForm
       (setup.eventPendingGame mode runtime roster reactionRounds wire order) some
-      (setup.eventPendingPublicOutcome mode runtime) (fun _ _ => True) where
-  compileStrategy := setup.compileEventPendingStrategy mode runtime
-  honest_law profile := by
-    rw [eventPendingPublicOutcome_eq, ← FinDist.map_comp,
-      setup.eventPendingGame_honest_law mode runtime feasible roster reactionRounds wire order
-        profile]
-    simp only [gameForm, publicRun, FinDist.map_comp, Function.comp_def, Option.map_some]
-  compiled_considered _ _ := trivial
-  deviation_mixture profile who replacement _ := by
-    obtain ⟨mixture, law⟩ := setup.eventPendingGame_deviation_law mode runtime feasible roster
-      reactionRounds wire order profile who replacement
-    refine ⟨mixture, ?_⟩
-    rw [eventPendingPublicOutcome_eq, ← FinDist.map_comp, law]
-    simp only [gameForm, publicRun, FinDist.map_bind, FinDist.map_comp, Function.comp_def,
-      Option.map_some]
-    rfl
+      (setup.eventPendingPublicOutcome mode runtime) (fun _ _ => True) :=
+  (((setup.canonicalEventSimulation.reobserve some some
+        (fun outcome => setup.eventPublicDecode (setup.eventGraph.terminalStore outcome))
+        (fun _ => rfl) setup.eventPublicDecode_terminalStore).trans
+      (((setup.eventGraph.eventModeSimulation mode
+            (setup.initialLaw.map fun initial => setup.eventInputs initial)).trans
+          (runtime.servicedCanonicalSimulation
+            (setup.eventGraph.withMode_barrierOrdered
+              (EventLowering.toEventGraph_barrierOrdered setup.program) mode)
+            feasible (setup.initialLaw.map fun initial => setup.eventInputs initial)
+            roster reactionRounds wire order)
+          (fun _ _ => trivial)).reobserve setup.eventPublicDecode
+            (fun outcome => setup.eventPublicDecode (setup.eventGraph.terminalStore outcome))
+            (fun execution =>
+              setup.eventPublicDecode execution.native.application.config.store)
+            (fun _ => rfl) (fun _ => rfl))
+      (fun _ _ => trivial)).reobserveTarget (setup.eventPendingPublicOutcome mode runtime)
+    (setup.eventPendingGame_map_publicOutcome mode runtime roster reactionRounds wire order))
 
 /-- Every lower bound on a terminal-state observation against unilateral
 source deviations holds against arbitrary unilateral native deviations. The

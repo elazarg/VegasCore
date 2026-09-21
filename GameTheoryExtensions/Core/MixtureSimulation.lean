@@ -56,6 +56,50 @@ theorem compileProfile_update (profile : Profile source.sig) (who : Player)
   · subst actor; simp
   · simp [Profile.update_of_ne, h]
 
+/-- Read an edge through a coarser observation. Both sides must be read the same
+way, which is what keeps the certificate meaningful: the edge still equates
+laws, now of what the new reading sees. This is how two edges are brought to a
+common observation before composing. -/
+def reobserve {Observation' : Type*} (f : Observation → Observation')
+    (sourceObserve' : source.sig.Outcome → Observation')
+    (targetObserve' : target.sig.Outcome → Observation')
+    (hsource : ∀ outcome, sourceObserve' outcome = f (sourceObserve outcome))
+    (htarget : ∀ outcome, targetObserve' outcome = f (targetObserve outcome)) :
+    MixtureSimulationOn source target sourceObserve' targetObserve' Considered where
+  compileStrategy := simulation.compileStrategy
+  honest_law profile := by
+    have hs : sourceObserve' = f ∘ sourceObserve := funext hsource
+    have ht : targetObserve' = f ∘ targetObserve := funext htarget
+    rw [hs, ht, ← FinDist.map_comp, ← FinDist.map_comp, simulation.honest_law profile]
+  compiled_considered := simulation.compiled_considered
+  deviation_mixture profile who replacement hconsidered := by
+    obtain ⟨alternatives, hlaw⟩ :=
+      simulation.deviation_mixture profile who replacement hconsidered
+    refine ⟨alternatives, ?_⟩
+    have hs : sourceObserve' = f ∘ sourceObserve := funext hsource
+    have ht : targetObserve' = f ∘ targetObserve := funext htarget
+    rw [hs, ht, ← FinDist.map_comp, hlaw, FinDist.map_bind]
+    exact FinDist.bind_congr fun alternative _ => FinDist.map_comp _ _ _
+
+/-- Replace the target's reading by one that agrees with it on every play. The
+hypothesis is about laws, not about outcomes: a reading that differs where the
+game never goes is still the same edge. -/
+def reobserveTarget (targetObserve' : target.sig.Outcome → Observation)
+    (agree : ∀ players : Profile target.sig,
+      (target.play players).map targetObserve' = (target.play players).map targetObserve) :
+    MixtureSimulationOn source target sourceObserve targetObserve' Considered where
+  compileStrategy := simulation.compileStrategy
+  honest_law profile := by
+    rw [agree]
+    exact simulation.honest_law profile
+  compiled_considered := simulation.compiled_considered
+  deviation_mixture profile who replacement hconsidered := by
+    obtain ⟨alternatives, hlaw⟩ :=
+      simulation.deviation_mixture profile who replacement hconsidered
+    refine ⟨alternatives, ?_⟩
+    rw [agree]
+    exact hlaw
+
 theorem expect_compile (profile : Profile source.sig) (value : Observation → ℝ) :
     (target.play (simulation.compileProfile profile)).expect
         (fun outcome => value (targetObserve outcome)) =
