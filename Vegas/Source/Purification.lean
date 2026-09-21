@@ -15,10 +15,11 @@ The construction here draws the actions of the whole program up front. A source
 program is a straight line — every decision point of a player occurs exactly
 once in every run — so a draw at a decision point may be coupled arbitrarily
 across the views reachable there, and only independence *between* decision
-points is needed. The draws at one point therefore come from a coupling with
-prescribed marginals over the finitely many reachable configurations, which
-`GameTheory.Math.Probability.FinDist.pointCoupling` builds by a fold and which
-needs no product.
+points is needed. The draws at one point therefore come from the sequential
+dependent draw over the finitely many reachable configurations, whose marginal
+at the site actually read is the law there
+(`GameTheory.Math.Probability.FinDist.runDependent_bind_apply`); no product is
+needed.
 
 The induction runs over a list of configurations rather than one, so that a
 single mixture serves every branch created before the point reached.
@@ -73,8 +74,9 @@ theorem exists_pureMixture {who : Player} :
           (configs.flatMap fun config =>
             ((policy.1 rfl (Config.view owner config)).supportFinset.toList).map
               (commitSuccessor name guard config))
-        refine ⟨(FinDist.pointCoupling (policy.1 rfl) (fun _ => .failure)
-            (configs.map (Config.view owner))).bind fun assigned =>
+        refine ⟨(FinDist.runDependent (policy.1 rfl)
+            (configs.map (Config.view owner)).toFinset.toList
+            (fun _ => .failure)).bind fun assigned =>
           tail.bind fun rest => FinDist.pure (fun _ => assigned, rest),
           fun config hconfig => ?_⟩
         have hview : Config.view owner config ∈ configs.map (Config.view owner) :=
@@ -97,8 +99,9 @@ theorem exists_pureMixture {who : Player} :
               PurePolicy.toBehavioral k choice.2 := fun _ => rfl
         simp only [runFrom_commit, hkernel, hpure, hsnd, afterCommit_update, FinDist.bind_bind,
           FinDist.pure_bind]
-        rw [FinDist.pointCoupling_bind_apply (policy.1 rfl) (fun _ => PublicationResult.failure)
-          (configs.map (Config.view owner)) (Config.view owner config) hview
+        rw [FinDist.runDependent_bind_apply (policy.1 rfl)
+          (configs.map (Config.view owner)).toFinset (fun _ => PublicationResult.failure)
+          (Config.view owner config) (List.mem_toFinset.mpr hview)
           (fun choice => tail.bind fun rest =>
             runFrom k (Function.update (afterCommit profile) owner
               (PurePolicy.toBehavioral k rest)) (commitSuccessor name guard config choice))]
@@ -135,8 +138,9 @@ theorem exists_pureMixture {who : Player} :
           (configs.flatMap fun config =>
             ((policy.1 rfl (Config.view owner config)).supportFinset.toList).map
               (revealSuccessor published source config))
-        refine ⟨(FinDist.pointCoupling (policy.1 rfl) (fun _ => false)
-            (configs.map (Config.view owner))).bind fun assigned =>
+        refine ⟨(FinDist.runDependent (policy.1 rfl)
+            (configs.map (Config.view owner)).toFinset.toList
+            (fun _ => false)).bind fun assigned =>
           tail.bind fun rest => FinDist.pure (fun _ => assigned, rest),
           fun config hconfig => ?_⟩
         have hview : Config.view owner config ∈ configs.map (Config.view owner) :=
@@ -162,8 +166,9 @@ theorem exists_pureMixture {who : Player} :
               PurePolicy.toBehavioral k choice.2 := fun _ => rfl
         simp only [runFrom_reveal, hkernel, hpure, hsnd, afterReveal_update, FinDist.bind_bind,
           FinDist.pure_bind]
-        rw [FinDist.pointCoupling_bind_apply (policy.1 rfl) (fun _ => false)
-          (configs.map (Config.view owner)) (Config.view owner config) hview
+        rw [FinDist.runDependent_bind_apply (policy.1 rfl)
+          (configs.map (Config.view owner)).toFinset (fun _ => false)
+          (Config.view owner config) (List.mem_toFinset.mpr hview)
           (fun disclose => tail.bind fun rest =>
             runFrom k (Function.update (afterReveal profile) owner
               (PurePolicy.toBehavioral k rest))

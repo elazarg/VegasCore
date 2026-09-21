@@ -53,10 +53,10 @@ from the source side of the whole tower at no cost.
 
 The certificate is two steps. `exists_pureMixture_publicRun` makes a behavioral
 deviation a finite mixture of pure policies, drawn before the private setup law:
-the induction carries a list of configurations, and `FinDist.pointCoupling`
-draws a decision point's actions in advance by folding over the views those
-configurations present, which suffices because a run visits a decision point
-once. `PurePolicy.bindValues` then translates a pure policy into one that binds
+the induction carries a list of configurations, and `FinDist.runDependent`
+draws a decision point's actions in advance over the views those configurations
+present, which suffices because a run visits a decision point once and so reads
+one of them. `PurePolicy.bindValues` then translates a pure policy into one that binds
 values and refuses where it replaced a binding, with `bindValues_publicRun_eq`
 its law. See [the auctions discussion](auctions-discussion.md).
 

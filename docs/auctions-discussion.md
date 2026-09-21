@@ -566,9 +566,9 @@ per branch is not a mixture chosen in advance.
 configurations rather than one. A chance step, or another player's action, pushes
 each of its successors onto the list, and the rest of the program is then served
 by a single mixture. At the deviator's own decision point the actions of the
-listed configurations are drawn in advance, by
-`GameTheory.Math.Probability.FinDist.pointCoupling`, which folds over the views
-those configurations present.
+listed configurations are drawn in advance, by the sequential dependent draw
+`GameTheory.Math.Probability.FinDist.runDependent` over the views those
+configurations present.
 
 Two things make that fold enough, and both are facts about source programs
 rather than about games in general. A run visits a decision point once, so it
