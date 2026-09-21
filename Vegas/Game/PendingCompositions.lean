@@ -14,9 +14,10 @@ with the pending-message certificate, and the deviation class of the composite
 is the right edge's: arbitrary native policies.
 
 What that buys is a statement about the real host in which the restricted move
-is not available on the source side. Nothing is lost by leaving it out, because
-the composite equates laws: the same approximate-Nash equivalence holds at
-compiled profiles.
+is not available on the source side: for a profile already in the class the same
+approximate-Nash equivalence holds at compiled profiles, because the composite
+equates laws. That is a statement about such profiles and the deviations they
+face, not a claim that the restricted game has an equilibrium.
 -/
 
 noncomputable section

@@ -14,6 +14,11 @@ The reading is the Kuhn-style one: to check a pure profile for equilibrium it is
 enough to consider pure deviations. Note where purity is needed and where it is
 not — the profile being checked must be pure, while the deviations it is checked
 against need not be.
+
+What this does not say is that the pure game has an equilibrium, or that mixed
+strategies can be dispensed with. Restricting which profiles are considered is a
+different question from restricting which deviations they face, and matching
+pennies separates them.
 -/
 
 noncomputable section
@@ -48,8 +53,10 @@ def pureSimulation (setup : Setup (Player := Player) (L := L)) :
     GameForm.MixtureSimulationOn setup.pureGame setup.gameForm id id (fun _ _ => True) :=
   setup.pureSimulationOn id
 
-/-- Randomizing is worth nothing: a pure profile is ε-Nash in the full source
-game exactly when it is ε-Nash among pure policies. -/
+/-- Randomizing buys a deviator nothing: a pure profile is ε-Nash in the full
+source game exactly when it is ε-Nash among pure policies. This is a statement
+about one profile, not about the restricted game: it does not say a pure
+equilibrium exists. -/
 theorem isεNash_pureGame_iff (setup : Setup (Player := Player) (L := L))
     (value : SourceProgram.PublicOutcome setup.program → Player → ℝ) (ε : ℝ)
     (profile : Profile setup.pureGame.sig) :

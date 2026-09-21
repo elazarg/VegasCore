@@ -67,7 +67,9 @@ game whose strategies never randomize, and `Setup.pureSimulation` simulates the
 full source game from it, again with every deviation considered, so
 `isεNash_pureGame_iff` reads: a pure profile is ε-Nash in the source game
 exactly when it is ε-Nash among pure deviations. The profile being checked must
-be pure; the deviations it is checked against need not be.
+be pure; the deviations it is checked against need not be. It says nothing about
+whether a pure equilibrium exists — restricting the profiles is a different
+question from restricting the deviations.
 `Setup.purePendingSimulation` composes it onto the message host in the same way,
 with `purePendingGame_approximate_nash_iff`.
 

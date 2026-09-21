@@ -9,9 +9,11 @@ Observation-local policies choose immutable bindings and disclosure decisions.
 Execution follows source order and interprets chance through the exact finite
 law carried by source syntax. Each retained guard obligation is checked once, at
 the reveal that publishes the last of its inputs; a rejected check makes that
-publication fail.  The game form's
-outcome is the detailed terminal state; `evaluatePayoffs` is a separate,
-explicit settlement projection and does not itself impose utilities.
+publication fail. Execution produces the detailed terminal state, which is what
+the laws below are stated over; the game form's *outcome* is its public
+projection, so no utility can depend on what a player kept to itself.
+`evaluatePayoffs` is a separate, explicit settlement projection and does not
+itself impose utilities.
 -/
 
 noncomputable section

@@ -23,8 +23,9 @@ must name the strongest one actually proved.
 The checked pending-message compiler supplies an exact finite-mixture
 simulation. Besides Nash correspondence, it gives
 `Vegas.SourceProgram.Setup.eventPendingGame_deviation_utility_bound`: for a
-fixed profile, native deviation, and real-valued test of the terminal source
-state, some source deviation achieves at least the native expected test value.
+fixed profile, native deviation, and real-valued test of the public source
+result, some source deviation achieves at least the native expected test
+value.
 The witness may depend on that test; this does not identify a single source
 policy reproducing the entire outcome law.
 

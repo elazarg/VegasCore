@@ -343,8 +343,12 @@ theorem source_event_pending_deviation_law [IExpr.ResultTypes L]
 
 /-- Same-error Nash preservation and reflection at compiled source
 profiles in either pending-message dependency mode, for every utility of the
-complete terminal source state. The utility assigned to a missing outcome is
-arbitrary; the concrete service has a separate proved completion theorem. -/
+public source result. The utility assigned to a missing outcome is arbitrary;
+the concrete service has a separate proved completion theorem.
+
+The utility domain here is the outcome, which is the public result. The
+deviation law above is the stronger statement, over complete terminal source
+states; it is not what this theorem quantifies over. -/
 theorem source_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
     (mode : EventGraph.ExecutionMode)
@@ -400,10 +404,16 @@ theorem source_event_pending_deviation_guarantee [IExpr.ResultTypes L]
 
 /-! ## Source-side restrictions
 
-Two moves the source language offers are worth nothing to a player: binding a
+Two moves the source language offers buy a *deviator* nothing: binding a
 candidate that will never open, and randomizing. Each restriction is a game of
 its own, each simulates the full source game with every deviation considered,
-and each therefore composes onto the same message host. -/
+and each therefore composes onto the same message host.
+
+Both readings are about a profile already in the restricted class, and about the
+deviations it is checked against. Neither says the restricted game has an
+equilibrium: restricting which profiles are considered is a different question
+from restricting which deviations they face, and matching pennies is the
+standing reminder that a pure game need not have one. -/
 
 /-- Same-error Nash preservation and reflection between the game whose policies
 always bind a value and the pending-message service, against arbitrary native
