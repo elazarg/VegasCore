@@ -3,6 +3,7 @@
 import Vegas.Pending.NativeProtocolPolicy
 import Vegas.Pending.NativeProtocolTermination
 import GameTheoryExtensions.Protocol.SingleMover
+import GameTheoryExtensions.Protocol.StateKernel
 
 /-! # The native protocol executes native policy invocations
 
@@ -101,6 +102,34 @@ theorem native_behavioral_step (runtime : EventGraphRuntime graph)
     players wire order history.state (law.map Subtype.val) marginal
   rw [FinDist.bind_map] at lawEq
   exact lawEq
+
+/-- Forgetting the canonical trace gives ordinary iteration of the native
+state kernel. The state still retains the actual private and environment
+recall consulted by the policies. -/
+theorem native_run_map_state (runtime : EventGraphRuntime graph)
+    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (players : Player → NativePolicy graph)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (fuel : Nat)
+    (history : (runtime.nativeProtocol inputs roster reactionRounds wire order).History) :
+    (InformationModel.runSingleMoverBehavioralFrom
+      (runtime.nativeInformation inputs roster reactionRounds wire order)
+      (runtime.native_singleMover inputs roster reactionRounds wire order)
+      (fun who => encodeNativePolicy (players who)) fuel history).map
+        ExecutionProtocol.History.state =
+      (fun law => law.bind (runtime.nativeControlStep inputs roster reactionRounds players wire
+        order))^[fuel] (FinDist.pure history.state) := by
+  apply ExecutionProtocol.runRandomizedFor_map_state
+  · intro state stopped
+    cases state with
+    | none => exact stopped.elim
+    | some control =>
+        rcases control with ⟨epochs, plan, execution⟩
+        rcases stopped with ⟨rfl, rfl⟩
+        rfl
+  · intro current running
+    exact runtime.native_behavioral_step inputs roster reactionRounds players wire order
+      current running
 
 /-- The certified fuel always reaches a terminal service control, including
 when the supplied history lies outside the profile's support. -/

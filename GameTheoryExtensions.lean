@@ -4,3 +4,4 @@ import GameTheory.Core.MixtureUtilitySimulation
 import GameTheoryExtensions.Protocol.Continuation
 import GameTheoryExtensions.Protocol.BehavioralContinuation
 import GameTheoryExtensions.Protocol.ContinuationLaw
+import GameTheoryExtensions.Protocol.StateKernel

@@ -11,18 +11,21 @@ utility-independent, playerwise compiler, at every proper native subgame.
 Reflection is a separate goal with a separate root-coverage obligation. Both
 should use the canonical `GameTheory.Protocol.InformationModel` definitions.
 
-This target needs operational work as well as a stronger simulation theorem.
-The checked examples below expose a recovery defect and a general obstruction
-to filling in new continuations from an optimal source plan. These do not by
-themselves establish an end-to-end `IsSubgamePerfect` counterexample for the
-serviced runtime: that requires service-specific continuation and subgame-root
-proofs.
+The unrestricted target is impossible for the present service class. The
+checked pending-menu example uses the actual native service and canonical
+behavioral SPE: two public utilities share a source SPE, but no native policy
+is SPE for both. The theorem rules out every utility-independent whole-profile
+translation for this game and service, hence also every playerwise compiler.
+It applies with either source commitment admission, including forfeiture.
+It does not rule out other services, utility-specific synthesis, or a more
+restricted preservation claim.
 
-The direct-action pending-menu example additionally proves reachability,
-proper-root closure, and a restriction on every residual public outcome for
-the actual service. Its numerical incompatibility holds for randomized laws.
-The native policy deviation witnesses and common source SPE witness are still
-required to conclude a compiler impossibility theorem from this example.
+The proof includes initialized prefix reachability, proper-root closure,
+information-local deviations under the complete remaining service, and a
+bound for arbitrary randomized continuations. The two-event native graph has
+the same publication kernel as the source program for every binding and
+disclosure. It is an explicit realization of that program, rather than a
+theorem identifying this graph with the compiler's unsimplified output.
 
 Keep private inputs separate from commitments. Make commitment-failure
 admission explicit in the source interface, and justify its omission separately
@@ -94,8 +97,9 @@ when the packet is included while ready and timely.
 The internal expansion into message-machine operations supplies safety proofs;
 it is not a strategic equivalence with a game containing preparation decisions.
 The paper's initial-play capstones concern the command-service compiler.
-Compiling graph policies to direct actions, source/native continuation laws,
-and proper-root coverage remain open. No native SPE capstone is claimed.
+Compiling graph policies to direct actions remains open. Positive continuation
+and proper-root coverage need a scope that excludes the checked obstruction.
+No positive native SPE capstone is claimed.
 
 ## What the theorem must mean
 
@@ -240,10 +244,28 @@ For the numerical obstruction, use public-result utilities:
 | Failure | 0 | 0 |
 
 Every law supported by the residual native paths has utility sum at most three.
-Thus no randomized law has value at least two for both utilities. What remains
-is to prove that information-local native policies attain each benchmark under
-the complete remaining service, and to exhibit one source SPE for both tests.
-The checked numerical result alone is not a native SPE impossibility theorem.
+Thus no randomized law has value at least two for both utilities.
+
+[PendingMenusStrategies.lean](../VegasTests/PendingMenusStrategies.lean)
+proves both deviation witnesses against the canonical randomized runner.
+To obtain `1`, the player submits its correct future opening during the last
+binding invocation; to obtain `2`, it waits. During the disclosure grant it
+submits the appropriate opening. Reserved inclusion publishes the selected
+value within ten service steps, before any clock tick. Every later service
+step preserves that result. Each deviation therefore earns two for its
+respective utility. SPE would require both lower bounds, contradicting the
+sum bound. `VegasTests.PendingMenus.no_common_native_spe` quantifies over all
+native behavioral policies, including private memory and randomization.
+
+[PendingMenusSource.lean](../VegasTests/PendingMenusSource.lean) supplies the
+actual source program and its common behavioral SPE: bind `0`, then always
+open. At a fresh binding, zero attains the global maximum of three. After any
+binding, opening weakly dominates withholding, including after forfeiture.
+The proof covers both source admission interfaces. The source and example
+graph publication kernels agree for every binding and disclosure.
+`VegasTests.PendingMenus.no_utility_independent_spe_compiler` combines these
+facts. The translation is fixed before choosing the utility; no outcome
+simulation premise is needed for the contradiction.
 
 **Design consequence.** Fresh handles and explicit source forfeiture address
 different obligations from pending-packet selection. An SPE certificate must
@@ -282,8 +304,9 @@ either utility.
 
 The target has a proper subgame after an unopenable A is sealed but before B is
 chosen. A's failure is now unavoidable. The two utilities require opposite B
-choices. The module proves `no_utility_independent_spe_compiler`: no single
-translation of that common source plan is SPE for both utilities. A separate
+choices. The module proves
+`GameTheoryExtensionsTests.IrreversibleFailure.no_utility_independent_spe_compiler`:
+no single translation of that common source plan is SPE for both utilities. A separate
 finite-distribution bound proves that randomization cannot supply a common
 optimal continuation either.
 
@@ -485,10 +508,11 @@ the bit as an extra input: it reads the actual received packet.
 Binding is established by submission. Reading and reacting to other pending
 messages remains possible through the separate wire and player invocations.
 
-The native edge still needs proofs about competing pending packets,
-irreversible acceptance, adaptive wire reactions, receipts, and recovery after
-arbitrary earlier submissions. Direct action construction alone is not an
-SPE theorem.
+The pending-menu theorem rules out unrestricted continuation coverage for this
+service class. A positive native edge needs premises governing competing
+packets, irreversible acceptance, adaptive wire reactions, and recovery after
+earlier submissions. Direct action construction alone supplies none of these
+strategic premises.
 
 Do not reset deadlines on retry: that changes completion and strategic timing.
 Do not add candidate pools or staging counters to the abstract language.
@@ -507,12 +531,12 @@ the default design.
 
 ## Proof gates
 
-1. **Validate the actual subgames.** Prove native prefix reachability,
-   information-set closure, and complete continuation laws for competing-packet
-   and irreversible-failure examples. The pending-menu example has checked
-   reachability, proper-root closure, and the universal residual public bound;
-   its policy-level deviation and source SPE witnesses remain. A failure to
-   establish proper-root closure changes a counterexample claim.
+1. **Select a feasible scope.** The pending-menu impossibility includes native
+   reachability, proper-root closure, randomized continuation bounds, native
+   deviations, and a common source behavioral SPE. An unrestricted certificate
+   for this service class cannot exist. A positive result must state additional
+   service or game premises, or a different preservation claim. Any further
+   counterexample needs its own proper-root and continuation proofs.
 2. **Close the semantic bridge.** Pure and behavioral source adapters,
    arbitrary-prefix laws, private setup, and the crossed-root tests are checked.
    The multiplayer native action adapter, native policy equivalence, and

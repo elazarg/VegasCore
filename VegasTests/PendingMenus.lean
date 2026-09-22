@@ -15,8 +15,8 @@ but no action can make that candidate win this inclusion.
 
 The prefix is reachable in the actual service and starts a proper canonical
 subgame. Every action loses access to a third value, even after arbitrary
-further native computation and traffic. The final policy-level impossibility
-theorem additionally needs native deviation witnesses and a source SPE witness.
+further native computation and traffic. `PendingMenusStrategies` supplies the
+native deviations and `PendingMenusSource` proves the compiler impossibility.
 -/
 
 noncomputable section
@@ -34,9 +34,9 @@ private abbrev inputs : Fin 0 → EventGraph.EventField Unit simpleExpr := Fin.e
 private abbrev outputs : Fin 2 → EventGraph.EventField Unit simpleExpr :=
   Fin.cases (.binding () .int) (fun _ => .publication .int)
 private abbrev layout := EventGraph.fieldLayout inputs outputs
-private abbrev binding : EventGraph.FieldRef layout (.binding () .int) := ⟨.inr 0, rfl⟩
+abbrev binding : EventGraph.FieldRef layout (.binding () .int) := ⟨.inr 0, rfl⟩
 
-private abbrev graph : EventGraph Unit simpleExpr where
+abbrev graph : EventGraph Unit simpleExpr where
   inputCount := 0
   order := order
   inputLayout := inputs
@@ -55,37 +55,37 @@ private abbrev graph : EventGraph Unit simpleExpr where
           simpa [order] using member
   payoffs := []
 
-private def runtime : EventGraphRuntime graph where
+def runtime : EventGraphRuntime graph where
   deadline _ := 2
 
-private abbrev app := runtime.application
-private def input : graph.Inputs := fun input => nomatch input
+abbrev app := runtime.application
+def input : graph.Inputs := fun input => nomatch input
 private def setup : NativeExecution runtime :=
   NativeExecution.initial runtime (MessageApplication.State.initial app (State.initial input))
 
-private def initial : NativeExecution runtime :=
+def initial : NativeExecution runtime :=
   { setup with
     native := { setup.native with application :=
       { setup.native.application with serviceGrant := some 0 } }
     environmentHistory :=
       [⟨MessageApplication.State.environmentView app setup.native, .application (.grant 0)⟩] }
 
-private def first : PlayerAction graph := bindingAction () 0 .int (.success 1) 0
-private def second : PlayerAction graph := bindingAction () 0 .int (.success 2) 1
-private def contested : NativeExecution runtime :=
+def first : PlayerAction graph := bindingAction () 0 .int (.success 1) 0
+def second : PlayerAction graph := bindingAction () 0 .int (.success 2) 1
+def contested : NativeExecution runtime :=
   runtime.takeAction () (runtime.takeAction () initial first) second
 
 /-- The wire consults public traffic only, not candidate meanings or witnesses. -/
-private def wire : app.WirePolicy := fun _ view =>
+def wire : app.WirePolicy := fun _ view =>
   FinDist.pure (.include ((), if (view.pool.lookup ((), 2)).isSome then 0 else 1))
 
-private def afterAction (action : PlayerAction graph) : NativeExecution runtime :=
+def afterAction (action : PlayerAction graph) : NativeExecution runtime :=
   runtime.takeAction () contested action
 
-private def selected (action : PlayerAction graph) : Nat :=
+def selected (action : PlayerAction graph) : Nat :=
   if ((afterAction action).native.pool.lookup ((), 2)).isSome then 0 else 1
 
-private def selectedValue (action : PlayerAction graph) : Int :=
+def selectedValue (action : PlayerAction graph) : Int :=
   if ((afterAction action).native.pool.lookup ((), 2)).isSome then 1 else 2
 
 private theorem old_pending (action : PlayerAction graph) :
@@ -169,14 +169,14 @@ theorem wait_selects_two : selectedValue PlayerAction.wait = 2 := rfl
 theorem fresh_commitment_selects_one :
     selectedValue (bindingAction () 0 .int (.success 0) 2) = 1 := rfl
 
-private def ordering : runtime.ServiceOrderPolicy :=
+def ordering : runtime.ServiceOrderPolicy :=
   fun _ _ => FinDist.pure (ServiceOrder.increasing graph)
 
-private abbrev arena := runtime.nativeProtocol (FinDist.pure input) [] 1 wire ordering
+abbrev arena := runtime.nativeProtocol (FinDist.pure input) [] 1 wire ordering
 
 private def setupControl : NativeControl runtime := ⟨runtime.serviceEpochs, [], setup⟩
 
-private def orderedControl : NativeControl runtime :=
+def orderedControl : NativeControl runtime :=
   ⟨5, epochPlan (ServiceOrder.increasing graph) [] 1, setup⟩
 
 private def grantedControl : NativeControl runtime :=
@@ -185,7 +185,7 @@ private def grantedControl : NativeControl runtime :=
 private def firstControl (action : PlayerAction graph) : NativeControl runtime :=
   ⟨5, orderedControl.plan.drop 2, runtime.takeAction () initial action⟩
 
-private def secondControl (one two : PlayerAction graph) : NativeControl runtime :=
+def secondControl (one two : PlayerAction graph) : NativeControl runtime :=
   ⟨5, orderedControl.plan.drop 3,
     runtime.takeAction () (runtime.takeAction () initial one) two⟩
 
@@ -233,7 +233,7 @@ private def firstHistory (action : PlayerAction graph) : arena.History :=
       rw [actionStep, FinDist.map_pure]
       rfl)
 
-private def secondHistory (one two : PlayerAction graph) : arena.History :=
+def secondHistory (one two : PlayerAction graph) : arena.History :=
   extendPure (firstHistory one) (fun _ => some two)
     ⟨by change ¬ (5 = 0 ∧ _); simp,
       fun who => by cases who; exact ⟨rfl, Set.mem_univ _⟩⟩
@@ -481,7 +481,7 @@ private theorem afterAction_invariant (action : PlayerAction graph) :
   exact (runtime.nativeStep_progress input () _ _ action secondInvariant
     (FinDist.mem_support_pure.mpr rfl)).invariant
 
-private def included (action : PlayerAction graph) : app.State :=
+def included (action : PlayerAction graph) : app.State :=
   app.includePending (afterAction action).native ((), selected action)
 
 private theorem included_invariant (action : PlayerAction graph) :
@@ -539,7 +539,7 @@ theorem zero_unreachable (action : PlayerAction graph)
       PublicationResult.success.inj (Option.some.inj (two.symm.trans same))
     norm_num at values
 
-private def publicUtility (preferOne : Bool) : Option (PublicationResult Int) → ℝ
+def publicUtility (preferOne : Bool) : Option (PublicationResult Int) → ℝ
   | some (.success value) =>
       if value = 0 then 3 else
         if value = 1 then (if preferOne then 2 else 1) else

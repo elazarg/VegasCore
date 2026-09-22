@@ -23,11 +23,13 @@ histories, reuses source observations and execution, and has a playerwise
 equivalence for admitted pure and behavioral policies. Private setup draws once before play;
 the complete terminal-state law agrees with source execution at every prefix.
 The pure and behavioral SPE characterizations and conditional preservation and
-reflection theorems are checked. Native continuation correspondence and an
-automatic checker remain open. The native action adapter has checked policy
-correspondence and execution refinement; its graph-policy compiler and
-proper-root correspondence remain obligations. The [SPE plan](subgame-preservation.md) states
-those obligations separately from the source adapter.
+reflection theorems are checked. The actual native service admits a checked
+counterexample to unrestricted utility-independent behavioral SPE preservation,
+even when the source admits forfeiture. Restricted positive correspondence and
+an automatic checker remain open. The native action adapter has checked policy
+correspondence and execution refinement; its graph-policy compiler remains an
+obligation. The [SPE plan](subgame-preservation.md) states the exact negative
+scope and the remaining positive obligations.
 
 ## Requirements
 
@@ -540,14 +542,27 @@ and later computation. For utilities `(3,2,1,0)` and `(3,1,2,0)` on public
 results `(0,1,2,failure)`, every residual randomized law has utility sum at most
 three. It cannot simultaneously attain value two for both tests.
 
-The remaining impossibility obligations are explicit: information-local native
-deviations attaining both benchmarks under the complete service, and one
-source SPE shared by the two utilities. The experiment does not yet prove
-nonexistence of a utility-independent SPE compiler for the serviced runtime.
+[PendingMenusStrategies.lean](../VegasTests/PendingMenusStrategies.lean)
+proves that two information-local native deviations publish their preferred
+values within ten service steps and retain them through the complete service.
+They earn two for their respective utilities. The canonical behavioral SPE
+inequalities contradict the sum bound, so no native behavioral policy is SPE
+for both tests.
+
+[PendingMenusSource.lean](../VegasTests/PendingMenusSource.lean) proves that
+the source policy which binds zero and always opens is a behavioral SPE for
+both utilities, under either commitment admission. Its publication kernel
+agrees with the example graph for every binding and disclosure. The resulting
+`VegasTests.PendingMenus.no_utility_independent_spe_compiler` rules out even
+whole-profile translations into this fixed native service. This is an
+impossibility for the stated game and service, not for every implementation.
+The example graph is an explicit realization; identification with the
+compiler's unsimplified graph is not part of this theorem.
 
 **Architecture requirement.** Commitment admission selects source semantics.
 A separate service/translation certificate must justify the continuation
-menus. Enabling forfeiture cannot stand in for this certificate. An automatic
+menus. The counterexample proves that enabling forfeiture cannot stand in for
+this certificate. An automatic
 checker must distinguish a proved obstruction from an unresolved obligation;
 neither warrants changing the source game or weakening the requested property.
 
