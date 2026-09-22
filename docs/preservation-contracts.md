@@ -24,7 +24,7 @@ equivalence for admitted pure and behavioral policies. Private setup draws once 
 the complete terminal-state law agrees with source execution at every prefix.
 The pure and behavioral SPE characterizations and conditional preservation and
 reflection theorems are checked. Native continuation correspondence and an
-automatic checker remain open. The native response adapter has checked policy
+automatic checker remain open. The native action adapter has checked policy
 correspondence and execution refinement; its graph-policy compiler and
 proper-root correspondence remain obligations. The [SPE plan](subgame-preservation.md) states
 those obligations separately from the source adapter.
@@ -440,109 +440,97 @@ policies cannot distinguish hidden setup draws and that continuations retain
 the actual private type. These are source results and conditional transfer
 results; native continuation coverage remains a proof obligation.
 
-### E7: native multiplayer responses and retained service opportunities
+### E7: one player action and an optional transmission
 
-**Question.** Can free private work be integrated without exposing the service
-cursor or removing choices to submit, deliver, or react before inclusion?
+**Question.** Can the native game represent player decisions without a separate
+preparation workflow, while retaining private recall and network reactions?
 
-[ResponseProtocol.lean](../Vegas/Pending/ResponseProtocol.lean) uses the existing
-service plan and control state. The actual players choose atomic responses;
-setup, the fixed wire policy, and the fixed adaptive order policy remain in the
-transition kernel. The information state at an invocation is exactly own recall
-and the native view. Inactive positions have no player choice.
+[EventPlayerAction.lean](../Vegas/Pending/EventPlayerAction.lean) defines one
+player action with two fields: private memory and an optional transmission.
+Memory is a finite sequence of numeric identifiers and typed language values;
+it has no application or network effect. Each invocation appends exactly one
+entry containing the received view and chosen action to the player's recall.
+A policy is an unrestricted function of this recall and the current view.
+There is no private instruction list, staging counter, or preparation budget.
 
-The service retains all three initial owner invocations and every wire/roster
-reaction slot. Each player invocation executes finite private work followed by
-one network command. Only that response is atomic. The number of private
-commands is unbounded and consumes neither extra service slots nor clock ticks.
-Keeping the invocation slots retains choices to submit several packets before
-wire service; these opportunities must not disappear as a side effect of making
-private work free.
+A transmission either submits a packet or replays a message identity. A
+submission pairs its public packet with optional **private opening data**.
+For an authored commitment to a fresh local handle, that data determines its
+meaning; missing data makes the handle unopenable. Existing meanings are
+immutable. Initial handles and foreign handles cannot acquire new meanings
+through this operation. Only the packet enters the pending pool.
 
-[ResponseProtocolPolicy.lean](../Vegas/Pending/ResponseProtocolPolicy.lean)
-proves a playerwise equivalence covering every native behavioral response
-policy. [ResponseProtocolEvaluation.lean](../Vegas/Pending/ResponseProtocolEvaluation.lean)
-identifies its protocol step law with the actual native policy invocation at
-any legal prefix, and proves termination at the remaining service bound.
-[ResponseProtocolNative.lean](../Vegas/Pending/ResponseProtocolNative.lean)
-refines every initialized continuation to existing native actions. It preserves
-candidate meanings fixed at submission and live activation timestamps.
+[NativeProtocol.lean](../Vegas/Pending/NativeProtocol.lean) presents this game
+using the actual players. Setup, wire scheduling, and service order are fixed
+kernels. The service retains all three initial owner invocation slots and every
+wire/roster reaction slot. The view contains received messages, public state,
+owner-visible graph data, and the owner's submitted candidate meanings. The
+service cursor and application scratch cache are absent.
+
+[NativeProtocolPolicy.lean](../Vegas/Pending/NativeProtocolPolicy.lean) proves
+an equivalence with every canonical information-local behavioral policy.
+[NativeProtocolEvaluation.lean](../Vegas/Pending/NativeProtocolEvaluation.lean)
+identifies native policy invocation with the protocol transition at every
+legal prefix. [NativeProtocolSafety.lean](../Vegas/Pending/NativeProtocolSafety.lean)
+checks bounded play, fixed meanings, live activation times, and that the
+low-level sampled-action cache remains empty at **every legal history**,
+including deviations. Its internal expansion reuses message-machine safety
+proofs; the expanded states are not positions in this game's history tree.
+It is not a strategic equivalence with the command-service game.
 
 **Validation.** [InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean)
-checks the retained invocation schedule, the native response-service reaction
-to a delivered packet before inclusion, and independence of player observation
-from the unconsumed service plan and epoch counter. The test's in-flight state
-is reached by concrete native actions; it does not claim a proper-root proof
-for that state in the initialized service game.
-
-**Remaining obligations.** This adapter supplies the response game's semantics,
-not a graph-policy response compiler or a native SPE certificate. The existing
-initial-play capstones use command policies. Connecting one response compiler
-to the source requires honest and deviated continuation laws, recovery from
-arbitrary candidate/cache states, and proper-root coverage. A malformed-packet
-retry test alone does not discharge those obligations.
+checks reading a delivered bit and committing it before inclusion, retention
+of every invocation slot, and independence of observations from the hidden
+service cursor. A private bit can be recorded while sending nothing and used
+on a later turn without being observed by another player. Two submissions
+produce exactly two recall entries. Attempts to change a submitted value or
+supply a missing opening later fail to alter the original handle.
 
 ### E8: fresh binding material versus pending-packet competition
 
-**Question.** Does an arbitrary native prefix remove the ability to construct
-some value, even with free private work?
+**Question.** Can arbitrary previous activity remove the material needed to
+submit a new value?
 
 [EventFreshCandidates.lean](../Vegas/Pending/EventFreshCandidates.lean) proves
-that every finite native execution leaves arbitrarily large fresh, unused
-prepared handles. The proof covers arbitrary preparations, submissions,
-deliveries, replays, inclusions, and environment commands. The response adapter
-lifts it to **every legal initialized history**, without a prescribed-policy
-or proper-root premise. It retains the actual candidate table.
+that every finite message-machine execution leaves arbitrarily large fresh,
+unused local handles. The native protocol lifts this fact to every legal
+initialized history. [EventBindingAction.lean](../Vegas/Pending/EventBindingAction.lean)
+constructs any typed binding result in one action. The fresh handle is chosen
+before the result, and the wire envelope is the same for a value and forfeiture.
+A separate acceptance law proves the exact graph action and output when this
+packet is included while ready and timely.
 
-[EventBindingResponse.lean](../Vegas/Pending/EventBindingResponse.lean) constructs
-any typed binding result in one response. A successful result prepares a fresh
-slot and submits it; forfeiture submits the same fresh slot without preparing
-it. The envelope is identical. The freshness witness is chosen before the
-result, and the construction does not read or write the event cache. A separate
-acceptance law proves the exact graph action and output if this packet is
-included while the event is ready and timely.
+The regression sends `false` under one handle and `true` under another.
+Including the new packet commits `true`; including the old packet commits
+`false`. Both meanings were fixed by their respective submissions. This proves
+neither proper-root status nor an SPE impossibility result.
 
-**Validation.** [InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean)
-uses a reachable native prefix with failure in the remembered-action cell,
-`false` in the canonical candidate, and that candidate already pending. One
-response prepares and submits `true` under a fresh handle. Including the new
-packet commits `true`; including the old packet commits `false`. Both meanings
-were fixed at submission. The test proves neither proper-root status nor an
-SPE impossibility result.
+**Compiler requirements.** Local construction does not yet determine the right
+global policy. The following shortcuts leave substantive obligations:
 
-**Compiler requirements.** The local construction does not yet determine the
-right global policy. The following choices require continuation laws:
-
-| Tempting shortcut | Obligation it leaves unsatisfied |
+| Proposed shortcut | Remaining obligation |
 | --- | --- |
-| Trust the first remembered action | A preceding deviation may have filled the cell; private scratch work need not be a source decision |
-| Sample the source policy on every native invocation | Repeated sampling changes the distribution of competing packets and may change the source action law |
-| Allocate a fresh candidate and assume it replaces earlier traffic | An older authenticated packet remains includable with its fixed meaning |
-| Choose a fresh serial using private state and stop at existence | The concrete allocation policy must also satisfy information and continuation-law requirements |
-| Select a new compiler continuation separately at each root | SPE concerns one information-local contingent policy, also used from initialization |
+| Sample the source policy at every native invocation | Repeated sampling can change the distribution of competing packets and source choices |
+| Treat a fresh submission as replacement | Earlier authenticated packets remain includable with fixed meanings |
+| Stop at existence of a fresh serial | The allocation policy must satisfy information and continuation laws |
+| Infer intended source disclosure from the final publication | Disclosure and withholding may produce the same failed publication; source own-action recall must be reconstructed |
+| Choose a compiler continuation separately at each root | SPE concerns one information-local policy, also used from initialization |
 
-Original disclosure-action recall also needs treatment: when disclosure and
-withholding produce the same failed publication, an earlier first-write cache
-entry can record a different action from the current source policy. Binding
-material recovery does not resolve this. A compiler may reconstruct source
-recall from authenticated own history; changing private scratch-memory semantics
-is a different implementation choice. Neither licenses rewriting a past accepted
-binding or cancelling pending packets.
-
-Thus preparation capacity is settled for responses, while policy sampling,
-disclosure recall, and competition between submissions remain explicit parts
-of the source/native continuation problem. No compiler flag is added for these
-proof obligations.
+Private memory can retain an intended source action without introducing an
+application cache. Its relationship to accepted packets and source recall must
+be proved for the compiler. No action can rewrite an accepted binding or cancel
+pending traffic. The paper's initial-play capstones use command policies;
+source/native continuation laws for the direct-action compiler remain open.
 
 ## Implementation order and stop conditions
 
 1. Pure and behavioral source adapters, mixed-site admission, private setup,
    residual laws, and SPE characterizations are checked, without finite payload
    domains. Do not infer pure-to-behavioral SPE equivalence from value agreement.
-2. The multiplayer atomic-response adapter, policy equivalence, bounded play,
+2. The multiplayer native action adapter, policy equivalence, bounded play,
    native refinement, and fresh binding-material construction are checked.
-   Establish the graph-policy response
-   compiler and the full source/native continuation bridge, including hostile
+   Establish the graph-policy action compiler and the full source/native
+   continuation bridge, including hostile
    prefixes and all proper native roots. A generic wrapper is not evidence.
 3. Instantiate the SPE transfer theorem and use the canonical failure example
    as a negative case. Add a positive source elision theorem with an explicit

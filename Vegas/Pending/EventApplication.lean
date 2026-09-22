@@ -351,6 +351,61 @@ def privateStep (state : State graph) (who : Player) :
         | none => { state with remembered := Function.update state.remembered event (some action) }
       else state
 
+/-- Private candidate preparation and remembering expose no application data
+to the environment. Authentication restricts whose catalogue can be changed. -/
+theorem privateStep_publicView (state : State graph) (who : Player)
+    (command : PrivateCommand graph) :
+    (privateStep state who command).publicView = state.publicView := by
+  cases command with
+  | prepare => rfl
+  | remember event action =>
+      by_cases owned : graph.actor? event = some who
+      · rw [privateStep, dite_eq_left owned]
+        cases state.remembered event <;> rfl
+      · rw [privateStep, dite_eq_right owned]
+
+/-- Private commands by one player do not change another player's application
+observation, including its authenticated candidate catalogue and choice cache. -/
+theorem privateStep_playerView_other (state : State graph) (who observer : Player)
+    (different : observer ≠ who) (command : PrivateCommand graph) :
+    (privateStep state who command).playerView observer = state.playerView observer := by
+  cases command with
+  | prepare serial raw =>
+      change { state.playerView observer with candidates := (fun slot =>
+        (state.candidates.prepare who (.prepared serial) raw).lookup (observer, slot)) } =
+          state.playerView observer
+      have candidates : (fun slot =>
+          (state.candidates.prepare who (.prepared serial) raw).lookup (observer, slot)) =
+          fun slot => state.candidates.lookup (observer, slot) := by
+        funext slot
+        apply CommitmentCandidates.lookup_prepare_other
+        intro same
+        exact different (congrArg Prod.fst same)
+      rw [candidates]
+      rfl
+  | remember event action =>
+      by_cases owned : graph.actor? event = some who
+      · rw [privateStep, dite_eq_left owned]
+        cases cached : state.remembered event with
+        | some prior => rfl
+        | none =>
+            have memory : (fun query =>
+                if graph.actor? query = some observer then
+                  Function.update state.remembered event (some action) query else none) =
+                fun query => if graph.actor? query = some observer then
+                  state.remembered query else none := by
+              funext query
+              by_cases same : query = event
+              · subst query
+                have other : graph.actor? event ≠ some observer := by
+                  rw [owned]
+                  simpa only [ne_eq, Option.some.injEq] using different.symm
+                simp only [other, ↓reduceIte]
+              · rw [Function.update_of_ne same]
+            dsimp only [State.playerView, State.publicView]
+            rw [memory]
+      · rw [privateStep, dite_eq_right owned]
+
 /-- An authored commitment fixes its own handle before transmission.
 Foreign references cannot reserve another player's candidate slots. A fresh
 authored handle becomes permanently unopenable; prepared meanings are retained. -/

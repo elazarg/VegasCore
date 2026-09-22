@@ -2,7 +2,7 @@
 
 ## Status and recommendation
 
-The existing compiler theorem concerns play from initialization. It preserves
+The command-service compiler theorem concerns play from initialization. It preserves
 Nash incentives, including ex ante Bayesian incentives for utilities of initial
 parameters and public results. It does not establish subgame perfection.
 
@@ -66,31 +66,29 @@ are the existing information-set-closed histories, and its payoff uses the
 existing randomized runner. The certified evaluation bound does not affect
 the predicate. No finite player universe or finite action domain is assumed.
 
-[ResponseProtocol.lean](../Vegas/Pending/ResponseProtocol.lean) presents the
-native response service with the actual players as strategic coordinates.
-Setup, wire scheduling, and adaptive order are fixed stochastic kernels.
-[ResponseProtocolPolicy.lean](../Vegas/Pending/ResponseProtocolPolicy.lean)
-proves an equivalence with all native response policies, using only own recall
-and the actual native view at invocation. The service cursor is not observed.
-The service plan retains all three initial owner invocation slots and every
-wire/roster reaction slot. Each invocation permits finite free private work
-and one network command; public submission opportunities are retained.
+[NativeProtocol.lean](../Vegas/Pending/NativeProtocol.lean) presents native
+service with the actual players as strategic coordinates. One player action
+records private memory and optionally transmits a packet. Commitment submissions
+carry private opening data; only the packet enters the network. There are no
+preparation actions or intermediate positions. The service retains all three
+initial owner invocations and every wire/roster reaction slot.
 
-The response adapter has checked termination, exact native invocation laws,
-and refinement of arbitrary continuations to native action sequences.
-[ResponseProtocolNative.lean](../Vegas/Pending/ResponseProtocolNative.lean)
-proves that responses consume zero clock ticks, retain live activation times,
-and preserve fixed candidate meanings. It also proves that every legal
-initialized response history retains fresh, unused candidate handles.
-[EventBindingResponse.lean](../Vegas/Pending/EventBindingResponse.lean) realizes
-any binding result in one response and proves exact graph acceptance when its
-packet is included while ready and timely. This tolerates occupied canonical
-slots and arbitrary remembered actions. It does not cancel competing packets
-or supply a complete contingent policy. This is a response-service presentation;
-the paper's initial-play capstones concern the command-service compiler.
-Compiling graph policies into responses, recovery after arbitrary prefixes,
-source/native continuation correspondence, and proper-root coverage remain
-open. No native SPE capstone is claimed.
+[NativeProtocolPolicy.lean](../Vegas/Pending/NativeProtocolPolicy.lean) proves
+an equivalence with all native behavioral policies, using exactly own recall
+and the native view. Every decision contributes one recall entry. Private memory
+has no application effect, and the view exposes neither the service cursor nor
+an application scratch cache. [NativeProtocolSafety.lean](../Vegas/Pending/NativeProtocolSafety.lean)
+proves that this cache stays empty at every legal initialized history. It also
+checks termination, fixed commitment meanings, live activation times, and fresh
+handle availability. [EventBindingAction.lean](../Vegas/Pending/EventBindingAction.lean)
+constructs any binding result in one action and proves exact graph acceptance
+when the packet is included while ready and timely.
+
+The internal expansion into message-machine operations supplies safety proofs;
+it is not a strategic equivalence with a game containing preparation decisions.
+The paper's initial-play capstones concern the command-service compiler.
+Compiling graph policies to direct actions, source/native continuation laws,
+and proper-root coverage remain open. No native SPE capstone is claimed.
 
 ## What the theorem must mean
 
@@ -194,9 +192,8 @@ closure. Give failure utility below both `b` and `c`. Account for replay,
 cross-event submissions, reserved inclusion, and all remaining service slots.
 The abstract lemma alone does not discharge these obligations.
 
-The atomic-response runtime removes this preparation-capacity obstruction.
-Every finite prefix leaves fresh handles, and one response can prepare and
-submit any value. The checked construction does not assume an empty cache or
+The direct-action native game has no preparation-capacity obstruction.
+Every finite prefix leaves fresh handles, and one action can submit any value. The checked construction does not assume an empty cache or
 an unused canonical event slot. An existing transmitted candidate remains
 binding, and an earlier pending packet can still win inclusion; the two cases
 are checked in `VegasTests/InFlightCommitment.lean`. A continuation certificate
@@ -308,7 +305,7 @@ The native protocol must have the actual players as strategic coordinates.
 Setup, public chance, fixed wire policy, and fixed order policy belong in the
 transition kernel. The existing `serviceProtocol` has one analysis agent
 controlling focal-player, wire, and order decisions for a predraw proof; the
-scheduler protocol fixes the players and makes the scheduler strategic. The multiplayer response adapter supplies the required strategic coordinates;
+scheduler protocol fixes the players and makes the scheduler strategic. The multiplayer native action adapter supplies the required strategic coordinates;
 neither analysis protocol can substitute for it.
 
 Keep an explicit termination certificate. Begin with sequential dependencies
@@ -383,33 +380,29 @@ operations must preserve this correspondence, including after earlier
 malformed commands. This is an obligation to prove, not a definition that can
 be satisfied by deleting inconvenient native histories.
 
-The response interface should permit finite private computation and an optional
-outgoing message in one owner invocation. Private bookkeeping consumes no
-separate service opportunity. This removes the particular deadline menu loss
-caused by splitting preparation and submission. Sampling a source action and
-constructing its packet together may also eliminate the staging cache. Actual
-recall of earlier choices remains necessary.
+[EventPlayerAction.lean](../Vegas/Pending/EventPlayerAction.lean) implements one
+player action with private memory and an optional transmission. Policy
+computation is unrestricted. Memory is retained in own recall and has no effect
+on commitments, application state, transport, or other players' information.
+The native view omits the application sampled-action cache, which remains empty
+at all legal histories. Intended source choices must be reconstructed from the
+compiler's own action records when public outcomes alone do not determine them.
 
-`Interaction.MessageApplicationResponse` provides this response operation:
-finite private work followed by submission, replay, or waiting. Its expansion
-into native actions is proved, so existing native safety invariants apply.
-Private work changes neither transport nor the observations of other players
-under the application's locality premise. The atomic reaction test in
-[InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean) checks one observation-local response that reads a
-delivered bit, prepares a fresh candidate, and submits it without advancing time
-or including a packet. The response-service kernel executes the same reaction
-before reserved inclusion and preserves every existing invocation slot.
-Its native refinement and clock laws are checked. The graph strategy compiler
-still needs an atomic-response translation and proofs at arbitrary prefixes;
-the paper capstones use the command-service translation.
+A commitment submission supplies its public envelope and private opening data
+in the same action. Submission records the meaning and enqueues the packet;
+there is no preparation choice or scheduled intermediate state. The internal
+expansion into existing machine operations proves safety, not equivalence of
+the two strategic history trees. The graph-policy compiler still needs direct
+actions and arbitrary-prefix continuation laws.
 
-Submission must remain separate from delivery and inclusion. The wire can
-inspect the pending pool, deliver an envelope to a player's inbox, and invoke
-that player's response before inclusion. The player can read that envelope and
-send another packet, replay a known packet, or withhold. Response grouping must
-preserve these observation and reaction points. Neither the number of public
-submission opportunities nor message visibility should change as an incidental
-consequence of removing private staging.
+Submission remains separate from delivery and inclusion. The wire can inspect
+the pending pool and deliver an envelope before a player's next action. The
+player can read it and submit another packet, replay a known packet, or send
+nothing. [InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean) checks
+this reaction and the retained service slots. It also checks private memory
+retention without network activity, and opposite outcomes from including two
+competing commitment packets. Neither the network opportunities nor their
+observations are removed by the action interface.
 
 ### When a transmitted handle acquires its meaning
 
@@ -436,13 +429,12 @@ The example checks the native transitions and handler; it does not assert a
 serviced-game equilibrium or a proper-subgame witness. Its policy does not take
 the bit as an extra input: it reads the actual received packet.
 
-Binding at submission is independent of grouping private work into a response.
-Reading and reacting to other pending messages remains possible. The response
-redesign must preserve those opportunities while making private work free.
+Binding is established by submission. Reading and reacting to other pending
+messages remains possible through the separate wire and player invocations.
 
 The native edge still needs proofs about competing pending packets,
 irreversible acceptance, adaptive wire reactions, receipts, and recovery after
-arbitrary earlier submissions. Atomic response construction alone is not an
+arbitrary earlier submissions. Direct action construction alone is not an
 SPE theorem.
 
 Do not reset deadlines on retry: that changes completion and strategic timing.
@@ -462,24 +454,24 @@ the default design.
 
 ## Proof gates
 
-1. **Validate the actual subgames.** Present the single-player serviced example
-   through the canonical protocol API. Prove prefix reachability, information-set
-   closure, complete continuation laws, and the profitable recovery deviation.
-   Check the deadline-menu candidate just as explicitly. A failure to establish
+1. **Validate the actual subgames.** Prove native prefix reachability,
+   information-set closure, and complete continuation laws for competing-packet
+   and irreversible-failure examples. Command-service staging examples do not
+   establish claims about the direct-action game. A failure to establish
    proper-root closure changes the counterexample claim.
 2. **Close the semantic bridge.** Pure and behavioral source adapters,
    arbitrary-prefix laws, private setup, and the crossed-root tests are checked.
-   The multiplayer native response adapter, native policy equivalence, and
-   invocation laws are checked. Prove the graph-policy response compiler and
+   The multiplayer native action adapter, native policy equivalence, and
+   invocation laws are checked. Prove the graph-policy action compiler and
    source/native continuation correspondence, including behavioral deviations.
 3. **Prove the source-to-canonical edge.** Establish source suffix laws, policy
    restriction compatibility, and root coverage for histories legal under the
    selected commitment-admission interface. Keep concurrent scheduling outside
    this gate.
-4. **Validate the response contract.** Native safety, submission binding,
-   bounded service, and zero clock cost for private response work are checked.
+4. **Validate the native action contract.** Native safety, submission binding,
+   bounded service, and private-memory locality are checked.
    Discharge hostile prefixes for the selected compiler: establish recovery,
-   candidate allocation, cache handling, and residual choice correspondence.
+   candidate allocation, source-action recall, and residual choice correspondence.
 5. **Compose preservation.** Instantiate the continuation certificate at every
    native root and lift joint parameter/public-result utilities. Add a genuine
    noncredible-threat example that is Nash but not SPE, alongside a preserved

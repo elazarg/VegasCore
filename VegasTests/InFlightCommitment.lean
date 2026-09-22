@@ -3,9 +3,8 @@
 import Vegas.Expr.Simple
 import Vegas.Pending.EventCommitmentBinding
 import Interaction.MessageApplicationPolicies
-import Interaction.MessageApplicationResponse
-import Vegas.Pending.ResponseProtocolNative
-import Vegas.Pending.EventBindingResponse
+import Vegas.Pending.NativeProtocolSafety
+import Vegas.Pending.EventBindingAction
 
 /-! # A transmitted commitment stays fixed while messages are in flight
 
@@ -87,13 +86,13 @@ theorem messages_visible_before_inclusion (bit : Bool) :
 theorem delivered_handle_unopenable (bit : Bool) :
     (seen bit).application.candidates.lookup candidate = .unopenable := rfl
 
-private def readSignal (view : app.View) : Bool :=
-  match view.messages.inbox.head? with
+private def readSignal (view : MessagePool.View Bool (Payload graph)) : Bool :=
+  match view.inbox.head? with
   | some ⟨_, .malformed raw⟩ => (raw.as? .bool).getD false
   | _ => false
 
 private def respondToSignal : app.PlayerPolicy := fun _ view =>
-  FinDist.pure (.privateCommand (.prepare 0 ⟨.bool, readSignal view⟩))
+  FinDist.pure (.privateCommand (.prepare 0 ⟨.bool, readSignal view.messages⟩))
 
 /-- One information-local policy chooses its preparation from the received
 packet, rather than taking the hidden bit as an extra input. -/
@@ -165,7 +164,7 @@ private def freshReaction (bit : Bool) : app.State :=
 bit. Both commitment packets remain pending, with independently fixed meanings. -/
 theorem fresh_commitment_after_delivery (bit : Bool) :
     app.run [.privateCommand false (.prepare 1 ⟨.bool,
-        readSignal (MessageApplication.State.observe app (seen bit) false)⟩),
+        readSignal (MessageApplication.State.observe app (seen bit) false).messages⟩),
       .submit false (.commitment 0 (false, .prepared 1))] (seen bit) =
         FinDist.pure (freshReaction bit) ∧
     (freshReaction bit).pool.lookup (false, 0) = some ⟨(false, 0), commitment⟩ ∧
@@ -178,98 +177,120 @@ theorem fresh_commitment_after_delivery (bit : Bool) :
   simp only [MessageApplication.run, MessageApplication.step, FinDist.pure_bind]
   rfl
 
-private def atomicReaction : app.ResponsePolicy := fun _ view =>
-  FinDist.pure ⟨[.prepare 1 ⟨.bool, readSignal view⟩],
-    .submit (.commitment 0 (false, .prepared 1))⟩
+private def reactToSignal : NativePolicy graph := fun _ view =>
+  FinDist.pure (bindingAction false 0 .bool (.success (readSignal view.messages)) 1)
 
-/-- Reading the delivered bit, preparing its fresh candidate, and sending it
-requires one response invocation. No time elapses and no packet is included. -/
-theorem atomic_reaction_after_delivery (bit : Bool) :
-    (app.invokeResponse false atomicReaction
-      (MessageApplication.PolicyExecution.initial app (seen bit))).map
-        MessageInterface.PolicyExecution.native = FinDist.pure (freshReaction bit) ∧
+/-- The player reads a delivered bit and sends a commitment in one action.
+Its private opening data does not enter the network. -/
+theorem action_after_delivery (bit : Bool) :
+    (runtime.invokeNative false reactToSignal
+      (NativeExecution.initial runtime (seen bit))).map
+        NativeExecution.native = FinDist.pure (freshReaction bit) ∧
       (freshReaction bit).application.clock = (seen bit).application.clock ∧
       (freshReaction bit).pool.ledger = [] ∧ (freshReaction bit).receipts = [] := by
   refine ⟨?_, rfl, rfl, rfl⟩
-  simp only [MessageApplication.invokeResponse, atomicReaction, FinDist.pure_bind,
-    MessageApplication.responseStep_submit, FinDist.map_pure]
+  simp only [invokeNative, reactToSignal, FinDist.pure_bind, actionStep, FinDist.map_pure]
   rfl
 
-/-- The service keeps two wire-and-reaction rounds before reserved inclusion,
-and keeps all three initial network-submission opportunities. -/
+/-- Existing network-submission, wire, and reaction opportunities are retained. -/
 example : eventServicePlan (graph := graph) [true, false] 2 0 =
     [.grant 0, .player false, .player false, .player false,
       .wire, .player true, .player false, .wire, .player true, .player false,
       .includeLatest 0 false, .sample 0] := rfl
 
-private def responsePlayers : Bool → app.ResponsePolicy
-  | false => atomicReaction
-  | true => fun _ _ => FinDist.pure ⟨[], .wait⟩
+private def nativePlayers : Bool → NativePolicy graph
+  | false => reactToSignal
+  | true => fun _ _ => FinDist.pure PlayerAction.wait
 
-private def remainingReaction (bit : Bool) : ServiceControl runtime :=
+private def remainingReaction (bit : Bool) : NativeControl runtime :=
   ⟨0, [.player false, .includeLatest 0 false, .sample 0, .tick, .expire 0],
-    MessageApplication.PolicyExecution.initial app (seen bit)⟩
+    NativeExecution.initial runtime (seen bit)⟩
 
-/-- The actual response-service kernel invokes the information-local reaction
-before the reserved inclusion slot, retaining both pending commitments. -/
+/-- The actual service kernel invokes this policy before reserved inclusion. -/
 theorem service_reaction_before_inclusion (bit : Bool) :
-    (runtime.responseControlStep
-      (FinDist.pure (fun input => nomatch input)) [true, false] 2 responsePlayers
+    (runtime.nativeControlStep
+      (FinDist.pure (fun input => nomatch input)) [true, false] 2 nativePlayers
       (fun _ _ => FinDist.pure .wait)
       (fun _ _ => FinDist.pure (ServiceOrder.increasing graph))
       (some (remainingReaction bit))).map
         (fun state => state.map (fun control => control.execution.native)) =
       FinDist.pure (some (freshReaction bit)) := by
-  simp only [responseControlStep, remainingReaction, responsePlayers,
-    MessageApplication.invokeResponse, atomicReaction, FinDist.pure_bind,
-    MessageApplication.responseStep_submit, FinDist.map_pure]
+  simp only [nativeControlStep, remainingReaction, nativePlayers, invokeNative,
+    reactToSignal, FinDist.pure_bind, actionStep, FinDist.map_pure]
   rfl
 
-/-- The continuation cursor stays internal even when a player is invoked at
-two controls with different remaining plans and epoch counts. -/
 example (bit : Bool) (firstEpochs secondEpochs : Nat)
     (firstRest secondRest : List (ServiceInstruction graph)) :
-    runtime.responseObserve false
+    runtime.nativeObserve false
         (some ⟨firstEpochs, .player false :: firstRest, (remainingReaction bit).execution⟩) =
-      runtime.responseObserve false
+      runtime.nativeObserve false
         (some ⟨secondEpochs, .player false :: secondRest, (remainingReaction bit).execution⟩) := by
-  rw [responseObserve_player, responseObserve_player]
+  rw [nativeObserve_player, nativeObserve_player]
 
-/-- An arbitrary prefix may fill the event cache with failure and occupy the
-canonical candidate with a different, already transmitted value. -/
-private def damagedExecution : app.PolicyExecution :=
-  app.afterSubmit
-    (app.afterPrivate
-      (app.afterPrivate (MessageApplication.PolicyExecution.initial app initial)
-        false (.remember 0 .failure)) false (.prepare 0 ⟨.bool, false⟩))
-    false commitment
+private def rememberBit (bit : Bool) : NativeExecution runtime :=
+  runtime.takeAction false (NativeExecution.initial runtime initial)
+    ⟨[.inl (if bit then 1 else 0)], none⟩
 
-theorem damaged_execution_reachable :
-    app.run [.privateCommand false (.remember 0 .failure),
-      .privateCommand false (.prepare 0 ⟨.bool, false⟩), .submit false commitment] initial =
-        FinDist.pure damagedExecution.native := by
-  simp only [MessageApplication.run, MessageApplication.step, FinDist.pure_bind]
-  rfl
+/-- Private memory can retain a random choice even when the action sends nothing. -/
+theorem private_memory_only (bit : Bool) :
+    (rememberBit bit).native = initial ∧
+      ((rememberBit bit).principalHistory false).length = 1 ∧
+      (rememberBit bit).native.application.remembered 0 = none := by
+  cases bit <;> exact ⟨rfl, rfl, rfl⟩
 
-example : damagedExecution.native.application.remembered 0 = some .failure ∧
-    damagedExecution.native.application.candidates.lookup candidate =
-      .openable ⟨.bool, false⟩ := ⟨rfl, rfl⟩
+private def sendRemembered : NativePolicy graph := fun history _ =>
+  let bit := match history.getLast? with
+    | some entry => match entry.action.memory with
+      | [.inl 1] => true
+      | _ => false
+    | none => false
+  FinDist.pure (bindingAction false 0 .bool (.success bit) 0)
 
-private def newBinding : app.PolicyExecution :=
-  runtime.bindingResponseExecution false 0 .bool (.success true) 1 damagedExecution
+/-- Future behavior can depend on the retained private bit. No preparation
+catalogue or first-write cache is involved. -/
+theorem private_memory_recalled (bit : Bool) :
+    sendRemembered ((rememberBit bit).principalHistory false)
+        (runtime.nativeView (rememberBit bit).native false) =
+      FinDist.pure (bindingAction (graph := graph) false 0 .bool (.success bit) 0) := by
+  cases bit <;> rfl
 
-/-- One response constructs the new value despite both kinds of stale state.
-It leaves the original transmitted meaning fixed. -/
+/-- Another player's complete invocation input does not reveal the private bit. -/
+theorem private_memory_hidden :
+    ((rememberBit false).principalHistory true,
+      runtime.nativeView (rememberBit false).native true) =
+    ((rememberBit true).principalHistory true,
+      runtime.nativeView (rememberBit true).native true) := rfl
+
+private def oldBinding : NativeExecution runtime :=
+  runtime.takeAction false (NativeExecution.initial runtime initial)
+    (bindingAction false 0 .bool (.success false) 0)
+
+private def newBinding : NativeExecution runtime :=
+  runtime.takeAction false oldBinding (bindingAction false 0 .bool (.success true) 1)
+
+/-- Supplying a different opening for an existing handle cannot rebind it. -/
+example :
+    let next := runtime.takeAction false oldBinding (bindingAction false 0 .bool (.success true) 0)
+    next.native.application.bindingResult candidate .bool = .success false := rfl
+
+/-- A missing opening at submission cannot be supplied on a later turn. -/
+example :
+    let failed := runtime.takeAction false (NativeExecution.initial runtime initial)
+      (bindingAction false 0 .bool .failure 0)
+    let next := runtime.takeAction false failed (bindingAction false 0 .bool (.success true) 0)
+    next.native.application.candidates.lookup candidate = .unopenable := rfl
+
+/-- A new submission can use a fresh handle without changing the old one. -/
 theorem binding_material_recovers :
-    app.responseStep false damagedExecution
-        (runtime.bindingResponse false 0 .bool (.success true) 1) = FinDist.pure newBinding ∧
-      newBinding.native.application.bindingResult (false, .prepared 1) .bool = .success true ∧
+    newBinding.native.application.bindingResult (false, .prepared 1) .bool = .success true ∧
       newBinding.native.application.candidates.lookup candidate = .openable ⟨.bool, false⟩ := by
-  refine ⟨runtime.bindingResponse_step false 0 .bool (.success true) 1 damagedExecution, ?_, rfl⟩
-  exact runtime.bindingResponse_result false 0 .bool (.success true) 1 damagedExecution rfl
+  refine ⟨?_, rfl⟩
+  exact runtime.bindingAction_result false 0 .bool (.success true) 1 oldBinding rfl
 
-/-- Both packets remain pending. The new material is usable, but does not
-cancel the older packet or determine which commitment the wire includes. -/
+/-- Exactly two decisions have occurred, with no preparation entries in recall. -/
+example : (newBinding.principalHistory false).length = 2 := rfl
+
+/-- Fresh material does not cancel the earlier packet. -/
 theorem competing_packets_remain :
     newBinding.native.pool.lookup (false, 0) = some ⟨(false, 0), commitment⟩ ∧
       newBinding.native.pool.lookup (false, 1) =
@@ -302,18 +323,13 @@ private theorem include_binding_value (serial nonce : Nat) (bit : Bool)
     (newBinding.native.application.bindingResult (false, .prepared serial) .bool)).outputs 0 = _
   rw [EventGraph.Config.complete_output_same, value]
 
-/-- Including the newly submitted packet commits the requested value. -/
 theorem new_packet_can_win :
     (app.includePending newBinding.native (false, 1)).application.config.outputs 0 =
-      some (.success true) := by
-  exact include_binding_value 1 1 true rfl binding_material_recovers.2.1
+      some (.success true) := include_binding_value 1 1 true rfl binding_material_recovers.1
 
-/-- Including the earlier packet first still commits its original value.
-Free preparation therefore supplies material, not a right to replace pending traffic. -/
 theorem earlier_packet_can_win :
     (app.includePending newBinding.native (false, 0)).application.config.outputs 0 =
-      some (.success false) := by
-  exact include_binding_value 0 0 false rfl rfl
+      some (.success false) := include_binding_value 0 0 false rfl rfl
 
 end
 

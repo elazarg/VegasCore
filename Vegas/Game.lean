@@ -16,9 +16,9 @@ import Vegas.Game.BehavioralSubgame
 
 -- OPEN OBLIGATION: Native subgame-perfect preservation
 -- Source continuation laws and conditional SPE transfer and reflection are
--- checked. The atomic-response multiplayer protocol has exact native policy
+-- checked. The native action protocol has exact native policy
 -- correspondence, bounded play, and native safety refinement.
 -- Binding material is constructible after every initialized native prefix.
--- Compiling graph policies to responses, full policy recovery, source/native
+-- Compiling graph policies to native actions, full policy recovery, source/native
 -- continuation laws, and coverage of every proper native root remain to be proved.
 -- The initial-play Nash/Bayesian theorem does not discharge these obligations.

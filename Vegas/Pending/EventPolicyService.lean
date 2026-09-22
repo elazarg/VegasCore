@@ -2,6 +2,7 @@
 
 import Vegas.Pending.EventPolicyCoherence
 import Vegas.Pending.EventOpponentFrame
+import Vegas.Pending.EventServiceLaw
 
 /-! # Prescribed policy coherence through adaptive event service
 
@@ -81,60 +82,6 @@ theorem playerStep_other_policyCoherentAll
       apply (coherent event actor).copy runtime execution _ owner event
       · simp [different]
       · rfl
-
-/-- Every environment-policy command preserves the private remembered-action
-table.  Inclusion uses the application's packet-level cache frame. -/
-theorem environmentPolicyStep_remembered
-    (runtime : EventGraphRuntime graph)
-    (execution next : runtime.application.PolicyExecution)
-    (command : runtime.application.EnvironmentPolicyCommand)
-    (supported : next ∈
-      (runtime.application.environmentPolicyStep execution command).support) :
-    next.native.application.remembered = execution.native.application.remembered := by
-  have native : next.native ∈
-      ((runtime.application.environmentPolicyStep execution command).map
-        MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
-    exact ⟨next, supported, rfl⟩
-  rw [runtime.application.environmentStep_native] at native
-  cases command with
-  | deliver observer id | wait =>
-      simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
-      simpa only using congrArg
-        (fun state : runtime.application.State => state.application.remembered) native
-  | «include» id =>
-      simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
-      cases lookup : execution.native.pool.lookup id with
-      | none =>
-          rw [runtime.application.includePending_missing execution.native id lookup] at native
-          simpa only using congrArg
-            (fun state : runtime.application.State => state.application.remembered) native
-      | some message =>
-          cases accepted : runtime.handle execution.native.application message with
-          | none =>
-              rw [runtime.application.includePending_reject execution.native id message
-                lookup accepted] at native
-              simpa only using congrArg
-                (fun state : runtime.application.State => state.application.remembered) native
-          | some state =>
-              rw [runtime.application.includePending_accept execution.native id message state
-                lookup accepted] at native
-              have nextEq : next.native.application = state := by
-                simpa only using congrArg
-                  (fun result : runtime.application.State => result.application) native
-              rw [nextEq]
-              exact runtime.handle_remembered execution.native.application state message accepted
-  | application applicationCommand =>
-      simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.support_map, Set.mem_image] at native
-      obtain ⟨state, stateMem, same⟩ := native
-      have nextEq : next.native.application = state := by
-        exact congrArg (fun result : runtime.application.State => result.application) same.symm
-      rw [nextEq]
-      exact environmentStep_remembered runtime execution.native.application state
-        applicationCommand stateMem
 
 /-- Environment-policy execution preserves simultaneous owner coherence. -/
 theorem environmentPolicyStep_policyCoherentAll

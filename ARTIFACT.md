@@ -33,8 +33,8 @@ the subsequent kernel-checked build.
 | Message transport and player policies | `Interaction/MessageApplication.lean`, `Interaction/MessageApplicationPolicies.lean` |
 | Event-addressed runtime and service | `Vegas/Pending/EventApplication.lean`, `Vegas/Pending/EventService.lean` |
 | Binding from authenticated submission through arbitrary native continuations | `Vegas/Pending/EventCommitmentBinding.lean` |
-| Multiplayer atomic-response protocol, policy equivalence, and bounded native execution | `Vegas/Pending/ResponseProtocol.lean`, `Vegas/Pending/ResponseProtocolPolicy.lean`, `Vegas/Pending/ResponseProtocolEvaluation.lean`, `Vegas/Pending/ResponseProtocolNative.lean` |
-| Fresh candidates at every native prefix and atomic construction of typed binding material | `Vegas/Pending/EventFreshCandidates.lean`, `Vegas/Pending/EventBindingResponse.lean` |
+| Multiplayer native action protocol, policy equivalence, and bounded native execution | `Vegas/Pending/NativeProtocol.lean`, `Vegas/Pending/NativeProtocolPolicy.lean`, `Vegas/Pending/NativeProtocolEvaluation.lean`, `Vegas/Pending/NativeProtocolSafety.lean` |
+| Fresh candidates at every native prefix and direct construction of typed binding material | `Vegas/Pending/EventFreshCandidates.lean`, `Vegas/Pending/EventBindingAction.lean` |
 | Full-source honest law under adaptive public graph scheduling | `Vegas/Compile/EventGraphScheduling.lean` |
 | Full-source asynchronous deviations and Nash correspondence | `Vegas/Compile/EventGraphDeviation.lean`, `Vegas/Game/EventCompilation.lean` |
 | Asynchronous pending-message service and arbitrary-player completion | `Vegas/Pending/EventService.lean`, `Vegas/Pending/EventServiceCompletion.lean` |
@@ -48,7 +48,7 @@ the subsequent kernel-checked build.
 The proved capstones are universally quantified proofs, not conclusions
 inferred from tests.
 The source protocol and generic continuation-transfer results do not establish
-native SPE preservation. Source/native continuation laws, response compilation,
+native SPE preservation. Source/native continuation laws, direct-action compilation,
 policy recovery, and proper-root coverage remain open. `VegasTests/SourceProtocol.lean` and
 `VegasTests/SetupProtocol.lean` check information-set closure on hidden source
 prefixes; `GameTheoryExtensionsTests/ContinuationTransfer.lean` proves that the
@@ -62,9 +62,12 @@ public marginals and different type-dependent utilities.
 `VegasTests/InFlightCommitment.lean` checks binding before inclusion: reading
 another pending message permits a new candidate but cannot change a transmitted
 handle. `Vegas.Paper.native_commitment_binding` audits the general invariant.
-The same regression checks recovery of binding material despite an occupied
-canonical slot and a stale cache. Both pending packets remain includable: fresh
-material does not cancel an earlier commitment. This is not a native SPE test.
+The same regression checks private memory without preparation commands,
+exactly one recall entry per action, and the immutable meaning of direct
+submissions. Both competing packets remain includable. The native action
+protocol's application cache is proved empty at every legal initialized history.
+The initial-play command-service capstones do not yet cover this native game;
+its source-policy compiler and continuation correspondence remain open.
 
 ## Interpretation
 

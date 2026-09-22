@@ -5,8 +5,8 @@ import Vegas.Pending.EventSequential
 import Vegas.Pending.EventInvariant
 import Vegas.Pending.EventBindingInvariant
 import Vegas.Pending.EventCommitmentBinding
-import Vegas.Pending.ResponseProtocolNative
-import Vegas.Pending.EventBindingResponse
+import Vegas.Pending.NativeProtocolSafety
+import Vegas.Pending.EventBindingAction
 import Vegas.Pending.PrivateInputs
 import Vegas.Pending.EventBindingService
 import Vegas.Pending.EventPolicies
