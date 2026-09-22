@@ -34,6 +34,7 @@ the subsequent kernel-checked build.
 | Event-addressed runtime and service | `Vegas/Pending/EventApplication.lean`, `Vegas/Pending/EventService.lean` |
 | Binding from authenticated submission through arbitrary native continuations | `Vegas/Pending/EventCommitmentBinding.lean` |
 | Multiplayer atomic-response protocol, policy equivalence, and bounded native execution | `Vegas/Pending/ResponseProtocol.lean`, `Vegas/Pending/ResponseProtocolPolicy.lean`, `Vegas/Pending/ResponseProtocolEvaluation.lean`, `Vegas/Pending/ResponseProtocolNative.lean` |
+| Fresh candidates at every native prefix and atomic construction of typed binding material | `Vegas/Pending/EventFreshCandidates.lean`, `Vegas/Pending/EventBindingResponse.lean` |
 | Full-source honest law under adaptive public graph scheduling | `Vegas/Compile/EventGraphScheduling.lean` |
 | Full-source asynchronous deviations and Nash correspondence | `Vegas/Compile/EventGraphDeviation.lean`, `Vegas/Game/EventCompilation.lean` |
 | Asynchronous pending-message service and arbitrary-player completion | `Vegas/Pending/EventService.lean`, `Vegas/Pending/EventServiceCompletion.lean` |
@@ -61,6 +62,9 @@ public marginals and different type-dependent utilities.
 `VegasTests/InFlightCommitment.lean` checks binding before inclusion: reading
 another pending message permits a new candidate but cannot change a transmitted
 handle. `Vegas.Paper.native_commitment_binding` audits the general invariant.
+The same regression checks recovery of binding material despite an occupied
+canonical slot and a stale cache. Both pending packets remain includable: fresh
+material does not cancel an earlier commitment. This is not a native SPE test.
 
 ## Interpretation
 

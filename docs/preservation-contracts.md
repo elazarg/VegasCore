@@ -482,13 +482,66 @@ to the source requires honest and deviated continuation laws, recovery from
 arbitrary candidate/cache states, and proper-root coverage. A malformed-packet
 retry test alone does not discharge those obligations.
 
+### E8: fresh binding material versus pending-packet competition
+
+**Question.** Does an arbitrary native prefix remove the ability to construct
+some value, even with free private work?
+
+[EventFreshCandidates.lean](../Vegas/Pending/EventFreshCandidates.lean) proves
+that every finite native execution leaves arbitrarily large fresh, unused
+prepared handles. The proof covers arbitrary preparations, submissions,
+deliveries, replays, inclusions, and environment commands. The response adapter
+lifts it to **every legal initialized history**, without a prescribed-policy
+or proper-root premise. It retains the actual candidate table.
+
+[EventBindingResponse.lean](../Vegas/Pending/EventBindingResponse.lean) constructs
+any typed binding result in one response. A successful result prepares a fresh
+slot and submits it; forfeiture submits the same fresh slot without preparing
+it. The envelope is identical. The freshness witness is chosen before the
+result, and the construction does not read or write the event cache. A separate
+acceptance law proves the exact graph action and output if this packet is
+included while the event is ready and timely.
+
+**Validation.** [InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean)
+uses a reachable native prefix with failure in the remembered-action cell,
+`false` in the canonical candidate, and that candidate already pending. One
+response prepares and submits `true` under a fresh handle. Including the new
+packet commits `true`; including the old packet commits `false`. Both meanings
+were fixed at submission. The test proves neither proper-root status nor an
+SPE impossibility result.
+
+**Compiler requirements.** The local construction does not yet determine the
+right global policy. The following choices require continuation laws:
+
+| Tempting shortcut | Obligation it leaves unsatisfied |
+| --- | --- |
+| Trust the first remembered action | A preceding deviation may have filled the cell; private scratch work need not be a source decision |
+| Sample the source policy on every native invocation | Repeated sampling changes the distribution of competing packets and may change the source action law |
+| Allocate a fresh candidate and assume it replaces earlier traffic | An older authenticated packet remains includable with its fixed meaning |
+| Choose a fresh serial using private state and stop at existence | The concrete allocation policy must also satisfy information and continuation-law requirements |
+| Select a new compiler continuation separately at each root | SPE concerns one information-local contingent policy, also used from initialization |
+
+Original disclosure-action recall also needs treatment: when disclosure and
+withholding produce the same failed publication, an earlier first-write cache
+entry can record a different action from the current source policy. Binding
+material recovery does not resolve this. A compiler may reconstruct source
+recall from authenticated own history; changing private scratch-memory semantics
+is a different implementation choice. Neither licenses rewriting a past accepted
+binding or cancelling pending packets.
+
+Thus preparation capacity is settled for responses, while policy sampling,
+disclosure recall, and competition between submissions remain explicit parts
+of the source/native continuation problem. No compiler flag is added for these
+proof obligations.
+
 ## Implementation order and stop conditions
 
 1. Pure and behavioral source adapters, mixed-site admission, private setup,
    residual laws, and SPE characterizations are checked, without finite payload
    domains. Do not infer pure-to-behavioral SPE equivalence from value agreement.
 2. The multiplayer atomic-response adapter, policy equivalence, bounded play,
-   and native refinement are checked. Establish the graph-policy response
+   native refinement, and fresh binding-material construction are checked.
+   Establish the graph-policy response
    compiler and the full source/native continuation bridge, including hostile
    prefixes and all proper native roots. A generic wrapper is not evidence.
 3. Instantiate the SPE transfer theorem and use the canonical failure example

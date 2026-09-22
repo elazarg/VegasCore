@@ -80,7 +80,13 @@ The response adapter has checked termination, exact native invocation laws,
 and refinement of arbitrary continuations to native action sequences.
 [ResponseProtocolNative.lean](../Vegas/Pending/ResponseProtocolNative.lean)
 proves that responses consume zero clock ticks, retain live activation times,
-and preserve fixed candidate meanings. This is a response-service presentation;
+and preserve fixed candidate meanings. It also proves that every legal
+initialized response history retains fresh, unused candidate handles.
+[EventBindingResponse.lean](../Vegas/Pending/EventBindingResponse.lean) realizes
+any binding result in one response and proves exact graph acceptance when its
+packet is included while ready and timely. This tolerates occupied canonical
+slots and arbitrary remembered actions. It does not cancel competing packets
+or supply a complete contingent policy. This is a response-service presentation;
 the paper's initial-play capstones concern the command-service compiler.
 Compiling graph policies into responses, recovery after arbitrary prefixes,
 source/native continuation correspondence, and proper-root coverage remain
@@ -175,7 +181,7 @@ nonexistence of a utility-independent completion function for this plan and
 menu. It is an abstract continuation obstruction, not a theorem that every
 Vegas implementation has such a continuation.
 
-There is a concrete candidate witness to investigate in the current runtime:
+For the command-service runtime, there is a concrete candidate witness:
 prepare candidates `b` and `c`, leave `a` unprepared, and reach the last owner
 invocation before a binding expires. Submitting an already prepared candidate
 uses one invocation; preparing and submitting `a` takes two. With a suitable
@@ -187,6 +193,15 @@ prefix, the exact residual outcome menu (including failure), and proper-root
 closure. Give failure utility below both `b` and `c`. Account for replay,
 cross-event submissions, reserved inclusion, and all remaining service slots.
 The abstract lemma alone does not discharge these obligations.
+
+The atomic-response runtime removes this preparation-capacity obstruction.
+Every finite prefix leaves fresh handles, and one response can prepare and
+submit any value. The checked construction does not assume an empty cache or
+an unused canonical event slot. An existing transmitted candidate remains
+binding, and an earlier pending packet can still win inclusion; the two cases
+are checked in `VegasTests/InFlightCommitment.lean`. A continuation certificate
+must address these remaining network choices. It cannot treat a new submission
+as cancellation of the old one.
 
 ## Protocol architecture
 

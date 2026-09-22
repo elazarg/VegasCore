@@ -3,6 +3,7 @@
 import Vegas.Pending.ResponseProtocolEvaluation
 import Vegas.Pending.EventServiceLaw
 import Vegas.Pending.EventCommitmentBinding
+import Vegas.Pending.EventFreshCandidates
 
 /-! # Native safety and clocks under atomic responses
 
@@ -167,5 +168,35 @@ theorem response_reaches_candidate_fixed (runtime : EventGraphRuntime graph)
   have same := Option.some.inj (finalState.symm.trans nextEq)
   subst next
   exact runtime.run_candidate_fixed _ _ actions candidate fixed native
+
+/-- Every initialized legal response history has fresh, unused candidates,
+including histories produced entirely by deviations. Setup is sampled once;
+the proof retains the actual catalogue rather than resetting it at a root. -/
+theorem response_history_freshCandidates (runtime : EventGraphRuntime graph)
+    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
+    ∀ {state}
+      (_trace : (runtime.responseProtocol inputs roster reactionRounds wire order).Trace state)
+      (control : ServiceControl runtime), state = some control →
+        control.execution.native.application.FreshCandidates
+  | _, .start, _, initialized => by cases initialized
+  | _, .extend (source := before) prior joint _ reached, control, initialized => by
+      have priorFresh := runtime.response_history_freshCandidates inputs roster reactionRounds
+        wire order prior
+      have step : some control ∈
+          (runtime.responseTransition inputs roster reactionRounds wire order
+            before joint).support := by
+        simpa only [responseProtocol, initialized] using reached
+      cases before with
+      | none =>
+          simp only [responseTransition, FinDist.support_map, Set.mem_image] at step
+          obtain ⟨input, _, same⟩ := step
+          cases Option.some.inj same
+          exact State.initial_freshCandidates input
+      | some before =>
+          obtain ⟨after, same, actions, native⟩ := runtime.responseTransition_native
+            inputs roster reactionRounds wire order before (some control) joint step
+          cases Option.some.inj same
+          exact runtime.run_freshCandidates _ _ actions (priorFresh before rfl) native
 
 end Vegas.EventGraphRuntime

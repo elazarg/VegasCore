@@ -5,6 +5,7 @@ import Vegas.Pending.EventCommitmentBinding
 import Interaction.MessageApplicationPolicies
 import Interaction.MessageApplicationResponse
 import Vegas.Pending.ResponseProtocolNative
+import Vegas.Pending.EventBindingResponse
 
 /-! # A transmitted commitment stays fixed while messages are in flight
 
@@ -233,6 +234,86 @@ example (bit : Bool) (firstEpochs secondEpochs : Nat)
       runtime.responseObserve false
         (some ⟨secondEpochs, .player false :: secondRest, (remainingReaction bit).execution⟩) := by
   rw [responseObserve_player, responseObserve_player]
+
+/-- An arbitrary prefix may fill the event cache with failure and occupy the
+canonical candidate with a different, already transmitted value. -/
+private def damagedExecution : app.PolicyExecution :=
+  app.afterSubmit
+    (app.afterPrivate
+      (app.afterPrivate (MessageApplication.PolicyExecution.initial app initial)
+        false (.remember 0 .failure)) false (.prepare 0 ⟨.bool, false⟩))
+    false commitment
+
+theorem damaged_execution_reachable :
+    app.run [.privateCommand false (.remember 0 .failure),
+      .privateCommand false (.prepare 0 ⟨.bool, false⟩), .submit false commitment] initial =
+        FinDist.pure damagedExecution.native := by
+  simp only [MessageApplication.run, MessageApplication.step, FinDist.pure_bind]
+  rfl
+
+example : damagedExecution.native.application.remembered 0 = some .failure ∧
+    damagedExecution.native.application.candidates.lookup candidate =
+      .openable ⟨.bool, false⟩ := ⟨rfl, rfl⟩
+
+private def newBinding : app.PolicyExecution :=
+  runtime.bindingResponseExecution false 0 .bool (.success true) 1 damagedExecution
+
+/-- One response constructs the new value despite both kinds of stale state.
+It leaves the original transmitted meaning fixed. -/
+theorem binding_material_recovers :
+    app.responseStep false damagedExecution
+        (runtime.bindingResponse false 0 .bool (.success true) 1) = FinDist.pure newBinding ∧
+      newBinding.native.application.bindingResult (false, .prepared 1) .bool = .success true ∧
+      newBinding.native.application.candidates.lookup candidate = .openable ⟨.bool, false⟩ := by
+  refine ⟨runtime.bindingResponse_step false 0 .bool (.success true) 1 damagedExecution, ?_, rfl⟩
+  exact runtime.bindingResponse_result false 0 .bool (.success true) 1 damagedExecution rfl
+
+/-- Both packets remain pending. The new material is usable, but does not
+cancel the older packet or determine which commitment the wire includes. -/
+theorem competing_packets_remain :
+    newBinding.native.pool.lookup (false, 0) = some ⟨(false, 0), commitment⟩ ∧
+      newBinding.native.pool.lookup (false, 1) =
+        some ⟨(false, 1), .commitment 0 (false, .prepared 1)⟩ ∧
+      newBinding.native.pool.ledger = [] := ⟨rfl, rfl, rfl⟩
+
+private theorem include_binding_value (serial nonce : Nat) (bit : Bool)
+    (pending : newBinding.native.pool.lookup (false, nonce) =
+      some ⟨(false, nonce), .commitment 0 (false, .prepared serial)⟩)
+    (value : newBinding.native.application.bindingResult (false, .prepared serial) .bool =
+      .success bit) :
+    (app.includePending newBinding.native (false, nonce)).application.config.outputs 0 =
+      some (.success bit) := by
+  have ready : newBinding.native.application.config.cut.Ready 0 := by
+    change (EventOrder.Cut.empty order).Ready 0
+    decide
+  have timely : newBinding.native.application.WithinDeadline runtime 0 := by
+    change 0 < 2
+    decide
+  have unused : newBinding.native.application.HandleUnused (false, .prepared serial) := by
+    intro field
+    cases field with
+    | inl input => exact Fin.elim0 input
+    | inr event => intro impossible; cases impossible
+  have accepted := handle_commitment_eq runtime newBinding.native.application
+    (false, nonce) 0 (false, .prepared serial) false .bool rfl rfl rfl
+    ready timely rfl rfl rfl unused
+  rw [app.includePending_accept newBinding.native (false, nonce) _ _ pending accepted]
+  change (newBinding.native.application.config.complete 0 ready _
+    (newBinding.native.application.bindingResult (false, .prepared serial) .bool)).outputs 0 = _
+  rw [EventGraph.Config.complete_output_same, value]
+
+/-- Including the newly submitted packet commits the requested value. -/
+theorem new_packet_can_win :
+    (app.includePending newBinding.native (false, 1)).application.config.outputs 0 =
+      some (.success true) := by
+  exact include_binding_value 1 1 true rfl binding_material_recovers.2.1
+
+/-- Including the earlier packet first still commits its original value.
+Free preparation therefore supplies material, not a right to replace pending traffic. -/
+theorem earlier_packet_can_win :
+    (app.includePending newBinding.native (false, 0)).application.config.outputs 0 =
+      some (.success false) := by
+  exact include_binding_value 0 0 false rfl rfl
 
 end
 
