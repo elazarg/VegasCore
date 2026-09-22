@@ -74,7 +74,7 @@ def consPublic {Γ Δ : VCtx P simpleExpr} (env : LowerEnv P Γ Δ)
     | there htail => exact (env.pub htail).weaken
   view := by
     intro who y ty h
-    simp only [viewVCtx, canSee, Visibility.canSee_pub, if_true, eraseVCtx_cons] at h ⊢
+    simp only [viewVCtx, canSee, Visibility.canSee_pub, ite_true, eraseVCtx_cons] at h ⊢
     cases h with
     | here => exact .var x .here
     | there htail => exact (env.view who htail).weaken
@@ -90,7 +90,7 @@ def consHidden {Γ Δ : VCtx P simpleExpr} (env : LowerEnv P Γ Δ)
   view := by
     intro who y ty h
     by_cases hsee : canSee who (BindTy.sealed (L := simpleExpr) owner b)
-    · simp only [viewVCtx, hsee, if_true, eraseVCtx_cons] at h ⊢
+    · simp only [viewVCtx, hsee, ite_true, eraseVCtx_cons] at h ⊢
       cases h with
       | here => exact .var x .here
       | there htail => exact (env.view who htail).weaken
@@ -112,7 +112,7 @@ def aliasPublic {Γ Δ : VCtx P simpleExpr} (env : LowerEnv P Γ Δ)
     | there htail => exact env.pub htail
   view := by
     intro who y ty h
-    simp only [viewVCtx, canSee, Visibility.canSee_pub, if_true, eraseVCtx_cons] at h
+    simp only [viewVCtx, canSee, Visibility.canSee_pub, ite_true, eraseVCtx_cons] at h
     cases h with
     | here => exact e.publicToView who
     | there htail => exact env.view who htail

@@ -224,7 +224,7 @@ theorem compilePolicyTable_commit_of_decode {Field : Type}
     {name : VarId} {owner who : Player} {payload : L.Ty}
     {fresh : name ∉ Γ.map Prod.fst}
     {guard : SourceGuard L Γ owner name payload}
-    {next : SourceProgram Player L ((name, .privateData owner payload) :: Γ)
+    {next : SourceProgram Player L ((name, .commitment owner payload) :: Γ)
       (insert name openNames)}
     (refs : ContextRefs layout Γ)
     (outputs : ∀ event, Vegas.EventGraph.FieldRef layout
@@ -253,7 +253,7 @@ theorem compilePolicyTable_commit_of_decode_none {Field : Type}
     {name : VarId} {owner who : Player} {payload : L.Ty}
     {fresh : name ∉ Γ.map Prod.fst}
     {guard : SourceGuard L Γ owner name payload}
-    {next : SourceProgram Player L ((name, .privateData owner payload) :: Γ)
+    {next : SourceProgram Player L ((name, .commitment owner payload) :: Γ)
       (insert name openNames)}
     (refs : ContextRefs layout Γ)
     (outputs : ∀ event, Vegas.EventGraph.FieldRef layout
@@ -282,7 +282,7 @@ theorem compilePolicyTable_reveal_of_decode {Field : Type}
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {published name : VarId} {owner who : Player} {payload : L.Ty}
     {fresh : published ∉ Γ.map Prod.fst}
-    {selected : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ openNames}
+    {selected : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ openNames}
     {next : SourceProgram Player L ((published, .publication payload) :: Γ)
       (openNames.erase name)}
     (refs : ContextRefs layout Γ)
@@ -312,7 +312,7 @@ theorem compilePolicyTable_reveal_of_decode_none {Field : Type}
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {published name : VarId} {owner who : Player} {payload : L.Ty}
     {fresh : published ∉ Γ.map Prod.fst}
-    {selected : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ openNames}
+    {selected : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ openNames}
     {next : SourceProgram Player L ((published, .publication payload) :: Γ)
       (openNames.erase name)}
     (refs : ContextRefs layout Γ)

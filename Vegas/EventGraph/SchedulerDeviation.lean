@@ -87,7 +87,7 @@ private theorem runPlan_update_replay_eq
       intro config reachable
       by_cases terminal : config.cut.Terminal
       · simp [runPlan, terminal]
-      · rw [runPlan, runPlan, dif_neg terminal, dif_neg terminal,
+      · rw [runPlan, runPlan, dite_eq_right terminal, dite_eq_right terminal,
           policyPlan_update_replay_eq scheduler sigma who tau inputs config reachable terminal]
         apply FinDist.bind_congr
         intro choice choiceMember

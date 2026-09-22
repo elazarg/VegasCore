@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Core.UtilitySimulation
+import GameTheory.Core.UtilitySimulation
 
 /-! # A channel that only a coalition can use
 

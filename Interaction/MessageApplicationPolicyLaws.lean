@@ -179,6 +179,8 @@ theorem runPolicies_application_invariant [DecidableEq Principal]
     (invariant : app.Application → Prop)
     (hprivate : ∀ application who command, invariant application →
       invariant (app.privateStep application who command))
+    (hsubmit : ∀ application who payload, invariant application →
+      invariant (app.submitStep application who payload))
     (hhandler : ∀ application message next, invariant application →
       app.handle application message = some next → invariant next)
     (henvironment : ∀ application command next, invariant application →
@@ -190,7 +192,7 @@ theorem runPolicies_application_invariant [DecidableEq Principal]
     invariant next.native.application := by
   obtain ⟨actions, _, hrun⟩ :=
     runPolicies_native_support app players environment schedule execution next hnext
-  exact app.run_application_invariant invariant hprivate hhandler henvironment
+  exact app.run_application_invariant invariant hprivate hsubmit hhandler henvironment
     execution.native next.native actions hinitial hrun
 
 /-- Native application invariants hold from canonical policy initialization. -/
@@ -198,6 +200,8 @@ theorem runPolicies_initial_application_invariant [DecidableEq Principal]
     (invariant : app.Application → Prop)
     (hprivate : ∀ application who command, invariant application →
       invariant (app.privateStep application who command))
+    (hsubmit : ∀ application who payload, invariant application →
+      invariant (app.submitStep application who payload))
     (hhandler : ∀ application message next, invariant application →
       app.handle application message = some next → invariant next)
     (henvironment : ∀ application command next, invariant application →
@@ -208,7 +212,7 @@ theorem runPolicies_initial_application_invariant [DecidableEq Principal]
     (hnext : next ∈ (app.runPolicies players environment schedule
       (PolicyExecution.initial app initial)).support) :
     invariant next.native.application := by
-  exact app.runPolicies_application_invariant invariant hprivate hhandler henvironment
+  exact app.runPolicies_application_invariant invariant hprivate hsubmit hhandler henvironment
     players environment schedule (PolicyExecution.initial app initial) next hinitial hnext
 
 /-- A support invariant preserved by each labelled invocation is preserved by

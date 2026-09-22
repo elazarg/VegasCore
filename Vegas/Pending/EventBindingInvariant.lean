@@ -321,14 +321,14 @@ theorem BindingInvariant.acceptBinding {state : State graph}
         (cast (congrArg EventField.Value outputEq.symm)
           (state.bindingResult handle payload))) with
       accepted := Function.update state.accepted (.inr event) (some handle)
-      candidates := state.candidates.accept handle }).BindingInvariant := by
+      candidates := state.candidates.freeze handle }).BindingInvariant := by
   let result := state.bindingResult handle payload
   let completed := state.complete event ready
     (cast (congrArg EventField.Action outputEq.symm) result)
     (cast (congrArg EventField.Value outputEq.symm) result)
   let next : State graph := { completed with
     accepted := Function.update state.accepted (.inr event) (some handle)
-    candidates := state.candidates.accept handle }
+    candidates := state.candidates.freeze handle }
   change next.BindingInvariant
   refine ⟨?_, ?_, ?_⟩
   · intro field acceptedHandle accepted
@@ -396,7 +396,7 @@ theorem BindingInvariant.acceptBinding {state : State graph}
         rw [castInverse] at stored
         simpa [result] using Option.some.inj stored
       refine ⟨handle, by simp [next], handleOwner, ?_⟩
-      rw [CommitmentCandidates.lookup_accept_openable_iff]
+      rw [CommitmentCandidates.lookup_freeze_openable_iff]
       exact (bindingResult_eq_success_iff state handle payload value).mp resultSuccess
     · have oldStored : ref.get? state.config.store = some (.success value) := by
         have fieldEq : completed.config.store ref.field =
@@ -418,7 +418,7 @@ theorem BindingInvariant.acceptBinding {state : State graph}
         invariant.success_provenance ref value oldStored
       refine ⟨oldHandle, ?_, oldOwner, ?_⟩
       · simpa [next, same] using oldAccepted
-      · rw [CommitmentCandidates.lookup_accept_openable_iff]
+      · rw [CommitmentCandidates.lookup_freeze_openable_iff]
         exact oldCandidate
 
 end State
@@ -441,7 +441,7 @@ theorem handle_bindingInvariant (runtime : EventGraphRuntime graph)
           | sample payload law outputEq codeEq =>
               simp [handle, ready, timely, view] at accepted
           | bind owner payload outputEq codeEq =>
-              simp only [handle, dif_pos ready, dif_pos timely, view] at accepted
+              simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
               split at accepted
               · simp_all only [dite_eq_ite, Option.ite_none_right_eq_some,
                     Option.some.injEq]
@@ -579,6 +579,18 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
         subst next
         exact invariant
 
+/-- Freezing a submitted handle preserves every previously accepted opening. -/
+theorem submitStep_bindingInvariant (state : State graph)
+    (invariant : state.BindingInvariant) (who : Player) (packet : Payload graph) :
+    (submitStep state who packet).BindingInvariant := by
+  refine ⟨invariant.accepted_typed, invariant.accepted_injective, ?_⟩
+  intro owner payload ref value stored
+  obtain ⟨candidate, accepted, owned, meaning⟩ := invariant.success_provenance ref value stored
+  refine ⟨candidate, accepted, owned, ?_⟩
+  rw [submitStep_lookup_of_not_fresh state who packet candidate]
+  · exact meaning
+  · simp [meaning]
+
 /-- Every native message-application action preserves binding provenance. -/
 theorem applicationStep_bindingInvariant (runtime : EventGraphRuntime graph)
     (state next : (application runtime).State)
@@ -590,6 +602,8 @@ theorem applicationStep_bindingInvariant (runtime : EventGraphRuntime graph)
     State.BindingInvariant
     (fun application who command hinvariant =>
       privateStep_bindingInvariant application hinvariant who command)
+    (fun application who packet hinvariant =>
+      submitStep_bindingInvariant application hinvariant who packet)
     (fun application message result hinvariant accepted =>
       handle_bindingInvariant runtime application result message hinvariant accepted)
     (fun application command result hinvariant supported =>
@@ -606,6 +620,8 @@ theorem run_bindingInvariant (runtime : EventGraphRuntime graph)
   exact (application runtime).run_application_invariant State.BindingInvariant
     (fun application who command hinvariant =>
       privateStep_bindingInvariant application hinvariant who command)
+    (fun application who packet hinvariant =>
+      submitStep_bindingInvariant application hinvariant who packet)
     (fun application message result hinvariant accepted =>
       handle_bindingInvariant runtime application result message hinvariant accepted)
     (fun application command result hinvariant supported =>
@@ -626,6 +642,8 @@ theorem runPolicies_bindingInvariant (runtime : EventGraphRuntime graph)
   exact (application runtime).runPolicies_application_invariant State.BindingInvariant
     (fun application who command hinvariant =>
       privateStep_bindingInvariant application hinvariant who command)
+    (fun application who packet hinvariant =>
+      submitStep_bindingInvariant application hinvariant who packet)
     (fun application message result hinvariant accepted =>
       handle_bindingInvariant runtime application result message hinvariant accepted)
     (fun application command result hinvariant supported =>

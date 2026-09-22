@@ -4,31 +4,34 @@ import Vegas.Foundation.Guard
 
 /-! # Failure-aware source language
 
-The source context distinguishes ordinary public data, retained private bindings,
-and public publication results. The `Open` index is linear accounting: every
-commitment, including an initial private input, is revealed exactly once, and
-`ret` is available only after all of them are revealed.
+The source context distinguishes public data, persistent private inputs,
+commitments, and publication results. The `Open` index tracks commitments:
+each receives one resolution, and `ret` requires no outstanding commitment.
+Private inputs are ordinary immutable values supplied at setup. They carry no
+publication obligation and have no direct guard or public-expression reads.
 
 A guard is declared at its subject's commitment, where it constrains the
-committing player: it reads public cells and that player's own private cells.
+committing player: it reads public cells and that player's own commitments.
 It is checked once, at the reveal that publishes the last of its inputs.
-`Revelations` records statically where each private cell has been published.
+`Revelations` records statically where each commitment has been resolved.
 -/
 
 namespace Vegas
 
 inductive CellTy (Player : Type) (L : IExpr) where
   | publicData (payload : L.Ty)
-  | privateData (owner : Player) (payload : L.Ty)
+  | privateInput (owner : Player) (payload : L.Ty)
+  | commitment (owner : Player) (payload : L.Ty)
   | publication (payload : L.Ty)
 
 abbrev SourceCtx (Player : Type) (L : IExpr) := Ctx (CellTy Player L)
 
-/-- A private cell holds its binding: the result its owner's disclosure would
-publish. A `.failure` binding is unopenable. -/
+/-- Private inputs hold ordinary values. Commitments retain the result their
+owner's disclosure would publish; a `.failure` binding is unopenable. -/
 abbrev CellVal {Player : Type} (L : IExpr) : CellTy Player L → Type
   | .publicData τ => L.Val τ
-  | .privateData _ τ => PublicationResult (L.Val τ)
+  | .privateInput _ τ => L.Val τ
+  | .commitment _ τ => PublicationResult (L.Val τ)
   | .publication τ => PublicationResult (L.Val τ)
 
 abbrev State {Player : Type} (L : IExpr) (Γ : SourceCtx Player L) :=
@@ -73,19 +76,19 @@ def weaken {name : VarId} {cell : CellTy Player L} :
 
 end Revelation
 
-/-- The static publication status of every private cell in scope. -/
+/-- The static publication status of every commitment in scope. -/
 abbrev Revelations {Player : Type} {L : IExpr} (Γ : SourceCtx Player L) :=
   ∀ {owner : Player} {payload : L.Ty} {name : VarId},
-    HasVar Γ name (.privateData owner payload) → Revelation Γ payload
+    HasVar Γ name (.commitment owner payload) → Revelation Γ payload
 
 namespace Revelations
 
 variable {Player : Type} {L : IExpr} {Γ : SourceCtx Player L}
 
-/-- No private cell is revealed. -/
+/-- No initial commitment is revealed. -/
 def initial (Γ : SourceCtx Player L) : Revelations Γ := fun _ => .unrevealed
 
-/-- Extend across a new cell. A new private cell is unrevealed. -/
+/-- Extend across a new cell. A new commitment is unrevealed. -/
 def weaken {name : VarId} {cell : CellTy Player L} (revelations : Revelations Γ) :
     Revelations ((name, cell) :: Γ) :=
   fun h =>
@@ -95,43 +98,44 @@ def weaken {name : VarId} {cell : CellTy Player L} (revelations : Revelations Γ
 
 /-- Reveal `source` into the publication cell at the head of the context. -/
 def reveal {owner : Player} {payload : L.Ty} {name published : VarId}
-    (revelations : Revelations Γ) (source : HasVar Γ name (.privateData owner payload)) :
+    (revelations : Revelations Γ) (source : HasVar Γ name (.commitment owner payload)) :
     Revelations ((published, .publication payload) :: Γ) :=
   fun h =>
     match h.tail? with
     | none => .unrevealed
     | some h =>
         match h.sameCell? source with
-        | some same => (CellTy.privateData.inj same.down.2).2 ▸ .revealed .here
+        | some same => (CellTy.commitment.inj same.down.2).2 ▸ .revealed .here
         | none => (revelations h).weaken
 
 @[simp] theorem weaken_there {name : VarId} {cell : CellTy Player L}
     (revelations : Revelations Γ) {owner : Player} {payload : L.Ty} {private_ : VarId}
-    (h : HasVar Γ private_ (.privateData owner payload)) :
+    (h : HasVar Γ private_ (.commitment owner payload)) :
     revelations.weaken (name := name) (cell := cell) (.there h) = (revelations h).weaken :=
   rfl
 
 @[simp] theorem reveal_source {owner : Player} {payload : L.Ty} {name published : VarId}
-    (revelations : Revelations Γ) (source : HasVar Γ name (.privateData owner payload)) :
+    (revelations : Revelations Γ) (source : HasVar Γ name (.commitment owner payload)) :
     revelations.reveal (published := published) source (.there source) = .revealed .here := by
   simp only [reveal, HasVar.tail?_there, HasVar.sameCell?_self]
 
 theorem reveal_of_ne {owner : Player} {payload : L.Ty} {name published : VarId}
-    (revelations : Revelations Γ) (source : HasVar Γ name (.privateData owner payload))
+    (revelations : Revelations Γ) (source : HasVar Γ name (.commitment owner payload))
     {readOwner : Player} {readPayload : L.Ty} {readName : VarId}
-    (h : HasVar Γ readName (.privateData readOwner readPayload)) (different : readName ≠ name) :
+    (h : HasVar Γ readName (.commitment readOwner readPayload)) (different : readName ≠ name) :
     revelations.reveal (published := published) source (.there h) = (revelations h).weaken := by
   simp only [reveal, HasVar.tail?_there, HasVar.sameCell?_eq_none_of_ne h source different]
 
 end Revelations
 
 /-- A guard input is ordinary public data, a publication result, or the eventual
-publication of the guard author's own private cell. It is never a raw binding. -/
+publication of the guard author's own commitment. It cannot read private inputs
+or raw commitment bindings. -/
 inductive SourceGuardRead {Player : Type} {L : IExpr} (Γ : SourceCtx Player L)
     (author : Player) :
     L.Ty → Type where
   | publicData {x τ} (h : HasVar Γ x (.publicData τ)) : SourceGuardRead Γ author τ
-  | privateData {x τ} (h : HasVar Γ x (.privateData author τ)) : SourceGuardRead Γ author τ
+  | commitment {x τ} (h : HasVar Γ x (.commitment author τ)) : SourceGuardRead Γ author τ
   | publication {x τ} (h : HasVar Γ x (.publication τ)) : SourceGuardRead Γ author τ
 
 namespace SourceGuardRead
@@ -140,18 +144,18 @@ variable {Player : Type} {L : IExpr} {Γ : SourceCtx Player L} {author : Player}
 
 def revealed (revelations : Revelations Γ) : SourceGuardRead Γ author τ → Bool
   | .publicData _ | .publication _ => true
-  | .privateData h => (revelations h).isRevealed
+  | .commitment h => (revelations h).isRevealed
 
 def result (revelations : Revelations Γ) (state : State L Γ) :
     SourceGuardRead Γ author τ → PublicationResult (L.Val τ)
   | .publicData h => .success (state.get h)
-  | .privateData h => (revelations h).result state
+  | .commitment h => (revelations h).result state
   | .publication h => state.get h
 
 def weaken {x : VarId} {cell : CellTy Player L} :
     SourceGuardRead Γ author τ → SourceGuardRead ((x, cell) :: Γ) author τ
   | .publicData h => .publicData (.there h)
-  | .privateData h => .privateData (.there h)
+  | .commitment h => .commitment (.there h)
   | .publication h => .publication (.there h)
 
 @[simp] theorem revealed_weaken {x : VarId} {cell : CellTy Player L}
@@ -219,7 +223,8 @@ def SourcePublicCtx {Player : Type} (L : IExpr) [R : IExpr.ResultTypes L] :
     SourceCtx Player L → Ctx L.Ty
   | [] => []
   | (x, .publicData τ) :: Γ => (x, τ) :: SourcePublicCtx L Γ
-  | (_, .privateData _ _) :: Γ => SourcePublicCtx L Γ
+  | (_, .commitment _ _) :: Γ => SourcePublicCtx L Γ
+  | (_, .privateInput _ _) :: Γ => SourcePublicCtx L Γ
   | (x, .publication τ) :: Γ => (x, R.result τ) :: SourcePublicCtx L Γ
 
 /-- Straight-line source syntax with structural publication accounting. -/
@@ -233,11 +238,11 @@ inductive SourceProgram (Player : Type) [DecidableEq Player] (L : IExpr)
       SourceProgram Player L Γ Open
   | commit {Γ Open} (name : VarId) (owner : Player) {payload : L.Ty}
       (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
-      (next : SourceProgram Player L ((name, .privateData owner payload) :: Γ)
+      (next : SourceProgram Player L ((name, .commitment owner payload) :: Γ)
         (insert name Open)) : SourceProgram Player L Γ Open
   | reveal {Γ Open} (published : VarId) (owner : Player) (name : VarId) {payload : L.Ty}
       (fresh : published ∉ Γ.map Prod.fst)
-      (source : HasVar Γ name (.privateData owner payload))
+      (source : HasVar Γ name (.commitment owner payload))
       (unresolved : name ∈ Open)
       (next : SourceProgram Player L ((published, .publication payload) :: Γ)
         (Open.erase name)) : SourceProgram Player L Γ Open
@@ -246,21 +251,22 @@ namespace SourceProgram
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- Names of the private cells already present in an initial source context. -/
-def privateNames : SourceCtx Player L → Finset VarId
+/-- Initial commitments that require resolution. Private inputs are excluded. -/
+def commitmentNames : SourceCtx Player L → Finset VarId
   | [] => ∅
-  | (name, .privateData _ _) :: Γ => insert name (privateNames Γ)
-  | (_, .publicData _) :: Γ | (_, .publication _) :: Γ => privateNames Γ
+  | (name, .commitment _ _) :: Γ => insert name (commitmentNames Γ)
+  | (_, .privateInput _ _) :: Γ => commitmentNames Γ
+  | (_, .publicData _) :: Γ | (_, .publication _) :: Γ => commitmentNames Γ
 
 /-- A runnable source program together with its typed initial state and exact
-accounting for the reveals owed by initial private inputs. -/
+accounting for the resolutions owed by initial commitments. -/
 structure Initial where
   context : SourceCtx Player L
   namesNodup : (context.map Prod.fst).Nodup
   state : State L context
   obligations : Finset VarId
   program : SourceProgram Player L context obligations
-  accounts : obligations = privateNames context
+  accounts : obligations = commitmentNames context
 
 end SourceProgram
 

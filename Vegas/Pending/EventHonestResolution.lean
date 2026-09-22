@@ -48,13 +48,13 @@ private theorem resolution_reacted_action (runtime : EventGraphRuntime graph)
         remembered := Function.update execution.native.application.remembered
           event (some action) } := by
     change privateStep execution.native.application owner (.remember event action) = _
-    simp only [privateStep, dif_pos actor, empty]
+    simp only [privateStep, dite_eq_left actor, empty]
   have firstRemembered : first.native.application.remembered event = some action := by
     rw [firstState]
     simp
   have secondState : second.native.application = first.native.application := by
     change privateStep first.native.application owner (.remember event action) = _
-    simp only [privateStep, dif_pos actor, firstRemembered]
+    simp only [privateStep, dite_eq_left actor, firstRemembered]
   have secondReady : second.native.application.config.cut.Ready event := by
     simpa only [secondState, firstState] using ready
   have secondTimely : second.native.application.WithinDeadline runtime event := by
@@ -92,7 +92,13 @@ private theorem resolution_reacted_action (runtime : EventGraphRuntime graph)
   have grantBefore : second.native.application.serviceGrant = some event := by
     simpa only [secondState, firstState] using grant
   have grantAccepted : accepted.serviceGrant = some event := grantBefore
-  have reactionState : runtime.HonestReactionState event owner second.native.application
+  have submittedHandled : handle runtime submitted.native.application message = some accepted := by
+    simpa only [submitted, MessageApplication.afterSubmit, application, message, handle_submitStep]
+      using handled
+  have submittedGrant : submitted.native.application.serviceGrant = some event := by
+    simpa only [submitted, MessageApplication.afterSubmit, application, submitStep_serviceGrant]
+      using grantBefore
+  have reactionState : runtime.HonestReactionState event owner submitted.native.application
       accepted message submitted := by
     refine ⟨?_, Or.inl ⟨rfl, ?_⟩⟩
     · simp [submitted, MessageApplication.afterSubmit, submittedAt, addressed]
@@ -103,7 +109,8 @@ private theorem resolution_reacted_action (runtime : EventGraphRuntime graph)
   have reacted next (member : next ∈ (runtime.runServicePlan (runtime.compileProfile profile)
       wire (plan ++ [.includeLatest event owner]) submitted).support) :=
     runtime.runServicePlan_honestReaction_includeLatest profile wire event owner
-      second.native.application accepted message handled actor rfl addressed grantBefore
+      submitted.native.application accepted message submittedHandled actor rfl addressed
+      submittedGrant
       grantAccepted plan allowed submitted next reactionState member
   rw [block, FinDist.pure_bind]
   constructor

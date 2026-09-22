@@ -1,5 +1,6 @@
-import GameTheoryExtensions.Core.MixtureSimulation
-import GameTheoryExtensions.Core.MixtureSimulationComposition
-import GameTheoryExtensions.Math.SelectiveStopping
+import GameTheory.Core.MixtureSimulationComposition
 import GameTheoryExtensions.Math.Probability.FinDist
-import GameTheoryExtensions.Core.UtilitySimulation
+import GameTheory.Core.MixtureUtilitySimulation
+import GameTheoryExtensions.Protocol.Continuation
+import GameTheoryExtensions.Protocol.BehavioralContinuation
+import GameTheoryExtensions.Protocol.ContinuationLaw

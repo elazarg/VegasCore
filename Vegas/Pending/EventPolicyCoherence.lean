@@ -308,7 +308,7 @@ theorem BindingPolicyCoherent.afterBindingStage
     outputEq action command commandEq fresh
 
 /-- The third prescribed call records an addressed submission without
-changing the application cache or candidate catalogue. -/
+changing the application cache. -/
 theorem PolicyCoherent.afterSubmit
     (runtime : EventGraphRuntime graph)
     (execution : runtime.application.PolicyExecution)
@@ -335,11 +335,11 @@ theorem PolicyCoherent.afterSubmit
           event ≠ none from by
         have positive : 0 < stagingCount (execution.principalHistory owner) event := by omega
         obtain ⟨action, cached⟩ := coherent.cached_of_stage positive
-        simp [MessageApplication.afterSubmit, cached])
+        simp [MessageApplication.afterSubmit, application, cached])
   · intro _
     have positive : 0 < stagingCount (execution.principalHistory owner) event := by omega
     obtain ⟨action, cached⟩ := coherent.cached_of_stage positive
-    exact ⟨action, by simpa [MessageApplication.afterSubmit] using cached⟩
+    exact ⟨action, by simpa [MessageApplication.afterSubmit, application] using cached⟩
   · intro _
     exact count
 
@@ -398,9 +398,9 @@ theorem PolicyCoherent.afterSubmit_other
   refine ⟨coherent.actor, ?_, ?_, ?_, ?_⟩
   · simpa only [count] using coherent.stage_le
   · rw [count]
-    simpa [MessageApplication.afterSubmit] using coherent.empty_iff
+    simpa [MessageApplication.afterSubmit, application] using coherent.empty_iff
   · rw [count]
-    simpa [MessageApplication.afterSubmit] using coherent.cached_of_stage
+    simpa [MessageApplication.afterSubmit, application] using coherent.cached_of_stage
   · rw [submitted, count]
     exact coherent.submitted_stage
 
@@ -428,9 +428,9 @@ theorem BindingPolicyCoherent.afterSubmit
     omega
   · intro _ action cached
     have cachedBefore : execution.native.application.remembered event = some action := by
-      simpa [MessageApplication.afterSubmit] using cached
+      simpa [MessageApplication.afterSubmit, application] using cached
     have meaning := coherent.2.2 stage action cachedBefore
-    simpa [MessageApplication.afterSubmit] using meaning
+    simpa [MessageApplication.afterSubmit, application] using meaning
 
 /-- Simultaneous coherence of all events owned by one prescribed player. -/
 def PolicyCoherentAll (runtime : EventGraphRuntime graph)

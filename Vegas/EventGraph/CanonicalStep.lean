@@ -111,7 +111,7 @@ theorem runPlan_canonical_actor (profile : graph.BehavioralProfile)
       (profile who event actor (graph.playerObserve who config)).bind fun action =>
         (config.step event ready action).bind
           (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) fuel) := by
-  rw [runPlan, dif_neg (not_terminal_of_ready config ready)]
+  rw [runPlan, dite_eq_right (not_terminal_of_ready config ready)]
   conv_lhs =>
     arg 1
     unfold policyPlan
@@ -136,7 +136,7 @@ theorem runPlan_canonical_ownerless (profile : graph.BehavioralProfile)
       (config.step event ready
         (EventCode.actionOfActorNone (graph.nodes event) ownerless)).bind
           (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) fuel) := by
-  rw [runPlan, dif_neg (not_terminal_of_ready config ready)]
+  rw [runPlan, dite_eq_right (not_terminal_of_ready config ready)]
   conv_lhs =>
     arg 1
     unfold policyPlan

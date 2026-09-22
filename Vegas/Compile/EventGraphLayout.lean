@@ -22,7 +22,8 @@ the original payload remains present in bindings and publications even when
 `IExpr.ResultTypes.result` is not injective. -/
 def cellField : CellTy Player L → Vegas.EventGraph.EventField Player L
   | .publicData payload => .publicData payload
-  | .privateData owner payload => .binding owner payload
+  | .privateInput owner payload => .privateInput owner payload
+  | .commitment owner payload => .binding owner payload
   | .publication payload => .publication payload
 
 /-- Initial source cells are graph inputs in their context order. -/
@@ -96,15 +97,18 @@ def initial (Γ : SourceCtx Player L) {eventCount : Nat}
 
 end ContextRefs
 
-/-- Encode a concrete initial source state as graph inputs. A private input is
-encoded by its immutable binding. -/
+/-- Encode initial source cells without changing their kinds: private inputs
+remain ordinary values, while commitments retain their binding results. -/
 def encodeInputs : {Γ : SourceCtx Player L} → State L Γ →
     (input : Fin Γ.length) → (inputLayout Γ input).Value
   | [], _, input => nomatch input
   | (_, .publicData _) :: _, state, input => Fin.cases
       (state.get .here)
       (encodeInputs (fun _ _ source => state.get (.there source))) input
-  | (_, .privateData _ _payload) :: _, state, input => Fin.cases
+  | (_, .commitment _ _payload) :: _, state, input => Fin.cases
+      (state.get .here)
+      (encodeInputs (fun _ _ source => state.get (.there source))) input
+  | (_, .privateInput _ _payload) :: _, state, input => Fin.cases
       (state.get .here)
       (encodeInputs (fun _ _ source => state.get (.there source))) input
   | (_, .publication _) :: _, state, input => Fin.cases

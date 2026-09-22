@@ -111,7 +111,7 @@ theorem CompiledSuffix.commitTail
     {name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : name ∉ Γ.map Prod.fst)
     (guard : SourceGuard L Γ owner name payload)
-    (next : SourceProgram Player L ((name, .privateData owner payload) :: Γ)
+    (next : SourceProgram Player L ((name, .commitment owner payload) :: Γ)
       (insert name openNames))
     (refs : ContextRefs (graphLayout whole) Γ)
     (revelations : Revelations Γ)
@@ -162,7 +162,7 @@ theorem CompiledSuffix.revealTail
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {published name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : published ∉ Γ.map Prod.fst)
-    (selected : HasVar Γ name (.privateData owner payload))
+    (selected : HasVar Γ name (.commitment owner payload))
     (unresolved : name ∈ openNames)
     (next : SourceProgram Player L ((published, .publication payload) :: Γ)
       (openNames.erase name))

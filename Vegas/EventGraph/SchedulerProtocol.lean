@@ -198,7 +198,7 @@ private theorem scheduler_step_depth (profile : graph.BehavioralProfile)
           have valid := legal.2 ()
           rw [choiceEq] at valid
           have ready : config.cut.Ready event := valid.2
-          rw [choiceEq, schedulerTransition, dif_pos ready, FinDist.support_map] at supported
+          rw [choiceEq, schedulerTransition, dite_eq_left ready, FinDist.support_map] at supported
           obtain ⟨result, member, rfl⟩ := supported
           simp only [schedulerDepth, selectedPolicyStep_history_length profile config
             event ready result member]
@@ -343,7 +343,7 @@ theorem scheduler_step_bind {Outcome : Type} (profile : graph.BehavioralProfile)
     enabled_nonempty_of_not_terminal config notTerminal⟩
   have infoEq : M.infoOf () trace = some site := by
     rw [schedulerInformation_infoOf]
-    simp only [schedulerSite?, dif_neg notTerminal, site]
+    simp only [schedulerSite?, dite_eq_right notTerminal, site]
   let chosen (selected : {event : graph.EventId // event ∈ site.enabled}) :
       M.Choice () (M.infoOf () trace) := ⟨some selected.1, by
         change some selected.1 ∈ M.menu () _
@@ -362,7 +362,7 @@ theorem scheduler_step_bind {Outcome : Type} (profile : graph.BehavioralProfile)
   have ready : config.cut.Ready selected.1 :=
     (EventOrder.Cut.mem_enabled _ _).mp selected.2
   change (schedulerTransition profile inputs (some config) (some selected.1)).bind continuation = _
-  rw [schedulerTransition, dif_pos ready, FinDist.bind_map]
+  rw [schedulerTransition, dite_eq_left ready, FinDist.bind_map]
 
 /-- Reference readout of the existing graph runner, with its setup draw kept
 inside the initial transition. This defines no additional graph steps. -/
@@ -404,7 +404,7 @@ theorem scheduler_runBehavioralFrom (profile : graph.BehavioralProfile)
         | none => exact False.elim terminal
         | some config =>
             change config.cut.Terminal at terminal
-            simp only [schedulerRun, runPlan, dif_pos terminal, FinDist.map_pure]
+            simp only [schedulerRun, runPlan, dite_eq_left terminal, FinDist.map_pure]
       · rw [InformationModel.runBehavioralFrom_succ_of_not_terminal (M := M) _ fuel terminal,
           FinDist.map_bind]
         calc
@@ -429,7 +429,7 @@ theorem scheduler_runBehavioralFrom (profile : graph.BehavioralProfile)
             | some config =>
                 rw [scheduler_step_bind profile inputs scheduler config trace terminal]
                 change _ = (graph.runPlan _ (fuel + 1) config).map some
-                rw [runPlan, dif_neg terminal, FinDist.map_bind]
+                rw [runPlan, dite_eq_right terminal, FinDist.map_bind]
                 apply FinDist.bind_congr
                 intro choice _
                 rw [FinDist.map_bind]

@@ -137,9 +137,9 @@ private theorem values?_congr (deps : Finset VarId) (schema : Ctx L.Ty)
         (fun h hx => agree (.there h) hx)
       by_cases member : name ∈ deps
       · have headEq := agree (.here : HasVar ((name, τ) :: tail) name τ) member
-        simp only [values?, dif_pos member]
+        simp only [values?, dite_eq_left member]
         rw [headEq, tailEq]
-      · simp only [values?, dif_neg member]
+      · simp only [values?, dite_eq_right member]
         rw [tailEq]
 
 private theorem values?_of_failure (deps : Finset VarId) (schema : Ctx L.Ty)
@@ -177,11 +177,11 @@ private theorem values?_of_success (deps : Finset VarId) (schema : Ctx L.Ty)
         (fun h hx => values (.there h) hx) (fun h hx => resultsEq (.there h) hx)
       by_cases member : name ∈ deps
       · have headEq := resultsEq (.here : HasVar ((name, τ) :: tail) name τ) member
-        simp only [values?, tailSome, dif_pos member, headEq]
+        simp only [values?, tailSome, dite_eq_left member, headEq]
         apply congrArg some
         funext x σ h hx
         cases h <;> rfl
-      · simp only [values?, tailSome, dif_neg member]
+      · simp only [values?, tailSome, dite_eq_right member]
         apply congrArg some
         funext x σ h hx
         cases h with

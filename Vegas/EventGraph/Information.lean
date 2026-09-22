@@ -21,15 +21,15 @@ namespace EventGraph
 
 namespace EventField
 
-/-- Fields visible to a player: all public fields and that player's bindings. -/
+/-- Public fields and the player's own private inputs and bindings are visible. -/
 def VisibleTo (who : Player) : EventField Player L → Prop
   | .publicData _ | .publication _ => True
-  | .binding owner _ => owner = who
+  | .binding owner _ | .privateInput owner _ => owner = who
 
 /-- Fields visible to a public scheduler. -/
 def IsPublic : EventField Player L → Prop
   | .publicData _ | .publication _ => True
-  | .binding _ _ => False
+  | .binding _ _ | .privateInput _ _ => False
 
 instance (who : Player) (field : EventField Player L) : Decidable (field.VisibleTo who) := by
   cases field <;> simp only [VisibleTo] <;> infer_instance
@@ -59,7 +59,7 @@ instance (who : Player) (field : graph.Field) : Decidable (graph.fieldVisibleTo 
 instance (field : graph.Field) : Decidable (graph.fieldPublic field) :=
   by unfold fieldPublic; infer_instance
 
-/-- Mask a partial store to public fields and the player's own bindings. -/
+/-- Mask a store to public fields and the player's own private inputs and bindings. -/
 def playerStore (who : Player) (store : EventGraph.Store graph.layout) :
     EventGraph.Store graph.layout :=
   fun field => if graph.fieldVisibleTo who field then store field else none
@@ -159,7 +159,7 @@ theorem playerStore_complete_of_hidden (who : Player) (config : graph.Config)
       graph.playerStore who config.store := by
   funext field
   by_cases visible : graph.fieldVisibleTo who field
-  · simp only [playerStore, if_pos visible]
+  · simp only [playerStore, ite_eq_left visible]
     cases field with
     | inl input => rfl
     | inr query =>
@@ -168,7 +168,7 @@ theorem playerStore_complete_of_hidden (who : Player) (config : graph.Config)
           subst query
           exact hidden visible
         exact config.complete_output_of_ne event query ready action value different
-  · simp only [playerStore, if_neg visible]
+  · simp only [playerStore, ite_eq_right visible]
 
 /-- Another actor's completion does not change the player's original-action
 recall, regardless of the result written by that event. -/

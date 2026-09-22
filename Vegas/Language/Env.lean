@@ -227,7 +227,7 @@ theorem erasePubVCtx_map_fst_sub_viewVCtx
     match a with
     | (y, ⟨b, .pub⟩) =>
       simp only [erasePubVCtx_cons_pub, viewVCtx, canSee,
-        Visibility.canSee_pub, if_true, List.map_cons, List.mem_cons] at hx ⊢
+        Visibility.canSee_pub, ite_true, List.map_cons, List.mem_cons] at hx ⊢
       exact hx.elim Or.inl (fun h => Or.inr (ih x h))
     | (y, ⟨b, .sealed p⟩) =>
       simp only [erasePubVCtx_cons_sealed, viewVCtx] at hx ⊢
@@ -267,7 +267,7 @@ def pubToView {Player : Type} [DecidableEq Player] {L : IExpr}
           cases visibility with
           | pub =>
               simp only [erasePubVCtx_cons_pub, viewVCtx, canSee,
-                Visibility.canSee_pub, if_true, eraseVCtx_cons]
+                Visibility.canSee_pub, ite_true, eraseVCtx_cons]
               intro h
               cases h with
               | here => exact .here
@@ -275,7 +275,7 @@ def pubToView {Player : Type} [DecidableEq Player] {L : IExpr}
           | sealed owner =>
               simp only [erasePubVCtx_cons_sealed, viewVCtx]
               by_cases hsee : canSee p (.sealed owner base)
-              · simp only [hsee, if_true, eraseVCtx_cons]
+              · simp only [hsee, ite_true, eraseVCtx_cons]
                 intro h
                 exact .there (ih h)
               · simp only [hsee]

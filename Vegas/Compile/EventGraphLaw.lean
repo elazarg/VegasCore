@@ -283,7 +283,7 @@ theorem runWith_option_law
         (offset + 1) tailAligned nextConfig nextPrefix
         (Env.cons binding state)
         (ContextRefs.Agrees.cons refs state nextConfig.store oldRefs
-          (name := name) (cell := .privateData owner _) (embedding.ref headIndex) binding
+          (name := name) (cell := .commitment owner _) (embedding.ref headIndex) binding
           storedResult)
         (Function.update history owner
           (history owner ++ [OwnAction.commit owner name _ binding])) nextHistory

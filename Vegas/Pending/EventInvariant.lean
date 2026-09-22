@@ -76,7 +76,7 @@ theorem refreshActivated_le (config : graph.Config) (clock : Nat)
     (activated : refreshActivated config clock prior event = some entered) :
     entered ≤ clock := by
   by_cases ready : config.cut.Ready event
-  · rw [refreshActivated, dif_pos ready] at activated
+  · rw [refreshActivated, dite_eq_left ready] at activated
     cases actor : graph.actor? event with
     | none => simp [actor] at activated
     | some owner =>
@@ -130,7 +130,7 @@ theorem refreshActivated_eq_of_ready (config : graph.Config) (clock : Nat)
     (activated : prior event = some entered) :
     refreshActivated config clock prior event = some entered := by
   unfold refreshActivated
-  rw [dif_pos ready]
+  rw [dite_eq_left ready]
   cases actorEq : graph.actor? event with
   | none => simp [actorEq] at actor
   | some owner => simp [activated]
@@ -421,6 +421,7 @@ theorem applicationStep_invariant {inputs : graph.Inputs}
     (State.Invariant inputs)
     (fun application who command hinvariant =>
       privateStep_invariant application hinvariant who command)
+    (fun application _ _ hinvariant => hinvariant.copy rfl rfl rfl)
     (fun application message result hinvariant accepted =>
       handle_invariant runtime application result message hinvariant accepted)
     (fun application command result hinvariant supported =>

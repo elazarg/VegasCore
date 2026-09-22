@@ -7,6 +7,7 @@ import Interaction.TransactionalInclusion
 import Interaction.MessageApplication
 import Interaction.MessageApplicationLaws
 import Interaction.MessageApplicationPolicies
+import Interaction.MessageApplicationResponse
 import Interaction.MessageApplicationWirePolicy
 import Interaction.MessageApplicationLocality
 import Interaction.MessageApplicationPending

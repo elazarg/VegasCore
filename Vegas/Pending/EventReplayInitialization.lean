@@ -40,11 +40,11 @@ theorem State.initial_candidates_eq_of_observation (focal : Player)
           (same : kind.VisibleTo focal → x = y) :
           State.candidateOfValue focal kind x = State.candidateOfValue focal kind y := by
         cases kind with
-        | publicData payload | publication payload => rfl
+        | publicData payload | publication payload | privateInput _ payload => rfl
         | binding owner payload =>
             by_cases owned : owner = focal
             · rw [same (by simp [EventField.VisibleTo, owned])]
-            · simp only [State.candidateOfValue, if_neg owned]
+            · simp only [State.candidateOfValue, ite_eq_right owned]
       exact candidateCongr _ _ _ inputsEqual
 
 /-- Initial application metadata and focal private candidates are determined

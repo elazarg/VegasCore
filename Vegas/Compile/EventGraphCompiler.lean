@@ -57,7 +57,9 @@ def publicRead {Field : Type} [DecidableEq Field]
   | (_, .publicData _) :: _, refs, _, _, .here => .publicData (refs.get .here)
   | (_, .publicData _) :: tail, refs, _, _, .there source =>
       publicRead (ContextRefs.mk fun source => refs.get (.there source)) source
-  | (_, .privateData _ _) :: _tail, refs, _, _, source =>
+  | (_, .commitment _ _) :: _tail, refs, _, _, source =>
+      publicRead (ContextRefs.mk fun source => refs.get (.there source)) source
+  | (_, .privateInput _ _) :: _tail, refs, _, _, source =>
       publicRead (ContextRefs.mk fun source => refs.get (.there source)) source
   | (_, .publication _) :: _, refs, _, _, .here => .publication (refs.get .here)
   | (_, .publication _) :: tail, refs, _, _, .there source =>
@@ -113,7 +115,7 @@ def compileGuardRead {Field : Type} [DecidableEq Field]
       read.revealed revealed = true → Vegas.EventGraph.GuardOperand layout payload τ
   | .publicData (.there cell), _ => .publicData (refs.get cell)
   | .publication cell, _ => revealOperand refs cell
-  | .privateData cell, isRevealed =>
+  | .commitment cell, isRevealed =>
       match revelation : revealed cell with
       | .revealed publication => revealOperand refs publication
       | .unrevealed => absurd isRevealed (by
@@ -191,7 +193,7 @@ private theorem mem_guardReadFields {Field : Type} [DecidableEq Field]
       rw [guardReadFields, Finset.mem_union] at member
       rcases member with head | rest
       · by_cases flagged : name ∈ deps
-        · rw [dif_pos flagged] at head
+        · rw [dite_eq_left flagged] at head
           exact ⟨name, payload, .here, flagged, (mem_operandField_iff _ _).mp head⟩
         · simp [flagged] at head
       · obtain ⟨readName, readPayload, source, read, found⟩ :=
@@ -207,7 +209,7 @@ def compileGuard {Field : Type} [DecidableEq Field]
     (isRevealed : obligation.revealed revealed = true) :
     Vegas.EventGraph.GuardCheck layout payload :=
   let published := (Bool.and_eq_true _ _).mp isRevealed
-  let subjectRead := compileGuardRead refs revealed (.privateData obligation.source) published.1
+  let subjectRead := compileGuardRead refs revealed (.commitment obligation.source) published.1
   let reads : ∀ {name input}, HasVar obligation.guard.schema name input →
       name ∈ L.exprDeps obligation.guard.code →
         Vegas.EventGraph.GuardOperand layout payload input :=
@@ -229,7 +231,7 @@ def compileChecks {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
     {Γ : SourceCtx Player L} {published name : VarId} {owner : Player} {payload : L.Ty}
     (refs : ContextRefs layout Γ) (registry : Registry (Player := Player) (L := L) Γ)
-    (revelations : Revelations Γ) (selected : HasVar Γ name (.privateData owner payload)) :
+    (revelations : Revelations Γ) (selected : HasVar Γ name (.commitment owner payload)) :
     List (Vegas.EventGraph.GuardCheck layout payload) :=
   (registry.completedBy (published := published) revelations selected).attach.map
     fun obligation => compileGuard refs (revelations.reveal selected) obligation.1
@@ -259,13 +261,13 @@ private theorem publicReadFields_before {inputCount eventCount : Nat}
       obtain ⟨name, payload⟩ := entry
       intro field member
       by_cases used : name ∈ deps
-      · simp only [publicReadFields, if_pos used, Finset.mem_insert] at member
+      · simp only [publicReadFields, ite_eq_left used, Finset.mem_insert] at member
         rcases member with same | member
         · subst field
           exact before .here
         · exact ih (fun source => reads (.there source))
             (fun source => before (.there source)) field member
-      · simp only [publicReadFields, if_neg used] at member
+      · simp only [publicReadFields, ite_eq_right used] at member
         exact ih (fun source => reads (.there source))
           (fun source => before (.there source)) field member
 
@@ -283,7 +285,10 @@ private theorem publicRead_before {inputCount eventCount : Nat}
   | (_, .publicData _) :: tail, refs, before, _, _, .there source =>
       publicRead_before (ContextRefs.mk fun source => refs.get (.there source))
         (fun source => before (.there source)) source
-  | (_, .privateData _ _) :: _tail, refs, before, _, _, source =>
+  | (_, .commitment _ _) :: _tail, refs, before, _, _, source =>
+      publicRead_before (ContextRefs.mk fun source => refs.get (.there source))
+        (fun source => before (.there source)) source
+  | (_, .privateInput _ _) :: _tail, refs, before, _, _, source =>
       publicRead_before (ContextRefs.mk fun source => refs.get (.there source))
         (fun source => before (.there source)) source
   | (_, .publication _) :: _, _refs, before, _, _, .here => before .here
@@ -361,7 +366,7 @@ private theorem compileGuardRead_before {inputCount eventCount : Nat}
           subst field
           exact refsBefore cell
   | publication cell => exact revealOperand_before target refs refsBefore cell
-  | privateData cell =>
+  | commitment cell =>
       simp only [compileGuardRead]
       split
       · exact revealOperand_before target refs refsBefore _
@@ -401,7 +406,7 @@ private theorem compileChecks_before {inputCount eventCount : Nat}
     (refsBefore : ∀ {name cell} (source : HasVar Γ name cell),
       FieldBefore target (refs.get source).field)
     (registry : Registry (Player := Player) (L := L) Γ) (revelations : Revelations Γ)
-    (selected : HasVar Γ name (.privateData owner payload)) :
+    (selected : HasVar Γ name (.commitment owner payload)) :
     ∀ field, field ∈ Vegas.EventGraph.GuardCheck.listReadFields
       (compileChecks (published := published) refs registry revelations selected) →
         FieldBefore target field := by

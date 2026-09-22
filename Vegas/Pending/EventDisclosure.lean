@@ -183,13 +183,13 @@ theorem handle_resolutionSubmission_eq
               else Payload.withhold event) =
                 Payload.opening event candidate ⟨payload, value⟩
             rw [discloseTrue]
-            simp only [if_true]
+            simp only [ite_true]
             have localResolvedTrue : EventCode.resolveOutput? binding checks true
                 (graph.playerStore owner native.application.config.store) =
                   some (.success value) := by
               simpa only [discloseTrue] using localResolved
             rw [localResolvedTrue, accepted]
-            simp only [candidateOwner, if_true]
+            simp only [candidateOwner, ite_true]
           · have resolvedTrue : EventCode.resolveOutput? binding checks true
                 native.application.config.store = some (.success value) := by
               simpa only [discloseTrue] using resolved

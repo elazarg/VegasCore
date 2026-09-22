@@ -22,6 +22,26 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
+/-- The same outgoing commitment seals equal owner catalogues in the same way. -/
+theorem submitStep_candidates_congr (left right : State graph) (who : Player)
+    (packet : Payload graph)
+    (same : (fun slot => left.candidates.lookup (who, slot)) =
+      fun slot => right.candidates.lookup (who, slot)) :
+    (fun slot => (submitStep left who packet).candidates.lookup (who, slot)) =
+      fun slot => (submitStep right who packet).candidates.lookup (who, slot) := by
+  funext slot
+  cases packet with
+  | commitment event candidate =>
+      by_cases owned : candidate.1 = who
+      · by_cases selected : (who, slot) = candidate
+        · rw [show candidate = (who, slot) from selected.symm]
+          simp only [submitStep, ↓reduceIte, CommitmentCandidates.lookup_freeze_self,
+            congrFun same slot]
+        · simp only [submitStep, owned, ↓reduceIte,
+            CommitmentCandidates.lookup_freeze_other _ _ _ selected, congrFun same slot]
+      · simpa only [submitStep, owned, ↓reduceIte] using congrFun same slot
+  | opening event candidate raw | withhold event | malformed raw => exact congrFun same slot
+
 /-- Another player's arbitrary private command preserves every component of
 the observer's application view, including its own candidate catalogue. -/
 theorem privateStep_other_playerView (state : State graph) (owner observer : Player)
@@ -40,7 +60,7 @@ theorem privateStep_other_playerView (state : State graph) (owner observer : Pla
       rfl
   | remember event action =>
       by_cases owned : graph.actor? event = some owner
-      · rw [privateStep, dif_pos owned]
+      · rw [privateStep, dite_eq_left owned]
         cases cached : state.remembered event with
         | some prior => rfl
         | none =>
@@ -57,7 +77,7 @@ theorem privateStep_other_playerView (state : State graph) (owner observer : Pla
             simp only [State.playerView]
             rw [memory]
             rfl
-      · rw [privateStep, dif_neg owned]
+      · rw [privateStep, dite_eq_right owned]
 
 /-- Private commands do not advance the semantic event configuration. -/
 theorem privateStep_config (state : State graph) (owner : Player)
@@ -67,9 +87,9 @@ theorem privateStep_config (state : State graph) (owner : Player)
   | prepare => rfl
   | remember event action =>
       by_cases owned : graph.actor? event = some owner
-      · rw [privateStep, dif_pos owned]
+      · rw [privateStep, dite_eq_left owned]
         cases state.remembered event <;> rfl
-      · rw [privateStep, dif_neg owned]
+      · rw [privateStep, dite_eq_right owned]
 
 @[simp] theorem stagingCount_append (runtime : EventGraphRuntime graph)
     (history : List (Entry runtime)) (view : runtime.application.View)
@@ -91,6 +111,7 @@ theorem playerStep_other_input (runtime : EventGraphRuntime graph)
         MessageApplication.State.observe runtime.application execution.native observer) := by
   exact runtime.application.playerStep_other_input owner observer different
     (fun state command => privateStep_other_playerView state owner observer different command)
+    (fun state payload => submitStep_playerView_other state owner observer different payload)
     execution next command member
 
 /-- Equal authenticated focal views remain equal after applying the same
@@ -129,7 +150,7 @@ theorem privateStep_focal_playerView_congr
       · have cachedEq : left.remembered event = right.remembered event := by
           have atEvent := congrFun rememberedEq event
           simpa [State.playerView, owned] using atEvent
-        rw [privateStep, dif_pos owned, privateStep, dif_pos owned]
+        rw [privateStep, dite_eq_left owned, privateStep, dite_eq_left owned]
         cases leftCached : left.remembered event with
         | none =>
             have rightCached : right.remembered event = none := cachedEq.symm.trans leftCached
@@ -148,7 +169,7 @@ theorem privateStep_focal_playerView_congr
             simp only [rightCached]
             unfold State.playerView
             congr 1
-      · rw [privateStep, dif_neg owned, privateStep, dif_neg owned]
+      · rw [privateStep, dite_eq_right owned, privateStep, dite_eq_right owned]
         unfold State.playerView
         congr 1
 
@@ -300,9 +321,9 @@ theorem playerStep
       | prepare serial raw => exact replay.observation
       | remember event action =>
           by_cases owned : graph.actor? event = some focal
-          · simp only [privateStep, dif_pos owned]
+          · simp only [privateStep, dite_eq_left owned]
             split <;> split <;> exact replay.observation
-          · simp only [privateStep, dif_neg owned]
+          · simp only [privateStep, dite_eq_right owned]
             exact replay.observation
   | submit payload =>
       rw [runtime.application.playerStep_submit_eq, FinDist.mem_support_pure]
@@ -313,7 +334,7 @@ theorem playerStep
         { publicView := replay.publicView
           observation := replay.observation
           remembered := replay.remembered
-          candidates := replay.candidates
+          candidates := submitStep_candidates_congr _ _ focal payload replay.candidates
           pool := ?_
           receipts := replay.receipts
           focalHistory
@@ -437,17 +458,17 @@ theorem nonfocalPlayerStep
       · intro query queryFocal event
         by_cases queryOwner : query = owner
         · subst query
-          simp only [if_pos]
+          simp only [ite_eq_left]
           simpa [stagingCount, stagesEvent] using
             replay.stagingCount_other owner different event
-        · simp only [if_neg queryOwner]
+        · simp only [ite_eq_right queryOwner]
           exact replay.stagingCount_other query queryFocal event
       · intro query queryFocal event
         by_cases queryOwner : query = owner
         · subst query
-          simp only [if_pos]
+          simp only [ite_eq_left]
           simpa [submittedAt] using replay.submittedAt_other owner different event
-        · simp only [if_neg queryOwner]
+        · simp only [ite_eq_right queryOwner]
           exact replay.submittedAt_other query queryFocal event
   | privateCommand leftPrivate rightPrivate stages =>
       rw [runtime.application.playerStep_private_eq, FinDist.mem_support_pure]
@@ -503,7 +524,11 @@ theorem nonfocalPlayerStep
         { publicView := replay.publicView
           observation := replay.observation
           remembered := replay.remembered
-          candidates := replay.candidates
+          candidates := by
+            funext slot
+            simpa only [MessageApplication.afterSubmit, application,
+              submitStep_lookup_other _ _ _ (Ne.symm different)] using
+                congrFun replay.candidates slot
           pool := ?_
           receipts := replay.receipts
           focalHistory
@@ -515,18 +540,18 @@ theorem nonfocalPlayerStep
       · intro query queryFocal event
         by_cases queryOwner : query = owner
         · subst query
-          simp only [MessageApplication.afterSubmit, if_pos]
+          simp only [MessageApplication.afterSubmit, ite_eq_left]
           simpa [stagingCount, stagesEvent] using
             replay.stagingCount_other owner different event
-        · simp only [MessageApplication.afterSubmit, if_neg queryOwner]
+        · simp only [MessageApplication.afterSubmit, ite_eq_right queryOwner]
           exact replay.stagingCount_other query queryFocal event
       · intro query queryFocal event
         by_cases queryOwner : query = owner
         · subst query
-          simp only [MessageApplication.afterSubmit, if_pos]
+          simp only [MessageApplication.afterSubmit, ite_eq_left]
           rw [submittedAt_append_submit, submittedAt_append_submit,
             replay.submittedAt_other owner different event]
-        · simp only [MessageApplication.afterSubmit, if_neg queryOwner]
+        · simp only [MessageApplication.afterSubmit, ite_eq_right queryOwner]
           exact replay.submittedAt_other query queryFocal event
 
 /-- One actual invocation of a prescribed nonfocal policy preserves native

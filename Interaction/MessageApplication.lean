@@ -43,6 +43,8 @@ by the private command. Raw actions alone are not authenticated policies. -/
 structure MessageApplication (Principal : Type uPrincipal)
     extends MessageInterface Principal where
   privateStep : Application → Principal → PrivateCommand → Application
+  /-- Seal sender-local resources before the packet enters the observable pool. -/
+  submitStep : Application → Principal → Payload → Application
   environmentStep : Application → EnvironmentCommand → FinDist Application
   handle : Application → Message Principal Payload → Option Application
   observePlayer : Application → Principal → PlayerView
@@ -127,7 +129,9 @@ def step [DecidableEq Principal] (state : app.State) : app.Action → FinDist ap
   | .privateCommand who command =>
       FinDist.pure { state with application := app.privateStep state.application who command }
   | .submit who payload =>
-      FinDist.pure { state with pool := (state.pool.submit who payload).2 }
+      FinDist.pure { state with
+        application := app.submitStep state.application who payload
+        pool := (state.pool.submit who payload).2 }
   | .replay who id =>
       FinDist.pure { state with pool := (state.pool.replay who id).state }
   | .deliver who id =>

@@ -12,6 +12,7 @@ import Vegas.Pending
 import Vegas.Language
 import Vegas.Compile
 import Vegas.Game
+import Vegas.Examples
 
 /-! # Vegas
 

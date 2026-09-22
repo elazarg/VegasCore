@@ -22,15 +22,15 @@ theorem candidates_accept_observe_congr
     (focal : Player) (candidate : Handle graph)
     (observations : (fun slot => left.lookup (focal, slot)) =
       fun slot => right.lookup (focal, slot)) :
-    (fun slot => (left.accept candidate).lookup (focal, slot)) =
-      fun slot => (right.accept candidate).lookup (focal, slot) := by
+    (fun slot => (left.freeze candidate).lookup (focal, slot)) =
+      fun slot => (right.freeze candidate).lookup (focal, slot) := by
   funext slot
   by_cases same : (focal, slot) = candidate
   · subst candidate
-    rw [CommitmentCandidates.lookup_accept_self, CommitmentCandidates.lookup_accept_self,
+    rw [CommitmentCandidates.lookup_freeze_self, CommitmentCandidates.lookup_freeze_self,
       congrFun observations slot]
-  · rw [CommitmentCandidates.lookup_accept_other _ _ _ same,
-      CommitmentCandidates.lookup_accept_other _ _ _ same, congrFun observations slot]
+  · rw [CommitmentCandidates.lookup_freeze_other _ _ _ same,
+      CommitmentCandidates.lookup_freeze_other _ _ _ same, congrFun observations slot]
 
 /-- Equal native player views remain equal when the same public acceptance
 cell and opaque candidate handle are installed on both sides. -/
@@ -39,10 +39,10 @@ theorem State.acceptHandle_playerView_congr (left right : State graph) (focal : 
     (field : graph.Field) (candidate : Handle graph) :
     ({ left with
         accepted := Function.update left.accepted field (some candidate)
-        candidates := left.candidates.accept candidate } : State graph).playerView focal =
+        candidates := left.candidates.freeze candidate } : State graph).playerView focal =
       ({ right with
           accepted := Function.update right.accepted field (some candidate)
-          candidates := right.candidates.accept candidate } : State graph).playerView focal := by
+          candidates := right.candidates.freeze candidate } : State graph).playerView focal := by
   have publicEq := congrArg PlayerView.publicView views
   have observationEq := congrArg
     (fun view : PlayerView graph =>

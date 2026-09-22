@@ -127,6 +127,7 @@ def afterSubmit [DecidableEq Principal] (execution : app.PolicyExecution) (who :
     (payload : app.Payload) : app.PolicyExecution :=
   { execution with
     native := { execution.native with
+      application := app.submitStep execution.native.application who payload
       pool := (execution.native.pool.submit who payload).2 }
     principalHistory := fun other =>
       if other = who then execution.principalHistory who ++

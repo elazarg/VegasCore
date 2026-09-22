@@ -60,6 +60,43 @@ one of them. `PurePolicy.bindValues` then translates a pure policy into one that
 values and refuses where it replaced a binding, with `bindValues_publicRun_eq`
 its law. See [the auctions discussion](auctions-discussion.md).
 
+### Initial types and public results
+
+Persistent `Vegas.CellTy.privateInput` cells contain ordinary values and require no reveal.
+They are visible to their owners, excluded from guard and public-expression
+reads, and introduced only at setup. `Vegas.Source.PrivateInputs` proves their
+preservation; graph and native observation correspondence retain them without
+commitment handles or extra events. See [private inputs](private-inputs.md).
+
+`Vegas.Source.InitialState` proves that execution retains the initial
+environment. `Setup.parameterRun` pairs a fixed reading of that environment
+with the public result; `run_map_parameterOutcome` relates the joint law to
+the terminal-store law, and `parameterRun_map_snd` recovers the public game.
+
+`Vegas.Game.ParameterOutcomes` proves that the value-binding abstraction
+preserves this joint law and composes it with the native certificate.
+`valueBindingParameterPendingSimulation` covers arbitrary native unilateral
+policies with one finite mixture before the private initial draw.
+`valueBindingParameterPendingGame_approximate_nash_iff` and
+`valueBindingParameterPendingGame_nash_iff` preserve and reflect incentives
+for arbitrary utilities of initial parameters and public results. The
+approximation error is ex ante. These apply to a designated truthful policy
+when it is Bayesian Nash in the source; they do not establish dominance
+against arbitrary native opponents.
+
+`Vegas.Examples.CommitRevealAuction` checks that conditional withholding
+refutes dominant truthful bidding in a sequential second-price source auction.
+`truthful_not_dominant` holds for every withholding forfeiture; the witness
+improves Alice's utility from 1 to 5. `translated_truthful_not_dominant`
+quantifies over every target game and strategy translation preserving Alice's
+utilities at source profiles. The initial-type laws and both auction results
+are pinned in `Paper.lean`.
+
+`Vegas.Examples.PrivateValueAuction` checks reporting from two private valuation
+inputs with exactly four bid-related events. `truthful_parameterRun` preserves
+the joint law for arbitrary finite correlated priors. `VegasTests.PrivateInputs`
+checks access restrictions and the absence of native commitment resources.
+
 ### The pure-strategy edge
 
 The predraw has the same shape as an edge of its own. `Setup.pureGame` is the

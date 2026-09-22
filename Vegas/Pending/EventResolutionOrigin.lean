@@ -363,7 +363,9 @@ theorem serviceStep_resolutionOrigins
             right
             refine ⟨action, ready, cached, ?_⟩
             simpa [resolutionSubmission, resolutionPayload,
-              MessageApplication.State.observe, MessageApplication.afterSubmit] using submission
+              MessageApplication.State.observe, MessageApplication.afterSubmit, application,
+              State.playerView]
+              using submission
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
         Set.mem_iUnion] at member

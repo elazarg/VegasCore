@@ -6,7 +6,7 @@ import Mathlib.Data.List.Sort
 /-! # Logical observations under public-barrier dependencies
 
 The compiler's dependency policy gives each ready strategic event exactly the
-public values and own bindings from its source-ranked prefix. Other players'
+public values, own inputs, and own bindings from its source-ranked prefix. Other players'
 hidden bindings can complete out of order; chronological scheduling metadata
 remains visible separately.
 -/
@@ -37,13 +37,14 @@ private theorem visible_requires_order {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {output : EventField Player L}
     (code : EventCode layout output) (who : Player)
     (actor : code.actor = some who) (other : EventField Player L)
+    (otherCode : EventCode layout other)
     (visible : other.VisibleTo who) :
     other.IsPublic ∨ output.IsPublic ∨ other.SameBindingOwner output := by
   cases code with
   | bind owner payload =>
       simp only [EventCode.actor, Option.some.injEq] at actor
       subst owner
-      cases other <;>
+      cases otherCode <;>
         simp_all [EventField.IsPublic, EventField.VisibleTo, EventField.SameBindingOwner]
   | resolve => exact Or.inr (Or.inl trivial)
   | sample => simp [EventCode.actor] at actor
@@ -86,7 +87,7 @@ theorem visible_predecessor (ordered : graph.BarrierOrdered)
     other ∈ graph.order.predecessors event := by
   apply ordered event
   exact (mem_barrierOrder graph.outputLayout other event).2
-    ⟨earlier, visible_requires_order (graph.nodes event) who actor _ visible⟩
+    ⟨earlier, visible_requires_order (graph.nodes event) who actor _ (graph.nodes other) visible⟩
 
 /-- At a ready strategic event, each visible output is available precisely
 when its producer is earlier in the source ranking. -/
@@ -105,7 +106,7 @@ theorem ready_visible_iff (ordered : graph.BarrierOrdered) (cut : graph.order.Cu
         apply ordered other
         exact (mem_barrierOrder graph.outputLayout event other).2
           ⟨later, ordering_symm _ _
-            (visible_requires_order (graph.nodes event) who actor _ visible)⟩
+            (visible_requires_order (graph.nodes event) who actor _ (graph.nodes other) visible)⟩
       exact ready.1 (cut.predecessor_closed completed isPredecessor)
   · intro earlier
     exact ready.2 (ordered.visible_predecessor actor earlier visible)

@@ -2,7 +2,7 @@
 
 import Vegas.Compile.EventGraphDeviation
 import Vegas.Game.EventScheduling
-import GameTheoryExtensions.Core.MixtureSimulationComposition
+import GameTheory.Core.MixtureSimulationComposition
 
 /-! # Strategic correctness of full-source asynchronous graph compilation
 

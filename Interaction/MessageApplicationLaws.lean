@@ -123,6 +123,8 @@ every supported fixed-kernel result, not just by honest messages. -/
 theorem step_application_invariant (invariant : app.Application → Prop)
     (hprivate : ∀ application who command, invariant application →
       invariant (app.privateStep application who command))
+    (hsubmit : ∀ application who payload, invariant application →
+      invariant (app.submitStep application who payload))
     (hhandler : ∀ application message next, invariant application →
       app.handle application message = some next → invariant next)
     (henvironment : ∀ application command next, invariant application →
@@ -134,7 +136,11 @@ theorem step_application_invariant (invariant : app.Application → Prop)
       simp only [step, FinDist.mem_support_pure] at hnext
       subst next
       exact hprivate _ _ _ hstate
-  | submit who payload | replay who id | deliver who id =>
+  | submit who payload =>
+      simp only [step, FinDist.mem_support_pure] at hnext
+      subst next
+      exact hsubmit _ _ _ hstate
+  | replay who id | deliver who id =>
       simp only [step, FinDist.mem_support_pure] at hnext
       subst next
       exact hstate
@@ -150,6 +156,8 @@ theorem step_application_invariant (invariant : app.Application → Prop)
 theorem run_application_invariant (invariant : app.Application → Prop)
     (hprivate : ∀ application who command, invariant application →
       invariant (app.privateStep application who command))
+    (hsubmit : ∀ application who payload, invariant application →
+      invariant (app.submitStep application who payload))
     (hhandler : ∀ application message next, invariant application →
       app.handle application message = some next → invariant next)
     (henvironment : ∀ application command next, invariant application →
@@ -162,7 +170,7 @@ theorem run_application_invariant (invariant : app.Application → Prop)
   induction hexec with
   | nil => exact hstate
   | cons hstep _ ih =>
-      exact ih (app.step_application_invariant invariant hprivate hhandler henvironment
+      exact ih (app.step_application_invariant invariant hprivate hsubmit hhandler henvironment
         _ _ _ hstate hstep)
 
 end Interaction.MessageApplication

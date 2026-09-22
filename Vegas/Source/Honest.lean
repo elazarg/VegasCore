@@ -37,7 +37,7 @@ def Honest {who : Player} {Γ : SourceCtx Player L} {O : Finset VarId}
 publication carries one. -/
 structure Successful {Γ : SourceCtx Player L} (state : State L Γ) : Prop where
   /-- Every private cell is bound to a value. -/
-  bindings : ∀ {x o τ} (h : HasVar Γ x (.privateData o τ)),
+  bindings : ∀ {x o τ} (h : HasVar Γ x (.commitment o τ)),
     ∃ value, state.get h = .success value
   /-- Every publication carries a value. -/
   publications : ∀ {x τ} (h : HasVar Γ x (.publication τ)),
@@ -133,7 +133,7 @@ theorem runFrom_successful :
         terminal hmem
       have hhead : (revealSuccessor published source config true).state.get
           (HasVar.here (x := published)) = .success value := by
-        simp only [revealSuccessor, Env.cons_get_here, if_true, hbound, haccepts]
+        simp only [revealSuccessor, Env.cons_get_here, ite_true, hbound, haccepts]
       exact
         { bindings := fun h => match h with
             | .there h' => hconfig.bindings h'

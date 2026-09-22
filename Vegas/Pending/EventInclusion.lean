@@ -80,6 +80,6 @@ theorem serviceStep_includeLatest_afterSubmit_native
     ⟨(owner, execution.native.pool.nextSerial owner), packet⟩ nextState]
   · rfl
   · exact MessagePool.lookup_submit_fresh execution.native.pool owner packet fresh
-  · exact accepted
+  · simpa only [MessageApplication.afterSubmit, application, handle_submitStep] using accepted
 
 end Vegas.EventGraphRuntime

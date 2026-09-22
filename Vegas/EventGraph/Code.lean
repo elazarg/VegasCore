@@ -18,11 +18,12 @@ open GameTheory.Math.Probability
 
 variable {Player : Type} {L : IExpr} [R : IExpr.ResultTypes L]
 
-/-- The three semantic kinds of fields in an event graph. Binding and
-publication fields retain their original payload type, independently of whether
-the expression language's result-type constructor is injective. -/
+/-- Typed graph fields distinguish persistent private inputs from bindings and
+public data. Bindings and publications retain their original payload type,
+independently of the expression language's result-type constructor. -/
 inductive EventField (Player : Type) (L : IExpr) where
   | publicData (payload : L.Ty)
+  | privateInput (owner : Player) (payload : L.Ty)
   | binding (owner : Player) (payload : L.Ty)
   | publication (payload : L.Ty)
 
@@ -31,12 +32,14 @@ namespace EventField
 /-- Semantic values stored in fields. -/
 abbrev Value : EventField Player L → Type
   | .publicData payload => L.Val payload
+  | .privateInput _ payload => L.Val payload
   | .binding _ payload => PublicationResult (L.Val payload)
   | .publication payload => PublicationResult (L.Val payload)
 
 /-- The semantic action selected at an event producing this field kind. -/
 abbrev Action : EventField Player L → Type
   | .publicData _ => PUnit
+  | .privateInput _ _ => PEmpty
   | .binding _ payload => PublicationResult (L.Val payload)
   | .publication _ => Bool
 
@@ -186,9 +189,9 @@ private theorem collectPublicReads_congr {Field : Type}
       by_cases member : name ∈ deps
       · have headEq := agree
           (HasVar.here : HasVar ((name, payload) :: tail) name payload) member
-        simp only [collectPublicReads, dif_pos member]
+        simp only [collectPublicReads, dite_eq_left member]
         rw [headEq, tailEq]
-      · simp only [collectPublicReads, dif_neg member]
+      · simp only [collectPublicReads, dite_eq_right member]
         rw [tailEq]
 
 private theorem collectPublicReads_isSome {Field : Type}
@@ -252,7 +255,7 @@ private theorem collectPublicReads_eq_of_reads {Field : Type}
             | .here => env.get .here
             | .there ref => tailGet ref used
         refine ⟨get, ?_, ?_⟩
-        · simp only [collectPublicReads, dif_pos member]
+        · simp only [collectPublicReads, dite_eq_left member]
           rw [agree HasVar.here member, tailCollected]
           simp only [Option.map_some]
           apply congrArg some
@@ -269,7 +272,7 @@ private theorem collectPublicReads_eq_of_reads {Field : Type}
             | .here => False.elim (member used)
             | .there ref => tailGet ref used
         refine ⟨get, ?_, ?_⟩
-        · simp only [collectPublicReads, dif_neg member]
+        · simp only [collectPublicReads, dite_eq_right member]
           rw [tailCollected]
           simp only [Option.map_some]
           apply congrArg some
@@ -560,8 +563,8 @@ omit R in private theorem collectReads_congr {Field : Type}
       · have headEq := GuardOperand.get?_congr
           (reads (HasVar.here : HasVar ((name, input) :: tail) name input) member)
           left right proposal (fun field found => agree HasVar.here member field found)
-        simp only [collectReads, tailEq, dif_pos member, headEq]
-      · simp only [collectReads, tailEq, dif_neg member]
+        simp only [collectReads, tailEq, dite_eq_left member, headEq]
+      · simp only [collectReads, tailEq, dite_eq_right member]
 
 omit R in private theorem collectReads_isSome {Field : Type}
     {layout : Field → EventField Player L} {currentPayload : L.Ty}
@@ -589,8 +592,8 @@ omit R in private theorem collectReads_isSome {Field : Type}
             cases hhead : (reads (HasVar.here : HasVar ((name, input) :: tail) name input)
                 member).get? store proposal with
             | none => simp [hhead] at headPresent
-            | some head => simp [collectReads, htail, dif_pos member, hhead]
-          · simp [collectReads, htail, dif_neg member]
+            | some head => simp [collectReads, htail, dite_eq_left member, hhead]
+          · simp [collectReads, htail, dite_eq_right member]
 
 omit R in private theorem collectReads_eq_of_reads {Field : Type}
     {layout : Field → EventField Player L} {currentPayload : L.Ty}
@@ -615,11 +618,11 @@ omit R in private theorem collectReads_eq_of_reads {Field : Type}
       have tailCollected := ih (fun ref read => reads (.there ref) read)
         (fun ref read => env (.there ref) read) (fun ref read => agree (.there ref) read)
       by_cases member : name ∈ deps
-      · simp only [collectReads, tailCollected, dif_pos member, agree HasVar.here member]
+      · simp only [collectReads, tailCollected, dite_eq_left member, agree HasVar.here member]
         apply congrArg some
         funext refName refInput ref read
         cases ref <;> rfl
-      · simp only [collectReads, tailCollected, dif_neg member]
+      · simp only [collectReads, tailCollected, dite_eq_right member]
         apply congrArg some
         funext refName refInput ref read
         cases ref with

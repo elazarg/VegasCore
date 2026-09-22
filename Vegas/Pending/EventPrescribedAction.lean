@@ -238,7 +238,7 @@ theorem handle_canonical_commitment_cached_action
             (state.bindingResult (owner, eventSlot event) payloadTy))) with
         accepted := Function.update state.accepted (.inr event)
           (some (owner, eventSlot event))
-        candidates := state.candidates.accept (owner, eventSlot event) }
+        candidates := state.candidates.freeze (owner, eventSlot event) }
   have exactLaw : runtime.handle state
       ⟨(owner, nonce), .commitment event (owner, eventSlot event)⟩ = some expected := by
     simpa [expected] using exactHandle

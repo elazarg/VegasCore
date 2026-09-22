@@ -36,10 +36,16 @@ def decodeState? {Field : Type}
         HasVar ((name, .publication payload) :: Γ) name (.publication payload))).get? store
       let tail ← decodeState? refs.tail store
       pure (Env.cons head tail)
-  | (name, .privateData owner payload) :: Γ, refs, store => do
+  | (name, .commitment owner payload) :: Γ, refs, store => do
       let binding ← (refs.get (HasVar.here :
-        HasVar ((name, .privateData owner payload) :: Γ) name
-          (.privateData owner payload))).get? store
+        HasVar ((name, .commitment owner payload) :: Γ) name
+          (.commitment owner payload))).get? store
+      let tail ← decodeState? refs.tail store
+      pure (Env.cons binding tail)
+  | (name, .privateInput owner payload) :: Γ, refs, store => do
+      let binding ← (refs.get (HasVar.here :
+        HasVar ((name, .privateInput owner payload) :: Γ) name
+          (.privateInput owner payload))).get? store
       let tail ← decodeState? refs.tail store
       pure (Env.cons binding tail)
 

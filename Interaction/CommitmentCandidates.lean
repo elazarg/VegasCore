@@ -11,7 +11,7 @@ import Interaction.IdealCommitments
 This runtime-general catalog records the immutable meaning of each
 owner/candidate handle. A slot is a candidate identifier, independent of the
 hosting program's source sites. Preparing a fresh handle makes it openable to one value.
-Accepting a still-fresh handle records that it is permanently unopenable.
+Freezing a still-fresh handle records that it is permanently unopenable.
 Neither operation changes a handle whose meaning is already fixed.
 
 The catalog is an ideal state component, not a service, runner, or observation
@@ -22,7 +22,7 @@ namespace Interaction
 
 universe uPrincipal uSlot uValue
 
-/-- The immutable meaning eventually assigned to a commitment handle. -/
+/-- A candidate is either private and fresh or has a permanently fixed meaning. -/
 inductive CommitmentCandidate (Value : Type uValue) where
   | fresh
   | openable (value : Value)
@@ -70,9 +70,9 @@ def prepare [DecidableEq Principal] [DecidableEq Slot]
         else state.table otherOwner otherSlot⟩
   | .openable _ | .unopenable => state
 
-/-- Accept a handle. A fresh handle becomes permanently unopenable; an already
-prepared or accepted handle retains its existing meaning. -/
-def accept [DecidableEq Principal] [DecidableEq Slot]
+/-- Freeze a handle before exposure. A fresh handle becomes permanently
+unopenable; an already fixed handle retains its existing meaning. -/
+def freeze [DecidableEq Principal] [DecidableEq Slot]
     (state : CommitmentCandidates Principal Slot Value)
     (handle : CommitmentHandle Principal Slot) :
     CommitmentCandidates Principal Slot Value :=
@@ -81,6 +81,12 @@ def accept [DecidableEq Principal] [DecidableEq Slot]
       ⟨fun owner slot =>
         if (owner, slot) = handle then .unopenable else state.table owner slot⟩
   | .openable _ | .unopenable => state
+
+theorem freeze_eq_self_of_not_fresh [DecidableEq Principal] [DecidableEq Slot]
+    (state : CommitmentCandidates Principal Slot Value)
+    (handle : CommitmentHandle Principal Slot) (fixed : state.lookup handle ≠ .fresh) :
+    state.freeze handle = state := by
+  cases h : state.lookup handle <;> simp_all [freeze]
 
 /-- Check whether a handle was prepared with the claimed value. -/
 def verify [DecidableEq Value] (state : CommitmentCandidates Principal Slot Value)
@@ -113,10 +119,10 @@ theorem lookup_prepare_other [DecidableEq Principal] [DecidableEq Slot]
   cases hlookup : state.table owner slot <;>
     simp [prepare, lookup, hlookup, hother]
 
-@[simp] theorem lookup_accept_self [DecidableEq Principal] [DecidableEq Slot]
+@[simp] theorem lookup_freeze_self [DecidableEq Principal] [DecidableEq Slot]
     (state : CommitmentCandidates Principal Slot Value)
     (handle : CommitmentHandle Principal Slot) :
-    (state.accept handle).lookup handle =
+    (state.freeze handle).lookup handle =
       match state.lookup handle with
       | .fresh => .unopenable
       | .openable value => .openable value
@@ -124,19 +130,19 @@ theorem lookup_prepare_other [DecidableEq Principal] [DecidableEq Slot]
   cases handle with
   | mk owner slot =>
       cases hlookup : state.table owner slot <;>
-        simp [accept, lookup, hlookup]
+        simp [freeze, lookup, hlookup]
 
-theorem lookup_accept_other [DecidableEq Principal] [DecidableEq Slot]
+theorem lookup_freeze_other [DecidableEq Principal] [DecidableEq Slot]
     (state : CommitmentCandidates Principal Slot Value)
     (accepted queried : CommitmentHandle Principal Slot) (hne : queried ≠ accepted) :
-    (state.accept accepted).lookup queried = state.lookup queried := by
+    (state.freeze accepted).lookup queried = state.lookup queried := by
   rcases accepted with ⟨acceptedOwner, acceptedSlot⟩
   rcases queried with ⟨queriedOwner, queriedSlot⟩
   have hother : ¬(queriedOwner = acceptedOwner ∧ queriedSlot = acceptedSlot) := by
     rintro ⟨rfl, rfl⟩
     exact hne rfl
   cases hlookup : state.table acceptedOwner acceptedSlot <;>
-    simp [accept, lookup, hlookup, hother]
+    simp [freeze, lookup, hlookup, hother]
 
 theorem verify_eq_true_iff [DecidableEq Value]
     (state : CommitmentCandidates Principal Slot Value)
@@ -158,40 +164,46 @@ theorem lookup_prepare_eq_of_not_fresh [DecidableEq Principal] [DecidableEq Slot
     | unopenable => simp [lookup_prepare_self, hlookup]
   · exact state.lookup_prepare_other owner slot value handle heq
 
-/-- Accepting any candidate cannot change an already fixed handle. -/
-theorem lookup_accept_eq_of_not_fresh [DecidableEq Principal] [DecidableEq Slot]
+/-- Freezing any candidate cannot change an already fixed handle. -/
+theorem lookup_freeze_eq_of_not_fresh [DecidableEq Principal] [DecidableEq Slot]
     (state : CommitmentCandidates Principal Slot Value)
     (handle accepted : CommitmentHandle Principal Slot)
     (hfixed : state.lookup handle ≠ .fresh) :
-    (state.accept accepted).lookup handle = state.lookup handle := by
+    (state.freeze accepted).lookup handle = state.lookup handle := by
   by_cases heq : handle = accepted
   · subst handle
     cases hlookup : state.lookup accepted with
     | fresh => exact (hfixed hlookup).elim
-    | openable value => simp [lookup_accept_self, hlookup]
-    | unopenable => simp [lookup_accept_self, hlookup]
-  · exact state.lookup_accept_other accepted handle heq
+    | openable value => simp [lookup_freeze_self, hlookup]
+    | unopenable => simp [lookup_freeze_self, hlookup]
+  · exact state.lookup_freeze_other accepted handle heq
 
-/-- Acceptance always leaves its canonical handle with a fixed meaning. -/
-theorem lookup_accept_ne_fresh [DecidableEq Principal] [DecidableEq Slot]
+/-- Freezing always leaves its canonical handle with a fixed meaning. -/
+theorem lookup_freeze_ne_fresh [DecidableEq Principal] [DecidableEq Slot]
     (state : CommitmentCandidates Principal Slot Value)
     (handle : CommitmentHandle Principal Slot) :
-    (state.accept handle).lookup handle ≠ .fresh := by
+    (state.freeze handle).lookup handle ≠ .fresh := by
   cases hlookup : state.lookup handle <;>
-    simp [lookup_accept_self, hlookup]
+    simp [lookup_freeze_self, hlookup]
 
-/-- Accepting any handle preserves every verification result, including when
-the accepted handle was fresh and therefore had no opening. -/
-theorem verify_accept [DecidableEq Principal] [DecidableEq Slot] [DecidableEq Value]
+@[simp] theorem freeze_idempotent [DecidableEq Principal] [DecidableEq Slot]
+    (state : CommitmentCandidates Principal Slot Value)
+    (handle : CommitmentHandle Principal Slot) :
+    (state.freeze handle).freeze handle = state.freeze handle :=
+  (state.freeze handle).freeze_eq_self_of_not_fresh handle (state.lookup_freeze_ne_fresh handle)
+
+/-- Freezing any handle preserves every verification result, including when
+the frozen handle was fresh and therefore had no opening. -/
+theorem verify_freeze [DecidableEq Principal] [DecidableEq Slot] [DecidableEq Value]
     (state : CommitmentCandidates Principal Slot Value)
     (accepted queried : CommitmentHandle Principal Slot) (claimed : Value) :
-    (state.accept accepted).verify queried claimed = state.verify queried claimed := by
+    (state.freeze accepted).verify queried claimed = state.verify queried claimed := by
   unfold verify
   by_cases heq : queried = accepted
   · subst queried
     cases hlookup : state.lookup accepted <;>
-      simp [lookup_accept_self, hlookup]
-  · rw [state.lookup_accept_other accepted queried heq]
+      simp [lookup_freeze_self, hlookup]
+  · rw [state.lookup_freeze_other accepted queried heq]
 
 /-- An openable value after preparation was either already present or was
 supplied by this exact owner/slot preparation. -/
@@ -216,25 +228,25 @@ theorem lookup_prepare_openable_origin [DecidableEq Principal] [DecidableEq Slot
 
 /-- Acceptance creates no opening, including when it makes a fresh candidate
 permanently unopenable. -/
-theorem lookup_accept_openable_iff [DecidableEq Principal] [DecidableEq Slot]
+theorem lookup_freeze_openable_iff [DecidableEq Principal] [DecidableEq Slot]
     (state : CommitmentCandidates Principal Slot Value)
     (accepted queried : CommitmentHandle Principal Slot) (value : Value) :
-    (state.accept accepted).lookup queried = .openable value ↔
+    (state.freeze accepted).lookup queried = .openable value ↔
       state.lookup queried = .openable value := by
   by_cases heq : queried = accepted
   · subst queried
-    rw [lookup_accept_self]
+    rw [lookup_freeze_self]
     cases state.lookup accepted <;> simp
-  · rw [state.lookup_accept_other accepted queried heq]
+  · rw [state.lookup_freeze_other accepted queried heq]
 
 /-- Preparing a fresh handle and then accepting it retains its opening. -/
-theorem lookup_accept_prepare [DecidableEq Principal] [DecidableEq Slot]
+theorem lookup_freeze_prepare [DecidableEq Principal] [DecidableEq Slot]
     (state : CommitmentCandidates Principal Slot Value)
     (owner : Principal) (slot : Slot) (value : Value)
     (hfresh : state.lookup (owner, slot) = .fresh) :
-    ((state.prepare owner slot value).accept (owner, slot)).lookup (owner, slot) =
+    ((state.prepare owner slot value).freeze (owner, slot)).lookup (owner, slot) =
       .openable value := by
-  rw [lookup_accept_self, lookup_prepare_self, hfresh]
+  rw [lookup_freeze_self, lookup_prepare_self, hfresh]
 
 /-- Two distinct fresh handles can be prepared independently. -/
 theorem lookup_prepare_distinct [DecidableEq Principal] [DecidableEq Slot]
@@ -263,14 +275,14 @@ theorem lookup_prepare_distinct [DecidableEq Principal] [DecidableEq Slot]
 
 /-- Once a fresh handle is accepted as unopenable, no later preparation can
 revive it, even when preparing that same owner and slot. -/
-theorem lookup_prepare_accept_of_fresh [DecidableEq Principal] [DecidableEq Slot]
+theorem lookup_prepare_freeze_of_fresh [DecidableEq Principal] [DecidableEq Slot]
     (state : CommitmentCandidates Principal Slot Value)
     (handle : CommitmentHandle Principal Slot) (owner : Principal) (slot : Slot) (value : Value)
     (hfresh : state.lookup handle = .fresh) :
-    ((state.accept handle).prepare owner slot value).lookup handle = .unopenable := by
-  have haccepted : (state.accept handle).lookup handle = .unopenable := by
-    simp [lookup_accept_self, hfresh]
-  rw [(state.accept handle).lookup_prepare_eq_of_not_fresh handle owner slot value
+    ((state.freeze handle).prepare owner slot value).lookup handle = .unopenable := by
+  have haccepted : (state.freeze handle).lookup handle = .unopenable := by
+    simp [lookup_freeze_self, hfresh]
+  rw [(state.freeze handle).lookup_prepare_eq_of_not_fresh handle owner slot value
     (by rw [haccepted]; simp), haccepted]
 
 end CommitmentCandidates
@@ -308,13 +320,13 @@ theorem candidates_sealValue [DecidableEq Principal] [DecidableEq Slot]
       by_cases hsame : otherOwner = owner ∧ otherSlot = slot <;> simp [hsame]
 
 /-- A prepared candidate needs no further catalog update at acceptance. -/
-theorem candidates_accept [DecidableEq Principal] [DecidableEq Slot]
+theorem candidates_freeze [DecidableEq Principal] [DecidableEq Slot]
     (state : IdealCommitments Principal Slot Value)
     (handle : CommitmentHandle Principal Slot) (hprepared : (state.lookup handle).isSome) :
-    state.candidates.accept handle = state.candidates := by
+    state.candidates.freeze handle = state.candidates := by
   cases hlookup : state.lookup handle with
   | none => simp [hlookup] at hprepared
-  | some value => simp [CommitmentCandidates.accept, hlookup]
+  | some value => simp [CommitmentCandidates.freeze, hlookup]
 
 @[simp] theorem candidates_verify [DecidableEq Value]
     (state : IdealCommitments Principal Slot Value)

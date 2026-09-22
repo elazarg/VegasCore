@@ -24,9 +24,9 @@ theorem privateStep_publicView (state : State graph) (who : Player)
   | prepare => rfl
   | remember event action =>
       by_cases owned : graph.actor? event = some who
-      · rw [privateStep, dif_pos owned]
+      · rw [privateStep, dite_eq_left owned]
         cases state.remembered event <;> rfl
-      · rw [privateStep, dif_neg owned]
+      · rw [privateStep, dite_eq_right owned]
 
 /-- The full environment observation, including the pending pool and receipts,
 is unchanged by an actual private policy command. -/
@@ -62,7 +62,7 @@ theorem privateStep_playerView_other (state : State graph) (who observer : Playe
       rfl
   | remember event action =>
       by_cases owned : graph.actor? event = some who
-      · rw [privateStep, dif_pos owned]
+      · rw [privateStep, dite_eq_left owned]
         cases cached : state.remembered event with
         | some prior => rfl
         | none =>
@@ -81,7 +81,7 @@ theorem privateStep_playerView_other (state : State graph) (who observer : Playe
               · rw [Function.update_of_ne same]
             dsimp only [State.playerView, State.publicView]
             rw [memory]
-      · rw [privateStep, dif_neg owned]
+      · rw [privateStep, dite_eq_right owned]
 
 /-- The complete native view of another player is unchanged by a private
 policy command; pending-message observations remain included in the view. -/
@@ -133,9 +133,9 @@ policy command; pending-message observations remain included in the view. -/
   | prepare => rfl
   | remember event action =>
       by_cases owned : graph.actor? event = some who
-      · rw [privateStep, dif_pos owned]
+      · rw [privateStep, dite_eq_left owned]
         cases execution.native.application.remembered event <;> rfl
-      · rw [privateStep, dif_neg owned]
+      · rw [privateStep, dite_eq_right owned]
 
 @[simp] theorem afterPrivate_serviceGrant (runtime : EventGraphRuntime graph)
     (execution : runtime.application.PolicyExecution) (who : Player)
@@ -147,9 +147,9 @@ policy command; pending-message observations remain included in the view. -/
   | prepare => rfl
   | remember event action =>
       by_cases owned : graph.actor? event = some who
-      · rw [privateStep, dif_pos owned]
+      · rw [privateStep, dite_eq_left owned]
         cases execution.native.application.remembered event <;> rfl
-      · rw [privateStep, dif_neg owned]
+      · rw [privateStep, dite_eq_right owned]
 
 theorem afterPrivate_remembered_same (runtime : EventGraphRuntime graph)
     (execution : runtime.application.PolicyExecution) (who : Player)

@@ -48,7 +48,7 @@ theorem runPlan_schedulerReachable
       by_cases terminal : config.cut.Terminal
       · have same : next = config := by simpa [runPlan, terminal] using member
         exact same ▸ reachable
-      · rw [runPlan, dif_neg terminal, FinDist.support_bind] at member
+      · rw [runPlan, dite_eq_right terminal, FinDist.support_bind] at member
         simp only [Set.mem_iUnion] at member
         obtain ⟨choice, choiceMem, restMem⟩ := member
         rw [FinDist.support_bind] at restMem
@@ -100,7 +100,7 @@ theorem replayPublicStore_eq_publicStore (config : graph.Config)
     graph.replayPublicStore config.cut later = graph.publicStore config.store := by
   funext field
   by_cases available : graph.FieldAvailable config.cut field
-  · simp only [replayPublicStore, if_pos available]
+  · simp only [replayPublicStore, ite_eq_left available]
     by_cases isPublic : graph.fieldPublic field
     · simp [publicStore, isPublic, agree field available isPublic]
     · simp [publicStore, isPublic]

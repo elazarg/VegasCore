@@ -101,7 +101,7 @@ theorem privateStep_remembered_of_some (state : State graph) (who : Player)
   | prepare serial raw => exact cached
   | remember query chosen =>
       by_cases owned : graph.actor? query = some who
-      · rw [privateStep, dif_pos owned]
+      · rw [privateStep, dite_eq_left owned]
         cases memory : state.remembered query with
         | some prior => exact cached
         | none =>
@@ -111,7 +111,7 @@ theorem privateStep_remembered_of_some (state : State graph) (who : Player)
               rw [cached] at memory
               contradiction
             simpa only [Function.update_of_ne different] using cached
-      · rw [privateStep, dif_neg owned]
+      · rw [privateStep, dite_eq_right owned]
         exact cached
 
 /-- Until a ready public event completes, every native action preserves its
@@ -193,6 +193,7 @@ theorem applicationRun_ready_public_frame (runtime : EventGraphRuntime graph)
           (fun application => event ∈ application.config.cut.completed)
           (fun application who command done =>
             privateStep_completed_subset application who command done)
+          (fun _ _ _ done => done)
           (fun application message after done accepted =>
             handle_completed_subset runtime application after message accepted done)
           (fun application command after done supported =>

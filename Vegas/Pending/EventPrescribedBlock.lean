@@ -314,7 +314,8 @@ theorem runServicePlan_compiled_resolve_partial_submitted
       · change second.native.application.remembered event = some action
         exact secondRemembered
       · simpa [resolutionSubmission, resolutionPayload, MessageApplication.State.observe,
-          second, first, MessageApplication.afterSubmit] using submission
+          second, first, MessageApplication.afterSubmit, application, State.playerView]
+          using submission
       · change (⟨(who, execution.native.pool.nextSerial who), packet⟩ :
             Message Player (Payload graph)) ∈
           execution.native.pool.pending ++
@@ -397,7 +398,7 @@ theorem runServicePlan_compiled_resolve_partial_submitted
         · change first.native.application.remembered event = some action
           exact firstRemembered
         · simpa [resolutionSubmission, resolutionPayload, MessageApplication.State.observe,
-            first, MessageApplication.afterSubmit] using submission
+            first, MessageApplication.afterSubmit, application, State.playerView] using submission
         · change (⟨(who, execution.native.pool.nextSerial who), packet⟩ :
               Message Player (Payload graph)) ∈
             execution.native.pool.pending ++
@@ -453,7 +454,7 @@ theorem runServicePlan_compiled_resolve_partial_submitted
         · change execution.native.application.remembered event = some action
           exact cached
         · simpa [resolutionSubmission, resolutionPayload, MessageApplication.State.observe,
-            MessageApplication.afterSubmit] using submission
+            MessageApplication.afterSubmit, application, State.playerView] using submission
         · change (⟨(who, execution.native.pool.nextSerial who), packet⟩ :
               Message Player (Payload graph)) ∈
             execution.native.pool.pending ++

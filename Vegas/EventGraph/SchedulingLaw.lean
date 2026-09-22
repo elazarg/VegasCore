@@ -39,7 +39,7 @@ theorem runPlan_map_eq_value_of_step
       intro config enough
       by_cases isTerminal : config.cut.Terminal
       · simpa [runPlan, isTerminal] using terminal config isTerminal
-      · rw [runPlan, dif_neg isTerminal]
+      · rw [runPlan, dite_eq_right isTerminal]
         simp only [FinDist.map_bind]
         calc
           (plan config isTerminal).bind (fun choice =>

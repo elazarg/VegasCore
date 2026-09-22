@@ -23,7 +23,7 @@ omit [DecidableEq Player] [IExpr.ResultTypes L] in
 theorem Obligation.accepts_reveal_of_revealed {Γ : SourceCtx Player L} {O : Finset VarId}
     (obligation : Obligation (Player := Player) (L := L) Γ) (revelations : Revelations Γ)
     {published name : VarId} {owner : Player} {payload : L.Ty}
-    (source : HasVar Γ name (.privateData owner payload))
+    (source : HasVar Γ name (.commitment owner payload))
     (accounted : Accounted revelations O) (unresolved : name ∈ O)
     (revealed : obligation.revealed revelations = true)
     (head : PublicationResult (L.Val payload)) (state : State L Γ) :
@@ -32,7 +32,7 @@ theorem Obligation.accepts_reveal_of_revealed {Γ : SourceCtx Player L} {O : Fin
         (Env.cons (Val := CellVal (Player := Player) L) (τ := .publication payload) head state) =
       obligation.accepts revelations state := by
   have unchanged : ∀ {readOwner : Player} {readPayload : L.Ty} {readName : VarId}
-      (h : HasVar Γ readName (.privateData readOwner readPayload)),
+      (h : HasVar Γ readName (.commitment readOwner readPayload)),
       (revelations h).isRevealed = true →
         revelations.reveal (published := published) source (.there h) = (revelations h).weaken := by
     intro readOwner readPayload readName h readRevealed
@@ -48,7 +48,7 @@ theorem Obligation.accepts_reveal_of_revealed {Γ : SourceCtx Player L} {O : Fin
   cases readEq : obligation.guard.reads h with
   | publicData cell => simp [SourceGuardRead.weaken, SourceGuardRead.result]
   | publication cell => simp [SourceGuardRead.weaken, SourceGuardRead.result]
-  | privateData cell =>
+  | commitment cell =>
       rw [readEq] at readRevealed
       simp [SourceGuardRead.weaken, SourceGuardRead.result, unchanged cell readRevealed]
 
@@ -58,7 +58,7 @@ publication is one of its inputs. -/
 theorem Obligation.accepts_reveal_failure {Γ : SourceCtx Player L}
     (obligation : Obligation (Player := Player) (L := L) Γ) (revelations : Revelations Γ)
     {published name : VarId} {owner : Player} {payload : L.Ty}
-    (source : HasVar Γ name (.privateData owner payload)) (unique : (Γ.map Prod.fst).Nodup)
+    (source : HasVar Γ name (.commitment owner payload)) (unique : (Γ.map Prod.fst).Nodup)
     (before : obligation.revealed revelations = false)
     (after : (obligation.weaken (x := published)).revealed
       (revelations.reveal (published := published) source) = true)
@@ -68,7 +68,7 @@ theorem Obligation.accepts_reveal_failure {Γ : SourceCtx Player L}
         (Env.cons (Val := CellVal (Player := Player) L) (τ := .publication payload)
           PublicationResult.failure state) = true := by
   have changed : ∀ {readOwner : Player} {readPayload : L.Ty} {readName : VarId}
-      (h : HasVar Γ readName (.privateData readOwner readPayload)),
+      (h : HasVar Γ readName (.commitment readOwner readPayload)),
       (revelations h).isRevealed = false →
       (revelations.reveal (published := published) source (.there h)).isRevealed = true →
       (revelations.reveal (published := published) source (.there h)).result
@@ -108,7 +108,7 @@ theorem Obligation.accepts_reveal_failure {Γ : SourceCtx Player L}
     cases readEq : obligation.guard.reads h with
     | publicData cell => simp [readEq, SourceGuardRead.revealed] at unrevealed
     | publication cell => simp [readEq, SourceGuardRead.revealed] at unrevealed
-    | privateData cell =>
+    | commitment cell =>
         simp only [readEq, SourceGuardRead.revealed] at unrevealed
         have cellAfter : (revelations.reveal (published := published) source
             (.there cell)).isRevealed = true := by
@@ -173,7 +173,7 @@ theorem runWith_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
       obtain ⟨value, _, supported⟩ := supported
       exact ih (afterSample profile) (Env.cons value state) registry.weaken revelations.weaken
         history (by simp [fresh, unique])
-        (Accounted.weaken_public (by intro _ _ equal; cases equal) accounted)
+        (Accounted.weaken_noncommitment (by intro _ _ equal; cases equal) accounted)
         (consistent_weaken (cell := .publicData _) registry revelations value state consistent)
         outcome supported
   | commit name owner fresh guard next ih =>
@@ -187,7 +187,7 @@ theorem runWith_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
       rcases List.mem_cons.mp member with rfl | member
       · simp [Obligation.revealed, Revelations.weaken, HasVar.tail?,
           Revelation.isRevealed] at revealed
-      · exact consistent_weaken (cell := .privateData owner _) registry revelations binding
+      · exact consistent_weaken (cell := .commitment owner _) registry revelations binding
           state consistent obligation member revealed
   | reveal published owner name fresh source unresolved next ih =>
       intro profile state registry revelations history unique accounted consistent
@@ -256,7 +256,7 @@ theorem Initial.terminal_guards_hold
     intro x τ h _
     cases obligation.guard.reads h with
     | publicData cell | publication cell => rfl
-    | privateData cell => exact initial.revealed cell
+    | commitment cell => exact initial.revealed cell
   have accepts := runWith_consistent initial.program profile initial.state []
     (Revelations.initial initial.context) (fun _ => []) initial.namesNodup
     (initial.accounts ▸ Accounted.initial initial.context) (by simp) outcome supported

@@ -290,7 +290,12 @@ private theorem playerStep_progress (runtime : EventGraphRuntime graph)
         MessageApplication.step, FinDist.mem_support_pure] at native
       rw [native]
       exact privateStep_progress inputs execution.native.application who command invariant
-  | submit payload | replay id | wait =>
+  | submit payload =>
+      simp only [MessageApplication.PlayerCommand.toAction,
+        MessageApplication.step, FinDist.mem_support_pure] at native
+      rw [native]
+      exact ⟨invariant.copy rfl rfl rfl, Finset.Subset.rfl, rfl, fun _ _ same _ => same⟩
+  | replay id | wait =>
       simp only [MessageApplication.PlayerCommand.toAction,
         MessageApplication.step, FinDist.mem_support_pure] at native
       rw [native]

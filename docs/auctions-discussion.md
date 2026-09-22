@@ -40,6 +40,17 @@ particular, are stated about the source program and carried to the runtime.
 - Nash correspondence holds at compiled profiles for every real utility of that
   result (`Vegas.Paper.source_event_graph_approximate_nash_iff`,
   `Vegas.Paper.source_event_pending_approximate_nash_iff`).
+- Utilities may also depend on initial private parameters jointly with public
+  results. `Vegas.SourceProgram.Setup.valueBindingParameterPendingSimulation`
+  preserves that joint law while excluding commit-time failure from the source
+  strategies. `Vegas.Paper.private_type_event_pending_approximate_nash_iff`
+  audits the corresponding same-error ex-ante Nash equivalence. Types must be
+  represented in the initial setup as persistent `Vegas.CellTy.privateInput` cells; those
+  cells require no publication and allocate no commitment handles.
+- The sequential second-price counterexample below is checked in
+  `Vegas.Examples.CommitRevealAuction.truthful_not_dominant`, for every
+  withholding forfeiture. `translated_truthful_not_dominant` proves the same
+  failure for every utility-preserving translation of this source game.
 - The compiled honest profile has the source terminal-state law
   (`Vegas.Paper.source_event_pending_honest_law`). For a fixed profile, a native
   unilateral replacement, and a real-valued test of the terminal state, some
@@ -52,8 +63,9 @@ particular, are stated about the source program and carried to the runtime.
   and pending-message deviation laws are existential per profile.
 - A `Vegas.SourceProgram.Setup` carries a finite prior over initial states,
   including private cells. A player observes exactly their own private cells.
-- Every initial private cell is a publication obligation, and `ret` requires no
-  open obligation, so the program must contain a `reveal` for each one.
+- Every commitment is a publication obligation, and `ret` requires no open
+  obligation. Persistent private inputs hold ordinary values and require no
+  reveal; guards and public expressions cannot read them directly.
 - `sample` binds public data only. There is no private chance.
 - `ret` payoffs are integer expressions over the public context. Nothing checks
   conservation.
@@ -228,27 +240,22 @@ prior. Bayes-Nash needs a prior over types and a wrapper game at the analysis
 level; `GameTheory` already has Bayesian games. The Bayesian transfer is open
 (see below).
 
-**V2. Initial private cells in a `Setup`.** The prior draws the types, owners
-observe them, and the utility reads them from the terminal state. The existing
-Nash correspondence then applies directly: source Bayes-Nash holds exactly when
-runtime Nash holds at compiled profiles. The cost is an operational encoding of
-non-operational data:
+**V2. Persistent private inputs in a `Setup`.** The prior draws ordinary values
+into `Vegas.CellTy.privateInput` cells and owners observe their own. `Setup.parameterGame`
+and `Setup.valueBindingParameterGame` retain a reading of those cells jointly
+with public results. `valueBindingParameterPendingGame_nash_iff` gives source
+Bayes-Nash exactly when runtime Nash holds at compiled profiles.
 
-- the runtime must realize the private setup;
-- the publication obligation forces a `reveal` per type (withholding it at the
-  end, with payoffs independent of it, satisfies the obligation but is still a
-  runtime event);
-- types share the one prior with genuine protocol secrets.
+Inputs remain immutable, carry no publication obligation, and have no direct
+guard or public-expression reads. Their compilation generates neither an event
+nor a commitment handle. The prior can correlate valuations with protocol
+secrets; independence is not required. The runtime assumes the same initial
+information for each player. `Vegas.Examples.PrivateValueAuction` checks
+reporting from such inputs with exactly four bid-related events.
 
 **V3. A private chance constructor.** Nature draws a value observed by one
-player. It has independent uses, such as dealt cards, and needs its own
-publication rule. For values it carries the same operational cost as V2.
-
-**V4. Ghost cells.** Initial private cells are marked as analysis-only: no
-publication obligation; unreadable by guards, payoffs, and public expressions;
-readable by the owner's policy and by utilities; and erased by compilation. This
-is V1 expressed inside the source game so that the V2 theorems can be reused.
-The erasure edge is the proof obligation.
+player during play. Dealing cards is an example. This requires an operation,
+information rule, and implementation contract beyond persistent initial inputs.
 
 **Rejected: a value as a `commit`.** The player would choose their own type.
 
@@ -258,9 +265,10 @@ strategies generally disappear, but ex-post notions remain definable.
 
 ## Utility of money
 
-The Vegas theorems place no restriction on the shape of utility: any real
-function of the terminal state, with expected utility over chance and mixed
-policies. Linearity in money is therefore not needed for any transfer result. It
+The value-binding Vegas theorems place no restriction on the shape of utility
+over initial parameters and public results, with expected utility over chance
+and policies. They do not admit arbitrary later private-binding utilities.
+Linearity in money is therefore not needed for any transfer result. It
 enters elsewhere:
 
 - **Values as money.** Reading a value as a willingness to pay in payoff units
@@ -327,6 +335,13 @@ A's bid, then B's. Settlement:
 B's policy commits 4 and discloses only if A's published bid is 5. Truthful A
 gets 5 − 4 = 1, while A bidding 6 gets 5 − 0 = 5, so truthful bidding is not
 dominant.
+
+The concrete source program and both executions are checked in
+`Vegas.Examples.CommitRevealAuction`; the forfeiture goes to the seller.
+`Vegas.Paper.auction_truthful_not_dominant` and
+`Vegas.Paper.auction_translated_truthful_not_dominant` pin the counterexample
+and its transport through every utility-preserving translation. This is not
+a proof that all auction implementations in a broader runtime class fail.
 
 In general, such a policy exists whenever some misreport's best case over the
 later revealer's disclosure beats the truthful report's worst case. Other
@@ -409,14 +424,17 @@ Status with types outside the program (V1):
   channel: with every message rejected by the application, it still carries one
   principal's private draw to another before inclusion. Colluding bidders are
   therefore outside every certificate the tower currently has.
-- **Bayes-Nash under V1 is open.** Averaging the per-type deviation bound over the
+- **Bayes-Nash with types represented in setup is checked.** The joint-law
+  certificate uses one source-policy mixture across the prior, so its
+  `valueBindingParameterPendingGame_nash_iff` applies to Bayesian utilities of
+  initial types and public results, including a designated truthful plan.
+  **Bayes-Nash under external V1 is open.** Averaging the per-type deviation bound over the
   prior yields a source deviation that may depend on other players' types through
   their policies, which is not a legal type-indexed deviation. There are two
   routes:
   - a backtranslation independent of opponents' policies, as the canonical graph
     edge already has, extended to the scheduled graph and pending-message edges;
-  - V2 or V4, where the prior lives inside the `Setup` and the existing Nash
-    correspondence applies directly.
+  - V2, whose persistent inputs and joint-law correspondence are checked.
 - **Raw private bindings are gone.** A utility can no longer read a committed
   but withheld bid: the decoder now recovers the public result only, so nothing
   a player kept to itself is available to prefer over. A2 and A3 utilities need
@@ -650,7 +668,7 @@ Each format exercises a different point:
 
 1. Allocation encoding: A1, A3, or A4? Is A2 ever the right restriction?
 2. Should VegasCore check payoff conservation?
-3. Types: V1 alone, or V4 to reuse the prior inside the game?
+3. A bridge between external type-indexed strategies (V1) and persistent inputs (V2).
 4. Money: which properties are standing assumptions and which are theorem
    parameters?
 5. The truthfulness notion for commit-reveal programs, and whether the source

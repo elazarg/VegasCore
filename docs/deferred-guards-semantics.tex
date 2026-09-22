@@ -36,7 +36,9 @@ information and service obligations.
 \section{Heterogeneous publications}
 \label{sec:publications}
 
-Let $I$ be a finite set of private cells.  Each cell $i:I$ has an ordinary
+Let $I$ be a finite set of commitments. Persistent private inputs are outside
+$I$: they require no publication and cannot occur in a guard's support.
+Each commitment $i:I$ has an ordinary
 value type $A_i$ and an owner $\owner(i)$.  Its binding is
 \[
   B_i \in \mathsf{Result}(A_i)
@@ -440,7 +442,7 @@ the code. \lean{Vegas.Source.Basic} adds the static revelation map
 and exact finite-distribution execution above. \lean{SourceProgram.Initial}
 packages initial resource accounting. Its principal safety theorems are:
 \begin{itemize}
-\item \lean{Initial.revealed}: every private cell is revealed by the end of the
+\item \lean{Initial.revealed}: every commitment is resolved by the end of the
 syntax, with no execution quantifier;
 \item \lean{Initial.terminal_guards_hold}: every retained guard is discharged by a
 failed publication or holds on its published inputs.

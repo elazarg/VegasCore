@@ -45,18 +45,28 @@ def decodeObservation? {Field : Type}
         HasVar ((name, .publication payload) :: Γ) name (.publication payload))).get? store
       let tail ← decodeObservation? who refs.tail store
       pure ⟨Env.cons head tail.cells⟩
-  | (name, .privateData owner payload) :: Γ, refs, store =>
+  | (name, .commitment owner payload) :: Γ, refs, store =>
       if _same : owner = who then do
         let binding ← (refs.get (HasVar.here :
-          HasVar ((name, .privateData owner payload) :: Γ) name
-            (.privateData owner payload))).get? store
+          HasVar ((name, .commitment owner payload) :: Γ) name
+            (.commitment owner payload))).get? store
+        let tail ← decodeObservation? who refs.tail store
+        pure ⟨Env.cons (some binding) tail.cells⟩
+      else do
+        let tail ← decodeObservation? who refs.tail store
+        pure ⟨Env.cons none tail.cells⟩
+  | (name, .privateInput owner payload) :: Γ, refs, store =>
+      if _same : owner = who then do
+        let binding ← (refs.get (HasVar.here :
+          HasVar ((name, .privateInput owner payload) :: Γ) name
+            (.privateInput owner payload))).get? store
         let tail ← decodeObservation? who refs.tail store
         pure ⟨Env.cons (some binding) tail.cells⟩
       else do
         let tail ← decodeObservation? who refs.tail store
         pure ⟨Env.cons none tail.cells⟩
 
-/-- Decoding depends only on public fields and `who`'s own bindings. It can
+/-- Decoding depends only on public fields and `who`'s own inputs and bindings. It can
 therefore consume an actual masked player observation without recovering any
 foreign private value. -/
 theorem decodeObservation?_playerStore {graph : Vegas.EventGraph Player L}
@@ -78,17 +88,29 @@ theorem decodeObservation?_playerStore {graph : Vegas.EventGraph Player L}
         HasVar ((name, .publication payload) :: Γ) name
           (.publication payload))).get?_playerStore who store (by trivial)]
       rw [decodeObservation?_playerStore who refs.tail store]
-  | (name, .privateData owner payload) :: Γ, refs, store => by
+  | (name, .commitment owner payload) :: Γ, refs, store => by
       rw [decodeObservation?, decodeObservation?]
       by_cases same : owner = who
-      · rw [dif_pos same, dif_pos same]
+      · rw [dite_eq_left same, dite_eq_left same]
         rw [(refs.get (HasVar.here :
-          HasVar ((name, .privateData owner payload) :: Γ) name
-            (.privateData owner payload))).get?_playerStore who store (by
+          HasVar ((name, .commitment owner payload) :: Γ) name
+            (.commitment owner payload))).get?_playerStore who store (by
               change owner = who
               exact same)]
         rw [decodeObservation?_playerStore who refs.tail store]
-      · rw [dif_neg same, dif_neg same]
+      · rw [dite_eq_right same, dite_eq_right same]
+        rw [decodeObservation?_playerStore who refs.tail store]
+  | (name, .privateInput owner payload) :: Γ, refs, store => by
+      rw [decodeObservation?, decodeObservation?]
+      by_cases same : owner = who
+      · rw [dite_eq_left same, dite_eq_left same]
+        rw [(refs.get (HasVar.here :
+          HasVar ((name, .privateInput owner payload) :: Γ) name
+            (.privateInput owner payload))).get?_playerStore who store (by
+              change owner = who
+              exact same)]
+        rw [decodeObservation?_playerStore who refs.tail store]
+      · rw [dite_eq_right same, dite_eq_right same]
         rw [decodeObservation?_playerStore who refs.tail store]
 
 omit R in
@@ -127,9 +149,9 @@ theorem decodeObservation?_eq_some {Field : Type}
           cases source with
           | here => rfl
           | there source => cases readCell <;> rfl
-      | privateData owner payload =>
+      | commitment owner payload =>
           by_cases same : owner = who
-          · rw [decodeObservation?, dif_pos same, head, tail]
+          · rw [decodeObservation?, dite_eq_left same, head, tail]
             apply congrArg some
             apply congrArg SourceObservation.mk
             funext readName readCell source
@@ -139,7 +161,28 @@ theorem decodeObservation?_eq_some {Field : Type}
                   if owner = who then some (state.get HasVar.here) else none
                 simp [same]
             | there source => cases readCell <;> rfl
-          · rw [decodeObservation?, dif_neg same, tail]
+          · rw [decodeObservation?, dite_eq_right same, tail]
+            apply congrArg some
+            apply congrArg SourceObservation.mk
+            funext readName readCell source
+            cases source with
+            | here =>
+                change none = if owner = who then some (state.get HasVar.here) else none
+                simp [same]
+            | there source => cases readCell <;> rfl
+      | privateInput owner payload =>
+          by_cases same : owner = who
+          · rw [decodeObservation?, dite_eq_left same, head, tail]
+            apply congrArg some
+            apply congrArg SourceObservation.mk
+            funext readName readCell source
+            cases source with
+            | here =>
+                change some (state.get HasVar.here) =
+                  if owner = who then some (state.get HasVar.here) else none
+                simp [same]
+            | there source => cases readCell <;> rfl
+          · rw [decodeObservation?, dite_eq_right same, tail]
             apply congrArg some
             apply congrArg SourceObservation.mk
             funext readName readCell source

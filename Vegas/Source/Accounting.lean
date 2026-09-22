@@ -4,21 +4,21 @@ import Vegas.Source.Semantics
 
 /-! # Revelation accounting
 
-The syntax's open-resource index tracks the unrevealed private cells:
-`Accounted` ties it to the static revelations. Every checked program therefore
-reveals every private cell before `ret` (`SourceProgram.Initial.revealed`), as a property of
-its syntax, independently of policies, chance outcomes, and publication failure.
+The syntax's open-resource index tracks unresolved commitments. `Accounted`
+ties it to the static revelations. Every checked program therefore resolves
+every commitment before `ret` (`SourceProgram.Initial.revealed`), independently
+of policies, chance outcomes, and publication failure. Private inputs persist.
 -/
 
 namespace Vegas.SourceProgram
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- A private cell is revealed exactly when its name has left the open index. -/
+/-- A commitment is resolved exactly when its name has left the open index. -/
 def Accounted {Γ : SourceCtx Player L} (revelations : Revelations Γ) (O : Finset VarId) :
     Prop :=
   ∀ {owner : Player} {payload : L.Ty} {name : VarId}
-    (h : HasVar Γ name (.privateData owner payload)),
+    (h : HasVar Γ name (.commitment owner payload)),
     (revelations h).isRevealed = true ↔ name ∉ O
 
 /-- The revelations after following the remaining source syntax. -/
@@ -32,40 +32,42 @@ def finalRevelations : {Γ : SourceCtx Player L} → {O : Finset VarId} →
       finalRevelations next (revelations.reveal (published := published) source)
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
-theorem mem_privateNames {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty}
-    {name : VarId} (h : HasVar Γ name (.privateData owner payload)) : name ∈ privateNames Γ := by
+theorem mem_commitmentNames {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty}
+    {name : VarId} (h : HasVar Γ name (.commitment owner payload)) : name ∈ commitmentNames Γ := by
   induction Γ with
   | nil => nomatch h
   | cons entry tail ih =>
       obtain ⟨head, cell⟩ := entry
       cases h with
-      | here => simp [privateNames]
-      | there h => cases cell <;> simp [privateNames, ih h]
+      | here => simp [commitmentNames]
+      | there h => cases cell <;> simp [commitmentNames, ih h]
 
 namespace Accounted
 
 omit [DecidableEq Player] [IExpr.ResultTypes L]
 
-theorem initial (Γ : SourceCtx Player L) : Accounted (Revelations.initial Γ) (privateNames Γ) := by
+theorem initial (Γ : SourceCtx Player L) :
+    Accounted (Revelations.initial Γ) (commitmentNames Γ) := by
   intro owner payload name h
   simp only [Revelations.initial, Revelation.isRevealed, Bool.false_eq_true, false_iff,
     not_not]
-  exact mem_privateNames h
+  exact mem_commitmentNames h
 
-theorem weaken_public {Γ : SourceCtx Player L} {O : Finset VarId} {revelations : Revelations Γ}
-    {name : VarId} {cell : CellTy Player L} (nonPrivate : ∀ owner payload,
-      cell ≠ .privateData owner payload)
+theorem weaken_noncommitment {Γ : SourceCtx Player L} {O : Finset VarId}
+    {revelations : Revelations Γ}
+    {name : VarId} {cell : CellTy Player L} (nonCommitment : ∀ owner payload,
+      cell ≠ .commitment owner payload)
     (accounted : Accounted revelations O) :
     Accounted (revelations.weaken (name := name) (cell := cell)) O := by
   intro owner payload private_ h
   cases h with
-  | here => exact absurd rfl (nonPrivate owner payload)
+  | here => exact absurd rfl (nonCommitment owner payload)
   | there h => simpa using accounted h
 
 theorem commit {Γ : SourceCtx Player L} {O : Finset VarId} {revelations : Revelations Γ}
     {name : VarId} {owner : Player} {payload : L.Ty} (fresh : name ∉ Γ.map Prod.fst)
     (accounted : Accounted revelations O) :
-    Accounted (revelations.weaken (name := name) (cell := .privateData owner payload))
+    Accounted (revelations.weaken (name := name) (cell := .commitment owner payload))
       (insert name O) := by
   intro readOwner readPayload readName h
   cases h with
@@ -76,7 +78,7 @@ theorem commit {Γ : SourceCtx Player L} {O : Finset VarId} {revelations : Revel
 
 theorem reveal {Γ : SourceCtx Player L} {O : Finset VarId} {revelations : Revelations Γ}
     {published name : VarId} {owner : Player} {payload : L.Ty}
-    (source : HasVar Γ name (.privateData owner payload)) (unique : (Γ.map Prod.fst).Nodup)
+    (source : HasVar Γ name (.commitment owner payload)) (unique : (Γ.map Prod.fst).Nodup)
     (accounted : Accounted revelations O) :
     Accounted (revelations.reveal (published := published) source) (O.erase name) := by
   intro readOwner readPayload readName h
@@ -94,12 +96,12 @@ theorem reveal {Γ : SourceCtx Player L} {O : Finset VarId} {revelations : Revel
 
 end Accounted
 
-/-- Following a checked program reveals every private cell. -/
+/-- Following a checked program resolves every commitment. -/
 theorem finalRevelations_revealed {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) :
     ∀ (revelations : Revelations Γ), (Γ.map Prod.fst).Nodup → Accounted revelations O →
       ∀ {owner : Player} {payload : L.Ty} {name : VarId}
-        (h : HasVar (terminalCtx program) name (.privateData owner payload)),
+        (h : HasVar (terminalCtx program) name (.commitment owner payload)),
         (finalRevelations program revelations h).isRevealed = true := by
   induction program with
   | ret payoffs =>
@@ -108,7 +110,7 @@ theorem finalRevelations_revealed {Γ : SourceCtx Player L} {O : Finset VarId}
   | sample name fresh law next ih =>
       intro revelations unique accounted
       exact ih _ (by simp [fresh, unique])
-        (Accounted.weaken_public (by intro _ _ equal; cases equal) accounted)
+        (Accounted.weaken_noncommitment (by intro _ _ equal; cases equal) accounted)
   | commit name owner fresh guard next ih =>
       intro revelations unique accounted
       exact ih _ (by simp [fresh, unique]) (Accounted.commit fresh accounted)
@@ -116,11 +118,11 @@ theorem finalRevelations_revealed {Γ : SourceCtx Player L} {O : Finset VarId}
       intro revelations unique accounted
       exact ih _ (by simp [fresh, unique]) (Accounted.reveal source unique accounted)
 
-/-- Every private cell of a checked initial source game is revealed by the end of
+/-- Every commitment of a checked initial source game is resolved by the end of
 its syntax. -/
 theorem Initial.revealed (initial : Initial (Player := Player) (L := L))
     {owner : Player} {payload : L.Ty} {name : VarId}
-    (h : HasVar initial.program.terminalCtx name (.privateData owner payload)) :
+    (h : HasVar initial.program.terminalCtx name (.commitment owner payload)) :
     (finalRevelations initial.program (Revelations.initial initial.context) h).isRevealed =
       true :=
   finalRevelations_revealed initial.program _ initial.namesNodup

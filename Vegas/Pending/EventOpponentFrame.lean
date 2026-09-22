@@ -36,7 +36,7 @@ theorem handle_event_actor
         · cases view : nodeView graph event with
           | resolve | sample => simp [handle, ready, timely, view] at accepted
           | bind owner payload outputEq codeEq =>
-              simp only [handle, dif_pos ready, dif_pos timely, view] at accepted
+              simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
               split at accepted
               · rename_i sender
                 have codeActor := congrArg EventCode.actor codeEq
@@ -53,7 +53,7 @@ theorem handle_event_actor
         · cases view : nodeView graph event with
           | bind | sample => simp [handle, ready, timely, view] at accepted
           | resolve owner payload binding checks outputEq codeEq =>
-              simp only [handle, dif_pos ready, dif_pos timely, view] at accepted
+              simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
               split at accepted
               · rename_i sender
                 have codeActor := congrArg EventCode.actor codeEq
@@ -70,7 +70,7 @@ theorem handle_event_actor
         · cases view : nodeView graph event with
           | bind | sample => simp [handle, ready, timely, view] at accepted
           | resolve owner payload binding checks outputEq codeEq =>
-              simp only [handle, dif_pos ready, dif_pos timely, view] at accepted
+              simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
               split at accepted
               · rename_i sender
                 have codeActor := congrArg EventCode.actor codeEq
@@ -128,7 +128,7 @@ theorem privateStep_opponent_event
       exact different (congrArg Prod.fst same)
   | remember changed action =>
       by_cases owned : graph.actor? changed = some focal
-      · rw [privateStep, dif_pos owned]
+      · rw [privateStep, dite_eq_left owned]
         cases cached : state.remembered changed with
         | some prior => exact ⟨rfl, rfl, rfl, Iff.rfl⟩
         | none =>
@@ -138,7 +138,7 @@ theorem privateStep_opponent_event
               rw [actor] at owned
               exact different (Option.some.inj owned)
             simp [Function.update_of_ne notSame]
-      · rw [privateStep, dif_neg owned]
+      · rw [privateStep, dite_eq_right owned]
         exact ⟨rfl, rfl, rfl, Iff.rfl⟩
 
 /-- The exact execution produced by a focal private command preserves both an
@@ -192,6 +192,7 @@ theorem afterSubmit_opponent_event
             (runtime.application.afterSubmit execution focal
               payload).native.application)).completed ↔
         event ∈ execution.native.application.config.cut.completed) := by
-  simp [MessageApplication.afterSubmit, different]
+  simp [MessageApplication.afterSubmit, application, different,
+    submitStep_lookup_other _ _ _ different]
 
 end Vegas.EventGraphRuntime

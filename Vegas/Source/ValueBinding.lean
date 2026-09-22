@@ -74,7 +74,7 @@ def DecisionView.back {who : Player} {Γ : SourceCtx Player L} {x : VarId}
 /-- Which private cells hold a binding the translation put there, as a function
 of the translated player's current view. -/
 abbrev PatchMap (who : Player) (Γ : SourceCtx Player L) :=
-  ∀ {n : VarId} {o : Player} {pay : L.Ty}, HasVar Γ n (.privateData o pay) →
+  ∀ {n : VarId} {o : Player} {pay : L.Ty}, HasVar Γ n (.commitment o pay) →
     DecisionView who Γ → Bool
 
 /-- The view the original policy would have held, read off the translated one. -/
@@ -103,7 +103,7 @@ def PatchMap.afterSample {who : Player} {Γ : SourceCtx Player L} (patched : Pat
 def ViewMap.afterCommit {who : Player} {Γ : SourceCtx Player L} (unpatch : ViewMap who Γ)
     (ownStep : Bool) (cellName : VarId) (owner : Player) (payload : L.Ty)
     (original : DecisionView who Γ → Option (PublicationResult (L.Val payload))) :
-    ViewMap who ((cellName, .privateData owner payload) :: Γ) := fun view =>
+    ViewMap who ((cellName, .commitment owner payload) :: Γ) := fun view =>
   let earlier := unpatch (view.back ownStep)
   let replaced : Bool := original (view.back ownStep) = some .failure
   (⟨fun _ cell h =>
@@ -119,7 +119,7 @@ def ViewMap.afterCommit {who : Player} {Γ : SourceCtx Player L} (unpatch : View
 def PatchMap.afterCommit {who : Player} {Γ : SourceCtx Player L} (patched : PatchMap who Γ)
     (ownStep : Bool) (cellName : VarId) (owner : Player) (payload : L.Ty)
     (original : DecisionView who Γ → Option (PublicationResult (L.Val payload))) :
-    PatchMap who ((cellName, .privateData owner payload) :: Γ) := fun h view =>
+    PatchMap who ((cellName, .commitment owner payload) :: Γ) := fun h view =>
   match h with
   | .here => original (view.back ownStep) = some .failure
   | .there h' => patched h' (view.back ownStep)
@@ -234,19 +234,21 @@ structure Patched {who : Player} {Γ : SourceCtx Player L}
     (state state' : State L Γ) (history history' : History Player L) : Prop where
   /-- Public data agrees. -/
   publicEq : ∀ {x τ} (h : HasVar Γ x (.publicData τ)), state'.get h = state.get h
+  /-- Immutable private inputs agree for every owner. -/
+  inputEq : ∀ {x o τ} (h : HasVar Γ x (.privateInput o τ)), state'.get h = state.get h
   /-- Publications agree. -/
   publicationEq : ∀ {x τ} (h : HasVar Γ x (.publication τ)), state'.get h = state.get h
   /-- Another player's binding agrees. -/
-  foreignEq : ∀ {x o τ} (h : HasVar Γ x (.privateData o τ)), o ≠ who →
+  foreignEq : ∀ {x o τ} (h : HasVar Γ x (.commitment o τ)), o ≠ who →
     state'.get h = state.get h
   /-- A binding the translation replaced was a failure, and now holds the
   canonical value. -/
-  replacedEq : ∀ {x τ} (h : HasVar Γ x (.privateData who τ)),
+  replacedEq : ∀ {x τ} (h : HasVar Γ x (.commitment who τ)),
     patched h (sourceObserve who state', history' who) = true →
       state.get h = .failure ∧ state'.get h = .success (L.someValue τ)
   /-- Every other binding of the translated player's agrees. Initial bindings
   are among these: the translation replaces only what a policy binds. -/
-  keptEq : ∀ {x τ} (h : HasVar Γ x (.privateData who τ)),
+  keptEq : ∀ {x τ} (h : HasVar Γ x (.commitment who τ)),
     patched h (sourceObserve who state', history' who) = false →
       state'.get h = state.get h
   /-- Another player's own history agrees. -/
@@ -282,21 +284,22 @@ theorem patched_sample {who : Player} {Γ : SourceCtx Player L}
   publicEq := fun h => match h with
     | .here => rfl
     | .there h' => inv.publicEq h'
+  inputEq := fun h => match h with | .there h' => inv.inputEq h'
   publicationEq := fun h => match h with | .there h' => inv.publicationEq h'
   foreignEq := fun h hne => match h with | .there h' => inv.foreignEq h' hne
   replacedEq := fun h hp => match h with
     | .there h' => by
         simp only [PatchMap.afterSample, back_sourceObserve, Bool.false_eq_true,
-          if_false] at hp
+          ite_false] at hp
         exact inv.replacedEq h' hp
   keptEq := fun h hp => match h with
     | .there h' => by
         simp only [PatchMap.afterSample, back_sourceObserve, Bool.false_eq_true,
-          if_false] at hp
+          ite_false] at hp
         exact inv.keptEq h' hp
   historyEq := inv.historyEq
   unpatchEq := by
-    simp only [ViewMap.afterSample, back_sourceObserve, Bool.false_eq_true, if_false]
+    simp only [ViewMap.afterSample, back_sourceObserve, Bool.false_eq_true, ite_false]
     rw [inv.unpatchEq]
     refine Prod.ext ?_ rfl
     refine congrArg SourceObservation.mk ?_
@@ -318,15 +321,16 @@ theorem patched_commit_foreign {who : Player} {Γ : SourceCtx Player L}
     Patched (who := who)
       (unpatch.afterCommit (decide (owner = who)) cellName owner payload original)
       (patched.afterCommit (decide (owner = who)) cellName owner payload original)
-      (Env.cons (x := cellName) (Val := CellVal L) (τ := .privateData owner payload)
+      (Env.cons (x := cellName) (Val := CellVal L) (τ := .commitment owner payload)
         binding state)
-      (Env.cons (x := cellName) (Val := CellVal L) (τ := .privateData owner payload)
+      (Env.cons (x := cellName) (Val := CellVal L) (τ := .commitment owner payload)
         binding state')
       (Function.update history owner
         (history owner ++ [OwnAction.commit owner cellName payload binding]))
       (Function.update history' owner
         (history' owner ++ [OwnAction.commit owner cellName payload binding])) where
   publicEq := fun h => match h with | .there h' => inv.publicEq h'
+  inputEq := fun h => match h with | .there h' => inv.inputEq h'
   publicationEq := fun h => match h with | .there h' => inv.publicationEq h'
   foreignEq := fun h hne => by
     cases h with
@@ -337,7 +341,7 @@ theorem patched_commit_foreign {who : Player} {Γ : SourceCtx Player L}
     | here => exact absurd rfl foreign
     | there h' =>
         simp only [PatchMap.afterCommit, show decide (owner = who) = false by simp [foreign],
-          back_sourceObserve, Bool.false_eq_true, if_false,
+          back_sourceObserve, Bool.false_eq_true, ite_false,
           Function.update_of_ne (Ne.symm foreign)] at hp
         exact inv.replacedEq h' hp
   keptEq := fun h hp => by
@@ -345,7 +349,7 @@ theorem patched_commit_foreign {who : Player} {Γ : SourceCtx Player L}
     | here => exact absurd rfl foreign
     | there h' =>
         simp only [PatchMap.afterCommit, show decide (owner = who) = false by simp [foreign],
-          back_sourceObserve, Bool.false_eq_true, if_false,
+          back_sourceObserve, Bool.false_eq_true, ite_false,
           Function.update_of_ne (Ne.symm foreign)] at hp
         exact inv.keptEq h' hp
   historyEq := by
@@ -356,7 +360,7 @@ theorem patched_commit_foreign {who : Player} {Γ : SourceCtx Player L}
     · simp only [Function.update_of_ne same, inv.historyEq other hne]
   unpatchEq := by
     have hwho : decide (owner = who) = false := by simp [foreign]
-    simp only [ViewMap.afterCommit, hwho, back_sourceObserve, Bool.false_eq_true, if_false,
+    simp only [ViewMap.afterCommit, hwho, back_sourceObserve, Bool.false_eq_true, ite_false,
       Function.update_of_ne (Ne.symm foreign), noOriginal, reduceCtorEq, decide_false]
     rw [inv.unpatchEq]
     refine Prod.ext ?_ rfl
@@ -383,15 +387,16 @@ theorem patched_commit_own {who : Player} {Γ : SourceCtx Player L}
     Patched (who := who)
       (unpatch.afterCommit (decide (who = who)) cellName who payload original)
       (patched.afterCommit (decide (who = who)) cellName who payload original)
-      (Env.cons (x := cellName) (Val := CellVal L) (τ := .privateData who payload)
+      (Env.cons (x := cellName) (Val := CellVal L) (τ := .commitment who payload)
         binding state)
-      (Env.cons (x := cellName) (Val := CellVal L) (τ := .privateData who payload)
+      (Env.cons (x := cellName) (Val := CellVal L) (τ := .commitment who payload)
         translated state')
       (Function.update history who
         (history who ++ [OwnAction.commit who cellName payload binding]))
       (Function.update history' who
         (history' who ++ [OwnAction.commit who cellName payload translated])) where
   publicEq := fun h => match h with | .there h' => inv.publicEq h'
+  inputEq := fun h => match h with | .there h' => inv.inputEq h'
   publicationEq := fun h => match h with | .there h' => inv.publicationEq h'
   foreignEq := fun h hne => by
     cases h with
@@ -401,26 +406,26 @@ theorem patched_commit_own {who : Player} {Γ : SourceCtx Player L}
     subst hTranslated
     cases h with
     | here =>
-        simp only [PatchMap.afterCommit, decide_true, back_sourceObserve, if_true,
+        simp only [PatchMap.afterCommit, decide_true, back_sourceObserve, ite_true,
           Function.update_self, List.dropLast_concat, hOriginal] at hp
         cases binding with
         | failure => exact ⟨rfl, rfl⟩
         | success value => simp at hp
     | there h' =>
-        simp only [PatchMap.afterCommit, decide_true, back_sourceObserve, if_true,
+        simp only [PatchMap.afterCommit, decide_true, back_sourceObserve, ite_true,
           Function.update_self, List.dropLast_concat] at hp
         exact inv.replacedEq h' hp
   keptEq := fun h hp => by
     subst hTranslated
     cases h with
     | here =>
-        simp only [PatchMap.afterCommit, decide_true, back_sourceObserve, if_true,
+        simp only [PatchMap.afterCommit, decide_true, back_sourceObserve, ite_true,
           Function.update_self, List.dropLast_concat, hOriginal] at hp
         cases binding with
         | failure => simp at hp
         | success value => rfl
     | there h' =>
-        simp only [PatchMap.afterCommit, decide_true, back_sourceObserve, if_true,
+        simp only [PatchMap.afterCommit, decide_true, back_sourceObserve, ite_true,
           Function.update_self, List.dropLast_concat] at hp
         exact inv.keptEq h' hp
   historyEq := by
@@ -428,7 +433,7 @@ theorem patched_commit_own {who : Player} {Γ : SourceCtx Player L}
     simp only [Function.update_of_ne hne, inv.historyEq other hne]
   unpatchEq := by
     subst hTranslated
-    simp only [ViewMap.afterCommit, decide_true, back_sourceObserve, if_true,
+    simp only [ViewMap.afterCommit, decide_true, back_sourceObserve, ite_true,
       Function.update_self, List.dropLast_concat, hOriginal]
     rw [inv.unpatchEq]
     refine Prod.ext ?_ rfl
@@ -457,6 +462,7 @@ theorem patched_reveal_foreign {who : Player} {Γ : SourceCtx Player L}
       (Function.update history' owner
         (history' owner ++ [OwnAction.reveal owner cellName disclose])) where
   publicEq := fun h => match h with | .there h' => inv.publicEq h'
+  inputEq := fun h => match h with | .there h' => inv.inputEq h'
   publicationEq := fun h => by
     cases h with
     | here => rfl
@@ -464,13 +470,13 @@ theorem patched_reveal_foreign {who : Player} {Γ : SourceCtx Player L}
   foreignEq := fun h hne => match h with | .there h' => inv.foreignEq h' hne
   replacedEq := fun h hp => match h with
     | .there h' => by
-        simp only [PatchMap.afterReveal, back_sourceObserve, Bool.false_eq_true, if_false,
+        simp only [PatchMap.afterReveal, back_sourceObserve, Bool.false_eq_true, ite_false,
           show decide (owner = who) = false by simp [foreign],
           Function.update_of_ne (Ne.symm foreign)] at hp
         exact inv.replacedEq h' hp
   keptEq := fun h hp => match h with
     | .there h' => by
-        simp only [PatchMap.afterReveal, back_sourceObserve, Bool.false_eq_true, if_false,
+        simp only [PatchMap.afterReveal, back_sourceObserve, Bool.false_eq_true, ite_false,
           show decide (owner = who) = false by simp [foreign],
           Function.update_of_ne (Ne.symm foreign)] at hp
         exact inv.keptEq h' hp
@@ -482,7 +488,7 @@ theorem patched_reveal_foreign {who : Player} {Γ : SourceCtx Player L}
     · simp only [Function.update_of_ne same, inv.historyEq other hne]
   unpatchEq := by
     have hwho : decide (owner = who) = false := by simp [foreign]
-    simp only [ViewMap.afterReveal, hwho, back_sourceObserve, Bool.false_eq_true, if_false,
+    simp only [ViewMap.afterReveal, hwho, back_sourceObserve, Bool.false_eq_true, ite_false,
       Function.update_of_ne (Ne.symm foreign)]
     rw [inv.unpatchEq]
     refine Prod.ext ?_ rfl
@@ -513,6 +519,7 @@ theorem patched_reveal_own {who : Player} {Γ : SourceCtx Player L}
       (Function.update history' who
         (history' who ++ [OwnAction.reveal who cellName translatedDisclose])) where
   publicEq := fun h => match h with | .there h' => inv.publicEq h'
+  inputEq := fun h => match h with | .there h' => inv.inputEq h'
   publicationEq := fun h => by
     cases h with
     | here => rfl
@@ -520,19 +527,19 @@ theorem patched_reveal_own {who : Player} {Γ : SourceCtx Player L}
   foreignEq := fun h hne => match h with | .there h' => inv.foreignEq h' hne
   replacedEq := fun h hp => match h with
     | .there h' => by
-        simp only [PatchMap.afterReveal, decide_true, back_sourceObserve, if_true,
+        simp only [PatchMap.afterReveal, decide_true, back_sourceObserve, ite_true,
           Function.update_self, List.dropLast_concat] at hp
         exact inv.replacedEq h' hp
   keptEq := fun h hp => match h with
     | .there h' => by
-        simp only [PatchMap.afterReveal, decide_true, back_sourceObserve, if_true,
+        simp only [PatchMap.afterReveal, decide_true, back_sourceObserve, ite_true,
           Function.update_self, List.dropLast_concat] at hp
         exact inv.keptEq h' hp
   historyEq := by
     intro other hne
     simp only [Function.update_of_ne hne, inv.historyEq other hne]
   unpatchEq := by
-    simp only [ViewMap.afterReveal, decide_true, back_sourceObserve, if_true,
+    simp only [ViewMap.afterReveal, decide_true, back_sourceObserve, ite_true,
       Function.update_self, List.dropLast_concat, hOriginal]
     rw [inv.unpatchEq]
     refine Prod.ext ?_ rfl
@@ -558,7 +565,12 @@ theorem sourcePublicEnv_congr :
         (fun _ _ h => left.get (HasVar.there h)) (fun _ _ h => right.get (HasVar.there h))
         (fun h => publicEq (HasVar.there h)) (fun h => publicationEq (HasVar.there h))
       simp only [sourcePublicEnv, publicEq HasVar.here, tailEq]
-  | (_, .privateData _ _) :: tail, left, right, publicEq, publicationEq => by
+  | (_, .commitment _ _) :: tail, left, right, publicEq, publicationEq => by
+      have tailEq := sourcePublicEnv_congr (Γ := tail)
+        (fun _ _ h => left.get (HasVar.there h)) (fun _ _ h => right.get (HasVar.there h))
+        (fun h => publicEq (HasVar.there h)) (fun h => publicationEq (HasVar.there h))
+      simpa only [sourcePublicEnv] using tailEq
+  | (_, .privateInput _ _) :: tail, left, right, publicEq, publicationEq => by
       have tailEq := sourcePublicEnv_congr (Γ := tail)
         (fun _ _ h => left.get (HasVar.there h)) (fun _ _ h => right.get (HasVar.there h))
         (fun h => publicEq (HasVar.there h)) (fun h => publicationEq (HasVar.there h))
@@ -577,7 +589,7 @@ This is why binding an unopenable candidate adds nothing to the public result
 that refusing to open a bound value does not already add. -/
 theorem runWith_reveal_of_failure_bound
     {fresh : published ∉ Γ.map Prod.fst}
-    {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
+    {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     (profile : BehavioralProfile
       (SourceProgram.reveal published owner name fresh source unresolved next))
@@ -615,7 +627,7 @@ theorem SourceGuardRead.result_congr {author : Player} {τ : L.Ty}
     read.result revelations left = read.result revelations right := by
   cases read with
   | publicData h => exact congrArg _ (publicEq h)
-  | privateData h => exact Revelation.result_congr _ _ _ publicationEq
+  | commitment h => exact Revelation.result_congr _ _ _ publicationEq
   | publication h => exact publicationEq h
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
@@ -637,7 +649,7 @@ theorem proposal_eq {who : Player} {Γ : SourceCtx Player L}
     {unpatch : ViewMap who Γ} {patched : PatchMap who Γ}
     {state state' : State L Γ} {history history' : History Player L}
     (inv : Patched unpatch patched state state' history history')
-    {name : VarId} {payload : L.Ty} (source : HasVar Γ name (.privateData who payload))
+    {name : VarId} {payload : L.Ty} (source : HasVar Γ name (.commitment who payload))
     (disclose : Bool) :
     (if (if patched source (sourceObserve who state', history' who) then false else disclose)
         then state'.get source else .failure) =
@@ -699,7 +711,7 @@ theorem bindValues_publicOutcome_eq {who : Player} :
             (PurePolicy.commitChoice unpatch owner payload policy.1) ?_)
         simp [PurePolicy.commitChoice, hview]
       · have hobs : sourceObserve owner state' = sourceObserve owner state :=
-          sourceObserve_congr owner state' state inv.publicEq inv.publicationEq
+          sourceObserve_congr owner state' state inv.publicEq inv.publicationEq inv.inputEq
             (fun h => inv.foreignEq h hw)
         have hhist : history' owner = history owner := inv.historyEq owner hw
         have hkernel : commitKernel profile' (sourceObserve owner state', history' owner) =
@@ -712,7 +724,7 @@ theorem bindValues_publicOutcome_eq {who : Player} :
           (congrArg Prod.snd isOrig) (congrArg Prod.snd isTrans) _ _ _ _ _ _
           (patched_commit_foreign inv cellName owner payload hw b
             (PurePolicy.commitChoice unpatch owner payload policy.1)
-            (fun view => dif_neg hw))
+            (fun view => dite_eq_right hw))
   | _, _, .reveal (payload := payload) published owner cellName fresh source unresolved k,
       unpatch, patched, policy, profile, profile', agree, isOrig, isTrans, state, state',
       registry, revelations, history, history', inv => by
@@ -757,7 +769,7 @@ theorem bindValues_publicOutcome_eq {who : Player} :
             (PurePolicy.revealChoice unpatch owner policy.1) (by
               simp [PurePolicy.revealChoice, hview]))
       · have hobs : sourceObserve owner state' = sourceObserve owner state :=
-          sourceObserve_congr owner state' state inv.publicEq inv.publicationEq
+          sourceObserve_congr owner state' state inv.publicEq inv.publicationEq inv.inputEq
             (fun h => inv.foreignEq h hw)
         have hhist : history' owner = history owner := inv.historyEq owner hw
         have hkernel : revealKernel profile' (sourceObserve owner state', history' owner) =
@@ -780,6 +792,7 @@ omit [L.ResultTypes] in
 theorem patched_initial {who : Player} {Γ : SourceCtx Player L} (state : State L Γ) :
     Patched (who := who) id (fun _ _ => false) state state (fun _ => []) (fun _ => []) where
   publicEq := fun _ => rfl
+  inputEq := fun _ => rfl
   publicationEq := fun _ => rfl
   foreignEq := fun _ _ => rfl
   replacedEq := fun _ hp => absurd hp (by simp)

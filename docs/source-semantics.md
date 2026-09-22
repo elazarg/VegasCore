@@ -40,6 +40,12 @@ implicit ordinary defaults, or automatic failure propagation.
 
 ## Chance and distribution annotations
 
+Persistent private inputs are supplied by the initial setup. The `Vegas.CellTy.privateInput`
+cell kind holds an ordinary value, visible to its owner, with no publication
+obligation. Public expressions and guards cannot read it. The owner may choose
+reports using the input, and utilities may read it jointly with public results.
+The [private-input design](private-inputs.md) states the compilation contract.
+
 **Working decision: retain primitive public chance.** Keep `sample` distinct
 from player-controlled commitments, and revisit this representation if a
 uniform input interface demonstrably simplifies the complete semantics and
@@ -99,6 +105,42 @@ merely because it labels a provider's commitments random. If a target cannot
 realize the stated source kernel, report the missing capability or the need
 for a different source mechanism; do not silently exclude programs with samples.
 Programs without samples need no chance-service assumption.
+
+## Commitment admission and source subgames
+
+`CommitmentInterface program` selects the legal binding choices at each actual
+commit site. `CommitmentAdmission.values` allows successful bindings only;
+`CommitmentAdmission.forfeiture` additionally allows irreversible forfeiture.
+The structural site type excludes references to nonexistent commits. The
+interface changes the source game; selecting an analysis request does not.
+Forfeiture remains owner-private until the existing publication boundary.
+
+The source `Vegas.SourceProgram.executionProtocol` uses the existing typed successors and player
+observations, including own-action recall. Legal transitions enforce site
+admission, so forbidden commitments do not create off-path histories either.
+`Vegas.SourceProgram.purePolicyEquiv` and `Vegas.SourceProgram.behavioralPolicyEquiv`
+cover every legal information-local pure and behavioral policy, respectively.
+Behavioral admission requires every supported local choice to be legal; encoding
+preserves its probability without conditioning or renormalization.
+`Vegas.SourceProgram.protocol_runFrom_eq` and
+`Vegas.SourceProgram.protocol_runBehavioralFrom_eq` hold at every legal prefix.
+
+`Setup.executionProtocol` first draws the existing initial law without a
+strategic owner. Its information model ranges over all supported draws; a
+fixed private-type realization is not assumed to be a proper subgame root.
+Policies are uniform across draws, and a continuation retains the draw.
+The resulting law preserves the complete terminal store, including private
+inputs jointly with public results.
+
+The game-layer modules [SourceSubgame.lean](../Vegas/Game/SourceSubgame.lean)
+and [SetupSubgame.lean](../Vegas/Game/SetupSubgame.lean) characterize the shared
+pure SPE predicate using source continuation expectations.
+[BehavioralSubgame.lean](../Vegas/Game/BehavioralSubgame.lean) gives the corresponding
+behavioral characterization, including private setup and every admitted
+behavioral replacement. It uses the same proper roots. Utilities and equilibrium
+predicates stay outside source syntax and execution. Native SPE preservation
+still requires runtime continuation and root-coverage proofs;
+see [the preservation contract](preservation-contracts.md).
 
 ## Settled contracts
 

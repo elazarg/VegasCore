@@ -238,7 +238,7 @@ theorem resolutionSubmission_address (runtime : EventGraphRuntime graph)
   cases disclose with
   | false => rfl
   | true =>
-      simp only [if_true]
+      simp only [ite_true]
       cases resolved : EventCode.resolveOutput? binding checks true
           view.application.observation.store with
       | none => rfl

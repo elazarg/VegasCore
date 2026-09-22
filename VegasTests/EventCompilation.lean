@@ -80,12 +80,12 @@ example : completedSecond ∈ (pairConfig.step second second_ready (.success tru
 example : eventCount pairSource = 4 := rfl
 
 private def firstRefs : ContextRefs pairGraph.layout
-    [(0, CellTy.privateData false simpleExpr.bool)] :=
+    [(0, CellTy.commitment false simpleExpr.bool)] :=
   ContextRefs.cons (outputRef pairSource first)
     (ContextRefs.initial [] (outputLayout pairSource))
 
 private def firstState (choice : Bool) :
-    State simpleExpr [(0, CellTy.privateData false simpleExpr.bool)] :=
+    State simpleExpr [(0, CellTy.commitment false simpleExpr.bool)] :=
   Env.cons (PublicationResult.success choice) (Env.empty (CellVal simpleExpr))
 
 /-- The second player can reconstruct its source decision view before the
@@ -103,7 +103,7 @@ example (choice : Bool) :
 
 /-- An unavailable own binding is genuinely unavailable, rather than silently
 decoded as a payload value. -/
-example : decodeObservation? (Γ := [(0, CellTy.privateData false simpleExpr.bool)])
+example : decodeObservation? (Γ := [(0, CellTy.commitment false simpleExpr.bool)])
     false firstRefs (pairGraph.playerStore false pairConfig.store) = none := rfl
 
 private def pairProfile : SourceProgram.BehavioralProfile pairSource :=
@@ -315,13 +315,13 @@ example : EventGraphRuntime.handle pairRuntime { preparedSecond with clock := 3 
   have late : ¬ ({ preparedSecond with clock := 3 }).WithinDeadline pairRuntime second := by
     change ¬ 3 < 3
     decide
-  simp only [EventGraphRuntime.handle, pendingSecond, dif_pos ready, dif_neg late]
+  simp only [EventGraphRuntime.handle, pendingSecond, dite_eq_left ready, dite_eq_right late]
 
 /-- A completed event cannot be accepted again, independently of its clock. -/
 example : EventGraphRuntime.handle pairRuntime
     { preparedSecond with config := completedSecond } pendingSecond = none := by
   have finished : ¬ completedSecond.cut.Ready second := by decide
-  simp only [EventGraphRuntime.handle, pendingSecond, dif_neg finished]
+  simp only [EventGraphRuntime.handle, pendingSecond, dite_eq_right finished]
 
 example : EventGraphRuntime.handle pairRuntime pendingInitial
     ⟨(true, 0), .malformed ⟨.bool, true⟩⟩ = none := rfl
@@ -340,7 +340,7 @@ example : (EventGraphRuntime.handle pairRuntime preparedSecond pendingSecond).is
     | inr event =>
         change (none : Option (EventGraphRuntime.Handle pairGraph)) ≠ some _
         simp
-  simp only [EventGraphRuntime.handle, pendingSecond, dif_pos ready, dif_pos timely]
+  simp only [EventGraphRuntime.handle, pendingSecond, dite_eq_left ready, dite_eq_left timely]
   split
   · rename_i owner payload outputEq _ _
     change Vegas.EventGraph.EventField.binding true simpleExpr.bool =

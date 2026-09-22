@@ -6,9 +6,27 @@ utilities that factor through that decoder, or under an additional bound for
 target-specific costs and signals.
 
 A Vegas source outcome is the public result of a completed program: its
-publications and public samples, and nothing a player kept to itself. A
-preference over what was never published is not a preference over anything the
-program produced, and every later edge would owe a decoder for it.
+publications and public samples. Later undisclosed commitment choices are not
+part of that output. Exogenous private types are separate analysis parameters;
+their correlation with the public result matters for utility.
+
+`Vegas.SourceProgram.Setup.parameterRun` retains any fixed reading of the
+initial state jointly with the public result. `run_map_parameterOutcome`
+proves that the full terminal-store decoder recovers this pair. The parameter
+does not become public and does not change any player's policy observations.
+`valueBindingParameterPendingSimulation` preserves its joint law through
+the value-only source abstraction and the native compiler. The associated
+`valueBindingParameterPendingGame_approximate_nash_iff` gives same-error
+ex-ante Nash correspondence for arbitrary utilities of this pair, including
+Bayesian utilities of private valuations and public allocations.
+
+This retains no utility dependence on later private binding choices.
+The initial parameter is sampled before play and is unchanged by replacing
+an unopenable binding with an ordinary value and withholding. Persistent
+`Vegas.CellTy.privateInput` cells hold ordinary values and carry no publication obligation.
+Only `commitment` cells require resolution. Inputs are available to their owners
+and to analysis, with no direct guard or public-expression reads; see
+[private inputs](private-inputs.md).
 
 Runtime traces may contain timing, retries, receipts, message order, fees, and
 failure information absent from the source outcome. Players who value those

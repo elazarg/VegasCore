@@ -100,7 +100,7 @@ theorem eventPendingGame_map_outcome (setup : Setup (Player := Player) (L := L))
   intro execution supported
   have terminal := runtime.servicedEventGame_complete _ roster reactionRounds wire order
     players execution supported
-  simp only [eventPendingOutcome, dif_pos terminal, Function.comp_apply]
+  simp only [eventPendingOutcome, dite_eq_left terminal, Function.comp_apply]
   exact Option.some_get _
 
 /-- The full-source compiler preserves the terminal-state law through actual

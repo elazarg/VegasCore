@@ -3,8 +3,8 @@
 import Vegas.Game.EventMessages
 import Vegas.Game.EventServiceEdge
 import Vegas.Pending.EventStrategicLaw
-import GameTheoryExtensions.Core.UtilitySimulation
-import GameTheoryExtensions.Core.MixtureSimulationComposition
+import GameTheory.Core.MixtureUtilitySimulation
+import GameTheory.Core.MixtureSimulationComposition
 
 /-! # Strategic correctness of asynchronous source-to-message compilation
 

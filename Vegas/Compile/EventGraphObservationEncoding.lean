@@ -7,7 +7,7 @@ import Vegas.EventGraph.CanonicalStep
 /-! # Constructive encoding of source observations
 
 Source observations determine exactly the public fields and the observing
-player's private bindings.
+player's private inputs and bindings.
 -/
 
 noncomputable section
@@ -20,7 +20,7 @@ variable {L : IExpr} [R : IExpr.ResultTypes L]
 /-- Source cells whose graph fields are visible to one player. -/
 def cellVisibleTo (who : Player) : CellTy Player L → Prop
   | .publicData _ | .publication _ => True
-  | .privateData owner _ => owner = who
+  | .commitment owner _ | .privateInput owner _ => owner = who
 
 instance (who : Player) (cell : CellTy Player L) : Decidable (cellVisibleTo who cell) := by
   cases cell <;> simp only [cellVisibleTo] <;> infer_instance
@@ -52,8 +52,8 @@ private theorem observationTail_sourceObserve {name : VarId}
   cases readCell <;> rfl
 
 /-- Construct the graph store represented by a source observation. Public
-cells are written unconditionally, an own private binding is written exactly
-when it is present, and a foreign private binding remains absent. -/
+cells are written unconditionally; own inputs and bindings are written when
+present, while foreign private values remain absent. -/
 def encodeObservationStore {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L} (who : Player) :
     {Γ : SourceCtx Player L} → ContextRefs layout Γ → SourceObservation L who Γ →
@@ -69,12 +69,21 @@ def encodeObservationStore {Field : Type} [DecidableEq Field]
         HasVar ((name, .publication payload) :: Γ) name (.publication payload)))
         (observation.cells.get HasVar.here)
         (encodeObservationStore who refs.tail (observationTail observation))
-  | (name, .privateData owner payload) :: Γ, refs, observation =>
+  | (name, .commitment owner payload) :: Γ, refs, observation =>
       let tail := encodeObservationStore who refs.tail (observationTail observation)
       if _same : owner = who then
         match observation.cells.get (HasVar.here :
-          HasVar ((name, .privateData owner payload) :: Γ) name
-            (.privateData owner payload)) with
+          HasVar ((name, .commitment owner payload) :: Γ) name
+            (.commitment owner payload)) with
+        | none => tail
+        | some value => writeField (refs.get HasVar.here) value tail
+      else tail
+  | (name, .privateInput owner payload) :: Γ, refs, observation =>
+      let tail := encodeObservationStore who refs.tail (observationTail observation)
+      if _same : owner = who then
+        match observation.cells.get (HasVar.here :
+          HasVar ((name, .privateInput owner payload) :: Γ) name
+            (.privateInput owner payload)) with
         | none => tail
         | some value => writeField (refs.get HasVar.here) value tail
       else tail
@@ -178,10 +187,52 @@ private theorem encodeObservationStore_apply_eq_playerStore
         cases read with
         | here => exact same found.symm
         | there read => exact absent ⟨readName, cell, read, visible, found⟩
-  | (name, .privateData owner payload) :: Γ, refs, state, store, field, agree,
+  | (name, .commitment owner payload) :: Γ, refs, state, store, field, agree,
       coverage => by
-      let source : HasVar ((name, .privateData owner payload) :: Γ) name
-          (.privateData owner payload) := .here
+      let source : HasVar ((name, .commitment owner payload) :: Γ) name
+          (.commitment owner payload) := .here
+      let headRef := refs.get source
+      let tailState : State L Γ := fun _ _ read => state.get (.there read)
+      rw [encodeObservationStore]
+      by_cases ownerEq : owner = who
+      · simp only [ownerEq, ↓reduceDIte]
+        have headObserved : (sourceObserve who state).cells.get source =
+            some (state.get source) := by
+          change (if owner = who then some (state.get source) else none) = _
+          simp [ownerEq]
+        rw [headObserved, observationTail_sourceObserve]
+        change writeField headRef (state.get source)
+            (encodeObservationStore who refs.tail (sourceObserve who tailState)) field = _
+        by_cases same : field = headRef.field
+        · subst field
+          have visible : graph.fieldVisibleTo who headRef.field := by
+            change (graph.layout headRef.field).VisibleTo who
+            rw [headRef.layout_eq]
+            exact ownerEq
+          rw [graph.playerStore_of_visible who store headRef.field visible]
+          exact writeField_eq_of_get? headRef (state.get source) _ store (agree source)
+        · rw [writeField_of_ne headRef (state.get source) _ field same]
+          apply encodeObservationStore_apply_eq_playerStore who refs.tail tailState store
+            field (fun read => agree (.there read))
+          intro absent
+          apply coverage
+          rintro ⟨readName, cell, read, visible, found⟩
+          cases read with
+          | here => exact same found.symm
+          | there read => exact absent ⟨readName, cell, read, visible, found⟩
+      · simp only [ownerEq, ↓reduceDIte, observationTail_sourceObserve]
+        apply encodeObservationStore_apply_eq_playerStore who refs.tail tailState store
+          field (fun read => agree (.there read))
+        intro absent
+        apply coverage
+        rintro ⟨readName, cell, read, visible, found⟩
+        cases read with
+        | here => exact ownerEq visible
+        | there read => exact absent ⟨readName, cell, read, visible, found⟩
+  | (name, .privateInput owner payload) :: Γ, refs, state, store, field, agree,
+      coverage => by
+      let source : HasVar ((name, .privateInput owner payload) :: Γ) name
+          (.privateInput owner payload) := .here
       let headRef := refs.get source
       let tailState : State L Γ := fun _ _ read => state.get (.there read)
       rw [encodeObservationStore]
@@ -323,10 +374,64 @@ private theorem encodeObservationStore_decode_apply
             cases read with
             | here => exact same found.symm
             | there read => exact absent ⟨readName, cell, read, visible, found⟩
-  | (name, .privateData owner payload) :: Γ, refs, store, observation,
+  | (name, .commitment owner payload) :: Γ, refs, store, observation,
       decoded, field, coverage => by
-      let source : HasVar ((name, .privateData owner payload) :: Γ) name
-          (.privateData owner payload) := .here
+      let source : HasVar ((name, .commitment owner payload) :: Γ) name
+          (.commitment owner payload) := .here
+      let headRef := refs.get source
+      rw [decodeObservation?] at decoded
+      by_cases ownerEq : owner = who
+      · simp only [ownerEq, ↓reduceDIte] at decoded
+        cases bindingEq : headRef.get? store with
+        | none =>
+          change (refs.get HasVar.here).get? store = none at bindingEq
+          rw [bindingEq] at decoded
+          contradiction
+        | some binding =>
+          change (refs.get HasVar.here).get? store = some binding at bindingEq
+          cases tailEq : decodeObservation? who refs.tail store with
+          | none =>
+            rw [bindingEq, tailEq] at decoded
+            contradiction
+          | some tail =>
+            rw [bindingEq, tailEq] at decoded
+            cases decoded
+            rw [encodeObservationStore]
+            simp only [ownerEq, ↓reduceDIte]
+            change writeField headRef binding
+                (encodeObservationStore who refs.tail tail) field = store field
+            by_cases same : field = headRef.field
+            · subst field
+              exact writeField_eq_of_get? headRef binding _ store bindingEq
+            · rw [writeField_of_ne headRef binding _ field same]
+              apply encodeObservationStore_decode_apply who refs.tail store tail tailEq field
+              intro absent
+              apply coverage
+              rintro ⟨readName, cell, read, visible, found⟩
+              cases read with
+              | here => exact same found.symm
+              | there read => exact absent ⟨readName, cell, read, visible, found⟩
+      · simp only [ownerEq, ↓reduceDIte] at decoded
+        cases tailEq : decodeObservation? who refs.tail store with
+        | none =>
+          rw [tailEq] at decoded
+          contradiction
+        | some tail =>
+          rw [tailEq] at decoded
+          cases decoded
+          rw [encodeObservationStore]
+          simp only [ownerEq, ↓reduceDIte]
+          apply encodeObservationStore_decode_apply who refs.tail store tail tailEq field
+          intro absent
+          apply coverage
+          rintro ⟨readName, cell, read, visible, found⟩
+          cases read with
+          | here => exact ownerEq visible
+          | there read => exact absent ⟨readName, cell, read, visible, found⟩
+  | (name, .privateInput owner payload) :: Γ, refs, store, observation,
+      decoded, field, coverage => by
+      let source : HasVar ((name, .privateInput owner payload) :: Γ) name
+          (.privateInput owner payload) := .here
       let headRef := refs.get source
       rw [decodeObservation?] at decoded
       by_cases ownerEq : owner = who
@@ -427,16 +532,32 @@ theorem exists_decodeObservation_of_available
         obtain ⟨tail, tailEq⟩ := exists_decodeObservation_of_available who refs.tail store
           (fun source visible => available (.there source) visible)
         exact ⟨⟨Env.cons head tail.cells⟩, by simp [decodeObservation?, headEq, tailEq]⟩
-  | (name, .privateData owner payload) :: Γ, refs, store, available => by
+  | (name, .commitment owner payload) :: Γ, refs, store, available => by
       obtain ⟨tail, tailEq⟩ := exists_decodeObservation_of_available who refs.tail store
         (fun source visible => available (.there source) visible)
       by_cases same : owner = who
       · have bindingAvailable := available (HasVar.here :
-          HasVar ((name, .privateData owner payload) :: Γ) name
-            (.privateData owner payload)) same
+          HasVar ((name, .commitment owner payload) :: Γ) name
+            (.commitment owner payload)) same
         cases bindingEq : (refs.get (HasVar.here :
-            HasVar ((name, .privateData owner payload) :: Γ) name
-              (.privateData owner payload))).get? store with
+            HasVar ((name, .commitment owner payload) :: Γ) name
+              (.commitment owner payload))).get? store with
+        | none => simp [bindingEq] at bindingAvailable
+        | some binding =>
+          exact ⟨⟨Env.cons (some binding) tail.cells⟩, by
+            simp [decodeObservation?, same, bindingEq, tailEq]⟩
+      · exact ⟨⟨Env.cons none tail.cells⟩, by
+          simp [decodeObservation?, same, tailEq]⟩
+  | (name, .privateInput owner payload) :: Γ, refs, store, available => by
+      obtain ⟨tail, tailEq⟩ := exists_decodeObservation_of_available who refs.tail store
+        (fun source visible => available (.there source) visible)
+      by_cases same : owner = who
+      · have bindingAvailable := available (HasVar.here :
+          HasVar ((name, .privateInput owner payload) :: Γ) name
+            (.privateInput owner payload)) same
+        cases bindingEq : (refs.get (HasVar.here :
+            HasVar ((name, .privateInput owner payload) :: Γ) name
+              (.privateInput owner payload))).get? store with
         | none => simp [bindingEq] at bindingAvailable
         | some binding =>
           exact ⟨⟨Env.cons (some binding) tail.cells⟩, by

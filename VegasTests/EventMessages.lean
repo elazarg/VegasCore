@@ -79,7 +79,7 @@ private theorem preparedResult :
 private def bound : EventGraphRuntime.State graph :=
   { (prepared.complete choiceEvent choiceReady (.success none) (.success none)) with
     accepted := Function.update prepared.accepted (.inr choiceEvent) (some choiceHandle)
-    candidates := prepared.candidates.accept choiceHandle }
+    candidates := prepared.candidates.freeze choiceHandle }
 
 private theorem handle_commitment :
     EventGraphRuntime.handle runtime prepared commitment = some bound := by

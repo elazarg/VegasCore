@@ -38,6 +38,9 @@ theorem playerStep_other_input (actor observer : Principal) (hne : observer ≠ 
     (hprivate : ∀ state command,
       app.observePlayer (app.privateStep state actor command) observer =
         app.observePlayer state observer)
+    (hsubmit : ∀ state payload,
+      app.observePlayer (app.submitStep state actor payload) observer =
+        app.observePlayer state observer)
     (execution next : app.PolicyExecution) (command : app.PlayerCommand)
     (hnext : next ∈ (app.playerStep actor execution command).support) :
     (next.principalHistory observer, State.observe app next.native observer) =
@@ -59,7 +62,8 @@ theorem playerStep_other_input (actor observer : Principal) (hne : observer ≠ 
     | submit payload =>
         simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
         rw [hnative]
-        simp only [State.observe, MessagePool.submit, MessagePool.observe, if_neg hne]
+        simp only [State.observe, MessagePool.submit, MessagePool.observe,
+          ite_eq_right hne, hsubmit]
     | replay id =>
         simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
         rw [hnative]
@@ -75,6 +79,9 @@ excludes environment turns, which can deliver or publish messages. -/
 theorem runPolicies_other_input (observer : Principal)
     (hprivate : ∀ state actor command, observer ≠ actor →
       app.observePlayer (app.privateStep state actor command) observer =
+        app.observePlayer state observer)
+    (hsubmit : ∀ state actor payload, observer ≠ actor →
+      app.observePlayer (app.submitStep state actor payload) observer =
         app.observePlayer state observer)
     (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
     (schedule : List (@Invocation Principal))
@@ -105,6 +112,7 @@ theorem runPolicies_other_input (observer : Principal)
             (fun hmem => hobserver (List.mem_cons_of_mem _ hmem)) middle hnext).trans
               (app.playerStep_other_input actor observer hne
                 (fun state command => hprivate state actor command hne)
+                (fun state payload => hsubmit state actor payload hne)
                 execution middle command hstep)
 
 /-- Other-player commands preserve any application projection left unchanged
@@ -117,6 +125,8 @@ private theorem playerStep_other_frame {Projection : Type uProjection}
     (project : app.Application → Projection)
     (hprivate : ∀ state command,
       project (app.privateStep state actor command) = project state)
+    (hsubmit : ∀ state payload,
+      project (app.submitStep state actor payload) = project state)
     (execution next : app.PolicyExecution) (command : app.PlayerCommand)
     (hnext : next ∈ (app.playerStep actor execution command).support) :
     project next.native.application = project execution.native.application ∧
@@ -137,7 +147,7 @@ private theorem playerStep_other_frame {Projection : Type uProjection}
   | submit payload =>
       simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
       rw [hnative]
-      refine ⟨rfl, by simp only [MessagePool.submit, if_neg hne], ?_⟩
+      refine ⟨hsubmit _ _, by simp only [MessagePool.submit, ite_eq_right hne], ?_⟩
       intro id message hlookup
       exact execution.native.pool.lookup_submit_of_some id message hlookup actor payload
   | replay id =>
@@ -161,6 +171,8 @@ theorem runPolicies_other_frame {Projection : Type uProjection}
     (observer : Principal) (project : app.Application → Projection)
     (hprivate : ∀ state actor command, observer ≠ actor →
       project (app.privateStep state actor command) = project state)
+    (hsubmit : ∀ state actor payload, observer ≠ actor →
+      project (app.submitStep state actor payload) = project state)
     (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
     (schedule : List (@Invocation Principal))
     (henvironment : Invocation.environment ∉ schedule)
@@ -190,6 +202,7 @@ theorem runPolicies_other_frame {Projection : Type uProjection}
           obtain ⟨command, _, hstep⟩ := hmiddle
           have first := app.playerStep_other_frame observer actor hne project
             (fun state command => hprivate state actor command hne)
+            (fun state payload => hsubmit state actor payload hne)
             execution middle command hstep
           have last := ih (fun hmem => henvironment (List.mem_cons_of_mem _ hmem))
             (fun hmem => hobserver (List.mem_cons_of_mem _ hmem)) middle hnext

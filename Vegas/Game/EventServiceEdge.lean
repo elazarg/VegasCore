@@ -3,7 +3,7 @@
 import Vegas.Game.EventScheduling
 import Vegas.Pending.EventHonestLaw
 import Vegas.Pending.EventStrategicLaw
-import GameTheoryExtensions.Core.MixtureSimulation
+import GameTheory.Core.MixtureSimulation
 
 /-! # The public message service as an edge above the canonical graph
 

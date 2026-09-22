@@ -281,7 +281,7 @@ theorem serviceStep_activationOrigin (runtime : EventGraphRuntime graph)
         simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
           FinDist.mem_support_pure] at native
         apply State.activationOrigin_of_activatedEq
-        simpa only using congrArg
+        simpa only [application, submitStep_activatedAt] using congrArg
           (fun state : runtime.application.State => state.application.activatedAt) native
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,

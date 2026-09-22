@@ -5,6 +5,12 @@ import Vegas.Game.EventCompilation
 import Vegas.Game.EventMessages
 import Vegas.Game.EventMessageStrategic
 import Vegas.Game.PendingCompositions
+import Vegas.Game.ParameterOutcomes
+import Vegas.Examples.CommitRevealAuction
+import Vegas.Examples.PrivateValueAuction
+import Vegas.Source.PrivateInputs
+import Vegas.Pending.PrivateInputs
+import Vegas.Pending.EventCommitmentBinding
 import Vegas.Source.Honest
 import Vegas.Source.Safety
 import Vegas.Compile.EventGraphPolicy
@@ -34,27 +40,77 @@ open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
-/-- Every private cell of a checked source program is revealed by the end of its
+/-- Every commitment of a checked source program is resolved by the end of its
 syntax. This is a static property: no execution, profile, or successful play is
 involved. -/
-theorem source_private_cells_revealed [IExpr.ResultTypes L]
+theorem source_commitments_revealed [IExpr.ResultTypes L]
     (source : SourceProgram.Initial (Player := Player) (L := L))
     {owner : Player} {payload : L.Ty} {name : VarId}
-    (resource : HasVar source.program.terminalCtx name (.privateData owner payload)) :
+    (resource : HasVar source.program.terminalCtx name (.commitment owner payload)) :
     (SourceProgram.finalRevelations source.program
       (Revelations.initial source.context) resource).isRevealed = true :=
   source.revealed resource
 
-/-- info: 'Vegas.Paper.source_private_cells_revealed' depends on axioms:
+/-- info: 'Vegas.Paper.source_commitments_revealed' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.source_private_cells_revealed
+#print axioms Vegas.Paper.source_commitments_revealed
+
+/-- Private inputs persist under every source policy without requiring publication. -/
+theorem source_private_input_preserved [IExpr.ResultTypes L]
+    (source : SourceProgram.Initial (Player := Player) (L := L))
+    (profile : SourceProgram.BehavioralProfile source.program)
+    (outcome : State L source.program.terminalCtx)
+    (supported : outcome ∈ (source.run profile).support)
+    {owner : Player} {payload : L.Ty} {name : VarId}
+    (input : HasVar source.context name (.privateInput owner payload)) :
+    outcome.get (SourceProgram.terminalRef source.program input) = source.state.get input :=
+  SourceProgram.privateInput_preserved source.program profile
+    ⟨source.state, [], Revelations.initial source.context, fun _ => []⟩ outcome supported input
+
+/-- info: 'Vegas.Paper.source_private_input_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_private_input_preserved
+
+omit [DecidableEq Player] in
+/-- Native commitment provenance excludes handles for persistent private inputs. -/
+theorem native_private_input_no_handle [IExpr.ResultTypes L]
+    {graph : Vegas.EventGraph Player L} (state : EventGraphRuntime.State graph)
+    (invariant : state.BindingInvariant) (field : graph.Field) (owner : Player) (payload : L.Ty)
+    (kind : graph.layout field = .privateInput owner payload) : state.accepted field = none :=
+  invariant.privateInput_no_handle field owner payload kind
+
+/-- info: 'Vegas.Paper.native_private_input_no_handle' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.native_private_input_no_handle
+
+/-- An authenticated commitment is binding from submission onward, including
+through arbitrary preparation and network actions before inclusion. -/
+theorem native_commitment_binding [IExpr.ResultTypes L]
+    {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
+    (execution : runtime.application.PolicyExecution) (who : Player)
+    (event : graph.EventId) (slot : EventGraphRuntime.CandidateSlot graph)
+    (actions : List runtime.application.Action) (after : runtime.application.State)
+    (supported : after ∈ (runtime.application.run actions
+      (runtime.application.afterSubmit execution who
+        (.commitment event (who, slot))).native).support) :
+    after.application.candidates.lookup (who, slot) =
+      (execution.native.application.candidates.freeze (who, slot)).lookup (who, slot) :=
+  EventGraphRuntime.submitted_commitment_binding runtime execution who event slot
+    actions after supported
+
+/-- info: 'Vegas.Paper.native_commitment_binding' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.native_commitment_binding
 
 /-- Every complete failure-aware source execution decides each retained guard
 by its code: either the publication of its subject or of an input read by its
 code failed, or all of them succeeded and the code holds on the published
 values. Publications are read through the final revelations, which reveal every
-private cell (`source_private_cells_revealed`). This includes executions with
+commitment (`source_commitments_revealed`). This includes executions with
 invalid bindings or withheld disclosures. -/
 theorem source_guards_hold [IExpr.ResultTypes L]
     (source : SourceProgram.Initial (Player := Player) (L := L))
@@ -465,6 +521,132 @@ theorem pure_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.pure_event_pending_approximate_nash_iff
+
+/-! ## Private initial types and truthful plans -/
+
+/-- Compiled prescribed play preserves the joint initial-parameter/public-result law. -/
+theorem private_type_event_pending_honest_law [IExpr.ResultTypes L] {Parameter : Type}
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (parameter : State L setup.context → Parameter)
+    (mode : EventGraph.ExecutionMode)
+    (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (profile : Profile (setup.valueBindingParameterGame parameter).sig) :
+    ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+      (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who))).map
+        (setup.eventPendingParameterOutcome parameter mode runtime) =
+      ((setup.valueBindingParameterGame parameter).play profile).map some :=
+  (setup.valueBindingParameterPendingSimulation parameter mode runtime feasible roster
+    reactionRounds wire order).honest_law profile
+
+/-- info: 'Vegas.Paper.private_type_event_pending_honest_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.private_type_event_pending_honest_law
+
+/-- The value-only source abstraction preserves the joint law of initial
+parameters and public results, with one deviation mixture across the prior. -/
+theorem private_type_event_pending_deviation_law [IExpr.ResultTypes L] {Parameter : Type}
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (parameter : State L setup.context → Parameter)
+    (mode : EventGraph.ExecutionMode)
+    (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (profile : Profile (setup.valueBindingParameterGame parameter).sig) (who : Player)
+    (replacement : runtime.application.PlayerPolicy) :
+    ∃ mixture : FinDist (SourceProgram.ValueBindingPolicy who setup.program),
+      ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+        (Profile.update (sig := (setup.eventPendingGame mode runtime
+          roster reactionRounds wire order).sig)
+          (fun actor => setup.compileValueBindingPendingProfile mode runtime actor (profile actor))
+          who replacement)).map (setup.eventPendingParameterOutcome parameter mode runtime) =
+      mixture.bind fun alternative =>
+        ((setup.valueBindingParameterGame parameter).play
+          (Profile.update profile who alternative)).map some :=
+  (setup.valueBindingParameterPendingSimulation parameter mode runtime feasible roster
+    reactionRounds wire order).deviation_mixture profile who replacement trivial
+
+/-- info: 'Vegas.Paper.private_type_event_pending_deviation_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.private_type_event_pending_deviation_law
+
+/-- Bayesian incentives for a designated source plan, including a truthful
+plan, are preserved and reflected without exposing commit-time failure.
+Approximation is measured ex ante under the fixed finite prior. -/
+theorem private_type_event_pending_approximate_nash_iff [IExpr.ResultTypes L] {Parameter : Type}
+    (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (parameter : State L setup.context → Parameter)
+    (mode : EventGraph.ExecutionMode)
+    (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
+    (feasible : runtime.ServiceFeasible)
+    (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (utility : Parameter × SourceProgram.PublicOutcome setup.program → Player → ℝ)
+    (missing : Player → ℝ) (ε : ℝ)
+    (profile : Profile (setup.valueBindingParameterGame parameter).sig) :
+    IsεNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
+        (fun outcome who =>
+          (setup.eventPendingParameterOutcome parameter mode runtime outcome).elim
+            (missing who) (fun result => utility result who))
+        ε (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who)) ↔
+      IsεNash (setup.valueBindingParameterGame parameter) utility ε profile :=
+  setup.valueBindingParameterPendingGame_approximate_nash_iff parameter mode runtime feasible
+    roster reactionRounds wire order utility missing ε profile
+
+/-- info: 'Vegas.Paper.private_type_event_pending_approximate_nash_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.private_type_event_pending_approximate_nash_iff
+
+/-- The concrete second-price source program is not dominant-strategy truthful:
+an opponent can condition withholding on the earlier public report. -/
+theorem auction_truthful_not_dominant
+    (values : Examples.CommitRevealAuction.Player → ℝ) (forfeiture : ℝ)
+    (valuation : values .alice = 5) :
+    ¬ IsDominant Examples.CommitRevealAuction.setup.valueBindingGame
+      (euPreference (Examples.CommitRevealAuction.utility values forfeiture))
+      Examples.CommitRevealAuction.Player.alice (Examples.CommitRevealAuction.aliceStrategy 5) :=
+  Examples.CommitRevealAuction.truthful_not_dominant values forfeiture valuation
+
+/-- info: 'Vegas.Paper.auction_truthful_not_dominant' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.auction_truthful_not_dominant
+
+universe uTargetStrategy uTargetOutcome
+
+/-- No utility-preserving translation of this source game can make the
+translated truthful policy dominant. The quantified target is unrestricted;
+changing the source game is outside this impossibility claim. -/
+theorem auction_translated_truthful_not_dominant
+    (values : Examples.CommitRevealAuction.Player → ℝ) (forfeiture : ℝ)
+    (valuation : values .alice = 5)
+    (target : GameForm.{0, uTargetStrategy, uTargetOutcome} Examples.CommitRevealAuction.Player)
+    (compile : (who : Examples.CommitRevealAuction.Player) →
+      Examples.CommitRevealAuction.setup.valueBindingGame.sig.Strategy who →
+      target.sig.Strategy who)
+    (targetUtility : target.sig.Outcome → Examples.CommitRevealAuction.Player → ℝ)
+    (preserves : ∀ players : Profile Examples.CommitRevealAuction.setup.valueBindingGame.sig,
+      expectedUtility targetUtility Examples.CommitRevealAuction.Player.alice
+          (target.play (Profile.map compile players)) =
+        expectedUtility (Examples.CommitRevealAuction.utility values forfeiture)
+          Examples.CommitRevealAuction.Player.alice
+          (Examples.CommitRevealAuction.setup.valueBindingGame.play players)) :
+    ¬ IsDominant target (euPreference targetUtility) Examples.CommitRevealAuction.Player.alice
+      (compile Examples.CommitRevealAuction.Player.alice
+        (Examples.CommitRevealAuction.aliceStrategy 5)) :=
+  Examples.CommitRevealAuction.translated_truthful_not_dominant values forfeiture valuation
+    target compile targetUtility preserves
+
+/-- info: 'Vegas.Paper.auction_translated_truthful_not_dominant' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.auction_translated_truthful_not_dominant
 
 /-! ## Honest play -/
 

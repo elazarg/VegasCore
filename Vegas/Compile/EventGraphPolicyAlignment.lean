@@ -209,7 +209,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
       · let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
           ⟨0, by simp [eventCount]⟩
         let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
-        let tailRefs := refs.cons (name := name) (cell := .privateData owner _)
+        let tailRefs := refs.cons (name := name) (cell := .commitment owner _)
           (embedding.ref headIndex)
         have tailRefsBefore : ContextRefsBefore tailRefs tailEmbedding := by
           intro readName cell source remaining

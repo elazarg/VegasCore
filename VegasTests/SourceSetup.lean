@@ -22,7 +22,7 @@ private abbrev guessOut : VarId := 2
 private abbrev secretOut : VarId := 3
 
 private abbrev InitialCtx : SourceCtx Player simpleExpr :=
-  [(secret, .privateData .alice .bool)]
+  [(secret, .commitment .alice .bool)]
 
 private def guessGuard : SourceGuard simpleExpr InitialCtx .bob guess .bool where
   schema := []
@@ -54,10 +54,10 @@ the information-theoretic reason one shared guessing policy cannot optimize
 separately for both draws. -/
 theorem bob_initial_secret_hidden (bit : Bool) :
     (sourceObserve Player.bob (initialState bit)).cells.get
-      (.here : HasVar InitialCtx secret (.privateData Player.alice .bool)) = none := by
+      (.here : HasVar InitialCtx secret (.commitment Player.alice .bool)) = none := by
   change (if Player.alice = Player.bob then
     some ((initialState bit).get (.here : HasVar InitialCtx secret
-      (.privateData Player.alice .bool))) else none) = none
+      (.commitment Player.alice .bool))) else none) = none
   simp
 
 /-- The setup prior really contains both private worlds with equal weight. -/

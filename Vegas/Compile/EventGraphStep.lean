@@ -63,7 +63,7 @@ theorem reveal_step
     (config : graph.Config) (event : graph.EventId) (ready : config.cut.Ready event)
     (outputEq : graph.outputLayout event = .publication payload)
     (refs : ContextRefs graph.layout Γ) (revelations : Revelations Γ) (registry : Registry Γ)
-    (selected : HasVar Γ name (.privateData owner payload))
+    (selected : HasVar Γ name (.commitment owner payload))
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
       .resolve owner payload (refs.get selected)
         (compileChecks (published := published) refs registry revelations selected))

@@ -99,7 +99,7 @@ theorem handle_commitment_effectiveCompletion
       (cast (congrArg EventField.Value outputEq.symm)
         (state.bindingResult candidate payload))) with
       accepted := Function.update state.accepted (.inr event) (some candidate)
-      candidates := state.candidates.accept candidate }
+      candidates := state.candidates.freeze candidate }
     handle runtime state ⟨id, .commitment event candidate⟩ = some next ∧
       effectiveCompletion? state next = some ⟨event,
         cast (congrArg EventField.Action outputEq.symm)

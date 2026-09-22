@@ -104,11 +104,13 @@ theorem applicationRun_history_prefix (runtime : EventGraphRuntime graph)
     state.application.config.history.IsPrefix next.application.config.history := by
   apply runtime.application.run_application_invariant
     (fun current => state.application.config.history.IsPrefix current.config.history)
-    _ _ _ state next actions ⟨[], by simp⟩ member
+    _ _ _ _ state next actions ⟨[], by simp⟩ member
   · intro current who command prior
     change state.application.config.history.IsPrefix
       (privateStep current who command).config.history
     rw [(privateStep_facts current who command).1]
+    exact prior
+  · intro current who payload prior
     exact prior
   · intro current message after prior accepted
     obtain ⟨event, _, ready, action, supported⟩ :=
@@ -131,6 +133,7 @@ theorem applicationRun_store_of_some (runtime : EventGraphRuntime graph)
       change (privateStep current who command).config.store field = some value
       rw [(privateStep_facts current who command).1]
       exact present)
+    (fun _ _ _ present => present)
     (fun current message after present accepted =>
       handle_store_of_some runtime current after message accepted field value present)
     (fun current command after present supported =>

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.Setup
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheory.Math.Probability.FinDist
 
 /-! # Every policy is a mixture of pure ones
 

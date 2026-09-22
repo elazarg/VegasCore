@@ -75,9 +75,9 @@ theorem Satisfies.deliver [DecidableEq Principal] (h : Satisfies safe pool)
       intro who candidate hmem
       by_cases hwho : who = observer
       · subst who
-        simp only [if_pos, List.mem_append, List.mem_singleton] at hmem
+        simp only [ite_eq_left, List.mem_append, List.mem_singleton] at hmem
         exact hmem.elim (hinbox observer candidate) (fun heq => heq ▸ hmessage)
-      · simp only [if_neg hwho] at hmem
+      · simp only [ite_eq_right hwho] at hmem
         exact hinbox who candidate hmem, hsent⟩
   · exact ⟨hpending, hledger, hinbox, hsent⟩
 
@@ -102,9 +102,9 @@ theorem Satisfies.replay [DecidableEq Principal] (h : Satisfies safe pool)
       intro who candidate hmem
       by_cases hwho : who = broadcaster
       · subst who
-        simp only [if_pos, List.mem_append, List.mem_singleton] at hmem
+        simp only [ite_eq_left, List.mem_append, List.mem_singleton] at hmem
         exact hmem.elim (hsent broadcaster candidate) (fun heq => heq ▸ hmessage)
-      · simp only [if_neg hwho] at hmem
+      · simp only [ite_eq_right hwho] at hmem
         exact hsent who candidate hmem⟩
   · exact ⟨hpending, hledger, hinbox, hsent⟩
 

@@ -75,7 +75,7 @@ private theorem runPlan_rankPrefix (plan : graph.EventPlan)
       by_cases terminal : config.cut.Terminal
       · have same : next = config := by simpa [runPlan, terminal] using member
         exact same ▸ ordered
-      · rw [runPlan, dif_neg terminal, FinDist.support_bind] at member
+      · rw [runPlan, dite_eq_right terminal, FinDist.support_bind] at member
         simp only [Set.mem_iUnion] at member
         obtain ⟨choice, choiceMem, restMem⟩ := member
         rw [FinDist.support_bind] at restMem

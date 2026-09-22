@@ -10,8 +10,8 @@ Execution follows source order and interprets chance through the exact finite
 law carried by source syntax. Each retained guard obligation is checked once, at
 the reveal that publishes the last of its inputs; a rejected check makes that
 publication fail. Execution produces the detailed terminal state, which is what
-the laws below are stated over; the game form's *outcome* is its public
-projection, so no utility can depend on what a player kept to itself.
+the laws below are stated over. The public game interpretation projects to
+public results; the parameter interpretation additionally retains initial types.
 `evaluatePayoffs` is a separate, explicit settlement projection and does not
 itself impose utilities.
 -/
@@ -25,7 +25,9 @@ def sourcePublicEnv {Player : Type} {L : IExpr} [R : IExpr.ResultTypes L] :
   | [], _ => Env.empty L.Val
   | (_, .publicData _) :: _, s => Env.cons (s.get .here)
       (sourcePublicEnv fun _ _ h => s.get (HasVar.there h))
-  | (_, .privateData _ _) :: tail, s => sourcePublicEnv (Player := Player) (L := L)
+  | (_, .commitment _ _) :: tail, s => sourcePublicEnv (Player := Player) (L := L)
+      (R := R) (Γ := tail) (fun _ _ h => s.get (HasVar.there h))
+  | (_, .privateInput _ _) :: tail, s => sourcePublicEnv (Player := Player) (L := L)
       (R := R) (Γ := tail) (fun _ _ h => s.get (HasVar.there h))
   | (_, .publication τ) :: _, s =>
       Env.cons ((R.valueEquiv τ).symm (s.get .here))
@@ -35,7 +37,8 @@ def SourceObservationVal {Player : Type} (L : IExpr) :
     CellTy Player L → Type
   | .publicData τ => L.Val τ
   | .publication τ => PublicationResult (L.Val τ)
-  | .privateData owner τ => Option (CellVal L (.privateData owner τ))
+  | .commitment owner τ => Option (CellVal L (.commitment owner τ))
+  | .privateInput _ τ => Option (L.Val τ)
 
 structure SourceObservation {Player : Type} (L : IExpr) (who : Player)
     (Γ : SourceCtx Player L) where
@@ -46,7 +49,8 @@ def sourceObserve {Player : Type} [DecidableEq Player] {L : IExpr} (who : Player
   | _, s => ⟨fun _ cell h => match cell with
       | .publicData _ => s.get h
       | .publication _ => s.get h
-      | .privateData owner _ => if owner = who then some (s.get h) else none⟩
+      | .commitment owner _ => if owner = who then some (s.get h) else none
+      | .privateInput owner _ => if owner = who then some (s.get h) else none⟩
 
 section SourceObserve
 
@@ -60,17 +64,23 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} {Γ : SourceCtx Player
     {x : VarId} {τ : L.Ty} (h : HasVar Γ x (.publication τ)) :
     (sourceObserve who state).cells x (.publication τ) h = state.get h := rfl
 
-@[simp] theorem sourceObserve_privateData (who : Player) (state : State L Γ)
-    {x : VarId} {owner : Player} {τ : L.Ty} (h : HasVar Γ x (.privateData owner τ)) :
-    (sourceObserve who state).cells x (.privateData owner τ) h =
+@[simp] theorem sourceObserve_commitment (who : Player) (state : State L Γ)
+    {x : VarId} {owner : Player} {τ : L.Ty} (h : HasVar Γ x (.commitment owner τ)) :
+    (sourceObserve who state).cells x (.commitment owner τ) h =
+      if owner = who then some (state.get h) else none := rfl
+
+@[simp] theorem sourceObserve_privateInput (who : Player) (state : State L Γ)
+    {x : VarId} {owner : Player} {τ : L.Ty} (h : HasVar Γ x (.privateInput owner τ)) :
+    (sourceObserve who state).cells x (.privateInput owner τ) h =
       if owner = who then some (state.get h) else none := rfl
 
 /-- A player's source observation depends only on public data, publication
-results, and that player's own private cells. -/
+results, and that player's own inputs and commitments. -/
 theorem sourceObserve_congr (who : Player) (left right : State L Γ)
     (publicEq : ∀ {x τ} (h : HasVar Γ x (.publicData τ)), left.get h = right.get h)
     (publicationEq : ∀ {x τ} (h : HasVar Γ x (.publication τ)), left.get h = right.get h)
-    (ownEq : ∀ {x τ} (h : HasVar Γ x (.privateData who τ)), left.get h = right.get h) :
+    (inputEq : ∀ {x τ} (h : HasVar Γ x (.privateInput who τ)), left.get h = right.get h)
+    (ownEq : ∀ {x τ} (h : HasVar Γ x (.commitment who τ)), left.get h = right.get h) :
     sourceObserve who left = sourceObserve who right := by
   have cellsEq : (sourceObserve who left).cells = (sourceObserve who right).cells := by
     funext x cell h
@@ -79,11 +89,17 @@ theorem sourceObserve_congr (who : Player) (left right : State L Γ)
         rw [sourceObserve_publicData, sourceObserve_publicData, publicEq h]
     | publication τ =>
         rw [sourceObserve_publication, sourceObserve_publication, publicationEq h]
-    | privateData owner τ =>
-        rw [sourceObserve_privateData, sourceObserve_privateData]
+    | commitment owner τ =>
+        rw [sourceObserve_commitment, sourceObserve_commitment]
         by_cases same : owner = who
         · subst same
           simp [ownEq h]
+        · simp [same]
+    | privateInput owner τ =>
+        rw [sourceObserve_privateInput, sourceObserve_privateInput]
+        by_cases same : owner = who
+        · subst same
+          simp [inputEq h]
         · simp [same]
   calc sourceObserve who left = ⟨(sourceObserve who left).cells⟩ := rfl
     _ = ⟨(sourceObserve who right).cells⟩ := by rw [cellsEq]
@@ -181,12 +197,12 @@ def afterSample {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {pay
 def afterCommit {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {owner : Player}
     {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst}
     {guard : SourceGuard L Γ owner name payload}
-    {k : SourceProgram Player L ((name, .privateData owner payload) :: Γ) (insert name O)}
+    {k : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O)}
     (p : BehavioralProfile (SourceProgram.commit name owner (payload := payload) fresh guard k)) :
     BehavioralProfile k := fun who => (p who).2
 def afterReveal {Γ : SourceCtx Player L} {O : Finset VarId} {published name : VarId}
     {owner : Player} {payload : L.Ty} {fresh : published ∉ Γ.map Prod.fst}
-    {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
+    {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {k : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     (p : BehavioralProfile
       (SourceProgram.reveal published owner name (payload := payload) fresh source unresolved k)) :
@@ -194,14 +210,14 @@ def afterReveal {Γ : SourceCtx Player L} {O : Finset VarId} {published name : V
 
 def commitKernel {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {owner : Player}
     {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst} {g : SourceGuard L Γ owner name payload}
-    {k : SourceProgram Player L ((name, .privateData owner payload) :: Γ) (insert name O)}
+    {k : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O)}
     (p : BehavioralProfile (SourceProgram.commit name owner fresh g k)) :
     DecisionView owner Γ → FinDist (PublicationResult (L.Val payload)) :=
   (p owner).1 rfl
 
 def revealKernel {Γ : SourceCtx Player L} {O : Finset VarId} {published name : VarId}
     {owner : Player} {payload : L.Ty} {fresh : published ∉ Γ.map Prod.fst}
-    {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
+    {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {k : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     (p : BehavioralProfile (SourceProgram.reveal published owner name fresh source unresolved k)) :
     DecisionView owner Γ → FinDist Bool :=
@@ -227,7 +243,7 @@ structure Obligation (Γ : SourceCtx Player L) where
   owner : Player
   subject : VarId
   payload : L.Ty
-  source : HasVar Γ subject (.privateData owner payload)
+  source : HasVar Γ subject (.commitment owner payload)
   guard : SourceGuard L Γ owner subject payload
 
 namespace Obligation
@@ -264,7 +280,7 @@ def weaken {x c} (obligation : Obligation (Player := Player) (L := L) Γ) :
 /-- Whether a reveal of `source` completes the obligation: some input was
 unpublished before the reveal, and all of them are published after it. -/
 def completedBy {published : VarId} (obligation : Obligation (Player := Player) (L := L) Γ)
-    (revelations : Revelations Γ) (source : HasVar Γ name (.privateData owner payload)) :
+    (revelations : Revelations Γ) (source : HasVar Γ name (.commitment owner payload)) :
     Bool :=
   !obligation.revealed revelations &&
     (obligation.weaken (x := published)).revealed
@@ -303,7 +319,7 @@ def weaken {x c} (registry : Registry (Player := Player) (L := L) Γ) : Registry
 
 /-- The obligations a reveal completes, in the context after the reveal. -/
 def completedBy {published : VarId} (registry : Registry (Player := Player) (L := L) Γ)
-    (revelations : Revelations Γ) (source : HasVar Γ name (.privateData owner payload)) :
+    (revelations : Revelations Γ) (source : HasVar Γ name (.commitment owner payload)) :
     Registry ((published, .publication payload) :: Γ) :=
   (registry.filter (·.completedBy (published := published) revelations source)).map
     Obligation.weaken
@@ -311,7 +327,7 @@ def completedBy {published : VarId} (registry : Registry (Player := Player) (L :
 /-- Every obligation a reveal completes has all of its inputs published. -/
 theorem revealed_of_mem_completedBy {published : VarId}
     (registry : Registry (Player := Player) (L := L) Γ) (revelations : Revelations Γ)
-    (source : HasVar Γ name (.privateData owner payload))
+    (source : HasVar Γ name (.commitment owner payload))
     {obligation : Obligation ((published, .publication payload) :: Γ)}
     (member : obligation ∈ registry.completedBy revelations source) :
     obligation.revealed (revelations.reveal (published := published) source) = true := by
@@ -395,7 +411,7 @@ def sampleSuccessor (name : VarId) (config : Config Player L Γ) (value : L.Val 
 def commitSuccessor {owner : Player} (name : VarId)
     (guard : SourceGuard L Γ owner name payload) (config : Config Player L Γ)
     (choice : PublicationResult (L.Val payload)) :
-    Config Player L ((name, .privateData owner payload) :: Γ) :=
+    Config Player L ((name, .commitment owner payload) :: Γ) :=
   ⟨Env.cons choice config.state,
     { owner := owner, subject := name, payload := payload, source := .here,
       guard := guard.weaken } :: Registry.weaken config.registry,
@@ -405,7 +421,7 @@ def commitSuccessor {owner : Player} (name : VarId)
 
 /-- The configuration a publication reaches, guards included. -/
 def revealSuccessor {owner : Player} (published : VarId)
-    (source : HasVar Γ name (.privateData owner payload))
+    (source : HasVar Γ name (.commitment owner payload))
     (config : Config Player L Γ) (disclose : Bool) :
     Config Player L ((published, .publication payload) :: Γ) :=
   let proposal : PublicationResult (L.Val payload) :=
@@ -434,7 +450,7 @@ theorem runFrom_sample {fresh : name ∉ Γ.map Prod.fst}
 
 theorem runFrom_commit {owner : Player} {fresh : name ∉ Γ.map Prod.fst}
     {guard : SourceGuard L Γ owner name payload}
-    {k : SourceProgram Player L ((name, .privateData owner payload) :: Γ) (insert name O)}
+    {k : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O)}
     (profile : BehavioralProfile (SourceProgram.commit name owner fresh guard k))
     (config : Config Player L Γ) :
     runFrom (SourceProgram.commit name owner fresh guard k) profile config =
@@ -443,7 +459,7 @@ theorem runFrom_commit {owner : Player} {fresh : name ∉ Γ.map Prod.fst}
 
 theorem runFrom_reveal {published : VarId} {owner : Player}
     {fresh : published ∉ Γ.map Prod.fst}
-    {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
+    {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {k : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     (profile : BehavioralProfile
       (SourceProgram.reveal published owner name fresh source unresolved k))
@@ -469,7 +485,7 @@ theorem afterSample_update {fresh : name ∉ Γ.map Prod.fst}
 
 theorem afterCommit_update {owner : Player} {fresh : name ∉ Γ.map Prod.fst}
     {guard : SourceGuard L Γ owner name payload}
-    {k : SourceProgram Player L ((name, .privateData owner payload) :: Γ) (insert name O)}
+    {k : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O)}
     (profile : BehavioralProfile (SourceProgram.commit name owner fresh guard k))
     (who : Player)
     (policy : BehavioralPolicy who (SourceProgram.commit name owner fresh guard k)) :
@@ -482,7 +498,7 @@ theorem afterCommit_update {owner : Player} {fresh : name ∉ Γ.map Prod.fst}
 
 theorem afterReveal_update {published : VarId} {owner : Player}
     {fresh : published ∉ Γ.map Prod.fst}
-    {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
+    {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {k : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     (profile : BehavioralProfile
       (SourceProgram.reveal published owner name fresh source unresolved k))
@@ -505,7 +521,7 @@ one disclosure; `GuardsAccept` asks for the acceptance it derives, at every
 reveal, and `run_successful` is the whole-run consequence. -/
 theorem runWith_reveal_compatible {published name : VarId} {owner : Player}
     {fresh : published ∉ Γ.map Prod.fst}
-    {source : HasVar Γ name (.privateData owner payload)} {unresolved : name ∈ O}
+    {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     (profile : BehavioralProfile (.reveal published owner name fresh source unresolved next))
     (state : State L Γ) (registry : Registry Γ) (revelations : Revelations Γ)

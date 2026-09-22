@@ -5,7 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.MessageApplicationPolicies
-import GameTheoryExtensions.Core.UtilitySimulation
+import GameTheory.Core.UtilitySimulation
 
 /-! # The message pool is a coalition channel
 
@@ -86,6 +86,7 @@ def channel : MessageApplication Principal where
   PlayerView := PlayerView
   EnvironmentView := Unit
   privateStep := privateStep
+  submitStep := fun state _ _ => state
   environmentStep := environmentStep
   handle := handle
   observePlayer := observe
@@ -166,7 +167,7 @@ translation. The pool carries the secret across a coalition that the base game
 cannot correlate at all. -/
 theorem isEmpty_coalitionSimulation :
     IsEmpty (GameForm.UtilitySimulation baseGame hostGame baseUtility hostUtility
-      (GameForm.nonemptyGroups Principal)) :=
+      (GameTheory.nonemptyGroups Principal)) :=
   GameForm.UtilitySimulation.isEmpty_of_grandCoalitionValue Finset.univ_nonempty
     (fun _ => false) 0 collusion (1 / 2)
     (fun profile => le_of_eq (base_expect profile 0))

@@ -287,9 +287,10 @@ theorem handle_playerView_congr_of_sender
                         exact verified
                       cases typed : raw.as? payload with
                       | none =>
-                          simp only [handle, dif_pos leftReady, dif_pos rightReady,
-                            dif_pos leftTimely, dif_pos rightTimely, viewNode, Message.sender,
-                            senderOwner, dif_pos, associated, rightAssociated, verified,
+                          simp only [handle, dite_eq_left leftReady, dite_eq_left rightReady,
+                            dite_eq_left leftTimely, dite_eq_left rightTimely,
+                            viewNode, Message.sender,
+                            senderOwner, dite_eq_left, associated, rightAssociated, verified,
                             rightVerified]
                           rw [typed]
                       | some value =>
@@ -330,14 +331,14 @@ theorem handle_playerView_congr_of_sender
                                     right.config.store = none := by
                                   rw [← resolvedEq]
                                   exact leftResolved
-                                simp only [handle, dif_pos leftReady, dif_pos rightReady,
-                                  dif_pos leftTimely, dif_pos rightTimely, viewNode,
-                                  Message.sender, senderOwner, dif_pos, associated,
+                                simp only [handle, dite_eq_left leftReady, dite_eq_left rightReady,
+                                  dite_eq_left leftTimely, dite_eq_left rightTimely, viewNode,
+                                  Message.sender, senderOwner, dite_eq_left, associated,
                                   rightAssociated, verified, rightVerified, stored, rightStored]
                                 rw [typed]
                                 dsimp only
-                                rw [dif_pos rfl]
-                                rw [dif_pos rfl]
+                                rw [dite_eq_left rfl]
+                                rw [dite_eq_left rfl]
                                 change Option.map (fun state => state.playerView focal)
                                     (focalAcceptResolution left event leftReady focal payload
                                       binding checks outputEq true) =
@@ -375,9 +376,10 @@ theorem handle_playerView_congr_of_sender
                               apply stored
                               rw [storedEq]
                               exact rightStored
-                            simp only [handle, dif_pos leftReady, dif_pos rightReady,
-                              dif_pos leftTimely, dif_pos rightTimely, viewNode, Message.sender,
-                              senderOwner, dif_pos, associated, rightAssociated, verified,
+                            simp only [handle, dite_eq_left leftReady, dite_eq_left rightReady,
+                              dite_eq_left leftTimely, dite_eq_left rightTimely,
+                              viewNode, Message.sender,
+                              senderOwner, dite_eq_left, associated, rightAssociated, verified,
                               rightVerified]
                             rw [typed]
                             simp [stored, rightNotStored]
@@ -463,9 +465,9 @@ theorem handle_playerView_congr_of_sender
                 | none =>
                     have rightResolved : EventCode.resolveOutput? binding checks disclose
                         right.config.store = none := by rw [← resolvedEq]; exact leftResolved
-                    simp only [handle, dif_pos leftReady, dif_pos rightReady,
-                      dif_pos leftTimely, dif_pos rightTimely, viewNode, Message.sender,
-                      senderOwner, dif_pos]
+                    simp only [handle, dite_eq_left leftReady, dite_eq_left rightReady,
+                      dite_eq_left leftTimely, dite_eq_left rightTimely, viewNode, Message.sender,
+                      senderOwner, dite_eq_left]
                     change Option.map (fun state => state.playerView focal)
                         (focalAcceptResolution left event leftReady focal payload binding checks
                           outputEq (focalWithholdingAction left event focal payload binding checks
@@ -492,9 +494,9 @@ theorem handle_playerView_congr_of_sender
                     have completed := State.complete_playerView_congr left right focal publicEq
                       observationEq rememberedEq candidatesEq event leftReady rightReady action
                       action resultValue resultValue (fun _ => rfl) (fun _ => rfl)
-                    simp only [handle, dif_pos leftReady, dif_pos rightReady,
-                      dif_pos leftTimely, dif_pos rightTimely, viewNode, Message.sender,
-                      senderOwner, dif_pos]
+                    simp only [handle, dite_eq_left leftReady, dite_eq_left rightReady,
+                      dite_eq_left leftTimely, dite_eq_left rightTimely, viewNode, Message.sender,
+                      senderOwner, dite_eq_left]
                     change Option.map (fun state => state.playerView focal)
                         (focalAcceptResolution left event leftReady focal payload binding checks
                           outputEq (focalWithholdingAction left event focal payload binding checks
@@ -749,9 +751,9 @@ theorem handle_withhold_playerView_congr_of_sender_ne
                 intro focalActor
                 exact False.elim (ownerForeign
                   (Option.some.inj (ownerActor.symm.trans focalActor))))
-            simp only [handle, dif_pos leftReady, dif_pos rightReady,
-              dif_pos leftTimely, dif_pos rightTimely, viewNode, Message.sender,
-              senderOwner, dif_pos]
+            simp only [handle, dite_eq_left leftReady, dite_eq_left rightReady,
+              dite_eq_left leftTimely, dite_eq_left rightTimely, viewNode, Message.sender,
+              senderOwner, dite_eq_left]
             change Option.map (fun state => state.playerView focal)
                 (focalAcceptResolution left event leftReady owner payload binding checks
                   outputEq leftDisclose) =

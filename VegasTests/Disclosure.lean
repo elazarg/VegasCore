@@ -54,7 +54,7 @@ example : ¬ Disclosing openPays withholdOpen := by
   intro h
   exact h.1 rfl
     (sourceObserve () (Env.cons (Val := CellVal simpleExpr) (x := bid)
-      (τ := .privateData () .bool) (.success false) (Env.empty (CellVal simpleExpr))), [])
+      (τ := .commitment () .bool) (.success false) (Env.empty (CellVal simpleExpr))), [])
     (by simp [withholdOpen])
 
 example : Disclosing openPays (BehavioralPolicy.forceDisclose openPays withholdOpen) :=
@@ -104,13 +104,13 @@ private def payOnSuccess (result : PublicationResult (simpleExpr.Val BaseTy.bool
 /-- The value of a completed run to the owner, where opening is what pays. -/
 private def publishedPays
     (state : State simpleExpr [(bidOut, CellTy.publication BaseTy.bool),
-      (bid, CellTy.privateData () BaseTy.bool)]) : ℝ :=
+      (bid, CellTy.commitment () BaseTy.bool)]) : ℝ :=
   payOnSuccess (state.get HasVar.here)
 
 /-- The reversed reading, for the program whose payoff rewards refusing. -/
 private def refusalPaysValue
     (state : State simpleExpr [(bidOut, CellTy.publication BaseTy.bool),
-      (bid, CellTy.privateData () BaseTy.bool)]) : ℝ :=
+      (bid, CellTy.commitment () BaseTy.bool)]) : ℝ :=
   1 - payOnSuccess (state.get HasVar.here)
 
 /-- The premise of `forceDisclose_expect_le` is satisfiable: where opening is
@@ -124,7 +124,7 @@ example :
     split <;> norm_num
   refine ⟨fun _ config => ?_, trivial⟩
   simp only [runFrom, runWith, FinDist.expect_pure, publishedPays, revealSuccessor,
-    Env.cons_get_here, Bool.false_eq_true, if_false, ite_self]
+    Env.cons_get_here, Bool.false_eq_true, ite_false, ite_self]
   exact nonneg _
 
 /-- And it has content: where refusing is what pays, it fails. -/
@@ -133,7 +133,7 @@ example :
       (fun _ => withholdRefusal) withholdRefusal := by
   intro premise
   have applied := premise.1 rfl
-    ⟨Env.cons (Val := CellVal simpleExpr) (x := bid) (τ := .privateData () .bool)
+    ⟨Env.cons (Val := CellVal simpleExpr) (x := bid) (τ := .commitment () .bool)
       (.success false) (Env.empty (CellVal simpleExpr)),
       [], Revelations.initial _, fun _ => []⟩
   simp [runFrom, runWith, refusalPaysValue, revealSuccessor, payOnSuccess,

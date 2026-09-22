@@ -1052,7 +1052,7 @@ theorem reachedFocalPolicy_eq_of_functional
       event actor observation = FinDist.pure action := by
   unfold reachedFocalPolicy
   dsimp only
-  rw [dif_pos ⟨action, reached⟩]
+  rw [dite_eq_left ⟨action, reached⟩]
   exact congrArg FinDist.pure
     (functional event _ (Classical.choose _) action (Classical.choose_spec _) reached)
 

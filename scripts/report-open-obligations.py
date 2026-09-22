@@ -78,7 +78,7 @@ def lean_sources(root: Path) -> list[str]:
             ["git", "-C", str(root), "ls-files", "-z", "--", "*.lean"],
             check=True, capture_output=True, text=True,
         ).stdout.split("\0")
-        return sorted(name for name in listed if name)
+        return sorted(name for name in listed if name and (root / name).is_file())
     except (OSError, subprocess.CalledProcessError):
         return sorted(
             path.relative_to(root).as_posix() for path in root.rglob("*.lean")

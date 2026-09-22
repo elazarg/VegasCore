@@ -193,11 +193,11 @@ theorem serviceStep_player_honestReactionState
   refine ⟨?_, branch⟩
   by_cases same : owner = who
   · subst who
-    simp only [if_pos]
+    simp only [ite_eq_left]
     change submittedAt (execution.principalHistory owner ++ [_]) event = true
     simpa [submittedAt] using submitted
   · simp [same]
-    simpa only [if_neg (Ne.symm same)] using submitted
+    simpa only [ite_eq_right (Ne.symm same)] using submitted
 
 /-- The reaction interval contains only prescribed player calls and ordinary
 wire calls.  In particular, its endpoint is not another reserved event slot. -/

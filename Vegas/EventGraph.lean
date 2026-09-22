@@ -10,6 +10,7 @@ import Vegas.EventGraph.Execution
 import Vegas.EventGraph.Commutation
 import Vegas.EventGraph.CommutationRecall
 import Vegas.EventGraph.Information
+import Vegas.EventGraph.PrivateInputs
 import Vegas.EventGraph.ObservationStep
 import Vegas.EventGraph.Validation
 import Vegas.EventGraph.Barriers

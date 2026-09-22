@@ -53,7 +53,7 @@ theorem playerStep_remember_continuation (runtime : EventGraphRuntime graph)
     (graph.playerObserve who execution.native.application.config)).bind fun action =>
       (privateStep execution.native.application who (.remember event action)).continuationLaw
         profile) = _
-  simp only [privateStep, dif_pos actor, empty, State.continuationLaw]
+  simp only [privateStep, dite_eq_left actor, empty, State.continuationLaw]
   exact (ordered.canonicalContinuation_remember profile
     execution.native.application.remembered execution.native.application.config
     event ready who actor empty).symm

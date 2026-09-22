@@ -32,7 +32,7 @@ private abbrev seedOut : VarId := 14
 private abbrev coin : VarId := 15
 
 private abbrev InitialCtx : SourceCtx Player simpleExpr :=
-  [(seed, .privateData .alice .bool), (flag, .publicData .bool)]
+  [(seed, .commitment .alice .bool), (flag, .publicData .bool)]
 
 /-- `choice` is checked against an earlier public flag and Alice's retained
 private seed. The guard is checked when the last of its inputs is revealed. -/
@@ -48,7 +48,7 @@ private def choiceGuard :
       (.eq (.var choice .here) (.some (.var seed (.there (.there .here)))))
   reads := fun h => match h with
     | .here => .publicData (.there .here)
-    | .there .here => .privateData .here
+    | .there .here => .commitment .here
 
 private abbrev AfterRevealsPublicCtx : CtxSimple :=
   [(seedOut, .result .bool), (choiceOut, .result (.option .bool)), (flag, .bool)]
@@ -100,7 +100,7 @@ private def initialState : State simpleExpr InitialCtx :=
     Env.cons (x := flag) true (Env.empty (CellVal simpleExpr))
 
 private abbrev ChoiceCtx : SourceCtx Player simpleExpr :=
-  (choice, .privateData .alice (.option .bool)) :: InitialCtx
+  (choice, .commitment .alice (.option .bool)) :: InitialCtx
 
 private abbrev ChoiceOutCtx : SourceCtx Player simpleExpr :=
   (choiceOut, .publication (.option .bool)) :: ChoiceCtx
@@ -132,7 +132,7 @@ private def acceptsAtSeed (published : PublicationResult (Option Bool))
       obligation.accepts (choiceRevealed.reveal (published := seedOut) (.there (.there .here)))
         (Env.cons (x := seedOut) (τ := .publication .bool) proposal <|
           Env.cons (x := choiceOut) (τ := .publication (.option .bool)) published <|
-          Env.cons (x := choice) (τ := .privateData .alice (.option .bool))
+          Env.cons (x := choice) (τ := .commitment .alice (.option .bool))
             (PublicationResult.success Option.none) initialState)
 
 example : acceptsAtSeed (.success Option.none) (.success true) = true := by decide

@@ -80,7 +80,7 @@ theorem handle_unfinished_canonical_resources (runtime : EventGraphRuntime graph
         exact different (Fin.ext (Slot.prepared.inj slots))
       refine ⟨?_, ?_, ?_⟩
       · rw [candidates]
-        exact before.candidates.lookup_accept_other candidate (owner, eventSlot event) distinct
+        exact before.candidates.lookup_freeze_other candidate (owner, eventSlot event) distinct
       · rw [handles]
         exact Function.update_of_ne (by simpa using different) _ _
       · intro unused field retained

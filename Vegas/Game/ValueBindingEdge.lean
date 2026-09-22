@@ -2,7 +2,7 @@
 
 import Vegas.Source.Purification
 import Vegas.Source.ValueBinding
-import GameTheoryExtensions.Core.UtilitySimulation
+import GameTheory.Core.MixtureUtilitySimulation
 
 /-! # The edge from the value-binding game to the source game
 
@@ -83,7 +83,7 @@ theorem isNash_valueBindingGame_iff (setup : Setup (Player := Player) (L := L))
 def valueBindingUtilitySimulation (setup : Setup (Player := Player) (L := L))
     (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ) :
     GameForm.UtilitySimulation setup.valueBindingGame setup.gameForm utility utility
-      (GameForm.singletonGroups Player) :=
+      (GameTheory.singletonGroups Player) :=
   setup.valueBindingSimulation.toUtilitySimulation utility fun _ _ => trivial
 
 end Vegas.SourceProgram.Setup

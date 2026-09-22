@@ -36,7 +36,12 @@ theorem serviceStep_player_config (runtime : EventGraphRuntime graph)
         FinDist.mem_support_pure] at native
       rw [native]
       exact privateStep_config before.native.application owner command
-  | submit packet | replay id | wait =>
+  | submit packet =>
+      simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
+        FinDist.mem_support_pure] at native
+      rw [native]
+      exact submitStep_config before.native.application owner packet
+  | replay id | wait =>
       simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
         FinDist.mem_support_pure] at native
       rw [native]

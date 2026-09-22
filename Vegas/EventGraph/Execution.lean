@@ -354,7 +354,7 @@ theorem runPlan_reachable (graph : Vegas.EventGraph Player L) (plan : graph.Even
       by_cases terminal : config.cut.Terminal
       · have nextEq : next = config := by simpa [runPlan, terminal] using member
         exact nextEq ▸ reachable
-      · rw [runPlan, dif_neg terminal, FinDist.support_bind] at member
+      · rw [runPlan, dite_eq_right terminal, FinDist.support_bind] at member
         simp only [Set.mem_iUnion] at member
         obtain ⟨choice, _, restMem⟩ := member
         rw [FinDist.support_bind] at restMem
@@ -429,7 +429,7 @@ theorem runPlan_terminal (graph : Vegas.EventGraph Player L) (plan : graph.Event
       · have nextEq : next = config := by simpa [runPlan, terminal] using member
         subst next
         exact terminal
-      · rw [runPlan, dif_neg terminal, FinDist.support_bind] at member
+      · rw [runPlan, dite_eq_right terminal, FinDist.support_bind] at member
         simp only [Set.mem_iUnion] at member
         obtain ⟨choice, _, restMem⟩ := member
         rw [FinDist.support_bind] at restMem

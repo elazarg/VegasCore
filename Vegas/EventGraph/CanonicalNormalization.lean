@@ -77,7 +77,7 @@ theorem runPlan_canonical_normalize_eq (profile : graph.BehavioralProfile) :
       intro config ordered
       by_cases terminal : config.cut.Terminal
       · simp [runPlan, terminal]
-      · rw [runPlan, runPlan, dif_neg terminal, dif_neg terminal,
+      · rw [runPlan, runPlan, dite_eq_right terminal, dite_eq_right terminal,
           canonical_policyPlan_normalize_eq profile config ordered terminal]
         apply FinDist.bind_congr
         intro choice choiceMember

@@ -25,9 +25,9 @@ private theorem privateStep_serviceGrant_eq (state : State graph) (who : Player)
   | prepare serial raw => rfl
   | remember event action =>
       by_cases owned : graph.actor? event = some who
-      · rw [privateStep, dif_pos owned]
+      · rw [privateStep, dite_eq_left owned]
         cases state.remembered event <;> rfl
-      · rw [privateStep, dif_neg owned]
+      · rw [privateStep, dite_eq_right owned]
 
 private theorem bindingStageCommand_remembered_other (runtime : EventGraphRuntime graph)
     (state : State graph) (owner : Player) (event query : graph.EventId)
@@ -94,7 +94,7 @@ private theorem bindingStageCommand_candidates_other (runtime : EventGraphRuntim
       simp only [MessageInterface.PlayerCommand.privateCommand.injEq] at stage
       subst command
       cases remembered : state.remembered event <;>
-        simp only [privateStep, dif_pos actor, remembered, eventSlot]
+        simp only [privateStep, dite_eq_left actor, remembered, eventSlot]
       all_goals
         apply CommitmentCandidates.lookup_prepare_other
         intro same
@@ -204,13 +204,13 @@ theorem State.acceptedBinding_strategicCompletionFrames (state : State graph)
     StrategicCompletionFrames state
       { (state.complete event ready action value) with
         accepted := Function.update state.accepted (.inr event) (some currentHandle)
-        candidates := state.candidates.accept currentHandle } event := by
+        candidates := state.candidates.freeze currentHandle } event := by
   have base := state.complete_strategicCompletionFrames event ready action value
   refine ⟨base.completed, base.completedSubset, base.remembered, ?_, ?_, ?_⟩
   · intro query different
     simp [Function.update, different]
   · intro query owner different
-    apply CommitmentCandidates.lookup_accept_other
+    apply CommitmentCandidates.lookup_freeze_other
     intro same
     have slotEq := congrArg Prod.snd same
     rw [handleSlot] at slotEq
@@ -324,9 +324,11 @@ theorem HonestBoundary.bind_ownerBlock_reactions_law
     (boundary.canonical_unused_unfinished event owner unfinished actor)
     (by rw [block]; exact FinDist.mem_support_pure.mpr rfl)
     (execution.native.pool.nextSerial owner)
-  change (handle runtime staged.native.application
+  change (handle runtime (submitStep staged.native.application owner
+      (.commitment event (owner, eventSlot event)))
     ⟨(owner, staged.native.pool.nextSerial owner),
       .commitment event (owner, eventSlot event)⟩).map State.config = _ at acceptedProjection
+  rw [handle_submitStep] at acceptedProjection
   cases handled : handle runtime staged.native.application
       ⟨(owner, staged.native.pool.nextSerial owner),
         .commitment event (owner, eventSlot event)⟩ with
@@ -336,7 +338,7 @@ theorem HonestBoundary.bind_ownerBlock_reactions_law
           action (cast (congrArg EventField.Value outputEq.symm)
             (cast (congrArg EventField.Action outputEq) action)) := Option.some.inj (by
         simpa only [handled, Option.map_some] using acceptedProjection)
-      have initialState : runtime.HonestReactionState event owner staged.native.application
+      have initialState : runtime.HonestReactionState event owner submitted.native.application
           accepted ⟨(owner, staged.native.pool.nextSerial owner),
             .commitment event (owner, eventSlot event)⟩ submitted := by
         refine ⟨?_, Or.inl ⟨rfl, ?_⟩⟩
@@ -384,14 +386,22 @@ theorem HonestBoundary.bind_ownerBlock_reactions_law
             (privateStep_serviceGrant_eq _ owner command).trans
               (privateStep_serviceGrant_eq _ owner (.remember event action))]
         exact grant
+      have submittedHandled : handle runtime submitted.native.application
+          ⟨(owner, staged.native.pool.nextSerial owner),
+            .commitment event (owner, eventSlot event)⟩ = some accepted := by
+        simpa only [submitted, MessageApplication.afterSubmit, application, handle_submitStep]
+          using handled
+      have submittedGrant : submitted.native.application.serviceGrant = some event := by
+        simpa only [submitted, MessageApplication.afterSubmit, application, submitStep_serviceGrant]
+          using grantBefore
       have grantAccepted : accepted.serviceGrant = some event := by
         rw [acceptedEq]
         simpa only [State.complete] using grantBefore
       have reactionLaw := runtime.runServicePlan_honestReaction_includeLatest_config profile wire
-        event owner staged.native.application accepted
+        event owner submitted.native.application accepted
         ⟨(owner, staged.native.pool.nextSerial owner),
-          .commitment event (owner, eventSlot event)⟩ handled actor rfl rfl
-        grantBefore grantAccepted
+          .commitment event (owner, eventSlot event)⟩ submittedHandled actor rfl rfl
+        submittedGrant grantAccepted
         reactions (honestReactionPlan_allowed roster reactionRounds) submitted initialState
       change (runtime.runServicePlan (runtime.compileProfile profile) wire
         (reactions ++ [.includeLatest event owner]) submitted).map
@@ -460,9 +470,11 @@ theorem HonestBoundary.bind_ownerBlock_reactions_boundary
     (boundary.canonical_unused_unfinished event owner unfinished actor)
     (by rw [block]; exact FinDist.mem_support_pure.mpr rfl)
     (execution.native.pool.nextSerial owner)
-  change (handle runtime staged.native.application
+  change (handle runtime (submitStep staged.native.application owner
+      (.commitment event (owner, eventSlot event)))
     ⟨(owner, staged.native.pool.nextSerial owner),
       .commitment event (owner, eventSlot event)⟩).map State.config = _ at acceptedProjection
+  rw [handle_submitStep] at acceptedProjection
   cases handled : handle runtime staged.native.application
       ⟨(owner, staged.native.pool.nextSerial owner),
         .commitment event (owner, eventSlot event)⟩ with
@@ -512,11 +524,19 @@ theorem HonestBoundary.bind_ownerBlock_reactions_boundary
             (privateStep_serviceGrant_eq _ owner command).trans
               (privateStep_serviceGrant_eq _ owner (.remember event action))]
         exact grant
+      have submittedHandled : handle runtime submitted.native.application
+          ⟨(owner, staged.native.pool.nextSerial owner),
+            .commitment event (owner, eventSlot event)⟩ = some accepted := by
+        simpa only [submitted, MessageApplication.afterSubmit, application, handle_submitStep]
+          using handled
+      have submittedGrant : submitted.native.application.serviceGrant = some event := by
+        simpa only [submitted, MessageApplication.afterSubmit, application, submitStep_serviceGrant]
+          using grantBefore
       have grantAccepted : accepted.serviceGrant = some event := by
         rw [acceptedEq]
         simpa only [State.complete] using grantBefore
       have reactionState : runtime.HonestReactionState event owner
-          staged.native.application accepted
+          submitted.native.application accepted
           ⟨(owner, staged.native.pool.nextSerial owner),
             .commitment event (owner, eventSlot event)⟩ submitted := by
         refine ⟨?_, Or.inl ⟨rfl, ?_⟩⟩
@@ -526,9 +546,9 @@ theorem HonestBoundary.bind_ownerBlock_reactions_boundary
         · change execution.native.pool.pending ++ [_] = [_]
           rw [boundary.pending_empty, List.nil_append]
       have reacted := runtime.runServicePlan_honestReaction_includeLatest profile wire event
-        owner staged.native.application accepted
+        owner submitted.native.application accepted
         ⟨(owner, staged.native.pool.nextSerial owner),
-          .commitment event (owner, eventSlot event)⟩ handled actor rfl rfl grantBefore
+          .commitment event (owner, eventSlot event)⟩ submittedHandled actor rfl rfl submittedGrant
         grantAccepted reactions (honestReactionPlan_allowed roster reactionRounds)
         submitted next reactionState supported
       obtain ⟨nextState, nextEmpty, nextHistory⟩ := reacted

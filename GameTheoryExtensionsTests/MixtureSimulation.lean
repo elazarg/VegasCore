@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Core.MixtureSimulationComposition
+import GameTheory.Core.MixtureSimulationComposition
 
 /-! # Regression tests for mixture simulation and composition -/
 

@@ -3,7 +3,7 @@
 import Vegas.Game.PurificationEdge
 import Vegas.Game.ValueBindingEdge
 import Vegas.Game.EventMessageStrategic
-import GameTheoryExtensions.Core.MixtureSimulationComposition
+import GameTheory.Core.MixtureSimulationComposition
 
 /-! # The whole tower, read from a restricted source game
 

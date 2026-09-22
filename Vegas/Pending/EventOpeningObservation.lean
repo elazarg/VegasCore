@@ -58,7 +58,7 @@ theorem resolutionPayload_eq_of_effectiveResult_eq
     cast (congrArg EventField.Action outputEq) rightAction = rd at effective
   cases ld <;> cases rd
   · rfl
-  · simp only [if_true]
+  · simp only [ite_true]
     cases rightResult : EventCode.resolveOutput? binding checks true
         rightView.application.observation.store with
     | none => rfl
@@ -69,7 +69,7 @@ theorem resolutionPayload_eq_of_effectiveResult_eq
             have impossible := resolveOutput_false_ne_success binding checks
               leftView.application.observation.store value
             exact (impossible (effective.trans rightResult)).elim
-  · simp only [if_true]
+  · simp only [ite_true]
     cases leftResult : EventCode.resolveOutput? binding checks true
         leftView.application.observation.store with
     | none => rfl
@@ -80,7 +80,7 @@ theorem resolutionPayload_eq_of_effectiveResult_eq
             have impossible := resolveOutput_false_ne_success binding checks
               rightView.application.observation.store value
             exact (impossible (effective.symm.trans leftResult)).elim
-  · simp only [if_true]
+  · simp only [ite_true]
     cases leftResult : EventCode.resolveOutput? binding checks true
         leftView.application.observation.store with
     | none =>

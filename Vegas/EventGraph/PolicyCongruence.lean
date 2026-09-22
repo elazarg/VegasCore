@@ -41,7 +41,7 @@ theorem runPolicies_canonical_eq_of_reachable
     | succ fuel ih =>
         intro config reachable offset ordered
         by_cases terminal : config.cut.Terminal
-        · simp only [runPlan, dif_pos terminal]
+        · simp only [runPlan, dite_eq_left terminal]
         · have active : offset < graph.order.eventCount := by
             have bound := ordered.1
             have different : offset ≠ graph.order.eventCount := by

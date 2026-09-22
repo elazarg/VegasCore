@@ -80,6 +80,7 @@ def lottery : MessageApplication Principal where
   PlayerView := PublicState
   EnvironmentView := PublicState
   privateStep := privateStep
+  submitStep := fun state _ _ => state
   environmentStep := environmentStep
   handle := handle
   observePlayer := observe

@@ -185,21 +185,41 @@ theorem BindingPolicyCoherent.afterSubmit_other
     (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (coherent : BindingPolicyCoherent runtime execution owner event payload outputEq)
-    (packet : Payload graph) (other : packet.event? graph ≠ some event) :
+    (packet : Payload graph) (other : packet.event? graph ≠ some event)
+    (canonical : ∀ target candidate, packet = .commitment target candidate →
+      candidate = (owner, eventSlot target)) :
     BindingPolicyCoherent runtime (runtime.application.afterSubmit execution owner packet)
       owner event payload outputEq := by
   refine ⟨coherent.1.afterSubmit_other runtime execution owner event packet other, ?_, ?_⟩
   · intro stage
+    have candidate : (submitStep execution.native.application owner packet).candidates.lookup
+        (owner, eventSlot event) = execution.native.application.candidates.lookup
+          (owner, eventSlot event) := by
+      cases packet with
+      | commitment target selected =>
+          rw [canonical target selected rfl]
+          simp only [submitStep, ↓reduceIte]
+          apply CommitmentCandidates.lookup_freeze_other
+          intro same
+          apply other
+          have events : event = target := Fin.ext (Slot.prepared.inj (congrArg Prod.snd same))
+          subst target
+          rfl
+      | opening target selected raw | withhold target | malformed raw => rfl
+    change (submitStep execution.native.application owner packet).candidates.lookup _ = _
+    rw [candidate]
     apply coherent.2.1
     have history := runtime.afterSubmit_history_self execution owner packet
     rw [history] at stage
     simpa [stagingCount, stagesEvent] using stage
   · intro stage action cached
+    change (submitStep execution.native.application owner packet).bindingResult _ _ = _
+    rw [submitStep_bindingResult]
     apply coherent.2.2 (action := action)
     · have history := runtime.afterSubmit_history_self execution owner packet
       rw [history] at stage
       simpa [stagingCount, stagesEvent] using stage
-    · simpa [MessageApplication.afterSubmit] using cached
+    · simpa [MessageApplication.afterSubmit, application] using cached
 
 /-- At stage one of a binding event, the supported compiled private command
 is exactly the canonical binding-stage command for the cached action. -/
@@ -560,9 +580,14 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
             packetAddress
         · apply (coherent query payload outputEq actor unfinished).afterSubmit_other
             runtime execution owner query payload outputEq packet
-          intro queryAddress
-          rw [packetAddress] at queryAddress
-          exact same (Option.some.inj queryAddress.symm)
+          · intro queryAddress
+            rw [packetAddress] at queryAddress
+            exact same (Option.some.inj queryAddress.symm)
+          · intro target candidate packetEq
+            exact (runtime.compilePlayerPolicy_commitment_origin owner policy
+              (execution.principalHistory owner)
+              (MessageApplication.State.observe runtime.application execution.native owner)
+              target candidate (packetEq ▸ commandMem)).1
 
 theorem compilePlayerPolicy_invoke_bindingPolicyCoherentAll_anyGrant
     (runtime : EventGraphRuntime graph) (owner : Player)

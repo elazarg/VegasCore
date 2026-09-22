@@ -24,7 +24,8 @@ field. A private cell stores its immutable binding. -/
 def cellValue : {cell : CellTy Player L} →
     CellVal L cell → (cellField cell).Value
   | .publicData _, value => value
-  | .privateData _ _, value => value
+  | .commitment _ _, value => value
+  | .privateInput _ _, value => value
   | .publication _, value => value
 
 /-- Local typed agreement between a source context and its graph references. -/
@@ -66,7 +67,7 @@ theorem publicRead_get_of_agrees {Field : Type} [DecidableEq Field]
                 (fun _ _ ref => state.get (.there ref))
               intro refName refCell ref
               exact agree (.there ref)
-      | privateData owner cellPayload =>
+      | commitment owner cellPayload | privateInput owner cellPayload =>
           apply ih
             (ContextRefs.mk fun ref => refs.get (.there ref))
             (fun _ _ ref => state.get (.there ref))
@@ -165,7 +166,7 @@ theorem compileGuardRead_get {Field : Type} [DecidableEq Field]
           rw [stored]
           rfl
   | publication cell => exact revealOperand_get refs state store agree proposal cell
-  | privateData cell =>
+  | commitment cell =>
       simp only [compileGuardRead]
       split
       · next publication revelation =>
@@ -192,7 +193,7 @@ theorem compileGuard_eval? {Field : Type} [DecidableEq Field]
           proposal state)) := by
   apply Vegas.EventGraph.GuardCheck.eval?_eq_of_reads
   · exact compileGuardRead_get refs state store agree proposal revealed
-      (.privateData obligation.source) _
+      (.commitment obligation.source) _
   · intro name input source read
     exact compileGuardRead_get refs state store agree proposal revealed
       (obligation.guard.reads source) _
@@ -207,7 +208,7 @@ theorem compileResolve_eval? {Field : Type} [DecidableEq Field]
     (state : State L Γ) (store : Vegas.EventGraph.Store layout)
     (agree : refs.Agrees state store)
     {published : VarId} {owner : Player} {payload : L.Ty} {name : VarId}
-    (selected : HasVar Γ name (.privateData owner payload)) (disclose : Bool) :
+    (selected : HasVar Γ name (.commitment owner payload)) (disclose : Bool) :
     (Vegas.EventGraph.EventCode.resolve owner payload (refs.get selected)
         (compileChecks (published := published) refs registry revelations selected)).eval?
         disclose store =

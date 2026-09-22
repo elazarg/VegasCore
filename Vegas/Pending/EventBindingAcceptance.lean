@@ -25,9 +25,9 @@ private theorem remember_candidates (state : State graph) (who : Player)
     (event : graph.EventId) (action : graph.Action event) :
     (privateStep state who (.remember event action)).candidates = state.candidates := by
   by_cases owned : graph.actor? event = some who
-  · rw [privateStep, dif_pos owned]
+  · rw [privateStep, dite_eq_left owned]
     cases state.remembered event <;> rfl
-  · rw [privateStep, dif_neg owned]
+  · rw [privateStep, dite_eq_right owned]
 
 /-- Private staging at a fresh canonical handle implements exactly the
 selected typed binding action, including failure without preparation. -/
@@ -125,11 +125,15 @@ theorem bindingBlockContinuation_observer_law (runtime : EventGraphRuntime graph
   change FinDist.pure (execution.principalHistory observer, MessageInterface.View.mk
     ((execution.native.pool.submit who (.commitment event (who, eventSlot event))).2.observe
       observer)
-    ((privateStep (privateStep execution.native.application who (.remember event action))
-      who command).playerView observer) execution.native.receipts) = _
-  rw [privateStep_playerView_other _ _ _ different,
+    ((submitStep
+      (privateStep (privateStep execution.native.application who (.remember event action))
+        who command) who (.commitment event (who, eventSlot event))).playerView observer)
+      execution.native.receipts) = _
+  rw [submitStep_playerView_other _ _ _ different,
+    privateStep_playerView_other _ _ _ different,
     privateStep_playerView_other _ _ _ different]
-  rfl
+  simp only [MessageApplication.State.observe, MessageApplication.afterSubmit, application,
+    submitStep_playerView_other _ _ _ different]
 
 /-- After the actual binding block, accepting its prescribed packet completes
 the graph with exactly the sampled action and typed output. Candidate freshness
@@ -186,8 +190,10 @@ theorem bindingBlockContinuation_handle (runtime : EventGraphRuntime graph)
   have actionRoundtrip : cast (congrArg EventField.Action outputEq.symm)
       (cast (congrArg EventField.Action outputEq) action) = action := by
     simp only [cast_cast, cast_eq]
-  change (handle runtime second
+  change (handle runtime (submitStep second owner
+    (.commitment event (owner, eventSlot event)))
     ⟨(owner, nonce), .commitment event (owner, eventSlot event)⟩).map State.config = _
+  rw [handle_submitStep]
   rw [runtime.handle_commitment_eq second (owner, nonce) event (owner, eventSlot event)
     owner payload outputEq codeEq viewNode secondReady secondTimely rfl rfl
     secondVacant secondUnused, Option.map_some]
@@ -234,9 +240,11 @@ theorem bindingBlockContinuation_includeLatest_law (runtime : EventGraphRuntime 
     outputEq codeEq viewNode execution submitted action ready timely fresh vacant unused
     (by rw [block]; exact FinDist.mem_support_pure.mpr rfl)
     (execution.native.pool.nextSerial owner)
-  change (handle runtime staged.native.application
+  change (handle runtime (submitStep staged.native.application owner
+      (.commitment event (owner, eventSlot event)))
     ⟨(owner, staged.native.pool.nextSerial owner),
       .commitment event (owner, eventSlot event)⟩).map State.config = _ at acceptedProjection
+  rw [handle_submitStep] at acceptedProjection
   cases accepted : handle runtime staged.native.application
       ⟨(owner, staged.native.pool.nextSerial owner),
         .commitment event (owner, eventSlot event)⟩ with

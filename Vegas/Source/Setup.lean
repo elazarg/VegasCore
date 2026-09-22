@@ -22,7 +22,7 @@ structure Setup where
   initialLaw : FinDist (State L context)
   obligations : Finset VarId
   program : SourceProgram Player L context obligations
-  accounts : obligations = privateNames context
+  accounts : obligations = commitmentNames context
 
 namespace Setup
 

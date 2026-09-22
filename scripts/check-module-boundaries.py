@@ -28,6 +28,8 @@ VEGAS_LAYERS = {
     "Vegas.Game": ("Vegas.Foundation", "Vegas.Source", "Vegas.EventGraph", "Vegas.Pending",
                    "Vegas.Compile", "Vegas.Game"),
     "Vegas.Language": ("Vegas.Foundation", "Vegas.Expr", "Vegas.Language"),
+    "Vegas.Examples": ("Vegas.Foundation", "Vegas.Expr", "Vegas.Source", "Vegas.Game",
+                       "Vegas.Examples"),
 }
 
 

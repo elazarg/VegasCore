@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.Purification
-import GameTheoryExtensions.Core.UtilitySimulation
+import GameTheory.Core.MixtureUtilitySimulation
 
 /-! # The edge from the pure-strategy game to the source game
 
@@ -76,7 +76,7 @@ theorem isNash_pureGame_iff (setup : Setup (Player := Player) (L := L))
 def pureUtilitySimulation (setup : Setup (Player := Player) (L := L))
     (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ) :
     GameForm.UtilitySimulation setup.pureGame setup.gameForm utility utility
-      (GameForm.singletonGroups Player) :=
+      (GameTheory.singletonGroups Player) :=
   setup.pureSimulation.toUtilitySimulation utility fun _ _ => trivial
 
 end Vegas.SourceProgram.Setup

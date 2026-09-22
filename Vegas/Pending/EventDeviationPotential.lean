@@ -82,7 +82,7 @@ theorem privateStep_focal_deviationContinuation (state : State graph)
       | prepare serial raw => rfl
       | remember query action =>
           by_cases queryOwned : graph.actor? query = some focal
-          · simp only [privateStep, dif_pos queryOwned]
+          · simp only [privateStep, dite_eq_left queryOwned]
             cases remembered : state.remembered query with
             | some value => rfl
             | none =>
@@ -90,7 +90,7 @@ theorem privateStep_focal_deviationContinuation (state : State graph)
                 apply Function.update_of_ne
                 intro equal
                 exact owned (equal ▸ queryOwned)
-          · rw [privateStep, dif_neg queryOwned]
+          · rw [privateStep, dite_eq_right queryOwned]
   unfold State.deviationContinuation
   rw [memory, (privateStep_facts state focal command).1]
 
@@ -138,7 +138,7 @@ theorem playerStep_opponent_remember_deviationContinuation
     rw [actor]
     exact fun same => other (Option.some.inj same)
   have emptyOther : execution.native.application.opponentMemory focal event = none := by
-    simp only [State.opponentMemory, if_neg notFocal, empty]
+    simp only [State.opponentMemory, ite_eq_right notFocal, empty]
   change _ = graph.canonicalContinuation
     (graph.memoizedProfile profile (execution.native.application.opponentMemory focal))
       execution.native.application.config
@@ -150,7 +150,7 @@ theorem playerStep_opponent_remember_deviationContinuation
   rw [runtime.application.playerStep_private_eq, FinDist.pure_bind]
   change (privateStep execution.native.application owner
     (.remember event action)).deviationContinuation profile focal = _
-  simp only [privateStep, dif_pos actor, empty, State.deviationContinuation]
+  simp only [privateStep, dite_eq_left actor, empty, State.deviationContinuation]
   congr 2
   funext query
   by_cases same : query = event

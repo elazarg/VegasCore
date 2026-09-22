@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Math.SelectiveStopping
+import GameTheory.Math.Probability.SelectiveStopping
 
 /-! # Finite regressions for information-fiber stopping bounds -/
 
@@ -121,7 +121,8 @@ theorem event_gap_sharp :
     norm_num [gapSource, Fin.sum_univ_succ]
   · rw [FinDist.expect_uniformFin]
     norm_num [gapTarget, Fin.sum_univ_succ]
-  · apply FinDist.expect_le_add_event_gap
+  · rw [FinDist.prob_map_eq_probOf_preimage_singleton]
+    apply FinDist.expect_le_add_event_gap
     · intro state _ hstate
       fin_cases state <;> simp [gapEvent, gapSource, gapTarget] at hstate ⊢
     · intro state _ hstate
