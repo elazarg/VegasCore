@@ -33,6 +33,7 @@ the subsequent kernel-checked build.
 | Message transport and player policies | `Interaction/MessageApplication.lean`, `Interaction/MessageApplicationPolicies.lean` |
 | Event-addressed runtime and service | `Vegas/Pending/EventApplication.lean`, `Vegas/Pending/EventService.lean` |
 | Binding from authenticated submission through arbitrary native continuations | `Vegas/Pending/EventCommitmentBinding.lean` |
+| Multiplayer atomic-response protocol, policy equivalence, and bounded native execution | `Vegas/Pending/ResponseProtocol.lean`, `Vegas/Pending/ResponseProtocolPolicy.lean`, `Vegas/Pending/ResponseProtocolEvaluation.lean`, `Vegas/Pending/ResponseProtocolNative.lean` |
 | Full-source honest law under adaptive public graph scheduling | `Vegas/Compile/EventGraphScheduling.lean` |
 | Full-source asynchronous deviations and Nash correspondence | `Vegas/Compile/EventGraphDeviation.lean`, `Vegas/Game/EventCompilation.lean` |
 | Asynchronous pending-message service and arbitrary-player completion | `Vegas/Pending/EventService.lean`, `Vegas/Pending/EventServiceCompletion.lean` |
@@ -46,8 +47,8 @@ the subsequent kernel-checked build.
 The proved capstones are universally quantified proofs, not conclusions
 inferred from tests.
 The source protocol and generic continuation-transfer results do not establish
-native SPE preservation. Native continuation laws, policy recovery, and proper-root
-coverage remain open. `VegasTests/SourceProtocol.lean` and
+native SPE preservation. Source/native continuation laws, response compilation,
+policy recovery, and proper-root coverage remain open. `VegasTests/SourceProtocol.lean` and
 `VegasTests/SetupProtocol.lean` check information-set closure on hidden source
 prefixes; `GameTheoryExtensionsTests/ContinuationTransfer.lean` proves that the
 atomic irreversible-failure example has no uniform continuation-law certificate.

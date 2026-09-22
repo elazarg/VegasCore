@@ -24,7 +24,9 @@ equivalence for admitted pure and behavioral policies. Private setup draws once 
 the complete terminal-state law agrees with source execution at every prefix.
 The pure and behavioral SPE characterizations and conditional preservation and
 reflection theorems are checked. Native continuation correspondence and an
-automatic checker remain open. The [SPE plan](subgame-preservation.md) states
+automatic checker remain open. The native response adapter has checked policy
+correspondence and execution refinement; its graph-policy compiler and
+proper-root correspondence remain obligations. The [SPE plan](subgame-preservation.md) states
 those obligations separately from the source adapter.
 
 ## Requirements
@@ -438,14 +440,57 @@ policies cannot distinguish hidden setup draws and that continuations retain
 the actual private type. These are source results and conditional transfer
 results; native continuation coverage remains a proof obligation.
 
+### E7: native multiplayer responses and retained service opportunities
+
+**Question.** Can free private work be integrated without exposing the service
+cursor or removing choices to submit, deliver, or react before inclusion?
+
+[ResponseProtocol.lean](../Vegas/Pending/ResponseProtocol.lean) uses the existing
+service plan and control state. The actual players choose atomic responses;
+setup, the fixed wire policy, and the fixed adaptive order policy remain in the
+transition kernel. The information state at an invocation is exactly own recall
+and the native view. Inactive positions have no player choice.
+
+The service retains all three initial owner invocations and every wire/roster
+reaction slot. Each player invocation executes finite private work followed by
+one network command. Only that response is atomic. The number of private
+commands is unbounded and consumes neither extra service slots nor clock ticks.
+Keeping the invocation slots retains choices to submit several packets before
+wire service; these opportunities must not disappear as a side effect of making
+private work free.
+
+[ResponseProtocolPolicy.lean](../Vegas/Pending/ResponseProtocolPolicy.lean)
+proves a playerwise equivalence covering every native behavioral response
+policy. [ResponseProtocolEvaluation.lean](../Vegas/Pending/ResponseProtocolEvaluation.lean)
+identifies its protocol step law with the actual native policy invocation at
+any legal prefix, and proves termination at the remaining service bound.
+[ResponseProtocolNative.lean](../Vegas/Pending/ResponseProtocolNative.lean)
+refines every initialized continuation to existing native actions. It preserves
+candidate meanings fixed at submission and live activation timestamps.
+
+**Validation.** [InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean)
+checks the retained invocation schedule, the native response-service reaction
+to a delivered packet before inclusion, and independence of player observation
+from the unconsumed service plan and epoch counter. The test's in-flight state
+is reached by concrete native actions; it does not claim a proper-root proof
+for that state in the initialized service game.
+
+**Remaining obligations.** This adapter supplies the response game's semantics,
+not a graph-policy response compiler or a native SPE certificate. The existing
+initial-play capstones use command policies. Connecting one response compiler
+to the source requires honest and deviated continuation laws, recovery from
+arbitrary candidate/cache states, and proper-root coverage. A malformed-packet
+retry test alone does not discharge those obligations.
+
 ## Implementation order and stop conditions
 
 1. Pure and behavioral source adapters, mixed-site admission, private setup,
    residual laws, and SPE characterizations are checked, without finite payload
    domains. Do not infer pure-to-behavioral SPE equivalence from value agreement.
-2. Establish the full-interface continuation bridge to the actual runtime,
-   including hostile prefixes, atomic responses, and all proper native roots.
-   A generic contract wrapper is not evidence for this bridge.
+2. The multiplayer atomic-response adapter, policy equivalence, bounded play,
+   and native refinement are checked. Establish the graph-policy response
+   compiler and the full source/native continuation bridge, including hostile
+   prefixes and all proper native roots. A generic wrapper is not evidence.
 3. Instantiate the SPE transfer theorem and use the canonical failure example
    as a negative case. Add a positive source elision theorem with an explicit
    structural premise, rather than promoting the finite Python result.

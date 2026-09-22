@@ -234,7 +234,7 @@ theorem withinDeadline_of_age_le_one (runtime : EventGraphRuntime graph)
   simp only [State.WithinDeadline, activated]
   omega
 
-private theorem privateStep_progress (inputs : graph.Inputs) (state : State graph)
+theorem privateStep_progress (inputs : graph.Inputs) (state : State graph)
     (who : Player) (command : PrivateCommand graph) (invariant : state.Invariant inputs) :
     State.ServiceProgress inputs 0 state (privateStep state who command) := by
   obtain ⟨config, clock, activated⟩ := privateStep_facts state who command
@@ -272,7 +272,7 @@ private theorem include_progress (runtime : EventGraphRuntime graph)
           rw [runtime.application.includePending_accept state id message next found accepted]
           exact handle_progress runtime inputs state.application next message invariant accepted
 
-private theorem playerStep_progress (runtime : EventGraphRuntime graph)
+theorem playerStep_progress (runtime : EventGraphRuntime graph)
     (inputs : graph.Inputs) (who : Player)
     (execution next : runtime.application.PolicyExecution)
     (command : runtime.application.PlayerCommand)

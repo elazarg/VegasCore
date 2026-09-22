@@ -4,6 +4,7 @@ import Vegas.Expr.Simple
 import Vegas.Pending.EventCommitmentBinding
 import Interaction.MessageApplicationPolicies
 import Interaction.MessageApplicationResponse
+import Vegas.Pending.ResponseProtocolNative
 
 /-! # A transmitted commitment stays fixed while messages are in flight
 
@@ -192,6 +193,46 @@ theorem atomic_reaction_after_delivery (bit : Bool) :
   simp only [MessageApplication.invokeResponse, atomicReaction, FinDist.pure_bind,
     MessageApplication.responseStep_submit, FinDist.map_pure]
   rfl
+
+/-- The service keeps two wire-and-reaction rounds before reserved inclusion,
+and keeps all three initial network-submission opportunities. -/
+example : eventServicePlan (graph := graph) [true, false] 2 0 =
+    [.grant 0, .player false, .player false, .player false,
+      .wire, .player true, .player false, .wire, .player true, .player false,
+      .includeLatest 0 false, .sample 0] := rfl
+
+private def responsePlayers : Bool → app.ResponsePolicy
+  | false => atomicReaction
+  | true => fun _ _ => FinDist.pure ⟨[], .wait⟩
+
+private def remainingReaction (bit : Bool) : ServiceControl runtime :=
+  ⟨0, [.player false, .includeLatest 0 false, .sample 0, .tick, .expire 0],
+    MessageApplication.PolicyExecution.initial app (seen bit)⟩
+
+/-- The actual response-service kernel invokes the information-local reaction
+before the reserved inclusion slot, retaining both pending commitments. -/
+theorem service_reaction_before_inclusion (bit : Bool) :
+    (runtime.responseControlStep
+      (FinDist.pure (fun input => nomatch input)) [true, false] 2 responsePlayers
+      (fun _ _ => FinDist.pure .wait)
+      (fun _ _ => FinDist.pure (ServiceOrder.increasing graph))
+      (some (remainingReaction bit))).map
+        (fun state => state.map (fun control => control.execution.native)) =
+      FinDist.pure (some (freshReaction bit)) := by
+  simp only [responseControlStep, remainingReaction, responsePlayers,
+    MessageApplication.invokeResponse, atomicReaction, FinDist.pure_bind,
+    MessageApplication.responseStep_submit, FinDist.map_pure]
+  rfl
+
+/-- The continuation cursor stays internal even when a player is invoked at
+two controls with different remaining plans and epoch counts. -/
+example (bit : Bool) (firstEpochs secondEpochs : Nat)
+    (firstRest secondRest : List (ServiceInstruction graph)) :
+    runtime.responseObserve false
+        (some ⟨firstEpochs, .player false :: firstRest, (remainingReaction bit).execution⟩) =
+      runtime.responseObserve false
+        (some ⟨secondEpochs, .player false :: secondRest, (remainingReaction bit).execution⟩) := by
+  rw [responseObserve_player, responseObserve_player]
 
 end
 

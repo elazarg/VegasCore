@@ -15,7 +15,7 @@ This target needs operational work as well as a stronger simulation theorem.
 The checked examples below expose a recovery defect and a general obstruction
 to filling in new continuations from an optimal source plan. Neither example
 is yet an end-to-end `IsSubgamePerfect` counterexample for the serviced runtime:
-that requires the actual multiplayer protocol adapter and a subgame-root proof.
+that requires service-specific continuation and subgame-root proofs.
 
 Keep private inputs separate from commitments. Make commitment-failure
 admission explicit in the source interface, and justify its omission separately
@@ -66,9 +66,25 @@ are the existing information-set-closed histories, and its payoff uses the
 existing randomized runner. The certified evaluation bound does not affect
 the predicate. No finite player universe or finite action domain is assumed.
 
-The native multiplayer adapter, atomic response integration, hostile-prefix
-recovery, and proper-root coverage remain open. No native SPE capstone is
-claimed.
+[ResponseProtocol.lean](../Vegas/Pending/ResponseProtocol.lean) presents the
+native response service with the actual players as strategic coordinates.
+Setup, wire scheduling, and adaptive order are fixed stochastic kernels.
+[ResponseProtocolPolicy.lean](../Vegas/Pending/ResponseProtocolPolicy.lean)
+proves an equivalence with all native response policies, using only own recall
+and the actual native view at invocation. The service cursor is not observed.
+The service plan retains all three initial owner invocation slots and every
+wire/roster reaction slot. Each invocation permits finite free private work
+and one network command; public submission opportunities are retained.
+
+The response adapter has checked termination, exact native invocation laws,
+and refinement of arbitrary continuations to native action sequences.
+[ResponseProtocolNative.lean](../Vegas/Pending/ResponseProtocolNative.lean)
+proves that responses consume zero clock ticks, retain live activation times,
+and preserve fixed candidate meanings. This is a response-service presentation;
+the paper's initial-play capstones concern the command-service compiler.
+Compiling graph policies into responses, recovery after arbitrary prefixes,
+source/native continuation correspondence, and proper-root coverage remain
+open. No native SPE capstone is claimed.
 
 ## What the theorem must mean
 
@@ -258,7 +274,7 @@ existence assumption is needed for transfer.
 | --- | --- | --- |
 | Abstract source | Typed residual program, store, own-action recall, and explicit per-site commitment admission | Initial and residual laws agree with the selected source interface |
 | Canonical graph | Existing configuration, event cursor, observations, and action histories | Residual laws agree with source suffix execution |
-| Serviced native game | Existing `ServiceControl` and `PolicyExecution`; actual own history and native view | Protocol play agrees with `runService`, including every player replacement |
+| Serviced native game | `ServiceControl` and `PolicyExecution`; actual own history and native view | Response policies correspond exactly to protocol policies; graph-policy compilation and source/native continuation laws remain required |
 
 The source's legal actions must implement the selected admission interface:
 values at a value-only site, values or forfeiture at an explicit failure site.
@@ -277,8 +293,8 @@ The native protocol must have the actual players as strategic coordinates.
 Setup, public chance, fixed wire policy, and fixed order policy belong in the
 transition kernel. The existing `serviceProtocol` has one analysis agent
 controlling focal-player, wire, and order decisions for a predraw proof; the
-scheduler protocol fixes the players and makes the scheduler strategic. Neither
-is the multiplayer game needed here.
+scheduler protocol fixes the players and makes the scheduler strategic. The multiplayer response adapter supplies the required strategic coordinates;
+neither analysis protocol can substitute for it.
 
 Keep an explicit termination certificate. Begin with sequential dependencies
 and a canonical order. Prove any extension to concurrent event scheduling as a
@@ -366,8 +382,11 @@ Private work changes neither transport nor the observations of other players
 under the application's locality premise. The atomic reaction test in
 [InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean) checks one observation-local response that reads a
 delivered bit, prepares a fresh candidate, and submits it without advancing time
-or including a packet. Integration with the event service and its strategy
-compiler remains required; the current paper capstones still use staged calls.
+or including a packet. The response-service kernel executes the same reaction
+before reserved inclusion and preserves every existing invocation slot.
+Its native refinement and clock laws are checked. The graph strategy compiler
+still needs an atomic-response translation and proofs at arbitrary prefixes;
+the paper capstones use the command-service translation.
 
 Submission must remain separate from delivery and inclusion. The wire can
 inspect the pending pool, deliver an envelope to a player's inbox, and invoke
@@ -435,15 +454,17 @@ the default design.
    proper-root closure changes the counterexample claim.
 2. **Close the semantic bridge.** Pure and behavioral source adapters,
    arbitrary-prefix laws, private setup, and the crossed-root tests are checked.
-   Build the native multiplayer adapter without changing observations, and
-   prove its correspondence for behavioral deviations.
+   The multiplayer native response adapter, native policy equivalence, and
+   invocation laws are checked. Prove the graph-policy response compiler and
+   source/native continuation correspondence, including behavioral deviations.
 3. **Prove the source-to-canonical edge.** Establish source suffix laws, policy
    restriction compatibility, and root coverage for histories legal under the
    selected commitment-admission interface. Keep concurrent scheduling outside
    this gate.
-4. **Validate the response contract.** Discharge the hostile prefixes for the
-   selected backend. Establish arbitrary-prefix recovery and residual choice
-   correspondence before writing the general native simulation proof.
+4. **Validate the response contract.** Native safety, submission binding,
+   bounded service, and zero clock cost for private response work are checked.
+   Discharge hostile prefixes for the selected compiler: establish recovery,
+   candidate allocation, cache handling, and residual choice correspondence.
 5. **Compose preservation.** Instantiate the continuation certificate at every
    native root and lift joint parameter/public-result utilities. Add a genuine
    noncredible-threat example that is Nash but not SPE, alongside a preserved
