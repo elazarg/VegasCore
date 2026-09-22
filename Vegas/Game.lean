@@ -19,6 +19,8 @@ import Vegas.Game.BehavioralSubgame
 -- checked. The native action protocol has exact native policy
 -- correspondence, bounded play, and native safety refinement.
 -- Binding material is constructible after every initialized native prefix.
+-- A checked proper native root nevertheless has a restricted public-outcome
+-- menu because older pending commitments can win inclusion.
 -- Compiling graph policies to native actions, full policy recovery, source/native
 -- continuation laws, and coverage of every proper native root remain to be proved.
 -- The initial-play Nash/Bayesian theorem does not discharge these obligations.

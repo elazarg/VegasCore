@@ -522,6 +522,35 @@ be proved for the compiler. No action can rewrite an accepted binding or cancel
 pending traffic. The paper's initial-play capstones use command policies;
 source/native continuation laws for the direct-action compiler remain open.
 
+### E9: restricted menus in the actual native service
+
+**Question.** Can pending traffic restrict continuation choices even when any
+fresh commitment can be submitted in one action?
+
+[PendingMenus.lean](../VegasTests/PendingMenus.lean) proves that it can. Two
+valid commitments to `1` and `2` are submitted before the last initial owner
+invocation. A fixed public wire policy selects an old packet according to
+whether a third envelope exists. Waiting selects `2`; another submission
+selects `1`. No third action can make a fresh value win. The prefix is reachable
+from initialization and is a proper subgame of the canonical native model.
+
+Every later native path can publish only the selected value or failure.
+The proof includes arbitrary replay, malformed traffic, cross-event packets,
+and later computation. For utilities `(3,2,1,0)` and `(3,1,2,0)` on public
+results `(0,1,2,failure)`, every residual randomized law has utility sum at most
+three. It cannot simultaneously attain value two for both tests.
+
+The remaining impossibility obligations are explicit: information-local native
+deviations attaining both benchmarks under the complete service, and one
+source SPE shared by the two utilities. The experiment does not yet prove
+nonexistence of a utility-independent SPE compiler for the serviced runtime.
+
+**Architecture requirement.** Commitment admission selects source semantics.
+A separate service/translation certificate must justify the continuation
+menus. Enabling forfeiture cannot stand in for this certificate. An automatic
+checker must distinguish a proved obstruction from an unresolved obligation;
+neither warrants changing the source game or weakening the requested property.
+
 ## Implementation order and stop conditions
 
 1. Pure and behavioral source adapters, mixed-site admission, private setup,

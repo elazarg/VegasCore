@@ -119,6 +119,27 @@ def actionStep (runtime : EventGraphRuntime graph) (who : Player)
     (execution : NativeExecution runtime) (action : PlayerAction graph) :
     FinDist (NativeExecution runtime) := FinDist.pure (runtime.takeAction who execution action)
 
+/-- Sending, replaying, and waiting cannot cancel or replace a pending envelope.
+In particular, a fresh commitment does not supersede an earlier submission. -/
+theorem transmit_lookup (runtime : EventGraphRuntime graph) (who : Player)
+    (state : runtime.application.State) (transmission : Option (Transmission graph))
+    (id : MessageId Player) (message : Message Player (Payload graph))
+    (pending : state.pool.lookup id = some message) :
+    (runtime.transmit who state transmission).pool.lookup id = some message := by
+  change state.pool.pending.find? (fun message => message.id = id) = some message at pending
+  cases transmission with
+  | none => exact pending
+  | some transmission =>
+      cases transmission with
+      | submit submission =>
+          simp only [transmit, MessagePool.submit, MessagePool.lookup, List.find?_append,
+            pending, Option.some_or]
+      | replay replayId =>
+          simp only [transmit, MessagePool.replay]
+          split
+          · simp only [MessagePool.lookup, List.find?_append, pending, Option.some_or]
+          · exact pending
+
 def invokeNative (runtime : EventGraphRuntime graph) (who : Player)
     (policy : NativePolicy graph) (execution : NativeExecution runtime) :
     FinDist (NativeExecution runtime) :=

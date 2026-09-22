@@ -428,6 +428,22 @@ theorem applicationStep_invariant {inputs : graph.Inputs}
       environmentStep_invariant runtime application result command hinvariant supported)
     state next action invariant member
 
+/-- Runtime reachability survives arbitrary finite message-machine paths. -/
+theorem applicationRun_invariant {inputs : graph.Inputs}
+    (runtime : EventGraphRuntime graph)
+    (state next : runtime.application.State) (actions : List runtime.application.Action)
+    (invariant : state.application.Invariant inputs)
+    (member : next ∈ (runtime.application.run actions state).support) :
+    next.application.Invariant inputs := by
+  exact runtime.application.run_application_invariant (State.Invariant inputs)
+    (fun current who command holds => privateStep_invariant current holds who command)
+    (fun _ _ _ holds => holds.copy rfl rfl rfl)
+    (fun current message result holds accepted =>
+      handle_invariant runtime current result message holds accepted)
+    (fun current command result holds supported =>
+      environmentStep_invariant runtime current result command holds supported)
+    state next actions invariant member
+
 /-- No native message action can undo a completed graph event. -/
 theorem applicationStep_completed_subset (runtime : EventGraphRuntime graph)
     (state next : (application runtime).State)

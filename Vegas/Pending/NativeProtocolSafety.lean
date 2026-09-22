@@ -4,6 +4,7 @@ import Vegas.Pending.NativeProtocolEvaluation
 import Vegas.Pending.EventServiceLaw
 import Vegas.Pending.EventCommitmentBinding
 import Vegas.Pending.EventFreshCandidates
+import Vegas.Pending.EventStore
 
 /-! # Native action safety and clocks
 
@@ -171,6 +172,128 @@ theorem native_reaches_candidate_fixed (runtime : EventGraphRuntime graph)
   have same := Option.some.inj (finalState.symm.trans nextEq)
   subst next
   exact runtime.run_candidate_fixed _ _ actions candidate fixed native
+
+/-- Native continuations preserve every typed value already stored, including
+private bindings and public results. Later packets cannot replace a winner. -/
+theorem native_reaches_store_of_some (runtime : EventGraphRuntime graph)
+    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    {fuel : Nat}
+    {history final : (runtime.nativeProtocol inputs roster reactionRounds wire order).History}
+    (path : (runtime.nativeProtocol inputs roster reactionRounds wire order).ReachesWithin
+      fuel history final)
+    (before after : NativeControl runtime)
+    (initialState : history.state = some before) (finalState : final.state = some after)
+    (field : graph.Field) (value : (graph.layout field).Value)
+    (stored : before.execution.native.application.config.store field = some value) :
+    after.execution.native.application.config.store field = some value := by
+  obtain ⟨next, nextEq, actions, native⟩ := runtime.native_reaches_native inputs roster
+    reactionRounds wire order path before initialState
+  have same := Option.some.inj (finalState.symm.trans nextEq)
+  subst next
+  exact runtime.applicationRun_store_of_some _ _ actions native field value stored
+
+/-- Every native history retains one actual initial draw and a graph-reachable
+configuration. Setup is not resampled at a continuation. -/
+theorem native_history_invariant (runtime : EventGraphRuntime graph)
+    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
+    ∀ {state}
+      (_trace : (runtime.nativeProtocol inputs roster reactionRounds wire order).Trace state)
+      (control : NativeControl runtime), state = some control →
+        ∃ input ∈ inputs.support, control.execution.native.application.Invariant input
+  | _, .start, _, initialized => by cases initialized
+  | _, .extend (source := before) prior joint _ reached, control, initialized => by
+      have priorInvariant := runtime.native_history_invariant inputs roster reactionRounds
+        wire order prior
+      have step : some control ∈
+          (runtime.nativeTransition inputs roster reactionRounds wire order
+            before joint).support := by
+        simpa only [nativeProtocol, initialized] using reached
+      cases before with
+      | none =>
+          simp only [nativeTransition, FinDist.support_map, Set.mem_image] at step
+          obtain ⟨input, supported, same⟩ := step
+          cases Option.some.inj same
+          exact ⟨input, supported, State.initial_invariant input⟩
+      | some before =>
+          obtain ⟨input, supported, invariant⟩ := priorInvariant before rfl
+          obtain ⟨after, same, actions, native⟩ := runtime.nativeTransition_native
+            inputs roster reactionRounds wire order before (some control) joint step
+          cases Option.some.inj same
+          exact ⟨input, supported, runtime.applicationRun_invariant _ _ actions invariant native⟩
+
+/-- Later invocations retain every earlier own-action record, including
+records created by deviations. Environment instructions never edit recall. -/
+theorem nativeInstructionStep_history_prefix (runtime : EventGraphRuntime graph)
+    (wire : runtime.application.WirePolicy) (instruction : ServiceInstruction graph)
+    (execution next : NativeExecution runtime) (joint : Player → Option (PlayerAction graph))
+    (reached : next ∈ (runtime.nativeInstructionStep wire instruction execution joint).support)
+    (who : Player) :
+    execution.principalHistory who <+: next.principalHistory who := by
+  cases instruction with
+  | player actor =>
+      have same := FinDist.mem_support_pure.mp reached
+      subst next
+      by_cases acts : who = actor
+      · subst who
+        rw [runtime.takeAction_history_self]
+        exact List.prefix_append _ _
+      · simp only [takeAction, ite_eq_right acts, List.prefix_refl]
+  | wire | grant event | includeLatest event actor | sample event | tick | expire event =>
+      obtain ⟨middle, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      exact List.prefix_refl _
+
+theorem nativeTransition_history_prefix (runtime : EventGraphRuntime graph)
+    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (before after : NativeControl runtime) (joint : Player → Option (PlayerAction graph))
+    (reached : some after ∈
+      (runtime.nativeTransition inputs roster reactionRounds wire order
+        (some before) joint).support) (who : Player) :
+    before.execution.principalHistory who <+: after.execution.principalHistory who := by
+  rcases before with ⟨epochs, plan, execution⟩
+  cases plan with
+  | nil =>
+      cases epochs with
+      | zero => cases Option.some.inj (FinDist.mem_support_pure.mp reached); rfl
+      | succ epochs =>
+          obtain ⟨chosen, _, equal⟩ := FinDist.support_map .. ▸ reached
+          cases Option.some.inj equal
+          rfl
+  | cons instruction rest =>
+      obtain ⟨next, supported, equal⟩ := FinDist.support_map .. ▸ reached
+      cases Option.some.inj equal
+      exact runtime.nativeInstructionStep_history_prefix wire instruction execution next
+        joint supported who
+
+/-- Own recall is monotone along arbitrary canonical continuations. This is a
+history law, independent of the compiled policy and of proper-root status. -/
+theorem native_reaches_history_prefix (runtime : EventGraphRuntime graph)
+    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    {fuel : Nat}
+    {history final : (runtime.nativeProtocol inputs roster reactionRounds wire order).History}
+    (path : (runtime.nativeProtocol inputs roster reactionRounds wire order).ReachesWithin
+      fuel history final)
+    (before after : NativeControl runtime)
+    (initialState : history.state = some before) (finalState : final.state = some after)
+    (who : Player) :
+    before.execution.principalHistory who <+: after.execution.principalHistory who := by
+  induction path generalizing before with
+  | refl fuel history =>
+      cases Option.some.inj (initialState.symm.trans finalState)
+      rfl
+  | @step fuel history target joint legal reached realized rest ih =>
+      have first : reached ∈
+          (runtime.nativeTransition inputs roster reactionRounds wire order
+            (some before) joint).support := by
+        simpa only [nativeProtocol, initialState] using realized
+      obtain ⟨middle, middleEq, _, _⟩ := runtime.nativeTransition_native
+        inputs roster reactionRounds wire order before reached joint first
+      have firstPrefix := runtime.nativeTransition_history_prefix inputs roster reactionRounds
+        wire order before middle joint (middleEq ▸ first) who
+      exact firstPrefix.trans (ih middle middleEq finalState)
 
 /-- Every initialized legal native history has fresh, unused candidates,
 including histories produced entirely by deviations. Setup is sampled once;

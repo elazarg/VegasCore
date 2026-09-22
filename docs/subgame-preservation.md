@@ -13,9 +13,16 @@ should use the canonical `GameTheory.Protocol.InformationModel` definitions.
 
 This target needs operational work as well as a stronger simulation theorem.
 The checked examples below expose a recovery defect and a general obstruction
-to filling in new continuations from an optimal source plan. Neither example
-is yet an end-to-end `IsSubgamePerfect` counterexample for the serviced runtime:
-that requires service-specific continuation and subgame-root proofs.
+to filling in new continuations from an optimal source plan. These do not by
+themselves establish an end-to-end `IsSubgamePerfect` counterexample for the
+serviced runtime: that requires service-specific continuation and subgame-root
+proofs.
+
+The direct-action pending-menu example additionally proves reachability,
+proper-root closure, and a restriction on every residual public outcome for
+the actual service. Its numerical incompatibility holds for randomized laws.
+The native policy deviation witnesses and common source SPE witness are still
+required to conclude a compiler impossibility theorem from this example.
 
 Keep private inputs separate from commitments. Make commitment-failure
 admission explicit in the source interface, and justify its omission separately
@@ -179,19 +186,6 @@ nonexistence of a utility-independent completion function for this plan and
 menu. It is an abstract continuation obstruction, not a theorem that every
 Vegas implementation has such a continuation.
 
-For the command-service runtime, there is a concrete candidate witness:
-prepare candidates `b` and `c`, leave `a` unprepared, and reach the last owner
-invocation before a binding expires. Submitting an already prepared candidate
-uses one invocation; preparing and submitting `a` takes two. With a suitable
-service order, the binding can be the last event visited before the expiry
-sweep. The remaining choices could then expose exactly this preference gap.
-
-Before using that argument as a runtime impossibility theorem, check the whole
-prefix, the exact residual outcome menu (including failure), and proper-root
-closure. Give failure utility below both `b` and `c`. Account for replay,
-cross-event submissions, reserved inclusion, and all remaining service slots.
-The abstract lemma alone does not discharge these obligations.
-
 The direct-action native game has no preparation-capacity obstruction.
 Every finite prefix leaves fresh handles, and one action can submit any value. The checked construction does not assume an empty cache or
 an unused canonical event slot. An existing transmitted candidate remains
@@ -199,6 +193,65 @@ binding, and an earlier pending packet can still win inclusion; the two cases
 are checked in `VegasTests/InFlightCommitment.lean`. A continuation certificate
 must address these remaining network choices. It cannot treat a new submission
 as cancellation of the old one.
+
+### A restricted menu in a proper native subgame
+
+[PendingMenus.lean](../VegasTests/PendingMenus.lean) uses the actual native
+protocol, with one player, an integer binding, and its public disclosure.
+Deadlines are two, the event order is fixed, and one wire opportunity follows
+the three initial owner invocations. The reaction roster is empty; this is an
+allowed service instance, not an alteration to the protocol.
+
+The first two owner actions submit valid commitments to `1` and `2`. Consider
+the history just before the third owner action. A fixed public wire policy
+includes the first envelope if an envelope with the next sender-local id
+exists, and the second otherwise. It inspects traffic, not hidden values.
+The player can select `1` by submitting another packet and `2` by waiting.
+Even a valid fresh commitment to `0` cannot win this inclusion.
+
+```mermaid
+flowchart LR
+  A["Submit commitment to 1"] --> B["Submit commitment to 2"]
+  B --> R["Proper native subgame"]
+  R -->|"Third envelope exists"| C["Wire accepts old commitment to 1"]
+  R -->|"No third envelope"| D["Wire accepts old commitment to 2"]
+  C --> E["Public result: 1 or failure"]
+  D --> F["Public result: 2 or failure"]
+```
+
+The proof covers every third action: private memory, replay, arbitrary opening
+data, malformed packets, and cross-event submissions. It then covers every
+later finite native trace. These traces cannot publish `0`; the selected
+binding is immutable and a successful disclosure must match it. Intermediate
+endpoints may still have an unfinished publication.
+
+This prefix is a proper root under the canonical information-set closure
+definition. The deterministic service fixes the prefix before the first two
+actions, and the player's recall identifies those actions at every subsequent
+decision. Equal decision information therefore cannot cross the root.
+
+For the numerical obstruction, use public-result utilities:
+
+| Public result | Utility preferring 1 | Utility preferring 2 |
+| --- | ---: | ---: |
+| 0 | 3 | 3 |
+| 1 | 2 | 1 |
+| 2 | 1 | 2 |
+| Failure | 0 | 0 |
+
+Every law supported by the residual native paths has utility sum at most three.
+Thus no randomized law has value at least two for both utilities. What remains
+is to prove that information-local native policies attain each benchmark under
+the complete remaining service, and to exhibit one source SPE for both tests.
+The checked numerical result alone is not a native SPE impossibility theorem.
+
+**Design consequence.** Fresh handles and explicit source forfeiture address
+different obligations from pending-packet selection. An SPE certificate must
+account for service-created restricted menus. Do not treat source admission of
+failure as a sufficient backend capability, silently cancel older packets, or
+remove wire reactions to make a continuation correspondence hold. Keep these
+requirements in the service/translation evidence; they do not justify exposing
+message identifiers or packet pools in the abstract language.
 
 ## Protocol architecture
 
@@ -286,7 +339,7 @@ existence assumption is needed for transfer.
 | --- | --- | --- |
 | Abstract source | Typed residual program, store, own-action recall, and explicit per-site commitment admission | Initial and residual laws agree with the selected source interface |
 | Canonical graph | Existing configuration, event cursor, observations, and action histories | Residual laws agree with source suffix execution |
-| Serviced native game | `ServiceControl` and `PolicyExecution`; actual own history and native view | Response policies correspond exactly to protocol policies; graph-policy compilation and source/native continuation laws remain required |
+| Serviced native game | `NativeControl` and `NativeExecution`; actual own history and native view | Native policies correspond exactly to protocol policies; graph-policy compilation and source/native continuation laws remain required |
 
 The source's legal actions must implement the selected admission interface:
 values at a value-only site, values or forfeiture at an explicit failure site.
@@ -456,9 +509,10 @@ the default design.
 
 1. **Validate the actual subgames.** Prove native prefix reachability,
    information-set closure, and complete continuation laws for competing-packet
-   and irreversible-failure examples. Command-service staging examples do not
-   establish claims about the direct-action game. A failure to establish
-   proper-root closure changes the counterexample claim.
+   and irreversible-failure examples. The pending-menu example has checked
+   reachability, proper-root closure, and the universal residual public bound;
+   its policy-level deviation and source SPE witnesses remain. A failure to
+   establish proper-root closure changes a counterexample claim.
 2. **Close the semantic bridge.** Pure and behavioral source adapters,
    arbitrary-prefix laws, private setup, and the crossed-root tests are checked.
    The multiplayer native action adapter, native policy equivalence, and
