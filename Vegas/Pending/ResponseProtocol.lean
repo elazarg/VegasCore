@@ -10,6 +10,9 @@ Every environment instruction and intervening player is a boundary. The
 information model retains the original native input; its menu requires a
 proof that the response capacity is determined by that input. A hidden
 service suffix is never supplied to a policy to discharge that obligation.
+
+This compares presentations of the fixed service. Explicit reactive scheduling
+uses one optional transmission per activation in `Interaction.ReactiveProtocol`.
 -/
 
 noncomputable section

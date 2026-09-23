@@ -23,12 +23,13 @@ histories, reuses source observations and execution, and has a playerwise
 equivalence for admitted pure and behavioral policies. Private setup draws once before play;
 the complete terminal-state law agrees with source execution at every prefix.
 The pure and behavioral SPE characterizations and conditional preservation and
-reflection theorems are checked. The actual native service admits a checked
+reflection theorems are checked. The fixed native service admits a checked
 counterexample to unrestricted utility-independent behavioral SPE preservation,
 even when the source admits forfeiture. Restricted positive correspondence and
-an automatic checker remain open. The native action adapter has checked policy
-correspondence and execution refinement; its graph-policy compiler remains an
-obligation. The [SPE plan](subgame-preservation.md) states the exact negative
+an automatic checker remain open. The reactive adapter has checked canonical
+policy and execution correspondence. Its graph/source policy compiler is
+defined; service and compiler correctness remain open.
+The [SPE plan](subgame-preservation.md) states the exact negative
 scope and the remaining positive obligations.
 
 ## Requirements
@@ -575,11 +576,11 @@ update locally. Native counter/recall invariants and the local view update are
 checked. Both directions of the native per-response sampling law retain
 correlated choices, all packets, and private recall. The canonical response
 protocol is bounded and every coalesced history expands to a native history.
-Its information model is instantiated for an empty reaction roster. General
-roster capacity inference remains open. Uniform playerwise policy maps and
+Its information model is instantiated for an empty reaction roster. Uniform playerwise policy maps and
 their endpoint laws at every legal response history are checked, using only
 own recall to recover response entries. Composition through the canonical
-whole-service runner remains open.
+whole-service runner remains open. These are comparisons of the fixed service;
+general roster capacity inference is not required by the reactive protocol.
 
 The exhaustive finite experiment removes the common-SPE obstruction by
 coalescing the one-player tree. A separate Alice–Bob–Alice game retains the
@@ -589,19 +590,41 @@ common optimum at that restricted continuation. The pure SPE outcome sets
 still agree with the source. The experiment is not a native-service adapter
 and does not prove an impossibility for the coalesced native protocol.
 
-**Architecture requirement.** Specify response boundaries and packet budgets
+**Architecture requirement.** Specify activation and scheduler boundaries
 in runtime semantics. Use ordinary canonical SPE at that granularity. Retain
 all external observations and interactions, and distinguish a uniform lift of
 complete SPE strategies from preservation of SPE outcome laws.
+
+### E11: one message per explicit activation
+
+The [reactive protocol](network-and-compilation.md) returns control to the
+scheduler after every player response. The scheduler can observe the actual
+emitted envelope and activate any player again. There is no batch capacity or
+reaction roster. Private computation, memory, and opening material belong to
+the one player action. Network inputs record broadcaster and envelope; own
+output recall replaces a player-facing sent list.
+
+The canonical information model, bounded play, playerwise behavioral policy
+equivalence, state-runner correspondence, and broadcast-recall invariant are
+checked. A canonical execution regression reads and answers a message while
+both packets remain pending, then lets the network choose another activation
+from the reply. Vegas binding meanings are fixed on submission and retained
+by every supported transition.
+
+The graph/source policy compiler and a concrete scheduler with one reserved
+owner activation are defined. Service protection/completion and the full
+compiler outcome/deviation laws remain open. Neither the fixed-service
+pending-menu impossibility nor the finite interleaved game establishes an
+SPE result for this reactive target.
 
 ## Implementation order and stop conditions
 
 1. Pure and behavioral source adapters, mixed-site admission, private setup,
    residual laws, and SPE characterizations are checked, without finite payload
    domains. Do not infer pure-to-behavioral SPE equivalence from value agreement.
-2. The multiplayer native action adapter, policy equivalence, bounded play,
-   native refinement, and fresh binding-material construction are checked.
-   Establish the graph-policy action compiler and the full source/native
+2. The reactive adapter, policy equivalence, bounded play, canonical execution,
+   and local binding construction are checked. The graph/source policy compiler
+   is defined. Prove service protection/completion and the full source/native
    continuation bridge, including hostile
    prefixes and all proper native roots. A generic wrapper is not evidence.
 3. Instantiate the SPE transfer theorem and use the canonical failure example

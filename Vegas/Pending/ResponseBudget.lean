@@ -12,6 +12,9 @@ canonical information model uses precisely the original native input.
 For a nonempty roster, initial owner responses and later reactions may have
 different lengths. Their capacity must be recovered from own recall; this
 module makes no certificate claim for that case.
+
+This certificate concerns the fixed-service comparison. The reactive protocol
+has no response capacities or reaction rosters.
 -/
 
 noncomputable section

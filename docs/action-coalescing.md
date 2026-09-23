@@ -1,26 +1,27 @@
 # Action boundaries and subgame perfection
 
-For the underlying network operations, the origin of the three owner calls,
-and the compiler's proof boundary, see
+For the reactive network operations, explicit activations, and compiler proof
+boundary, see
 [The message runtime, its service schedule, and compilation](network-and-compilation.md).
 
 ## Recommendation
 
-Use one strategic decision for an uninterrupted player response. Represent its
-implementation by the same bounded sequence of transmissions and private
-records that the service already permits. Retain decision boundaries across
-delivery, inclusion, other players' responses, chance, and clock changes.
-Use ordinary canonical SPE on the resulting game.
+Use one optional transmission per activation. Private computation, sampling,
+and memory belong inside that action. After the response, let the scheduler
+observe the output and choose the next activation or network operation. Use
+ordinary canonical SPE on that protocol.
 
-This removes a dependence on how an implementation decomposes a response. It
-does not prove source-to-native SPE preservation. A runtime can still offer a
-restricted continuation menu after a genuinely external interaction.
+This design has no response capacity or fixed reaction roster. It preserves
+delivery and reactions before inclusion. It does not prove source-to-native
+SPE preservation: pending traffic may still restrict continuation menus.
 
-The native service has three consecutive owner invocations after each grant.
+The fixed-service comparison model has three consecutive owner invocations after each grant.
 The checked [pending-menu impossibility](subgame-preservation.md#status-and-recommendation)
 cuts between the second and third. Coalescing that block removes this particular
 root. The theorem about the split protocol remains correct; it does not apply
-unchanged to the coalesced protocol.
+unchanged to the coalesced or reactive protocol. The coalescing results below
+compare particular presentations of the fixed service. They do not impose a
+packet batch on the reactive network.
 
 ## What may be coalesced
 
@@ -95,7 +96,7 @@ that remaining execution theorem would equate split and coalesced SPE.
 ### Native locality
 
 Own submission allocates a sender-local message identifier. The current view
-does not explicitly contain `nextSerial`. On initialized executions this
+does not explicitly contain the next serial number. On initialized executions this
 counter is reconstructed by counting authored submissions in own recall;
 replays do not increment it.
 [`native_history_counters`](../Vegas/Pending/NativeRecall.lean) proves the
@@ -110,17 +111,18 @@ over all raw execution records would be false.
 with the counter invariant. The sampler receives only `NativeInput`; neither
 the underlying native state nor the invariant proof enters its observation.
 
-### Choosing the boundary
+### The fixed-service comparison boundary
 
-For the initial owner block, keep the existing budget of three slots, allowing
-waits. Keep wire slots and subsequent roster reactions in their original
+The comparison holds the initial owner block at three slots, allowing waits,
+and keeps wire slots and subsequent roster reactions in their specified
 order. Increasing the packet budget, deleting packets, or treating a send as
-replacing a previous pending send would change the runtime's capabilities.
+replacing a previous pending send would change the compared capabilities.
 
 Do not compute a maximal run from a hidden service suffix and disclose its
 length to the policy. A response budget must be known from the player's
 existing information, or its observation must be an explicit semantic choice.
-The fixed initial block is the simplest place to establish that fact.
+The fixed initial block is one place to establish that fact. The reactive
+protocol instead has the same single-action menu at every activation.
 
 Using consecutive same-player calls with no environment step is a conservative
 criterion. More general coalescing transformations are possible, but require
@@ -292,21 +294,25 @@ needs reachable histories, full proper-root closure including future moves by
 other players, and bounds against arbitrary traffic under the entire service.
 Those obligations remain open for a coalesced service.
 
-## Implementation path
+## Reactive protocol and remaining work
 
-1. Recover response capacities from own recall for general reaction rosters.
-   Keep the original observation and instantiate the canonical information
-   model with its adequacy proof.
-2. Construct uniform full-service policy and deviation maps. Recover the
-   canonical behavioral policies corresponding to `ResponsePolicy`, then compose
-   the checked entry laws through the canonical service runner. The playerwise
-   maps and response-entry reconstruction are checked; the whole-run theorem
-   must also cover arbitrary player replacements.
-3. Compare SPE on the response protocol directly; endpoint equivalence alone
-   does not equate the two SPE predicates.
-4. Test the interleaved restricted-menu mechanism against the actual service.
-   A failed continuation certificate must report whether it is a proved
-   obstruction or an obligation still requiring a proof.
+The [reactive protocol](../Interaction/ReactiveProtocol.lean) has explicit
+scheduler activations and a checked canonical information model for arbitrary
+players. Its raw policies correspond to canonical behavioral policies in both
+directions; its state kernel agrees with canonical randomized execution.
+No capacity inference is needed. The network keeps broadcaster/envelope input
+history, and players recover their own broadcasts from recall.
+
+The concrete service reserves one owner activation and allows the network to
+activate any player at subsequent network opportunities. The source strategy
+compiler samples, remembers, and submits in that one activation. Service
+protection and completion, and the full compiler outcome/deviation laws remain
+open. See [the proof-status table](network-and-compilation.md#8-what-is-proved).
+
+The SPE investigation must use this actual service and its information model.
+In particular, the interleaved finite obstruction needs a reachable native
+realization and full proper-root closure. A failed continuation certificate
+must distinguish a proved obstruction from an unresolved obligation.
 
 The action boundary belongs to the runtime semantics. Source commitment
 admission remains a separate semantic choice. The requested preservation

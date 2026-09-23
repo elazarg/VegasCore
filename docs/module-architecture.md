@@ -4,7 +4,7 @@
 | --- | --- |
 | `GameTheory` | Pinned probability and game-theory foundation |
 | `GameTheoryExtensions` | Reusable simulations, mixtures, utility transport, and probability lemmas |
-| `Interaction` | Message pools, authenticated histories, policies, inclusion service, and ideal commitments |
+| `Interaction` | Message networks, explicit activations, policies, recall, inclusion, and ideal commitments |
 | `Vegas.Foundation` | Shared typed contexts, values, expressions, and result interfaces |
 | `Vegas.Expr` | Concrete typed expressions and distributions |
 | `Vegas.Source` | Failure-aware sequential source syntax, semantics, accounting, and safety |
@@ -23,6 +23,17 @@ pool, the policies and the invariants, but not `IdealCommitments`,
 `MessageReplay`, `MessageApplicationPending` or `MessageApplicationLocality`.
 Those characterize what the host permits, which is worth stating and worth not
 mistaking for a step in a proof; their module headers say so.
+
+The reactive protocol in `Interaction` is source-independent. Its scheduler
+chooses an activation or network/application operation; a player returns
+private memory and at most one transmission. Network inputs record broadcaster
+and envelope, while player recall records its own outputs. Canonical policy
+and execution correspondence and bounded play are checked. `Vegas.Pending`
+supplies the event application, graph-policy compiler, and a reserved-service
+scheduler; `Vegas.Game.ReactiveCompilation` composes the source policy edge.
+Reactive service and full compiler correctness remain open. The paper's
+command-service capstones and fixed-service coalescing comparisons have their
+own stated targets and do not establish the reactive compiler theorem.
 
 Production libraries do not import tests or the paper audit. Generic
 game-theoretic results do not depend on Vegas. `Interaction` is independent of

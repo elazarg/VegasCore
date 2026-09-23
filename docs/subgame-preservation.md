@@ -11,8 +11,8 @@ utility-independent, playerwise compiler, at every proper native subgame.
 Reflection is a separate goal with a separate root-coverage obligation. Both
 should use the canonical `GameTheory.Protocol.InformationModel` definitions.
 
-The unrestricted target is impossible for the present service class. The
-checked pending-menu example uses the actual native service and canonical
+The unrestricted target is impossible for the fixed service in the checked
+pending-menu example. It uses the actual native service and canonical
 behavioral SPE: two public utilities share a source SPE, but no native policy
 is SPE for both. The theorem rules out every utility-independent whole-profile
 translation for this game and service, hence also every playerwise compiler.
@@ -27,20 +27,23 @@ checked endpoint law, and a separate interleaved finite experiment are in
 [Action boundaries and subgame perfection](action-coalescing.md). The finite
 experiment still obstructs a uniform lift of complete SPE strategies after
 external interaction, while preserving the tested SPE outcome sets. Its
-coalesced native-service realization remains open.
+reactive native-service realization remains open.
 
-The coalesced native protocol, termination, bounded horizon, and expansion of
-every coalesced history to an original native history are checked. The original
-two-call counterexample execution is proved unreachable in that protocol.
-Native sampling laws are checked in both directions. Uniform playerwise maps
-recover response entries from own recall and preserve the endpoint law at
-every legal response history, including off-path entries. The information model
-uses the original observations and is instantiated for an empty reaction
-roster. General roster capacity inference and the canonical whole-service
-execution/deviation correspondence remain open. No coalesced native SPE
-preservation theorem is claimed.
+The implementation target is the [reactive protocol](network-and-compilation.md):
+one optional message per activation, followed by an explicit scheduler choice.
+Private computation and opening material require no separate turns. The
+canonical information model, termination, behavioral policy correspondence,
+and evaluator correspondence are checked for arbitrary players and schedulers.
+The network observes broadcaster/envelope inputs; each player remembers its
+own emitted messages. Reading and reacting before inclusion are retained.
 
-The proof includes initialized prefix reachability, proper-root closure,
+The source policy compiler and a reserved-service scheduler are defined.
+Service protection/completion, full outcome/deviation correspondence, and SPE
+preservation or impossibility for this target remain open. General reaction
+roster capacity inference is not an obligation of this model. The coalescing
+modules retain separate comparisons of fixed-service presentations.
+
+The fixed-service impossibility proof includes initialized prefix reachability, proper-root closure,
 information-local deviations under the complete remaining service, and a
 bound for arbitrary randomized continuations. The two-event native graph has
 the same publication kernel as the source program for every binding and
@@ -117,7 +120,8 @@ when the packet is included while ready and timely.
 The internal expansion into message-machine operations supplies safety proofs;
 it is not a strategic equivalence with a game containing preparation decisions.
 The paper's initial-play capstones concern the command-service compiler.
-Compiling graph policies to direct actions remains open. Positive continuation
+The reactive graph/source policy compiler is defined; its full correctness
+remains open. Positive continuation
 and proper-root coverage need a scope that excludes the checked obstruction.
 No positive native SPE capstone is claimed.
 
@@ -559,20 +563,21 @@ the default design.
    for this service class cannot exist. A positive result must state additional
    service or game premises, or a different preservation claim. Any further
    counterexample needs its own proper-root and continuation proofs. The checked
-   coalesced protocol and uniform playerwise endpoint laws still need general
-   roster capacity inference and composition through the canonical service
-   runner. The split-protocol impossibility does not discharge this gate.
+   reactive protocol allows adaptive activations and uses no response capacities.
+   Its SPE preservation or impossibility needs a separate proof. The fixed
+   split-protocol impossibility does not discharge this gate.
 2. **Close the semantic bridge.** Pure and behavioral source adapters,
    arbitrary-prefix laws, private setup, and the crossed-root tests are checked.
-   The multiplayer native action adapter, native policy equivalence, and
-   invocation laws are checked. Prove the graph-policy action compiler and
-   source/native continuation correspondence, including behavioral deviations.
+   The reactive adapter, canonical policy equivalence, and
+   execution laws are checked. Prove service protection/completion, compiler
+   correctness, and source/native continuation correspondence, including
+   behavioral deviations.
 3. **Prove the source-to-canonical edge.** Establish source suffix laws, policy
    restriction compatibility, and root coverage for histories legal under the
    selected commitment-admission interface. Keep concurrent scheduling outside
    this gate.
-4. **Validate the native action contract.** Native safety, submission binding,
-   bounded service, and private-memory locality are checked.
+4. **Validate the native action contract.** The reactive protocol has checked
+   submission binding and bounded play; its application completion law remains open.
    Discharge hostile prefixes for the selected compiler: establish recovery,
    candidate allocation, source-action recall, and residual choice correspondence.
 5. **Compose preservation.** Instantiate the continuation certificate at every

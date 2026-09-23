@@ -1,6 +1,7 @@
 import VegasTests.EventGraph
 import VegasTests.ContinuationRecovery
 import VegasTests.InFlightCommitment
+import VegasTests.ReactiveRuntime
 import VegasTests.PendingMenus
 import VegasTests.PendingMenusStrategies
 import VegasTests.PendingMenusSource
