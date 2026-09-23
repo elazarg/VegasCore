@@ -172,6 +172,12 @@ The next design investigation needs to address the tradeoff directly:
   explicit, pending withholding call and two fresh opening envelopes. Changing
   either behavior changes the application/service contract and needs its own
   justification and proof. It is not implied by transaction replay protection.
+- **Authorization after dependencies complete.** Requiring every executable
+  packet to authenticate evidence unavailable before its predecessors complete
+  would exclude the early packets in this witness. The
+  [dependency-authorization note](dependency-authorized-submission.md) separates
+  this proposed contract from ordinary timing checks and records possible
+  blockchain mechanisms. It is not an implemented SPE result.
 - **Recovery policy.** A different recovery rule could choose the early
   opening here. General utility-independent preservation would still need a
   proof across source games and utilities. This example does not prove such a
