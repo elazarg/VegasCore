@@ -14,6 +14,7 @@ import Vegas.Pending.ReactiveServiceCompletion
 import Vegas.Pending.ReactiveFreshCandidates
 import Vegas.Pending.ReactiveSafety
 import Vegas.Pending.ReactiveStateInvariant
+import Vegas.Pending.ReactiveStore
 import Vegas.Pending.NativeResponseSampling
 import Vegas.Pending.ResponseBudget
 import Vegas.Pending.ResponsePolicyCorrespondence

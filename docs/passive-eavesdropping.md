@@ -81,16 +81,18 @@ rules as well as arbitrary player and scheduling policies.
 
 ## SPE boundary
 
-SPE preservation for this reactive model is open. A counterexample must use
-its actual information model, legal initialized histories, and a proper root
-closed under every future decision information set. Returning an author's own
-packet or conditioning inclusion on a private leak record cannot witness a
-counterexample here.
+Unrestricted reactive scheduling does not admit a utility-independent SPE
+preservation theorem. The [public inclusion counterexample](reactive-inclusion-obstruction.md)
+uses the actual information model, a legal initialized history, and a proper
+root closed under every future decision information set. Two public-result
+utilities share a source SPE but have no common native SPE for its scheduler.
+Its single player receives no leaks; inclusion responds to public traffic.
+Neither self-delivery nor access to a private leak record is involved.
 
-A restricted continuation may still arise from competing valid submissions
-and adaptive inclusion based on public traffic. Whether this obstructs SPE
-under the intended action boundaries requires a separate argument. No SPE
-preservation or impossibility theorem for passive eavesdropping is assumed.
+This is a particular scheduler permitted by the generic reactive interface,
+not the reserved epoch scheduler. Preservation under a stronger service
+contract remains open. The counterexample supplies no reason to remove
+passive observation.
 
 The [inclusion investigation](inclusion-and-spe.md) isolates a positive local
 condition and implements a uniform selector over distinct pending identifiers.

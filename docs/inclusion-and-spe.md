@@ -8,6 +8,13 @@ inclusion rules, and a checked SPE transfer theorem that permits lotteries
 over source continuations. Neither yet establishes SPE preservation for the
 complete reactive compiler.
 
+The [reactive inclusion counterexample](reactive-inclusion-obstruction.md)
+proves that unrestricted public scheduling prevents a uniform SPE theorem:
+two public utilities share a source SPE but have no common target SPE for
+one permitted scheduler. Its commitments are binding, responses are atomic,
+and there are no leaks. The positive investigation therefore needs a stronger
+service contract; the counterexample does not rule out such a contract.
+
 The active runtime retains partial passive eavesdropping and the scheduler's
 public-history memory. The uniform selector below is an additional component
 for investigating a preservation contract; the reserved service does not use
@@ -159,7 +166,8 @@ remaining native obligations are:
    not establish those laws.
 
 Multiple candidates and uncertain inclusion are therefore insufficient reasons
-to abandon preservation. The full native theorem remains open.
+to abandon preservation. Preservation through a constrained service remains
+open; unrestricted public scheduling has the checked counterexample above.
 
 ## Relation to a blockchain runtime
 

@@ -11,11 +11,20 @@ utility-independent, playerwise compiler, at every proper native subgame.
 Reflection is a separate goal with a separate root-coverage obligation. Both
 should use the canonical `GameTheory.Protocol.InformationModel` definitions.
 
-SPE preservation for the reactive target with passive eavesdropping is open.
-Its [observation contract](passive-eavesdropping.md) excludes self-delivery and
-keeps private observation samples out of scheduler view and recall. The
-scheduler retains its memory of public traffic and its own decisions. A
-completely forgetful inclusion policy is a separate possible restriction.
+Unrestricted reactive scheduling has a checked SPE impossibility. The
+[public inclusion counterexample](reactive-inclusion-obstruction.md) uses
+valid competing commitments, atomic responses, and a deterministic scheduler
+that reacts to public traffic. Two utilities share a source SPE but have no
+common native behavioral SPE. The proof includes a legal initialized history
+and full proper-root closure in the reactive information model.
+
+This is a standalone scheduler permitted by the generic reactive interface,
+not the reserved epoch scheduler. Preservation under a stronger service
+contract remains open. The [observation contract](passive-eavesdropping.md)
+excludes self-delivery and keeps private observation samples out of scheduler
+view and recall. Those exclusions hold in the counterexample, which needs no
+leaks. Its decisive inclusion rule reads only current pending traffic, so
+forgetting public history alone does not exclude it.
 
 The [inclusion investigation](inclusion-and-spe.md) gives a checked positive
 local condition: a fresh proposal competes with an unchanged law over retained
@@ -540,9 +549,10 @@ the bit as an extra input: it reads the actual received packet.
 Binding is established by submission. Reading and reacting to other pending
 messages remains possible through the separate wire and player invocations.
 
-The fixed-service pending-menu theorem rules out unrestricted continuation
-coverage for its split protocol. The passive reactive model requires a separate
-argument at its own proper roots. A positive native edge needs premises governing competing
+Both the fixed-service pending-menu theorem and the
+[reactive inclusion theorem](reactive-inclusion-obstruction.md) rule out
+unrestricted continuation coverage for their specified services, using each
+protocol's own proper roots. A positive native edge needs premises governing competing
 packets, irreversible acceptance, adaptive wire reactions, and recovery after
 earlier submissions. Direct action construction alone supplies none of these
 strategic premises.
@@ -564,16 +574,14 @@ the default design.
 
 ## Proof gates
 
-1. **Select a feasible scope.** The pending-menu impossibility includes native
-   reachability, proper-root closure, randomized continuation bounds, native
-   deviations, and a common source behavioral SPE. An unrestricted certificate
-   for that split service cannot exist. A positive result must state additional
-   service or game premises, or a different preservation claim. Any further
-   counterexample needs its own proper-root and continuation proofs. The checked
-   fixed-service counterexample does not settle the passive reactive model.
-   Any reactive witness must use only foreign pending-message observations,
-   keep private leak samples out of scheduler recall, and establish full
-   information-set closure.
+1. **Select a feasible scope.** The fixed-service and reactive pending-menu
+   impossibilities include native reachability, proper-root closure, randomized
+   continuation bounds, native deviations, and a common source behavioral SPE.
+   Unrestricted certificates for those services cannot exist. A positive result
+   must state additional service or game premises, or a different preservation
+   claim. The reactive witness respects passive observation and atomic responses;
+   it does not refute every service with those features. Any further
+   counterexample needs its own proper-root and continuation proofs.
 2. **Close the semantic bridge.** Pure and behavioral source adapters,
    arbitrary-prefix laws, private setup, and the crossed-root tests are checked.
    The reactive adapter, canonical policy equivalence, and

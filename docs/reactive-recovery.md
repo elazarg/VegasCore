@@ -103,5 +103,12 @@ those premises. The same source-root mixture must also work for every unilateral
 deviator at a native root. Irreversible forfeiture still requires the chosen
 source admission interface or a proved elision condition.
 
+The [reactive inclusion counterexample](reactive-inclusion-obstruction.md)
+shows that no utility-independent completion works for every scheduler
+permitted by the reactive interface. Public traffic can change which retained
+candidate wins, without giving the new source-optimal candidate any chance.
+This obstruction holds even when source forfeiture is admitted.
+
 Passive partial leaks, foreign-message reactions, and scheduler memory of
-public traffic remain available. Full native SPE preservation is open.
+public traffic remain available. Native SPE preservation under a constrained
+service remains open.

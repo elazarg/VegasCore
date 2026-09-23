@@ -292,10 +292,11 @@ It also does not establish that every native implementation has this issue.
 The existing native [in-flight-message example](../VegasTests/InFlightCommitment.lean)
 checks actual delivery and a policy reaction before inclusion. It establishes
 that these observations belong to the runtime behavior that a coalescing
-transformation must retain. A reactive impossibility must establish native
-reachability, full proper-root closure, and arbitrary-continuation bounds under
-the passive-observation contract. The two-player finite experiment above does
-not provide these native proofs.
+transformation must retain. The [reactive inclusion obstruction](reactive-inclusion-obstruction.md)
+establishes native reachability, full proper-root closure, and
+arbitrary-continuation bounds for a public scheduler under the
+passive-observation contract. It is a separate one-player native proof;
+the two-player finite experiment above does not provide those native proofs.
 
 ## Reactive protocol and remaining work
 
@@ -320,8 +321,11 @@ laws remain open. See
 SPE analysis must use this actual service and information model. Only
 other authors' pending packets can provide new passive knowledge; the network
 cannot observe the private sample or use its result directly to choose
-inclusion. Competing submissions and reactive public scheduling can still
-restrict residual choices. A proof or counterexample for those continuations
+inclusion. Competing submissions and reactive public scheduling can restrict
+residual choices: the checked reactive obstruction proves this for one
+scheduler permitted by the generic interface. It follows separate public
+transmissions and does not cut a private preparation/submission action.
+Preservation under the reserved service or a stronger inclusion contract
 remains open. No completely forgetful inclusion policy is assumed.
 
 The action boundary belongs to the runtime semantics. Source commitment

@@ -271,12 +271,16 @@ the source composition and private initial law are in
 | Compiled player emits at most one packet per event; opponents cannot replace it under that author/event | Checked at every canonical prefix, with arbitrary opponents and scheduler |
 | Concrete service follows its schedule and completes under arbitrary policies | Checked through canonical behavioral play |
 | Packet acceptance, protection through reserved inclusion, and full compiler outcome/deviation laws | Open |
-| SPE preservation or impossibility for passive eavesdropping | Open |
+| SPE preservation for unrestricted reactive scheduling | Refuted by a checked public-traffic scheduler |
+| SPE preservation under a stronger reactive service contract | Open |
 
 A reactive SPE argument must use the private observation rule and actual
 canonical information sets. Scheduler-controlled self-delivery and inclusion
-conditioned on a private leak record are outside this model. Competing pending
-commitments and adaptive public scheduling still require continuation analysis.
+conditioned on a private leak record are outside this model. The
+[reactive inclusion counterexample](reactive-inclusion-obstruction.md) uses
+valid competing commitments and public scheduling, with a checked proper root
+and arbitrary randomized continuation bounds. Its scheduler is a standalone
+instance of the generic interface, not the reserved epoch scheduler.
 
 The paper's existing Nash/Bayesian theorem uses the command-service target,
 whose prescribed policy takes three owner calls to remember, prepare, and send.
