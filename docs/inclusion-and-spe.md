@@ -129,6 +129,38 @@ this as a fixed mixture with the old law are proved in
 Eligibility, priorities, weights, and continuation behavior remain explicit
 premises across the compared responses.
 
+### Covering every replay requires candidate retention
+
+[`MessageNetwork.RetainsEligible`](../Interaction/PendingSelection.lean)
+states that every eligible envelope any player knows how to rebroadcast
+already has a pending candidate identifier. Its `replay_ids` theorem proves
+that **every** raw replay preserves the eligible menu, including unknown
+identifiers and ineligible envelopes. The `*_replay_of_retained` theorems in
+the three selector modules then prove equality of selection laws.
+
+This is an explicit service obligation. The primitive network does not
+guarantee it: included envelopes are removed from pending but remain known.
+[`PendingPriority.lean`](../InteractionTests/PendingPriority.lean) checks the
+following sequence with fixed priorities ordered by increasing identifier:
+
+1. Submit envelope 0 and include it, removing it from pending.
+2. Submit envelope 1; it is now the only pending candidate and wins selection.
+3. A fresh envelope 2 still loses to envelope 1, whatever its payload.
+4. Replaying envelope 0 restores its priority and changes the winner to 0.
+
+`not_retained`, `old_selection`, `fresh_selection`, and `replay_selection`
+prove these facts using actual network operations. The priority rule satisfies
+regularity throughout; the replay has transport attributes unavailable to the
+fresh submission. This is a network selection example, not an application
+execution or native SPE counterexample.
+
+A possible service design retains candidates until their event settles and
+then excludes that event from future eligibility. Proving this invariant for
+the application, including premature and rejected inclusions, is still an
+obligation. Neither replay capabilities nor the existing scheduler have been
+changed to obtain it. Equality of selection laws also does not remove the
+need to account for observations of the rebroadcast and later responses.
+
 ## Why a memoryless scheduler is not enough
 
 Consider old identifiers binding values `1` and `2`, with weight five each.

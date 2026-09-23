@@ -93,4 +93,13 @@ theorem weightedPending_learn
     weightedPending weight positive eligible (network.learn who selected).pending =
       weightedPending weight positive eligible network.pending := rfl
 
+theorem weightedPending_replay_of_retained
+    (weight : MessageId Principal → ℝ) (positive : ∀ id, 0 < weight id)
+    (eligible : Message Principal Payload → Bool) (network : MessageNetwork Principal Payload)
+    (retained : network.RetainsEligible eligible) (who : Principal) (id : MessageId Principal) :
+    weightedPending weight positive eligible (network.replay who id).2.pending =
+      weightedPending weight positive eligible network.pending := by
+  unfold weightedPending
+  rw [retained.replay_ids]
+
 end Interaction.MessageNetwork

@@ -51,6 +51,10 @@ The mathematical statements developed here have the following proof anchors:
 - [`PendingPriority.lean`](../Interaction/PendingPriority.lean) and
   [`PendingWeighted.lean`](../Interaction/PendingWeighted.lean) lift the choice
   rules to network packets, including replay and passive learning.
+- [`RetainsEligible.replay_ids`](../Interaction/PendingSelection.lean) covers
+  all raw replays under an explicit candidate-retention premise. The
+  [removed-envelope example](../InteractionTests/PendingPriority.lean) proves
+  why already-pending replay invariance alone does not discharge that premise.
 - [`reactiveRecoveryLaw_regular_optimal`](../Vegas/Pending/ReactiveRegularity.lean)
   applies the local theorem to the compiler's recovery policy.
 
@@ -259,6 +263,10 @@ The implementation and proof must address:
    it useful. Any useful effect needs to be simulated or bounded. Neither
    regularity for fresh candidates nor the mixture equation alone covers all
    replay behaviors. The checked weighted-copy example isolates this gap.
+   `RetainsEligible` is a checked sufficient invariant for replay to preserve
+   each selector's eligible menu. It is not yet an application-service invariant.
+   The checked removed-envelope example shows that stable priority alone does
+   not make an absent envelope's replay equivalent to a fresh submission.
 3. **Player capabilities.** The source-optimal value must be encodable with the
    transport attributes needed by the proof. A fresh packet cannot simply
    inherit an old packet's authentic timestamp or erase already distributed

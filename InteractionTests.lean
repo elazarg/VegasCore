@@ -3,4 +3,5 @@ import InteractionTests.Commitment
 import InteractionTests.CommitmentCandidates
 import InteractionTests.MessageApplication
 import InteractionTests.Pending
+import InteractionTests.PendingPriority
 import InteractionTests.ReactiveProtocol

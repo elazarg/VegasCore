@@ -82,6 +82,15 @@ theorem priorityPending_learn (priorities : FinDist (LinearOrder (MessageId Prin
     priorityPending priorities eligible (network.learn who selected).pending =
       priorityPending priorities eligible network.pending := rfl
 
+theorem priorityPending_replay_of_retained
+    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (eligible : Message Principal Payload → Bool) (network : MessageNetwork Principal Payload)
+    (retained : network.RetainsEligible eligible) (who : Principal) (id : MessageId Principal) :
+    priorityPending priorities eligible (network.replay who id).2.pending =
+      priorityPending priorities eligible network.pending := by
+  unfold priorityPending
+  rw [retained.replay_ids]
+
 /-- Decode candidate identities only after selection. The decoder is total;
 the nonempty old menu excludes an invented source action for no selection. -/
 def priorityProposal (priorities : FinDist (LinearOrder (MessageId Principal)))
