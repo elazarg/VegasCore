@@ -37,12 +37,12 @@ theorem reactiveSubmittedEvents_respond (runtime : EventGraphRuntime graph)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (action : (runtime.reactiveApplication leaks).Action)
     (once : (runtime.reactiveSubmittedEvents leaks (execution.recall who)).Nodup)
-    (supported : action ∈ (runtime.compileReactivePolicy leaks who policy
+    (supported : action ∈ (runtime.prescribedReactivePolicy leaks who policy
       (execution.recall who) (execution.observe (runtime.reactiveApplication leaks)
         who)).support) :
     (runtime.reactiveSubmittedEvents leaks
       ((execution.respond (runtime.reactiveApplication leaks) who action).recall who)).Nodup := by
-  rcases runtime.compileReactivePolicy_transmission leaks who policy _ _ action supported with
+  rcases runtime.prescribedReactivePolicy_transmission leaks who policy _ _ action supported with
     silent | ⟨event, material, sent, addressed, absent⟩
   · simpa only [ReactiveApplication.Execution.respond, silent, ↓reduceIte,
       reactiveSubmittedEvents, List.filterMap_append, List.filterMap_cons, List.filterMap_nil,
@@ -70,7 +70,7 @@ theorem reactivePacketIntegrity_policy (runtime : EventGraphRuntime graph)
     (who : Player)
     (policy : graph.BehavioralPolicy who)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (prescribed : players who = runtime.compileReactivePolicy leaks who policy) :
+    (prescribed : players who = runtime.prescribedReactivePolicy leaks who policy) :
     (runtime.reactiveApplication leaks).PolicyInvariant players
       (runtime.ReactivePacketIntegrity leaks who) where
   respond execution actor action valid supported := by
@@ -136,9 +136,15 @@ theorem canonical_reactivePacketIntegrity (runtime : EventGraphRuntime graph)
         ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).initHistory).map
           ExecutionProtocol.History.state).support) :
     ReactiveApplication.executionInvariant (runtime.ReactivePacketIntegrity leaks who) result :=
-  (runtime.reactivePacketIntegrity_policy leaks who policy players prescribed).canonical_run
-    initial horizon scheduler (fun state _ => runtime.reactivePacketIntegrity_initial
-      leaks who state)
-      fuel result supported
+  by
+    have updateEq : Function.update players who
+        (runtime.compileReactivePolicy leaks who policy) = players := by
+      rw [← prescribed, Function.update_eq_self]
+    rw [← updateEq, runtime.compileReactivePolicy_canonical_run leaks who policy players
+      initial horizon scheduler fuel] at supported
+    exact (runtime.reactivePacketIntegrity_policy leaks who policy _
+      (Function.update_self ..)).canonical_run initial horizon scheduler
+        (fun state _ => runtime.reactivePacketIntegrity_initial leaks who state)
+        fuel result supported
 
 end Vegas.EventGraphRuntime

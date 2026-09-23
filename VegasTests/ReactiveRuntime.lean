@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Expr.Simple
-import Vegas.Pending.ReactivePolicy
+import Vegas.Pending.ReactivePolicyFacts
 import Vegas.Pending.ReactiveService
 import Vegas.Pending.ReactiveSafety
 
@@ -94,8 +94,9 @@ theorem compiler_samples_on_activation (law : FinDist Bool) :
     runtime.compileReactivePolicy leaks false (chooseBit law) [] (granted.observe app false) =
       law.map (fun bit => runtime.reactiveDecision leaks false 0 (.success bit)
         (granted.observe app false).application) := by
+  rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ .nil]
   have actor : graph.actor? 0 = some false := rfl
-  simp [compileReactivePolicy, reactiveAlreadySubmitted, granted, initial,
+  simp [prescribedReactivePolicy, reactiveAlreadySubmitted, granted, initial,
     ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
     app, reactiveApplication, State.publicView, PublicView.EventReady, State.initial,
     EventGraph.Config.initial, EventGraph.normalizePolicy, chooseBit,
@@ -136,9 +137,24 @@ theorem compiler_sends_and_remembers (bit : Bool) :
   rw [first_action]
   cases bit <;> exact ⟨rfl, rfl, rfl, rfl⟩
 
-/-- Re-activating the owner before inclusion does not resample or send a
-competing commitment, even when the next source policy law is different. -/
-theorem compiler_does_not_resample (bit : Bool) (law : FinDist Bool) :
+private theorem first_consistent (bit : Bool) (law : FinDist Bool)
+    (supported : bit ∈ law.support) :
+    (runtime.prescribedReactivePolicy leaks false (chooseBit law)).Consistent
+      ((firstResponse bit).recall false) := by
+  have chosen : firstAction bit ∈ (runtime.compileReactivePolicy leaks false (chooseBit law)
+      [] (granted.observe app false)).support := by
+    rw [compiler_samples_on_activation, FinDist.support_map]
+    exact ⟨bit, supported, rfl⟩
+  rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ .nil] at chosen
+  unfold firstResponse
+  rw [first_action] at chosen ⊢
+  simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
+  exact .snoc _ .nil chosen
+
+/-- Re-activating an owner that followed the policy does not resample or send
+a competing commitment. Unsupported earlier choices instead trigger recovery. -/
+theorem compiler_does_not_resample (bit : Bool) (law : FinDist Bool)
+    (supported : bit ∈ law.support) :
     runtime.compileReactivePolicy leaks false (chooseBit law) ((firstResponse bit).recall false)
       ((firstResponse bit).observe app false) = FinDist.pure ⟨default, none⟩ := by
   have sent : runtime.reactiveAlreadySubmitted leaks ((firstResponse bit).recall false) 0
@@ -151,7 +167,55 @@ theorem compiler_does_not_resample (bit : Bool) (law : FinDist Bool) :
     unfold firstResponse
     rw [first_action]
     rfl
-  simp only [compileReactivePolicy, grant, sent, ↓reduceIte]
+  rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _
+    (first_consistent bit law supported)]
+  simp only [prescribedReactivePolicy, grant, sent, ↓reduceIte]
+
+private theorem wrong_response_inconsistent :
+    ¬ (runtime.prescribedReactivePolicy leaks false (chooseBit (FinDist.pure true))).Consistent
+      ((firstResponse false).recall false) := by
+  intro consistent
+  have recalled : (firstResponse false).recall false = [] ++
+      [⟨granted.observe app false, firstAction false,
+        some ⟨(false, 0), .commitment 0 candidate⟩⟩] := by
+    unfold firstResponse
+    rw [first_action]
+    rfl
+  rw [recalled] at consistent
+  have chosen := (ReactiveApplication.Policy.consistent_snoc_iff
+    (runtime.prescribedReactivePolicy leaks false (chooseBit (FinDist.pure true))) []
+    ⟨granted.observe app false, firstAction false,
+      some ⟨(false, 0), .commitment 0 candidate⟩⟩).mp consistent
+  have law := compiler_samples_on_activation (FinDist.pure true)
+  rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ .nil] at law
+  have same : firstAction false = firstAction true := by
+    simpa only [law, FinDist.map_pure, FinDist.mem_support_pure, firstAction] using chosen.2
+  have intention := congrArg (fun action : app.Action => action.memory.intention) same
+  simp only [firstAction, reactiveDecision] at intention
+  cases intention
+
+/-- A wrong earlier binding does not suppress the desired submission. The
+source policy is deterministic here; the rejected cached choice is false. -/
+theorem compiler_recovers_wrong_choice :
+    runtime.compileReactivePolicy leaks false (chooseBit (FinDist.pure true))
+      ((firstResponse false).recall false) ((firstResponse false).observe app false) =
+      FinDist.pure (runtime.reactiveDecision leaks false 0 (.success true)
+        ((firstResponse false).observe app false).application) := by
+  rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq_recovery _ _ _ _
+    wrong_response_inconsistent]
+  have actor : graph.actor? 0 = some false := rfl
+  simp [recoverReactivePolicy, firstResponse, first_action, reactiveRecoveryLaw_pure,
+    granted, initial, ReactiveApplication.Execution.respond,
+    ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
+    app, reactiveApplication, State.publicView, PublicView.EventReady, State.initial,
+    EventGraph.Config.initial, EventGraph.normalizePolicy, chooseBit, actor,
+    submitStep, Submission.register, FinDist.map_pure]
+
+/-- Binding recall follows the actual completion, even when an earlier
+submitted candidate remembered the opposite intention. -/
+theorem binding_recall_uses_completion :
+    runtime.reactiveOriginal leaks false ((firstResponse false).recall false)
+      [((false, 1), true)] ⟨0, .success true⟩ = ⟨0, .success true⟩ := rfl
 
 /-- Reserved service gives the owner one activation. Additional activations
 are choices of the network policy at its ordinary opportunities. -/

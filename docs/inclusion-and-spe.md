@@ -135,11 +135,13 @@ The compiler is one global playerwise function, independent of utilities.
 The inclusion equation is only an ingredient in this certificate. The
 remaining native obligations are:
 
-1. **Recovery.** `compileReactivePolicy` stops after any earlier event-addressed
-   submission. Waiting after an off-path conflicting submission need not be
-   optimal under uniform selection. Recovery must also reconstruct the action
-   actually selected; first-submission memory and the current one-packet
-   invariant cannot simply be reused as its proof.
+1. **Recovery.** The [recovery compiler](reactive-recovery.md) submits again
+   after unsupported earlier responses, reuses supported remembered choices,
+   and reconstructs intentions from actual completions and accepted packets.
+   Its initialized state law and one-packet guarantee agree with prescribed
+   play. Its recovery lottery satisfies the local optimal-response theorem.
+   Full source-observation correspondence and recovery optimality throughout
+   the remaining reactive interaction are still open.
 2. **Intervening responses.** The equation must cover the remaining interaction
    relevant to the abstract decision. A final uniform draw does not constrain
    earlier adaptive inclusion or new foreign transmissions. Passive leaks and

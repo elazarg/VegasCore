@@ -209,16 +209,20 @@ protection and the compiler correspondence laws.
 The source compiler builds the typed graph, with dependency barriers selected
 by the execution mode. At a ready owned grant, the reactive policy:
 
-1. Reconstructs its graph observation, including original intended actions
-   from private recall, and normalizes the event-order metadata.
+1. Reconstructs its graph observation and normalizes event-order metadata.
+   Bindings use the value that took effect; disclosure intentions can be
+   restored from validated private recall of the accepted packet.
 2. Samples its graph policy once.
 3. Remembers that intention and submits the corresponding commitment, opening,
    or withholding packet in the same action.
 
-After sending an event's packet, it waits on further activations for that
-event. Fresh handle selection uses the owner's candidate view. Private recall
-retains distinctions that public failure erases, such as an intended opening
-whose guard fails.
+On consistent own histories, it waits after sending an event's packet.
+After an earlier unsupported response, it uses a
+[recovery continuation](reactive-recovery.md): reuse a supported remembered
+choice or sample the source policy, then submit again. A binding retry uses a
+fresh handle; old meanings and deadlines remain fixed. Private recall retains
+distinctions that public failure erases, such as an intended opening whose
+guard fails.
 
 [ReactiveFreshCandidates.lean](../Vegas/Pending/ReactiveFreshCandidates.lean)
 proves that every legal initialized reactive history leaves fresh handles
@@ -227,8 +231,10 @@ allocation branch therefore cannot fail because of exhausted candidates.
 This does not guarantee that the selected packet wins inclusion.
 
 [ReactivePacketIntegrity.lean](../Vegas/Pending/ReactivePacketIntegrity.lean)
-proves that a compiled player emits at most one packet for each event, under
-arbitrary repeated activations. Every retained network envelope has an actual
+proves that a player following its compiled policy from initialization emits
+at most one packet for each event, under arbitrary repeated activations.
+Completing the policy with recovery preserves its initialized state law.
+Every retained network envelope has an actual
 submission in its author's recall, by
 [ReactiveProvenance.lean](../Interaction/ReactiveProvenance.lean). Together these
 facts ensure that every retained packet under that author and event equals the

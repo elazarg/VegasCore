@@ -25,6 +25,13 @@ replaying an already pending packet. A checked root-mixture transfer theorem
 permits unresolved lotteries over proper source continuations. These components
 do not yet instantiate the native SPE certificate.
 
+The [recovery compiler](reactive-recovery.md) completes prescribed play after
+the owner's own deviations without adding runtime flags or private actions.
+Its initialized canonical state laws and packet-uniqueness guarantees are
+checked. Reusing a supported choice is also locally optimal under the inclusion
+contract. Source-observation reconstruction and optimality throughout the
+remaining reactive interaction still need the continuation proof.
+
 The reactive protocol gives one optional message per activation. A separate
 observation rule privately samples other authors' pending packets before the
 response. Private computation and opening material require no separate turns.

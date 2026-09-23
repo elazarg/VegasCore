@@ -2,12 +2,14 @@
 
 import Vegas.Pending.ReactiveRuntime
 import Vegas.Pending.EventPolicies
+import Interaction.ReactiveRecovery
 
 /-! # Prescribed graph decisions in one activation
 
-The policy samples once, remembers its original intention, and submits in the
-same action. Failed disclosures use withholding packets. Source intentions are
-reconstructed from own response memory when later graph policies are invoked.
+The prescribed policy samples once, remembers its original intention, and
+submits in the same action. A recovery continuation can submit again after an
+earlier deviation, reusing a supported remembered choice. Failed disclosures
+use withholding packets; only accepted packets can restore their intentions.
 Whole-service correctness additionally requires protected service and a proof
 that these local observations agree with the source observations.
 -/
@@ -37,14 +39,6 @@ theorem reactiveFreshSlot_spec (view : ReactivePlayerView graph) (serial : Nat)
     cases Option.some.inj selected
     exact Nat.find_spec fresh
   · contradiction
-
-def reactiveOriginal (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
-    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (completion : graph.Completion) :
-    graph.Completion :=
-  ((history.filterMap fun entry => entry.action.memory.intention).find?
-    (fun remembered => remembered.event = completion.event)).getD completion
 
 def reactiveAlreadySubmitted (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (Payload graph))
@@ -87,9 +81,31 @@ def reactiveDecision (runtime : EventGraphRuntime graph)
         some (.submit ⟨reactiveResolutionPacket who event payload binding checks
           outputEq action view, none⟩)
 
+open Classical in
+/-- Binding recall uses the value that actually took effect. A failed
+disclosure can retain its original intention only when the corresponding
+response generated an accepted packet. Arbitrary memory tags are insufficient. -/
+def reactiveOriginal (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (receipts : List (MessageId Player × Bool)) (completion : graph.Completion) :
+    graph.Completion :=
+  match nodeView graph completion.event with
+  | .sample .. | .bind .. => completion
+  | .resolve .. =>
+      ((history.filterMap fun entry => do
+        let remembered ← entry.action.memory.intention
+        let message ← entry.emitted
+        if remembered.event = completion.event ∧
+            message.payload.event? graph = some completion.event ∧
+            (message.id, true) ∈ receipts ∧
+            entry.action = runtime.reactiveDecision leaks who remembered.event
+              remembered.action entry.beforeView.application then some remembered
+        else none).head?).getD completion
+
 /-- One ready owned event takes one activation, with no staging instructions.
-The policy waits outside its grant or after its event packet has been sent. -/
-def compileReactivePolicy (runtime : EventGraphRuntime graph)
+On consistent own histories this policy sends at most one packet per event. -/
+def prescribedReactivePolicy (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (Payload graph))
     (who : Player)
     (policy : graph.BehavioralPolicy who) : (runtime.reactiveApplication leaks).Policy :=
@@ -104,13 +120,62 @@ def compileReactivePolicy (runtime : EventGraphRuntime graph)
               owner ▸ view.application.observation
             let recalled : graph.PlayerObservation who :=
               { observation with
-                ownActions := observation.ownActions.map (runtime.reactiveOriginal leaks
-                  history) }
+                ownActions := observation.ownActions.map (runtime.reactiveOriginal leaks who
+                  history view.receipts) }
             (graph.normalizePolicy who policy event actor recalled).map
               (fun action => runtime.reactiveDecision leaks who event action view.application)
           else FinDist.pure ⟨default, none⟩
         else FinDist.pure ⟨default, none⟩
       else FinDist.pure ⟨default, none⟩
+
+open Classical in
+/-- Reuse a supported remembered choice, or sample the source policy when no
+such choice exists. Unsupported tags cannot permanently suppress recovery. -/
+def reactiveRecoveryLaw (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (event : graph.EventId) (law : FinDist (graph.Action event)) : FinDist (graph.Action event) :=
+  let remembered := history.reverse.filterMap fun entry => do
+    let intention ← entry.action.memory.intention
+    if same : intention.event = event then some (same ▸ intention.action) else none
+  match remembered.find? (fun action => action ∈ law.support) with
+  | some action => FinDist.pure action
+  | none => law
+
+/-- Recovery still consumes one activation per response. It sends a fresh
+candidate while the event is ready; it cannot erase old packets, change a
+submitted meaning, or extend a deadline. -/
+def recoverReactivePolicy (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (who : Player) (policy : graph.BehavioralPolicy who) :
+    (runtime.reactiveApplication leaks).Policy :=
+  fun history view => match view.application.publicView.serviceGrant with
+  | none => FinDist.pure ⟨default, none⟩
+  | some event =>
+      if owner : view.application.who = who then
+        if view.application.publicView.EventReady event then
+          if actor : graph.actor? event = some who then
+            let observation : graph.PlayerObservation who :=
+              owner ▸ view.application.observation
+            let recalled : graph.PlayerObservation who :=
+              { observation with
+                ownActions := observation.ownActions.map (runtime.reactiveOriginal leaks who
+                  history view.receipts) }
+            (runtime.reactiveRecoveryLaw leaks history event
+              (graph.normalizePolicy who policy event actor recalled)).map
+                (fun action => runtime.reactiveDecision leaks who event action view.application)
+          else FinDist.pure ⟨default, none⟩
+        else FinDist.pure ⟨default, none⟩
+      else FinDist.pure ⟨default, none⟩
+
+/-- The compiler completes prescribed play at histories containing the owner's
+own deviations. Recovery optimality is a separate continuation obligation. -/
+def compileReactivePolicy (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (who : Player) (policy : graph.BehavioralPolicy who) :
+    (runtime.reactiveApplication leaks).Policy :=
+  (runtime.prescribedReactivePolicy leaks who policy).recover
+    (runtime.recoverReactivePolicy leaks who policy)
 
 end Vegas.EventGraphRuntime
 
