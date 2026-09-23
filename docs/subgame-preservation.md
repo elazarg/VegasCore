@@ -20,6 +20,15 @@ It applies with either source commitment admission, including forfeiture.
 It does not rule out other services, utility-specific synthesis, or a more
 restricted preservation claim.
 
+The witnessing root lies between uninterrupted invocations of the same owner.
+Coalescing that response removes this root, so the theorem does not settle SPE
+preservation for a coalesced protocol. The recommended action-boundary design,
+checked endpoint law, and a separate interleaved finite experiment are in
+[Action boundaries and subgame perfection](action-coalescing.md). The finite
+experiment still obstructs a uniform lift of complete SPE strategies after
+external interaction, while preserving the tested SPE outcome sets. Its
+coalesced native-service realization remains open.
+
 The proof includes initialized prefix reachability, proper-root closure,
 information-local deviations under the complete remaining service, and a
 bound for arbitrary randomized continuations. The two-event native graph has
@@ -508,8 +517,9 @@ the bit as an extra input: it reads the actual received packet.
 Binding is established by submission. Reading and reacting to other pending
 messages remains possible through the separate wire and player invocations.
 
-The pending-menu theorem rules out unrestricted continuation coverage for this
-service class. A positive native edge needs premises governing competing
+The pending-menu theorem rules out unrestricted continuation coverage for the
+split service protocol. For a coalesced response protocol, coverage must be
+rechecked at its own proper roots. A positive native edge needs premises governing competing
 packets, irreversible acceptance, adaptive wire reactions, and recovery after
 earlier submissions. Direct action construction alone supplies none of these
 strategic premises.
@@ -536,7 +546,9 @@ the default design.
    deviations, and a common source behavioral SPE. An unrestricted certificate
    for this service class cannot exist. A positive result must state additional
    service or game premises, or a different preservation claim. Any further
-   counterexample needs its own proper-root and continuation proofs.
+   counterexample needs its own proper-root and continuation proofs. Coalescing
+   requires endpoint and information laws and a canonical response protocol;
+   the split-protocol impossibility does not discharge this new gate.
 2. **Close the semantic bridge.** Pure and behavioral source adapters,
    arbitrary-prefix laws, private setup, and the crossed-root tests are checked.
    The multiplayer native action adapter, native policy equivalence, and

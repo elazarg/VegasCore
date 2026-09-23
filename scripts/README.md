@@ -2,6 +2,12 @@
 
 Run these tools from the repository root.
 
+- `python scripts/experiments/coalescing.py` exhaustively checks pure SPE in
+  split, coalesced, and interleaved finite design games. It computes proper
+  roots from information-set closure and tests whole-policy deviations.
+  [Action boundaries and subgame perfection](../docs/action-coalescing.md)
+  states the results and the remaining native-service proof obligations.
+
 - `python scripts/check-module-boundaries.py` checks local import resolution,
   default-build reachability, complete directory aggregators, cycles in the
   module and sibling-directory dependency graphs, and the semantic layer

@@ -566,6 +566,27 @@ this certificate. An automatic
 checker must distinguish a proved obstruction from an unresolved obligation;
 neither warrants changing the source game or weakening the requested property.
 
+### E10: coalescing and an intervening response
+
+[Action boundaries and subgame perfection](action-coalescing.md) compares the
+split pending-menu obstruction with response coalescing. The generic Lean
+transcript law preserves the full endpoint distribution when own observations
+update locally. Native fixed-sequence lemmas retain other players' inputs and
+private recall. The native information-local sampling bridge remains open.
+
+The exhaustive finite experiment removes the common-SPE obstruction by
+coalescing the one-player tree. A separate Alice–Bob–Alice game retains the
+obstruction without adjacent same-player decisions, and its final choice must
+react to Bob's observed reply. Lean checks that randomization cannot supply a
+common optimum at that restricted continuation. The pure SPE outcome sets
+still agree with the source. The experiment is not a native-service adapter
+and does not prove an impossibility for the coalesced native protocol.
+
+**Architecture requirement.** Specify response boundaries and packet budgets
+in runtime semantics. Use ordinary canonical SPE at that granularity. Retain
+all external observations and interactions, and distinguish a uniform lift of
+complete SPE strategies from preservation of SPE outcome laws.
+
 ## Implementation order and stop conditions
 
 1. Pure and behavioral source adapters, mixed-site admission, private setup,
