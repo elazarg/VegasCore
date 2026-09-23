@@ -38,6 +38,8 @@ structure PlayerAction (graph : Vegas.EventGraph Player L) where
 
 def PlayerAction.wait : PlayerAction graph := ⟨[], none⟩
 
+instance : Inhabited (PlayerAction graph) := ⟨.wait⟩
+
 /-- The native view contains no application scratch-action cache. -/
 structure NativeView (graph : Vegas.EventGraph Player L) where
   messages : MessagePool.View Player (Payload graph)

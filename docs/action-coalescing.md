@@ -49,34 +49,46 @@ has exactly the same full endpoint distribution as successive policy calls.
 `continuation_eq` extends the equality through any continuation kernel.
 `transcript_length` retains the number of constituent action slots.
 
-This is the sequential-to-batch direction. The converse for arbitrary batch
-laws needs enough own recall to reproduce the conditional law of the next
-action given the already executed prefix. The locality equation alone does
-not imply that converse: a memoryless view can satisfy it while losing
-correlation between successive calls. Native policies have explicit recall;
-the corresponding converse law remains to be proved.
+The converse needs enough own recall to reproduce the conditional law of the
+next action given the already executed prefix. The locality equation alone
+does not imply it: a memoryless view can satisfy the equation while losing
+correlations between successive calls.
 
-[`VegasTests/ResponseCoalescing.lean`](../VegasTests/ResponseCoalescing.lean)
-checks native fixed-sequence composition, preservation of environment recall,
-preservation of every other player's complete invocation input, and retention
-of every own action record. It does not yet instantiate the generic sampling
-theorem for all reachable native executions.
+Both directions are checked for a native response:
 
-### Native locality obligation
+- [`compileResponse_law`](../Vegas/Pending/NativeResponse.lean) constructs a
+  batch sampler from any native invocation policy and proves equality of the
+  complete native endpoint law. It applies whenever the counter invariant
+  holds, including every initialized native history.
+- [`ResponseSampling.run_next`](../GameTheoryExtensions/Protocol/ResponseSampling.lean)
+  reconstructs any finitely supported fixed-length list law by conditioning
+  on previously selected actions.
+- [`sampleResponsePolicy_law`](../Vegas/Pending/NativeResponseSampling.lean)
+  realizes such a law through actual native invocations. The policy takes the
+  desired law and own recall length at the response entry, then consults only
+  its own action records. It preserves arbitrary correlations.
+
+These are laws for one response. Combining the reverse construction into one
+playerwise policy for the entire service requires recovering successive response
+entries from own recall. The local law alone is not that global theorem.
+
+### Native locality
 
 Own submission allocates a sender-local message identifier. The current view
 does not explicitly contain `nextSerial`. On initialized executions this
-counter can be reconstructed by counting authored submissions in own recall;
-replays do not increment it. That invariant must be proved for the native
-action adapter before constructing its local view update. Arbitrary fabricated
+counter is reconstructed by counting authored submissions in own recall;
+replays do not increment it.
+[`native_history_counters`](../Vegas/Pending/NativeRecall.lean) proves the
+invariant at every legal native history.
+[`nativeInput_takeAction`](../Vegas/Pending/NativeLocality.lean) then proves the
+local view-update law, including submission, replay, binding, and private recall.
+Arbitrary fabricated
 executions can have equal views but different counters, so a locality claim
 over all raw execution records would be false.
 
-Use reachable executions and their recall invariant. Supplying the entire
-native state to the batch sampler would bypass the information restriction.
-The command-policy authorship invariant in
-[`MessageApplicationAuthorship.lean`](../Interaction/MessageApplicationAuthorship.lean)
-is a useful model for the required native invariant.
+`nativeLocalResponse` instantiates the generic coalescing interface on executions
+with the counter invariant. The sampler receives only `NativeInput`; neither
+the underlying native state nor the invariant proof enters its observation.
 
 ### Choosing the boundary
 
@@ -95,6 +107,42 @@ criterion. More general coalescing transformations are possible, but require
 an information argument for every affected player. In particular, an intervening
 wire step is not automatically harmless merely because it leaves the public
 application result unchanged.
+
+### Canonical response protocol
+
+[`ResponseProtocol.lean`](../Vegas/Pending/ResponseProtocol.lean) implements
+maximal uninterrupted responses as the actions of an `ExecutionProtocol`.
+It retains the existing setup, service-order choices, wire instructions,
+inclusion, sampling, clocks, and expiry. Termination and a bounded horizon are
+checked. `responseLength_prefix` proves that expanding a response recovers
+exactly the consumed owner-call prefix; it crosses no external instruction.
+
+[`response_history_native`](../Vegas/Pending/ResponseProtocolRefinement.lean)
+proves that every initialized coalesced history has an original native history
+with exactly the same state, including the unconsumed service plan. This covers
+arbitrary legal response lists and all supported environment choices. It is a
+reachability theorem, not an equivalence between the two SPE predicates.
+
+The information model uses the original native view and recall. Constructing
+it requires `ResponseBudgetAdequate`: the number of permitted actions must be
+computable from that input at every legal response entry. This is the ordinary
+requirement that legal action menus respect information sets. It adds no
+runtime flag or source syntax.
+
+[`responseBudget_empty_roster`](../Vegas/Pending/ResponseBudget.lean) discharges
+the requirement for the service class with no roster reactions: every response
+has capacity three. The wire slots remain. For nonempty rosters, initial owner
+responses and later reactions can have different capacities; recovering them
+from own recall remains an explicit proof obligation. The general protocol
+retains those reactions, but its information-model certificate is not yet
+instantiated for them.
+
+[`VegasTests/ResponseCoalescing.lean`](../VegasTests/ResponseCoalescing.lean)
+constructs the canonical information model for the actual pending-menu example.
+It proves that the original two-call execution is unreachable in the coalesced
+history tree, while retaining all three competing packets and the next wire
+slot. [`InFlightCommitment.lean`](../VegasTests/InFlightCommitment.lean) also
+checks the coalesced transition for a received-bit reaction before inclusion.
 
 ## Experiment 1: the internal cut
 
@@ -226,16 +274,17 @@ Those obligations remain open for a coalesced service.
 
 ## Implementation path
 
-1. Prove the native own-view update on reachable executions, including sender
-   counters and recall. Instantiate the generic transcript law and prove the
-   converse conditional-sampling construction.
-2. Give the service explicit response boundaries with information-local fixed
-   budgets. Build a canonical protocol whose strategic actions are these
-   responses. Preserve the full state presented at every external boundary.
-3. Establish policy and deviation laws between the split evaluator and the
-   response evaluator. Compare SPE on the response protocol directly; endpoint
-   equivalence alone does not equate the two SPE predicates.
-4. Test the interleaved restricted-menu mechanism against that actual service.
+1. Recover response capacities from own recall for general reaction rosters.
+   Keep the original observation and instantiate the canonical information
+   model with its adequacy proof.
+2. Construct uniform full-service policy and deviation maps. Recover the
+   response entry by parsing own recalled actions into completed batches;
+   the budget at each earlier entry is itself a function of that entry's input.
+   Then use the checked per-response conditional-sampling law. Do not pass an
+   externally supplied entry offset to the global policy.
+3. Compare SPE on the response protocol directly; endpoint equivalence alone
+   does not equate the two SPE predicates.
+4. Test the interleaved restricted-menu mechanism against the actual service.
    A failed continuation certificate must report whether it is a proved
    obstruction or an obligation still requiring a proof.
 

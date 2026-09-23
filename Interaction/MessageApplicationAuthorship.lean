@@ -159,6 +159,37 @@ theorem playerStep_authorship
           simpa [historySelf] using safe
         · simpa [historyOther message.id.1 hsender] using safe
 
+theorem environmentStep_nextSerial
+    (execution next : app.PolicyExecution) (command : app.EnvironmentPolicyCommand)
+    (supported : next ∈ (app.environmentPolicyStep execution command).support) :
+    ∀ who, next.native.pool.nextSerial who = execution.native.pool.nextSerial who := by
+  have nativeMem : next.native ∈
+      ((app.environmentPolicyStep execution command).map
+        MessageInterface.PolicyExecution.native).support := by
+    rw [FinDist.support_map]
+    exact ⟨next, supported, rfl⟩
+  rw [app.environmentStep_native] at nativeMem
+  intro who
+  cases command with
+  | deliver observer id =>
+      simp only [EnvironmentPolicyCommand.toAction, step,
+        FinDist.mem_support_pure] at nativeMem
+      rw [nativeMem]
+      simp
+  | «include» id =>
+      simp only [EnvironmentPolicyCommand.toAction, step,
+        FinDist.mem_support_pure] at nativeMem
+      rw [nativeMem, includePending_pool]
+      exact MessagePool.include_preserves_nextSerial _ _ _
+  | application applicationCommand =>
+      simp only [EnvironmentPolicyCommand.toAction, step, FinDist.support_map,
+        Set.mem_image] at nativeMem
+      obtain ⟨applicationNext, _, nativeEq⟩ := nativeMem
+      rw [← nativeEq]
+  | wait =>
+      simp only [EnvironmentPolicyCommand.toAction, FinDist.mem_support_pure] at nativeMem
+      rw [nativeMem]
+
 theorem environmentStep_authorship
     (execution next : app.PolicyExecution) (command : app.EnvironmentPolicyCommand)
     (authorship : app.Authorship execution)
@@ -168,35 +199,8 @@ theorem environmentStep_authorship
   have pool := app.environmentPolicyStep_pool_satisfies
     (fun message =>
       (app.submittedPayloads (execution.principalHistory message.id.1))[message.id.2]? =
-      some message.payload) execution next command authorship.2 supported
-  have nativeMem : next.native ∈
-      ((app.environmentPolicyStep execution command).map
-        MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
-    exact ⟨next, supported, rfl⟩
-  rw [app.environmentStep_native] at nativeMem
-  have counters : ∀ who,
-      next.native.pool.nextSerial who = execution.native.pool.nextSerial who := by
-    intro who
-    cases command with
-    | deliver observer id =>
-        simp only [EnvironmentPolicyCommand.toAction, step,
-          FinDist.mem_support_pure] at nativeMem
-        rw [nativeMem]
-        simp
-    | «include» id =>
-        simp only [EnvironmentPolicyCommand.toAction, step,
-          FinDist.mem_support_pure] at nativeMem
-        rw [nativeMem, includePending_pool]
-        exact MessagePool.include_preserves_nextSerial _ _ _
-    | application applicationCommand =>
-        simp only [EnvironmentPolicyCommand.toAction, step, FinDist.support_map,
-          Set.mem_image] at nativeMem
-        obtain ⟨applicationNext, _, nativeEq⟩ := nativeMem
-        rw [← nativeEq]
-    | wait =>
-        simp only [EnvironmentPolicyCommand.toAction, FinDist.mem_support_pure] at nativeMem
-        rw [nativeMem]
+        some message.payload) execution next command authorship.2 supported
+  have counters := app.environmentStep_nextSerial execution next command supported
   constructor
   · intro who
     rw [counters who, congrFun history who]

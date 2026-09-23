@@ -5,6 +5,7 @@ import Vegas.Pending.EventCommitmentBinding
 import Interaction.MessageApplicationPolicies
 import Vegas.Pending.NativeProtocolSafety
 import Vegas.Pending.EventBindingAction
+import Vegas.Pending.ResponseProtocol
 
 /-! # A transmitted commitment stays fixed while messages are in flight
 
@@ -217,6 +218,22 @@ theorem service_reaction_before_inclusion (bit : Bool) :
       FinDist.pure (some (freshReaction bit)) := by
   simp only [nativeControlStep, remainingReaction, nativePlayers, invokeNative,
     reactToSignal, FinDist.pure_bind, actionStep, FinDist.map_pure]
+  rfl
+
+/-- The coalesced service still executes the received-bit reaction before
+reserved inclusion. This slot is one action because inclusion is the next boundary. -/
+theorem response_reaction_before_inclusion (bit : Bool) :
+    ((reactToSignal ((remainingReaction bit).execution.principalHistory false)
+        (runtime.nativeView (seen bit) false)).bind fun action =>
+      runtime.responseTransition (FinDist.pure (fun input => nomatch input)) [true, false] 2
+        (fun _ _ => FinDist.pure .wait)
+        (fun _ _ => FinDist.pure (ServiceOrder.increasing graph))
+        (some (remainingReaction bit))
+        (fun who => if who = false then some [action] else none)).map
+          (fun state => state.map (fun control => control.execution.native)) =
+      FinDist.pure (some (freshReaction bit)) := by
+  simp only [reactToSignal, FinDist.pure_bind, responseTransition, remainingReaction,
+    ↓reduceIte, Option.getD_some, FinDist.map_pure]
   rfl
 
 example (bit : Bool) (firstEpochs secondEpochs : Nat)

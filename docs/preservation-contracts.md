@@ -571,8 +571,12 @@ neither warrants changing the source game or weakening the requested property.
 [Action boundaries and subgame perfection](action-coalescing.md) compares the
 split pending-menu obstruction with response coalescing. The generic Lean
 transcript law preserves the full endpoint distribution when own observations
-update locally. Native fixed-sequence lemmas retain other players' inputs and
-private recall. The native information-local sampling bridge remains open.
+update locally. Native counter/recall invariants and the local view update are
+checked. Both directions of the native per-response sampling law retain
+correlated choices, all packets, and private recall. The canonical response
+protocol is bounded and every coalesced history expands to a native history.
+Its information model is instantiated for an empty reaction roster. General
+roster capacity inference and uniform full-service policy maps remain open.
 
 The exhaustive finite experiment removes the common-SPE obstruction by
 coalescing the one-player tree. A separate Alice–Bob–Alice game retains the
