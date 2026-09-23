@@ -39,6 +39,12 @@ structure ResponseMemory (graph : Vegas.EventGraph Player L) where
 
 instance : Inhabited (ResponseMemory graph) := ⟨⟨none, []⟩⟩
 
+instance : Nontrivial (ResponseMemory graph) := by
+  refine ⟨⟨⟨none, []⟩, ⟨none, [.inl 0]⟩, ?_⟩⟩
+  intro same
+  have data := congrArg ResponseMemory.privateData same
+  cases data
+
 def reactiveApplication (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (Payload graph)) : ReactiveApplication
       Player where

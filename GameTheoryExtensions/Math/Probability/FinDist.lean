@@ -10,6 +10,29 @@ namespace GameTheory.Math.Probability.FinDist
 
 variable {α β : Type*}
 
+/-- Sample the first coordinate, then the conditional second coordinate.
+The conditional law is total, including first coordinates of zero probability. -/
+theorem eq_bind_fst_conditional_snd (law : FinDist (α × β)) :
+    law = (law.map Prod.fst).bind fun first =>
+      ((law.condOnFibre Prod.fst first).map Prod.snd).map (fun second => (first, second)) := by
+  classical
+  conv_lhs => rw [law.eq_bind_condOnFibre Prod.fst]
+  apply bind_congr
+  intro first supported
+  rw [map_comp]
+  symm
+  calc
+    _ = (law.condOnFibre Prod.fst first).map id := by
+      apply map_congr_of_eq_on_support
+      intro pair member
+      obtain ⟨witness, present, firstEq⟩ := support_map .. ▸ supported
+      have meets : ∃ pair ∈ Prod.fst ⁻¹' {first}, pair ∈ law.support :=
+        ⟨witness, firstEq, present⟩
+      rw [condOnFibre, dite_eq_left meets] at member
+      have coordinate := (support_condOn _ _ _ member).1
+      exact Prod.ext coordinate.symm rfl
+    _ = _ := map_id _
+
 theorem map_mix (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
     (first second : FinDist α) (observe : α → β) :
     (mix weight nonnegative atMostOne first second).map observe =

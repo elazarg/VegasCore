@@ -20,6 +20,12 @@ The implementation is in
 It uses the canonical proper subgames, whole behavioral replacements, and
 bounded history runner. The GameTheory submodule is unchanged.
 
+The criterion is relative to the supplied game presentations. The
+[private-memory audit](private-memory-and-subgames.md) proves that the raw reactive
+presentation loses multiplayer subgames because of auxiliary scratch memory.
+Cone inclusion must not be presented as evidence of meaningful continuation
+coverage until that representation issue is addressed.
+
 ## Incentives, rather than separate outcome laws
 
 Fix a profile, a player, a proper root, and an alternative policy for that

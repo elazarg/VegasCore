@@ -3,6 +3,7 @@ import VegasTests.ContinuationRecovery
 import VegasTests.InFlightCommitment
 import VegasTests.ReactiveRuntime
 import VegasTests.ReactiveRecovery
+import VegasTests.ReactiveSubgameInformation
 import VegasTests.ReactivePendingMenus
 import VegasTests.ReactivePendingMenusStrategies
 import VegasTests.ReactivePendingMenusSource

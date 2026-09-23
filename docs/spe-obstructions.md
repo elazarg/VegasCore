@@ -40,6 +40,21 @@ it to compare. The checked [continuation-menu example](../GameTheoryExtensionsTe
 isolates that argument. It is an explanation of these mechanisms, rather than an
 additional native counterexample.
 
+### Representation issue: private memory removes subgames
+
+The [checked memory audit](private-memory-and-subgames.md) concerns the adequacy
+of the requested predicate, rather than a profitable deviation. In the actual
+reactive protocol, after one player has responded, proper subgames cannot
+contain later foreign decisions. After two distinct responders, they cannot
+contain further player decisions at all. Arbitrary auxiliary memory causes
+this for every scheduler and observation rule, including the Vegas adapter.
+
+This would make a positive raw-SPE theorem miss the intended multiplayer
+continuation obligations. The generic realization of internal strategy memory
+as an information-local behavioral policy is proved, but its reactive adapter
+and the resulting subgame presentation remain open. Resolve this issue before
+using the absence of proper native roots to close the preservation argument.
+
 ### O1. Early irreversible failure changes the remaining game
 
 **Witness.** There are four atomic decisions: seal A, choose B, disclose A,

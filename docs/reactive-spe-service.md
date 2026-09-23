@@ -9,6 +9,13 @@ response laws are checked. Completion and the full SPE theorem remain open. The
 [obstruction inventory](spe-obstructions.md) records the negative results that
 motivate each component.
 
+Before assembling the multiplayer continuation theorem, address the
+[private-memory representation issue](private-memory-and-subgames.md).
+Arbitrary scratch values in canonical response histories suppress proper
+subgames containing foreign decisions, independently of this service contract.
+The service's existing authorization and selection results retain their scopes;
+they do not establish that raw canonical SPE has the intended coverage.
+
 Fix the source interface, playerwise compiler, runtime, observation rule, and
 service before choosing analysis utilities. The intended theorem preserves
 behavioral SPE for utilities of original private types and public results, at

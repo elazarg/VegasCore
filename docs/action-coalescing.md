@@ -9,7 +9,11 @@ boundary, see
 Use one optional transmission per activation. Private computation, sampling,
 and memory belong inside that action. After the response, let the scheduler
 observe the output and choose the next activation or network operation. Use
-ordinary canonical SPE on that protocol.
+ordinary canonical SPE on a presentation with a justified treatment of private
+strategy implementation state. The
+[checked memory audit](private-memory-and-subgames.md) shows that recording
+arbitrary scratch memory inside the action removes multiplayer proper subgames.
+Atomic responses alone do not address that issue.
 
 This design has no response capacity or fixed reaction roster. It preserves
 passive observation and reactions before inclusion. A separate observation

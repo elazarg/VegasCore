@@ -2,6 +2,14 @@
 
 ## Status and recommendation
 
+The [private-memory audit](private-memory-and-subgames.md) proves a representation
+problem in the current reactive model: after two distinct players have responded,
+a proper canonical subgame cannot contain any further player decision. Arbitrary
+auxiliary memory alone causes this restriction, for every scheduler and leak
+rule. A useful multiplayer SPE theorem first needs a justified treatment of
+private strategy implementation state. A generic behavioral realization lemma
+is checked; the reactive adapter and revised representation remain open.
+
 The [obstruction inventory](spe-obstructions.md) collects the concrete failure
 mechanisms, distinguishes their proof scopes, and gives the combined proof plan.
 
@@ -20,6 +28,8 @@ The recommended target is preservation of behavioral subgame perfection by one
 utility-independent, playerwise compiler, at every proper native subgame.
 Reflection is a separate goal with a separate root-coverage obligation. Both
 should use the canonical `GameTheory.Protocol.InformationModel` definitions.
+Their history presentation must also pass the private-memory adequacy audit;
+using the canonical predicate alone does not establish the intended coverage.
 
 Unrestricted reactive scheduling has a checked SPE impossibility. The
 [public inclusion counterexample](reactive-inclusion-obstruction.md) uses

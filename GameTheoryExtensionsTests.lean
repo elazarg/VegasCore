@@ -9,6 +9,7 @@ import GameTheoryExtensionsTests.IncentiveCone
 import GameTheoryExtensionsTests.MixtureSimulation
 import GameTheoryExtensionsTests.OffPathDisclosureLaws
 import GameTheoryExtensionsTests.PreservationContracts
+import GameTheoryExtensionsTests.PrivateStrategy
 import GameTheoryExtensionsTests.PendingChoice
 import GameTheoryExtensionsTests.RegularChoice
 import GameTheoryExtensionsTests.SelectiveStopping
