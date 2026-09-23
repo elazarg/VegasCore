@@ -17,6 +17,14 @@ keeps private observation samples out of scheduler view and recall. The
 scheduler retains its memory of public traffic and its own decisions. A
 completely forgetful inclusion policy is a separate possible restriction.
 
+The [inclusion investigation](inclusion-and-spe.md) gives a checked positive
+local condition: a fresh proposal competes with an unchanged law over retained
+candidates, with an action-independent weight. Uniform selection over distinct
+pending identifiers satisfies its distribution equation and is insensitive to
+replaying an already pending packet. A checked root-mixture transfer theorem
+permits unresolved lotteries over proper source continuations. These components
+do not yet instantiate the native SPE certificate.
+
 The reactive protocol gives one optional message per activation. A separate
 observation rule privately samples other authors' pending packets before the
 response. Private computation and opening material require no separate turns.
@@ -421,9 +429,11 @@ L_T((compile sigma)[i := tau], k)
 ```
 
 These equations are equalities of distributions; the expectations denote
-finite mixture. A single matching source root is the point-mass case and is
-the first implementation target. Introduce the root-mixture generalization
-only where an adapter needs it.
+finite mixture. A single matching source root is the point-mass case. The
+behavioral root-mixture theorem is implemented as
+`InformationModel.isBehavioralSubgamePerfect_of_root_mixture_laws` in
+[BehavioralContinuation.lean](../GameTheoryExtensions/Protocol/BehavioralContinuation.lean).
+Its native law and root-coverage premises still need to be discharged.
 
 The quantifier order carries substantive requirements:
 
@@ -452,7 +462,7 @@ which cannot simply be conditioned on rare prefixes.
 The checked pure single-root theorem is
 `InformationModel.isSubgamePerfect_of_continuation_laws` in the VegasCore
 extension module. Its proof uses the canonical continuation values and finite
-expectation bounds. A weighted-root lemma, if needed, is an averaging argument
+expectation bounds. The behavioral theorem supports root mixtures by averaging
 over the same continuation games. Composition must preserve the global compiler
 and root coverage; compose the laws before claiming a tower theorem.
 

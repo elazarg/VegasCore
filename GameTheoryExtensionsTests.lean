@@ -7,6 +7,7 @@ import GameTheoryExtensionsTests.IrreversibleFailure
 import GameTheoryExtensionsTests.InterleavedMenus
 import GameTheoryExtensionsTests.MixtureSimulation
 import GameTheoryExtensionsTests.PreservationContracts
+import GameTheoryExtensionsTests.PendingChoice
 import GameTheoryExtensionsTests.SelectiveStopping
 import GameTheoryExtensionsTests.UtilitySimulation
 

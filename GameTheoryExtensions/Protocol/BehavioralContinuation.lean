@@ -118,6 +118,56 @@ variable {T : ExecutionProtocol.{uι, us', ua'} ι}
   (targetSingle : ∀ (state : T.State) {first second : ι},
     T.active state first → T.active state second → first = second)
 
+/-- A target continuation may be a lottery over proper source continuations.
+The root lottery is fixed before the deviator and its replacement are chosen.
+Each branch uses the original source opponents and a whole information-local
+replacement; branch-specific replacements do not receive future chance draws.
+
+This accommodates unresolved inclusion of already binding candidates. It does
+not assert that any particular scheduler supplies the required laws. -/
+theorem isBehavioralSubgamePerfect_of_root_mixture_laws
+    {sourceBound targetBound : ℕ} (sourceBounded : E.BoundedHorizon sourceBound)
+    (targetBounded : T.BoundedHorizon targetBound)
+    (compile : ∀ who, M.BehavioralPolicy who → N.BehavioralPolicy who)
+    {Observation : Type uv} (sourceObserve : E.History → Observation)
+    (targetObserve : T.History → Observation) (profile : Profile M.behavioralSignature)
+    (coverage : ∀ targetRoot, N.IsSubgameRoot targetRoot →
+      ∃ roots : FinDist {root : E.History // M.IsSubgameRoot root},
+        (N.runSingleMoverBehavioralFrom targetSingle
+          (Profile.map (target := N.behavioralSignature) compile profile)
+          targetBound targetRoot).map targetObserve =
+          roots.bind (fun root =>
+            (M.runSingleMoverBehavioralFrom single profile sourceBound root.val).map
+              sourceObserve) ∧
+        ∀ who (alternative : N.BehavioralPolicy who),
+          ∃ replacements : {root : E.History // M.IsSubgameRoot root} →
+              FinDist (M.BehavioralPolicy who),
+          (N.runSingleMoverBehavioralFrom targetSingle (Profile.update
+            (Profile.map (target := N.behavioralSignature) compile profile) who alternative)
+            targetBound targetRoot).map targetObserve =
+          roots.bind fun root => (replacements root).bind fun replacement =>
+            (M.runSingleMoverBehavioralFrom single (Profile.update profile who replacement)
+              sourceBound root.val).map sourceObserve)
+    (utility : Observation → ι → ℝ)
+    (perfect : M.IsBehavioralSubgamePerfect single sourceBounded profile
+      (fun history who => utility (sourceObserve history) who)) :
+    N.IsBehavioralSubgamePerfect targetSingle targetBounded (Profile.map compile profile)
+      (fun history who => utility (targetObserve history) who) := by
+  rw [M.isBehavioralSubgamePerfect_iff single sourceBounded] at perfect
+  rw [N.isBehavioralSubgamePerfect_iff targetSingle targetBounded]
+  intro targetRoot proper who alternative
+  obtain ⟨roots, honest, deviations⟩ := coverage targetRoot proper
+  obtain ⟨replacements, deviated⟩ := deviations who alternative
+  have honestValue := congrArg (fun law => law.expect (utility · who)) honest
+  have deviatedValue := congrArg (fun law => law.expect (utility · who)) deviated
+  simp only [FinDist.expect_map, FinDist.expect_bind] at honestValue deviatedValue
+  rw [deviatedValue, honestValue]
+  apply FinDist.expect_mono
+  intro root _
+  apply FinDist.expect_le_of_forall
+  intro replacement _
+  exact perfect root.val root.property who replacement
+
 /-- One compiler preserves behavioral SPE when every proper target root has
 a proper source match and covers all target deviations there. Root matching
 precedes selection of the deviator and its alternative policy. -/
@@ -146,18 +196,15 @@ theorem isBehavioralSubgamePerfect_of_continuation_laws
       (fun history who => utility (sourceObserve history) who)) :
     N.IsBehavioralSubgamePerfect targetSingle targetBounded (Profile.map compile profile)
       (fun history who => utility (targetObserve history) who) := by
-  rw [M.isBehavioralSubgamePerfect_iff single sourceBounded] at perfect
-  rw [N.isBehavioralSubgamePerfect_iff targetSingle targetBounded]
-  intro targetRoot proper who alternative
+  apply M.isBehavioralSubgamePerfect_of_root_mixture_laws single N targetSingle
+    sourceBounded targetBounded compile sourceObserve targetObserve profile ?_ utility perfect
+  intro targetRoot proper
   obtain ⟨sourceRoot, sourceProper, honest, deviations⟩ := coverage targetRoot proper
-  obtain ⟨mixture, deviated⟩ := deviations who alternative
-  have honestValue := congrArg (fun law => law.expect (utility · who)) honest
-  have deviatedValue := congrArg (fun law => law.expect (utility · who)) deviated
-  simp only [FinDist.expect_map, FinDist.expect_bind] at honestValue deviatedValue
-  rw [deviatedValue, honestValue]
-  apply FinDist.expect_le_of_forall
-  intro replacement _
-  exact perfect sourceRoot sourceProper who replacement
+  refine ⟨FinDist.pure ⟨sourceRoot, sourceProper⟩, ?_, ?_⟩
+  · simpa only [FinDist.pure_bind] using honest
+  · intro who alternative
+    obtain ⟨mixture, deviated⟩ := deviations who alternative
+    exact ⟨fun _ => mixture, by simpa only [FinDist.pure_bind] using deviated⟩
 
 /-- Reflection covers source roots. Agreement for every source profile at a
 matching target root realizes each compiled source deviation there. -/

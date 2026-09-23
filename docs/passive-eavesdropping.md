@@ -91,3 +91,9 @@ A restricted continuation may still arise from competing valid submissions
 and adaptive inclusion based on public traffic. Whether this obstructs SPE
 under the intended action boundaries requires a separate argument. No SPE
 preservation or impossibility theorem for passive eavesdropping is assumed.
+
+The [inclusion investigation](inclusion-and-spe.md) isolates a positive local
+condition and implements a uniform selector over distinct pending identifiers.
+Its laws preserve passive observation and rebroadcasting. A generic theorem
+transfers behavioral SPE through fixed lotteries over proper source roots;
+the complete reactive compiler does not yet supply that certificate.

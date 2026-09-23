@@ -21,6 +21,7 @@ import Interaction.ReactiveHistory
 import Interaction.ReactiveObservation
 import Interaction.ReactiveKnowledge
 import Interaction.MessageNetworkInvariant
+import Interaction.PendingSelection
 import Interaction.ReactiveProvenance
 import Interaction.ReactiveEvaluation
 import Interaction.ReactiveRounds
