@@ -49,6 +49,19 @@ theorem chooseUniform_singleton (id : MessageId Principal) :
   rw [chooseUniform, dite_eq_left (Finset.singleton_nonempty id), singletonLaw,
     FinDist.map_pure]
 
+theorem chooseUniform_insert (candidates : Finset (MessageId Principal))
+    (nonempty : candidates.Nonempty) (fresh : MessageId Principal) (absent : fresh ∉ candidates) :
+    chooseUniform (insert fresh candidates) =
+      FinDist.mix (((candidates.card : ℝ) + 1)⁻¹)
+        (inv_nonneg.mpr (by positivity))
+        (by rw [inv_le_one₀ (by positivity)]
+            have := Nat.cast_nonneg (α := ℝ) candidates.card
+            linarith)
+        (FinDist.pure (some fresh)) (chooseUniform candidates) := by
+  rw [chooseUniform, dite_eq_left (Finset.insert_nonempty _ _),
+    FinDist.uniformSet_insert candidates nonempty fresh absent, FinDist.map_mix, FinDist.map_pure]
+  rw [chooseUniform, dite_eq_left nonempty]
+
 theorem uniformPending_empty (eligible : Message Principal Payload → Bool) :
     uniformPending eligible [] = FinDist.pure none := by
   simp [uniformPending, eligibleIds, chooseUniform]

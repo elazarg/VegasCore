@@ -42,7 +42,11 @@ correctness remain open. Passive pending-message observation is separate from
 scheduling: only foreign, previously unknown packets enter private knowledge,
 and the sampled subset is absent from scheduler view and recall. These laws
 are checked in `Interaction.ReactiveObservation` and
-`Interaction.ReactiveKnowledge`. Reactive SPE preservation remains open.
+`Interaction.ReactiveKnowledge`. The generic proper-root argument for an
+initial pair of deterministic responses lives in `Interaction.ReactiveSubgamePrefix`.
+The [uniform-inclusion counterexample](early-opening-and-spe.md) proves failure
+of SPE for the current reactive compiler under its specified service.
+Positive reactive SPE preservation under a suitable service contract remains open.
 The paper's
 command-service capstones and fixed-service coalescing comparisons have their
 own stated targets and do not establish the reactive compiler theorem.

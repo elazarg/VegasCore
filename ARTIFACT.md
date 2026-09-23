@@ -28,6 +28,8 @@ the subsequent kernel-checked build.
 | Source behavioral policies, continuation laws, and SPE characterization | `Vegas/Source/ProtocolBehavioralPolicy.lean`, `Vegas/Source/SetupProtocolBehavioral.lean`, `Vegas/Game/BehavioralSubgame.lean` |
 | Conditional behavioral SPE preservation and reflection at proper roots | `GameTheoryExtensions/Protocol/BehavioralContinuation.lean` |
 | Conditional pure SPE preservation and reflection at proper roots | `GameTheoryExtensions/Protocol/Continuation.lean` |
+| Proper reactive subgames after two deterministic initial responses | `Interaction/ReactiveSubgamePrefix.lean` |
+| Honest source SPE whose compiled graph policy fails SPE under uniform, at-most-once inclusion | `VegasTests/ReactiveEarlyOpeningSPE.lean` |
 | Source to typed graph and canonical single-policy correspondence | `Vegas/Compile/EventGraphCanonical.lean`, `Vegas/Compile/EventGraphDeviation.lean` |
 | Sequential completion by dependency barriers | `Vegas/EventGraph/Sequential.lean` |
 | Message transport and player policies | `Interaction/MessageApplication.lean`, `Interaction/MessageApplicationPolicies.lean` |
@@ -48,8 +50,14 @@ the subsequent kernel-checked build.
 The proved capstones are universally quantified proofs, not conclusions
 inferred from tests.
 The source protocol and generic continuation-transfer results do not establish
-native SPE preservation. Source/native continuation laws, direct-action compilation,
-policy recovery, and proper-root coverage remain open. `VegasTests/SourceProtocol.lean` and
+native SPE preservation. Recovery has checked initialized execution laws and
+local incentive guarantees, but
+[`ReactiveEarlyOpeningSPE.lean`](VegasTests/ReactiveEarlyOpeningSPE.lean) proves
+that the current compiler fails SPE under the specified uniform service.
+The [counterexample guide](docs/early-opening-and-spe.md) explains the exact
+scope, completion facts, and profitable deviation. Whole-service continuation
+laws and a contract sufficient for positive native SPE preservation remain open.
+`VegasTests/SourceProtocol.lean` and
 `VegasTests/SetupProtocol.lean` check information-set closure on hidden source
 prefixes; `GameTheoryExtensionsTests/ContinuationTransfer.lean` proves that the
 atomic irreversible-failure example has no uniform continuation-law certificate.

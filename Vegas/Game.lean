@@ -20,8 +20,12 @@ import Vegas.Game.BehavioralSubgame
 -- The reactive protocol has canonical policy correspondence and bounded play.
 -- The source policy compiler is defined. Canonical service completion is proved
 -- for arbitrary player policies and adaptive network choices.
--- Packet protection, compiler outcome/deviation laws, full policy recovery,
--- continuation laws, and proper-root coverage remain open.
--- The fixed-service pending-menu impossibility has its own scheduling assumptions;
--- it does not establish an impossibility for the reactive protocol.
+-- Packet protection, compiler outcome/deviation laws, continuation correspondence,
+-- and proper-root coverage remain open. Recovery preserves initialized execution
+-- laws, but ReactiveEarlyOpeningSPE proves that the actual recovery compiler fails
+-- SPE under a fixed uniform, at-most-once service. Its source policy is honest and
+-- SPE. This refutes sufficiency of event-local selection regularity for that compiler;
+-- a service or translation contract addressing competition between events is needed.
+-- The separate ReactivePendingMenusSource impossibility quantifies over all compilers
+-- for its adaptive public scheduler. Neither witness rules out every constrained service.
 -- The initial-play Nash/Bayesian theorem does not discharge these obligations.

@@ -102,9 +102,13 @@ and reconstruction tests; they do not certify proper native subgame roots.
 ## Remaining SPE obligations
 
 This construction supplies a recovery policy and its initialized compatibility
-proof. It does not yet prove that recovery is optimal throughout the reactive
-service. That requires a continuation correspondence covering intervening
-reactions, remaining opportunities, deadlines, and information sets.
+proof. The [early-opening counterexample](early-opening-and-spe.md) proves that
+recovery is not optimal under uniform inclusion and at-most-once publication
+alone. Spending a transmission on a later opening can outperform the compiler's
+attempt to repair the current binding. The schedule is fixed, and the source
+policy is honest and SPE. A positive result requires a service or translation
+contract addressing this competition between events, as well as intervening
+reactions, deadlines, and information sets.
 
 In particular, the local theorem fixes the selection law and downstream
 kernel across fresh source values. The regularity version permits changed

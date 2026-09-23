@@ -67,6 +67,15 @@ same-error epsilon-Nash theorems under the concrete
 player policy. Its exact source-policy mixture is chosen before private setup,
 while the native wire and event-order policies remain public and adaptive.
 
+Subgame perfection requires additional continuation guarantees. The reactive
+compiler has a [checked counterexample under uniform inclusion](docs/early-opening-and-spe.md):
+an honest source SPE compiles to a policy with a profitable off-path deviation.
+The deviation spends a transmission on an early opening instead of repairing
+the current binding. The [inclusion investigation](docs/inclusion-and-spe.md)
+separates the proved local selection laws from the remaining service and
+compiler obligations. Honest SPE preservation under a suitable constrained
+service remains open.
+
 ## Build
 
 ```text

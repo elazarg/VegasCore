@@ -20,10 +20,16 @@ fee analysis: Roughgarden defines miner utility separately from the intended
 allocation rule and asks whether following that rule maximizes utility.
 [Transaction Fee Mechanism Design, Sections 3.2 and 5.1](https://arxiv.org/html/2106.01340).
 
-No native SPE theorem is established by this note. The local regularity
+The [early-opening counterexample](early-opening-and-spe.md) proves that the
+current recovery compiler can fail SPE with a fixed schedule and uniform,
+at-most-once selection. Event-local neutrality alone leaves competition
+between transmissions for different events unresolved.
+
+No positive native SPE theorem is established by this note. The local regularity
 argument, its converse, the weighted and priority selectors, and the compiler's
 local recovery inequality are checked in Lean. Composition through the
-reactive service and correspondence of proper subgames remain obligations.
+reactive service needs a contract addressing this counterexample, in addition
+to correspondence of proper subgames.
 
 ## Proof and assumption boundaries
 

@@ -18,6 +18,7 @@ import Interaction.IdealCommitments
 import Interaction.CommitmentCandidates
 import Interaction.ReactiveRecall
 import Interaction.ReactiveHistory
+import Interaction.ReactiveSubgamePrefix
 import Interaction.ReactiveObservation
 import Interaction.ReactiveKnowledge
 import Interaction.MessageNetworkInvariant

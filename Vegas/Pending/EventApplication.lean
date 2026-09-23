@@ -927,6 +927,30 @@ theorem handle_opening_eq
     subst decoded
     simp [stored, acceptResolution, resolved]
 
+/-- A withholding packet without an application-side remembered intention
+executes the failure branch. Reactive memory is separate from this table. -/
+theorem handle_withhold_unremembered_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (id : MessageId Player) (event : graph.EventId)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (view : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+    (ready : state.config.cut.Ready event) (timely : state.WithinDeadline runtime event)
+    (sender : id.1 = owner) (remembered : state.remembered event = none) :
+    handle runtime state ⟨id, .withhold event⟩ =
+      some (state.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm) false)
+        (cast (congrArg EventField.Value outputEq.symm)
+          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
+  have resolved := resolveOutput?_false_eq_failure_of_ready state event ready
+    owner payload binding checks outputEq codeEq
+  simp [handle, ready, timely, view, Message.sender, sender, withholdingAction,
+    remembered, acceptResolution, resolved]
+
 /-- Canonical failure traffic preserves the owner's original disclosure
 decision, even when that decision was `true` and local validation rejected it. -/
 theorem handle_withhold_eq

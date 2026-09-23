@@ -6,7 +6,10 @@ Competing pending commitments do not, by themselves, prevent preservation of
 optimal choices. There is a checked positive result for a useful class of
 inclusion rules, and a checked SPE transfer theorem that permits lotteries
 over source continuations. Neither yet establishes SPE preservation for the
-complete reactive compiler.
+complete reactive compiler. The [early-opening counterexample](early-opening-and-spe.md)
+proves that the current recovery compiler fails SPE even with uniform
+selection, fixed activation times, and at-most-once inclusion. A transmission
+for a later event can be more useful than recovery at the current event.
 
 The [reactive inclusion counterexample](reactive-inclusion-obstruction.md)
 proves that unrestricted public scheduling prevents a uniform SPE theorem:
@@ -26,7 +29,8 @@ by miner incentives. It connects the mixture law to Luce's choice axiom,
 explains fee-sensitive rules, and states the weaker local contract of
 regularity. The local theorem, its converse, weighted selection, and finite
 mixtures of stable priorities are checked. Their composition through the
-reactive service remains open.
+reactive service needs an additional contract: the early-opening witness
+disproves sufficiency of event-local regularity for the current compiler.
 
 ## The useful condition concerns choices, not memory
 
@@ -314,8 +318,11 @@ remaining native obligations are:
    not establish those laws.
 
 Multiple candidates and uncertain inclusion are therefore insufficient reasons
-to abandon preservation. Preservation through a constrained service remains
-open; unrestricted public scheduling has the checked counterexample above.
+to abandon preservation. The [uniform-service witness](early-opening-and-spe.md)
+identifies a further obligation even without adaptive scheduling: submissions
+for different events compete for the same transmission opportunity. The current
+compiler fails that test. Preservation through a service that addresses this
+competition remains open.
 
 ## Relation to a blockchain runtime
 

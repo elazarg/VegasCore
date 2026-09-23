@@ -49,6 +49,15 @@ theorem Policy.consistent_snoc_iff (policy : app.Policy)
   · rintro ⟨prior, supported⟩
     exact .snoc entry prior supported
 
+theorem Policy.Consistent.of_append {policy : app.Policy}
+    {before after : List app.PlayerEntry} (valid : policy.Consistent (before ++ after)) :
+    policy.Consistent before := by
+  induction after using List.reverseRecOn with
+  | nil => simpa only [List.append_nil] using valid
+  | append_singleton last rest ih =>
+      rw [← List.append_assoc, Policy.consistent_snoc_iff] at valid
+      exact ih valid.1
+
 open Classical in
 def Policy.recover (prescribed recovery : app.Policy) : app.Policy :=
   fun history view => if prescribed.Consistent history then prescribed history view
