@@ -50,6 +50,13 @@ The mathematical statements developed here have the following proof anchors:
   proves at-most-once inclusion in the actual service, including rejected calls.
 - [`replay_unpublished_history`](../Interaction/ReactivePublication.lean)
   proves all-replay menu invariance at arbitrary legal initialized histories.
+- [`prioritySelection_responses_factor`](../Interaction/ReactiveSelection.lean)
+  factors the decoded selection law after arbitrary randomized native responses
+  through a fixed branch law, with an explicit decoder and fresh-candidate value.
+- [`bindingSelection_history_regular` and `bindingSelection_value_independent`](../Vegas/Pending/ReactiveSelection.lean)
+  prove all-response regularity and independence from hidden commitment meanings
+  for the public binding-acceptance selector. These concern immediate selection;
+  future scheduling and the decoded continuation remain separate obligations.
 - [`weightedSet_insert` and `weightedSet_one`](../GameTheoryExtensions/Math/Probability/WeightedSet.lean)
   prove the weighted mixture equation and equal-weight specialization.
 - [`PriorityChoice.choose_insert` and `law_regular_insert`](../GameTheoryExtensions/Math/Probability/PriorityChoice.lean)

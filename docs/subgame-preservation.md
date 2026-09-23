@@ -519,8 +519,15 @@ actions and arbitrary-prefix continuation laws.
 Submission remains separate from passive observation and inclusion. At an
 activation, the player can privately learn foreign pending packets and then
 submit another packet, replay a known packet, or send nothing.
-[ReactiveProtocol.lean](../InteractionTests/ReactiveProtocol.lean) checks this
-reaction before inclusion and indistinguishable scheduler observations under
+The reserved reactive service permits each envelope identifier to be included
+at most once, even when application handling rejects its call. A second
+inclusion request waits; a fresh envelope can retry the same payload.
+[`interaction_history_publishedOnce`](../Vegas/Pending/ReactiveServicePublication.lean)
+establishes this at every legal initialized service history. The lower-level
+carrier and custom schedulers remain general; the service theorem is the
+boundary enforcing this guarantee.
+[ReactiveProtocol.lean](../InteractionTests/ReactiveProtocol.lean) checks
+reactions before inclusion and indistinguishable scheduler observations under
 different private samples. The fixed-service comparison in
 [InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean) separately
 checks its explicit wire deliveries and retained service slots.

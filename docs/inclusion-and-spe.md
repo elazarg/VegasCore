@@ -97,7 +97,7 @@ displaced probability mass. When `p = 0`, its choice is immaterial.
 [`regular_option_restore`](../GameTheoryExtensions/Math/Probability/RegularCoupling.lean)
 proves existence, including this degenerate case.
 
-Use the post-insertion selection lottery as the common branching law. At an
+Use the post-insertion selection distribution as the common branching law. At an
 old branch, continue with that old action. At the fresh branch, submitting
 `a` translates to `point(a)` and silence translates to `d`. The branch law
 is unchanged by the response. This gives equality of action distributions
@@ -157,6 +157,37 @@ this as a fixed mixture with the old law are proved in
 [`RegularChoice.lean`](../GameTheoryExtensionsTests/RegularChoice.lean).
 Eligibility, priorities, weights, and continuation behavior remain explicit
 premises across the compared responses.
+
+### Actual player responses
+
+[`ReactiveSelection.lean`](../Interaction/ReactiveSelection.lean) connects
+stable-priority selection to the actual atomic response operation. With a
+fixed eligibility predicate and priority distribution, each raw response has
+one of two effects on the eligible menu: leave it unchanged, or insert the
+sender's next identifier. This includes silence, all replays, private memory,
+and ineligible submissions.
+
+`prioritySelection_response_eq` proves the exact law.
+`prioritySelection_responses_factor` then factors every randomized native
+response through the same regular-selection branch law. The decoder of old
+identifiers is held fixed, and the new candidate's value is supplied explicitly.
+The empty-menu outcome also needs an explicit decoded meaning; the theorem
+does not invent a source action for a timeout.
+
+[`serialsBeforeNext_history`](../Interaction/ReactiveAllocation.lean) proves
+at every legal initialized history that the next identifier is absent from
+both pending candidates and the ledger. Fresh allocation is therefore an
+invariant of the actual protocol, rather than a restriction on deviations.
+
+The Vegas instantiation uses the public acceptance test for a commitment to
+one event. `bindingEligible_accepts` proves that passing this test permits
+application acceptance. `bindingSelection_history_regular` covers every
+native response at every initialized legal history, and
+`bindingSelection_value_independent` proves independence from the hidden
+binding value at a fixed handle and fixed transport attributes.
+These proofs are in
+[`Vegas/Pending/ReactiveSelection.lean`](../Vegas/Pending/ReactiveSelection.lean).
+They do not yet identify decoded identifiers with complete source continuations.
 
 ### Covering every replay requires candidate retention
 
