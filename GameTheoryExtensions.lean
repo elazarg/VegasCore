@@ -15,6 +15,7 @@ import GameTheoryExtensions.Protocol.ResponseSampling
 import GameTheoryExtensions.Protocol.PrivateStrategy
 import GameTheoryExtensions.Protocol.SequentialIncentives
 import GameTheoryExtensions.Analysis.Protocol.Sequential
+import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheoryExtensions.Core.PendingChoice
 import GameTheoryExtensions.Core.IncentiveCone
 import GameTheoryExtensions.Core.RegularChoice

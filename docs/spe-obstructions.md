@@ -4,8 +4,9 @@
 
 The broader credibility target is specified in the
 [sequential-equilibrium design](sequential-equilibrium-design.md). The results
-below retain their SPE scope. A sequential-equilibrium impossibility needs a
-source sequential-equilibrium witness, not merely a source SPE witness.
+below retain their SPE scope except for the explicitly checked sequential
+strengthening of O6. A sequential-equilibrium impossibility needs a source
+sequential-equilibrium witness, not merely a source SPE witness.
 
 This is the inventory of concrete failure mechanisms found in the experiments,
 proofs, and runtime investigation. It is not an exhaustiveness theorem: excluding
@@ -37,7 +38,7 @@ Three evidence levels must remain distinct:
 | O3 | Replay has selection power unavailable to a fresh proposal | Checked local randomized incentive obstruction and exact network selection witnesses | Distinct identifiers and unpublished eligibility address the witnessed menu effects |
 | O4 | One transmission opportunity can help different events | Checked honest source SPE whose current compiled policy is not native behavioral SPE under uniform inclusion | Authorized uniform service removes the exhibited improvement; full SPE and ledger realization open |
 | O5 | Recovery confuses an attempted submission or remembered intention with what took effect | Checked operational failure of the command-service policy; reactive recovery and reconstruction regressions | Selected cases are repaired; arbitrary-prefix correspondence remains open |
-| O6 | Target observations reveal information absent from source observations | Checked abstract behavioral-SPE impossibility for disclosure after a deviation, despite initialized law matching; documented raw-packet example | No native adapter for the disclosure example; reactive continuation information laws remain open |
+| O6 | Target observations reveal information absent from source observations | Checked abstract sequential-equilibrium and behavioral-SPE impossibilities for disclosure after a deviation, despite initialized law matching; documented raw-packet example | No native adapter for the disclosure example; reactive continuation information laws remain open |
 
 O1 and O2 illustrate a common obstruction: a source policy can select its best
 option without encoding a ranking of alternatives that the target later forces
@@ -241,6 +242,17 @@ This identifies the additional obligation after earlier deviations by other
 players. It is not a native runtime counterexample: the disclosure must
 authenticate the actual bit to obtain those particular proper roots; an
 untrusted raw claim does not automatically do so.
+
+**Sequential-equilibrium strengthening.**
+[SequentialDisclosure.lean](../GameTheoryExtensionsTests/SequentialDisclosure.lean)
+rules out utility-independent sequential-equilibrium translation for these
+same two games. Its source stop-and-guess-`true` assessment has a uniform
+off-path posterior, justified by one common fully mixed sequence. That
+assessment is sequentially rational for both opposite guessing utilities.
+Target Bob information sets are singletons; no strategy is rational for both
+utilities, even allowing a different target belief system for each. The
+[assessment construction](sequential-equilibrium-design.md#checked-off-path-assessment-and-disclosure-boundary)
+explains the proof and its abstract scope.
 
 **Documented witness.** Bob commits a random bit under a rejecting guard. If
 the prescribed policy broadcasts the raw attempted opening, Alice learns that

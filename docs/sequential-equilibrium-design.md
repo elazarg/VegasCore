@@ -22,6 +22,21 @@ The source-to-native preservation theorem is open. The checked foundations are:
   a hidden-bit game admits a behavioral SPE prescribing a strictly inferior
   off-path response. No belief system makes that profile sequentially rational.
   This tests the required strengthening, not a native compilation theorem.
+- [Bayes.lean](../GameTheoryExtensions/Analysis/Protocol/Bayes.lean): full mixing
+  gives every legal history positive reach probability. With finitely many
+  players and a bounded horizon, it also implies finitely many legal histories.
+  Finite decision fibers admit canonical Bayes assessments with positive mass.
+- [SequentialBeliefs.lean](../GameTheoryExtensionsTests/SequentialBeliefs.lean)
+  and [SequentialEquilibrium.lean](../GameTheoryExtensionsTests/SequentialEquilibrium.lean):
+  explicit sequential equilibria with a genuinely unreachable information set,
+  using one common fully mixed sequence for all strategies and beliefs.
+- [SequentialDisclosure.lean](../GameTheoryExtensionsTests/SequentialDisclosure.lean):
+  abstract disclosure defeats every utility-independent sequential-equilibrium
+  translator, even allowing utility-dependent target beliefs. The source
+  witness satisfies the actual sequential-equilibrium definition.
+- [ReactiveDecisionInformation.lean](../Interaction/ReactiveDecisionInformation.lean):
+  actual reactive decision fibers are nonterminal history antichains, for any
+  application, scheduler and passive observation rule.
 - [ReactiveSequential.lean](../Interaction/ReactiveSequential.lean) and its
   [Vegas specialization](../Vegas/Pending/ReactiveSequential.lean): the current
   arbitrary scratch-memory carrier prevents finite-support fully mixed play at
@@ -55,12 +70,13 @@ It does not permit discarding an information set because the equilibrium assigns
 it probability zero. Zero-probability chance transitions are absent from legal
 histories; nature's fixed prior and service laws are not player trembles.
 
-Audit two details explicitly. First, information fibers must consist of
-nonterminal decisions, using `InformationSite.AllNonterminal`. Second, prove
-decision recall and the antichain property rather than assuming the global
-`PerfectRecall` predicate: the reactive adapter returns `none` while a player is
-inactive. Full recall at inactive observations is a stronger representation
-requirement than remembering prior decisions when next asked to act.
+The reactive adapter proves `InformationSite.AllNonterminal` and the decision
+antichain property. At a decision, the observation includes the player's full
+response record. Its own response increases that record's length, and later
+steps retain the record as a prefix. Two decision histories with equal
+observations therefore cannot be proper ancestors of one another. This uses
+the actual adapter, which returns `none` while the player is inactive; it does
+not assume the stronger global `PerfectRecall` predicate at inactive histories.
 
 ## Preservation statement and quantifiers
 
@@ -142,7 +158,9 @@ four obligations:
    rationality is required of the limiting assessment; the approximants need
    not themselves be equilibria.
 
-These are open construction obligations. It is insufficient to compile each
+The generic positive-mass and Bayes construction in step 2 is checked. Steps
+1, 3 and 4 remain compiler-specific construction obligations. It is insufficient
+to compile each
 $\sigma_n$ verbatim: that need not randomize over target-only actions. Adding
 uniform noise without analyzing conditional probabilities is also insufficient.
 The relative rates at which different mistakes vanish determine off-path
@@ -154,6 +172,40 @@ proof method, with cone inclusion as the exact incentive test when matching
 whole laws is unnecessarily strong. Any mixture over source sites must justify
 its conditional source beliefs, preserve the same player's opponents, and
 choose its weights independently of that player's proposed replacement.
+
+### Checked off-path assessment and disclosure boundary
+
+Chance samples a uniform bit and shows it to Alice. Alice stops or asks Bob;
+Bob guesses without seeing the bit. The prescribed profile stops and would
+guess `true`. For the consistency witness, each player independently switches
+its prescribed action with probability `1 / (n + 2)` at every decision site.
+Alice's asking probability is the same for both bits, so each Bob history has
+reach probability `1 / (2 * (n + 2))`. Bob's information mass tends to zero,
+but his Bayes posterior stays uniform. Alice's decision beliefs are singletons.
+The complete sequence converges in every strategy and belief coordinate.
+
+Two rationality tests use that same consistency witness. When Bob receives
+one for `true` and zero for `false`, the prescribed continuation is optimal,
+even though Bob is never asked. When Bob is rewarded for matching the hidden
+bit, or instead for mismatching it, every continuation guess has expected
+payoff `1/2`. Alice receives zero throughout. Thus the same assessment is a
+sequential equilibrium for both opposite guessing utilities.
+
+Now reveal the actual bit to Bob when Alice asks. Each Bob information fiber
+is a singleton, so even arbitrarily chosen beliefs cannot hide it. At bit
+`false`, rationality for matching requires payoff at least one from guessing
+`false`; rationality for mismatching requires payoff at least one from guessing
+`true`. The two prescribed payoffs sum to one. No target strategy can therefore
+admit rational assessments for both utilities, even with different beliefs.
+
+This rules out every utility-independent translator for these two games,
+including translators with access to the whole source profile. The existing
+[law-preserving compiler](../GameTheoryExtensionsTests/OffPathDisclosureLaws.lean)
+still preserves initialized joint type/result laws for every source profile.
+Sequential consistency does not remove the extra-information obstruction.
+This is a preservation impossibility, not an equilibrium-existence claim or a
+native runtime counterexample. A runtime application must prove that its
+observations actually implement this disclosure before using the negative result.
 
 ## Finite games without restricting private computation
 
@@ -223,13 +275,14 @@ has no proved implication for conditional continuation incentives or beliefs.
 
 ## Acceptance gates and implementation order
 
-1. **Definition regression:** retain the checked SPE/credibility separation.
-   Add a positive full sequential-equilibrium assessment with a genuinely
-   off-path information set and an explicit consistency witness.
+1. **Definition regression (checked):** SPE/credibility separation, positive
+   sequential-equilibrium assessments with genuinely off-path beliefs and an
+   explicit common consistency witness, and the abstract disclosure impossibility.
 2. **Finite presentation:** implement the smallest reactive finite instance
    preserving binding, passive partial foreign leaks, repeated responses and
-   at-most-once inclusion. Prove finite legal histories, nonterminal information
-   fibers and decision recall/antichains. Justify the player-memory interface.
+   at-most-once inclusion. Nonterminal fibers and decision antichains are checked
+   for the actual reactive adapter. The generic finite-history theorem is ready;
+   a finite response presentation and its player-memory justification remain open.
 3. **Belief construction:** identity translation, a redundant private-bit
    extension, and a message encoding with target-only errors. Prove one common
    tremble sequence and posterior convergence; include an incompatible-beliefs
