@@ -37,7 +37,10 @@ private abbrev graph : EventGraph Bool simpleExpr where
 private def runtime : EventGraphRuntime graph where
   deadline _ := 2
 
-private abbrev app := runtime.reactiveApplication
+private def leaks : MessageNetwork.ObservationRule Bool (Payload graph) :=
+  fun _ _ => FinDist.pure ∅
+
+private abbrev app := runtime.reactiveApplication leaks
 private abbrev candidate : Handle graph := (false, .prepared 0)
 
 private def initial : app.Execution :=
@@ -45,7 +48,7 @@ private def initial : app.Execution :=
     (State.initial (graph := graph) (fun input => nomatch input))
 
 private def submitted (bit : Bool) : app.Execution :=
-  initial.respond app false (runtime.reactiveBinding false 0 .bool (.success bit) 0)
+  initial.respond app false (runtime.reactiveBinding leaks false 0 .bool (.success bit) 0)
 
 /-- One decision both fixes the hidden meaning and emits the public envelope. -/
 theorem single_activation (bit : Bool) :
@@ -55,25 +58,29 @@ theorem single_activation (bit : Bool) :
       (submitted bit).environmentRecall = [] ∧
       (submitted bit).application.remembered 0 = none := by
   refine ⟨?_, rfl, rfl, rfl, rfl⟩
-  exact runtime.reactiveBinding_result false 0 .bool (.success bit) 0 initial rfl
+  exact runtime.reactiveBinding_result leaks false 0 .bool (.success bit) 0 initial rfl
 
 /-- Reading a packet later cannot make a submitted handle mutable. -/
 theorem replacement_fails (bit replacement : Bool) :
     ((submitted bit).respond app false
-      (runtime.reactiveBinding false 0 .bool (.success replacement) 0)).application.bindingResult
+      (runtime.reactiveBinding leaks false 0 .bool (.success replacement)
+        0)).application.bindingResult
         candidate .bool = .success bit := by
   cases bit <;> cases replacement <;> rfl
 
 /-- Omitting opening material is irrevocable for that handle. -/
 theorem late_opening_fails :
-    let failed := initial.respond app false (runtime.reactiveBinding false 0 .bool .failure 0)
-    let next := failed.respond app false (runtime.reactiveBinding false 0 .bool (.success true) 0)
+    let failed := initial.respond app false (runtime.reactiveBinding leaks false 0 .bool
+      .failure 0)
+    let next := failed.respond app false (runtime.reactiveBinding leaks false 0 .bool
+      (.success true) 0)
     next.application.candidates.lookup candidate = .unopenable := rfl
 
 /-- Neither the private bit nor its own recall becomes a scheduler observation. -/
 theorem binding_hidden :
     (submitted false).observeEnvironment app = (submitted true).observeEnvironment app :=
-  runtime.reactiveBinding_observation false 0 .bool (.success false) (.success true) 0 initial
+  runtime.reactiveBinding_observation leaks false 0 .bool (.success false) (.success true)
+    0 initial
 
 private def granted : app.Execution :=
   { initial with application := { initial.application with serviceGrant := some 0 } }
@@ -84,8 +91,8 @@ private def chooseBit (law : FinDist Bool) : graph.BehavioralPolicy false :=
 /-- The actual graph-policy compiler consumes the source random law at the
 first activation and returns a complete submission action. -/
 theorem compiler_samples_on_activation (law : FinDist Bool) :
-    runtime.compileReactivePolicy false (chooseBit law) [] (granted.observe app false) =
-      law.map (fun bit => runtime.reactiveDecision false 0 (.success bit)
+    runtime.compileReactivePolicy leaks false (chooseBit law) [] (granted.observe app false) =
+      law.map (fun bit => runtime.reactiveDecision leaks false 0 (.success bit)
         (granted.observe app false).application) := by
   have actor : graph.actor? 0 = some false := rfl
   simp [compileReactivePolicy, reactiveAlreadySubmitted, granted, initial,
@@ -104,7 +111,7 @@ private theorem first_slot :
     exact False.elim (impossible ⟨0, rfl⟩)
 
 private def firstAction (bit : Bool) : app.Action :=
-  runtime.reactiveDecision false 0 (.success bit) (granted.observe app false).application
+  runtime.reactiveDecision leaks false 0 (.success bit) (granted.observe app false).application
 
 private def firstResponse (bit : Bool) : app.Execution :=
   granted.respond app false (firstAction bit)
@@ -132,9 +139,10 @@ theorem compiler_sends_and_remembers (bit : Bool) :
 /-- Re-activating the owner before inclusion does not resample or send a
 competing commitment, even when the next source policy law is different. -/
 theorem compiler_does_not_resample (bit : Bool) (law : FinDist Bool) :
-    runtime.compileReactivePolicy false (chooseBit law) ((firstResponse bit).recall false)
+    runtime.compileReactivePolicy leaks false (chooseBit law) ((firstResponse bit).recall false)
       ((firstResponse bit).observe app false) = FinDist.pure ⟨default, none⟩ := by
-  have sent : runtime.reactiveAlreadySubmitted ((firstResponse bit).recall false) 0 = true := by
+  have sent : runtime.reactiveAlreadySubmitted leaks ((firstResponse bit).recall false) 0
+    = true := by
     unfold firstResponse
     rw [first_action]
     rfl
@@ -150,6 +158,6 @@ are choices of the network policy at its ordinary opportunities. -/
 example : interactionVisit (graph := graph) 2 0 =
     [.grant 0, .player false, .wire, .wire, .includeLatest 0 false, .sample 0] := rfl
 
-example (who : Bool) : (NetworkChoice.activate who).command runtime = .activate who := rfl
+example (who : Bool) : (NetworkChoice.activate who).command runtime leaks = .activate who := rfl
 
 end VegasTests.ReactiveRuntime

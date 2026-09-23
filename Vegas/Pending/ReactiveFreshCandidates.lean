@@ -20,8 +20,9 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem reactiveFreshInvariant (runtime : EventGraphRuntime graph) :
-    runtime.reactiveApplication.Invariant State.FreshCandidates where
+theorem reactiveFreshInvariant (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) :
+    (runtime.reactiveApplication leaks).Invariant State.FreshCandidates where
   submit state who submission fresh := by
     apply submitStep_freshCandidates
     rw [submission.register_eq]
@@ -35,12 +36,14 @@ theorem reactiveFreshInvariant (runtime : EventGraphRuntime graph) :
     simpa only [State.FreshCandidates, State.HandleUnused, tables.1, tables.2] using fresh
 
 theorem reactive_history_fresh (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
     (inputs : FinDist graph.Inputs) (horizon : Nat)
-    (scheduler : runtime.reactiveApplication.Scheduler)
-    {state} (trace : (runtime.reactiveApplication.protocol (inputs.map State.initial)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    {state} (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace state) :
     ReactiveApplication.stateInvariant State.FreshCandidates state := by
-  apply runtime.reactiveFreshInvariant.history (inputs.map State.initial) horizon scheduler _ trace
+  apply (runtime.reactiveFreshInvariant leaks).history (inputs.map State.initial) horizon
+    scheduler _ trace
   intro state supported
   obtain ⟨input, _, rfl⟩ := FinDist.support_map .. ▸ supported
   exact State.initial_freshCandidates input
@@ -48,10 +51,11 @@ theorem reactive_history_fresh (runtime : EventGraphRuntime graph)
 /-- Allocation uses only the owner's actual view and cannot fail because of
 earlier submissions by that player or its opponents. -/
 theorem reactiveFreshSlot_available (runtime : EventGraphRuntime graph)
-    (execution : runtime.reactiveApplication.Execution) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (fresh : execution.application.FreshCandidates) :
     ∃ serial, reactiveFreshSlot
-      (execution.observe runtime.reactiveApplication who).application = some serial := by
+      (execution.observe (runtime.reactiveApplication leaks) who).application = some serial := by
   obtain ⟨serial, _, fresh, _⟩ := fresh.exists_prepared who 0
   unfold reactiveFreshSlot
   split

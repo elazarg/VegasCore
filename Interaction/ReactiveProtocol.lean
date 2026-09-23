@@ -6,10 +6,10 @@ import GameTheory.Protocol.Backward
 
 /-! # A scheduler that activates players explicitly
 
-Each scheduler decision chooses one activation, delivery, inclusion, application
-operation, or wait. An activation transfers control to exactly one player; its
-single response transfers control back. The horizon bounds scheduler decisions,
-not private computation. Application completion requires a service certificate.
+Each scheduler decision chooses one activation, inclusion, application operation,
+or wait. Activation privately samples pending-message observations and transfers
+control to one player; its single response transfers control back. The horizon
+bounds scheduler decisions. Application completion requires a service certificate.
 -/
 
 noncomputable section

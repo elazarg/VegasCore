@@ -19,7 +19,6 @@ import Vegas.Compile.EventGraphCanonical
 import Vegas.Compile.EventGraphScheduling
 import Vegas.Pending.EventServiceCompletion
 import Vegas.Pending.EventSequential
-import VegasTests.ReactiveMenusSource
 
 /-! # Paper theorem audit
 
@@ -670,36 +669,5 @@ theorem source_honest_run_successful [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_honest_run_successful
-
-/-! ## Boundary of subgame-perfect compilation -/
-
-open VegasTests.ReactiveMenus in
-open VegasTests.PendingMenus
-  (sourceProgram sourceModel sourceInitial sourceProtocolProfile sourceUtility) in
-/-- One actual source game and reactive reserved-service instance admit no
-utility-independent SPE-preserving profile translation for both public utility
-tests. This includes arbitrary whole-profile translators and either source
-commitment admission. It is not an impossibility for every runtime. -/
-theorem reactive_no_uniform_spe_compiler
-    (admission : SourceProgram.CommitmentInterface sourceProgram) :
-    ¬ ∃ compile : Profile (sourceModel admission).behavioralSignature →
-        Profile model.behavioralSignature,
-      ∀ preferOne,
-        (sourceModel admission).IsBehavioralSubgamePerfect
-          (SourceProgram.protocol_singleMover sourceProgram admission sourceInitial)
-          (SourceProgram.protocol_bounded sourceProgram admission sourceInitial)
-          (sourceProtocolProfile admission)
-          (SourceProgram.protocolUtility sourceProgram admission sourceInitial
-            (sourceUtility preferOne)) →
-        model.IsBehavioralSubgamePerfect
-          (app.singleMover initialLaw horizon scheduler)
-          (app.bounded initialLaw horizon scheduler)
-          (compile (sourceProtocolProfile admission)) (reactivePayoff preferOne) :=
-  VegasTests.ReactiveMenus.no_utility_independent_spe_compiler admission
-
-/-- info: 'Vegas.Paper.reactive_no_uniform_spe_compiler' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.reactive_no_uniform_spe_compiler
 
 end Vegas.Paper

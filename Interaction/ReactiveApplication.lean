@@ -9,6 +9,9 @@ An application supplies atomic submission and inclusion semantics. A player's
 choice retains private memory and may submit or replay one envelope. Only the
 public envelope and broadcaster enter the network input history. The scheduler
 can activate a player again after observing that output.
+Before a response, the separate observation rule privately samples pending
+message identifiers. The scheduler sees public traffic and its own command
+recall, with no access to the sample or any player's leaked-message knowledge.
 -/
 
 namespace Interaction
@@ -29,6 +32,7 @@ structure ReactiveApplication (Principal : Type) where
   environment : State → EnvironmentCommand → FinDist State
   observePlayer : State → Principal → LocalObservation
   observePublic : State → PublicObservation
+  observePending : MessageNetwork.ObservationRule Principal Payload
 
 namespace ReactiveApplication
 
@@ -53,13 +57,12 @@ structure PlayerEntry where
   emitted : Option (Message Principal app.Payload)
 
 structure EnvironmentView where
-  network : MessageNetwork Principal app.Payload
+  network : MessageNetwork.PublicView Principal app.Payload
   application : app.PublicObservation
   receipts : List (MessageId Principal × Bool)
 
 inductive Command where
   | activate (who : Principal)
-  | deliver (who : Principal) (id : MessageId Principal)
   | include (id : MessageId Principal)
   | application (command : app.EnvironmentCommand)
   | wait
@@ -82,7 +85,7 @@ def Execution.observe (execution : app.Execution) (who : Principal) : app.Player
   ⟨execution.network.observe who, app.observePlayer execution.application who, execution.receipts⟩
 
 def Execution.observeEnvironment (execution : app.Execution) : app.EnvironmentView :=
-  ⟨execution.network, app.observePublic execution.application, execution.receipts⟩
+  ⟨execution.network.publicView, app.observePublic execution.application, execution.receipts⟩
 
 abbrev Policy := List app.PlayerEntry → app.PlayerView → FinDist app.Action
 abbrev Scheduler := List app.EnvironmentEntry → app.EnvironmentView → FinDist app.Command
@@ -122,9 +125,9 @@ def Execution.includePending (execution : app.Execution) (id : MessageId Princip
 noncomputable def Execution.environmentStep (execution : app.Execution) (command : app.Command) :
     FinDist app.Execution :=
   let law := match command with
-    | .activate _ | .wait => FinDist.pure execution
-    | .deliver who id => FinDist.pure
-        { execution with network := execution.network.deliver who id }
+    | .activate who => (app.observePending who execution.network.pending).map fun selected =>
+        { execution with network := execution.network.learn who selected }
+    | .wait => FinDist.pure execution
     | .include id => FinDist.pure (execution.includePending app id)
     | .application command => (app.environment execution.application command).map fun state =>
         { execution with application := state }

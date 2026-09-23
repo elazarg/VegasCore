@@ -38,11 +38,12 @@ availability holds at every legal reactive history. Network provenance and
 compiled-player packet uniqueness are checked: opponents can replay a
 prescribed packet but cannot replace it under that author and event. Packet
 acceptance, protection through reserved inclusion, and full compiler
-correctness remain open. `VegasTests.ReactiveMenusSource` proves an SPE
-impossibility for one reactive reserved-service instance: a common source
-SPE for two public utilities has no common native behavioral SPE. It checks
-initialized proper-root closure and arbitrary randomized continuations with
-network delivery between responses. The paper's
+correctness remain open. Passive pending-message observation is separate from
+scheduling: only foreign, previously unknown packets enter private knowledge,
+and the sampled subset is absent from scheduler view and recall. These laws
+are checked in `Interaction.ReactiveObservation` and
+`Interaction.ReactiveKnowledge`. Reactive SPE preservation remains open.
+The paper's
 command-service capstones and fixed-service coalescing comparisons have their
 own stated targets and do not establish the reactive compiler theorem.
 

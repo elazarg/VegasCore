@@ -18,6 +18,8 @@ import Interaction.IdealCommitments
 import Interaction.CommitmentCandidates
 import Interaction.ReactiveRecall
 import Interaction.ReactiveHistory
+import Interaction.ReactiveObservation
+import Interaction.ReactiveKnowledge
 import Interaction.MessageNetworkInvariant
 import Interaction.ReactiveProvenance
 import Interaction.ReactiveEvaluation

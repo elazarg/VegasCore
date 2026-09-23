@@ -6,7 +6,7 @@ import Interaction.ReactiveProtocol
 
 The network's record of broadcasts by a principal is exactly the output
 remembered by that principal. Replay eligibility can therefore be computed
-from own recall, inbox, and ledger, without a separately maintained sent list.
+from own recall, leaked messages, and ledger, without a separate sent list.
 -/
 
 namespace Interaction.ReactiveApplication
@@ -46,9 +46,13 @@ theorem environmentStep_recall (execution next : app.Execution) (command : app.C
     (reached : next ∈ (execution.environmentStep app command).support) :
     next.recall = execution.recall := by
   cases command with
-  | activate who | wait | deliver who id =>
+  | wait =>
       simp only [Execution.environmentStep, FinDist.map_pure] at reached
       cases FinDist.mem_support_pure.mp reached
+      rfl
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
       rfl
   | «include» id =>
       simp only [Execution.environmentStep, FinDist.map_pure] at reached
@@ -110,7 +114,7 @@ theorem environment_inputRecall (execution next : app.Execution) (command : app.
     (valid : execution.InputRecall app)
     (reached : next ∈ (execution.environmentStep app command).support) : next.InputRecall app := by
   cases command with
-  | activate who | wait =>
+  | wait =>
       simp only [Execution.environmentStep, FinDist.map_pure] at reached
       cases FinDist.mem_support_pure.mp reached
       exact valid
@@ -118,14 +122,10 @@ theorem environment_inputRecall (execution next : app.Execution) (command : app.
       obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
       obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
       exact valid
-  | deliver who id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
-      unfold Execution.InputRecall
-      intro observer
-      change _ = app.outputs (execution.recall observer)
-      unfold MessageNetwork.deliver
-      split <;> exact valid observer
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      exact valid
   | «include» id =>
       simp only [Execution.environmentStep, FinDist.map_pure] at reached
       cases FinDist.mem_support_pure.mp reached
@@ -138,7 +138,7 @@ from its own input/output recall and the two message lists it observes. -/
 theorem known_from_recall (execution : app.Execution) (who : Principal)
     (valid : execution.InputRecall app) :
     execution.network.known who = app.outputs (execution.recall who) ++
-      execution.network.inbox who ++ execution.network.ledger := by
+      execution.network.leaked who ++ execution.network.ledger := by
   simp only [MessageNetwork.known, valid who]
 
 def inputRecall : app.ProtocolState → Prop

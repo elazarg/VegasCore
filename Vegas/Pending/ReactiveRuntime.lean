@@ -10,6 +10,8 @@ One activation records arbitrary private memory and optionally transmits one
 packet. Fresh commitment material is fixed by that submission. The scheduler
 receives the broadcaster and envelope, while the player retains its own output.
 No private staging command is a strategic action of this protocol.
+An independent observation rule supplies partial knowledge of foreign pending
+packets at activation; its samples are hidden from scheduling.
 -/
 
 noncomputable section
@@ -37,7 +39,9 @@ structure ResponseMemory (graph : Vegas.EventGraph Player L) where
 
 instance : Inhabited (ResponseMemory graph) := ⟨⟨none, []⟩⟩
 
-def reactiveApplication (runtime : EventGraphRuntime graph) : ReactiveApplication Player where
+def reactiveApplication (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) : ReactiveApplication
+      Player where
   State := State graph
   Payload := Payload graph
   Submission := Submission graph
@@ -52,27 +56,34 @@ def reactiveApplication (runtime : EventGraphRuntime graph) : ReactiveApplicatio
   observePlayer state who := ⟨who, state.publicView, graph.playerObserve who state.config,
     fun slot => state.candidates.lookup (who, slot)⟩
   observePublic := State.publicView
+  observePending := leaks
 
-instance (runtime : EventGraphRuntime graph) : Inhabited runtime.reactiveApplication.Memory :=
+instance (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) : Inhabited
+      (runtime.reactiveApplication leaks).Memory :=
   ⟨⟨none, []⟩⟩
 
 /-- Atomically fix a fresh candidate and transmit its handle. Only the packet
 field enters the network; the opening is private submission material. -/
-def reactiveBinding (runtime : EventGraphRuntime graph) (who : Player) (event : graph.EventId)
+def reactiveBinding (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (who : Player) (event : graph.EventId)
     (payload : L.Ty) (result : PublicationResult (L.Val payload)) (serial : Nat) :
-    runtime.reactiveApplication.Action where
+    (runtime.reactiveApplication leaks).Action where
   memory := default
   transmission := some (.submit
     ⟨.commitment event (who, .prepared serial), match result with
       | .failure => none
       | .success value => some ⟨payload, value⟩⟩)
 
-theorem reactiveBinding_result (runtime : EventGraphRuntime graph) (who : Player)
+theorem reactiveBinding_result (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (who : Player)
     (event : graph.EventId) (payload : L.Ty) (result : PublicationResult (L.Val payload))
-    (serial : Nat) (execution : runtime.reactiveApplication.Execution)
+    (serial : Nat) (execution : (runtime.reactiveApplication leaks).Execution)
     (fresh : execution.application.candidates.lookup (who, .prepared serial) = .fresh) :
-    let next := execution.respond runtime.reactiveApplication who
-      (runtime.reactiveBinding who event payload result serial)
+    let next := execution.respond (runtime.reactiveApplication leaks) who
+      (runtime.reactiveBinding leaks who event payload result serial)
     next.application.bindingResult (who, .prepared serial) payload = result := by
   cases result with
   | failure =>
@@ -83,7 +94,8 @@ theorem reactiveBinding_result (runtime : EventGraphRuntime graph) (who : Player
   | success value =>
       change (submitStep
         (Submission.register ⟨.commitment event (who, .prepared serial), some ⟨payload, value⟩⟩
-          execution.application who) who (.commitment event (who, .prepared serial))).bindingResult
+          execution.application who) who (.commitment event (who, .prepared
+            serial))).bindingResult
             (who, .prepared serial) payload = .success value
       simp only [Submission.register, ↓reduceIte]
       rw [submitStep_bindingResult]
@@ -92,29 +104,31 @@ theorem reactiveBinding_result (runtime : EventGraphRuntime graph) (who : Player
 
 /-- The environment receives the same envelope and public application state
 for all private binding meanings, including an unopenable candidate. -/
-theorem reactiveBinding_observation (runtime : EventGraphRuntime graph) (who : Player)
+theorem reactiveBinding_observation (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (who : Player)
     (event : graph.EventId) (payload : L.Ty)
     (first second : PublicationResult (L.Val payload)) (serial : Nat)
-    (execution : runtime.reactiveApplication.Execution) :
-    (execution.respond runtime.reactiveApplication who
-      (runtime.reactiveBinding who event payload first serial)).observeEnvironment
-        runtime.reactiveApplication =
-    (execution.respond runtime.reactiveApplication who
-      (runtime.reactiveBinding who event payload second serial)).observeEnvironment
-        runtime.reactiveApplication := by
+    (execution : (runtime.reactiveApplication leaks).Execution) :
+    (execution.respond (runtime.reactiveApplication leaks) who
+      (runtime.reactiveBinding leaks who event payload first serial)).observeEnvironment
+        (runtime.reactiveApplication leaks) =
+    (execution.respond (runtime.reactiveApplication leaks) who
+      (runtime.reactiveBinding leaks who event payload second serial)).observeEnvironment
+        (runtime.reactiveApplication leaks) := by
   have unchanged (result : PublicationResult (L.Val payload)) :
-      (execution.respond runtime.reactiveApplication who
-        (runtime.reactiveBinding who event payload result serial)).application.publicView =
+      (execution.respond (runtime.reactiveApplication leaks) who
+        (runtime.reactiveBinding leaks who event payload result serial)).application.publicView =
           execution.application.publicView := by
     change (submitStep (Submission.register _ execution.application who) who _).publicView = _
     rw [submitStep_publicView]
     exact (Submission.register_facts _ who execution.application).2.2
-  change ReactiveApplication.EnvironmentView.mk (app := runtime.reactiveApplication) _
-    (execution.respond runtime.reactiveApplication who
-      (runtime.reactiveBinding who event payload first serial)).application.publicView _ =
-    ReactiveApplication.EnvironmentView.mk (app := runtime.reactiveApplication) _
-      (execution.respond runtime.reactiveApplication who
-        (runtime.reactiveBinding who event payload second serial)).application.publicView _
+  change ReactiveApplication.EnvironmentView.mk (app := (runtime.reactiveApplication leaks)) _
+    (execution.respond (runtime.reactiveApplication leaks) who
+      (runtime.reactiveBinding leaks who event payload first serial)).application.publicView _ =
+    ReactiveApplication.EnvironmentView.mk (app := (runtime.reactiveApplication leaks)) _
+      (execution.respond (runtime.reactiveApplication leaks) who
+        (runtime.reactiveBinding leaks who event payload second serial)).application.publicView _
   rw [unchanged first, unchanged second]
   rfl
 

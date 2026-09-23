@@ -1,13 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.MessagePool
+import GameTheory.Math.Probability.FinDist
 
 /-! # A message network with explicit input history
 
 The network remembers the broadcaster and envelope of each successful input.
-Player observations contain inbox and ledger only; own output is retained in
-the player's interaction recall. Submission and replay each add one envelope.
-Delivery copies an envelope; inclusion consumes one pending copy.
+Player observations contain leaked packets and the ledger; own output is
+retained in interaction recall. Passive observation can add knowledge of other
+authors' pending packets. It does not change the network's public state.
 -/
 
 namespace Interaction
@@ -19,7 +20,7 @@ structure NetworkInput (Principal Payload : Type) where
 structure MessageNetwork (Principal Payload : Type) where
   pending : List (Message Principal Payload)
   ledger : List (Message Principal Payload)
-  inbox : Principal → List (Message Principal Payload)
+  leaked : Principal → List (Message Principal Payload)
   inputs : List (NetworkInput Principal Payload)
   nextSerial : Principal → Nat
 
@@ -29,12 +30,27 @@ variable {Principal Payload : Type}
 
 def empty : MessageNetwork Principal Payload := ⟨[], [], fun _ => [], [], fun _ => 0⟩
 
+structure PublicView (Principal Payload : Type) where
+  pending : List (Message Principal Payload)
+  ledger : List (Message Principal Payload)
+  inputs : List (NetworkInput Principal Payload)
+  nextSerial : Principal → Nat
+
+def publicView (network : MessageNetwork Principal Payload) : PublicView Principal Payload :=
+  ⟨network.pending, network.ledger, network.inputs, network.nextSerial⟩
+
+/-- A separate, stateless observation kernel selects a finite subset of pending
+identifiers. Its sample is private to the observer and is never scheduler recall. -/
+abbrev ObservationRule (Principal Payload : Type) :=
+  Principal → List (Message Principal Payload) →
+    GameTheory.Math.Probability.FinDist (Finset (MessageId Principal))
+
 structure PlayerView (Principal Payload : Type) where
-  inbox : List (Message Principal Payload)
+  leaked : List (Message Principal Payload)
   ledger : List (Message Principal Payload)
 
 def observe (network : MessageNetwork Principal Payload) (who : Principal) :
-    PlayerView Principal Payload := ⟨network.inbox who, network.ledger⟩
+    PlayerView Principal Payload := ⟨network.leaked who, network.ledger⟩
 
 variable [DecidableEq Principal]
 
@@ -47,7 +63,7 @@ def known (network : MessageNetwork Principal Payload) (who : Principal) :
     List (Message Principal Payload) :=
   (network.inputs.filterMap fun input =>
     if input.broadcaster = who then some input.envelope else none) ++
-      network.inbox who ++ network.ledger
+      network.leaked who ++ network.ledger
 
 def submit (network : MessageNetwork Principal Payload) (who : Principal) (payload : Payload) :
     Message Principal Payload × MessageNetwork Principal Payload :=
@@ -58,7 +74,8 @@ def submit (network : MessageNetwork Principal Payload) (who : Principal) (paylo
     nextSerial := fun observer =>
       if observer = who then network.nextSerial who + 1 else network.nextSerial observer })
 
-def replay (network : MessageNetwork Principal Payload) (who : Principal) (id : MessageId Principal) :
+def replay (network : MessageNetwork Principal Payload) (who : Principal)
+    (id : MessageId Principal) :
     Option (Message Principal Payload) × MessageNetwork Principal Payload :=
   match (network.known who).find? (fun envelope => envelope.id = id) with
   | none => (none, network)
@@ -66,12 +83,14 @@ def replay (network : MessageNetwork Principal Payload) (who : Principal) (id : 
       pending := network.pending ++ [envelope]
       inputs := network.inputs ++ [⟨who, envelope⟩] })
 
-def deliver (network : MessageNetwork Principal Payload) (who : Principal)
-    (id : MessageId Principal) : MessageNetwork Principal Payload :=
-  match network.lookup id with
-  | none => network
-  | some envelope => { network with inbox := fun observer =>
-      if observer = who then network.inbox who ++ [envelope] else network.inbox observer }
+/-- Learn only fresh knowledge of other authors' pending envelopes. Sampling
+an own, known, duplicate, or nonpending identifier produces no extra observation. -/
+def learn (network : MessageNetwork Principal Payload) (who : Principal)
+    (selected : Finset (MessageId Principal)) : MessageNetwork Principal Payload :=
+  let fresh := (network.pending.map Message.id).eraseDups.filter fun id =>
+    id.1 ≠ who ∧ id ∈ selected ∧ ¬ (network.known who).any (fun message => message.id = id)
+  { network with leaked := fun observer => if observer = who then
+      network.leaked who ++ fresh.filterMap network.lookup else network.leaked observer }
 
 def includePending (network : MessageNetwork Principal Payload) (id : MessageId Principal) :
     Option (Message Principal Payload) × MessageNetwork Principal Payload :=
@@ -82,7 +101,8 @@ def includePending (network : MessageNetwork Principal Payload) (id : MessageId 
       ledger := network.ledger ++ [envelope] })
 
 theorem submit_observe (network : MessageNetwork Principal Payload) (who observer : Principal)
-    (payload : Payload) : (network.submit who payload).2.observe observer = network.observe observer :=
+    (payload : Payload) :
+    (network.submit who payload).2.observe observer = network.observe observer :=
   rfl
 
 theorem replay_observe (network : MessageNetwork Principal Payload) (who observer : Principal)
@@ -91,16 +111,37 @@ theorem replay_observe (network : MessageNetwork Principal Payload) (who observe
   unfold replay
   split <;> rfl
 
-theorem deliver_pending (network : MessageNetwork Principal Payload) (who : Principal)
-    (id : MessageId Principal) : (network.deliver who id).pending = network.pending := by
-  unfold deliver
-  split <;> rfl
+theorem learn_publicView (network : MessageNetwork Principal Payload) (who : Principal)
+    (selected : Finset (MessageId Principal)) :
+    (network.learn who selected).publicView = network.publicView := rfl
 
-theorem deliver_inbox (network : MessageNetwork Principal Payload) (who : Principal)
-    (id : MessageId Principal) (envelope : Message Principal Payload)
-    (found : network.lookup id = some envelope) :
-    (network.deliver who id).inbox who = network.inbox who ++ [envelope] := by
-  simp only [deliver, found, ↓reduceIte]
+@[simp] theorem learn_empty (network : MessageNetwork Principal Payload) (who : Principal) :
+    network.learn who ∅ = network := by
+  have same : (fun observer => if observer = who then network.leaked who
+      else network.leaked observer) = network.leaked := by
+    funext observer
+    split <;> simp_all
+  simpa [learn] using congrArg (fun knowledge => { network with leaked := knowledge }) same
+
+theorem learn_other (network : MessageNetwork Principal Payload) (who observer : Principal)
+    (selected : Finset (MessageId Principal)) (different : observer ≠ who) :
+    (network.learn who selected).leaked observer = network.leaked observer := by
+  simp only [learn, ite_eq_right different]
+
+theorem learn_mem (network : MessageNetwork Principal Payload) (who : Principal)
+    (selected : Finset (MessageId Principal)) (message : Message Principal Payload)
+    (member : message ∈ (network.learn who selected).leaked who) :
+    message ∈ network.leaked who ∨
+      (message ∈ network.pending ∧ message.sender ≠ who) := by
+  simp only [learn, ↓reduceIte, List.mem_append] at member
+  rcases member with prior | fresh
+  · exact Or.inl prior
+  · obtain ⟨id, member, found⟩ := List.mem_filterMap.mp fresh
+    have chosen := (List.mem_filter.mp member).2
+    have identified := (List.find?_eq_some_iff_append.mp found).1
+    have same : message.id = id := by simpa using identified
+    have foreign : id.1 ≠ who := (of_decide_eq_true chosen).1
+    exact Or.inr ⟨List.mem_of_find?_eq_some found, by simpa [Message.sender, same] using foreign⟩
 
 end MessageNetwork
 end Interaction

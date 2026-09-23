@@ -13,7 +13,7 @@ open GameTheory.Math.Probability
 variable {Principal : Type} (app : ReactiveApplication Principal)
 
 /-- Local application obligations suffice for every player and scheduler.
-Network delivery, replay, and private memory do not change application state. -/
+Passive observation, replay, and private memory do not change application state. -/
 structure Invariant (predicate : app.State → Prop) : Prop where
   submit : ∀ state who material, predicate state → predicate (app.submit state who material)
   handle : ∀ state message next, predicate state → app.handle state message = some next →
@@ -54,9 +54,13 @@ theorem Invariant.environmentStep (invariant : app.Invariant predicate)
     (reached : next ∈ (execution.environmentStep app command).support) :
     predicate next.application := by
   cases command with
-  | activate who | wait | deliver who id =>
+  | wait =>
       simp only [Execution.environmentStep, FinDist.map_pure] at reached
       cases FinDist.mem_support_pure.mp reached
+      exact valid
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
       exact valid
   | «include» id =>
       simp only [Execution.environmentStep, FinDist.map_pure] at reached

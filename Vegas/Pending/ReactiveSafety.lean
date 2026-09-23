@@ -20,10 +20,12 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem reactive_respond_candidate_fixed (runtime : EventGraphRuntime graph)
-    (execution : runtime.reactiveApplication.Execution) (who : Player)
-    (action : runtime.reactiveApplication.Action) (candidate : Handle graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (action : (runtime.reactiveApplication leaks).Action) (candidate : Handle graph)
     (fixed : execution.application.candidates.lookup candidate ≠ .fresh) :
-    (execution.respond runtime.reactiveApplication who action).application.candidates.lookup
+    (execution.respond (runtime.reactiveApplication leaks) who
+      action).application.candidates.lookup
       candidate = execution.application.candidates.lookup candidate := by
   rcases action with ⟨memory, transmission⟩
   cases transmission with
@@ -42,10 +44,12 @@ theorem reactive_respond_candidate_fixed (runtime : EventGraphRuntime graph)
             (by rwa [registered])).trans registered
 
 theorem reactive_include_candidate_fixed (runtime : EventGraphRuntime graph)
-    (execution : runtime.reactiveApplication.Execution) (id : MessageId Player)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (execution : (runtime.reactiveApplication leaks).Execution) (id : MessageId Player)
     (candidate : Handle graph)
     (fixed : execution.application.candidates.lookup candidate ≠ .fresh) :
-    (execution.includePending runtime.reactiveApplication id).application.candidates.lookup
+    (execution.includePending (runtime.reactiveApplication leaks)
+      id).application.candidates.lookup
       candidate = execution.application.candidates.lookup candidate := by
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   cases found : execution.network.lookup id with
@@ -60,21 +64,27 @@ theorem reactive_include_candidate_fixed (runtime : EventGraphRuntime graph)
           exact handle_lookup_of_not_fresh runtime _ next envelope candidate fixed accepted
 
 theorem reactive_environment_candidate_fixed (runtime : EventGraphRuntime graph)
-    (execution next : runtime.reactiveApplication.Execution)
-    (command : runtime.reactiveApplication.Command) (candidate : Handle graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (command : (runtime.reactiveApplication leaks).Command) (candidate : Handle graph)
     (fixed : execution.application.candidates.lookup candidate ≠ .fresh)
-    (reached : next ∈ (execution.environmentStep runtime.reactiveApplication command).support) :
+    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
+      command).support) :
     next.application.candidates.lookup candidate =
       execution.application.candidates.lookup candidate := by
   cases command with
-  | activate who | wait | deliver who id =>
+  | wait =>
       simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
       cases FinDist.mem_support_pure.mp reached
+      rfl
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
       rfl
   | «include» id =>
       simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
       cases FinDist.mem_support_pure.mp reached
-      exact runtime.reactive_include_candidate_fixed execution id candidate fixed
+      exact runtime.reactive_include_candidate_fixed leaks execution id candidate fixed
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
@@ -83,13 +93,15 @@ theorem reactive_environment_candidate_fixed (runtime : EventGraphRuntime graph)
 /-- The preservation law holds for each supported canonical transition from
 any continuation, including a player move or an adaptive scheduler choice. -/
 theorem reactive_transition_candidate_fixed (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
     (initial : FinDist (State graph)) (horizon : Nat)
-    (scheduler : runtime.reactiveApplication.Scheduler)
-    (before : runtime.reactiveApplication.Control)
-    (after : runtime.reactiveApplication.ProtocolState)
-    (joint : Player → Option runtime.reactiveApplication.Action) (candidate : Handle graph)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (before : (runtime.reactiveApplication leaks).Control)
+    (after : (runtime.reactiveApplication leaks).ProtocolState)
+    (joint : Player → Option (runtime.reactiveApplication leaks).Action)
+    (candidate : Handle graph)
     (fixed : before.execution.application.candidates.lookup candidate ≠ .fresh)
-    (reached : after ∈ (runtime.reactiveApplication.transition initial horizon scheduler
+    (reached : after ∈ ((runtime.reactiveApplication leaks).transition initial horizon scheduler
       (some before) joint).support) :
     ∃ next, after = some next ∧ next.execution.application.candidates.lookup candidate =
       before.execution.application.candidates.lookup candidate := by
@@ -97,7 +109,8 @@ theorem reactive_transition_candidate_fixed (runtime : EventGraphRuntime graph)
   cases current with
   | some who =>
       cases FinDist.mem_support_pure.mp reached
-      exact ⟨_, rfl, runtime.reactive_respond_candidate_fixed execution who _ candidate fixed⟩
+      exact ⟨_, rfl, runtime.reactive_respond_candidate_fixed leaks execution who _
+        candidate fixed⟩
   | none =>
       cases remaining with
       | zero => cases FinDist.mem_support_pure.mp reached; exact ⟨_, rfl, rfl⟩
@@ -106,7 +119,7 @@ theorem reactive_transition_candidate_fixed (runtime : EventGraphRuntime graph)
             Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
           obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
           exact ⟨_, rfl,
-            runtime.reactive_environment_candidate_fixed
+            runtime.reactive_environment_candidate_fixed leaks
               execution next command candidate fixed moved⟩
 
 end Vegas.EventGraphRuntime

@@ -21,78 +21,97 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 def interactionStep (runtime : EventGraphRuntime graph)
-    (players : Player → runtime.reactiveApplication.Policy) (network : runtime.NetworkPolicy)
-    (instruction : ServiceInstruction graph) (execution : runtime.reactiveApplication.Execution) :
-    FinDist runtime.reactiveApplication.Execution :=
-  (runtime.interactionInstruction network execution.environmentRecall
-    (execution.observeEnvironment runtime.reactiveApplication) instruction).bind
-      (fun command => runtime.reactiveApplication.dispatch players command execution)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
+    (instruction : ServiceInstruction graph)
+    (execution : (runtime.reactiveApplication leaks).Execution) :
+    FinDist (runtime.reactiveApplication leaks).Execution :=
+  (runtime.interactionInstruction leaks network execution.environmentRecall
+    (execution.observeEnvironment (runtime.reactiveApplication leaks)) instruction).bind
+      (fun command => (runtime.reactiveApplication leaks).dispatch players command execution)
 
 def runInteractionPlan (runtime : EventGraphRuntime graph)
-    (players : Player → runtime.reactiveApplication.Policy) (network : runtime.NetworkPolicy) :
-    List (ServiceInstruction graph) → runtime.reactiveApplication.Execution →
-      FinDist runtime.reactiveApplication.Execution
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) :
+    List (ServiceInstruction graph) → (runtime.reactiveApplication leaks).Execution →
+      FinDist (runtime.reactiveApplication leaks).Execution
   | [], execution => FinDist.pure execution
-  | instruction :: rest, execution => (runtime.interactionStep players network instruction
-      execution).bind (runInteractionPlan runtime players network rest)
+  | instruction :: rest, execution => (runtime.interactionStep leaks players network instruction
+      execution).bind (runInteractionPlan runtime leaks players network rest)
 
-def runInteractionEpochs (runtime : EventGraphRuntime graph) (chosen : ServiceOrder graph)
-    (networkTurns : Nat) (players : Player → runtime.reactiveApplication.Policy)
-    (network : runtime.NetworkPolicy) :
-    Nat → runtime.reactiveApplication.Execution → FinDist runtime.reactiveApplication.Execution
+def runInteractionEpochs (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (chosen : ServiceOrder graph)
+    (networkTurns : Nat) (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) :
+    Nat → (runtime.reactiveApplication leaks).Execution → FinDist
+      (runtime.reactiveApplication leaks).Execution
   | 0, execution => FinDist.pure execution
   | count + 1, execution =>
-      (runtime.runInteractionPlan players network (interactionEpoch chosen networkTurns)
-        execution).bind (runInteractionEpochs runtime chosen networkTurns players network count)
+      (runtime.runInteractionPlan leaks players network (interactionEpoch chosen networkTurns)
+        execution).bind
+          (runInteractionEpochs runtime leaks chosen networkTurns players network count)
 
 theorem interactionStep_recall (runtime : EventGraphRuntime graph)
-    (players : Player → runtime.reactiveApplication.Policy) (network : runtime.NetworkPolicy)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
     (instruction : ServiceInstruction graph)
-    (execution next : runtime.reactiveApplication.Execution)
-    (reached : next ∈ (runtime.interactionStep players network instruction execution).support) :
+    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (reached : next ∈ (runtime.interactionStep leaks players network instruction
+      execution).support) :
     next.environmentRecall.length = execution.environmentRecall.length + 1 := by
   obtain ⟨command, _, supported⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-  rw [runtime.reactiveApplication.dispatch_environmentRecall
+  rw [(runtime.reactiveApplication leaks).dispatch_environmentRecall
     players command execution next supported]
   simp only [List.length_append, List.length_cons, List.length_nil]
 
 theorem runInteractionPlan_recall (runtime : EventGraphRuntime graph)
-    (players : Player → runtime.reactiveApplication.Policy) (network : runtime.NetworkPolicy)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
     (plan : List (ServiceInstruction graph))
-    (execution next : runtime.reactiveApplication.Execution)
-    (reached : next ∈ (runtime.runInteractionPlan players network plan execution).support) :
+    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (reached : next ∈ (runtime.runInteractionPlan leaks players network plan execution).support) :
     next.environmentRecall.length = execution.environmentRecall.length + plan.length := by
   induction plan generalizing execution with
   | nil => cases FinDist.mem_support_pure.mp reached; simp
   | cons instruction rest ih =>
       obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      rw [ih middle moved, runtime.interactionStep_recall players network instruction
+      rw [ih middle moved, runtime.interactionStep_recall leaks players network instruction
         execution middle supported, List.length_cons]
       omega
 
 theorem runInteractionPlan_append (runtime : EventGraphRuntime graph)
-    (players : Player → runtime.reactiveApplication.Policy) (network : runtime.NetworkPolicy)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
     (first second : List (ServiceInstruction graph))
-    (execution : runtime.reactiveApplication.Execution) :
-    runtime.runInteractionPlan players network (first ++ second) execution =
-      (runtime.runInteractionPlan players network first execution).bind
-        (runtime.runInteractionPlan players network second) := by
+    (execution : (runtime.reactiveApplication leaks).Execution) :
+    runtime.runInteractionPlan leaks players network (first ++ second) execution =
+      (runtime.runInteractionPlan leaks players network first execution).bind
+        (runtime.runInteractionPlan leaks players network second) := by
   induction first generalizing execution with
   | nil => simp only [List.nil_append, runInteractionPlan, FinDist.pure_bind]
   | cons instruction rest ih =>
       simp only [List.cons_append, runInteractionPlan, FinDist.bind_bind]
       exact FinDist.bind_congr fun next _ => ih next
 
-theorem interactionSuffix_rounds (runtime : EventGraphRuntime graph) (chosen : ServiceOrder graph)
-    (networkTurns : Nat) (players : Player → runtime.reactiveApplication.Policy)
-    (network : runtime.NetworkPolicy) (before rest : List (ServiceInstruction graph))
+theorem interactionSuffix_rounds (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (chosen : ServiceOrder graph)
+    (networkTurns : Nat) (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (before rest : List (ServiceInstruction graph))
     (split : interactionEpoch chosen networkTurns = before ++ rest)
-    (epoch : Nat) (execution : runtime.reactiveApplication.Execution)
+    (epoch : Nat) (execution : (runtime.reactiveApplication leaks).Execution)
     (position : execution.environmentRecall.length =
       epoch * (interactionEpoch chosen networkTurns).length + before.length) :
-    runtime.reactiveApplication.runRounds (runtime.interactionScheduler chosen networkTurns network)
+    (runtime.reactiveApplication leaks).runRounds (runtime.interactionScheduler leaks
+      chosen networkTurns network)
       players rest.length execution =
-        runtime.runInteractionPlan players network rest execution := by
+        runtime.runInteractionPlan leaks players network rest execution := by
   induction rest generalizing before execution with
   | nil => rfl
   | cons instruction rest ih =>
@@ -106,9 +125,9 @@ theorem interactionSuffix_rounds (runtime : EventGraphRuntime graph) (chosen : S
           (interactionEpoch chosen networkTurns)[before.length]? = some instruction := by
         rw [split, List.getElem?_append_right (by omega), Nat.sub_self]
         rfl
-      have step : runtime.reactiveApplication.round
-          (runtime.interactionScheduler chosen networkTurns network) players execution =
-            runtime.interactionStep players network instruction execution := by
+      have step : (runtime.reactiveApplication leaks).round
+          (runtime.interactionScheduler leaks chosen networkTurns network) players execution =
+            runtime.interactionStep leaks players network instruction execution := by
         simp only [ReactiveApplication.round, interactionScheduler, cursor, selected,
           interactionStep]
       rw [List.length_cons, ReactiveApplication.runRounds, step, runInteractionPlan]
@@ -116,56 +135,65 @@ theorem interactionSuffix_rounds (runtime : EventGraphRuntime graph) (chosen : S
       intro next supported
       apply ih (before ++ [instruction])
       · simpa only [List.append_assoc, List.singleton_append] using split
-      · have advanced := runtime.interactionStep_recall players network instruction
+      · have advanced := runtime.interactionStep_recall leaks players network instruction
           execution next supported
         simp only [List.length_append, List.length_singleton]
         omega
 
-theorem interactionEpochs_rounds (runtime : EventGraphRuntime graph) (chosen : ServiceOrder graph)
-    (networkTurns : Nat) (players : Player → runtime.reactiveApplication.Policy)
-    (network : runtime.NetworkPolicy) (count epoch : Nat)
-    (execution : runtime.reactiveApplication.Execution)
+theorem interactionEpochs_rounds (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (chosen : ServiceOrder graph)
+    (networkTurns : Nat) (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (count epoch : Nat)
+    (execution : (runtime.reactiveApplication leaks).Execution)
     (position : execution.environmentRecall.length =
       epoch * (interactionEpoch chosen networkTurns).length) :
-    runtime.reactiveApplication.runRounds (runtime.interactionScheduler chosen networkTurns network)
+    (runtime.reactiveApplication leaks).runRounds (runtime.interactionScheduler leaks
+      chosen networkTurns network)
       players (count * (interactionEpoch chosen networkTurns).length) execution =
-        runtime.runInteractionEpochs chosen networkTurns players network count execution := by
+        runtime.runInteractionEpochs leaks chosen networkTurns players network count
+          execution := by
   induction count generalizing epoch execution with
   | zero => simp only [Nat.zero_mul, ReactiveApplication.runRounds, runInteractionEpochs]
   | succ count ih =>
       rw [Nat.succ_mul, Nat.add_comm, ReactiveApplication.runRounds_add]
-      rw [runtime.interactionSuffix_rounds chosen networkTurns players network [] _
+      rw [runtime.interactionSuffix_rounds leaks chosen networkTurns players network [] _
         (List.nil_append _).symm epoch execution (by simpa using position)]
-      change _ = (_ : FinDist runtime.reactiveApplication.Execution).bind _
+      change _ = (_ : FinDist (runtime.reactiveApplication leaks).Execution).bind _
       apply FinDist.bind_congr
       intro next supported
       apply ih (epoch + 1) next
-      rw [runtime.runInteractionPlan_recall players network _ execution next supported, position]
+      rw [runtime.runInteractionPlan_recall leaks players network _ execution next
+        supported, position]
       simp only [Nat.add_mul, Nat.one_mul]
 
 /-- Exact terminal-state law for the concrete reactive service. This theorem
 quantifies over arbitrary deviations as well as prescribed player policies. -/
 theorem canonical_interaction_service (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
     (initial : FinDist (State graph)) (chosen : ServiceOrder graph) (networkTurns : Nat)
-    (players : Player → runtime.reactiveApplication.Policy) (network : runtime.NetworkPolicy) :
-    let scheduler := runtime.interactionScheduler chosen networkTurns network
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) :
+    let scheduler := runtime.interactionScheduler leaks chosen networkTurns network
     let horizon := runtime.interactionHorizon chosen networkTurns
-    ((runtime.reactiveApplication.information
+    (((runtime.reactiveApplication leaks).information
       initial horizon scheduler).runSingleMoverBehavioralFrom
-      (runtime.reactiveApplication.singleMover initial horizon scheduler)
-      (fun who => runtime.reactiveApplication.encodePolicy (players who)) (2 * horizon + 1)
-      (runtime.reactiveApplication.protocol initial horizon scheduler).initHistory).map
+      ((runtime.reactiveApplication leaks).singleMover initial horizon scheduler)
+      (fun who => (runtime.reactiveApplication leaks).encodePolicy (players who)) (2 *
+        horizon + 1)
+      ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).initHistory).map
         ExecutionProtocol.History.state =
       initial.bind (fun state =>
-        (runtime.runInteractionEpochs chosen networkTurns players network runtime.serviceEpochs
-          (ReactiveApplication.Execution.initial runtime.reactiveApplication state)).map
-            runtime.reactiveApplication.finished) := by
+        (runtime.runInteractionEpochs leaks chosen networkTurns players network
+          runtime.serviceEpochs
+          (ReactiveApplication.Execution.initial (runtime.reactiveApplication leaks) state)).map
+            (runtime.reactiveApplication leaks).finished) := by
   dsimp only
-  rw [runtime.reactiveApplication.canonical_run_rounds]
+  rw [(runtime.reactiveApplication leaks).canonical_run_rounds]
   apply FinDist.bind_congr
   intro state _
   congr 1
-  exact runtime.interactionEpochs_rounds chosen networkTurns players network
+  exact runtime.interactionEpochs_rounds leaks chosen networkTurns players network
     runtime.serviceEpochs 0 _ (by simp [ReactiveApplication.Execution.initial])
 
 end Vegas.EventGraphRuntime

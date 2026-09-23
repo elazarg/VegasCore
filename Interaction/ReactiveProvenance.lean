@@ -62,14 +62,14 @@ theorem environment_provenance (execution next : app.Execution) (command : app.C
   change next.network.Satisfies (next.Issued app)
   rw [same]
   cases command with
-  | activate who | wait =>
+  | wait =>
       simp only [Execution.environmentStep, FinDist.map_pure] at reached
       cases FinDist.mem_support_pure.mp reached
       exact valid
-  | deliver who id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
-      exact valid.deliver who id
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      exact valid.learn who selected
   | «include» id =>
       simp only [Execution.environmentStep, FinDist.map_pure] at reached
       cases FinDist.mem_support_pure.mp reached

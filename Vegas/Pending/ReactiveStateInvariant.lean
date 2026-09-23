@@ -17,11 +17,12 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem reactive_respond_application (runtime : EventGraphRuntime graph)
-    (execution : runtime.reactiveApplication.Execution) (who : Player)
-    (action : runtime.reactiveApplication.Action) :
-    (execution.respond runtime.reactiveApplication who action).application.config =
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (action : (runtime.reactiveApplication leaks).Action) :
+    (execution.respond (runtime.reactiveApplication leaks) who action).application.config =
         execution.application.config ∧
-      (execution.respond runtime.reactiveApplication who action).application.publicView =
+      (execution.respond (runtime.reactiveApplication leaks) who action).application.publicView =
         execution.application.publicView := by
   rcases action with ⟨memory, transmission⟩
   cases transmission with
@@ -35,8 +36,10 @@ theorem reactive_respond_application (runtime : EventGraphRuntime graph)
             (submitStep_publicView _ who material.packet).trans
               (material.register_facts who execution.application).2.2⟩
 
-theorem reactiveStateInvariant (runtime : EventGraphRuntime graph) (inputs : graph.Inputs) :
-    runtime.reactiveApplication.Invariant (State.Invariant inputs) where
+theorem reactiveStateInvariant (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (inputs : graph.Inputs) :
+    (runtime.reactiveApplication leaks).Invariant (State.Invariant inputs) where
   submit state who material valid := by
     apply valid.copy
     · exact (submitStep_config _ who material.packet).trans (material.register_facts who state).1
@@ -51,8 +54,10 @@ theorem reactiveStateInvariant (runtime : EventGraphRuntime graph) (inputs : gra
   environment state command next valid supported :=
     environmentStep_invariant runtime state next command valid supported
 
-theorem reactiveStoreInvariant (runtime : EventGraphRuntime graph) (field : graph.Field)
-    (value : (graph.layout field).Value) : runtime.reactiveApplication.Invariant
+theorem reactiveStoreInvariant (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (field : graph.Field)
+    (value : (graph.layout field).Value) : (runtime.reactiveApplication leaks).Invariant
       (fun state => state.config.store field = some value) where
   submit state who material stored := by
     change (submitStep (material.register state who) who material.packet).config.store field = _

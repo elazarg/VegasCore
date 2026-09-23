@@ -2,13 +2,15 @@
 
 ## 1. One activation, one optional message
 
-The reactive protocol has three components:
+The reactive protocol separates four components:
 
-1. **The network** stores messages, delivers them, and includes them in a ledger.
+1. **The network** stores pending messages and includes them in a ledger.
 2. **The application** checks included messages and executes its own public
    operations, such as chance and timeout.
-3. **The scheduler** chooses the next interaction: activate a player, deliver,
+3. **The scheduler** chooses the next interaction: activate a player,
    include, perform an application operation, or wait.
+4. **The observation rule** privately samples a subset of other authors'
+   pending packets when a player is activated.
 
 When activated, a player chooses private memory and at most one transmission.
 Control then returns to the scheduler. The scheduler sees the actual network
@@ -19,10 +21,11 @@ inside the player's action; they consume no separate turns or clock time.
 ```mermaid
 flowchart LR
   N["Scheduler observes network and public application"] --> C{"Choose"}
-  C -->|activate Alice| A["Alice reads her view and own recall"]
+  C -->|activate Alice| L["Privately sample pending packets"]
+  L --> A["Alice reads her view and own recall"]
   A --> R["Remember privately; optionally transmit one envelope"]
   R --> N
-  C -->|deliver, include, application operation, wait| E["Execute operation"]
+  C -->|include, application operation, wait| E["Execute operation"]
   E --> N
 ```
 
@@ -39,7 +42,8 @@ on Vegas, its source syntax, or its event graph.
 
 An envelope contains its author's identity, an author-local serial number, and
 a payload. The network stores pending envelopes, the shared ledger, each
-player's inbox, an input history of **broadcaster and envelope** pairs, and the
+player's private leaked-message knowledge, an input history of **broadcaster
+and envelope** pairs, and the
 next serial number for each author.
 
 The input history is the network's record of what it received. It distinguishes
@@ -50,13 +54,13 @@ no private player memory or private opening material.
 |---|---|
 | Submit | Allocate a fresh author-local identifier; append the envelope to pending and a broadcaster/envelope pair to the input history. |
 | Replay | Append a known envelope unchanged, recording the current broadcaster separately. |
-| Deliver | Copy a pending envelope to one player's inbox. Leave it pending. |
+| Privately observe at activation | Learn selected, previously unknown pending envelopes from other authors. Leave them pending; give the scheduler no observation or receipt. |
 | Include | Remove one pending copy, append it to the ledger, and call the application handler. |
 | Wait | Make no message change. |
 
-Missing identifiers have no effect. Repeated delivery, reordering, replay,
-and selective inclusion are possible. A pending envelope is not automatically
-delivered or eventually included. Inclusion publishes the envelope even if the
+Missing identifiers, own packets, and repeated observations add no knowledge.
+Reordering, replay, and selective inclusion are possible. A pending envelope
+is not automatically learned or eventually included. Inclusion publishes the envelope even if the
 application rejects it, and records a public acceptance/rejection receipt.
 Consequently, a rejected opening may still reveal its raw value.
 
@@ -68,7 +72,7 @@ outside this ideal message machine. See
 
 ## 3. What each participant knows
 
-A player sees its inbox, the ledger, public receipts, and the application's
+A player sees its accumulated leaked packets, the ledger, public receipts, and the application's
 authorized local projection. It also remembers each of its previous views,
 chosen actions, private memory, and actual emitted envelopes. This includes
 the identifiers allocated to its own submissions.
@@ -77,13 +81,20 @@ There is no separate player-facing sent list. At every legal initialized
 history, the network inputs attributed to a player are exactly the emitted
 envelopes in that player's recall. The checked law in
 [ReactiveRecall.lean](../Interaction/ReactiveRecall.lean) establishes that replay
-eligibility can be reconstructed from own recall, inbox, and ledger.
+eligibility can be reconstructed from own recall, leaked packets, and ledger.
 
-The scheduler sees the complete network, public application projection,
+The scheduler sees pending packets, the ledger, network inputs, the public application projection,
 receipts, and its own command recall. It can inspect pending packet contents
-and their broadcasters. It cannot inspect players' private recall, hidden
-commitment meanings, or private initial inputs. A player learns pending packet
-contents through delivery or inclusion; it cannot inspect the entire pool.
+and their broadcasters. It cannot inspect private leak results, players' recall,
+hidden commitment meanings, or private initial inputs. Scheduler history
+records its own commands and public pre-states; it carries no record of who
+learned which packet. A player learns pending packet contents through passive
+observation or inclusion; it cannot inspect the entire pool.
+
+[Passive eavesdropping](passive-eavesdropping.md) specifies the observation
+contract and checked visibility laws. The scheduler can infer information from
+subsequent public responses or a known observation rule; hiding the private
+samples does not require a forgetful inclusion policy.
 
 ## 4. Repeated activations and messages in transit
 
@@ -91,20 +102,21 @@ For example, the scheduler can choose:
 
 ```text
 activate Alice       Alice submits packet x
-deliver x to Bob
-activate Bob         Bob reads x and submits reply y
+activate Bob         The private observation rule may reveal x; Bob replies y
 activate Alice       Alice gets another opportunity to act
 ```
 
 Neither packet needs to have been included. The scheduler can choose the final
-activation based on the actual reply. To let Alice read that reply before
-acting, it can first deliver y to her. These are distinct network choices.
+activation based on the actual reply. Alice's private observation at her next
+activation may reveal y. The scheduler does not select or observe that sample.
 
 [ReactiveProtocol.lean](../InteractionTests/ReactiveProtocol.lean) checks the
-first three choices through the canonical randomized protocol runner, then
+first two activations through the canonical randomized protocol runner, then
 checks that Bob's response determines the scheduler's next activation. Both
 packets remain pending. It also checks that replay preserves the author while
-recording the new broadcaster.
+recording the new broadcaster. A partial-observation instance checks that both
+learning and missing a packet are possible with identical scheduler views and
+recall. Own packets are excluded even when selected by the observation rule.
 
 An optional single message and an atomic list of messages give different
 scheduling rights. A list prevents intervention between its elements. Here
@@ -163,7 +175,7 @@ execute the event if it is a sample
 ```
 
 At each network choice, the network policy may activate **any** player,
-deliver, include, or wait. There is no reaction roster. After visiting all
+include, or wait. There is no reaction roster. After visiting all
 events, the service advances the logical clock and checks expiry. Player
 activations do not advance that clock.
 
@@ -244,27 +256,21 @@ the source composition and private initial law are in
 | Own broadcast recall suffices for replay knowledge | Checked at every legal initialized history |
 | Every retained envelope originates in an actual submission by its author | Checked at every legal initialized history |
 | Private binding construction, hiding, and retention of fixed meanings | Checked |
-| Actual delivery, reply, and adaptive reactivation before inclusion | Checked regression |
+| Passive observation, reply, and adaptive reactivation before inclusion | Checked regression |
+| Own packets never enter passive knowledge | Checked at every legal initialized history |
+| Private leak outcomes are absent from scheduler view and recall | Checked for arbitrary observation rules and schedulers |
 | Fresh candidate availability after every legal initialized history | Checked |
 | Source strategy compiler and concrete service scheduler | Defined |
 | Compiler samples, remembers, and sends in one activation; repeated activation does not resample | Checked binding regression |
 | Compiled player emits at most one packet per event; opponents cannot replace it under that author/event | Checked at every canonical prefix, with arbitrary opponents and scheduler |
 | Concrete service follows its schedule and completes under arbitrary policies | Checked through canonical behavioral play |
 | Packet acceptance, protection through reserved inclusion, and full compiler outcome/deviation laws | Open |
-| Unrestricted utility-independent behavioral SPE preservation | Refuted for an exhibited reactive reserved-service instance, with either source commitment admission |
-| SPE preservation under additional service or continuation restrictions | Open |
+| SPE preservation or impossibility for passive eavesdropping | Open |
 
-The [reactive SPE obstruction](reactive-spe-obstruction.md) uses an actual
-proper subgame before a random delivery. Two valid pending commitments leave
-a residual choice between their values; the same source SPE cannot determine
-the best residual choice for both public utilities. The proof covers arbitrary
-randomized native policies and the complete service, without private
-preparation steps. Its scope is this game and service, not all runtimes or
-preservation of equilibrium outcome sets.
-In particular, it uses observable delivery of an already-known envelope as a
-scheduler signal and makes inclusion react to that signal and later traffic.
-Its relevance to a view containing only message knowledge requires a separate
-argument: such a view would not distinguish redundant self-delivery.
+A reactive SPE argument must use the private observation rule and actual
+canonical information sets. Scheduler-controlled self-delivery and inclusion
+conditioned on a private leak record are outside this model. Competing pending
+commitments and adaptive public scheduling still require continuation analysis.
 
 The paper's existing Nash/Bayesian theorem uses the command-service target,
 whose prescribed policy takes three owner calls to remember, prepare, and send.

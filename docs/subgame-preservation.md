@@ -11,53 +11,34 @@ utility-independent, playerwise compiler, at every proper native subgame.
 Reflection is a separate goal with a separate root-coverage obligation. Both
 should use the canonical `GameTheory.Protocol.InformationModel` definitions.
 
-The unrestricted target is impossible for the reactive reserved service in the
-checked [pending-menu example](reactive-spe-obstruction.md). It uses the actual
-one-message-per-activation protocol and canonical
-behavioral SPE: two public utilities share a source SPE, but no native policy
-is SPE for both. The theorem rules out every utility-independent whole-profile
-translation for this game and service, hence also every playerwise compiler.
-It applies with either source commitment admission, including forfeiture.
-It does not rule out other services, utility-specific synthesis, or a more
-restricted preservation claim.
+SPE preservation for the reactive target with passive eavesdropping is open.
+Its [observation contract](passive-eavesdropping.md) excludes self-delivery and
+keeps private observation samples out of scheduler view and recall. The
+scheduler retains its memory of public traffic and its own decisions. A
+completely forgetful inclusion policy is a separate possible restriction.
 
-The witnessing root precedes a random network delivery between player
-responses. The next response uses the delivered envelope to select between
-two already-submitted commitments. Both are valid and have fixed meanings.
-Coalescing uninterrupted private computation does not remove this interaction.
-The interaction relies on observing the return of an already-known envelope
-and on a scheduler that uses that event in its later inclusion rule. The
-theorem therefore depends on this signaling capability; it does not settle a
-model in which redundant delivery is observationally inert.
-The proper-root proof covers every future information set and every legal
-outside history; the continuation bounds cover arbitrary randomized policies.
-See [Action boundaries and subgame perfection](action-coalescing.md) for
-coalescing laws and separate finite comparisons of equilibrium outcome sets.
-
-The implementation target is the [reactive protocol](network-and-compilation.md):
-one optional message per activation, followed by an explicit scheduler choice.
-Private computation and opening material require no separate turns. The
-canonical information model, termination, behavioral policy correspondence,
-and evaluator correspondence are checked for arbitrary players and schedulers.
-The network observes broadcaster/envelope inputs; each player remembers its
-own emitted messages. Reading and reacting before inclusion are retained.
+The reactive protocol gives one optional message per activation. A separate
+observation rule privately samples other authors' pending packets before the
+response. Private computation and opening material require no separate turns.
+Canonical information, bounded play, behavioral policy correspondence, and
+evaluator correspondence are checked for arbitrary players, schedulers, and
+observation rules. Reading and reacting before inclusion are retained.
 
 The source policy compiler and a reserved-service scheduler are defined.
-The scheduler follows its epoch plan in canonical execution and completes the
-graph under arbitrary player policies and adaptive network choices. Fresh
-candidates remain available after every legal reactive history. Compiled-player
-packet uniqueness is checked; packet acceptance, protection through inclusion,
-and full outcome/deviation correspondence remain open. Unrestricted reactive
-SPE preservation is refuted by the exhibited service instance. General reaction
-roster capacity inference is not an obligation of this model. The coalescing
-modules retain separate comparisons of fixed-service presentations.
+The scheduler follows its epoch plan and completes the graph under arbitrary
+player policies, public scheduling decisions, and passive observations. Fresh
+candidates remain available after every legal history. Packet uniqueness is
+checked; acceptance, protection through inclusion, and full compiler
+outcome/deviation correspondence remain open.
 
-The reactive impossibility proof includes initialized prefix reachability, proper-root closure,
-information-local deviations under the complete remaining service, and a
-bound for arbitrary randomized continuations. The two-event native graph has
-the same publication kernel as the source program for every binding and
-disclosure. It is an explicit realization of that program, rather than a
-theorem identifying this graph with the compiler's unsimplified output.
+The fixed-service comparison protocol has a checked pending-menu impossibility:
+two public utilities share a source SPE but have no common native behavioral
+SPE. That theorem includes initialized reachability, proper-root closure,
+information-local deviations, and arbitrary randomized continuation bounds.
+Its witnessing root cuts consecutive owner invocations. Coalescing those
+invocations removes that particular root. The
+[action-boundary comparisons](action-coalescing.md) do not establish a reactive
+SPE theorem.
 
 Keep private inputs separate from commitments. Make commitment-failure
 admission explicit in the source interface, and justify its omission separately
@@ -505,14 +486,14 @@ expansion into existing machine operations proves safety, not equivalence of
 the two strategic history trees. The graph-policy compiler still needs direct
 actions and arbitrary-prefix continuation laws.
 
-Submission remains separate from delivery and inclusion. The wire can inspect
-the pending pool and deliver an envelope before a player's next action. The
-player can read it and submit another packet, replay a known packet, or send
-nothing. [InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean) checks
-this reaction and the retained service slots. It also checks private memory
-retention without network activity, and opposite outcomes from including two
-competing commitment packets. Neither the network opportunities nor their
-observations are removed by the action interface.
+Submission remains separate from passive observation and inclusion. At an
+activation, the player can privately learn foreign pending packets and then
+submit another packet, replay a known packet, or send nothing.
+[ReactiveProtocol.lean](../InteractionTests/ReactiveProtocol.lean) checks this
+reaction before inclusion and indistinguishable scheduler observations under
+different private samples. The fixed-service comparison in
+[InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean) separately
+checks its explicit wire deliveries and retained service slots.
 
 ### When a transmitted handle acquires its meaning
 
@@ -525,7 +506,7 @@ private commands cannot change a fixed meaning.
 `EventGraphRuntime.submitted_commitment_binding` proves this invariant for
 arbitrary finite native continuations, without honesty or inclusion premises.
 [`VegasTests/InFlightCommitment.lean`](../VegasTests/InFlightCommitment.lean)
-checks the following actual native transitions:
+checks the following transitions in the command-service comparison model:
 
 1. Alice submits an unprepared commitment handle.
 2. Bob's packet is submitted; the wire delivers both packets to their respective
@@ -542,9 +523,9 @@ the bit as an extra input: it reads the actual received packet.
 Binding is established by submission. Reading and reacting to other pending
 messages remains possible through the separate wire and player invocations.
 
-The reactive pending-menu theorem rules out unrestricted continuation coverage
-for this reserved-service class, including atomic one-message responses.
-A positive native edge needs premises governing competing
+The fixed-service pending-menu theorem rules out unrestricted continuation
+coverage for its split protocol. The passive reactive model requires a separate
+argument at its own proper roots. A positive native edge needs premises governing competing
 packets, irreversible acceptance, adaptive wire reactions, and recovery after
 earlier submissions. Direct action construction alone supplies none of these
 strategic premises.
@@ -569,12 +550,13 @@ the default design.
 1. **Select a feasible scope.** The pending-menu impossibility includes native
    reachability, proper-root closure, randomized continuation bounds, native
    deviations, and a common source behavioral SPE. An unrestricted certificate
-   for this service class cannot exist. A positive result must state additional
+   for that split service cannot exist. A positive result must state additional
    service or game premises, or a different preservation claim. Any further
    counterexample needs its own proper-root and continuation proofs. The checked
-   reactive counterexample supplies these for one-message responses separated
-   by random delivery. No response capacity or private preparation decision is
-   involved. Allowing source commitment failure does not remove the obstruction.
+   fixed-service counterexample does not settle the passive reactive model.
+   Any reactive witness must use only foreign pending-message observations,
+   keep private leak samples out of scheduler recall, and establish full
+   information-set closure.
 2. **Close the semantic bridge.** Pure and behavioral source adapters,
    arbitrary-prefix laws, private setup, and the crossed-root tests are checked.
    The reactive adapter, canonical policy equivalence, and

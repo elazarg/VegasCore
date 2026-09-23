@@ -12,12 +12,11 @@ observe the output and choose the next activation or network operation. Use
 ordinary canonical SPE on that protocol.
 
 This design has no response capacity or fixed reaction roster. It preserves
-delivery and reactions before inclusion. Unrestricted source-to-native SPE
-preservation is impossible for the exhibited reserved-service instance:
-pending traffic restricts continuation menus even with these action boundaries.
-The [checked reactive obstruction](reactive-spe-obstruction.md) includes a
-random network delivery between responses, full proper-root closure, and
-arbitrary randomized native policies.
+passive observation and reactions before inclusion. A separate observation
+rule privately samples foreign pending packets on activation. The scheduler
+receives no record of those samples; its public-history memory remains.
+SPE preservation for this model remains open. See the
+[passive-observation contract](passive-eavesdropping.md).
 
 The fixed-service comparison model has three consecutive owner invocations after each grant.
 The checked [fixed-service pending-menu impossibility](subgame-preservation.md#a-restricted-menu-in-a-proper-native-subgame)
@@ -293,16 +292,16 @@ It also does not establish that every native implementation has this issue.
 The existing native [in-flight-message example](../VegasTests/InFlightCommitment.lean)
 checks actual delivery and a policy reaction before inclusion. It establishes
 that these observations belong to the runtime behavior that a coalescing
-transformation must retain. The reactive impossibility below uses one
-strategic player and an external random delivery, with native reachability,
-full proper-root closure, and bounds against arbitrary traffic under the entire
-service. It is distinct from the two-player finite experiment above.
+transformation must retain. A reactive impossibility must establish native
+reachability, full proper-root closure, and arbitrary-continuation bounds under
+the passive-observation contract. The two-player finite experiment above does
+not provide these native proofs.
 
 ## Reactive protocol and remaining work
 
 The [reactive protocol](../Interaction/ReactiveProtocol.lean) has explicit
-scheduler activations and a checked canonical information model for arbitrary
-players. Its raw policies correspond to canonical behavioral policies in both
+scheduler activations, private pending-message observations, and a checked
+canonical information model for arbitrary players. Its raw policies correspond to canonical behavioral policies in both
 directions; its state kernel agrees with canonical randomized execution.
 No capacity inference is needed. The network keeps broadcaster/envelope input
 history, and players recover their own broadcasts from recall.
@@ -318,15 +317,12 @@ protection through reserved inclusion, and the full compiler outcome/deviation
 laws remain open. See
 [the proof-status table](network-and-compilation.md#8-what-is-proved).
 
-The [reactive SPE theorem](../VegasTests/ReactiveMenusSource.lean) uses this
-actual service and information model. Its root follows two valid submissions
-and precedes random delivery. After observing delivery the player can choose
-which old commitment is accepted, but cannot recover a fresh source choice.
-Two utilities agree on the complete source SPE and disagree on the best
-target continuation. No utility-independent translation, even of whole
-profiles, can satisfy both. The result applies with either source commitment
-admission. A positive contract must restrict the service or residual choices,
-or change the preservation claim; free private computation alone is insufficient.
+SPE analysis must use this actual service and information model. Only
+other authors' pending packets can provide new passive knowledge; the network
+cannot observe the private sample or use its result directly to choose
+inclusion. Competing submissions and reactive public scheduling can still
+restrict residual choices. A proof or counterexample for those continuations
+remains open. No completely forgetful inclusion policy is assumed.
 
 The action boundary belongs to the runtime semantics. Source commitment
 admission remains a separate semantic choice. The requested preservation
