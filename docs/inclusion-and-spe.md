@@ -20,6 +20,13 @@ public-history memory. The uniform selector below is an additional component
 for investigating a preservation contract; the reserved service does not use
 it automatically.
 
+The [research note on inclusion assumptions](inclusion-assumptions.md) treats
+neutral selection as an explicit hypothesis about service behavior, motivated
+by miner incentives. It connects the mixture law to Luce's choice axiom,
+explains fee-sensitive rules, and derives a weaker local condition based on
+regularity. That weaker argument and its full reactive-service realization
+are not yet mechanized.
+
 ## The useful condition concerns choices, not memory
 
 Fix a continuation with some already binding candidates. Write `nu` for the
