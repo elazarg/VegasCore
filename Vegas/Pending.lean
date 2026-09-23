@@ -86,5 +86,7 @@ import Vegas.Pending.EventDeviationLaw
 import Vegas.Pending.EventStrategicLaw
 import Vegas.Pending.EventPolicyService
 import Vegas.Pending.EventCompletionObservation
+import Vegas.Pending.ReactiveAuthorization
+import Vegas.Pending.ReactiveAuthorizationProgress
 
 /-! Graph execution and strategic refinement over public pending messages. -/

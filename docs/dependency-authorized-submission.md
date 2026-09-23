@@ -6,9 +6,9 @@ The [SPE obstruction inventory](spe-obstructions.md) places this proposal among
 the other service, source-interface, and continuation obligations. It targets
 premature executable packets; it is not a complete SPE contract.
 
-This is a candidate runtime contract, with a research assessment of possible
-blockchain mechanisms. It is not implemented, and no positive SPE theorem
-under this contract is claimed. The
+The semantic contract and its permanent-exclusion consequences are checked in
+Lean. A concrete authorization-enforcing service or ledger certificate is not
+implemented, and no positive SPE theorem under this contract is claimed. The
 [early-opening counterexample](early-opening-and-spe.md) motivates the question.
 
 The distinction is between checking dependencies when a call executes and
@@ -50,9 +50,20 @@ imply that commitment had completed before its submission. The witness's
 prefix has no completed commitment, contradicting monotone completion. The
 same reasoning excludes the early opening from later successful execution.
 
-Thus this exact witness would be excluded by the proposed contract. This is
-an argument from a proposed assumption, not an additional checked Lean result
-or a proof of SPE preservation.
+The exclusion argument is checked in
+[ReactiveAuthorization.lean](../Vegas/Pending/ReactiveAuthorization.lean).
+[The concrete regression](../VegasTests/ReactiveAuthorization.lean) identifies
+both premature origins, proves they remain unauthorized after binding, and
+checks that a fresh later opening is authorized. The raw early opening still
+enters the pending pool. These results are conditional on the acceptance
+contract; the existing uniform scheduler does not implement that contract.
+
+The [combined service design](reactive-spe-service.md) specifies the separate
+selection, replay, timing, information, and continuation obligations. It also
+records a checked consequence for general compiled graphs: an authorized
+unfinished packet owned by a player with a ready event must address that event.
+This uses the existing same-owner dependency order, so the exclusion does not
+require serializing different players' ready commitments.
 
 ## Blockchain mechanisms
 

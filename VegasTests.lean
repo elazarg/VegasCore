@@ -7,6 +7,7 @@ import VegasTests.ReactivePendingMenus
 import VegasTests.ReactivePendingMenusStrategies
 import VegasTests.ReactivePendingMenusSource
 import VegasTests.ReactiveEarlyOpeningSPE
+import VegasTests.ReactiveAuthorization
 import VegasTests.PendingMenus
 import VegasTests.PendingMenusStrategies
 import VegasTests.PendingMenusSource

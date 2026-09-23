@@ -69,7 +69,10 @@ while the native wire and event-order policies remain public and adaptive.
 
 Subgame perfection requires additional continuation guarantees. The
 [obstruction inventory](docs/spe-obstructions.md) records the concrete failure
-mechanisms, their evidence, and the obligations for addressing them. The reactive
+mechanisms, their evidence, and the obligations for addressing them. The
+[combined service design](docs/reactive-spe-service.md) includes a checked
+submission-authorization rule and per-player event isolation, with backend
+enforcement and the full continuation theorem still open. The reactive
 compiler has a [checked counterexample under uniform inclusion](docs/early-opening-and-spe.md):
 an honest source SPE compiles to a policy with a profitable off-path deviation.
 The deviation spends a transmission on an early opening instead of repairing

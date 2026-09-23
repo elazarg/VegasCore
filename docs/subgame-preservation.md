@@ -47,9 +47,12 @@ An honest source SPE has a profitable native deviation that spends an earlier
 transmission on a later opening. This is a failure of whole-continuation
 optimality even though the individual selection laws have the proposed local
 properties. It does not establish impossibility for every compiler under
-uniform selection. Dependency-authorized submission is a
-[candidate service contract](dependency-authorized-submission.md), not a proved
-repair or implemented feature.
+uniform selection. Dependency-authorized submission has a
+[checked semantic exclusion rule](dependency-authorized-submission.md).
+An enforcing backend and the positive SPE theorem remain open. The
+[combined service design](reactive-spe-service.md) records the full contract
+and the checked isolation of each player's authorized unfinished packets to
+its current ready event, without globally serializing foreign commitments.
 
 The [recovery compiler](reactive-recovery.md) completes prescribed play after
 the owner's own deviations without adding runtime flags or private actions.

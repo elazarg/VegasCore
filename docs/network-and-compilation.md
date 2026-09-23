@@ -274,9 +274,13 @@ the source composition and private initial law are in
 | SPE preservation for unrestricted reactive scheduling | Refuted by a checked public-traffic scheduler |
 | SPE preservation by the current recovery compiler under uniform inclusion and at-most-once publication alone | Refuted by a checked honest-source counterexample |
 | SPE preservation under a stronger reactive service contract | Open |
+| Original-submission authorization and permanent exclusion under its acceptance contract | Checked; concrete enforcing service open |
+| Authorization confines a player's unfinished owned packets to its ready event, including with concurrent foreign events | Checked under the source graph's information discipline |
 
 The [obstruction inventory](spe-obstructions.md) separates these native negative
-results from local witnesses and the remaining positive proof obligations.
+results from local witnesses and the remaining positive proof obligations. The
+[combined service design](reactive-spe-service.md) records how authorization,
+selection, timing, observations, and recovery must fit together.
 
 A reactive SPE argument must use the private observation rule and actual
 canonical information sets. Scheduler-controlled self-delivery and inclusion

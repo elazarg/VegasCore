@@ -30,6 +30,9 @@ the subsequent kernel-checked build.
 | Conditional pure SPE preservation and reflection at proper roots | `GameTheoryExtensions/Protocol/Continuation.lean` |
 | Proper reactive subgames after two deterministic initial responses | `Interaction/ReactiveSubgamePrefix.lean` |
 | Honest source SPE whose compiled graph policy fails SPE under uniform, at-most-once inclusion | `VegasTests/ReactiveEarlyOpeningSPE.lean` |
+| Immutable authorization at original submission, with conditional exclusion at every legal continuation | `Interaction/ReactiveAuthorization.lean`, `Vegas/Pending/ReactiveAuthorization.lean` |
+| Authorized unfinished packets belong to the sender's current ready owned event under source information discipline | `Interaction/ReactiveRecallInvariant.lean`, `Vegas/Pending/ReactiveAuthorizationProgress.lean` |
+| Premature packets in the early-opening witness remain unauthorized; fresh later openings are authorized | `VegasTests/ReactiveAuthorization.lean` |
 | Source to typed graph and canonical single-policy correspondence | `Vegas/Compile/EventGraphCanonical.lean`, `Vegas/Compile/EventGraphDeviation.lean` |
 | Sequential completion by dependency barriers | `Vegas/EventGraph/Sequential.lean` |
 | Message transport and player policies | `Interaction/MessageApplication.lean`, `Interaction/MessageApplicationPolicies.lean` |
@@ -57,6 +60,10 @@ that the current compiler fails SPE under the specified uniform service.
 The [counterexample guide](docs/early-opening-and-spe.md) explains the exact
 scope, completion facts, and profitable deviation. Whole-service continuation
 laws and a contract sufficient for positive native SPE preservation remain open.
+The [combined service design](docs/reactive-spe-service.md) records the checked
+authorization consequences and the remaining enforcement and continuation
+obligations. No authorization-enforcing backend or native SPE preservation
+theorem is claimed by these conditional results.
 `VegasTests/SourceProtocol.lean` and
 `VegasTests/SetupProtocol.lean` check information-set closure on hidden source
 prefixes; `GameTheoryExtensionsTests/ContinuationTransfer.lean` proves that the
