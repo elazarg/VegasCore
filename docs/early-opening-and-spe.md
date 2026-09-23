@@ -187,3 +187,25 @@ Early submission and message observation remain legal. Removing capabilities
 from native deviations solely to obtain a theorem would require a separate
 modeling decision. There is no new source flag or restriction on raw responses
 in this result.
+
+## The witness with dependency-authorized inclusion
+
+[ReactiveDependencyService.lean](../VegasTests/ReactiveDependencyService.lean)
+uses the same activation times and raw response interface with a different
+inclusion service. A public-history audit checks dependencies at each envelope's
+original submission. Both premature disclosure packets remain pending but are
+ineligible for the later draw; a fresh opening after binding is eligible.
+
+The checked full-continuation comparison at the proper contested root is:
+
+| Continuation | Uniform inclusion without authorization | Authorized uniform inclusion |
+|---|---:|---:|
+| Actual compiler recovery | 5/4 | 5/2 |
+| Exhibited early-opening deviation | 4/3 | 2 |
+
+Under authorization, the compiler publishes 0 or 1 with equal probability;
+the deviation publishes 1. Both finish. This removes the exhibited profitable
+deviation, without proving SPE against every replacement or at every root.
+The [combined service design](reactive-spe-service.md) records the remaining
+completion, information, recovery, and continuation obligations, and separates
+the ideal public-history monitor from a concrete ledger certificate backend.

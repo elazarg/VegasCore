@@ -107,15 +107,4 @@ def priorityProposal (priorities : FinDist (LinearOrder (MessageId Principal)))
     (priorityPending_append_regular priorities eligible pending packet accepted)
     (fun selected => decode (selected.getD nonempty.choose))
 
-/-- Uniform selection also satisfies the regularity contract. -/
-theorem uniformPending_append_regular
-    (eligible : Message Principal Payload → Bool) (pending : List (Message Principal Payload))
-    (packet : Message Principal Payload) (accepted : eligible packet = true)
-    (nonempty : (eligibleIds eligible pending).Nonempty)
-    (fresh : packet.id ∉ eligibleIds eligible pending) :
-    (uniformPending eligible pending).RegularAt
-      (uniformPending eligible (pending ++ [packet])) (some packet.id) := by
-  rw [uniformPending_append_fresh eligible pending packet accepted nonempty fresh]
-  apply FinDist.regularAt_mix
-
 end Interaction.MessageNetwork

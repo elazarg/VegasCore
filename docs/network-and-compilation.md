@@ -269,12 +269,14 @@ the source composition and private initial law are in
 | Source strategy compiler and concrete service scheduler | Defined |
 | Compiler samples, remembers, and sends in one activation; repeated activation does not resample | Checked binding regression |
 | Compiled player emits at most one packet per event; opponents cannot replace it under that author/event | Checked at every canonical prefix, with arbitrary opponents and scheduler |
-| Concrete service follows its schedule and completes under arbitrary policies | Checked through canonical behavioral play |
+| Reserved epoch service follows its schedule and completes under arbitrary policies | Checked through canonical behavioral play; this does not cover arbitrary uniform calendars |
 | Packet acceptance, protection through reserved inclusion, and full compiler outcome/deviation laws | Open |
 | SPE preservation for unrestricted reactive scheduling | Refuted by a checked public-traffic scheduler |
 | SPE preservation by the current recovery compiler under uniform inclusion and at-most-once publication alone | Refuted by a checked honest-source counterexample |
 | SPE preservation under a stronger reactive service contract | Open |
-| Original-submission authorization and permanent exclusion under its acceptance contract | Checked; concrete enforcing service open |
+| Original-submission authorization and permanent exclusion under its acceptance contract | Checked; enforced by the public-history monitor and authorized uniform calendar; ledger certificates open |
+| Authorized uniform inclusion retains local response regularity | Checked at every legal prefix, for all raw responses |
+| Early-opening witness under the authorized calendar | Proper root and full compared continuations checked: compiler 5/2, exhibited deviation 2; full SPE open |
 | Authorization confines a player's unfinished owned packets to its ready event, including with concurrent foreign events | Checked under the source graph's information discipline |
 
 The [obstruction inventory](spe-obstructions.md) separates these native negative

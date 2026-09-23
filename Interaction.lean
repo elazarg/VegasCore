@@ -19,6 +19,10 @@ import Interaction.CommitmentCandidates
 import Interaction.ReactiveRecall
 import Interaction.ReactiveHistory
 import Interaction.ReactiveAuthorization
+import Interaction.ReactiveSubmissionAudit
+import Interaction.ReactiveAuthorizedService
+import Interaction.ReactiveUniformService
+import Interaction.ReactiveUniformResponse
 import Interaction.ReactiveRecallInvariant
 import Interaction.ReactiveSubgamePrefix
 import Interaction.ReactiveObservation

@@ -2,6 +2,7 @@
 
 import Interaction.MessageNetwork
 import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Regularity
 
 /-! # Inclusion proposals sampled over distinct pending identifiers
 
@@ -35,6 +36,26 @@ def chooseUniform (candidates : Finset (MessageId Principal)) :
 def uniformPending (eligible : Message Principal Payload → Bool)
     (pending : List (Message Principal Payload)) : FinDist (Option (MessageId Principal)) :=
   chooseUniform (eligibleIds eligible pending)
+
+omit [DecidableEq Principal] in
+theorem chooseUniform_supported (candidates : Finset (MessageId Principal))
+    (id : MessageId Principal) (supported : some id ∈ (chooseUniform candidates).support) :
+    id ∈ candidates := by
+  unfold chooseUniform at supported
+  split at supported
+  · rename_i nonempty
+    obtain ⟨selected, member, same⟩ := FinDist.support_map .. ▸ supported
+    cases Option.some.inj same
+    exact (FinDist.mem_support_uniformSet_iff candidates nonempty id).mp member
+  · cases FinDist.mem_support_pure.mp supported
+
+theorem uniformPending_supported (eligible : Message Principal Payload → Bool)
+    (pending : List (Message Principal Payload)) (id : MessageId Principal)
+    (supported : some id ∈ (uniformPending eligible pending).support) :
+    ∃ message ∈ pending, eligible message = true ∧ message.id = id := by
+  have member := chooseUniform_supported (eligibleIds eligible pending) id supported
+  obtain ⟨message, selected, same⟩ := List.mem_map.mp (List.mem_toFinset.mp member)
+  exact ⟨message, (List.mem_filter.mp selected).1, (List.mem_filter.mp selected).2, same⟩
 
 omit [DecidableEq Principal] in
 theorem chooseUniform_singleton (id : MessageId Principal) :
@@ -179,5 +200,30 @@ theorem uniformPending_append_fresh (eligible : Message Principal Payload → Bo
   rw [chooseUniform, dite_eq_left (Finset.insert_nonempty _ _),
     FinDist.uniformSet_insert _ nonempty _ fresh, FinDist.map_mix, FinDist.map_pure]
   rw [chooseUniform, dite_eq_left nonempty]
+
+/-- Uniform insertion is regular even when the retained menu is empty. -/
+theorem chooseUniform_regular_insert (candidates : Finset (MessageId Principal))
+    (fresh : MessageId Principal) (absent : fresh ∉ candidates) :
+    (chooseUniform candidates).RegularAt (chooseUniform (insert fresh candidates))
+      (some fresh) := by
+  by_cases nonempty : candidates.Nonempty
+  · rw [chooseUniform_insert candidates nonempty fresh absent]
+    apply FinDist.regularAt_mix
+  · have empty : candidates = ∅ := Finset.not_nonempty_iff_eq_empty.mp nonempty
+    rw [empty, Finset.insert_empty, chooseUniform_singleton]
+    intro value different
+    rw [FinDist.prob_pure_of_ne different]
+    exact FinDist.prob_nonneg _ _
+
+/-- Uniform selection also satisfies the regularity contract. -/
+theorem uniformPending_append_regular
+    (eligible : Message Principal Payload → Bool) (pending : List (Message Principal Payload))
+    (packet : Message Principal Payload) (accepted : eligible packet = true)
+    (nonempty : (eligibleIds eligible pending).Nonempty)
+    (fresh : packet.id ∉ eligibleIds eligible pending) :
+    (uniformPending eligible pending).RegularAt
+      (uniformPending eligible (pending ++ [packet])) (some packet.id) := by
+  rw [uniformPending_append_fresh eligible pending packet accepted nonempty fresh]
+  apply FinDist.regularAt_mix
 
 end Interaction.MessageNetwork

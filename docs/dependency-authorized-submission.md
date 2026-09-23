@@ -6,9 +6,10 @@ The [SPE obstruction inventory](spe-obstructions.md) places this proposal among
 the other service, source-interface, and continuation obligations. It targets
 premature executable packets; it is not a complete SPE contract.
 
-The semantic contract and its permanent-exclusion consequences are checked in
-Lean. A concrete authorization-enforcing service or ledger certificate is not
-implemented, and no positive SPE theorem under this contract is claimed. The
+The semantic contract, permanent exclusion, and an ideal public-history
+enforcing service are checked in Lean. A fixed calendar combines enforcement
+with uniform, at-most-once inclusion and checked local response laws. A ledger
+certificate backend and a positive SPE theorem remain open. The
 [early-opening counterexample](early-opening-and-spe.md) motivates the question.
 
 The distinction is between checking dependencies when a call executes and
@@ -56,7 +57,23 @@ The exclusion argument is checked in
 both premature origins, proves they remain unauthorized after binding, and
 checks that a fresh later opening is authorized. The raw early opening still
 enters the pending pool. These results are conditional on the acceptance
-contract; the existing uniform scheduler does not implement that contract.
+contract; the original counterexample's uniform scheduler does not implement it.
+
+[ReactiveDependencyService.lean](../Vegas/Pending/ReactiveDependencyService.lean)
+instantiates the contract with a public-history monitor and an authorized
+uniform calendar. The generic audit reconstructs the original public view from
+the last activation at the envelope's allocation counter. It uses no private
+recall or leak samples. This ideal service assumes reliable knowledge of network
+submission order; it is not a ledger-verifiable timestamp or certificate.
+The [service design](reactive-spe-service.md) specifies its filtering behavior
+and remaining completion and continuation obligations.
+
+[The enforcing-service regression](../VegasTests/ReactiveDependencyService.lean)
+checks the same proper contested root under the authorized calendar and
+evaluates both full remaining continuations. The actual compiler obtains 5/2
+and the early-opening deviation obtains 2; both publish successfully. The
+premature packets are filtered from selection, while their raw submissions
+remain legal. This comparison is not a general SPE theorem.
 
 The [combined service design](reactive-spe-service.md) specifies the separate
 selection, replay, timing, information, and continuation obligations. It also

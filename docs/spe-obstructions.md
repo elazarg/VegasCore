@@ -30,7 +30,7 @@ Three evidence levels must remain distinct:
 | O1 | The target can irrevocably lose disclosure before another decision; the source cannot | Checked abstract pure-SPE compiler impossibility, plus a randomized local bound | Source forfeiture is available; a matching native continuation theorem is open |
 | O2 | New public traffic changes which old commitment wins | Checked native behavioral-SPE impossibility for every utility-independent compiler into the specified scheduler | Stronger selection contracts exclude this rule locally; unrestricted scheduling remains impossible |
 | O3 | Replay has selection power unavailable to a fresh proposal | Checked local randomized incentive obstruction and exact network selection witnesses | Distinct identifiers and unpublished eligibility address the witnessed menu effects |
-| O4 | One transmission opportunity can help different events | Checked honest source SPE whose current compiled policy is not native behavioral SPE under uniform inclusion | Authorization gives checked exclusion and per-player event isolation; enforcing service and SPE theorem open |
+| O4 | One transmission opportunity can help different events | Checked honest source SPE whose current compiled policy is not native behavioral SPE under uniform inclusion | Authorized uniform service removes the exhibited improvement; full SPE and ledger realization open |
 | O5 | Recovery confuses an attempted submission or remembered intention with what took effect | Checked operational failure of the command-service policy; reactive recovery and reconstruction regressions | Selected cases are repaired; arbitrary-prefix correspondence remains open |
 | O6 | Raw packets reveal information absent from source observations | Documented incentive counterexample; checked prevalidation lemmas and initialized command-service deviation law | The prescribed emission rule addresses failed openings; reactive continuation information laws remain open |
 
@@ -153,9 +153,18 @@ early packet from waiting to participate later.
 requires evidence of completed predecessors to be authenticated together
 with the payload when the envelope is first submitted. Its semantic contract,
 permanent exclusion of unauthorized envelopes, and concrete witness checks are
-proved. Raw premature broadcasts remain possible. An enforcing service or
-ledger certificate is not implemented; ordinary execution-time dependency
-checks do not imply the contract.
+proved. Raw premature broadcasts remain possible. A
+[public-history service](../Vegas/Pending/ReactiveDependencyService.lean) enforces
+the condition and combines it with uniform, at-most-once selection. Its local
+response law is checked. A ledger certificate and the complete continuation
+argument remain open; ordinary execution-time dependency checks do not imply
+the contract.
+
+[ReactiveDependencyService.lean](../VegasTests/ReactiveDependencyService.lean)
+checks the same proper root under the enforcing calendar. Across the complete
+remaining continuation, the compiler's value is 5/2 and the exhibited
+early-opening deviation's value is 2. Both finish successfully. This closes
+that comparison, while leaving arbitrary continuation replacements open.
 
 **Closure criterion.** Prove optimality with the actual remaining opportunities.
 The checked authorization invariant and source information discipline isolate
@@ -280,7 +289,7 @@ These are gaps to discharge, not additional proved counterexamples.
 | Explicit source forfeiture, or proved failure elision | O1 | Native/source continuation match with the correct visibility and timing |
 | Regular, value-independent inclusion | O2 | Every settling inclusion and the downstream interaction, not just one draw |
 | Distinct IDs, unpublished eligibility, at-most-once inclusion | O3 | Whole-service effects of a rebroadcast; fresh duplicates are different envelopes |
-| Dependency-authorized submission | Checked exclusion of O4's premature packets and per-player event isolation | Enforcing service, realizability, and remaining continuation effects |
+| Dependency-authorized submission | Checked public-history enforcement, per-player event isolation, and authorized uniform response laws | Ledger realizability and remaining continuation effects |
 | Total recovery with receipt-based reconstruction | O5 | Every legal root and optimality, beyond the checked reconstruction cases |
 | Prevalidation plus source-compatible observations | O6 | Complete reactive continuation laws with passive leaks and reactions |
 
@@ -299,8 +308,9 @@ forfeiture in the source or delete target broadcasts from the deviation space.
    relevant external evidence and outstanding authenticity/finality questions.
 2. **Validate authorization against O4.** The abstract exclusion rule and witness
    checks are proved without deleting raw transmissions or passive leaks.
-   Build an enforcing service and test its complete continuation semantics
-   before building a blockchain certificate implementation.
+   The public-history monitor and uniform calendar enforce authorization.
+   Test the calendar's complete continuation semantics before building a
+   blockchain certificate implementation.
 3. **Prove a complete base case.** Use a sequential event graph and an explicit
    failure-admitting source interface to isolate the service obligations. Cover
    all proper roots and arbitrary behavioral replacements. This is a proof

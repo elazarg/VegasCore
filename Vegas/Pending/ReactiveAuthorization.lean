@@ -144,8 +144,8 @@ theorem premature_not_accepted (runtime : EventGraphRuntime graph)
 
 end Vegas.EventGraphRuntime
 
--- OPEN OBLIGATION: Enforce dependency-authorized submission
--- Construct an observation-local service or certificate-checking application
--- satisfying DependencyAuthorized, with usable owner responses, selection laws,
--- and completion guarantees. Private recall is a proof witness, not scheduler
--- input. The reserved epoch service is not certified for this contract.
+-- OPEN OBLIGATION: Complete the dependency-authorized continuation argument
+-- ReactiveDependencyService enforces this contract using public history and
+-- supplies authorized uniform selection. Prove suitable calendars' usable owner
+-- responses, completion, and continuation incentives. A ledger certificate
+-- implementation is separate. The reserved epoch service is not certified here.

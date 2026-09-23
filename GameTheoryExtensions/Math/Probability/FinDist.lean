@@ -72,6 +72,16 @@ theorem prob_uniformSet [DecidableEq α] (members : Finset α) (nonempty : membe
       exact member (by rw [same]; exact old.property)
     rw [absent, expect_const, ite_eq_right member]
 
+theorem mem_support_uniformSet_iff (members : Finset α)
+    (nonempty : members.Nonempty) (value : α) :
+    value ∈ (uniformSet members nonempty).support ↔ value ∈ members := by
+  classical
+  rw [← prob_pos_iff, prob_uniformSet]
+  by_cases member : value ∈ members
+  · simp only [member, ↓reduceIte, iff_true]
+    exact inv_pos.mpr (by exact_mod_cast nonempty.card_pos)
+  · simp [member]
+
 /-- Adding one distinct candidate scales every old candidate equally. -/
 theorem uniformSet_insert [DecidableEq α] (members : Finset α)
     (nonempty : members.Nonempty) (fresh : α) (absent : fresh ∉ members) :
