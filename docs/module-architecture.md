@@ -31,7 +31,11 @@ and envelope, while player recall records its own outputs. Canonical policy
 and execution correspondence and bounded play are checked. `Vegas.Pending`
 supplies the event application, graph-policy compiler, and a reserved-service
 scheduler; `Vegas.Game.ReactiveCompilation` composes the source policy edge.
-Reactive service and full compiler correctness remain open. The paper's
+`CompletionService` isolates the epoch progress, sampling, and expiry
+obligations used by both services. Reactive schedule correspondence and
+completion are checked through canonical execution, and fresh candidate
+availability holds at every legal reactive history. Packet protection and
+full compiler correctness remain open. The paper's
 command-service capstones and fixed-service coalescing comparisons have their
 own stated targets and do not establish the reactive compiler theorem.
 

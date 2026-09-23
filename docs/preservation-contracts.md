@@ -28,7 +28,8 @@ counterexample to unrestricted utility-independent behavioral SPE preservation,
 even when the source admits forfeiture. Restricted positive correspondence and
 an automatic checker remain open. The reactive adapter has checked canonical
 policy and execution correspondence. Its graph/source policy compiler is
-defined; service and compiler correctness remain open.
+defined. Canonical service completion is checked; packet protection and
+compiler correctness remain open.
 The [SPE plan](subgame-preservation.md) states the exact negative
 scope and the remaining positive obligations.
 
@@ -612,8 +613,11 @@ from the reply. Vegas binding meanings are fixed on submission and retained
 by every supported transition.
 
 The graph/source policy compiler and a concrete scheduler with one reserved
-owner activation are defined. Service protection/completion and the full
-compiler outcome/deviation laws remain open. Neither the fixed-service
+owner activation are defined. The service's schedule and completion bound are
+checked through canonical execution under arbitrary player policies and
+adaptive network choices. Every legal reactive history retains fresh candidate
+material. Packet protection and the full compiler outcome/deviation laws
+remain open. Neither the fixed-service
 pending-menu impossibility nor the finite interleaved game establishes an
 SPE result for this reactive target.
 
@@ -624,8 +628,8 @@ SPE result for this reactive target.
    domains. Do not infer pure-to-behavioral SPE equivalence from value agreement.
 2. The reactive adapter, policy equivalence, bounded play, canonical execution,
    and local binding construction are checked. The graph/source policy compiler
-   is defined. Prove service protection/completion and the full source/native
-   continuation bridge, including hostile
+   is defined, and service completion is checked. Prove packet protection and
+   the full source/native continuation bridge, including hostile
    prefixes and all proper native roots. A generic wrapper is not evidence.
 3. Instantiate the SPE transfer theorem and use the canonical failure example
    as a negative case. Add a positive source elision theorem with an explicit

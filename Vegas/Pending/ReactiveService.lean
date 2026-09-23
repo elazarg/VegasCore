@@ -88,7 +88,8 @@ def interactionHorizon (runtime : EventGraphRuntime graph) (chosen : ServiceOrde
 
 end Vegas.EventGraphRuntime
 
--- OPEN OBLIGATION: Reactive service protection and completion
--- Prove that the scheduler consumes these service visits as specified, protects
--- the compiled one-response packets until resolution, and completes the graph
--- within interactionHorizon under arbitrary legal player and network choices.
+-- OPEN OBLIGATION: Reactive prescribed-packet protection
+-- The canonical schedule and completion bound are checked in
+-- ReactiveServiceEvaluation and ReactiveServiceCompletion. Prove that the
+-- service realizes each compiled decision with the required outcome law,
+-- including reactions and replay before reserved inclusion.

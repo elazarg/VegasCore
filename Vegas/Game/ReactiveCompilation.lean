@@ -8,8 +8,8 @@ import Vegas.Pending.ReactivePolicy
 
 Private initial inputs are sampled once by the protocol. The strategy compiler
 composes source lowering, graph observation normalization, and the one-response
-policy. These definitions specify the compilation edge; its service and
-strategic correctness theorems remain open.
+policy. These definitions specify the compilation edge; packet protection,
+compiler outcome/deviation laws, and strategic correctness remain open.
 -/
 
 noncomputable section

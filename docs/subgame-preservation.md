@@ -38,8 +38,11 @@ The network observes broadcaster/envelope inputs; each player remembers its
 own emitted messages. Reading and reacting before inclusion are retained.
 
 The source policy compiler and a reserved-service scheduler are defined.
-Service protection/completion, full outcome/deviation correspondence, and SPE
-preservation or impossibility for this target remain open. General reaction
+The scheduler follows its epoch plan in canonical execution and completes the
+graph under arbitrary player policies and adaptive network choices. Fresh
+candidates remain available after every legal reactive history. Packet
+protection, full outcome/deviation correspondence, and SPE preservation or
+impossibility for this target remain open. General reaction
 roster capacity inference is not an obligation of this model. The coalescing
 modules retain separate comparisons of fixed-service presentations.
 
@@ -569,15 +572,16 @@ the default design.
 2. **Close the semantic bridge.** Pure and behavioral source adapters,
    arbitrary-prefix laws, private setup, and the crossed-root tests are checked.
    The reactive adapter, canonical policy equivalence, and
-   execution laws are checked. Prove service protection/completion, compiler
-   correctness, and source/native continuation correspondence, including
+   execution laws and service completion are checked. Prove packet protection,
+   compiler correctness, and source/native continuation correspondence, including
    behavioral deviations.
 3. **Prove the source-to-canonical edge.** Establish source suffix laws, policy
    restriction compatibility, and root coverage for histories legal under the
    selected commitment-admission interface. Keep concurrent scheduling outside
    this gate.
 4. **Validate the native action contract.** The reactive protocol has checked
-   submission binding and bounded play; its application completion law remains open.
+   submission binding, fresh candidate availability, and bounded play. Application
+   completion is checked for the concrete reserved service under arbitrary policies.
    Discharge hostile prefixes for the selected compiler: establish recovery,
    candidate allocation, source-action recall, and residual choice correspondence.
 5. **Compose preservation.** Instantiate the continuation certificate at every

@@ -18,8 +18,10 @@ import Vegas.Game.BehavioralSubgame
 -- OPEN OBLIGATION: Native subgame-perfect preservation
 -- Source continuation laws and conditional SPE transfer and reflection are checked.
 -- The reactive protocol has canonical policy correspondence and bounded play.
--- Source policy compilation is defined; service protection and completion,
--- full policy recovery, continuation laws, and proper-root coverage remain open.
+-- The source policy compiler is defined. Canonical service completion is proved
+-- for arbitrary player policies and adaptive network choices.
+-- Packet protection, compiler outcome/deviation laws, full policy recovery,
+-- continuation laws, and proper-root coverage remain open.
 -- The fixed-service pending-menu impossibility has its own scheduling assumptions;
 -- it does not establish an impossibility for the reactive protocol.
 -- The initial-play Nash/Bayesian theorem does not discharge these obligations.

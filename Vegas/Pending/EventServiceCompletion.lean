@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.EventServiceLaw
+import Vegas.Pending.CompletionService
 
 /-! # Completion of bounded event service
 
@@ -267,6 +268,36 @@ theorem serviceEpoch_strategic_complete_of_due (runtime : EventGraphRuntime grap
       expired next afterInvariant afterMem
     exact suffixProgress.completed expiredDone
 
+/-- The command service satisfies the same completion contract as other
+message protocols; its particular player and network interfaces are parameters. -/
+def commandCompletionService (runtime : EventGraphRuntime graph)
+    (roster : List Player) (reactionRounds : Nat)
+    (players : Player → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
+    CompletionService runtime runtime.application.PolicyExecution where
+  state execution := execution.native.application
+  epoch := runtime.serviceEpoch roster reactionRounds players wire order
+  progress inputs before after := runtime.serviceEpoch_facts inputs roster reactionRounds
+    players wire order before after
+  chance inputs event before after := runtime.serviceEpoch_chance_complete inputs
+    roster reactionRounds players wire order event before after
+  due inputs event entered before after := runtime.serviceEpoch_strategic_complete_of_due inputs
+    roster reactionRounds players wire order event entered before after
+
+theorem commandCompletionService_run (runtime : EventGraphRuntime graph)
+    (roster : List Player) (reactionRounds : Nat)
+    (players : Player → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (count : Nat) (execution : runtime.application.PolicyExecution) :
+    (runtime.commandCompletionService roster reactionRounds players wire order).run
+      count execution =
+      runtime.runService roster reactionRounds players wire order count execution := by
+  induction count generalizing execution with
+  | zero => rfl
+  | succ count ih =>
+      simp only [CompletionService.run, runService, commandCompletionService]
+      exact FinDist.bind_congr fun next _ => ih next
+
 /-- One uniform deadline window completes every event that was ready at its
 start. Player and wire policies remain arbitrary. -/
 theorem runService_window_completes_ready (runtime : EventGraphRuntime graph)
@@ -279,56 +310,10 @@ theorem runService_window_completes_ready (runtime : EventGraphRuntime graph)
     (supported : next ∈ (runtime.runService roster reactionRounds players wire order
       (runtime.maxDeadline + 1) execution).support) :
     event ∈ next.native.application.config.cut.completed := by
-  rw [runtime.runService_add roster reactionRounds players wire order
-    runtime.maxDeadline 1] at supported
-  simp only [FinDist.support_bind, Set.mem_iUnion] at supported
-  obtain ⟨middle, middleMem, lastMem⟩ := supported
-  have middleProgress := runtime.runService_facts inputs roster reactionRounds players
-    wire order runtime.maxDeadline execution middle invariant middleMem
-  rcases middleProgress.ready_or_completed event ready with completed | middleReady
-  · have lastProgress := runtime.runService_facts inputs roster reactionRounds players
-      wire order 1 middle next middleProgress.invariant lastMem
-    exact lastProgress.completed completed
-  · have epochMem : next ∈ (runtime.serviceEpoch roster reactionRounds players wire
-        order middle).support := by
-      simpa [runService] using lastMem
-    cases actor : graph.actor? event with
-    | none =>
-        exact runtime.serviceEpoch_chance_complete inputs roster reactionRounds players
-          wire order event middle next middleProgress.invariant middleReady actor epochMem
-    | some owner =>
-        have strategic : (graph.actor? event).isSome = true := by simp [actor]
-        have initialSome : (execution.native.application.activatedAt event).isSome = true :=
-          (invariant.activated_iff event).2 ⟨ready, strategic⟩
-        obtain ⟨entered, enteredEq⟩ := Option.isSome_iff_exists.mp initialSome
-        have middleActivated := middleProgress.activated event entered enteredEq middleReady.1
-        have enteredLe := invariant.activated_le event entered enteredEq
-        have deadlineLe : runtime.deadline event ≤ runtime.maxDeadline := by
-          exact Finset.le_sup (f := runtime.deadline) (Finset.mem_univ event)
-        have dueAfterTick : runtime.deadline event ≤
-            middle.native.application.clock + 1 - entered := by
-          rw [middleProgress.clock]
-          omega
-        exact runtime.serviceEpoch_strategic_complete_of_due inputs roster reactionRounds
-          players wire order event entered middle next middleProgress.invariant middleReady
-          strategic middleActivated dueAfterTick epochMem
-
-omit [DecidableEq Player] in
-private theorem remaining_lt_of_new_completion
-    (before after : graph.Config)
-    (subset : before.cut.completed ⊆ after.cut.completed)
-    (event : graph.EventId) (fresh : event ∉ before.cut.completed)
-    (done : event ∈ after.cut.completed) :
-    after.remaining < before.remaining := by
-  have proper : before.cut.completed ⊂ after.cut.completed :=
-    Finset.ssubset_iff_subset_ne.mpr ⟨subset, fun same => fresh (same ▸ done)⟩
-  have cardLt := Finset.card_lt_card proper
-  have beforeLe : before.cut.completed.card ≤ graph.order.eventCount := by
-    simpa using Finset.card_le_card (Finset.subset_univ before.cut.completed)
-  have afterLe : after.cut.completed.card ≤ graph.order.eventCount := by
-    simpa using Finset.card_le_card (Finset.subset_univ after.cut.completed)
-  simp only [EventGraph.Config.remaining]
-  omega
+  apply (runtime.commandCompletionService
+    roster reactionRounds players wire order).window_completes_ready
+    inputs event execution next invariant ready
+  rwa [runtime.commandCompletionService_run]
 
 /-- The advertised finite service horizon completes the graph under arbitrary
 native player and wire policies and an arbitrary adaptive public sweep order. -/
@@ -341,56 +326,9 @@ theorem runService_terminal (runtime : EventGraphRuntime graph)
     (supported : next ∈ (runtime.runService roster reactionRounds players wire order
       runtime.serviceEpochs execution).support) :
     next.native.application.config.cut.Terminal := by
-  have bounded : ∀ fuel (start finish : runtime.application.PolicyExecution),
-      start.native.application.Invariant inputs →
-      start.native.application.config.remaining ≤ fuel →
-      finish ∈ (runtime.runService roster reactionRounds players wire order
-        (fuel * (runtime.maxDeadline + 1)) start).support →
-      finish.native.application.config.cut.Terminal := by
-    intro fuel
-    induction fuel with
-    | zero =>
-        intro start finish _ remaining finishMem
-        have terminal := start.native.application.config.terminal_iff_remaining_zero.mpr
-          (by omega)
-        simp only [Nat.zero_mul, runService, FinDist.mem_support_pure] at finishMem
-        subst finish
-        exact terminal
-    | succ fuel ih =>
-        intro start finish startInvariant remaining finishMem
-        rw [Nat.succ_mul, Nat.add_comm,
-          runtime.runService_add roster reactionRounds players wire order
-            (runtime.maxDeadline + 1) (fuel * (runtime.maxDeadline + 1))] at finishMem
-        simp only [FinDist.support_bind, Set.mem_iUnion] at finishMem
-        obtain ⟨middle, windowMem, tailMem⟩ := finishMem
-        have windowProgress := runtime.runService_facts inputs roster reactionRounds players
-          wire order (runtime.maxDeadline + 1) start middle startInvariant windowMem
-        by_cases terminal : start.native.application.config.cut.Terminal
-        · have middleRemaining : middle.native.application.config.remaining ≤ fuel := by
-            have startZero :=
-              start.native.application.config.terminal_iff_remaining_zero.mp terminal
-            have middleTerminal : middle.native.application.config.cut.Terminal := by
-              rw [EventOrder.Cut.Terminal] at terminal ⊢
-              apply Finset.Subset.antisymm (Finset.subset_univ _)
-              intro event _
-              apply windowProgress.completed
-              rw [terminal]
-              exact Finset.mem_univ event
-            rw [middle.native.application.config.terminal_iff_remaining_zero.mp middleTerminal]
-            omega
-          exact ih middle finish windowProgress.invariant middleRemaining tailMem
-        · obtain ⟨event, ready⟩ :=
-            start.native.application.config.cut.exists_ready_of_not_terminal terminal
-          have done := runtime.runService_window_completes_ready inputs roster reactionRounds
-            players wire order event start middle startInvariant ready windowMem
-          have decreased := remaining_lt_of_new_completion start.native.application.config
-            middle.native.application.config windowProgress.completed event ready.1 done
-          have middleRemaining : middle.native.application.config.remaining ≤ fuel := by
-            omega
-          exact ih middle finish windowProgress.invariant middleRemaining tailMem
-  apply bounded graph.order.eventCount execution next invariant
-  · simp [EventGraph.Config.remaining]
-  · simpa only [serviceEpochs] using supported
+  apply (runtime.commandCompletionService roster reactionRounds players wire order).terminal
+    inputs execution next invariant
+  rwa [runtime.commandCompletionService_run]
 
 /-- Every supported native result follows genuine graph steps from an input
 in the setup law. This is operational support refinement, not a strategic or

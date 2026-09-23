@@ -305,9 +305,11 @@ history, and players recover their own broadcasts from recall.
 
 The concrete service reserves one owner activation and allows the network to
 activate any player at subsequent network opportunities. The source strategy
-compiler samples, remembers, and submits in that one activation. Service
-protection and completion, and the full compiler outcome/deviation laws remain
-open. See [the proof-status table](network-and-compilation.md#8-what-is-proved).
+compiler samples, remembers, and submits in that one activation. Canonical
+execution follows the service plan and completes the graph under arbitrary
+player policies and adaptive network choices. Packet protection and the full
+compiler outcome/deviation laws remain open. See
+[the proof-status table](network-and-compilation.md#8-what-is-proved).
 
 The SPE investigation must use this actual service and its information model.
 In particular, the interleaved finite obstruction needs a reachable native

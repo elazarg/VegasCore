@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.EventService
+import Vegas.Pending.EventProgress
 import Vegas.Pending.EventInvariant
 import Interaction.MessageApplicationPolicyLaws
 
@@ -182,47 +183,6 @@ theorem runService_native_support (runtime : EventGraphRuntime graph)
         simp only [Set.mem_iUnion]
         exact ⟨middle.native, firstRun, secondRun⟩
 
-namespace State
-
-/-- Proved transition facts: completed events persist, time advances by the
-specified number of ticks, and a live event never loses its original deadline. -/
-structure ServiceProgress (inputs : graph.Inputs) (ticks : Nat)
-    (before after : State graph) : Prop where
-  invariant : after.Invariant inputs
-  completed : before.config.cut.completed ⊆ after.config.cut.completed
-  clock : after.clock = before.clock + ticks
-  activated : ∀ event entered, before.activatedAt event = some entered →
-    event ∉ after.config.cut.completed → after.activatedAt event = some entered
-
-omit [DecidableEq Player] in
-theorem ServiceProgress.refl {inputs : graph.Inputs} {state : State graph}
-    (invariant : state.Invariant inputs) : ServiceProgress inputs 0 state state :=
-  ⟨invariant, Finset.Subset.refl _, by omega, fun _ _ same _ => same⟩
-
-omit [DecidableEq Player] in
-theorem ServiceProgress.trans {inputs : graph.Inputs} {first second : Nat}
-    {before middle after : State graph}
-    (left : ServiceProgress inputs first before middle)
-    (right : ServiceProgress inputs second middle after) :
-    ServiceProgress inputs (first + second) before after := by
-  refine ⟨right.invariant, left.completed.trans right.completed, ?_, ?_⟩
-  · rw [right.clock, left.clock, Nat.add_assoc]
-  · intro event entered activated unfinished
-    exact right.activated event entered
-      (left.activated event entered activated (fun done => unfinished (right.completed done)))
-      unfinished
-
-omit [DecidableEq Player] in
-theorem ServiceProgress.ready_or_completed {inputs : graph.Inputs} {ticks : Nat}
-    {before after : State graph} (progress : ServiceProgress inputs ticks before after)
-    (event : graph.EventId) (ready : before.config.cut.Ready event) :
-    event ∈ after.config.cut.completed ∨ after.config.cut.Ready event := by
-  by_cases done : event ∈ after.config.cut.completed
-  · exact Or.inl done
-  · exact Or.inr ⟨done, ready.2.trans progress.completed⟩
-
-end State
-
 omit [DecidableEq Player] in
 /-- The deadline configuration leaves an event enabled during one epoch
 eligible for inclusion throughout the following clock-free service sweep. -/
@@ -233,26 +193,6 @@ theorem withinDeadline_of_age_le_one (runtime : EventGraphRuntime graph)
   have bound := feasible event
   simp only [State.WithinDeadline, activated]
   omega
-
-theorem privateStep_progress (inputs : graph.Inputs) (state : State graph)
-    (who : Player) (command : PrivateCommand graph) (invariant : state.Invariant inputs) :
-    State.ServiceProgress inputs 0 state (privateStep state who command) := by
-  obtain ⟨config, clock, activated⟩ := privateStep_facts state who command
-  refine ⟨privateStep_invariant state invariant who command, ?_, by simpa using clock, ?_⟩
-  · rw [config]
-  · intro event entered value _
-    rw [activated]
-    exact value
-
-private theorem handle_progress (runtime : EventGraphRuntime graph)
-    (inputs : graph.Inputs) (state next : State graph)
-    (message : Message Player (Payload graph)) (invariant : state.Invariant inputs)
-    (accepted : handle runtime state message = some next) :
-    State.ServiceProgress inputs 0 state next := by
-  refine ⟨handle_invariant runtime state next message invariant accepted,
-    handle_completed_subset runtime state next message accepted, ?_, ?_⟩
-  · simpa using (handle_clock_activated runtime state next message accepted).1
-  · exact handle_activatedAt_of_not_completed runtime state next message invariant accepted
 
 private theorem include_progress (runtime : EventGraphRuntime graph)
     (inputs : graph.Inputs) (state : runtime.application.State)
@@ -442,20 +382,7 @@ theorem serviceStep_sample_complete (runtime : EventGraphRuntime graph)
     (member : next ∈ (runtime.serviceStep players wire (.sample event) execution).support) :
     event ∈ next.native.application.config.cut.completed := by
   have supported := applicationStep_support runtime execution next (.executeSample event) member
-  cases view : nodeView graph event with
-  | bind owner payload outputEq codeEq | resolve owner payload binding checks outputEq codeEq =>
-      have ownerEq := congrArg EventGraph.EventCode.actor codeEq
-      rw [EventGraph.EventCode.actor_cast outputEq (graph.nodes event)] at ownerEq
-      change graph.actor? event = some owner at ownerEq
-      simp only [chance] at ownerEq
-      contradiction
-  | sample payload law outputEq codeEq =>
-      rw [environmentStep_executeSample_eq runtime execution.native.application event ready
-        payload law outputEq codeEq view, FinDist.support_map] at supported
-      obtain ⟨config, step, same⟩ := supported
-      have configEq := congrArg State.config same
-      rw [← configEq, EventGraph.Config.step_cut _ _ _ _ _ step]
-      exact Finset.mem_insert_self _ _
+  exact runtime.environmentStep_sample_complete _ _ event ready chance supported
 
 /-- Every activated due strategic event completes when its reserved expiry
 instruction executes, regardless of all player policies and pending traffic. -/
@@ -470,24 +397,8 @@ theorem serviceStep_expire_complete (runtime : EventGraphRuntime graph)
     (member : next ∈ (runtime.serviceStep players wire (.expire event) execution).support) :
     event ∈ next.native.application.config.cut.completed := by
   have supported := applicationStep_support runtime execution next (.expire event) member
-  cases view : nodeView graph event with
-  | sample payload law outputEq codeEq =>
-      have ownerEq := congrArg EventGraph.EventCode.actor codeEq
-      rw [EventGraph.EventCode.actor_cast outputEq (graph.nodes event)] at ownerEq
-      change graph.actor? event = none at ownerEq
-      simp [ownerEq] at strategic
-  | bind owner payload outputEq codeEq =>
-      rw [environmentStep_expire_bind_eq runtime execution.native.application event ready
-        entered activated due owner payload outputEq codeEq view,
-        FinDist.mem_support_pure] at supported
-      rw [supported]
-      exact Finset.mem_insert_self _ _
-  | resolve owner payload binding checks outputEq codeEq =>
-      rw [environmentStep_expire_resolve_eq runtime execution.native.application event ready
-        entered activated due owner payload binding checks outputEq codeEq view,
-        FinDist.mem_support_pure] at supported
-      rw [supported]
-      exact Finset.mem_insert_self _ _
+  exact runtime.environmentStep_expire_complete _ _ event ready strategic
+    entered activated due supported
 
 /-- Every environment-policy command preserves the private remembered-action
 table.  Inclusion uses the application's packet-level cache frame. -/

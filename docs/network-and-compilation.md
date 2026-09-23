@@ -169,7 +169,28 @@ activations do not advance that clock.
 
 This is one concrete scheduler instance, with a fixed event order and a finite
 interaction budget. The general protocol allows other scheduler policies.
-The protection and completion theorems for this instance remain open.
+Completion is checked for this instance under arbitrary player policies and
+adaptive network choices. If the graph has `n` events and maximum deadline
+`d`, then `n * (d + 1)` epochs suffice. This includes runs where players wait,
+send malformed traffic, replay packets, or make competing submissions.
+
+The proof has three parts:
+
+1. [ReactiveServiceEvaluation.lean](../Vegas/Pending/ReactiveServiceEvaluation.lean)
+   proves that the concrete scheduler follows the epoch plan in canonical
+   behavioral play. A network-selected activation consumes one service
+   instruction, and its player response always runs.
+2. [ReactiveServiceProgress.lean](../Vegas/Pending/ReactiveServiceProgress.lean)
+   proves that completed events persist, each epoch advances time once, and
+   unfinished events retain their activation timestamps.
+3. [ReactiveServiceCompletion.lean](../Vegas/Pending/ReactiveServiceCompletion.lean)
+   proves that ready chance events are sampled and due strategic events expire.
+   Each deadline window therefore completes a ready event, until none remain.
+
+The shared [completion contract](../Vegas/Pending/CompletionService.lean) applies
+to both the reactive service and the command service. It concerns completion;
+preserving the compiler's intended outcome additionally requires packet
+protection and the compiler correspondence laws.
 
 ## 7. How a source policy compiles
 
@@ -187,6 +208,12 @@ event. Fresh handle selection uses the owner's candidate view. Private recall
 retains distinctions that public failure erases, such as an intended opening
 whose guard fails.
 
+[ReactiveFreshCandidates.lean](../Vegas/Pending/ReactiveFreshCandidates.lean)
+proves that every legal initialized reactive history leaves fresh handles
+available, under arbitrary schedulers and deviations. The compiler's
+allocation branch therefore cannot fail because of exhausted candidates.
+This does not guarantee that the selected packet wins inclusion.
+
 The graph policy is in [ReactivePolicy.lean](../Vegas/Pending/ReactivePolicy.lean);
 the source composition and private initial law are in
 [ReactiveCompilation.lean](../Vegas/Game/ReactiveCompilation.lean).
@@ -201,9 +228,11 @@ the source composition and private initial law are in
 | Own broadcast recall suffices for replay knowledge | Checked at every legal initialized history |
 | Private binding construction, hiding, and retention of fixed meanings | Checked |
 | Actual delivery, reply, and adaptive reactivation before inclusion | Checked regression |
+| Fresh candidate availability after every legal initialized history | Checked |
 | Source strategy compiler and concrete service scheduler | Defined |
 | Compiler samples, remembers, and sends in one activation; repeated activation does not resample | Checked binding regression |
-| Reactive service protection/completion and full compiler outcome/deviation laws | Open |
+| Concrete service follows its schedule and completes under arbitrary policies | Checked through canonical behavioral play |
+| Packet protection and full compiler outcome/deviation laws | Open |
 | Reactive SPE preservation or impossibility | Open |
 
 The paper's existing Nash/Bayesian theorem uses the command-service target,

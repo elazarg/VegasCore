@@ -8,6 +8,8 @@ import Vegas.Pending.EventCommitmentBinding
 import Vegas.Pending.NativeProtocolSafety
 import Vegas.Pending.ReactivePolicy
 import Vegas.Pending.ReactiveService
+import Vegas.Pending.ReactiveServiceCompletion
+import Vegas.Pending.ReactiveFreshCandidates
 import Vegas.Pending.ReactiveSafety
 import Vegas.Pending.NativeResponseSampling
 import Vegas.Pending.ResponseBudget
