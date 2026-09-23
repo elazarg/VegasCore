@@ -10,6 +10,13 @@ namespace GameTheory.Math.Probability.FinDist
 
 variable {α β : Type*}
 
+/-- A finite-support law can give every point positive probability only on a
+finite carrier. A finite time horizon alone does not provide this premise. -/
+theorem FullSupport.finite {law : FinDist α} (full : law.FullSupport) : Finite α := by
+  have finiteUniv : (Set.univ : Set α).Finite :=
+    law.support_finite.subset (fun value _ => full value)
+  exact Set.finite_univ_iff.mp finiteUniv
+
 /-- Sample the first coordinate, then the conditional second coordinate.
 The conditional law is total, including first coordinates of zero probability. -/
 theorem eq_bind_fst_conditional_snd (law : FinDist (α × β)) :

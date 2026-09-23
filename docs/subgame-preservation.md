@@ -2,6 +2,11 @@
 
 ## Status and recommendation
 
+For credibility under private information, the target is
+[sequential-equilibrium preservation](sequential-equilibrium-design.md).
+This document specifies ordinary SPE and the scope of its checked results.
+SPE preservation alone can omit the off-path decisions that matter to credibility.
+
 The [private-memory audit](private-memory-and-subgames.md) proves a representation
 problem in the current reactive model: after two distinct players have responded,
 a proper canonical subgame cannot contain any further player decision. Arbitrary
@@ -24,7 +29,7 @@ The command-service compiler theorem concerns play from initialization. It prese
 Nash incentives, including ex ante Bayesian incentives for utilities of initial
 parameters and public results. It does not establish subgame perfection.
 
-The recommended target is preservation of behavioral subgame perfection by one
+The SPE statement is preservation of behavioral subgame perfection by one
 utility-independent, playerwise compiler, at every proper native subgame.
 Reflection is a separate goal with a separate root-coverage obligation. Both
 should use the canonical `GameTheory.Protocol.InformationModel` definitions.

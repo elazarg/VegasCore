@@ -1,4 +1,4 @@
-# Private implementation memory and the meaning of native SPE
+# Auxiliary memory weakens SPE in the native representation
 
 ## Checked finding
 
@@ -156,9 +156,11 @@ Sequential equilibrium checks optimality at information sets using beliefs,
 including off-path information sets. It is a different preservation claim,
 with belief consistency as an additional obligation. See Kreps and Wilson,
 [Sequential Equilibria](https://www.gsb.stanford.edu/faculty-research/publications/sequential-equilibrium).
-No sequential-equilibrium or public-checkpoint preservation theorem is claimed
-here. The immediate recommendation is to repair auxiliary-memory representation
-and reassess ordinary SPE before expanding the equilibrium interface.
+The [sequential-equilibrium design](sequential-equilibrium-design.md) specifies
+the credibility target and the obligations for using GameTheory's existing
+assessment definition. No native sequential-equilibrium or public-checkpoint
+preservation theorem is claimed. Repairing auxiliary-memory representation
+alone does not establish rationality under genuine private information.
 
 ## Consequences for existing results
 

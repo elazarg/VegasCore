@@ -27,6 +27,7 @@ import Interaction.ReactiveUniformService
 import Interaction.ReactiveUniformResponse
 import Interaction.ReactiveRecallInvariant
 import Interaction.ReactiveSubgamePrefix
+import Interaction.ReactiveSequential
 import Interaction.ReactiveObservation
 import Interaction.ReactiveKnowledge
 import Interaction.MessageNetworkInvariant

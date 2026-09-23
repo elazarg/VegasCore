@@ -13,6 +13,8 @@ import GameTheoryExtensions.Protocol.StateKernel
 import GameTheoryExtensions.Protocol.Coalescing
 import GameTheoryExtensions.Protocol.ResponseSampling
 import GameTheoryExtensions.Protocol.PrivateStrategy
+import GameTheoryExtensions.Protocol.SequentialIncentives
+import GameTheoryExtensions.Analysis.Protocol.Sequential
 import GameTheoryExtensions.Core.PendingChoice
 import GameTheoryExtensions.Core.IncentiveCone
 import GameTheoryExtensions.Core.RegularChoice

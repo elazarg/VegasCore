@@ -2,6 +2,11 @@
 
 ## Scope
 
+The broader credibility target is specified in the
+[sequential-equilibrium design](sequential-equilibrium-design.md). The results
+below retain their SPE scope. A sequential-equilibrium impossibility needs a
+source sequential-equilibrium witness, not merely a source SPE witness.
+
 This is the inventory of concrete failure mechanisms found in the experiments,
 proofs, and runtime investigation. It is not an exhaustiveness theorem: excluding
 these examples would not itself establish preservation. The final obligation is
