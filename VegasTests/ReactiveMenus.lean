@@ -13,6 +13,9 @@ delivers one of them before activating the player again. Inclusion selects an
 old commitment according to both that signal and the player's new traffic.
 Every activation permits just one optional transmission. The service uses its
 ordinary event visits, four network opportunities, and reserved inclusion.
+Delivery of an already-known own envelope is observable in this information
+model. It signals a scheduler choice used by the later inclusion rule; the
+example depends on that observation and responsive scheduling capability.
 -/
 
 noncomputable section

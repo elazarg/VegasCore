@@ -261,6 +261,10 @@ the best residual choice for both public utilities. The proof covers arbitrary
 randomized native policies and the complete service, without private
 preparation steps. Its scope is this game and service, not all runtimes or
 preservation of equilibrium outcome sets.
+In particular, it uses observable delivery of an already-known envelope as a
+scheduler signal and makes inclusion react to that signal and later traffic.
+Its relevance to a view containing only message knowledge requires a separate
+argument: such a view would not distinguish redundant self-delivery.
 
 The paper's existing Nash/Bayesian theorem uses the command-service target,
 whose prescribed policy takes three owner calls to remember, prepare, and send.

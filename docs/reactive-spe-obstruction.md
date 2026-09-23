@@ -14,6 +14,11 @@ guarantee for the service class containing this instance. Other service
 restrictions, utility-aware synthesis, and preservation of equilibrium outcome
 sets have different proof obligations.
 
+The example relies on observing delivery of an already-known packet and on
+inclusion reacting to traffic using that delivery as a signal. It establishes
+an obstruction for this permissive scheduler class. Applicability to a network
+whose observations reveal only newly learned messages is a separate question.
+
 The source program is an actual typed `SourceProgram`. Its two-event graph is
 an explicit realization with a checked equality of publication kernels for
 every binding and disclosure. The result does not identify that graph with
@@ -59,6 +64,29 @@ third response submitted a fresh packet. The network includes `m1` when
 `c = b`, and `m2` otherwise. This is a fixed rule about delivery and packet
 traffic. It never reads private opening material or the utility function.
 
+### What the delivery communicates
+
+Alice already knows both envelopes, because she submitted them. Delivery
+reveals no new message content. The current player view records the inbox
+separately from own-action recall, so the identity of the returned envelope
+reveals a scheduler choice. Its strategic significance comes from the
+inclusion rule depending on the same choice. The construction thereby provides
+a signaling channel between the scheduler and Alice.
+
+The scheduler is a fixed randomized mechanism in this theorem. It has no
+utility, strategic coordinate, or equilibrium condition. A miner modeled as a
+player would require a different game and a fresh proper-subgame analysis.
+Nevertheless, the fixed mechanism supplies coordination through observable
+delivery and responsive inclusion. That capability requires justification for
+the intended network abstraction.
+
+If observations represent only which envelopes a player knows, receiving one's
+own known envelope again should leave that observation unchanged. The recovery
+strategies proved here distinguish precisely those deliveries, so the proof
+does not apply to that observation model. Establishing an obstruction using
+new information from another participant and a justified inclusion policy is
+a separate obligation.
+
 The root is reachable by legal actions from initialization. It is a **proper
 subgame root** under the canonical information model: no future decision
 information set crosses it. The proof considers every legal history and all
@@ -71,6 +99,9 @@ access to the scheduler's private state or pending pool. A response chosen
 before delivery lacks this signal. Treating an entire contingent policy across
 delivery as one action would change the equilibrium interface; it is not the
 coalescing of uninterrupted private computation.
+This distinction is conditional on the delivery event being a meaningful
+observation of the intended runtime. The theorem does not justify exposing
+that event merely because the execution model can record it.
 
 ## The contradiction
 
@@ -126,7 +157,7 @@ initial public-outcome law alone.
 | Adaptive, information-local deviations attain 2 | [`recovery_rounds_value`](../VegasTests/ReactiveMenusStrategies.lean) |
 | Canonical behavioral SPE contradiction | [`no_common_reactive_spe`](../VegasTests/ReactiveMenusSPE.lean) |
 | Common source SPE and publication kernel equality | [`source_spe` and `source_graph_publication`](../VegasTests/PendingMenusSource.lean) |
-| Impossibility for all utility-independent profile translations | [`no_utility_independent_spe_compiler`](../VegasTests/ReactiveMenusSource.lean) |
+| Impossibility for all utility-independent profile translations | [`VegasTests.ReactiveMenus.no_utility_independent_spe_compiler`](../VegasTests/ReactiveMenusSource.lean) |
 
 The final theorem has a guarded axiom audit in [`Paper.lean`](../Paper.lean):
 only `propext`, `Classical.choice`, and `Quot.sound` occur. No missing simulation

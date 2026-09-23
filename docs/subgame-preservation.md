@@ -25,6 +25,10 @@ The witnessing root precedes a random network delivery between player
 responses. The next response uses the delivered envelope to select between
 two already-submitted commitments. Both are valid and have fixed meanings.
 Coalescing uninterrupted private computation does not remove this interaction.
+The interaction relies on observing the return of an already-known envelope
+and on a scheduler that uses that event in its later inclusion rule. The
+theorem therefore depends on this signaling capability; it does not settle a
+model in which redundant delivery is observationally inert.
 The proper-root proof covers every future information set and every legal
 outside history; the continuation bounds cover arbitrary randomized policies.
 See [Action boundaries and subgame perfection](action-coalescing.md) for
