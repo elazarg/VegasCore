@@ -272,7 +272,11 @@ the source composition and private initial law are in
 | Concrete service follows its schedule and completes under arbitrary policies | Checked through canonical behavioral play |
 | Packet acceptance, protection through reserved inclusion, and full compiler outcome/deviation laws | Open |
 | SPE preservation for unrestricted reactive scheduling | Refuted by a checked public-traffic scheduler |
+| SPE preservation by the current recovery compiler under uniform inclusion and at-most-once publication alone | Refuted by a checked honest-source counterexample |
 | SPE preservation under a stronger reactive service contract | Open |
+
+The [obstruction inventory](spe-obstructions.md) separates these native negative
+results from local witnesses and the remaining positive proof obligations.
 
 A reactive SPE argument must use the private observation rule and actual
 canonical information sets. Scheduler-controlled self-delivery and inclusion

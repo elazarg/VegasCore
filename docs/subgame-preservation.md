@@ -2,6 +2,9 @@
 
 ## Status and recommendation
 
+The [obstruction inventory](spe-obstructions.md) collects the concrete failure
+mechanisms, distinguishes their proof scopes, and gives the combined proof plan.
+
 The command-service compiler theorem concerns play from initialization. It preserves
 Nash incentives, including ex ante Bayesian incentives for utilities of initial
 parameters and public results. It does not establish subgame perfection.
@@ -37,6 +40,16 @@ economic motivations are documented separately from mathematical premises in
 the [assumption note](inclusion-assumptions.md). A checked root-mixture transfer theorem
 permits unresolved lotteries over proper source continuations. These components
 do not yet instantiate the native SPE certificate.
+
+Uniform selection and at-most-once inclusion also admit a
+[checked failure of the current recovery compiler](early-opening-and-spe.md).
+An honest source SPE has a profitable native deviation that spends an earlier
+transmission on a later opening. This is a failure of whole-continuation
+optimality even though the individual selection laws have the proposed local
+properties. It does not establish impossibility for every compiler under
+uniform selection. Dependency-authorized submission is a
+[candidate service contract](dependency-authorized-submission.md), not a proved
+repair or implemented feature.
 
 The [recovery compiler](reactive-recovery.md) completes prescribed play after
 the owner's own deviations without adding runtime flags or private actions.

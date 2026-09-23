@@ -2,6 +2,10 @@
 
 ## Status
 
+The [SPE obstruction inventory](spe-obstructions.md) places this proposal among
+the other service, source-interface, and continuation obligations. It targets
+premature executable packets; it is not a complete SPE contract.
+
 This is a candidate runtime contract, with a research assessment of possible
 blockchain mechanisms. It is not implemented, and no positive SPE theorem
 under this contract is claimed. The

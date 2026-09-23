@@ -30,8 +30,9 @@ an automatic checker remain open. The reactive adapter has checked canonical
 policy and execution correspondence. Its graph/source policy compiler is
 defined. Canonical service completion is checked; packet protection and
 compiler correctness remain open.
-The [SPE plan](subgame-preservation.md) states the exact negative
-scope and the remaining positive obligations.
+The [SPE plan](subgame-preservation.md) states the theorem interface. The
+[obstruction inventory](spe-obstructions.md) records the concrete negative
+results, the scope of each proposed repair, and the remaining proof obligations.
 
 ## Requirements
 

@@ -67,7 +67,9 @@ same-error epsilon-Nash theorems under the concrete
 player policy. Its exact source-policy mixture is chosen before private setup,
 while the native wire and event-order policies remain public and adaptive.
 
-Subgame perfection requires additional continuation guarantees. The reactive
+Subgame perfection requires additional continuation guarantees. The
+[obstruction inventory](docs/spe-obstructions.md) records the concrete failure
+mechanisms, their evidence, and the obligations for addressing them. The reactive
 compiler has a [checked counterexample under uniform inclusion](docs/early-opening-and-spe.md):
 an honest source SPE compiles to a policy with a profitable off-path deviation.
 The deviation spends a transmission on an early opening instead of repairing
