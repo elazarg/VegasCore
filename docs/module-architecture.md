@@ -34,8 +34,11 @@ scheduler; `Vegas.Game.ReactiveCompilation` composes the source policy edge.
 `CompletionService` isolates the epoch progress, sampling, and expiry
 obligations used by both services. Reactive schedule correspondence and
 completion are checked through canonical execution, and fresh candidate
-availability holds at every legal reactive history. Packet protection and
-full compiler correctness remain open. The paper's
+availability holds at every legal reactive history. Network provenance and
+compiled-player packet uniqueness are checked: opponents can replay a
+prescribed packet but cannot replace it under that author and event. Packet
+acceptance, protection through reserved inclusion, and full compiler
+correctness remain open. The paper's
 command-service capstones and fixed-service coalescing comparisons have their
 own stated targets and do not establish the reactive compiler theorem.
 

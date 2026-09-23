@@ -23,6 +23,52 @@ def Execution.InputRecall (execution : app.Execution) : Prop := ∀ who,
     if input.broadcaster = who then some input.envelope else none) =
       app.outputs (execution.recall who)
 
+theorem respond_recall_mono (execution : app.Execution) (who observer : Principal)
+    (action : app.Action) :
+    execution.recall observer ⊆ (execution.respond app who action).recall observer := by
+  rcases action with ⟨memory, transmission⟩
+  cases transmission with
+  | none =>
+      by_cases same : observer = who
+      · subst observer
+        simp only [Execution.respond, ↓reduceIte]
+        exact List.subset_append_left _ _
+      · simpa only [Execution.respond, ite_eq_right same] using List.Subset.refl _
+  | some transmission =>
+      cases transmission <;> by_cases same : observer = who
+      all_goals first
+        | subst observer
+          simp only [Execution.respond, ↓reduceIte]
+          exact List.subset_append_left _ _
+        | simpa only [Execution.respond, ite_eq_right same] using List.Subset.refl _
+
+theorem environmentStep_recall (execution next : app.Execution) (command : app.Command)
+    (reached : next ∈ (execution.environmentStep app command).support) :
+    next.recall = execution.recall := by
+  cases command with
+  | activate who | wait | deliver who id =>
+      simp only [Execution.environmentStep, FinDist.map_pure] at reached
+      cases FinDist.mem_support_pure.mp reached
+      rfl
+  | «include» id =>
+      simp only [Execution.environmentStep, FinDist.map_pure] at reached
+      cases FinDist.mem_support_pure.mp reached
+      cases found : execution.network.lookup id <;>
+        simp only [Execution.includePending, MessageNetwork.includePending, found]
+  | application command =>
+      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      rfl
+
+theorem respond_recall_other (execution : app.Execution) (who observer : Principal)
+    (different : observer ≠ who) (action : app.Action) :
+    (execution.respond app who action).recall observer = execution.recall observer := by
+  rcases action with ⟨memory, transmission⟩
+  cases transmission with
+  | none => simp only [Execution.respond, ite_eq_right different]
+  | some transmission =>
+      cases transmission <;> simp only [Execution.respond, ite_eq_right different]
+
 theorem initial_inputRecall (state : app.State) : (Execution.initial app state).InputRecall app :=
   fun _ => rfl
 

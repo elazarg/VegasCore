@@ -108,7 +108,7 @@ theorem Satisfies.replay [DecidableEq Principal] (h : Satisfies safe pool)
         exact hsent who candidate hmem⟩
   · exact ⟨hpending, hledger, hinbox, hsent⟩
 
-private theorem mem_of_mem_removeFirst [DecidableEq Principal]
+theorem mem_of_mem_removeFirst [DecidableEq Principal]
     (id : MessageId Principal) (candidate : Message Principal Payload)
     (messages : List (Message Principal Payload)) :
     candidate ∈ removeFirst id messages → candidate ∈ messages := by

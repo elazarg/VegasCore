@@ -214,6 +214,22 @@ available, under arbitrary schedulers and deviations. The compiler's
 allocation branch therefore cannot fail because of exhausted candidates.
 This does not guarantee that the selected packet wins inclusion.
 
+[ReactivePacketIntegrity.lean](../Vegas/Pending/ReactivePacketIntegrity.lean)
+proves that a compiled player emits at most one packet for each event, under
+arbitrary repeated activations. Every retained network envelope has an actual
+submission in its author's recall, by
+[ReactiveProvenance.lean](../Interaction/ReactiveProvenance.lean). Together these
+facts ensure that every retained packet under that author and event equals the
+player's remembered output. Other players may read it and replay it, including
+before inclusion, but cannot substitute a different envelope.
+
+This guarantee is playerwise: opponents may use arbitrary policies, and the
+scheduler may choose any commands. It holds at every supported prefix of
+canonical play when the focal player follows its compiled policy from setup.
+Provenance alone holds at every legal initialized history, including arbitrary
+deviations. Packet identity does not establish that the application accepts
+the packet or that the reserved service realizes the intended source decision.
+
 The graph policy is in [ReactivePolicy.lean](../Vegas/Pending/ReactivePolicy.lean);
 the source composition and private initial law are in
 [ReactiveCompilation.lean](../Vegas/Game/ReactiveCompilation.lean).
@@ -226,13 +242,15 @@ the source composition and private initial law are in
 | Raw policies correspond exactly to canonical behavioral policies | Checked, playerwise in both directions |
 | State evaluator agrees with the canonical randomized history runner | Checked |
 | Own broadcast recall suffices for replay knowledge | Checked at every legal initialized history |
+| Every retained envelope originates in an actual submission by its author | Checked at every legal initialized history |
 | Private binding construction, hiding, and retention of fixed meanings | Checked |
 | Actual delivery, reply, and adaptive reactivation before inclusion | Checked regression |
 | Fresh candidate availability after every legal initialized history | Checked |
 | Source strategy compiler and concrete service scheduler | Defined |
 | Compiler samples, remembers, and sends in one activation; repeated activation does not resample | Checked binding regression |
+| Compiled player emits at most one packet per event; opponents cannot replace it under that author/event | Checked at every canonical prefix, with arbitrary opponents and scheduler |
 | Concrete service follows its schedule and completes under arbitrary policies | Checked through canonical behavioral play |
-| Packet protection and full compiler outcome/deviation laws | Open |
+| Packet acceptance, protection through reserved inclusion, and full compiler outcome/deviation laws | Open |
 | Reactive SPE preservation or impossibility | Open |
 
 The paper's existing Nash/Bayesian theorem uses the command-service target,

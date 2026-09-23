@@ -93,3 +93,5 @@ end Vegas.EventGraphRuntime
 -- ReactiveServiceEvaluation and ReactiveServiceCompletion. Prove that the
 -- service realizes each compiled decision with the required outcome law,
 -- including reactions and replay before reserved inclusion.
+-- ReactivePacketIntegrity rules out conflicting packets under a prescribed
+-- owner and event; acceptance and retention until inclusion remain to prove.

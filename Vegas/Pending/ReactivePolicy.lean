@@ -106,6 +106,6 @@ def compileReactivePolicy (runtime : EventGraphRuntime graph) (who : Player)
 end Vegas.EventGraphRuntime
 
 -- OPEN OBLIGATION: Reactive graph-policy compiler correctness
--- Prove source observation reconstruction and single-sampling across every
--- protected service run, then compose the graph/compiler and deviation laws.
+-- Prove source observation reconstruction and realization of each sampled
+-- decision throughout protected service, then compose the compiler and deviation laws.
 -- The command-service theorem does not supply this edge.
