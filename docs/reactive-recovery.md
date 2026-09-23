@@ -69,6 +69,7 @@ invariants; these reconstruction rules alone are not that theorem.
 | Its initialized one-packet guarantee still holds against arbitrary opponents | [`canonical_reactivePacketIntegrity`](../Vegas/Pending/ReactivePacketIntegrity.lean) |
 | Recovery chooses only from the current source law's support and retains a still-supported recent choice | [`reactiveRecoveryLaw_support` and `reactiveRecoveryLaw_remembered`](../Vegas/Pending/ReactivePolicyFacts.lean) |
 | Recovery is locally optimal under the fixed inclusion-mixture and downstream-law premises | [`reactiveRecoveryLaw_optimal_response`](../Vegas/Pending/ReactivePolicyFacts.lean) |
+| Recovery is locally optimal under the weaker regularity and fixed downstream-law premises | [`reactiveRecoveryLaw_regular_optimal`](../Vegas/Pending/ReactiveRegularity.lean) |
 
 The state-law equality includes application state, network contents, private
 recall, receipts, and scheduler recall. It is not merely a public marginal.
@@ -96,8 +97,10 @@ proof. It does not yet prove that recovery is optimal throughout the reactive
 service. That requires a continuation correspondence covering intervening
 reactions, remaining opportunities, deadlines, and information sets.
 
-In particular, the local theorem fixes the inclusion weight, retained law,
-and downstream kernel across compared responses. A scheduler can react to new
+In particular, the local theorem fixes the selection law and downstream
+kernel across fresh source values. The regularity version permits changed
+relative odds among old candidates after submission, provided none gains
+absolute probability. A scheduler can react to new
 public transmissions, so a final uniform selection step alone does not establish
 those premises. The same source-root mixture must also work for every unilateral
 deviator at a native root. Irreversible forfeiture still requires the chosen

@@ -27,10 +27,14 @@ leaks. Its decisive inclusion rule reads only current pending traffic, so
 forgetting public history alone does not exclude it.
 
 The [inclusion investigation](inclusion-and-spe.md) gives a checked positive
-local condition: a fresh proposal competes with an unchanged law over retained
-candidates, with an action-independent weight. Uniform selection over distinct
-pending identifiers satisfies its distribution equation and is insensitive to
-replaying an already pending packet. A checked root-mixture transfer theorem
+local condition: a fresh proposal weakly decreases each retained candidate's
+selection probability, with selection independent of the fresh source value.
+Uniform and positive weighted selection over distinct identifiers satisfy a
+stronger fixed-mixture equation. Finite mixtures of stable priority rankings
+satisfy the weaker regularity condition. All these selector laws are proved,
+including invariance under replay of an already pending envelope. Their
+economic motivations are documented separately from mathematical premises in
+the [assumption note](inclusion-assumptions.md). A checked root-mixture transfer theorem
 permits unresolved lotteries over proper source continuations. These components
 do not yet instantiate the native SPE certificate.
 

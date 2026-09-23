@@ -16,16 +16,17 @@ and there are no leaks. The positive investigation therefore needs a stronger
 service contract; the counterexample does not rule out such a contract.
 
 The active runtime retains partial passive eavesdropping and the scheduler's
-public-history memory. The uniform selector below is an additional component
+public-history memory. The selectors below are additional components
 for investigating a preservation contract; the reserved service does not use
-it automatically.
+them automatically.
 
 The [research note on inclusion assumptions](inclusion-assumptions.md) treats
 neutral selection as an explicit hypothesis about service behavior, motivated
 by miner incentives. It connects the mixture law to Luce's choice axiom,
-explains fee-sensitive rules, and derives a weaker local condition based on
-regularity. That weaker argument and its full reactive-service realization
-are not yet mechanized.
+explains fee-sensitive rules, and states the weaker local contract of
+regularity. The local theorem, its converse, weighted selection, and finite
+mixtures of stable priorities are checked. Their composition through the
+reactive service remains open.
 
 ## The useful condition concerns choices, not memory
 
@@ -62,7 +63,25 @@ uses the canonical Nash predicate for the one-player response game. The
 continuation kernel is fixed across the compared proposals. Matching that
 kernel to actual later play is a separate obligation.
 
-## A concrete selector over the existing message network
+## The more general local contract
+
+Preserving relative odds is sufficient but stronger than needed locally.
+`RegularSelection` permits any selection law in which insertion weakly
+decreases each retained action's probability. The selection law is fixed
+across the fresh source values compared. Under the same fixed-continuation
+premise, [`RegularSelection.optimal_response`](../GameTheoryExtensions/Core/RegularChoice.lean)
+proves that submitting an optimal source lottery dominates silence and every
+randomized optional proposal. Supported recovery choices satisfy the same
+inequality. The compiler instantiation is
+[`reactiveRecoveryLaw_regular_optimal`](../Vegas/Pending/ReactiveRegularity.lean).
+
+[`regularAt_iff_expect_le`](../GameTheoryExtensions/Math/Probability/Regularity.lean)
+also proves the converse: regularity is exactly what improves every utility
+maximized at the fresh outcome. This is a characterization of the local
+comparison, not of full SPE preservation. All three statements concern finite
+distributions and fix the downstream continuation.
+
+## Concrete selectors over the existing message network
 
 [`Interaction/PendingSelection.lean`](../Interaction/PendingSelection.lean)
 filters pending packets by an eligibility predicate, forms the finite set of
@@ -88,12 +107,27 @@ available for observation and rebroadcast; transport multiplicity does not
 give them more inclusion weight. Reintroducing an absent envelope is a
 different case. Passive learning also leaves the selector's law unchanged.
 
-Weighted selection can satisfy the same equation: retain each old candidate's
+[`PendingWeighted.lean`](../Interaction/PendingWeighted.lean) implements
+weighted selection satisfying the same equation: retain each old candidate's
 weight and give the fresh identifier a weight independent of its proposed
-action. Its weight divided by total weight is `p`. This algebra is covered by
-the general mixture theorem; the concrete selector implemented here is
-uniform. Eligibility, weights, and later scheduling must respect the same
-condition across the compared responses.
+action. Its weight divided by total weight is `p`.
+`weightedPending_append_fresh` proves the exact equation, and
+`weightedPending_one` proves equality with the uniform selector.
+
+[`PendingPriority.lean`](../Interaction/PendingPriority.lean) implements
+selection using a finite distribution over stable total priority orders.
+Insertion either preserves a ranking's previous winner or selects the new
+candidate; `priorityPending_append_regular` proves regularity of the resulting
+law. The distribution over rankings is held fixed across compared responses.
+Already pending replay and passive learning leave the selector law unchanged.
+
+Randomized stable priorities need not preserve relative old odds. The two
+rankings A/C/B and C/B/A, equally likely, select A/B before inserting C and
+A/C afterward. The exact laws, regularity, and impossibility of expressing
+this as a fixed mixture with the old law are proved in
+[`RegularChoice.lean`](../GameTheoryExtensionsTests/RegularChoice.lean).
+Eligibility, priorities, weights, and continuation behavior remain explicit
+premises across the compared responses.
 
 ## Why a memoryless scheduler is not enough
 
@@ -183,7 +217,7 @@ abstraction: the Ethereum execution API recognizes already-known transactions.
 This supports distinguishing duplicate broadcasts from distinct submissions.
 [Ethereum transaction submission API](https://ethereum.github.io/execution-apis/api/methods/eth_sendRawTransaction/).
 
-Uniform inclusion or fixed action-independent weights remain explicit service
+Uniform inclusion, stable priorities, or fixed action-independent weights remain explicit service
 assumptions. They are not established by that interface. Geth documents
 competing transactions for the same account and nonce, including different
 gas allowances or transaction contents. Those replacement choices need their

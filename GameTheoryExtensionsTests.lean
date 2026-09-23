@@ -8,6 +8,7 @@ import GameTheoryExtensionsTests.InterleavedMenus
 import GameTheoryExtensionsTests.MixtureSimulation
 import GameTheoryExtensionsTests.PreservationContracts
 import GameTheoryExtensionsTests.PendingChoice
+import GameTheoryExtensionsTests.RegularChoice
 import GameTheoryExtensionsTests.SelectiveStopping
 import GameTheoryExtensionsTests.UtilitySimulation
 

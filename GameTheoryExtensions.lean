@@ -1,5 +1,8 @@
 import GameTheory.Core.MixtureSimulationComposition
 import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Regularity
+import GameTheoryExtensions.Math.Probability.WeightedSet
+import GameTheoryExtensions.Math.Probability.PriorityChoice
 import GameTheory.Core.MixtureUtilitySimulation
 import GameTheoryExtensions.Protocol.Continuation
 import GameTheoryExtensions.Protocol.BehavioralContinuation
@@ -8,3 +11,4 @@ import GameTheoryExtensions.Protocol.StateKernel
 import GameTheoryExtensions.Protocol.Coalescing
 import GameTheoryExtensions.Protocol.ResponseSampling
 import GameTheoryExtensions.Core.PendingChoice
+import GameTheoryExtensions.Core.RegularChoice

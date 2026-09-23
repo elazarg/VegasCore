@@ -20,12 +20,46 @@ fee analysis: Roughgarden defines miner utility separately from the intended
 allocation rule and asks whether following that rule maximizes utility.
 [Transaction Fee Mechanism Design, Sections 3.2 and 5.1](https://arxiv.org/html/2106.01340).
 
-No native SPE theorem is established by this note. The mixture lemma and
-uniform selector are checked in Lean. The weaker regularity argument below
-is a mathematical derivation for a local decision; its native realization and
-continuation composition remain obligations.
+No native SPE theorem is established by this note. The local regularity
+argument, its converse, the weighted and priority selectors, and the compiler's
+local recovery inequality are checked in Lean. Composition through the
+reactive service and correspondence of proper subgames remain obligations.
 
-## The sufficient assumption already used in Lean
+## Proof and assumption boundaries
+
+The implementation separates three responsibilities:
+
+| Layer | Checked result |
+|---|---|
+| `GameTheoryExtensions/Math/Probability` | Regularity, its exact expectation characterization, closure under fixed random mixtures and decoding, and weighted and priority choice laws |
+| `GameTheoryExtensions/Core` | Optimal optional submissions under regular selection, including randomized proposals and reuse of supported optimal actions |
+| `Interaction` | Selectors over distinct pending identifiers; insertion, already-pending replay, and passive-learning laws for the actual message network |
+| `Vegas/Pending` | The graph compiler's actual recovery lottery instantiates the local optimal-response theorem |
+
+The mathematical statements developed here have the following proof anchors:
+
+- [`expect_gain_eq`, `RegularAt.expect_le`, and `regularAt_iff_expect_le`](../GameTheoryExtensions/Math/Probability/Regularity.lean)
+  prove the gain identity, sufficiency, and converse.
+- [`RegularSelection.optimal_response`, `RegularSelection.optimal_response_of_support`, and `RegularSelection.nash_preserved`](../GameTheoryExtensions/Core/RegularChoice.lean)
+  prove the local incentive statements with a fixed stochastic continuation.
+- [`weightedSet_insert` and `weightedSet_one`](../GameTheoryExtensions/Math/Probability/WeightedSet.lean)
+  prove the weighted mixture equation and equal-weight specialization.
+- [`PriorityChoice.choose_insert` and `law_regular_insert`](../GameTheoryExtensions/Math/Probability/PriorityChoice.lean)
+  prove stability under insertion and regularity for finite mixtures of rankings.
+- [`before_eq`, `after_eq`, `regular`, and `not_fixed_mixture`](../GameTheoryExtensionsTests/RegularChoice.lean)
+  prove the strict separation example below.
+- [`PendingPriority.lean`](../Interaction/PendingPriority.lean) and
+  [`PendingWeighted.lean`](../Interaction/PendingWeighted.lean) lift the choice
+  rules to network packets, including replay and passive learning.
+- [`reactiveRecoveryLaw_regular_optimal`](../Vegas/Pending/ReactiveRegularity.lean)
+  applies the local theorem to the compiler's recovery policy.
+
+All distributions in these results have finite support. Referenced background
+results, such as Luce's representation theorem and the exponential-race
+construction, are proved in the cited sources; they are not imported Lean
+theorems or dependencies of our preservation argument.
+
+## A sufficient special case: unchanged relative odds
 
 Fix the current prefix and a nonempty set `S` of competing eligible messages.
 Let `q(i)` be the probability of selecting old message `i` if no new candidate
@@ -71,8 +105,10 @@ weight is `w`, then
 p = w / (W + w).
 ```
 
-Every old probability is multiplied by `W / (W + w)`. Uniform selection is the
-equal-weight case. Weights can depend on fees; their definition must leave old
+Every old probability is multiplied by `W / (W + w)`. The equation is checked
+by `weightedSet_insert`; `weightedPending_append_fresh` applies it to the
+network. Uniform selection is the checked equal-weight case. Weights can
+depend on fees; their definition must leave old
 weights unchanged and make the fresh weight independent of its encoded source
 value. Fee-proportional sampling is an illustrative model, not an Ethereum rule.
 
@@ -142,6 +178,17 @@ Encoding an alternative source action `a` in the new candidate keeps `p` and
 the `r(i)` unchanged. Its disadvantage is therefore `p (V* - V(a)) >= 0`.
 Taking averages gives the same conclusions for randomized responses and
 optimal source lotteries independent of the selection randomness.
+`RegularSelection.optimal_response` proves this with an arbitrary stochastic
+continuation. `RegularSelection.optimal_response_of_support` permits the recovery policy to
+reuse a supported optimal choice instead of sampling again.
+
+There is also an exact local converse. If selecting after insertion weakly
+improves expected utility for **every** utility having its maximum at the
+fresh candidate, every other candidate's probability must weakly decrease.
+To test one old candidate, give it utility minus one and every other candidate
+utility zero. `regularAt_iff_expect_le` proves both directions. This
+characterizes this utility-independent comparison with silence, not the class
+of all services that preserve SPE for a particular source game.
 
 This argument assumes selection of exactly one eligible candidate and a common
 downstream kernel. An outside outcome such as expiry needs its own treatment
@@ -163,7 +210,8 @@ old odds change, so the mixture condition fails. Regularity still holds.
 For every fixed ranking, the new message either wins or the previous winner
 survives. If it contains a source-optimal choice, every displaced outcome is
 weakly improved. Random selection of a miner or an ordering preserves that
-inequality. This is our derivation, not a theorem about Ethereum.
+inequality. The ranking law and this example are checked in Lean. They are
+not a theorem about Ethereum.
 
 Fixed priorities provide a particularly clear explanation: inserting a new
 message does not reorder the older ones. It can overtake some of them. The
@@ -171,6 +219,25 @@ example above shows why this operational condition need not preserve their
 relative *probabilities* after averaging over unknown arrival orders.
 
 ## Scope and tests of the assumption
+
+The following are explicit modeling choices or external motivations, rather
+than conclusions of the checked probability and incentive results:
+
+| Subject | Assumption or unmodeled justification |
+|---|---|
+| Miner incentives | Outcome indifference motivates neutral selection; no miner utility or best-response theorem is implemented. Non-collusion alone is not the selection contract. |
+| Priorities and weights | The same ranking distribution or weight function is used for the responses compared. It may describe delivery or fee attributes; the model does not derive those attributes from propagation or fees. |
+| Encoded values | Holding transport attributes fixed must also hold the selection law fixed across fresh source values. Opaque commitment meaning alone does not establish this for every packet field. |
+| Fees | There is no endogenous fee bid or fee charge in these results. Any future fee deviations require their own delivery and utility analysis. |
+| Replays | An already pending identifier retains its selection weight. The theorem does not assert that rebroadcasting has no information or propagation effects in an actual network. |
+| Service composition | Every relevant inclusion and continuation must satisfy the proof premises. A regular selector installed only at the last step is insufficient to establish those premises. |
+
+The concrete selectors deduplicate identifiers, rather than removing duplicate
+broadcasts from the network. `*_replay` proves equality of selection laws for
+an already pending envelope. `*_learn` proves that passive observation does
+not alter those laws. Neither says that the player forgets what was read, or
+that the player's later reactions are irrelevant. The active reserved service
+has not been changed to use these selectors.
 
 The useful behavioral premise is stronger than the statement that miners do
 not collude. Even a miner maximizing only fees may face dependencies between
