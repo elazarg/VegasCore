@@ -1,5 +1,9 @@
 # Action boundaries and subgame perfection
 
+For the underlying network operations, the origin of the three owner calls,
+and the compiler's proof boundary, see
+[The message runtime, its service schedule, and compilation](network-and-compilation.md).
+
 ## Recommendation
 
 Use one strategic decision for an uninterrupted player response. Represent its
