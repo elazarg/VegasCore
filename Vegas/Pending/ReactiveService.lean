@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveRuntime
+import Interaction.ReactivePublication
 
 /-! # Reserved service with one owner activation
 
@@ -11,6 +12,8 @@ Application grants, sampling, clock ticks, and expiry remain controlled by the
 service contract. Each strategic visit reserves one owner activation followed
 by network opportunities and event-addressed inclusion. There is no reaction
 roster and no private preparation phase.
+Each envelope can be included at most once, including when its call is rejected.
+Players may rebroadcast it; retrying a call requires a fresh envelope.
 -/
 
 noncomputable section
@@ -51,15 +54,16 @@ def interactionEpoch (chosen : ServiceOrder graph) (networkTurns : Nat) :
   chosen.val.flatMap (interactionVisit networkTurns) ++ [.tick] ++
     (List.finRange graph.order.eventCount).map .expire
 
-/-- Selection is by event and authenticated author, independent of unrelated
-traffic. Replays retain the envelope author and can affect pending order. -/
+/-- Selection is by event and authenticated author, excluding spent identifiers.
+Replays retain the envelope author and can affect pending order. -/
 def reactiveLatest (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (Payload graph))
     (event : graph.EventId) (owner : Player)
     (view : (runtime.reactiveApplication leaks).EnvironmentView) :
       (runtime.reactiveApplication leaks).Command :=
   match view.network.pending.reverse.find? (fun message =>
-      message.sender = owner ∧ message.payload.event? graph = some event) with
+      message.sender = owner ∧ message.payload.event? graph = some event ∧
+        view.Unpublished (runtime.reactiveApplication leaks) message.id) with
   | none => .wait
   | some message => .include message.id
 
@@ -70,7 +74,8 @@ def interactionInstruction (runtime : EventGraphRuntime graph)
     (view : (runtime.reactiveApplication leaks).EnvironmentView) :
     ServiceInstruction graph → FinDist (runtime.reactiveApplication leaks).Command
   | .player who => FinDist.pure (.activate who)
-  | .wire => (network history view).map (NetworkChoice.command runtime leaks)
+  | .wire => (network history view).map (fun choice =>
+      (runtime.reactiveApplication leaks).atMostOnceCommand view (choice.command runtime leaks))
   | .grant event => FinDist.pure (.application (.grant event))
   | .includeLatest event owner => FinDist.pure (runtime.reactiveLatest leaks event owner view)
   | .sample event => FinDist.pure (.application (.executeSample event))

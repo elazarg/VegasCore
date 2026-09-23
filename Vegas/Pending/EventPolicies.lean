@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.EventGraph.NormalizedPolicy
-import Vegas.Pending.EventApplication
+import Vegas.Pending.EventPublicState
 import Interaction.MessageApplicationPolicies
 
 /-! # Prescribed event-graph policies for the pending runtime
@@ -24,40 +24,6 @@ variable {graph : Vegas.EventGraph Player L}
 
 abbrev Entry (runtime : EventGraphRuntime graph) := runtime.application.PlayerEntry
 abbrev Command (runtime : EventGraphRuntime graph) := runtime.application.PlayerCommand
-
-namespace PublicView
-
-/-- Readiness reconstructed from public completion identities alone. -/
-def EventReady (view : PublicView graph) (event : graph.EventId) : Prop :=
-  event ∉ view.observation.completionOrder ∧
-    ∀ predecessor, predecessor ∈ graph.order.predecessors event →
-      predecessor ∈ view.observation.completionOrder
-
-instance (view : PublicView graph) (event : graph.EventId) :
-    Decidable (view.EventReady event) := by
-  unfold EventReady
-  infer_instance
-
-end PublicView
-
-omit [DecidableEq Player] in
-/-- The public readiness test is exact on every structurally coherent runtime
-state; it neither consults hidden values nor assumes reachability. -/
-theorem State.publicView_eventReady (state : State graph) (event : graph.EventId) :
-    state.publicView.EventReady event ↔ state.config.cut.Ready event := by
-  constructor
-  · rintro ⟨unfinished, predecessors⟩
-    constructor
-    · intro completed
-      exact unfinished ((state.config.history_exact event).mpr completed)
-    · intro predecessor member
-      exact (state.config.history_exact predecessor).mp (predecessors predecessor member)
-  · rintro ⟨unfinished, predecessors⟩
-    constructor
-    · intro inHistory
-      exact unfinished ((state.config.history_exact event).mp inHistory)
-    · intro predecessor member
-      exact (state.config.history_exact predecessor).mpr (predecessors member)
 
 /-- Whether one authenticated command is a private staging operation for the
 given event.  Prepared slots use the event's stable numeric identity. -/

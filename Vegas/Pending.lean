@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.EventApplication
+import Vegas.Pending.EventPublicState
+import Vegas.Pending.ReactiveServicePublication
 import Vegas.Pending.EventSequential
 import Vegas.Pending.EventInvariant
 import Vegas.Pending.EventBindingInvariant

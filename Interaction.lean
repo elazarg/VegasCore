@@ -21,6 +21,10 @@ import Interaction.ReactiveHistory
 import Interaction.ReactiveObservation
 import Interaction.ReactiveKnowledge
 import Interaction.MessageNetworkInvariant
+import Interaction.MessageRetention
+import Interaction.MessagePublication
+import Interaction.ReactiveServiceInvariant
+import Interaction.ReactivePublication
 import Interaction.PendingSelection
 import Interaction.PendingPriority
 import Interaction.PendingWeighted

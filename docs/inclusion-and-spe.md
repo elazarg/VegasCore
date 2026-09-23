@@ -81,6 +81,35 @@ maximized at the fresh outcome. This is a characterization of the local
 comparison, not of full SPE preservation. All three statements concern finite
 distributions and fix the downstream continuation.
 
+### An exact law, not only an incentive inequality
+
+Regularity also supplies an exact simulation with fixed branch weights.
+Write `q(a)` for the old selection probability, `r(a)` for its probability
+after insertion, and `p` for the fresh candidate's probability. There is a
+lottery `d` over old actions such that:
+
+```text
+q = sum_a r(a) * point(a) + p * d.
+```
+
+When `p > 0`, `d(a) = (q(a) - r(a)) / p`: it is the distribution of the
+displaced probability mass. When `p = 0`, its choice is immaterial.
+[`regular_option_restore`](../GameTheoryExtensions/Math/Probability/RegularCoupling.lean)
+proves existence, including this degenerate case.
+
+Use the post-insertion selection lottery as the common branching law. At an
+old branch, continue with that old action. At the fresh branch, submitting
+`a` translates to `point(a)` and silence translates to `d`. The branch law
+is unchanged by the response. This gives equality of action distributions
+for every randomized optional response, and equality after any common
+continuation kernel:
+[`RegularSelection.responseLaw_factor` and `RegularSelection.continuationLaw_factor`](../GameTheoryExtensions/Core/RegularChoiceSimulation.lean).
+The translation does not use utilities or inspect future chance.
+
+This resolves the local law needed for a source-root mixture even when
+regularity changes relative old odds. It does not identify those branches
+with proper source roots or establish the common downstream kernel.
+
 ## Concrete selectors over the existing message network
 
 [`Interaction/PendingSelection.lean`](../Interaction/PendingSelection.lean)
@@ -154,12 +183,27 @@ regularity throughout; the replay has transport attributes unavailable to the
 fresh submission. This is a network selection example, not an application
 execution or native SPE counterexample.
 
-A possible service design retains candidates until their event settles and
-then excludes that event from future eligibility. Proving this invariant for
-the application, including premature and rejected inclusions, is still an
-obligation. Neither replay capabilities nor the existing scheduler have been
-changed to obtain it. Equality of selection laws also does not remove the
-need to account for observations of the rebroadcast and later responses.
+The active reactive service uses **at-most-once inclusion**, including for
+rejected application calls. A second request to include a published identifier
+becomes a wait; reserved selection skips such identifiers. Rebroadcasting
+remains legal, and a retry may submit the same payload in a fresh envelope.
+
+[`interaction_history_publishedOnce`](../Vegas/Pending/ReactiveServicePublication.lean)
+proves that published identifiers are distinct at every legal initialized
+service history. It covers arbitrary player responses and network policies,
+including histories outside prescribed play. No acceptance test is needed
+before consuming an identifier; premature calls can be rejected immediately.
+
+The general carrier separately preserves the fact that every known envelope
+is pending or published.
+[`replay_unpublished_history`](../Interaction/ReactivePublication.lean)
+therefore proves that every raw replay leaves the eligible menu unchanged
+when eligibility excludes published identifiers. The removed-envelope
+regression above uses an eligibility predicate that does not exclude them.
+Equality of menus does not make the broadcast unobservable or settle the
+effect of later responses. The active service's latest-pending selection and
+arbitrary intervening network policy still need stronger selection premises
+for the regularity argument.
 
 ## Why a memoryless scheduler is not enough
 
@@ -248,6 +292,13 @@ Counting one candidate per distinct signed transaction is a plausible
 abstraction: the Ethereum execution API recognizes already-known transactions.
 This supports distinguishing duplicate broadcasts from distinct submissions.
 [Ethereum transaction submission API](https://ethereum.github.io/execution-apis/api/methods/eth_sendRawTransaction/).
+
+Ethereum's transaction nonce motivates consuming a published identifier once;
+the same sender and nonce cannot be included twice.
+[ERC-4337 nonce discussion](https://eips.ethereum.org/EIPS/eip-4337#semi-abstracted-nonce-support).
+Our service abstracts this as a spent-identifier test. It does not model nonce
+ordering, transaction replacement, fees, or chain reorganizations, and this
+motivation is not a proof of an Ethereum implementation.
 
 Uniform inclusion, stable priorities, or fixed action-independent weights remain explicit service
 assumptions. They are not established by that interface. Geth documents

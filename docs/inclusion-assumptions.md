@@ -31,10 +31,10 @@ The implementation separates three responsibilities:
 
 | Layer | Checked result |
 |---|---|
-| `GameTheoryExtensions/Math/Probability` | Regularity, its exact expectation characterization, closure under fixed random mixtures and decoding, and weighted and priority choice laws |
-| `GameTheoryExtensions/Core` | Optimal optional submissions under regular selection, including randomized proposals and reuse of supported optimal actions |
-| `Interaction` | Selectors over distinct pending identifiers; insertion, already-pending replay, and passive-learning laws for the actual message network |
-| `Vegas/Pending` | The graph compiler's actual recovery lottery instantiates the local optimal-response theorem |
+| `GameTheoryExtensions/Math/Probability` | Regularity, its expectation characterization, exact displaced-mass coupling, and weighted and priority choice laws |
+| `GameTheoryExtensions/Core` | Optimal optional submissions, supported recovery, and exact response-law factorization under regular selection |
+| `Interaction` | Pending-or-published invariant, at-most-once service contract, all-replay invariance for unpublished menus, and concrete selection laws |
+| `Vegas/Pending` | The recovery lottery instantiates the local incentive theorem; the active reserved service includes each identifier at most once at every legal history |
 
 The mathematical statements developed here have the following proof anchors:
 
@@ -42,6 +42,14 @@ The mathematical statements developed here have the following proof anchors:
   prove the gain identity, sufficiency, and converse.
 - [`RegularSelection.optimal_response`, `RegularSelection.optimal_response_of_support`, and `RegularSelection.nash_preserved`](../GameTheoryExtensions/Core/RegularChoice.lean)
   prove the local incentive statements with a fixed stochastic continuation.
+- [`regular_option_restore`](../GameTheoryExtensions/Math/Probability/RegularCoupling.lean)
+  and [`RegularSelection.responseLaw_factor`](../GameTheoryExtensions/Core/RegularChoiceSimulation.lean)
+  prove exact simulation with a response-independent branch law. Silence uses
+  the distribution of displaced old probability mass on the fresh branch.
+- [`interaction_history_publishedOnce`](../Vegas/Pending/ReactiveServicePublication.lean)
+  proves at-most-once inclusion in the actual service, including rejected calls.
+- [`replay_unpublished_history`](../Interaction/ReactivePublication.lean)
+  proves all-replay menu invariance at arbitrary legal initialized histories.
 - [`weightedSet_insert` and `weightedSet_one`](../GameTheoryExtensions/Math/Probability/WeightedSet.lean)
   prove the weighted mixture equation and equal-weight specialization.
 - [`PriorityChoice.choose_insert` and `law_regular_insert`](../GameTheoryExtensions/Math/Probability/PriorityChoice.lean)
@@ -233,7 +241,8 @@ than conclusions of the checked probability and incentive results:
 | Priorities and weights | The same ranking distribution or weight function is used for the responses compared. It may describe delivery or fee attributes; the model does not derive those attributes from propagation or fees. |
 | Encoded values | Holding transport attributes fixed must also hold the selection law fixed across fresh source values. Opaque commitment meaning alone does not establish this for every packet field. |
 | Fees | There is no endogenous fee bid or fee charge in these results. Any future fee deviations require their own delivery and utility analysis. |
-| Replays | An already pending identifier retains its selection weight. The theorem does not assert that rebroadcasting has no information or propagation effects in an actual network. |
+| Replays | Distinct-identifier selectors exclude published identifiers. Rebroadcasts remain observable and legal. No propagation effect is derived from a physical network model. |
+| At-most-once inclusion | A published envelope is spent even if its call fails. A fresh envelope can retry the same payload. Ethereum nonces motivate this abstraction; nonce ordering, replacements, fees, and reorgs are not modeled. |
 | Service composition | Every relevant inclusion and continuation must satisfy the proof premises. A regular selector installed only at the last step is insufficient to establish those premises. |
 
 The concrete selectors deduplicate identifiers, rather than removing duplicate
@@ -264,9 +273,11 @@ The implementation and proof must address:
    regularity for fresh candidates nor the mixture equation alone covers all
    replay behaviors. The checked weighted-copy example isolates this gap.
    `RetainsEligible` is a checked sufficient invariant for replay to preserve
-   each selector's eligible menu. It is not yet an application-service invariant.
-   The checked removed-envelope example shows that stable priority alone does
-   not make an absent envelope's replay equivalent to a fresh submission.
+   each selector's eligible menu. The carrier's pending-or-published invariant
+   establishes it at every legal history when eligibility excludes published
+   identifiers. The active reactive service enforces at-most-once inclusion
+   independently of application acceptance. The removed-envelope example shows
+   why the exclusion matters for replay of a previously included identifier.
 3. **Player capabilities.** The source-optimal value must be encodable with the
    transport attributes needed by the proof. A fresh packet cannot simply
    inherit an old packet's authentic timestamp or erase already distributed
@@ -282,6 +293,12 @@ The implementation and proof must address:
    initialized one-packet guarantee cannot discharge this requirement.
 
 ## Design recommendation
+
+The at-most-once rule is an operational service guarantee, independent of
+neutral-selection assumptions. The rule uses the public ledger, without
+inspecting hidden commitment values. Ethereum's sequential nonce is external
+motivation for this choice, not a verified backend correspondence.
+[ERC-4337 nonce discussion](https://eips.ethereum.org/EIPS/eip-4337#semi-abstracted-nonce-support).
 
 Keep the condition in the service's theorem premises. No source-language flag,
 restricted raw player menu, or strategic miner player is needed merely to

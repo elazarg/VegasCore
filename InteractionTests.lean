@@ -5,3 +5,4 @@ import InteractionTests.MessageApplication
 import InteractionTests.Pending
 import InteractionTests.PendingPriority
 import InteractionTests.ReactiveProtocol
+import InteractionTests.ReactivePublication

@@ -157,7 +157,11 @@ theorem interactionInstruction_ticks (runtime : EventGraphRuntime graph)
   cases instruction with
   | wire =>
       obtain ⟨choice, _, rfl⟩ := FinDist.support_map .. ▸ supported
-      cases choice <;> rfl
+      cases choice with
+      | activate who | wait => rfl
+      | «include» id =>
+          dsimp only [NetworkChoice.command, ReactiveApplication.atMostOnceCommand]
+          split <;> rfl
   | includeLatest event owner =>
       cases FinDist.mem_support_pure.mp supported
       unfold reactiveLatest
