@@ -37,13 +37,30 @@ The source-to-native preservation theorem is open. The checked foundations are:
 - [ReactiveDecisionInformation.lean](../Interaction/ReactiveDecisionInformation.lean):
   actual reactive decision fibers are nonterminal history antichains, for any
   application, scheduler and passive observation rule.
+- [ReactiveResponseMenu.lean](../Interaction/ReactiveResponseMenu.lean) and
+  [ReactiveResponseEmbedding.lean](../Interaction/ReactiveResponseEmbedding.lean):
+  explicit finite response-menu instances, with injective history embedding,
+  identical player observations and exact complete continuation laws under
+  embedded policies. This covers responses within the supplied menu.
+- [ReactiveFiniteAssessment.lean](../Interaction/ReactiveFiniteAssessment.lean):
+  finite histories, canonical consistent Bayes assessments, and fully mixed
+  perturbations approaching any profile in a finite-menu instance. Convergence
+  of the perturbations' off-path beliefs remains a separate obligation.
+- [ReactiveReplayMenu.lean](../Interaction/ReactiveReplayMenu.lean): closing a
+  finite menu under all known-envelope replays retains every base response and
+  needs no numeric identifier cutoff. The
+  [Vegas binding fixture](../VegasTests/ReactiveRuntime.lean) admits both Boolean
+  bindings, unopenable submissions and actual compiled first responses with
+  their private intention records, and has a consistent finite assessment.
 - [ReactiveSequential.lean](../Interaction/ReactiveSequential.lean) and its
   [Vegas specialization](../Vegas/Pending/ReactiveSequential.lean): the current
   arbitrary scratch-memory carrier prevents finite-support fully mixed play at
   any decision site. This is a mismatch with the finite assessment interface,
   not an impossibility theorem for sequential equilibrium in other models.
 
-No runtime actions or observations are restricted by these modules. The
+The unrestricted runtime is unchanged. Finite-menu instances explicitly restrict
+response availability; they do not claim that excluded raw responses are
+irrelevant or that their equilibria transfer to the unrestricted runtime. The
 GameTheory submodule is unchanged.
 
 ## What the existing definition provides
@@ -158,10 +175,12 @@ four obligations:
    rationality is required of the limiting assessment; the approximants need
    not themselves be equilibria.
 
-The generic positive-mass and Bayes construction in step 2 is checked. Steps
-1, 3 and 4 remain compiler-specific construction obligations. It is insufficient
-to compile each
-$\sigma_n$ verbatim: that need not randomize over target-only actions. Adding
+The generic positive-mass and Bayes construction in step 2 is checked. For a
+finite-menu instance, mixing any profile with the uniform local profile also
+discharges full mixing in step 1 and strategy convergence in step 3. Convergence
+of off-path beliefs and the incentive proof in step 4 remain open for the compiler.
+It is insufficient to compile each $\sigma_n$ verbatim: that need not randomize
+over target-only actions. Adding
 uniform noise without analyzing conditional probabilities is also insufficient.
 The relative rates at which different mistakes vanish determine off-path
 beliefs. Do not choose a convenient posterior independently at each site, or
@@ -209,7 +228,7 @@ observations actually implement this disclosure before using the negative result
 
 ## Finite games without restricting private computation
 
-`FinDist` has finite support. The new `FullSupport.finite` theorem proves that a
+`FinDist` has finite support. The `FullSupport.finite` theorem proves that a
 fully supported such law requires a finite carrier. A finite horizon does not
 make the current action menu finite: `ResponseMemory.privateData` alone can
 store any natural number. At a decision site, this injects the naturals into
@@ -248,6 +267,62 @@ contents may communicate information or influence the service. Any restriction
 that removes partial foreign leaks, pre-inclusion reactions or meaningful
 communication requires discussion before implementation.
 
+### Explicit finite response instances
+
+`ReactiveApplication.ResponseMenu` supplies a nonempty finite set of complete
+responses for each player, own response record and current player view. It has
+no hidden-state argument. Fix the menu before quantifying over utilities and
+prescribed source profiles; deriving a menu from one profile's outputs would
+omit deviations and would not establish the proposed compiler guarantee.
+
+The associated protocol uses the existing `transition`, scheduler, application
+and observation rule. It changes only which responses are legal. Its histories
+embed injectively in the unrestricted protocol, preserving states, trace
+lengths, reachability and player information. The checked `run_embed` theorem
+says that from every legal instance history, for every instance profile and
+every evaluation fuel, the embedded complete history law equals execution of
+the embedded policies in the unrestricted runtime. This includes histories
+off the prescribed path and retains the actual remaining clock. It does not
+assert optimality against an unrestricted replacement policy.
+
+With finitely many players, every such instance has finitely many legal
+histories. No finite ambient state or observation carrier is required: the
+existing chance laws have finite support, and the scheduler horizon bounds
+the number of transitions. Every local menu has a uniform distribution; the
+resulting fully mixed profile has positive mass at every legal decision site.
+Bayes normalization yields a sequentially consistent assessment, using the
+constant sequence. This is a consistency theorem, not an optimality theorem.
+
+For an arbitrary prescribed instance profile, mix its local laws with the
+uniform laws using a common positive weight. The
+[generic perturbation lemmas](../GameTheoryExtensions/Analysis/Protocol/Perturbation.lean)
+prove full mixing and convergence of the strategy coordinates as the weight
+vanishes. Each approximant gets its actual Bayes beliefs. The construction
+does not establish that those beliefs converge to beliefs that preserve source
+incentives; this is precisely the remaining off-path analysis.
+
+`withKnownReplays` adds every replayable envelope to a base menu, for each
+memory value offered there. The known envelopes are reconstructed from own
+output recall, passive leaks and the ledger. The native `InputRecall` invariant
+proves this is the network's replay-eligibility list. The extended menu remains
+finite even with unbounded numeric identifiers, and every base response remains
+legal. Failed attempts using unknown identifiers are not silently equated with
+waiting: the base menu can include them, and their distinct recall is retained.
+
+The binding fixture is an explicit experimental instance, **not the proposed
+complete backend action menu**. It includes both Boolean values and an
+unopenable submission at a fixed candidate, the compiler's fresh decision with
+its intention record, silence, and known replays. Every possible first compiled
+Boolean response is proved available. Coverage of arbitrary later compiled
+recovery, other raw packets and auxiliary memory values is not established.
+
+Before a finite-menu compiler theorem can describe the intended backend, supply
+one of two justifications for every omitted response: a concrete encoding rule
+that makes it unavailable, or a proved replacement preserving continuation
+information, incentives and consistent beliefs. Bounding recorded memory labels
+is not a bound on local computation; it still needs this justification. The
+adapter alone supplies neither justification. No source syntax flag is added.
+
 ## Runtime obligations and ownership
 
 | Layer | Work belonging here |
@@ -281,8 +356,9 @@ has no proved implication for conditional continuation incentives or beliefs.
 2. **Finite presentation:** implement the smallest reactive finite instance
    preserving binding, passive partial foreign leaks, repeated responses and
    at-most-once inclusion. Nonterminal fibers and decision antichains are checked
-   for the actual reactive adapter. The generic finite-history theorem is ready;
-   a finite response presentation and its player-memory justification remain open.
+   for the actual reactive adapter. Explicit finite-menu instances, exact history
+   embedding, continuation laws, replay coverage and a native binding fixture are
+   checked. A backend-complete menu and its player-memory justification remain open.
 3. **Belief construction:** identity translation, a redundant private-bit
    extension, and a message encoding with target-only errors. Prove one common
    tremble sequence and posterior convergence; include an incompatible-beliefs

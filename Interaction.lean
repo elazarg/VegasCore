@@ -19,6 +19,10 @@ import Interaction.CommitmentCandidates
 import Interaction.ReactiveRecall
 import Interaction.ReactiveHistory
 import Interaction.ReactiveDecisionInformation
+import Interaction.ReactiveResponseMenu
+import Interaction.ReactiveResponseEmbedding
+import Interaction.ReactiveReplayMenu
+import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveMemory
 import Interaction.ReactiveMemorySubgames
 import Interaction.ReactiveAuthorization

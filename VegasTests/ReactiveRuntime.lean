@@ -4,6 +4,9 @@ import Vegas.Expr.Simple
 import Vegas.Pending.ReactivePolicyFacts
 import Vegas.Pending.ReactiveService
 import Vegas.Pending.ReactiveSafety
+import Interaction.ReactiveFiniteAssessment
+import Interaction.ReactiveReplayMenu
+import Interaction.ReactiveResponseEmbedding
 
 /-! # Binding and private recall in the one-message protocol -/
 
@@ -49,6 +52,67 @@ private def initial : app.Execution :=
 
 private def submitted (bit : Bool) : app.Execution :=
   initial.respond app false (runtime.reactiveBinding leaks false 0 .bool (.success bit) 0)
+
+/-- An explicit finite instance for this binding experiment. It includes
+silence, either Boolean meaning, unopenable candidates, compiled decisions with
+their intention records, and every known replay. Other raw responses remain
+outside this test instance; no equivalence to the full response space is claimed. -/
+private def bindingMenu : app.ResponseMenu := by
+  classical
+  exact ReactiveApplication.ResponseMenu.withKnownReplays {
+    actions := fun who _ view =>
+      {⟨default, none⟩, runtime.reactiveBinding leaks who 0 .bool (.success false) 0,
+        runtime.reactiveBinding leaks who 0 .bool (.success true) 0,
+        runtime.reactiveBinding leaks who 0 .bool .failure 0,
+        runtime.reactiveDecision leaks who 0 (.success false) view.application,
+        runtime.reactiveDecision leaks who 0 (.success true) view.application,
+        runtime.reactiveDecision leaks who 0 .failure view.application}
+    nonempty := fun _ _ _ => ⟨⟨default, none⟩, by simp⟩ }
+
+theorem finite_binding_histories (horizon : Nat) (scheduler : app.Scheduler) :
+    Finite (bindingMenu.protocol (FinDist.pure initial.application) horizon scheduler).History :=
+  inferInstance
+
+theorem binding_menu_all_meanings (who : Bool) (past : List app.PlayerEntry)
+    (view : app.PlayerView) (result : PublicationResult Bool) :
+    runtime.reactiveBinding leaks who 0 .bool result 0 ∈ bindingMenu.actions who past view := by
+  classical
+  apply ReactiveApplication.ResponseMenu.base_available
+  cases result with
+  | failure => simp
+  | success bit => cases bit <;> simp
+
+theorem binding_menu_compiled_decision (who : Bool) (past : List app.PlayerEntry)
+    (view : app.PlayerView) (result : PublicationResult Bool) :
+    runtime.reactiveDecision leaks who 0 result view.application ∈
+      bindingMenu.actions who past view := by
+  classical
+  apply ReactiveApplication.ResponseMenu.base_available
+  cases result with
+  | failure => simp
+  | success bit => cases bit <;> simp
+
+/-- An existing replay is available even after earlier submissions and leaks;
+there is no extra numeric envelope-identifier bound. -/
+theorem binding_menu_known_replay (execution : app.Execution) (who : Bool)
+    (valid : execution.InputRecall app) (message : Message Bool app.Payload)
+    (known : message ∈ execution.network.known who) :
+    (⟨default, some (.replay message.id)⟩ : app.Action) ∈
+      bindingMenu.actions who (execution.recall who) (execution.observe app who) := by
+  classical
+  apply ReactiveApplication.ResponseMenu.native_replay_available _ execution who valid
+    ⟨default, none⟩ _ message known
+  simp
+
+/-- The actual commitment adapter admits the canonical finite assessment.
+This asserts consistency; no source compilation or nonzero-utility optimality
+is assumed in this test. -/
+theorem binding_assessment_consistent (horizon : Nat) (scheduler : app.Scheduler) :
+    GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyConsistent
+      (bindingMenu.bayesAssessment (FinDist.pure initial.application) horizon scheduler)
+      (bindingMenu.decisionInformationAntichain (FinDist.pure initial.application)
+        horizon scheduler) :=
+  bindingMenu.bayesAssessment_consistent _ _ _
 
 /-- One decision both fixes the hidden meaning and emits the public envelope. -/
 theorem single_activation (bit : Bool) :
@@ -101,6 +165,16 @@ theorem compiler_samples_on_activation (law : FinDist Bool) :
     app, reactiveApplication, State.publicView, PublicView.EventReady, State.initial,
     EventGraph.Config.initial, EventGraph.normalizePolicy, chooseBit,
     FinDist.map_comp, Function.comp_def, actor]
+
+/-- The finite instance admits every possible compiled first response, including
+its private intention record, for every source distribution on Boolean values. -/
+theorem compiled_first_response_available (law : FinDist Bool) (action : app.Action)
+    (supported : action ∈ (runtime.compileReactivePolicy leaks false (chooseBit law)
+      [] (granted.observe app false)).support) :
+    action ∈ bindingMenu.actions false [] (granted.observe app false) := by
+  rw [compiler_samples_on_activation, FinDist.support_map] at supported
+  obtain ⟨bit, _, rfl⟩ := supported
+  exact binding_menu_compiled_decision false [] _ (.success bit)
 
 private theorem first_slot :
     reactiveFreshSlot (granted.observe app false).application = some 0 := by
