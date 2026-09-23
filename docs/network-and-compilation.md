@@ -251,7 +251,16 @@ the source composition and private initial law are in
 | Compiled player emits at most one packet per event; opponents cannot replace it under that author/event | Checked at every canonical prefix, with arbitrary opponents and scheduler |
 | Concrete service follows its schedule and completes under arbitrary policies | Checked through canonical behavioral play |
 | Packet acceptance, protection through reserved inclusion, and full compiler outcome/deviation laws | Open |
-| Reactive SPE preservation or impossibility | Open |
+| Unrestricted utility-independent behavioral SPE preservation | Refuted for an exhibited reactive reserved-service instance, with either source commitment admission |
+| SPE preservation under additional service or continuation restrictions | Open |
+
+The [reactive SPE obstruction](reactive-spe-obstruction.md) uses an actual
+proper subgame before a random delivery. Two valid pending commitments leave
+a residual choice between their values; the same source SPE cannot determine
+the best residual choice for both public utilities. The proof covers arbitrary
+randomized native policies and the complete service, without private
+preparation steps. Its scope is this game and service, not all runtimes or
+preservation of equilibrium outcome sets.
 
 The paper's existing Nash/Bayesian theorem uses the command-service target,
 whose prescribed policy takes three owner calls to remember, prepare, and send.

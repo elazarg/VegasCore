@@ -12,11 +12,15 @@ observe the output and choose the next activation or network operation. Use
 ordinary canonical SPE on that protocol.
 
 This design has no response capacity or fixed reaction roster. It preserves
-delivery and reactions before inclusion. It does not prove source-to-native
-SPE preservation: pending traffic may still restrict continuation menus.
+delivery and reactions before inclusion. Unrestricted source-to-native SPE
+preservation is impossible for the exhibited reserved-service instance:
+pending traffic restricts continuation menus even with these action boundaries.
+The [checked reactive obstruction](reactive-spe-obstruction.md) includes a
+random network delivery between responses, full proper-root closure, and
+arbitrary randomized native policies.
 
 The fixed-service comparison model has three consecutive owner invocations after each grant.
-The checked [pending-menu impossibility](subgame-preservation.md#status-and-recommendation)
+The checked [fixed-service pending-menu impossibility](subgame-preservation.md#a-restricted-menu-in-a-proper-native-subgame)
 cuts between the second and third. Coalescing that block removes this particular
 root. The theorem about the split protocol remains correct; it does not apply
 unchanged to the coalesced or reactive protocol. The coalescing results below
@@ -289,10 +293,10 @@ It also does not establish that every native implementation has this issue.
 The existing native [in-flight-message example](../VegasTests/InFlightCommitment.lean)
 checks actual delivery and a policy reaction before inclusion. It establishes
 that these observations belong to the runtime behavior that a coalescing
-transformation must retain. A native interleaved impossibility additionally
-needs reachable histories, full proper-root closure including future moves by
-other players, and bounds against arbitrary traffic under the entire service.
-Those obligations remain open for a coalesced service.
+transformation must retain. The reactive impossibility below uses one
+strategic player and an external random delivery, with native reachability,
+full proper-root closure, and bounds against arbitrary traffic under the entire
+service. It is distinct from the two-player finite experiment above.
 
 ## Reactive protocol and remaining work
 
@@ -314,10 +318,15 @@ protection through reserved inclusion, and the full compiler outcome/deviation
 laws remain open. See
 [the proof-status table](network-and-compilation.md#8-what-is-proved).
 
-The SPE investigation must use this actual service and its information model.
-In particular, the interleaved finite obstruction needs a reachable native
-realization and full proper-root closure. A failed continuation certificate
-must distinguish a proved obstruction from an unresolved obligation.
+The [reactive SPE theorem](../VegasTests/ReactiveMenusSource.lean) uses this
+actual service and information model. Its root follows two valid submissions
+and precedes random delivery. After observing delivery the player can choose
+which old commitment is accepted, but cannot recover a fresh source choice.
+Two utilities agree on the complete source SPE and disagree on the best
+target continuation. No utility-independent translation, even of whole
+profiles, can satisfy both. The result applies with either source commitment
+admission. A positive contract must restrict the service or residual choices,
+or change the preservation claim; free private computation alone is insufficient.
 
 The action boundary belongs to the runtime semantics. Source commitment
 admission remains a separate semantic choice. The requested preservation

@@ -426,7 +426,7 @@ theorem wire_selects_binding (action : PlayerAction graph)
     MessageApplication.step]
   exact congrArg FinDist.pure (selected_binding action)
 
-private theorem publication_matches_binding (config : graph.Config)
+theorem publication_matches_binding (config : graph.Config)
     (reachable : config.Reachable input) (value : Int)
     (published : config.outputs 1 = some (.success value)) :
     config.outputs 0 = some (.success value) := by

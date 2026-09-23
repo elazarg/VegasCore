@@ -17,6 +17,7 @@ import Interaction.MessageApplicationSubmissionOrigin
 import Interaction.IdealCommitments
 import Interaction.CommitmentCandidates
 import Interaction.ReactiveRecall
+import Interaction.ReactiveHistory
 import Interaction.MessageNetworkInvariant
 import Interaction.ReactiveProvenance
 import Interaction.ReactiveEvaluation

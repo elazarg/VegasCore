@@ -11,8 +11,9 @@ utility-independent, playerwise compiler, at every proper native subgame.
 Reflection is a separate goal with a separate root-coverage obligation. Both
 should use the canonical `GameTheory.Protocol.InformationModel` definitions.
 
-The unrestricted target is impossible for the fixed service in the checked
-pending-menu example. It uses the actual native service and canonical
+The unrestricted target is impossible for the reactive reserved service in the
+checked [pending-menu example](reactive-spe-obstruction.md). It uses the actual
+one-message-per-activation protocol and canonical
 behavioral SPE: two public utilities share a source SPE, but no native policy
 is SPE for both. The theorem rules out every utility-independent whole-profile
 translation for this game and service, hence also every playerwise compiler.
@@ -20,14 +21,14 @@ It applies with either source commitment admission, including forfeiture.
 It does not rule out other services, utility-specific synthesis, or a more
 restricted preservation claim.
 
-The witnessing root lies between uninterrupted invocations of the same owner.
-Coalescing that response removes this root, so the theorem does not settle SPE
-preservation for a coalesced protocol. The recommended action-boundary design,
-checked endpoint law, and a separate interleaved finite experiment are in
-[Action boundaries and subgame perfection](action-coalescing.md). The finite
-experiment still obstructs a uniform lift of complete SPE strategies after
-external interaction, while preserving the tested SPE outcome sets. Its
-reactive native-service realization remains open.
+The witnessing root precedes a random network delivery between player
+responses. The next response uses the delivered envelope to select between
+two already-submitted commitments. Both are valid and have fixed meanings.
+Coalescing uninterrupted private computation does not remove this interaction.
+The proper-root proof covers every future information set and every legal
+outside history; the continuation bounds cover arbitrary randomized policies.
+See [Action boundaries and subgame perfection](action-coalescing.md) for
+coalescing laws and separate finite comparisons of equilibrium outcome sets.
 
 The implementation target is the [reactive protocol](network-and-compilation.md):
 one optional message per activation, followed by an explicit scheduler choice.
@@ -40,13 +41,14 @@ own emitted messages. Reading and reacting before inclusion are retained.
 The source policy compiler and a reserved-service scheduler are defined.
 The scheduler follows its epoch plan in canonical execution and completes the
 graph under arbitrary player policies and adaptive network choices. Fresh
-candidates remain available after every legal reactive history. Packet
-protection, full outcome/deviation correspondence, and SPE preservation or
-impossibility for this target remain open. General reaction
+candidates remain available after every legal reactive history. Compiled-player
+packet uniqueness is checked; packet acceptance, protection through inclusion,
+and full outcome/deviation correspondence remain open. Unrestricted reactive
+SPE preservation is refuted by the exhibited service instance. General reaction
 roster capacity inference is not an obligation of this model. The coalescing
 modules retain separate comparisons of fixed-service presentations.
 
-The fixed-service impossibility proof includes initialized prefix reachability, proper-root closure,
+The reactive impossibility proof includes initialized prefix reachability, proper-root closure,
 information-local deviations under the complete remaining service, and a
 bound for arbitrary randomized continuations. The two-event native graph has
 the same publication kernel as the source program for every binding and
@@ -536,9 +538,9 @@ the bit as an extra input: it reads the actual received packet.
 Binding is established by submission. Reading and reacting to other pending
 messages remains possible through the separate wire and player invocations.
 
-The pending-menu theorem rules out unrestricted continuation coverage for the
-split service protocol. For a coalesced response protocol, coverage must be
-rechecked at its own proper roots. A positive native edge needs premises governing competing
+The reactive pending-menu theorem rules out unrestricted continuation coverage
+for this reserved-service class, including atomic one-message responses.
+A positive native edge needs premises governing competing
 packets, irreversible acceptance, adaptive wire reactions, and recovery after
 earlier submissions. Direct action construction alone supplies none of these
 strategic premises.
@@ -566,9 +568,9 @@ the default design.
    for this service class cannot exist. A positive result must state additional
    service or game premises, or a different preservation claim. Any further
    counterexample needs its own proper-root and continuation proofs. The checked
-   reactive protocol allows adaptive activations and uses no response capacities.
-   Its SPE preservation or impossibility needs a separate proof. The fixed
-   split-protocol impossibility does not discharge this gate.
+   reactive counterexample supplies these for one-message responses separated
+   by random delivery. No response capacity or private preparation decision is
+   involved. Allowing source commitment failure does not remove the obstruction.
 2. **Close the semantic bridge.** Pure and behavioral source adapters,
    arbitrary-prefix laws, private setup, and the crossed-root tests are checked.
    The reactive adapter, canonical policy equivalence, and

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveRounds
+import Interaction.ReactiveInvariant
 
 /-! # Execution invariants under reactive player policies
 
@@ -25,6 +26,13 @@ structure PolicyInvariant (players : Principal → app.Policy)
       predicate (execution.respond app who action)
   environment : ∀ execution next command, predicate execution →
     next ∈ (execution.environmentStep app command).support → predicate next
+
+theorem Invariant.policyInvariant {predicate : app.State → Prop}
+    (invariant : app.Invariant predicate) (players : Principal → app.Policy) :
+    app.PolicyInvariant players (fun execution => predicate execution.application) where
+  respond execution who action valid _ := invariant.respond execution who action valid
+  environment execution next command valid reached :=
+    invariant.environmentStep execution next command valid reached
 
 variable {app} {players : Principal → app.Policy} {predicate : app.Execution → Prop}
 

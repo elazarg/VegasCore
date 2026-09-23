@@ -2,6 +2,11 @@ import VegasTests.EventGraph
 import VegasTests.ContinuationRecovery
 import VegasTests.InFlightCommitment
 import VegasTests.ReactiveRuntime
+import VegasTests.ReactiveMenus
+import VegasTests.ReactiveMenusLaw
+import VegasTests.ReactiveMenusStrategies
+import VegasTests.ReactiveMenusSPE
+import VegasTests.ReactiveMenusSource
 import VegasTests.PendingMenus
 import VegasTests.PendingMenusStrategies
 import VegasTests.PendingMenusSource
