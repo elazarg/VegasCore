@@ -576,7 +576,10 @@ checked. Both directions of the native per-response sampling law retain
 correlated choices, all packets, and private recall. The canonical response
 protocol is bounded and every coalesced history expands to a native history.
 Its information model is instantiated for an empty reaction roster. General
-roster capacity inference and uniform full-service policy maps remain open.
+roster capacity inference remains open. Uniform playerwise policy maps and
+their endpoint laws at every legal response history are checked, using only
+own recall to recover response entries. Composition through the canonical
+whole-service runner remains open.
 
 The exhaustive finite experiment removes the common-SPE obstruction by
 coalescing the one-player tree. A separate Alice–Bob–Alice game retains the

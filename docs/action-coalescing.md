@@ -68,9 +68,25 @@ Both directions are checked for a native response:
   desired law and own recall length at the response entry, then consults only
   its own action records. It preserves arbitrary correlations.
 
-These are laws for one response. Combining the reverse construction into one
-playerwise policy for the entire service requires recovering successive response
-entries from own recall. The local law alone is not that global theorem.
+The uniform policy maps are also checked.
+[`ResponseRecall.lean`](../Vegas/Pending/ResponseRecall.lean) parses own records
+into responses using the capacity at each reconstructed entry. The first record
+contains the entry view; earlier records give the entry recall. No service
+cursor, memory tag, or externally supplied offset enters the policy.
+[`expandResponsePolicy`](../Vegas/Pending/NativeResponseSampling.lean) uses this
+parser to implement an entire response strategy through one native policy.
+It conditions the entry law on the already executed actions, retaining their
+correlations. `coalesceNativePolicy` gives the opposite playerwise map.
+
+[`ResponsePolicyCorrespondence.lean`](../Vegas/Pending/ResponsePolicyCorrespondence.lean)
+proves that the parser is at a boundary at every initialized legal coalesced
+history. Both policy maps preserve the complete response endpoint law at every
+such entry. These quantifiers include arbitrary earlier deviations and supported
+environment choices. They require an adequate input-local capacity function;
+the maps themselves inspect only that player's information and strategy.
+The canonical whole-service execution and strategy-deviation correspondence
+still needs to be assembled from these laws. Neither these endpoint laws nor
+that remaining execution theorem would equate split and coalesced SPE.
 
 ### Native locality
 
@@ -278,10 +294,10 @@ Those obligations remain open for a coalesced service.
    Keep the original observation and instantiate the canonical information
    model with its adequacy proof.
 2. Construct uniform full-service policy and deviation maps. Recover the
-   response entry by parsing own recalled actions into completed batches;
-   the budget at each earlier entry is itself a function of that entry's input.
-   Then use the checked per-response conditional-sampling law. Do not pass an
-   externally supplied entry offset to the global policy.
+   canonical behavioral policies corresponding to `ResponsePolicy`, then compose
+   the checked entry laws through the canonical service runner. The playerwise
+   maps and response-entry reconstruction are checked; the whole-run theorem
+   must also cover arbitrary player replacements.
 3. Compare SPE on the response protocol directly; endpoint equivalence alone
    does not equate the two SPE predicates.
 4. Test the interleaved restricted-menu mechanism against the actual service.

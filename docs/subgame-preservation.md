@@ -32,10 +32,12 @@ coalesced native-service realization remains open.
 The coalesced native protocol, termination, bounded horizon, and expansion of
 every coalesced history to an original native history are checked. The original
 two-call counterexample execution is proved unreachable in that protocol.
-Native sampling laws are checked in both directions for one response. The
-information model uses the original observations and is instantiated for an
-empty reaction roster; general roster capacity inference and uniform
-full-service policy/deviation maps remain open. No coalesced native SPE
+Native sampling laws are checked in both directions. Uniform playerwise maps
+recover response entries from own recall and preserve the endpoint law at
+every legal response history, including off-path entries. The information model
+uses the original observations and is instantiated for an empty reaction
+roster. General roster capacity inference and the canonical whole-service
+execution/deviation correspondence remain open. No coalesced native SPE
 preservation theorem is claimed.
 
 The proof includes initialized prefix reachability, proper-root closure,
@@ -557,9 +559,9 @@ the default design.
    for this service class cannot exist. A positive result must state additional
    service or game premises, or a different preservation claim. Any further
    counterexample needs its own proper-root and continuation proofs. The checked
-   coalesced protocol and per-response endpoint laws still need general roster
-   capacity inference and uniform full-service policy maps. The split-protocol
-   impossibility does not discharge this gate.
+   coalesced protocol and uniform playerwise endpoint laws still need general
+   roster capacity inference and composition through the canonical service
+   runner. The split-protocol impossibility does not discharge this gate.
 2. **Close the semantic bridge.** Pure and behavioral source adapters,
    arbitrary-prefix laws, private setup, and the crossed-root tests are checked.
    The multiplayer native action adapter, native policy equivalence, and
