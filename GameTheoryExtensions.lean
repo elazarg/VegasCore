@@ -7,10 +7,12 @@ import GameTheoryExtensions.Math.Probability.PriorityChoice
 import GameTheory.Core.MixtureUtilitySimulation
 import GameTheoryExtensions.Protocol.Continuation
 import GameTheoryExtensions.Protocol.BehavioralContinuation
+import GameTheoryExtensions.Protocol.BehavioralIncentives
 import GameTheoryExtensions.Protocol.ContinuationLaw
 import GameTheoryExtensions.Protocol.StateKernel
 import GameTheoryExtensions.Protocol.Coalescing
 import GameTheoryExtensions.Protocol.ResponseSampling
 import GameTheoryExtensions.Core.PendingChoice
+import GameTheoryExtensions.Core.IncentiveCone
 import GameTheoryExtensions.Core.RegularChoice
 import GameTheoryExtensions.Core.RegularChoiceSimulation

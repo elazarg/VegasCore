@@ -32,7 +32,7 @@ Three evidence levels must remain distinct:
 | O3 | Replay has selection power unavailable to a fresh proposal | Checked local randomized incentive obstruction and exact network selection witnesses | Distinct identifiers and unpublished eligibility address the witnessed menu effects |
 | O4 | One transmission opportunity can help different events | Checked honest source SPE whose current compiled policy is not native behavioral SPE under uniform inclusion | Authorized uniform service removes the exhibited improvement; full SPE and ledger realization open |
 | O5 | Recovery confuses an attempted submission or remembered intention with what took effect | Checked operational failure of the command-service policy; reactive recovery and reconstruction regressions | Selected cases are repaired; arbitrary-prefix correspondence remains open |
-| O6 | Raw packets reveal information absent from source observations | Documented incentive counterexample; checked prevalidation lemmas and initialized command-service deviation law | The prescribed emission rule addresses failed openings; reactive continuation information laws remain open |
+| O6 | Target observations reveal information absent from source observations | Checked abstract behavioral-SPE impossibility for disclosure after a deviation, despite initialized law matching; documented raw-packet example | No native adapter for the disclosure example; reactive continuation information laws remain open |
 
 O1 and O2 illustrate a common obstruction: a source policy can select its best
 option without encoding a ranking of alternatives that the target later forces
@@ -204,6 +204,24 @@ counterexample also shows that a defined recovery response need not be optimal.
 
 ### O6. The target exposes extra information
 
+**Checked abstract witness.** Chance gives Alice a private bit. She can stop
+or ask Bob to guess it. The source keeps the bit hidden; the target reveals it
+when Bob is asked. Alice is indifferent. The same source stop profile is SPE
+for utilities rewarding either a match or a mismatch. The target Bob histories
+are proper subgames requiring opposite choices, so no common target behavioral
+SPE exists. This rules out every utility-independent translation of that
+profile for these two games, including randomized translations.
+
+Nevertheless a playerwise compiler preserves initialized joint type/result
+laws for all source profiles. At the stop profile, every target unilateral
+deviation also has an exact source law match. The
+[incentive-criterion note](spe-incentive-criterion.md#information-after-earlier-deviations)
+explains the experiment and links its canonical-root, SPE, and law proofs.
+This identifies the additional obligation after earlier deviations by other
+players. It is not a native runtime counterexample: the disclosure must
+authenticate the actual bit to obtain those particular proper roots; an
+untrusted raw claim does not automatically do so.
+
 **Documented witness.** Bob commits a random bit under a rejecting guard. If
 the prescribed policy broadcasts the raw attempted opening, Alice learns that
 bit, although the source publishes only failure. Bob later publishes the bit
@@ -266,8 +284,13 @@ These are gaps to discharge, not additional proved counterexamples.
    and whole information-local replacement policies. A fixed distribution for
    each isolated inclusion is insufficient, as O4 demonstrates. Exact law matching
    is a sufficient certificate, not a necessary characterization of SPE
-   preservation. Supported recovery can change the action law; using only
-   incentive inequalities instead requires a separate transfer proof.
+   preservation. For finite observed outcomes, the checked
+   [incentive-cone theorem](../GameTheoryExtensions/Protocol/BehavioralIncentives.lean)
+   gives a necessary and sufficient alternative: every target comparison must
+   belong to the closed cone of source comparisons for that player. Finite
+   nonnegative combinations supply sufficient certificates. Instantiating this
+   criterion for the reactive compiler remains open; no baseline-law matching
+   requirement should be mistaken for a necessary runtime assumption.
 4. **Original types and private recall.** Preserve the joint law of initial types
    and decoded public results, rather than only the public marginal. The checked
    [parameter-outcome regression](../VegasTests/ParameterOutcomes.lean) gives

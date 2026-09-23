@@ -230,9 +230,18 @@ The next obligation is an event continuation theorem. It must combine:
 The existing
 [behavioral root-mixture transfer](../GameTheoryExtensions/Protocol/BehavioralContinuation.lean)
 is a sufficient final theorem interface. Exact prescribed law matching can be
-stronger than needed when recovery reuses a supported choice. A proof using
-utility inequalities instead must establish its own transfer theorem; it must
-not choose the recovery compiler after observing the utility.
+stronger than needed when recovery reuses a supported choice. For finite observed
+outcomes, the [incentive-cone criterion](spe-incentive-criterion.md) is necessary
+and sufficient for preservation uniformly over utilities. It allows deriving
+each target comparison from source comparisons without separately matching
+their laws. This generic transfer theorem is checked; its concrete reactive
+certificate is open. The compiler must remain fixed before utilities are chosen.
+
+The same note gives a checked abstract obstruction involving disclosure after
+another player's earlier deviation. It shows why initialized unilateral laws
+do not supply the missing continuation information argument. It does not give
+a native counterexample against this candidate service or justify removing
+passive eavesdropping.
 
 A sequential example is useful for the first complete continuation proof, but
 the service design should retain the per-player isolation property above and
