@@ -727,6 +727,15 @@ has no proved implication for conditional continuation incentives or beliefs.
 
 ## Acceptance gates and implementation order
 
+The [runtime abstraction classification](runtime-abstraction-classification.md)
+separates the guarantees sought before choosing a stronger source interface:
+a fixed utility-independent compiler and utility-dependent implementation of
+equilibrium outcomes have different proof obligations. Its continuation-law
+certificates compose and instantiate the existing private-response alias
+theorem. The finite observation experiments classify a restricted erasure
+problem using standard sequential equilibrium, including every consistent
+assessment; they do not settle arbitrary communication or service abstractions.
+
 Follow the [communication implementation gates](ambient-communication.md#direct-implementation-order):
 generalize and instantiate the capability lower bound; supply independent
 opening verification; prove a complete small positive case; cover the native

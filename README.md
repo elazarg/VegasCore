@@ -100,8 +100,21 @@ perfect recall, bounded play, and the original counterexample's corrected
 information behavior without adding a `failure(value)` result. The reactive
 compiler preserves opening evidence on guard failure; native receipt decoding
 and knowledge of the corresponding binding are checked under arbitrary play.
-Verification before inclusion and correspondence between communication services
-remain open, as does native sequential-equilibrium preservation.
+Independent verification before inclusion and recognition of a later accepted
+binding are checked. The [selective-association separation](docs/selective-association-proof-contract.md)
+shows that certificates restricted to already accepted source bindings omit
+a strategically relevant capability: one source sequential-equilibrium outcome
+cannot occur at any native sequential equilibrium of the stated finite service.
+Correspondence with a stronger communication semantics and general native
+sequential-equilibrium preservation remain open.
+
+The [runtime abstraction investigation](docs/runtime-abstraction-classification.md)
+classifies what a game presentation may forget. Its generic continuation
+simulation theorem supplies composable sufficient certificates and is used by
+the checked private-response normalization theorem. The investigation separates
+preservation by a fixed strategy compiler from equilibrium-outcome
+implementability, and distinguishes finite classification results from the
+unimplemented general finite-game decision procedure.
 
 ## Build
 

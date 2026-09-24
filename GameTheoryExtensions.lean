@@ -20,8 +20,12 @@ import GameTheoryExtensions.Protocol.PrivateStrategy
 import GameTheoryExtensions.Protocol.Knowledge
 import GameTheoryExtensions.Protocol.ObservationRecall
 import GameTheoryExtensions.Protocol.SequentialIncentives
+import GameTheoryExtensions.Protocol.ContinuationSimulation
 import GameTheoryExtensions.Protocol.SequentialChoices
 import GameTheoryExtensions.Analysis.Protocol.Sequential
+import GameTheoryExtensions.Analysis.ObservationErasure
+import GameTheoryExtensions.Analysis.ObservationAbstraction
+import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
 import GameTheoryExtensions.Analysis.Protocol.LastDecision
 import GameTheoryExtensions.Analysis.Protocol.DisclosureObstruction
 import GameTheoryExtensions.Analysis.Protocol.Bayes

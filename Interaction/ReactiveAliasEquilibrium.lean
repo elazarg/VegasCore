@@ -2,6 +2,7 @@
 
 import Interaction.ReactiveAliasBayes
 import Interaction.ReactiveAliasIncentives
+import GameTheoryExtensions.Protocol.ContinuationSimulation
 
 /-! # Sequential equilibrium under private response aliases
 
@@ -45,6 +46,53 @@ theorem canonical_initial_stateLaw
   rw [FinDist.map_comp] at projected
   exact projected
 
+/-- Erasing ineffective private response names supplies a deterministic
+continuation simulation at every raw information site. The deviator's entire
+future policy is represented, including behavior conditioned on remembered
+private aliases. The proof uses projected beliefs, not equality of raw recall. -/
+def aliasContinuationSimulation
+    (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
+    (target : (raw.information initial horizon scheduler).BehavioralAssessment)
+    (strategy : target.strategy = (fun player => normal.canonicalPolicy raw stable closed
+      initial horizon scheduler player (source.strategy player)))
+    (beliefs : ∀ who (original : (raw.information initial horizon scheduler).InformationSite who),
+      (target.belief who original).map
+          (normal.informationHistory raw stable initial horizon scheduler who original.1) =
+        source.belief who (normal.site raw stable initial horizon scheduler who original)) :
+    GameTheory.ContinuationSimulation
+      (((normal.menu raw).information initial horizon scheduler).assessmentComparison
+        History.state (2 * horizon + 1) source)
+      ((raw.information initial horizon scheduler).assessmentComparison
+        (fun history => normal.state history.state) (2 * horizon + 1) target) := by
+  have hasData (who : Principal)
+      (original : (raw.information initial horizon scheduler).InformationSite who) :
+      ∃ data, original.1 = some data := by
+    obtain ⟨_reference, _running, response, member⟩ := original.2
+    cases observed : original.1 with
+    | none =>
+        rw [observed] at member
+        change some response = none at member
+        contradiction
+    | some data => exact ⟨data, rfl⟩
+  let data who original := Classical.choose (hasData who original)
+  refine GameTheory.ContinuationSimulation.ofMap_expect
+    (fun who deviation =>
+      (normal.site raw stable initial horizon scheduler who deviation.1,
+        normal.aliasDeviation raw stable initial horizon scheduler who
+          (data who deviation.1).1 deviation.2)) ?_ ?_
+  · intro who deviation payoff
+    simpa only [assessmentComparison, FinDist.expect_map, Context.value,
+      BehavioralAssessment.continuationContext] using
+      normal.canonical_context_value raw stable closed initial horizon scheduler
+        source target strategy who deviation.1 (beliefs who deviation.1) payoff
+  · intro who deviation payoff
+    simpa only [assessmentComparison, FinDist.expect_map, Context.value,
+      BehavioralAssessment.continuationContext] using
+      normal.aliasDeviation_context_value raw stable closed initial horizon scheduler
+        source target strategy who deviation.1 (beliefs who deviation.1)
+          (data who deviation.1).1 (data who deviation.1).2
+            (Classical.choose_spec (hasData who deviation.1)) payoff deviation.2
+
 /-- Adding private response aliases preserves sequential equilibrium for
 utilities of the normalized final state. Consistency uses one common fully
 mixed sequence; rationality compares every whole continuation-policy deviation.
@@ -75,31 +123,12 @@ theorem exists_canonical_sequentialEquilibrium
   obtain ⟨target, strategy, consistent, beliefs⟩ :=
     normal.exists_canonical_consistent raw stable closed initial horizon scheduler source
       equilibrium.2
-  refine ⟨target, strategy, ⟨?_, consistent⟩, beliefs, ?_⟩
-  · intro who original alternative _allowed
-    have hasData : ∃ past view, original.1 = some (past, view) := by
-      obtain ⟨_reference, _running, response, member⟩ := original.2
-      cases observed : original.1 with
-      | none =>
-          rw [observed] at member
-          change some response = none at member
-          contradiction
-      | some data => exact ⟨data.1, data.2, rfl⟩
-    obtain ⟨past, view, observed⟩ := hasData
-    change (target.continuationContext original
-      (fun history => payoff who (normal.state history.state)) (2 * horizon + 1)).value
-        alternative ≤
-      (target.continuationContext original
-        (fun history => payoff who (normal.state history.state)) (2 * horizon + 1)).value
-          (target.strategy who)
-    rw [normal.aliasDeviation_context_value raw stable closed initial horizon scheduler source
-        target strategy who original (beliefs who original) past view observed (payoff who)
-          alternative,
-      normal.canonical_context_value raw stable closed initial horizon scheduler source target
-        strategy who original (beliefs who original) (payoff who)]
-    exact equilibrium.1 who (normal.site raw stable initial horizon scheduler who original)
-      (normal.aliasDeviation raw stable initial horizon scheduler who past alternative)
-      (Set.mem_univ _)
+  refine ⟨target, strategy, ?_, beliefs, ?_⟩
+  · exact (normal.aliasContinuationSimulation raw stable closed initial horizon scheduler
+      source target strategy beliefs).sequentialEquilibrium
+        ((normal.menu raw).decisionInformationAntichain initial horizon scheduler)
+        (raw.decisionInformationAntichain initial horizon scheduler) consistent
+          (fun state who => payoff who state) equilibrium
   · rw [strategy]
     exact normal.canonical_initial_stateLaw raw stable closed initial horizon scheduler
       source.strategy (2 * horizon + 1)

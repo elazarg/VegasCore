@@ -19,6 +19,8 @@ import Vegas.Compile.EventGraphCanonical
 import Vegas.Compile.EventGraphScheduling
 import Vegas.Pending.EventServiceCompletion
 import Vegas.Pending.EventSequential
+import GameTheoryExtensions.Analysis.ObservationAbstraction
+import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
 
 /-! # Paper theorem audit
 
@@ -669,5 +671,73 @@ theorem source_honest_run_successful [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_honest_run_successful
+
+/-! ## Abstraction of terminal decisions -/
+
+/-- For a fully informed terminal decision, a deterministic observation
+preserves every optimal retained outcome for every fact/report utility exactly
+when it determines the retained fact on the prior support. The target policy
+may depend on the utility; the necessity claim is stronger than failure of a
+particular compiler. This is a decision-experiment theorem. -/
+theorem terminal_observation_classification {State Signal Fact : Type*}
+    [Finite Fact] [Nonempty Fact]
+    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact) :
+    (∀ utility : Fact → Fact → ℝ, ∀ source : Signal → FinDist Fact,
+      DecisionExperiment.IsBayesOptimal prior observe (fun state => utility (fact state)) source →
+        ∃ target : State → FinDist Fact,
+          DecisionExperiment.IsBayesOptimal prior id (fun state => utility (fact state)) target ∧
+            DecisionExperiment.resultLaw prior id fact target =
+              DecisionExperiment.resultLaw prior observe fact source) ↔
+      DecisionExperiment.Determines prior observe fact :=
+  DecisionExperiment.preserves_all_optima_iff_determines prior observe fact
+
+/-- info: 'Vegas.Paper.terminal_observation_classification' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.terminal_observation_classification
+
+/-- Retaining the payoff-relevant fact preserves the entire set of optimal
+fact/action outcome laws, for arbitrary public actions and utilities. -/
+theorem terminal_observation_optimal_laws {State Signal Fact Action : Type*}
+    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact)
+    (determines : DecisionExperiment.Determines prior observe fact)
+    (utility : Fact → Action → ℝ) (law : FinDist (Fact × Action)) :
+    (∃ policy : Signal → FinDist Action,
+      DecisionExperiment.IsBayesOptimal prior observe (fun state => utility (fact state)) policy ∧
+        DecisionExperiment.resultLaw prior observe fact policy = law) ↔
+    (∃ policy : State → FinDist Action,
+      DecisionExperiment.IsBayesOptimal prior id (fun state => utility (fact state)) policy ∧
+        DecisionExperiment.resultLaw prior id fact policy = law) :=
+  DecisionExperiment.optimal_result_law_iff prior observe fact determines utility law
+
+/-- info: 'Vegas.Paper.terminal_observation_optimal_laws' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.terminal_observation_optimal_laws
+
+open DecisionExperiment.Protocol in
+/-- The observation criterion also characterizes preservation of every
+standard sequential-equilibrium outcome of the terminal decision protocol.
+The conclusion allows target strategies and beliefs to depend on the utility. -/
+theorem terminal_sequential_observation_classification {State Signal Fact : Type}
+    [Finite State] [Finite Fact] [Nonempty Fact]
+    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact) :
+    (∀ utility : Fact → Fact → ℝ,
+      ∀ source : (model (Action := Fact) prior observe).BehavioralAssessment,
+        source.IsSequentialEquilibriumFor (antichain prior observe)
+          (fun _ site => source.continuationContext site
+            (fun history => payoff (fun state => utility (fact state)) history.state) 2) →
+        ∃ target : (model (Action := Fact) prior id).BehavioralAssessment,
+          target.IsSequentialEquilibriumFor (antichain prior id)
+            (fun _ site => target.continuationContext site
+              (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
+          observedLaw prior id fact target = observedLaw prior observe fact source) ↔
+      DecisionExperiment.Determines prior observe fact :=
+  preserves_all_sequentialEquilibria_iff_determines prior observe fact
+
+/-- info: 'Vegas.Paper.terminal_sequential_observation_classification' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.terminal_sequential_observation_classification
 
 end Vegas.Paper

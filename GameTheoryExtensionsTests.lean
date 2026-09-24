@@ -1,14 +1,18 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensionsTests.CoalitionSimulation
+import GameTheoryExtensionsTests.CoalescingEquilibrium
 import GameTheoryExtensionsTests.ContinuationMenus
 import GameTheoryExtensionsTests.ContinuationTransfer
+import GameTheoryExtensionsTests.ContinuationSimulation
 import GameTheoryExtensionsTests.ConsistencyCompletion
 import GameTheoryExtensionsTests.IrreversibleFailure
 import GameTheoryExtensionsTests.InterleavedMenus
 import GameTheoryExtensionsTests.IncentiveCone
 import GameTheoryExtensionsTests.MixtureSimulation
 import GameTheoryExtensionsTests.OffPathDisclosureLaws
+import GameTheoryExtensionsTests.ObservationQuotients
+import GameTheoryExtensionsTests.ObservationErasure
 import GameTheoryExtensionsTests.PreservationContracts
 import GameTheoryExtensionsTests.PrivateStrategy
 import GameTheoryExtensionsTests.SequentialCredibility
