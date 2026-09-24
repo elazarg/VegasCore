@@ -39,6 +39,61 @@ but Alice can disclose evidence of that bid before Bob chooses." Producing
 such diagnostics automatically remains an analysis task, not a checked
 decision procedure in this implementation.
 
+## Pending observation and public recording
+
+The preservation candidate uses a communication environment with two observable
+events: a player submits a message that other players may notice, and the service
+may later record that message publicly. These are stages in the life of the
+same message. Public recording does not require acceptance of an accompanying
+game request. A message can carry a claim or possessed evidence without asking
+the game to change state.
+
+Three questions must remain separate:
+
+| Question | Meaning |
+|---|---|
+| Was the message observed? | A recipient learns its contents, possibly before recording. |
+| Does it contain valid evidence? | A witness establishes a binding fact independently of game acceptance. |
+| Did its game request take effect? | The source rules determine the transition and publication result. |
+
+An included opening can consequently disclose a binding while its game request
+is rejected, or while an executed disclosure produces publication failure.
+Those are different application outcomes with a shared information consequence
+when the opening is independently verifiable. A failed receipt alone certifies
+neither the truth nor the falsity of the claimed opening. The existing
+receipt-certified evidence laws cover only their stated successful-handler case.
+
+This interpretation has a concrete Ethereum motivation. Execution clients
+[gossip transactions and keep local transaction pools](https://ethereum.org/developers/docs/networking-layer/).
+An included transaction's
+[calldata belongs to the block record](https://ethereum.org/developers/docs/data-availability/blockchain-data-storage-strategies/).
+Execution can [revert its state changes and logs](https://eips.ethereum.org/EIPS/eip-140)
+and leave a [failure status in its receipt](https://eips.ethereum.org/EIPS/eip-658).
+Thus reverting the game call does not erase the transaction's supplied opening.
+This motivation concerns transaction input, not the persistence of reverted logs
+or return data. A game-invalid call can still be carried in a network-valid
+transaction; arbitrary invalid envelopes are not assumed to propagate.
+
+The mathematical environment still needs explicit assumptions. Partial
+observation and inclusion probabilities are modeling choices, not consequences
+of gossip. Submission does not guarantee recording before another decision or
+deadline; a required liveness guarantee needs its own service premise and proof.
+A public record observed by every player abstracts monitoring,
+confirmation, and finality; it is not a claim of instantaneous common knowledge
+on Ethereum. Bounded responses and message alphabets are resource restrictions,
+not consequences of game timeouts alone. Transactions also
+[require fees](https://ethereum.org/developers/docs/transactions/): the proposed
+fee-free utility analysis concerns game payoffs, not actual net monetary returns
+after execution costs. Scheduler incentives and fee effects are not proved by
+this model.
+
+The source environment describes messages, evidence, recording, and attempted
+source actions. It must be specified independently of the compiled handler.
+Source strategies use named game facts rather than native commitment encodings.
+Observable implementation details can nevertheless carry signals. A compiler
+proof must represent those signals as communication or justify their erasure;
+equal terminal game results alone do not justify dropping them.
+
 ## Claims, certificates, and game results
 
 | Object | Meaning | Effect on the game state |
@@ -253,6 +308,39 @@ transmission per response. Communication remains a parameter of strategic
 analysis around the source program.
 
 ## Preservation target and remaining obligations
+
+### Direct implementation order
+
+1. Instantiate the pending-observation and public-recording interpretation for
+   source actions, reusing the existing reactive interaction machinery where
+   applicable. Keep one optional transmission per response, passive foreign
+   observations, and at-most-once inclusion. Preserve the interval between
+   choosing a commitment at submission and accepting it as a game binding.
+   Communication and a game request may share a transmission. Parameterize
+   message meaning and evidence capabilities only where the two interpretations
+   actually differ; no general service framework is a prerequisite.
+2. Close the concrete evidence gap: give recipients a way to verify a possessed
+   opening witness before inclusion and after application rejection. Keep
+   evidence possession distinct from authority to execute an owner's game call.
+   This is an ideal capability pending a cryptographic realization, not a public
+   oracle for testing candidate plaintexts.
+3. Compile communication-aware policies and prove history, observation, and
+   continuation correspondence for the actual compiler. The first proof case
+   is the deferred-guard disclosure example, including an observed pending
+   opening and a recorded failed publication. Then cover competing submissions,
+   rejected calls, replay, and timeouts. Test every proposed abstraction against
+   decisions after deviations before generalizing it to all source programs.
+4. Lift one common sequence of fully mixed assessments and prove continuation
+   rationality using that correspondence. Belief consistency and incentive
+   preservation are separate obligations; existence of consistent native
+   beliefs does not finish the theorem.
+
+The target is preservation for source assessments in this explicit environment,
+under operational assumptions that are proved sufficient. It is not preservation
+for an arbitrary stronger communication environment or a claim that adding
+communication alone suffices. A remaining unmatched native choice requires a
+concrete obstruction or a justified implementation restriction before extending
+the source interface. These steps are proof obligations, not checked results.
 
 ### Submission and communication timing
 
