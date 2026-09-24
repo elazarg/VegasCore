@@ -20,7 +20,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem reactive_respond_progress (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (action : (runtime.reactiveApplication leaks).Action)
@@ -35,14 +35,17 @@ theorem reactive_respond_progress (runtime : EventGraphRuntime graph)
       | replay id => exact .refl invariant
       | submit submission =>
           change State.ServiceProgress inputs 0 execution.application
-            (submitStep (submission.register execution.application who) who submission.packet)
-          have facts := submission.register_facts who execution.application
+            (submitStep (submission.call.register execution.application who) who
+              submission.call.packet)
+          have facts := submission.call.register_facts who execution.application
           have publicEq : State.publicView
-              (submitStep (submission.register execution.application who) who submission.packet) =
+              (submitStep (submission.call.register execution.application who) who
+                submission.call.packet) =
                 execution.application.publicView := by
             rw [submitStep_publicView, facts.2.2]
           have configEq := (submitStep_config
-            (submission.register execution.application who) who submission.packet).trans facts.1
+            (submission.call.register execution.application who) who submission.call.packet).trans
+              facts.1
           have clockEq := congrArg PublicView.clock publicEq
           have activationEq := congrArg PublicView.activatedAt publicEq
           dsimp only [State.publicView] at clockEq activationEq
@@ -54,7 +57,7 @@ theorem reactive_respond_progress (runtime : EventGraphRuntime graph)
             exact activated
 
 theorem reactive_resume_progress (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
     (players : Player → (runtime.reactiveApplication leaks).Policy) (actor : Option Player)
     (execution next : (runtime.reactiveApplication leaks).Execution)
@@ -69,13 +72,13 @@ theorem reactive_resume_progress (runtime : EventGraphRuntime graph)
       exact runtime.reactive_respond_progress leaks inputs execution who action invariant
 
 def reactiveTicks (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) :
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
       (runtime.reactiveApplication leaks).Command → Nat
   | .application .advanceClock => 1
   | _ => 0
 
 theorem reactive_include_progress (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
     (execution : (runtime.reactiveApplication leaks).Execution) (id : MessageId Player)
     (invariant : execution.application.Invariant inputs) :
@@ -86,13 +89,16 @@ theorem reactive_include_progress (runtime : EventGraphRuntime graph)
   | none => exact .refl invariant
   | some message =>
       change State.ServiceProgress inputs 0 execution.application
-        ((handle runtime execution.application message).getD execution.application)
-      cases accepted : handle runtime execution.application message with
+        ((handle runtime execution.application
+          ⟨message.id, message.payload.call⟩).getD execution.application)
+      cases accepted : handle runtime execution.application ⟨message.id, message.payload.call⟩ with
       | none => exact .refl invariant
-      | some next => exact handle_progress runtime inputs _ next message invariant accepted
+      | some next =>
+          exact handle_progress runtime inputs _ next
+            ⟨message.id, message.payload.call⟩ invariant accepted
 
 theorem reactive_environment_progress (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
     (execution next : (runtime.reactiveApplication leaks).Execution)
     (command : (runtime.reactiveApplication leaks).Command)
@@ -127,7 +133,7 @@ theorem reactive_environment_progress (runtime : EventGraphRuntime graph)
           execution.application state command invariant changed
 
 theorem reactive_dispatch_progress (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (execution next : (runtime.reactiveApplication leaks).Execution)
@@ -145,7 +151,7 @@ theorem reactive_dispatch_progress (runtime : EventGraphRuntime graph)
   simpa only [Nat.add_zero] using environment.trans response
 
 theorem interactionInstruction_ticks (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (network : runtime.NetworkPolicy leaks)
     (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
     (view : (runtime.reactiveApplication leaks).EnvironmentView)
@@ -171,7 +177,7 @@ theorem interactionInstruction_ticks (runtime : EventGraphRuntime graph)
       rfl
 
 theorem interactionStep_facts (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
@@ -188,7 +194,7 @@ theorem interactionStep_facts (runtime : EventGraphRuntime graph)
     selected] at progress
 
 theorem runInteractionPlan_facts (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
@@ -227,7 +233,7 @@ theorem interactionEpoch_ticks (chosen : ServiceOrder graph) (networkTurns : Nat
   simp [serviceTicks, ServiceInstruction.ticks, Function.comp_def]
 
 theorem runInteractionEpochs_facts (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
     (chosen : ServiceOrder graph) (networkTurns : Nat)
     (players : Player → (runtime.reactiveApplication leaks).Policy)

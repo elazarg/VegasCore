@@ -12,6 +12,7 @@ import Vegas.Pending.NativeProtocolSafety
 import Vegas.Pending.ReactivePolicy
 import Vegas.Pending.ReactivePolicyFacts
 import Vegas.Pending.ReactiveDisclosure
+import Vegas.Pending.ReactivePacketEvidence
 import Vegas.Pending.ReactiveEvidence
 import Vegas.Pending.ReactiveNormalization
 import Vegas.Pending.ReactiveFiniteResponses
@@ -28,7 +29,6 @@ import Vegas.Pending.ReactiveFreshCandidates
 import Vegas.Pending.ReactiveSafety
 import Vegas.Pending.ReactiveBinding
 import Vegas.Pending.ReactiveStateInvariant
-import Vegas.Pending.ReactiveStore
 import Vegas.Pending.NativeResponseSampling
 import Vegas.Pending.ResponseBudget
 import Vegas.Pending.ResponsePolicyCorrespondence

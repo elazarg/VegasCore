@@ -17,9 +17,10 @@ namespace VegasTests.ReactiveEarlyOpening
 
 open GameTheory.Math.Probability Interaction Vegas Vegas.EventGraphRuntime
 
-def withholdingEnvelope : Message Unit (Payload graph) := ⟨((), 1), .withhold 1⟩
-def prematureOpeningEnvelope : Message Unit (Payload graph) :=
-  ⟨((), 2), .opening 1 ((), .prepared 0) ⟨.int, 1⟩⟩
+def withholdingEnvelope : Message Unit (WitnessedPacket graph) := ⟨((), 1), ⟨.withhold 1, none⟩⟩
+def prematureOpeningEnvelope : Message Unit (WitnessedPacket graph) :=
+  ⟨((), 2), ⟨.opening 1 ((), .prepared 0) ⟨.int, 1⟩,
+    some ⟨((), .prepared 0), ⟨.int, 1⟩⟩⟩⟩
 
 def withholdingOrigin : app.PlayerEntry :=
   ⟨(activated (afterFirst first)).observe app (), second, some withholdingEnvelope⟩
@@ -63,12 +64,22 @@ theorem premature_opening_unauthorized_after_binding :
 /-- The same opening payload in a new envelope after inclusion is authorized. -/
 theorem later_opening_authorized :
     (disclosed false false).AuthorizedAtSubmission app (runtime.submissionDependencyCondition leaks)
-      ⟨((), 3), .opening 1 ((), .prepared 0) ⟨.int, 1⟩⟩ := by
-  apply runtime.ready_submission_authorized leaks (activated (granted false false)) ()
-    _ 1 rfl
-  · rw [State.publicView_eventReady]
+      ⟨((), 3), ⟨.opening 1 ((), .prepared 0) ⟨.int, 1⟩,
+        some ⟨((), .prepared 0), ⟨.int, 1⟩⟩⟩⟩ := by
+  have ready : (activated (granted false false)).application.publicView.EventReady 1 := by
+    rw [State.publicView_eventReady]
     exact disclosure_ready false false (by simp)
-  · rfl
+  have authorized := runtime.ready_submission_authorized leaks
+    (activated (granted false false)) ()
+    (disclosureSubmission (.opening 1 (candidate false) ⟨.int, selectedValue false⟩))
+    1 rfl ready rfl
+  change (disclosed false false).AuthorizedAtSubmission app
+    (runtime.submissionDependencyCondition leaks)
+    ⟨((), 3),
+      (disclosureSubmission (.opening 1 (candidate false) ⟨.int, selectedValue false⟩)).emit
+        (granted false false).application () ((granted false false).network.known ())⟩ at authorized
+  rw [final_opening_emitted false false (by simp)] at authorized
+  exact authorized
 
 /-- Authorization is not a restriction on broadcast or pending storage. -/
 theorem premature_opening_pending :

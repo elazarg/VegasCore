@@ -21,7 +21,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 def interactionStep (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (instruction : ServiceInstruction graph)
@@ -32,7 +32,7 @@ def interactionStep (runtime : EventGraphRuntime graph)
       (fun command => (runtime.reactiveApplication leaks).dispatch players command execution)
 
 def runInteractionPlan (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) :
     List (ServiceInstruction graph) → (runtime.reactiveApplication leaks).Execution →
@@ -42,7 +42,7 @@ def runInteractionPlan (runtime : EventGraphRuntime graph)
       execution).bind (runInteractionPlan runtime leaks players network rest)
 
 def runInteractionEpochs (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (chosen : ServiceOrder graph)
     (networkTurns : Nat) (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) :
@@ -55,7 +55,7 @@ def runInteractionEpochs (runtime : EventGraphRuntime graph)
           (runInteractionEpochs runtime leaks chosen networkTurns players network count)
 
 theorem interactionStep_recall (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (instruction : ServiceInstruction graph)
@@ -69,7 +69,7 @@ theorem interactionStep_recall (runtime : EventGraphRuntime graph)
   simp only [List.length_append, List.length_cons, List.length_nil]
 
 theorem runInteractionPlan_recall (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (plan : List (ServiceInstruction graph))
@@ -85,7 +85,7 @@ theorem runInteractionPlan_recall (runtime : EventGraphRuntime graph)
       omega
 
 theorem runInteractionPlan_append (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (first second : List (ServiceInstruction graph))
@@ -100,7 +100,7 @@ theorem runInteractionPlan_append (runtime : EventGraphRuntime graph)
       exact FinDist.bind_congr fun next _ => ih next
 
 theorem interactionSuffix_rounds (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (chosen : ServiceOrder graph)
     (networkTurns : Nat) (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) (before rest : List (ServiceInstruction graph))
@@ -141,7 +141,7 @@ theorem interactionSuffix_rounds (runtime : EventGraphRuntime graph)
         omega
 
 theorem interactionEpochs_rounds (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (chosen : ServiceOrder graph)
     (networkTurns : Nat) (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) (count epoch : Nat)
@@ -170,7 +170,7 @@ theorem interactionEpochs_rounds (runtime : EventGraphRuntime graph)
 /-- Exact terminal-state law for the concrete reactive service. This theorem
 quantifies over arbitrary deviations as well as prescribed player policies. -/
 theorem canonical_interaction_service (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : FinDist (State graph)) (chosen : ServiceOrder graph) (networkTurns : Nat)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) :

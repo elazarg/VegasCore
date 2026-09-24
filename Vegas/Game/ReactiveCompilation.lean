@@ -32,7 +32,7 @@ def compileReactiveStrategy (setup : Setup (Player := Player) (L := L))
     (mode : Vegas.EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (leaks : Interaction.MessageNetwork.ObservationRule Player
-      (EventGraphRuntime.Payload (setup.eventGraph.withMode mode)))
+      (EventGraphRuntime.WitnessedPacket (setup.eventGraph.withMode mode)))
     (who : Player) (policy : BehavioralPolicy who setup.program) :
     (runtime.reactiveApplication leaks).Policy :=
   runtime.compileReactivePolicy leaks who

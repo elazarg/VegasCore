@@ -19,7 +19,7 @@ namespace VegasTests.SequentialValidation
 open Vegas Vegas.EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Math.Probability
 
-def nativeLeaks : MessageNetwork.ObservationRule Bool (Payload nativeGraph) :=
+def nativeLeaks : MessageNetwork.ObservationRule Bool (WitnessedPacket nativeGraph) :=
   fun _ _ => FinDist.pure ∅
 
 abbrev nativeApp := nativeRuntime.reactiveApplication nativeLeaks

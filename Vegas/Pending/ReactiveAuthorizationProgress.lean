@@ -26,22 +26,23 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem reactiveCompletedInvariant (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (completed : Finset graph.EventId) :
     (runtime.reactiveApplication leaks).Invariant
       (fun state => completed ⊆ state.config.cut.completed) where
   submit state who material retained := by
     change completed ⊆
-      (submitStep (material.register state who) who material.packet).config.cut.completed
-    rw [submitStep_config, (material.register_facts who state).1]
+      (submitStep (material.call.register state who) who material.call.packet).config.cut.completed
+    rw [submitStep_config, (material.call.register_facts who state).1]
     exact retained
   handle state message next retained accepted :=
-    retained.trans (handle_completed_subset runtime state next message accepted)
+    retained.trans (handle_completed_subset runtime state next
+      ⟨message.id, message.payload.call⟩ accepted)
   environment state command next retained supported :=
     retained.trans (environmentStep_completed_subset runtime state next command supported)
 
 theorem submissionView_completed_subset (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : FinDist (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
@@ -61,15 +62,15 @@ theorem submissionView_completed_subset (runtime : EventGraphRuntime graph)
   exact List.mem_toFinset.trans (state.config.history_exact event)
 
 theorem authorized_predecessor_completed (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : FinDist (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
-      (some control)) (message : Message Player (Payload graph))
+      (some control)) (message : Message Player (WitnessedPacket graph))
     (authorized : control.execution.AuthorizedAtSubmission (runtime.reactiveApplication leaks)
       (runtime.submissionDependencyCondition leaks) message)
-    (event predecessor : graph.EventId) (address : message.payload.event? graph = some event)
+    (event predecessor : graph.EventId) (address : message.payload.call.event? graph = some event)
     (dependency : predecessor ∈ graph.order.predecessors event) :
     predecessor ∈ control.execution.application.config.cut.completed := by
   obtain ⟨entry, found, _, allowed⟩ := authorized
@@ -80,15 +81,15 @@ theorem authorized_predecessor_completed (runtime : EventGraphRuntime graph)
 /-- An authorization created while an event was blocked cannot appear later
 in the same envelope; before readiness there are no authorized packets for it. -/
 theorem authorized_event_ready (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : FinDist (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
-      (some control)) (message : Message Player (Payload graph))
+      (some control)) (message : Message Player (WitnessedPacket graph))
     (authorized : control.execution.AuthorizedAtSubmission (runtime.reactiveApplication leaks)
       (runtime.submissionDependencyCondition leaks) message)
-    (event : graph.EventId) (address : message.payload.event? graph = some event)
+    (event : graph.EventId) (address : message.payload.call.event? graph = some event)
     (unfinished : event ∉ control.execution.application.config.cut.completed) :
     control.execution.application.config.cut.Ready event :=
   ⟨unfinished, fun predecessor member => runtime.authorized_predecessor_completed leaks
@@ -97,17 +98,17 @@ theorem authorized_event_ready (runtime : EventGraphRuntime graph)
 /-- Under sequential readiness, every authorized unfinished event packet
 belongs to the current event. Raw future packets can still be pending/leaked. -/
 theorem authorized_event_eq_current (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : FinDist (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
       (some control)) (current : graph.EventId)
     (unique : ∀ event, control.execution.application.config.cut.Ready event → event = current)
-    (message : Message Player (Payload graph))
+    (message : Message Player (WitnessedPacket graph))
     (authorized : control.execution.AuthorizedAtSubmission (runtime.reactiveApplication leaks)
       (runtime.submissionDependencyCondition leaks) message)
-    (event : graph.EventId) (address : message.payload.event? graph = some event)
+    (event : graph.EventId) (address : message.payload.call.event? graph = some event)
     (unfinished : event ∉ control.execution.application.config.cut.completed) :
     event = current :=
   unique event (runtime.authorized_event_ready leaks initial horizon scheduler control trace
@@ -116,7 +117,7 @@ theorem authorized_event_eq_current (runtime : EventGraphRuntime graph)
 /-- Global serialization is unnecessary for this exclusion. The graph's
 information discipline already orders each player's own strategic events. -/
 theorem authorized_owned_event_eq_current (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     {schema : graph.LogicalSchema} (discipline : graph.InformationDiscipline schema)
     (initial : FinDist (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
@@ -124,11 +125,11 @@ theorem authorized_owned_event_eq_current (runtime : EventGraphRuntime graph)
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
       (some control)) (current : graph.EventId)
     (ready : control.execution.application.config.cut.Ready current)
-    (message : Message Player (Payload graph))
+    (message : Message Player (WitnessedPacket graph))
     (currentActor : graph.actor? current = some message.sender)
     (authorized : control.execution.AuthorizedAtSubmission (runtime.reactiveApplication leaks)
       (runtime.submissionDependencyCondition leaks) message)
-    (event : graph.EventId) (address : message.payload.event? graph = some event)
+    (event : graph.EventId) (address : message.payload.call.event? graph = some event)
     (actor : graph.actor? event = some message.sender)
     (unfinished : event ∉ control.execution.application.config.cut.completed) :
     event = current := by
@@ -140,7 +141,7 @@ theorem authorized_owned_event_eq_current (runtime : EventGraphRuntime graph)
 /-- Public-barrier source lowering supplies the required information discipline.
 Foreign ready commitments remain concurrent and available to passive observation. -/
 theorem barrier_authorized_owned_event_eq_current (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (ordered : graph.BarrierOrdered)
     (initial : FinDist (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
@@ -148,11 +149,11 @@ theorem barrier_authorized_owned_event_eq_current (runtime : EventGraphRuntime g
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
       (some control)) (current : graph.EventId)
     (ready : control.execution.application.config.cut.Ready current)
-    (message : Message Player (Payload graph))
+    (message : Message Player (WitnessedPacket graph))
     (currentActor : graph.actor? current = some message.sender)
     (authorized : control.execution.AuthorizedAtSubmission (runtime.reactiveApplication leaks)
       (runtime.submissionDependencyCondition leaks) message)
-    (event : graph.EventId) (address : message.payload.event? graph = some event)
+    (event : graph.EventId) (address : message.payload.call.event? graph = some event)
     (actor : graph.actor? event = some message.sender)
     (unfinished : event ∉ control.execution.application.config.cut.completed) :
     event = current :=

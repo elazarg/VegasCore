@@ -21,7 +21,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem runInteractionPlan_support_instruction (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (before after : List (ServiceInstruction graph)) (instruction : ServiceInstruction graph)
@@ -73,7 +73,7 @@ theorem interactionEpoch_has_sample (chosen : ServiceOrder graph)
   simp [interactionVisit]
 
 theorem reactive_application_support (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (command : EnvironmentCommand graph)
     (execution next : (runtime.reactiveApplication leaks).Execution)
@@ -89,7 +89,7 @@ theorem reactive_application_support (runtime : EventGraphRuntime graph)
   exact changed
 
 theorem interactionStep_sample_complete (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (event : graph.EventId) (execution next : (runtime.reactiveApplication leaks).Execution)
@@ -104,7 +104,7 @@ theorem interactionStep_sample_complete (runtime : EventGraphRuntime graph)
     (runtime.reactive_application_support leaks players _ execution next moved)
 
 theorem interactionStep_expire_complete (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (event : graph.EventId) (execution next : (runtime.reactiveApplication leaks).Execution)
@@ -122,7 +122,7 @@ theorem interactionStep_expire_complete (runtime : EventGraphRuntime graph)
     (runtime.reactive_application_support leaks players _ execution next moved)
 
 theorem interactionEpoch_chance_complete (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
     (chosen : ServiceOrder graph) (networkTurns : Nat)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
@@ -152,7 +152,7 @@ theorem interactionEpoch_chance_complete (runtime : EventGraphRuntime graph)
       prior sampled priorReady chance sampledMem)
 
 theorem interactionEpoch_strategic_complete (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
     (chosen : ServiceOrder graph) (networkTurns : Nat)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
@@ -190,7 +190,7 @@ theorem interactionEpoch_strategic_complete (runtime : EventGraphRuntime graph)
     exact dueAfterTick
 
 def reactiveCompletionService (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (chosen : ServiceOrder graph)
     (networkTurns : Nat) (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) :
@@ -208,7 +208,7 @@ def reactiveCompletionService (runtime : EventGraphRuntime graph)
     chosen networkTurns players network event entered before after
 
 theorem reactiveCompletionService_run (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (chosen : ServiceOrder graph) (networkTurns : Nat)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
@@ -223,7 +223,7 @@ theorem reactiveCompletionService_run (runtime : EventGraphRuntime graph)
       exact FinDist.bind_congr fun next _ => ih next
 
 theorem runInteractionEpochs_terminal (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs)
     (chosen : ServiceOrder graph) (networkTurns : Nat)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
@@ -239,7 +239,7 @@ theorem runInteractionEpochs_terminal (runtime : EventGraphRuntime graph)
 /-- Every supported terminal result of canonical reactive service completes
 the application, even under arbitrary player deviations and network choices. -/
 theorem canonical_interaction_complete (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : FinDist graph.Inputs) (chosen : ServiceOrder graph) (networkTurns : Nat)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)

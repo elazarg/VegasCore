@@ -55,11 +55,12 @@ theorem first_inconsistent :
     · rename_i impossible
       exact False.elim (impossible ⟨0, rfl⟩)
   change some (ReactiveApplication.Transmission.submit (app := app)
-      ⟨.commitment 0 ((), .prepared 0), some ⟨.int, 1⟩⟩) =
+      ⟨⟨.commitment 0 ((), .prepared 0), some ⟨.int, 1⟩⟩, .none⟩) =
     (reactiveFreshSlot ((activated initial).observe app ()).application).map _ at sent
   rw [slot] at sent
   have material := ReactiveApplication.Transmission.submit.inj (Option.some.inj sent)
-  have opening := congrArg Submission.opening material
+  have opening := congrArg
+    (fun submission : WitnessedSubmission graph => submission.call.opening) material
   have raw := Option.some.inj opening
   have value := congrArg (fun raw : Raw simpleExpr => raw.as? .int) raw
   cases value

@@ -3,6 +3,7 @@
 import Interaction.ReactiveRecall
 import Vegas.Pending.EventPlayerAction
 import Vegas.Pending.EventBindingAction
+import Vegas.Pending.OpeningEvidence
 
 /-! # The event application under explicit network scheduling
 
@@ -31,17 +32,18 @@ structure ReactivePlayerView (graph : Vegas.EventGraph Player L) where
   candidates : CandidateSlot graph → CommitmentCandidate (Raw L)
 
 def reactiveApplication (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) : ReactiveApplication
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) : ReactiveApplication
       Player where
   State := State graph
-  Payload := Payload graph
-  Submission := Submission graph
+  Payload := WitnessedPacket graph
+  Submission := WitnessedSubmission graph
   EnvironmentCommand := EnvironmentCommand graph
   LocalObservation := ReactivePlayerView graph
   PublicObservation := PublicView graph
-  packet := Submission.packet
-  submit state who submission := submitStep (submission.register state who) who submission.packet
-  handle := handle runtime
+  packet state who known submission := submission.emit state who known
+  submit state who submission :=
+    submitStep (submission.call.register state who) who submission.call.packet
+  handle state message := handle runtime state ⟨message.id, message.payload.call⟩
   environment := environmentStep runtime
   observePlayer state who := ⟨who, state.publicView, graph.playerObserve who state.config,
     fun slot => state.candidates.lookup (who, slot)⟩
@@ -51,17 +53,17 @@ def reactiveApplication (runtime : EventGraphRuntime graph)
 /-- Atomically fix a fresh candidate and transmit its handle. Only the packet
 field enters the network; the opening is private submission material. -/
 def reactiveBinding (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId)
     (payload : L.Ty) (result : PublicationResult (L.Val payload)) (serial : Nat) :
     (runtime.reactiveApplication leaks).Action where
   transmission := some (.submit
-    ⟨.commitment event (who, .prepared serial), match result with
+    ⟨⟨.commitment event (who, .prepared serial), match result with
       | .failure => none
-      | .success value => some ⟨payload, value⟩⟩)
+      | .success value => some ⟨payload, value⟩⟩, .none⟩)
 
 theorem reactiveBinding_result (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
     (event : graph.EventId) (payload : L.Ty) (result : PublicationResult (L.Val payload))
     (serial : Nat) (execution : (runtime.reactiveApplication leaks).Execution)
@@ -89,7 +91,7 @@ theorem reactiveBinding_result (runtime : EventGraphRuntime graph)
 /-- The environment receives the same envelope and public application state
 for all private binding meanings, including an unopenable candidate. -/
 theorem reactiveBinding_observation (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
     (event : graph.EventId) (payload : L.Ty)
     (first second : PublicationResult (L.Val payload)) (serial : Nat)

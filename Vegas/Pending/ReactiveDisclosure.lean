@@ -51,7 +51,7 @@ theorem reactiveResolutionPacket_withhold {owner : Player}
 /-- Any successful binding in a valid runtime state supplies the opening
 selected by its owner's compiler, independently of the deferred checks. -/
 theorem reactiveResolutionPacket_provenance (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (state : State graph) (valid : state.BindingInvariant)
     (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
@@ -74,7 +74,7 @@ theorem reactiveResolutionPacket_provenance (runtime : EventGraphRuntime graph)
 /-- The emitted packet executes disclosure with the actual guarded result.
 In particular, a failed result does not substitute withholding for disclosure. -/
 theorem reactiveDecision_opening_law (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (state : State graph) (valid : state.BindingInvariant)
     (id : MessageId Player) (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
@@ -91,7 +91,7 @@ theorem reactiveDecision_opening_law (runtime : EventGraphRuntime graph)
     (resolved : EventCode.resolveOutput? binding checks true state.config.store = some result) :
     ∃ candidate, (runtime.reactiveDecision leaks owner event action
         ((runtime.reactiveApplication leaks).observePlayer state owner)).transmission =
-        some (.submit ⟨.opening event candidate ⟨payload, value⟩, none⟩) ∧
+        some (.submit (disclosureSubmission (.opening event candidate ⟨payload, value⟩))) ∧
       handle runtime state ⟨id, .opening event candidate ⟨payload, value⟩⟩ =
         some (state.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) true)

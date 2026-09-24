@@ -26,7 +26,9 @@ structure ReactiveApplication (Principal : Type) where
   EnvironmentCommand : Type
   LocalObservation : Type
   PublicObservation : Type
-  packet : Submission → Payload
+  /-- Materialize a packet from the post-submission state and evidence already
+  possessed by the sender before this response. -/
+  packet : State → Principal → List (Message Principal Payload) → Submission → Payload
   submit : State → Principal → Submission → State
   handle : State → Message Principal Payload → Option State
   environment : State → EnvironmentCommand → FinDist State
@@ -98,8 +100,10 @@ def Execution.respond (execution : app.Execution) (who : Principal) (action : ap
   let (state, emitted, network) := match action.transmission with
     | none => (execution.application, none, execution.network)
     | some (.submit submission) =>
-        let (envelope, network) := execution.network.submit who (app.packet submission)
-        (app.submit execution.application who submission, some envelope, network)
+        let next := app.submit execution.application who submission
+        let packet := app.packet next who (execution.network.known who) submission
+        let (envelope, network) := execution.network.submit who packet
+        (next, some envelope, network)
     | some (.replay id) =>
         let (emitted, network) := execution.network.replay who id
         (execution.application, emitted, network)

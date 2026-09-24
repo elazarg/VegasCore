@@ -26,10 +26,10 @@ def AcceptedHandles (state : State graph) : Prop :=
   ∀ field candidate, state.accepted field = some candidate → bounds.AllowsHandle candidate
 
 def ExecutionHandles (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
   bounds.AcceptedHandles execution.application ∧
-    execution.network.Satisfies (fun message => bounds.AllowsPacket message.payload)
+    execution.network.Satisfies (fun message => bounds.AllowsPacket message.payload.call)
 
 theorem acceptedHandles_initial (inputs : graph.Inputs) :
     bounds.AcceptedHandles (State.initial inputs) := by
@@ -61,7 +61,7 @@ theorem acceptedHandles_handle (runtime : EventGraphRuntime graph)
   | malformed raw => simp [handle] at accepted
 
 theorem executionHandles_respond [Fintype Player] (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
     (valid : bounds.ExecutionHandles runtime leaks execution)
@@ -77,17 +77,19 @@ theorem executionHandles_respond [Fintype Player] (runtime : EventGraphRuntime g
       cases transmission with
       | replay id => exact ⟨valid.1, valid.2.replay who id⟩
       | submit material =>
-          refine ⟨?_, valid.2.submit who material.packet allowed.1⟩
-          change bounds.AcceptedHandles (submitStep (material.register execution.application who)
-            who material.packet)
+          refine ⟨?_, valid.2.submit who
+            (material.emit ((runtime.reactiveApplication leaks).submit execution.application who
+              material) who (execution.network.known who)) allowed.1.1⟩
+          change bounds.AcceptedHandles
+            (submitStep (material.call.register execution.application who) who material.call.packet)
           have same := congrArg PublicView.accepted
-            (material.register_facts who execution.application).2.2
-          change (material.register execution.application who).accepted =
+            (material.call.register_facts who execution.application).2.2
+          change (material.call.register execution.application who).accepted =
             execution.application.accepted at same
           simpa only [AcceptedHandles, submitStep_accepted, same] using valid.1
 
 theorem executionHandles_environment (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution next : (runtime.reactiveApplication leaks).Execution)
     (command : (runtime.reactiveApplication leaks).Command)
     (valid : bounds.ExecutionHandles runtime leaks execution)
@@ -111,12 +113,15 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
         | none => exact valid.1
         | some message =>
             change bounds.AcceptedHandles
-              ((handle runtime execution.application message).getD execution.application)
-            cases accepted : handle runtime execution.application message with
+              ((handle runtime execution.application
+                ⟨message.id, message.payload.call⟩).getD execution.application)
+            cases accepted : handle runtime execution.application
+                ⟨message.id, message.payload.call⟩ with
             | none => exact valid.1
             | some state =>
                 exact bounds.acceptedHandles_handle runtime execution.application
-                  state message valid.1 (valid.2.lookup id message found) accepted
+                  state ⟨message.id, message.payload.call⟩ valid.1
+                  (valid.2.lookup id message found) accepted
       · change (execution.includePending (runtime.reactiveApplication leaks) id).network.Satisfies _
         rw [ReactiveApplication.includePending_network]
         exact valid.2.includePending id
@@ -129,7 +134,7 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
         using valid.1
 
 theorem executionHandles_history [Fintype Player] (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : FinDist graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
     ∀ {state} (_trace : ((bounds.menu runtime leaks).protocol (inputs.map State.initial)

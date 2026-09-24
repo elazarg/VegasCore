@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import VegasTests.PendingMenusSource
-import Vegas.Pending.ReactiveServiceProgress
+import Vegas.Pending.ReactiveServiceEvaluation
 import Vegas.Pending.ReactiveSafety
 import Interaction.ReactiveSubgamePrefix
 
@@ -24,7 +24,7 @@ abbrev graph := PendingMenus.graph
 abbrev runtime := PendingMenus.runtime
 abbrev input := PendingMenus.input
 
-def leaks : MessageNetwork.ObservationRule Unit (Payload graph) := fun _ _ => FinDist.pure ∅
+def leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket graph) := fun _ _ => FinDist.pure ∅
 abbrev app := runtime.reactiveApplication leaks
 
 def initialState : State graph := { State.initial input with serviceGrant := some 0 }
@@ -84,7 +84,7 @@ fixture. The command-service projection uses empty auxiliary memory. -/
 def projectedAction (action : app.Action) : PlayerAction graph where
   memory := []
   transmission := action.transmission.map fun transmission => match transmission with
-    | .submit material => .submit material
+    | .submit material => .submit material.call
     | .replay id => .replay id
 
 private theorem afterAction_application (action : app.Action) :
@@ -95,8 +95,11 @@ private theorem afterAction_application (action : app.Action) :
   | none => rfl
   | some transmission => cases transmission <;> rfl
 
+private def plainMessage (message : Message Unit (WitnessedPacket graph)) :
+    Message Unit (Payload graph) := ⟨message.id, message.payload.call⟩
+
 private theorem afterAction_pending (action : app.Action) :
-    (afterAction action).network.pending =
+    (afterAction action).network.pending.map plainMessage =
       (PendingMenus.afterAction (projectedAction action)).native.pool.pending := by
   rcases action with ⟨transmission⟩
   cases transmission with
@@ -105,15 +108,35 @@ private theorem afterAction_pending (action : app.Action) :
       cases transmission with
       | submit material => rfl
       | replay id =>
-          have compare (network : MessageNetwork Unit (Payload graph))
+          have compare (network : MessageNetwork Unit (WitnessedPacket graph))
               (pool : MessagePool Unit (Payload graph))
-              (pending : network.pending = pool.pending)
-              (known : (network.known ()).find? (fun envelope => envelope.id = id) =
-                (pool.observe ()).known? id) :
-              (network.replay () id).2.pending = (pool.replay () id).state.pending := by
-            simp only [MessageNetwork.replay, MessagePool.replay, known]
-            cases (pool.observe ()).known? id <;> exact pending ▸ rfl
-          exact compare (activated contested).network PendingMenus.contested.native.pool rfl rfl
+              (pending : network.pending.map plainMessage = pool.pending)
+              (known : ((network.known ()).find? (fun envelope => envelope.id = id)).map
+                plainMessage = (pool.observe ()).known? id) :
+              (network.replay () id).2.pending.map plainMessage =
+                (pool.replay () id).state.pending := by
+            unfold MessageNetwork.replay MessagePool.replay
+            cases found : (network.known ()).find? (fun envelope => envelope.id = id) with
+            | none =>
+                rw [found] at known
+                rw [← known]
+                exact pending
+            | some message =>
+                rw [found] at known
+                rw [← known]
+                simp only [Option.map_some, List.map_append, List.map_cons, List.map_nil, pending]
+          apply compare (activated contested).network PendingMenus.contested.native.pool rfl
+          change Option.map plainMessage
+              (List.find? ((fun message : Message Unit (Payload graph) =>
+                decide (message.id = id)) ∘ plainMessage) _) = _
+          rw [← List.find?_map]
+          rfl
+
+private theorem afterAction_lookup (action : app.Action) (id : MessageId Unit) :
+    ((afterAction action).network.lookup id).map plainMessage =
+      (PendingMenus.afterAction (projectedAction action)).native.pool.lookup id := by
+  rw [MessagePool.lookup, ← afterAction_pending, List.find?_map]
+  rfl
 
 def selected (action : app.Action) : Nat :=
   if ((afterAction action).network.lookup ((), 2)).isSome then 0 else 1
@@ -126,33 +149,37 @@ def included (action : app.Action) : app.Execution :=
 
 private theorem selected_eq (action : app.Action) :
     selected action = PendingMenus.selected (projectedAction action) := by
-  simp only [selected, MessageNetwork.lookup, afterAction_pending,
-    PendingMenus.selected, MessagePool.lookup]
-  rfl
+  have known := congrArg Option.isSome (afterAction_lookup action ((), 2))
+  simp only [Option.isSome_map] at known
+  simp only [selected, PendingMenus.selected, known]
 
 theorem included_application (action : app.Action) : (included action).application =
     (PendingMenus.included (projectedAction action)).application := by
-  have lookup : (afterAction action).network.lookup ((), selected action) =
-      (PendingMenus.afterAction (projectedAction action)).native.pool.lookup
-        ((), PendingMenus.selected (projectedAction action)) := by
-    simp only [MessageNetwork.lookup, MessagePool.lookup, selected_eq, afterAction_pending]
-    rfl
+  have lookup := afterAction_lookup action ((), selected action)
+  rw [selected_eq] at lookup
   dsimp only [included, ReactiveApplication.Execution.includePending, MessageNetwork.includePending]
-  rw [lookup]
+  rw [selected_eq]
   unfold PendingMenus.included MessageApplication.includePending MessagePool.includeApplication
     MessagePool.includePending
-  cases found : (PendingMenus.afterAction (projectedAction action)).native.pool.lookup
-    ((), PendingMenus.selected (projectedAction action)) with
-  | none => exact afterAction_application action
+  cases found : (afterAction action).network.lookup
+      ((), PendingMenus.selected (projectedAction action)) with
+  | none =>
+      rw [found] at lookup
+      rw [← lookup]
+      exact afterAction_application action
   | some message =>
-      change (handle runtime (afterAction action).application message).getD
+      rw [found] at lookup
+      rw [← lookup]
+      simp only [Option.map_some]
+      change (handle runtime (afterAction action).application (plainMessage message)).getD
         (afterAction action).application = _
       rw [afterAction_application]
       dsimp only [PendingMenus.app, application]
-      cases handle runtime (PendingMenus.afterAction (projectedAction action)).native.application
-        message <;> rfl
+      cases handle PendingMenus.runtime
+          (PendingMenus.afterAction (projectedAction action)).native.application
+          (plainMessage message) <;> rfl
 
-/-- Every raw response, including arbitrary memory, replay, and malformed
+/-- Every raw response, including arbitrary evidence requests, replay, and malformed
 traffic, leaves one of the two earlier commitments as the accepted binding. -/
 theorem selected_binding (action : app.Action) :
     (included action).application.config.outputs 0 = some (.success

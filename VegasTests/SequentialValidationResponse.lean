@@ -17,9 +17,9 @@ def nativeChosenState (execution : nativeApp.Execution) (action : nativeApp.Acti
   match action.transmission with
   | some (.submit submission) =>
       let submitted := nativeApp.submit execution.application true submission
-      if submission.packet.event? nativeGraph = some guessEvent then
+      if submission.call.packet.event? nativeGraph = some guessEvent then
         (handle nativeRuntime submitted
-          ⟨(true, execution.network.nextSerial true), submission.packet⟩).getD submitted
+          ⟨(true, execution.network.nextSerial true), submission.call.packet⟩).getD submitted
       else submitted
   | _ => execution.application
 
@@ -43,10 +43,12 @@ theorem native_chosen_views (left right : nativeApp.Execution) (action : nativeA
 
 theorem native_bob_fresh_lookup (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (empty : control.execution.recall true = [])
-    (submission : Submission nativeGraph) :
+    (submission : WitnessedSubmission nativeGraph) :
     (control.execution.respond nativeApp true ⟨some (.submit submission)⟩).network.lookup
       (true, control.execution.network.nextSerial true) =
-        some ⟨(true, control.execution.network.nextSerial true), submission.packet⟩ := by
+        some ⟨(true, control.execution.network.nextSerial true),
+          submission.emit (nativeApp.submit control.execution.application true submission)
+            true (control.execution.network.known true)⟩ := by
   have absent : (control.execution.network.pending.find? fun message =>
       decide (message.id = (true, control.execution.network.nextSerial true))) = none := by
     apply List.find?_eq_none.mpr
@@ -84,7 +86,7 @@ theorem native_bob_round (bit : Bool) (control : nativeApp.Control)
             ReactiveApplication.Command.actor?, ReactiveApplication.resume, FinDist.pure_bind]
           rfl
       | submit submission =>
-          by_cases address : submission.packet.event? nativeGraph = some guessEvent
+          by_cases address : submission.call.packet.event? nativeGraph = some guessEvent
           · simp only [nativeFinalCommand, address, ↓reduceIte, ReactiveApplication.dispatch,
               ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
               ReactiveApplication.Command.actor?, ReactiveApplication.resume, FinDist.pure_bind]
@@ -133,11 +135,14 @@ theorem native_bob_response_tail (bit : Bool) (control : nativeApp.Control)
 theorem native_chosen_guess (bit guess : Bool) :
     nativeChosenState (nativeBobExecution bit) ⟨some (.submit (nativeGuessSubmission guess))⟩ =
       { nativeGuessState bit guess with serviceGrant := some guessEvent } := by
-  have addressed : (nativeGuessSubmission guess).packet.event? nativeGraph = some guessEvent := by
+  have addressed :
+      (nativeGuessSubmission guess).call.packet.event? nativeGraph = some guessEvent :=
+      by
     cases guess <;> rfl
   simp only [nativeChosenState, addressed, ↓reduceIte]
   change (nativeSubmit (nativeBobExecution bit).application true
-    ((nativeBobExecution bit).network.nextSerial true) (nativeGuessSubmission guess)).getD _ = _
+    ((nativeBobExecution bit).network.nextSerial true)
+    (nativeGuessSubmission guess).call).getD _ = _
   rw [native_bob_application, native_guess_grant]
   rfl
 
@@ -157,7 +162,7 @@ theorem native_chosen_store (execution : nativeApp.Execution) (action : nativeAp
           simp only [nativeChosenState]
           split
           · cases accepted : handle nativeRuntime (nativeApp.submit execution.application true
-                submission) ⟨(true, execution.network.nextSerial true), submission.packet⟩ with
+                submission) ⟨(true, execution.network.nextSerial true), submission.call.packet⟩ with
             | none => exact submitted
             | some next =>
                 exact handle_store_of_some nativeRuntime _ next _ accepted field value submitted

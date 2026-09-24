@@ -113,7 +113,9 @@ theorem submissionOrigin_submit (execution : app.Execution) (who : Principal)
     (execution.respond app who ⟨some (.submit material)⟩).submissionOrigin? app
       (who, execution.network.nextSerial who) =
         some ⟨execution.observe app who, ⟨some (.submit material)⟩,
-          some ⟨(who, execution.network.nextSerial who), app.packet material⟩⟩ := by
+          some ⟨(who, execution.network.nextSerial who),
+            app.packet (app.submit execution.application who material) who
+              (execution.network.known who) material⟩⟩ := by
   simp only [Execution.submissionOrigin?] at fresh ⊢
   simp only [Execution.respond, MessageNetwork.submit, ↓reduceIte, List.find?_append, fresh]
   simp [PlayerEntry.submitsId]
@@ -125,9 +127,13 @@ theorem authorizedAtSubmission_submit
     (execution : app.Execution) (who : Principal) (material : app.Submission)
     (fresh : execution.submissionOrigin? app (who, execution.network.nextSerial who) = none)
     (allowed : condition (execution.observe app who)
-      ⟨(who, execution.network.nextSerial who), app.packet material⟩) :
+      ⟨(who, execution.network.nextSerial who),
+        app.packet (app.submit execution.application who material) who
+          (execution.network.known who) material⟩) :
     (execution.respond app who ⟨some (.submit material)⟩).AuthorizedAtSubmission
-      app condition ⟨(who, execution.network.nextSerial who), app.packet material⟩ :=
+      app condition ⟨(who, execution.network.nextSerial who),
+        app.packet (app.submit execution.application who material) who
+          (execution.network.known who) material⟩ :=
   ⟨_, app.submissionOrigin_submit execution who material fresh, rfl, allowed⟩
 
 theorem submissionOrigin_next_none_history (initial : FinDist app.State) (horizon : Nat)

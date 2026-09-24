@@ -32,7 +32,9 @@ def submitsEligible (eligible : Message Principal app.Payload → Bool)
     (execution : app.Execution) (who : Principal) (action : app.Action) : Bool :=
   match action.transmission with
   | some (.submit submission) => execution.network.unpublished eligible
-      (execution.network.submit who (app.packet submission)).1
+      (execution.network.submit who
+        (app.packet (app.submit execution.application who submission) who
+          (execution.network.known who) submission)).1
   | _ => false
 
 theorem prioritySelection_replay
@@ -99,8 +101,12 @@ theorem prioritySelection_response_regular
           change (MessageNetwork.priorityPending priorities
               (execution.network.unpublished eligible) execution.network.pending).RegularAt
             (MessageNetwork.priorityPending priorities (execution.network.unpublished eligible)
-              (execution.network.submit who (app.packet submission)).2.pending)
-            (some (execution.network.submit who (app.packet submission)).1.id)
+              (execution.network.submit who
+                (app.packet (app.submit execution.application who submission) who
+                  (execution.network.known who) submission)).2.pending)
+            (some (execution.network.submit who
+              (app.packet (app.submit execution.application who submission) who
+                (execution.network.known who) submission)).1.id)
           unfold MessageNetwork.priorityPending
           change (GameTheory.Math.Probability.PriorityChoice.law priorities _).RegularAt
             (GameTheory.Math.Probability.PriorityChoice.law priorities

@@ -20,15 +20,16 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem reactiveRememberedInvariant (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (table : RememberedActions graph) : (runtime.reactiveApplication leaks).Invariant
       (fun state => state.remembered = table) where
   submit state who material fixed := by
-    change (submitStep (material.register state who) who material.packet).remembered = table
-    rw [submitStep_remembered, (material.register_facts who state).2.1]
+    change (submitStep (material.call.register state who) who material.call.packet).remembered =
+      table
+    rw [submitStep_remembered, (material.call.register_facts who state).2.1]
     exact fixed
   handle state message next fixed accepted :=
-    (handle_remembered runtime state next message accepted).trans fixed
+    (handle_remembered runtime state next ⟨message.id, message.payload.call⟩ accepted).trans fixed
   environment state command next fixed reached :=
     (environmentStep_remembered runtime state next command reached).trans fixed
 
@@ -41,7 +42,7 @@ def ReactivePlayerView.withRemembered (view : ReactivePlayerView graph)
   candidates := view.candidates
 
 theorem reactive_playerView_congr (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (left right : State graph) (who : Player)
     (views : (runtime.reactiveApplication leaks).observePlayer left who =
       (runtime.reactiveApplication leaks).observePlayer right who)
@@ -56,7 +57,7 @@ theorem reactive_playerView_congr (runtime : EventGraphRuntime graph)
     _ = right.playerView who := by rw [remembered]; rfl
 
 theorem reactive_handle_observation (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (left right : State graph) (who : Player) (message : Message Player (Payload graph))
     (views : (runtime.reactiveApplication leaks).observePlayer left who =
       (runtime.reactiveApplication leaks).observePlayer right who)

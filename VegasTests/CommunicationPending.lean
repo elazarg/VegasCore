@@ -5,8 +5,9 @@ import VegasTests.CommunicationNative
 /-! # A raw pending opening is not independently authenticated
 
 The same claimed opening can be leaked under either immutable binding.
-Bob's current native view cannot distinguish a true opening from a false claim
-before inclusion. A public opening-witness interface would change this model.
+The sender deliberately requests no opening evidence. Bob cannot distinguish
+a true uncertified claim from a false one. Certified packets instead carry
+independently verifiable candidate evidence, tested in `ReactiveWitnessedEvidence`.
 -/
 
 noncomputable section
@@ -16,7 +17,7 @@ namespace VegasTests.CommunicationPending
 open Vegas Vegas.EventGraphRuntime Interaction
 open SequentialValidation
 
-def leaks : MessageNetwork.ObservationRule Bool (Payload nativeGraph) :=
+def leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket nativeGraph) :=
   fun _ _ => GameTheory.Math.Probability.FinDist.pure {(false, 0)}
 
 private theorem initial_public_eq : (nativeStart true).publicView =
@@ -51,7 +52,7 @@ private theorem initial_bob_eq :
 def submittedClaim (bit : Bool) : (nativeRuntime.reactiveApplication leaks).Execution :=
   (ReactiveApplication.Execution.initial (nativeRuntime.reactiveApplication leaks)
     (nativeStart bit)).respond (nativeRuntime.reactiveApplication leaks) false
-      ⟨some (.submit (secretOpening true))⟩
+      ⟨some (.submit ⟨secretOpening true, .none⟩)⟩
 
 def leakedClaim (bit : Bool) : (nativeRuntime.reactiveApplication leaks).Execution :=
   { submittedClaim bit with network := (submittedClaim bit).network.learn true {(false, 0)} }
@@ -75,7 +76,7 @@ theorem same_view :
 
 theorem claim_visible (bit : Bool) :
     ((leakedClaim bit).observe (nativeRuntime.reactiveApplication leaks) true).messages.leaked =
-      [⟨(false, 0), (secretOpening true).packet⟩] := by rfl
+      [⟨(false, 0), ⟨(secretOpening true).packet, none⟩⟩] := by rfl
 
 theorem actual_binding (bit : Bool) :
     (leakedClaim bit).application.candidates.lookup (false, .initial secretInput) =
@@ -89,8 +90,8 @@ theorem same_information : bobInformation true = bobInformation false := by
   change ([], _) = ([], _)
   rw [same_view]
 
-/-- No function of this receiver view can authenticate the claimed bit in
-both states. This is about the present interface, not cryptographic feasibility. -/
+/-- No function of the receiver view authenticates an uncertified claim in
+both states. The sender's choice to omit evidence is available under either bit. -/
 theorem no_view_verifier :
     ¬ ∃ verify : (List (nativeRuntime.reactiveApplication leaks).PlayerEntry ×
         (nativeRuntime.reactiveApplication leaks).PlayerView) → Bool,

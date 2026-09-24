@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import VegasTests.ReactivePendingMenus
-import Vegas.Pending.ReactiveStore
+import Vegas.Pending.ReactiveStateInvariant
 
 /-! # Continuation incentives in the reactive pending-menu example -/
 
@@ -68,7 +68,7 @@ theorem first_two_rounds (policy : app.Policy) :
   exact (FinDist.map_eq_bind _ _).symm
 
 private theorem contested_invariant : contested.application.Invariant input := by
-  have invariant := (runtime.reactiveApplicationInvariant leaks input).history
+  have invariant := (runtime.reactiveStateInvariant leaks input).history
     (FinDist.pure initialState) 7 scheduler (fun state supported => by
       cases FinDist.mem_support_pure.mp supported
       exact (State.initial_invariant input).copy rfl rfl rfl)
@@ -77,9 +77,9 @@ private theorem contested_invariant : contested.application.Invariant input := b
 
 private theorem included_invariant (action : app.Action) :
     (included action).application.Invariant input :=
-  (runtime.reactiveApplicationInvariant leaks input).includePending
+  (runtime.reactiveStateInvariant leaks input).includePending
     (afterAction action) ((), selected action)
-    ((runtime.reactiveApplicationInvariant leaks input).respond
+    ((runtime.reactiveStateInvariant leaks input).respond
       (activated contested) () action contested_invariant)
 
 /-- Once either old binding is included, no later raw behavior can publish
@@ -91,7 +91,7 @@ theorem residual_utility_sum_le (policy : app.Policy) (action : app.Action) (cou
     PendingMenus.publicUtility true (final.application.config.outputs 1) +
       PendingMenus.publicUtility false (final.application.config.outputs 1) ≤ 3 := by
   have invariant := (ReactiveApplication.Invariant.policyInvariant app
-    (runtime.reactiveApplicationInvariant leaks input) (fun _ => policy)).runRounds
+    (runtime.reactiveStateInvariant leaks input) (fun _ => policy)).runRounds
       scheduler count (included action) final
       (included_invariant action) reached
   have stored := (ReactiveApplication.Invariant.policyInvariant app
@@ -135,7 +135,8 @@ def preferredValue (preferOne : Bool) : Int := if preferOne then 1 else 2
 def preferredSlot (preferOne : Bool) : Nat := if preferOne then 0 else 1
 
 def opening (preferOne : Bool) : app.Action := ⟨some (.submit
-  ⟨.opening 1 ((), .prepared (preferredSlot preferOne)) ⟨.int, preferredValue preferOne⟩, none⟩)⟩
+  ⟨⟨.opening 1 ((), .prepared (preferredSlot preferOne))
+    ⟨.int, preferredValue preferOne⟩, none⟩, .none⟩)⟩
 
 /-- Only the public grant is inspected. Private scheduler control is absent. -/
 def recovery (preferOne : Bool) : app.Policy := fun _ view => FinDist.pure
@@ -152,7 +153,7 @@ private theorem selected_slot (preferOne : Bool) :
 private theorem selected_pending (preferOne : Bool) :
     (afterAction (selection preferOne)).network.lookup ((), preferredSlot preferOne) =
       some ⟨((), preferredSlot preferOne),
-        .commitment 0 ((), .prepared (preferredSlot preferOne))⟩ :=
+        ⟨.commitment 0 ((), .prepared (preferredSlot preferOne)), none⟩⟩ :=
   by cases preferOne <;> rfl
 
 private theorem binding_ready (preferOne : Bool) :
@@ -306,7 +307,8 @@ theorem recovery_publication (preferOne : Bool) :
     (preferredValue preferOne) meaning stored (.success (preferredValue preferOne)) resolved
   have pending : (disclosed preferOne).network.lookup ((), if preferOne then 3 else 2) =
       some ⟨((), if preferOne then 3 else 2),
-        .opening 1 ((), .prepared (preferredSlot preferOne)) ⟨.int, preferredValue preferOne⟩⟩ :=
+        ⟨.opening 1 ((), .prepared (preferredSlot preferOne))
+          ⟨.int, preferredValue preferOne⟩, none⟩⟩ :=
     by cases preferOne <;> rfl
   dsimp only [finalExecution, ReactiveApplication.Execution.includePending,
     MessageNetwork.includePending]

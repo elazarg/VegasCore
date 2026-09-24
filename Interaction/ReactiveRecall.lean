@@ -96,7 +96,8 @@ theorem respond_inputRecall (execution : app.Execution) (who : Principal) (actio
             simpa only [Execution.respond, MessageNetwork.submit, ↓reduceIte, outputs,
               List.filterMap_append, List.filterMap_cons, List.filterMap_nil, Option.map_some]
               using congrArg (· ++ [⟨(who, execution.network.nextSerial who),
-                app.packet submission⟩]) earlier
+                app.packet (app.submit execution.application who submission) who
+                  (execution.network.known who) submission⟩]) earlier
           · simpa only [Execution.respond, MessageNetwork.submit, ite_eq_right same,
               ite_eq_right (Ne.symm same), List.filterMap_append, List.filterMap_cons,
               List.filterMap_nil, List.append_nil] using earlier

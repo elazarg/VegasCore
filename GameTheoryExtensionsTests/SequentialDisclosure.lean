@@ -2,6 +2,7 @@
 
 import GameTheoryExtensionsTests.SequentialEquilibrium
 import GameTheoryExtensionsTests.OffPathDisclosureLaws
+import GameTheoryExtensions.Analysis.Protocol.DisclosureObstruction
 
 /-! # Off-path disclosure obstructs utility-independent sequential compilation
 
@@ -68,34 +69,41 @@ theorem continuation_value (assessment : (model true).BehavioralAssessment)
       ⟨bobHistory bit, rfl⟩, FinDist.pure_bind,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true) single]
 
+/-- Disclosure leaves a singleton history at Bob's decision, so the actual
+continuation has a common binary law and Bob can force either outcome. -/
+def disclosedDecision : (model true).BinaryDecision (fun goal who history =>
+    payoff goal history who) 3 where
+  player := true
+  site := bobSite false
+  outcome profile := (choiceLaw profile true (some false)).map (fun guess => guess == false)
+  policy goal := choose true true (!goal)
+  history_value profile goal history := by
+    rw [history_at_bob false history,
+      ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true) single]
+    unfold payoff
+    rw [value_bob profile false (utility goal · true)]
+    simp only [resultLaw, FinDist.expect_map, utility, ↓reduceIte]
+  force profile goal := by
+    cases goal <;> simp [choiceLaw, Profile.update, choose]
+
 theorem rationality_forces_payoff_one (assessment : (model true).BehavioralAssessment)
     (matchBit : Bool)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who history => payoff matchBit history who) 3) :
     1 ≤ ((model true).runSingleMoverBehavioralFrom single assessment.strategy 3
       (bobHistory false)).expect (payoff matchBit · true) := by
-  have inequality := rational true (bobSite false) (choose true true (!matchBit))
-    (Set.mem_univ _)
-  change (assessment.continuationContext (bobSite false) (payoff matchBit · true) 3).value
-      (choose true true (!matchBit)) ≤
-    (assessment.continuationContext (bobSite false) (payoff matchBit · true) 3).value
-      (assessment.strategy true) at inequality
-  rw [continuation_value, continuation_value, Profile.update_eq_self,
-    bob_deviation_value] at inequality
-  exact inequality
+  unfold payoff
+  rw [value_bob assessment.strategy false (utility matchBit · true)]
+  simpa only [disclosedDecision, resultLaw, FinDist.expect_map, utility, ↓reduceIte] using
+    disclosedDecision.rational_value assessment matchBit rational
 
 /-- Beliefs may depend on the utility. Even this freedom cannot rationalize
 one target strategy for both opposite utilities. -/
 theorem no_common_rational_strategy : ¬ ∃ first second : (model true).BehavioralAssessment,
     first.strategy = second.strategy ∧
       first.IsSequentiallyRationalWithin (fun who history => payoff true history who) 3 ∧
-      second.IsSequentiallyRationalWithin (fun who history => payoff false history who) 3 := by
-  rintro ⟨first, second, same, firstRational, secondRational⟩
-  have matchOptimal := rationality_forces_payoff_one first true firstRational
-  have mismatchOptimal := rationality_forces_payoff_one second false secondRational
-  rw [← same] at mismatchOptimal
-  have total := bob_utility_sum first.strategy
-  linarith
+      second.IsSequentiallyRationalWithin (fun who history => payoff false history who) 3 :=
+  disclosedDecision.no_common_rational_strategy
 
 /-- A whole-profile translator has more access than a playerwise compiler.
 Impossibility already holds for this more permissive class of translators. -/
@@ -109,13 +117,10 @@ theorem no_utility_independent_sequential_translation : ¬ ∃ translate :
       ∃ target : (model true).BehavioralAssessment,
         target.strategy = translate SequentialBeliefs.limitProfile ∧
           target.IsSequentialEquilibriumFor antichain (fun who site =>
-            target.continuationContext site (fun history => payoff matchBit history who) 3) := by
-  rintro ⟨translate, preserves⟩
-  obtain ⟨first, firstEq, firstEquilibrium⟩ := preserves true
-    (SequentialBeliefs.sequential_equilibrium_guessing true)
-  obtain ⟨second, secondEq, secondEquilibrium⟩ := preserves false
-    (SequentialBeliefs.sequential_equilibrium_guessing false)
-  exact no_common_rational_strategy ⟨first, second, firstEq.trans secondEq.symm,
-    firstEquilibrium.1, secondEquilibrium.1⟩
+            target.continuationContext site (fun history => payoff matchBit history who) 3) :=
+  disclosedDecision.no_utility_independent_sequential_translation
+    (SequentialBeliefs.assessment SequentialBeliefs.limitProfile)
+    SequentialBeliefs.antichain antichain (fun goal who history => payoff goal history who)
+    3 SequentialBeliefs.sequential_equilibrium_guessing
 
 end GameTheoryExtensionsTests.SequentialDisclosure

@@ -24,19 +24,19 @@ abbrev graph := PendingMenus.graph
 abbrev runtime := PendingMenus.runtime
 abbrev input := PendingMenus.input
 
-def leaks : MessageNetwork.ObservationRule Unit (Payload graph) := fun _ _ => FinDist.pure ∅
+def leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket graph) := fun _ _ => FinDist.pure ∅
 abbrev app := runtime.reactiveApplication leaks
 
 def initialState : State graph := { State.initial input with serviceGrant := some 0 }
 def initial : app.Execution := .initial app initialState
 
 def first : app.Action := runtime.reactiveBinding leaks () 0 .int (.success 1) 0
-def second : app.Action := ⟨some (.submit ⟨.withhold 1, none⟩)⟩
+def second : app.Action := ⟨some (.submit ⟨⟨.withhold 1, none⟩, .none⟩)⟩
 
 /-- Uniform choice among distinct, unpublished identifiers for this event. -/
 def select (event : graph.EventId) (view : app.EnvironmentView) : FinDist app.Command :=
   ((MessageNetwork.uniformPending (fun packet =>
-    decide (packet.payload.event? graph = some event) &&
+    decide (packet.payload.call.event? graph = some event) &&
       !(view.network.ledger.any fun prior => prior.id = packet.id))
     view.network.pending).map (fun selected => selected.elim .wait .include)).map
       (app.atMostOnceCommand view)

@@ -1,6 +1,7 @@
 import VegasTests.EventGraph
 import VegasTests.ContinuationRecovery
 import VegasTests.InFlightCommitment
+import VegasTests.ReactiveWitnessedEvidence
 import VegasTests.ReactiveRuntime
 import VegasTests.ReactiveFiniteResponses
 import VegasTests.ReactiveRecovery
@@ -42,5 +43,8 @@ import VegasTests.SequentialValidationCompletion
 import VegasTests.CommunicationDisclosure
 import VegasTests.CommunicationNative
 import VegasTests.CommunicationPending
+import VegasTests.CommunicationSequentialNative
+import VegasTests.CommunicationSequentialReach
+import VegasTests.CommunicationSequentialEquilibrium
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

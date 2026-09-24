@@ -39,17 +39,18 @@ theorem bindingEligible_accepts (runtime : EventGraphRuntime graph) (state : Sta
   | opening addressed candidate raw | withhold addressed | malformed raw => cases valid
 
 def bindingSelection (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (priorities : FinDist (LinearOrder (MessageId Player))) (event : graph.EventId)
     (execution : (runtime.reactiveApplication leaks).Execution) :
     FinDist (Option (MessageId Player)) :=
   (runtime.reactiveApplication leaks).prioritySelection priorities
-    (runtime.bindingEligible execution.application.publicView event) execution
+    (fun message => runtime.bindingEligible execution.application.publicView event
+      ⟨message.id, message.payload.call⟩) execution
 
 /-- Player computation and optional transmission leave the public application
 test unchanged; the comparison uses the actual state after the response. -/
 theorem bindingSelection_response_regular (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (priorities : FinDist (LinearOrder (MessageId Player))) (event : graph.EventId)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (retained : execution.network.PendingOrPublished) (who : Player)
@@ -64,7 +65,7 @@ theorem bindingSelection_response_regular (runtime : EventGraphRuntime graph)
     priorities _ execution retained who action
 
 theorem bindingSelection_history_regular (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (initial : FinDist (State graph)) (horizon : Nat)
     (control : (runtime.reactiveApplication leaks).Control)
@@ -83,7 +84,7 @@ theorem bindingSelection_history_regular (runtime : EventGraphRuntime graph)
 /-- Selection is independent of the private binding value at a fixed handle
 and fixed transport attributes, including when that binding is unopenable. -/
 theorem bindingSelection_value_independent (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (priorities : FinDist (LinearOrder (MessageId Player)))
     (execution : (runtime.reactiveApplication leaks).Execution)
     (who : Player) (event selectedEvent : graph.EventId) (payload : L.Ty)

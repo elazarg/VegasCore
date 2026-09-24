@@ -18,9 +18,10 @@ namespace VegasTests.ReactiveEarlyOpening
 
 open GameTheory.Math.Probability Interaction Vegas Vegas.EventGraphRuntime
 
-theorem dependencyCondition_iff (view : PublicView graph) (message : Message Unit (Payload graph)) :
+theorem dependencyCondition_iff (view : PublicView graph)
+    (message : Message Unit (WitnessedPacket graph)) :
     dependencyCondition view message ↔
-      (message.payload.event? graph = some 1 → 0 ∈ view.observation.completionOrder) := by
+      (message.payload.call.event? graph = some 1 → 0 ∈ view.observation.completionOrder) := by
   constructor
   · intro allowed address
     exact allowed 1 address 0 (by decide)
@@ -107,7 +108,8 @@ theorem early_permission_denied :
 
 theorem later_permission_granted (repair fresh : Bool) (possible : fresh = true → repair = true) :
     app.SubmissionPermitted dependencyCondition (disclosed repair fresh).environmentRecall
-      ⟨((), 3), .opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩⟩ := by
+      ⟨((), 3), ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
+        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩⟩ := by
   refine ⟨(granted repair fresh).application.publicView,
     later_submission_observation repair fresh, ?_⟩
   rw [dependencyCondition_iff]
@@ -128,19 +130,23 @@ theorem authorized_disclosure_selection (repair fresh : Bool)
   have noWithhold : keep withholdingEnvelope = false := by
     simp [keep, ReactiveApplication.authorizedEligibility, denied]
   have noCommit (id : MessageId Unit) (handle : Handle graph) :
-      keep ⟨id, .commitment 0 handle⟩ = false := rfl
+      keep ⟨id, ⟨.commitment 0 handle, none⟩⟩ = false := rfl
   have accepted :
-      keep ⟨((), 3), .opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩⟩ = true := by
+      keep ⟨((), 3), ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
+        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩⟩ = true := by
     have address : eventProposal 1 ()
-        ⟨((), 3), .opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩⟩ = true := rfl
+        ⟨((), 3), ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
+        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩⟩ = true := rfl
     simp only [keep, ReactiveApplication.authorizedEligibility, allowed, decide_true, address,
       Bool.and_self, Bool.true_and]
     cases repair <;> cases fresh <;> rfl
   have candidates : MessageNetwork.eligibleIds keep (disclosed repair fresh).network.pending =
         {((), 3)} := by
+    rw [disclosed_pending repair fresh possible]
     cases repair <;> cases fresh
     · change MessageNetwork.eligibleIds _ [withholdingEnvelope, prematureOpeningEnvelope,
-        ⟨((), 3), .opening 1 (candidate false) ⟨.int, selectedValue false⟩⟩] = _
+        ⟨((), 3), ⟨.opening 1 (candidate false) ⟨.int, selectedValue false⟩,
+        some ⟨candidate false, ⟨.int, selectedValue false⟩⟩⟩⟩] = _
       have noEarly : keep prematureOpeningEnvelope = false := by
         simp [keep, ReactiveApplication.authorizedEligibility, early_permission_denied]
       simp only [MessageNetwork.eligibleIds, List.filter_cons, noWithhold, noEarly, accepted,
@@ -148,13 +154,15 @@ theorem authorized_disclosure_selection (repair fresh : Bool)
         List.toFinset_cons, List.toFinset_nil, Finset.insert_empty]
     · simp at possible
     · change MessageNetwork.eligibleIds _ [withholdingEnvelope,
-        ⟨((), 2), .commitment 0 ((), .prepared 1)⟩,
-        ⟨((), 3), .opening 1 (candidate false) ⟨.int, selectedValue false⟩⟩] = _
+        ⟨((), 2), ⟨.commitment 0 ((), .prepared 1), none⟩⟩,
+        ⟨((), 3), ⟨.opening 1 (candidate false) ⟨.int, selectedValue false⟩,
+        some ⟨candidate false, ⟨.int, selectedValue false⟩⟩⟩⟩] = _
       simp only [MessageNetwork.eligibleIds, List.filter_cons, noWithhold, noCommit, accepted,
         Bool.false_eq_true, ↓reduceIte, List.filter_nil, List.map_cons, List.map_nil,
         List.toFinset_cons, List.toFinset_nil, Finset.insert_empty]
-    · change MessageNetwork.eligibleIds _ [⟨((), 0), .commitment 0 ((), .prepared 0)⟩,
-        withholdingEnvelope, ⟨((), 3), .opening 1 (candidate true) ⟨.int, selectedValue true⟩⟩] = _
+    · change MessageNetwork.eligibleIds _ [⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none⟩⟩,
+        withholdingEnvelope, ⟨((), 3), ⟨.opening 1 (candidate true) ⟨.int, selectedValue true⟩,
+        some ⟨candidate true, ⟨.int, selectedValue true⟩⟩⟩⟩] = _
       simp only [MessageNetwork.eligibleIds, List.filter_cons, noCommit, noWithhold, accepted,
         Bool.false_eq_true, ↓reduceIte, List.filter_nil, List.map_cons, List.map_nil,
         List.toFinset_cons, List.toFinset_nil, Finset.insert_empty]
@@ -168,40 +176,42 @@ theorem authorized_binding_selection (repair : Bool) :
       if repair then half (FinDist.pure (.include ((), 0)))
         (FinDist.pure (.include ((), 2))) else FinDist.pure (.include ((), 0)) := by
   have oldAllowed : app.SubmissionPermitted dependencyCondition
-      (afterResponse repair).environmentRecall ⟨((), 0), .commitment 0 ((), .prepared 0)⟩ := by
+      (afterResponse repair).environmentRecall
+        ⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none⟩⟩ := by
     refine ⟨initialState.publicView, ?_, ?_⟩
     · cases repair <;> rfl
     · rw [dependencyCondition_iff]
       intro impossible
       cases impossible
   have newAllowed : app.SubmissionPermitted dependencyCondition
-      (afterResponse true).environmentRecall ⟨((), 2), .commitment 0 ((), .prepared 1)⟩ := by
+      (afterResponse true).environmentRecall
+        ⟨((), 2), ⟨.commitment 0 ((), .prepared 1), none⟩⟩ := by
     refine ⟨initialState.publicView, rfl, ?_⟩
     rw [dependencyCondition_iff]
     intro impossible
     cases impossible
   let keep := fun message => app.authorizedEligibility dependencyCondition
     (afterResponse repair).environmentRecall (eventProposal 0 ()) message
-  have keepOld : keep ⟨((), 0), .commitment 0 ((), .prepared 0)⟩ = true := by
+  have keepOld : keep ⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none⟩⟩ = true := by
     simpa only [keep, ReactiveApplication.authorizedEligibility, oldAllowed,
       decide_true, Bool.and_true] using (rfl : eventProposal 0 ()
-        ⟨((), 0), .commitment 0 ((), .prepared 0)⟩ = true)
+        ⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none⟩⟩ = true)
   have noWithhold : keep withholdingEnvelope = false := rfl
   have noOpening : keep prematureOpeningEnvelope = false := rfl
   have menu : MessageNetwork.eligibleIds keep (afterResponse repair).network.pending =
       if repair then {((), 0), ((), 2)} else {((), 0)} := by
     cases repair
-    · change MessageNetwork.eligibleIds keep [⟨((), 0), .commitment 0 ((), .prepared 0)⟩,
+    · change MessageNetwork.eligibleIds keep [⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none⟩⟩,
         withholdingEnvelope, prematureOpeningEnvelope] = _
       simp only [MessageNetwork.eligibleIds, List.filter_cons, keepOld, noWithhold, noOpening,
         Bool.false_eq_true, ↓reduceIte, List.filter_nil, List.map_cons, List.map_nil,
         List.toFinset_cons, List.toFinset_nil, Finset.insert_empty]
-    · have keepNew : keep ⟨((), 2), .commitment 0 ((), .prepared 1)⟩ = true := by
+    · have keepNew : keep ⟨((), 2), ⟨.commitment 0 ((), .prepared 1), none⟩⟩ = true := by
         simpa only [keep, ReactiveApplication.authorizedEligibility, newAllowed,
           decide_true, Bool.and_true] using (rfl : eventProposal 0 ()
-            ⟨((), 2), .commitment 0 ((), .prepared 1)⟩ = true)
-      change MessageNetwork.eligibleIds keep [⟨((), 0), .commitment 0 ((), .prepared 0)⟩,
-        withholdingEnvelope, ⟨((), 2), .commitment 0 ((), .prepared 1)⟩] = _
+            ⟨((), 2), ⟨.commitment 0 ((), .prepared 1), none⟩⟩ = true)
+      change MessageNetwork.eligibleIds keep [⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none⟩⟩,
+        withholdingEnvelope, ⟨((), 2), ⟨.commitment 0 ((), .prepared 1), none⟩⟩] = _
       simp only [MessageNetwork.eligibleIds, List.filter_cons, keepOld, noWithhold, keepNew,
         Bool.false_eq_true, ↓reduceIte, List.filter_nil, List.map_cons, List.map_nil,
         List.toFinset_cons, List.toFinset_nil, Finset.insert_empty]

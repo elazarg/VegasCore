@@ -17,7 +17,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem reactive_respond_application (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (action : (runtime.reactiveApplication leaks).Action) :
     (execution.respond (runtime.reactiveApplication leaks) who action).application.config =
@@ -31,40 +31,43 @@ theorem reactive_respond_application (runtime : EventGraphRuntime graph)
       cases transmission with
       | replay id => exact ⟨rfl, rfl⟩
       | submit material =>
-          exact ⟨(submitStep_config _ who material.packet).trans
-            (material.register_facts who execution.application).1,
-            (submitStep_publicView _ who material.packet).trans
-              (material.register_facts who execution.application).2.2⟩
+          exact ⟨(submitStep_config _ who material.call.packet).trans
+            (material.call.register_facts who execution.application).1,
+            (submitStep_publicView _ who material.call.packet).trans
+              (material.call.register_facts who execution.application).2.2⟩
 
 theorem reactiveStateInvariant (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs) :
     (runtime.reactiveApplication leaks).Invariant (State.Invariant inputs) where
   submit state who material valid := by
     apply valid.copy
-    · exact (submitStep_config _ who material.packet).trans (material.register_facts who state).1
+    · exact (submitStep_config _ who material.call.packet).trans
+        (material.call.register_facts who state).1
     · exact congrArg PublicView.clock
-        ((submitStep_publicView _ who material.packet).trans
-          (material.register_facts who state).2.2)
+        ((submitStep_publicView _ who material.call.packet).trans
+          (material.call.register_facts who state).2.2)
     · exact congrArg PublicView.activatedAt
-        ((submitStep_publicView _ who material.packet).trans
-          (material.register_facts who state).2.2)
+        ((submitStep_publicView _ who material.call.packet).trans
+          (material.call.register_facts who state).2.2)
   handle state message next valid accepted :=
-    handle_invariant runtime state next message valid accepted
+    handle_invariant runtime state next ⟨message.id, message.payload.call⟩ valid accepted
   environment state command next valid supported :=
     environmentStep_invariant runtime state next command valid supported
 
 theorem reactiveStoreInvariant (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (field : graph.Field)
     (value : (graph.layout field).Value) : (runtime.reactiveApplication leaks).Invariant
       (fun state => state.config.store field = some value) where
   submit state who material stored := by
-    change (submitStep (material.register state who) who material.packet).config.store field = _
-    rw [submitStep_config, (material.register_facts who state).1]
+    change (submitStep (material.call.register state who) who
+      material.call.packet).config.store field = _
+    rw [submitStep_config, (material.call.register_facts who state).1]
     exact stored
   handle state message next stored accepted :=
-    handle_store_of_some runtime state next message accepted field value stored
+    handle_store_of_some runtime state next ⟨message.id, message.payload.call⟩
+      accepted field value stored
   environment state command next stored supported :=
     environmentStep_store_of_some runtime state next command supported field value stored
 

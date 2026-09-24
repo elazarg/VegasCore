@@ -46,6 +46,7 @@ import Interaction.ReactiveServiceInvariant
 import Interaction.ReactiveCalendar
 import Interaction.ReactiveReceipts
 import Interaction.ReactiveEvidence
+import Interaction.ReactivePacketEvidence
 import Interaction.ReactiveEvidenceKnowledge
 import Interaction.ReactivePublication
 import Interaction.ReactiveAllocation

@@ -48,7 +48,7 @@ private abbrev graph : EventGraph Unit simpleExpr where
 private def runtime : EventGraphRuntime graph where
   deadline _ := 2
 
-private def leaks : MessageNetwork.ObservationRule Unit (Payload graph) :=
+private def leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket graph) :=
   fun _ _ => FinDist.pure ∅
 
 private abbrev app := runtime.reactiveApplication leaks
@@ -61,7 +61,7 @@ private def response (disclose : Bool) : app.Action :=
   runtime.reactiveDecision leaks () 0 disclose (initial.observe app ()).application
 
 private def entry (serial : Nat) (disclose : Bool) : app.PlayerEntry :=
-  ⟨initial.observe app (), response disclose, some ⟨((), serial), .withhold 0⟩⟩
+  ⟨initial.observe app (), response disclose, some ⟨((), serial), ⟨.withhold 0, none⟩⟩⟩
 
 /-- The game contains a single semantic response for these two intentions. -/
 theorem failed_disclosure_same_action : response true = response false := rfl
@@ -95,21 +95,22 @@ accepted withholding packet: the claimed intention would have generated an openi
 theorem mismatched_intention :
     let forged : app.PlayerEntry :=
       ⟨openable.observe app (),
-        ⟨some (.submit ⟨.withhold 0, none⟩)⟩,
-        some ⟨((), 0), .withhold 0⟩⟩
+        ⟨some (.submit ⟨⟨.withhold 0, none⟩, .none⟩)⟩,
+        some ⟨((), 0), ⟨.withhold 0, none⟩⟩⟩
     runtime.reactiveOriginal leaks () [forged] [some ⟨0, true⟩] [(((), 0), true)] ⟨0, false⟩ =
       ⟨0, false⟩ := by
   have expected : runtime.reactiveDecision leaks () 0 true
       (openable.observe app ()).application = ReactiveApplication.Action.mk (app := app)
-        (some (.submit ⟨.opening 0 ((), .initial 0) ⟨.bool, true⟩, none⟩)) := rfl
+        (some (.submit (disclosureSubmission (.opening 0 ((), .initial 0) ⟨.bool, true⟩)))) := rfl
   have different : (ReactiveApplication.Action.mk (app := app)
-      (some (.submit ⟨.withhold 0, none⟩))) ≠
+      (some (.submit ⟨⟨.withhold 0, none⟩, .none⟩))) ≠
         runtime.reactiveDecision leaks () 0 true (openable.observe app ()).application := by
     rw [expected]
     intro same
     have sent := congrArg (fun action : app.Action => action.transmission) same
     have material := ReactiveApplication.Transmission.submit.inj (Option.some.inj sent)
-    have packet := congrArg (fun submission : Submission graph => submission.packet) material
+    have packet := congrArg
+      (fun submission : WitnessedSubmission graph => submission.call.packet) material
     cases packet
   simp [reactiveOriginal, nodeView, different]
 

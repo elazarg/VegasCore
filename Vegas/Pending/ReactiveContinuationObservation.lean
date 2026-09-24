@@ -50,16 +50,16 @@ theorem Submission.register_playerView_congr (submission : Submission graph)
       cases opening <;> exact views
 
 theorem submit_playerView_congr (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
-    (left right : State graph) (who : Player) (submission : Submission graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (left right : State graph) (who : Player) (submission : WitnessedSubmission graph)
     (views : left.playerView who = right.playerView who) :
     ((runtime.reactiveApplication leaks).submit left who submission).playerView who =
       ((runtime.reactiveApplication leaks).submit right who submission).playerView who := by
-  have registered := submission.register_playerView_congr left right who views
+  have registered := submission.call.register_playerView_congr left right who views
   have publicEq := congrArg PlayerView.publicView registered
   have observed := State.playerView_observation_eq _ _ who registered
   have remembered := congrArg PlayerView.remembered registered
-  have candidates := submitStep_candidates_congr _ _ who submission.packet
+  have candidates := submitStep_candidates_congr _ _ who submission.call.packet
     (congrArg PlayerView.candidates registered)
   change (submitStep _ who _).playerView who = (submitStep _ who _).playerView who
   unfold State.playerView

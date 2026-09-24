@@ -5,7 +5,7 @@ import Interaction.ReactiveReplayMenu
 /-! # Removing response distinctions with no operational effect
 
 Submission normalization preserves the exact public packet and complete
-application effect, and can use only the sender's local observation. Replay
+application effect, and can use only the sender's local observation and known packets. Replay
 normalization replaces an unavailable replay by silence. The resulting finite
 menus contain normal forms only. These are operational certificates; they do
 not assert equilibrium equivalence with a game recording raw response syntax.
@@ -18,13 +18,16 @@ namespace Interaction.ReactiveApplication
 variable {Principal : Type} (app : ReactiveApplication Principal)
 
 structure SubmissionNormalization where
-  normalize : Principal → app.LocalObservation → app.Submission → app.Submission
-  idempotent : ∀ who view submission,
-    normalize who view (normalize who view submission) = normalize who view submission
-  packet : ∀ who view submission,
-    app.packet (normalize who view submission) = app.packet submission
-  submit : ∀ state who submission,
-    app.submit state who (normalize who (app.observePlayer state who) submission) =
+  normalize : Principal → app.LocalObservation → List (Message Principal app.Payload) →
+    app.Submission → app.Submission
+  idempotent : ∀ who view known submission,
+    normalize who view known (normalize who view known submission) =
+      normalize who view known submission
+  packet : ∀ state who view known submission,
+    app.packet state who known (normalize who view known submission) =
+      app.packet state who known submission
+  submit : ∀ state who known submission,
+    app.submit state who (normalize who (app.observePlayer state who) known submission) =
       app.submit state who submission
 
 namespace SubmissionNormalization
@@ -41,7 +44,8 @@ def action (who : Principal) (past : List app.PlayerEntry) (view : app.PlayerVie
     app.Action → app.Action
   | ⟨none⟩ => ⟨none⟩
   | ⟨some (.submit submission)⟩ =>
-      ⟨some (.submit (normal.normalize who view.application submission))⟩
+      ⟨some (.submit (normal.normalize who view.application
+        (ResponseMenu.knownPackets past view) submission))⟩
   | ⟨some (.replay id)⟩ => if ReplayKnown past view id then ⟨some (.replay id)⟩ else ⟨none⟩
 
 theorem action_idempotent (who : Principal) (past : List app.PlayerEntry)
@@ -121,6 +125,8 @@ theorem effects (execution : app.Execution) (who : Principal) (response : app.Ac
     intro observer different
     rw [app.respond_recall_other execution who observer different,
       app.respond_recall_other execution who observer different]
+  have known : ResponseMenu.knownPackets (execution.recall who) (execution.observe app who) =
+      execution.network.known who := (app.known_from_recall execution who valid).symm
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact ⟨rfl, rfl, rfl, rfl, others _ _⟩
@@ -128,10 +134,19 @@ theorem effects (execution : app.Execution) (who : Principal) (response : app.Ac
       cases transmission with
       | submit submission =>
           refine ⟨?_, ?_, rfl, rfl, others _ _⟩
-          · exact normal.submit execution.application who submission
+          · exact normal.submit execution.application who _ submission
           · change (execution.network.submit who
-                (app.packet (normal.normalize who _ submission))).2 = _
-            rw [normal.packet]
+                (app.packet (app.submit execution.application who
+                  (normal.normalize who _ _ submission)) who (execution.network.known who)
+                    (normal.normalize who _ _ submission))).2 = _
+            rw [known]
+            change (execution.network.submit who
+                (app.packet (app.submit execution.application who
+                  (normal.normalize who (app.observePlayer execution.application who)
+                    (execution.network.known who) submission)) who (execution.network.known who)
+                    (normal.normalize who (app.observePlayer execution.application who)
+                      (execution.network.known who) submission))).2 = _
+            rw [normal.submit, normal.packet]
             rfl
       | replay id =>
           classical
@@ -152,20 +167,24 @@ namespace ResponseMenu
 
 variable {app}
 
-/-- Every supplied submission, silence, and every locally known replay. -/
-def fromSubmissions (submissions : Finset app.Submission) : app.ResponseMenu := by
+/-- Every information-local supplied submission, silence, and every known replay. -/
+def fromSubmissions
+    (submissions : Principal → List app.PlayerEntry → app.PlayerView → Finset app.Submission) :
+    app.ResponseMenu := by
   classical
   exact withKnownReplays {
-    actions := fun _ _ _ => insert ⟨none⟩
-      (submissions.image fun submission => ⟨some (.submit submission)⟩)
+    actions := fun who past view => insert ⟨none⟩
+      ((submissions who past view).image fun submission => ⟨some (.submit submission)⟩)
     nonempty := fun _ _ _ => ⟨⟨none⟩, Finset.mem_insert_self _ _⟩ }
 
-theorem fromSubmissions_mem (submissions : Finset app.Submission) (who : Principal)
+theorem fromSubmissions_mem
+    (submissions : Principal → List app.PlayerEntry → app.PlayerView → Finset app.Submission)
+    (who : Principal)
     (past : List app.PlayerEntry) (view : app.PlayerView) (response : app.Action) :
     response ∈ (fromSubmissions submissions).actions who past view ↔
       match response.transmission with
       | none => True
-      | some (.submit submission) => submission ∈ submissions
+      | some (.submit submission) => submission ∈ submissions who past view
       | some (.replay id) => SubmissionNormalization.ReplayKnown past view id := by
   classical
   rcases response with ⟨transmission⟩

@@ -63,7 +63,8 @@ def nativeResponseTrace (remaining : Nat) (execution : nativeApp.Execution) (who
       simp)
 
 theorem native_select_singleton (execution : nativeApp.Execution)
-    (event : nativeGraph.EventId) (who : Bool) (message : Message Bool (Payload nativeGraph))
+    (event : nativeGraph.EventId) (who : Bool)
+    (message : Message Bool (WitnessedPacket nativeGraph))
     (pending : execution.network.pending = [message])
     (addressed : eventProposal event who message = true)
     (authorized : nativeApp.SubmissionPermitted dependencyCondition
@@ -88,18 +89,20 @@ theorem native_select_singleton (execution : nativeApp.Execution)
 theorem native_packet_available (who : Bool) (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) (packet : Payload nativeGraph)
     (bounded : nativeBounds.AllowsPacket packet) :
-    (⟨some (.submit ⟨packet, none⟩)⟩ : nativeApp.Action) ∈ nativeMenu.actions who past view := by
+    (⟨some (.submit ⟨⟨packet, none⟩, .none⟩)⟩ : nativeApp.Action) ∈
+      nativeMenu.actions who past view :=
+      by
   rw [MessageBounds.menu_mem]
-  refine ⟨⟨bounded, trivial⟩, ?_⟩
+  refine ⟨⟨⟨bounded, trivial⟩, trivial⟩, ?_⟩
   change (⟨some (.submit
-    ((⟨packet, none⟩ : Submission nativeGraph).normalizeReactive who view.application))⟩ :
-      nativeApp.Action) = _
+    ⟨(⟨packet, none⟩ : Submission nativeGraph).normalizeReactive who view.application,
+      .none⟩)⟩ : nativeApp.Action) = _
   rw [Submission.normalizeReactive_none]
 
 theorem native_opening_available (who : Bool) (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) (event : nativeGraph.EventId) (candidate : Handle nativeGraph)
     (bit : Bool) (bounded : nativeBounds.AllowsHandle candidate) :
-    (⟨some (.submit ⟨.opening event candidate ⟨.bool, bit⟩, none⟩)⟩ : nativeApp.Action) ∈
+    (⟨some (.submit ⟨⟨.opening event candidate ⟨.bool, bit⟩, none⟩, .none⟩)⟩ : nativeApp.Action) ∈
       nativeMenu.actions who past view := by
   apply native_packet_available
   refine ⟨bounded, ?_⟩
@@ -108,7 +111,7 @@ theorem native_opening_available (who : Bool) (past : List nativeApp.PlayerEntry
 
 theorem native_withhold_available (who : Bool) (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) (event : nativeGraph.EventId) :
-    (⟨some (.submit ⟨.withhold event, none⟩)⟩ : nativeApp.Action) ∈
+    (⟨some (.submit ⟨⟨.withhold event, none⟩, .none⟩)⟩ : nativeApp.Action) ∈
       nativeMenu.actions who past view :=
   native_packet_available who past view _ trivial
 
@@ -131,13 +134,13 @@ def nativeWindowTrace (remaining : Nat) (execution : nativeApp.Execution)
     (empty : execution.network.pending = [])
     (address : submission.packet.event? nativeGraph = some event)
     (ready : execution.application.config.cut.Ready event)
-    (available : (⟨some (.submit submission)⟩ : nativeApp.Action) ∈ nativeMenu.actions who
+    (available : (⟨some (.submit ⟨submission, .none⟩)⟩ : nativeApp.Action) ∈ nativeMenu.actions who
       ((nativeActivate (nativeGrant execution event) who).recall who)
       ((nativeActivate (nativeGrant execution event) who).observe nativeApp who)) :
     nativeArena.Trace (some ⟨remaining, none, nativeWindow execution event who submission⟩) := by
   let granted := nativeGrant execution event
   let activated := nativeActivate granted who
-  let responded := activated.respond nativeApp who ⟨some (.submit submission)⟩
+  let responded := activated.respond nativeApp who ⟨some (.submit ⟨submission, .none⟩)⟩
   have grantTrace : nativeArena.Trace (some ⟨remaining + 2, none, granted⟩) :=
     nativeEnvironmentTrace _ _ _ trace (.application (.grant event))
       (native_schedule execution _ grant) (native_grant_law execution event)
@@ -154,12 +157,14 @@ def nativeWindowTrace (remaining : Nat) (execution : nativeApp.Execution)
       nativeActivate, nativeGrant, nativeRecord, List.length_append, List.length_singleton,
       Nat.add_assoc] using select
   have pending : responded.network.pending =
-      [⟨(who, execution.network.nextSerial who), submission.packet⟩] := by
+      [⟨(who, execution.network.nextSerial who), ⟨submission.packet, none⟩⟩] := by
     change execution.network.pending ++ [_] = _
     rw [empty, List.nil_append]
     rfl
   have permitted : nativeApp.SubmissionPermitted dependencyCondition
-      responded.environmentRecall ⟨(who, execution.network.nextSerial who), submission.packet⟩ := by
+      responded.environmentRecall
+        ⟨(who, execution.network.nextSerial who), ⟨submission.packet, none⟩⟩ :=
+      by
     rw [show responded.environmentRecall = activated.environmentRecall from rfl]
     apply (nativeApp.submissionPermitted_fresh_history ReactivePlayerView.publicView
       (fun _ _ => rfl) dependencyCondition nativeInitialLaw 56 nativeScheduler _
@@ -183,10 +188,11 @@ def nativeFirstTrace (bit : Bool) : nativeArena.Trace (some ⟨53, none, nativeF
   apply nativeWindowTrace 53 _ _ _ _ (nativeSetupTrace bit) rfl rfl rfl rfl rfl
     (native_registered_ready bit)
   rw [MessageBounds.menu_mem]
-  refine ⟨⟨by change 0 < 56; decide, ?_⟩, ?_⟩
+  refine ⟨⟨⟨by change 0 < 56; decide, ?_⟩, trivial⟩, ?_⟩
   · change (⟨.bool, false⟩ : Raw simpleExpr) ∈ nativeBounds.values
     simp [nativeBounds]
-  change (⟨some (.submit (dummySubmission.normalizeReactive false _))⟩ : nativeApp.Action) = _
+  change (⟨some (.submit ⟨dummySubmission.normalizeReactive false _, .none⟩)⟩ :
+    nativeApp.Action) = _
   rw [Submission.normalizeReactive_effective]
   exact ⟨rfl, rfl⟩
 
@@ -231,7 +237,7 @@ def nativeBobHistory (bit : Bool) : nativeArena.History := ⟨_, nativeBobTrace 
 
 def nativeBobSite (bit : Bool) : nativeModel.InformationSite true :=
   nativeModel.informationSite true (nativeBobHistory bit)
-    ⟨some (.submit ⟨.withhold guessEvent, none⟩)⟩
+    ⟨some (.submit ⟨⟨.withhold guessEvent, none⟩, .none⟩)⟩
     (by change ¬ (45 = 0 ∧ _); omega) (by
       change some _ ∈ (nativeMenu.information nativeInitialLaw 56 nativeScheduler).menu true
         ((nativeMenu.signals nativeInitialLaw 56 nativeScheduler).infoOf true

@@ -32,12 +32,12 @@ theorem reactiveResolutionPacket_event {owner : Player} (who : Player) (event : 
   · rfl
 
 theorem reactiveDecision_transmission (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
     (event : graph.EventId) (action : graph.Action event) (view : ReactivePlayerView graph) :
     (runtime.reactiveDecision leaks who event action view).transmission = none ∨
       ∃ material, (runtime.reactiveDecision leaks who event action view).transmission =
-        some (.submit material) ∧ material.packet.event? graph = some event := by
+        some (.submit material) ∧ material.call.packet.event? graph = some event := by
   unfold reactiveDecision
   split
   · exact Or.inl rfl
@@ -51,7 +51,7 @@ theorem reactiveDecision_transmission (runtime : EventGraphRuntime graph)
 /-- No replay and no second submission for an event, regardless of how often
 the scheduler activates the player or which public grant it offers. -/
 theorem prescribedReactivePolicy_transmission (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
     (policy : graph.BehavioralPolicy who)
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -60,7 +60,8 @@ theorem prescribedReactivePolicy_transmission (runtime : EventGraphRuntime graph
     (supported : action ∈
       (runtime.prescribedReactivePolicy leaks who policy history view).support) :
     action.transmission = none ∨ ∃ event material,
-      action.transmission = some (.submit material) ∧ material.packet.event? graph = some event ∧
+      action.transmission = some (.submit material) ∧ material.call.packet.event? graph = some
+        event ∧
         runtime.reactiveAlreadySubmitted leaks history event = false := by
   rw [prescribedReactivePolicy_apply] at supported
   obtain ⟨intentions, _, produced⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
@@ -91,12 +92,13 @@ theorem prescribedReactivePolicy_transmission (runtime : EventGraphRuntime graph
       · cases FinDist.mem_support_pure.mp issued; exact Or.inl rfl
 
 def reactiveSubmittedEvents (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (history : List (runtime.reactiveApplication leaks).PlayerEntry) : List graph.EventId :=
-  history.filterMap fun entry => entry.emitted.bind (fun message => message.payload.event? graph)
+  history.filterMap fun entry => entry.emitted.bind (fun message => message.payload.call.event?
+    graph)
 
 theorem reactiveAlreadySubmitted_iff (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (history : List (runtime.reactiveApplication leaks).PlayerEntry) (event : graph.EventId) :
     runtime.reactiveAlreadySubmitted leaks history event = true ↔
       event ∈ runtime.reactiveSubmittedEvents leaks history := by
@@ -104,29 +106,29 @@ theorem reactiveAlreadySubmitted_iff (runtime : EventGraphRuntime graph)
     List.mem_filterMap, Option.any_eq_true, Option.bind_eq_some_iff, decide_eq_true_eq]
 
 theorem reactiveSubmittedEvents_mem (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (message : Message Player (Payload graph)) (event : graph.EventId)
+    (message : Message Player (WitnessedPacket graph)) (event : graph.EventId)
     (member : message ∈ (runtime.reactiveApplication leaks).outputs history)
-    (addressed : message.payload.event? graph = some event) :
+    (addressed : message.payload.call.event? graph = some event) :
     event ∈ runtime.reactiveSubmittedEvents leaks history := by
   obtain ⟨entry, retained, emitted⟩ := List.mem_filterMap.mp member
   exact List.mem_filterMap.mpr
     ⟨entry, retained, by simp only [emitted, Option.bind_some, addressed]⟩
 
 theorem reactiveSubmittedEvents_unique (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
     (once : (runtime.reactiveSubmittedEvents leaks history).Nodup)
-    (first second : Message Player (Payload graph)) (event : graph.EventId)
+    (first second : Message Player (WitnessedPacket graph)) (event : graph.EventId)
     (firstMem : first ∈ (runtime.reactiveApplication leaks).outputs history)
     (secondMem : second ∈ (runtime.reactiveApplication leaks).outputs history)
-    (firstEvent : first.payload.event? graph = some event)
-    (secondEvent : second.payload.event? graph = some event) : first = second := by
+    (firstEvent : first.payload.call.event? graph = some event)
+    (secondEvent : second.payload.call.event? graph = some event) : first = second := by
   obtain ⟨left, leftMem, leftOutput⟩ := List.mem_filterMap.mp firstMem
   obtain ⟨right, rightMem, rightOutput⟩ := List.mem_filterMap.mp secondMem
   let address (entry : (runtime.reactiveApplication leaks).PlayerEntry) :=
-    entry.emitted.bind (fun message => message.payload.event? graph)
+    entry.emitted.bind (fun message => message.payload.call.event? graph)
   have separated : history.Pairwise (fun a b =>
       ∀ e, address a = some e → ∀ f, address b = some f → e ≠ f) :=
     List.pairwise_filterMap.mp once
@@ -205,7 +207,7 @@ theorem reactiveRecoveryLaw_optimal_response (intentions : List (Option graph.Co
 /-- Policy completion preserves initialized canonical state laws playerwise.
 The opponents and the observation-local scheduler remain arbitrary. -/
 theorem compileReactivePolicy_canonical_run (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (initial : FinDist (State graph)) (horizon : Nat)
@@ -230,7 +232,7 @@ theorem compileReactivePolicy_canonical_run (runtime : EventGraphRuntime graph)
 arbitrary opponents and scheduling. Its intention list is absent from the game
 execution, while all application state, packets, observations and recall agree. -/
 theorem compileReactivePolicy_realizes (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)

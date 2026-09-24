@@ -20,8 +20,15 @@ open Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
+theorem disclosureSubmission_normal (who : Player) (view : ReactivePlayerView graph)
+    (known : List (Message Player (WitnessedPacket graph))) (packet : Payload graph) :
+    (disclosureSubmission packet).normalizeReactive who view known =
+      disclosureSubmission packet := by
+  cases packet <;> simp [disclosureSubmission, WitnessedSubmission.normalizeReactive,
+    Submission.normalizeReactive_none, EvidenceRequest.normalizeKnown]
+
 theorem reactiveDecision_normal (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (event : graph.EventId) (choice : graph.Action event) :
@@ -37,12 +44,13 @@ theorem reactiveDecision_normal (runtime : EventGraphRuntime graph)
     | some serial =>
         have fresh := reactiveFreshSlot_spec view.application serial selected
         simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-          Submission.normalizeReactive, openingEffective, fresh]
+          WitnessedSubmission.normalizeReactive, Submission.normalizeReactive,
+          EvidenceRequest.normalizeKnown, openingEffective, fresh]
   · simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-      Submission.normalizeReactive_none]
+      disclosureSubmission_normal]
 
 private theorem prescribed_response_normal (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (policy : graph.BehavioralPolicy who)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (intentions : List (Option graph.Completion))
@@ -64,7 +72,7 @@ private theorem prescribed_response_normal (runtime : EventGraphRuntime graph)
       · simp only [FinDist.map_pure]; rfl
 
 private theorem recovery_response_normal (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (policy : graph.BehavioralPolicy who)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (intentions : List (Option graph.Completion))
@@ -84,7 +92,7 @@ private theorem recovery_response_normal (runtime : EventGraphRuntime graph)
     · simp only [FinDist.map_pure]; rfl
 
 theorem prescribedReactivePolicy_normal (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (policy : graph.BehavioralPolicy who)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
@@ -97,7 +105,7 @@ theorem prescribedReactivePolicy_normal (runtime : EventGraphRuntime graph)
   exact prescribed_response_normal runtime leaks who policy past intentions view
 
 theorem recoverReactivePolicy_normal (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (policy : graph.BehavioralPolicy who)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
@@ -110,7 +118,7 @@ theorem recoverReactivePolicy_normal (runtime : EventGraphRuntime graph)
   exact recovery_response_normal runtime leaks who policy past intentions view
 
 theorem compileReactivePolicy_normal (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (policy : graph.BehavioralPolicy who)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
@@ -124,7 +132,7 @@ theorem compileReactivePolicy_normal (runtime : EventGraphRuntime graph)
   · exact runtime.recoverReactivePolicy_normal leaks who policy past view
 
 theorem compiled_response_normal (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (policy : graph.BehavioralPolicy who)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)

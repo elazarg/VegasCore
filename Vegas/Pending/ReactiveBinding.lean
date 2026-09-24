@@ -26,7 +26,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem reactiveDecision_binding_eq (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who owner : Player) (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -43,7 +43,7 @@ theorem reactiveDecision_binding_eq (runtime : EventGraphRuntime graph)
 /-- This includes continuations in which the owner submits competing candidates,
 other players react to partial leaks, and earlier inclusions are rejected. -/
 theorem reactiveBinding_continuation_result (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId) (payload : L.Ty)
     (result : PublicationResult (L.Val payload)) (serial : Nat)
     (execution next : (runtime.reactiveApplication leaks).Execution)
@@ -70,7 +70,8 @@ theorem reactiveBinding_continuation_result (runtime : EventGraphRuntime graph)
           change state.candidates.lookup candidate ≠ .fresh
           rwa [same])).trans same
     · intro state message target same accepted
-      exact (handle_lookup_of_not_fresh runtime state target message candidate
+      exact (handle_lookup_of_not_fresh runtime state target
+        ⟨message.id, message.payload.call⟩ candidate
         (by rwa [same]) accepted).trans same
     · intro state command target same supported
       rw [(environmentStep_tables runtime state target command supported).2]
@@ -89,7 +90,7 @@ theorem reactiveBinding_continuation_result (runtime : EventGraphRuntime graph)
 deadline and handle availability are checked there, after the intervening play.
 The conclusion retains the exact semantic action and its completion history. -/
 theorem reactiveBinding_continuation_include (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -104,7 +105,7 @@ theorem reactiveBinding_continuation_include (runtime : EventGraphRuntime graph)
       (execution.respond (runtime.reactiveApplication leaks) owner
         (runtime.reactiveBinding leaks owner event payload result serial))).support)
     (pending : next.network.lookup (owner, nonce) =
-      some ⟨(owner, nonce), .commitment event (owner, .prepared serial)⟩)
+      some ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none⟩⟩)
     (ready : next.application.config.cut.Ready event)
     (timely : next.application.WithinDeadline runtime event)
     (vacant : next.application.accepted (.inr event) = none)
@@ -130,7 +131,7 @@ theorem reactiveBinding_continuation_include (runtime : EventGraphRuntime graph)
 realizes its sampled graph action at a later admissible inclusion. No restriction
 is imposed on intermediate policies or on the passive observation kernel. -/
 theorem reactiveDecision_binding_continuation_step (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -149,7 +150,7 @@ theorem reactiveDecision_binding_continuation_step (runtime : EventGraphRuntime 
             execution.application owner)))).support)
     (pending : next.network.lookup (owner, execution.network.nextSerial owner) =
       some ⟨(owner, execution.network.nextSerial owner),
-        .commitment event (owner, .prepared serial)⟩)
+        ⟨.commitment event (owner, .prepared serial), none⟩⟩)
     (ready : next.application.config.cut.Ready event)
     (timely : next.application.WithinDeadline runtime event)
     (vacant : next.application.accepted (.inr event) = none)

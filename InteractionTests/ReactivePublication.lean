@@ -17,7 +17,7 @@ private abbrev app : ReactiveApplication Bool where
   EnvironmentCommand := Unit
   LocalObservation := Bool
   PublicObservation := Bool
-  packet := id
+  packet := fun _ _ _ => id
   submit state _ _ := state
   handle ready _ := if ready then some ready else none
   environment _ _ := FinDist.pure true

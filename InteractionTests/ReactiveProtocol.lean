@@ -23,7 +23,7 @@ private abbrev app : ReactiveApplication Bool where
   EnvironmentCommand := Empty
   LocalObservation := Unit
   PublicObservation := Unit
-  packet := id
+  packet := fun _ _ _ => id
   submit state _ _ := state
   handle state _ := some state
   environment _ command := nomatch command

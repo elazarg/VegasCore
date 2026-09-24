@@ -19,7 +19,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem reactiveLatest_fresh (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (event : graph.EventId) (owner : Player)
     (view : (runtime.reactiveApplication leaks).EnvironmentView)
     (id : MessageId Player) (selected : runtime.reactiveLatest leaks event owner view =
@@ -33,7 +33,7 @@ theorem reactiveLatest_fresh (runtime : EventGraphRuntime graph)
     exact (of_decide_eq_true (List.find?_eq_some_iff_append.mp found).1).2.2
 
 theorem interactionInstruction_fresh (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (network : runtime.NetworkPolicy leaks)
     (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
     (view : (runtime.reactiveApplication leaks).EnvironmentView)
@@ -52,7 +52,7 @@ theorem interactionInstruction_fresh (runtime : EventGraphRuntime graph)
       cases FinDist.mem_support_pure.mp selected
 
 theorem interactionScheduler_atMostOnce (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (chosen : ServiceOrder graph) (networkTurns : Nat) (network : runtime.NetworkPolicy leaks) :
     (runtime.reactiveApplication leaks).AtMostOnce
       (runtime.interactionScheduler leaks chosen networkTurns network) := by
@@ -63,7 +63,7 @@ theorem interactionScheduler_atMostOnce (runtime : EventGraphRuntime graph)
   · exact runtime.interactionInstruction_fresh leaks network history view _ id selected
 
 theorem interaction_history_publishedOnce (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (chosen : ServiceOrder graph) (networkTurns : Nat) (network : runtime.NetworkPolicy leaks)
     (initial : FinDist (State graph)) (horizon : Nat)
     {state : (runtime.reactiveApplication leaks).ProtocolState}

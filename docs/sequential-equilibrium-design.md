@@ -73,8 +73,25 @@ remain open. The checked results are:
   The [Vegas instance](../Vegas/Pending/ReactiveEvidence.lean) decodes typed
   binding facts. [ReactiveDisclosure.lean](../Vegas/Pending/ReactiveDisclosure.lean)
   proves local realization of evidence-bearing compiled disclosures, including
-  guard failure. Pending verification and service correspondence remain open;
-  see the [communication design](ambient-communication.md).
+  guard failure. Service correspondence remains open; see the
+  [communication design](ambient-communication.md).
+- [OpeningEvidence.lean](../Vegas/Pending/OpeningEvidence.lean) and
+  [ReactivePacketEvidence.lean](../Vegas/Pending/ReactivePacketEvidence.lean):
+  owned or received evidence can be attached independently of the game call.
+  Certificates remain sound across arbitrary native responses, partial passive
+  observation and rejection. Observing one fixes its fact throughout the actual
+  information fiber. Issuance can accompany the binding submission itself.
+  Candidate evidence does not identify the eventual accepted game binding.
+- [DisclosureObstruction.lean](../GameTheoryExtensions/Analysis/Protocol/DisclosureObstruction.lean):
+  a reusable impossibility theorem from all-history binary continuation laws
+  and attainable opposite answers. Both abstract and native disclosure
+  counterexamples instantiate it with their checked operational laws.
+- [LastDecision.lean](../GameTheoryExtensions/Analysis/Protocol/LastDecision.lean):
+  a finite final-decision game with indifferent other players has an SE when
+  changing that player's policy leaves all decision-history reach laws fixed.
+  The proof maximizes over current choices, covers whole continuation policies,
+  and supplies one common fully mixed sequence. It constructs an equilibrium
+  for a given utility; it is not a utility-independent compiler.
 - [SequentialValidationEvidence.lean](../VegasTests/SequentialValidationEvidence.lean):
   for the source fixture's actual initial law, every legal native history
   compatible with an observed accepted opening has the disclosed private type.
@@ -90,6 +107,15 @@ remain open. The checked results are:
   for general sequential-equilibrium preservation. The witness includes an
   initial commitment correlated with a private type and uses ideal commitments,
   a fixed authorized calendar and explicit finite wire bounds.
+- [CommunicationSequentialEquilibrium.lean](../VegasTests/CommunicationSequentialEquilibrium.lean):
+  the full bounded native disclosure fixture has a sequential equilibrium for
+  either guessing objective. Alice is indifferent; Bob optimizes at every
+  decision information set, including those without certified disclosure.
+  His policy cannot affect reach to any decision site, so one common fully
+  mixed sequence retains the same Bayes beliefs and converges to the chosen
+  profile. Each equilibrium obtains payoff one at either certified bit view.
+  This is native equilibrium construction, not source compilation preservation;
+  the example's passive observation rule is empty.
 - [SequentialValidationCompletion.lean](../VegasTests/SequentialValidationCompletion.lean):
   the fixture's timeout suffix completes every graph event under arbitrary raw
   player policies, including policies outside the finite response menu. The
@@ -128,11 +154,13 @@ remain open. The checked results are:
   and [ReactiveNormalization.lean](../Vegas/Pending/ReactiveNormalization.lean):
   idempotent own-view normalization preserves the exact packet and one-step
   operational effects. The semantic menu omits unavailable replays and
-  ineffective private opening annotations. Sender raw-action recall is outside
+  ineffective private opening annotations and unavailable evidence references.
+  Sender raw-action recall is outside
   the equality; no equilibrium quotient theorem is asserted.
 - [ReactiveFiniteResponses.lean](../Vegas/Pending/ReactiveFiniteResponses.lean):
   exact finite-menu completeness for every packet constructor under explicit
-  value and handle bounds, including errors, silence and all known replays.
+  value and handle bounds, including errors, silence, owned evidence requests,
+  every known forwarding reference, and all known replays.
 - [ReactiveNormalPolicy.lean](../Vegas/Pending/ReactiveNormalPolicy.lean):
   normalization fixes the compiler's full response law, including recovery,
   at every input.
@@ -535,6 +563,25 @@ normalization theorem also does not equate raw-action recall or prove a
 whole-policy/equilibrium quotient of the raw game. Any claim relating equilibria
 of differently presented games must discharge those additional obligations.
 No source syntax flag or bound on private computation is introduced.
+
+## Proof milestones
+
+| Gate | Checked result | Remaining obligation |
+|---|---|---|
+| Capability obstruction | Generic binary-decision theorem, with abstract and actual native instances | No universal claim about runtimes lacking the stated capability |
+| Independent evidence | Issuance, forwarding, rejection persistence, and information-fiber soundness | Relate candidate facts and communication timing to the source extension |
+| Positive example | Complete SEs for both native guessing objectives, all legal information sets, one common perturbation sequence | A source-to-native preservation instance, including partial observation |
+| Service coverage | Authorized inclusion, at-most-once publication, finite-menu coverage | Usable responses after predecessor completion, pending reactions, competing submissions |
+| General compilation | Binding/disclosure step laws and original source compiler | Playerwise compiler for communication-aware policies and joint-law correspondence |
+| Sequential transfer | Generic rationality criterion and finite consistency machinery | One common translated tremble sequence, all-site incentives, original-equilibrium corollary |
+
+The disclosure counterexample's calendar gives every event a response window
+before any timeout. Its timeout suffix completes all events, but completion
+alone is insufficient for implementation: an early failed or omitted call can
+leave Bob's sole response before his dependencies settle. That calendar supports
+the impossibility witness and native equilibrium analysis. A source preservation
+instance needs a usable owner response **after** predecessor success or expiry.
+This is a service-coverage obligation; it does not require a new source opcode.
 
 ## Runtime obligations and ownership
 

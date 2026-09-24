@@ -26,19 +26,19 @@ def Payload.preparedCommitment? : Payload graph → Option Nat
   | _ => none
 
 def responseCandidateSlot (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (response : (runtime.reactiveApplication leaks).Action) : Option Nat :=
   match response.transmission with
-  | some (.submit material) => material.packet.preparedCommitment?
+  | some (.submit material) => material.call.packet.preparedCommitment?
   | _ => none
 
 def submittedCandidateSlots (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (past : List (runtime.reactiveApplication leaks).PlayerEntry) : List Nat :=
   (past.map ReactiveApplication.PlayerEntry.action).filterMap (runtime.responseCandidateSlot leaks)
 
 def CandidateRecall (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
   ∀ who serial, serial ∉ runtime.submittedCandidateSlots leaks (execution.recall who) →
     execution.application.candidates.lookup (who, .prepared serial) = .fresh
@@ -82,7 +82,7 @@ private theorem submission_candidate_other (state : State graph) (sender observe
   | opening | withhold | malformed => cases opening <;> rfl
 
 theorem submittedCandidateSlots_respond (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action) :
     runtime.submittedCandidateSlots leaks
@@ -94,7 +94,7 @@ theorem submittedCandidateSlots_respond (runtime : EventGraphRuntime graph)
   cases runtime.responseCandidateSlot leaks response <;> rfl
 
 theorem candidateRecall_respond (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
     (valid : runtime.CandidateRecall leaks execution) :
@@ -120,7 +120,7 @@ theorem candidateRecall_respond (runtime : EventGraphRuntime graph)
       | replay id => exact fresh
       | submit material =>
           apply Eq.trans (submission_candidate_other execution.application who observer serial
-            material ?_) fresh
+            material.call ?_) fresh
           by_cases same : observer = who
           · subst observer
             right
@@ -128,34 +128,36 @@ theorem candidateRecall_respond (runtime : EventGraphRuntime graph)
             intro selected
             apply absent
             apply List.mem_append_right
-            change serial ∈ material.packet.preparedCommitment?.toList
+            change serial ∈ material.call.packet.preparedCommitment?.toList
             simp [selected]
           · exact Or.inl same
 
 private theorem issued_candidate_slot (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution)
     (id : MessageId Player) (event : graph.EventId) (owner : Player) (serial : Nat)
+    (evidence : Option (OpeningFact graph))
     (issued : execution.Issued (runtime.reactiveApplication leaks)
-      ⟨id, .commitment event (owner, .prepared serial)⟩) :
+      ⟨id, ⟨.commitment event (owner, .prepared serial), evidence⟩⟩) :
     serial ∈ runtime.submittedCandidateSlots leaks (execution.recall id.1) := by
-  obtain ⟨entry, member, material, sent, _, packet⟩ := issued
+  obtain ⟨entry, member, material, sent, _, state, known, packet⟩ := issued
   apply List.mem_filterMap.mpr
   refine ⟨entry.action, List.mem_map.mpr ⟨entry, member, rfl⟩, ?_⟩
-  change material.packet = Payload.commitment event (owner, .prepared serial) at packet
-  simp only [responseCandidateSlot, sent, packet, Payload.preparedCommitment?]
+  have raw := congrArg WitnessedPacket.call packet
+  change material.call.packet = Payload.commitment event (owner, .prepared serial) at raw
+  simp only [responseCandidateSlot, sent, raw, Payload.preparedCommitment?]
 
 private theorem candidateRecall_handle (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (next : State graph)
-    (message : Message Player (Payload graph))
+    (message : Message Player (WitnessedPacket graph))
     (valid : runtime.CandidateRecall leaks execution)
     (issued : execution.Issued (runtime.reactiveApplication leaks) message)
-    (accepted : handle runtime execution.application message = some next)
+    (accepted : handle runtime execution.application ⟨message.id, message.payload.call⟩ = some next)
     (who : Player) (serial : Nat)
     (absent : serial ∉ runtime.submittedCandidateSlots leaks (execution.recall who)) :
     next.candidates.lookup (who, .prepared serial) = .fresh := by
-  rcases message with ⟨id, packet⟩
+  rcases message with ⟨id, packet, evidence⟩
   cases packet with
   | commitment event candidate =>
       obtain ⟨candidates, _, owner⟩ :=
@@ -165,7 +167,8 @@ private theorem candidateRecall_handle (runtime : EventGraphRuntime graph)
         subst candidate
         change who = id.1 at owner
         subst who
-        exact absent (issued_candidate_slot runtime leaks execution id event id.1 serial issued)
+        exact absent
+          (issued_candidate_slot runtime leaks execution id event id.1 serial evidence issued)
       rw [candidates, CommitmentCandidates.lookup_freeze_other _ _ _ different]
       exact valid who serial absent
   | opening event candidate raw | withhold event =>
@@ -174,7 +177,7 @@ private theorem candidateRecall_handle (runtime : EventGraphRuntime graph)
   | malformed raw => simp [handle] at accepted
 
 theorem candidateRecall_environment (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution next : (runtime.reactiveApplication leaks).Execution)
     (command : (runtime.reactiveApplication leaks).Command)
     (valid : runtime.CandidateRecall leaks execution)
@@ -199,9 +202,11 @@ theorem candidateRecall_environment (runtime : EventGraphRuntime graph)
       cases found : execution.network.lookup id with
       | none => exact valid who serial absent
       | some message =>
-          change (State.candidates ((handle runtime execution.application message).getD
-            execution.application)).lookup (who, .prepared serial) = _
-          cases accepted : handle runtime execution.application message with
+          change (State.candidates ((handle runtime execution.application
+            ⟨message.id, message.payload.call⟩).getD execution.application)).lookup
+              (who, .prepared serial) = _
+          cases accepted : handle runtime execution.application
+              ⟨message.id, message.payload.call⟩ with
           | none => exact valid who serial absent
           | some state =>
               exact candidateRecall_handle runtime leaks execution state message valid
@@ -214,7 +219,7 @@ theorem candidateRecall_environment (runtime : EventGraphRuntime graph)
       exact valid who serial absent
 
 theorem candidateRecall_history (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : FinDist graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
     ∀ {state} (_trace : ((runtime.reactiveApplication leaks).protocol
@@ -243,7 +248,7 @@ theorem candidateRecall_history (runtime : EventGraphRuntime graph)
 /-- The least fresh serial is bounded by the owner's response count, regardless
 of the magnitude of the identifiers it previously chose. -/
 theorem reactiveFreshSlot_le_recall (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (valid : runtime.CandidateRecall leaks execution) :
     ∃ serial, serial ≤ (execution.recall who).length ∧
@@ -270,7 +275,7 @@ theorem reactiveFreshSlot_le_recall (runtime : EventGraphRuntime graph)
 /-- A horizon of `horizon` scheduler decisions needs at most that many prepared
 serials per player. The final active response is included in this bound. -/
 theorem reactiveFreshSlot_lt_horizon (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : FinDist graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)

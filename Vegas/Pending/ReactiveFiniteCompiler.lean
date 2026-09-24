@@ -57,8 +57,17 @@ theorem resolutionPacket_allowed {owner : Player} (who : Player) (event : graph.
 
 variable [Fintype Player]
 
+omit [Fintype Player] [DecidableEq Player] in
+theorem disclosureSubmission_allowed (packet : Payload graph)
+    (known : List (Message Player (WitnessedPacket graph)))
+    (allowed : bounds.AllowsPacket packet) :
+    (bounds.AllowsPacket (disclosureSubmission packet).call.packet ∧
+      bounds.AllowsOpening (disclosureSubmission packet).call.opening) ∧
+      bounds.AllowsEvidence known (disclosureSubmission packet).evidence := by
+  cases packet <;> exact ⟨⟨allowed, trivial⟩, by first | exact allowed | trivial⟩
+
 theorem silent_available (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     (⟨none⟩ : (runtime.reactiveApplication leaks).Action) ∈
@@ -67,7 +76,7 @@ theorem silent_available (runtime : EventGraphRuntime graph)
   exact ⟨trivial, rfl⟩
 
 theorem reactiveDecision_available (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (values : bounds.CoversOutputValues)
@@ -88,7 +97,7 @@ theorem reactiveDecision_available (runtime : EventGraphRuntime graph)
       | none => simp only [reactiveDecision, node, selected, Option.map_none]
       | some serial =>
           simp only [reactiveDecision, node, selected, Option.map_some]
-          refine ⟨fresh serial selected, ?_⟩
+          refine ⟨⟨fresh serial selected, ?_⟩, trivial⟩
           change bounds.AllowsOpening
             (match (cast (congrArg EventField.Action outputEq) choice :
                 PublicationResult (L.Val payload)) with
@@ -101,11 +110,12 @@ theorem reactiveDecision_available (runtime : EventGraphRuntime graph)
       have typed := values event
       rw [outputEq] at typed
       simp only [reactiveDecision, node]
-      exact ⟨bounds.resolutionPacket_allowed who event payload binding outputEq choice
-        view.application typed handles, trivial⟩
+      exact bounds.disclosureSubmission_allowed _ _
+        (bounds.resolutionPacket_allowed who event payload binding outputEq choice
+          view.application typed handles)
 
 private theorem prescribed_response_available (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (policy : graph.BehavioralPolicy who)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (intentions : List (Option graph.Completion))
@@ -136,7 +146,7 @@ private theorem prescribed_response_available (runtime : EventGraphRuntime graph
         exact bounds.silent_available runtime leaks who past view
 
 private theorem recovery_response_available (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (policy : graph.BehavioralPolicy who)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (intentions : List (Option graph.Completion))
@@ -164,7 +174,7 @@ private theorem recovery_response_available (runtime : EventGraphRuntime graph)
       exact bounds.silent_available runtime leaks who past view
 
 theorem compiled_response_available (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (policy : graph.BehavioralPolicy who)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
@@ -194,7 +204,7 @@ theorem compiled_response_available (runtime : EventGraphRuntime graph)
 /-- Coverage holds at every legal decision, independently of how that history
 was reached. The source policy and all earlier deviators are unrestricted. -/
 theorem compiled_response_available_history (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : FinDist graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (values : bounds.CoversOutputValues) (capacity : horizon ≤ bounds.candidateCount)
@@ -222,7 +232,7 @@ theorem compiled_response_available_history (runtime : EventGraphRuntime graph)
   exact lt_of_lt_of_le small capacity
 
 theorem compiledPolicy_admissible (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : FinDist graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (values : bounds.CoversOutputValues) (capacity : horizon ≤ bounds.candidateCount)
@@ -236,7 +246,7 @@ theorem compiledPolicy_admissible (runtime : EventGraphRuntime graph)
 /-- The finite-game compiler requires domain and capacity certificates. These
 are model premises; no out-of-bounds response is substituted on a legal history. -/
 def compileFinitePolicy (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : FinDist graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (values : bounds.CoversOutputValues) (capacity : horizon ≤ bounds.candidateCount)
@@ -252,7 +262,7 @@ def compileFinitePolicy (runtime : EventGraphRuntime graph)
 from every legal finite-instance prefix, including genuinely off-path prefixes.
 This is a representation theorem, not source-game correctness or optimality. -/
 theorem compileFinitePolicy_run (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : FinDist graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (values : bounds.CoversOutputValues) (capacity : horizon ≤ bounds.candidateCount)

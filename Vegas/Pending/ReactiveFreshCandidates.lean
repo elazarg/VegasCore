@@ -21,22 +21,22 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem reactiveFreshInvariant (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) :
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
     (runtime.reactiveApplication leaks).Invariant State.FreshCandidates where
   submit state who submission fresh := by
     apply submitStep_freshCandidates
-    rw [submission.register_eq]
-    cases submission.registrationCommand who with
+    rw [submission.call.register_eq]
+    cases submission.call.registrationCommand who with
     | none => exact fresh
     | some command => exact privateStep_freshCandidates state who command fresh
   handle state message next fresh accepted :=
-    handle_freshCandidates runtime state next message fresh accepted
+    handle_freshCandidates runtime state next ⟨message.id, message.payload.call⟩ fresh accepted
   environment state command next fresh supported := by
     have tables := environmentStep_tables runtime state next command supported
     simpa only [State.FreshCandidates, State.HandleUnused, tables.1, tables.2] using fresh
 
 theorem reactive_history_fresh (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : FinDist graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     {state} (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
@@ -51,7 +51,7 @@ theorem reactive_history_fresh (runtime : EventGraphRuntime graph)
 /-- Allocation uses only the owner's actual view and cannot fail because of
 earlier submissions by that player or its opponents. -/
 theorem reactiveFreshSlot_available (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (fresh : execution.application.FreshCandidates) :
     ∃ serial, reactiveFreshSlot

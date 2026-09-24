@@ -24,14 +24,14 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 def ReactivePacketIntegrity (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
     (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
   execution.Provenance (runtime.reactiveApplication leaks) ∧
     (runtime.reactiveSubmittedEvents leaks (execution.recall who)).Nodup
 
 theorem reactiveSubmittedEvents_respond (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
     (policy : graph.BehavioralPolicy who)
     (execution : (runtime.reactiveApplication leaks).Execution)
@@ -62,11 +62,11 @@ theorem reactiveSubmittedEvents_respond (runtime : EventGraphRuntime graph)
     simpa only [ReactiveApplication.Execution.respond, sent, ↓reduceIte,
       reactiveSubmittedEvents, MessageNetwork.submit, reactiveApplication,
       List.filterMap_append, List.filterMap_cons, List.filterMap_nil, Option.bind_some,
-      addressed] using appended
+      WitnessedSubmission.emit_call, addressed] using appended
 
 /-- The playerwise hypothesis leaves every other player's policy unrestricted. -/
 theorem reactivePacketIntegrity_policy (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
     (policy : graph.BehavioralPolicy who)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
@@ -91,7 +91,7 @@ theorem reactivePacketIntegrity_policy (runtime : EventGraphRuntime graph)
     exact valid.2
 
 theorem reactivePacketIntegrity_initial (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
     (state : State graph) : runtime.ReactivePacketIntegrity leaks who
       (ReactiveApplication.Execution.initial (runtime.reactiveApplication leaks) state) :=
@@ -100,15 +100,15 @@ theorem reactivePacketIntegrity_initial (runtime : EventGraphRuntime graph)
 /-- All retained envelopes from the prescribed owner at this event equal its
 remembered output. This covers pending, included, received, and replayed copies. -/
 theorem ReactivePacketIntegrity.retained (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (valid : runtime.ReactivePacketIntegrity leaks who execution)
-    (message : Message Player (Payload graph)) (event : graph.EventId)
+    (message : Message Player (WitnessedPacket graph)) (event : graph.EventId)
     (emitted : message ∈ (runtime.reactiveApplication leaks).outputs (execution.recall who))
-    (addressed : message.payload.event? graph = some event) :
+    (addressed : message.payload.call.event? graph = some event) :
     execution.network.Satisfies (fun retained =>
-      retained.sender = who → retained.payload.event? graph = some event →
+      retained.sender = who → retained.payload.call.event? graph = some event →
         retained = message) := by
   apply valid.1.mono
   intro retained origin author atEvent
@@ -121,7 +121,7 @@ theorem ReactivePacketIntegrity.retained (runtime : EventGraphRuntime graph)
 /-- Packet integrity holds at every prefix of canonical behavioral play, for
 every scheduler and arbitrary opponent policies. -/
 theorem canonical_reactivePacketIntegrity (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
     (policy : graph.BehavioralPolicy who)
     (players : Player → (runtime.reactiveApplication leaks).Policy)

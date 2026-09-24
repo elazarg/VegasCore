@@ -31,14 +31,14 @@ inductive NetworkChoice (Player : Type) where
   | wait
 
 def NetworkChoice.command (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) :
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
     NetworkChoice Player → (runtime.reactiveApplication leaks).Command
   | .activate who => .activate who
   | .include id => .include id
   | .wait => .wait
 
 abbrev NetworkPolicy (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) :=
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :=
   List (runtime.reactiveApplication leaks).EnvironmentEntry →
     (runtime.reactiveApplication leaks).EnvironmentView → FinDist (NetworkChoice Player)
 
@@ -57,18 +57,18 @@ def interactionEpoch (chosen : ServiceOrder graph) (networkTurns : Nat) :
 /-- Selection is by event and authenticated author, excluding spent identifiers.
 Replays retain the envelope author and can affect pending order. -/
 def reactiveLatest (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (event : graph.EventId) (owner : Player)
     (view : (runtime.reactiveApplication leaks).EnvironmentView) :
       (runtime.reactiveApplication leaks).Command :=
   match view.network.pending.reverse.find? (fun message =>
-      message.sender = owner ∧ message.payload.event? graph = some event ∧
+      message.sender = owner ∧ message.payload.call.event? graph = some event ∧
         view.Unpublished (runtime.reactiveApplication leaks) message.id) with
   | none => .wait
   | some message => .include message.id
 
 def interactionInstruction (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (network : runtime.NetworkPolicy leaks)
     (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
     (view : (runtime.reactiveApplication leaks).EnvironmentView) :
@@ -86,7 +86,7 @@ def interactionInstruction (runtime : EventGraphRuntime graph)
 recovered from its own command recall, which advances once per scheduler choice,
 including activations. Player responses do not consume another service step. -/
 def interactionScheduler (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (chosen : ServiceOrder graph)
     (networkTurns : Nat) (network : runtime.NetworkPolicy leaks) :
     (runtime.reactiveApplication leaks).Scheduler :=

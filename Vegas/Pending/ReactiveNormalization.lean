@@ -57,7 +57,7 @@ theorem Submission.normalizeReactive_none (who : Player) (view : ReactivePlayerV
 variable [DecidableEq Player]
 
 theorem Submission.normalizeReactive_register (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (state : State graph) (submission : Submission graph) :
     (submission.normalizeReactive who
         ((runtime.reactiveApplication leaks).observePlayer state who)).register state who =
@@ -83,14 +83,81 @@ theorem Submission.normalizeReactive_register (runtime : EventGraphRuntime graph
   | opening event candidate raw | withhold event | malformed raw =>
       cases material <;> simp [normalizeReactive, openingEffective, register]
 
+open Classical in
+/-- Unknown certificate references have no transmitted content. Normalize only
+this unavailable request; every reference to a known packet remains a choice. -/
+def EvidenceRequest.normalizeKnown (known : List (Message Player (WitnessedPacket graph))) :
+    EvidenceRequest graph → EvidenceRequest graph
+  | .forward id => if ∃ message ∈ known, message.id = id then .forward id else .none
+  | request => request
+
+theorem EvidenceRequest.normalizeKnown_forward
+    (known : List (Message Player (WitnessedPacket graph))) (id : MessageId Player)
+    (available : ∃ message ∈ known, message.id = id) :
+    (EvidenceRequest.forward (graph := graph) id).normalizeKnown known = .forward id := by
+  simp [normalizeKnown, available]
+
+theorem EvidenceRequest.normalizeKnown_unknown
+    (known : List (Message Player (WitnessedPacket graph))) (id : MessageId Player)
+    (absent : ¬ ∃ message ∈ known, message.id = id) :
+    (EvidenceRequest.forward (graph := graph) id).normalizeKnown known = .none := by
+  simp [normalizeKnown, absent]
+
+theorem EvidenceRequest.normalizeKnown_idempotent
+    (known : List (Message Player (WitnessedPacket graph))) (request : EvidenceRequest graph) :
+    (request.normalizeKnown known).normalizeKnown known = request.normalizeKnown known := by
+  classical
+  cases request with
+  | none | owned => rfl
+  | forward id =>
+      by_cases available : ∃ message ∈ known, message.id = id <;>
+        simp [normalizeKnown, available]
+
+def WitnessedSubmission.normalizeReactive (who : Player) (view : ReactivePlayerView graph)
+    (known : List (Message Player (WitnessedPacket graph)))
+    (submission : WitnessedSubmission graph) : WitnessedSubmission graph :=
+  ⟨submission.call.normalizeReactive who view, submission.evidence.normalizeKnown known⟩
+
+theorem WitnessedSubmission.normalizeReactive_idempotent
+    (who : Player) (view : ReactivePlayerView graph)
+    (known : List (Message Player (WitnessedPacket graph)))
+    (submission : WitnessedSubmission graph) :
+    (submission.normalizeReactive who view known).normalizeReactive who view known =
+      submission.normalizeReactive who view known := by
+  simp only [normalizeReactive, Submission.normalizeReactive_idempotent,
+    EvidenceRequest.normalizeKnown_idempotent]
+
+theorem WitnessedSubmission.normalizeReactive_emit
+    (state : State graph) (who : Player) (view : ReactivePlayerView graph)
+    (known : List (Message Player (WitnessedPacket graph)))
+    (submission : WitnessedSubmission graph) :
+    (submission.normalizeReactive who view known).emit state who known =
+      submission.emit state who known := by
+  classical
+  rcases submission with ⟨call, request⟩
+  cases request with
+  | none => rfl
+  | owned fact => rfl
+  | forward id =>
+      by_cases available : ∃ message ∈ known, message.id = id
+      · simp [normalizeReactive, EvidenceRequest.normalizeKnown, available, emit,
+          Submission.normalizeReactive_packet]
+      · have absent : known.find? (fun message => message.id = id) = none := by
+          apply List.find?_eq_none.mpr
+          intro message member found
+          exact available ⟨message, member, of_decide_eq_true found⟩
+        simp [normalizeReactive, EvidenceRequest.normalizeKnown, available, emit, absent,
+          Submission.normalizeReactive_packet]
+
 def reactiveNormalization (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) :
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
     (runtime.reactiveApplication leaks).SubmissionNormalization where
-  normalize := Submission.normalizeReactive
-  idempotent := Submission.normalizeReactive_idempotent
-  packet := Submission.normalizeReactive_packet
-  submit state who submission := by
+  normalize := WitnessedSubmission.normalizeReactive
+  idempotent := WitnessedSubmission.normalizeReactive_idempotent
+  packet := WitnessedSubmission.normalizeReactive_emit
+  submit state who known submission := by
     change submitStep _ who _ = submitStep _ who _
+    dsimp only [WitnessedSubmission.normalizeReactive]
     rw [Submission.normalizeReactive_register, Submission.normalizeReactive_packet]
 
 end Vegas.EventGraphRuntime

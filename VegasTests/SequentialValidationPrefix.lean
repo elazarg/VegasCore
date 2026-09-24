@@ -52,7 +52,7 @@ theorem native_include_law (execution : nativeApp.Execution) (id : MessageId Boo
 def nativeWindow (execution : nativeApp.Execution) (event : nativeGraph.EventId)
     (who : Bool) (submission : Submission nativeGraph) : nativeApp.Execution :=
   nativeInclude ((nativeActivate (nativeGrant execution event) who).respond nativeApp who
-    ⟨some (.submit submission)⟩) (who, execution.network.nextSerial who)
+    ⟨some (.submit ⟨submission, .none⟩)⟩) (who, execution.network.nextSerial who)
 
 theorem native_window_application (execution : nativeApp.Execution)
     (event : nativeGraph.EventId) (who : Bool) (submission : Submission nativeGraph)
@@ -95,7 +95,7 @@ theorem native_window_ledger (execution : nativeApp.Execution)
     (empty : execution.network.pending = []) :
     (nativeWindow execution event who submission).network.ledger =
       execution.network.ledger ++
-        [⟨(who, execution.network.nextSerial who), submission.packet⟩] := by
+        [⟨(who, execution.network.nextSerial who), ⟨submission.packet, none⟩⟩] := by
   simp only [nativeWindow, nativeInclude, nativeActivate, nativeGrant, nativeRecord,
     ReactiveApplication.Execution.respond, MessageNetwork.submit,
     ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
@@ -122,7 +122,7 @@ theorem native_window_length (execution : nativeApp.Execution)
     (nativeWindow execution event who submission).environmentRecall.length =
       execution.environmentRecall.length + 3 := by
   change (((nativeActivate (nativeGrant execution event) who).respond nativeApp who
-    ⟨some (.submit submission)⟩).environmentRecall ++ [_]).length = _
+    ⟨some (.submit ⟨submission, .none⟩)⟩).environmentRecall ++ [_]).length = _
   rw [nativeApp.respond_environmentRecall]
   simp [nativeActivate, nativeGrant, nativeRecord]
 
@@ -245,8 +245,8 @@ theorem native_bob_application (bit : Bool) :
   rw [native_third_application]
 
 theorem native_bob_ledger (bit : Bool) : (nativeBobExecution bit).network.ledger =
-    [⟨(false, 0), dummySubmission.packet⟩, ⟨(false, 1), dummyOpening.packet⟩,
-      ⟨(false, 2), (secretOpening bit).packet⟩] := by
+    [⟨(false, 0), ⟨dummySubmission.packet, none⟩⟩, ⟨(false, 1), ⟨dummyOpening.packet, none⟩⟩,
+      ⟨(false, 2), ⟨(secretOpening bit).packet, none⟩⟩] := by
   change (nativeThird bit).network.ledger = _
   rw [nativeThird, native_window_ledger _ _ _ _ (native_second_pending bit), native_second_serial]
   rw [nativeSecond, native_window_ledger _ _ _ _ (native_first_pending bit), native_first_serial]

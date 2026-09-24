@@ -229,7 +229,9 @@ flowchart LR
     C --> E[Public packet and success receipt]
     E --> F[Binding certificate]
     B -. Partial eavesdropping .-> G[Private raw observation]
-    G -. Independent verification remains open .-> F
+    G --> H[Verify carried opening evidence]
+    H --> I[Candidate certificate]
+    I -. Accepted association .-> F
 ```
 
 The generic receipt interface proves that every decoded fact remains true at
@@ -255,7 +257,10 @@ compiler and service; it supplies no missing reactive correctness edge.
 | Compiled disclosure with arbitrary guarded result | [ReactiveDisclosure](../Vegas/Pending/ReactiveDisclosure.lean) |
 | Source-name correspondence under store agreement | [EventGraphEvidence](../Vegas/Compile/EventGraphEvidence.lean) |
 | Actual rejected-opening compiler and receipt instance | [CommunicationNative](../VegasTests/CommunicationNative.lean) |
-| Indistinguishable genuine and false pending opening claims | [CommunicationPending](../VegasTests/CommunicationPending.lean) |
+| Transferable opening evidence, separate from the call | [OpeningEvidence](../Vegas/Pending/OpeningEvidence.lean) |
+| Evidence truth at every compatible native history | [ReactivePacketEvidence](../Interaction/ReactivePacketEvidence.lean) and its [Vegas instance](../Vegas/Pending/ReactivePacketEvidence.lean) |
+| Same-response issuance, partial observation, forwarding, rejection | [ReactiveWitnessedEvidence](../VegasTests/ReactiveWitnessedEvidence.lean) |
+| Indistinguishable genuine and false unauthenticated pending claims | [CommunicationPending](../VegasTests/CommunicationPending.lean) |
 
 ### Pending observations and service design
 
@@ -267,26 +272,36 @@ receipt prove that a packet contains no independently verifiable evidence.
 An otherwise valid opening may fail because of its address, author, timing, or
 application dependencies.
 
-The current runtime exposes each player's own candidate meanings and uses an
-internal candidate-value check during handling. It does not expose a separately
-verifiable opening witness to receivers. The checked pending-message experiment
-makes this distinction concrete. Alice transmits the same claim to open `true`
-under either a `true` or a `false` immutable binding. Bob's partial-leak activation
-exposes that packet, but gives him identical observations and own-action recall
-in both cases. `no_view_verifier` proves that no function of this input can accept
-the genuine case and reject the false claim. This concerns authentication in
-the present runtime interface; it is not a new equilibrium impossibility theorem.
+The native packet contains an application call and optional ideal opening
+evidence. A submission can request evidence for an owned candidate, copy evidence
+from a previously observed packet, or omit evidence. Issuance occurs after the
+submission fixes its candidate, within the same response. There is no additional
+preparation turn. The emitted certificate stays fixed across passive observation,
+forwarding, replay, inclusion, and rejection. False claims remain legal packets;
+an unavailable certificate request simply produces no evidence.
 
-A backend supporting verification before inclusion needs that capability
-explicitly. Exposing the internal value-checking
-function as a public observation is not the intended implementation: it would
-give receivers a way to test candidate plaintexts without possessing an opening.
+An opening certificate states the value of a **candidate**, including one still
+pending. It does not establish that this candidate won a source binding. A
+successful binding association supplies that separate fact. Forwarding a
+certificate does not authenticate the forwarder's application call as the
+candidate owner's call. The soundness and information-fiber theorems quantify
+over arbitrary native play and partial passive-observation rules.
+
+The [pending-message experiment](../VegasTests/CommunicationPending.lean)
+compares **unauthenticated** claims: Alice sends the same raw claim to open
+`true`, with no certificate, under either a `true` or a `false` binding. Bob has
+identical observations in both cases. Its `no_view_verifier` theorem concerns
+these bare claims, not the separately carried evidence. The certificate tests
+show that certified disclosure is distinguishable and remains usable when the
+attached application call is rejected.
+
+The internal candidate-value checker is not a public observation: exposing it
+would let receivers test plaintext guesses without possessing an opening.
 [`plaintext_checker_reveals_bit`](../InteractionTests/CommitmentCandidates.lean)
-checks this problem for a Boolean binding: asking the internal checker about
-`true` returns the hidden bit itself.
-The appropriate ideal interface distinguishes possession of an opening witness
-from making a bare value claim. Its cryptographic realization and computational
-equilibrium interpretation remain future work, as described in
+checks this problem for Boolean bindings. Evidence issuance instead uses only
+the sender's owned candidate meanings or evidence already possessed in known
+packets. Its cryptographic realization and computational equilibrium
+interpretation remain future work, as described in
 [cryptographic runtime capabilities](cryptographic-runtime-future-work.md).
 
 The service design must consequently retain these distinctions:
@@ -530,6 +545,43 @@ currently accepts the original source behavioral policy. A sequential
 assessment of the communication extension has additional decisions and can
 condition game choices on received messages. Its compiler must translate that
 behavior; the existing compiler's type does not supply this translation.
+
+### Source meaning of auxiliary commitments
+
+Native players can create a candidate in a call that is rejected or loses to
+another candidate, then disclose its certificate or reuse the candidate later.
+The named-binding source evidence interface has no fact for such a candidate
+before association with a game commitment. Treating that evidence as a bare
+claim would discard its verification guarantee; treating it as a named source
+binding would assert an association that has not happened.
+
+The direct operational proof therefore needs either an independently specified
+ambient ideal-commitment capability or a theorem eliminating these auxiliary
+commitments. An ambient capability can use owner-scoped labels and immutable
+values, with creation bundled into communication and association performed only
+when the game accepts the binding. This belongs to the analysis environment,
+not the program's syntax. Reusing the existing ideal commitment machinery is
+the implementation candidate; the correspondence is not proved. This gap in
+exact capability simulation is not itself a proof that every possible SE
+translator requires the richer environment.
+
+### Usable response opportunities
+
+The native disclosure fixture has complete sequential equilibria, but its
+calendar is insufficient as a source implementation: all owner responses occur
+before timeout settlement. An earlier omission can leave a dependent owner
+with no response after its event becomes ready. Termination alone does not
+establish opportunity coverage.
+
+The operational proof must provide timely owner responses after predecessor
+success **or failure**, under arbitrary earlier behavior. The existing recurring
+epoch service is the first candidate. Its clock and activation laws must show
+that a newly ready event survives until its next reserved response. Competing
+submissions, partial pending observations, and publication of rejected side
+traffic remain separate correspondence obligations. A schedule that advances
+time after completing a predecessor must account for the dependent deadline,
+which begins at that completion; padding with waits cannot silently erase elapsed
+time.
 
 ### Equilibrium correspondence
 

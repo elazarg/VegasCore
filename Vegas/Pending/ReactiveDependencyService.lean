@@ -22,17 +22,18 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-def dependencyCondition (view : PublicView graph) (message : Message Player (Payload graph)) :
-    Prop := view.DependenciesCompleted message.payload
+def dependencyCondition (view : PublicView graph)
+    (message : Message Player (WitnessedPacket graph)) : Prop :=
+  view.DependenciesCompleted message.payload.call
 
 def dependencyMonitor (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
     (runtime.reactiveApplication leaks).Scheduler :=
   (runtime.reactiveApplication leaks).authorizedScheduler dependencyCondition scheduler
 
 theorem dependencyMonitor_authorized (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : FinDist (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
     runtime.DependencyAuthorized leaks initial horizon
@@ -42,17 +43,17 @@ theorem dependencyMonitor_authorized (runtime : EventGraphRuntime graph)
 
 /-- This predicate ignores hidden candidate values and raw opening contents. -/
 def eventProposal (event : graph.EventId) (owner : Player)
-    (message : Message Player (Payload graph)) : Bool :=
-  decide (message.sender = owner ∧ message.payload.event? graph = some event)
+    (message : Message Player (WitnessedPacket graph)) : Bool :=
+  decide (message.sender = owner ∧ message.payload.call.event? graph = some event)
 
 def dependencyUniformScheduler (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (calendar : Nat → (runtime.reactiveApplication leaks).UniformInstruction) :
     (runtime.reactiveApplication leaks).Scheduler :=
   (runtime.reactiveApplication leaks).uniformScheduler dependencyCondition calendar
 
 theorem dependencyUniformScheduler_authorized (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : FinDist (State graph)) (horizon : Nat)
     (calendar : Nat → (runtime.reactiveApplication leaks).UniformInstruction) :
     runtime.DependencyAuthorized leaks initial horizon
@@ -61,7 +62,7 @@ theorem dependencyUniformScheduler_authorized (runtime : EventGraphRuntime graph
     ReactivePlayerView.publicView (fun _ _ => rfl) dependencyCondition initial horizon calendar
 
 theorem dependencyUniformScheduler_atMostOnce (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (calendar : Nat → (runtime.reactiveApplication leaks).UniformInstruction) :
     (runtime.reactiveApplication leaks).AtMostOnce
       (runtime.dependencyUniformScheduler leaks calendar) :=
@@ -70,12 +71,12 @@ theorem dependencyUniformScheduler_atMostOnce (runtime : EventGraphRuntime graph
 /-- The public verifier admits exactly the semantic dependency condition for
 every actual pending envelope, at arbitrary initialized legal prefixes. -/
 theorem dependencyPermission_iff (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : FinDist (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
-      (some control)) (message : Message Player (Payload graph))
+      (some control)) (message : Message Player (WitnessedPacket graph))
     (pending : message ∈ control.execution.network.pending) :
     (runtime.reactiveApplication leaks).SubmissionPermitted dependencyCondition
         control.execution.environmentRecall message ↔

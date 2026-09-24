@@ -43,11 +43,11 @@ theorem reactiveFreshSlot_spec (view : ReactivePlayerView graph) (serial : Nat)
   · contradiction
 
 def reactiveAlreadySubmitted (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
     (event : graph.EventId) : Bool :=
   history.any fun entry => entry.emitted.any (fun message =>
-    message.payload.event? graph = some event)
+    message.payload.call.event? graph = some event)
 
 def reactiveResolutionPacket {owner : Player} (who : Player) (event : graph.EventId)
     (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
@@ -63,8 +63,15 @@ def reactiveResolutionPacket {owner : Player} (who : Player) (event : graph.Even
     | some .failure | none => .withhold event
   else .withhold event
 
+/-- Request the owned opening witness carried by a disclosure. Withholding
+supplies no evidence; a false opening claim still fails certificate issuance. -/
+def disclosureSubmission (packet : Payload graph) : WitnessedSubmission graph :=
+  ⟨⟨packet, none⟩, match packet with
+    | .opening _ candidate raw => .owned ⟨candidate, raw⟩
+    | .commitment .. | .withhold .. | .malformed .. => .none⟩
+
 def reactiveDecision (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId)
     (action : graph.Action event) (view : ReactivePlayerView graph) :
     (runtime.reactiveApplication leaks).Action where
@@ -72,21 +79,21 @@ def reactiveDecision (runtime : EventGraphRuntime graph)
     | .sample .. => none
     | .bind _owner payload outputEq _codeEq =>
         (reactiveFreshSlot view).map fun serial => .submit
-          ⟨.commitment event (who, .prepared serial),
+          ⟨⟨.commitment event (who, .prepared serial),
             match (cast (congrArg EventField.Action outputEq) action :
                 PublicationResult (L.Val payload)) with
             | .failure => none
-            | .success value => some ⟨payload, value⟩⟩
+            | .success value => some ⟨payload, value⟩⟩, .none⟩
     | .resolve _owner payload binding _checks outputEq _codeEq =>
-        some (.submit ⟨reactiveResolutionPacket who event payload binding
-          outputEq action view, none⟩)
+        some (.submit (disclosureSubmission (reactiveResolutionPacket who event payload binding
+          outputEq action view)))
 
 open Classical in
 /-- Binding recall uses the value that actually took effect. A failed
 disclosure can retain its original intention only when the corresponding
 response generated an accepted packet. A mismatched internal intention is insufficient. -/
 def reactiveOriginal (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) (who : Player)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
     (intentions : List (Option graph.Completion))
     (receipts : List (MessageId Player × Bool)) (completion : graph.Completion) :
@@ -98,7 +105,7 @@ def reactiveOriginal (runtime : EventGraphRuntime graph)
         let remembered ← intention
         let message ← entry.emitted
         if remembered.event = completion.event ∧
-            message.payload.event? graph = some completion.event ∧
+            message.payload.call.event? graph = some completion.event ∧
             (message.id, true) ∈ receipts ∧
             entry.action = runtime.reactiveDecision leaks who remembered.event
               remembered.action entry.beforeView.application then some remembered
@@ -107,7 +114,7 @@ def reactiveOriginal (runtime : EventGraphRuntime graph)
 /-- One ready owned event takes one activation, with no staging instructions.
 On consistent own histories this policy sends at most one packet per event. -/
 def prescribedReactiveResponse (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
     (policy : graph.BehavioralPolicy who)
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -136,7 +143,7 @@ def prescribedReactiveResponse (runtime : EventGraphRuntime graph)
 
 /-- The compiler's source intentions are internal state, not game actions. -/
 def prescribedReactiveImplementation (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who) :
     (runtime.reactiveApplication leaks).Implementation (List (Option graph.Completion)) where
   initial := FinDist.pure []
@@ -145,13 +152,13 @@ def prescribedReactiveImplementation (runtime : EventGraphRuntime graph)
       fun response => (response.1, intentions ++ [response.2])
 
 def prescribedReactivePolicy (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who) :
     (runtime.reactiveApplication leaks).Policy :=
   (runtime.prescribedReactiveImplementation leaks who policy).policy
 
 theorem prescribedReactivePolicy_apply (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who)
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
@@ -179,7 +186,7 @@ def reactiveRecoveryLaw (intentions : List (Option graph.Completion))
 candidate while the event is ready; it cannot erase old packets, change a
 submitted meaning, or extend a deadline. -/
 def recoverReactiveResponse (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who)
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
     (intentions : List (Option graph.Completion))
@@ -206,7 +213,7 @@ def recoverReactiveResponse (runtime : EventGraphRuntime graph)
       else FinDist.pure (⟨none⟩, none)
 
 def recoverReactiveImplementation (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who) :
     (runtime.reactiveApplication leaks).Implementation (List (Option graph.Completion)) where
   initial := FinDist.pure []
@@ -215,13 +222,13 @@ def recoverReactiveImplementation (runtime : EventGraphRuntime graph)
       fun response => (response.1, intentions ++ [response.2])
 
 def recoverReactivePolicy (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who) :
     (runtime.reactiveApplication leaks).Policy :=
   (runtime.recoverReactiveImplementation leaks who policy).policy
 
 theorem recoverReactivePolicy_apply (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who)
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
@@ -236,7 +243,7 @@ theorem recoverReactivePolicy_apply (runtime : EventGraphRuntime graph)
 /-- The compiler completes prescribed play at histories containing the owner's
 own deviations. Recovery optimality is a separate continuation obligation. -/
 def compileReactivePolicy (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who) :
     (runtime.reactiveApplication leaks).Policy :=
   (runtime.prescribedReactivePolicy leaks who policy).recover

@@ -33,15 +33,17 @@ def Payload.bindingEvidence : Payload graph → List (EventGraph.CommitmentEvide
   | .commitment .. | .withhold .. | .malformed .. => []
 
 theorem reactiveEvidenceInvariant (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (fact : EventGraph.CommitmentEvidence graph) :
     (runtime.reactiveApplication leaks).Invariant (fun state => fact.Holds state.config.store) where
   submit state who material valid := by
-    change fact.Holds (submitStep (material.register state who) who material.packet).config.store
-    rw [submitStep_config, (material.register_facts who state).1]
+    change fact.Holds (submitStep (material.call.register state who) who
+      material.call.packet).config.store
+    rw [submitStep_config, (material.call.register_facts who state).1]
     exact valid
   handle state message next valid accepted :=
-    fact.holds_preserved _ _ (handle_store_of_some runtime state next message accepted) valid
+    fact.holds_preserved _ _ (handle_store_of_some runtime state next ⟨message.id,
+      message.payload.call⟩ accepted) valid
   environment state command next valid reached :=
     fact.holds_preserved _ _
       (environmentStep_store_of_some runtime state next command reached) valid
@@ -87,12 +89,13 @@ theorem handle_bindingEvidence (runtime : EventGraphRuntime graph)
                 cases accepted
 
 def receiptEvidence (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) :
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
     (runtime.reactiveApplication leaks).ReceiptEvidence where
   Fact := EventGraph.CommitmentEvidence graph
   valid state fact := fact.Holds state.config.store
-  decode := Payload.bindingEvidence
+  decode packet := packet.call.bindingEvidence
   persists := runtime.reactiveEvidenceInvariant leaks
-  checked state message next := handle_bindingEvidence runtime state next message
+  checked state message next :=
+    handle_bindingEvidence runtime state next ⟨message.id, message.payload.call⟩
 
 end Vegas.EventGraphRuntime

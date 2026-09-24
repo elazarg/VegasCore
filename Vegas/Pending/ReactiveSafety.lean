@@ -20,7 +20,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem reactive_respond_candidate_fixed (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (action : (runtime.reactiveApplication leaks).Action) (candidate : Handle graph)
     (fixed : execution.application.candidates.lookup candidate ≠ .fresh) :
@@ -34,17 +34,17 @@ theorem reactive_respond_candidate_fixed (runtime : EventGraphRuntime graph)
       cases transmission with
       | replay id => rfl
       | submit submission =>
-          have registered : (submission.register execution.application who).candidates.lookup
+          have registered : (submission.call.register execution.application who).candidates.lookup
               candidate = execution.application.candidates.lookup candidate := by
-            rw [submission.register_eq]
-            cases submission.registrationCommand who with
+            rw [submission.call.register_eq]
+            cases submission.call.registrationCommand who with
             | none => rfl
             | some command => exact privateStep_lookup_of_not_fresh _ who command candidate fixed
-          exact (submitStep_lookup_of_not_fresh _ who submission.packet candidate
+          exact (submitStep_lookup_of_not_fresh _ who submission.call.packet candidate
             (by rwa [registered])).trans registered
 
 theorem reactive_include_candidate_fixed (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (id : MessageId Player)
     (candidate : Handle graph)
     (fixed : execution.application.candidates.lookup candidate ≠ .fresh) :
@@ -56,15 +56,18 @@ theorem reactive_include_candidate_fixed (runtime : EventGraphRuntime graph)
   | none => rfl
   | some envelope =>
       simp only
-      change (State.candidates ((handle runtime execution.application envelope).getD
+      change (State.candidates ((handle runtime execution.application
+        ⟨envelope.id, envelope.payload.call⟩).getD
         execution.application)).lookup candidate = _
-      cases accepted : handle runtime execution.application envelope with
+      cases accepted : handle runtime execution.application
+          ⟨envelope.id, envelope.payload.call⟩ with
       | none => rfl
       | some next =>
-          exact handle_lookup_of_not_fresh runtime _ next envelope candidate fixed accepted
+          exact handle_lookup_of_not_fresh runtime _ next
+            ⟨envelope.id, envelope.payload.call⟩ candidate fixed accepted
 
 theorem reactive_environment_candidate_fixed (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution next : (runtime.reactiveApplication leaks).Execution)
     (command : (runtime.reactiveApplication leaks).Command) (candidate : Handle graph)
     (fixed : execution.application.candidates.lookup candidate ≠ .fresh)
@@ -93,7 +96,7 @@ theorem reactive_environment_candidate_fixed (runtime : EventGraphRuntime graph)
 /-- The preservation law holds for each supported canonical transition from
 any continuation, including a player move or an adaptive scheduler choice. -/
 theorem reactive_transition_candidate_fixed (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : FinDist (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (before : (runtime.reactiveApplication leaks).Control)

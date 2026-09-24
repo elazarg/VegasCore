@@ -46,13 +46,13 @@ theorem native_bob_observed (bit : Bool) : nativeRuntime.openingObserved nativeL
     (false, .initial secretInput) ⟨.bool, bit⟩ := by
   have observed (execution : nativeApp.Execution)
       (ledger : execution.network.ledger =
-        [⟨(false, 0), dummySubmission.packet⟩, ⟨(false, 1), dummyOpening.packet⟩,
-          ⟨(false, 2), (secretOpening bit).packet⟩])
+        [⟨(false, 0), ⟨dummySubmission.packet, none⟩⟩, ⟨(false, 1), ⟨dummyOpening.packet, none⟩⟩,
+          ⟨(false, 2), ⟨(secretOpening bit).packet, none⟩⟩])
       (receipts : execution.receipts =
         [((false, 0), true), ((false, 1), true), ((false, 2), true)]) :
       nativeRuntime.openingObserved nativeLeaks (execution.observe nativeApp true)
         (false, .initial secretInput) ⟨.bool, bit⟩ := by
-    refine ⟨secretEvent, (false, 2), ?_⟩
+    refine ⟨secretEvent, (false, 2), none, ?_⟩
     change _ ∈ execution.network.ledger.zip execution.receipts
     rw [ledger, receipts]
     exact List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_singleton_self _))
@@ -104,7 +104,7 @@ theorem native_bob_type (bit : Bool)
 
 theorem native_no_bob_pending (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (empty : control.execution.recall true = [])
-    (message : Message Bool (Payload nativeGraph))
+    (message : Message Bool (WitnessedPacket nativeGraph))
     (pending : message ∈ control.execution.network.pending) : message.sender ≠ true := by
   have valid := nativeApp.history_provenance nativeInitialLaw 56 nativeScheduler
     (nativeMenu.toRawTrace nativeInitialLaw 56 nativeScheduler trace)

@@ -36,7 +36,7 @@ def nativeFinalCommand (execution : nativeApp.Execution) (action : nativeApp.Act
     nativeApp.Command :=
   match action.transmission with
   | some (.submit submission) =>
-      if submission.packet.event? nativeGraph = some guessEvent then
+      if submission.call.packet.event? nativeGraph = some guessEvent then
         .include (true, execution.network.nextSerial true) else .wait
   | _ => .wait
 
@@ -75,11 +75,13 @@ theorem native_bob_selection (bit : Bool) (control : nativeApp.Control)
         execution.environmentRecall (eventProposal guessEvent true))) execution.network.pending) = _
     rw [noOld]
     simp [MessageNetwork.chooseUniform]
-  have submitted (submission : Submission nativeGraph) :
+  have submitted (submission : WitnessedSubmission nativeGraph) :
       nativeApp.submitsEligible (nativeApp.authorizedEligibility dependencyCondition
         execution.environmentRecall (eventProposal guessEvent true)) execution true
         ⟨some (.submit submission)⟩ =
-          decide (submission.packet.event? nativeGraph = some guessEvent) := by
+          decide (submission.call.packet.event? nativeGraph = some guessEvent) := by
+    let packet := submission.emit (nativeApp.submit execution.application true submission)
+      true (execution.network.known true)
     have unpublished := serials.next_unpublished true
     have absent : (execution.network.ledger.any fun prior =>
         decide (prior.id = (true, execution.network.nextSerial true))) = false := by
@@ -89,18 +91,18 @@ theorem native_bob_selection (bit : Bool) (control : nativeApp.Control)
       exact unpublished (List.mem_map.mpr ⟨message, member, of_decide_eq_true same⟩)
     have permitted := nativeApp.submissionPermitted_fresh_history ReactivePlayerView.publicView
       (fun _ _ => rfl) dependencyCondition nativeInitialLaw 56 nativeScheduler control rawTrace
-      true active submission.packet
+      true active packet
     simp only [ReactiveApplication.submitsEligible, MessageNetwork.submit,
       MessageNetwork.unpublished, ReactiveApplication.authorizedEligibility]
     rw [absent]
     simp only [Bool.not_false, Bool.and_true, eventProposal, Message.sender, true_and]
-    change (decide (submission.packet.event? nativeGraph = some guessEvent) &&
+    change (decide (submission.call.packet.event? nativeGraph = some guessEvent) &&
       decide (nativeApp.SubmissionPermitted dependencyCondition execution.environmentRecall
-        ⟨(true, execution.network.nextSerial true), submission.packet⟩)) =
-          decide (submission.packet.event? nativeGraph = some guessEvent)
-    by_cases address : submission.packet.event? nativeGraph = some guessEvent
+        ⟨(true, execution.network.nextSerial true), packet⟩)) =
+          decide (submission.call.packet.event? nativeGraph = some guessEvent)
+    by_cases address : submission.call.packet.event? nativeGraph = some guessEvent
     · have allowed : dependencyCondition (nativeApp.observePublic execution.application)
-          ⟨(true, execution.network.nextSerial true), submission.packet⟩ := by
+          ⟨(true, execution.network.nextSerial true), packet⟩ := by
         intro target same predecessor member
         have identified : guessEvent = target := Option.some.inj (address.symm.trans same)
         subst target
@@ -124,7 +126,7 @@ theorem native_bob_selection (bit : Bool) (control : nativeApp.Control)
           ↓reduceIte, FinDist.map_pure, Option.elim_none, nativeFinalCommand]
       | submit submission =>
           rw [submitted]
-          by_cases address : submission.packet.event? nativeGraph = some guessEvent <;>
+          by_cases address : submission.call.packet.event? nativeGraph = some guessEvent <;>
             simp only [nativeFinalCommand, address, decide_true, decide_false, ↓reduceIte,
               Bool.false_eq_true, FinDist.map_pure, Option.elim_some, Option.elim_none]
 

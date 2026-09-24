@@ -36,7 +36,7 @@ private abbrev graph : EventGraph Bool simpleExpr where
 private def runtime : EventGraphRuntime graph where
   deadline _ := 2
 
-private def leaks : MessageNetwork.ObservationRule Bool (Payload graph) :=
+private def leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket graph) :=
   fun _ _ => FinDist.pure ∅
 
 private abbrev app := runtime.reactiveApplication leaks
@@ -54,45 +54,46 @@ private abbrev menu := bounds.menu runtime leaks
 /-- Malformed traffic remains a choice, even at an off-path information state. -/
 theorem malformed_available (who : Bool) (past : List app.PlayerEntry)
     (view : app.PlayerView) (bit : Bool) :
-    (⟨some (.submit ⟨.malformed ⟨.bool, bit⟩, none⟩)⟩ : app.Action) ∈
+    (⟨some (.submit ⟨⟨.malformed ⟨.bool, bit⟩, none⟩, .none⟩)⟩ : app.Action) ∈
       menu.actions who past view := by
   classical
   rw [MessageBounds.menu_mem]
-  refine ⟨⟨?_, trivial⟩, ?_⟩
+  refine ⟨⟨⟨?_, trivial⟩, trivial⟩, ?_⟩
   · cases bit <;> simp [MessageBounds.AllowsPacket, bounds]
-  · change (⟨some (.submit
-      ((⟨.malformed ⟨.bool, bit⟩, none⟩ : Submission graph).normalizeReactive who
-        view.application))⟩ : app.Action) = _
-    rw [Submission.normalizeReactive_none]
+  · simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+      WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
+      EvidenceRequest.normalizeKnown]
+
 
 /-- Neither the wrong method nor the foreign handle nor the wrong type erases
 a bounded packet from the response menu. -/
 theorem invalid_opening_available (past : List app.PlayerEntry) (view : app.PlayerView) :
-    (⟨some (.submit ⟨.opening 0 (true, .prepared 1) ⟨.int, 1⟩, none⟩)⟩ : app.Action) ∈
+    (⟨some (.submit ⟨⟨.opening 0 (true, .prepared 1) ⟨.int, 1⟩, none⟩, .none⟩)⟩ : app.Action) ∈
       menu.actions false past view := by
   classical
   rw [MessageBounds.menu_mem]
-  refine ⟨⟨?_, trivial⟩, ?_⟩
+  refine ⟨⟨⟨?_, trivial⟩, trivial⟩, ?_⟩
   · simp [MessageBounds.AllowsPacket, MessageBounds.AllowsHandle, bounds]
-  · change (⟨some (.submit
-      ((⟨.opening 0 (true, .prepared 1) ⟨.int, 1⟩, none⟩ : Submission graph).normalizeReactive
-        false view.application))⟩ : app.Action) = _
-    rw [Submission.normalizeReactive_none]
+  · simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+      WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
+      EvidenceRequest.normalizeKnown]
+
 
 /-- An arbitrary private annotation on a malformed packet has no semantic
 effect. Its representation does not need to fit the public value alphabet. -/
 theorem irrelevant_material_erased (raw : Raw simpleExpr) (who : Bool)
     (past : List app.PlayerEntry) (view : app.PlayerView) :
     (runtime.reactiveNormalization leaks).action who past view
-        ⟨some (.submit ⟨.malformed ⟨.bool, true⟩, some raw⟩)⟩ =
-      ⟨some (.submit ⟨.malformed ⟨.bool, true⟩, none⟩)⟩ := by
+        ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, some raw⟩, .none⟩)⟩ =
+      ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩)⟩ := by
   simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-    Submission.normalizeReactive, openingEffective]
+    WitnessedSubmission.normalizeReactive, Submission.normalizeReactive,
+    EvidenceRequest.normalizeKnown, openingEffective]
 
 theorem arbitrary_irrelevant_material_admitted (raw : Raw simpleExpr) (who : Bool)
     (past : List app.PlayerEntry) (view : app.PlayerView) :
     (runtime.reactiveNormalization leaks).action who past view
-        ⟨some (.submit ⟨.malformed ⟨.bool, true⟩, some raw⟩)⟩ ∈
+        ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, some raw⟩, .none⟩)⟩ ∈
       menu.actions who past view := by
   rw [irrelevant_material_erased]
   exact malformed_available who past view true
@@ -112,15 +113,14 @@ theorem wrong_type_meaning_retained :
   have normal : (runtime.reactiveNormalization leaks).action false [] (initial.observe app false)
       (runtime.reactiveBinding leaks false 0 .int (.success 1) 0) =
         runtime.reactiveBinding leaks false 0 .int (.success 1) 0 := by
-    change (⟨some (.submit
-      ((⟨.commitment 0 (false, .prepared 0), some ⟨.int, 1⟩⟩ : Submission graph).normalizeReactive
-        false (initial.observe app false).application))⟩ : app.Action) = _
-    rw [Submission.normalizeReactive_effective _ _ _ effective]
-    rfl
+    simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+      reactiveBinding, WitnessedSubmission.normalizeReactive, EvidenceRequest.normalizeKnown]
+    rw [Submission.normalizeReactive_effective false (initial.observe app false).application
+      ⟨.commitment 0 (false, .prepared 0), some ⟨.int, 1⟩⟩ effective]
   refine ⟨normal, ?_,
     runtime.reactiveBinding_result leaks false 0 .int (.success 1) 0 initial rfl⟩
   rw [MessageBounds.menu_mem]
-  refine ⟨⟨?_, ?_⟩, normal⟩
+  refine ⟨⟨⟨?_, ?_⟩, trivial⟩, normal⟩
   · norm_num [reactiveBinding, MessageBounds.AllowsPacket, MessageBounds.AllowsHandle, bounds]
   · simp [MessageBounds.AllowsOpening, bounds]
 
@@ -134,25 +134,27 @@ theorem unopenable_available_and_binding :
   classical
   refine ⟨?_, rfl⟩
   rw [MessageBounds.menu_mem]
-  refine ⟨⟨?_, trivial⟩, ?_⟩
+  refine ⟨⟨⟨?_, trivial⟩, trivial⟩, ?_⟩
   · norm_num [reactiveBinding, MessageBounds.AllowsPacket, MessageBounds.AllowsHandle, bounds]
-  · change (⟨some (.submit
-      ((⟨.commitment 0 (false, .prepared 0), none⟩ : Submission graph).normalizeReactive
-        false (initial.observe app false).application))⟩ : app.Action) = _
-    rw [Submission.normalizeReactive_none]
-    rfl
+  · simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+      reactiveBinding, WitnessedSubmission.normalizeReactive,
+      Submission.normalizeReactive_none, EvidenceRequest.normalizeKnown]
+
 
 /-- Different malformed messages are not collapsed into one public signal. -/
 theorem malformed_packets_distinct :
     (initial.respond app false
-      ⟨some (.submit ⟨.malformed ⟨.bool, false⟩, none⟩)⟩).network.pending ≠
+      ⟨some (.submit ⟨⟨.malformed ⟨.bool, false⟩, none⟩, .none⟩)⟩).network.pending ≠
       (initial.respond app false
-        ⟨some (.submit ⟨.malformed ⟨.bool, true⟩, none⟩)⟩).network.pending := by
+        ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩)⟩).network.pending := by
   intro same
-  change [Message.mk (false, 0) (Payload.malformed (graph := graph) ⟨.bool, false⟩)] =
-    [Message.mk (false, 0) (Payload.malformed (graph := graph) ⟨.bool, true⟩)] at same
+  change [Message.mk (false, 0)
+      (WitnessedPacket.mk (Payload.malformed (graph := graph) ⟨.bool, false⟩) none)] =
+    [Message.mk (false, 0)
+      (WitnessedPacket.mk (Payload.malformed (graph := graph) ⟨.bool, true⟩) none)] at same
   have raw : (⟨.bool, false⟩ : Raw simpleExpr) = ⟨.bool, true⟩ :=
-    Payload.malformed.inj (Message.mk.inj (List.cons.inj same).1).2
+    Payload.malformed.inj
+      (congrArg WitnessedPacket.call (Message.mk.inj (List.cons.inj same).1).2)
   have := congrArg (fun value : Raw simpleExpr => value.as? .bool) raw
   simp [Raw.as?_mk] at this
 
@@ -174,6 +176,54 @@ theorem known_replay_retained (execution : app.Execution) (who : Bool)
   apply bounds.known_replay_available
   exact (ReactiveApplication.SubmissionNormalization.replayKnown_iff
     execution who valid message.id).mpr ⟨message, known, rfl⟩
+
+/-- Evidence can accompany a call with no successful game effect. The request
+is available independently of whether the owner actually has the certificate. -/
+theorem owned_evidence_with_malformed_call (who : Bool) (past : List app.PlayerEntry)
+    (view : app.PlayerView) (bit : Bool) :
+    (⟨some (.submit ⟨⟨.malformed ⟨.bool, bit⟩, none⟩,
+      .owned ⟨(who, .prepared 1), ⟨.bool, bit⟩⟩⟩)⟩ : app.Action) ∈
+        menu.actions who past view := by
+  classical
+  rw [MessageBounds.menu_mem]
+  refine ⟨⟨⟨?_, trivial⟩, ?_⟩, ?_⟩
+  · cases bit <;> simp [MessageBounds.AllowsPacket, bounds]
+  · cases bit <;>
+      simp [MessageBounds.AllowsEvidence, MessageBounds.AllowsHandle, bounds]
+  · simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+      WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
+      EvidenceRequest.normalizeKnown]
+
+/-- Any known certificate can be copied onto a fresh packet without bounding
+the referenced envelope's serial number or requiring application acceptance. -/
+theorem known_forward_retained (who : Bool) (past : List app.PlayerEntry)
+    (view : app.PlayerView) (id : MessageId Bool)
+    (known : ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets past view,
+      message.id = id) :
+    (⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .forward id⟩)⟩ : app.Action) ∈
+      menu.actions who past view := by
+  classical
+  rw [MessageBounds.menu_mem]
+  refine ⟨⟨⟨?_, trivial⟩, known⟩, ?_⟩
+  · simp [MessageBounds.AllowsPacket, bounds]
+  · simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+      WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none]
+    rw [EvidenceRequest.normalizeKnown_forward _ id known]
+
+/-- Guessed reference integers do not create additional transmitted evidence.
+The normal form still permits the original malformed public claim. -/
+theorem unknown_forward_retains_call (id : MessageId Bool) :
+    (runtime.reactiveNormalization leaks).action false [] (initial.observe app false)
+        ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .forward id⟩)⟩ =
+      ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩)⟩ := by
+  have unknown : ¬ ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets
+      ([] : List app.PlayerEntry) (initial.observe app false), message.id = id := by
+    simp [ReactiveApplication.ResponseMenu.knownPackets, initial,
+      ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
+      ReactiveApplication.outputs, MessageNetwork.observe, MessageNetwork.empty]
+  simpa only [Submission.normalizeReactive_none] using
+    MessageBounds.unknown_forward_normalizes runtime leaks false [] (initial.observe app false)
+      ⟨.malformed ⟨.bool, true⟩, none⟩ id unknown
 
 theorem complete_menu_finite_histories (horizon : Nat) (scheduler : app.Scheduler) :
     Finite (menu.protocol (FinDist.pure initial.application) horizon scheduler).History :=
@@ -236,8 +286,8 @@ private def usedZero : app.Execution :=
 foreign handle reference cannot reserve that owner's candidate either. -/
 theorem replay_and_foreign_submission_leave_fresh :
     ((usedZero.respond app false ⟨some (.replay (false, 0))⟩).respond app true
-      ⟨some (.submit ⟨.commitment 0 (false, .prepared 1),
-        some ⟨.bool, false⟩⟩)⟩).application.candidates.lookup
+      ⟨some (.submit ⟨⟨.commitment 0 (false, .prepared 1),
+        some ⟨.bool, false⟩⟩, .none⟩)⟩).application.candidates.lookup
       (false, .prepared 1) = .fresh := rfl
 
 /-- Exhaustion is possible after all allotted responses; the supply theorem

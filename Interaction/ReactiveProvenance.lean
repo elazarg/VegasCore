@@ -21,7 +21,7 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 def Execution.Issued (execution : app.Execution) (message : Message Principal app.Payload) : Prop :=
   ∃ entry ∈ execution.recall message.sender, ∃ material,
     entry.action.transmission = some (.submit material) ∧ entry.emitted = some message ∧
-      app.packet material = message.payload
+      ∃ state known, app.packet state message.sender known material = message.payload
 
 def Execution.Provenance (execution : app.Execution) : Prop :=
   execution.network.Satisfies (execution.Issued app)
@@ -46,10 +46,14 @@ theorem respond_provenance (execution : app.Execution) (who : Principal) (action
       cases transmission with
       | replay id => exact prior.replay who id
       | submit material =>
-          apply prior.submit who (app.packet material)
+          apply prior.submit who
+            (app.packet (app.submit execution.application who material) who
+              (execution.network.known who) material)
           refine ⟨⟨execution.observe app who, ⟨some (.submit material)⟩,
-            some ⟨(who, execution.network.nextSerial who), app.packet material⟩⟩, ?_,
-            material, rfl, rfl, rfl⟩
+            some ⟨(who, execution.network.nextSerial who),
+              app.packet (app.submit execution.application who material) who
+                (execution.network.known who) material⟩⟩, ?_,
+            material, rfl, rfl, _, _, rfl⟩
           simp only [Execution.respond, Message.sender, MessageNetwork.submit, ↓reduceIte]
           exact List.mem_append_right _ (List.mem_singleton_self _)
 

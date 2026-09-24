@@ -106,7 +106,9 @@ theorem submissionAudit_respond (project : app.LocalObservation → app.PublicOb
       cases transmission with
       | replay id => exact prior.replay who id
       | submit material =>
-          apply prior.submit who (app.packet material)
+          apply prior.submit who
+            (app.packet (app.submit execution.application who material) who
+              (execution.network.known who) material)
           refine ⟨_, app.submissionOrigin_submit execution who material fresh, rfl, ?_⟩
           rw [app.respond_environmentRecall]
           simpa only [Execution.observe, agrees] using activated

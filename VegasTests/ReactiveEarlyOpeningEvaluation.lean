@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import VegasTests.ReactiveEarlyOpening
-import Vegas.Pending.ReactiveStore
+import Vegas.Pending.ReactiveStateInvariant
 
 /-! # Exact laws under uniform inclusion at fixed service times -/
 
@@ -19,10 +19,10 @@ def third {α : Type*} (first rest : FinDist α) : FinDist α :=
   FinDist.mix (1 / 3) (by norm_num) (by norm_num) first rest
 
 def bindingAction : app.Action :=
-  ⟨some (.submit ⟨.commitment 0 ((), .prepared 1), some ⟨.int, 0⟩⟩)⟩
+  ⟨some (.submit ⟨⟨.commitment 0 ((), .prepared 1), some ⟨.int, 0⟩⟩, .none⟩)⟩
 
 def earlyOpening : app.Action :=
-  ⟨some (.submit ⟨.opening 1 ((), .prepared 0) ⟨.int, 1⟩, none⟩)⟩
+  ⟨some (.submit (disclosureSubmission (.opening 1 ((), .prepared 0) ⟨.int, 1⟩)))⟩
 
 def firstResponse (repair : Bool) : app.Action := if repair then bindingAction else earlyOpening
 
@@ -46,7 +46,8 @@ def granted (repair fresh : Bool) : app.Execution :=
 
 def finalOpening (fresh : Bool) : app.Action :=
   ⟨some (.submit
-    ⟨.opening 1 ((), .prepared (if fresh then 1 else 0)) ⟨.int, if fresh then 0 else 1⟩, none⟩)⟩
+    (disclosureSubmission
+      (.opening 1 ((), .prepared (if fresh then 1 else 0)) ⟨.int, if fresh then 0 else 1⟩)))⟩
 
 def disclosed (repair fresh : Bool) : app.Execution :=
   (activated (granted repair fresh)).respond app () (finalOpening fresh)
@@ -98,7 +99,7 @@ def boundState (repair fresh : Bool) : State graph :=
 theorem included_state (repair fresh : Bool) (possible : fresh = true → repair = true) :
     (included repair fresh).application = boundState repair fresh := by
   have pending : (afterResponse repair).network.lookup (selectedId fresh) =
-      some ⟨selectedId fresh, .commitment 0 (candidate fresh)⟩ := by
+      some ⟨selectedId fresh, ⟨.commitment 0 (candidate fresh), none⟩⟩ := by
     cases repair <;> cases fresh <;> first | contradiction | rfl
   have law := handle_commitment_eq runtime (afterResponse repair).application
     (selectedId fresh) 0 (candidate fresh) () .int rfl rfl rfl (binding_ready repair)
@@ -135,10 +136,48 @@ theorem disclosure_timely (repair fresh : Bool) (possible : fresh = true → rep
   rw [disclosed_state repair fresh possible]
   cases repair <;> cases fresh <;> change 0 < 2 <;> decide
 
+theorem final_opening_emitted (repair fresh : Bool) (possible : fresh = true → repair = true) :
+    (disclosureSubmission (.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩)).emit
+      (granted repair fresh).application () ((granted repair fresh).network.known ()) =
+        ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
+          some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩ := by
+  have meaning : (granted repair fresh).application.candidates.lookup (candidate fresh) =
+      .openable ⟨.int, selectedValue fresh⟩ := by
+    change (disclosed repair fresh).application.candidates.lookup _ = _
+    rw [disclosed_state repair fresh possible]
+    cases repair <;> cases fresh <;> first | contradiction | rfl
+  have owned : (candidate fresh).1 = () := rfl
+  simp [disclosureSubmission, WitnessedSubmission.emit, CommitmentCandidates.verify, meaning,
+    owned]
+
+theorem final_opening_pending (repair fresh : Bool) (possible : fresh = true → repair = true) :
+    (disclosed repair fresh).network.lookup ((), 3) =
+      some ⟨((), 3), ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
+        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩⟩ := by
+  have emitted := final_opening_emitted repair fresh possible
+  have pending : (disclosed repair fresh).network.lookup ((), 3) =
+      some ⟨((), 3),
+        (disclosureSubmission (.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩)).emit
+          (granted repair fresh).application () ((granted repair fresh).network.known ())⟩ := by
+    cases repair <;> cases fresh <;> rfl
+  rw [pending, emitted]
+
+theorem disclosed_pending (repair fresh : Bool) (possible : fresh = true → repair = true) :
+    (disclosed repair fresh).network.pending = (granted repair fresh).network.pending ++
+      [⟨((), 3), ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
+        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩⟩] := by
+  have emitted := final_opening_emitted repair fresh possible
+  have pending : (disclosed repair fresh).network.pending =
+      (granted repair fresh).network.pending ++ [⟨((), 3),
+        (disclosureSubmission (.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩)).emit
+          (granted repair fresh).application () ((granted repair fresh).network.known ())⟩] := by
+    cases repair <;> cases fresh <;> rfl
+  rw [pending, emitted]
+
 theorem finished_withholding (repair fresh : Bool) (possible : fresh = true → repair = true) :
     (finished repair fresh 1).application.config.outputs 1 = some .failure := by
   have pending : (disclosed repair fresh).network.lookup ((), 1) =
-      some ⟨((), 1), .withhold 1⟩ := by cases repair <;> cases fresh <;> rfl
+      some ⟨((), 1), ⟨.withhold 1, none⟩⟩ := by cases repair <;> cases fresh <;> rfl
   have ready := disclosure_ready repair fresh possible
   have timely := disclosure_timely repair fresh possible
   have remembered : (disclosed repair fresh).application.remembered 1 = none := by
@@ -156,7 +195,8 @@ theorem finished_withholding (repair fresh : Bool) (possible : fresh = true → 
 
 theorem finished_opening (repair fresh : Bool) (possible : fresh = true → repair = true)
     (serial : Nat) (pending : (disclosed repair fresh).network.lookup ((), serial) =
-      some ⟨((), serial), .opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩⟩) :
+      some ⟨((), serial), ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
+        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩⟩) :
     (finished repair fresh serial).application.config.outputs 1 =
       some (.success (selectedValue fresh)) := by
   have associated : (disclosed repair fresh).application.accepted PendingMenus.binding.field =
@@ -190,7 +230,7 @@ theorem finished_opening (repair fresh : Bool) (possible : fresh = true → repa
 theorem repaired_opening (fresh : Bool) :
     (finished true fresh 3).application.config.outputs 1 =
       some (.success (if fresh then 0 else 1)) := by
-  exact finished_opening true fresh (by simp) 3 (by cases fresh <;> rfl)
+  exact finished_opening true fresh (by simp) 3 (final_opening_pending true fresh (by simp))
 
 theorem early_withholding :
     (finished false false 1).application.config.outputs 1 = some .failure :=
@@ -202,6 +242,6 @@ theorem early_opening :
 
 theorem later_opening :
     (finished false false 3).application.config.outputs 1 = some (.success 1) :=
-  finished_opening false false (by simp) 3 rfl
+  finished_opening false false (by simp) 3 (final_opening_pending false false (by simp))
 
 end VegasTests.ReactiveEarlyOpening

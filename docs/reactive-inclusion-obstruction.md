@@ -139,7 +139,7 @@ has been removed to obtain this negative result.
 | Obligation | Artifact |
 |---|---|
 | Actual reactive scheduler, legal history, and full proper-root closure | [ReactivePendingMenus.lean](../VegasTests/ReactivePendingMenus.lean) |
-| Immutable accepted fields under arbitrary reactive continuations | [ReactiveStore.lean](../Vegas/Pending/ReactiveStore.lean) |
+| Immutable accepted fields under arbitrary reactive continuations | [ReactiveStateInvariant.lean](../Vegas/Pending/ReactiveStateInvariant.lean) |
 | Bound for every randomized native policy, deviations, and no common SPE | [ReactivePendingMenusStrategies.lean](../VegasTests/ReactivePendingMenusStrategies.lean) |
 | Source common SPE and agreement of source/graph publication kernels | [PendingMenusSource.lean](../VegasTests/PendingMenusSource.lean) |
 | Impossibility of utility-independent source-to-reactive SPE translation | [ReactivePendingMenusSource.lean](../VegasTests/ReactivePendingMenusSource.lean) |

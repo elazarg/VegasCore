@@ -25,7 +25,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 sequentially consistent native beliefs. No source equilibrium premise is used. -/
 theorem compileFinitePolicy_exists_consistent_assessment
     (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : FinDist graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (values : bounds.CoversOutputValues) (capacity : horizon ≤ bounds.candidateCount)

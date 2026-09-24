@@ -20,7 +20,7 @@ open Vegas Vegas.EventGraphRuntime Interaction
 open GameTheory.Math.Probability
 open SequentialValidation
 
-variable (leaks : MessageNetwork.ObservationRule Bool (Payload nativeGraph))
+variable (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket nativeGraph))
 
 def fact (bit : Bool) : EventGraph.CommitmentEvidence nativeGraph :=
   ⟨false, .bool, nativeSecretBinding, bit⟩
@@ -28,7 +28,8 @@ def fact (bit : Bool) : EventGraph.CommitmentEvidence nativeGraph :=
 theorem compiled_packet (bit : Bool) :
     (nativeRuntime.reactiveDecision leaks false secretEvent true
       ((nativeRuntime.reactiveApplication leaks).observePlayer
-        (nativeDummyPublished bit) false)).transmission = some (.submit (secretOpening bit)) := by
+        (nativeDummyPublished bit) false)).transmission =
+      some (.submit (disclosureSubmission (secretOpening bit).packet)) := by
   have packet := reactiveResolutionPacket_opening false secretEvent .bool nativeSecretBinding
     rfl true ((nativeRuntime.reactiveApplication leaks).observePlayer
       (nativeDummyPublished bit) false) rfl bit
@@ -47,7 +48,7 @@ theorem decoded_fact (bit : Bool) :
 def submitted (bit : Bool) : (nativeRuntime.reactiveApplication leaks).Execution :=
   (ReactiveApplication.Execution.initial (nativeRuntime.reactiveApplication leaks)
     (nativeDummyPublished bit)).respond (nativeRuntime.reactiveApplication leaks) false
-      ⟨some (.submit (secretOpening bit))⟩
+      ⟨some (.submit (disclosureSubmission (secretOpening bit).packet))⟩
 
 def included (bit : Bool) : (nativeRuntime.reactiveApplication leaks).Execution :=
   (submitted leaks bit).includePending (nativeRuntime.reactiveApplication leaks) (false, 0)
@@ -68,7 +69,7 @@ theorem included_application (bit : Bool) :
     ReactiveApplication.Execution.respond, ReactiveApplication.Execution.includePending,
     MessageNetwork.empty, MessageNetwork.submit, MessageNetwork.includePending,
     MessageNetwork.lookup, reactiveApplication, secretOpening, Submission.register,
-    submitStep_opening, handle_secret]
+    submitStep_opening, handle_secret, disclosureSubmission, WitnessedSubmission.emit]
 
 /-- A successful native receipt carries evidence even though publication fails. -/
 theorem observed_fact (bit who : Bool) :
@@ -81,6 +82,7 @@ theorem observed_fact (bit who : Bool) :
     MessageNetwork.empty, MessageNetwork.submit, MessageNetwork.includePending,
     MessageNetwork.lookup, MessageNetwork.observe, reactiveApplication, secretOpening,
     Submission.register, submitStep_opening, handle_secret, receiptEvidence,
+    disclosureSubmission, WitnessedSubmission.emit,
     Payload.bindingEvidence, native_secret_node, fact]
 
 theorem failed_publication (bit : Bool) :

@@ -25,7 +25,7 @@ def typeInput : nativeGraph.InputId := ⟨0, by decide⟩
 def nativeInitialLaw : FinDist (State nativeGraph) :=
   (FinDist.uniformOfFintype (α := Bool)).map nativeStart
 
-variable (leaks : MessageNetwork.ObservationRule Bool (Payload nativeGraph))
+variable (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket nativeGraph))
 
 def nativeTypeEvidence (execution : (nativeRuntime.reactiveApplication leaks).Execution) : Prop :=
   ∃ bit : Bool,
@@ -33,7 +33,7 @@ def nativeTypeEvidence (execution : (nativeRuntime.reactiveApplication leaks).Ex
     execution.application.candidates.lookup (false, .initial secretInput) =
       .openable ⟨.bool, bit⟩ ∧
     execution.ReceiptsSound (nativeRuntime.reactiveApplication leaks)
-      (Payload.Authenticates (false, .initial secretInput) ⟨.bool, bit⟩)
+      (fun packet => packet.call.Authenticates (false, .initial secretInput) ⟨.bool, bit⟩)
 
 theorem native_type_evidence_invariant
     (scheduler : (nativeRuntime.reactiveApplication leaks).Scheduler) :

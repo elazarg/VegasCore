@@ -67,16 +67,16 @@ theorem native_secret_remembered (bit : Bool) :
     nativeDummyPublished_eq, nativeDummyState, nativeBound_eq]
   rfl
 
-def nativeGuessSubmission (guess : Bool) : Submission nativeGraph :=
-  ⟨if guess then .opening guessEvent (true, .initial guessInput) ⟨.bool, true⟩
-    else .withhold guessEvent, none⟩
+def nativeGuessSubmission (guess : Bool) : WitnessedSubmission nativeGraph :=
+  ⟨⟨if guess then .opening guessEvent (true, .initial guessInput) ⟨.bool, true⟩
+    else .withhold guessEvent, none⟩, .none⟩
 
 def nativeGuessState (bit guess : Bool) : State nativeGraph :=
   (nativeSecretPublished bit).complete guessEvent (native_secret_ready bit) guess
     (if guess then .success true else .failure)
 
 theorem native_guess_law (bit guess : Bool) (serial : Nat) :
-    nativeSubmit (nativeSecretPublished bit) true serial (nativeGuessSubmission guess) =
+    nativeSubmit (nativeSecretPublished bit) true serial (nativeGuessSubmission guess).call =
       some (nativeGuessState bit guess) := by
   unfold nativeSubmit
   rw [handle_submitStep]
@@ -96,7 +96,7 @@ theorem native_guess_law (bit guess : Bool) (serial : Nat) :
 
 theorem native_guess_grant (bit guess : Bool) (serial : Nat) (grant : Option nativeGraph.EventId) :
     nativeSubmit { nativeSecretPublished bit with serviceGrant := grant } true serial
-      (nativeGuessSubmission guess) =
+      (nativeGuessSubmission guess).call =
         some { nativeGuessState bit guess with serviceGrant := grant } := by
   have accepted := native_guess_law bit guess serial
   unfold nativeSubmit at accepted ⊢

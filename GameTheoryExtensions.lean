@@ -19,6 +19,8 @@ import GameTheoryExtensions.Protocol.Knowledge
 import GameTheoryExtensions.Protocol.ObservationRecall
 import GameTheoryExtensions.Protocol.SequentialIncentives
 import GameTheoryExtensions.Analysis.Protocol.Sequential
+import GameTheoryExtensions.Analysis.Protocol.LastDecision
+import GameTheoryExtensions.Analysis.Protocol.DisclosureObstruction
 import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
