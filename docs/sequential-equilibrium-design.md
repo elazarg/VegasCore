@@ -8,6 +8,14 @@ one common sequence of fully mixed behavioral profiles. Use GameTheory's
 existing definition. Beliefs are mathematical analysis data; the executable
 policy still receives only its player's observations and recall.
 
+The [communication theorem contract](ambient-communication.md#theorem-contract)
+specifies the design: a capability-based impossibility result, conservation of
+source game rules under communication, a sufficient native implementation
+theorem, and a corollary for original equilibria that admit an extension.
+Its [implementation gates](ambient-communication.md#direct-implementation-order)
+are the work order. This document records the equilibrium machinery, checked
+foundations, and exact quantifiers used to discharge that contract.
+
 Unrestricted source-to-native preservation is false for the current observation
 abstraction: the checked
 [native disclosure counterexample](sequential-disclosure-impossibility.md)
@@ -555,41 +563,35 @@ has no proved implication for conditional continuation incentives or beliefs.
 
 ## Acceptance gates and implementation order
 
-1. **Definition regression (checked):** SPE/credibility separation, positive
-   sequential-equilibrium assessments with genuinely off-path beliefs and an
-   explicit common consistency witness, and the abstract disclosure impossibility.
-2. **Semantic presentation:** reactive actions omit auxiliary memory and the
-   stateful compiler's behavioral realization is checked. Binding, private types,
-   passive partial foreign leaks, repeated responses and at-most-once inclusion
-   remain available. Instantiate finite wire bounds and a service horizon,
-   including all admitted malformed traffic. Nonterminal fibers and decision
-   antichains are checked for the existing reactive adapter. Explicit finite-menu
-   instances, exact history embedding, continuation laws, replay coverage and a
-   native binding fixture are checked. A complete bounded packet menu and
-   one-step ineffective-response normalization are checked; the compiler emits
-   normal forms. Compiler coverage and exact finite-game continuation laws are
-   checked under static value coverage and horizon-sized candidate domains.
-   Concrete encoding, finer value-range inference and any stronger raw-game
-   quotient claim remain open.
-3. **Belief construction:** consistent completion of every finite native profile,
-   including the actual compiler, is checked using one common subsequence of
-   fully mixed Bayes assessments. The regression separates consistency from
-   continuation rationality. Source-compatible completions for identity
-   translation, a redundant private-bit extension, and a message encoding with
-   target-only errors remain to be established; include an incompatible-beliefs
-   negative regression. Neither completion existence nor private-memory
-   realization alone validates message encoding preservation.
-4. **Continuation simulation:** the native disclosure impossibility is checked
-   for an actual source sequential equilibrium, the full bounded response menu,
-   arbitrary beliefs and whole continuation-policy deviations. General positive
-   preservation requires a semantic restriction or additional capability.
-   Test recovery after earlier own deviations,
-   disclosure failures, partial observations, competing commitments and actual
-   remaining deadlines. Audit the prior SPE witnesses under sequential
-   rationality. Record any required extra source capability separately.
-5. **Compiler theorem:** combine initialized joint-law correctness, consistency
-   lifting and the incentive criterion for one playerwise compiler. Then compare
-   operational service assumptions and their engineering justification.
+Follow the [communication implementation gates](ambient-communication.md#direct-implementation-order):
+generalize and instantiate the capability lower bound; supply independent
+opening verification; prove a complete small positive case; cover the native
+continuation choices; generalize by compilation; finish the consistency and
+incentive proof and original-equilibrium corollary.
+
+The equilibrium-specific acceptance conditions are:
+
+- Use actual source and native decision information sets, including sites
+  reached only after deviations, with actual remaining time and resources.
+- Supply enough evaluation fuel to finish every admitted continuation. Finite
+  menus need coverage proofs for the runtime they represent; they do not imply
+  a result for unrestricted packets or unbounded interaction.
+- Keep one executable playerwise compiler independent of utilities, opponents,
+  and analyst beliefs. Translate communication-aware source policies rather
+  than only policies of the original game.
+- Construct beliefs from a common sequence of fully mixed assessments. Cover
+  native errors, duplicate encodings, and other admitted responses in that
+  construction. Consistent native completion in isolation does not establish
+  source-compatible beliefs or incentives.
+- Prove all required continuation inequalities against whole replacement
+  policies. Invoke the existing incentive criterion where it discharges an
+  actual compiler obligation; do not assume the criterion as a service contract.
+- Keep the small example nonvacuous: exhibit an SE of the communication game
+  and its preserved native assessment. A negative result must have an actual
+  source SE witness, rather than only an SPE witness.
+- Record operational assumptions and a concrete instance. Any condition on
+  ordering, dependencies, or observation needs both its mathematical use and
+  its engineering justification stated explicitly.
 
 Only the checked foundations listed at the start are established. There is no
 claim here of native sequential-equilibrium preservation, equilibrium existence

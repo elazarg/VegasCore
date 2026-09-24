@@ -38,7 +38,7 @@ Three evidence levels must remain distinct:
 | O3 | Replay has selection power unavailable to a fresh proposal | Checked local randomized incentive obstruction and exact network selection witnesses | Distinct identifiers and unpublished eligibility address the witnessed menu effects |
 | O4 | One transmission opportunity can help different events | Checked honest source SPE whose current compiled policy is not native behavioral SPE under uniform inclusion | Authorized uniform service removes the exhibited improvement; full SPE and ledger realization open |
 | O5 | Recovery confuses an attempted submission or remembered intention with what took effect | Checked operational failure of the command-service policy; reactive recovery and reconstruction regressions | Selected cases are repaired; arbitrary-prefix correspondence remains open |
-| O6 | Target observations reveal information absent from source observations | Checked abstract sequential-equilibrium and behavioral-SPE impossibilities for disclosure after a deviation, despite initialized law matching; documented raw-packet example | No native adapter for the disclosure example; reactive continuation information laws remain open |
+| O6 | Target observations reveal information absent from source observations | Checked abstract and native sequential-equilibrium impossibilities, plus behavioral-SPE witnesses | The native disclosure witness is complete; communication-extension preservation remains open |
 
 O1 and O2 illustrate a common obstruction: a source policy can select its best
 option without encoding a ranking of alternatives that the target later forces
@@ -254,6 +254,14 @@ utilities, even allowing a different target belief system for each. The
 [assessment construction](sequential-equilibrium-design.md#checked-off-path-assessment-and-disclosure-boundary)
 explains the proof and its abstract scope.
 
+**Checked native sequential witness.** The actual deferred-guard source game
+has one SE assessment for opposite guessing utilities, while its bounded
+reactive implementation has no common sequentially rational strategy for both.
+The native information fiber fixes the disclosed private type under arbitrary
+beliefs. The [native theorem](sequential-disclosure-impossibility.md) uses the
+actual response menu and an at-most-once service with completion, rather than
+assuming the abstract disclosure game is implemented.
+
 **Documented witness.** Bob commits a random bit under a rejecting guard. If
 the prescribed policy broadcasts the raw attempted opening, Alice learns that
 bit, although the source publishes only failure. Bob later publishes the bit
@@ -262,11 +270,14 @@ game that has no such source strategy. The
 [public-observation note](event-graph-public-observations.md) gives the incentive
 argument. This negative example has no standalone Lean canonical-SPE proof.
 
-**Current response.** The prescribed compiler checks the prospective resolution
-before constructing the public packet. A rejected opening emits a
-value-oblivious withholding packet and retains the original intention privately.
-The emission lemmas and initialized command-service deviation law are checked.
-Arbitrary deviating players still have the raw packet space.
+**Compiler scope.** The command-service compiler checks the prospective
+resolution before constructing its public packet; its emission lemmas and
+initialized deviation law concern that service. The reactive compiler sends
+an opening when disclosure is chosen for an openable binding, including when
+the guard yields failure. The checked native SE obstruction applies to the
+reactive game. Neither compiler can remove arbitrary players' raw disclosure
+capability. The [communication design](ambient-communication.md#theorem-contract)
+specifies the positive target and its remaining obligations.
 
 **Closure criterion.** Establish the continuation information law for unchanged
 players' emissions, passive observations, public scheduling, and retained own

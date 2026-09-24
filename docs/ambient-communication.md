@@ -7,6 +7,13 @@ Give strategic analysis an explicit account of the communication and evidence
 available to its players. Implement that account once per service, rather than
 requiring a program to describe packets, inclusion, or cryptographic encodings.
 
+The proof target has two parts: a disclosure capability that an implementation
+cannot uniformly hide, and a sufficient abstract account of the strategic
+differences that remain. A theorem about packet mechanics alone does not settle
+this boundary. The [theorem contract](#theorem-contract) and
+[implementation gates](#direct-implementation-order) below specify the intended
+results; general native preservation is not yet proved.
+
 An ordinary commitment has two distinct consequences: it binds a choice and it
 gives its owner evidence that can be disclosed. Guard rejection can prevent a
 value from becoming an accepted game publication. It cannot retract evidence
@@ -309,38 +316,175 @@ analysis around the source program.
 
 ## Preservation target and remaining obligations
 
+### Theorem contract
+
+Write `G` for the source game with setup, `C(G, k)` for its communication
+interpretation under a public environment configuration `k`, and `T(G, r)` for
+the compiled native game under runtime configuration `r`. These names describe
+the statements; they do not require three new Lean structures. Utilities have
+domain original private types and public game results, `Theta x Omega`.
+
+**N. Capability-based impossibility.** Extract the abstract and native
+disclosure proofs into a theorem about information and continuation choices.
+Its witness supplies one source assessment that is an SE for two opposite
+guessing utilities. In the target, there is a legal decision information set
+where every compatible history fixes the relevant bit, the player can obtain
+either guess, and the continuation laws force opposite behavior under those
+utilities. No utility-independent strategy translator can preserve both source
+equilibria, even with utility-dependent target beliefs. The information and
+choice premises must be derived from disclosure, verification, and actual
+remaining opportunities for each runtime instance. Merely stating that a
+runtime permits some communication is insufficient.
+
+This is a lower bound for the stated capability class and source witness, not
+for all blockchain protocols, all games, or utility-dependent synthesis. A
+legal off-path disclosure opportunity is enough for this proof when it supplies
+the specified decision witness; disclosure need not occur during prescribed
+play. A general capability theorem and its native instantiation are required
+in addition to the already checked particular-game impossibility.
+
+**C. Conservation of game rules.** Communication-only transitions leave the
+underlying game state unchanged. At a game transition, projection gives the
+original source kernel for that game action, including its guarded result.
+Utilities factor through original types and results. Information may be added
+even when the result is failure. This is conservation of the game rules, not
+equality of the games' strategy spaces or equilibrium sets. Communication-aware
+strategies can condition actions on information absent from `G`; projecting
+their traces does not automatically give admissible policies of `G`.
+The synchronous experiment proves local instances of this property. The
+pending-observation interpretation needs its own proof.
+
+**S. Sufficient communication abstraction.** Fix `k`, `r`, and operational
+implementation assumptions before choosing utilities. Construct a playerwise
+compiler whose behavior depends on the configured environment and its player's
+source policy, not on utilities, opponents' policies, or assessment beliefs.
+For every assessment `A` that is an SE of `C(G, k)`, construct native beliefs
+such that the compiled strategy is an SE of `T(G, r)`. Preserve the initialized
+joint law of original types and public results for every source profile.
+The proof must account for continuation deviations and observations at every
+native decision information set, including after earlier own deviations.
+Beliefs may depend on the source assessment. They are not runtime inputs.
+
+The operational assumptions must have a concrete native instance. They cannot
+be a field asserting equilibrium preservation or an uninstantiated strategic
+simulation. An independently specified account of communication is the proposed
+explanation of the remaining differences; its sufficiency is a proof obligation.
+One-way preservation at compiled profiles does not assert reflection or equality
+of all native and source equilibrium outcomes.
+
+**R. Reuse of original equilibria.** If an assessment of `G` has an SE extension
+in `C(G, k)` with the same intended original type/result law, S yields a native
+SE with that law. The extension must specify communication behavior, responses
+after unexpected messages, and consistent beliefs. No disclosure along the
+prescribed play is not a sufficient premise. Silence can be informative, and
+ordinary messages can coordinate behavior without certifying a hidden value.
+Checking such extensions or giving useful sufficient conditions is separate
+from the compiler proof; there is no claimed automatic decision procedure.
+
+### Semantic boundary and configuration
+
+- The core program, private-input sort, and `PublicationResult` stay unchanged.
+  Use the full source commitment interface, including forfeiture, for the first
+  positive theorem. Eliding a failure choice requires a separate preservation
+  proof. There is no `failure(value)` constructor or communication opcode.
+- Communication supplies arbitrary claims within a declared finite alphabet
+  and transferable evidence that the sender possesses. A private input alone
+  supplies no certificate. Evidence can be disclosed outside the game's
+  publication interface, including before a reveal or despite rejection.
+- Messages can be privately noticed while pending and later recorded publicly.
+  Possession of an opening witness permits verification independently of game
+  acceptance. Recording, verification, and game effects are separate. Declared
+  opportunities must account for an opening that communicates and requests a
+  game effect in the same response, and for the actual remaining budget.
+- `k` specifies finite opportunities, passive observation, public recording,
+  and their order relative to game decisions. Use existing scheduling and
+  observation types where they fit. The concrete first instance supplies no
+  guaranteed sender-selected private delivery. Service randomness is chance,
+  not a player or a source of private observation reports to the scheduler.
+- Specify `C(G, k)` from source rules and communication capabilities. Do not
+  define it by decoding the compiled handler. Semantic message references may
+  identify repeated observations of a message; native encodings and handles
+  are implementation details whose treatment requires proof. If those details
+  carry a signal, retain the signal as communication or prove it irrelevant.
+- A submitted candidate's meaning is fixed before inclusion. Evidence for an
+  unaccepted candidate does not yet prove the value of a named source binding:
+  the accepted association needs a separate justification. Full native coverage
+  includes multiple candidates and commitments outside the current source
+  binding store. A model of accepted bindings alone is not assumed sufficient.
+  If these capabilities require more than the proposed communication extension,
+  exhibit that obstruction before enlarging the source interface.
+
+The programmer analyzes source choices and semantic communications under the
+declared opportunities. The implementation proof bears the burden of native
+admission checks, rejection, replay, competing submissions, and inclusion.
+Importing those native choices unchanged into `C(G, k)` would weaken the claimed
+abstraction and must be reported as such. A reusable implementation of the
+communication environment does not by itself establish strategic abstraction.
+
+### Assumption discipline
+
+| Boundary | Required treatment |
+|---|---|
+| Commitments and evidence | Ideal binding and possessed-witness verification, with all-history soundness proofs; computational realization remains future work |
+| Finite analysis | Explicit value/message menus and interaction horizon; prove coverage and termination for the admitted runtime, not for arbitrary unbounded traffic |
+| Private computation | Free behavioral choice based on observation and own-action recall; no strategic scratch-memory operations |
+| Pending observations | Foreign messages only, partial observations permitted, no private leak report in scheduler state |
+| Inclusion | At most once per envelope, including rejected calls; fresh retransmission remains possible |
+| Selection and opportunities | State the particular operational laws used in the proof; identity-obliviousness or local selection regularity alone is not a proved sufficiency condition |
+| Dependencies | Any restriction on submission-time authorization requires an implementable witness; the existing public-history monitor is not a verified ledger mechanism |
+| Public recording | Explicit monitoring and finality abstraction; no inference of instantaneous common knowledge from real-world inclusion |
+| Payoffs | Original types and results; gas fees, bribery, and trace-sensitive utilities require additional modeling |
+
+Assumptions controlling opportunities and selection are not yet known sufficient
+for S. The proof will identify the required laws and exhibit a concrete instance;
+the accompanying documentation must distinguish Lean consequences from
+engineering justification. A counterexample under weaker laws records an
+actual limit; there is no promise of a globally weakest service contract.
+
 ### Direct implementation order
 
-1. Instantiate the pending-observation and public-recording interpretation for
-   source actions, reusing the existing reactive interaction machinery where
-   applicable. Keep one optional transmission per response, passive foreign
-   observations, and at-most-once inclusion. Preserve the interval between
-   choosing a commitment at submission and accepting it as a game binding.
-   Communication and a game request may share a transmission. Parameterize
-   message meaning and evidence capabilities only where the two interpretations
-   actually differ; no general service framework is a prerequisite.
-2. Close the concrete evidence gap: give recipients a way to verify a possessed
-   opening witness before inclusion and after application rejection. Keep
-   evidence possession distinct from authority to execute an owner's game call.
-   This is an ideal capability pending a cryptographic realization, not a public
-   oracle for testing candidate plaintexts.
-3. Compile communication-aware policies and prove history, observation, and
-   continuation correspondence for the actual compiler. The first proof case
-   is the deferred-guard disclosure example, including an observed pending
-   opening and a recorded failed publication. Then cover competing submissions,
-   rejected calls, replay, and timeouts. Test every proposed abstraction against
-   decisions after deviations before generalizing it to all source programs.
-4. Lift one common sequence of fully mixed assessments and prove continuation
-   rationality using that correspondence. Belief consistency and incentive
-   preservation are separate obligations; existence of consistent native
-   beliefs does not finish the theorem.
+1. **Generalize the lower bound.** Move the reusable information/continuation
+   argument into `GameTheoryExtensions`, and derive its premises for the actual
+   native witness. Keep the particular source assessment and runtime fixture
+   as theorem instances. Gate: N applies through operationally verified
+   capabilities, independently of a particular strategy compiler.
+2. **Close the concrete evidence gap.** Add possessed-witness verification where
+   the native commitment interface belongs. Prove validity under arbitrary
+   play, including pending observation, forwarding, and application rejection.
+   An opening witness is not authority to act as the owner, and verification
+   is not a public oracle for testing plaintexts.
+3. **Prove the small positive case end to end.** Give the actual deferred-guard
+   example its independent communication interpretation and compile its
+   communication-aware policies. Prove C, the needed continuation correspondence,
+   and an SE-preservation instance with a common consistency witness. Include
+   passive pending observation and recorded failed publication. The original
+   counterexample assessment is not presumed to survive the extension. Gate:
+   an actual nonvacuous positive assessment and transfer theorem, not merely
+   sound evidence or matching terminal marginals.
+4. **Establish native coverage.** Extend the argument to competing candidates,
+   off-path rejection, replay, earlier own deviations, and actual remaining
+   deadlines and transmission opportunities. Derive service premises from a
+   concrete instance. Record the first unmatched capability as a precise
+   obstruction. Do not make the abstract game a copy of the native machine to
+   avoid that obstruction.
+5. **Generalize to source programs.** Reuse the source-to-graph step laws and
+   actual native binding/disclosure laws. Prove policy translation, joint-law
+   correctness, and continuation incentive transport for the admitted source
+   language and service. Extract only reusable proof lemmas needed by that
+   construction into `GameTheoryExtensions` or `Interaction`.
+6. **Finish S and R.** Lift one common sequence of fully mixed source assessments
+   to native assessments, covering every admitted native response, then prove
+   convergence and rationality. The small-case consistency construction must
+   generalize with the compiler. Consistent-completion existence alone is
+   insufficient. State the original-equilibrium extension corollary and report
+   the exact remaining runtime assumptions alongside the checked theorem.
 
-The target is preservation for source assessments in this explicit environment,
-under operational assumptions that are proved sufficient. It is not preservation
-for an arbitrary stronger communication environment or a claim that adding
-communication alone suffices. A remaining unmatched native choice requires a
-concrete obstruction or a justified implementation restriction before extending
-the source interface. These steps are proof obligations, not checked results.
+Every gate produces a checked theorem or a checked obstruction. Reuse existing
+models and remove superseded experiments when their useful facts have a home.
+No new service taxonomy, equilibrium definition, boolean preservation flag,
+cryptographic implementation, or automated equilibrium solver is required.
+Generic lemmas must have concrete callers in this proof. Work stays in the root
+project; the GameTheory submodule is not an implementation target.
 
 ### Submission and communication timing
 
