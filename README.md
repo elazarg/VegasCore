@@ -105,6 +105,8 @@ binding are checked. The [selective-association separation](docs/selective-assoc
 shows that certificates restricted to already accepted source bindings omit
 a strategically relevant capability: one source sequential-equilibrium outcome
 cannot occur at any native sequential equilibrium of the stated finite service.
+Its utilities are the program's returned payoffs, and even Alice's payout law
+cannot be matched by a payoff-aware strategy translation into that native game.
 Correspondence with a stronger communication semantics and general native
 sequential-equilibrium preservation remain open.
 
@@ -114,7 +116,10 @@ simulation theorem supplies composable sufficient certificates and is used by
 the checked private-response normalization theorem. The investigation separates
 preservation by a fixed strategy compiler from equilibrium-outcome
 implementability, and distinguishes finite classification results from the
-unimplemented general finite-game decision procedure.
+unimplemented general finite-game decision procedure. For one fixed payoff,
+the terminal classification permits erasure when every observation fiber has a
+common maximizing action. Generic continuation decisions and induced-information
+bounds factor the earlier native disclosure impossibilities.
 
 ## Build
 

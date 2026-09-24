@@ -6,7 +6,8 @@ Fix a finite runtime game and a finite outcome interface `O`. In Vegas, `O` can
 be initial private types paired with final public results. Utilities are arbitrary
 functions `O -> Player -> Real`; packet identities are not themselves rewarded.
 The question is which abstractions preserve sequential equilibrium uniformly
-over these utilities.
+over these utilities, and which additional abstractions become sound when
+utility is fixed to the program's declared payoff.
 
 Use the existing Kreps--Wilson predicate, whole continuation deviations and
 one common fully mixed sequence. This analysis introduces no runtime or syntax.
@@ -44,6 +45,22 @@ one common fully mixed sequence. This analysis introduces no runtime or syntax.
 - The [coalescing experiment](../GameTheoryExtensionsTests/CoalescingEquilibrium.lean)
   separates outcome implementability from a utility-independent compiler using
   actual SEs. It does not establish an outcome abstraction impossibility.
+- The [fixed-payoff classification](../GameTheoryExtensions/Analysis/ObservationPayoff.lean)
+  permits observation erasure exactly when each supported observation fiber has
+  a common maximizing action. Its [protocol theorem](../GameTheoryExtensions/Analysis/Protocol/DecisionPayoff.lean)
+  preserves every abstract SE's retained law for this one payoff. It does not
+  assert equality of the two games' complete sets of equilibrium outcome laws.
+- [Continuation decisions](../GameTheoryExtensions/Analysis/Protocol/ContinuationDecision.lean)
+  reduce whole-policy deviations at an actual protocol information site to
+  posterior rewards. Rational responses use only maximizing actions. The
+  posterior may be non-degenerate, and the payoff is fixed. The earlier binary
+  disclosure obstruction is an instance.
+- [Induced information advantage](../GameTheoryExtensions/Analysis/Protocol/InducedInformation.lean)
+  bounds a deviator's gain by an informed benchmark minus the best score
+  attainable from an observer's partial signal. It supplies a positive uniform
+  gap from a relevant observation collision and lifts feasible deviations to
+  initialized rationality bounds. The native selective-association proof uses
+  its probability and continuation results directly.
 
 The finite real-algebra reduction below is not a Lean theorem or implemented solver.
 
@@ -102,6 +119,85 @@ but no native strategy is rational for both at the off-path `y` decision.
 If the compiler can inspect declared utilities, it can choose the appropriate
 continuation. The checked impossibility concerns a utility-independent compiler,
 even one that sees the whole source profile and chooses utility-dependent beliefs.
+
+### Restricting utility to the declared payoff
+
+If program `p` declares payoff vector `r(p)`, requiring utility to equal that
+vector permits a compiler to inspect it through `p`. The relevant contract is
+`SE_source(r(p), a) -> exists b, SE_native(r(p), b)` with the chosen retained law
+preserved. A compiler contract additionally requires
+`b.strategy = F_p(a.strategy)`, with a playerwise executable `F_p` when that is
+the advertised interface. The payoff is fixed before source equilibria are
+quantified. Choosing a separate target assessment for each equilibrium is
+weaker than constructing such a compiler.
+
+This restriction removes contradictions that require the same program and
+strategy translation to work for two conflicting external utility functions.
+It does not remove impossibilities already established for one declared payoff.
+Nor does it exclude new target deviations: a receiver may still profit, under
+that same payoff, by using evidence the source hid.
+
+For terminal decisions the exact fixed-payoff criterion is particularly simple:
+
+> For every supported observation fiber, the sets of maximizing actions at its
+> constituent states have a nonempty intersection.
+
+The checked theorem equates this condition with preservation of every abstract
+optimum's retained fact/action law by some fully informed optimum. If a match
+exists, the direct lift that ignores the extra information already works.
+The protocol theorem gives the same statement for standard SE, including all
+consistent assessments and whole-policy deviations.
+
+The [fixed-payoff tests](../GameTheoryExtensionsTests/ObservationPayoff.lean)
+include a hidden bit that changes the reward amount without changing the best
+action. Erasing this bit preserves the fixed-payoff equilibria, although the
+all-utility classification rejects the erasure. Changing to the single fixed
+correct-report payoff makes the same erasure fail, even with payoff-dependent
+target strategies. Thus payoff-specific compilation helps precisely where
+the additional information does not require a different optimal decision.
+
+This is a directional preservation statement. For constant payoffs, for
+example, an informed equilibrium may correlate its action with the hidden fact
+in a way that no abstract policy can reproduce. Such additional target
+equilibrium outcomes do not prevent preserving every source equilibrium.
+
+## How the generic results factor the native impossibilities
+
+The terminal observation classification alone cannot be substituted into an
+arbitrary multiplayer continuation. The enclosing game must establish what
+the player knows, which decisions are feasible, and how their consequences
+contribute to the initialized outcome.
+
+The continuation-decision theorem provides the first reusable bridge: a
+history-wise reward law, common response distribution, and legal pure-decision
+policies imply an exact posterior-optimality criterion at the actual site.
+It covers partially informative beliefs and every whole-policy deviation.
+The rejected-opening binary obstruction obtains its continuation values and
+rationality bound from this theorem.
+
+The induced-information theorem provides the second bridge. Suppose an
+inducing deviation gives one recipient score at least `b`, while another
+recipient's score is bounded by a policy based only on signal `q(s)`. If
+`V(q)` is the best expected score using that signal, the inducing player's
+expected advantage is at least `b - V(q)`, under the stated payoff inequality.
+This is uniform over the less informed recipient's policy. An observation
+collision gives `V(q) < 1` for finite correct-report actions, so perfect informed
+reporting yields a strictly positive gap. Publication loss or informed error
+can be accounted for by a smaller certified benchmark `b`.
+
+In the [selective-association proof](selective-association-proof-contract.md),
+the concrete secrecy and evidence arguments supply the premises: Alice can
+induce a fair bit, Bob must report it correctly, Carol's report law does not
+depend on that bit, and Alice can still open. The generic calculation yields
+`1 - 1/2`; the generic continuation lift turns that deviation guarantee into a
+lower bound on every rational target assessment's initial payoff. The actual
+source equilibrium and its zero payoff remain separate proved facts.
+
+This factors the strategic calculation without erasing the service assumptions.
+It does not subsume obstructions from missing opening capabilities, scarce
+transmission opportunities, replay-sensitive inclusion, or compiler recovery.
+Those change available continuations and their effects, rather than only an
+observer's information.
 
 ## The exact semantic criterion
 
@@ -259,8 +355,11 @@ Failure to find a structural certificate must return `unresolved`, not impossibi
    averaging suggests sufficiency; different posteriors suggest a separating
    threshold decision. This stronger criterion is not the checked `Determines`
    theorem, which compares against full state information.
-2. Generalize evidence followed by public association into a capability theorem,
-   retaining the actual [selective-association witness](selective-association-proof-contract.md).
+2. Use the continuation-decision and induced-information results to classify
+   further evidence interfaces. A structural criterion deriving all operational
+   premises from an arbitrary runtime abstraction remains open; the
+   [selective-association witness](selective-association-proof-contract.md)
+   supplies one concrete instantiation.
 3. Derive finite incentive generators and explicit perturbation certificates
    from structural presentation maps, without assuming the desired preservation.
 4. Instantiate the classification on native response distinctions before

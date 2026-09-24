@@ -5,13 +5,22 @@ proves that the accepted-named-evidence source interface has a sequential
 equilibrium whose initialized public-result law cannot be matched by any
 sequential equilibrium of the stated native game. The theorem allows arbitrary
 strategy and belief translations. It compares the original three publication
-results and their original utilities.
+results. The analyzed utilities are exactly the signed integer payoffs returned
+by the source program and evaluated by its compiled settlement.
 
 | Game | Checked conclusion |
 | --- | --- |
 | Source with finite claims, accepted named evidence, forwarding and replay | There exists an SE: Alice publishes a fair bit; both guessers publish `false`; Alice's expected payoff is zero. |
 | Native with candidate evidence and later public association | Every sequentially rational assessment gives Alice expected payoff at least one half. |
 | Comparison | The source equilibrium's public-result law differs from every native SE's law. |
+
+The stronger [returned-payoff separation](../VegasTests/SelectiveAssociationPayoffSeparation.lean)
+rules out matching even Alice's payout distribution: her expected source payout
+is zero and every rational target assessment gives at least one half. This
+already fixes utility to the program's declared payoff. A translator that knows
+the payoff and chooses arbitrary strategies and beliefs cannot repair this
+particular compiled game. A compiler that changes the target protocol or
+service is outside that quantifier.
 
 The conclusion concerns preservation of this source equilibrium. It does not
 assert that the native game lacks equilibria, or that every blockchain service
@@ -115,6 +124,17 @@ rational native assessment. Its successful-publication conclusions are proved
 along the actual deviating run.
 
 ## Checked schedule and payoff facts
+
+[`SelectiveAssociationGame.lean`](../VegasTests/SelectiveAssociationGame.lean)
+returns three ordinary payoff expressions using only public publications. It
+proves that their evaluation agrees with the analyzed payoff function for every
+terminal source state, including failure results.
+[`SelectiveAssociationSettlement.lean`](../VegasTests/SelectiveAssociationSettlement.lean)
+uses the existing compiler readout theorem to prove the same equality for every
+completed native configuration. The payout-separation proof reads the actual
+compiled settlement and uses service completion to exclude its unfinished-state
+default. Payoffs are the language's signed integer scores; this is not a
+separate theorem about funded transfers on a deployed ledger.
 
 [`SelectiveAssociationSchedule.lean`](../VegasTests/SelectiveAssociationSchedule.lean)
 proves timeliness at every visit and terminal completion for arbitrary native
@@ -254,6 +274,15 @@ facts each player owns before the guesses. Thus the finite evidence alphabet
 does not omit a source binding.
 
 ## Complete native deviation and final contradiction
+
+The strategic calculation is an instance of
+[`InducedInformation.lean`](../GameTheoryExtensions/Analysis/Protocol/InducedInformation.lean):
+an informed score benchmark minus the best score achievable with the less
+informed observer's signal bounds the inducing player's expected advantage.
+The generic result supports arbitrary finite secrets, priors and partially
+informative signals; this witness supplies a fair Boolean and a constant signal
+for Carol. It leaves evidence recognition, feasible responses, withholding
+incentives and the actual continuation law to the native proofs below.
 
 [`SelectiveAssociationNativeDeviation.lean`](../VegasTests/SelectiveAssociationNativeDeviation.lean)
 constructs Alice's legal strategy over the full response menu. Its prefix laws

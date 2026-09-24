@@ -735,6 +735,10 @@ certificates compose and instantiate the existing private-response alias
 theorem. The finite observation experiments classify a restricted erasure
 problem using standard sequential equilibrium, including every consistent
 assessment; they do not settle arbitrary communication or service abstractions.
+The fixed-payoff version characterizes preservation by common maximizing
+actions in each supported observation fiber. Continuation-decision and
+induced-information theorems factor the rejected-opening and selective-association
+proofs without changing their source or native information interfaces.
 
 Follow the [communication implementation gates](ambient-communication.md#direct-implementation-order):
 generalize and instantiate the capability lower bound; supply independent
@@ -825,6 +829,12 @@ interface. Its source assessment uses one common fully mixed consistency
 sequence and is optimal against whole continuation policies at every site.
 Its initialized public-result law cannot be matched by any native sequential
 equilibrium under the stated service and full bounded raw response menu.
+The utilities are literal declared payoffs: the source returns their integer
+expressions, and their compiled settlement evaluation is checked. The stronger
+payout result excludes matching even Alice's expected returned payoff, which
+is zero at the source equilibrium and at least one half in every rational
+native assessment. Knowing the payoff therefore cannot repair this example
+through a different strategy translation into the same native game.
 
 The distinction is prospective evidence: a native candidate can be certified
 before its game binding is accepted, then recognized through a public

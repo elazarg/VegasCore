@@ -56,17 +56,35 @@ theorem native_rational_public_law_ne_source (Claim : Type) [Fintype Claim] (def
         (fun history => nativePublicResult history.state) ≠
       ((NamedSource.model Claim).runBehavioral source.strategy (2 * NamedSource.horizon + 1)).map
         (fun history => NamedSource.protocolResults history.state) := by
-  intro sameLaw
-  have gain := native_sequential_initial_bound target rational
-  have sameValue := congrArg (fun law : FinDist Results =>
-    law.expect (fun result => utility result alice)) sameLaw
-  rw [native_public_law_value, FinDist.expect_map, sourceStrategy] at sameValue
-  change (nativeModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).expect
-    (fun history => nativeUtility alice history.state) =
-      ((NamedSource.model Claim).runBehavioral (NamedSource.profile Claim defaultClaim)
-        (2 * NamedSource.horizon + 1)).expect (NamedSource.payoff alice) at sameValue
-  rw [NamedSource.prescribed_initial_alice_payoff Claim defaultClaim] at sameValue
-  linarith
+  let players := nativeMenu.decodeProfile (FinDist.pure nativeInitial)
+    nativeHorizon nativeScheduler target.strategy
+  refine nativeModel.initial_law_ne_of_induced_information target
+    (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)
+    rational alice nativeInitialSite native_initial_history_value nativeAliceBehavior
+    (fun history => nativePublicResult history.state) (fun result => utility result alice)
+    native_public_law_value (FinDist.uniformOfFintype (α := Bool)) (fun _ => ())
+    (fun bit guess => correctness (.success bit) guess)
+    (fun _ => FinDist.pure (.success false))
+    (fun _ => nativeCarolGuessLaw (nativeAliceProfile players)) fair_guess_reference_optimal
+    (nativeDeviationOutcomes players) (fun bit result => correctness (.success bit) result.carol)
+    1 ?_ ?_ ?_ _ ?_
+  · rw [native_initial_value, native_decode_alice_deviation]
+    have value := congrArg (fun law : FinDist Results =>
+      law.expect (fun result => utility result alice)) (native_deviation_outcome_law players)
+    rw [FinDist.expect_map] at value
+    exact value
+  · intro bit _ result supported
+    obtain ⟨aliceSuccess, bobSuccess⟩ := native_deviation_publications target rational
+      bit result supported
+    rw [utility_alice, aliceSuccess, bobSuccess]
+    simp
+  · intro bit _
+    exact native_deviation_carol_bound players bit
+  · rw [fair_guess_reference_value, FinDist.expect_map, sourceStrategy]
+    change ((NamedSource.model Claim).runBehavioral (NamedSource.profile Claim defaultClaim)
+      (2 * NamedSource.horizon + 1)).expect (NamedSource.payoff alice) < 1 - 1 / 2
+    rw [NamedSource.prescribed_initial_alice_payoff Claim defaultClaim]
+    norm_num
 
 /-- There is a genuine source sequential equilibrium whose public-result law
 is different from that of every native sequential equilibrium. No restriction

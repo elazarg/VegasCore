@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheory.Analysis.Protocol.Sequential
+import GameTheoryExtensions.Analysis.Protocol.ContinuationDecision
 
 /-! # A continuation capability obstructing uniform sequential compilation
 
@@ -47,6 +47,25 @@ namespace BinaryDecision
 variable {utility : Bool → ι → E.History → ℝ} {fuel : Nat}
   (decision : M.BinaryDecision utility fuel)
 
+/-- The binary capability is the fully informed, indicator-reward instance
+of an ordinary continuation decision. -/
+def toContinuationDecision (goal : Bool) :
+    M.ContinuationDecision (utility goal) fuel Unit Bool where
+  player := decision.player
+  site := decision.site
+  state _ := ()
+  response := decision.outcome
+  reward _ result := if result = goal then 1 else 0
+  policy := decision.policy
+  history_value profile history := decision.history_value profile goal history
+  realize := decision.force
+
+private theorem expectedReward_eq (assessment : M.BehavioralAssessment) (goal : Bool) :
+    (decision.toContinuationDecision goal).expectedReward assessment =
+      fun result => if result = goal then 1 else 0 := by
+  funext result
+  exact FinDist.expect_const _ _
+
 /-- The compatible-history law removes all dependence on the assessment's
 beliefs; the deviation still replaces a complete continuation policy. -/
 theorem continuation_value (assessment : M.BehavioralAssessment)
@@ -56,31 +75,19 @@ theorem continuation_value (assessment : M.BehavioralAssessment)
       (decision.outcome (Profile.update (sig := M.behavioralSignature)
         assessment.strategy decision.player alternative)).expect
           (fun result => if result = goal then 1 else 0) := by
-  rw [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
-  calc
-    _ = (assessment.belief decision.player decision.site).expect (fun _ =>
-          (decision.outcome (Profile.update (sig := M.behavioralSignature)
-            assessment.strategy decision.player alternative)).expect
-              (fun result => if result = goal then 1 else 0)) := by
-      apply FinDist.expect_congr
-      intro history _
-      exact decision.history_value _ goal history
-    _ = _ := FinDist.expect_const _ _
+  have value := (decision.toContinuationDecision goal).continuation_value assessment alternative
+  rw [decision.expectedReward_eq] at value
+  exact value
 
 /-- Rationality for either utility forces that utility's maximal value. -/
 theorem rational_value (assessment : M.BehavioralAssessment) (goal : Bool)
     (rational : assessment.IsSequentiallyRationalWithin (utility goal) fuel) :
     1 ≤ (decision.outcome assessment.strategy).expect
       (fun result => if result = goal then 1 else 0) := by
-  have inequality := rational decision.player decision.site (decision.policy goal)
-    (Set.mem_univ _)
-  change (assessment.continuationContext decision.site (utility goal decision.player) fuel).value
-      (decision.policy goal) ≤
-    (assessment.continuationContext decision.site (utility goal decision.player) fuel).value
-      (assessment.strategy decision.player) at inequality
-  simp only [decision.continuation_value, decision.force,
-    FinDist.expect_pure, ↓reduceIte, Profile.update_eq_self] at inequality
-  exact inequality
+  have bound :=
+    (decision.toContinuationDecision goal).rational_value_bound assessment rational goal
+  rw [decision.expectedReward_eq] at bound
+  simpa only [↓reduceIte, toContinuationDecision] using bound
 
 include decision in
 /-- Even separate, utility-dependent beliefs cannot rationalize one strategy

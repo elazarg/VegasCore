@@ -34,6 +34,31 @@ def acceptingGuard {context : SourceCtx Player simpleExpr} (owner : Player) (nam
   code := .constBool true
   reads := fun ref => nomatch ref
 
+/-- The settlement sees exactly the three public publication results. -/
+abbrev PayoffCtx : CtxSimple :=
+  [(5, .result .bool), (4, .result .bool), (3, .result .bool)]
+
+def correctnessExpr (reward : Int) (value guess : Expr PayoffCtx (.result .bool)) :
+    Expr PayoffCtx .int :=
+  .ite (.andBool (.andBool (.isSuccess value) (.isSuccess guess))
+      (.eq (.getResultD value (.constBool false)) (.getResultD guess (.constBool false))))
+    (.constInt reward) (.constInt 0)
+
+def failureExpr (value : Expr PayoffCtx (.result .bool)) : Expr PayoffCtx .int :=
+  .ite (.isFailure value) (.constInt (-4)) (.constInt 0)
+
+/-- The analyzed preferences are literal signed integer settlement payoffs. -/
+def payoffExpr (who : Player) : Expr PayoffCtx .int :=
+  let a : Expr PayoffCtx (.result .bool) := .var 3 (.there (.there .here))
+  let b : Expr PayoffCtx (.result .bool) := .var 5 .here
+  let c : Expr PayoffCtx (.result .bool) := .var 4 (.there .here)
+  if who = alice then
+    .addInt (.addInt (correctnessExpr 1 a b) (correctnessExpr (-1) a c)) (failureExpr a)
+  else if who = bob then
+    .addInt (correctnessExpr 1 a b) (failureExpr b)
+  else
+    .addInt (correctnessExpr 1 a c) (failureExpr c)
+
 def sourceProgram : SourceProgram Player simpleExpr [] ∅ :=
   .commit 0 alice (by decide) (acceptingGuard alice 0) <|
   .commit 1 carol (by decide) (acceptingGuard carol 1) <|
@@ -41,7 +66,7 @@ def sourceProgram : SourceProgram Player simpleExpr [] ∅ :=
   .reveal 3 alice 0 (by decide) (.there (.there .here)) (by decide) <|
   .reveal 4 carol 1 (by decide) (.there (.there .here)) (by decide) <|
   .reveal 5 bob 2 (by decide) (.there (.there .here)) (by decide) <|
-  .ret []
+  .ret [(alice, payoffExpr alice), (bob, payoffExpr bob), (carol, payoffExpr carol)]
 
 def sourceSetup : Setup (Player := Player) (L := simpleExpr) where
   context := []
@@ -91,6 +116,33 @@ def utility (result : Results) (who : Player) : ℝ :=
     correctness result.alice result.bob - openingPenalty result.bob
   else
     correctness result.alice result.carol - openingPenalty result.carol
+
+/-- The fixed utility is the program's returned integer payoff, not an
+additional preference over network traces or private data. -/
+theorem payoffExpr_eq_utility (env : PlainEnv PayoffCtx) (who : Player) :
+    (evalExpr (payoffExpr who) env : ℝ) =
+      utility ⟨env.get (.there (.there .here)), env.get .here, env.get (.there .here)⟩ who := by
+  generalize ha : env.get (.there (.there .here)) = a
+  generalize hb : env.get .here = b
+  generalize hc : env.get (.there .here) = c
+  fin_cases who <;>
+    simp [payoffExpr, alice, bob, utility, correctnessExpr, failureExpr, evalExpr,
+      ha, hb, hc]
+  all_goals cases a <;> cases b <;> cases c
+  all_goals simp_all [correctness, openingPenalty, PublicationResult.isSuccess,
+    PublicationResult.isFailure, PublicationResult.getD]
+  all_goals split_ifs <;> norm_num
+
+theorem source_settlement_eq_utility (state : State simpleExpr sourceProgram.terminalCtx) :
+    (sourceProgram.evaluatePayoffs state).map (fun payoff => (payoff.1, (payoff.2 : ℝ))) =
+      [(alice, utility (sourceResults state) alice),
+        (bob, utility (sourceResults state) bob),
+        (carol, utility (sourceResults state) carol)] := by
+  change [(alice, (evalExpr (payoffExpr alice) (sourcePublicEnv state) : ℝ)),
+    (bob, (evalExpr (payoffExpr bob) (sourcePublicEnv state) : ℝ)),
+    (carol, (evalExpr (payoffExpr carol) (sourcePublicEnv state) : ℝ))] = _
+  rw [payoffExpr_eq_utility, payoffExpr_eq_utility, payoffExpr_eq_utility]
+  rfl
 
 @[simp] theorem utility_alice (result : Results) :
     utility result alice = correctness result.alice result.bob -

@@ -123,5 +123,7 @@ import VegasTests.SelectiveAssociationInitialEvaluation
 import VegasTests.SelectiveAssociationInitialSite
 import VegasTests.SelectiveAssociationInitialRationality
 import VegasTests.SelectiveAssociationSeparation
+import VegasTests.SelectiveAssociationSettlement
+import VegasTests.SelectiveAssociationPayoffSeparation
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

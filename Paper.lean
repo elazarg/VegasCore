@@ -21,6 +21,8 @@ import Vegas.Pending.EventServiceCompletion
 import Vegas.Pending.EventSequential
 import GameTheoryExtensions.Analysis.ObservationAbstraction
 import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
+import GameTheoryExtensions.Analysis.Protocol.DecisionPayoff
+import VegasTests.SelectiveAssociationPayoffSeparation
 
 /-! # Paper theorem audit
 
@@ -739,5 +741,59 @@ theorem terminal_sequential_observation_classification {State Signal Fact : Type
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.terminal_sequential_observation_classification
+
+open DecisionExperiment.Protocol in
+/-- With one declared payoff, a terminal observation may erase a fact precisely
+when each supported observation fiber has a common maximizing action. The result
+preserves every abstract SE's retained law and permits payoff-dependent target
+assessments. It is a one-player terminal classification, not a native compiler
+preservation theorem. -/
+theorem terminal_fixed_payoff_sequential_classification {State Signal Fact Action : Type}
+    [Finite State] [Finite Action] [Nonempty Action]
+    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact)
+    (utility : Fact → Action → ℝ) :
+    (∀ source : (model (Action := Action) prior observe).BehavioralAssessment,
+      source.IsSequentialEquilibriumFor (antichain prior observe)
+        (fun _ site => source.continuationContext site
+          (fun history => payoff (fun state => utility (fact state)) history.state) 2) →
+      ∃ target : (model (Action := Action) prior id).BehavioralAssessment,
+        target.IsSequentialEquilibriumFor (antichain prior id)
+          (fun _ site => target.continuationContext site
+            (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
+        observedLaw prior id fact target = observedLaw prior observe fact source) ↔
+      DecisionExperiment.HasCommonMaximizer prior observe (fun state => utility (fact state)) :=
+  preserves_fixed_payoff_sequentialEquilibria_iff_commonMaximizer prior observe fact utility
+
+/-- info: 'Vegas.Paper.terminal_fixed_payoff_sequential_classification' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.terminal_fixed_payoff_sequential_classification
+
+open VegasTests.SelectiveAssociation in
+/-- The actual six-event program has an SE whose returned-payoff law cannot
+occur at any sequentially rational assessment of its compiled native game.
+Alice's expected source payout is zero; every rational native assessment gives
+expected payout at least one half.
+The declared payoff and native service are fixed; arbitrary utility-aware
+strategy and belief translations into this target are excluded. -/
+theorem declared_payoff_sequential_separation (Claim : Type) [Fintype Claim]
+    (defaultClaim : Claim) :
+    ∃ source : (NamedSource.model Claim).BehavioralAssessment,
+      source.IsSequentialEquilibriumFor
+        ((NamedSource.menu Claim).decisionInformationAntichain (FinDist.pure NamedSource.initial)
+          NamedSource.horizon (NamedSource.scheduler Claim))
+        (fun who site => source.continuationContext site (NamedSource.payoff who)
+          (2 * NamedSource.horizon + 1)) ∧
+      (sourcePayoutLaw source.strategy).expect id = 0 ∧
+      ∀ target : nativeModel.BehavioralAssessment,
+        target.IsSequentiallyRationalWithin
+          (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1) →
+        sourcePayoutLaw source.strategy ≠ nativePayoutLaw target.strategy :=
+  exists_source_equilibrium_no_native_payout_match Claim defaultClaim
+
+/-- info: 'Vegas.Paper.declared_payoff_sequential_separation' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.declared_payoff_sequential_separation
 
 end Vegas.Paper

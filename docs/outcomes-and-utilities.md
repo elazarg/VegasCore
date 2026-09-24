@@ -38,6 +38,18 @@ Support correspondence, equality of outcome laws, expected-utility equality,
 and equilibrium transport are distinct claims. Active documentation and audits
 must name the strongest one actually proved.
 
+For sequential equilibrium, restricting utility to the program's declared
+payoff is a meaningful weaker contract. A compiler may inspect that payoff
+through the program and choose different off-path continuations for different
+programs. This removes obstructions that require one translation to work for
+conflicting external utilities; it does not provide a general preservation
+theorem. The [fixed-payoff terminal classification](runtime-abstraction-classification.md)
+characterizes a positive case by common maximizing actions on each observation
+fiber. The [selective-association counterexample](selective-association-proof-contract.md)
+uses literal returned payoffs and excludes even matching Alice's payout law at
+any native SE of its specified compiled game and service. Payoff-dependent
+strategy translation into that game therefore cannot repair the abstraction.
+
 The checked pending-message compiler supplies an exact finite-mixture
 simulation. Besides Nash correspondence, it gives
 `Vegas.SourceProgram.Setup.eventPendingGame_deviation_utility_bound`: for a
