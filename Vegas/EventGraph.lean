@@ -34,6 +34,7 @@ import Vegas.EventGraph.Canonical
 import Vegas.EventGraph.CanonicalNormalization
 import Vegas.EventGraph.CanonicalStep
 import Vegas.EventGraph.PolicyCongruence
+import Vegas.EventGraph.ResolutionProvenance
 
 /-! # Dependency-driven typed events
 

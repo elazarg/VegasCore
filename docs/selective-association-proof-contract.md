@@ -77,7 +77,7 @@ Bob retains the earlier certificate and recognizes the accepted binding.
 and current view even with different Bob responses in the two worlds;
 `carol_activation_after_arbitrary_responses` extends it through the actual
 passive-observation activation. It uses the shared compiled six-event graph.
-The strategic conclusions remain unproved.
+The complete native deviation bound remains unproved.
 
 ## Checked schedule and payoff facts
 
@@ -100,8 +100,33 @@ every decision information fiber identified by its public service grant.
 constructs a legal opening response from the owner's observation. For a
 successful binding at a ready, timely visit, reserved inclusion publishes the
 value despite arbitrary earlier traffic. This establishes the feasible
-alternative; exclusion of withholding from a sequentially rational strategy
-still needs the continuation and information-set payoff comparison.
+alternative.
+
+[`SelectiveAssociationOpeningEquilibrium.lean`](../VegasTests/SelectiveAssociationOpeningEquilibrium.lean)
+proves that sequential rationality forces publication of exactly the bound value
+at every usable opening information set with a successful owned binding. It covers all three
+players, the complete bounded raw response menu, every compatible legal history,
+and arbitrary earlier deviations. Successful disclosure is a consequence of
+incentives under the actual service, rather than an imposed action.
+
+The argument needs more than optimality in expectation. A compatible history
+can have posterior probability zero. For each fixed raw response,
+[`SelectiveAssociationOpeningSelection.lean`](../VegasTests/SelectiveAssociationOpeningSelection.lean)
+proves that own recall and observation determine its reserved-inclusion effect.
+[`SelectiveAssociationOpeningSettlement.lean`](../VegasTests/SelectiveAssociationOpeningSettlement.lean)
+then accounts for the actual clock ticks and expiry. Thus a response that fails
+at one compatible history fails throughout that information set. Its payoff is
+minus four everywhere, while an available ordinary opening gives at least minus
+one everywhere. Sequential rationality excludes the failing response from the
+strategy's support. No positive-posterior premise for individual histories is
+used.
+
+[`SelectiveAssociationCorrection.lean`](../VegasTests/SelectiveAssociationCorrection.lean)
+proves Bob's corrective binding is available at every legal binding decision:
+he has only one earlier response, so two candidates leave a fresh one. Its new
+packet replaces an older pending guess under the actual reserved selector.
+This is a feasibility theorem; Bob's incentive to choose the correct bit remains
+an obligation.
 
 Utilities depend only on the original three publication results. Alice receives
 Bob's correctness minus Carol's correctness; each guesser receives its own
@@ -113,6 +138,12 @@ other-player results in the compared continuations.
 proves the intended half-unit deviation bound **conditional on** successful
 Alice/Bob publication and Carol's independent-guess bound. Those hypotheses
 still require the native information-set and incentive proofs.
+
+[`SelectiveAssociationGuessContinuation.lean`](../VegasTests/SelectiveAssociationGuessContinuation.lean)
+proves that later communication and publication decisions cannot improve the
+correctness of Carol's already settled guess. Successful publication must equal
+the stored binding; withholding can only remove a correct guess. The required
+independence of that earlier guess is a separate obligation.
 
 ## Source interface and equilibrium obligation
 
@@ -135,8 +166,15 @@ evidence. Other claims remain available.
 [`SelectiveAssociationSourceCalendar.lean`](../VegasTests/SelectiveAssociationSourceCalendar.lean)
 defines the matching calendar, candidate strategy, and a common perturbation
 with positive mass on every menu response. Full mixing and Bayes consistency
-of each positive perturbation are checked. The limiting conditional-belief
-calculation and sequential rationality of the candidate strategy remain open.
+of each positive perturbation are checked.
+[`SelectiveAssociationSourceGuessSymmetry.lean`](../VegasTests/SelectiveAssociationSourceGuessSymmetry.lean)
+proves equal conditional probabilities for the two successful Alice values in
+the actual response-prefix laws at guessing inputs with no public Alice certificate. Arbitrary prior
+responses, claims, and Carol's response are retained. Every certificate requested at the binding response is proved to become public
+before both guesses; the no-certificate premise is an observed fact. The result
+uses the same common perturbation on the complete menu; failure probability need not vanish.
+The connection to canonical history laws and Bayes beliefs, the limiting
+assessment, and its sequential rationality remain open.
 
 [`SelectiveAssociationNamedEvidence.lean`](../VegasTests/SelectiveAssociationNamedEvidence.lean)
 proves that its six named facts cover every genuine commitment fact of this
@@ -147,16 +185,10 @@ does not omit a source binding.
 
 ## Remaining strategic obligations
 
-- Extend the checked Carol input equality through the complete service and
-  guessing game, retaining arbitrary earlier responses.
-- Prove Bob retains a fresh corrective guess opportunity: no earlier response
-  has irrevocably completed his binding, and the final response is selected.
-- Declare a finite candidate bound sufficient after every allowed earlier
-  response. Do not infer such a bound merely from game deadlines.
-- Specify utilities solely on the original types and public game results.
-  If opening failures carry penalties, prove optimal opening at every relevant
-  information set, including after earlier deviations. Do not replace these
-  choices by forced publication.
+- Use Bob's checked corrective opportunity and the checked opening incentives
+  to prove that his guess is correct after Alice's selective-disclosure deviation.
+- Carry the native prefix's observation equality through Carol's settled guess
+  and the complete continuation, using the checked publication bound.
 - Construct a source assessment using the full named-evidence menus and one
   common fully mixed consistency sequence, then prove the native deviation
   bound against arbitrary sequentially rational continuations.

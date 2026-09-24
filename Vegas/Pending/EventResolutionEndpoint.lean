@@ -7,6 +7,7 @@ import Vegas.Pending.EventPrescribedReachability
 import Vegas.Pending.EventReplayEnvironment
 import Vegas.Pending.EventServiceReachability
 import Vegas.Pending.EventStore
+import Vegas.EventGraph.ResolutionProvenance
 
 /-! # Endpoint determination of prescribed resolution actions -/
 
@@ -19,71 +20,6 @@ open GameTheory.Math.Probability Interaction Vegas.EventGraph
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-private theorem option_value_cast_roundtrip
-    {left right : EventField Player L} (same : left = right)
-    (value : right.Value) :
-    cast (congrArg Option (congrArg EventField.Value same))
-        (some (cast (congrArg EventField.Value same.symm) value)) = some value := by
-  cases same
-  rfl
-
-omit [DecidableEq Player] in
-/-- Completing a resolution through its graph step stores exactly its
-deterministic resolution result.  The statement transports the endpoint
-value back across the public-output identification so callers need not expose
-the evaluator's dependent casts. -/
-private theorem resolution_step_output
-    (event : graph.EventId) (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks)
-    (config next : graph.Config) (ready : config.cut.Ready event)
-    (action : graph.Action event)
-    (member : next ∈ (config.step event ready action).support) :
-    EventCode.resolveOutput? binding checks
-        (cast (congrArg EventField.Action outputEq) action) config.store =
-      cast (congrArg Option (congrArg EventField.Value outputEq))
-        (next.outputs event) := by
-  let disclose := cast (congrArg EventField.Action outputEq) action
-  have readsEq : (graph.nodes event).readFields =
-      insert binding.field (GuardCheck.listReadFields checks) := by
-    calc
-      (graph.nodes event).readFields =
-          (cast (congrArg (EventCode graph.layout) outputEq)
-            (graph.nodes event)).readFields := by
-        exact (EventCode.readFields_cast outputEq (graph.nodes event)).symm
-      _ = (EventCode.resolve owner payload binding checks).readFields :=
-        congrArg EventCode.readFields codeEq
-      _ = insert binding.field (GuardCheck.listReadFields checks) := rfl
-  have available : ∀ field ∈ insert binding.field
-      (GuardCheck.listReadFields checks),
-      (config.store field).isSome = true := by
-    intro field fieldMem
-    apply config.read_available ready
-    rw [readsEq]
-    exact fieldMem
-  have defined := EventCode.resolveOutput?_isSome binding checks disclose
-    config.store available
-  cases resolved : EventCode.resolveOutput? binding checks disclose config.store with
-  | none => simp [resolved] at defined
-  | some result =>
-      have graphLaw := config.step_eq_map_of_code event ready outputEq
-        (.resolve owner payload binding checks) codeEq disclose (FinDist.pure result)
-      rw [EventCode.resolve_eval?, resolved] at graphLaw
-      specialize graphLaw rfl
-      simp only [FinDist.map_pure] at graphLaw
-      have actionRoundtrip :
-          cast (congrArg EventField.Action outputEq.symm) disclose = action := by
-        simp [disclose]
-      rw [actionRoundtrip] at graphLaw
-      rw [graphLaw, FinDist.mem_support_pure] at member
-      subst next
-      rw [Config.complete_output_same]
-      exact (option_value_cast_roundtrip outputEq result).symm
 
 /-- If one environment policy command completes a ready prescribed resolution,
 the effective graph action is its immutable cached action. -/
@@ -379,7 +315,8 @@ theorem ServiceControlPath.prescribed_resolution_output
           ordered inputs roster reactionRounds players wire order focal owner other before middle
           reachable assumptions event payload binding checks outputEq codeEq viewNode ready actor
           action cached step middleCompleted
-        have firstOutput := resolution_step_output event owner payload binding checks outputEq
+        have firstOutput := Config.resolution_step_output event owner payload binding checks
+          outputEq
           codeEq before.execution.native.application.config
           middle.execution.native.application.config ready action firstStep
         have present :

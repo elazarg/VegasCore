@@ -2,6 +2,7 @@
 
 import Vegas.Pending.EventBindingInvariant
 import Vegas.Pending.EventPolicies
+import Vegas.EventGraph.ResolutionProvenance
 
 /-! # Prescribed resolution packets execute the graph kernel
 
@@ -20,26 +21,6 @@ open GameTheory.Math.Probability Interaction Vegas.EventGraph
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
-
-omit [DecidableEq Player] in
-private theorem binding_success_of_resolve_success
-    {owner : Player} {payload : L.Ty}
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (disclose : Bool) (store : Store graph.layout) (value : L.Val payload)
-    (resolved : EventCode.resolveOutput? binding checks disclose store =
-      some (.success value)) :
-    binding.get? store = some (.success value) := by
-  unfold EventCode.resolveOutput? at resolved
-  cases boundEq : binding.get? store with
-  | none => simp [boundEq] at resolved
-  | some bound =>
-      cases checksEq : GuardCheck.allAccepted? checks store
-          (if disclose then bound else .failure) with
-      | none => simp [boundEq, checksEq] at resolved
-      | some accepted =>
-          cases disclose <;> cases accepted <;>
-            simp_all
 
 omit [DecidableEq Player] R in
 private theorem action_cast_roundtrip
@@ -150,7 +131,7 @@ theorem handle_resolutionSubmission_eq
       | success value =>
           have stored : binding.get? native.application.config.store =
               some (.success value) :=
-            binding_success_of_resolve_success binding checks disclose
+            EventCode.binding_success_of_resolve_success binding checks disclose
               native.application.config.store value resolved
           have discloseTrue : disclose = true := by
             cases disclosed : disclose with

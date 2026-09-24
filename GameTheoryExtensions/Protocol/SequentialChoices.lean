@@ -23,6 +23,58 @@ variable {ι : Type} [Fintype ι] [DecidableEq ι]
   {E : ExecutionProtocol ι} {M : InformationModel E}
   {who : ι} [DecidableEq (M.InfoState who)]
 
+omit [Fintype ι] [DecidableEq ι] in
+private theorem actedAt_prefix (who : ι) {state : E.State}
+    (trace : E.Trace state) (info : M.InfoState who) (member : info ∈ M.actedAt who trace) :
+    ∃ (prior : E.History) (joint : ∀ player, Option (E.Action player))
+      (legal : E.Legal prior.state joint) (next : E.State)
+      (reached : next ∈ (E.step prior.state ⟨joint, legal⟩).support) (fuel : Nat),
+      M.infoOf who prior.trace = info ∧
+        E.ReachesWithin fuel (prior.extend legal reached) ⟨state, trace⟩ := by
+  induction trace with
+  | start => simp [InfoSignals.actedAt] at member
+  | @extend source target trace joint legal reached ih =>
+      have earlier (member : info ∈ M.actedAt who trace) :
+          ∃ (prior : E.History) (earlierJoint : ∀ player, Option (E.Action player))
+            (earlierLegal : E.Legal prior.state earlierJoint) (next : E.State)
+            (moved : next ∈ (E.step prior.state ⟨earlierJoint, earlierLegal⟩).support) (fuel : Nat),
+            M.infoOf who prior.trace = info ∧ E.ReachesWithin fuel
+              (prior.extend earlierLegal moved) ⟨target, trace.extend joint legal reached⟩ := by
+        obtain ⟨prior, earlierJoint, earlierLegal, next, moved, fuel, same, path⟩ := ih member
+        exact ⟨prior, earlierJoint, earlierLegal, next, moved, fuel + 1, same,
+          path.trans (.step joint legal reached (.refl 0 _))⟩
+      cases selected : joint who with
+      | none => exact earlier (by simpa only [InfoSignals.actedAt, selected] using member)
+      | some action =>
+          simp only [InfoSignals.actedAt, selected, List.mem_cons] at member
+          rcases member with same | member
+          · exact ⟨⟨source, trace⟩, joint, legal, target, reached, 0, same.symm, .refl 0 _⟩
+          · exact earlier member
+
+omit [Fintype ι] [DecidableEq ι] in
+/-- The assessment antichain condition also provides the no-revisit premise
+for affineness of continuation value in a current behavioral choice. -/
+theorem actsOnce_of_decisionInformationAntichain
+    (antichain : M.DecisionInformationAntichain) : M.ActsOnceAtEachInfoState := by
+  intro player state trace
+  induction trace with
+  | start => simp [InfoSignals.actedAt]
+  | @extend source target trace joint legal reached ih =>
+      cases selected : joint player with
+      | none => simpa only [InfoSignals.actedAt, selected] using ih
+      | some action =>
+          simp only [InfoSignals.actedAt, selected, List.nodup_cons]
+          refine ⟨?_, ih⟩
+          intro member
+          have menu : some action ∈ M.menu player (M.infoOf player trace) := by
+            apply (M.menu_adequate player trace (some action)).mpr
+            simpa only [selected] using E.legalOption_of_legal legal player
+          let site := M.informationSite player ⟨source, trace⟩ action legal.1 menu
+          obtain ⟨prior, oldJoint, oldLegal, next, moved, fuel, same, path⟩ :=
+            actedAt_prefix player trace _ member
+          exact antichain player site ⟨prior, same⟩ ⟨⟨source, trace⟩, rfl⟩
+            oldJoint oldLegal next moved fuel path
+
 theorem BehavioralAssessment.continuationContext_value_withLaw
     (assessment : M.BehavioralAssessment) (once : M.ActsOnceWhereItMatters)
     (site : M.InformationSite who) (nonterminal : site.AllNonterminal)

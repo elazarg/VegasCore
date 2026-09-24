@@ -34,3 +34,5 @@ import GameTheoryExtensions.Core.PendingChoice
 import GameTheoryExtensions.Core.IncentiveCone
 import GameTheoryExtensions.Core.RegularChoice
 import GameTheoryExtensions.Core.RegularChoiceSimulation
+import GameTheoryExtensions.Math.Probability.ConditionalSymmetry
+import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes

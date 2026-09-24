@@ -15,16 +15,16 @@ namespace VegasTests.SelectiveAssociation
 
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
-private def responseOwner : ServiceInstruction nativeGraph → Option Player
+def nativeInstructionPlayer : ServiceInstruction nativeGraph → Option Player
   | .player who => some who
   | _ => none
 
-private theorem instruction_actor (instruction : ServiceInstruction nativeGraph)
+theorem native_instruction_actor (instruction : ServiceInstruction nativeGraph)
     (history : List nativeApp.EnvironmentEntry) (view : nativeApp.EnvironmentView)
     (command : nativeApp.Command)
     (supported : command ∈ (nativeRuntime.interactionInstruction nativeLeaks nativeNetwork
       history view instruction).support) :
-    command.actor? nativeApp = responseOwner instruction := by
+    command.actor? nativeApp = nativeInstructionPlayer instruction := by
   cases instruction with
   | player who | grant event | sample event | tick | expire event =>
       cases FinDist.mem_support_pure.mp supported
@@ -41,11 +41,11 @@ private theorem instruction_actor (instruction : ServiceInstruction nativeGraph)
 
 private theorem player_positions (count : Nat) (who : Player)
     (bounded : count < nativePlan.length)
-    (selected : (nativePlan[count]?).bind responseOwner = some who) :
+    (selected : (nativePlan[count]?).bind nativeInstructionPlayer = some who) :
     count = 0 ∨ count = 1 ∨ ∃ event : nativeGraph.EventId,
       count = (nativeBeforeResponse event).length ∧ who = nativeOwner event := by
   have all : ∀ cursor : Fin nativePlan.length, ∀ actor : Player,
-      (nativePlan[cursor.val]?).bind responseOwner = some actor →
+      (nativePlan[cursor.val]?).bind nativeInstructionPlayer = some actor →
         cursor.val = 0 ∨ cursor.val = 1 ∨ ∃ event : nativeGraph.EventId,
           cursor.val = (nativeBeforeResponse event).length ∧ actor = nativeOwner event := by
     decide
@@ -135,7 +135,7 @@ theorem native_decision_cursor (event : nativeGraph.EventId) (control : nativeAp
   have bounded : count < nativePlan.length := by
     change _ + _ = nativePlan.length at accounted
     omega
-  have selected : (nativePlan[count]?).bind responseOwner = some who := by
+  have selected : (nativePlan[count]?).bind nativeInstructionPlayer = some who := by
     simp only [nativeScheduler, cursor] at commandMem
     cases found : nativePlan[count]? with
     | none =>
@@ -145,7 +145,7 @@ theorem native_decision_cursor (event : nativeGraph.EventId) (control : nativeAp
     | some instruction =>
         rw [found] at commandMem
         simp only [Option.bind_some]
-        exact (instruction_actor instruction _ _ command commandMem).symm.trans actor
+        exact (native_instruction_actor instruction _ _ command commandMem).symm.trans actor
   have grantSame := native_activation_grant prior control.execution who (by
     cases command <;> simp only [ReactiveApplication.Command.actor?] at actor <;>
       try cases actor
