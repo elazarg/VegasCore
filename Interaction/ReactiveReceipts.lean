@@ -23,6 +23,15 @@ def Execution.ReceiptsSound (predicate : app.Payload → Prop) (execution : app.
     (receipt.2 = true → predicate message.payload)) execution.network.ledger execution.receipts
 
 omit [DecidableEq Principal] in
+/-- Evidence extracted from the public ledger and its corresponding receipt. -/
+theorem Execution.ReceiptsSound.certifies (predicate : app.Payload → Prop)
+    (execution : app.Execution) (sound : execution.ReceiptsSound app predicate)
+    (message : Message Principal app.Payload) (id : MessageId Principal)
+    (accepted : (message, (id, true)) ∈ execution.network.ledger.zip execution.receipts) :
+    predicate message.payload :=
+  (List.forall₂_zip sound accepted).2 rfl
+
+omit [DecidableEq Principal] in
 theorem receiptsSound_initial (predicate : app.Payload → Prop) (state : app.State) :
     (Execution.initial app state).ReceiptsSound app predicate := List.Forall₂.nil
 

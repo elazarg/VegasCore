@@ -80,4 +80,27 @@ theorem reactiveOpeningEvidence (runtime : EventGraphRuntime graph)
     (fun state message next fixed accepted =>
       handle_authenticates runtime state next message candidate raw fixed accepted) scheduler
 
+/-- A successful receipt for this opening occurs in the observer's public ledger. -/
+def openingObserved (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (candidate : Handle graph) (raw : Raw L) : Prop :=
+  ∃ event id, (⟨id, .opening event candidate raw⟩, (id, true)) ∈
+    view.messages.ledger.zip view.receipts
+
+/-- A visible success receipt identifies the immutable meaning, independently
+of the hidden history or any assessment beliefs. -/
+theorem observed_opening_eq (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (candidate : Handle graph) (fixed opened : Raw L)
+    (sound : execution.ReceiptsSound (runtime.reactiveApplication leaks)
+      (Payload.Authenticates candidate fixed))
+    (observed : runtime.openingObserved leaks
+      (execution.observe (runtime.reactiveApplication leaks) who) candidate opened) :
+    opened = fixed := by
+  obtain ⟨event, id, accepted⟩ := observed
+  exact sound.certifies (runtime.reactiveApplication leaks) _ execution
+    ⟨id, .opening event candidate opened⟩ id accepted event opened rfl
+
 end Vegas.EventGraphRuntime

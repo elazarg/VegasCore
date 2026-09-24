@@ -48,6 +48,18 @@ The source-to-native preservation theorem is open. The checked foundations are:
   stores publication failure. The binding and both opening transitions are
   checked. Lifting this packet-level evidence to a complete native
   sequential-equilibrium obstruction remains a separate obligation.
+- [ReactiveReceipts.lean](../Interaction/ReactiveReceipts.lean) and
+  [ReactiveOpeningEvidence.lean](../Vegas/Pending/ReactiveOpeningEvidence.lean):
+  public success receipts certify accepted payload properties. For an immutable
+  commitment, an observed accepted opening identifies its fixed meaning under
+  arbitrary submissions, replays, passive observations and scheduling.
+- [SequentialValidationEvidence.lean](../VegasTests/SequentialValidationEvidence.lean):
+  for the source fixture's actual initial law, every legal native history
+  compatible with an observed accepted opening has the disclosed private type.
+  Every belief on that information fiber assigns probability one to that type,
+  including utility-dependent beliefs. This is conditional on the observed
+  receipt; constructing the complete scheduled native witness and proving the
+  profitable guessing continuations remain open.
 - [ReactiveDecisionInformation.lean](../Interaction/ReactiveDecisionInformation.lean):
   actual reactive decision fibers are nonterminal history antichains, for any
   application, scheduler and passive observation rule.
