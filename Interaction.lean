@@ -90,3 +90,4 @@ import Interaction.ReactiveInvariantContinuation
 import Interaction.ReactiveResponseKernel
 import Interaction.ReactiveRoundTrace
 import Interaction.ReactiveEvidencePersistence
+import Interaction.ReactiveAssessmentEvaluation

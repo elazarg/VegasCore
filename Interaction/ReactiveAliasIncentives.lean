@@ -62,45 +62,6 @@ theorem decodeProfile_normal
     ((normal.menu raw).decode_embedPolicy_covered initial horizon scheduler who (source who)
       past view response supported)
 
-end Interaction.ReactiveApplication.SubmissionNormalization
-
-namespace Interaction.ReactiveApplication.ResponseMenu
-
-open GameTheory.Protocol GameTheory.Math.Probability
-
-variable {Principal : Type} [DecidableEq Principal]
-  {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
-
-theorem decodeProfile_update
-    (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
-    (who : Principal)
-    (alternative : (menu.information initial horizon scheduler).BehavioralPolicy who) :
-    menu.decodeProfile initial horizon scheduler (GameTheory.Profile.update
-        (sig := (menu.information initial horizon scheduler).behavioralSignature)
-          profile who alternative) =
-      Function.update (menu.decodeProfile initial horizon scheduler profile) who
-        (app.decodePolicy (menu.embedPolicy initial horizon scheduler who alternative)) := by
-  funext other past view
-  by_cases same : other = who
-  · subst other
-    simp only [decodeProfile, GameTheory.Profile.update, Function.update_self]
-  · simp only [decodeProfile, GameTheory.Profile.update, Function.update_of_ne same]
-
-end Interaction.ReactiveApplication.ResponseMenu
-
-namespace Interaction.ReactiveApplication.SubmissionNormalization
-
-open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
-
-variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
-  (normal : app.SubmissionNormalization) (raw : app.ResponseMenu)
-  (stable : ∀ who past view,
-    raw.actions who (normal.recall who past) view = raw.actions who past view)
-  (closed : ∀ who past view response, response ∈ raw.actions who past view →
-    normal.action who past view response ∈ raw.actions who past view)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
-
 theorem aliasDeviation_finish
     (source : ∀ who,
       ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)

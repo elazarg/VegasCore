@@ -38,7 +38,7 @@ Three evidence levels must remain distinct:
 | O3 | Replay has selection power unavailable to a fresh proposal | Checked local randomized incentive obstruction and exact network selection witnesses | Distinct identifiers and unpublished eligibility address the witnessed menu effects |
 | O4 | One transmission opportunity can help different events | Checked honest source SPE whose current compiled policy is not native behavioral SPE under uniform inclusion | Authorized uniform service removes the exhibited improvement; full SPE and ledger realization open |
 | O5 | Recovery confuses an attempted submission or remembered intention with what took effect | Checked operational failure of the command-service policy; reactive recovery and reconstruction regressions | Selected cases are repaired; arbitrary-prefix correspondence remains open |
-| O6 | Target observations reveal information absent from source observations | Checked abstract and native sequential-equilibrium impossibilities, plus behavioral-SPE witnesses | The native disclosure witness is complete; communication-extension preservation remains open |
+| O6 | Target observations reveal information absent from source observations | Checked abstract/native disclosure impossibilities and full SE separation for accepted named evidence, plus behavioral-SPE witnesses | The [selective-association witness](selective-association-proof-contract.md) excludes every native SE matching its source SE's public law; preservation with richer ambient evidence remains open |
 
 O1 and O2 illustrate a common obstruction: a source policy can select its best
 option without encoding a ranking of alternatives that the target later forces

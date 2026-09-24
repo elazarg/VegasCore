@@ -85,56 +85,7 @@ theorem aliasImplementation_admissible [DecidableEq Principal]
   exact normal.aliasImplementation_policy_admissible raw stable who reference policy admitted
     _ _ response supported
 
-end Interaction.ReactiveApplication.SubmissionNormalization
-
-namespace Interaction.ReactiveApplication.ResponseMenu
-
-open GameTheory.Protocol GameTheory.Math.Probability
-
-variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
-  (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
-
-theorem decode_embedPolicy_covered (who : Principal)
-    (policy : (menu.information initial horizon scheduler).BehavioralPolicy who)
-    (past : List app.PlayerEntry) (view : app.PlayerView) (response : app.Action)
-    (supported : response ∈
-      (app.decodePolicy (menu.embedPolicy initial horizon scheduler who policy)
-        past view).support) :
-    response ∈ menu.actions who past view := by
-  rw [decodePolicy, embedPolicy, FinDist.map_comp, FinDist.support_map] at supported
-  obtain ⟨chosen, _supported, same⟩ := supported
-  change chosen.1.getD ⟨none⟩ = response at same
-  obtain ⟨action, member, value⟩ := chosen.2
-  rw [value, Option.getD_some] at same
-  exact same ▸ member
-
-/-- All-input coverage makes finite restriction an exact decoding inverse,
-including inputs outside the legal histories used by `Admissible`. -/
-theorem decode_restrictPolicy_of_covered (who : Principal) (policy : app.Policy)
-    (admissible : menu.Admissible initial horizon scheduler who policy)
-    (covered : ∀ past view response, response ∈ (policy past view).support →
-      response ∈ menu.actions who past view) :
-    app.decodePolicy (menu.embedPolicy initial horizon scheduler who
-      (menu.restrictPolicy initial horizon scheduler who policy admissible)) = policy := by
-  funext past view
-  change ((menu.embedPolicy initial horizon scheduler who
-    (menu.restrictPolicy initial horizon scheduler who policy admissible))
-      (some (past, view))).map _ = _
-  rw [menu.embed_restrictPolicy initial horizon scheduler who policy admissible past view
-    (covered past view)]
-  exact congrFun (congrFun (app.decode_encodePolicy policy) past) view
-
-end Interaction.ReactiveApplication.ResponseMenu
-
-namespace Interaction.ReactiveApplication.SubmissionNormalization
-
-open GameTheory.Protocol GameTheory.Math.Probability
-
-variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
-  (normal : app.SubmissionNormalization) (raw : app.ResponseMenu)
-  (stable : ∀ who past view,
-    raw.actions who (normal.recall who past) view = raw.actions who past view)
+variable [DecidableEq Principal]
   (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 /-- Simulate a whole raw continuation deviation, retaining its private action

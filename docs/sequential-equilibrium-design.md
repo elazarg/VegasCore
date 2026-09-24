@@ -649,7 +649,7 @@ sites: the shared inactive information value does not remember own play.
 | Gate | Checked result | Remaining obligation |
 |---|---|---|
 | Capability obstruction | Generic binary-decision theorem, with abstract and actual native instances | No universal claim about runtimes lacking the stated capability |
-| Independent evidence | Issuance, forwarding, rejection persistence, information-fiber soundness, and later certification of named bindings from previously observed candidate proofs; selective association survives arbitrary intervening recipient responses | Relate candidate facts and communication timing to the source extension; no full named-evidence SE impossibility follows from the operational prefix alone |
+| Independent evidence | Full SE separation for accepted named evidence: a genuine source SE gives Alice zero, while every sequentially rational native assessment gives at least one half; original public-result laws cannot agree | A stronger ambient interface must account for pre-acceptance candidate evidence and later association; preservation for such an interface remains open |
 | Positive example | Complete SEs for both native guessing objectives, all legal information sets, one common perturbation sequence | A source-to-native preservation instance, including partial observation |
 | Service coverage | Authorized inclusion, at-most-once publication, finite-menu coverage, recurring owner opportunities; prescribed binding and disclosure realization through arbitrary wire reactions and reserved inclusion | Earlier own-deviation prefixes and full communication-aware policy correspondence |
 | Private response aliases | SE preservation from normalized to raw finite native menus, with one common consistency sequence, every continuation deviation, projected beliefs, and initialized state laws | Separate correspondence from the communication-aware source game |
@@ -807,3 +807,18 @@ the exact native proof uses the existing ideal commitment semantics.
 
 The finite-instance and certificate architecture above is our design proposal;
 it is not attributed to these sources as a ready-made runtime construction.
+
+### Accepted named evidence: complete separation
+
+The [selective-association theorem](selective-association-proof-contract.md)
+closes the counterexample for the complete finite named-evidence source
+interface. Its source assessment uses one common fully mixed consistency
+sequence and is optimal against whole continuation policies at every site.
+Its initialized public-result law cannot be matched by any native sequential
+equilibrium under the stated service and full bounded raw response menu.
+
+The distinction is prospective evidence: a native candidate can be certified
+before its game binding is accepted, then recognized through a public
+association. Arbitrary claims and certificates naming only accepted source
+bindings do not provide that capability. The theorem constrains the ambient
+evidence semantics; it does not prescribe a new source-language statement.

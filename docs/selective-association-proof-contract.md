@@ -1,8 +1,41 @@
-# Selective association: proof contract
+# Selective association: sequential-equilibrium separation
 
-This compares **accepted named-binding evidence** and **candidate evidence later
-associated with a binding**. No sequential-equilibrium impossibility for the
-full named-evidence source service has been proved yet.
+[`SelectiveAssociationSeparation.lean`](../VegasTests/SelectiveAssociationSeparation.lean)
+proves that the accepted-named-evidence source interface has a sequential
+equilibrium whose initialized public-result law cannot be matched by any
+sequential equilibrium of the stated native game. The theorem allows arbitrary
+strategy and belief translations. It compares the original three publication
+results and their original utilities.
+
+| Game | Checked conclusion |
+| --- | --- |
+| Source with finite claims, accepted named evidence, forwarding and replay | There exists an SE: Alice publishes a fair bit; both guessers publish `false`; Alice's expected payoff is zero. |
+| Native with candidate evidence and later public association | Every sequentially rational assessment gives Alice expected payoff at least one half. |
+| Comparison | The source equilibrium's public-result law differs from every native SE's law. |
+
+The conclusion concerns preservation of this source equilibrium. It does not
+assert that the native game lacks equilibria, or that every blockchain service
+has the same obstruction. The finite menus, calendar and passive leak rule
+below are part of the theorem. Evidence is ideal, and the utilities contain
+no computation or verification costs.
+
+## Why the evidence interfaces differ
+
+A source certificate names a binding already accepted by the source game.
+Native evidence can certify an immutable candidate before acceptance. Later,
+the public binding identifies that same candidate. Bob can combine the old
+private evidence with the public association; Carol sees only the association.
+
+| Step | Accepted named evidence | Native candidate evidence |
+| --- | --- | --- |
+| Before Alice's game binding | Arbitrary claims; the future source name has no certified value. | Alice can submit a binding candidate and its genuine certificate; Bob alone notices the envelope. |
+| Alice's protected binding response | A certificate of the newly accepted name can accompany the response and is public before either guess. | Alice can submit the same candidate without its certificate; the accepted association is public. |
+| Guesses | Both prescribed guessers use the same public evidence, or the same default guess. | Bob knows the bound value; Carol's settled guess law is independent of Alice's fair bit. |
+
+The witness uses only accepting guards and successful Boolean values for
+Alice's deviation. Its profitable information channel does not depend on an
+invalid value or a failed guard. Ordinary opening is available and is justified
+by incentives; no forced-opening primitive is assumed.
 
 ## Source evidence capability
 
@@ -48,10 +81,10 @@ Every source response retains all possessed named certificates, arbitrary
 claims, and forwarding. Envelopes are immutable. Any new named certificate
 emitted after association has a new envelope identity and is not privately
 delivered before the guesses under this rule. Recording it makes it public;
-public disclosure remains available and must be covered by the source
+public disclosure remains available and is covered by the source
 equilibrium proof. An already pending certificate is not silently excluded:
-the argument must show that no certificate of this previously absent binding
-could have been valid when the earlier envelope was emitted.
+the checked source evidence facts show that no certificate of this previously
+absent binding could have been valid when the earlier envelope was emitted.
 
 ## Actual native capability and admission risk
 
@@ -63,9 +96,8 @@ the named binding at every compatible native history.
 
 Candidate registration currently requires a commitment call. It is not a
 standalone seal operation. The first packet may itself bind the game event if
-included. The witness must therefore prove that the stated schedule leaves it
-pending and selects Alice's later envelope, including after arbitrary replay
-and competing traffic from Bob. This coupling may not be erased in the source
+included. The checked schedule leaves it pending and selects Alice's later envelope,
+including after arbitrary replay and competing traffic from Bob. This coupling may not be erased in the source
 service contract.
 
 The native prefix is checked in
@@ -77,7 +109,10 @@ Bob retains the earlier certificate and recognizes the accepted binding.
 and current view even with different Bob responses in the two worlds;
 `carol_activation_after_arbitrary_responses` extends it through the actual
 passive-observation activation. It uses the shared compiled six-event graph.
-The complete native deviation bound remains unproved.
+[`SelectiveAssociationNativeSequentialDeviation.lean`](../VegasTests/SelectiveAssociationNativeSequentialDeviation.lean)
+proves the complete profitable-deviation bound against every sequentially
+rational native assessment. Its successful-publication conclusions are proved
+along the actual deviating run.
 
 ## Checked schedule and payoff facts
 
@@ -142,8 +177,9 @@ proves that a feasible successful opening is preferable even allowing different
 other-player results in the compared continuations.
 [`SelectiveAssociationProbability.lean`](../VegasTests/SelectiveAssociationProbability.lean)
 proves the intended half-unit deviation bound **conditional on** successful
-Alice/Bob publication and Carol's independent-guess bound. Those hypotheses
-still require the native information-set and incentive proofs.
+Alice/Bob publication and Carol's independent-guess bound. [`SelectiveAssociationNativeDeviationCompletion.lean`](../VegasTests/SelectiveAssociationNativeDeviationCompletion.lean)
+and the final native deviation theorem discharge the successful-publication
+hypotheses using the actual information sets and response incentives.
 
 [`SelectiveAssociationGuessContinuation.lean`](../VegasTests/SelectiveAssociationGuessContinuation.lean)
 proves that later communication and publication decisions cannot improve the
@@ -153,7 +189,7 @@ proves that the settled guess law is independent of Alice's bit, even with
 arbitrary, different earlier Bob responses. It includes the actual reserved
 inclusion, ticks, and timeout settlement.
 
-## Source interface and equilibrium obligation
+## Source interface and sequential equilibrium
 
 [`SelectiveAssociationSourceCore.lean`](../VegasTests/SelectiveAssociationSourceCore.lean)
 uses the original source protocol transitions.
@@ -161,18 +197,18 @@ uses the original source protocol transitions.
 adds pending messages with any finite nonempty claim alphabet, all requested
 named evidence, silence, and every known replay. Source game actions remain
 stage-local. Early request-shaped traffic is expressible as a claim; it creates
-no private registry of immutable pending source proposals. The separation being
-investigated concerns this **whole source interface**, not every possible
-language with pending requests.
+no private registry of immutable pending source proposals. The separation concerns this **whole source interface**. Languages with
+additional evidence capabilities for pending proposals require their own
+analysis.
 
 The protected response executes its source step immediately before reserved
 recording, with no intervening observer. A newly accepted named binding may
-already be certified in that response's packet; the source equilibrium must
-handle this public disclosure. Ordinary source opening supplies genuine owned
+already be certified in that response's packet; the source equilibrium handles
+this public disclosure. Ordinary source opening supplies genuine owned
 evidence. Other claims remain available.
 
 [`SelectiveAssociationSourceCalendar.lean`](../VegasTests/SelectiveAssociationSourceCalendar.lean)
-defines the matching calendar, candidate strategy, and a common perturbation
+defines the matching calendar, prescribed strategy, and a common perturbation
 with positive mass on every menu response. Full mixing and Bayes consistency
 of each positive perturbation are checked.
 [`SelectiveAssociationSourceGuessSymmetry.lean`](../VegasTests/SelectiveAssociationSourceGuessSymmetry.lean)
@@ -203,8 +239,12 @@ proves the actual continuation payoff bounds for Alice's ambient and binding
 responses: arbitrary Alice policies yield at most zero against the prescribed
 guessers, while her prescribed policy yields zero. The key source fact is that
 both guessers select the same public guess; recording Carol's ordinary binding
-adds no new certificate. Integration of the remaining ambient and binding
-incentives into a full source SE is still required.
+adds no new certificate. [`SelectiveAssociationSourceBobPrelude.lean`](../VegasTests/SelectiveAssociationSourceBobPrelude.lean)
+proves Bob's ambient continuation bound and prescribed value of one half.
+[`SelectiveAssociationSourceEquilibrium.lean`](../VegasTests/SelectiveAssociationSourceEquilibrium.lean)
+assembles all decision-site inequalities into a genuine source SE.
+[`SelectiveAssociationSourceInitialLaw.lean`](../VegasTests/SelectiveAssociationSourceInitialLaw.lean)
+proves its exact initialized public-result law.
 
 [`SelectiveAssociationNamedEvidence.lean`](../VegasTests/SelectiveAssociationNamedEvidence.lean)
 proves that its six named facts cover every genuine commitment fact of this
@@ -213,27 +253,54 @@ throughout the recipient's information fiber. It also proves exactly which
 facts each player owns before the guesses. Thus the finite evidence alphabet
 does not omit a source binding.
 
-## Native deviation and remaining strategic obligations
+## Complete native deviation and final contradiction
 
 [`SelectiveAssociationNativeDeviation.lean`](../VegasTests/SelectiveAssociationNativeDeviation.lean)
 constructs Alice's legal strategy over the full response menu. Its prefix laws
 execute the actual calendar and retain Bob's arbitrary prelude response.
 [`SelectiveAssociationNativeDeviationPayoff.lean`](../VegasTests/SelectiveAssociationNativeDeviationPayoff.lean)
 factors the complete outcome law through Alice's fair bit and bounds Carol's
-correctness unconditionally in the opponents' policies. Its half-unit payoff
-bound still assumes successful Alice and Bob publications in each supported
-outcome; the remaining composition must discharge those assumptions.
+correctness unconditionally in the opponents' policies.
+[`SelectiveAssociationNativeDeviationCompletion.lean`](../VegasTests/SelectiveAssociationNativeDeviationCompletion.lean)
+proves successful Alice and Bob publications at every supported terminal
+outcome of that deviation. It uses the target assessment's supported responses
+at intermediate legal histories, allowing arbitrary subsequent play.
+[`SelectiveAssociationNativeSequentialDeviation.lean`](../VegasTests/SelectiveAssociationNativeSequentialDeviation.lean)
+therefore proves Alice's deviation earns at least one half, with no remaining
+successful-publication assumptions.
 
-The outstanding conclusions are:
+[`SelectiveAssociationInitialSite.lean`](../VegasTests/SelectiveAssociationInitialSite.lean)
+proves that every compatible history at Alice's first information set has the
+same concrete control state.
+[`SelectiveAssociationInitialRationality.lean`](../VegasTests/SelectiveAssociationInitialRationality.lean)
+identifies that continuation comparison with the initialized game comparison.
+Sequential rationality at this site implies Alice's equilibrium payoff is at
+least the deviation payoff. Thus every sequentially rational native assessment
+gives Alice at least one half.
 
-- A full source sequential equilibrium and its initialized public outcome law,
-  assembling the consistent beliefs and all decision-site incentives.
-- Successful Alice and Bob publications throughout the actual deviating run,
-  using the checked supported-response guarantees at its intermediate histories.
-- A profitable whole-policy deviation at the native initial information set,
-  contradicting preservation of the source equilibrium's public outcome law.
+The source equilibrium gives Alice zero. Equal public-result laws would give
+equal expected utilities, yielding the contradiction checked in
+`exists_source_equilibrium_no_native_outcome_match`. This does not assume a
+playerwise, local, or otherwise restricted strategy translator.
 
-The operational association result alone does not rule out a one-way SE
-compiler. A source service that already grants prospective evidence or a
-matching retrospective disclosure rule needs a different analysis. No claim
-that every implementation requires an ambient seal registry follows here.
+## Scope and language-design consequence
+
+The source theorem holds for any finite nonempty claim alphabet, with all
+current named certificates and known replays. The target uses its complete
+declared bounded response menu, including two candidate slots and three raw
+values (both Booleans and an integer of the wrong game type). Both games use
+the explicit finite calendar and passive observation rule above. All comparisons
+allow whole behavioral continuation deviations. Belief consistency is proved
+for the source; the native lower bound needs only sequential rationality.
+
+The result rules out preserving SE by giving this source interface only claims
+and certificates about accepted bindings. An ambient interface intended to
+support stronger preservation must account for the demonstrated ability to
+certify an immutable candidate before acceptance and recognize its later
+association. This can be treated as a communication/evidence capability; the
+proof does not establish a need for an extra program statement or a particular
+pending-proposal registry design. A richer source interface still needs its
+own preservation proof.
+
+General native SE preservation remains open. This theorem closes the negative
+result for the stated accepted-named-evidence abstraction and service.

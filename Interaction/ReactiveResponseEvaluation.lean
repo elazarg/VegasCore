@@ -11,7 +11,7 @@ namespace Interaction.ReactiveApplication.ResponseMenu
 
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
-variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
+variable {Principal : Type} [DecidableEq Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
   (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
@@ -19,6 +19,23 @@ def decodeProfile
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who) :
     Principal → app.Policy :=
   fun who => app.decodePolicy (menu.embedPolicy initial horizon scheduler who (profile who))
+
+theorem decodeProfile_update
+    (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (who : Principal)
+    (alternative : (menu.information initial horizon scheduler).BehavioralPolicy who) :
+    menu.decodeProfile initial horizon scheduler (GameTheory.Profile.update
+        (sig := (menu.information initial horizon scheduler).behavioralSignature)
+          profile who alternative) =
+      Function.update (menu.decodeProfile initial horizon scheduler profile) who
+        (app.decodePolicy (menu.embedPolicy initial horizon scheduler who alternative)) := by
+  funext other past view
+  by_cases same : other = who
+  · subst other
+    simp only [decodeProfile, GameTheory.Profile.update, Function.update_self]
+  · simp only [decodeProfile, GameTheory.Profile.update, Function.update_of_ne same]
+
+variable [Fintype Principal]
 
 theorem run_eq_finish
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)

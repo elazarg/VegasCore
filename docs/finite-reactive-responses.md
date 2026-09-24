@@ -175,4 +175,8 @@ and capacity certificates. Its beliefs need not agree with a source assessment
 or make the compiled continuations optimal. The remaining compiler obligations
 are source-law correctness and finding a consistent completion that preserves
 continuation incentives. Concrete backend encoding and progress assumptions
-still need justification. Native sequential-equilibrium preservation remains open.
+still need justification. Native sequential-equilibrium preservation remains open. The
+[selective-association separation](selective-association-proof-contract.md)
+proves that claims and evidence naming only accepted source bindings are
+insufficient for the stated native service, even with the full declared
+finite response menus and whole-policy continuation deviations.

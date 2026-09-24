@@ -54,6 +54,36 @@ theorem embed_restrictPolicy (who : Principal) (policy : app.Policy)
   intro action supported
   rfl
 
+theorem decode_embedPolicy_covered (who : Principal)
+    (policy : (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (past : List app.PlayerEntry) (view : app.PlayerView) (response : app.Action)
+    (supported : response ∈
+      (app.decodePolicy (menu.embedPolicy initial horizon scheduler who policy)
+        past view).support) :
+    response ∈ menu.actions who past view := by
+  rw [decodePolicy, embedPolicy, FinDist.map_comp, FinDist.support_map] at supported
+  obtain ⟨chosen, _supported, same⟩ := supported
+  change chosen.1.getD ⟨none⟩ = response at same
+  obtain ⟨action, member, value⟩ := chosen.2
+  rw [value, Option.getD_some] at same
+  exact same ▸ member
+
+/-- All-input coverage makes finite restriction an exact decoding inverse,
+including inputs outside the legal histories used by `Admissible`. -/
+theorem decode_restrictPolicy_of_covered (who : Principal) (policy : app.Policy)
+    (admissible : menu.Admissible initial horizon scheduler who policy)
+    (covered : ∀ past view response, response ∈ (policy past view).support →
+      response ∈ menu.actions who past view) :
+    app.decodePolicy (menu.embedPolicy initial horizon scheduler who
+      (menu.restrictPolicy initial horizon scheduler who policy admissible)) = policy := by
+  funext past view
+  change ((menu.embedPolicy initial horizon scheduler who
+    (menu.restrictPolicy initial horizon scheduler who policy admissible))
+      (some (past, view))).map _ = _
+  rw [menu.embed_restrictPolicy initial horizon scheduler who policy admissible past view
+    (covered past view)]
+  exact congrFun (congrFun (app.decode_encodePolicy policy) past) view
+
 theorem embed_restrictPolicy_history (who : Principal) (policy : app.Policy)
     (covered : menu.Admissible initial horizon scheduler who policy)
     (history : (menu.protocol initial horizon scheduler).History) :

@@ -2,6 +2,7 @@
 
 import VegasTests.SelectiveAssociationSourceGuessOptimality
 import VegasTests.SelectiveAssociationSourceOpeningPayoffs
+import Interaction.ReactiveAssessmentEvaluation
 
 /-! # Source assessment values in the actual interaction evaluator
 
@@ -83,19 +84,8 @@ theorem context_value_finish (Claim : Type) [Fintype Claim]
             (Profile.update (sig := (model Claim).behavioralSignature)
               assessment.strategy who alternative)) history.1.state).expect
                 (fun state => utility (protocolResults state) who)) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
-  apply FinDist.expect_congr
-  intro history _
-  have bound := (application Claim).trace_bound (FinDist.pure initial) horizon (scheduler Claim)
-    ((menu Claim).toRawTrace (FinDist.pure initial) horizon (scheduler Claim) history.1.trace)
-  have law := (menu Claim).run_eq_finish (FinDist.pure initial) horizon (scheduler Claim)
-    (Profile.update (sig := (model Claim).behavioralSignature) assessment.strategy who alternative)
-    (2 * horizon + 1) history.1 (by omega)
-  have value := congrArg
-    (fun law : FinDist (application Claim).ProtocolState =>
-      law.expect (fun state => utility (protocolResults state) who)) law
-  rw [FinDist.expect_map] at value
-  exact value
+  exact (menu Claim).context_value_finish (FinDist.pure initial) horizon (scheduler Claim)
+    assessment who site (fun state => utility (protocolResults state) who) alternative
 
 theorem prescribed_context_value_finish (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (assessment : (model Claim).BehavioralAssessment)
