@@ -12,6 +12,14 @@ utility is fixed to the program's declared payoff.
 Use the existing Kreps--Wilson predicate, whole continuation deviations and
 one common fully mixed sequence. This analysis introduces no runtime or syntax.
 
+The operational investigation proceeds by
+[restricting one feature of the current runtime](runtime-feature-restrictions.md)
+and studying what survives when that restriction is lifted. Each comparison
+holds the surrounding application and service fixed and seeks a requirement
+on further abstractions retaining the relevant game. The generic results below
+support those comparisons; they do not replace the missing same-runtime
+equilibrium proofs with classifications of unrelated terminal experiments.
+
 ## Checked results and their boundaries
 
 - The [incentive-cone criterion](../GameTheoryExtensions/Protocol/SequentialIncentives.lean)
@@ -350,19 +358,27 @@ Failure to find a structural certificate must return `unresolved`, not impossibi
 
 ## Next proof opportunities
 
-1. For partially informed fine and coarse observations, investigate equality of
+1. Complete the [passive-observation comparison](runtime-feature-restrictions.md)
+   on the existing native fixture: prove the restricted native equilibrium,
+   retaining the same application, service and payoffs. The enabled-observation
+   native payoff bound is checked; the restricted native equilibrium is open.
+2. Derive local requirements on further abstractions from paired native
+   histories, evidence knowledge and available responses. Distinguish an
+   observation-respecting lift from unrestricted initialized outcome
+   implementation; the latter needs the induced-deviation argument.
+3. For partially informed fine and coarse observations, investigate equality of
    posterior laws of the retained fact on merged fine fibers. Conditional
    averaging suggests sufficiency; different posteriors suggest a separating
    threshold decision. This stronger criterion is not the checked `Determines`
    theorem, which compares against full state information.
-2. Use the continuation-decision and induced-information results to classify
+4. Use the continuation-decision and induced-information results to classify
    further evidence interfaces. A structural criterion deriving all operational
    premises from an arbitrary runtime abstraction remains open; the
    [selective-association witness](selective-association-proof-contract.md)
    supplies one concrete instantiation.
-3. Derive finite incentive generators and explicit perturbation certificates
+5. Derive finite incentive generators and explicit perturbation certificates
    from structural presentation maps, without assuming the desired preservation.
-4. Instantiate the classification on native response distinctions before
+6. Instantiate the classification on native response distinctions before
    asserting a minimal or sufficient ambient source interface.
 
 Generic results belong in `GameTheoryExtensions/`, operational certificates in
