@@ -171,6 +171,15 @@ not assume the stronger global `PerfectRecall` predicate at inactive histories.
 
 ## Preservation statement and quantifiers
 
+The [communication interpretation](ambient-communication.md) supplies a source
+candidate for addressing the disclosure obstruction. It separates transferable
+opening evidence from publication results and adds explicit semantic
+communication opportunities. Its information and boundedness laws are checked;
+its native sequential-preservation theorem is not. The intended source in the
+positive statement below must include the communication service whose native
+correspondence is proved. An assessment for the original source observations
+does not automatically extend to that game.
+
 Fix a source game, runtime instance, initial type distribution and admissible
 service. Fix **one playerwise compiler** `C_i`, independent of utilities,
 opponents' policies and assessment beliefs. The proposed guarantee is:

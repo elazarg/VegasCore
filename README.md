@@ -92,6 +92,14 @@ player policies. [Cryptographic alternatives](docs/cryptographic-runtime-future-
 are documented as future work with their distinct validity, recovery and
 disclosure assumptions.
 
+The [communication semantics](docs/ambient-communication.md) keeps evidence
+separate from game results. Its checked source adapter exposes an authenticated
+opening even when publication fails, and permits voluntary disclosure at
+explicit communication opportunities. The experiment proves evidence soundness,
+perfect recall, bounded play, and the original counterexample's corrected
+information behavior without adding a `failure(value)` result. Native
+sequential-equilibrium preservation for this interpretation remains open.
+
 ## Build
 
 ```text

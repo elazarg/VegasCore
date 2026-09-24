@@ -179,6 +179,15 @@ observation before another player makes a consequential choice, or establish
 a condition under which it cannot change incentives. The proof does not choose
 surface syntax or a compiler flag.
 
+The [communication interpretation](ambient-communication.md) implements that
+distinction without changing `PublicationResult`. For this source game,
+[`CommunicationDisclosure`](../VegasTests/CommunicationDisclosure.lean)
+checks that the guard still records plain failure, while the opening supplies
+a certificate that fixes the private type under every compatible belief. It
+also constructs a legal private disclosure before the first source command.
+These results address the information mismatch; they do not establish native
+sequential-equilibrium preservation for the extended source game.
+
 The [cryptographic future-work note](cryptographic-runtime-future-work.md)
 separates commitment validity, forced recovery and controlled disclosure.
 Validity proofs and timed recovery address different restrictions. Neither

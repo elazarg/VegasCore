@@ -3,8 +3,8 @@
 | Package | Responsibility |
 | --- | --- |
 | `GameTheory` | Pinned probability and game-theory foundation |
-| `GameTheoryExtensions` | Reusable simulations, mixtures, utility transport, and probability lemmas |
-| `Interaction` | Message networks, explicit activations, policies, recall, inclusion, and ideal commitments |
+| `GameTheoryExtensions` | Simulations, utility transport, knowledge, recall, and probability lemmas |
+| `Interaction` | Networks, communication and evidence, activations, policies, inclusion, ideal commitments |
 | `Vegas.Foundation` | Shared typed contexts, values, expressions, and result interfaces |
 | `Vegas.Expr` | Concrete typed expressions and distributions |
 | `Vegas.Source` | Failure-aware sequential source syntax, semantics, accounting, and safety |
@@ -26,7 +26,7 @@ mistaking for a step in a proof; their module headers say so.
 
 The reactive protocol in `Interaction` is source-independent. Its scheduler
 chooses an activation or network/application operation; a player returns
-private memory and at most one transmission. Network inputs record broadcaster
+at most one transmission. Network inputs record broadcaster
 and envelope, while player recall records its own outputs. Canonical policy
 and execution correspondence and bounded play are checked. `Vegas.Pending`
 supplies the event application, graph-policy compiler, and a reserved-service
@@ -47,6 +47,17 @@ initial pair of deterministic responses lives in `Interaction.ReactiveSubgamePre
 The [uniform-inclusion counterexample](early-opening-and-spe.md) proves failure
 of SPE for the current reactive compiler under its specified service.
 Positive reactive SPE preservation under a suitable service contract remains open.
+
+The source-independent communication extension in `Interaction` adds optional
+claims and transferable certificates at a fixed roster of public opportunities.
+`Vegas.Source.Communication` supplies binding evidence and opening observations
+without changing game results. Knowledge and observation recall live in
+`GameTheoryExtensions`; evidence soundness, local menus, unchanged game kernels,
+and the bounded communication protocol live in `Interaction`. This semantic
+service has no proved native equilibrium correspondence; its synchronous
+delivery assumptions are explicit in the
+[communication design](ambient-communication.md).
+
 The paper's
 command-service capstones and fixed-service coalescing comparisons have their
 own stated targets and do not establish the reactive compiler theorem.

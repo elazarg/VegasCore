@@ -18,3 +18,5 @@ import Vegas.Source.Safety
 import Vegas.Source.ProtocolEvaluation
 import Vegas.Source.SetupProtocolEvaluation
 import Vegas.Source.SetupProtocolBehavioral
+import Vegas.Source.CommitmentEvidence
+import Vegas.Source.Communication

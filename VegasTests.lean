@@ -39,5 +39,6 @@ import VegasTests.SequentialValidationService
 import VegasTests.SequentialValidationPrefix
 import VegasTests.SequentialValidationImpossibility
 import VegasTests.SequentialValidationCompletion
+import VegasTests.CommunicationDisclosure
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

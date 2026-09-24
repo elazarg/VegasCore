@@ -51,6 +51,11 @@ import Interaction.PendingSelection
 import Interaction.PendingPriority
 import Interaction.ReactiveSelection
 import Interaction.PendingWeighted
+import Interaction.Communication
+import Interaction.CommunicationProtocol
+import Interaction.CommunicationHistory
+import Interaction.CommunicationKnowledge
+import Interaction.CommunicationBounded
 import Interaction.ReactiveProvenance
 import Interaction.ReactiveEvaluation
 import Interaction.ReactiveRounds
