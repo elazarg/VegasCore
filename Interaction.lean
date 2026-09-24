@@ -22,6 +22,7 @@ import Interaction.ReactiveDecisionInformation
 import Interaction.ReactiveResponseMenu
 import Interaction.ReactiveResponseEmbedding
 import Interaction.ReactiveReplayMenu
+import Interaction.ReactiveResponseNormalization
 import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveAuthorization
 import Interaction.ReactiveSubmissionAudit

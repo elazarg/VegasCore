@@ -59,6 +59,18 @@ The source-to-native preservation theorem is open. The checked foundations are:
   implementation state; its actual completed policy realizes the prescribed
   implementation, as proved in
   [ReactivePolicyFacts.lean](../Vegas/Pending/ReactivePolicyFacts.lean).
+- [ReactiveResponseNormalization.lean](../Interaction/ReactiveResponseNormalization.lean)
+  and [ReactiveNormalization.lean](../Vegas/Pending/ReactiveNormalization.lean):
+  idempotent own-view normalization preserves the exact packet and one-step
+  operational effects. The semantic menu omits unavailable replays and
+  ineffective private opening annotations. Sender raw-action recall is outside
+  the equality; no equilibrium quotient theorem is asserted.
+- [ReactiveFiniteResponses.lean](../Vegas/Pending/ReactiveFiniteResponses.lean):
+  exact finite-menu completeness for every packet constructor under explicit
+  value and handle bounds, including errors, silence and all known replays.
+- [ReactiveNormalPolicy.lean](../Vegas/Pending/ReactiveNormalPolicy.lean):
+  normalization fixes the compiler's full response law, including recovery,
+  at every input. Coverage by chosen finite value/handle bounds remains open.
 
 Finite-menu instances are proof infrastructure and experiments. They do not
 claim that excluded semantic responses are irrelevant or that their equilibria
@@ -324,11 +336,12 @@ unbounded treatment would need additional probability and equilibrium theory,
 or a proved abstraction preserving the relevant observations and deviations.
 
 The checked finite-history theorem uses finite response menus, finitely many
-players, finite-support chance laws and a certified horizon. Concrete wire bounds
-are a proposed way to supply those menus after accounting for semantic private
-choices. These requirements impose no bound on the internal representation or
-computation of a strategy. A theorem for each finite instance does not establish
-a theorem for the unbounded union of instances.
+players, finite-support chance laws and a certified horizon. Explicit value and
+handle bounds supply complete menus for the modeled packet syntax; connecting
+them to a concrete wire encoding remains open. These requirements impose no
+bound on the internal representation or computation of a strategy. A theorem
+for each finite instance does not establish a theorem for the unbounded union
+of instances.
 
 Nor can all malformed packets simply be identified with silence: their visible
 contents may communicate information or influence the service. Any restriction
@@ -374,22 +387,28 @@ The known envelopes are reconstructed from own
 output recall, passive leaks and the ledger. The native `InputRecall` invariant
 proves this is the network's replay-eligibility list. The extended menu remains
 finite even with unbounded numeric identifiers, and every base response remains
-legal. Failed attempts using unknown identifiers are not silently equated with
-waiting: the base menu can include them, and their distinct recall is retained.
+legal. The general helper permits a base menu to contain unsuccessful replay
+attempts; the semantic menu normalizes those attempts to silence using a proved
+one-step effect equality.
 
-The binding fixture is an explicit experimental instance, **not the proposed
-complete backend action menu**. It includes both Boolean values and an
-unopenable submission at a fixed candidate, the compiler's fresh decision,
-silence, and known replays. Every possible first compiled
-Boolean response is proved available. Coverage of arbitrary later compiled
-recovery and other raw packets is not established.
+The [complete bounded construction](finite-reactive-responses.md) specifies a
+finite raw-value alphabet and prepared-handle range before choosing any profile
+or utilities. It enumerates all packet forms over those domains: wrong events,
+foreign handles, incorrect openings, malformed traffic and unopenable
+commitments remain choices. It retains every known replay without an envelope
+identifier cutoff. Only ineffective private opening annotations and unavailable
+replays are normalized; the exact public packet and fresh hidden meanings are
+preserved. Its exact membership theorem characterizes all bounded normal
+responses. The [fixture](../VegasTests/ReactiveFiniteResponses.lean) supplies
+finite histories and a consistent assessment for this complete menu.
 
-Before a finite-menu compiler theorem can describe the intended backend, justify
-every omitted semantic response by a concrete encoding rule that makes it unavailable,
-or by a proved replacement preserving continuation information, incentives and
-consistent beliefs. This requirement concerns actual behavior, not the choice of
-private memory representation. The adapter alone supplies neither justification.
-No source syntax flag is added.
+The compiler and recovery emit normal forms at every input. They still need
+proofs of source-value coverage and sufficient fresh handles within the chosen
+finite range. These bounds have no established concrete backend encoding. The
+normalization theorem also does not equate raw-action recall or prove a
+whole-policy/equilibrium quotient of the raw game. Any claim relating equilibria
+of differently presented games must discharge those additional obligations.
+No source syntax flag or bound on private computation is introduced.
 
 ## Runtime obligations and ownership
 
@@ -428,8 +447,10 @@ has no proved implication for conditional continuation incentives or beliefs.
    including all admitted malformed traffic. Nonterminal fibers and decision
    antichains are checked for the existing reactive adapter. Explicit finite-menu
    instances, exact history embedding, continuation laws, replay coverage and a
-   native binding fixture are checked. Auditing other ineffective action
-   distinctions and supplying a backend-complete menu remain open.
+   native binding fixture are checked. A complete bounded packet menu and
+   one-step ineffective-response normalization are checked; the compiler emits
+   normal forms. Concrete encoding, compiler range coverage and any stronger
+   raw-game quotient claim remain open.
 3. **Belief construction:** identity translation, a redundant private-bit
    extension, and a message encoding with target-only errors. Prove one common
    tremble sequence and posterior convergence; include an incompatible-beliefs

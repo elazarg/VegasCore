@@ -92,6 +92,14 @@ transcripts, and proves equality of the entire execution law against arbitrary
 opponents and scheduling. The implementation's memory representation does not
 enter game histories or enlarge action menus.
 
+The [finite semantic instance](finite-reactive-responses.md) also removes
+unavailable replay attempts and ineffective private opening annotations from
+its legal actions. Checked normalization preserves the exact public packet and
+one-step operational effect. The instance retains every packet form within
+explicit value and handle bounds, including malformed signaling, and all known
+replays. Relating these bounds to a concrete blockchain encoding remains an
+obligation; a one-step normalization proof is not an equilibrium quotient theorem.
+
 The scheduler sees pending packets, the ledger, network inputs, the public application projection,
 receipts, and its own command recall. It can inspect pending packet contents
 and their broadcasters. It cannot inspect private leak results, players' recall,
@@ -281,6 +289,9 @@ the source composition and private initial law are in
 | Own broadcast recall suffices for replay knowledge | Checked at every legal initialized history |
 | Every retained envelope originates in an actual submission by its author | Checked at every legal initialized history |
 | Private binding construction, hiding, and retention of fixed meanings | Checked |
+| Complete finite response syntax under explicit value/handle bounds, including errors and known replays | Checked; concrete backend encoding and compiler range coverage open |
+| Ineffective-response normalization preserves exact packets and one-step operational effects | Checked; raw-action recall and equilibrium equivalence outside this result |
+| Compiler and recovery responses are normal forms | Checked at every input |
 | Passive observation, reply, and adaptive reactivation before inclusion | Checked regression |
 | Own packets never enter passive knowledge | Checked at every legal initialized history |
 | Private leak outcomes are absent from scheduler view and recall | Checked for arbitrary observation rules and schedulers |

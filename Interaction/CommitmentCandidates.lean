@@ -88,6 +88,13 @@ theorem freeze_eq_self_of_not_fresh [DecidableEq Principal] [DecidableEq Slot]
     state.freeze handle = state := by
   cases h : state.lookup handle <;> simp_all [freeze]
 
+theorem prepare_eq_self_of_not_fresh [DecidableEq Principal] [DecidableEq Slot]
+    (state : CommitmentCandidates Principal Slot Value)
+    (owner : Principal) (slot : Slot) (value : Value)
+    (fixed : state.lookup (owner, slot) ≠ .fresh) :
+    state.prepare owner slot value = state := by
+  cases h : state.lookup (owner, slot) <;> simp_all [prepare]
+
 /-- Check whether a handle was prepared with the claimed value. -/
 def verify [DecidableEq Value] (state : CommitmentCandidates Principal Slot Value)
     (handle : CommitmentHandle Principal Slot) (claimed : Value) : Bool :=

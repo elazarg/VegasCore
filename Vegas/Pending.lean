@@ -11,6 +11,9 @@ import Vegas.Pending.EventCommitmentBinding
 import Vegas.Pending.NativeProtocolSafety
 import Vegas.Pending.ReactivePolicy
 import Vegas.Pending.ReactivePolicyFacts
+import Vegas.Pending.ReactiveNormalization
+import Vegas.Pending.ReactiveFiniteResponses
+import Vegas.Pending.ReactiveNormalPolicy
 import Vegas.Pending.ReactiveRegularity
 import Vegas.Pending.ReactivePacketIntegrity
 import Vegas.Pending.ReactiveService

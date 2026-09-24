@@ -88,15 +88,23 @@ fixture has a private source bit and no scratch-memory actions: SPE permits a
 strictly inferior off-path response that no belief system makes sequentially
 rational. The credibility target therefore remains sequential equilibrium.
 
+The [finite semantic response menu](finite-reactive-responses.md) removes
+unavailable replays and ineffective private submission annotations from legal
+actions. Its normalization certificate preserves the exact packet and the full
+one-step application/network effect. It retains fresh hidden meanings and all
+bounded malformed traffic. The compiler, including recovery, emits normal forms.
+This is not a whole-policy or equilibrium quotient theorem for the raw syntax
+game, whose sender recall can record the erased distinctions.
+
 The remaining obligations are:
 
-1. Audit other response distinctions with no semantic effect. An unavailable
-   replay identifier and irrelevant submission material can still distinguish
-   recorded actions. Removing auxiliary memory alone does not justify treating
-   all syntactically different responses as strategically meaningful.
-2. Supply complete finite backend action domains and justify the interaction
-   bound. The [sequential design](sequential-equilibrium-design.md) records this
-   bound as a substantive restriction, not a consequence of contract timeouts.
+1. Justify any further identification of responses by semantic proofs. Removing
+   auxiliary memory alone does not justify treating all syntactically different
+   responses as strategically meaningful, or all rejected packets as silence.
+2. Connect the complete bounded packet menu to a backend encoding and prove
+   compiler coverage of its finite value and handle domains. Justify the
+   interaction bound: the [sequential design](sequential-equilibrium-design.md)
+   records it as a substantive restriction, not a consequence of contract timeouts.
 3. Prove source-observation reconstruction and whole-service compilation laws.
 4. Construct one common tremble sequence, transport off-path beliefs, and prove
    the continuation incentive condition for the realized compiler.
