@@ -23,6 +23,9 @@ import Interaction.ReactiveResponseMenu
 import Interaction.ReactiveResponseEmbedding
 import Interaction.ReactiveReplayMenu
 import Interaction.ReactiveResponseNormalization
+import Interaction.ReactiveResponseBudget
+import Interaction.ReactiveMenuInvariant
+import Interaction.ReactiveMenuPolicy
 import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveAuthorization
 import Interaction.ReactiveSubmissionAudit

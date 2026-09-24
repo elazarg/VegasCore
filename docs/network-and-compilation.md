@@ -289,9 +289,11 @@ the source composition and private initial law are in
 | Own broadcast recall suffices for replay knowledge | Checked at every legal initialized history |
 | Every retained envelope originates in an actual submission by its author | Checked at every legal initialized history |
 | Private binding construction, hiding, and retention of fixed meanings | Checked |
-| Complete finite response syntax under explicit value/handle bounds, including errors and known replays | Checked; concrete backend encoding and compiler range coverage open |
+| Complete finite response syntax under explicit value/handle bounds, including errors and known replays | Checked; concrete backend encoding open |
 | Ineffective-response normalization preserves exact packets and one-step operational effects | Checked; raw-action recall and equilibrium equivalence outside this result |
 | Compiler and recovery responses are normal forms | Checked at every input |
+| Compiler coverage of finite menus, including recovery after arbitrary histories | Checked under full output-value coverage and at least H prepared serials per player for horizon H |
+| Finite compiler representation preserves complete continuation history laws | Checked from every legal finite-instance prefix; source-game correctness and optimality separate |
 | Passive observation, reply, and adaptive reactivation before inclusion | Checked regression |
 | Own packets never enter passive knowledge | Checked at every legal initialized history |
 | Private leak outcomes are absent from scheduler view and recall | Checked for arbitrary observation rules and schedulers |

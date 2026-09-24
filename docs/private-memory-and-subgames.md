@@ -101,8 +101,9 @@ The remaining obligations are:
 1. Justify any further identification of responses by semantic proofs. Removing
    auxiliary memory alone does not justify treating all syntactically different
    responses as strategically meaningful, or all rejected packets as silence.
-2. Connect the complete bounded packet menu to a backend encoding and prove
-   compiler coverage of its finite value and handle domains. Justify the
+2. Connect the complete bounded packet menu to a backend encoding. Compiler
+   coverage is checked under a static value-domain certificate and a candidate
+   range at least as large as the scheduler horizon. Justify the
    interaction bound: the [sequential design](sequential-equilibrium-design.md)
    records it as a substantive restriction, not a consequence of contract timeouts.
 3. Prove source-observation reconstruction and whole-service compilation laws.

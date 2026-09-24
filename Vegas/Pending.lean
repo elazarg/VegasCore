@@ -14,6 +14,9 @@ import Vegas.Pending.ReactivePolicyFacts
 import Vegas.Pending.ReactiveNormalization
 import Vegas.Pending.ReactiveFiniteResponses
 import Vegas.Pending.ReactiveNormalPolicy
+import Vegas.Pending.ReactiveCandidateBudget
+import Vegas.Pending.ReactiveBoundedHandles
+import Vegas.Pending.ReactiveFiniteCompiler
 import Vegas.Pending.ReactiveRegularity
 import Vegas.Pending.ReactivePacketIntegrity
 import Vegas.Pending.ReactiveService

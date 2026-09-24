@@ -70,7 +70,16 @@ The source-to-native preservation theorem is open. The checked foundations are:
   value and handle bounds, including errors, silence and all known replays.
 - [ReactiveNormalPolicy.lean](../Vegas/Pending/ReactiveNormalPolicy.lean):
   normalization fixes the compiler's full response law, including recovery,
-  at every input. Coverage by chosen finite value/handle bounds remains open.
+  at every input.
+- [ReactiveCandidateBudget.lean](../Vegas/Pending/ReactiveCandidateBudget.lean)
+  and [ReactiveFiniteCompiler.lean](../Vegas/Pending/ReactiveFiniteCompiler.lean):
+  `H` prepared serials per player suffice at every active decision under horizon
+  `H`. Full coverage of binding/publication value types then puts every compiler
+  and recovery response inside the bounded menu, after arbitrary legal histories.
+- [ReactiveMenuPolicy.lean](../Interaction/ReactiveMenuPolicy.lean):
+  admissible raw policies have exact finite-game representations. The instantiated
+  compiler theorem preserves complete continuation history laws from every legal
+  finite-instance prefix. This is not the source-to-reactive correctness theorem.
 
 Finite-menu instances are proof infrastructure and experiments. They do not
 claim that excluded semantic responses are irrelevant or that their equilibria
@@ -402,9 +411,12 @@ preserved. Its exact membership theorem characterizes all bounded normal
 responses. The [fixture](../VegasTests/ReactiveFiniteResponses.lean) supplies
 finite histories and a consistent assessment for this complete menu.
 
-The compiler and recovery emit normal forms at every input. They still need
-proofs of source-value coverage and sufficient fresh handles within the chosen
-finite range. These bounds have no established concrete backend encoding. The
+The compiler and recovery emit normal forms at every input. Static coverage of
+all binding/publication output values and `H` prepared serials per player suffice
+for every response after every legal history within horizon `H`. The finite-game
+representation preserves complete continuation history laws. These bounds have
+no established concrete backend encoding; more precise value-range inference
+also remains open. The
 normalization theorem also does not equate raw-action recall or prove a
 whole-policy/equilibrium quotient of the raw game. Any claim relating equilibria
 of differently presented games must discharge those additional obligations.
@@ -449,8 +461,10 @@ has no proved implication for conditional continuation incentives or beliefs.
    instances, exact history embedding, continuation laws, replay coverage and a
    native binding fixture are checked. A complete bounded packet menu and
    one-step ineffective-response normalization are checked; the compiler emits
-   normal forms. Concrete encoding, compiler range coverage and any stronger
-   raw-game quotient claim remain open.
+   normal forms. Compiler coverage and exact finite-game continuation laws are
+   checked under static value coverage and horizon-sized candidate domains.
+   Concrete encoding, finer value-range inference and any stronger raw-game
+   quotient claim remain open.
 3. **Belief construction:** identity translation, a redundant private-bit
    extension, and a message encoding with target-only errors. Prove one common
    tremble sequence and posterior convergence; include an incompatible-beliefs

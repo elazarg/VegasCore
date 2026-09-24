@@ -2,6 +2,7 @@
 
 import Vegas.Expr.Simple
 import Vegas.Pending.ReactiveNormalPolicy
+import Vegas.Pending.ReactiveFiniteCompiler
 
 /-! # Bounded responses retain errors and signaling
 
@@ -184,5 +185,56 @@ theorem complete_menu_consistent_assessment (horizon : Nat) (scheduler : app.Sch
       (menu.decisionInformationAntichain (FinDist.pure initial.application)
         horizon scheduler) :=
   menu.bayesAssessment_consistent _ _ _
+
+private theorem values_covered : bounds.CoversOutputValues := by
+  classical
+  intro event
+  change ∀ value : Bool, (⟨.bool, value⟩ : Raw simpleExpr) ∈ bounds.values
+  intro bit
+  cases bit <;> simp [bounds]
+
+/-- All source policies fit, including their recovery responses after arbitrary
+earlier deviations. The certificate is not restricted to first or honest play. -/
+theorem all_compilers_admissible (scheduler : app.Scheduler) (horizon : Nat)
+    (capacity : horizon ≤ 2) (who : Bool) (policy : graph.BehavioralPolicy who) :
+    menu.Admissible (FinDist.pure initial.application) horizon scheduler who
+      (runtime.compileReactivePolicy leaks who policy) := by
+  simpa only [FinDist.map_pure, initial, ReactiveApplication.Execution.initial, menu, app] using
+    bounds.compiledPolicy_admissible runtime leaks (FinDist.pure (fun input => nomatch input))
+      horizon scheduler values_covered capacity who policy
+
+/-- Uniform trembles can be applied to the actual compiled profile in the
+complete finite game. Full mixing alone does not assert limiting optimality. -/
+theorem compiled_perturbation_fullyMixed (scheduler : app.Scheduler)
+    (profile : graph.BehavioralProfile) (weight : ℝ) (positive : 0 < weight)
+    (atMostOne : weight ≤ 1) :
+    GameTheory.Protocol.InformationModel.BehavioralAssessment.IsFullyMixed
+      (menu.perturbedAssessment (FinDist.pure initial.application) 2 scheduler
+        (fun who => menu.restrictPolicy (FinDist.pure initial.application) 2 scheduler who
+          (runtime.compileReactivePolicy leaks who (profile who))
+          (all_compilers_admissible scheduler 2 (by omega) who (profile who)))
+        weight positive atMostOne) :=
+  menu.perturbedAssessment_fullyMixed _ _ _ _ _ _ _
+
+private def usedZero : app.Execution :=
+  initial.respond app false (runtime.reactiveBinding leaks false 0 .bool (.success true) 0)
+
+/-- Reusing one submitted handle consumes no additional candidate. A
+foreign handle reference cannot reserve that owner's candidate either. -/
+theorem replay_and_foreign_submission_leave_fresh :
+    ((usedZero.respond app false ⟨some (.replay (false, 0))⟩).respond app true
+      ⟨some (.submit ⟨.commitment 0 (false, .prepared 1),
+        some ⟨.bool, false⟩⟩)⟩).application.candidates.lookup
+      (false, .prepared 1) = .fresh := rfl
+
+/-- Exhaustion is possible after all allotted responses; the supply theorem
+guarantees a handle at an active decision, not an extra response past the horizon. -/
+theorem two_responses_can_use_two_slots :
+    let usedBoth := usedZero.respond app false
+      (runtime.reactiveBinding leaks false 0 .bool .failure 1)
+    ∀ serial : Fin 2, usedBoth.application.candidates.lookup
+      (false, .prepared serial.val) ≠ .fresh := by
+  intro usedBoth serial
+  fin_cases serial <;> decide
 
 end VegasTests.ReactiveFiniteResponses
