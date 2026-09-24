@@ -29,6 +29,7 @@ import GameTheoryExtensions.Analysis.ObservationPayoff
 import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
 import GameTheoryExtensions.Analysis.Protocol.DecisionPayoff
 import GameTheoryExtensions.Analysis.Protocol.ContinuationDecision
+import GameTheoryExtensions.Analysis.Protocol.ObservationRequirement
 import GameTheoryExtensions.Analysis.Protocol.InducedInformation
 import GameTheoryExtensions.Analysis.Protocol.LastDecision
 import GameTheoryExtensions.Analysis.Protocol.DisclosureObstruction

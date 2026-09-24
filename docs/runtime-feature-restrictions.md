@@ -30,6 +30,12 @@ The terminal classifications and generic continuation theorems in
 tools for these comparisons. Enumerating arbitrary quotients is a separate
 question and is not the acceptance test for this investigation.
 
+The [literature note](runtime-feature-literature.md) distinguishes established
+results on optional disclosure and information expansions from the native
+adapters still needed here. In particular, disclosure can be strategically
+harmless even when its information would change another player's best response:
+the sender's incentives to disclose also matter.
+
 ## First comparison: restore passive observation of pending packets
 
 Use the existing selective-association native fixture. Both sides have:
@@ -59,11 +65,29 @@ also affects which known envelopes can be replayed and which evidence can be
 forwarded. Those are consequences of restoring the capability, not additional
 independently changed service rules.
 
-### Exact proof target and status
+### Checked operational comparison
+
+[`SelectiveAssociationRestricted.lean`](../VegasTests/SelectiveAssociationRestricted.lean)
+instantiates the empty observation rule on that same native fixture. It proves:
+
+| Result | Scope |
+| --- | --- |
+| `two_rounds` and `bob_response_same` | Alice's certified pending packet gives Bob identical complete inputs for either bit. His arbitrary raw response therefore has a bit-independent law. |
+| `first_response_guess_bound` | Any guess decoded from that response predicts Alice's fair bit with probability at most one half, including failure-valued reports. |
+| `five_rounds` and `prefixPlayers_available` | The unchanged first five service instructions reach an accepted association using responses admitted by the full raw menu. |
+| `association_input_hidden` | At those paired accepted-association prefixes, every non-Alice player's complete input, including recall, is identical across the two bit values. |
+| `observation_feature_contrast` | Restoring the original observation rule supplies Bob with the certificate while it is still absent from the ledger. |
+
+These are reachable prefix and response-law results. They do not prescribe or
+justify equilibrium behavior in the remaining game. In particular, the
+post-association equality is for the specified paired prefixes, not an
+assertion that every full-runtime strategy keeps the bit secret.
+
+### Exact equilibrium target and status
 
 The candidate separating game is the existing declared-payoff game. The
-proposed restricted-runtime witness has Alice choose a fair bit and gives her
-expected payout zero. **Existence of that equilibrium in the native runtime
+restricted-runtime witness must give Alice expected payout zero.
+**Existence of such an equilibrium in the native runtime
 with the empty observation rule is open.** The current source equilibrium
 proof uses a different communication interface and cannot fill this obligation.
 
@@ -79,13 +103,15 @@ legal information site, including deviations involving raw certificates,
 replays, wrong addresses and failed openings. Matching the prescribed initial
 outcome alone is insufficient.
 
-A candidate prescription uses silent preludes, a fresh fair binding for Alice,
-public-evidence guesses, and ordinary openings. Off-path binding repair must
-choose a fresh candidate after an arbitrary prelude. The finite-menu consistency
-machinery and native service facts are reusable; the named-source posterior
-symmetry proof is only a template. The main new obligation is a native symmetry
-argument covering the full raw menu, followed by one common perturbation limit
-and whole-policy rationality at every site.
+Candidate prescriptions use silent preludes, a fresh binding for Alice,
+public-evidence guesses, and ordinary openings. A fair binding would require
+posterior symmetry at uncertified sites. A deterministic false binding with
+both guessers choosing false may need only a corresponding posterior inequality;
+it is an alternative proof candidate, not a checked assessment. Off-path
+binding repair must choose a fresh candidate after an arbitrary prelude. The
+finite-menu consistency machinery and native service facts are reusable; the
+named-source posterior proof is only a template. One common perturbation limit
+and whole-policy rationality at every native information site remain necessary.
 
 An operational positive control is already checked: private observation cannot
 change the scheduler's observation or its next choice after a silent response.
@@ -95,6 +121,34 @@ positive edge would restore observations only after every action affecting the
 retained payoff is irrevocable; its full continuation theorem is open.
 
 ## What a small pattern must retain
+
+### A checked acquisition constraint
+
+The existing packet-evidence interface admits an owner-or-copy condition:
+a player can issue a certificate for its own fact, or copy a certificate from a
+packet it already possesses. The actual native certificate issuer satisfies
+that condition. The checked
+[`foreign_known_observed`](../Interaction/ReactiveEvidenceOrigin.lean) theorem
+says that a foreign certificate in any player's known packets must also occur
+among that player's leaked packets or the ledger, at every initialized history.
+Private output recall, arbitrarily long forwarding chains and replay cannot
+create another acquisition channel.
+
+Disabling passive observation removes the first alternative. Consequently,
+[`foreign_certificate_published`](../Vegas/Pending/ReactiveEvidenceOrigin.lean)
+proves that any possessed foreign native certificate must already occur in the
+ledger. This is an ordering constraint on every legal prefix, independent of
+strategies and of application acceptance. A rejected included call can still
+publish its certificate.
+
+The constraint concerns **carried certificates**, not all knowledge of their
+values. An adaptive scheduler could encode pending contents through timing or
+inclusion choices without delivering a certificate. The generic theorem allows
+that; the fixed calendar and paired-input proofs above rule out that route for
+the particular checked prefixes. Any stronger secrecy or causal-path theorem
+must account for clocks, public responses and inference from silence.
+
+### From acquisition to incentives
 
 An event sequence can express temporal order, but the strategic obligation
 also compares histories and available continuations. For candidate evidence,
@@ -133,8 +187,8 @@ to induce the relevant continuation must also be established.
 
 ## Requirements on arbitrary further abstractions
 
-There are two different intended conclusions. These are theorem templates;
-the complete feature comparison above is not yet proved.
+There are two different conclusions. The local response requirement is checked;
+the initialized equilibrium comparison above is not yet proved.
 
 ### Local conditional behavior
 
@@ -144,16 +198,24 @@ common maximizing action. An abstract observation that merges the
 sites cannot support a rational implementation whose retained response law
 depends only on that abstract observation.
 
-The existing
-[`ContinuationDecision`](../GameTheoryExtensions/Analysis/Protocol/ContinuationDecision.lean)
-support and common-maximizer theorems supply the local incentive argument.
-[`Knowledge.lean`](../GameTheoryExtensions/Protocol/Knowledge.lean) turns
-authenticated knowledge into a constraint on every information-set belief.
-An observation map and an action-respecting implementation still need to be
-specified for an abstraction instance.
+[`ObservationRequirement.lean`](../GameTheoryExtensions/Analysis/Protocol/ObservationRequirement.lean)
+proves this directly for families of actual continuation decisions. Under
+sequential rationality, every nonempty abstract-observation fiber has a common
+posterior-maximizing action. The result uses the game's fixed utility and its
+actual beliefs; randomized responses cannot evade the requirement.
+`expectedReward_of_known` makes that posterior reward independent of beliefs
+when evidence fixes the payoff-relevant state throughout the information set.
 
-Further composition of observation maps cannot recover a distinction already
-merged. This propagates the local obstruction to coarser observations when
+The [protocol test](../GameTheoryExtensionsTests/ObservationRequirement.lean)
+has two supported decision sites, one fixed correct-report payoff and an actual
+standard SE. It checks the coarsening obstruction for arbitrary assessments,
+and separately checks the escape through a state-aware macro action. A native
+instantiation still needs its actual continuation decisions and retained-response
+factorization; these are substantive premises, not consequences of hiding a
+field in syntax.
+
+`not_rational_of_coarsening_collision` propagates the local obstruction to
+arbitrary further compositions of observation maps when
 the retained-response requirement is maintained. It does not constrain an
 implementation allowed to use the forgotten distinction inside a native
 macro action. Such an abstraction may represent the conditional capability
@@ -174,6 +236,12 @@ implementation in the full runtime. This conclusion allows arbitrary target
 strategies and beliefs. It does not assume that a further abstraction preserves
 the witness equilibrium automatically: excluding the game or changing its
 information guarantees is a possible language restriction to identify.
+
+The local requirement alone cannot replace the full initialized separation:
+an implementation may use different native histories or a state-aware macro,
+and a local information difference need not change any equilibrium outcome.
+The universal native payoff bound is what rules out all those alternative
+target assessments once the restricted equilibrium has been established.
 
 The resulting requirement is to represent the consequential conditional
 capability, or to restrict the admitted games until it is harmless. It is not

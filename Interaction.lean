@@ -51,6 +51,7 @@ import Interaction.ReactiveUniformResponse
 import Interaction.ReactiveRecallInvariant
 import Interaction.ReactiveSubgamePrefix
 import Interaction.ReactiveObservation
+import Interaction.ReactiveObservationRestriction
 import Interaction.ReactiveKnowledge
 import Interaction.MessageNetworkInvariant
 import Interaction.MessageNetworkCounters
@@ -90,4 +91,5 @@ import Interaction.ReactiveInvariantContinuation
 import Interaction.ReactiveResponseKernel
 import Interaction.ReactiveRoundTrace
 import Interaction.ReactiveEvidencePersistence
+import Interaction.ReactiveEvidenceOrigin
 import Interaction.ReactiveAssessmentEvaluation

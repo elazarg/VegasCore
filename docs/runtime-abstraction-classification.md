@@ -362,8 +362,12 @@ Failure to find a structural certificate must return `unresolved`, not impossibi
    on the existing native fixture: prove the restricted native equilibrium,
    retaining the same application, service and payoffs. The enabled-observation
    native payoff bound is checked; the restricted native equilibrium is open.
-2. Derive local requirements on further abstractions from paired native
-   histories, evidence knowledge and available responses. Distinguish an
+2. Instantiate the checked
+   [observation requirement](../GameTheoryExtensions/Analysis/Protocol/ObservationRequirement.lean)
+   on native continuation decisions. The
+   [restricted native prefixes](../VegasTests/SelectiveAssociationRestricted.lean)
+   and [certificate acquisition constraint](../Vegas/Pending/ReactiveEvidenceOrigin.lean)
+   establish operational parts of that argument. Distinguish an
    observation-respecting lift from unrestricted initialized outcome
    implementation; the latter needs the induced-deviation argument.
 3. For partially informed fine and coarse observations, investigate equality of

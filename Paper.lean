@@ -22,7 +22,10 @@ import Vegas.Pending.EventSequential
 import GameTheoryExtensions.Analysis.ObservationAbstraction
 import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
 import GameTheoryExtensions.Analysis.Protocol.DecisionPayoff
+import GameTheoryExtensions.Analysis.Protocol.ObservationRequirement
+import Vegas.Pending.ReactiveEvidenceOrigin
 import VegasTests.SelectiveAssociationPayoffSeparation
+import VegasTests.SelectiveAssociationRestricted
 
 /-! # Paper theorem audit
 
@@ -795,5 +798,43 @@ theorem declared_payoff_sequential_separation (Claim : Type) [Fintype Claim]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.declared_payoff_sequential_separation
+
+/-! ## Runtime feature investigation
+
+These results isolate the information effect of passive observation in the
+existing native runtime and constrain observation-respecting abstractions.
+The restricted native equilibrium is a separate, open proof obligation.
+-/
+
+/-- info: 'Interaction.ReactiveApplication.PacketEvidence.foreign_known_published' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.ReactiveApplication.PacketEvidence.foreign_known_published
+
+/-- info: 'Vegas.EventGraphRuntime.foreign_certificate_published' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.foreign_certificate_published
+
+/-- info: 'GameTheory.Protocol.InformationModel.ContinuationDecision.observation_fiber_has_common_maximizer' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.ContinuationDecision.observation_fiber_has_common_maximizer
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.five_rounds' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SelectiveAssociation.Restricted.five_rounds
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.association_input_hidden' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SelectiveAssociation.Restricted.association_input_hidden
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.first_response_guess_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SelectiveAssociation.Restricted.first_response_guess_bound
 
 end Vegas.Paper

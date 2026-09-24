@@ -17,6 +17,7 @@ import Vegas.Pending.ReactiveDisclosureAdmission
 import Vegas.Pending.ReactiveDisclosureStability
 import Vegas.Pending.ReactiveDisclosureService
 import Vegas.Pending.ReactivePacketEvidence
+import Vegas.Pending.ReactiveEvidenceOrigin
 import Vegas.Pending.ReactiveAssociationEvidence
 import Vegas.Pending.ReactiveResponseObservation
 import Vegas.Pending.ReactiveEvidence
