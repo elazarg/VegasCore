@@ -618,4 +618,27 @@ theorem carolSite_rounds (bit : Bool) (response : app.Action) :
     offeredAfter, beforeOffer, reacted, observed, first, activatedInitial, initial,
     ReactiveApplication.Execution.respond, ReactiveApplication.Execution.initial]
 
+theorem carolSite_ready (bit : Bool) (response : app.Action) :
+    (carolSite bit response).application.config.cut.Ready 1 := by
+  change (includedAfter bit response).application.config.cut.Ready 1
+  rw [includedAfter_application]
+  simp only [boundAfter, State.complete, EventGraph.Config.complete,
+    EventOrder.Cut.Ready, EventOrder.Cut.complete]
+  rw [offeredAfter_config]
+  cases bit <;> decide
+
+theorem carolSite_binding (bit : Bool) (response : app.Action) :
+    SelectiveAssociation.aliceBindingRef.get?
+      (carolSite bit response).application.config.store = some (.success bit) := by
+  change SelectiveAssociation.aliceBindingRef.get?
+    (includedAfter bit response).application.config.store = _
+  rw [includedAfter_application]
+  simp [boundAfter, State.complete, EventGraph.Config.store, EventGraph.FieldRef.get?,
+    SelectiveAssociation.aliceBindingRef, EventGraph.Config.complete]
+
+theorem carolSite_evidence (bit : Bool) (response : app.Action) :
+    runtime.bindingEvidenceObserved leaks ((carolSite bit response).observe app 1)
+      (named bit) :=
+  (association_after_arbitrary_response bit response).2
+
 end VegasTests.ReactiveAssociationEvidence

@@ -118,5 +118,7 @@ import Vegas.Pending.ReactiveObservedState
 import Vegas.Pending.ReactiveContinuationObservation
 import Vegas.Pending.ReactiveBindingOrigin
 import Vegas.Pending.ReactiveSelectionObservation
+import Vegas.Pending.ReactiveServiceFootprint
+import Vegas.Pending.ReactiveAssociationPersistence
 
 /-! Graph execution and strategic refinement over public pending messages. -/

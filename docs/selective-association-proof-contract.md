@@ -125,8 +125,14 @@ used.
 proves Bob's corrective binding is available at every legal binding decision:
 he has only one earlier response, so two candidates leave a fresh one. Its new
 packet replaces an older pending guess under the actual reserved selector.
-This is a feasibility theorem; Bob's incentive to choose the correct bit remains
-an obligation.
+[`SelectiveAssociationGuessEquilibrium.lean`](../VegasTests/SelectiveAssociationGuessEquilibrium.lean)
+proves Bob's incentive: when his observation certifies Alice's accepted bit,
+sequential rationality forces a matching successful guess and publication.
+The statement covers the complete mixed strategy and every compatible history.
+[`SelectiveAssociationSupportedResponses.lean`](../VegasTests/SelectiveAssociationSupportedResponses.lean)
+also proves guarantees for each supported raw response. These apply during
+Alice's deviating continuation, whose later actions need not follow the
+assessment strategy.
 
 Utilities depend only on the original three publication results. Alice receives
 Bob's correctness minus Carol's correctness; each guesser receives its own
@@ -142,8 +148,10 @@ still require the native information-set and incentive proofs.
 [`SelectiveAssociationGuessContinuation.lean`](../VegasTests/SelectiveAssociationGuessContinuation.lean)
 proves that later communication and publication decisions cannot improve the
 correctness of Carol's already settled guess. Successful publication must equal
-the stored binding; withholding can only remove a correct guess. The required
-independence of that earlier guess is a separate obligation.
+the stored binding; withholding can only remove a correct guess. [`SelectiveAssociationCarol.lean`](../VegasTests/SelectiveAssociationCarol.lean)
+proves that the settled guess law is independent of Alice's bit, even with
+arbitrary, different earlier Bob responses. It includes the actual reserved
+inclusion, ticks, and timeout settlement.
 
 ## Source interface and equilibrium obligation
 
@@ -173,8 +181,30 @@ the actual response-prefix laws at guessing inputs with no public Alice certific
 responses, claims, and Carol's response are retained. Every certificate requested at the binding response is proved to become public
 before both guesses; the no-certificate premise is an observed fact. The result
 uses the same common perturbation on the complete menu; failure probability need not vanish.
-The connection to canonical history laws and Bayes beliefs, the limiting
-assessment, and its sequential rationality remain open.
+[`SelectiveAssociationSourceBeliefs.lean`](../VegasTests/SelectiveAssociationSourceBeliefs.lean)
+connects these laws to the canonical Bayes beliefs at every guessing information
+set, including off-path sites. The proof establishes the exact history depth
+of each information fiber rather than assuming it.
+[`SelectiveAssociationSourceConsistency.lean`](../VegasTests/SelectiveAssociationSourceConsistency.lean)
+constructs a consistent assessment with the prescribed strategy and these fair
+beliefs, using one common subsequence of the fully mixed assessments.
+
+[`SelectiveAssociationSourceGuessEquilibrium.lean`](../VegasTests/SelectiveAssociationSourceGuessEquilibrium.lean)
+and
+[`SelectiveAssociationSourceOpeningEquilibrium.lean`](../VegasTests/SelectiveAssociationSourceOpeningEquilibrium.lean)
+prove sequential rationality at the guessing and opening information sets
+against arbitrary whole behavioral continuation policies. Public certificates
+direct both prescribed guesses; without a public certificate, the consistent
+belief assigns equal mass to the two successful values. Failed bindings and
+optional failed openings remain in the game.
+
+[`SelectiveAssociationSourceAliceValues.lean`](../VegasTests/SelectiveAssociationSourceAliceValues.lean)
+proves the actual continuation payoff bounds for Alice's ambient and binding
+responses: arbitrary Alice policies yield at most zero against the prescribed
+guessers, while her prescribed policy yields zero. The key source fact is that
+both guessers select the same public guess; recording Carol's ordinary binding
+adds no new certificate. Integration of the remaining ambient and binding
+incentives into a full source SE is still required.
 
 [`SelectiveAssociationNamedEvidence.lean`](../VegasTests/SelectiveAssociationNamedEvidence.lean)
 proves that its six named facts cover every genuine commitment fact of this
@@ -183,15 +213,25 @@ throughout the recipient's information fiber. It also proves exactly which
 facts each player owns before the guesses. Thus the finite evidence alphabet
 does not omit a source binding.
 
-## Remaining strategic obligations
+## Native deviation and remaining strategic obligations
 
-- Use Bob's checked corrective opportunity and the checked opening incentives
-  to prove that his guess is correct after Alice's selective-disclosure deviation.
-- Carry the native prefix's observation equality through Carol's settled guess
-  and the complete continuation, using the checked publication bound.
-- Construct a source assessment using the full named-evidence menus and one
-  common fully mixed consistency sequence, then prove the native deviation
-  bound against arbitrary sequentially rational continuations.
+[`SelectiveAssociationNativeDeviation.lean`](../VegasTests/SelectiveAssociationNativeDeviation.lean)
+constructs Alice's legal strategy over the full response menu. Its prefix laws
+execute the actual calendar and retain Bob's arbitrary prelude response.
+[`SelectiveAssociationNativeDeviationPayoff.lean`](../VegasTests/SelectiveAssociationNativeDeviationPayoff.lean)
+factors the complete outcome law through Alice's fair bit and bounds Carol's
+correctness unconditionally in the opponents' policies. Its half-unit payoff
+bound still assumes successful Alice and Bob publications in each supported
+outcome; the remaining composition must discharge those assumptions.
+
+The outstanding conclusions are:
+
+- A full source sequential equilibrium and its initialized public outcome law,
+  assembling the consistent beliefs and all decision-site incentives.
+- Successful Alice and Bob publications throughout the actual deviating run,
+  using the checked supported-response guarantees at its intermediate histories.
+- A profitable whole-policy deviation at the native initial information set,
+  contradicting preservation of the source equilibrium's public outcome law.
 
 The operational association result alone does not rule out a one-way SE
 compiler. A source service that already grants prospective evidence or a
