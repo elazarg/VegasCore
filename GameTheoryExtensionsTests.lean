@@ -3,6 +3,7 @@
 import GameTheoryExtensionsTests.CoalitionSimulation
 import GameTheoryExtensionsTests.ContinuationMenus
 import GameTheoryExtensionsTests.ContinuationTransfer
+import GameTheoryExtensionsTests.ConsistencyCompletion
 import GameTheoryExtensionsTests.IrreversibleFailure
 import GameTheoryExtensionsTests.InterleavedMenus
 import GameTheoryExtensionsTests.IncentiveCone

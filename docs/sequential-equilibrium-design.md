@@ -44,8 +44,13 @@ The source-to-native preservation theorem is open. The checked foundations are:
   embedded policies. This covers responses within the supplied menu.
 - [ReactiveFiniteAssessment.lean](../Interaction/ReactiveFiniteAssessment.lean):
   finite histories, canonical consistent Bayes assessments, and fully mixed
-  perturbations approaching any profile in a finite-menu instance. Convergence
-  of the perturbations' off-path beliefs remains a separate obligation.
+  perturbations approaching any profile in a finite-menu instance.
+- [ConsistencyCompletion.lean](../GameTheoryExtensions/Analysis/Protocol/ConsistencyCompletion.lean)
+  and [ReactiveConsistentAssessment.lean](../Interaction/ReactiveConsistentAssessment.lean):
+  every finite native profile admits sequentially consistent beliefs without
+  changing its strategies. One common subsequence of fully mixed Bayes
+  assessments converges at all decision sites. No compatibility with prescribed
+  source beliefs or continuation incentives follows from this existence theorem.
 - [ReactiveReplayMenu.lean](../Interaction/ReactiveReplayMenu.lean): closing a
   finite menu under all known-envelope replays retains every base response and
   needs no numeric identifier cutoff. The
@@ -80,6 +85,10 @@ The source-to-native preservation theorem is open. The checked foundations are:
   admissible raw policies have exact finite-game representations. The instantiated
   compiler theorem preserves complete continuation history laws from every legal
   finite-instance prefix. This is not the source-to-reactive correctness theorem.
+- [ReactiveFiniteConsistency.lean](../Vegas/Pending/ReactiveFiniteConsistency.lean):
+  the actual compiled profile, including recovery, admits a consistent belief
+  completion under the same value and capacity certificates. No source
+  equilibrium premise or additional scheduling restriction is required.
 
 Finite-menu instances are proof infrastructure and experiments. They do not
 claim that excluded semantic responses are irrelevant or that their equilibria
@@ -181,8 +190,8 @@ sufficient fuel. Evaluation fuel must never reset an operational deadline.
 ## Belief transport: the substantial new proof
 
 A source witness gives fully mixed profiles $\sigma_n$, their Bayes beliefs
-$\mu_n$, and a joint limit `(sigma, mu)`. The proposed constructive proof has
-four obligations:
+$\mu_n$, and a joint limit `(sigma, mu)`. A preservation proof can use four
+obligations:
 
 1. Build target profiles $\tau_n$ that give every **legal target choice** positive
    probability, including choices outside the compiler's image. Keep chance,
@@ -199,14 +208,42 @@ four obligations:
 
 The generic positive-mass and Bayes construction in step 2 is checked. For a
 finite-menu instance, mixing any profile with the uniform local profile also
-discharges full mixing in step 1 and strategy convergence in step 3. Convergence
-of off-path beliefs and the incentive proof in step 4 remain open for the compiler.
+discharges full mixing in step 1 and strategy convergence in step 3. Extracting
+one common subsequence gives convergent beliefs in step 3. This proves that
+**some consistent completion exists**, including for the compiled profile.
+The incentive proof in step 4, and any source-belief compatibility needed for
+it, remain open for the compiler.
 It is insufficient to compile each $\sigma_n$ verbatim: that need not randomize
 over target-only actions. Adding
 uniform noise without analyzing conditional probabilities is also insufficient.
 The relative rates at which different mistakes vanish determine off-path
 beliefs. Do not choose a convenient posterior independently at each site, or
 allow a target replacement to see the sampled complete history.
+
+### What the completion theorem establishes
+
+For a finite legal-history carrier, decision sites are finite even when the
+ambient observation type is infinite. Each site's beliefs form a finite
+probability simplex. The product of these simplices is compact, and a single
+strictly increasing subsequence of the Bayes assessments converges in every
+belief coordinate. The strategies converge along that same subsequence to the
+prescribed profile. Information-fiber carriers ensure that limit beliefs remain
+supported on legal histories with the right observation.
+
+The checked construction uses uniform-reference mixing with positive weights
+`1 / (n + 1)`, followed by this common subsequence extraction. It proves
+existence, not a procedure for computing beliefs, uniqueness of the completion,
+or convergence along the entire original sequence. Chance, initial types,
+passive observations and scheduler laws remain fixed. The compiler instance
+retains its off-path recovery and every bounded target-only error choice.
+
+Compactness cannot select beliefs to justify a chosen continuation. The checked
+[consistency regression](../GameTheoryExtensionsTests/ConsistencyCompletion.lean)
+completes the hidden-bit SPE that prescribes a strictly inferior off-path action:
+the resulting assessment is consistent, but no beliefs make that profile
+sequentially rational. For preservation, the remaining task is to find a
+completion whose incentive differences lie in the source cones, or show that
+none exists for an admissible source equilibrium and runtime.
 
 Use belief-weighted continuation law simulations as a tractable sufficient
 proof method, with cone inclusion as the exact incentive test when matching
@@ -465,11 +502,14 @@ has no proved implication for conditional continuation incentives or beliefs.
    checked under static value coverage and horizon-sized candidate domains.
    Concrete encoding, finer value-range inference and any stronger raw-game
    quotient claim remain open.
-3. **Belief construction:** identity translation, a redundant private-bit
-   extension, and a message encoding with target-only errors. Prove one common
-   tremble sequence and posterior convergence; include an incompatible-beliefs
-   negative regression. Neither identity nor private-memory realization alone
-   validates the message encoding case.
+3. **Belief construction:** consistent completion of every finite native profile,
+   including the actual compiler, is checked using one common subsequence of
+   fully mixed Bayes assessments. The regression separates consistency from
+   continuation rationality. Source-compatible completions for identity
+   translation, a redundant private-bit extension, and a message encoding with
+   target-only errors remain to be established; include an incompatible-beliefs
+   negative regression. Neither completion existence nor private-memory
+   realization alone validates message encoding preservation.
 4. **Continuation simulation:** test recovery after earlier own deviations,
    disclosure failures, partial observations, competing commitments and actual
    remaining deadlines. Audit the prior SPE witnesses under sequential

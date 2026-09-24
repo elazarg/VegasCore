@@ -294,6 +294,7 @@ the source composition and private initial law are in
 | Compiler and recovery responses are normal forms | Checked at every input |
 | Compiler coverage of finite menus, including recovery after arbitrary histories | Checked under full output-value coverage and at least H prepared serials per player for horizon H |
 | Finite compiler representation preserves complete continuation history laws | Checked from every legal finite-instance prefix; source-game correctness and optimality separate |
+| Sequentially consistent belief completion of every finite compiled profile | Checked by one common subsequence of Bayes perturbations; source-compatible beliefs and continuation optimality open |
 | Passive observation, reply, and adaptive reactivation before inclusion | Checked regression |
 | Own packets never enter passive knowledge | Checked at every legal initialized history |
 | Private leak outcomes are absent from scheduler view and recall | Checked for arbitrary observation rules and schedulers |

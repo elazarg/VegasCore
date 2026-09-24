@@ -27,6 +27,7 @@ import Interaction.ReactiveResponseBudget
 import Interaction.ReactiveMenuInvariant
 import Interaction.ReactiveMenuPolicy
 import Interaction.ReactiveFiniteAssessment
+import Interaction.ReactiveConsistentAssessment
 import Interaction.ReactiveAuthorization
 import Interaction.ReactiveSubmissionAudit
 import Interaction.ReactiveAuthorizedService

@@ -2,7 +2,7 @@
 
 import Vegas.Expr.Simple
 import Vegas.Pending.ReactiveNormalPolicy
-import Vegas.Pending.ReactiveFiniteCompiler
+import Vegas.Pending.ReactiveFiniteConsistency
 
 /-! # Bounded responses retain errors and signaling
 
@@ -215,6 +215,19 @@ theorem compiled_perturbation_fullyMixed (scheduler : app.Scheduler)
           (all_compilers_admissible scheduler 2 (by omega) who (profile who)))
         weight positive atMostOne) :=
   menu.perturbedAssessment_fullyMixed _ _ _ _ _ _ _
+
+/-- The completion retains the actual compiled profile, including recovery.
+The menu still contains all of the malformed and unopenable choices above. -/
+theorem compiled_consistent_assessment (scheduler : app.Scheduler)
+    (profile : graph.BehavioralProfile) :
+    ∃ assessment : (menu.information (FinDist.pure initial.application)
+        2 scheduler).BehavioralAssessment,
+      assessment.strategy = (fun who => menu.restrictPolicy (FinDist.pure initial.application)
+        2 scheduler who (runtime.compileReactivePolicy leaks who (profile who))
+          (all_compilers_admissible scheduler 2 (by omega) who (profile who))) ∧
+      assessment.IsSequentiallyConsistent
+        (menu.decisionInformationAntichain (FinDist.pure initial.application) 2 scheduler) :=
+  menu.exists_consistent_assessment _ _ _ _
 
 private def usedZero : app.Execution :=
   initial.respond app false (runtime.reactiveBinding leaks false 0 .bool (.success true) 0)

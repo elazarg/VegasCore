@@ -107,8 +107,12 @@ The remaining obligations are:
    interaction bound: the [sequential design](sequential-equilibrium-design.md)
    records it as a substantive restriction, not a consequence of contract timeouts.
 3. Prove source-observation reconstruction and whole-service compilation laws.
-4. Construct one common tremble sequence, transport off-path beliefs, and prove
-   the continuation incentive condition for the realized compiler.
+4. Transport source off-path beliefs as needed and prove the continuation
+   incentive condition for the realized compiler. A
+   [consistent completion](../Vegas/Pending/ReactiveFiniteConsistency.lean) of
+   the bounded compiled profile is checked using one common convergent
+   subsequence; the existence of some consistent beliefs does not establish
+   those incentive comparisons.
 
 Behavioral realization does not prove sequential rationality or consistency,
 nor does it guarantee that every public checkpoint starts a proper subgame.

@@ -7,8 +7,9 @@ import GameTheoryExtensions.Analysis.Protocol.Bayes
 Mix any prescribed profile with one fully mixed reference profile. A positive
 weight supplies every legal choice, and weights tending to zero recover every
 prescribed strategy coordinate. Bayes normalization then supplies the beliefs
-of each approximant. Belief convergence is a separate obligation: strategy
-convergence alone does not determine posteriors at off-path information sets.
+of each approximant. In finite protocols, `ConsistencyCompletion` extracts a
+common subsequence with convergent beliefs. Strategy convergence alone does
+not determine posteriors at off-path information sets or their incentives.
 -/
 
 noncomputable section

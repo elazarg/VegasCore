@@ -157,12 +157,22 @@ meanings, unopenable commitments, ignored private material and replay coverage.
 It also instantiates finite histories and a consistent Bayes assessment for the
 complete bounded menu, proves coverage of every Boolean source policy after
 arbitrary histories, and applies fully mixed perturbations to the actual
-compiled profile. Separate checks retain fresh slots through replay and foreign
+compiled profile. It also instantiates consistent completion of that compiled
+profile. Separate checks retain fresh slots through replay and foreign
 references, and demonstrate possible exhaustion after the allotted responses.
 
-That assessment randomizes uniformly over every legal choice. Its consistency
-does not assert optimality. The remaining compiler obligations are source-law
-correctness, one common tremble sequence with convergent off-path beliefs, and
-target continuation incentives under those beliefs. Concrete backend encoding
-and progress assumptions still need justification. Native sequential-equilibrium
-preservation remains open.
+The uniform assessment randomizes over every legal choice. More generally,
+[ReactiveConsistentAssessment.lean](../Interaction/ReactiveConsistentAssessment.lean)
+proves that **every** profile of the finite instance has a sequentially
+consistent belief completion. Positive uniform-reference perturbations supply
+Bayes assessments; one common subsequence converges at all sites. This preserves
+the prescribed strategy exactly and makes no claim of full-sequence convergence
+or effective belief synthesis.
+
+[ReactiveFiniteConsistency.lean](../Vegas/Pending/ReactiveFiniteConsistency.lean)
+applies this construction to the actual compiler and recovery under the value
+and capacity certificates. Its beliefs need not agree with a source assessment
+or make the compiled continuations optimal. The remaining compiler obligations
+are source-law correctness and finding a consistent completion that preserves
+continuation incentives. Concrete backend encoding and progress assumptions
+still need justification. Native sequential-equilibrium preservation remains open.
