@@ -254,6 +254,53 @@ analysis around the source program.
 
 ## Preservation target and remaining obligations
 
+### Submission and communication timing
+
+The native commitment compiler chooses and fixes a value when it submits an
+envelope. Inclusion later installs that value as the game binding. Between
+these events, other players may observe pending messages and respond. The
+owner may also submit competing candidates. These are existing protocol
+decisions, not private computation steps.
+
+[`ReactiveBinding`](../Vegas/Pending/ReactiveBinding.lean) proves two direct
+compiler laws without changing that protocol:
+
+- `reactiveBinding_continuation_result` retains the selected meaning through
+  any number of scheduler rounds, for arbitrary player policies, scheduling,
+  and partial-leak rules. It covers both values and unopenable bindings.
+- `reactiveDecision_binding_continuation_step` proves that including the actual
+  compiled envelope performs exactly the selected graph action, including its
+  completion history, and produces a success receipt. Its premises check that
+  the envelope remains pending and that the event is ready, timely, and has an
+  available binding field and handle **at inclusion**.
+
+The checked `binding_after_passive_reaction` fixture in
+[`ReactiveRuntime`](../VegasTests/ReactiveRuntime.lean) executes a partial-leak
+activation and an arbitrary player's response before including the original
+envelope. It proves the resulting binding law for every response policy and
+both successful and unopenable commitments. In this fixture the inclusion
+premises are proved, rather than assumed.
+
+These laws do not guarantee selection of the original envelope. In particular,
+they do not erase a competing submission or its effect on scheduling. Nor do
+they permit moving the binding choice to inclusion: a strategy can use its
+already fixed value during the intervening communication.
+
+The synchronous source experiment gives communication its own turns before
+each immediate game transition. It therefore supplies neither the native
+choice-to-inclusion interval nor the coupling between communication and a game
+call in one response. The positive theorem needs a source communication
+interpretation with those same opportunities and delivery laws. This is a
+requirement on the analysis service, not an additional source opcode.
+
+There is also a policy-domain obligation: `Setup.compileReactiveStrategy`
+currently accepts the original source behavioral policy. A sequential
+assessment of the communication extension has additional decisions and can
+condition game choices on received messages. Its compiler must translate that
+behavior; the existing compiler's type does not supply this translation.
+
+### Equilibrium correspondence
+
 For a fixed source communication service, the desired theorem starts from an
 assessment in the extended source game, including its communication behavior.
 It must produce a sequential equilibrium in a corresponding runtime game and

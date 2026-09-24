@@ -141,6 +141,11 @@ remain open. The checked results are:
   the actual compiled profile, including recovery, admits a consistent belief
   completion under the same value and capacity certificates. No source
   equilibrium premise or additional scheduling restriction is required.
+- [ReactiveBinding.lean](../Vegas/Pending/ReactiveBinding.lean): the actual compiled
+  binding action retains its meaning through arbitrary reactive continuations.
+  A later admissible inclusion performs exactly the chosen graph step. This
+  preserves intervening partial leaks and responses; selection and the
+  source communication-policy correspondence remain separate obligations.
 
 Finite-menu instances are proof infrastructure and experiments. They do not
 claim that excluded semantic responses are irrelevant or that their equilibria
