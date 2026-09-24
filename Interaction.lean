@@ -42,6 +42,7 @@ import Interaction.MessageNetworkCounters
 import Interaction.MessageRetention
 import Interaction.MessagePublication
 import Interaction.ReactiveServiceInvariant
+import Interaction.ReactiveReceipts
 import Interaction.ReactivePublication
 import Interaction.ReactiveAllocation
 import Interaction.PendingSelection

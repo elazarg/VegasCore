@@ -96,5 +96,6 @@ import Vegas.Pending.EventCompletionObservation
 import Vegas.Pending.ReactiveAuthorization
 import Vegas.Pending.ReactiveAuthorizationProgress
 import Vegas.Pending.ReactiveDependencyService
+import Vegas.Pending.ReactiveOpeningEvidence
 
 /-! Graph execution and strategic refinement over public pending messages. -/
