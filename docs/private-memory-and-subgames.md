@@ -77,7 +77,7 @@ Even a later message claiming Alice's old memory does not prevent the
 construction: the transformed history keeps that message unchanged. The
 application never authenticates the arbitrary scratch-memory field.
 
-## Design recommendation and proved first step
+## Required semantic boundary and proved first step
 
 Represent auxiliary memory as state of the **strategy implementation**, rather
 than as an additional game action recorded in canonical histories. Keep actual
@@ -85,6 +85,12 @@ submission effects, binding meanings, private types, observations, and their
 legitimate own-action recall in the game. In particular, privately fixing a
 commitment value has a semantic effect and is outside the memory relabeling
 theorem above.
+
+This is a correction of the game boundary, not a request to bound private memory
+or preserve the equilibria of the memory-expanded game. The required connection
+to implementations is behavioral: preserve their interaction with the environment
+and their available behavioral deviations. Equilibrium preservation must then
+be proved for the corrected game, with its actual information sets.
 
 Deleting the memory field alone would be inadequate engineering. A private
 random seed can correlate several responses, and the compiler remembers source
@@ -140,8 +146,8 @@ equivalence theorem. Before changing the production action representation:
    meaning of the target guarantee explicit.
 
 These are proof obligations, not established consequences of removing memory.
-The production response type and compiled policies retain their current
-semantics while these alternatives are evaluated.
+The production response type and compiled policies still include auxiliary
+memory; their refactor is required and remains open.
 
 ## Other equilibrium interfaces
 
@@ -161,6 +167,12 @@ the credibility target and the obligations for using GameTheory's existing
 assessment definition. No native sequential-equilibrium or public-checkpoint
 preservation theorem is claimed. Repairing auxiliary-memory representation
 alone does not establish rationality under genuine private information.
+The checked
+[SequentialCredibility.lean](../GameTheoryExtensionsTests/SequentialCredibility.lean)
+fixture demonstrates this distinction without scratch-memory actions: a private
+source bit prevents a proper subgame at Bob's off-path decision, and SPE permits
+a response that is strictly inferior under every belief. Removing implementation
+memory therefore does not remove the reason to target sequential equilibrium.
 
 ## Consequences for existing results
 

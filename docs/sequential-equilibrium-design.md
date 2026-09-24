@@ -58,10 +58,12 @@ The source-to-native preservation theorem is open. The checked foundations are:
   any decision site. This is a mismatch with the finite assessment interface,
   not an impossibility theorem for sequential equilibrium in other models.
 
-The unrestricted runtime is unchanged. Finite-menu instances explicitly restrict
-response availability; they do not claim that excluded raw responses are
-irrelevant or that their equilibria transfer to the unrestricted runtime. The
-GameTheory submodule is unchanged.
+The production runtime still records auxiliary memory in actions. Removing that
+representation from the semantic game is a required redesign. Finite-menu
+instances are proof infrastructure and experiments; bounding their memory labels
+does not implement that redesign. They do not claim that excluded raw responses
+are irrelevant or that their equilibria transfer to the unrestricted runtime.
+The GameTheory submodule is unchanged.
 
 ## What the existing definition provides
 
@@ -228,12 +230,47 @@ observations actually implement this disclosure before using the negative result
 
 ## Finite games without restricting private computation
 
+### The game boundary
+
+Auxiliary memory belongs inside the strategy implementation. A response should
+record its semantic effect, including an optional transmission and any binding
+submission material. It should not separately record a cache, random seed,
+remembered source intention or arbitrary private label. The player retains its
+observations and semantic own-action recall. Private types and commitment
+meanings remain part of the game: changing them can change payoffs or which
+future openings succeed.
+
+Removing auxiliary memory is required independently of action finiteness. It
+also removes the artificial history distinctions responsible for the
+[memory/subgame obstruction](private-memory-and-subgames.md). The intended
+theorem is about this corrected semantic game; it need not preserve the
+equilibria of the memory-expanded presentation. In particular, retaining those
+equilibria would retain the missing continuation checks that motivated repair.
+
+The existing
+[PrivateStrategy.realize](../GameTheoryExtensions/Protocol/PrivateStrategy.lean)
+preserves external laws against adaptive environments. Instantiate this for
+stateful player implementations, including the compiler's remembered intentions,
+and prove playerwise execution and deviation correspondence. Define the compiled
+behavioral policy at off-path information sets and prove its sequential
+equilibrium guarantee there. External-law realization alone does not supply
+off-path beliefs or sequential rationality. Private implementation states should
+not become additional equilibrium decision sites in this construction.
+
+This repair makes ordinary SPE meaningful where proper subgames exist; it does
+not make SPE sufficient for the desired credibility guarantee under genuine
+private information. The checked `SequentialCredibility` fixture uses a private
+source bit, without a scratch-memory response field: SPE permits a strictly
+inferior off-path response that no sequentially rational assessment permits.
+
+### Finite public behavior
+
 `FinDist` has finite support. The `FullSupport.finite` theorem proves that a
 fully supported such law requires a finite carrier. A finite horizon does not
 make the current action menu finite: `ResponseMemory.privateData` alone can
-store any natural number. At a decision site, this injects the naturals into
-the legal response menu. Raw submissions and replay identifiers also require
-an audit after scratch memory is separated.
+store any natural number. That field must be removed, not assigned a smaller
+bound. Afterward, raw submissions and replay identifiers still require concrete
+encoding rules or a proved behavioral abstraction.
 
 The recommended first theorem is a **family of explicitly finite runtime
 instances**, with finite wire alphabets, finite semantic value domains where
@@ -243,24 +280,37 @@ Do not equate bounded payload sizes with bounded local computation.
 
 | Approach | Benefit | Obligation or cost | Decision |
 |---|---|---|---|
-| Finite runtime instances | Reuses the existing standard definition | Explicit domain/encoding bounds; all legal messages within each bound remain available | First implementation target |
+| Finite runtime instances | Reuses the existing standard definition | Remove scratch-memory actions; explicit domain/encoding bounds; all legal messages within each bound remain available | First compiler theorem target |
 | Finite semantic quotient of raw runtime | Can cover an unbounded representation | Prove information, deviations, beliefs and tremble lifting, not only initialized outcomes | Optional optimization after a concrete quotient is justified |
 | Countable or general distribution model | Retains genuinely infinite menus | New probability/conditioning and consistency theory; hypotheses depend on the chosen generalization | Separate research task if finiteness is unacceptable |
 | Full mixing only over compiler outputs | Simplifies perturbations | Omits genuine target deviations | Reject |
 
-Wire bounds have a possible engineering justification in finite transaction
-encodings and execution horizons. This is **not a modeled blockchain theorem**.
-Exact bounds, feasibility of the service, fees and enforcement require a concrete
-backend. A theorem for each finite instance does not establish a theorem for
-the unbounded union of instances.
+Finite public behavior has a concrete backend interpretation: finite admitted
+wire encodings and a finite bound on interaction steps. Ethereum provides
+examples of such engineering bounds: [EIP-2681](https://eips.ethereum.org/EIPS/eip-2681)
+bounds account nonces, [block gas limits](https://ethereum.org/developers/docs/blocks/)
+bound execution within a block, and Geth's
+[transaction pool](https://github.com/ethereum/go-ethereum/blob/master/core/txpool/legacypool/legacypool.go)
+checks an explicit maximum transaction size. The last is a client admission
+policy, not a universal consensus rule. These facts motivate an explicit finite
+backend instance; they are not a verified blockchain implementation of our
+service contract. Exact bounds, fees, admission rules and progress guarantees
+remain backend obligations.
 
-Keep auxiliary implementation memory within strategies if a continuation-aware
-realization proof justifies it. The existing
-[PrivateStrategy.realize](../GameTheoryExtensions/Protocol/PrivateStrategy.lean)
-preserves external laws against adaptive environments, but does not prove
-transport of off-path beliefs or sequential rationality after fixing an
-internal memory state. That missing step is explicit. Private types and binding
-commitment meanings have semantic effects and cannot be erased as scratch data.
+A contract timeout bounds the modeled interaction only if clock progress also
+bounds the admitted transmissions, passive observations and activations before
+that timeout. Otherwise an abstract network can admit arbitrarily many steps
+between two clock ticks. The reactive protocol already assumes a scheduler
+horizon, whose `bounded` theorem limits transition count; connecting that bound
+to backend progress is a separate engineering obligation. Waiting must consume
+the actual service opportunities. No local computation cost is needed.
+
+The checked finite-history theorem uses finite response menus, finitely many
+players, finite-support chance laws and a certified horizon. Concrete wire bounds
+are a proposed way to supply those menus after accounting for semantic private
+choices. These requirements impose no bound on the internal representation or
+computation of a strategy. A theorem for each finite instance does not establish
+a theorem for the unbounded union of instances.
 
 Nor can all malformed packets simply be identified with silence: their visible
 contents may communicate information or influence the service. Any restriction
@@ -316,12 +366,13 @@ its intention record, silence, and known replays. Every possible first compiled
 Boolean response is proved available. Coverage of arbitrary later compiled
 recovery, other raw packets and auxiliary memory values is not established.
 
-Before a finite-menu compiler theorem can describe the intended backend, supply
-one of two justifications for every omitted response: a concrete encoding rule
-that makes it unavailable, or a proved replacement preserving continuation
-information, incentives and consistent beliefs. Bounding recorded memory labels
-is not a bound on local computation; it still needs this justification. The
-adapter alone supplies neither justification. No source syntax flag is added.
+Before a finite-menu compiler theorem can describe the intended backend, remove
+auxiliary memory from semantic actions and adapt the compiler. Then justify every
+omitted semantic response by a concrete encoding rule that makes it unavailable,
+or by a proved replacement preserving continuation information, incentives and
+consistent beliefs. This requirement concerns actual behavior, not the choice of
+private memory representation. The adapter alone supplies neither justification.
+No source syntax flag is added.
 
 ## Runtime obligations and ownership
 
@@ -353,12 +404,15 @@ has no proved implication for conditional continuation incentives or beliefs.
 1. **Definition regression (checked):** SPE/credibility separation, positive
    sequential-equilibrium assessments with genuinely off-path beliefs and an
    explicit common consistency witness, and the abstract disclosure impossibility.
-2. **Finite presentation:** implement the smallest reactive finite instance
-   preserving binding, passive partial foreign leaks, repeated responses and
-   at-most-once inclusion. Nonterminal fibers and decision antichains are checked
-   for the actual reactive adapter. Explicit finite-menu instances, exact history
-   embedding, continuation laws, replay coverage and a native binding fixture are
-   checked. A backend-complete menu and its player-memory justification remain open.
+2. **Semantic presentation:** remove auxiliary memory from game actions and
+   realize the stateful compiler as a behavioral policy. Preserve binding,
+   private types, passive partial foreign leaks, repeated responses and
+   at-most-once inclusion. Instantiate finite wire bounds and a service horizon,
+   including all admitted malformed traffic. Nonterminal fibers and decision
+   antichains are checked for the existing reactive adapter. Explicit finite-menu
+   instances, exact history embedding, continuation laws, replay coverage and a
+   native binding fixture are checked. The production memory refactor and a
+   backend-complete menu remain open.
 3. **Belief construction:** identity translation, a redundant private-bit
    extension, and a message encoding with target-only errors. Prove one common
    tremble sequence and posterior convergence; include an incompatible-beliefs
