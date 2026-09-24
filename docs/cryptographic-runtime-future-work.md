@@ -314,6 +314,49 @@ negligible perturbations. It would be inaccurate either to call the exact
 disclosure argument a computational impossibility theorem, or to claim that changing
 equilibrium definitions cryptographically conceals the revealed value.
 
+### Can verification costs justify ignoring disclosures?
+
+A further research question is whether a player can rationally ignore
+unsolicited opening claims because checking them costs more than the useful
+information they provide. This could support a game-specific abstraction even
+when disclosure remains physically possible. It is a proposed research route,
+not a preservation result or a premise of the current ideal semantics.
+
+Computational feasibility and economic cost are separate assumptions. A
+polynomial-time restriction alone does not charge a utility cost for running an
+allowed verifier. Halpern and Pass study explicit computation costs, including
+sequential choice with costs and the possibility of rational forgetting.
+[Halpern and Pass, *Algorithmic Rationality: Game Theory with Costly
+Computation*](https://arxiv.org/abs/1412.2993),
+[Halpern and Pass, *Sequential Equilibrium in Computational
+Games*](https://arxiv.org/abs/1412.6361).
+
+The investigation should distinguish verifying one bounded, relevant opening
+from processing an adversarial stream of purported openings. A recipient can
+limit the messages it processes; distrust of a sender alone does not establish
+that checking a selected message is unprofitable. The sender can have incentives
+to disclose truthfully, and the recipient's stakes can justify the check.
+An argument that ignoring evidence is dominant would need to compare against
+every allowed opponent strategy. An equilibrium-specific argument can use the
+specified strategies and beliefs, but sequential preservation must also cover
+the required continuations after unexpected messages.
+
+Any such abstraction must state its utility scale. A fixed verification cost
+cannot justify ignoring useful evidence uniformly over arbitrarily large
+stakes. The research target should therefore specify bounded utilities or a
+particular class of games, rather than assuming costs restore the current
+utility-independent preservation claim.
+
+A candidate approximate-preservation theorem would bound the improvement
+available from extra communication after accounting for processing costs.
+Its premises must cover selective checking, bounded processing, outsourcing
+or shared verification where available, and information conveyed without
+verification, including claims and timing. Utility bounds, cost accounting,
+and the treatment of rare continuation events belong in its statement.
+Neither this cost argument nor an appropriate computational equilibrium
+definition has been selected or formalized. Private computation remains free
+in the present implementation.
+
 ## Requirements for a future service interface
 
 The following is a design checklist, not a proposed collection of syntax flags.

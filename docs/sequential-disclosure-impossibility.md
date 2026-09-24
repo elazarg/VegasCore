@@ -64,7 +64,7 @@ is uniform. Every replacement continuation has expected payoff `1/2` for
 either utility. At successful-publication information sets both utilities are
 zero. Alice is indifferent everywhere.
 
-[`source_sequential_equilibrium`](../VegasTests/SequentialValidationEquilibrium.lean)
+[`VegasTests.SequentialValidation.source_sequential_equilibrium`](../VegasTests/SequentialValidationEquilibrium.lean)
 checks this for the actual source protocol, all legal source histories, and
 whole continuation-policy deviations. This is a source sequential equilibrium,
 including its beliefs and consistency proof.

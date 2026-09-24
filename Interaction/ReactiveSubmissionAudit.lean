@@ -73,6 +73,23 @@ theorem auditedSubmission_eq_of_id
   cases Option.some.inj firstFound
   exact Option.some.inj (firstEmitted.symm.trans secondEmitted)
 
+/-- An audited pending envelope is recovered exactly by its identifier, even
+when rebroadcasting has left several copies in the pending list. -/
+theorem Execution.SubmissionAudit.lookup_of_mem
+    (project : app.LocalObservation → app.PublicObservation) (execution : app.Execution)
+    (audit : execution.SubmissionAudit app project) (message : Message Principal app.Payload)
+    (pending : message ∈ execution.network.pending) :
+    execution.network.lookup message.id = some message := by
+  cases found : execution.network.lookup message.id with
+  | none =>
+      have excluded := List.find?_eq_none.mp found message pending
+      simp at excluded
+  | some selected =>
+      have same : selected.id = message.id := by
+        simpa only [decide_eq_true_eq] using List.find?_some found
+      exact congrArg some (app.auditedSubmission_eq_of_id project execution selected message
+        (audit.lookup message.id selected found) (audit.pending message pending) same)
+
 def Control.ActivationAudit (control : app.Control) : Prop :=
   ∀ who, control.actor = some who →
     app.submissionObservation? control.execution.environmentRecall

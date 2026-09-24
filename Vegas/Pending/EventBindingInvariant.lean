@@ -1,14 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.EventInvariant
+import Vegas.Pending.EventAssociationInvariant
 import Interaction.MessageApplicationPolicyLaws
 
 /-! # Binding-handle provenance for the event pending runtime
 
-This invariant connects successful typed binding values in the ideal event
-store to immutable candidate meanings.  Binding failure deliberately creates
-no provenance obligation: deadline expiry may complete a binding with failure
-without accepting any handle.
+This invariant connects typed graph bindings and their accepted immutable
+candidates in both directions. Deadline expiry may complete a binding with
+failure without accepting a handle; every accepted handle is already fixed.
 -/
 
 noncomputable section
@@ -23,9 +22,9 @@ variable {graph : Vegas.EventGraph Player L}
 
 namespace State
 
-/-- Accepted handles are well typed and unique, and every successful binding
-value is backed by the immutable opening of its accepted handle. -/
-structure BindingInvariant (state : State graph) : Prop where
+/-- Accepted handles are typed, unique, and fixed. Successful bindings and
+well-typed openings of their accepted handles determine each other. -/
+structure BindingInvariant (state : State graph) : Prop extends AssociationInvariant state where
   accepted_typed : ∀ field handle, state.accepted field = some handle →
     ∃ payload, graph.layout field = .binding handle.1 payload
   accepted_injective : ∀ left right handle,
@@ -46,7 +45,9 @@ theorem BindingInvariant.copy {before after : State graph}
     (acceptedEq : after.accepted = before.accepted)
     (candidatesEq : after.candidates = before.candidates) :
     after.BindingInvariant := by
-  refine ⟨?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · exact invariant.toAssociationInvariant.transport acceptedEq
+      (fun _ _ => by rw [candidatesEq]) (fun _ _ stored => by rw [configEq]; exact stored)
   · intro field handle accepted
     rw [acceptedEq] at accepted
     exact invariant.accepted_typed field handle accepted
@@ -68,12 +69,16 @@ theorem BindingInvariant.of_successes_before {before after : State graph}
     (invariant : before.BindingInvariant)
     (acceptedEq : after.accepted = before.accepted)
     (candidatesEq : after.candidates = before.candidates)
+    (storePreserved : ∀ field value, before.config.store field = some value →
+      after.config.store field = some value)
     (successBefore : ∀ {owner payload}
       (ref : FieldRef graph.layout (.binding owner payload)) (value : L.Val payload),
       ref.get? after.config.store = some (.success value) →
         ref.get? before.config.store = some (.success value)) :
     after.BindingInvariant := by
-  refine ⟨?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · exact invariant.toAssociationInvariant.transport acceptedEq
+      (fun _ _ => by rw [candidatesEq]) storePreserved
   · intro field handle accepted
     rw [acceptedEq] at accepted
     exact invariant.accepted_typed field handle accepted
@@ -160,7 +165,7 @@ theorem BindingInvariant.complete_of_no_success {state : State graph}
     (state.complete event ready action output).BindingInvariant := by
   apply BindingInvariant.of_successes_before
     (before := state) (after := state.complete event ready action output)
-    invariant rfl rfl
+    invariant rfl rfl (state.config.complete_store_of_some event ready action output)
   intro owner payload ref value stored
   exact complete_success_before state event ready action output noSuccess ref value stored
 
@@ -181,7 +186,8 @@ theorem BindingInvariant.complete_nonbinding {state : State graph}
 successful binding input. Event outputs are unavailable initially. -/
 theorem initial_bindingInvariant (inputs : graph.Inputs) :
     (State.initial inputs).BindingInvariant := by
-  refine ⟨?_, State.initial_accepted_injective inputs, ?_⟩
+  refine ⟨State.initial_associationInvariant inputs, ?_,
+    State.initial_accepted_injective inputs, ?_⟩
   · intro field handle accepted
     obtain ⟨input, owner, payload, rfl, kindEq, handleEq⟩ :=
       State.initial_accepted_eq_some inputs field handle accepted
@@ -242,6 +248,7 @@ private theorem bindingInvariant_of_nonbinding_step
       graph.outputLayout event ≠ .binding owner payload) :
     next.BindingInvariant := by
   apply State.BindingInvariant.of_successes_before invariant acceptedEq candidatesEq
+    (state.config.step_store_of_some next.config event ready action member)
   intro owner payload ref value stored
   unfold EventGraph.Config.step at member
   rw [FinDist.support_map, Set.mem_image] at member
@@ -274,7 +281,9 @@ theorem privateStep_bindingInvariant (state : State graph)
     (privateStep state who command).BindingInvariant := by
   cases command with
   | prepare serial raw =>
-      refine ⟨invariant.accepted_typed, invariant.accepted_injective, ?_⟩
+      refine ⟨privateStep_associationInvariant state who (.prepare serial raw)
+        invariant.toAssociationInvariant, invariant.accepted_typed,
+        invariant.accepted_injective, ?_⟩
       intro owner payload ref value stored
       obtain ⟨handle, accepted, ownerEq, candidate⟩ :=
         invariant.success_provenance ref value stored
@@ -292,21 +301,6 @@ theorem privateStep_bindingInvariant (state : State graph)
       · apply invariant.copy <;> simp [privateStep, owned]
 
 namespace State
-
-omit [DecidableEq Player] in
-theorem bindingResult_eq_success_iff (state : State graph) (handle : Handle graph)
-    (payload : L.Ty) (value : L.Val payload) :
-    state.bindingResult handle payload = .success value ↔
-      state.candidates.lookup handle = .openable ⟨payload, value⟩ := by
-  unfold bindingResult
-  cases candidateEq : state.candidates.lookup handle with
-  | fresh | unopenable => simp
-  | openable raw =>
-      rcases raw with ⟨rawTy, rawValue⟩
-      by_cases same : rawTy = payload
-      · subst rawTy
-        simp [Raw.as?]
-      · simp [Raw.as?, same]
 
 /-- Accepting a fresh binding field preserves exact handle provenance. -/
 theorem BindingInvariant.acceptBinding {state : State graph}
@@ -330,7 +324,8 @@ theorem BindingInvariant.acceptBinding {state : State graph}
     accepted := Function.update state.accepted (.inr event) (some handle)
     candidates := state.candidates.freeze handle }
   change next.BindingInvariant
-  refine ⟨?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · exact invariant.toAssociationInvariant.acceptBinding event ready owner payload outputEq handle
   · intro field acceptedHandle accepted
     by_cases same : field = .inr event
     · subst field
@@ -583,7 +578,8 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
 theorem submitStep_bindingInvariant (state : State graph)
     (invariant : state.BindingInvariant) (who : Player) (packet : Payload graph) :
     (submitStep state who packet).BindingInvariant := by
-  refine ⟨invariant.accepted_typed, invariant.accepted_injective, ?_⟩
+  refine ⟨submitStep_associationInvariant state who packet invariant.toAssociationInvariant,
+    invariant.accepted_typed, invariant.accepted_injective, ?_⟩
   intro owner payload ref value stored
   obtain ⟨candidate, accepted, owned, meaning⟩ := invariant.success_provenance ref value stored
   refine ⟨candidate, accepted, owned, ?_⟩

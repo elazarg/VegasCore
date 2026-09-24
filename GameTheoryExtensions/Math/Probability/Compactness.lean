@@ -18,6 +18,24 @@ namespace GameTheory.Math.Probability
 
 open Filter
 
+theorem FinDistConvergesPointwise.map {α β : Type*} [Finite α]
+    {sequence : ℕ → FinDist α} {target : FinDist α}
+    (converges : FinDistConvergesPointwise sequence target) (project : α → β) :
+    FinDistConvergesPointwise (fun n => (sequence n).map project) (target.map project) := by
+  classical
+  let := Fintype.ofFinite α
+  intro value
+  simp only [FinDist.prob_map]
+  exact converges.expect (fun original => if value = project original then 1 else 0)
+
+theorem FinDistConvergesPointwise.unique {α : Type*}
+    {sequence : ℕ → FinDist α} {first second : FinDist α}
+    (firstLimit : FinDistConvergesPointwise sequence first)
+    (secondLimit : FinDistConvergesPointwise sequence second) : first = second := by
+  apply FinDist.ext_of_prob
+  intro value
+  exact tendsto_nhds_unique (firstLimit value) (secondLimit value)
+
 theorem FinDistConvergesPointwise.subsequence {α : Type*}
     {sequence : ℕ → FinDist α} {target : FinDist α}
     (converges : FinDistConvergesPointwise sequence target)

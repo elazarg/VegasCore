@@ -49,6 +49,33 @@ theorem BehavioralAssessment.exists_consistent_completion_subsequence
   exact ⟨assessment, rfl, index, increasing, limit,
     ⟨fun n => sequence (index n), fun n => ⟨mixed (index n), bayes (index n)⟩, limit⟩⟩
 
+/-- Compactness retains any already established convergence of projected
+Bayes beliefs. The projection law is an explicit premise: arbitrary consistent
+completion alone supplies no compatibility with another game's beliefs. -/
+theorem BehavioralAssessment.exists_consistent_completion_preserving
+    (antichain : M.DecisionInformationAntichain)
+    (profile : ∀ who, M.BehavioralPolicy who)
+    (sequence : ℕ → M.BehavioralAssessment)
+    (mixed : ∀ n, (sequence n).IsFullyMixed)
+    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent M (sequence n) antichain)
+    (strategies : ∀ who (site : M.InformationSite who),
+      FinDistConvergesPointwise (fun n => (sequence n).strategy who site.1)
+        (profile who site.1))
+    {Observation : (who : ι) → M.InformationSite who → Type*}
+    (project : ∀ who site, M.InformationHistory who site.1 → Observation who site)
+    (limit : ∀ who site, FinDist (Observation who site))
+    (projected : ∀ who site, FinDistConvergesPointwise
+      (fun n => ((sequence n).belief who site).map (project who site)) (limit who site)) :
+    ∃ assessment : M.BehavioralAssessment,
+      assessment.strategy = profile ∧ assessment.IsSequentiallyConsistent antichain ∧
+      ∀ who site, (assessment.belief who site).map (project who site) = limit who site := by
+  obtain ⟨assessment, strategy, index, increasing, converges, consistent⟩ :=
+    BehavioralAssessment.exists_consistent_completion_subsequence antichain profile sequence
+      mixed bayes strategies
+  refine ⟨assessment, strategy, consistent, fun who site => ?_⟩
+  exact ((converges.belief who site).map (project who site)).unique
+    ((projected who site).subsequence increasing)
+
 /-- In a finite protocol admitting a fully mixed reference profile, every
 profile has some sequentially consistent beliefs. This is consistency
 existence, not equilibrium existence. -/

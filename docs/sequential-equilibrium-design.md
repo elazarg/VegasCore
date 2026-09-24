@@ -82,6 +82,14 @@ remain open. The checked results are:
   observation and rejection. Observing one fixes its fact throughout the actual
   information fiber. Issuance can accompany the binding submission itself.
   Candidate evidence does not identify the eventual accepted game binding.
+- [ReactiveAssociationEvidence.lean](../Vegas/Pending/ReactiveAssociationEvidence.lean):
+  a previously observed candidate certificate and its later public accepted
+  association jointly certify the named graph binding at every compatible
+  native history. No further certificate delivery or successful opening is
+  required. The [three-player fixture](../VegasTests/ReactiveAssociationEvidence.lean)
+  checks that Bob can acquire this evidence while Carol sees identical public
+  ledger data in both value worlds. This is a knowledge result, not a further
+  equilibrium impossibility theorem.
 - [DisclosureObstruction.lean](../GameTheoryExtensions/Analysis/Protocol/DisclosureObstruction.lean):
   a reusable impossibility theorem from all-history binary continuation laws
   and attainable opposite answers. Both abstract and native disclosure
@@ -581,19 +589,59 @@ observations and emitted packets, is idempotent, commutes with environment steps
 and maps responses to their normalized effects. The concrete finite menus depend
 on remembered outputs, so this projection preserves their future availability
 ([ReactiveResponseAliases](../Vegas/Pending/ReactiveResponseAliases.lean)).
-The remaining equilibrium obligation is a history/information-fiber probability
-law and simulation of entire continuation policies. Equality of one-step effects
-alone does not establish that obligation; publicly different packets remain
-observable signals.
+[ReactiveNormalHistory](../Interaction/ReactiveNormalHistory.lean) maps complete
+legal histories and their information sets.
+[ReactiveAliasLaw](../Interaction/ReactiveAliasLaw.lean) proves equality of
+complete projected continuation-history laws from arbitrary legal starts,
+whenever the raw local choice laws project to the normalized profile. The
+concrete native canonical and perturbed profiles satisfy this premise in
+[ReactiveAliasTremble](../Vegas/Pending/ReactiveAliasTremble.lean).
+
+[ReactiveAliasStrategy](../Interaction/ReactiveAliasStrategy.lean) splits each
+normalized response over its finite raw fiber. One positive weight gives full
+mixing simultaneously at every legal decision site; the projected choice law
+is exact, and vanishing weights preserve convergence of the strategy
+coordinates. [ReactiveAliasTremble](../Vegas/Pending/ReactiveAliasTremble.lean)
+instantiates these laws for the concrete native menus. Publicly different
+packets remain observable signals.
+
+[ReactiveAliasConsistency](../Interaction/ReactiveAliasConsistency.lean)
+completes the analytic step conditional on exact Bayes projection at every raw
+site and every perturbation: a common subsequence yields consistent raw beliefs
+projecting to the prescribed source beliefs, with the canonical lifted strategy.
+[ReactiveAliasBayes](../Interaction/ReactiveAliasBayes.lean) discharges that
+premise. A selector fixes the focal player's recalled raw responses while
+preserving their normalized choices; the player's own reach contribution
+cancels when conditioning at its information set. Exact history laws then give
+the Bayes projection. Its `exists_canonical_consistent` theorem lifts every
+consistent normalized assessment to the canonical raw strategy with the
+prescribed projected beliefs at every raw site. The concrete native instance
+is `exists_canonicalRaw_consistent`.
+
+[ReactiveAliasImplementation](../Interaction/ReactiveAliasImplementation.lean)
+simulates an arbitrary raw continuation policy by retaining its response names
+inside a private strategy and then realizing that strategy behaviorally.
+Starting after activation, before the response, its final external execution
+law equals the projected raw law against normalized opponents. The remaining
+composition must establish membership in the finite menus and transport these
+laws through assessment beliefs and continuation payoffs. Consistency alone
+does not establish SE preservation.
+
+[ReactiveOwnPlay](../Interaction/ReactiveOwnPlay.lean) reconstructs each
+player's decision history from its recorded responses and pre-response views.
+At a decision information set, all compatible histories therefore have the same
+own-play sequence and the same contribution from that player's strategy to
+their reach probabilities. The result is deliberately stated at decision
+sites: the shared inactive information value does not remember own play.
 
 ## Proof milestones
 
 | Gate | Checked result | Remaining obligation |
 |---|---|---|
 | Capability obstruction | Generic binary-decision theorem, with abstract and actual native instances | No universal claim about runtimes lacking the stated capability |
-| Independent evidence | Issuance, forwarding, rejection persistence, and information-fiber soundness | Relate candidate facts and communication timing to the source extension |
+| Independent evidence | Issuance, forwarding, rejection persistence, information-fiber soundness, and later certification of named bindings from previously observed candidate proofs | Relate candidate facts and communication timing to the source extension |
 | Positive example | Complete SEs for both native guessing objectives, all legal information sets, one common perturbation sequence | A source-to-native preservation instance, including partial observation |
-| Service coverage | Authorized inclusion, at-most-once publication, finite-menu coverage, recurring usable owner opportunities | Prescribed-packet selection/retention, pending reactions, competing submissions |
+| Service coverage | Authorized inclusion, at-most-once publication, finite-menu coverage, recurring usable owner opportunities; a ready and timely compiled binding is retained or realized by each inclusion | Compose timing, pending retention, and reserved selection across the service; disclosure cases |
 | General compilation | Binding/disclosure step laws and original source compiler | Playerwise compiler for communication-aware policies and joint-law correspondence |
 | Sequential transfer | Generic rationality criterion and finite consistency machinery | One common translated tremble sequence, all-site incentives, original-equilibrium corollary |
 
@@ -604,6 +652,26 @@ leave Bob's sole response before his dependencies settle. That calendar supports
 the impossibility witness and native equilibrium analysis. A source preservation
 instance needs a usable owner response **after** predecessor success or expiry.
 This is a service-coverage obligation; it does not require a new source opcode.
+[CommunicationServiceOmission](../VegasTests/CommunicationServiceOmission.lean)
+constructs a legal history of the actual bounded native game: Alice omits all
+three earlier submissions, then Bob is activated while his guess event is not
+ready. The recurring-service opportunity theorem covers the needed later
+response under its stated deadline assumption.
+
+[ReactiveServiceSelection](../Vegas/Pending/ReactiveServiceSelection.lean)
+proves that the actual reserved selector chooses the prescribed event's packet
+when it remains pending and unpublished, using the established packet-integrity
+invariant. Service segments with no ticks preserve readiness and the deadline
+until the event completes. Composing these facts across early publication and
+the reserved inclusion remains a separate service proof.
+
+The reserved selector by itself does not check submission-time dependencies.
+[CommunicationServiceAuthorization](../VegasTests/CommunicationServiceAuthorization.lean)
+applies it to the existing premature-opening fixture: the raw selector includes
+an opening submitted too early, whereas the public-history monitor waits. The
+monitor produces no rejection receipt in that case. This fixture does not claim
+that its preceding calendar was the recurring calendar, nor supply a ledger
+implementation of that monitor.
 
 ## Runtime obligations and ownership
 

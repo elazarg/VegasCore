@@ -237,13 +237,12 @@ theorem step_eq_pure_of_actor (config : graph.Config) (event : graph.EventId)
   rfl
 
 /-- A graph completion writes only its previously unavailable output field. -/
-theorem step_store_of_some (config next : graph.Config)
+theorem complete_store_of_some (config : graph.Config)
     (event : graph.EventId) (ready : config.cut.Ready event) (action : graph.Action event)
-    (member : next ∈ (config.step event ready action).support)
+    (output : (graph.outputLayout event).Value)
     (field : graph.Field) (value : (graph.layout field).Value)
-    (stored : config.store field = some value) : next.store field = some value := by
-  rw [step, FinDist.support_map] at member
-  obtain ⟨output, _, rfl⟩ := member
+    (stored : config.store field = some value) :
+    (config.complete event ready action output).store field = some value := by
   cases field with
   | inl input => exact stored
   | inr query =>
@@ -255,6 +254,16 @@ theorem step_store_of_some (config next : graph.Config)
           simp [stored]
         exact ready.1 ((config.output_available event).mp present)
       exact (config.complete_output_of_ne event query ready action output different).trans stored
+
+/-- A graph step retains every previously available field. -/
+theorem step_store_of_some (config next : graph.Config)
+    (event : graph.EventId) (ready : config.cut.Ready event) (action : graph.Action event)
+    (member : next ∈ (config.step event ready action).support)
+    (field : graph.Field) (value : (graph.layout field).Value)
+    (stored : config.store field = some value) : next.store field = some value := by
+  rw [step, FinDist.support_map] at member
+  obtain ⟨output, _, rfl⟩ := member
+  exact config.complete_store_of_some event ready action output field value stored
 
 /-- Semantic reachability from one concrete input environment. This is the
 premise under which chronological-history properties should be consumed. -/

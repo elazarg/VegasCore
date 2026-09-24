@@ -71,4 +71,40 @@ theorem reactiveStoreInvariant (runtime : EventGraphRuntime graph)
   environment state command next stored supported :=
     environmentStep_store_of_some runtime state next command supported field value stored
 
+/-- Every initialized native history retains a configuration reachable by
+the original graph rules from a supported setup. This allows arbitrary player
+responses, scheduling, and passive observations. It asserts legality of game
+effects, not equality of strategy spaces or equilibrium outcomes. -/
+theorem reactive_history_graph_reachable (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler) {state}
+    (trace : ((runtime.reactiveApplication leaks).protocol
+      (inputs.map State.initial) horizon scheduler).Trace state) :
+    ReactiveApplication.stateInvariant (fun state : State graph =>
+      ∃ setup ∈ inputs.support, state.config.Reachable setup) state := by
+  let preserved : (runtime.reactiveApplication leaks).Invariant
+      (fun state : State graph => ∃ setup ∈ inputs.support, state.Invariant setup) := {
+    submit := by
+      rintro state who material ⟨setup, supported, valid⟩
+      exact ⟨setup, supported,
+        (runtime.reactiveStateInvariant leaks setup).submit state who material valid⟩
+    handle := by
+      rintro state message next ⟨setup, supported, valid⟩ accepted
+      exact ⟨setup, supported,
+        (runtime.reactiveStateInvariant leaks setup).handle state message next valid accepted⟩
+    environment := by
+      rintro state command next ⟨setup, supported, valid⟩ reached
+      exact ⟨setup, supported,
+        (runtime.reactiveStateInvariant leaks setup).environment state command next valid reached⟩ }
+  have valid := preserved.history (inputs.map State.initial) horizon scheduler (by
+    intro state supported
+    obtain ⟨setup, chosen, rfl⟩ := FinDist.support_map .. ▸ supported
+    exact ⟨setup, chosen, State.initial_invariant setup⟩) trace
+  cases state with
+  | none => trivial
+  | some control =>
+      obtain ⟨setup, supported, invariant⟩ := valid
+      exact ⟨setup, supported, invariant.reachable⟩
+
 end Vegas.EventGraphRuntime

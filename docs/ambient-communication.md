@@ -369,6 +369,16 @@ their traces does not automatically give admissible policies of `G`.
 The synchronous experiment proves local instances of this property. The
 pending-observation interpretation needs its own proof.
 
+There is also a checked native legality statement:
+[`reactive_history_graph_reachable`](../Vegas/Pending/ReactiveStateInvariant.lean)
+shows that every initialized native history retains a graph configuration
+reachable by the original graph rules from a supported setup. It permits
+arbitrary responses, scheduling, and passive observations. Submission leaves
+the graph configuration unchanged (`reactive_respond_application`). These
+facts constrain the possible game effects; they do not establish equality of
+the initialized type/result laws or supply policies for the communication
+interpretation.
+
 **S. Sufficient communication abstraction.** Fix `k`, `r`, and operational
 implementation assumptions before choosing utilities. Construct a playerwise
 compiler whose behavior depends on the configured environment and its player's
@@ -533,6 +543,38 @@ they do not erase a competing submission or its effect on scheduling. Nor do
 they permit moving the binding choice to inclusion: a strategy can use its
 already fixed value during the intervening communication.
 
+[ReactiveBindingAdmission](../Vegas/Pending/ReactiveBindingAdmission.lean)
+discharges the vacancy and handle-availability premises for a fresh compiled
+binding whose owner continues the prescribed policy. Opponent policies,
+passive observations, and scheduling during that continuation remain arbitrary.
+The proof combines the accepted-association invariant with protection of the
+fresh candidate against use by another event. Its
+`reactiveDecision_binding_retained_or_realized` theorem proves that a single
+inclusion either retains the original pending envelope or executes the chosen
+graph action with a successful receipt, provided the event is still ready and
+timely. The separate schedule obligation is to establish these conditions
+through the actual reserved inclusion; this theorem does not assume or prove
+that the service eventually selects that envelope.
+
+[ReactiveBindingService](../Vegas/Pending/ReactiveBindingService.lean) closes
+that operational schedule obligation for a prescribed binding response. Through
+any finite block of wire activity and the reserved inclusion, the chosen
+binding result is installed. Earlier inclusion is allowed; otherwise the
+original envelope stays available for the reserved selection. The proof uses
+the actual recurring service, arbitrary opponent responses and partial leaks.
+It requires the owner's prescribed-packet invariant at the starting prefix.
+Competing envelopes from an earlier deviation by that same owner remain a
+separate SE continuation obligation.
+
+[ReactiveDisclosureAdmission](../Vegas/Pending/ReactiveDisclosureAdmission.lean)
+proves the corresponding store and public-observation law for every source
+disclosure choice at a ready, timely inclusion, with an empty application-side
+opening cache. A failed binding makes both disclosure choices emit withholding.
+The source completion histories can therefore differ despite identical packets;
+the compiler retains the sampled choice privately. The theorem preserves its
+stored result and public observation, without claiming to recover that private
+choice from the message.
+
 The synchronous source experiment gives communication its own turns before
 each immediate game transition. It therefore supplies neither the native
 choice-to-inclusion interval nor the coupling between communication and a game
@@ -554,6 +596,19 @@ The named-binding source evidence interface has no fact for such a candidate
 before association with a game commitment. Treating that evidence as a bare
 claim would discard its verification guarantee; treating it as a named source
 binding would assert an association that has not happened.
+
+The later association itself can supply the missing link without another
+message. [ReactiveAssociationEvidence](../Vegas/Pending/ReactiveAssociationEvidence.lean)
+proves that a previously observed typed candidate certificate, together with
+the public accepted association, identifies the named binding throughout the
+receiver's information set. The
+[three-player fixture](../VegasTests/ReactiveAssociationEvidence.lean) gives Bob
+the candidate certificate before association and includes a different packet
+with no certificate to install that candidate. Bob can then authenticate the
+named binding, while Carol sees identical ledger data for either value. A
+replacement disclosure with a fresh passive-observation draw would have to
+justify preserving that earlier audience; the sender need not know who saw
+the original certificate.
 
 The direct operational proof therefore needs either an independently specified
 ambient ideal-commitment capability or a theorem eliminating these auxiliary
