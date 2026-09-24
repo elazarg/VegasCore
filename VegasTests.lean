@@ -32,5 +32,7 @@ import VegasTests.BehavioralProtocol
 import VegasTests.SourceSetup
 import VegasTests.ParameterOutcomes
 import VegasTests.PrivateInputs
+import VegasTests.SequentialValidationEquilibrium
+import VegasTests.SequentialValidationNative
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

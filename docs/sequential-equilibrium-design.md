@@ -34,6 +34,20 @@ The source-to-native preservation theorem is open. The checked foundations are:
   abstract disclosure defeats every utility-independent sequential-equilibrium
   translator, even allowing utility-dependent target beliefs. The source
   witness satisfies the actual sequential-equilibrium definition.
+- [SequentialValidationEquilibrium.lean](../VegasTests/SequentialValidationEquilibrium.lean):
+  an actual source program with the full forfeiture interface has one fully
+  mixed sequential equilibrium for both matching and mismatching a private
+  input after a failed publication. The setup includes a pre-existing commitment
+  correlated with that input. All legal source histories are classified; actual
+  Bayes beliefs and whole continuation-policy deviations are checked. A deferred
+  guard makes successful disclosure and withholding share a failed public result.
+  This source theorem alone is not a native preservation counterexample.
+- [SequentialValidationNative.lean](../VegasTests/SequentialValidationNative.lean):
+  in that program's actual compiled graph, the native handler accepts an
+  authenticated opening of the initial commitment while the deferred guard
+  stores publication failure. The binding and both opening transitions are
+  checked. Lifting this packet-level evidence to a complete native
+  sequential-equilibrium obstruction remains a separate obligation.
 - [ReactiveDecisionInformation.lean](../Interaction/ReactiveDecisionInformation.lean):
   actual reactive decision fibers are nonterminal history antichains, for any
   application, scheduler and passive observation rule.
@@ -521,6 +535,17 @@ has no proved implication for conditional continuation incentives or beliefs.
 Only the checked foundations listed at the start are established. There is no
 claim here of native sequential-equilibrium preservation, equilibrium existence
 for the raw infinite runtime, a general decision procedure, or a verified EVM.
+
+## Open question for a cryptographic runtime
+
+A future cryptographic backend may need a computational or "pseudo" analogue
+of sequential equilibrium. In particular, investigate whether the fully mixed
+perturbations and limiting off-path beliefs used in the exact definition are
+appropriate when strategies have computational restrictions and observations
+are only computationally indistinguishable. "Pseudo sequential equilibrium"
+is a working question here, not a proposed definition or an established term.
+This question is recorded for future work; resolving it is outside the current
+ideal-commitment proof task.
 
 ## Research informing the design
 
