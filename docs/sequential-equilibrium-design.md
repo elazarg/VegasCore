@@ -559,6 +559,11 @@ is a working question here, not a proposed definition or an established term.
 This question is recorded for future work; resolving it is outside the current
 ideal-commitment proof task.
 
+[Cryptographic services and future work](cryptographic-runtime-future-work.md)
+surveys validity proofs, timed and threshold recovery, private validation, and
+their limits on voluntary disclosure. These remain future backend choices;
+the exact native proof uses the existing ideal commitment semantics.
+
 ## Research informing the design
 
 - Kreps and Wilson, [Sequential Equilibria](https://www.gsb.stanford.edu/faculty-research/publications/sequential-equilibrium)
