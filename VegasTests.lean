@@ -50,5 +50,6 @@ import VegasTests.CommunicationSequentialEquilibrium
 import VegasTests.CommunicationServiceOpportunity
 import VegasTests.CommunicationServiceOmission
 import VegasTests.CommunicationServiceAuthorization
+import VegasTests.CommunicationServiceRecovery
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

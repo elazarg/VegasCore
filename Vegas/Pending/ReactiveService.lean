@@ -103,10 +103,6 @@ def interactionHorizon (runtime : EventGraphRuntime graph)
 
 end Vegas.EventGraphRuntime
 
--- OPEN OBLIGATION: Reactive prescribed-packet protection
--- The canonical schedule and completion bound are checked in
--- ReactiveServiceEvaluation and ReactiveServiceCompletion. Prove that the
--- service realizes each compiled decision with the required outcome law,
--- including reactions and replay before reserved inclusion.
--- ReactivePacketIntegrity rules out conflicting packets under a prescribed
--- owner and event; acceptance and retention until inclusion remain to prove.
+-- ReactiveBindingService and ReactiveDisclosureService prove full wire-block
+-- realization under prescribed-owner packet integrity. Conflicting packets
+-- from earlier deviations by that owner require a separate continuation analysis.

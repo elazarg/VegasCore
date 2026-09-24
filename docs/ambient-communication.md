@@ -439,6 +439,13 @@ from the compiler proof; there is no claimed automatic decision procedure.
   If these capabilities require more than the proposed communication extension,
   exhibit that obstruction before enlarging the source interface.
 
+The [pending-proposal design review](pending-proposal-semantics.md) records a
+concrete candidate and its limits. The native packet datatype is already largely
+semantic: renaming its requests and references is not itself a stronger
+abstraction. An independent source transition and a correspondence proof remain
+necessary. The review recommends resolving that boundary before implementing
+another communication model.
+
 The programmer analyzes source choices and semantic communications under the
 declared opportunities. The implementation proof bears the burden of native
 admission checks, rejection, replay, competing submissions, and inclusion.
@@ -651,6 +658,15 @@ traffic remain separate correspondence obligations. A schedule that advances
 time after completing a predecessor must account for the dependent deadline,
 which begins at that completion; padding with waits cannot silently erase elapsed
 time.
+
+An opportunity also does not cancel an earlier submission.
+[CommunicationServiceRecovery](../VegasTests/CommunicationServiceRecovery.lean)
+checks a recurring-service execution where an old, dependency-authorized
+binding packet is included after the owner's fresh corrective response and
+before reserved inclusion. The old value becomes irrevocable. The source
+correspondence must account for that pending choice or establish an operational
+condition excluding this race; it cannot assume that every timely response
+restores the original choice menu.
 
 ### Equilibrium correspondence
 

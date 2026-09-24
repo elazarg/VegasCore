@@ -649,7 +649,7 @@ sites: the shared inactive information value does not remember own play.
 | Gate | Checked result | Remaining obligation |
 |---|---|---|
 | Capability obstruction | Generic binary-decision theorem, with abstract and actual native instances | No universal claim about runtimes lacking the stated capability |
-| Independent evidence | Issuance, forwarding, rejection persistence, information-fiber soundness, and later certification of named bindings from previously observed candidate proofs | Relate candidate facts and communication timing to the source extension |
+| Independent evidence | Issuance, forwarding, rejection persistence, information-fiber soundness, and later certification of named bindings from previously observed candidate proofs; selective association survives arbitrary intervening recipient responses | Relate candidate facts and communication timing to the source extension; no full named-evidence SE impossibility follows from the operational prefix alone |
 | Positive example | Complete SEs for both native guessing objectives, all legal information sets, one common perturbation sequence | A source-to-native preservation instance, including partial observation |
 | Service coverage | Authorized inclusion, at-most-once publication, finite-menu coverage, recurring owner opportunities; prescribed binding and disclosure realization through arbitrary wire reactions and reserved inclusion | Earlier own-deviation prefixes and full communication-aware policy correspondence |
 | Private response aliases | SE preservation from normalized to raw finite native menus, with one common consistency sequence, every continuation deviation, projected beliefs, and initialized state laws | Separate correspondence from the communication-aware source game |
@@ -679,6 +679,18 @@ composes these facts through the full block for the actual compiled binding
 response. Its owner's prescribed-packet invariant excludes conflicting packets
 from an earlier deviation by that same owner; recovery at those prefixes
 remains a separate SE obligation.
+
+[CommunicationServiceRecovery](../VegasTests/CommunicationServiceRecovery.lean)
+checks an initialized recurring-service execution with a permitted decreasing
+event order. At an unavailable disclosure visit, the owner submits a binding
+for value one; the event-addressed reserved inclusion leaves it pending. At
+the next ready and timely binding visit, the actual recovery compiler submits
+value zero. A permitted wire step includes the earlier packet first. The
+checked epoch law therefore stores one, and the old packet already satisfied
+submission dependencies. A fresh response opportunity alone does not restore
+all original graph choices after earlier own deviations. This is an operational
+obstruction for that admitted service, not an SE-impossibility theorem for every
+schedule or for an environment that represents pending requests.
 
 The reserved selector by itself does not check submission-time dependencies.
 [CommunicationServiceAuthorization](../VegasTests/CommunicationServiceAuthorization.lean)
