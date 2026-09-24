@@ -82,6 +82,17 @@ omit R in theorem get?_isSome {Field : Type} {layout : Field → EventField Play
       cases layout_eq
       exact available
 
+omit R in theorem get?_preserved {Field : Type} {layout : Field → EventField Player L}
+    {kind : EventField Player L} (ref : FieldRef layout kind)
+    (before after : Store layout)
+    (preserved : ∀ field value, before field = some value → after field = some value)
+    (value : kind.Value) (stored : ref.get? before = some value) :
+    ref.get? after = some value := by
+  cases ref with
+  | mk field layoutEq =>
+      cases layoutEq
+      exact preserved field value stored
+
 end FieldRef
 
 namespace Store

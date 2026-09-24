@@ -40,5 +40,7 @@ import VegasTests.SequentialValidationPrefix
 import VegasTests.SequentialValidationImpossibility
 import VegasTests.SequentialValidationCompletion
 import VegasTests.CommunicationDisclosure
+import VegasTests.CommunicationNative
+import VegasTests.CommunicationPending
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

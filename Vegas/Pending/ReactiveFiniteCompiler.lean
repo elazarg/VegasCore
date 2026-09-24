@@ -34,13 +34,12 @@ def CoversOutputValues : Prop := ∀ event,
 
 theorem resolutionPacket_allowed {owner : Player} (who : Player) (event : graph.EventId)
     (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (choice : graph.Action event) (view : ReactivePlayerView graph)
     (values : ∀ value : L.Val payload, (⟨payload, value⟩ : Raw L) ∈ bounds.values)
     (handles : ∀ field candidate, view.publicView.accepted field = some candidate →
       bounds.AllowsHandle candidate) :
-    bounds.AllowsPacket (reactiveResolutionPacket who event payload binding checks
+    bounds.AllowsPacket (reactiveResolutionPacket who event payload binding
       outputEq choice view) := by
   dsimp only [reactiveResolutionPacket]
   split
@@ -102,7 +101,7 @@ theorem reactiveDecision_available (runtime : EventGraphRuntime graph)
       have typed := values event
       rw [outputEq] at typed
       simp only [reactiveDecision, node]
-      exact ⟨bounds.resolutionPacket_allowed who event payload binding checks outputEq choice
+      exact ⟨bounds.resolutionPacket_allowed who event payload binding outputEq choice
         view.application typed handles, trivial⟩
 
 private theorem prescribed_response_available (runtime : EventGraphRuntime graph)

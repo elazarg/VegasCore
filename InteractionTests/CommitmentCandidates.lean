@@ -8,6 +8,12 @@ open Interaction
 
 abbrev Catalog := Interaction.CommitmentCandidates Nat Nat Bool
 
+/-- The internal plaintext checker is not a public opening verifier: one query
+would disclose an openable Boolean binding without any opening witness. -/
+theorem plaintext_checker_reveals_bit (catalog : Catalog) (handle : Nat × Nat) (bit : Bool)
+    (bound : catalog.lookup handle = .openable bit) : catalog.verify handle true = bit := by
+  cases bit <;> simp [Interaction.CommitmentCandidates.verify, bound]
+
 /-- Distinct prepared handles retain independent openings through acceptance. -/
 example :
     let prepared :=

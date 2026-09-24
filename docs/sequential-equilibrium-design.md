@@ -58,6 +58,15 @@ remain open. The checked results are:
   public success receipts certify accepted payload properties. For an immutable
   commitment, an observed accepted opening identifies its fixed meaning under
   arbitrary submissions, replays, passive observations and scheduling.
+- [ReactiveEvidence.lean](../Interaction/ReactiveEvidence.lean) and
+  [ReactiveEvidenceKnowledge.lean](../Interaction/ReactiveEvidenceKnowledge.lean):
+  state-dependent persistent facts decoded from successful receipts hold at
+  every compatible history in raw and restricted native information games.
+  The [Vegas instance](../Vegas/Pending/ReactiveEvidence.lean) decodes typed
+  binding facts. [ReactiveDisclosure.lean](../Vegas/Pending/ReactiveDisclosure.lean)
+  proves local realization of evidence-bearing compiled disclosures, including
+  guard failure. Pending verification and service correspondence remain open;
+  see the [communication design](ambient-communication.md).
 - [SequentialValidationEvidence.lean](../VegasTests/SequentialValidationEvidence.lean):
   for the source fixture's actual initial law, every legal native history
   compatible with an observed accepted opening has the disclosed private type.

@@ -9,8 +9,9 @@ import Interaction.ReactiveImplementation
 
 The prescribed policy samples once, remembers its original intention, and
 submits in the same action. A recovery continuation can submit again after an
-earlier deviation, reusing a supported remembered choice. Failed disclosures
-use withholding packets; only accepted packets can restore their intentions.
+earlier deviation, reusing a supported remembered choice. Openable disclosures
+send their evidence even when guards reject publication. Only accepted packets
+can restore their intentions.
 Whole-service correctness additionally requires protected service and a proof
 that these local observations agree with the source observations.
 -/
@@ -50,12 +51,11 @@ def reactiveAlreadySubmitted (runtime : EventGraphRuntime graph)
 
 def reactiveResolutionPacket {owner : Player} (who : Player) (event : graph.EventId)
     (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : ReactivePlayerView graph) : Payload graph :=
   let disclose : Bool := cast (congrArg EventField.Action outputEq) action
   if disclose then
-    match EventCode.resolveOutput? binding checks true view.observation.store with
+    match binding.get? view.observation.store with
     | some (.success value) => match view.publicView.accepted binding.field with
       | some handle => if handle.1 = who then .opening event handle ⟨payload, value⟩
           else .withhold event
@@ -77,8 +77,8 @@ def reactiveDecision (runtime : EventGraphRuntime graph)
                 PublicationResult (L.Val payload)) with
             | .failure => none
             | .success value => some ⟨payload, value⟩⟩
-    | .resolve _owner payload binding checks outputEq _codeEq =>
-        some (.submit ⟨reactiveResolutionPacket who event payload binding checks
+    | .resolve _owner payload binding _checks outputEq _codeEq =>
+        some (.submit ⟨reactiveResolutionPacket who event payload binding
           outputEq action view, none⟩)
 
 open Classical in

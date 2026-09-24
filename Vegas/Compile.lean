@@ -4,6 +4,7 @@ import Vegas.Compile.EventGraphLayout
 import Vegas.Compile.EventGraphCompiler
 import Vegas.Compile.EventGraphAssembly
 import Vegas.Compile.EventGraphEvaluation
+import Vegas.Compile.EventGraphEvidence
 import Vegas.Compile.EventGraphInputs
 import Vegas.Compile.EventGraphObservation
 import Vegas.Compile.EventGraphState

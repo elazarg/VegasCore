@@ -16,10 +16,9 @@ variable {Player : Type} [DecidableEq Player]
 
 theorem reactiveResolutionPacket_event {owner : Player} (who : Player) (event : graph.EventId)
     (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : ReactivePlayerView graph) :
-    (reactiveResolutionPacket who event payload binding checks outputEq action
+    (reactiveResolutionPacket who event payload binding outputEq action
       view).event? graph =
       some event := by
   dsimp only [reactiveResolutionPacket]
@@ -47,7 +46,7 @@ theorem reactiveDecision_transmission (runtime : EventGraphRuntime graph)
     | some serial => exact Or.inr ⟨_, rfl, rfl⟩
   · rename_i owner payload binding checks outputEq codeEq nodeEq
     exact Or.inr ⟨_, rfl,
-      reactiveResolutionPacket_event who event payload binding checks outputEq action view⟩
+      reactiveResolutionPacket_event who event payload binding outputEq action view⟩
 
 /-- No replay and no second submission for an event, regardless of how often
 the scheduler activates the player or which public grant it offers. -/

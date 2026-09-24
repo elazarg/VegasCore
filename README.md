@@ -97,8 +97,11 @@ separate from game results. Its checked source adapter exposes an authenticated
 opening even when publication fails, and permits voluntary disclosure at
 explicit communication opportunities. The experiment proves evidence soundness,
 perfect recall, bounded play, and the original counterexample's corrected
-information behavior without adding a `failure(value)` result. Native
-sequential-equilibrium preservation for this interpretation remains open.
+information behavior without adding a `failure(value)` result. The reactive
+compiler preserves opening evidence on guard failure; native receipt decoding
+and knowledge of the corresponding binding are checked under arbitrary play.
+Verification before inclusion and correspondence between communication services
+remain open, as does native sequential-equilibrium preservation.
 
 ## Build
 

@@ -58,6 +58,17 @@ service has no proved native equilibrium correspondence; its synchronous
 delivery assumptions are explicit in the
 [communication design](ambient-communication.md).
 
+`Interaction.ReactiveEvidence` separately interprets successful native receipts
+as persistent semantic facts and proves their soundness under arbitrary play.
+`ReactiveEvidenceKnowledge` lifts this to raw and restricted information games.
+`Vegas.EventGraph.CommitmentEvidence` defines typed binding facts;
+`Vegas.Pending.ReactiveEvidence` proves native handler decoding soundness;
+`Vegas.Compile.EventGraphEvidence` relates the facts to source names using typed
+context references. `Vegas.Pending.ReactiveDisclosure` proves that an openable
+compiled disclosure transmits its evidence even when its guarded result fails.
+Receipt evidence does not supply independent verification of pending packets
+or a correspondence between communication services.
+
 The paper's
 command-service capstones and fixed-service coalescing comparisons have their
 own stated targets and do not establish the reactive compiler theorem.

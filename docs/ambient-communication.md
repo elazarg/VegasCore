@@ -142,6 +142,116 @@ is used in either history.
 | Arbitrary-play horizon and decision antichains | [CommunicationBounded](../Interaction/CommunicationBounded.lean) |
 | Source evidence and adapter | [CommitmentEvidence](../Vegas/Source/CommitmentEvidence.lean), [source Communication](../Vegas/Source/Communication.lean) |
 
+## Native evidence correspondence
+
+The reactive disclosure compiler sends an opening whenever the player chooses
+disclosure and its binding is openable. It does not consult the publication
+verdict when choosing that packet. `reactiveDecision_opening_law` proves that,
+at a ready and timely inclusion opportunity with binding provenance, the
+compiled packet executes the graph's disclosure transition with its actual
+guarded result. The result may be failure. The theorem is local: supplying
+that opportunity is a separate service obligation.
+
+Native evidence decoding uses the packet together with a successful application
+receipt. Receipt success means the handler authenticated and executed the call;
+it does not mean that the game publication succeeded. The decoder produces a
+typed graph binding fact, with no handle or envelope identity. Typed context
+references then connect that fact to the source commitment name through the
+compiler's existing store-agreement relation.
+
+```mermaid
+flowchart LR
+    A[Source disclosure] --> B[Compiled opening packet]
+    B --> C[Authenticated inclusion]
+    C --> D[Guarded publication result]
+    C --> E[Public packet and success receipt]
+    E --> F[Binding certificate]
+    B -. Partial eavesdropping .-> G[Private raw observation]
+    G -. Independent verification remains open .-> F
+```
+
+The generic receipt interface proves that every decoded fact remains true at
+every later legal history. Its knowledge theorem applies to the full native
+response space and to every observation-local restricted menu. Thus every
+compatible history has the certified binding, including at information sets
+reached only after deviations. This constrains arbitrary beliefs; it does not
+construct consistent equilibrium beliefs or establish optimal continuations.
+
+The checked native fixture proves that the actual compiler sends the secret
+opening, inclusion still stores publication failure, and every observer receives
+the binding certificate. Its passive observation rule is unrestricted.
+Existing response normalization and finite-menu compiler coverage also check
+with this disclosure rule. The command-service Nash theorem concerns its own
+compiler and service; it supplies no missing reactive correctness edge.
+
+| Checked obligation | Module |
+|---|---|
+| Persistent receipt certificates under arbitrary native play | [ReactiveEvidence](../Interaction/ReactiveEvidence.lean) |
+| Knowledge in raw and restricted native information games | [ReactiveEvidenceKnowledge](../Interaction/ReactiveEvidenceKnowledge.lean) |
+| Semantic graph binding facts | [graph CommitmentEvidence](../Vegas/EventGraph/CommitmentEvidence.lean) |
+| Native packet decoding and handler soundness | [native ReactiveEvidence](../Vegas/Pending/ReactiveEvidence.lean) |
+| Compiled disclosure with arbitrary guarded result | [ReactiveDisclosure](../Vegas/Pending/ReactiveDisclosure.lean) |
+| Source-name correspondence under store agreement | [EventGraphEvidence](../Vegas/Compile/EventGraphEvidence.lean) |
+| Actual rejected-opening compiler and receipt instance | [CommunicationNative](../VegasTests/CommunicationNative.lean) |
+| Indistinguishable genuine and false pending opening claims | [CommunicationPending](../VegasTests/CommunicationPending.lean) |
+
+### Pending observations and service design
+
+This is a correspondence for receipt-certified openings. It is not a complete
+decoder for every piece of evidence a real commitment can disclose. Raw pending
+packets remain visible through the existing partial-leak rule. Their values are
+not automatically treated as certificates. Nor does an unsuccessful application
+receipt prove that a packet contains no independently verifiable evidence.
+An otherwise valid opening may fail because of its address, author, timing, or
+application dependencies.
+
+The current runtime exposes each player's own candidate meanings and uses an
+internal candidate-value check during handling. It does not expose a separately
+verifiable opening witness to receivers. The checked pending-message experiment
+makes this distinction concrete. Alice transmits the same claim to open `true`
+under either a `true` or a `false` immutable binding. Bob's partial-leak activation
+exposes that packet, but gives him identical observations and own-action recall
+in both cases. `no_view_verifier` proves that no function of this input can accept
+the genuine case and reject the false claim. This concerns authentication in
+the present runtime interface; it is not a new equilibrium impossibility theorem.
+
+A backend supporting verification before inclusion needs that capability
+explicitly. Exposing the internal value-checking
+function as a public observation is not the intended implementation: it would
+give receivers a way to test candidate plaintexts without possessing an opening.
+[`plaintext_checker_reveals_bit`](../InteractionTests/CommitmentCandidates.lean)
+checks this problem for a Boolean binding: asking the internal checker about
+`true` returns the hidden bit itself.
+The appropriate ideal interface distinguishes possession of an opening witness
+from making a bare value claim. Its cryptographic realization and computational
+equilibrium interpretation remain future work, as described in
+[cryptographic runtime capabilities](cryptographic-runtime-future-work.md).
+
+The service design must consequently retain these distinctions:
+
+- **Knowledge versus inclusion:** a leaked opening can be evidence before any
+  contract call executes. Inclusion authorization regulates game effects;
+  evidence verification has a separate interface.
+- **Evidence versus call authorization:** forwarding a binding certificate and
+  replaying an owner's signed game call are different capabilities. A service
+  contract must specify both; possession of evidence alone must not silently
+  grant the right to act as the commitment owner.
+- **Delivery versus audience choice:** partial passive eavesdropping does not
+  implement the experimental source service's immediate sender-selected private
+  delivery. A native theorem needs a matching delivery law and opportunity set.
+- **Responses versus free communication:** one native activation permits one
+  optional packet. A semantic service must account for communication that uses
+  that opportunity, including openings that also perform a game action.
+- **Semantic facts versus packet detail:** facts can use source names while the
+  backend accounts for addresses, identifiers, invalid calls and replay. Erasing
+  those details requires a strategic correspondence proof at every decision
+  information set, not only equality of final game results.
+
+These are requirements for the service correspondence. The native network
+retains partial eavesdropping, its existing inclusion rules, and one optional
+transmission per response. Communication remains a parameter of strategic
+analysis around the source program.
+
 ## Preservation target and remaining obligations
 
 For a fixed source communication service, the desired theorem starts from an
@@ -161,15 +271,10 @@ The compiler and backend certificate must still establish:
 5. Finite legal menus, or a separately justified extension of the equilibrium
    machinery, for the admitted communication alphabet.
 
-There is also a concrete compiler obligation. The current reactive policy's
-[`reactiveResolutionPacket`](../Vegas/Pending/ReactivePolicy.lean) consults the
-publication verdict and substitutes withholding
-when validation would fail. That implements the original result-only
-interpretation. Under the evidence interpretation, an openable source
-disclosure emits a certificate even on rejection; its compiler must implement
-that observation as well. The raw target already permits the authenticated
-rejected opening used by the checked native witness. This note supplies no
-proof that changing the prescribed packet preserves the other compiler laws.
+The receipt and local compilation laws above discharge part of the first
+obligation. They do not identify the experimental synchronous communication
+service with the native pending-message service. A positive theorem must first
+specify the corresponding extended source game and justify that service edge.
 
 The existing Nash theorem retains its stated target and service assumptions.
 It is not automatically a theorem about every communication extension. The
@@ -185,7 +290,10 @@ theorem.
 | `GameTheoryExtensions` | Knowledge in information sets, belief consequences, observation recall |
 | `Interaction` | Claims and evidence, audiences, communication opportunities, protocol extension |
 | `Vegas.Source` | Source commitment facts, possession, persistence, opening observations |
-| `Vegas.Pending` and `Vegas.Game` | Native evidence decoding and eventual strategic correspondence |
+| `Vegas.EventGraph` | Typed binding facts independent of native handles |
+| `Vegas.Compile` | Source-name and graph-fact correspondence |
+| `Vegas.Pending` | Native evidence decoding, compiler packets, handler and service laws |
+| `Vegas.Game` | Composition into the intended strategic correspondence |
 
 The design deliberately keeps game results and observations separate. An
 alternative that annotates only failed publication results would still need an
