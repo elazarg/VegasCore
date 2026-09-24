@@ -46,5 +46,6 @@ import VegasTests.CommunicationPending
 import VegasTests.CommunicationSequentialNative
 import VegasTests.CommunicationSequentialReach
 import VegasTests.CommunicationSequentialEquilibrium
+import VegasTests.CommunicationServiceOpportunity
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

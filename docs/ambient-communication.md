@@ -575,8 +575,12 @@ establish opportunity coverage.
 
 The operational proof must provide timely owner responses after predecessor
 success **or failure**, under arbitrary earlier behavior. The existing recurring
-epoch service is the first candidate. Its clock and activation laws must show
-that a newly ready event survives until its next reserved response. Competing
+epoch service supplies a checked opportunity result in
+[ReactiveServiceOpportunity](../Vegas/Pending/ReactiveServiceOpportunity.lean):
+under the existing deadline-at-least-two assumption, an event newly activated
+during an epoch is ready and timely at its next reserved owner visit, or has
+already completed. The [deferred-guard instance](../VegasTests/CommunicationServiceOpportunity.lean)
+covers arbitrary prior epochs and behavior. Competing
 submissions, partial pending observations, and publication of rejected side
 traffic remain separate correspondence obligations. A schedule that advances
 time after completing a predecessor must account for the dependent deadline,

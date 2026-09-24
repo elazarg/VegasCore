@@ -564,6 +564,28 @@ whole-policy/equilibrium quotient of the raw game. Any claim relating equilibria
 of differently presented games must discharge those additional obligations.
 No source syntax flag or bound on private computation is introduced.
 
+The existing recurring epoch service has a checked opportunity guarantee in
+[ReactiveServiceOpportunity](../Vegas/Pending/ReactiveServiceOpportunity.lean).
+Under its existing deadline-at-least-two assumption, an event newly activated
+during an epoch is either already completed or ready and timely at the next
+actual reserved owner response. The proof permits arbitrary intervening
+policies, malformed calls, omissions, network reactions, and partial leaks.
+[CommunicationServiceOpportunity](../VegasTests/CommunicationServiceOpportunity.lean)
+instantiates the guarantee for the deferred-guard graph after arbitrary earlier
+epochs. It does not establish selection of a particular pending packet or SE
+preservation for this service.
+
+Private response annotations have a checked recall projection in
+[ReactiveNormalRecall](../Interaction/ReactiveNormalRecall.lean). It retains
+observations and emitted packets, is idempotent, commutes with environment steps,
+and maps responses to their normalized effects. The concrete finite menus depend
+on remembered outputs, so this projection preserves their future availability
+([ReactiveResponseAliases](../Vegas/Pending/ReactiveResponseAliases.lean)).
+The remaining equilibrium obligation is a history/information-fiber probability
+law and simulation of entire continuation policies. Equality of one-step effects
+alone does not establish that obligation; publicly different packets remain
+observable signals.
+
 ## Proof milestones
 
 | Gate | Checked result | Remaining obligation |
@@ -571,7 +593,7 @@ No source syntax flag or bound on private computation is introduced.
 | Capability obstruction | Generic binary-decision theorem, with abstract and actual native instances | No universal claim about runtimes lacking the stated capability |
 | Independent evidence | Issuance, forwarding, rejection persistence, and information-fiber soundness | Relate candidate facts and communication timing to the source extension |
 | Positive example | Complete SEs for both native guessing objectives, all legal information sets, one common perturbation sequence | A source-to-native preservation instance, including partial observation |
-| Service coverage | Authorized inclusion, at-most-once publication, finite-menu coverage | Usable responses after predecessor completion, pending reactions, competing submissions |
+| Service coverage | Authorized inclusion, at-most-once publication, finite-menu coverage, recurring usable owner opportunities | Prescribed-packet selection/retention, pending reactions, competing submissions |
 | General compilation | Binding/disclosure step laws and original source compiler | Playerwise compiler for communication-aware policies and joint-law correspondence |
 | Sequential transfer | Generic rationality criterion and finite consistency machinery | One common translated tremble sequence, all-site incentives, original-equilibrium corollary |
 

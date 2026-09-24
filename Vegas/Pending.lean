@@ -16,6 +16,7 @@ import Vegas.Pending.ReactivePacketEvidence
 import Vegas.Pending.ReactiveEvidence
 import Vegas.Pending.ReactiveNormalization
 import Vegas.Pending.ReactiveFiniteResponses
+import Vegas.Pending.ReactiveResponseAliases
 import Vegas.Pending.ReactiveNormalPolicy
 import Vegas.Pending.ReactiveCandidateBudget
 import Vegas.Pending.ReactiveBoundedHandles
@@ -25,6 +26,7 @@ import Vegas.Pending.ReactiveRegularity
 import Vegas.Pending.ReactivePacketIntegrity
 import Vegas.Pending.ReactiveService
 import Vegas.Pending.ReactiveServiceCompletion
+import Vegas.Pending.ReactiveServiceOpportunity
 import Vegas.Pending.ReactiveFreshCandidates
 import Vegas.Pending.ReactiveSafety
 import Vegas.Pending.ReactiveBinding

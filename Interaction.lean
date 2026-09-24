@@ -24,6 +24,7 @@ import Interaction.ReactiveResponseEmbedding
 import Interaction.ReactiveResponseEvaluation
 import Interaction.ReactiveReplayMenu
 import Interaction.ReactiveResponseNormalization
+import Interaction.ReactiveNormalRecall
 import Interaction.ReactiveResponseBudget
 import Interaction.ReactiveMenuInvariant
 import Interaction.ReactiveMenuPolicy
