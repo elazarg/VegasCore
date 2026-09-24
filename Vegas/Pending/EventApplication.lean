@@ -840,6 +840,25 @@ def handle (runtime : EventGraphRuntime graph) (state : State graph)
         else none
       else none
 
+/-- The public service cursor neither authorizes nor changes packet handling. -/
+theorem handle_serviceGrant_update (runtime : EventGraphRuntime graph) (state : State graph)
+    (grant : Option graph.EventId) (message : Message Player (Payload graph)) :
+    handle runtime { state with serviceGrant := grant } message =
+      (handle runtime state message).map (fun next => { next with serviceGrant := grant }) := by
+  classical
+  rcases message with ⟨id, packet⟩
+  cases packet with
+  | malformed raw => rfl
+  | commitment event candidate | opening event candidate raw | withhold event =>
+      cases node : nodeView graph event <;>
+        simp only [handle, node, State.WithinDeadline, State.HandleUnused]
+      all_goals split_ifs
+      all_goals simp_all [acceptBinding, acceptResolution, withholdingAction,
+        State.bindingResult, State.complete, Option.map_bind]
+      all_goals split
+      all_goals try split_ifs
+      all_goals simp_all
+
 /-- Freezing a packet's handle at transmission agrees with immediate
 inclusion; a missing opening already denotes failure in the handler. -/
 @[simp] theorem handle_submitStep (runtime : EventGraphRuntime graph)

@@ -81,6 +81,17 @@ separates the proved local selection laws from the remaining service and
 compiler obligations. Honest SPE preservation under a suitable constrained
 service remains open.
 
+The [sequential-equilibrium analysis](docs/sequential-equilibrium-design.md)
+requires credible continuation play at private information sets as well. A
+[checked native counterexample](docs/sequential-disclosure-impossibility.md)
+rules out general utility-independent preservation: an authenticated opening
+can reveal a private type even when a deferred guard records publication
+failure. The proof covers the actual source equilibrium, arbitrary native
+beliefs and whole continuation policies, with timeout completion under all raw
+player policies. [Cryptographic alternatives](docs/cryptographic-runtime-future-work.md)
+are documented as future work with their distinct validity, recovery and
+disclosure assumptions.
+
 ## Build
 
 ```text

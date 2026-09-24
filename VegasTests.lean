@@ -35,5 +35,9 @@ import VegasTests.PrivateInputs
 import VegasTests.SequentialValidationEquilibrium
 import VegasTests.SequentialValidationNative
 import VegasTests.SequentialValidationEvidence
+import VegasTests.SequentialValidationService
+import VegasTests.SequentialValidationPrefix
+import VegasTests.SequentialValidationImpossibility
+import VegasTests.SequentialValidationCompletion
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

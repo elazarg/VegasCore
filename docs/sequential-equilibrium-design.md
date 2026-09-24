@@ -8,7 +8,13 @@ one common sequence of fully mixed behavioral profiles. Use GameTheory's
 existing definition. Beliefs are mathematical analysis data; the executable
 policy still receives only its player's observations and recall.
 
-The source-to-native preservation theorem is open. The checked foundations are:
+Unrestricted source-to-native preservation is false for the current observation
+abstraction: the checked
+[native disclosure counterexample](sequential-disclosure-impossibility.md)
+rules out a utility-independent sequential-equilibrium translator for one actual
+source game and its bounded native message game, even allowing utility-dependent
+target beliefs. Positive results under additional semantic or service conditions
+remain open. The checked results are:
 
 - [SequentialIncentives.lean](../GameTheoryExtensions/Protocol/SequentialIncentives.lean):
   exact, utility-independent transport of sequential rationality between fixed
@@ -41,13 +47,12 @@ The source-to-native preservation theorem is open. The checked foundations are:
   correlated with that input. All legal source histories are classified; actual
   Bayes beliefs and whole continuation-policy deviations are checked. A deferred
   guard makes successful disclosure and withholding share a failed public result.
-  This source theorem alone is not a native preservation counterexample.
+  The native impossibility theorem below uses this same source assessment.
 - [SequentialValidationNative.lean](../VegasTests/SequentialValidationNative.lean):
   in that program's actual compiled graph, the native handler accepts an
   authenticated opening of the initial commitment while the deferred guard
   stores publication failure. The binding and both opening transitions are
-  checked. Lifting this packet-level evidence to a complete native
-  sequential-equilibrium obstruction remains a separate obligation.
+  checked and used in the complete native information-set witness below.
 - [ReactiveReceipts.lean](../Interaction/ReactiveReceipts.lean) and
   [ReactiveOpeningEvidence.lean](../Vegas/Pending/ReactiveOpeningEvidence.lean):
   public success receipts certify accepted payload properties. For an immutable
@@ -57,9 +62,21 @@ The source-to-native preservation theorem is open. The checked foundations are:
   for the source fixture's actual initial law, every legal native history
   compatible with an observed accepted opening has the disclosed private type.
   Every belief on that information fiber assigns probability one to that type,
-  including utility-dependent beliefs. This is conditional on the observed
-  receipt; constructing the complete scheduled native witness and proving the
-  profitable guessing continuations remain open.
+  including utility-dependent beliefs.
+- [SequentialValidationImpossibility.lean](../VegasTests/SequentialValidationImpossibility.lean):
+  a legal native disclosure prefix and both profitable guessing continuations
+  are checked against the complete bounded response menu and actual service.
+  Every history in Bob's information set has the known type and a common
+  continuation guessing law. Opposite utilities require opposite guesses;
+  no shared native strategy can be rational for both, even with different
+  beliefs. The source's full forfeiture interface therefore does not suffice
+  for general sequential-equilibrium preservation. The witness includes an
+  initial commitment correlated with a private type and uses ideal commitments,
+  a fixed authorized calendar and explicit finite wire bounds.
+- [SequentialValidationCompletion.lean](../VegasTests/SequentialValidationCompletion.lean):
+  the fixture's timeout suffix completes every graph event under arbitrary raw
+  player policies, including policies outside the finite response menu. The
+  horizon therefore does not truncate unfinished graph execution.
 - [ReactiveDecisionInformation.lean](../Interaction/ReactiveDecisionInformation.lean):
   actual reactive decision fibers are nonterminal history antichains, for any
   application, scheduler and passive observation rule.
@@ -307,9 +324,10 @@ including translators with access to the whole source profile. The existing
 [law-preserving compiler](../GameTheoryExtensionsTests/OffPathDisclosureLaws.lean)
 still preserves initialized joint type/result laws for every source profile.
 Sequential consistency does not remove the extra-information obstruction.
-This is a preservation impossibility, not an equilibrium-existence claim or a
-native runtime counterexample. A runtime application must prove that its
-observations actually implement this disclosure before using the negative result.
+This abstract result is a preservation impossibility, not an equilibrium-existence
+claim. The separate [native witness](sequential-disclosure-impossibility.md)
+proves the corresponding obstruction for an actual source program, lowered
+guard, authenticated ledger observation and complete native continuation.
 
 ## Finite games without restricting private computation
 
@@ -334,8 +352,10 @@ The existing
 preserves external laws against adaptive environments. Its reactive counterpart
 proves playerwise execution correspondence for arbitrary stateful implementations,
 including the compiler's remembered intentions. The compiled behavioral policy
-is total at off-path information sets; its sequential equilibrium guarantee
-remains open. External-law realization alone does not supply consistent off-path
+is total at off-path information sets. An unrestricted sequential equilibrium
+guarantee is ruled out by the disclosure witness; guarantees for restricted
+programs or stronger services remain open. External-law realization alone does
+not supply consistent off-path
 beliefs or sequential rationality. Private implementation states are not
 additional equilibrium decision sites.
 
@@ -536,7 +556,11 @@ has no proved implication for conditional continuation incentives or beliefs.
    target-only errors remain to be established; include an incompatible-beliefs
    negative regression. Neither completion existence nor private-memory
    realization alone validates message encoding preservation.
-4. **Continuation simulation:** test recovery after earlier own deviations,
+4. **Continuation simulation:** the native disclosure impossibility is checked
+   for an actual source sequential equilibrium, the full bounded response menu,
+   arbitrary beliefs and whole continuation-policy deviations. General positive
+   preservation requires a semantic restriction or additional capability.
+   Test recovery after earlier own deviations,
    disclosure failures, partial observations, competing commitments and actual
    remaining deadlines. Audit the prior SPE witnesses under sequential
    rationality. Record any required extra source capability separately.

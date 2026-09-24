@@ -77,6 +77,28 @@ def uniformScheduler
     (calendar : Nat → app.UniformInstruction) : app.Scheduler :=
   fun history view => app.uniformInstruction condition history view (calendar history.length)
 
+/-- Selection and application commands cannot activate a player. -/
+theorem uniformInstruction_actor
+    (condition : app.PublicObservation → Message Principal app.Payload → Prop)
+    (history : List app.EnvironmentEntry) (view : app.EnvironmentView)
+    (instruction : app.UniformInstruction) (command : app.Command) (who : Principal)
+    (supported : command ∈ (app.uniformInstruction condition history view instruction).support)
+    (active : command.actor? app = some who) : instruction = .activate who := by
+  cases instruction with
+  | activate actor =>
+      cases FinDist.mem_support_pure.mp supported
+      cases Option.some.inj active
+      rfl
+  | application operation =>
+      cases FinDist.mem_support_pure.mp supported
+      cases active
+  | wait =>
+      cases FinDist.mem_support_pure.mp supported
+      cases active
+  | select eligible =>
+      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      cases selected <;> cases active
+
 theorem uniformInstruction_include
     (condition : app.PublicObservation → Message Principal app.Payload → Prop)
     (history : List app.EnvironmentEntry) (view : app.EnvironmentView)
