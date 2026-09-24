@@ -116,7 +116,7 @@ theorem native_no_bob_pending (control : nativeApp.Control)
 theorem native_remembered (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) :
     control.execution.application.remembered = fun _ => none := by
-  apply (nativeRuntime.reactiveRememberedInvariant nativeLeaks (fun _ => none)).history
+  apply (nativeRuntime.reactiveRememberedInvariant nativeLeaks (· = fun _ => none)).history
     nativeInitialLaw 56 nativeScheduler _
     (nativeMenu.toRawTrace nativeInitialLaw 56 nativeScheduler trace)
   intro state supported

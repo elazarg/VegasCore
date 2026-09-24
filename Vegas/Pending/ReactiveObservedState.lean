@@ -21,17 +21,19 @@ variable {Player : Type} [DecidableEq Player]
 
 theorem reactiveRememberedInvariant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (table : RememberedActions graph) : (runtime.reactiveApplication leaks).Invariant
-      (fun state => state.remembered = table) where
+    (property : RememberedActions graph → Prop) : (runtime.reactiveApplication leaks).Invariant
+      (fun state => property state.remembered) where
   submit state who material fixed := by
-    change (submitStep (material.call.register state who) who material.call.packet).remembered =
-      table
+    change property
+      (submitStep (material.call.register state who) who material.call.packet).remembered
     rw [submitStep_remembered, (material.call.register_facts who state).2.1]
     exact fixed
-  handle state message next fixed accepted :=
-    (handle_remembered runtime state next ⟨message.id, message.payload.call⟩ accepted).trans fixed
-  environment state command next fixed reached :=
-    (environmentStep_remembered runtime state next command reached).trans fixed
+  handle state message next fixed accepted := by
+    rw [handle_remembered runtime state next ⟨message.id, message.payload.call⟩ accepted]
+    exact fixed
+  environment state command next fixed reached := by
+    rw [environmentStep_remembered runtime state next command reached]
+    exact fixed
 
 def ReactivePlayerView.withRemembered (view : ReactivePlayerView graph)
     (table : RememberedActions graph) : PlayerView graph where

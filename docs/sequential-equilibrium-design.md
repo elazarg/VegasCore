@@ -595,13 +595,13 @@ legal histories and their information sets.
 complete projected continuation-history laws from arbitrary legal starts,
 whenever the raw local choice laws project to the normalized profile. The
 concrete native canonical and perturbed profiles satisfy this premise in
-[ReactiveAliasTremble](../Vegas/Pending/ReactiveAliasTremble.lean).
+[ReactiveAliasEquilibrium](../Vegas/Pending/ReactiveAliasEquilibrium.lean).
 
 [ReactiveAliasStrategy](../Interaction/ReactiveAliasStrategy.lean) splits each
 normalized response over its finite raw fiber. One positive weight gives full
 mixing simultaneously at every legal decision site; the projected choice law
 is exact, and vanishing weights preserve convergence of the strategy
-coordinates. [ReactiveAliasTremble](../Vegas/Pending/ReactiveAliasTremble.lean)
+coordinates. [ReactiveAliasEquilibrium](../Vegas/Pending/ReactiveAliasEquilibrium.lean)
 instantiates these laws for the concrete native menus. Publicly different
 packets remain observable signals.
 
@@ -622,10 +622,20 @@ is `exists_canonicalRaw_consistent`.
 simulates an arbitrary raw continuation policy by retaining its response names
 inside a private strategy and then realizing that strategy behaviorally.
 Starting after activation, before the response, its final external execution
-law equals the projected raw law against normalized opponents. The remaining
-composition must establish membership in the finite menus and transport these
-laws through assessment beliefs and continuation payoffs. Consistency alone
-does not establish SE preservation.
+law equals the projected raw law against normalized opponents.
+[ReactiveAliasAdmissibility](../Interaction/ReactiveAliasAdmissibility.lean)
+proves that this realized deviation respects the finite normalized menu at
+every input. [ReactiveAliasIncentives](../Interaction/ReactiveAliasIncentives.lean)
+transports its full continuation payoff through the projected belief.
+
+[ReactiveAliasEquilibrium](../Interaction/ReactiveAliasEquilibrium.lean)
+combines these results: every SE of the finite normalized native game lifts to
+an SE of the raw game with its original responses. The strategy is the
+canonical lift, every belief projects to the source belief, and the complete
+initialized normalized final-state law agrees. Utilities may depend on that
+normalized final state. This proves that the private response aliases can be
+removed for SE analysis. It is not the remaining source-language-to-runtime
+compilation theorem; publicly distinct messages, evidence, and timing remain.
 
 [ReactiveOwnPlay](../Interaction/ReactiveOwnPlay.lean) reconstructs each
 player's decision history from its recorded responses and pre-response views.
@@ -641,9 +651,10 @@ sites: the shared inactive information value does not remember own play.
 | Capability obstruction | Generic binary-decision theorem, with abstract and actual native instances | No universal claim about runtimes lacking the stated capability |
 | Independent evidence | Issuance, forwarding, rejection persistence, information-fiber soundness, and later certification of named bindings from previously observed candidate proofs | Relate candidate facts and communication timing to the source extension |
 | Positive example | Complete SEs for both native guessing objectives, all legal information sets, one common perturbation sequence | A source-to-native preservation instance, including partial observation |
-| Service coverage | Authorized inclusion, at-most-once publication, finite-menu coverage, recurring usable owner opportunities; a ready and timely compiled binding is retained or realized by each inclusion | Compose timing, pending retention, and reserved selection across the service; disclosure cases |
+| Service coverage | Authorized inclusion, at-most-once publication, finite-menu coverage, recurring owner opportunities; prescribed binding and disclosure realization through arbitrary wire reactions and reserved inclusion | Earlier own-deviation prefixes and full communication-aware policy correspondence |
+| Private response aliases | SE preservation from normalized to raw finite native menus, with one common consistency sequence, every continuation deviation, projected beliefs, and initialized state laws | Separate correspondence from the communication-aware source game |
 | General compilation | Binding/disclosure step laws and original source compiler | Playerwise compiler for communication-aware policies and joint-law correspondence |
-| Sequential transfer | Generic rationality criterion and finite consistency machinery | One common translated tremble sequence, all-site incentives, original-equilibrium corollary |
+| Source sequential transfer | Generic rationality criterion and finite consistency machinery | Source communication correspondence, all-site incentives, common translated trembles, original-equilibrium corollary |
 
 The disclosure counterexample's calendar gives every event a response window
 before any timeout. Its timeout suffix completes all events, but completion
@@ -662,8 +673,12 @@ response under its stated deadline assumption.
 proves that the actual reserved selector chooses the prescribed event's packet
 when it remains pending and unpublished, using the established packet-integrity
 invariant. Service segments with no ticks preserve readiness and the deadline
-until the event completes. Composing these facts across early publication and
-the reserved inclusion remains a separate service proof.
+until the event completes.
+[ReactiveBindingService](../Vegas/Pending/ReactiveBindingService.lean)
+composes these facts through the full block for the actual compiled binding
+response. Its owner's prescribed-packet invariant excludes conflicting packets
+from an earlier deviation by that same owner; recovery at those prefixes
+remains a separate SE obligation.
 
 The reserved selector by itself does not check submission-time dependencies.
 [CommunicationServiceAuthorization](../VegasTests/CommunicationServiceAuthorization.lean)
@@ -730,8 +745,8 @@ The equilibrium-specific acceptance conditions are:
   ordering, dependencies, or observation needs both its mathematical use and
   its engineering justification stated explicitly.
 
-Only the checked foundations listed at the start are established. There is no
-claim here of native sequential-equilibrium preservation, equilibrium existence
+Only the checked results listed above are established. There is no
+claim here of general source-to-native sequential-equilibrium preservation, equilibrium existence
 for the raw infinite runtime, a general decision procedure, or a verified EVM.
 
 ## Open question for a cryptographic runtime

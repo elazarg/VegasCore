@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveDisclosure
+import Vegas.Pending.ReactiveDisclosureStability
 
 /-! # Public realization of every compiled disclosure
 
@@ -59,25 +59,9 @@ private theorem completion_public_action_irrel (state : State graph)
   · simp [State.complete, Vegas.EventGraph.publicObserve]
   · rfl
 
-omit [DecidableEq Player] in
-private theorem resolution_reads (event : graph.EventId) (owner : Player) (payload : L.Ty)
-    (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks) :
-    (graph.nodes event).readFields = insert binding.field (GuardCheck.listReadFields checks) := by
-  calc
-    (graph.nodes event).readFields =
-        (cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event)).readFields :=
-      (EventCode.readFields_cast outputEq (graph.nodes event)).symm
-    _ = (EventCode.resolve owner payload binding checks).readFields :=
-      congrArg EventCode.readFields codeEq
-    _ = _ := rfl
-
 /-- At a ready, timely inclusion the actual response produces the source store
 and public observation. Equality of the private source action history is neither
-needed here nor asserted. The application-side legacy cache is empty. -/
+needed here nor asserted. The application-side opening cache is empty. -/
 theorem reactiveDecision_disclosure_public_law (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (state : State graph) (valid : state.BindingInvariant)
@@ -106,7 +90,7 @@ theorem reactiveDecision_disclosure_public_law (runtime : EventGraphRuntime grap
       (state.config.store field).isSome = true := by
     intro field member
     apply state.config.read_available ready
-    rw [resolution_reads event owner payload binding checks outputEq codeEq]
+    rw [resolution_readFields event owner payload binding checks outputEq codeEq]
     exact member
   have falseResult := EventCode.resolveOutput?_false_eq_failure binding checks
     state.config.store available
@@ -121,8 +105,8 @@ theorem reactiveDecision_disclosure_public_law (runtime : EventGraphRuntime grap
       · exact completion_public_action_irrel state event ready _ action _
   | true =>
       have present : (binding.get? state.config.store).isSome = true :=
-                binding.get?_isSome state.config.store
-                  (available binding.field (Finset.mem_insert_self ..))
+        binding.get?_isSome state.config.store
+          (available binding.field (Finset.mem_insert_self ..))
       cases stored : binding.get? state.config.store with
       | none => simp only [stored, Option.isSome_none, Bool.false_eq_true] at present
       | some bound =>

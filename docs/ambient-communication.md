@@ -575,6 +575,16 @@ the compiler retains the sampled choice privately. The theorem preserves its
 stored result and public observation, without claiming to recover that private
 choice from the message.
 
+[ReactiveDisclosureService](../Vegas/Pending/ReactiveDisclosureService.lean)
+extends this to the actual compiled response, arbitrary wire reactions, and
+reserved inclusion. Completed binding and guard inputs remain fixed throughout
+the interval; their accepted associations and the empty opening cache are
+preserved. Binding and disclosure share the same packet-service induction.
+Both service theorems require the owner's prescribed-packet invariant and
+allow arbitrary opponents and passive leaks. Neither supplies continuation
+recovery from conflicting packets the owner submitted during an earlier
+deviation.
+
 The synchronous source experiment gives communication its own turns before
 each immediate game transition. It therefore supplies neither the native
 choice-to-inclusion interval nor the coupling between communication and a game
