@@ -60,16 +60,15 @@ theorem acceptedHandles_handle (runtime : EventGraphRuntime graph)
       simpa only [AcceptedHandles, tables.1] using valid
   | malformed raw => simp [handle] at accepted
 
-theorem executionHandles_respond [Fintype Player] (runtime : EventGraphRuntime graph)
+theorem executionHandles_respond (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
     (valid : bounds.ExecutionHandles runtime leaks execution)
-    (legal : response ∈ (bounds.menu runtime leaks).actions who (execution.recall who)
-      (execution.observe (runtime.reactiveApplication leaks) who)) :
+    (allowed : ∀ material, response.transmission = some (.submit material) →
+      bounds.AllowsPacket material.call.packet) :
     bounds.ExecutionHandles runtime leaks
       (execution.respond (runtime.reactiveApplication leaks) who response) := by
-  have allowed := ((bounds.menu_mem runtime leaks who _ _ response).mp legal).1
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact valid
@@ -79,7 +78,7 @@ theorem executionHandles_respond [Fintype Player] (runtime : EventGraphRuntime g
       | submit material =>
           refine ⟨?_, valid.2.submit who
             (material.emit ((runtime.reactiveApplication leaks).submit execution.application who
-              material) who (execution.network.known who)) allowed.1.1⟩
+              material) who (execution.network.known who)) (allowed material rfl)⟩
           change bounds.AcceptedHandles
             (submitStep (material.call.register execution.application who) who material.call.packet)
           have same := congrArg PublicView.accepted
@@ -143,7 +142,38 @@ theorem executionHandles_history [Fintype Player] (runtime : EventGraphRuntime g
         (bounds.ExecutionHandles runtime leaks) state := by
   have invariant : (bounds.menu runtime leaks).ServiceInvariant scheduler
       (bounds.ExecutionHandles runtime leaks) := {
-    respond := bounds.executionHandles_respond runtime leaks
+    respond := fun execution who response valid legal =>
+      bounds.executionHandles_respond runtime leaks execution who response valid (by
+        intro material submitted
+        have bounded := ((bounds.menu_mem runtime leaks who _ _ response).mp legal).1
+        rw [submitted] at bounded
+        exact bounded.1.1)
+    environment := fun execution next command valid _ reached =>
+      bounds.executionHandles_environment runtime leaks execution next command valid reached }
+  intro state trace
+  exact invariant.history (inputs.map State.initial) horizon (by
+    intro state supported
+    obtain ⟨input, _, rfl⟩ := FinDist.support_map .. ▸ supported
+    exact ⟨bounds.acceptedHandles_initial input, MessageNetwork.Satisfies.empty⟩) trace
+
+/-- The same bounds hold before normalization, for every raw response admitted
+by the complete finite menu. -/
+theorem executionHandles_raw_history [Fintype Player] (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
+    ∀ {state} (_trace : ((bounds.rawMenu runtime leaks).protocol (inputs.map State.initial)
+      horizon scheduler).Trace state),
+      ReactiveApplication.serviceInvariant
+        (bounds.ExecutionHandles runtime leaks) state := by
+  have invariant : (bounds.rawMenu runtime leaks).ServiceInvariant scheduler
+      (bounds.ExecutionHandles runtime leaks) := {
+    respond := fun execution who response valid legal =>
+      bounds.executionHandles_respond runtime leaks execution who response valid (by
+        intro material submitted
+        rw [rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem] at legal
+        rw [submitted] at legal
+        exact ((bounds.submissions_mem _ _).mp legal).1.1)
     environment := fun execution next command valid _ reached =>
       bounds.executionHandles_environment runtime leaks execution next command valid reached }
   intro state trace

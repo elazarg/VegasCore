@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Expr.Simple
+import VegasTests.SelectiveAssociationNative
 import Vegas.Pending.ReactiveAssociationEvidence
 import Vegas.Pending.ReactiveResponseObservation
 import Vegas.Pending.ReactiveService
@@ -21,55 +21,48 @@ namespace VegasTests.ReactiveAssociationEvidence
 
 open GameTheory.Math.Probability Interaction Vegas Vegas.EventGraphRuntime
 
-private abbrev inputs : Fin 0 → EventGraph.EventField (Fin 3) simpleExpr := Fin.elim0
-private abbrev outputs : Fin 1 → EventGraph.EventField (Fin 3) simpleExpr :=
-  fun _ => .binding 0 .bool
-
-private abbrev graph : EventGraph (Fin 3) simpleExpr where
-  inputCount := 0
-  order := {
-    eventCount := 1
-    predecessors _ := ∅
-    predecessor_lt := by simp }
-  inputLayout := inputs
-  outputLayout := outputs
-  nodes _ := EventGraph.EventCode.bind
-    (layout := EventGraph.fieldLayout inputs outputs) 0 .bool
-  reads_available := by
-    intro event field member
-    exact False.elim (Finset.notMem_empty field member)
-  payoffs := []
-
-private def runtime : EventGraphRuntime graph where
-  deadline _ := 2
-
-private def leaks : MessageNetwork.ObservationRule (Fin 3) (WitnessedPacket graph) :=
-  fun who _ => FinDist.pure (if who = 1 then {(0, 0)} else ∅)
-
-private abbrev app := runtime.reactiveApplication leaks
-private abbrev candidate : Handle graph := (0, .prepared 0)
-private def opening (bit : Bool) : OpeningFact graph := ⟨candidate, ⟨.bool, bit⟩⟩
-private def named (bit : Bool) : EventGraph.CommitmentEvidence graph :=
+abbrev graph := SelectiveAssociation.nativeGraph
+local instance : NeZero graph.order.eventCount := ⟨by decide⟩
+abbrev runtime := SelectiveAssociation.nativeRuntime
+abbrev leaks := SelectiveAssociation.nativeLeaks
+abbrev app := runtime.reactiveApplication leaks
+abbrev candidate : Handle graph := (0, .prepared 0)
+def opening (bit : Bool) : OpeningFact graph := ⟨candidate, ⟨.bool, bit⟩⟩
+def named (bit : Bool) : EventGraph.CommitmentEvidence graph :=
   ⟨0, .bool, ⟨.inr 0, rfl⟩, bit⟩
 
-private def initial : app.Execution :=
-  ReactiveApplication.Execution.initial app (State.initial (fun input => nomatch input))
+def initial : app.Execution :=
+  ReactiveApplication.Execution.initial app SelectiveAssociation.nativeInitial
 
-private def first (bit : Bool) : app.Execution :=
-  initial.respond app 0 ⟨some (.submit
+def activatedInitial : app.Execution :=
+  { initial with environmentRecall := [⟨initial.observeEnvironment app, .activate 0⟩] }
+
+def first (bit : Bool) : app.Execution :=
+  activatedInitial.respond app 0 ⟨some (.submit
     ⟨⟨.commitment 0 candidate, some ⟨.bool, bit⟩⟩, .owned (opening bit)⟩)⟩
 
-private def observed (bit : Bool) : app.Execution :=
+def observed (bit : Bool) : app.Execution :=
   { first bit with
     network := (first bit).network.learn 1 {(0, 0)}
     environmentRecall := (first bit).environmentRecall ++
       [⟨(first bit).observeEnvironment app, .activate 1⟩] }
 
-private def offered (bit : Bool) : app.Execution :=
-  (observed bit).respond app 0
+def beforeOffer (execution : app.Execution) : app.Execution :=
+  let granted : app.Execution := { execution with
+    application := { execution.application with serviceGrant := some 0 }
+    environmentRecall := execution.environmentRecall ++
+      [⟨execution.observeEnvironment app, .application (.grant 0)⟩] }
+  { granted with environmentRecall := granted.environmentRecall ++
+    [⟨granted.observeEnvironment app, .activate 0⟩] }
+
+def offered (bit : Bool) : app.Execution :=
+  (beforeOffer (observed bit)).respond app 0
     ⟨some (.submit ⟨⟨.commitment 0 candidate, none⟩, .none⟩)⟩
 
-private def included (bit : Bool) : app.Execution := (offered bit).includePending app (0, 1)
+def included (bit : Bool) : app.Execution :=
+  { (offered bit).includePending app (0, 1) with
+    environmentRecall := (offered bit).environmentRecall ++
+      [⟨(offered bit).observeEnvironment app, .include (0, 1)⟩] }
 
 private theorem ready (bit : Bool) : (offered bit).application.config.cut.Ready 0 := by
   cases bit <;> decide
@@ -90,7 +83,7 @@ private theorem accepts (bit : Bool) :
         change (none : Option (Handle graph)) ≠ some candidate
         simp
   have result := handle_commitment_eq runtime (offered bit).application (0, 1) 0 candidate
-    0 .bool rfl rfl rfl (ready bit) (by change 0 < 2; decide) rfl rfl rfl unused
+    0 .bool rfl rfl rfl (ready bit) (by change 0 < 1; decide) rfl rfl rfl unused
   change handle runtime (offered bit).application ⟨(0, 1), .commitment 0 candidate⟩ = _
   convert result using 1
   cases bit <;> rfl
@@ -108,8 +101,24 @@ private theorem included_application (bit : Bool) : (included bit).application =
 theorem activation_leaks_to_bob (bit : Bool) :
     (first bit).environmentStep app (.activate 1) = FinDist.pure (observed bit) := by
   simp only [ReactiveApplication.Execution.environmentStep, app, reactiveApplication, leaks,
+    SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob, SelectiveAssociation.alice,
     FinDist.map_pure]
   rfl
+
+theorem initial_activation : initial.environmentStep app (.activate 0) =
+    FinDist.pure activatedInitial := by
+  simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
+    leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob, MessageNetwork.learn_empty,
+    FinDist.map_pure, activatedInitial, initial, ReactiveApplication.Execution.initial]
+
+theorem beforeOffer_law (execution : app.Execution) :
+    ((execution.environmentStep app (.application (.grant 0))).bind
+      fun next => next.environmentStep app (.activate 0)) =
+        FinDist.pure (beforeOffer execution) := by
+  simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
+    environmentStep, leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
+    MessageNetwork.learn_empty,
+    FinDist.map_pure, beforeOffer]
 
 theorem proof_before_association (bit : Bool) :
     opening bit ∈ (runtime.packetEvidence leaks).observe ((observed bit).observe app 1) ∧
@@ -156,29 +165,43 @@ theorem carol_cannot_distinguish :
       intro field visible
       cases field with
       | inl input => exact Fin.elim0 input
-      | inr event => exact False.elim visible
+      | inr event =>
+          fin_cases event
+          · exact False.elim visible
+          all_goals rfl
   · apply EventGraph.PlayerObservation.ext
     · rfl
     · apply graph.playerStore_congr
       intro field visible
       cases field with
       | inl input => exact Fin.elim0 input
-      | inr event => exact False.elim (by
-          change (0 : Fin 3) = 2 at visible
-          cases visible)
+      | inr event =>
+          fin_cases event
+          · exact False.elim (by
+              change (0 : Fin 3) = 2 at visible
+              cases visible)
+          all_goals rfl
     · rfl
 
 /-- Bob's response may prepare candidates, forge claims, forward a possessed
 certificate, replay Alice's envelope, or remain silent. No case is excluded. -/
-private def reacted (bit : Bool) (response : app.Action) : app.Execution :=
+def reacted (bit : Bool) (response : app.Action) : app.Execution :=
   (observed bit).respond app 1 response
 
-private def offeredAfter (bit : Bool) (response : app.Action) : app.Execution :=
-  (reacted bit response).respond app 0
+def offeredAfter (bit : Bool) (response : app.Action) : app.Execution :=
+  (beforeOffer (reacted bit response)).respond app 0
     ⟨some (.submit ⟨⟨.commitment 0 candidate, none⟩, .none⟩)⟩
 
-private def includedAfter (bit : Bool) (response : app.Action) : app.Execution :=
-  (offeredAfter bit response).includePending app (0, 1)
+def includedAfter (bit : Bool) (response : app.Action) : app.Execution :=
+  { (offeredAfter bit response).includePending app (0, 1) with
+    environmentRecall := (offeredAfter bit response).environmentRecall ++
+      [⟨(offeredAfter bit response).observeEnvironment app, .include (0, 1)⟩] }
+
+theorem inclusion_law (bit : Bool) (response : app.Action) :
+    (offeredAfter bit response).environmentStep app (.include (0, 1)) =
+      FinDist.pure (includedAfter bit response) := by
+  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+  rfl
 
 theorem arbitrary_response_private (bit : Bool) (response : app.Action)
     (who : Fin 3) (different : who ≠ 1) :
@@ -230,18 +253,21 @@ private theorem reacted_ledger (bit : Bool) (response : app.Action) :
           all_goals rfl
 
 private theorem offeredAfter_application (bit : Bool) (response : app.Action) :
-    (offeredAfter bit response).application = (reacted bit response).application := by
-  change submitStep (reacted bit response).application 0 (.commitment 0 candidate) = _
+    (offeredAfter bit response).application =
+      { (reacted bit response).application with serviceGrant := some 0 } := by
+  change submitStep { (reacted bit response).application with serviceGrant := some 0 }
+    0 (.commitment 0 candidate) = _
   simp only [submitStep, candidate, ↓reduceIte]
   rw [CommitmentCandidates.freeze_eq_self_of_not_fresh _ _ (by
     rw [reacted_candidate]
     simp)]
-  rfl
 
 private theorem offeredAfter_public (bit : Bool) (response : app.Action) :
     (offeredAfter bit response).application.publicView =
-      (observed bit).application.publicView := by
-  rw [offeredAfter_application, reacted_public]
+      { (observed bit).application.publicView with serviceGrant := some 0 } := by
+  rw [offeredAfter_application]
+  exact congrArg (fun view : PublicView graph => { view with serviceGrant := some 0 })
+    (reacted_public bit response)
 
 private theorem offeredAfter_config (bit : Bool) (response : app.Action) :
     (offeredAfter bit response).application.config = (observed bit).application.config := by
@@ -286,7 +312,7 @@ private theorem acceptsAfter (bit : Bool) (response : app.Action) :
       (observed bit).application.activatedAt at activated
     unfold State.WithinDeadline
     rw [clock, activated]
-    change 0 < 2
+    change 0 < 1
     decide
   have meaning : (offeredAfter bit response).application.bindingResult candidate .bool =
       .success bit := by
@@ -353,20 +379,31 @@ theorem later_envelope_selected (bit : Bool) (response : app.Action) :
     ReactiveApplication.Execution.observeEnvironment, ReactiveApplication.Execution.respond,
     MessageNetwork.submit, MessageNetwork.publicView, reacted_ledger, reacted_alice_serial,
     List.reverse_append, Message.sender, Payload.event?, app, reactiveApplication,
-    WitnessedSubmission.emit]
+    WitnessedSubmission.emit, beforeOffer]
 
 theorem carol_activation_leaks_nothing (execution : app.Execution) :
     ((execution.environmentStep app (.activate 2)).map fun next => next.observe app 2) =
       FinDist.pure (execution.observe app 2) := by
   simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
-    leaks, MessageNetwork.learn_empty, FinDist.map_pure, ReactiveApplication.Execution.observe]
+    leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
+    MessageNetwork.learn_empty, FinDist.map_pure,
+    ReactiveApplication.Execution.observe]
 
 private theorem offeredAfter_carol (bit : Bool) (response : app.Action) :
     ((offeredAfter bit response).recall 2, (offeredAfter bit response).observe app 2) =
       ((offered bit).recall 2, (offered bit).observe app 2) := by
-  exact (runtime.reactive_response_other_input leaks (reacted bit response) 0 2
-    (by decide) _).trans ((arbitrary_response_private bit response 2 (by decide)).trans
-      (runtime.reactive_response_other_input leaks (observed bit) 0 2 (by decide) _).symm)
+  have middle :
+      ((beforeOffer (reacted bit response)).recall 2,
+        (beforeOffer (reacted bit response)).observe app 2) =
+      ((beforeOffer (observed bit)).recall 2, (beforeOffer (observed bit)).observe app 2) := by
+    exact congrArg (fun input : List app.PlayerEntry × app.PlayerView =>
+      (input.1, { input.2 with application := { input.2.application with
+        publicView := { input.2.application.publicView with serviceGrant := some 0 } } }))
+          (arbitrary_response_private bit response 2 (by decide))
+  exact (runtime.reactive_response_other_input leaks (beforeOffer (reacted bit response)) 0 2
+    (by decide) _).trans (middle.trans
+      (runtime.reactive_response_other_input leaks (beforeOffer (observed bit)) 0 2
+        (by decide) _).symm)
 
 private theorem boundAfter_carol (bit : Bool) (response : app.Action) :
     app.observePlayer (boundAfter bit response) 2 = app.observePlayer (bound bit) 2 := by
@@ -504,7 +541,81 @@ theorem carol_activation_after_arbitrary_responses (left right : app.Action) :
     (((includedAfter true right).environmentStep app (.activate 2)).map
       fun next => (next.recall 2, next.observe app 2)) := by
   simpa [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
-    leaks, MessageNetwork.learn_empty, FinDist.map_pure, ReactiveApplication.Execution.observe]
+    leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
+    SelectiveAssociation.alice, MessageNetwork.learn_empty, FinDist.map_pure,
+    ReactiveApplication.Execution.observe]
       using congrArg FinDist.pure (carol_input_after_arbitrary_responses left right)
+
+private def afterApplication (execution : app.Execution) (state : State graph)
+    (command : EnvironmentCommand graph) : app.Execution :=
+  { execution with
+    application := state
+    environmentRecall := execution.environmentRecall ++
+      [⟨execution.observeEnvironment app, .application command⟩] }
+
+private def ticked (bit : Bool) (response : app.Action) : app.Execution :=
+  afterApplication (includedAfter bit response)
+    { (includedAfter bit response).application with
+      clock := (includedAfter bit response).application.clock + 1 } .advanceClock
+
+private def expired (bit : Bool) (response : app.Action) : app.Execution :=
+  afterApplication (ticked bit response) (ticked bit response).application (.expire 0)
+
+private def carolGranted (bit : Bool) (response : app.Action) : app.Execution :=
+  afterApplication (expired bit response)
+    { (expired bit response).application with serviceGrant := some 1 } (.grant 1)
+
+/-- The execution at Carol's actual activation in the fixed calendar. -/
+def carolSite (bit : Bool) (response : app.Action) : app.Execution :=
+  let granted := carolGranted bit response
+  { granted with environmentRecall := granted.environmentRecall ++
+    [⟨granted.observeEnvironment app, .activate 2⟩] }
+
+private theorem ticked_not_ready (bit : Bool) (response : app.Action) :
+    ¬(ticked bit response).application.config.cut.Ready 0 := by
+  change ¬(includedAfter bit response).application.config.cut.Ready 0
+  rw [includedAfter_application]
+  intro ready
+  exact ready.1 (by simp [boundAfter, State.complete, EventGraph.Config.complete])
+
+/-- The four intervening service commands are precisely the calendar's clock
+tick, expiry, next grant, and Carol activation. -/
+theorem carolSite_law (bit : Bool) (response : app.Action) :
+    (((includedAfter bit response).environmentStep app (.application .advanceClock)).bind
+      fun next => (next.environmentStep app (.application (.expire 0))).bind
+        fun next => (next.environmentStep app (.application (.grant 1))).bind
+          fun next => next.environmentStep app (.activate 2)) =
+      FinDist.pure (carolSite bit response) := by
+  have tick : (includedAfter bit response).environmentStep app (.application .advanceClock) =
+      FinDist.pure (ticked bit response) := by
+    simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
+      environmentStep, FinDist.map_pure, ticked, afterApplication]
+  have expiry : (ticked bit response).environmentStep app (.application (.expire 0)) =
+      FinDist.pure (expired bit response) := by
+    simp only [ReactiveApplication.Execution.environmentStep, app, reactiveApplication]
+    rw [environmentStep_expire_of_not_ready runtime _ 0 (ticked_not_ready bit response)]
+    simp only [FinDist.map_pure]
+    rfl
+  rw [tick, FinDist.pure_bind, expiry, FinDist.pure_bind]
+  simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
+    environmentStep, leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
+    MessageNetwork.learn_empty, FinDist.map_pure, carolSite, carolGranted, afterApplication]
+
+/-- Carol receives the same entire input at her scheduled choice, for either
+Alice value and any two earlier Bob responses. -/
+theorem carolSite_input (left right : app.Action) :
+    ((carolSite false left).recall 2, (carolSite false left).observe app 2) =
+      ((carolSite true right).recall 2, (carolSite true right).observe app 2) := by
+  exact congrArg (fun input : List app.PlayerEntry × app.PlayerView =>
+    (input.1, { input.2 with application := { input.2.application with
+      publicView := { input.2.application.publicView with
+        clock := input.2.application.publicView.clock + 1, serviceGrant := some 1 } } }))
+      (carol_input_after_arbitrary_responses left right)
+
+theorem carolSite_rounds (bit : Bool) (response : app.Action) :
+    (carolSite bit response).environmentRecall.length = 9 := by
+  simp [carolSite, carolGranted, expired, ticked, afterApplication, includedAfter,
+    offeredAfter, beforeOffer, reacted, observed, first, activatedInitial, initial,
+    ReactiveApplication.Execution.respond, ReactiveApplication.Execution.initial]
 
 end VegasTests.ReactiveAssociationEvidence

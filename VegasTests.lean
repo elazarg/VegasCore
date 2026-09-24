@@ -51,5 +51,17 @@ import VegasTests.CommunicationServiceOpportunity
 import VegasTests.CommunicationServiceOmission
 import VegasTests.CommunicationServiceAuthorization
 import VegasTests.CommunicationServiceRecovery
+import VegasTests.SelectiveAssociationGame
+import VegasTests.SelectiveAssociationNative
+import VegasTests.SelectiveAssociationSchedule
+import VegasTests.SelectiveAssociationHistory
+import VegasTests.SelectiveAssociationCursor
+import VegasTests.SelectiveAssociationOpeningService
+import VegasTests.SelectiveAssociationPayoffs
+import VegasTests.SelectiveAssociationProbability
+import VegasTests.SelectiveAssociationSourceCore
+import VegasTests.SelectiveAssociationSourceService
+import VegasTests.SelectiveAssociationSourceCalendar
+import VegasTests.SelectiveAssociationNamedEvidence
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

@@ -34,6 +34,27 @@ theorem SerialsBeforeNext.submit (valid : network.SerialsBeforeNext)
   apply Satisfies.submit old who payload
   simp [MessageNetwork.submit]
 
+theorem SerialsBeforeNext.lookup_next_none (valid : network.SerialsBeforeNext)
+    (who : Principal) : network.lookup (who, network.nextSerial who) = none := by
+  apply List.find?_eq_none.mpr
+  intro message member identified
+  have same : message.id = (who, network.nextSerial who) := of_decide_eq_true identified
+  have earlier := valid.pending message member
+  change message.id.2 < network.nextSerial message.id.1 at earlier
+  rw [same] at earlier
+  exact Nat.lt_irrefl _ earlier
+
+/-- The newly submitted envelope is found at its fresh authenticated identity,
+even when earlier pending traffic contains replay copies. -/
+theorem SerialsBeforeNext.lookup_submit (valid : network.SerialsBeforeNext)
+    (who : Principal) (payload : Payload) :
+    (network.submit who payload).2.lookup (who, network.nextSerial who) =
+      some ⟨(who, network.nextSerial who), payload⟩ := by
+  have absent := valid.lookup_next_none who
+  change network.pending.find? _ = none at absent
+  simp only [MessageNetwork.lookup, MessageNetwork.submit, List.find?_append, absent]
+  simp
+
 theorem SerialsBeforeNext.replay (valid : network.SerialsBeforeNext)
     (who : Principal) (id : MessageId Principal) :
     (network.replay who id).2.SerialsBeforeNext := by

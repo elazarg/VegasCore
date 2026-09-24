@@ -21,6 +21,42 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
+theorem reactiveLatest_last (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (event : graph.EventId)
+    (view : (runtime.reactiveApplication leaks).EnvironmentView)
+    (prior : List (Message Player (WitnessedPacket graph)))
+    (message : Message Player (WitnessedPacket graph))
+    (pending : view.network.pending = prior ++ [message])
+    (authored : message.sender = who)
+    (addressed : message.payload.call.event? graph = some event)
+    (unpublished : view.Unpublished (runtime.reactiveApplication leaks) message.id) :
+    runtime.reactiveLatest leaks event who view = .include message.id := by
+  unfold reactiveLatest
+  rw [pending]
+  simp only [List.reverse_append, List.reverse_cons, List.reverse_nil, List.nil_append,
+    List.singleton_append, List.find?_cons, authored, addressed, unpublished, and_self, decide_true]
+
+/-- An immediate reserved inclusion selects the fresh response, even after
+arbitrary earlier competing packets from the same owner. -/
+theorem reactiveLatest_after_submit (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (event : graph.EventId)
+    (execution : (runtime.reactiveApplication leaks).Execution)
+    (serials : execution.network.SerialsBeforeNext)
+    (submission : WitnessedSubmission graph)
+    (addressed : submission.call.packet.event? graph = some event) :
+    runtime.reactiveLatest leaks event who
+      ((execution.respond (runtime.reactiveApplication leaks) who
+        ⟨some (.submit submission)⟩).observeEnvironment (runtime.reactiveApplication leaks)) =
+      .include (who, execution.network.nextSerial who) := by
+  apply runtime.reactiveLatest_last leaks who event _ execution.network.pending
+    ⟨(who, execution.network.nextSerial who), submission.emit
+      (submitStep (submission.call.register execution.application who) who submission.call.packet)
+        who (execution.network.known who)⟩ rfl rfl
+  · exact addressed
+  · exact serials.next_unpublished who
+
 theorem reactiveLatest_prescribed (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId)

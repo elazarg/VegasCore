@@ -18,8 +18,12 @@ assert facts about proposals or future source names.
 
 ## Matching service timeline
 
-The following is the proposed witness schedule, with its proof obligations
-still to be discharged for a complete native game.
+The witness uses the actual compilation of the six-statement source program in
+[`SelectiveAssociationGame.lean`](../VegasTests/SelectiveAssociationGame.lean):
+Alice binds a Boolean, Carol binds a guess, Bob binds a guess, then each opens
+in that order. There are no initial bindings or private inputs; all guards
+accept. The schedule is defined in
+[`SelectiveAssociationNative.lean`](../VegasTests/SelectiveAssociationNative.lean).
 
 1. Alice has an ambient response. Its envelope remains pending.
 2. Bob activates, with a passive leak rule selecting only Alice's first envelope.
@@ -31,8 +35,9 @@ still to be discharged for a complete native game.
 5. Bob has his final guess response and reserved inclusion.
 6. Ordinary opening events occur. There is no automatic opening primitive.
 
-Carol's and Bob's guess bindings both depend on Alice's binding; neither
-depends on the other guess. The service processes Carol's guess first. The
+The compiler's barrier order leaves all three binding events initially ready.
+The fixed service visits Alice, Carol, then Bob; source statement order and
+native service order therefore agree without adding graph dependencies. The
 candidate leak rule is stateless: it selects Alice's first envelope only for
 Bob, and selects no envelopes for Alice or Carol. It inspects no private
 delivery history. A second Bob activation may revisit the old envelope;
@@ -71,9 +76,74 @@ Bob retains the earlier certificate and recognizes the accepted binding.
 `carol_input_after_arbitrary_responses` proves equality of Carol's full recall
 and current view even with different Bob responses in the two worlds;
 `carol_activation_after_arbitrary_responses` extends it through the actual
-passive-observation activation. This fixture has only Alice's binding event.
-The subsequent guesses, opening choices, and strategic conclusions remain
-unproved.
+passive-observation activation. It uses the shared compiled six-event graph.
+The strategic conclusions remain unproved.
+
+## Checked schedule and payoff facts
+
+[`SelectiveAssociationSchedule.lean`](../VegasTests/SelectiveAssociationSchedule.lean)
+proves timeliness at every visit and terminal completion for arbitrary native
+policies. Visit `e` has deadline `2^e`; the preceding visits use `2^e - 1`
+clock ticks. Each visit provides one response and reserved inclusion, then
+enough ticks and expiry to settle omissions. The evaluator agrees exactly with
+the native scheduler. These are service guarantees, not prescribed openings.
+
+[`ReactiveRoundReachability.lean`](../Interaction/ReactiveRoundReachability.lean)
+connects every legal finite-menu history to round evaluation under a profile
+that supports all responses.
+[`SelectiveAssociationHistory.lean`](../VegasTests/SelectiveAssociationHistory.lean)
+and [`SelectiveAssociationCursor.lean`](../VegasTests/SelectiveAssociationCursor.lean)
+therefore give ready-or-completed status, timeliness, and remaining horizon at
+every decision information fiber identified by its public service grant.
+
+[`SelectiveAssociationOpeningService.lean`](../VegasTests/SelectiveAssociationOpeningService.lean)
+constructs a legal opening response from the owner's observation. For a
+successful binding at a ready, timely visit, reserved inclusion publishes the
+value despite arbitrary earlier traffic. This establishes the feasible
+alternative; exclusion of withholding from a sequentially rational strategy
+still needs the continuation and information-set payoff comparison.
+
+Utilities depend only on the original three publication results. Alice receives
+Bob's correctness minus Carol's correctness; each guesser receives its own
+correctness. Each player loses four units if its own publication fails.
+[`SelectiveAssociationPayoffs.lean`](../VegasTests/SelectiveAssociationPayoffs.lean)
+proves that a feasible successful opening is preferable even allowing different
+other-player results in the compared continuations.
+[`SelectiveAssociationProbability.lean`](../VegasTests/SelectiveAssociationProbability.lean)
+proves the intended half-unit deviation bound **conditional on** successful
+Alice/Bob publication and Carol's independent-guess bound. Those hypotheses
+still require the native information-set and incentive proofs.
+
+## Source interface and equilibrium obligation
+
+[`SelectiveAssociationSourceCore.lean`](../VegasTests/SelectiveAssociationSourceCore.lean)
+uses the original source protocol transitions.
+[`SelectiveAssociationSourceService.lean`](../VegasTests/SelectiveAssociationSourceService.lean)
+adds pending messages with any finite nonempty claim alphabet, all requested
+named evidence, silence, and every known replay. Source game actions remain
+stage-local. Early request-shaped traffic is expressible as a claim; it creates
+no private registry of immutable pending source proposals. The separation being
+investigated concerns this **whole source interface**, not every possible
+language with pending requests.
+
+The protected response executes its source step immediately before reserved
+recording, with no intervening observer. A newly accepted named binding may
+already be certified in that response's packet; the source equilibrium must
+handle this public disclosure. Ordinary source opening supplies genuine owned
+evidence. Other claims remain available.
+
+[`SelectiveAssociationSourceCalendar.lean`](../VegasTests/SelectiveAssociationSourceCalendar.lean)
+defines the matching calendar, candidate strategy, and a common perturbation
+with positive mass on every menu response. Full mixing and Bayes consistency
+of each positive perturbation are checked. The limiting conditional-belief
+calculation and sequential rationality of the candidate strategy remain open.
+
+[`SelectiveAssociationNamedEvidence.lean`](../VegasTests/SelectiveAssociationNamedEvidence.lean)
+proves that its six named facts cover every genuine commitment fact of this
+source program, none is available initially, and observed certificates hold
+throughout the recipient's information fiber. It also proves exactly which
+facts each player owns before the guesses. Thus the finite evidence alphabet
+does not omit a source binding.
 
 ## Remaining strategic obligations
 
