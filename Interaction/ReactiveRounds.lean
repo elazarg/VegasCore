@@ -52,7 +52,7 @@ theorem resume_environmentRecall (players : Principal → app.Policy) (actor : O
   | none => cases FinDist.mem_support_pure.mp reached; rfl
   | some who =>
       obtain ⟨action, _, rfl⟩ := FinDist.support_map .. ▸ reached
-      rcases action with ⟨memory, transmission⟩
+      rcases action with ⟨transmission⟩
       cases transmission with
       | none => rfl
       | some transmission => cases transmission <;> rfl
@@ -99,8 +99,6 @@ theorem finish_terminal (initial : FinDist app.State) (horizon : Nat)
       rcases control with ⟨remaining, current, execution⟩
       rcases stopped with ⟨rfl, rfl⟩
       simp only [finish, resume, FinDist.pure_bind, runRounds, FinDist.map_pure, finished]
-
-variable [Inhabited app.Memory]
 
 theorem finish_step (initial : FinDist app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (players : Principal → app.Policy)

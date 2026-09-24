@@ -50,15 +50,14 @@ theorem scheduler_after_activation (scheduler : app.Scheduler)
   obtain ⟨secondView, secondRecall⟩ := app.activation_visible execution second who secondReached
   rw [firstView, secondView, firstRecall, secondRecall]
 
-/-- Private memory changes and silence reveal no evidence of the sampled
+/-- Silence reveals no evidence of the sampled
 knowledge when control actually returns to the scheduler. -/
 theorem scheduler_after_silent_response (scheduler : app.Scheduler)
     (execution first second : app.Execution) (who : Principal)
-    (firstMemory secondMemory : app.Memory)
     (firstReached : first ∈ (execution.environmentStep app (.activate who)).support)
     (secondReached : second ∈ (execution.environmentStep app (.activate who)).support) :
-    let left := first.respond app who ⟨firstMemory, none⟩
-    let right := second.respond app who ⟨secondMemory, none⟩
+    let left := first.respond app who ⟨none⟩
+    let right := second.respond app who ⟨none⟩
     scheduler left.environmentRecall (left.observeEnvironment app) =
       scheduler right.environmentRecall (right.observeEnvironment app) := by
   change scheduler first.environmentRecall (first.observeEnvironment app) =

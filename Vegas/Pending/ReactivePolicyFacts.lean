@@ -63,27 +63,33 @@ theorem prescribedReactivePolicy_transmission (runtime : EventGraphRuntime graph
     action.transmission = none ∨ ∃ event material,
       action.transmission = some (.submit material) ∧ material.packet.event? graph = some event ∧
         runtime.reactiveAlreadySubmitted leaks history event = false := by
-  unfold prescribedReactivePolicy at supported
-  split at supported
-  · cases FinDist.mem_support_pure.mp supported; exact Or.inl rfl
+  rw [prescribedReactivePolicy_apply] at supported
+  obtain ⟨intentions, _, produced⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨⟨response, intention⟩, issued, rfl⟩ := FinDist.support_map .. ▸ produced
+  unfold prescribedReactiveResponse at issued
+  split at issued
+  · cases FinDist.mem_support_pure.mp issued; exact Or.inl rfl
   · rename_i event grant
-    split at supported
-    · cases FinDist.mem_support_pure.mp supported; exact Or.inl rfl
+    split at issued
+    · cases FinDist.mem_support_pure.mp issued; exact Or.inl rfl
     · rename_i unsent
       have absent : runtime.reactiveAlreadySubmitted leaks history event = false :=
         Bool.eq_false_iff.mpr unsent
-      split at supported
-      · split at supported
-        · split at supported
-          · obtain ⟨choice, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      split at issued
+      · split at issued
+        · split at issued
+          · obtain ⟨choice, _, image⟩ := FinDist.support_map .. ▸ issued
+            have responseEq := congrArg Prod.fst image
+            dsimp only at responseEq
+            subst response
             rcases runtime.reactiveDecision_transmission leaks who event choice
               view.application with
               silent | ⟨material, sent, addressed⟩
             · exact Or.inl silent
             · exact Or.inr ⟨event, material, sent, addressed, absent⟩
-          · cases FinDist.mem_support_pure.mp supported; exact Or.inl rfl
-        · cases FinDist.mem_support_pure.mp supported; exact Or.inl rfl
-      · cases FinDist.mem_support_pure.mp supported; exact Or.inl rfl
+          · cases FinDist.mem_support_pure.mp issued; exact Or.inl rfl
+        · cases FinDist.mem_support_pure.mp issued; exact Or.inl rfl
+      · cases FinDist.mem_support_pure.mp issued; exact Or.inl rfl
 
 def reactiveSubmittedEvents (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (Payload graph))
@@ -136,13 +142,12 @@ theorem reactiveSubmittedEvents_unique (runtime : EventGraphRuntime graph)
   subst right
   exact Option.some.inj (leftOutput.symm.trans rightOutput)
 
+omit [DecidableEq Player] in
 /-- Every recovery choice is supported by the current source decision law,
 including choices taken from private memory. -/
-theorem reactiveRecoveryLaw_support (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
-    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
+theorem reactiveRecoveryLaw_support (intentions : List (Option graph.Completion))
     (event : graph.EventId) (law : FinDist (graph.Action event)) (action : graph.Action event)
-    (supported : action ∈ (runtime.reactiveRecoveryLaw leaks history event law).support) :
+    (supported : action ∈ (reactiveRecoveryLaw intentions event law).support) :
     action ∈ law.support := by
   classical
   dsimp only [reactiveRecoveryLaw] at supported
@@ -152,11 +157,10 @@ theorem reactiveRecoveryLaw_support (runtime : EventGraphRuntime graph)
     exact of_decide_eq_true (List.find?_eq_some_iff_append.mp found).1
   · exact supported
 
-theorem reactiveRecoveryLaw_pure (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
-    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
+omit [DecidableEq Player] in
+theorem reactiveRecoveryLaw_pure (intentions : List (Option graph.Completion))
     (event : graph.EventId) (action : graph.Action event) :
-    runtime.reactiveRecoveryLaw leaks history event (FinDist.pure action) =
+    reactiveRecoveryLaw intentions event (FinDist.pure action) =
       FinDist.pure action := by
   classical
   dsimp only [reactiveRecoveryLaw]
@@ -167,26 +171,22 @@ theorem reactiveRecoveryLaw_pure (runtime : EventGraphRuntime graph)
     rw [same]
   · rfl
 
+omit [DecidableEq Player] in
 /-- Once a recovery response records a supported choice, another activation
 reuses that choice as long as it is still supported. -/
-theorem reactiveRecoveryLaw_remembered (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
-    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (entry : (runtime.reactiveApplication leaks).PlayerEntry)
+theorem reactiveRecoveryLaw_remembered (intentions : List (Option graph.Completion))
     (event : graph.EventId) (law : FinDist (graph.Action event)) (action : graph.Action event)
-    (remembered : entry.action.memory.intention = some ⟨event, action⟩)
     (supported : action ∈ law.support) :
-    runtime.reactiveRecoveryLaw leaks (history ++ [entry]) event law =
+    reactiveRecoveryLaw (intentions ++ [some ⟨event, action⟩]) event law =
       FinDist.pure action := by
   classical
-  simp [reactiveRecoveryLaw, remembered, supported]
+  simp [reactiveRecoveryLaw, supported]
 
+omit [DecidableEq Player] in
 /-- The actual recovery lottery satisfies the local inclusion incentive law.
 The fixed downstream kernel premise still has to be proved for a service;
 this result alone does not assert native SPE. -/
-theorem reactiveRecoveryLaw_optimal_response (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
-    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
+theorem reactiveRecoveryLaw_optimal_response (intentions : List (Option graph.Completion))
     (event : graph.EventId) (law retained : FinDist (graph.Action event))
     {Outcome : Type} (continuation : graph.Action event → FinDist Outcome)
     (utility : Outcome → ℝ) (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
@@ -196,11 +196,11 @@ theorem reactiveRecoveryLaw_optimal_response (runtime : EventGraphRuntime graph)
     ((GameTheory.PendingChoice.responseLaw weight nonnegative atMostOne retained alternative).bind
       continuation).expect utility ≤
     ((GameTheory.PendingChoice.responseLaw weight nonnegative atMostOne retained
-      ((runtime.reactiveRecoveryLaw leaks history event law).map some)).bind continuation).expect
+      ((reactiveRecoveryLaw intentions event law).map some)).bind continuation).expect
         utility :=
   GameTheory.PendingChoice.optimal_response_of_support weight nonnegative atMostOne retained law
     _ continuation utility optimal
-    (fun _ supported => runtime.reactiveRecoveryLaw_support leaks history event law _ supported)
+    (fun _ supported => reactiveRecoveryLaw_support intentions event law _ supported)
     alternative
 
 /-- Policy completion preserves initialized canonical state laws playerwise.
@@ -226,5 +226,30 @@ theorem compileReactivePolicy_canonical_run (runtime : EventGraphRuntime graph)
     ReactiveApplication.Policy.recover_canonical_run
       (Function.update players who (runtime.prescribedReactivePolicy leaks who policy)) who
       (runtime.recoverReactivePolicy leaks who policy) initial horizon scheduler fuel
+
+/-- The actual compiler realizes the prescribed private implementation against
+arbitrary opponents and scheduling. Its intention list is absent from the game
+execution, while all application state, packets, observations and recall agree. -/
+theorem compileReactivePolicy_realizes (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
+    (who : Player) (policy : graph.BehavioralPolicy who)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (count : Nat) (state : State graph) :
+    let app := runtime.reactiveApplication leaks
+    let implementation := runtime.prescribedReactiveImplementation leaks who policy
+    implementation.initial.bind (implementation.run who players scheduler count
+        (ReactiveApplication.Execution.initial app state)) =
+      app.runRounds scheduler
+        (Function.update players who (runtime.compileReactivePolicy leaks who policy))
+        count (ReactiveApplication.Execution.initial app state) := by
+  dsimp only
+  rw [ReactiveApplication.Implementation.realize_initial]
+  have recovery := ReactiveApplication.Policy.recover_runRounds
+    (Function.update players who (runtime.prescribedReactivePolicy leaks who policy)) who
+    (runtime.recoverReactivePolicy leaks who policy) scheduler count
+    (ReactiveApplication.Execution.initial (runtime.reactiveApplication leaks) state) .nil
+  simpa only [Function.update_self, Function.update_idem, compileReactivePolicy,
+    prescribedReactivePolicy] using recovery.symm
 
 end Vegas.EventGraphRuntime

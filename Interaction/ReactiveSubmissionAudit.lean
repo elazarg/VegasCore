@@ -99,7 +99,7 @@ theorem submissionAudit_respond (project : app.LocalObservation → app.PublicOb
       (who, execution.network.nextSerial who) = some (app.observePublic execution.application)) :
     (execution.respond app who action).SubmissionAudit app project := by
   have prior := valid.mono (app.auditedSubmission_respond project execution who action)
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact prior
   | some transmission =>
@@ -107,7 +107,7 @@ theorem submissionAudit_respond (project : app.LocalObservation → app.PublicOb
       | replay id => exact prior.replay who id
       | submit material =>
           apply prior.submit who (app.packet material)
-          refine ⟨_, app.submissionOrigin_submit execution who memory material fresh, rfl, ?_⟩
+          refine ⟨_, app.submissionOrigin_submit execution who material fresh, rfl, ?_⟩
           rw [app.respond_environmentRecall]
           simpa only [Execution.observe, agrees] using activated
 
@@ -176,8 +176,6 @@ def submissionAudit (project : app.LocalObservation → app.PublicObservation) :
     app.ProtocolState → Prop
   | none => True
   | some control => control.execution.SubmissionAudit app project ∧ control.ActivationAudit app
-
-variable [Inhabited app.Memory]
 
 theorem submissionAudit_transition (project : app.LocalObservation → app.PublicObservation)
     (agrees : ∀ state who, project (app.observePlayer state who) = app.observePublic state)

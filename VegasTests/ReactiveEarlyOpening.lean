@@ -31,7 +31,7 @@ def initialState : State graph := { State.initial input with serviceGrant := som
 def initial : app.Execution := .initial app initialState
 
 def first : app.Action := runtime.reactiveBinding leaks () 0 .int (.success 1) 0
-def second : app.Action := ⟨default, some (.submit ⟨.withhold 1, none⟩)⟩
+def second : app.Action := ⟨some (.submit ⟨.withhold 1, none⟩)⟩
 
 /-- Uniform choice among distinct, unpublished identifiers for this event. -/
 def select (event : graph.EventId) (view : app.EnvironmentView) : FinDist app.Command :=
@@ -82,6 +82,5 @@ theorem activation (execution : app.Execution) :
 /-- Recall identifies this prefix inside every future decision information set. -/
 theorem contested_isSubgameRoot : model.IsSubgameRoot (secondHistory first second) :=
   responsePrefix.secondHistory_isSubgameRoot first second
-
 
 end VegasTests.ReactiveEarlyOpening

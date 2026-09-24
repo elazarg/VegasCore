@@ -24,7 +24,7 @@ theorem reactive_respond_application (runtime : EventGraphRuntime graph)
         execution.application.config ∧
       (execution.respond (runtime.reactiveApplication leaks) who action).application.publicView =
         execution.application.publicView := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact ⟨rfl, rfl⟩
   | some transmission =>

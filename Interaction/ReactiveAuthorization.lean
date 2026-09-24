@@ -8,7 +8,7 @@ import Interaction.ReactiveAllocation
 
 Authorization refers to the first actual submission of an identifier, using
 the recorded pre-submission view. It cannot be renewed by replay, later
-application changes, or private memory. The acceptance contract is a semantic
+application changes or private strategy state. The acceptance contract is a semantic
 obligation on a service, not permission for a scheduler to inspect private
 recall. A concrete certificate implementation must establish that obligation.
 All player responses and passive observations remain available.
@@ -108,11 +108,11 @@ theorem authorizedAtSubmission_iff
   simp [Execution.AuthorizedAtSubmission, found]
 
 theorem submissionOrigin_submit (execution : app.Execution) (who : Principal)
-    (memory : app.Memory) (material : app.Submission)
+    (material : app.Submission)
     (fresh : execution.submissionOrigin? app (who, execution.network.nextSerial who) = none) :
-    (execution.respond app who ⟨memory, some (.submit material)⟩).submissionOrigin? app
+    (execution.respond app who ⟨some (.submit material)⟩).submissionOrigin? app
       (who, execution.network.nextSerial who) =
-        some ⟨execution.observe app who, ⟨memory, some (.submit material)⟩,
+        some ⟨execution.observe app who, ⟨some (.submit material)⟩,
           some ⟨(who, execution.network.nextSerial who), app.packet material⟩⟩ := by
   simp only [Execution.submissionOrigin?] at fresh ⊢
   simp only [Execution.respond, MessageNetwork.submit, ↓reduceIte, List.find?_append, fresh]
@@ -122,15 +122,13 @@ theorem submissionOrigin_submit (execution : app.Execution) (who : Principal)
 This does not assert that a scheduler will include them. -/
 theorem authorizedAtSubmission_submit
     (condition : app.PlayerView → Message Principal app.Payload → Prop)
-    (execution : app.Execution) (who : Principal) (memory : app.Memory) (material : app.Submission)
+    (execution : app.Execution) (who : Principal) (material : app.Submission)
     (fresh : execution.submissionOrigin? app (who, execution.network.nextSerial who) = none)
     (allowed : condition (execution.observe app who)
       ⟨(who, execution.network.nextSerial who), app.packet material⟩) :
-    (execution.respond app who ⟨memory, some (.submit material)⟩).AuthorizedAtSubmission
+    (execution.respond app who ⟨some (.submit material)⟩).AuthorizedAtSubmission
       app condition ⟨(who, execution.network.nextSerial who), app.packet material⟩ :=
-  ⟨_, app.submissionOrigin_submit execution who memory material fresh, rfl, allowed⟩
-
-variable [Inhabited app.Memory]
+  ⟨_, app.submissionOrigin_submit execution who material fresh, rfl, allowed⟩
 
 theorem submissionOrigin_next_none_history (initial : FinDist app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (control : app.Control)

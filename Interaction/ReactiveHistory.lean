@@ -16,7 +16,7 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 theorem respond_environmentRecall (execution : app.Execution) (who : Principal)
     (action : app.Action) :
     (execution.respond app who action).environmentRecall = execution.environmentRecall := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
   | some transmission => cases transmission <;> rfl
@@ -24,7 +24,7 @@ theorem respond_environmentRecall (execution : app.Execution) (who : Principal)
 theorem respond_actions (execution : app.Execution) (who : Principal) (action : app.Action) :
     ((execution.respond app who action).recall who).map PlayerEntry.action =
       (execution.recall who).map PlayerEntry.action ++ [action] := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => simp only [Execution.respond, ↓reduceIte, List.map_append, List.map_cons, List.map_nil]
   | some transmission =>
@@ -36,14 +36,12 @@ theorem respond_recall_prefix (execution : app.Execution) (who observer : Princi
     execution.recall observer <+: (execution.respond app who action).recall observer := by
   by_cases same : observer = who
   · subst observer
-    rcases action with ⟨memory, transmission⟩
+    rcases action with ⟨transmission⟩
     cases transmission with
     | none => simp only [Execution.respond, ↓reduceIte]; exact ⟨_, rfl⟩
     | some transmission =>
         cases transmission <;> simp only [Execution.respond, ↓reduceIte] <;> exact ⟨_, rfl⟩
   · rw [app.respond_recall_other execution who observer same action]
-
-variable [Inhabited app.Memory]
 
 theorem transition_recall_prefix (initial : FinDist app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before : app.Control) (after : app.ProtocolState)

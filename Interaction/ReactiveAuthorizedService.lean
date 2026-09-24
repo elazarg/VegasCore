@@ -85,8 +85,6 @@ theorem authorizedScheduler_atMostOnce
   have original := (app.authorizedCommand_include condition history view command id same).1
   exact once history view id (original ▸ supported)
 
-variable [Inhabited app.Memory]
-
 /-- At an active response, a new envelope is checked against the current public
 application observation. Earlier silent activations cannot make it premature. -/
 theorem submissionPermitted_fresh_history

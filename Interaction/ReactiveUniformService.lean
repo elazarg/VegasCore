@@ -107,8 +107,6 @@ theorem uniformScheduler_atMostOnce
     app.uniformInstruction_include condition history view _ id supported
   exact unpublished
 
-variable [Inhabited app.Memory]
-
 theorem uniformScheduler_requiresAuthorization
     (project : app.LocalObservation → app.PublicObservation)
     (agrees : ∀ state who, project (app.observePlayer state who) = app.observePublic state)

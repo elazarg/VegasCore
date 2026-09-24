@@ -65,7 +65,7 @@ theorem later_opening_authorized :
     (disclosed false false).AuthorizedAtSubmission app (runtime.submissionDependencyCondition leaks)
       ⟨((), 3), .opening 1 ((), .prepared 0) ⟨.int, 1⟩⟩ := by
   apply runtime.ready_submission_authorized leaks (activated (granted false false)) ()
-    _ _ 1 rfl
+    _ 1 rfl
   · rw [State.publicView_eventReady]
     exact disclosure_ready false false (by simp)
   · rfl

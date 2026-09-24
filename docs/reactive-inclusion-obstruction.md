@@ -79,7 +79,8 @@ decision information set crosses the root.
 
 From this root, every policy can publish only `1`, `2`, or failure. It may also
 leave disclosure unfinished, which earns zero. This covers arbitrary packets,
-memory, replay, and randomized behavior. Binding immutability and the
+replay and randomized behavior, including realized private implementations.
+Binding immutability and the
 disclosure check exclude a later publication of `0`.
 
 Consequently, the two expected utilities sum to at most `3` for every

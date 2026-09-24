@@ -18,7 +18,6 @@ namespace Interaction.ReactiveApplication
 open GameTheory.Protocol GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
-  [Inhabited app.Memory]
 
 theorem control_of_active
     (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
@@ -57,7 +56,7 @@ theorem decisionInformationAntichain
   simp only [observe, firstActive, lastActive, ↓reduceIte] at sameInfo
   have sameRecall := congrArg Prod.fst (Option.some.inj sameInfo)
   change before.execution.recall who = after.execution.recall who at sameRecall
-  let action := (joint who).getD ⟨default, none⟩
+  let action := (joint who).getD ⟨none⟩
   let middle : app.Control :=
     { before with
       actor := none

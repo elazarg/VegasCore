@@ -12,18 +12,20 @@ The reactive protocol separates four components:
 4. **The observation rule** privately samples a subset of other authors'
    pending packets when a player is activated.
 
-When activated, a player chooses private memory and at most one transmission.
+When activated, a player chooses at most one transmission.
 Control then returns to the scheduler. The scheduler sees the actual network
 output before choosing what happens next. It may activate that player again.
 Sampling, computing a response, and constructing commitment material happen
 inside the player's action; they consume no separate turns or clock time.
+Private implementation memory is part of the strategy, not a response field
+or an additional canonical game action.
 
 ```mermaid
 flowchart LR
   N["Scheduler observes network and public application"] --> C{"Choose"}
   C -->|activate Alice| L["Privately sample pending packets"]
   L --> A["Alice reads her view and own recall"]
-  A --> R["Remember privately; optionally transmit one envelope"]
+  A --> R["Optionally transmit one envelope"]
   R --> N
   C -->|include, application operation, wait| E["Execute operation"]
   E --> N
@@ -74,7 +76,7 @@ outside this ideal message machine. See
 
 A player sees its accumulated leaked packets, the ledger, public receipts, and the application's
 authorized local projection. It also remembers each of its previous views,
-chosen actions, private memory, and actual emitted envelopes. This includes
+chosen semantic actions and actual emitted envelopes. This includes
 the identifiers allocated to its own submissions.
 
 There is no separate player-facing sent list. At every legal initialized
@@ -82,6 +84,13 @@ history, the network inputs attributed to a player are exactly the emitted
 envelopes in that player's recall. The checked law in
 [ReactiveRecall.lean](../Interaction/ReactiveRecall.lean) establishes that replay
 eligibility can be reconstructed from own recall, leaked packets, and ledger.
+
+Stateful implementations may retain arbitrary private computation state.
+[ReactiveImplementation.lean](../Interaction/ReactiveImplementation.lean)
+realizes them as behavioral policies using their own observation/action
+transcripts, and proves equality of the entire execution law against arbitrary
+opponents and scheduling. The implementation's memory representation does not
+enter game histories or enlarge action menus.
 
 The scheduler sees pending packets, the ledger, network inputs, the public application projection,
 receipts, and its own command recall. It can inspect pending packet contents
@@ -161,6 +170,16 @@ horizon counts scheduler decisions. An activation consumes one such decision;
 the player response always runs, including after the last allowed activation.
 This bounds the protocol by twice the horizon plus one setup step. It does
 not guarantee application completion.
+
+**The interaction bound is a substantive restriction relative to an unrestricted
+blockchain network.** Contract timeouts and finite block or transaction sizes
+do not alone bound every pre-inclusion transmission, observation or reaction.
+The model assumes an explicit finite number of scheduler opportunities. A
+backend must justify that bound through additional admission and progress
+assumptions. It limits strategic opportunities, so truncation is not merely a
+proof-evaluation convenience. The distinction from evaluation fuel and the
+unproved unbounded case are documented in the
+[sequential-equilibrium design](sequential-equilibrium-design.md).
 
 The concrete scheduler in
 [ReactiveService.lean](../Vegas/Pending/ReactiveService.lean) repeats visits in a

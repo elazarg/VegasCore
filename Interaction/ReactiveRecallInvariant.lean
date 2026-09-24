@@ -26,7 +26,7 @@ theorem respond_entry_origin (execution : app.Execution) (who observer : Princip
       (observer = who ∧ entry.beforeView = execution.observe app who) := by
   by_cases same : observer = who
   · subst observer
-    rcases action with ⟨memory, transmission⟩
+    rcases action with ⟨transmission⟩
     cases transmission with
     | none =>
         simp only [Execution.respond, ↓reduceIte, List.mem_append, List.mem_singleton] at member
@@ -67,8 +67,6 @@ theorem recallBoundInvariant (observed : app.LocalObservation → Value) (value 
     intro who entry member
     rw [app.environmentStep_recall execution next command reached] at member
     exact (valid who entry member).trans grows
-
-variable [Inhabited app.Memory]
 
 theorem recallBound_history (observed : app.LocalObservation → Value) (value : app.State → Value)
     (agrees : ∀ state who, observed (app.observePlayer state who) = value state)

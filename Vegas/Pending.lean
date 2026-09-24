@@ -10,7 +10,6 @@ import Vegas.Pending.EventBindingInvariant
 import Vegas.Pending.EventCommitmentBinding
 import Vegas.Pending.NativeProtocolSafety
 import Vegas.Pending.ReactivePolicy
-import Vegas.Pending.ReactiveSubgameInformation
 import Vegas.Pending.ReactivePolicyFacts
 import Vegas.Pending.ReactiveRegularity
 import Vegas.Pending.ReactivePacketIntegrity
@@ -90,6 +89,5 @@ import Vegas.Pending.EventCompletionObservation
 import Vegas.Pending.ReactiveAuthorization
 import Vegas.Pending.ReactiveAuthorizationProgress
 import Vegas.Pending.ReactiveDependencyService
-import Vegas.Pending.ReactiveSequential
 
 /-! Graph execution and strategic refinement over public pending messages. -/

@@ -134,17 +134,17 @@ theorem native_value_sum_le (policy : app.Policy) :
 def preferredValue (preferOne : Bool) : Int := if preferOne then 1 else 2
 def preferredSlot (preferOne : Bool) : Nat := if preferOne then 0 else 1
 
-def opening (preferOne : Bool) : app.Action := ⟨default, some (.submit
+def opening (preferOne : Bool) : app.Action := ⟨some (.submit
   ⟨.opening 1 ((), .prepared (preferredSlot preferOne)) ⟨.int, preferredValue preferOne⟩, none⟩)⟩
 
 /-- Only the public grant is inspected. Private scheduler control is absent. -/
 def recovery (preferOne : Bool) : app.Policy := fun _ view => FinDist.pure
   (if view.application.publicView.serviceGrant == some 1 then opening preferOne
     else if preferOne then runtime.reactiveBinding leaks () 0 .int (.success 0) 2
-    else ⟨default, none⟩)
+    else ⟨none⟩)
 
 def selection (preferOne : Bool) : app.Action :=
-  if preferOne then runtime.reactiveBinding leaks () 0 .int (.success 0) 2 else ⟨default, none⟩
+  if preferOne then runtime.reactiveBinding leaks () 0 .int (.success 0) 2 else ⟨none⟩
 
 private theorem selected_slot (preferOne : Bool) :
     selected (selection preferOne) = preferredSlot preferOne := by cases preferOne <;> rfl

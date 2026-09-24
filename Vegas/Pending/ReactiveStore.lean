@@ -21,7 +21,7 @@ theorem reactiveApplicationInvariant (runtime : EventGraphRuntime graph)
   submit state who material valid :=
     (runtime.reactive_respond_progress leaks inputs
       (ReactiveApplication.Execution.initial (runtime.reactiveApplication leaks) state)
-      who ⟨default, some (.submit material)⟩ valid).invariant
+      who ⟨some (.submit material)⟩ valid).invariant
   handle state message next valid accepted :=
     handle_invariant runtime state next message valid accepted
   environment state command next valid reached :=

@@ -18,7 +18,6 @@ namespace Interaction.ReactiveApplication
 open GameTheory.Protocol GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
-  [Inhabited app.Memory]
 
 def controlStep (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (players : Principal → app.Policy) (state : app.ProtocolState) : FinDist app.ProtocolState :=
@@ -59,7 +58,7 @@ theorem controlStep_marginals (initial : FinDist app.State) (horizon : Nat)
           rw [observed, encodePolicy, FinDist.map_comp] at law
           have selected := congrArg (fun law => law.bind fun action =>
             FinDist.pure (some (Control.mk remaining none
-              (execution.respond app who (action.getD ⟨default, none⟩))))) law
+              (execution.respond app who (action.getD ⟨none⟩))))) law
           simpa only [FinDist.bind_map, Function.comp_apply, Option.getD_some, transition,
             controlStep, actor, Option.bind_some, ↓reduceIte] using selected
 

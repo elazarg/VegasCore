@@ -27,7 +27,7 @@ theorem reactive_respond_candidate_fixed (runtime : EventGraphRuntime graph)
     (execution.respond (runtime.reactiveApplication leaks) who
       action).application.candidates.lookup
       candidate = execution.application.candidates.lookup candidate := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
   | some transmission =>

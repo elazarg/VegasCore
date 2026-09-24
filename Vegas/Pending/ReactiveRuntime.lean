@@ -6,8 +6,8 @@ import Vegas.Pending.EventBindingAction
 
 /-! # The event application under explicit network scheduling
 
-One activation records arbitrary private memory and optionally transmits one
-packet. Fresh commitment material is fixed by that submission. The scheduler
+One activation optionally transmits one packet. Private strategy memory is
+absent from game actions. Fresh commitment material is fixed by submission. The scheduler
 receives the broadcaster and envelope, while the player retains its own output.
 No private staging command is a strategic action of this protocol.
 An independent observation rule supplies partial knowledge of foreign pending
@@ -23,27 +23,12 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-/-- The event application projection used at an activation. Source intentions
-can be retained in response memory instead of an application scratch table. -/
+/-- The semantic application observation used at an activation. -/
 structure ReactivePlayerView (graph : Vegas.EventGraph Player L) where
   who : Player
   publicView : PublicView graph
   observation : graph.PlayerObservation who
   candidates : CandidateSlot graph → CommitmentCandidate (Raw L)
-
-/-- A source intention can be remembered even when the packet conceals its
-failure. Arbitrary auxiliary private data remains available to deviations. -/
-structure ResponseMemory (graph : Vegas.EventGraph Player L) where
-  intention : Option graph.Completion
-  privateData : List (Nat ⊕ Raw L)
-
-instance : Inhabited (ResponseMemory graph) := ⟨⟨none, []⟩⟩
-
-instance : Nontrivial (ResponseMemory graph) := by
-  refine ⟨⟨⟨none, []⟩, ⟨none, [.inl 0]⟩, ?_⟩⟩
-  intro same
-  have data := congrArg ResponseMemory.privateData same
-  cases data
 
 def reactiveApplication (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (Payload graph)) : ReactiveApplication
@@ -51,7 +36,6 @@ def reactiveApplication (runtime : EventGraphRuntime graph)
   State := State graph
   Payload := Payload graph
   Submission := Submission graph
-  Memory := ResponseMemory graph
   EnvironmentCommand := EnvironmentCommand graph
   LocalObservation := ReactivePlayerView graph
   PublicObservation := PublicView graph
@@ -64,11 +48,6 @@ def reactiveApplication (runtime : EventGraphRuntime graph)
   observePublic := State.publicView
   observePending := leaks
 
-instance (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph)) : Inhabited
-      (runtime.reactiveApplication leaks).Memory :=
-  ⟨⟨none, []⟩⟩
-
 /-- Atomically fix a fresh candidate and transmit its handle. Only the packet
 field enters the network; the opening is private submission material. -/
 def reactiveBinding (runtime : EventGraphRuntime graph)
@@ -76,7 +55,6 @@ def reactiveBinding (runtime : EventGraphRuntime graph)
     (who : Player) (event : graph.EventId)
     (payload : L.Ty) (result : PublicationResult (L.Val payload)) (serial : Nat) :
     (runtime.reactiveApplication leaks).Action where
-  memory := default
   transmission := some (.submit
     ⟨.commitment event (who, .prepared serial), match result with
       | .failure => none

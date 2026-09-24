@@ -20,7 +20,6 @@ private abbrev app : ReactiveApplication Bool where
   State := Unit
   Payload := Nat
   Submission := Nat
-  Memory := Unit
   EnvironmentCommand := Empty
   LocalObservation := Unit
   PublicObservation := Unit
@@ -32,9 +31,7 @@ private abbrev app : ReactiveApplication Bool where
   observePublic _ := ()
   observePending _ pending := FinDist.pure (pending.map Message.id).toFinset
 
-private instance : Inhabited app.Memory := ⟨()⟩
-
-private def send (value : Nat) : app.Action := ⟨(), some (.submit value)⟩
+private def send (value : Nat) : app.Action := ⟨some (.submit value)⟩
 
 private def players : Bool → app.Policy := fun who _ view =>
   FinDist.pure (send (if who then
@@ -119,7 +116,7 @@ theorem reaction_before_inclusion :
         FinDist.pure (.activate false) := ⟨rfl, rfl, rfl, rfl⟩
 
 theorem replay_preserves_author_records_broadcaster :
-    let next := e3.respond app true ⟨(), some (.replay (false, 0))⟩
+    let next := e3.respond app true ⟨some (.replay (false, 0))⟩
     next.network.inputs = [⟨false, ⟨(false, 0), 7⟩⟩, ⟨true, ⟨(false, 0), 7⟩⟩] := rfl
 
 /-- Even a rule selecting an own identifier cannot return that packet to its author. -/

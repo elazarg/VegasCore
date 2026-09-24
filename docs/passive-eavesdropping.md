@@ -70,7 +70,7 @@ private sample itself; it permits ordinary responses to public traffic.
 | All legal histories exclude own packets from passive knowledge | [`ReactiveApplication.history_foreignLeaks`](../Interaction/ReactiveKnowledge.lean) |
 | All leak samples have the same complete scheduler observation and recall | [`ReactiveApplication.activation_visible_law`](../Interaction/ReactiveObservation.lean) |
 | Arbitrary schedulers cannot distinguish samples through this interface | [`ReactiveApplication.scheduler_after_activation`](../Interaction/ReactiveObservation.lean) |
-| Silent responses and private memory changes preserve that indistinguishability | [`ReactiveApplication.scheduler_after_silent_response`](../Interaction/ReactiveObservation.lean) |
+| Silent responses preserve that indistinguishability when control returns to scheduling | [`ReactiveApplication.scheduler_after_silent_response`](../Interaction/ReactiveObservation.lean) |
 | A player reads another player's pending packet and responds before inclusion | [`canonical_in_flight`](../InteractionTests/ReactiveProtocol.lean) |
 | Both learning and missing a packet are possible while scheduling observations agree | [`partial_outcomes` and `partial_observation_hidden`](../InteractionTests/ReactiveProtocol.lean) |
 

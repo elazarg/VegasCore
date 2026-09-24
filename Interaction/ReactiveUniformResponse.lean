@@ -29,7 +29,7 @@ theorem authorizedUniform_respond
         (execution.network.unpublished
           (app.authorizedEligibility condition execution.environmentRecall eligible))
         (execution.respond app who action).network.pending := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
   | some transmission =>
@@ -55,7 +55,7 @@ theorem authorizedUniform_response_eq
       else app.authorizedUniform condition execution.environmentRecall
         (execution.observeEnvironment app) eligible := by
   rw [app.authorizedUniform_respond]
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
   | some transmission =>
@@ -95,8 +95,6 @@ theorem authorizedUniform_response_regular
   split
   · exact MessageNetwork.chooseUniform_regular_insert _ _ (serials.next_not_eligible _ who)
   · exact FinDist.RegularAt.refl _ _
-
-variable [Inhabited app.Memory]
 
 theorem authorizedUniform_history_regular
     (condition : app.PublicObservation → Message Principal app.Payload → Prop)

@@ -18,7 +18,7 @@ namespace Interaction.ReactiveApplication.ResponseMenu
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
-  [Inhabited app.Memory] (menu : app.ResponseMenu)
+  (menu : app.ResponseMenu)
   (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 def embedPolicy (who : Principal)

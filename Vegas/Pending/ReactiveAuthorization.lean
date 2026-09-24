@@ -75,17 +75,17 @@ authorization. Inclusion and timely acceptance are separate service obligations.
 theorem ready_submission_authorized (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (Payload graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (memory : ResponseMemory graph) (material : Submission graph) (event : graph.EventId)
+    (material : Submission graph) (event : graph.EventId)
     (address : material.packet.event? graph = some event)
     (ready : execution.application.publicView.EventReady event)
     (fresh : execution.submissionOrigin? (runtime.reactiveApplication leaks)
       (who, execution.network.nextSerial who) = none) :
     (execution.respond (runtime.reactiveApplication leaks) who
-      ⟨memory, some (.submit material)⟩).AuthorizedAtSubmission (runtime.reactiveApplication leaks)
+      ⟨some (.submit material)⟩).AuthorizedAtSubmission (runtime.reactiveApplication leaks)
         (runtime.submissionDependencyCondition leaks)
         ⟨(who, execution.network.nextSerial who), material.packet⟩ := by
   apply (runtime.reactiveApplication leaks).authorizedAtSubmission_submit
-    _ _ who memory material fresh
+    _ _ who material fresh
   intro target same predecessor member
   have equal : event = target := Option.some.inj (address.symm.trans same)
   subst target
@@ -99,15 +99,15 @@ theorem ready_submission_authorized_history (runtime : EventGraphRuntime graph)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
-      (some control)) (who : Player) (memory : ResponseMemory graph)
+      (some control)) (who : Player)
     (material : Submission graph) (event : graph.EventId)
     (address : material.packet.event? graph = some event)
     (ready : control.execution.application.publicView.EventReady event) :
     (control.execution.respond (runtime.reactiveApplication leaks) who
-      ⟨memory, some (.submit material)⟩).AuthorizedAtSubmission (runtime.reactiveApplication leaks)
+      ⟨some (.submit material)⟩).AuthorizedAtSubmission (runtime.reactiveApplication leaks)
         (runtime.submissionDependencyCondition leaks)
         ⟨(who, control.execution.network.nextSerial who), material.packet⟩ :=
-  runtime.ready_submission_authorized leaks control.execution who memory material event address
+  runtime.ready_submission_authorized leaks control.execution who material event address
     ready
     ((runtime.reactiveApplication leaks).submissionOrigin_next_none_history
       initial horizon scheduler control trace who)

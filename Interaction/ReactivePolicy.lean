@@ -23,12 +23,10 @@ def encodePolicy (policy : app.Policy) (info : app.Info) :
   | none => FinDist.pure ⟨none, rfl⟩
   | some (history, view) => (policy history view).map fun action => ⟨some action, rfl⟩
 
-variable [Inhabited app.Memory]
-
 def decodePolicy (policy : (info : app.Info) →
     FinDist {choice : Option app.Action // choice.isSome = info.isSome}) : app.Policy :=
   fun history view => (policy (some (history, view))).map
-    (fun selected => selected.1.getD ⟨default, none⟩)
+    (fun selected => selected.1.getD ⟨none⟩)
 
 theorem decode_encodePolicy (policy : app.Policy) :
     app.decodePolicy (app.encodePolicy policy) = policy := by

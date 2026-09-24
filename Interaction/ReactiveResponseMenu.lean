@@ -28,7 +28,7 @@ structure ResponseMenu where
 
 namespace ResponseMenu
 
-variable {app} (menu : app.ResponseMenu) [DecidableEq Principal] [Inhabited app.Memory]
+variable {app} (menu : app.ResponseMenu) [DecidableEq Principal]
 
 def available (state : app.ProtocolState) (who : Principal) : Set app.Action :=
   match state with

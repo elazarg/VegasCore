@@ -15,7 +15,7 @@ def Execution.ForeignLeaks (execution : app.Execution) : Prop :=
 
 theorem respond_foreignLeaks (execution : app.Execution) (who : Principal) (action : app.Action)
     (valid : execution.ForeignLeaks app) : (execution.respond app who action).ForeignLeaks app := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact valid
   | some transmission =>
@@ -62,8 +62,6 @@ theorem environment_foreignLeaks (execution next : app.Execution) (command : app
 def foreignLeaks : app.ProtocolState → Prop
   | none => True
   | some control => control.execution.ForeignLeaks app
-
-variable [Inhabited app.Memory]
 
 theorem transition_foreignLeaks (initial : FinDist app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before after : app.ProtocolState)

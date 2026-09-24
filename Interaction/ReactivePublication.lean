@@ -52,7 +52,7 @@ theorem includePending_network (execution : app.Execution) (id : MessageId Princ
 theorem pendingOrPublishedInvariant (scheduler : app.Scheduler) :
     app.ServiceInvariant scheduler (fun execution => execution.network.PendingOrPublished) where
   respond execution who action valid := by
-    rcases action with ⟨memory, transmission⟩
+    rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact valid
     | some transmission =>
@@ -83,7 +83,7 @@ theorem pendingOrPublishedInvariant (scheduler : app.Scheduler) :
 theorem publishedOnceInvariant (scheduler : app.Scheduler) (once : app.AtMostOnce scheduler) :
     app.ServiceInvariant scheduler (fun execution => execution.network.PublishedOnce) where
   respond execution who action valid := by
-    rcases action with ⟨memory, transmission⟩
+    rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact valid
     | some transmission =>
@@ -110,8 +110,6 @@ theorem publishedOnceInvariant (scheduler : app.Scheduler) (once : app.AtMostOnc
         obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
         obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
         exact valid
-
-variable [Inhabited app.Memory]
 
 theorem pendingOrPublished_history (scheduler : app.Scheduler)
     (initial : FinDist app.State) (horizon : Nat) {state : app.ProtocolState}

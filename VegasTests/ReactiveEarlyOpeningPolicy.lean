@@ -29,9 +29,11 @@ theorem prescribed_initial :
   have ready : ((activated initial).observe app ()).application.publicView.EventReady 0 := by
     decide
   have actor : graph.actor? 0 = some () := rfl
-  simp only [prescribedReactivePolicy, grant, reactiveAlreadySubmitted, List.any_nil,
+  rw [prescribedReactivePolicy_apply]
+  simp only [prescribedReactiveResponse, grant, reactiveAlreadySubmitted, List.any_nil,
     Bool.false_eq_true, ite_false, dite_true, ite_eq_left ready, dite_eq_left actor,
-    EventGraph.normalizePolicy, zeroPolicy, Fin.cases_zero, FinDist.map_pure]
+    EventGraph.normalizePolicy, zeroPolicy, Fin.cases_zero, FinDist.map_pure,
+    FinDist.bind_const]
 
 theorem first_inconsistent :
     ¬ (runtime.prescribedReactivePolicy leaks () zeroPolicy).Consistent
@@ -44,8 +46,23 @@ theorem first_inconsistent :
     ((activated initial).observe app ())).support at selected
   rw [prescribed_initial] at selected
   have same := FinDist.mem_support_pure.mp selected
-  have intention := congrArg (fun action : app.Action => action.memory.intention) same
-  cases intention
+  have sent := congrArg ReactiveApplication.Action.transmission same
+  have slot : reactiveFreshSlot ((activated initial).observe app ()).application = some 0 := by
+    unfold reactiveFreshSlot
+    split
+    · congr 1
+      exact (Nat.find_eq_zero _).mpr rfl
+    · rename_i impossible
+      exact False.elim (impossible ⟨0, rfl⟩)
+  change some (ReactiveApplication.Transmission.submit (app := app)
+      ⟨.commitment 0 ((), .prepared 0), some ⟨.int, 1⟩⟩) =
+    (reactiveFreshSlot ((activated initial).observe app ()).application).map _ at sent
+  rw [slot] at sent
+  have material := ReactiveApplication.Transmission.submit.inj (Option.some.inj sent)
+  have opening := congrArg Submission.opening material
+  have raw := Option.some.inj opening
+  have value := congrArg (fun raw : Raw simpleExpr => raw.as? .int) raw
+  cases value
 
 theorem inconsistent_of_first (history : List app.PlayerEntry)
     (retained : (afterFirst first).recall () <+: history) :
@@ -84,10 +101,11 @@ theorem compiled_first :
   have ready : ((activated contested).observe app ()).application.publicView.EventReady 0 := by
     decide
   have actor : graph.actor? 0 = some () := rfl
-  simp only [recoverReactivePolicy, grant, dite_true, ite_eq_left ready,
+  rw [recoverReactivePolicy_apply]
+  simp only [recoverReactiveResponse, grant, dite_true, ite_eq_left ready,
     dite_eq_left actor, EventGraph.normalizePolicy, zeroPolicy, Fin.cases_zero,
-    reactiveRecoveryLaw_pure, FinDist.map_pure]
-  change FinDist.pure (ReactiveApplication.Action.mk (app := app) _
+    reactiveRecoveryLaw_pure (graph := graph), FinDist.map_pure, FinDist.bind_const]
+  change FinDist.pure (ReactiveApplication.Action.mk (app := app)
     ((reactiveFreshSlot ((activated contested).observe app ()).application).map _)) = _
   rw [recovery_slot]
   rfl
@@ -115,9 +133,10 @@ theorem compiled_later (repair fresh : Bool) (possible : fresh = true → repair
     exact ((disclosed repair fresh).application.publicView_eventReady 1).mpr
       (disclosure_ready repair fresh possible)
   have actor : graph.actor? 1 = some () := rfl
-  simp only [recoverReactivePolicy, grant, dite_true, ite_eq_left ready,
-    dite_eq_left actor, EventGraph.normalizePolicy, zeroPolicy_resolve]
-  rw [runtime.reactiveRecoveryLaw_pure leaks _ 1 (true : graph.Action 1), FinDist.map_pure]
+  rw [recoverReactivePolicy_apply]
+  simp only [recoverReactiveResponse, grant, dite_true, ite_eq_left ready,
+    dite_eq_left actor, EventGraph.normalizePolicy, zeroPolicy_resolve,
+    reactiveRecoveryLaw_pure (graph := graph), FinDist.map_pure, FinDist.bind_const]
   congr 1
   have state : (granted repair fresh).application =
       { boundState repair fresh with serviceGrant := some 1 } :=

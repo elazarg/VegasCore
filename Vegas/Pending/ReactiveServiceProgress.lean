@@ -27,7 +27,7 @@ theorem reactive_respond_progress (runtime : EventGraphRuntime graph)
     (invariant : execution.application.Invariant inputs) :
     State.ServiceProgress inputs 0 execution.application
       (execution.respond (runtime.reactiveApplication leaks) who action).application := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact .refl invariant
   | some transmission =>

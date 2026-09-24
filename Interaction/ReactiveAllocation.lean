@@ -16,7 +16,7 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 theorem serialsBeforeNextInvariant (scheduler : app.Scheduler) :
     app.ServiceInvariant scheduler (fun execution => execution.network.SerialsBeforeNext) where
   respond execution who action valid := by
-    rcases action with ⟨memory, transmission⟩
+    rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact valid
     | some transmission =>
@@ -43,8 +43,6 @@ theorem serialsBeforeNextInvariant (scheduler : app.Scheduler) :
         obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
         obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
         exact valid
-
-variable [Inhabited app.Memory]
 
 theorem serialsBeforeNext_history (scheduler : app.Scheduler)
     (initial : FinDist app.State) (horizon : Nat) {state : app.ProtocolState}

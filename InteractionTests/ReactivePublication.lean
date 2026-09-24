@@ -14,7 +14,6 @@ private abbrev app : ReactiveApplication Bool where
   State := Bool
   Payload := Nat
   Submission := Nat
-  Memory := Unit
   EnvironmentCommand := Unit
   LocalObservation := Bool
   PublicObservation := Bool
@@ -28,7 +27,7 @@ private abbrev app : ReactiveApplication Bool where
 
 private def sent : app.Execution :=
   (ReactiveApplication.Execution.initial app false).respond app false
-    ⟨(), some (.submit 7)⟩
+    ⟨some (.submit 7)⟩
 
 private def rejected : app.Execution := sent.includePending app (false, 0)
 
@@ -39,7 +38,7 @@ theorem rejection_is_published :
 private def ready : app.Execution := { rejected with application := true }
 
 private def replayed : app.Execution :=
-  ready.respond app false ⟨(), some (.replay (false, 0))⟩
+  ready.respond app false ⟨some (.replay (false, 0))⟩
 
 /-- Rebroadcast is a legal transmission and still enters the pending pool. -/
 theorem rejected_replay_is_pending :
@@ -59,7 +58,7 @@ theorem rejected_replay_service_law :
   rfl
 
 private def retried : app.Execution :=
-  replayed.respond app false ⟨(), some (.submit 7)⟩
+  replayed.respond app false ⟨some (.submit 7)⟩
 
 /-- The payload can be identical; the retry receives a fresh identifier. -/
 theorem retry_is_fresh :

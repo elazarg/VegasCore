@@ -17,12 +17,10 @@ namespace Vegas.EventGraphRuntime
 
 open GameTheory GameTheory.Math.Probability Interaction
 
-variable {Player : Type} [DecidableEq Player]
+variable {Player : Type}
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem reactiveRecoveryLaw_regular_optimal (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (Payload graph))
-    (history : List (runtime.reactiveApplication leaks).PlayerEntry)
+theorem reactiveRecoveryLaw_regular_optimal (intentions : List (Option graph.Completion))
     (event : graph.EventId) (law : FinDist (graph.Action event))
     (selection : PendingChoice.RegularSelection (graph.Action event))
     {Outcome : Type} (continuation : graph.Action event → FinDist Outcome)
@@ -32,10 +30,10 @@ theorem reactiveRecoveryLaw_regular_optimal (runtime : EventGraphRuntime graph)
     (alternative : FinDist (Option (graph.Action event))) :
     ((selection.responseLaw alternative).bind continuation).expect utility ≤
       ((selection.responseLaw
-        ((runtime.reactiveRecoveryLaw leaks history event law).map some)).bind
+        ((reactiveRecoveryLaw intentions event law).map some)).bind
           continuation).expect utility :=
   selection.optimal_response_of_support law _ continuation utility optimal
-    (fun _ supported => runtime.reactiveRecoveryLaw_support leaks history event law _ supported)
+    (fun _ supported => reactiveRecoveryLaw_support intentions event law _ supported)
     alternative
 
 end Vegas.EventGraphRuntime

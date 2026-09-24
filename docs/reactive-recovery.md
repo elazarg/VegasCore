@@ -26,12 +26,20 @@ The compiler has three components in
 3. **Recovery.** After any unsupported earlier response, a ready owned grant
    permits another submission. Reuse the most recently remembered choice for
    that event which is supported by the current source decision law. If none
-   exists, sample that law. Record the choice and submit in the same action.
+   exists, sample that law. Retain the choice in private implementation state
+   and submit in the same response.
 
 This is one total, playerwise policy. The consistency check is private
 computation over existing recall. It introduces no source flag, runtime state
 field, preparation step, activation, or observation. An unsupported earlier
 response remains in recall; adding later responses does not erase it.
+
+Prescribed and recovery implementations keep source intentions internally.
+Their behavioral policies use the posterior over this state given actual own
+observations and semantic responses. No intention tag appears in game actions.
+The [implementation adapter](../Interaction/ReactiveImplementation.lean) proves
+whole-execution realization against arbitrary opponents and scheduling; it does
+not assert rationality of off-path recovery or consistency of equilibrium beliefs.
 
 A recovery submission uses a fresh commitment handle when binding. Earlier
 packets remain pending with their immutable meanings, and deadlines remain
@@ -49,8 +57,8 @@ A failed disclosure needs an additional distinction: intending to disclose
 can produce the same withholding packet as intending to withhold. The compiler
 restores that private intention only from a response whose emitted packet has
 an accepting receipt. It also checks that the remembered intention generates
-the recorded response at its recorded view. An arbitrary memory tag is not
-such a witness. If no matching response exists, reconstruction uses the actual
+the recorded response at its recorded view. A mismatched internal intention is
+not such a witness. If no matching response exists, reconstruction uses the actual
 graph completion.
 
 Receipt matching uses message identifiers, so competing submissions do not
@@ -66,6 +74,7 @@ invariants; these reconstruction rules alone are not that theorem.
 | Completing a policy preserves round execution laws from consistent recall | [`Policy.recover_runRounds`](../Interaction/ReactiveRecovery.lean) |
 | It preserves initialized canonical state laws at every fuel bound, including intermediate player states | [`Policy.recover_canonical_run`](../Interaction/ReactiveRecovery.lean) |
 | The graph compiler satisfies that equality playerwise | [`compileReactivePolicy_canonical_run`](../Vegas/Pending/ReactivePolicyFacts.lean) |
+| The actual compiler realizes its prescribed private implementation against arbitrary opponents and scheduling | [`compileReactivePolicy_realizes`](../Vegas/Pending/ReactivePolicyFacts.lean) |
 | Its initialized one-packet guarantee still holds against arbitrary opponents | [`canonical_reactivePacketIntegrity`](../Vegas/Pending/ReactivePacketIntegrity.lean) |
 | Recovery chooses only from the current source law's support and retains a still-supported recent choice | [`reactiveRecoveryLaw_support` and `reactiveRecoveryLaw_remembered`](../Vegas/Pending/ReactivePolicyFacts.lean) |
 | Recovery is locally optimal under the fixed inclusion-mixture and downstream-law premises | [`reactiveRecoveryLaw_optimal_response`](../Vegas/Pending/ReactivePolicyFacts.lean) |
@@ -96,7 +105,8 @@ correspondence must account for this distinction explicitly.
 wrong binding response followed by the compiler's recovery choice, and checks
 that ordinary supported choices are not resampled.
 [ReactiveRecovery.lean](../VegasTests/ReactiveRecovery.lean) checks accepted,
-rejected, competing, and forged disclosure intentions. These are operational
+rejected, competing, and mismatched internal disclosure intentions, and proves
+that the two failed-disclosure intentions give the same semantic action. These are operational
 and reconstruction tests; they do not certify proper native subgame roots.
 
 ## Remaining SPE obligations

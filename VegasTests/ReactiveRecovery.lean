@@ -7,7 +7,7 @@ import Vegas.Pending.ReactivePolicyFacts
 
 These tests concern recall reconstruction, not proper-root correspondence.
 The fixture has an unopenable input: both disclosure intentions emit a
-withholding packet, while private response memory distinguishes the choices.
+withholding packet, while internal compiler state distinguishes the choices.
 -/
 
 noncomputable section
@@ -63,45 +63,47 @@ private def response (disclose : Bool) : app.Action :=
 private def entry (serial : Nat) (disclose : Bool) : app.PlayerEntry :=
   ⟨initial.observe app (), response disclose, some ⟨((), serial), .withhold 0⟩⟩
 
+/-- The game contains a single semantic response for these two intentions. -/
+theorem failed_disclosure_same_action : response true = response false := rfl
+
 /-- A remembered failed disclosure is restored when its packet was accepted. -/
 theorem accepted_intention :
-    runtime.reactiveOriginal leaks () [entry 0 true] [(((), 0), true)] ⟨0, false⟩ =
+    runtime.reactiveOriginal leaks () [entry 0 true] [some ⟨0, true⟩] [(((), 0), true)] ⟨0, false⟩ =
       ⟨0, true⟩ := by
   simp [reactiveOriginal, nodeView, entry, response, reactiveDecision, Payload.event?]
 
 /-- Sending an intention is insufficient: pending and rejected packets do
 not override the actual graph completion. -/
 theorem unaccepted_intention :
-    runtime.reactiveOriginal leaks () [entry 0 true] [(((), 0), false)] ⟨0, false⟩ =
+    runtime.reactiveOriginal leaks () [entry 0 true] [some ⟨0, true⟩]
+      [(((), 0), false)] ⟨0, false⟩ =
       ⟨0, false⟩ := by
   simp [reactiveOriginal, nodeView]
 
 /-- With competing submissions, the accepted identifier determines recall. -/
 theorem competing_intentions :
     runtime.reactiveOriginal leaks () [entry 0 true, entry 1 false]
-      [(((), 1), true)] ⟨0, false⟩ = ⟨0, false⟩ := by
+      [some ⟨0, true⟩, some ⟨0, false⟩] [(((), 1), true)] ⟨0, false⟩ = ⟨0, false⟩ := by
   simp [reactiveOriginal, nodeView, entry, response, reactiveDecision, Payload.event?]
 
 private def openable : app.Execution :=
   ReactiveApplication.Execution.initial app
     (State.initial (graph := graph) (fun _ => .success true))
 
-/-- With an openable input, a player may withhold while storing a false claim
-that it intended to disclose. An accepted withholding packet does not validate
-that tag: the claimed intention would have generated an opening instead. -/
-theorem forged_intention :
+/-- With an openable input, a stale internal intention cannot explain an
+accepted withholding packet: the claimed intention would have generated an opening instead. -/
+theorem mismatched_intention :
     let forged : app.PlayerEntry :=
       ⟨openable.observe app (),
-        ⟨⟨some ⟨0, true⟩, []⟩, some (.submit ⟨.withhold 0, none⟩)⟩,
+        ⟨some (.submit ⟨.withhold 0, none⟩)⟩,
         some ⟨((), 0), .withhold 0⟩⟩
-    runtime.reactiveOriginal leaks () [forged] [(((), 0), true)] ⟨0, false⟩ =
+    runtime.reactiveOriginal leaks () [forged] [some ⟨0, true⟩] [(((), 0), true)] ⟨0, false⟩ =
       ⟨0, false⟩ := by
   have expected : runtime.reactiveDecision leaks () 0 true
       (openable.observe app ()).application = ReactiveApplication.Action.mk (app := app)
-        ⟨some ⟨0, true⟩, []⟩
         (some (.submit ⟨.opening 0 ((), .initial 0) ⟨.bool, true⟩, none⟩)) := rfl
   have different : (ReactiveApplication.Action.mk (app := app)
-      ⟨some ⟨0, true⟩, []⟩ (some (.submit ⟨.withhold 0, none⟩))) ≠
+      (some (.submit ⟨.withhold 0, none⟩))) ≠
         runtime.reactiveDecision leaks () 0 true (openable.observe app ()).application := by
     rw [expected]
     intro same

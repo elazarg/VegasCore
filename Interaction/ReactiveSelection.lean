@@ -39,9 +39,9 @@ theorem prioritySelection_replay
     (priorities : FinDist (LinearOrder (MessageId Principal)))
     (eligible : Message Principal app.Payload → Bool) (execution : app.Execution)
     (retained : execution.network.PendingOrPublished) (who : Principal)
-    (memory : app.Memory) (id : MessageId Principal) :
+    (id : MessageId Principal) :
     app.prioritySelection priorities eligible
-        (execution.respond app who ⟨memory, some (.replay id)⟩) =
+        (execution.respond app who ⟨some (.replay id)⟩) =
       app.prioritySelection priorities eligible execution := by
   unfold prioritySelection MessageNetwork.priorityPending
   exact congrArg (GameTheory.Math.Probability.PriorityChoice.law priorities)
@@ -61,13 +61,13 @@ theorem prioritySelection_response_eq
           (MessageNetwork.eligibleIds (execution.network.unpublished eligible)
             execution.network.pending))
       else app.prioritySelection priorities eligible execution := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
   | some transmission =>
       cases transmission with
       | replay id =>
-          exact app.prioritySelection_replay priorities eligible execution retained who memory id
+          exact app.prioritySelection_replay priorities eligible execution retained who id
       | submit submission =>
           change MessageNetwork.priorityPending priorities (execution.network.unpublished eligible)
             (execution.network.pending ++ [_]) = _
@@ -78,7 +78,7 @@ theorem prioritySelection_response_eq
             prioritySelection, MessageNetwork.priorityPending]
 
 /-- The possible promoted identifier depends on the sender and existing
-serial counter, independently of the response's payload or private memory. -/
+serial counter, independently of the response's payload. -/
 theorem prioritySelection_response_regular
     (priorities : FinDist (LinearOrder (MessageId Principal)))
     (eligible : Message Principal app.Payload → Bool) (execution : app.Execution)
@@ -87,13 +87,13 @@ theorem prioritySelection_response_regular
     (app.prioritySelection priorities eligible execution).RegularAt
       (app.prioritySelection priorities eligible (execution.respond app who action))
       (some (who, execution.network.nextSerial who)) := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact FinDist.RegularAt.refl _ _
   | some transmission =>
       cases transmission with
       | replay id =>
-          rw [app.prioritySelection_replay priorities eligible execution retained who memory id]
+          rw [app.prioritySelection_replay priorities eligible execution retained who id]
           exact FinDist.RegularAt.refl _ _
       | submit submission =>
           change (MessageNetwork.priorityPending priorities
@@ -188,8 +188,6 @@ theorem prioritySelection_responses_factor {Value : Type*}
   intro action _
   exact app.prioritySelection_response_decoded priorities eligible execution retained serials
     who decode action (value action)
-
-variable [Inhabited app.Memory]
 
 theorem prioritySelection_history_regular
     (scheduler : app.Scheduler) (initial : FinDist app.State) (horizon : Nat)

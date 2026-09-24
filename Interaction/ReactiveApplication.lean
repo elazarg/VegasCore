@@ -6,7 +6,8 @@ import GameTheory.Math.Probability.FinDist
 /-! # One optional transmission per player activation
 
 An application supplies atomic submission and inclusion semantics. A player's
-choice retains private memory and may submit or replay one envelope. Only the
+response may submit or replay one envelope. Implementation memory is private
+state of the strategy, not a field of the response or game history. Only the
 public envelope and broadcaster enter the network input history. The scheduler
 can activate a player again after observing that output.
 Before a response, the separate observation rule privately samples pending
@@ -22,7 +23,6 @@ structure ReactiveApplication (Principal : Type) where
   State : Type
   Payload : Type
   Submission : Type
-  Memory : Type
   EnvironmentCommand : Type
   LocalObservation : Type
   PublicObservation : Type
@@ -43,7 +43,6 @@ inductive Transmission where
   | replay (id : MessageId Principal)
 
 structure Action where
-  memory : app.Memory
   transmission : Option app.Transmission
 
 structure PlayerView where

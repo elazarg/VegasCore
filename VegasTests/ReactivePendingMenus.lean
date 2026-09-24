@@ -76,12 +76,11 @@ theorem activation (execution : app.Execution) :
 theorem contested_isSubgameRoot : model.IsSubgameRoot (secondHistory first second) :=
   responsePrefix.secondHistory_isSubgameRoot first second
 
-
 def afterAction (action : app.Action) : app.Execution :=
   (activated contested).respond app () action
 
 /-- The application-level inclusion calculation is shared with the two-value
-fixture. This projection discards private memory, which has no application effect. -/
+fixture. The command-service projection uses empty auxiliary memory. -/
 def projectedAction (action : app.Action) : PlayerAction graph where
   memory := []
   transmission := action.transmission.map fun transmission => match transmission with
@@ -91,7 +90,7 @@ def projectedAction (action : app.Action) : PlayerAction graph where
 private theorem afterAction_application (action : app.Action) :
     (afterAction action).application =
       (PendingMenus.afterAction (projectedAction action)).native.application := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
   | some transmission => cases transmission <;> rfl
@@ -99,7 +98,7 @@ private theorem afterAction_application (action : app.Action) :
 private theorem afterAction_pending (action : app.Action) :
     (afterAction action).network.pending =
       (PendingMenus.afterAction (projectedAction action)).native.pool.pending := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
   | some transmission =>

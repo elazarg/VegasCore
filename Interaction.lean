@@ -23,8 +23,6 @@ import Interaction.ReactiveResponseMenu
 import Interaction.ReactiveResponseEmbedding
 import Interaction.ReactiveReplayMenu
 import Interaction.ReactiveFiniteAssessment
-import Interaction.ReactiveMemory
-import Interaction.ReactiveMemorySubgames
 import Interaction.ReactiveAuthorization
 import Interaction.ReactiveSubmissionAudit
 import Interaction.ReactiveAuthorizedService
@@ -32,7 +30,6 @@ import Interaction.ReactiveUniformService
 import Interaction.ReactiveUniformResponse
 import Interaction.ReactiveRecallInvariant
 import Interaction.ReactiveSubgamePrefix
-import Interaction.ReactiveSequential
 import Interaction.ReactiveObservation
 import Interaction.ReactiveKnowledge
 import Interaction.MessageNetworkInvariant
@@ -52,3 +49,4 @@ import Interaction.ReactiveRounds
 import Interaction.ReactiveInvariant
 import Interaction.ReactivePolicyInvariant
 import Interaction.ReactiveRecovery
+import Interaction.ReactiveImplementation

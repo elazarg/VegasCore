@@ -19,11 +19,10 @@ def third {α : Type*} (first rest : FinDist α) : FinDist α :=
   FinDist.mix (1 / 3) (by norm_num) (by norm_num) first rest
 
 def bindingAction : app.Action :=
-  ⟨⟨some ⟨0, .success 0⟩, []⟩,
-    some (.submit ⟨.commitment 0 ((), .prepared 1), some ⟨.int, 0⟩⟩)⟩
+  ⟨some (.submit ⟨.commitment 0 ((), .prepared 1), some ⟨.int, 0⟩⟩)⟩
 
 def earlyOpening : app.Action :=
-  ⟨default, some (.submit ⟨.opening 1 ((), .prepared 0) ⟨.int, 1⟩, none⟩)⟩
+  ⟨some (.submit ⟨.opening 1 ((), .prepared 0) ⟨.int, 1⟩, none⟩)⟩
 
 def firstResponse (repair : Bool) : app.Action := if repair then bindingAction else earlyOpening
 
@@ -46,7 +45,7 @@ def granted (repair fresh : Bool) : app.Execution :=
       [⟨before.observeEnvironment app, .application (.grant 1)⟩] }
 
 def finalOpening (fresh : Bool) : app.Action :=
-  ⟨⟨some ⟨1, true⟩, []⟩, some (.submit
+  ⟨some (.submit
     ⟨.opening 1 ((), .prepared (if fresh then 1 else 0)) ⟨.int, if fresh then 0 else 1⟩, none⟩)⟩
 
 def disclosed (repair fresh : Bool) : app.Execution :=

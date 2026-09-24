@@ -9,12 +9,13 @@ response laws are checked. Completion and the full SPE theorem remain open. The
 [obstruction inventory](spe-obstructions.md) records the negative results that
 motivate each component.
 
-Before assembling the multiplayer continuation theorem, address the
-[private-memory representation issue](private-memory-and-subgames.md).
-Arbitrary scratch values in canonical response histories suppress proper
-subgames containing foreign decisions, independently of this service contract.
-The service's existing authorization and selection results retain their scopes;
-they do not establish that raw canonical SPE has the intended coverage.
+Reactive actions omit auxiliary memory; stateful strategies use the checked
+[private implementation realization](private-memory-and-subgames.md).
+Genuine private information still limits the coverage of proper subgames. The
+credibility target is specified by the
+[sequential-equilibrium design](sequential-equilibrium-design.md). The service's
+authorization and selection results remain ingredients, with no established
+implication for consistent off-path beliefs or sequential rationality.
 
 Fix the source interface, playerwise compiler, runtime, observation rule, and
 service before choosing analysis utilities. The intended theorem preserves
@@ -57,14 +58,14 @@ The checked facts are:
   initialized history.
 - Once an origin exists, it is unchanged along every legal continuation.
 - A condition evaluated at that origin is consequently immutable for the
-  envelope. Later dependency completion, replay, or private memory updates do
+  envelope. Later dependency completion or replay does
   not renew authorization.
 - Under the acceptance contract, a packet unauthorized at its origin cannot
   later have a successful application effect.
 
 The Vegas condition checks the event address and the public completion
 identities in that original view. It is independent of hidden binding values,
-opening contents, and private memory. A new submission after readiness obtains
+opening contents, and private implementation state. A new submission after readiness obtains
 authorization; it uses a fresh identifier. These facts are in
 [the event adapter](../Vegas/Pending/ReactiveAuthorization.lean).
 

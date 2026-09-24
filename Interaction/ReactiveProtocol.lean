@@ -41,15 +41,13 @@ def rank (horizon : Nat) : app.ProtocolState → Nat
   | none => 2 * horizon + 1
   | some control => 2 * control.remaining + if control.actor.isSome then 1 else 0
 
-variable [Inhabited app.Memory]
-
 def transition (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     app.ProtocolState → (Principal → Option app.Action) → FinDist app.ProtocolState
   | none, _ => initial.map fun state => some ⟨horizon, none, Execution.initial app state⟩
   | some control, joint => match control.actor with
     | some who => FinDist.pure (some { control with
         actor := none
-        execution := control.execution.respond app who ((joint who).getD ⟨default, none⟩) })
+        execution := control.execution.respond app who ((joint who).getD ⟨none⟩) })
     | none => match control.remaining with
       | 0 => FinDist.pure (some control)
       | remaining + 1 =>
@@ -68,7 +66,7 @@ def protocol (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Sche
   terminal := app.terminal
   step state joint := app.transition initial horizon scheduler state joint.1
   progress state _ := by
-    refine ⟨fun who => if app.actor state = some who then some ⟨default, none⟩ else none, ?_⟩
+    refine ⟨fun who => if app.actor state = some who then some ⟨none⟩ else none, ?_⟩
     intro who
     by_cases active : app.actor state = some who <;> simp [active]
 
@@ -80,7 +78,6 @@ def observe (who : Principal) (state : app.ProtocolState) : app.Info :=
   | some control => if control.actor = some who then
       some (control.execution.recall who, control.execution.observe app who) else none
 
-omit [Inhabited app.Memory] in
 theorem observe_isSome (who : Principal) (state : app.ProtocolState) :
     (app.observe who state).isSome ↔ app.actor state = some who := by
   cases state with
@@ -119,7 +116,7 @@ def information (initial : FinDist app.State) (horizon : Nat) (scheduler : app.S
     cases observed : app.observe who state <;> cases choice <;>
       simp_all [LegalOption, protocol]
 
-omit [DecidableEq Principal] [Inhabited app.Memory] in
+omit [DecidableEq Principal] in
 theorem rank_zero (horizon : Nat) (state : app.ProtocolState) :
     app.rank horizon state = 0 ↔ app.terminal state := by
   cases state with

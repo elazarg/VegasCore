@@ -26,7 +26,7 @@ def Execution.InputRecall (execution : app.Execution) : Prop := ∀ who,
 theorem respond_recall_mono (execution : app.Execution) (who observer : Principal)
     (action : app.Action) :
     execution.recall observer ⊆ (execution.respond app who action).recall observer := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none =>
       by_cases same : observer = who
@@ -67,7 +67,7 @@ theorem environmentStep_recall (execution next : app.Execution) (command : app.C
 theorem respond_recall_other (execution : app.Execution) (who observer : Principal)
     (different : observer ≠ who) (action : app.Action) :
     (execution.respond app who action).recall observer = execution.recall observer := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => simp only [Execution.respond, ite_eq_right different]
   | some transmission =>
@@ -80,7 +80,7 @@ theorem respond_inputRecall (execution : app.Execution) (who : Principal) (actio
     (valid : execution.InputRecall app) : (execution.respond app who action).InputRecall app := by
   intro observer
   have earlier := valid observer
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none =>
       by_cases same : observer = who
@@ -144,8 +144,6 @@ theorem known_from_recall (execution : app.Execution) (who : Principal)
 def inputRecall : app.ProtocolState → Prop
   | none => True
   | some control => control.execution.InputRecall app
-
-variable [Inhabited app.Memory]
 
 theorem transition_inputRecall (initial : FinDist app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before after : app.ProtocolState)

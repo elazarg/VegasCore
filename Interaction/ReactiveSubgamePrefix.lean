@@ -31,7 +31,7 @@ structure TwoResponsePrefix (app : ReactiveApplication Unit) where
 
 namespace TwoResponsePrefix
 
-variable {app : ReactiveApplication Unit} [Inhabited app.Memory] (stem : app.TwoResponsePrefix)
+variable {app : ReactiveApplication Unit} (stem : app.TwoResponsePrefix)
 
 abbrev arena := app.protocol (FinDist.pure stem.initialState) (stem.remaining + 2)
   stem.scheduler
@@ -78,7 +78,6 @@ private def firstHistory (action : app.Action) : stem.arena.History :=
       fun who => by cases who; exact ⟨rfl, Set.mem_univ _⟩⟩
     (some ⟨(stem.remaining + 1), none, stem.afterFirst action⟩) rfl
 
-omit [Inhabited app.Memory] in
 private theorem afterFirst_environment (action : app.Action) :
     (stem.afterFirst action).environmentRecall = (stem.activated stem.initial).environmentRecall :=
   app.respond_environmentRecall (stem.activated stem.initial) () action
@@ -175,12 +174,10 @@ private theorem classified :
 private def actionRecall (control : app.Control) : List app.Action :=
   (control.execution.recall ()).map ReactiveApplication.PlayerEntry.action
 
-omit [Inhabited app.Memory] in
 private theorem first_actions (action : app.Action) :
     ((stem.afterFirst action).recall ()).map ReactiveApplication.PlayerEntry.action = [action] :=
   app.respond_actions (stem.activated stem.initial) () action
 
-omit [Inhabited app.Memory] in
 private theorem second_actions (one two : app.Action) :
     ((stem.afterSecond one two).recall ()).map ReactiveApplication.PlayerEntry.action =
       [one, two] := by

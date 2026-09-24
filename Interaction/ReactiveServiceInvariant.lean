@@ -32,8 +32,6 @@ def serviceInvariant (predicate : app.Execution → Prop) : app.ProtocolState �
   | none => True
   | some control => predicate control.execution
 
-variable [Inhabited app.Memory]
-
 theorem ServiceInvariant.transition (invariant : app.ServiceInvariant scheduler predicate)
     (initial : FinDist app.State) (horizon : Nat)
     (setup : ∀ state ∈ initial.support, predicate (Execution.initial app state))

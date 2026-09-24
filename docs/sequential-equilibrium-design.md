@@ -50,20 +50,19 @@ The source-to-native preservation theorem is open. The checked foundations are:
   finite menu under all known-envelope replays retains every base response and
   needs no numeric identifier cutoff. The
   [Vegas binding fixture](../VegasTests/ReactiveRuntime.lean) admits both Boolean
-  bindings, unopenable submissions and actual compiled first responses with
-  their private intention records, and has a consistent finite assessment.
-- [ReactiveSequential.lean](../Interaction/ReactiveSequential.lean) and its
-  [Vegas specialization](../Vegas/Pending/ReactiveSequential.lean): the current
-  arbitrary scratch-memory carrier prevents finite-support fully mixed play at
-  any decision site. This is a mismatch with the finite assessment interface,
-  not an impossibility theorem for sequential equilibrium in other models.
+  bindings, unopenable submissions and actual compiled first responses, and has
+  a consistent finite assessment.
+- [ReactiveImplementation.lean](../Interaction/ReactiveImplementation.lean):
+  private stateful implementations realize behavioral policies with the same
+  whole-execution laws against arbitrary opponents and scheduling. Reactive
+  actions have no scratch-memory field. The compiler's intentions are internal
+  implementation state; its actual completed policy realizes the prescribed
+  implementation, as proved in
+  [ReactivePolicyFacts.lean](../Vegas/Pending/ReactivePolicyFacts.lean).
 
-The production runtime still records auxiliary memory in actions. Removing that
-representation from the semantic game is a required redesign. Finite-menu
-instances are proof infrastructure and experiments; bounding their memory labels
-does not implement that redesign. They do not claim that excluded raw responses
-are irrelevant or that their equilibria transfer to the unrestricted runtime.
-The GameTheory submodule is unchanged.
+Finite-menu instances are proof infrastructure and experiments. They do not
+claim that excluded semantic responses are irrelevant or that their equilibria
+transfer to the unrestricted runtime. The GameTheory submodule is unchanged.
 
 ## What the existing definition provides
 
@@ -240,22 +239,21 @@ observations and semantic own-action recall. Private types and commitment
 meanings remain part of the game: changing them can change payoffs or which
 future openings succeed.
 
-Removing auxiliary memory is required independently of action finiteness. It
-also removes the artificial history distinctions responsible for the
-[memory/subgame obstruction](private-memory-and-subgames.md). The intended
-theorem is about this corrected semantic game; it need not preserve the
-equilibria of the memory-expanded presentation. In particular, retaining those
-equilibria would retain the missing continuation checks that motivated repair.
+Auxiliary memory is absent from reactive actions, independently of action
+finiteness. The [implementation boundary](private-memory-and-subgames.md)
+keeps private representation choices out of canonical game histories. Equilibrium
+preservation concerns this semantic game, not a game whose actions also encode
+private implementation states.
 
 The existing
 [PrivateStrategy.realize](../GameTheoryExtensions/Protocol/PrivateStrategy.lean)
-preserves external laws against adaptive environments. Instantiate this for
-stateful player implementations, including the compiler's remembered intentions,
-and prove playerwise execution and deviation correspondence. Define the compiled
-behavioral policy at off-path information sets and prove its sequential
-equilibrium guarantee there. External-law realization alone does not supply
-off-path beliefs or sequential rationality. Private implementation states should
-not become additional equilibrium decision sites in this construction.
+preserves external laws against adaptive environments. Its reactive counterpart
+proves playerwise execution correspondence for arbitrary stateful implementations,
+including the compiler's remembered intentions. The compiled behavioral policy
+is total at off-path information sets; its sequential equilibrium guarantee
+remains open. External-law realization alone does not supply consistent off-path
+beliefs or sequential rationality. Private implementation states are not
+additional equilibrium decision sites.
 
 This repair makes ordinary SPE meaningful where proper subgames exist; it does
 not make SPE sufficient for the desired credibility guarantee under genuine
@@ -267,10 +265,9 @@ inferior off-path response that no sequentially rational assessment permits.
 
 `FinDist` has finite support. The `FullSupport.finite` theorem proves that a
 fully supported such law requires a finite carrier. A finite horizon does not
-make the current action menu finite: `ResponseMemory.privateData` alone can
-store any natural number. That field must be removed, not assigned a smaller
-bound. Afterward, raw submissions and replay identifiers still require concrete
-encoding rules or a proved behavioral abstraction.
+make the raw action menu finite: submissions still admit unbounded raw values
+and identifiers. Concrete encoding rules or a proved behavioral abstraction
+remain necessary. Private implementation memory is outside this menu.
 
 The recommended first theorem is a **family of explicitly finite runtime
 instances**, with finite wire alphabets, finite semantic value domains where
@@ -280,7 +277,7 @@ Do not equate bounded payload sizes with bounded local computation.
 
 | Approach | Benefit | Obligation or cost | Decision |
 |---|---|---|---|
-| Finite runtime instances | Reuses the existing standard definition | Remove scratch-memory actions; explicit domain/encoding bounds; all legal messages within each bound remain available | First compiler theorem target |
+| Finite runtime instances | Reuses the existing standard definition | Explicit domain/encoding bounds; all legal messages within each bound remain available | First compiler theorem target |
 | Finite semantic quotient of raw runtime | Can cover an unbounded representation | Prove information, deviations, beliefs and tremble lifting, not only initialized outcomes | Optional optimization after a concrete quotient is justified |
 | Countable or general distribution model | Retains genuinely infinite menus | New probability/conditioning and consistency theory; hypotheses depend on the chosen generalization | Separate research task if finiteness is unacceptable |
 | Full mixing only over compiler outputs | Simplifies perturbations | Omits genuine target deviations | Reject |
@@ -304,6 +301,27 @@ between two clock ticks. The reactive protocol already assumes a scheduler
 horizon, whose `bounded` theorem limits transition count; connecting that bound
 to backend progress is a separate engineering obligation. Waiting must consume
 the actual service opportunities. No local computation cost is needed.
+
+**This is a substantive restriction on the environment.** A fixed finite horizon
+limits every scheduler decision, including activations, rejected inclusions,
+application operations and waits. It therefore also limits opportunities to
+observe pending traffic and react to it. Finite transaction encodings, block gas
+limits and contract timeouts do not by themselves justify this restriction on
+the surrounding network. The theorem concerns executions within an explicitly
+bounded interaction model, not all realistic blockchain executions before a
+deadline.
+
+A backend may justify a particular bound through an admission/rate policy and
+an explicit time-progress contract. Those are additional assumptions requiring
+their own justification. Truncating a longer interaction changes the game and
+can change its continuation incentives; it is not a harmless evaluation setting.
+The protocol's scheduler horizon is distinct from the proof runner's fuel:
+increasing sufficient evaluation fuel must leave behavior unchanged, whereas
+increasing the horizon gives the service further opportunities. Neither a
+uniform theorem for the unbounded interaction model nor convergence of bounded
+equilibria to an unbounded-game equilibrium is established. An eventual
+unbounded treatment would need additional probability and equilibrium theory,
+or a proved abstraction preserving the relevant observations and deviations.
 
 The checked finite-history theorem uses finite response menus, finitely many
 players, finite-support chance laws and a certified horizon. Concrete wire bounds
@@ -351,8 +369,8 @@ vanishes. Each approximant gets its actual Bayes beliefs. The construction
 does not establish that those beliefs converge to beliefs that preserve source
 incentives; this is precisely the remaining off-path analysis.
 
-`withKnownReplays` adds every replayable envelope to a base menu, for each
-memory value offered there. The known envelopes are reconstructed from own
+`withKnownReplays` adds every replayable envelope to a base menu.
+The known envelopes are reconstructed from own
 output recall, passive leaks and the ledger. The native `InputRecall` invariant
 proves this is the network's replay-eligibility list. The extended menu remains
 finite even with unbounded numeric identifiers, and every base response remains
@@ -361,14 +379,13 @@ waiting: the base menu can include them, and their distinct recall is retained.
 
 The binding fixture is an explicit experimental instance, **not the proposed
 complete backend action menu**. It includes both Boolean values and an
-unopenable submission at a fixed candidate, the compiler's fresh decision with
-its intention record, silence, and known replays. Every possible first compiled
+unopenable submission at a fixed candidate, the compiler's fresh decision,
+silence, and known replays. Every possible first compiled
 Boolean response is proved available. Coverage of arbitrary later compiled
-recovery, other raw packets and auxiliary memory values is not established.
+recovery and other raw packets is not established.
 
-Before a finite-menu compiler theorem can describe the intended backend, remove
-auxiliary memory from semantic actions and adapt the compiler. Then justify every
-omitted semantic response by a concrete encoding rule that makes it unavailable,
+Before a finite-menu compiler theorem can describe the intended backend, justify
+every omitted semantic response by a concrete encoding rule that makes it unavailable,
 or by a proved replacement preserving continuation information, incentives and
 consistent beliefs. This requirement concerns actual behavior, not the choice of
 private memory representation. The adapter alone supplies neither justification.
@@ -404,15 +421,15 @@ has no proved implication for conditional continuation incentives or beliefs.
 1. **Definition regression (checked):** SPE/credibility separation, positive
    sequential-equilibrium assessments with genuinely off-path beliefs and an
    explicit common consistency witness, and the abstract disclosure impossibility.
-2. **Semantic presentation:** remove auxiliary memory from game actions and
-   realize the stateful compiler as a behavioral policy. Preserve binding,
-   private types, passive partial foreign leaks, repeated responses and
-   at-most-once inclusion. Instantiate finite wire bounds and a service horizon,
+2. **Semantic presentation:** reactive actions omit auxiliary memory and the
+   stateful compiler's behavioral realization is checked. Binding, private types,
+   passive partial foreign leaks, repeated responses and at-most-once inclusion
+   remain available. Instantiate finite wire bounds and a service horizon,
    including all admitted malformed traffic. Nonterminal fibers and decision
    antichains are checked for the existing reactive adapter. Explicit finite-menu
    instances, exact history embedding, continuation laws, replay coverage and a
-   native binding fixture are checked. The production memory refactor and a
-   backend-complete menu remain open.
+   native binding fixture are checked. Auditing other ineffective action
+   distinctions and supplying a backend-complete menu remain open.
 3. **Belief construction:** identity translation, a redundant private-bit
    extension, and a message encoding with target-only errors. Prove one common
    tremble sequence and posterior convergence; include an incompatible-beliefs

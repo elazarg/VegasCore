@@ -39,7 +39,7 @@ theorem respond_provenance (execution : app.Execution) (who : Principal) (action
   have prior : execution.network.Satisfies ((execution.respond app who action).Issued app) :=
     valid.mono fun _ issued => Issued.mono app
       (fun observer => app.respond_recall_mono execution who observer action) issued
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact prior
   | some transmission =>
@@ -47,7 +47,7 @@ theorem respond_provenance (execution : app.Execution) (who : Principal) (action
       | replay id => exact prior.replay who id
       | submit material =>
           apply prior.submit who (app.packet material)
-          refine ⟨⟨execution.observe app who, ⟨memory, some (.submit material)⟩,
+          refine ⟨⟨execution.observe app who, ⟨some (.submit material)⟩,
             some ⟨(who, execution.network.nextSerial who), app.packet material⟩⟩, ?_,
             material, rfl, rfl, rfl⟩
           simp only [Execution.respond, Message.sender, MessageNetwork.submit, ↓reduceIte]
@@ -84,8 +84,6 @@ theorem environment_provenance (execution next : app.Execution) (command : app.C
 def provenance : app.ProtocolState → Prop
   | none => True
   | some control => control.execution.Provenance app
-
-variable [Inhabited app.Memory]
 
 theorem transition_provenance (initial : FinDist app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before after : app.ProtocolState)

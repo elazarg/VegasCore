@@ -54,20 +54,20 @@ private def submitted (bit : Bool) : app.Execution :=
   initial.respond app false (runtime.reactiveBinding leaks false 0 .bool (.success bit) 0)
 
 /-- An explicit finite instance for this binding experiment. It includes
-silence, either Boolean meaning, unopenable candidates, compiled decisions with
-their intention records, and every known replay. Other raw responses remain
+silence, either Boolean meaning, unopenable candidates, compiled decisions,
+and every known replay. Other raw responses remain
 outside this test instance; no equivalence to the full response space is claimed. -/
 private def bindingMenu : app.ResponseMenu := by
   classical
   exact ReactiveApplication.ResponseMenu.withKnownReplays {
     actions := fun who _ view =>
-      {⟨default, none⟩, runtime.reactiveBinding leaks who 0 .bool (.success false) 0,
+      {⟨none⟩, runtime.reactiveBinding leaks who 0 .bool (.success false) 0,
         runtime.reactiveBinding leaks who 0 .bool (.success true) 0,
         runtime.reactiveBinding leaks who 0 .bool .failure 0,
         runtime.reactiveDecision leaks who 0 (.success false) view.application,
         runtime.reactiveDecision leaks who 0 (.success true) view.application,
         runtime.reactiveDecision leaks who 0 .failure view.application}
-    nonempty := fun _ _ _ => ⟨⟨default, none⟩, by simp⟩ }
+    nonempty := fun _ _ _ => ⟨⟨none⟩, by simp⟩ }
 
 theorem finite_binding_histories (horizon : Nat) (scheduler : app.Scheduler) :
     Finite (bindingMenu.protocol (FinDist.pure initial.application) horizon scheduler).History :=
@@ -97,12 +97,10 @@ there is no extra numeric envelope-identifier bound. -/
 theorem binding_menu_known_replay (execution : app.Execution) (who : Bool)
     (valid : execution.InputRecall app) (message : Message Bool app.Payload)
     (known : message ∈ execution.network.known who) :
-    (⟨default, some (.replay message.id)⟩ : app.Action) ∈
+    (⟨some (.replay message.id)⟩ : app.Action) ∈
       bindingMenu.actions who (execution.recall who) (execution.observe app who) := by
   classical
-  apply ReactiveApplication.ResponseMenu.native_replay_available _ execution who valid
-    ⟨default, none⟩ _ message known
-  simp
+  exact ReactiveApplication.ResponseMenu.native_replay_available _ execution who valid message known
 
 /-- The actual commitment adapter admits the canonical finite assessment.
 This asserts consistency; no source compilation or nonzero-utility optimality
@@ -160,14 +158,15 @@ theorem compiler_samples_on_activation (law : FinDist Bool) :
         (granted.observe app false).application) := by
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ .nil]
   have actor : graph.actor? 0 = some false := rfl
-  simp [prescribedReactivePolicy, reactiveAlreadySubmitted, granted, initial,
+  rw [prescribedReactivePolicy_apply]
+  simp [prescribedReactiveResponse, reactiveAlreadySubmitted, granted, initial,
     ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
     app, reactiveApplication, State.publicView, PublicView.EventReady, State.initial,
     EventGraph.Config.initial, EventGraph.normalizePolicy, chooseBit,
     FinDist.map_comp, Function.comp_def, actor]
 
-/-- The finite instance admits every possible compiled first response, including
-its private intention record, for every source distribution on Boolean values. -/
+/-- The finite instance admits every possible compiled first response, for
+every source distribution on Boolean values. -/
 theorem compiled_first_response_available (law : FinDist Bool) (action : app.Action)
     (supported : action ∈ (runtime.compileReactivePolicy leaks false (chooseBit law)
       [] (granted.observe app false)).support) :
@@ -192,24 +191,21 @@ private def firstResponse (bit : Bool) : app.Execution :=
   granted.respond app false (firstAction bit)
 
 private theorem first_action (bit : Bool) : firstAction bit =
-    ⟨⟨some ⟨0, .success bit⟩, []⟩,
-      some (.submit ⟨.commitment 0 candidate, some ⟨.bool, bit⟩⟩)⟩ := by
-  change ReactiveApplication.Action.mk (app := app) _
+    ⟨some (.submit ⟨.commitment 0 candidate, some ⟨.bool, bit⟩⟩)⟩ := by
+  change ReactiveApplication.Action.mk (app := app)
     ((reactiveFreshSlot (granted.observe app false).application).map _) = _
   rw [first_slot]
   rfl
 
-/-- The compiled action preserves the sampled intention privately and emits
-one binding packet, with no application scratch-table writes. -/
-theorem compiler_sends_and_remembers (bit : Bool) :
+/-- The compiled action fixes the sampled meaning and emits one binding packet,
+with no application scratch-table writes or response-memory field. -/
+theorem compiler_sends_and_binds (bit : Bool) :
     (firstResponse bit).application.bindingResult candidate .bool = .success bit ∧
       (firstResponse bit).network.pending = [⟨(false, 0), .commitment 0 candidate⟩] ∧
-      ((firstResponse bit).recall false).map (fun entry => entry.action.memory.intention) =
-        [some ⟨0, .success bit⟩] ∧
       (firstResponse bit).application.remembered 0 = none := by
   unfold firstResponse
   rw [first_action]
-  cases bit <;> exact ⟨rfl, rfl, rfl, rfl⟩
+  cases bit <;> exact ⟨rfl, rfl, rfl⟩
 
 private theorem first_consistent (bit : Bool) (law : FinDist Bool)
     (supported : bit ∈ law.support) :
@@ -230,7 +226,7 @@ a competing commitment. Unsupported earlier choices instead trigger recovery. -/
 theorem compiler_does_not_resample (bit : Bool) (law : FinDist Bool)
     (supported : bit ∈ law.support) :
     runtime.compileReactivePolicy leaks false (chooseBit law) ((firstResponse bit).recall false)
-      ((firstResponse bit).observe app false) = FinDist.pure ⟨default, none⟩ := by
+      ((firstResponse bit).observe app false) = FinDist.pure ⟨none⟩ := by
   have sent : runtime.reactiveAlreadySubmitted leaks ((firstResponse bit).recall false) 0
     = true := by
     unfold firstResponse
@@ -243,7 +239,9 @@ theorem compiler_does_not_resample (bit : Bool) (law : FinDist Bool)
     rfl
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _
     (first_consistent bit law supported)]
-  simp only [prescribedReactivePolicy, grant, sent, ↓reduceIte]
+  rw [prescribedReactivePolicy_apply]
+  simp only [prescribedReactiveResponse, grant, sent, ↓reduceIte, FinDist.map_pure,
+    FinDist.bind_const]
 
 private theorem wrong_response_inconsistent :
     ¬ (runtime.prescribedReactivePolicy leaks false (chooseBit (FinDist.pure true))).Consistent
@@ -264,9 +262,13 @@ private theorem wrong_response_inconsistent :
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ .nil] at law
   have same : firstAction false = firstAction true := by
     simpa only [law, FinDist.map_pure, FinDist.mem_support_pure, firstAction] using chosen.2
-  have intention := congrArg (fun action : app.Action => action.memory.intention) same
-  simp only [firstAction, reactiveDecision] at intention
-  cases intention
+  rw [first_action, first_action] at same
+  have sent := congrArg ReactiveApplication.Action.transmission same
+  have material := ReactiveApplication.Transmission.submit.inj (Option.some.inj sent)
+  have opening := congrArg Submission.opening material
+  have raw := Option.some.inj opening
+  have value := congrArg (fun raw : Raw simpleExpr => raw.as? .bool) raw
+  cases value
 
 /-- A wrong earlier binding does not suppress the desired submission. The
 source policy is deterministic here; the rejected cached choice is false. -/
@@ -278,7 +280,8 @@ theorem compiler_recovers_wrong_choice :
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq_recovery _ _ _ _
     wrong_response_inconsistent]
   have actor : graph.actor? 0 = some false := rfl
-  simp [recoverReactivePolicy, firstResponse, first_action, reactiveRecoveryLaw_pure,
+  rw [recoverReactivePolicy_apply]
+  simp [recoverReactiveResponse, firstResponse, first_action, reactiveRecoveryLaw_pure,
     granted, initial, ReactiveApplication.Execution.respond,
     ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
     app, reactiveApplication, State.publicView, PublicView.EventReady, State.initial,
@@ -289,6 +292,7 @@ theorem compiler_recovers_wrong_choice :
 submitted candidate remembered the opposite intention. -/
 theorem binding_recall_uses_completion :
     runtime.reactiveOriginal leaks false ((firstResponse false).recall false)
+      [some ⟨0, .success false⟩]
       [((false, 1), true)] ⟨0, .success true⟩ = ⟨0, .success true⟩ := rfl
 
 /-- Reserved service gives the owner one activation. Additional activations

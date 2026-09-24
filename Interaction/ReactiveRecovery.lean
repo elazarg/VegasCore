@@ -87,12 +87,12 @@ theorem Policy.recover_invariant (prescribed recovery : app.Policy) (who : Princ
     by_cases same : who = actor
     · subst actor
       rw [focal, prescribed.recover_eq recovery _ _ valid] at supported
-      rcases action with ⟨memory, transmission⟩
+      rcases action with ⟨transmission⟩
       cases transmission with
       | none =>
           simpa only [Execution.respond, ↓reduceIte] using
             Policy.Consistent.snoc (policy := prescribed)
-              ⟨execution.observe app who, ⟨memory, none⟩, none⟩ valid supported
+              ⟨execution.observe app who, ⟨none⟩, none⟩ valid supported
       | some transmission =>
           cases transmission <;> simp only [Execution.respond, ↓reduceIte] <;>
             exact .snoc _ valid supported
@@ -125,7 +125,7 @@ theorem PolicyInvariant.recover {players : Principal → app.Policy}
       consistent.environment execution next command valid.2 reached⟩
 
 /-- Policies that agree on an invariant set produce exactly the same round
-law there, including private memory, leaked messages, and scheduler recall. -/
+law there, including player recall, leaked messages, and scheduler recall. -/
 theorem PolicyInvariant.runRounds_congr {players : Principal → app.Policy}
     {predicate : app.Execution → Prop} (invariant : app.PolicyInvariant players predicate)
     (other : Principal → app.Policy)
@@ -179,8 +179,6 @@ theorem Policy.recover_runRounds (players : Principal → app.Policy) (who : Pri
     simpa only [Function.update_self] using
       (players who).recover_eq recovery _ _ consistent
   · simp only [Function.update_of_ne same]
-
-variable [Inhabited app.Memory]
 
 /-- Agreement on an execution invariant also preserves canonical state laws
 at intermediate scheduler and player states, for every fuel bound. -/

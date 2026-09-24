@@ -68,8 +68,6 @@ def executionInvariant (predicate : app.Execution → Prop) : app.ProtocolState 
   | none => True
   | some control => predicate control.execution
 
-variable [Inhabited app.Memory]
-
 theorem PolicyInvariant.controlStep (invariant : app.PolicyInvariant players predicate)
     (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (setup : ∀ state ∈ initial.support, predicate (Execution.initial app state))

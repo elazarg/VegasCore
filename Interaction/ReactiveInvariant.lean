@@ -13,7 +13,7 @@ open GameTheory.Math.Probability
 variable {Principal : Type} (app : ReactiveApplication Principal)
 
 /-- Local application obligations suffice for every player and scheduler.
-Passive observation, replay, and private memory do not change application state. -/
+Passive observation and replay do not change application state. -/
 structure Invariant (predicate : app.State → Prop) : Prop where
   submit : ∀ state who material, predicate state → predicate (app.submit state who material)
   handle : ∀ state message next, predicate state → app.handle state message = some next →
@@ -27,7 +27,7 @@ theorem Invariant.respond (invariant : app.Invariant predicate)
     (execution : app.Execution) (who : Principal) (action : app.Action)
     (valid : predicate execution.application) :
     predicate (execution.respond app who action).application := by
-  rcases action with ⟨memory, transmission⟩
+  rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact valid
   | some transmission =>
@@ -74,8 +74,6 @@ theorem Invariant.environmentStep (invariant : app.Invariant predicate)
 def stateInvariant (predicate : app.State → Prop) : app.ProtocolState → Prop
   | none => True
   | some control => predicate control.execution.application
-
-variable [Inhabited app.Memory]
 
 theorem Invariant.transition (invariant : app.Invariant predicate)
     (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)

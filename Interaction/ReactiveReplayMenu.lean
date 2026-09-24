@@ -21,19 +21,17 @@ def knownPackets (past : List app.PlayerEntry) (view : app.PlayerView) :
     List (Message Principal app.Payload) :=
   app.outputs past ++ view.messages.leaked ++ view.messages.ledger
 
-def replayActions (who : Principal) (past : List app.PlayerEntry) (view : app.PlayerView) :
+def replayActions (past : List app.PlayerEntry) (view : app.PlayerView) :
     Finset app.Action := by
   classical
-  exact (menu.actions who past view).biUnion fun action =>
-    ((knownPackets past view).map fun message =>
-      (⟨action.memory, some (.replay message.id)⟩ : app.Action)).toFinset
+  exact ((knownPackets past view).map fun message =>
+    (⟨some (.replay message.id)⟩ : app.Action)).toFinset
 
-/-- Close a menu under every replay currently supported by the player's knowledge,
-using each memory value already available in the supplied menu. -/
+/-- Close a menu under every replay currently supported by the player's knowledge. -/
 def withKnownReplays : app.ResponseMenu where
   actions who past view := by
     classical
-    exact menu.actions who past view ∪ menu.replayActions who past view
+    exact menu.actions who past view ∪ replayActions past view
   nonempty who past view := by
     classical
     exact (menu.nonempty who past view).mono Finset.subset_union_left
@@ -45,14 +43,12 @@ theorem base_available (who : Principal) (past : List app.PlayerEntry) (view : a
   exact Finset.mem_union_left _ member
 
 theorem known_replay_available (who : Principal) (past : List app.PlayerEntry)
-    (view : app.PlayerView) (action : app.Action) (member : action ∈ menu.actions who past view)
+    (view : app.PlayerView)
     (message : Message Principal app.Payload) (known : message ∈ knownPackets past view) :
-    (⟨action.memory, some (.replay message.id)⟩ : app.Action) ∈
+    (⟨some (.replay message.id)⟩ : app.Action) ∈
       menu.withKnownReplays.actions who past view := by
   classical
   apply Finset.mem_union_right
-  apply Finset.mem_biUnion.mpr
-  refine ⟨action, member, ?_⟩
   exact List.mem_toFinset.mpr (List.mem_map.mpr ⟨message, known, rfl⟩)
 
 variable [DecidableEq Principal]
@@ -60,12 +56,11 @@ variable [DecidableEq Principal]
 /-- On every execution satisfying native input recall, every replayable envelope
 is available in the finite menu, with no restriction on its identifier. -/
 theorem native_replay_available (execution : app.Execution) (who : Principal)
-    (valid : execution.InputRecall app) (action : app.Action)
-    (member : action ∈ menu.actions who (execution.recall who) (execution.observe app who))
+    (valid : execution.InputRecall app)
     (message : Message Principal app.Payload) (known : message ∈ execution.network.known who) :
-    (⟨action.memory, some (.replay message.id)⟩ : app.Action) ∈
+    (⟨some (.replay message.id)⟩ : app.Action) ∈
       menu.withKnownReplays.actions who (execution.recall who) (execution.observe app who) := by
-  apply menu.known_replay_available who _ _ action member message
+  apply menu.known_replay_available who _ _ message
   rw [app.known_from_recall execution who valid] at known
   exact known
 
