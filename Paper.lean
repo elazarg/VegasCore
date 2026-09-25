@@ -34,6 +34,7 @@ import VegasTests.SelectiveAssociationRestrictedSymmetry
 import VegasTests.ReactiveReadinessRestrictions
 import VegasTests.SelectiveAssociationRestrictedEquilibrium
 import VegasTests.SelectiveAssociationRestrictedSeparation
+import VegasTests.MonitoredGuessingCompilation
 import Vegas.Game.ZeroSum
 import GameTheoryExtensions.Math.Probability.ConditionalComparison
 import GameTheoryExtensions.Analysis.ZeroSumRegularization
@@ -1036,5 +1037,23 @@ open GameTheory.Protocol.InformationModel in
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel.BehavioralAssessment in
 #print axioms isSequentiallyRationalAt_of_sanction
+
+/-- info: 'VegasTests.MonitoredGuessing.source_equilibrium_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.MonitoredGuessing in
+#print axioms source_equilibrium_preserved
+
+/-- info: 'VegasTests.MonitoredGuessing.exists_native_sequential_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.MonitoredGuessing in
+#print axioms exists_native_sequential_equilibrium
+
+/-- info: 'VegasTests.MonitoredGuessing.compiled_source_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.MonitoredGuessing in
+#print axioms compiled_source_equilibrium
 
 end Vegas.Paper

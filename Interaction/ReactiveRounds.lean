@@ -148,6 +148,27 @@ theorem controlStep_rank (initial : FinDist app.State) (horizon : Nat)
         obtain ⟨action, _, supported⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
         exact app.rank_step initial horizon scheduler _ after _ running supported
 
+/-- Completing after any finite prefix gives the same final law as completing
+immediately, including the network, recall, and receipts. -/
+theorem finish_after_steps (initial : FinDist app.State) (horizon : Nat)
+    (scheduler : app.Scheduler) (players : Principal → app.Policy)
+    (fuel : Nat) (law : FinDist app.ProtocolState) :
+    ((fun distribution => distribution.bind (app.controlStep initial horizon scheduler players))
+      ^[fuel] law).bind (app.finish initial horizon scheduler players) =
+      law.bind (app.finish initial horizon scheduler players) := by
+  induction fuel with
+  | zero => rfl
+  | succ fuel ih =>
+      rw [Function.iterate_succ_apply', FinDist.bind_bind]
+      calc
+        _ = ((fun distribution => distribution.bind
+              (app.controlStep initial horizon scheduler players))^[fuel] law).bind
+                (app.finish initial horizon scheduler players) := by
+          apply FinDist.bind_congr
+          intro state _
+          exact app.finish_step initial horizon scheduler players state
+        _ = _ := ih
+
 /-- At sufficient fuel, iteration of the actual protocol kernel equals the
 round evaluator. Equality includes the final network, all recall, and receipts. -/
 theorem iterate_eq_finish (initial : FinDist app.State) (horizon : Nat)

@@ -1,100 +1,101 @@
-# Smallest ordinary-source pilot for passive enforcement
+# Ordinary-source pilot for passive enforcement
 
-## Proposed theorem and scope
+## Theorem target and checked status
 
-Prove forward SE preservation for a fixed two-decision Vegas game in the
-existing bounded runtime with a strategic zero-payoff watcher. Quantify over
-every source SE with one playerwise translation; preserve initial secret,
-public results and net-payoff laws. All native bridges below remain unproved.
+**Checked:** every SE of the fixed Vegas game below has an SE in the existing
+bounded native runtime, preserving the joint law of initial secret, public
+results and actual net payoff vector. The native game and charge are fixed
+before choosing the source SE. One fixed playerwise policy translation preserves
+every source SE: Bob's native policy depends only on his own source policy;
+Alice's and Watcher's policies are fixed. See `compiled_source_equilibrium` in
+[MonitoredGuessingCompilation](../../VegasTests/MonitoredGuessingCompilation.lean).
+This mathematical translation uses classical choice for Bob's optimal off-path
+completion; it is not an executable synthesis procedure.
+This is forward preservation for one game, not reflection or a result for a
+general Vegas source class or arbitrary blockchain service.
 
 ## Actual source program
 
-Use three principals: Alice, Bob and Watcher. The `Setup` context contains an
-initial Alice commitment to a fair Boolean `x` and Bob commitment to `true`,
-both with ordinary disclosure obligations. Watcher has no source action.
+[MonitoredGuessingGame](../../VegasTests/MonitoredGuessingGame.lean) defines three
+principals: Alice, Bob and Watcher. Its ordinary `Setup` contains Alice's initial
+commitment to a fair Boolean `x` and Bob's initial commitment to `true`, with
+ordinary disclosure obligations. Watcher has no source action.
 
 ```text
 reveal Bob's initial true commitment as guessResult;
 reveal Alice's initial bit commitment as secretResult;
 return correctness to Bob;
-return correctness − 4·isFailure(secretResult) to Alice.
+return correctness − 4·isFailure(secretResult) to Alice;
+return 0 to Watcher.
 ```
 
-Decode Bob's guess as `isSuccess(guessResult)`: withholding means `false` and
-is never punished. Correctness is one exactly when Alice successfully opens
-and her bit equals that guess; otherwise zero. These are literal public-result
-integer payoff expressions. Watcher's utility is identically zero.
+Bob's guess is `isSuccess(guessResult)`: lawful withholding means `false` and
+is unpunished. Correctness is one exactly when Alice successfully opens and her
+bit equals that guess. These are literal integer payoff expressions. Checked
+[source SE results](../../VegasTests/MonitoredGuessingSourceEquilibrium.lean)
+show that every Boolean guess distribution `q` extends to a source SE, and every
+source SE has Alice open at all final sites and the joint law fair bit × `q`.
 
-Reuse the setup of [SequentialValidationSource](../../VegasTests/SequentialValidationSource.lean)
-and the payoff expressions of
-[SelectiveAssociationGame](../../VegasTests/SelectiveAssociationGame.lean).
-The setup is part of the theorem: compile its actual initial law through
-`Setup.eventInputs` and `Vegas.EventGraphRuntime.State.initial`, including accepted initial handles.
-Manually installed native bindings alone do not give an initialized result.
-An earlier cryptographic commitment protocol is outside this setup model.
+Initialization uses `Vegas.SourceProgram.Setup.eventInputs` and production
+`Vegas.EventGraphRuntime.State.initial`, including accepted initial handles. The theorem starts with
+these ideal bindings; an earlier cryptographic commitment protocol, key sharing
+and setup incentives are outside this model.
 
-## Native service, observation and report
+## Actual native service and report
 
-Instantiate the existing raw bounded menus, including wrong types, prepared
-candidates, arbitrary evidence requests, malformed calls, silence and replay.
-Use the actual compiled two-event graph. Before ordinary reserved service:
-activate Alice once; activate Watcher once; include a reported envelope if any.
-Then visit Bob's event and Alice's event using grant, owner response, protected
-inclusion, ticks and expiry as in [SelectiveAssociationNative](../../VegasTests/SelectiveAssociationNative.lean).
-No further Watcher activation or Alice prelude is available. Watcher samples
-pending traffic through the ordinary observation interface.
-Its prescribed policy replays an observed Alice envelope, otherwise stays
-silent. [`MessageNetwork.replay`](../../Interaction/MessageNetwork.lean) copies
-the original envelope and identifier: Alice remains its author; Watcher is
-the separately recorded broadcaster. The service must gate report inclusion
-on that actual public Watcher rebroadcast, not inspect all pending traffic as
-though Watcher had observed it. Source-compatible Watcher traffic is silent.
+[MonitoredGuessingNative](../../VegasTests/MonitoredGuessingNative.lean) uses the
+existing compiled graph, reactive application and complete bounded raw menu.
+The value alphabet is `{false, true, integer 0}` with one prepared slot per owner;
+all bounded submissions, wrong event/type/value combinations, independent
+evidence requests, silence and known-envelope replays remain available.
 
-Candidate useful gate: before Bob's publication, Alice's publication is blocked,
-and Alice cannot execute Bob's event. Prove every reported Alice packet is then
-rejected. Its existing `(messageId, false)` receipt supplies accountable report
-material without a private arrival timestamp. Prove ordinary final Alice
-opening and withholding packets are accepted. A receipt-based sanction can
-then distinguish the reported early attempt from these legal source choices.
-No late Watcher activation can manufacture rejection of a lawful settled packet.
+The 14-command service gives Alice one early response, Watcher one activation,
+and a report-inclusion turn, followed by reserved Bob and Alice visits with
+grant, response, inclusion, ticks and expiry. Watcher samples all pending IDs or
+none with probability one half through the ordinary passive observation rule.
+Its prescribed response replays the first observed Alice envelope. The wire
+checks the public Watcher rebroadcast; it does not inspect the private sample.
+Replay preserves Alice's authorship and original envelope identifier. Bob
+observes all pending messages at his sole decision; Alice observes none.
 
-## Charge and watcher assumptions
+The production public-event barrier blocks Alice's reveal before Bob's reveal.
+Checked [prelude laws](../../VegasTests/MonitoredGuessingNativePrelude.lean)
+show that every possible Alice/Watcher prelude packet is rejected on inclusion
+and leaves the application unchanged. Ordinary final opening and withholding
+remain accepted. The single prelude excludes delayed reporting after a lawful
+event has settled; no historical packet-authoring timestamp is assumed.
 
-Specify an additional native terminal debit `D ≥ 0` for Alice when an included
-Alice envelope has a rejection receipt. It is separate from the source's
-four-unit opening-failure penalty. Collection cannot depend on Alice's later
-successful opening: existing liability remains if she withholds or times out.
-The current application has receipts but no escrow debiting implementation;
-prepaid, collectible receipt-based liability is an explicit backend assumption.
+## Enforcement and genuine sequential incentives
 
-Require a sender-conditional lower bound `p > 0` for observation followed by
-the prescribed timely report inclusion. Try `p·D ≥ 1`: after successful final
-opening, correctness ranges from zero to one. This sufficiency bound still
-needs its actual native continuation proof, including failed openings.
-Watcher is a genuine player with all raw deviations and zero utility at every
-history; reporting can be rational by indifference. This constructs one target
-SE, not guaranteed reporting or preservation in every target equilibrium.
+Alice incurs an additional terminal charge `D ≥ 2` when an Alice rejection
+receipt exists. It is separate from the source's four-unit failure payoff.
+Receipt persistence is proved; **collectibility is an explicit utility/backend
+assumption, not an implemented escrow mechanism**. Withholding later cannot
+erase an existing charge.
 
-## Exact bridges and fatal shortcuts
+- [Monitoring](../../VegasTests/MonitoredGuessingNativeMonitoring.lean) gives
+  rejection probability exactly one half for every raw initial submission.
+- [Sanctions](../../VegasTests/MonitoredGuessingNativeSanctions.lean) bound its
+  expected utility by `1 − D/2`, for arbitrary entire subsequent Alice policies.
+- [Initial rationality](../../VegasTests/MonitoredGuessingNativeInitialRationality.lean)
+  proves silence optimal at each private type, against whole-policy deviations.
+- [Final rationality](../../VegasTests/MonitoredGuessingNativeResolutionFinal.lean)
+  proves truthful opening optimal at every final native site, including those
+  reached after malformed traffic and existing liability.
+- [Receiver completion](../../VegasTests/MonitoredGuessingAssessment.lean)
+  constructs one common fully mixed consistency sequence and makes Bob rational
+  at every nonquiet site. Raw messages, report outcomes and receipts remain in
+  his information; no quiet-or-authentic-bit partition is assumed.
+- [Quiet receiver rationality](../../VegasTests/MonitoredGuessingNativeReceiverRationality.lean)
+  covers every raw Bob deviation at the quiet site using its fair posterior.
+- [Initialized laws](../../VegasTests/MonitoredGuessingNativeLaw.lean) match
+  fair bit × `q`, public results and absence of extra charges under the prescribed
+  Alice/Watcher policies and Bob's quiet response. The checked capstone includes
+  actual net payoffs in this joint law.
 
-1. **Source reduction:** prove Alice's final opening optimal at every source
-   information set; characterize all source SE receiver laws `q`. For the fair
-   prior every Boolean `q` is the candidate class. With other priors retain only
-   prior-optimal `q`; generalization is secondary to closing the fair instance.
-2. **Native terminal decisions:** classify every raw Bob response as true or
-   false after actual inclusion/expiry; prove no third profitable result.
-   Prove Alice's final opening optimal for net utility, including old liability
-   and arbitrary preceding responses. It is not an automatic opening action.
-3. **Information and consistency:** initial-bit certificates are authentic;
-   unrelated certificates, claims and rejected packets are additional signals.
-   Early report inclusion also informs Bob even though debit is terminal.
-   Construct one common fully mixed sequence and prove Bob's posterior/optimal
-   response for every resulting observation. The finite disclosure theorem's
-   quiet-or-authentic-bit partition cannot simply be assumed for these raw menus.
-4. **Sender and monitor:** prove report soundness, conditional collection and
-   the full Alice prelude deviation bound; preserve all legitimate withholding.
-5. **Compose:** connect actual source assessments, native information sites,
-   consistent repaired responses and exact initialized/net-payoff laws to
-   [DisclosureEnforcement](../../GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean).
-   Extra sender actions, raw observations and the third strategic player need
-   explicit adapters. This first pilot does not require an ambient source.
+Watcher is a genuine player with every raw deviation and zero utility at every
+history. Reporting is rational by indifference. This supports an SE extension;
+it does not guarantee reporting, uniqueness, coalition resistance or preservation
+in every target equilibrium. The fixed playerwise translation chooses Bob's
+off-path completion from his own source distribution `q`. The proof uses native
+continuations directly; the finite disclosure experiment supplies intuition.

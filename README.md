@@ -110,6 +110,15 @@ cannot be matched by a payoff-aware strategy translation into that native game.
 Correspondence with a stronger communication semantics and general native
 sequential-equilibrium preservation remain open.
 
+A [monitored guessing fragment](docs/research/se-native-pilot.md) has checked
+end-to-end SE preservation: every source SE has a native SE with identical
+joint initial-bit, public-result and actual net-payoff laws. It uses the actual
+compiled graph and full bounded raw menus, a fixed finite service, ordinary
+partial monitoring, and a collectible rejection charge of at least two.
+The zero-payoff watcher reports rationally by indifference. This theorem adds
+no source construct; it does not cover arbitrary games, repeated communication,
+paid reporting or an escrow implementation.
+
 The [runtime abstraction investigation](docs/runtime-abstraction-classification.md)
 classifies what a game presentation may forget. Its generic continuation
 simulation theorem supplies composable sufficient certificates and is used by

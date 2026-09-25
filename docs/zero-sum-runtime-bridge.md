@@ -277,12 +277,12 @@ exhibit this as an actual legal history. The service is dependency-authorized
 and uses at-most-once inclusion, as proved by `native_service_authorized` and
 `native_service_once` in
 [SequentialValidationService.lean](../VegasTests/SequentialValidationService.lean).
-That file also proves `native_unique_bob_activation`.
+That file also proves `VegasTests.SequentialValidation.native_unique_bob_activation`.
 
 Consider changing the declared payoff to give Bob 1 exactly when his final
 publication succeeds, and Alice its negative. Bob's initial commitment is a
 successful commitment to `true`. In the source, his final disclosure action
-can succeed after any preceding Alice choices; `guess_publication` in
+can succeed after any preceding Alice choices; `VegasTests.SequentialValidation.guess_publication` in
 [SequentialValidationSource.lean](../VegasTests/SequentialValidationSource.lean)
 is the relevant checked calculation. The expected source value for Bob should
 therefore be 1.

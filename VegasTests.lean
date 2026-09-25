@@ -159,5 +159,6 @@ import VegasTests.SelectiveAssociationRestrictedSeparation
 import VegasTests.ReactiveReadinessRestrictions
 import VegasTests.DisclosureMonitoring
 import VegasTests.PassiveDisclosureMonitoring
+import VegasTests.MonitoredGuessingCompilation
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

@@ -4,9 +4,13 @@
 
 Target: every SE of a stated Vegas source class has an SE in the existing
 bounded reactive runtime with the same initial-type/result and net-payoff laws.
-This is forward preservation; reflection and a fixed playerwise compiler are
-additional requirements. No whole native theorem follows from this audit.
-Items labelled **candidate** or **test** are obligations, not proved results.
+This is forward preservation; reflection is an additional requirement.
+The [ordinary-source pilot](se-native-pilot.md) proves
+that every SE of its fixed source game has an actual native SE with the same
+joint initial-secret/public-result/net-payoff law. The native game and charge
+are fixed before choosing the source SE. Its checked playerwise translation
+uses only each player's own source policy. This is not a general native theorem;
+**candidate** and **test** items remain obligations, not proved results.
 
 The native menu must retain silence, arbitrary bounded submissions, evidence
 requests, replay and passive foreign reads. A conformance restriction describes
@@ -26,7 +30,8 @@ Deleting departures from the menu does not establish the monitored theorem.
    of a source refusal or whether a canonical refusal packet is required.
    If missing a deadline incurs a fine, prescribed refusal packets need the same
    delivery guarantee as prescribed openings. Otherwise punishment can alter
-   a legal source result. Current completion results do not alone prove this.
+   a legal source result. The pilot accepts ordinary final opening and withholding
+   without extra liability; this is not a general conformance theorem.
 3. **Account for early irreversible failure.** Start with source forfeiture,
    or prove its omission for the selected program/backend. The source's later
    withholding opportunity does not supply the earlier continuation identified
@@ -76,8 +81,11 @@ material and persistence; [the probability adapter](../../Interaction/MessageMon
 composes actual sampling and conditional report-delivery bounds. The
 [native test](../../VegasTests/PassiveDisclosureMonitoring.lean) detects the
 selective-association packet without reading the network's complete input log.
-Neither result supplies sender-conditional coverage over all histories, timely
-activation, accountability, adjudication, available collateral or collection.
+These results alone do not supply general coverage, timely activation or collection. The pilot's
+[actual prefix](../../VegasTests/MonitoredGuessingNativeMonitoring.lean) proves
+exactly one-half rejection probability for every legal initial raw submission,
+using only Watcher's ordinary passive sample and public replay. It proves the
+required coverage at the one early sender decision, not at arbitrary histories.
 
 An included report while the required dependencies are still absent is a
 candidate proof of early availability. A late report needs immutable signed
@@ -92,7 +100,9 @@ the continuation game. Replacing these events by an expected terminal charge
 needs its own equivalence proof. The
 [finite enforcement theorem](../../GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean)
 uses a specified utility charge and explicitly repairs the receiver's response
-after disclosure; it is not that equivalence proof.
+after disclosure; it is not that equivalence proof. The native pilot retains
+all report observations and completes Bob's strategy in the actual information
+model. It does not replace public report randomness by an invisible mean fine.
 
 ## Kill tests for candidate assumptions
 
@@ -104,8 +114,8 @@ after disclosure; it is not that equivalence proof.
 | Canonical shape but selectable handle or retry count | **Next small native test:** two allowed representations of the same source choice, distinguished by a receiver before its move. Reuse the actual submission/observation prefix. | Reject the contract unless representation is fixed, source-visible, or proved irrelevant. This test is not yet a native SE counterexample. |
 | Failed resolution | Current `reactiveResolutionPacket` emits withholding when validation fails. Arbitrary raw openings remain in the menu and can carry plaintext despite failure. | A failure result must not license every raw failed-opening transcript. Classify and account for rejected traffic. |
 | Fresh packet changes an old winner | Checked O2 in [the inventory](../spe-obstructions.md); replay and shared transmission opportunities supply O3/O4. | A communication fine does not repair unrelated scheduler/menu obstructions. |
-| Fine paid before another opportunity | **Test:** reach a collected-fine prefix, then allow another profitable disclosure with no additional loss. | Prove repaired off-path optimality; a first-violation proof must not claim repeated compliance. |
-| Public detection before a receiver move | **Test:** let the receiver condition its action on report/collection outcome. | An average charge alone does not justify erasing those observations. |
+| Fine paid before another opportunity | **Test:** reach a collected-fine prefix, then allow another profitable disclosure with no additional loss. The pilot proves final opening rational even after existing liability. | Prove repaired off-path optimality; a first-violation proof must not claim repeated compliance. |
+| Public detection before a receiver move | Reports and rejected receipts are present in the pilot's actual Bob information. Its consistent completion optimizes nonquiet responses. | An average charge alone does not justify erasing those observations. |
 | Two prior deviators | **Test:** accepted conflicting candidates, changed deadlines and a receiver already holding evidence. | Source reconstruction and subsequent rationality cannot assume the focal player's initialized invariant. |
 
 The proposed new tests discriminate contracts; they do not assert an additional
@@ -132,10 +142,23 @@ has weaker quantifiers. This general extension is currently unproved.
 
 For a first positive fragment, require that disclosures are followed only by
 terminal receiver decisions with a local optimal-response rule. The finite
-sender/receiver theorem supplies that strategic pattern, but an actual Vegas
-graph, runtime service, monitor and payout adapter still have to instantiate it.
-The staged service is an explicit restriction to justify, not a property proved
-of arbitrary blockchain schedules or miners' incentives.
+sender/receiver theorem supplies that strategic pattern. The pilot now uses an
+actual Vegas graph and setup, the full bounded raw menu, partial passive
+monitoring, report-gated inclusion and receipt-dependent terminal liability.
+The extra final Alice decision is proved rational at every native site. Every
+initial submission, including its whole later policy, has value at most
+`1 − D/2`; `D ≥ 2` makes silence optimal. Source SE laws and the native joint
+law with zero extra charge are checked. The [capstone](../../VegasTests/MonitoredGuessingCompilation.lean)
+proves all-player SE and joint net-payoff preservation for one fixed playerwise
+policy translation. Bob's completion uses only his own source policy; Alice's
+and Watcher's policies are fixed. The completion uses classical choice, so this
+is a semantic translation, not executable strategy synthesis.
+
+Its Watcher has zero utility at every history: reporting is a rational selected
+policy, not a unique or guaranteed implementation. Liability is collectible by
+assumption; there is no escrow implementation. The finite calendar, fixed
+alphabet and staged service are explicit restrictions, not properties of general
+blockchain schedules. Earlier cryptographic commitment creation is outside the theorem.
 
 ## Alternatives and boundaries
 
@@ -156,6 +179,5 @@ of arbitrary blockchain schedules or miners' incentives.
   encoding channels. State any exclusion as an assumption or model it in the
   ambient source; do not derive it from passive packet monitoring.
 
-No new runtime or Lean theorem is introduced by this audit. Its acceptance gate
-is an actual source-to-native continuation/SE theorem for the stated fragment,
-not a longer list of individually plausible packet checks.
+The pilot passes the SE gate for its fixed game, with whole-policy deviations and
+one common consistency sequence. Broader programs need further information arguments.

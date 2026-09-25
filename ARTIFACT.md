@@ -1,8 +1,8 @@
 # Artifact and validation guide
 
-For open sequential-equilibrium work, start with the
-[research plan](docs/se-preservation-roadmap.md). It separates checked results
-from the native proof obligations and orders the next experiments.
+For sequential-equilibrium results and remaining work, start with the
+[research map](docs/se-preservation-roadmap.md). It distinguishes the checked
+monitored native fragment from general preservation obligations.
 
 ## Reproduction
 
@@ -66,6 +66,8 @@ the subsequent kernel-checked build.
 | Automatic penalties preserve every SE outcome law of the ordinary guessing game, with a converse under strict collateral and unchanged net payoff laws | `GameTheoryExtensionsTests/AmbientEnforcementEquilibrium.lean` |
 | Every source SE of the finite private-state sender/receiver class extends to an SE with identical state and net payoff laws under typewise disclosure charges; payoff-range bounds give a fixed target for all source SEs | `GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean` |
 | Statewise constant-sum, including zero-sum, games in that decision class preserve every source SE under optional disclosure without sanctions | `GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean` |
+| Every SE of the actual initialized guessing program has a bounded native SE with identical joint private-bit/public-result/net-payoff law, for fixed collectible charge `D ≥ 2` | `VegasTests/MonitoredGuessingEquilibrium.lean`, `VegasTests/MonitoredGuessingNativePayoff.lean` |
+| One fixed playerwise policy translation preserves every source SE of that initialized guessing program and its joint secret/result/net-payoff law | `VegasTests/MonitoredGuessingCompilation.lean` |
 | Sharp collateral thresholds against arbitrary target SE implementations: one half for fair guessing, one for all source guessing laws | `GameTheoryExtensionsTests/AmbientEnforcementThreshold.lean` |
 | Explicit pending certificates escape a ledger-only alarm; a network-input alarm requires stronger observations | `VegasTests/DisclosureMonitoring.lean` |
 | Shared randomness enables signaling through permitted traffic; even observing the receiver's public guess does not permit detection with zero false positives | `GameTheoryExtensionsTests/MonitoredSignaling.lean` |
@@ -97,8 +99,24 @@ laws exactly from one, among nonnegative penalties. Above one, every target SE
 also has the state and net payoff laws of a source SE. The native monitoring
 experiment checks the visibility of explicit certificates, and the signaling
 experiment checks what a monitor lacking shared private information can detect.
-These experiments do not implement
-a watchdog, escrow backend, or source-to-native SE enforcement theorem.
+The abstract experiments do not themselves implement a native monitor or escrow.
+
+The [monitored native theorem](VegasTests/MonitoredGuessingEquilibrium.lean)
+connects the actual initialized two-reveal source program to its compiled graph
+and the existing bounded raw-message runtime. Every source SE has a native SE
+with the same joint initial-bit, public-result and actual net-payoff-vector law.
+The [fixed playerwise translation](VegasTests/MonitoredGuessingCompilation.lean)
+additionally makes Bob's completion depend only on his own source policy;
+Alice's and Watcher's policies are fixed. This semantic translation uses
+classical choice and does not supply executable strategy synthesis.
+The fixed service permits one early Alice response, ordinary half-probability
+passive observation by a strategic Watcher, and inclusion gated by its public
+replay. All bounded malformed calls, evidence requests and replays remain legal
+alternatives. A fixed `D ≥ 2` rejection charge deters the early transmission;
+the proof supplies rational continuations at every information site and one
+consistent trembling sequence. Watcher is indifferent at zero utility, and
+collectibility is an explicit assumption; paid reporting and escrow are not
+implemented. See the [scope audit](docs/research/se-native-pilot.md).
 
 The [selective-association comparison](docs/selective-association-proof-contract.md)
 keeps the compiled application, service calendar, deadlines, selector and full

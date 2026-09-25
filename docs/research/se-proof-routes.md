@@ -2,11 +2,12 @@
 
 ## Recommendation and theorem contract
 
-The first positive target is **A instantiated on the actual native terminal
-sender/receiver decision protocol**, using passive monitoring and conditional
-collection. The minimum goal is one fixed compiled game implementing every
-source SE's joint outcome and net-payoff law; a playerwise strategy compiler is
-a useful stronger guarantee where available. Keep source syntax unchanged.
+**A has a checked actual native instance:** the
+[initialized guessing program](se-native-pilot.md), with passive monitoring and
+a collectible rejection charge. One fixed native game implements every source
+SE's joint initial-bit/result/net-payoff law. Its proof covers every bounded raw
+response and completes all native information sites. Generalizing this fragment
+is the next positive target; keep source syntax unchanged.
 Use **B, an independently specified ambient communication interpretation**, for
 general playerwise semantics after this pilot, or if its audit exposes channels
 that conformance cannot remove. C is an alternative for competitive games.

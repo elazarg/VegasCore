@@ -14,6 +14,13 @@ can support that theorem when every profitable extra channel is accountable;
 packet-shape checking alone does not establish this premise. This is a route
 recommendation, not a completed native SE theorem.
 
+The narrower [monitored guessing instance](se-native-pilot.md) does have a
+checked native SE theorem, using the existing source syntax, full bounded raw
+menus, one early communication opportunity, one partial monitoring opportunity,
+and collectible receipt liability. Its costless strategic watcher supports a
+reporting equilibrium by indifference. These assumptions establish forward
+preservation for that game, not a general monitoring backend.
+
 Distinguish a fixed playerwise compiler preserving every source SE from
 `for every source SE, some target SE has the same initialized result law`.
 A general off-path completion can depend on the opponents' source profile and

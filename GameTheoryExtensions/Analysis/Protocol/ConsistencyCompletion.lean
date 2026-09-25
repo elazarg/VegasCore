@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Math.Probability.Compactness
+import GameTheoryExtensions.Math.Probability.FinDist
 import GameTheoryExtensions.Protocol.FiniteInformation
 import Mathlib.Analysis.SpecificLimits.Basic
 
@@ -48,6 +49,45 @@ theorem BehavioralAssessment.exists_consistent_completion_subsequence
       fun who site => converges ⟨who, site⟩⟩
   exact ⟨assessment, rfl, index, increasing, limit,
     ⟨fun n => sequence (index n), fun n => ⟨mixed (index n), bayes (index n)⟩, limit⟩⟩
+
+/-- A varying sequence of fully mixed Bayes assessments has one common
+subsequence converging in both strategies and beliefs. Unlike completion of a
+fixed profile, this permits optimal continuation policies to be selected along
+the sequence before taking the limit. Optimality itself remains a separate
+obligation. -/
+theorem BehavioralAssessment.exists_sequentiallyConsistent_subsequence
+    (antichain : M.DecisionInformationAntichain)
+    (sequence : ℕ → M.BehavioralAssessment)
+    (mixed : ∀ n, (sequence n).IsFullyMixed)
+    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent M (sequence n) antichain) :
+    ∃ assessment : M.BehavioralAssessment, ∃ index : ℕ → ℕ,
+      StrictMono index ∧
+      BehavioralAssessmentConvergesPointwise (fun n => sequence (index n)) assessment ∧
+      assessment.IsSequentiallyConsistent antichain := by
+  classical
+  let _ (entry : Σ who, M.InformationSite who) :
+      Finite (M.Choice entry.1 entry.2.1) := (mixed 0 entry.1 entry.2).finite
+  obtain ⟨laws, first, firstIncreasing, firstConverges⟩ :=
+    FinDist.exists_common_subsequence
+      (fun n (entry : Σ who, M.InformationSite who) =>
+        (sequence n).strategy entry.1 entry.2.1)
+  let profile : ∀ who, M.BehavioralPolicy who := fun who info =>
+    if decision : ∃ history : M.InformationHistory who info,
+        ¬ E.terminal history.1.state ∧ ∃ action : E.Action who, some action ∈ M.menu who info
+    then laws ⟨who, ⟨info, decision⟩⟩
+    else (sequence 0).strategy who info
+  have strategies (who : ι) (site : M.InformationSite who) :
+      FinDistConvergesPointwise (fun n => (sequence (first n)).strategy who site.1)
+        (profile who site.1) := by
+    dsimp only [profile]
+    rw [dite_eq_left site.2]
+    exact firstConverges ⟨who, site⟩
+  obtain ⟨assessment, _, second, secondIncreasing, converges, consistent⟩ :=
+    BehavioralAssessment.exists_consistent_completion_subsequence antichain profile
+      (fun n => sequence (first n)) (fun n => mixed (first n))
+      (fun n => bayes (first n)) strategies
+  exact ⟨assessment, first ∘ second, firstIncreasing.comp secondIncreasing,
+    converges, consistent⟩
 
 /-- Compactness retains any already established convergence of projected
 Bayes beliefs. The projection law is an explicit premise: arbitrary consistent

@@ -50,6 +50,7 @@ import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
 import GameTheoryExtensions.Analysis.Protocol.HistoryBayesProjection
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 import GameTheoryExtensions.Core.PendingChoice
 import GameTheoryExtensions.Core.ZeroSum
 import GameTheoryExtensions.Core.IncentiveCone

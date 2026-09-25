@@ -21,6 +21,23 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
+/-- Reserved inclusion either waits or selects an identifier authenticated as
+the designated owner, independently of packet validity and application state. -/
+theorem reactiveLatest_wait_or_owned (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (event : graph.EventId) (owner : Player)
+    (view : (runtime.reactiveApplication leaks).EnvironmentView) :
+    runtime.reactiveLatest leaks event owner view = .wait ∨
+      ∃ id, id.1 = owner ∧ runtime.reactiveLatest leaks event owner view = .include id := by
+  unfold reactiveLatest
+  split
+  · exact Or.inl rfl
+  · rename_i message found
+    have good : message.sender = owner ∧ message.payload.call.event? graph = some event ∧
+        view.Unpublished (runtime.reactiveApplication leaks) message.id := by
+      simpa only [decide_eq_true_eq] using List.find?_some found
+    exact Or.inr ⟨message.id, good.1, rfl⟩
+
 theorem reactiveLatest_last (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId)
