@@ -74,18 +74,20 @@ theorem reactiveReadFrameInvariant (runtime : EventGraphRuntime graph)
     rw [(environmentStep_tables runtime state next command reached).1]
     exact (agrees field member).2
 
-theorem reactiveResolutionPacket_eq_of_binding {owner : Player}
+theorem reactiveResolutionPacket_eq_of_resolution {owner : Player}
     (who : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (left right : ReactivePlayerView graph)
-    (bound : binding.get? left.observation.store = binding.get? right.observation.store)
+    (resolved : EventCode.resolveOutput? binding checks true left.observation.store =
+      EventCode.resolveOutput? binding checks true right.observation.store)
     (associated : left.publicView.accepted binding.field =
       right.publicView.accepted binding.field) :
-    reactiveResolutionPacket who event payload binding outputEq action left =
-      reactiveResolutionPacket who event payload binding outputEq action right := by
+    reactiveResolutionPacket who event payload binding checks outputEq action left =
+      reactiveResolutionPacket who event payload binding checks outputEq action right := by
   unfold reactiveResolutionPacket
-  rw [bound, associated]
+  rw [resolved, associated]
 
 omit [DecidableEq Player] in
 theorem resolution_readFields (event : graph.EventId) (owner : Player) (payload : L.Ty)

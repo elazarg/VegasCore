@@ -206,13 +206,19 @@ is used in either history.
 
 ## Native evidence correspondence
 
-The reactive disclosure compiler sends an opening whenever the player chooses
-disclosure and its binding is openable. It does not consult the publication
-verdict when choosing that packet. `reactiveDecision_opening_law` proves that,
-at a ready and timely inclusion opportunity with binding provenance, the
-compiled packet executes the graph's disclosure transition with its actual
-guarded result. The result may be failure. The theorem is local: supplying
-that opportunity is a separate service obligation.
+The ordinary reactive source compiler opens only when owner-local validation
+predicts successful publication. A failed or rejected result emits withholding,
+matching the ordinary source observation. `reactiveDecision_opening_law` proves
+that a successfully validated opening executes its successful graph transition;
+`reactiveDecision_disclosure_public_law` also covers failed results implemented
+by withholding. These theorems assume ready, timely inclusion opportunities.
+
+Raw native players may instead submit an authentic opening even when its guard
+will reject publication. The underlying `handle_opening_eq` and evidence rules
+cover that action. This is the native capability corresponding to the ambient
+source experiment's disclosure emissions; it is not prescribed behavior of the
+ordinary source compiler. There is no compiler for communication-extended
+source policies yet.
 
 Native evidence decoding uses the packet together with a successful application
 receipt. Receipt success means the handler authenticated and executed the call;
@@ -223,7 +229,7 @@ compiler's existing store-agreement relation.
 
 ```mermaid
 flowchart LR
-    A[Source disclosure] --> B[Compiled opening packet]
+    A[Native disclosure action] --> B[Opening packet]
     B --> C[Authenticated inclusion]
     C --> D[Guarded publication result]
     C --> E[Public packet and success receipt]
@@ -241,12 +247,13 @@ compatible history has the certified binding, including at information sets
 reached only after deviations. This constrains arbitrary beliefs; it does not
 construct consistent equilibrium beliefs or establish optimal continuations.
 
-The checked native fixture proves that the actual compiler sends the secret
-opening, inclusion still stores publication failure, and every observer receives
-the binding certificate. Its passive observation rule is unrestricted.
-Existing response normalization and finite-menu compiler coverage also check
-with this disclosure rule. The command-service Nash theorem concerns its own
-compiler and service; it supplies no missing reactive correctness edge.
+The checked native fixture proves both sides of this distinction: the ordinary
+compiler withholds the rejected secret, while an explicit raw opening produces
+publication failure and a binding certificate for every observer. Its passive
+observation rule is unrestricted. Response normalization and finite-menu
+compiler coverage retain all bounded raw disclosure capabilities. The
+command-service Nash theorem concerns its own compiler and service; local
+reactive realization does not supply the missing whole-service correctness edge.
 
 | Checked obligation | Module |
 |---|---|

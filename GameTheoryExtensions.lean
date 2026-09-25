@@ -1,5 +1,6 @@
 import GameTheory.Core.MixtureSimulationComposition
 import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Tremble
 import GameTheoryExtensions.Math.Probability.ActionSplitting
 import GameTheoryExtensions.Math.Probability.Compactness
 import GameTheoryExtensions.Math.Probability.Regularity
@@ -11,6 +12,7 @@ import GameTheoryExtensions.Protocol.Continuation
 import GameTheoryExtensions.Protocol.HistoryProjection
 import GameTheoryExtensions.Protocol.BehavioralContinuation
 import GameTheoryExtensions.Protocol.FiniteInformation
+import GameTheoryExtensions.Protocol.TremblingPlans
 import GameTheoryExtensions.Protocol.BehavioralIncentives
 import GameTheoryExtensions.Protocol.ContinuationLaw
 import GameTheoryExtensions.Protocol.StateKernel

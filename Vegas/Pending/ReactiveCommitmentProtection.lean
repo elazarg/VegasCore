@@ -146,7 +146,7 @@ theorem reactiveDecision_commitment_fresh (runtime : EventGraphRuntime graph)
   · rename_i owner payload binding checks outputEq codeEq nodeEq
     simp only [Option.some.injEq, ReactiveApplication.Transmission.submit.injEq] at emits
     subst material
-    change reactiveResolutionPacket who event payload binding outputEq choice view =
+    change reactiveResolutionPacket who event payload binding checks outputEq choice view =
       .commitment target candidate at packet
     dsimp only [reactiveResolutionPacket] at packet
     split at packet

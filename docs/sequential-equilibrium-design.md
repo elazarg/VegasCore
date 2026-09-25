@@ -22,8 +22,19 @@ abstraction: the checked
 rules out a utility-independent sequential-equilibrium translator for one actual
 source game and its bounded native message game, even allowing utility-dependent
 target beliefs. General source-to-native preservation under additional semantic
-or service conditions remains open. Complete finite native equilibrium examples
-and an isolated observation comparison are checked below:
+or service conditions remains open.
+
+For two-player zero-sum games, the
+[checked pending-service result](../Vegas/Game/ZeroSum.lean) now gives equality
+of source Nash and arbitrary native coarse-correlated expected payoffs. A
+[written outcome-repair argument](zero-sum-sequential-repair.md) could strengthen
+a Nash compiler into an SE-outcome implementation theorem for the same finite
+perfect-recall target. That argument is not yet a Lean theorem, and the
+[runtime bridge](zero-sum-runtime-bridge.md) is still required. No general SE
+claim follows from expected-value equality alone.
+
+Complete finite native equilibrium examples and an isolated observation
+comparison are checked below:
 
 - [SequentialIncentives.lean](../GameTheoryExtensions/Protocol/SequentialIncentives.lean):
   exact, utility-independent transport of sequential rationality between fixed

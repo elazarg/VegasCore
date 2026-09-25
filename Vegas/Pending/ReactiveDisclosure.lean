@@ -3,12 +3,12 @@
 import Vegas.Pending.ReactivePolicy
 import Vegas.Pending.EventBindingInvariant
 
-/-! # Compiled disclosures retain opening evidence
+/-! # Locally validated compiled disclosures
 
-Packet selection reads the binding, not its publication verdict. The local
-realization law applies to every publication result, including guard failure.
-Its premises describe an inclusion opportunity; it does not assert that a
-scheduler supplies that opportunity.
+The prescribed source compiler opens only successful publications. Its owner can
+compute the exact guarded result from the locally visible store. Raw players
+retain the ability to publish rejected openings; the handler and evidence rules
+are unchanged. These local laws assume an inclusion opportunity.
 -/
 
 noncomputable section
@@ -28,51 +28,69 @@ theorem submitStep_opening (state : State graph) (who : Player) (event : graph.E
 theorem reactiveResolutionPacket_opening {owner : Player}
     (who : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : ReactivePlayerView graph)
     (discloses : cast (congrArg EventField.Action outputEq) action = true)
-    (value : L.Val payload) (stored : binding.get? view.observation.store = some (.success value))
+    (value : L.Val payload)
+    (resolved : EventCode.resolveOutput? binding checks true view.observation.store =
+      some (.success value))
     (candidate : Handle graph)
     (associated : view.publicView.accepted binding.field = some candidate)
     (owned : candidate.1 = who) :
-    reactiveResolutionPacket who event payload binding outputEq action view =
+    reactiveResolutionPacket who event payload binding checks outputEq action view =
       .opening event candidate ⟨payload, value⟩ := by
-  simp only [reactiveResolutionPacket, discloses, ↓reduceIte, stored, associated, owned]
+  simp only [reactiveResolutionPacket, discloses, ↓reduceIte, resolved, associated, owned]
 
 theorem reactiveResolutionPacket_withhold {owner : Player}
     (who : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : ReactivePlayerView graph)
     (withholds : cast (congrArg EventField.Action outputEq) action = false) :
-    reactiveResolutionPacket who event payload binding outputEq action view = .withhold event := by
+    reactiveResolutionPacket who event payload binding checks outputEq action view =
+      .withhold event := by
   simp only [reactiveResolutionPacket, withholds, Bool.false_eq_true, ↓reduceIte]
 
-/-- Any successful binding in a valid runtime state supplies the opening
-selected by its owner's compiler, independently of the deferred checks. -/
+/-- A successfully validated publication has authentic opening material in a
+valid runtime state, and owner-local validation selects that opening. -/
 theorem reactiveResolutionPacket_provenance (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (state : State graph) (valid : state.BindingInvariant)
     (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event)
     (discloses : cast (congrArg EventField.Action outputEq) action = true)
-    (value : L.Val payload) (stored : binding.get? state.config.store = some (.success value)) :
+    (value : L.Val payload)
+    (resolved : EventCode.resolveOutput? binding checks true state.config.store =
+      some (.success value)) :
     ∃ candidate, state.accepted binding.field = some candidate ∧ candidate.1 = owner ∧
       state.candidates.lookup candidate = .openable ⟨payload, value⟩ ∧
-      reactiveResolutionPacket owner event payload binding outputEq action
+      reactiveResolutionPacket owner event payload binding checks outputEq action
         ((runtime.reactiveApplication leaks).observePlayer state owner) =
           .opening event candidate ⟨payload, value⟩ := by
+  have stored : binding.get? state.config.store = some (.success value) := by
+    unfold EventCode.resolveOutput? at resolved
+    cases bound : binding.get? state.config.store with
+    | none => simp [bound] at resolved
+    | some result =>
+        cases accepted : GuardCheck.allAccepted? checks state.config.store result with
+        | none => simp [bound, accepted] at resolved
+        | some allowed =>
+            cases allowed <;> simp_all
   obtain ⟨candidate, associated, owned, verified⟩ := valid.success_provenance binding value stored
   refine ⟨candidate, associated, owned, verified, ?_⟩
-  apply reactiveResolutionPacket_opening owner event payload binding outputEq action _ discloses
-    value _ candidate associated owned
-  change binding.get? (graph.playerStore owner state.config.store) = _
-  rw [binding.get?_playerStore owner state.config.store rfl, stored]
+  apply reactiveResolutionPacket_opening owner event payload binding checks outputEq action _
+    discloses value _ candidate associated owned
+  change EventCode.resolveOutput? binding checks true
+    (graph.playerStore owner state.config.store) = _
+  rw [EventCode.resolveOutput?_playerStore, resolved]
 
-/-- The emitted packet executes disclosure with the actual guarded result.
-In particular, a failed result does not substitute withholding for disclosure. -/
+/-- A successful prescribed disclosure sends its authentic opening and executes
+the corresponding successful graph transition. -/
 theorem reactiveDecision_opening_law (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (state : State graph) (valid : state.BindingInvariant)
@@ -87,22 +105,22 @@ theorem reactiveDecision_opening_law (runtime : EventGraphRuntime graph)
     (sender : id.1 = owner) (action : graph.Action event)
     (discloses : cast (congrArg EventField.Action outputEq) action = true)
     (value : L.Val payload) (stored : binding.get? state.config.store = some (.success value))
-    (result : PublicationResult (L.Val payload))
-    (resolved : EventCode.resolveOutput? binding checks true state.config.store = some result) :
+    (resolved : EventCode.resolveOutput? binding checks true state.config.store =
+      some (.success value)) :
     ∃ candidate, (runtime.reactiveDecision leaks owner event action
         ((runtime.reactiveApplication leaks).observePlayer state owner)).transmission =
         some (.submit (disclosureSubmission (.opening event candidate ⟨payload, value⟩))) ∧
       handle runtime state ⟨id, .opening event candidate ⟨payload, value⟩⟩ =
         some (state.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) true)
-          (cast (congrArg EventField.Value outputEq.symm) result)) := by
+          (cast (congrArg EventField.Value outputEq.symm) (.success value))) := by
   obtain ⟨candidate, associated, owned, verified, packet⟩ :=
     reactiveResolutionPacket_provenance runtime leaks state valid owner event payload
-      binding outputEq action discloses value stored
+      binding checks outputEq action discloses value resolved
   refine ⟨candidate, ?_, ?_⟩
   · simp only [reactiveDecision, node, packet]
   · exact handle_opening_eq runtime state id event candidate owner payload binding checks
       outputEq codeEq node ready timely sender owned associated value verified stored
-      result resolved
+      (.success value) resolved
 
 end Vegas.EventGraphRuntime

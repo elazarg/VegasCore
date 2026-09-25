@@ -48,6 +48,7 @@ the subsequent kernel-checked build.
 | Initial-parameter/public-result joint laws and Bayesian Nash correspondence | `Vegas/Source/InitialState.lean`, `Vegas/Game/ParameterOutcomes.lean` |
 | Two-player zero-sum source Nash value equals every native coarse-correlated value under the paper service | `Vegas/Game/ZeroSum.lean`, `GameTheoryExtensions/Core/ZeroSum.lean` |
 | Finite decision tables preserve every legal continuation law | `GameTheoryExtensions/Protocol/FiniteInformation.lean` |
+| Correlated mixtures of independently trembled finite plans retain an action-probability floor after recall conditioning | `GameTheoryExtensions/Protocol/TremblingPlans.lean`, `GameTheoryExtensions/Math/Probability/Tremble.lean` |
 | Finite zero-sum saddle existence with L1 feature penalties and a security-based penalty bound | `GameTheoryExtensions/Analysis/ZeroSumRegularization.lean` |
 | Identical normal-form CE correspondence does not imply SE outcome preservation | `GameTheoryExtensionsTests/CorrelatedSequentialGap.lean` |
 | Zero-sum Nash equilibria can have equal expected payouts and different payout laws | `GameTheoryExtensionsTests/ZeroSumOutcomeLaws.lean` |

@@ -189,6 +189,47 @@ equilibrium outcomes do not prevent preserving every source equilibrium.
 
 ## How the generic results factor the native impossibilities
 
+### Two-player zero-sum and correlation
+
+The checked [zero-sum value theorem](../GameTheoryExtensions/Core/ZeroSum.lean)
+applies to arbitrary strategy carriers, including behavioral policies. An
+existing two-player zero-sum Nash profile fixes every coarse correlated
+equilibrium's expected utility. The
+[pending-message instance](../Vegas/Game/ZeroSum.lean) composes this result with
+the actual value-binding, private-parameter source compiler: every native coarse
+correlated equilibrium has the source Nash equilibrium's expected payoff, even
+when its policies are outside the compiler image. This is expected-value
+preservation under the paper's command service, not an SE or outcome-law theorem.
+
+Ordinary normal-form CE preservation does not characterize SE preservation.
+The checked [credibility comparison](../GameTheoryExtensionsTests/CorrelatedSequentialGap.lean)
+has identical normal forms obtained from two actual finite protocols, hence
+identical CE laws for every preference. A simultaneous source SE nevertheless
+has an outcome that no sequential target assessment can reproduce as an SE.
+The witness uses a fixed non-zero-sum utility.
+
+A [written zero-sum repair proof](zero-sum-sequential-repair.md) gives a stronger
+candidate route: repair a finite perfect-recall two-player zero-sum Nash profile
+off path while preserving its entire initialized terminal law. That proof is
+not yet formalized in Lean. Its construction depends on the whole equilibrium
+profile, so outcome implementability and a playerwise strategy compiler remain
+different obligations. The [runtime bridge audit](zero-sum-runtime-bridge.md)
+identifies the exact finite reactive correctness edge still needed before
+combining it with Vegas compilation. The
+[literature note](zero-sum-communication-literature.md) separates this route from
+disclosure-proof CE and multiplayer constant-sum claims.
+
+These generic results do not justify restricting cryptographic capabilities by
+player identity after secrets have been shared. The
+[capability audit](ideal-commitment-capabilities.md) distinguishes learned values,
+transferable evidence, opening material, and signing authority. Enlarging the
+native game to account for shared or correlated cryptographic material requires
+a new deviation or security argument. The generic zero-sum results can then
+apply to that enlarged game; the existing ideal-runtime instance alone cannot
+establish the missing correspondence.
+
+### Operational information and continuation incentives
+
 The terminal observation classification alone cannot be substituted into an
 arbitrary multiplayer continuation. The enclosing game must establish what
 the player knows, which decisions are feasible, and how their consequences

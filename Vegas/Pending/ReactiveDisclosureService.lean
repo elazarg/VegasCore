@@ -70,7 +70,7 @@ theorem reactiveDecision_disclosure_service (runtime : EventGraphRuntime graph)
   let app := runtime.reactiveApplication leaks
   let response := runtime.reactiveDecision leaks owner event action
     (app.observePlayer execution.application owner)
-  let packet := reactiveResolutionPacket owner event payload binding outputEq action
+  let packet := reactiveResolutionPacket owner event payload binding checks outputEq action
     (app.observePlayer execution.application owner)
   let material := disclosureSubmission packet
   let submitted := execution.respond app owner response
@@ -115,7 +115,7 @@ theorem reactiveDecision_disclosure_service (runtime : EventGraphRuntime graph)
     rw [EventCode.actor_cast outputEq (graph.nodes event)] at equal
     exact equal
   have addressed : message.payload.call.event? graph = some event :=
-    reactiveResolutionPacket_event owner event payload binding outputEq action _
+    reactiveResolutionPacket_event owner event payload binding checks outputEq action _
   have emitted : message ∈ app.outputs (submitted.recall owner) := by
     simp only [submitted, ReactiveApplication.Execution.respond, sent, MessageNetwork.submit,
       ↓reduceIte, ReactiveApplication.outputs, List.filterMap_append, List.filterMap_cons,
@@ -160,13 +160,17 @@ theorem reactiveDecision_disclosure_service (runtime : EventGraphRuntime graph)
       response serials) emitted afterReady afterTimely retained unpublished reached
   intro current good currentReady currentTimely
   have bindingFrame := good.2.2 binding.field (Finset.mem_insert_self ..)
-  have packetEq : reactiveResolutionPacket owner event payload binding outputEq action
+  have packetEq : reactiveResolutionPacket owner event payload binding checks outputEq action
       (app.observePlayer current.application owner) = packet := by
-    apply reactiveResolutionPacket_eq_of_binding owner event payload binding outputEq action
-    · change binding.get? (graph.playerStore owner current.application.config.store) =
-        binding.get? (graph.playerStore owner execution.application.config.store)
-      rw [binding.get?_playerStore owner _ rfl, binding.get?_playerStore owner _ rfl]
-      exact binding.get?_congr _ _ bindingFrame.1
+    apply reactiveResolutionPacket_eq_of_resolution owner event payload binding checks
+      outputEq action
+    · change EventCode.resolveOutput? binding checks true
+          (graph.playerStore owner current.application.config.store) =
+        EventCode.resolveOutput? binding checks true
+          (graph.playerStore owner execution.application.config.store)
+      rw [EventCode.resolveOutput?_playerStore, EventCode.resolveOutput?_playerStore]
+      exact EventCode.resolveOutput?_congr binding checks true _ _
+        (fun field member => (good.2.2 field member).1)
     · exact bindingFrame.2
   have resultEq := EventCode.resolveOutput?_congr binding checks
     (cast (congrArg EventField.Action outputEq) action) current.application.config.store

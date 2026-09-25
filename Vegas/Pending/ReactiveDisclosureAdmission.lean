@@ -4,11 +4,10 @@ import Vegas.Pending.ReactiveDisclosureStability
 
 /-! # Public realization of every compiled disclosure
 
-When the binding itself failed, both source disclosure choices emit withholding.
+When validation predicts failure, both source disclosure choices emit withholding.
 Their source completion histories differ, but their stored results and public
-observations coincide. The compiler may retain the sampled choice in its private
+observations coincide. The compiler retains the sampled choice in its private
 implementation state; this theorem does not recover that choice from the packet.
-When a binding succeeded, disclosure emits its opening even if a guard rejects it.
 -/
 
 noncomputable section
@@ -20,17 +19,19 @@ open GameTheory.Math.Probability Interaction EventGraph
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem reactiveResolutionPacket_failed_binding {owner : Player}
+theorem reactiveResolutionPacket_rejected {owner : Player}
     (who : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : ReactivePlayerView graph)
-    (failed : binding.get? view.observation.store = some .failure) :
-    reactiveResolutionPacket who event payload binding outputEq action view = .withhold event := by
+    (failed : EventCode.resolveOutput? binding checks true view.observation.store = some .failure) :
+    reactiveResolutionPacket who event payload binding checks outputEq action view =
+      .withhold event := by
   simp only [reactiveResolutionPacket, failed, ite_self]
 
 /-- The emitted response cannot identify which aliased source choice was sampled. -/
-theorem reactiveDecision_failed_binding_action_irrel (runtime : EventGraphRuntime graph)
+theorem reactiveDecision_rejected_action_irrel (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who owner : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
@@ -40,12 +41,12 @@ theorem reactiveDecision_failed_binding_action_irrel (runtime : EventGraphRuntim
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (first second : graph.Action event) (view : ReactivePlayerView graph)
-    (failed : binding.get? view.observation.store = some .failure) :
+    (failed : EventCode.resolveOutput? binding checks true view.observation.store = some .failure) :
     runtime.reactiveDecision leaks who event first view =
       runtime.reactiveDecision leaks who event second view := by
   simp only [reactiveDecision, node,
-    reactiveResolutionPacket_failed_binding who event payload binding outputEq first view failed,
-    reactiveResolutionPacket_failed_binding who event payload binding outputEq second view failed]
+    reactiveResolutionPacket_rejected who event payload binding checks outputEq first view failed,
+    reactiveResolutionPacket_rejected who event payload binding checks outputEq second view failed]
 
 omit [DecidableEq Player] in
 private theorem completion_public_action_irrel (state : State graph)
@@ -98,46 +99,46 @@ theorem reactiveDecision_disclosure_public_law (runtime : EventGraphRuntime grap
     binding checks outputEq codeEq node ready timely sender unremembered
   cases discloses : cast (congrArg EventField.Action outputEq) action with
   | false =>
-      have packet := reactiveResolutionPacket_withhold owner event payload binding outputEq
+      have packet := reactiveResolutionPacket_withhold owner event payload binding checks outputEq
         action ((runtime.reactiveApplication leaks).observePlayer state owner) discloses
       refine ⟨.failure, .withhold event, _, falseResult, ?_, withheld, rfl, ?_⟩
       · simp only [reactiveDecision, node, packet]
       · exact completion_public_action_irrel state event ready _ action _
   | true =>
-      have present : (binding.get? state.config.store).isSome = true :=
-        binding.get?_isSome state.config.store
-          (available binding.field (Finset.mem_insert_self ..))
-      cases stored : binding.get? state.config.store with
-      | none => simp only [stored, Option.isSome_none, Bool.false_eq_true] at present
-      | some bound =>
-          cases bound with
+      have defined := EventCode.resolveOutput?_isSome binding checks true
+        state.config.store available
+      cases resolved : EventCode.resolveOutput? binding checks true state.config.store with
+      | none => simp only [resolved, Option.isSome_none, Bool.false_eq_true] at defined
+      | some result =>
+          cases result with
           | failure =>
-              have resolved : EventCode.resolveOutput? binding checks true state.config.store =
-                  some (.failure : PublicationResult (L.Val payload)) := by
-                simpa [EventCode.resolveOutput?, stored] using falseResult
-              have localFailed : binding.get?
+              have localFailed : EventCode.resolveOutput? binding checks true
                   ((runtime.reactiveApplication leaks).observePlayer state
                     owner).observation.store =
                     some .failure := by
-                change binding.get? (graph.playerStore owner state.config.store) = _
-                rw [binding.get?_playerStore owner state.config.store rfl, stored]
-              have packet := reactiveResolutionPacket_failed_binding owner event payload binding
+                change EventCode.resolveOutput? binding checks true
+                  (graph.playerStore owner state.config.store) = _
+                rw [EventCode.resolveOutput?_playerStore, resolved]
+              have packet := reactiveResolutionPacket_rejected owner event payload binding checks
                 outputEq action _ localFailed
-              refine ⟨.failure, .withhold event, _, resolved, ?_, withheld, rfl, ?_⟩
+              refine ⟨.failure, .withhold event, _, rfl, ?_, withheld, rfl, ?_⟩
               · simp only [reactiveDecision, node, packet]
               · exact completion_public_action_irrel state event ready _ action _
           | success value =>
-              have defined := EventCode.resolveOutput?_isSome binding checks true
-                state.config.store available
-              cases resolved : EventCode.resolveOutput? binding checks true state.config.store with
-              | none => simp only [resolved, Option.isSome_none, Bool.false_eq_true] at defined
-              | some result =>
-                  obtain ⟨candidate, transmission, handled⟩ :=
-                    runtime.reactiveDecision_opening_law leaks state valid id owner event payload
-                      binding checks outputEq codeEq node ready timely sender action discloses
-                      value stored result resolved
-                  refine ⟨result, .opening event candidate ⟨payload, value⟩, _, rfl,
-                    transmission, handled, rfl, ?_⟩
-                  exact completion_public_action_irrel state event ready _ action _
+              have stored : binding.get? state.config.store = some (.success value) := by
+                unfold EventCode.resolveOutput? at resolved
+                cases bound : binding.get? state.config.store with
+                | none => simp [bound] at resolved
+                | some result =>
+                    cases accepted : GuardCheck.allAccepted? checks state.config.store result with
+                    | none => simp [bound, accepted] at resolved
+                    | some allowed => cases allowed <;> simp_all
+              obtain ⟨candidate, transmission, handled⟩ :=
+                runtime.reactiveDecision_opening_law leaks state valid id owner event payload
+                  binding checks outputEq codeEq node ready timely sender action discloses
+                  value stored resolved
+              refine ⟨.success value, .opening event candidate ⟨payload, value⟩, _, rfl,
+                transmission, handled, rfl, ?_⟩
+              exact completion_public_action_irrel state event ready _ action _
 
 end Vegas.EventGraphRuntime

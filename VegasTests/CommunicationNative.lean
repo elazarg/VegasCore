@@ -1,15 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import VegasTests.SequentialValidationNative
-import Vegas.Pending.ReactiveDisclosure
+import Vegas.Pending.ReactiveDisclosureAdmission
 import Vegas.Pending.ReactiveEvidence
 import Interaction.ReactiveEvidenceKnowledge
 
-/-! # The disclosure compiler and native certificate agree on rejected openings
+/-! # Source concealment and raw rejected-opening evidence
 
-The actual deferred-guard witness still publishes failure. Its compiled
-disclosure now sends the opening, and the generic receipt decoder records the
-binding as evidence. The observation rule is arbitrary throughout.
+The source compiler withholds a guard-rejected candidate. A player can still
+submit the authentic opening directly: inclusion publishes failure while the
+receipt decoder records the binding as evidence. The observation rule is arbitrary.
 -/
 
 noncomputable section
@@ -25,20 +25,21 @@ variable (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket nativeGra
 def fact (bit : Bool) : EventGraph.CommitmentEvidence nativeGraph :=
   ⟨false, .bool, nativeSecretBinding, bit⟩
 
+/-- Local validation conceals the candidate even when the source chooses true. -/
 theorem compiled_packet (bit : Bool) :
     (nativeRuntime.reactiveDecision leaks false secretEvent true
       ((nativeRuntime.reactiveApplication leaks).observePlayer
         (nativeDummyPublished bit) false)).transmission =
-      some (.submit (disclosureSubmission (secretOpening bit).packet)) := by
-  have packet := reactiveResolutionPacket_opening false secretEvent .bool nativeSecretBinding
-    rfl true ((nativeRuntime.reactiveApplication leaks).observePlayer
-      (nativeDummyPublished bit) false) rfl bit
-    (by
-      change nativeSecretBinding.get?
-        (nativeGraph.playerStore false (nativeDummyPublished bit).config.store) = _
-      rw [nativeSecretBinding.get?_playerStore false _ rfl, native_dummy_stored])
-    (false, .initial secretInput) (native_dummy_associated bit) rfl
-  simp only [reactiveDecision, native_secret_node, packet, secretOpening]
+      some (.submit (disclosureSubmission (.withhold secretEvent))) := by
+  have resolved : EventGraph.EventCode.resolveOutput? nativeSecretBinding nativeSecretChecks true
+      (nativeGraph.playerStore false (nativeDummyPublished bit).config.store) =
+        some .failure := by
+    rw [EventGraph.EventCode.resolveOutput?_playerStore]
+    exact native_secret_result bit
+  have packet := reactiveResolutionPacket_rejected false secretEvent .bool nativeSecretBinding
+    nativeSecretChecks rfl true ((nativeRuntime.reactiveApplication leaks).observePlayer
+      (nativeDummyPublished bit) false) resolved
+  simp only [reactiveDecision, native_secret_node, packet]
 
 theorem decoded_fact (bit : Bool) :
     (secretOpening bit).packet.bindingEvidence = [fact bit] := by
