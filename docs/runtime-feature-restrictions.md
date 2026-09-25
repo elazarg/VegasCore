@@ -117,39 +117,61 @@ The [opening optimality theorem](../VegasTests/SelectiveAssociationRestrictedOpe
 checks every legal opening information site against every complete behavioral
 policy deviation, for any belief system. Other players' public results remain
 fixed; the owner can publish its frozen successful value or incur failure.
-Failed bindings are also covered. Thus the remaining incentive obligations are
-the binding and prelude sites, rather than opening behavior.
+Failed bindings are also covered. The
+[initialized payoff law](../VegasTests/SelectiveAssociationRestrictedPrescribedOutcome.lean)
+is a point mass at zero for Alice and one for each guesser. This is an execution
+result for the candidate profile, not yet an equilibrium claim.
 
-The remaining belief argument compares histories with an uncertified true
-Alice binding to histories with a false binding and the same guesser input.
-The [local candidate transformation](../VegasTests/SelectiveAssociationRestrictedSymmetry.lean)
-preserves registration, freezing, and the success or failure of evidence
-requests. It permutes the full raw response menu; paired views with equal known
-message identifiers also have equal menu weights. Extending this transformation
-to the [application store](../VegasTests/SelectiveAssociationRestrictedStoreSymmetry.lean)
-preserves public and other-player observations and commutes with accepted
-binding calls under their explicit admission premises. Rejected packets,
-expiry, selection, and recall across the complete prefix still need to be
-covered before claiming a transformation of legal histories. The required
-reach-probability inequality is also open. The checked
-[probability comparison](../GameTheoryExtensions/Math/Probability/ConditionalComparison.lean)
-then supplies the conditioning and finite-limit steps. One common perturbation
-limit and whole-policy rationality at the remaining native information sites
-are still required; independently selected beliefs at different sites do not
-suffice.
+The [guessing incentive proof](../VegasTests/SelectiveAssociationRestrictedGuessOptimality.lean)
+reduces whole-policy optimality to one precise posterior condition. When the
+public view has no certificate for a successful true binding, its belief must
+assign at least as much mass to Alice's successful false binding as to her
+successful true binding. Alice's failed bindings contribute zero to both guesses.
+A public true certificate instead determines the binding throughout the
+information set. The proof permits arbitrary future policies and every raw
+current response: reserved inclusion and timeout determine one binding result
+throughout the information set, and later actions cannot replace it.
 
-The remaining incentive proof is organized by actual response opportunities:
+The probability calculation uses the actual native prefix law. The
+[response factorization](../VegasTests/SelectiveAssociationRestrictedPrefix.lean)
+and [history projection](../VegasTests/SelectiveAssociationRestrictedPrefixExecution.lean)
+identify the original protocol's distributions before Carol's and Bob's guesses
+with distributions over the three or four preceding responses. This avoids
+requiring a bijection of full trace representations. A successful comparison
+must still preserve the complete observed input, including the player's own
+prior actions, and compare the exact probabilities of the response tuples.
 
-| Site | Obligation for the proposed profile |
+The [candidate transformation](../VegasTests/SelectiveAssociationRestrictedSymmetry.lean)
+flips a selected candidate's Boolean meaning while preserving the success or
+failure of certificate requests. It permutes the raw menu, with equal uniform
+weights whenever paired inputs have the same known message identifiers. The
+[store transformation](../VegasTests/SelectiveAssociationRestrictedStoreSymmetry.lean)
+handles accepted and rejected binding calls and binding expiry. The missing
+concrete probability step is an injection from uncertified true-binding tuples
+into false-binding tuples with the same guesser input and at least as much mass.
+The fixed-depth Bayes formula and
+[finite limit comparison](../GameTheoryExtensions/Math/Probability/ConditionalComparison.lean)
+then transport that inequality to one common consistent assessment. An arbitrary
+consistent completion of the profile does not establish the needed posterior
+condition.
+
+| Site | Proof status for the proposed profile |
 | --- | --- |
-| Alice's prelude and binding | Prove that every complete Alice deviation leaves the two prescribed guesses equal, hence cannot improve her payout above zero. Between the guesses, Carol's prescribed commitment carries no certificate; the service offers Alice no response. |
-| Bob's prelude | Prove that later correction and opening attain his maximum payout of one even after arbitrary earlier submissions. |
-| Carol's and Bob's bindings | For a public certificate, use its validity throughout the information set. Without one, prove that the common consistent beliefs put at least as much weight on Alice's false binding as on her true binding; failure states must also be included. |
-| All three openings | Checked whole-policy optimality, independent of beliefs, in `profile_opening_rational`. |
+| Alice's prelude and binding | Checked whole-policy optimality for arbitrary beliefs: both prescribed guesses stay equal under every complete Alice deviation, so her payout is at most zero; the prescribed continuation gives zero. |
+| Bob's prelude | Checked whole-policy optimality for arbitrary beliefs: later correction and opening give the maximum payoff of one despite arbitrary earlier submissions. |
+| Carol's and Bob's bindings | Checked whole-policy optimality conditional only on the stated posterior inequality. Its derivation from the common perturbation sequence remains open. |
+| All three openings | Checked whole-policy optimality for arbitrary beliefs, including failed bindings. |
 
-The first three rows are proof obligations, not additional established native
-equilibrium claims. This decomposition keeps the posterior argument confined
-to the two guessing decisions.
+The [prelude proof](../VegasTests/SelectiveAssociationRestrictedPrelude.lean)
+and the guessing and opening proofs use the same protocol and profile.
+The [Alice proof](../VegasTests/SelectiveAssociationRestrictedAliceOptimality.lean)
+checks the actual seven-step continuation between the guesses; Carol’s
+prescribed commitment adds no certificate and cannot change Alice’s accepted
+association. The sole substantive remaining obligation is the concrete prefix
+probability comparison. The
+[Bayes and common-limit adapter](../VegasTests/SelectiveAssociationRestrictedBeliefs.lean)
+constructs one consistent assessment once that comparison is supplied. Thus the
+restricted-native SE and isolated observation separation are still open.
 
 An operational positive control is already checked: private observation cannot
 change the scheduler's observation or its next choice after a silent response.

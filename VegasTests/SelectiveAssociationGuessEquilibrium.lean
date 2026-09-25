@@ -33,7 +33,7 @@ theorem native_supported_certified_guess
       (Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy bob
         ((assessment.strategy bob).commit site.1 choice))
           (2 * nativeHorizon + 1) history.1).support) :
-    nativeBobBindingAt final.state = some (.success bit) := by
+    nativeBindingAt bob final.state = some (.success bit) := by
   rcases site with ⟨info, isSite⟩
   change info = some (past, view) at siteEq
   subst info
@@ -52,8 +52,8 @@ theorem native_supported_certified_guess
   · intro other
     apply FinDist.expect_le_of_forall
     intro otherFinal otherSupported
-    have same := native_committed_bob_binding_local assessment.strategy past view granted
-      unfinished choice history other final otherFinal supported otherSupported
+    have same := native_committed_binding_local bob assessment.strategy past view granted
+      choice history other final otherFinal supported otherSupported
     have initial := native_observed_alice_binding past view bit observed other
     obtain ⟨control, stateEq, _, _, _⟩ := native_information_control bob past view other
     rcases other with ⟨⟨state, trace⟩, information⟩

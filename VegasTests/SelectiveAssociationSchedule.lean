@@ -19,6 +19,34 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
 variable {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
 
+theorem native_ticks_application (players : Player → (serviceApp observation).Policy)
+    (count : Nat) (execution next : (serviceApp observation).Execution)
+    (supported : next ∈ (nativeRuntime.runInteractionPlan observation players
+      (serviceNetwork observation)
+      (List.replicate count .tick) execution).support) :
+    next.application.config = execution.application.config ∧
+      next.application.activatedAt = execution.application.activatedAt ∧
+      next.application.clock = execution.application.clock + count := by
+  induction count generalizing execution with
+  | zero => cases FinDist.mem_support_pure.mp supported; exact ⟨rfl, rfl, rfl⟩
+  | succ count ih =>
+      rw [List.replicate_succ, runInteractionPlan] at supported
+      obtain ⟨middle, middleMem, tailMem⟩ :=
+        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+      have moved := nativeRuntime.reactive_application_support observation players .advanceClock
+        execution middle (by
+          simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using middleMem)
+      have applicationEq : middle.application =
+          { execution.application with clock := execution.application.clock + 1 } :=
+        FinDist.mem_support_pure.mp moved
+      obtain ⟨configEq, activatedEq, clockEq⟩ := ih middle tailMem
+      refine ⟨?_, ?_, ?_⟩
+      · rw [configEq, applicationEq]
+      · rw [activatedEq, applicationEq]
+      · rw [clockEq, applicationEq]
+        simp only
+        omega
+
 def nativeRoot : (serviceApp observation).Execution := .initial (serviceApp observation)
   nativeInitial
 

@@ -27,13 +27,16 @@ def nativePublicationAt (who : Player) (state : nativeApp.ProtocolState) :
 
 open Classical in
 theorem native_committed_response
-    (profile : ∀ who, nativeModel.BehavioralPolicy who) (who : Player)
-    (info : nativeModel.InfoState who) (choice : nativeModel.Choice who info)
-    (response : nativeApp.Action) (selected : choice.1 = some response)
-    (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
+    {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+    (profile : ∀ who, (serviceModel observation).BehavioralPolicy who) (who : Player)
+    (info : (serviceModel observation).InfoState who)
+    (choice : (serviceModel observation).Choice who info)
+    (response : (serviceApp observation).Action) (selected : choice.1 = some response)
+    (past : List (serviceApp observation).PlayerEntry) (view : (serviceApp observation).PlayerView)
     (information : some (past, view) = info) :
-    nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
-      (Profile.update (sig := nativeModel.behavioralSignature) profile who
+    (serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+      (serviceScheduler observation)
+      (Profile.update (sig := (serviceModel observation).behavioralSignature) profile who
         ((profile who).commit info choice)) who past view = FinDist.pure response := by
   simp only [ReactiveApplication.ResponseMenu.decodeProfile, ReactiveApplication.decodePolicy,
     ReactiveApplication.ResponseMenu.embedPolicy, Profile.update_same]
@@ -263,14 +266,6 @@ theorem native_sequentially_rational_opening_succeeds
   obtain ⟨choice, chosen, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
   exact native_supported_opening_succeeds assessment who site past view siteEq bit granted
     unfinished stored rational choice chosen history final finalMem
-
-theorem native_binding_invariant (who : Player) (value : PublicationResult Bool) :
-    nativeApp.Invariant (fun state =>
-      (nativeBindingRef who).get? state.config.store = some value) := by
-  fin_cases who
-  · exact nativeRuntime.reactiveStoreInvariant nativeLeaks (.inr aliceBinding) value
-  · exact nativeRuntime.reactiveStoreInvariant nativeLeaks (.inr bobBinding) value
-  · exact nativeRuntime.reactiveStoreInvariant nativeLeaks (.inr carolBinding) value
 
 /-- A value already bound at any legal history is unchanged throughout every
 behavioral continuation, independently of the assessment and future choices. -/

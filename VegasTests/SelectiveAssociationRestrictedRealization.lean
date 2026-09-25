@@ -16,30 +16,6 @@ namespace VegasTests.SelectiveAssociation.Restricted
 
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
-def bindingEvent (who : Player) : nativeGraph.EventId :=
-  if who = alice then aliceBinding else if who = bob then bobBinding else carolBinding
-
-theorem binding_owner (who : Player) : nativeOwner (bindingEvent who) = who := by
-  fin_cases who <;> rfl
-
-theorem binding_output (who : Player) :
-    nativeGraph.outputLayout (bindingEvent who) = .binding who .bool := by
-  fin_cases who <;> rfl
-
-theorem binding_code (who : Player) :
-    cast (congrArg (EventGraph.EventCode nativeGraph.layout) (binding_output who))
-      (nativeGraph.nodes (bindingEvent who)) =
-        EventGraph.EventCode.bind (L := simpleExpr) who BaseTy.bool := by
-  fin_cases who <;> rfl
-
-theorem binding_node (who : Player) : nodeView nativeGraph (bindingEvent who) =
-    .bind who .bool (binding_output who) (binding_code who) := by
-  fin_cases who <;> rfl
-
-theorem binding_ref_eq (who : Player) :
-    nativeBindingRef who = ⟨.inr (bindingEvent who), binding_output who⟩ := by
-  fin_cases who <;> rfl
-
 theorem history_invariants (control : app.Control) (trace : arena.Trace (some control)) :
     control.execution.application.BindingInvariant ∧
       nativeBounds.AcceptedHandles control.execution.application ∧
@@ -58,11 +34,11 @@ theorem history_invariants (control : app.Control) (trace : arena.Trace (some co
 including histories created by arbitrary earlier raw responses. -/
 theorem binding_fresh (control : app.Control) (trace : arena.Trace (some control))
     (who : Player) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (bindingEvent who)) :
+    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who)) :
     ∃ slot : Fin 2,
       freshSlot (control.execution.observe app who) = some slot ∧
       control.execution.application.candidates.lookup (who, .prepared slot.val) = .fresh := by
-  have count := native_decision_recall_count (observation := leaks) (bindingEvent who)
+  have count := native_decision_recall_count (observation := leaks) (nativeBindingEvent who)
     control trace who active granted who
   have bounded : (control.execution.recall who).length ≤ 1 := by
     rw [count]
@@ -81,69 +57,74 @@ theorem binding_fresh (control : app.Control) (trace : arena.Trace (some control
 
 theorem binding_selected (execution : app.Execution) (who : Player)
     (slot : Fin 2) (bit : Bool) (serials : execution.network.SerialsBeforeNext) :
-    nativeRuntime.reactiveLatest leaks (bindingEvent who) who
+    nativeRuntime.reactiveLatest leaks (nativeBindingEvent who) who
       ((execution.respond app who
-        (bindingResponse who (bindingEvent who) slot bit)).observeEnvironment app) =
+        (bindingResponse who (nativeBindingEvent who) slot bit)).observeEnvironment app) =
       .include (who, execution.network.nextSerial who) :=
-  nativeRuntime.reactiveLatest_after_submit leaks who (bindingEvent who) execution serials
-    ⟨⟨.commitment (bindingEvent who) (who, .prepared slot.val), some ⟨.bool, bit⟩⟩, .none⟩ rfl
+  nativeRuntime.reactiveLatest_after_submit leaks who (nativeBindingEvent who) execution serials
+    ⟨⟨.commitment (nativeBindingEvent who) (who, .prepared slot.val), some ⟨.bool, bit⟩⟩, .none⟩ rfl
 
 theorem binding_realizes (players : Player → app.Policy) (execution : app.Execution)
     (who : Player) (slot : Fin 2) (bit : Bool)
     (valid : execution.application.BindingInvariant)
     (serials : execution.network.SerialsBeforeNext)
     (fresh : execution.application.candidates.lookup (who, .prepared slot.val) = .fresh)
-    (ready : execution.application.config.cut.Ready (bindingEvent who))
-    (timely : execution.application.WithinDeadline nativeRuntime (bindingEvent who)) :
+    (ready : execution.application.config.cut.Ready (nativeBindingEvent who))
+    (timely : execution.application.WithinDeadline nativeRuntime (nativeBindingEvent who)) :
     ∃ next, (nativeBindingRef who).get? next.config.store = some (.success bit) ∧
       (nativeRuntime.interactionStep leaks players network
-        (.includeLatest (bindingEvent who) who)
-        (execution.respond app who (bindingResponse who (bindingEvent who) slot bit))).map
+        (.includeLatest (nativeBindingEvent who) who)
+        (execution.respond app who (bindingResponse who (nativeBindingEvent who) slot bit))).map
           (fun result => result.application) = FinDist.pure next := by
-  let submitted := execution.respond app who (bindingResponse who (bindingEvent who) slot bit)
+  let submitted := execution.respond app who (bindingResponse who (nativeBindingEvent who) slot bit)
   have facts := nativeRuntime.reactive_respond_application leaks execution who
-    (bindingResponse who (bindingEvent who) slot bit)
+    (bindingResponse who (nativeBindingEvent who) slot bit)
   have configEq : submitted.application.config = execution.application.config := facts.1
   have publicEq : submitted.application.publicView = execution.application.publicView := facts.2
   have acceptedEq : submitted.application.accepted = execution.application.accepted :=
     congrArg PublicView.accepted publicEq
-  have readyAfter : submitted.application.config.cut.Ready (bindingEvent who) := by rwa [configEq]
-  have timelyAfter : submitted.application.WithinDeadline nativeRuntime (bindingEvent who) := by
-    change (match submitted.application.publicView.activatedAt (bindingEvent who) with
+  have readyAfter : submitted.application.config.cut.Ready (nativeBindingEvent who) := by rwa
+    [configEq]
+  have timelyAfter : submitted.application.WithinDeadline nativeRuntime (nativeBindingEvent who)
+    := by
+    change (match submitted.application.publicView.activatedAt (nativeBindingEvent who) with
       | none => False
       | some entered => submitted.application.publicView.clock - entered <
-          nativeRuntime.deadline (bindingEvent who))
+          nativeRuntime.deadline (nativeBindingEvent who))
     rw [publicEq]
     exact timely
-  have vacant : submitted.application.accepted (.inr (bindingEvent who)) = none := by
+  have vacant : submitted.application.accepted (.inr (nativeBindingEvent who)) = none := by
     rw [acceptedEq]
-    cases associated : execution.application.accepted (.inr (bindingEvent who)) with
+    cases associated : execution.application.accepted (.inr (nativeBindingEvent who)) with
     | none => rfl
     | some accepted => exact False.elim (ready.1
-        (valid.toAssociationInvariant.accepted_complete (bindingEvent who) accepted associated))
+        (valid.toAssociationInvariant.accepted_complete (nativeBindingEvent who) accepted
+          associated))
   have unused : submitted.application.HandleUnused (who, .prepared slot.val) := by
     intro field associated
     rw [acceptedEq] at associated
     exact valid.accepted_fixed field _ associated fresh
-  have meaning := nativeRuntime.reactiveBinding_result leaks who (bindingEvent who) .bool
+  have meaning := nativeRuntime.reactiveBinding_result leaks who (nativeBindingEvent who) .bool
     (.success bit) slot.val execution fresh
   change submitted.application.bindingResult (who, .prepared slot.val) .bool = .success bit
     at meaning
   have accepted := nativeRuntime.handle_commitment_eq submitted.application
-    (who, execution.network.nextSerial who) (bindingEvent who) (who, .prepared slot.val) who .bool
-    (binding_output who) (binding_code who) (binding_node who) readyAfter timelyAfter
+    (who, execution.network.nextSerial who) (nativeBindingEvent who) (who, .prepared slot.val)
+      who .bool
+    (native_binding_output who) (native_binding_code who) (native_binding_node who) readyAfter
+      timelyAfter
     rfl rfl vacant unused
   refine ⟨(handle nativeRuntime submitted.application
-    ⟨(who, execution.network.nextSerial who), .commitment (bindingEvent who)
+    ⟨(who, execution.network.nextSerial who), .commitment (nativeBindingEvent who)
       (who, .prepared slot.val)⟩).getD submitted.application, ?_, ?_⟩
   · rw [accepted]
-    rw [binding_ref_eq]
+    rw [native_binding_ref_eq]
     fin_cases who <;>
-      simpa [bindingEvent, alice, bob, State.complete, EventGraph.Config.store,
+      simpa [nativeBindingEvent, alice, bob, State.complete, EventGraph.Config.store,
         EventGraph.FieldRef.get?, EventGraph.Config.complete] using meaning
   · have found : submitted.network.lookup (who, execution.network.nextSerial who) =
         some ⟨(who, execution.network.nextSerial who),
-          ⟨.commitment (bindingEvent who) (who, .prepared slot.val), none⟩⟩ :=
+          ⟨.commitment (nativeBindingEvent who) (who, .prepared slot.val), none⟩⟩ :=
       serials.lookup_submit who _
     simp only [interactionStep, interactionInstruction, binding_selected execution who slot bit
       serials, FinDist.pure_bind, ReactiveApplication.dispatch,
@@ -160,19 +141,20 @@ decision. The statement uses actual native histories and the unchanged selector.
 theorem correctiveBinding_realizes (players : Player → app.Policy)
     (control : app.Control) (trace : arena.Trace (some control)) (who : Player)
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (bindingEvent who))
-    (unfinished : bindingEvent who ∉ control.execution.application.config.cut.completed)
+    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who))
+    (unfinished : nativeBindingEvent who ∉ control.execution.application.config.cut.completed)
     (bit : Bool) :
     ∃ next, (nativeBindingRef who).get? next.config.store = some (.success bit) ∧
       (nativeRuntime.interactionStep leaks players network
-        (.includeLatest (bindingEvent who) who)
+        (.includeLatest (nativeBindingEvent who) who)
         (control.execution.respond app who
-          (correctiveBinding who (bindingEvent who) bit (control.execution.observe app who)))).map
+          (correctiveBinding who (nativeBindingEvent who) bit (control.execution.observe app
+            who)))).map
           (fun result => result.application) = FinDist.pure next := by
-  have position := (native_decision_cursor (observation := leaks) (bindingEvent who)
+  have position := (native_decision_cursor (observation := leaks) (nativeBindingEvent who)
     control trace who active granted).2
-  obtain ⟨_, service⟩ := native_decision_service (observation := leaks) (bindingEvent who)
-    control trace (by simpa only [binding_owner] using active) position
+  obtain ⟨_, service⟩ := native_decision_service (observation := leaks) (nativeBindingEvent who)
+    control trace (by simpa only [native_binding_owner] using active) position
   obtain ⟨ready, timely⟩ := service.resolve_left unfinished
   obtain ⟨valid, _, serials⟩ := history_invariants control trace
   obtain ⟨slot, selected, fresh⟩ := binding_fresh control trace who active granted

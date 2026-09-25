@@ -38,33 +38,6 @@ theorem native_publication_plan_preserves (players : Player → nativeApp.Policy
         (native_publication_invariant who publication) players).dispatch
           command execution middle stored stepped) restMem
 
-theorem native_ticks_application (players : Player → nativeApp.Policy)
-    (count : Nat) (execution next : nativeApp.Execution)
-    (supported : next ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      (List.replicate count .tick) execution).support) :
-    next.application.config = execution.application.config ∧
-      next.application.activatedAt = execution.application.activatedAt ∧
-      next.application.clock = execution.application.clock + count := by
-  induction count generalizing execution with
-  | zero => cases FinDist.mem_support_pure.mp supported; exact ⟨rfl, rfl, rfl⟩
-  | succ count ih =>
-      rw [List.replicate_succ, runInteractionPlan] at supported
-      obtain ⟨middle, middleMem, tailMem⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-      have moved := nativeRuntime.reactive_application_support nativeLeaks players .advanceClock
-        execution middle (by
-          simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using middleMem)
-      have applicationEq : middle.application =
-          { execution.application with clock := execution.application.clock + 1 } :=
-        FinDist.mem_support_pure.mp moved
-      obtain ⟨configEq, activatedEq, clockEq⟩ := ih middle tailMem
-      refine ⟨?_, ?_, ?_⟩
-      · rw [configEq, applicationEq]
-      · rw [activatedEq, applicationEq]
-      · rw [clockEq, applicationEq]
-        simp only
-        omega
-
 theorem native_publication_expire (players : Player → nativeApp.Policy)
     (execution next : nativeApp.Execution) (who : Player)
     (ready : execution.application.config.cut.Ready (nativePublicationEvent who))

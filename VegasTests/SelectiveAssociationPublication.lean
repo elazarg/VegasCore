@@ -19,6 +19,16 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
 variable {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
 
+theorem native_binding_invariant
+    {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+    (who : Player) (value : PublicationResult Bool) :
+    (serviceApp observation).Invariant (fun state =>
+      (nativeBindingRef who).get? state.config.store = some value) := by
+  fin_cases who
+  · exact nativeRuntime.reactiveStoreInvariant observation (.inr aliceBinding) value
+  · exact nativeRuntime.reactiveStoreInvariant observation (.inr bobBinding) value
+  · exact nativeRuntime.reactiveStoreInvariant observation (.inr carolBinding) value
+
 theorem native_publication_binding (config : nativeGraph.Config)
     (reachable : config.Reachable nativeInputs) (who : Player) (bit : Bool)
     (published : (nativePublicationRef who).get? config.store = some (.success bit)) :

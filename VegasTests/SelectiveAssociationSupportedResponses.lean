@@ -100,7 +100,8 @@ theorem native_supported_guess_inclusion
   have finalCorrect := native_supported_certified_guess assessment rational site past view rfl bit
     granted (native_bob_view_unfinished past view granted history) observed choice choiceMem history
     final finalMem
-  obtain ⟨middle, middleMem, settled⟩ := native_bob_settlement_behavioral changed control trace
+  obtain ⟨middle, middleMem, settled⟩ :=
+    native_binding_settlement_behavioral bob changed control trace
     response active granted incomplete
     (native_committed_response assessment.strategy bob _ choice response selected past view rfl)
     final finalMem

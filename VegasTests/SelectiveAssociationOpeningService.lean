@@ -109,6 +109,10 @@ def nativeBindingRef (who : Player) :
   · intro impossible
     exact impossible.elim0
 
+theorem native_binding_ref_eq (who : Player) :
+    nativeBindingRef who = ⟨.inr (nativeBindingEvent who), native_binding_output who⟩ := by
+  fin_cases who <;> rfl
+
 theorem native_publication_output (who : Player) :
     nativeGraph.outputLayout (nativePublicationEvent who) = .publication BaseTy.bool := by
   fin_cases who <;> rfl

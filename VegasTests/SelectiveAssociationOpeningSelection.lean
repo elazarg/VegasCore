@@ -89,35 +89,40 @@ theorem native_old_publication_unique (control : nativeApp.Control)
   rw [packet]
   exact fun same => different (Option.some.inj same)
 
-theorem native_transport_history (control : nativeApp.Control)
-    (trace : nativeArena.Trace (some control)) (who : Player)
+theorem native_transport_history
+    {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+    (control : (serviceApp observation).Control)
+    (trace : (serviceArena observation).Trace (some control)) (who : Player)
     (active : control.actor = some who) :
-    control.execution.Provenance nativeApp ∧ control.execution.InputRecall nativeApp ∧
+    control.execution.Provenance (serviceApp observation) ∧
+      control.execution.InputRecall (serviceApp observation) ∧
       control.execution.network.PendingOrPublished ∧ control.execution.network.SerialsBeforeNext ∧
       control.execution.application.remembered = nativeInitial.remembered ∧
-      ∀ response, (control.execution.respond nativeApp who response).SubmissionAudit nativeApp
-        ReactivePlayerView.publicView := by
-  have raw := nativeMenu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon nativeScheduler trace
-  have remembered := (nativeRuntime.reactiveRememberedInvariant nativeLeaks
+      ∀ response, (control.execution.respond (serviceApp observation) who response).SubmissionAudit
+        (serviceApp observation) ReactivePlayerView.publicView := by
+  have raw := (serviceMenu observation).toRawTrace (FinDist.pure nativeInitial) nativeHorizon
+    (serviceScheduler observation) trace
+  have remembered := (nativeRuntime.reactiveRememberedInvariant observation
     (fun table => table = nativeInitial.remembered)).history (FinDist.pure nativeInitial)
-      nativeHorizon nativeScheduler (by
+      nativeHorizon (serviceScheduler observation) (by
         intro state member
         cases FinDist.mem_support_pure.mp member
         rfl) raw
-  have audit := nativeApp.submissionAudit_history ReactivePlayerView.publicView
-    (fun _ _ => rfl) (FinDist.pure nativeInitial) nativeHorizon nativeScheduler raw
-  refine ⟨nativeApp.history_provenance (FinDist.pure nativeInitial)
-      nativeHorizon nativeScheduler raw,
-    nativeApp.history_inputRecall (FinDist.pure nativeInitial) nativeHorizon nativeScheduler raw,
-    nativeApp.pendingOrPublished_history nativeScheduler (FinDist.pure nativeInitial)
-      nativeHorizon raw,
-    nativeApp.serialsBeforeNext_history nativeScheduler (FinDist.pure nativeInitial)
-      nativeHorizon raw, remembered, ?_⟩
+  have audit := (serviceApp observation).submissionAudit_history ReactivePlayerView.publicView
+    (fun _ _ => rfl) (FinDist.pure nativeInitial) nativeHorizon (serviceScheduler observation) raw
+  refine ⟨(serviceApp observation).history_provenance (FinDist.pure nativeInitial)
+      nativeHorizon (serviceScheduler observation) raw,
+    (serviceApp observation).history_inputRecall (FinDist.pure nativeInitial) nativeHorizon
+      (serviceScheduler observation) raw,
+    (serviceApp observation).pendingOrPublished_history (serviceScheduler observation)
+      (FinDist.pure nativeInitial) nativeHorizon raw,
+    (serviceApp observation).serialsBeforeNext_history (serviceScheduler observation)
+      (FinDist.pure nativeInitial) nativeHorizon raw, remembered, ?_⟩
   intro response
-  exact nativeApp.submissionAudit_respond ReactivePlayerView.publicView (fun _ _ => rfl)
-    control.execution who response audit.1
-    (nativeApp.submissionOrigin_next_none_history (FinDist.pure nativeInitial) nativeHorizon
-      nativeScheduler control raw who) (audit.2 who active)
+  exact (serviceApp observation).submissionAudit_respond ReactivePlayerView.publicView
+    (fun _ _ => rfl) control.execution who response audit.1
+    ((serviceApp observation).submissionOrigin_next_none_history (FinDist.pure nativeInitial)
+      nativeHorizon (serviceScheduler observation) control raw who) (audit.2 who active)
 
 /-- Every raw response has the same publication-owner view after its reserved
 inclusion at all legal histories with the same owner input. -/

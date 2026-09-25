@@ -98,6 +98,33 @@ theorem BehavioralAssessment.continuationContext_value_withLaw
           (InformationSite.active M site history) fuel, FinDist.expect_bind]
     _ = _ := FinDist.expect_comm _ _ _
 
+/-- A complete policy deviation is a mixture of policies with the same future
+behavior and one fixed current response. This identity requires no optimality
+assumption on the original assessment or on the alternative policy. -/
+theorem BehavioralAssessment.continuationContext_value_eq_expect_commit
+    (assessment : M.BehavioralAssessment) (once : M.ActsOnceWhereItMatters)
+    (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
+    (payoff : E.History → ℝ) (fuel : Nat) (alternative : M.BehavioralPolicy who) :
+    (assessment.continuationContext site payoff (fuel + 1)).value alternative =
+      (alternative site.1).expect (fun choice =>
+        (assessment.continuationContext site payoff (fuel + 1)).value
+          (alternative.commit site.1 choice)) := by
+  simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+  calc
+    _ = (assessment.belief who site).expect (fun history =>
+          (alternative site.1).expect (fun choice =>
+            (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
+              assessment.strategy who (alternative.commit site.1 choice))
+                (fuel + 1) history.1).expect payoff)) := by
+      apply FinDist.expect_congr
+      intro history _
+      have split := M.runBehavioralFrom_update_withLaw_eq_bind once assessment.strategy who
+        alternative site.1 (alternative site.1) history.1 history.2 (nonterminal history)
+          (InformationSite.active M site history) fuel
+      rw [BehavioralPolicy.withLaw_eq_self] at split
+      rw [split, FinDist.expect_bind]
+    _ = _ := FinDist.expect_comm _ _ _
+
 /-- Each supported pure current response has the same continuation value as
 the rational mixed response. Future choices remain the assessment's strategy. -/
 theorem BehavioralAssessment.supported_choice_value

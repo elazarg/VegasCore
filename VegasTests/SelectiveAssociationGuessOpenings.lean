@@ -131,7 +131,7 @@ theorem native_bob_committed_bob_opens
       (Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy bob
         ((assessment.strategy bob).commit (some (past, view)) choice))
           (2 * nativeHorizon + 1) history.1).support)
-    (bound : nativeBobBindingAt final.state = some (.success bit)) :
+    (bound : nativeBindingAt bob final.state = some (.success bit)) :
     nativePublicationAt bob final.state = some (.success bit) := by
   obtain ⟨control, stateEq, active, recall, viewEq⟩ :=
     native_information_control bob past view history
@@ -161,13 +161,11 @@ theorem native_bob_committed_bob_opens
   change openingState = some openingControl at openingEq
   subst openingState
   cases finalEq : final.state with
-  | none => simp only [nativeBobBindingAt, finalEq, Option.bind_none] at bound; cases bound
+  | none => simp only [nativeBindingAt, finalEq, Option.bind_none] at bound; cases bound
   | some result =>
       have stored := native_binding_at_opening_from_final assessment.strategy bob openingControl
         openingTrace openingActive openingGrant 136 final tailMem result finalEq bit
-        (by
-          change bobBindingRef.get? result.execution.application.config.store = _
-          simpa only [nativeBobBindingAt, finalEq, Option.bind_some] using bound)
+        (by simpa only [nativeBindingAt, finalEq, Option.bind_some] using bound)
       rw [← finalEq]
       apply native_opening_exact_from_control assessment rational bob openingControl openingTrace
         openingActive openingGrant

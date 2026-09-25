@@ -70,14 +70,14 @@ theorem binding_present_at_opening (who owner : Player) (control : app.Control)
     (granted : control.execution.application.serviceGrant = some (nativePublicationEvent owner)) :
     ∃ value, (nativeBindingRef who).get?
       control.execution.application.config.store = some value := by
-  have before : (bindingEvent who).val < (nativePublicationEvent owner).val := by
+  have before : (nativeBindingEvent who).val < (nativePublicationEvent owner).val := by
     fin_cases who <;> fin_cases owner <;> decide
-  have complete := earlier_completed (nativePublicationEvent owner) (bindingEvent who) before
+  have complete := earlier_completed (nativePublicationEvent owner) (nativeBindingEvent who) before
     control trace (by rwa [native_publication_owner]) granted
-  have field := (control.execution.application.config.output_available (bindingEvent who)).mpr
+  have field := (control.execution.application.config.output_available (nativeBindingEvent who)).mpr
     complete
   have present := (nativeBindingRef who).get?_isSome control.execution.application.config.store
-    (by rw [binding_ref_eq]; exact field)
+    (by rw [native_binding_ref_eq]; exact field)
   exact Option.isSome_iff_exists.mp present
 
 theorem finish_law (players : Profile model.behavioralSignature)

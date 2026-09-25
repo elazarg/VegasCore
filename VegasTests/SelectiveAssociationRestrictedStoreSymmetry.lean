@@ -16,6 +16,7 @@ noncomputable section
 namespace VegasTests.SelectiveAssociation.Restricted.StoreFlip
 
 open Vegas Vegas.EventGraphRuntime Interaction
+open GameTheory.Math.Probability
 
 def output (event : nativeGraph.EventId) (value : (nativeGraph.outputLayout event).Value) :
     (nativeGraph.outputLayout event).Value :=
@@ -240,6 +241,111 @@ theorem handle_other_commitment (selected candidate : Handle nativeGraph)
   rw [completed, CandidateFlip.catalogue_freeze]
   rfl
 
+/-- Rejection cannot test the flipped bit at a binding node. The application
+checks event kind before any opening verification, and commitment rejection
+uses only readiness, time, authentication and handle allocation. -/
+theorem handle_other_binding (selected : Handle nativeGraph) (selectedOwner : selected.1 = alice)
+    (before : State nativeGraph) (event : nativeGraph.EventId)
+    (differentEvent : event ≠ aliceBinding) (who : Player) (differentOwner : who ≠ alice)
+    (outputEq : nativeGraph.outputLayout event = .binding who .bool)
+    (codeEq : cast (congrArg (EventGraph.EventCode (L := simpleExpr) nativeGraph.layout) outputEq)
+      (nativeGraph.nodes event) = EventGraph.EventCode.bind (L := simpleExpr)
+        (layout := nativeGraph.layout) who BaseTy.bool)
+    (view : nodeView nativeGraph event = .bind who .bool outputEq codeEq)
+    (sent : Message Player (Payload nativeGraph))
+    (addressed : sent.payload.event? nativeGraph = some event) :
+    handle nativeRuntime (state selected before) sent =
+      (handle nativeRuntime before sent).map (state selected) := by
+  rcases sent with ⟨id, packet⟩
+  cases packet with
+  | malformed value => cases addressed
+  | opening addressedEvent candidate value =>
+      cases Option.some.inj addressed
+      simp only [handle, view, state, config, State.WithinDeadline]
+      split_ifs <;> rfl
+  | withhold addressedEvent =>
+      cases Option.some.inj addressed
+      simp only [handle, view, state, config, State.WithinDeadline]
+      split_ifs <;> rfl
+  | commitment addressedEvent candidate =>
+      cases Option.some.inj addressed
+      by_cases good : before.config.cut.Ready event ∧
+          before.WithinDeadline nativeRuntime event ∧ id.1 = who ∧ candidate.1 = who ∧
+          before.accepted (.inr event) = none ∧ before.HandleUnused candidate
+      · obtain ⟨ready, timely, sender, owner, vacant, unused⟩ := good
+        have differentHandle : candidate ≠ selected := by
+          intro same
+          exact differentOwner (owner.symm.trans ((congrArg Prod.fst same).trans selectedOwner))
+        exact handle_other_commitment selected candidate differentHandle before id event
+          differentEvent who outputEq codeEq view ready timely sender owner vacant unused
+      · have rejected : handle nativeRuntime before ⟨id, .commitment event candidate⟩ = none := by
+          simp only [handle, view, Message.sender]
+          split_ifs <;> simp_all
+        have rejectedFlip : handle nativeRuntime (state selected before)
+            ⟨id, .commitment event candidate⟩ = none := by
+          simp only [handle, view, Message.sender, state, config, State.WithinDeadline,
+            State.HandleUnused] at *
+          split_ifs <;> simp_all
+        rw [rejectedFlip, rejected]
+        rfl
+
+theorem environment_grant (selected : Handle nativeGraph) (before : State nativeGraph)
+    (event : nativeGraph.EventId) :
+    environmentStep nativeRuntime (state selected before) (.grant event) =
+      (environmentStep nativeRuntime before (.grant event)).map (state selected) := by
+  simp only [environmentStep, FinDist.map_pure]
+  rfl
+
+theorem environment_tick (selected : Handle nativeGraph) (before : State nativeGraph) :
+    environmentStep nativeRuntime (state selected before) .advanceClock =
+      (environmentStep nativeRuntime before .advanceClock).map (state selected) := by
+  simp only [environmentStep, FinDist.map_pure]
+  rfl
+
+/-- Binding expiry commutes with the hidden-value flip even on failed or
+off-path runs. Deadline and activation tests are unchanged. -/
+theorem environment_expire_binding (selected : Handle nativeGraph) (before : State nativeGraph)
+    (event : nativeGraph.EventId) (who : Player)
+    (outputEq : nativeGraph.outputLayout event = .binding who .bool)
+    (codeEq : cast (congrArg (EventGraph.EventCode (L := simpleExpr) nativeGraph.layout) outputEq)
+      (nativeGraph.nodes event) = EventGraph.EventCode.bind (L := simpleExpr)
+        (layout := nativeGraph.layout) who BaseTy.bool)
+    (view : nodeView nativeGraph event = .bind who .bool outputEq codeEq) :
+    environmentStep nativeRuntime (state selected before) (.expire event) =
+      (environmentStep nativeRuntime before (.expire event)).map (state selected) := by
+  by_cases ready : before.config.cut.Ready event
+  · cases activated : before.activatedAt event with
+    | none =>
+        rw [environmentStep_expire_of_not_activated nativeRuntime before event ready activated,
+          environmentStep_expire_of_not_activated nativeRuntime (state selected before)
+            event ready activated, FinDist.map_pure]
+    | some entered =>
+        by_cases due : nativeRuntime.deadline event ≤ before.clock - entered
+        · rw [environmentStep_expire_bind_eq nativeRuntime before event ready entered activated
+            due who .bool outputEq codeEq view,
+            environmentStep_expire_bind_eq nativeRuntime (state selected before) event
+              ready entered activated due who .bool outputEq codeEq view, FinDist.map_pure]
+          apply congrArg FinDist.pure
+          have completed := state_complete selected before event ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+              (PublicationResult.failure : PublicationResult Bool))
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+              (PublicationResult.failure : PublicationResult Bool))
+          by_cases same : event = aliceBinding
+          · subst event
+            have owner : who = alice := by cases outputEq; rfl
+            subst who
+            simpa only [cast_eq, action_alice, output_alice, CandidateFlip.result]
+              using completed.symm
+          · simpa only [action_other event same, output_other event same] using completed.symm
+        · rw [environmentStep_expire_of_not_due nativeRuntime before event ready entered
+            activated due,
+            environmentStep_expire_of_not_due nativeRuntime (state selected before) event
+              ready entered activated due, FinDist.map_pure]
+  · rw [environmentStep_expire_of_not_ready nativeRuntime before event ready,
+      environmentStep_expire_of_not_ready nativeRuntime (state selected before) event ready,
+      FinDist.map_pure]
+
 
 theorem publicView (selected : Handle nativeGraph) (before : State nativeGraph) :
     (state selected before).publicView = before.publicView := by
@@ -255,5 +361,65 @@ theorem playerView (selected : Handle nativeGraph) (owner : selected.1 = alice)
       (owner ▸ different) slot
   simp only [state, State.playerView, State.publicView, publicObserve,
     playerObserve before.config who different, meanings]
+
+private theorem register_replaceConfig (submitted : Submission nativeGraph)
+    (before : State nativeGraph) (who : Player) (replacement : nativeGraph.Config) :
+    submitted.register { before with config := replacement } who =
+      { submitted.register before who with config := replacement } := by
+  rcases submitted with ⟨packet, opening⟩
+  cases packet with
+  | commitment event handle =>
+      rcases handle with ⟨owner, slot⟩
+      cases slot <;> cases opening <;> simp only [Submission.register]
+      split <;> rfl
+  | opening | withhold | malformed => rfl
+
+theorem register (selected : Handle nativeGraph) (submitted : Submission nativeGraph)
+    (before : State nativeGraph) (who : Player) :
+    (CandidateFlip.call selected submitted).register (state selected before) who =
+      state selected (submitted.register before who) := by
+  calc
+    _ = { (CandidateFlip.call selected submitted).register
+        (CandidateFlip.state selected before) who with config := config before.config } :=
+      register_replaceConfig (CandidateFlip.call selected submitted)
+        (CandidateFlip.state selected before) who (config before.config)
+    _ = { CandidateFlip.state selected (submitted.register before who) with
+        config := config before.config } :=
+      congrArg (fun current : State nativeGraph =>
+        { current with config := config before.config })
+          (CandidateFlip.register selected submitted before who)
+    _ = _ := by
+      simp only [state, CandidateFlip.state, (submitted.register_facts who before).1]
+
+theorem register_other_owner (selected : Handle nativeGraph) (submitted : Submission nativeGraph)
+    (before : State nativeGraph) (who : Player) (different : selected.1 ≠ who) :
+    submitted.register (state selected before) who =
+      state selected (submitted.register before who) := by
+  rw [← CandidateFlip.call_register_other_owner selected submitted (state selected before)
+    who different, register]
+
+theorem submitStep_state (selected : Handle nativeGraph) (before : State nativeGraph)
+    (who : Player) (sent : Payload nativeGraph) :
+    submitStep (state selected before) who sent = state selected (submitStep before who sent) := by
+  cases sent with
+  | commitment event handle =>
+      by_cases owned : handle.1 = who
+      · simp only [submitStep, owned, ↓reduceIte, state]
+        congr 1
+        exact (CandidateFlip.catalogue_freeze selected handle before.candidates).symm
+      · simp [submitStep, state, owned]
+  | opening | withhold | malformed => rfl
+
+theorem emit (selected : Handle nativeGraph) (submitted : WitnessedSubmission nativeGraph)
+    (before : State nativeGraph) (who : Player)
+    (known : List (Message Player (WitnessedPacket nativeGraph))) :
+    (CandidateFlip.submission selected submitted).emit (state selected before) who
+        (known.map (CandidateFlip.message selected)) =
+      CandidateFlip.packet selected (submitted.emit before who known) := by
+  calc
+    _ = (CandidateFlip.submission selected submitted).emit (CandidateFlip.state selected before)
+        who (known.map (CandidateFlip.message selected)) :=
+      WitnessedSubmission.emit_local _ _ _ _ _ (fun _ => rfl)
+    _ = _ := CandidateFlip.emit selected submitted before who known
 
 end VegasTests.SelectiveAssociation.Restricted.StoreFlip

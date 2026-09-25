@@ -17,15 +17,19 @@ namespace VegasTests.SelectiveAssociation
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 open GameTheory GameTheory.Protocol
 
-theorem native_information_control (who : Player) (past : List nativeApp.PlayerEntry)
-    (view : nativeApp.PlayerView)
-    (history : nativeModel.InformationHistory who (some (past, view))) :
+theorem native_information_control
+    {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+    (who : Player) (past : List (serviceApp observation).PlayerEntry)
+    (view : (serviceApp observation).PlayerView)
+    (history : (serviceModel observation).InformationHistory who (some (past, view))) :
     ∃ control, history.1.state = some control ∧ control.actor = some who ∧
-      control.execution.recall who = past ∧ control.execution.observe nativeApp who = view := by
+      control.execution.recall who = past ∧
+        control.execution.observe (serviceApp observation) who = view := by
   rcases history with ⟨⟨state, trace⟩, information⟩
-  change (nativeMenu.signals (FinDist.pure nativeInitial) nativeHorizon nativeScheduler).infoOf
+  change ((serviceMenu observation).signals (FinDist.pure nativeInitial) nativeHorizon
+    (serviceScheduler observation)).infoOf
     who trace = some (past, view) at information
-  rw [nativeMenu.info] at information
+  rw [(serviceMenu observation).info] at information
   cases state with
   | none => cases information
   | some control =>

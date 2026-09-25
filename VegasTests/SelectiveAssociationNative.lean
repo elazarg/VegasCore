@@ -53,6 +53,26 @@ theorem native_actor (event : nativeGraph.EventId) :
     nativeGraph.actor? event = some (nativeOwner event) := by
   fin_cases event <;> rfl
 
+def nativeBindingEvent (who : Player) : nativeGraph.EventId :=
+  if who = alice then aliceBinding else if who = bob then bobBinding else carolBinding
+
+theorem native_binding_owner (who : Player) : nativeOwner (nativeBindingEvent who) = who := by
+  fin_cases who <;> rfl
+
+theorem native_binding_output (who : Player) :
+    nativeGraph.outputLayout (nativeBindingEvent who) = .binding who .bool := by
+  fin_cases who <;> rfl
+
+theorem native_binding_code (who : Player) :
+    cast (congrArg (EventGraph.EventCode nativeGraph.layout) (native_binding_output who))
+      (nativeGraph.nodes (nativeBindingEvent who)) =
+        EventGraph.EventCode.bind (L := simpleExpr) who BaseTy.bool := by
+  fin_cases who <;> rfl
+
+theorem native_binding_node (who : Player) : nodeView nativeGraph (nativeBindingEvent who) =
+    .bind who .bool (native_binding_output who) (native_binding_code who) := by
+  fin_cases who <;> rfl
+
 def nativeVisit (event : nativeGraph.EventId) : List (ServiceInstruction nativeGraph) :=
   [.grant event, .player (nativeOwner event), .includeLatest event (nativeOwner event)] ++
     List.replicate (nativeRuntime.deadline event) .tick ++ [.expire event]

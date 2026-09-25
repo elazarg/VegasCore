@@ -31,6 +31,7 @@ import VegasTests.SelectiveAssociationRestrictedBinding
 import VegasTests.SelectiveAssociationRestrictedOpeningOptimality
 import VegasTests.SelectiveAssociationRestrictedSymmetry
 import VegasTests.ReactiveReadinessRestrictions
+import VegasTests.SelectiveAssociationRestrictedEquilibrium
 import GameTheoryExtensions.Math.Probability.ConditionalComparison
 
 /-! # Paper theorem audit
@@ -883,5 +884,42 @@ The restricted native equilibrium is a separate, open proof obligation.
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Math.Probability.FinDistConvergesPointwise.probOf_le
+
+/-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.continuationContext_value_eq_expect_commit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms BehavioralAssessment.continuationContext_value_eq_expect_commit
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.profile_guesser_rational' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SelectiveAssociation.Restricted.profile_guesser_rational
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.bob_prelude_rational' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SelectiveAssociation.Restricted.bob_prelude_rational
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.initialized_payoff_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SelectiveAssociation.Restricted.initialized_payoff_law
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.exists_consistent_guess_assessment_of_tremble' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  VegasTests.SelectiveAssociation.Restricted.exists_consistent_guess_assessment_of_tremble
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.alice_early_rational' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SelectiveAssociation.Restricted.alice_early_rational
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.prescribed_sequentiallyRational' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SelectiveAssociation.Restricted.prescribed_sequentiallyRational
 
 end Vegas.Paper
