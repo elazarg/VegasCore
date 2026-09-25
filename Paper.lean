@@ -21,6 +21,7 @@ import Vegas.Pending.EventServiceCompletion
 import Vegas.Pending.EventSequential
 import GameTheoryExtensions.Analysis.ObservationAbstraction
 import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
+import GameTheoryExtensions.Analysis.Protocol.DisclosureEnforcementEquilibrium
 import GameTheoryExtensions.Analysis.Protocol.DecisionPayoff
 import GameTheoryExtensions.Analysis.Protocol.ObservationRequirement
 import Vegas.Pending.ReactiveEvidenceOrigin
@@ -995,6 +996,11 @@ open GameTheory.Protocol.InformationModel in
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Enforcement.exists_sound_deterrent_iff
 
+/-- info: 'GameTheory.Enforcement.exists_sound_alarm_for_penalty_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Enforcement.exists_sound_alarm_for_penalty_iff
+
 /-- info: 'Interaction.MessageNetwork.sampling_delivery_lower' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -1004,6 +1010,26 @@ open GameTheory.Protocol.InformationModel in
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.reactive_decision_submission_permitted
+
+/-- info: 'GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_implemented' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_implemented
+
+/-- info: 'GameTheory.Protocol.DisclosureEnforcement.every_source_equilibrium_enforceable' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Protocol.DisclosureEnforcement.every_source_equilibrium_enforceable
+
+/-- info: 'GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_preserved_of_range' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_preserved_of_range
+
+/-- info: 'GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_preserved_constant_sum' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_preserved_constant_sum
 
 /-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.isSequentiallyRationalAt_of_sanction' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

@@ -96,6 +96,39 @@ theorem expect_monitoredUtility (law : FinDist Outcome) (base : Outcome → ℝ)
       funext pointwise]
   rw [FinDist.expect_sub, FinDist.expect_mul_const, FinDist.prob_bind, FinDist.expect_map]
 
+/-- The optimal sound alarm deters a comparison at a specified nonnegative
+penalty exactly when the detectable mass times that penalty covers the gain. -/
+theorem exists_sound_alarm_for_penalty_iff (comparison : IncentiveComparison Outcome)
+    (base : Outcome → ℝ) (observe : Outcome → Observation) (admitted : Set Observation)
+    (permitted : (comparison.prescribed.map observe).support ⊆ admitted)
+    (penalty : ℝ) (nonnegative : 0 ≤ penalty) :
+    (∃ alarm : Observation → FinDist Bool,
+      (∀ observation ∈ admitted, (alarm observation).prob true = 0) ∧
+      comparison.Holds (monitoredUtility base observe alarm penalty)) ↔
+        comparison.alternative.expect base - comparison.prescribed.expect base ≤
+          (comparison.alternative.map observe).probOf admittedᶜ * penalty := by
+  constructor
+  · rintro ⟨alarm, sound, deters⟩
+    have silent : ((comparison.prescribed.map observe).bind alarm).prob true = 0 :=
+      (alarm_zero_iff _ alarm).mpr (fun observation supported =>
+        sound observation (permitted supported))
+    have bounded := mul_le_mul_of_nonneg_right
+      (detection_le_outside_admitted admitted (comparison.alternative.map observe) alarm sound)
+      nonnegative
+    change comparison.alternative.expect _ ≤ comparison.prescribed.expect _ at deters
+    rw [expect_monitoredUtility, expect_monitoredUtility, silent, zero_mul, sub_zero] at deters
+    linarith
+  · intro sufficient
+    have silent :
+        ((comparison.prescribed.map observe).bind (outsideAlarm admitted)).prob true = 0 :=
+      (alarm_zero_iff _ _).mpr (fun observation supported =>
+        outsideAlarm_sound admitted observation (permitted supported))
+    refine ⟨outsideAlarm admitted, outsideAlarm_sound admitted, ?_⟩
+    change comparison.alternative.expect _ ≤ comparison.prescribed.expect _
+    rw [expect_monitoredUtility, expect_monitoredUtility, silent, zero_mul, sub_zero,
+      outsideAlarm_probability]
+    linarith
+
 /-- For one profitable comparison, a finite nonnegative penalty and a sound
 alarm can deter the deviation iff it has positive observable mass outside
 the admitted set. This does not give a uniform penalty for a family of deviations. -/

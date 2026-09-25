@@ -17,10 +17,11 @@ game with ambient communication and escrow
 native implementation
 ```
 
-The checked finite experiment below supplies the first edge for one game,
-using automatic enforcement. The second must implement its information and
-enforcement powers: inspecting the true execution history requires more than
-a blockchain monitor's view.
+The checked finite sender/receiver class supplies the first edge with
+specified utility charges. The Boolean experiment also gives sharp thresholds
+and a converse. The second edge must implement the first edge's information
+and enforcement powers. Ordinary pending-message sampling supplies some
+evidence without giving the watchdog access to the complete execution history.
 
 ## What is prohibited, what is evidenced, and who pays
 
@@ -142,7 +143,7 @@ Canonicalization alone supplies no theorem about all these channels.
 There is a sharp checked limit to zero-false-positive enforcement for a specified
 lawful observation law `mu`. In
 [Enforcement.lean](../GameTheoryExtensions/Analysis/Enforcement.lean),
-`alarm_zero_iff` requires silence at every observation in `mu.support`, even
+`alarm_zero_iff` requires silence at every observation in the support of `mu`, even
 for randomized alarms. `detection_le_outside_support` bounds detection of a
 deviating law `nu` by `nu.probOf (mu.supportᶜ)`;
 `exists_optimal_sound_alarm` attains that bound with the same deterministic
@@ -160,6 +161,8 @@ of their supports. For one profitable deviation, `exists_sound_deterrent_iff`
 then characterizes whether any finite nonnegative utility fine and sound alarm
 can deter it: its observation law must put positive mass outside the admitted
 set. The forward construction charges the original gain divided by that mass.
+For a specified nonnegative fine, `exists_sound_alarm_for_penalty_iff` gives
+the sharp condition: detectable mass times the fine must cover the gain.
 This is an exact incentive-comparison result with automatic collection, not an
 executable checker, a uniform fine for every deviation, or an SE theorem.
 
@@ -230,7 +233,69 @@ particular constructions advertised as subliminal-free signatures.
 [Teseleanu (2021)](https://eprint.iacr.org/2021/1331.pdf)
 None supplies a blockchain implementation or an SE-preservation theorem here.
 
-## Checked sequential-equilibrium experiment
+## A checked class of sequential-equilibrium extensions
+
+The reusable construction is in
+[DisclosureEnforcementEquilibrium.lean](../GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean).
+Nature draws a private state with an arbitrary finite prior. The sender knows
+that state; the source gives only the receiver a decision, drawn from a finite
+nonempty action set. Both players' payoffs are arbitrary functions of the state
+and receiver decision. The target adds an optional authenticated disclosure
+before that same receiver decision.
+
+The compiler retains the source receiver law after silence and chooses a
+receiver-optimal action after disclosure. It sends no disclosure on prescribed
+play. `source_equilibrium_implemented` starts from **any source SE assessment**
+and constructs a target SE with identical complete initialized state and net
+payoff-vector laws, provided the sender's charge at each private state covers
+its gain from the receiver's disclosed response. The translation is playerwise.
+The proof uses the existing SE definition, whole-policy continuation deviations,
+and one common fully mixed sequence. It checks the receiver's rational response
+after a disclosure, including off-path disclosures.
+
+Two ways of setting charges have different quantifiers:
+
+- `requiredCharge` is the least nonnegative charge satisfying the sender
+  condition for a chosen source decision law and disclosed response.
+  `every_source_equilibrium_enforceable` gives some suitable response and charge
+  for every source SE. These charges may depend on the selected equilibrium.
+- `source_equilibrium_preserved_of_range` uses a bound on the sender's payoff
+  range at each private state. The same charges, target game and playerwise
+  compiler then work for **every source SE**, without inspecting which source
+  equilibrium was selected. The unconditional compiler laws supply the state
+  and payoff-law identities.
+
+There is also a checked case where the participants supply the incentive
+without a sanction. `source_equilibrium_preserved_constant_sum` assumes that,
+at each private state, the sum of sender and receiver payoffs is independent
+of the receiver's decision. The receiver's optimal informed response then
+minimizes the sender's reward, so `sender_deterrence_of_constant_sum` establishes
+deterrence with zero charge. Every source SE therefore extends with the same
+state and payoff laws. Zero-sum games are a special case. This is a result for
+the specified one-decision class, not arbitrary zero-sum games or Vegas programs.
+
+The prior is represented on its full-support carrier, so no zero-probability
+chance states become extra decision sites. `source_consistent_belief` proves
+that every consistent source assessment uses the prior at the receiver's
+always-reached site; source optimality is derived from its actual SE premise.
+
+This is a finite class of disclosure games, not arbitrary finite games or the
+native packet game. It has one informed sender, no separate private receiver
+signal, one receiver decision, and only silence versus authenticated full
+disclosure. It admits no other communication alphabet, partial evidence or
+repeated disclosure. These are substantive restrictions. A monitoring backend
+must justify that any further messages or observations have the required
+strategic account.
+
+The charge is a utility deduction. A sampled fine can supply its expected
+value only after proving the relevant conditional collection law. If reports,
+collection outcomes or reporter rewards affect later choices, those effects
+must also be included. Substituting a probability times a fine into the charge
+formula alone is not a native implementation theorem. The initialized net
+payoff-law equality is exact because prescribed play discloses nothing and
+incurs no charge.
+
+## Sharp thresholds in the Boolean experiment
 
 The [finite ambient game](../GameTheoryExtensionsTests/AmbientEnforcement.lean)
 has a fair secret bit known to Alice. Bob always guesses; both receive one for
@@ -240,14 +305,16 @@ Bob's choice, with automatic deduction `D` from her payoff. Ordinary source
 actions are never fined.
 
 [AmbientEnforcementSource.lean](../GameTheoryExtensionsTests/AmbientEnforcementSource.lean)
-proves `source_sequential_equilibrium` for every source policy profile: any
+proves `GameTheoryExtensionsTests.AmbientEnforcement.source_sequential_equilibrium`
+for every source policy profile: any
 guess distribution `q` is rational against the hidden fair bit. The proof
 includes consistent beliefs and a common fully mixed sequence.
 
 [AmbientEnforcementEquilibrium.lean](../GameTheoryExtensionsTests/AmbientEnforcementEquilibrium.lean)
 compiles each player's own policy independently. Alice remains silent; Bob
 retains `q` after silence and guesses correctly after disclosure.
-`target_sequential_equilibrium` proves an actual target SE whenever
+`GameTheoryExtensionsTests.AmbientEnforcement.target_sequential_equilibrium`
+proves an actual target SE whenever
 
 ```text
 for each secret bit x: 1 - D <= Pr_q(guess = x).
@@ -256,12 +323,13 @@ for each secret bit x: 1 - D <= Pr_q(guess = x).
 The condition is checked at Alice's information after learning her bit.
 `all_source_profiles_implemented` therefore implements every source profile
 when `D >= 1`; `fair_sequential_equilibrium` needs only `D >= 1/2` for fair
-guessing. `compile_initialized_state_law` preserves the joint terminal state,
-including the secret, guess and absence of disclosure; `compile_payoff_law`
+guessing. `GameTheoryExtensionsTests.AmbientEnforcement.compile_initialized_state_law`
+preserves the joint terminal state, including the secret, guess and absence of
+disclosure; `GameTheoryExtensionsTests.AmbientEnforcement.compile_payoff_law`
 preserves the actual payoff-vector distribution, including target deductions.
 
 [AmbientEnforcementThreshold.lean](../GameTheoryExtensionsTests/AmbientEnforcementThreshold.lean)
-proves necessity against **every target assessment**, requiring only the same
+proves necessity against **every sequentially rational target assessment**, requiring only the same
 joint secret/guess law. For `D >= 0`, `retained_law_implementable_iff` gives
 exactly the bitwise condition above; `fair_law_implementable_iff` and
 `all_source_laws_implementable_iff` give the sharp thresholds `1/2` and `1`.
@@ -387,6 +455,17 @@ can identify opportunities when observation or reporting is unavailable.
 The checked scheduler-obliviousness lemmas hide samples from the scheduler;
 they alone establish no positive monitoring rate.
 
+The incentive premise is the sender's **belief-weighted expected loss** at the
+decision, including the chance that evidence is accepted and the charge is
+collected. A contract need not be able to verify that expectation. The generic
+local rationality theorem evaluates it using the assessment's conditional
+beliefs; the finite enforcement experiments use specified, known charges.
+For standard SE these beliefs must be consistent with the modeled chance and
+information structure. Uncertainty about monitor reliability can be modeled,
+but arbitrary fear of punishment is not a substitute for that consistency
+obligation. A subjective-equilibrium interpretation with different model
+beliefs would be a separate theorem.
+
 Retaining a packet preserves its contents, not a publicly verifiable arrival
 timestamp or the identity of its latest rebroadcaster. Packet conformance,
 authentication, report timing and the account charged remain separate checks.
@@ -407,6 +486,11 @@ receipts nor a cryptographic attribution proof.
 
 ## What a bounty must add
 
+An off-chain pending-message observer supplying evidence to a contract is a
+candidate **oracle service** in the blockchain sense. This terminology does
+not grant it omniscient observation, trustworthy testimony, or guaranteed
+delivery. Those are exactly the interface obligations above.
+
 A reporter must prefer reporting after accounting for its bounty, fees,
 verification costs, lost information advantage, retaliation and enforceable
 side contracts. A reportable proof does not establish this incentive. Refunds
@@ -414,6 +498,15 @@ through self-reporting or jointly controlled accounts count against the
 sender's net loss; externally funded rewards also require protection against
 fabricated and repeated claims. These belong in the reporter game before a
 fixed reporting probability is assumed.
+
+The existing participants may themselves implement enforcement when their
+continuation incentives favor reporting or counteraction. This is an
+alternative to an external paid watchdog. Competitive interests, including
+zero-sum payoffs, already supply deterrence in the finite decision class above.
+They do not by themselves establish a profitable feasible report at every
+information set in a richer game. Such an
+implementation must construct the participants' strategies and consistent
+beliefs, and account for any information revealed by a report.
 
 There are relevant cryptographic precedents, with narrower models.
 Ning, Dang, Hou, and Chang use share deposits and informer rewards for early
@@ -434,15 +527,25 @@ which collateral and counter-incentives the model permits. It does not provide
 an SE theorem for the Vegas communication service.
 [Breaking Omerta (2025)](https://eprint.iacr.org/2025/1582)
 
-## Next step and stopping point
+## Remaining implementation boundary
 
-The checked automatic-enforcement experiment retains every source profile and
-ordinary action, with exact SE outcome-law correspondence under `D > 1`.
-The native observation audit and permitted
-signaling experiment identify independent gaps in implementing enforcement.
-The next focused experiment should replace the debit oracle with a strategic
-report and adjudication: first exhibit failure when reporting is unprofitable
-or monitor absence is known to the sender, then prove a conditional threshold.
+The finite sender/receiver class establishes forward SE preservation with
+complete state and net payoff-law equality. The Boolean instance also has
+exact SE outcome-law correspondence under `D > 1`. Neither result is a
+source-to-native preservation theorem.
+
+The direct next obligation is a concrete reporting and adjudication service
+whose permitted packet behavior has the source interpretation required by the
+equilibrium proof. Sampling supplies evidence; successful collection, liability
+and additional observations still need proofs. A strategic reporter additionally
+requires its own rationality and consistency argument. The native shape checker
+does not yet exclude all additional communication, and the permitted-signaling
+experiment explains why simply increasing a sound fine cannot always fix that.
+
+The [sequential enforcement note](sequential-enforcement-design.md) distinguishes
+forward extension from reflection and records a proposed broader theorem. That
+generalization remains unproved; the implemented theorem is the finite class
+specified above.
 
 Keep the optional layer outside the production tower until a concrete receipt,
 observation and reporting service supplies the enforcement used by its upper

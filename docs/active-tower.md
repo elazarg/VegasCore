@@ -5,12 +5,16 @@ Sequential compilation adds predecessor barriers to this same graph. The
 native executor and strategic proof are shared by both execution modes.
 
 The [communication-and-enforcement investigation](disclosure-enforcement-design.md)
-considers an optional semantic edge below the source. Its checked guessing-game
-experiment extends every source SE while preserving ordinary source actions
-and net payoff laws; strict collateral also gives the converse for outcome laws.
-Separate results establish concrete monitoring limits.
-It is not part of the checked compilation path: a general equilibrium-extension
-theorem and an implementation of accountable enforcement remain open.
+considers an optional semantic edge below the source. Its checked finite
+sender/receiver class extends every source SE with exact state and net payoff
+laws under sufficient disclosure charges; payoff-range bounds give one target
+game and compiler for all source equilibria. The Boolean instance also gives
+a converse under strict collateral. Statewise constant-sum games in the finite
+decision class need no disclosure charge. Ordinary passive observations can detect
+the native counterexample's unsupported certificate, with checked sampling and
+conditional delivery bounds. This is not part of the compilation path:
+source adequacy of permitted traffic, accountable collection, and general
+multistage equilibrium extension remain open.
 
 ## Source semantics
 

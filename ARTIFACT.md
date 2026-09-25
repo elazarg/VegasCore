@@ -60,6 +60,8 @@ the subsequent kernel-checked build.
 | Ordinary-view packet reports, soundness on compliant snapshots, and conditional sampling/report-delivery bounds | `Interaction/MessageMonitoring.lean`, `Interaction/MessageMonitoringProbability.lean` |
 | Every compiled graph decision satisfies the packet evidence checker; ordinary passive sampling detects the native counterexample with exactly its sampling probability | `Vegas/Pending/ReactiveConformance.lean`, `VegasTests/PassiveDisclosureMonitoring.lean` |
 | Automatic penalties preserve every SE outcome law of the ordinary guessing game, with a converse under strict collateral and unchanged net payoff laws | `GameTheoryExtensionsTests/AmbientEnforcementEquilibrium.lean` |
+| Every source SE of the finite private-state sender/receiver class extends to an SE with identical state and net payoff laws under typewise disclosure charges; payoff-range bounds give a fixed target for all source SEs | `GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean` |
+| Statewise constant-sum, including zero-sum, games in that decision class preserve every source SE under optional disclosure without sanctions | `GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean` |
 | Sharp collateral thresholds against arbitrary target SE implementations: one half for fair guessing, one for all source guessing laws | `GameTheoryExtensionsTests/AmbientEnforcementThreshold.lean` |
 | Explicit pending certificates escape a ledger-only alarm; a network-input alarm requires stronger observations | `VegasTests/DisclosureMonitoring.lean` |
 | Shared randomness enables signaling through permitted traffic; even observing the receiver's public guess does not permit detection with zero false positives | `GameTheoryExtensionsTests/MonitoredSignaling.lean` |
@@ -75,7 +77,14 @@ inferred from tests.
 
 The [enforcement experiments](docs/disclosure-enforcement-design.md) separate
 the incentive effect of an automatic penalty from monitoring and collection.
-The finite guessing game retains every ordinary source choice and adds an
+The generic finite sender/receiver class admits arbitrary priors, finite
+receiver actions and arbitrary payoffs. It preserves every source SE under
+typewise deterrence, with one common consistent assessment construction and
+exact state and net payoff laws. A fixed bound on sender payoff ranges supplies
+the same target charges and playerwise compiler for every source SE.
+Statewise constant-sum games in this class need no sanctions: the receiver's
+informed best response already supplies the sender's incentive to stay silent.
+The Boolean guessing game retains every ordinary source choice and adds an
 optional disclosure charged only to its sender. A utility penalty of one
 implements every source SE by a playerwise translation, preserving the joint
 secret/guess law and the actual net payoff-vector law. The threshold is sharp:
