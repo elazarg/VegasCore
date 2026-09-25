@@ -271,6 +271,16 @@ the prescribed path. An enforceable penalty for disclosure additionally needs
 observable evidence and an adjudication rule. Punishing disclosure does not
 erase an opponent's knowledge once disclosure happened.
 
+The [enforcement investigation](disclosure-enforcement-design.md) separates
+an abstract penalty's incentive effect from its realization by observations,
+accountable reports and escrow. It also considers punishing deviations from
+the compiled communication protocol, while retaining legal source choices.
+The checked shared-randomness experiment shows why permitting the correct
+public message distribution does not alone exclude signaling to a recipient
+with additional private information. The native observation experiment shows
+why ledger access does not alone supply a monitor of pending certificates.
+Neither experiment assumes a private communication channel outside the model.
+
 ## Cryptography and the equilibrium definition
 
 A cryptographic backend needs an explicit computational security parameter,

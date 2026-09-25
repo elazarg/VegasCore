@@ -37,6 +37,7 @@ import Vegas.Game.ZeroSum
 import GameTheoryExtensions.Math.Probability.ConditionalComparison
 import GameTheoryExtensions.Analysis.ZeroSumRegularization
 import GameTheoryExtensions.Analysis.CorrelationPayoff
+import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Analysis.Protocol.Sequential
 
 /-! # Paper theorem audit
@@ -975,5 +976,21 @@ open GameTheory.Protocol.InformationModel in
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.CorrelationPayoff.preserves_marginals_iff_additive
+
+/-- info: 'GameTheory.Enforcement.regret_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Enforcement.regret_le
+
+/-- info: 'GameTheory.Enforcement.exists_optimal_sound_alarm' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Enforcement.exists_optimal_sound_alarm
+
+/-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.isSequentiallyRationalAt_of_sanction' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel.BehavioralAssessment in
+#print axioms isSequentiallyRationalAt_of_sanction
 
 end Vegas.Paper

@@ -55,6 +55,11 @@ the subsequent kernel-checked build.
 | Exact payoff-subspace incentive criteria and component-based bounds on deviation gains | `GameTheoryExtensions/Core/IncentiveCone.lean`, `GameTheoryExtensions/Protocol/SequentialIncentives.lean`, `GameTheoryExtensions/Analysis/Protocol/Sequential.lean` |
 | Additive payoffs are exactly those preserved by every change of correlation with fixed marginals | `GameTheoryExtensions/Analysis/CorrelationPayoff.lean` |
 | Communication can make source nonstrategic payoffs strategic; coupled zero-sum constraints give strictly stronger incentive implications | `GameTheoryExtensionsTests/ComponentCommunication.lean`, `GameTheoryExtensionsTests/CoupledIncentives.lean` |
+| Conditional sanction bounds, sufficient local sequential rationality, and the exact detection limit for alarms with zero false positives | `GameTheoryExtensions/Analysis/Enforcement.lean` |
+| Automatic penalties preserve every SE outcome law of the ordinary guessing game, with a converse under strict collateral and unchanged net payoff laws | `GameTheoryExtensionsTests/AmbientEnforcementEquilibrium.lean` |
+| Sharp collateral thresholds against arbitrary target SE implementations: one half for fair guessing, one for all source guessing laws | `GameTheoryExtensionsTests/AmbientEnforcementThreshold.lean` |
+| Explicit pending certificates escape a ledger-only alarm; a network-input alarm requires stronger observations | `VegasTests/DisclosureMonitoring.lean` |
+| Shared randomness enables signaling through permitted traffic; even observing the receiver's public guess does not permit detection with zero false positives | `GameTheoryExtensionsTests/MonitoredSignaling.lean` |
 | Auction failure of dominance, including every faithful translation | `Vegas/Examples/CommitRevealAuction.lean` |
 | SE separation for accepted named evidence, with literal declared and compiled settlement payoffs | `VegasTests/SelectiveAssociationSourceEquilibrium.lean`, `VegasTests/SelectiveAssociationSettlement.lean`, `VegasTests/SelectiveAssociationPayoffSeparation.lean` |
 | Native SE with empty passive observation, all legal information sites and whole-policy deviations | `VegasTests/SelectiveAssociationRestrictedEquilibrium.lean`, `VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean`, `VegasTests/SelectiveAssociationRestrictedBeliefs.lean` |
@@ -64,6 +69,20 @@ the subsequent kernel-checked build.
 
 The proved capstones are universally quantified proofs, not conclusions
 inferred from tests.
+
+The [enforcement experiments](docs/disclosure-enforcement-design.md) separate
+the incentive effect of an automatic penalty from monitoring and collection.
+The finite guessing game retains every ordinary source choice and adds an
+optional disclosure charged only to its sender. A utility penalty of one
+implements every source SE by a playerwise translation, preserving the joint
+secret/guess law and the actual net payoff-vector law. The threshold is sharp:
+fair guessing is implementable exactly from one half, and all source guessing
+laws exactly from one, among nonnegative penalties. Above one, every target SE
+also has the state and net payoff laws of a source SE. The native monitoring
+experiment checks the visibility of explicit certificates, and the signaling
+experiment checks what a monitor lacking shared private information can detect.
+These experiments do not implement
+a watchdog, escrow backend, or source-to-native SE enforcement theorem.
 
 The [selective-association comparison](docs/selective-association-proof-contract.md)
 keeps the compiled application, service calendar, deadlines, selector and full

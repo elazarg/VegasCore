@@ -4,6 +4,14 @@ The checked path is `SourceProgram → EventGraph → EventGraphRuntime`.
 Sequential compilation adds predecessor barriers to this same graph. The
 native executor and strategic proof are shared by both execution modes.
 
+The [communication-and-enforcement investigation](disclosure-enforcement-design.md)
+considers an optional semantic edge below the source. Its checked guessing-game
+experiment extends every source SE while preserving ordinary source actions
+and net payoff laws; strict collateral also gives the converse for outcome laws.
+Separate results establish concrete monitoring limits.
+It is not part of the checked compilation path: a general equilibrium-extension
+theorem and an implementation of accountable enforcement remain open.
+
 ## Source semantics
 
 `Vegas.Source` defines `SourceProgram`, behavioral policies, execution, and

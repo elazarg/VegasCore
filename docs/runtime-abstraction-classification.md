@@ -261,6 +261,16 @@ as checked in
 
 ### Operational information and continuation incentives
 
+The [disclosure-enforcement investigation](disclosure-enforcement-design.md)
+asks whether adding observable penalties can make an otherwise unsound
+communication abstraction implementable for bounded payoffs. The checked
+sanction bound applies to actual conditional continuation laws; realizing its
+sanction event requires a separate monitoring and collection argument.
+Conformance to a compiled protocol can restrict side traffic, but permitted
+variation can still encode a signal using shared private information, as the
+checked public-message experiment demonstrates. Adding a penalty changes the
+target game rather than erasing a legal action from the existing one.
+
 The terminal observation classification alone cannot be substituted into an
 arbitrary multiplayer continuation. The enclosing game must establish what
 the player knows, which decisions are feasible, and how their consequences

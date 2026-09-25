@@ -29,6 +29,7 @@ import GameTheoryExtensions.Analysis.ObservationErasure
 import GameTheoryExtensions.Analysis.ObservationAbstraction
 import GameTheoryExtensions.Analysis.ObservationPayoff
 import GameTheoryExtensions.Analysis.CorrelationPayoff
+import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Analysis.ZeroSumRegularization
 import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
 import GameTheoryExtensions.Analysis.Protocol.DecisionPayoff
