@@ -11,6 +11,7 @@ import Vegas.Pending.EventAssociationInvariant
 import Vegas.Pending.EventCommitmentBinding
 import Vegas.Pending.NativeProtocolSafety
 import Vegas.Pending.ReactivePolicy
+import Vegas.Pending.ReactiveConformance
 import Vegas.Pending.ReactivePolicyFacts
 import Vegas.Pending.ReactiveDisclosure
 import Vegas.Pending.ReactiveDisclosureAdmission

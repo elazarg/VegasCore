@@ -56,6 +56,9 @@ the subsequent kernel-checked build.
 | Additive payoffs are exactly those preserved by every change of correlation with fixed marginals | `GameTheoryExtensions/Analysis/CorrelationPayoff.lean` |
 | Communication can make source nonstrategic payoffs strategic; coupled zero-sum constraints give strictly stronger incentive implications | `GameTheoryExtensionsTests/ComponentCommunication.lean`, `GameTheoryExtensionsTests/CoupledIncentives.lean` |
 | Conditional sanction bounds, sufficient local sequential rationality, and the exact detection limit for alarms with zero false positives | `GameTheoryExtensions/Analysis/Enforcement.lean` |
+| A profitable deviation admits a finite sound sanction exactly when its observation law has positive mass outside all admitted observations | `GameTheoryExtensions/Analysis/ObservableEnforcement.lean` |
+| Ordinary-view packet reports, soundness on compliant snapshots, and conditional sampling/report-delivery bounds | `Interaction/MessageMonitoring.lean`, `Interaction/MessageMonitoringProbability.lean` |
+| Every compiled graph decision satisfies the packet evidence checker; ordinary passive sampling detects the native counterexample with exactly its sampling probability | `Vegas/Pending/ReactiveConformance.lean`, `VegasTests/PassiveDisclosureMonitoring.lean` |
 | Automatic penalties preserve every SE outcome law of the ordinary guessing game, with a converse under strict collateral and unchanged net payoff laws | `GameTheoryExtensionsTests/AmbientEnforcementEquilibrium.lean` |
 | Sharp collateral thresholds against arbitrary target SE implementations: one half for fair guessing, one for all source guessing laws | `GameTheoryExtensionsTests/AmbientEnforcementThreshold.lean` |
 | Explicit pending certificates escape a ledger-only alarm; a network-input alarm requires stronger observations | `VegasTests/DisclosureMonitoring.lean` |

@@ -153,6 +153,16 @@ over a specified observation carrier, not implementations of a monitor.
 Retaining all legal source strategies requires soundness for all their laws,
 not only for the selected equilibrium's observations.
 
+[ObservableEnforcement.lean](../GameTheoryExtensions/Analysis/ObservableEnforcement.lean)
+quantifies that distinction. `sound_for_family_iff` takes a family of permitted
+observation laws: soundness for every member is precisely silence on the union
+of their supports. For one profitable deviation, `exists_sound_deterrent_iff`
+then characterizes whether any finite nonnegative utility fine and sound alarm
+can deter it: its observation law must put positive mass outside the admitted
+set. The forward construction charges the original gain divided by that mass.
+This is an exact incentive-comparison result with automatic collection, not an
+executable checker, a uniform fine for every deviation, or an SE theorem.
+
 [MonitoredSignaling.lean](../GameTheoryExtensionsTests/MonitoredSignaling.lean)
 isolates initially shared information. Alice and Bob share a fair private pad
 `r`, independent of her secret `x`. A permitted field `c` is either independent
@@ -314,6 +324,75 @@ is not a proof that the submitted message conveys no information. The recorded
 broadcaster is ideal provenance, not a concrete signature proof. The experiment
 implements neither a watcher, an accountable receipt, nor escrow slashing.
 
+The intended watchdog uses **two ordinary observation mechanisms**: the ledger
+for included packets, and the same passive pending-message rule available to
+players. It does not require the scheduler's complete input record. In the
+existing runtime an activation samples pending identifiers, and `learn` retains
+the selected fresh packets from other authors in that observer's `leaked`
+list. Both that list and the ledger belong to its ordinary player view.
+Observing an offending packet can therefore supply report material even when
+it is never included. Carol's indistinguishability result concerns the sample
+in that specific prefix; it does not rule out a watchdog that receives the
+packet.
+
+[MessageMonitoring.lean](../Interaction/MessageMonitoring.lean) makes this
+minimal interface explicit: `PlayerView.reports` filters the retained leaked
+packets and ledger using a packet predicate. `mem_reports` characterizes its
+report material exactly; `reports_learn_selected` detects a selected fresh
+foreign packet satisfying the predicate. `reports_learn` and
+`reports_includePending` preserve existing reports under a fixed predicate,
+including after a packet leaves the pending pool. Another observer's private
+sample does not alter them (`reports_learn_other`). These theorems concern
+observed material, not its selection probability or contractual liability.
+
+[MessageMonitoringProbability.lean](../Interaction/MessageMonitoringProbability.lean)
+maps the actual observation kernel through `learn` and the report filter.
+`sampling_le_report` bounds the probability of retaining a specific offending
+packet. Compliant leaked, ledger and pending packets give the point-mass empty
+report law (`reportLaw_eq_pure_nil_of_compliant`). `sampling_delivery_lower`
+composes a sampling lower bound `p` with a delivery lower bound `q` conditional
+on each supported nonempty report, obtaining `p * q`. Delivery can depend on
+the report: independence is unnecessary. These are fixed-snapshot results;
+an execution-wide sender-conditional guarantee must also establish activation
+and applicable bounds at the sender's information set. To infer no sanctions
+from no reports, adjudication must reject the empty report.
+
+The compiler-specific checker lives in
+[ReactiveConformance.lean](../Vegas/Pending/ReactiveConformance.lean).
+Legitimate opening packets may carry a matching certificate. The checker
+rejects certificates on commitments, withholding and malformed calls, and
+mismatched certificates on openings. `reactive_decision_submission_permitted`
+checks every compiled graph action, including legal source deviations, against
+arbitrary emission states and known packets. `no_grant_no_transmission` checks
+that the prescribed compiler sends nothing without a service grant.
+
+[PassiveDisclosureMonitoring.lean](../VegasTests/PassiveDisclosureMonitoring.lean)
+uses that checker on the actual native witness. Bob's ordinary observation
+contains the offending certified commitment while the ledger does not; his
+report persists after the separate certificate-free binding is included.
+A passive sample at Carol's information position reports it with exactly the
+specified probability. This does not insert a new observer into the game or
+change Carol's actual strategy. The checker is deliberately only an evidence
+shape check: an ordinary early opening without a certificate is still allowed
+by it. Full protocol conformance needs a separate timing and information
+argument.
+
+Using the same mechanism does not give the watchdog the recipient's sample.
+`ObservationRule` may depend on the observer, and each activation draws its
+own sample. A positive enforcement result needs a lower bound on receiving,
+retaining and successfully reporting evidence, conditional on the sender's
+information when choosing the violation. It also needs timely watchdog
+activation. An average chance of seeing traffic is insufficient if the sender
+can identify opportunities when observation or reporting is unavailable.
+The checked scheduler-obliviousness lemmas hide samples from the scheduler;
+they alone establish no positive monitoring rate.
+
+Retaining a packet preserves its contents, not a publicly verifiable arrival
+timestamp or the identity of its latest rebroadcaster. Packet conformance,
+authentication, report timing and the account charged remain separate checks.
+A public report included before release can establish early availability;
+ordinary passive observation alone does not establish that public fact.
+
 A monitor checking only already-associated source facts also misses the
 candidate's early certificate. A possible service could retain a report and
 link it to the eventual association, or assign custody liability to candidates
@@ -369,3 +448,9 @@ Keep the optional layer outside the production tower until a concrete receipt,
 observation and reporting service supplies the enforcement used by its upper
 edge. Enforcing a single prescribed strategy is a separate goal from retaining
 the source game's legal deviations.
+
+Deferred implementation note: whether miner incentives support participating
+in this monitoring, and whether Ethereum supplies the required observation,
+reporting and escrow interface, remain questions for later investigation.
+Neither economic participation nor implementation feasibility is proved or
+assumed to follow from the current experiments.

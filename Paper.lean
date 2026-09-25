@@ -38,6 +38,9 @@ import GameTheoryExtensions.Math.Probability.ConditionalComparison
 import GameTheoryExtensions.Analysis.ZeroSumRegularization
 import GameTheoryExtensions.Analysis.CorrelationPayoff
 import GameTheoryExtensions.Analysis.Enforcement
+import GameTheoryExtensions.Analysis.ObservableEnforcement
+import Interaction.MessageMonitoringProbability
+import Vegas.Pending.ReactiveConformance
 import GameTheoryExtensions.Analysis.Protocol.Sequential
 
 /-! # Paper theorem audit
@@ -986,6 +989,21 @@ open GameTheory.Protocol.InformationModel in
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Enforcement.exists_optimal_sound_alarm
+
+/-- info: 'GameTheory.Enforcement.exists_sound_deterrent_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Enforcement.exists_sound_deterrent_iff
+
+/-- info: 'Interaction.MessageNetwork.sampling_delivery_lower' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Interaction.MessageNetwork.sampling_delivery_lower
+
+/-- info: 'Vegas.EventGraphRuntime.reactive_decision_submission_permitted' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.EventGraphRuntime.reactive_decision_submission_permitted
 
 /-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.isSequentiallyRationalAt_of_sanction' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

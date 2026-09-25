@@ -54,6 +54,8 @@ import Interaction.ReactiveObservation
 import Interaction.ReactiveObservationRestriction
 import Interaction.ReactiveKnowledge
 import Interaction.MessageNetworkInvariant
+import Interaction.MessageMonitoring
+import Interaction.MessageMonitoringProbability
 import Interaction.MessageNetworkCounters
 import Interaction.MessageRetention
 import Interaction.MessagePublication
