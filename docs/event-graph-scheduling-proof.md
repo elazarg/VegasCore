@@ -241,8 +241,8 @@ remain ready. If the scheduler sees whether `B` bound `0` or `1`, it can next
 choose `A` before `C` in one case and `C` before `A` in the other. An arbitrary
 focal `A` policy can read whether `C` is already complete and condition its
 action on `B`'s hidden value. No canonical policy with the source information
-can reproduce this. The current `publicStore`/`playerStore` projections exclude
-that counterexample.
+can reproduce this. The `Vegas.EventGraph.publicStore` and
+`Vegas.EventGraph.playerStore` projections exclude that counterexample.
 
 The theorem also fails for trace-sensitive observations: canonical and
 asynchronous completion orders differ. It applies to typed terminal stores and

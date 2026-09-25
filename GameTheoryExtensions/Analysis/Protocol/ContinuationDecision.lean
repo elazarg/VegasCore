@@ -171,6 +171,48 @@ theorem rational_value_eq_maximum [Finite Action] [Nonempty Action]
     (FinDist.expect_le_of_forall _ _ _ fun action _ => maximal action)
     (decision.rational_value_bound assessment rational best)⟩
 
+/-- Once retained alternatives have been checked, extending a local menu
+requires exactly the no-gain inequalities for the omitted alternatives.
+Their probability under the proposed strategy is irrelevant to this check.
+This is a rationality criterion at an existing information site; it does not
+construct the beliefs or additional sites of an extended game. -/
+theorem rationalAt_iff_omitted_not_profitable (assessment : M.BehavioralAssessment)
+    (retained : Set Action)
+    (optimal : ∀ action ∈ retained, decision.expectedReward assessment action ≤
+      (decision.response assessment.strategy).expect (decision.expectedReward assessment)) :
+    assessment.IsSequentiallyRationalAt decision.site
+        (assessment.continuationContext decision.site (utility decision.player) fuel) ↔
+      ∀ action ∉ retained, decision.expectedReward assessment action ≤
+        (decision.response assessment.strategy).expect (decision.expectedReward assessment) := by
+  rw [decision.rationalAt_iff]
+  constructor
+  · exact fun rational action _ => rational action
+  · intro omitted action
+    by_cases kept : action ∈ retained
+    · exact optimal action kept
+    · exact omitted action kept
+
+/-- A sufficient local omission certificate: each removed action is weakly
+dominated by a retained action at every compatible history. The dominating
+action must work throughout the information set, so no extra information is
+silently supplied to the player. This covers every belief at the fixed site.
+Global consistency and newly introduced information sites are separate. -/
+theorem rationalAt_of_omitted_dominated (assessment : M.BehavioralAssessment)
+    (retained : Set Action)
+    (optimal : ∀ action ∈ retained, decision.expectedReward assessment action ≤
+      (decision.response assessment.strategy).expect (decision.expectedReward assessment))
+    (dominated : ∀ action ∉ retained, ∃ replacement ∈ retained, ∀ history,
+      decision.reward (decision.state history) action ≤
+        decision.reward (decision.state history) replacement) :
+    assessment.IsSequentiallyRationalAt decision.site
+      (assessment.continuationContext decision.site (utility decision.player) fuel) := by
+  apply (decision.rationalAt_iff_omitted_not_profitable assessment retained optimal).mpr
+  intro action omitted
+  obtain ⟨replacement, kept, dominates⟩ := dominated action omitted
+  apply le_trans _ (optimal replacement kept)
+  simp only [expectedReward, posterior, FinDist.expect_map]
+  exact FinDist.expect_mono fun history _ => dominates history
+
 variable {OtherState : Type*}
 
 /-- If an abstraction forces the same response at two decision sites, every

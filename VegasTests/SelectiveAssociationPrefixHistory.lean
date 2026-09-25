@@ -113,12 +113,12 @@ private theorem offered_trace (bit : Bool) (response : nativeApp.Action) :
     Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
   have grantedTrace := trace_environment 86 (reacted bit response) granted
     (.application (.grant aliceBinding)) (reacted_trace bit response) (by
-      simp only [nativeScheduler, reacted_cursor]
+      simp only [serviceScheduler, reacted_cursor]
       exact FinDist.mem_support_pure.mpr rfl) grantMem
   apply trace_environment 85 granted _ (.activate alice) grantedTrace _ activateMem
   have cursor := environment_cursor _ _ _ grantMem
   rw [reacted_cursor] at cursor
-  simp only [nativeScheduler, cursor]
+  simp only [serviceScheduler, cursor]
   exact FinDist.mem_support_pure.mpr rfl
 
 theorem native_included_raw_trace (bit : Bool) (response : nativeApp.Action) :
@@ -128,7 +128,7 @@ theorem native_included_raw_trace (bit : Bool) (response : nativeApp.Action) :
   · have cursor : (offeredAfter bit response).environmentRecall.length = 4 := by
       simp only [offeredAfter, nativeApp.respond_environmentRecall, beforeOffer,
         List.length_append, List.length_singleton, reacted_cursor]
-    simp only [nativeScheduler, cursor]
+    simp only [serviceScheduler, cursor]
     change .include (alice, 1) ∈ (FinDist.pure
       (nativeRuntime.reactiveLatest nativeLeaks aliceBinding alice
         ((offeredAfter bit response).observeEnvironment nativeApp))).support
@@ -148,27 +148,27 @@ theorem native_carol_raw_trace (bit : Bool) (response : nativeApp.Action) :
       beforeOffer, List.length_append, List.length_singleton, reacted_cursor]
   have tickTrace := trace_environment 83 (includedAfter bit response) ticked
     (.application .advanceClock) (native_included_raw_trace bit response) (by
-      simp only [nativeScheduler, includedCursor]
+      simp only [serviceScheduler, includedCursor]
       exact FinDist.mem_support_pure.mpr rfl) tickMem
   have tickCursor : ticked.environmentRecall.length = 6 := by
     rw [environment_cursor _ _ _ tickMem, includedCursor]
   have expireTrace := trace_environment 82 ticked expired (.application (.expire aliceBinding))
     tickTrace (by
-      simp only [nativeScheduler, tickCursor]
+      simp only [serviceScheduler, tickCursor]
       exact FinDist.mem_support_pure.mpr rfl)
       expireMem
   have expireCursor : expired.environmentRecall.length = 7 := by
     rw [environment_cursor _ _ _ expireMem, tickCursor]
   have grantTrace := trace_environment 81 expired granted (.application (.grant carolBinding))
     expireTrace (by
-      simp only [nativeScheduler, expireCursor]
+      simp only [serviceScheduler, expireCursor]
       exact FinDist.mem_support_pure.mpr rfl)
       grantMem
   have grantCursor : granted.environmentRecall.length = 8 := by
     rw [environment_cursor _ _ _ grantMem, expireCursor]
   exact trace_environment 80 granted _ (.activate carol) grantTrace
     (by
-      simp only [nativeScheduler, grantCursor]
+      simp only [serviceScheduler, grantCursor]
       exact FinDist.mem_support_pure.mpr rfl) activateMem
 
 theorem native_transport_raw_history (control : nativeApp.Control)

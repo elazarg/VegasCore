@@ -17,7 +17,10 @@ namespace VegasTests.SelectiveAssociation
 
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
-def nativeRoot : nativeApp.Execution := .initial nativeApp nativeInitial
+variable {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+
+def nativeRoot : (serviceApp observation).Execution := .initial (serviceApp observation)
+  nativeInitial
 
 def nativeBefore (count : Nat) : List (ServiceInstruction nativeGraph) :=
   [.player alice, .player bob] ++
@@ -41,53 +44,59 @@ theorem nativeVisit_prefix_ticks (event : nativeGraph.EventId) :
       List.replicate (nativeRuntime.deadline event) .tick) = nativeRuntime.deadline event := by
   fin_cases event <;> decide
 
-theorem native_visit_completes (players : Player → nativeApp.Policy)
-    (event : nativeGraph.EventId) (execution next : nativeApp.Execution)
+theorem native_visit_completes (players : Player → (serviceApp observation).Policy)
+    (event : nativeGraph.EventId) (execution next : (serviceApp observation).Execution)
     (invariant : execution.application.Invariant nativeInputs)
     (available : event ∈ execution.application.config.cut.completed ∨
       execution.application.config.cut.Ready event)
-    (reached : next ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+    (reached : next ∈ (nativeRuntime.runInteractionPlan observation players (serviceNetwork
+      observation)
       (nativeVisit event) execution).support) :
     event ∈ next.application.config.cut.completed := by
   rcases available with completed | ready
-  · exact (nativeRuntime.runInteractionPlan_facts nativeLeaks nativeInputs players
-      nativeNetwork _ execution next invariant reached).completed completed
+  · exact (nativeRuntime.runInteractionPlan_facts observation nativeInputs players
+      (serviceNetwork observation) _ execution next invariant reached).completed completed
   have strategic : (nativeGraph.actor? event).isSome = true := by rw [native_actor]; rfl
   obtain ⟨entered, activated⟩ :=
     invariant.activatedAt_eq_some_of_ready_actor event ready strategic
   have enteredLe := invariant.activated_le event entered activated
   obtain ⟨prior, priorMem, expired, expiredMem, finalMem⟩ :=
-    nativeRuntime.runInteractionPlan_support_instruction nativeLeaks players nativeNetwork
+    nativeRuntime.runInteractionPlan_support_instruction observation players (serviceNetwork
+      observation)
       ([.grant event, .player (nativeOwner event), .includeLatest event (nativeOwner event)] ++
         List.replicate (nativeRuntime.deadline event) .tick) [] (.expire event)
       execution next reached
-  have progress := nativeRuntime.runInteractionPlan_facts nativeLeaks nativeInputs players
-    nativeNetwork _ execution prior invariant priorMem
-  have expiredProgress := nativeRuntime.interactionStep_facts nativeLeaks nativeInputs players
-    nativeNetwork (.expire event) prior expired progress.invariant expiredMem
-  have suffix := nativeRuntime.runInteractionPlan_facts nativeLeaks nativeInputs players
-    nativeNetwork [] expired next expiredProgress.invariant finalMem
+  have progress := nativeRuntime.runInteractionPlan_facts observation nativeInputs players
+    (serviceNetwork observation) _ execution prior invariant priorMem
+  have expiredProgress := nativeRuntime.interactionStep_facts observation nativeInputs players
+    (serviceNetwork observation) (.expire event) prior expired progress.invariant expiredMem
+  have suffix := nativeRuntime.runInteractionPlan_facts observation nativeInputs players
+    (serviceNetwork observation) [] expired next expiredProgress.invariant finalMem
   rcases progress.ready_or_completed event ready with completed | stillReady
   · exact suffix.completed (expiredProgress.completed completed)
   · apply suffix.completed
-    apply nativeRuntime.interactionStep_expire_complete nativeLeaks players nativeNetwork
+    apply nativeRuntime.interactionStep_expire_complete observation players (serviceNetwork
+      observation)
       event prior expired stillReady strategic entered
       (progress.activated event entered activated stillReady.1) _ expiredMem
     rw [progress.clock, nativeVisit_prefix_ticks]
     omega
 
-theorem native_before_invariant (players : Player → nativeApp.Policy)
-    (count : Nat) (execution : nativeApp.Execution)
-    (reached : execution ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+theorem native_before_invariant (players : Player → (serviceApp observation).Policy)
+    (count : Nat) (execution : (serviceApp observation).Execution)
+    (reached : execution ∈ (nativeRuntime.runInteractionPlan observation players (serviceNetwork
+      observation)
       (nativeBefore count) nativeRoot).support) :
     execution.application.Invariant nativeInputs :=
-  (nativeRuntime.runInteractionPlan_facts nativeLeaks nativeInputs players nativeNetwork _
+  (nativeRuntime.runInteractionPlan_facts observation nativeInputs players (serviceNetwork
+    observation) _
     nativeRoot execution (State.initial_invariant nativeInputs) reached).invariant
 
-theorem native_before_completed (players : Player → nativeApp.Policy)
+theorem native_before_completed (players : Player → (serviceApp observation).Policy)
     (count : Nat) (bounded : count ≤ nativeGraph.order.eventCount)
-    (execution : nativeApp.Execution)
-    (reached : execution ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+    (execution : (serviceApp observation).Execution)
+    (reached : execution ∈ (nativeRuntime.runInteractionPlan observation players (serviceNetwork
+      observation)
       (nativeBefore count) nativeRoot).support) :
     ∀ event : nativeGraph.EventId, event.val < count →
       event ∈ execution.application.config.cut.completed := by
@@ -100,8 +109,8 @@ theorem native_before_completed (players : Player → nativeApp.Policy)
         Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
       have earlier := ih (by omega) prior priorMem
       have invariant := native_before_invariant players count prior priorMem
-      have progress := nativeRuntime.runInteractionPlan_facts nativeLeaks nativeInputs players
-        nativeNetwork _ prior execution invariant visitMem
+      have progress := nativeRuntime.runInteractionPlan_facts observation nativeInputs players
+        (serviceNetwork observation) _ prior execution invariant visitMem
       intro event eventLt
       by_cases before : event.val < count
       · exact progress.completed (earlier event before)
@@ -114,9 +123,10 @@ theorem native_before_completed (players : Player → nativeApp.Policy)
           intro predecessor member
           exact earlier predecessor (nativeGraph.order.predecessor_lt member)
 
-theorem native_before_available (players : Player → nativeApp.Policy)
-    (event : nativeGraph.EventId) (execution : nativeApp.Execution)
-    (reached : execution ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+theorem native_before_available (players : Player → (serviceApp observation).Policy)
+    (event : nativeGraph.EventId) (execution : (serviceApp observation).Execution)
+    (reached : execution ∈ (nativeRuntime.runInteractionPlan observation players (serviceNetwork
+      observation)
       (nativeBefore event.val) nativeRoot).support) :
     event ∈ execution.application.config.cut.completed ∨
       execution.application.config.cut.Ready event := by
@@ -127,15 +137,17 @@ theorem native_before_available (players : Player → nativeApp.Policy)
     exact native_before_completed players event.val (Nat.le_of_lt event.isLt) execution
       reached predecessor (nativeGraph.order.predecessor_lt member)
 
-theorem native_before_timely (players : Player → nativeApp.Policy)
-    (event : nativeGraph.EventId) (execution : nativeApp.Execution)
-    (reached : execution ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+theorem native_before_timely (players : Player → (serviceApp observation).Policy)
+    (event : nativeGraph.EventId) (execution : (serviceApp observation).Execution)
+    (reached : execution ∈ (nativeRuntime.runInteractionPlan observation players (serviceNetwork
+      observation)
       (nativeBefore event.val) nativeRoot).support)
     (unfinished : event ∉ execution.application.config.cut.completed) :
     execution.application.WithinDeadline nativeRuntime event := by
   have ready := (native_before_available players event execution reached).resolve_left unfinished
-  have progress := nativeRuntime.runInteractionPlan_facts nativeLeaks nativeInputs players
-    nativeNetwork _ nativeRoot execution (State.initial_invariant nativeInputs) reached
+  have progress := nativeRuntime.runInteractionPlan_facts observation nativeInputs players
+    (serviceNetwork observation) _ nativeRoot execution (State.initial_invariant nativeInputs)
+      reached
   obtain ⟨entered, activated⟩ := progress.invariant.activatedAt_eq_some_of_ready_actor event
     ready (by rw [native_actor]; rfl)
   simp only [State.WithinDeadline, activated]
@@ -145,9 +157,10 @@ theorem native_before_timely (players : Player → nativeApp.Policy)
   have positive := native_deadline_pos event
   omega
 
-theorem native_plan_complete (players : Player → nativeApp.Policy)
-    (execution : nativeApp.Execution)
-    (reached : execution ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+theorem native_plan_complete (players : Player → (serviceApp observation).Policy)
+    (execution : (serviceApp observation).Execution)
+    (reached : execution ∈ (nativeRuntime.runInteractionPlan observation players (serviceNetwork
+      observation)
       nativePlan nativeRoot).support) :
     execution.application.config.cut.Terminal := by
   apply Finset.eq_univ_of_forall
@@ -157,48 +170,56 @@ theorem native_plan_complete (players : Player → nativeApp.Policy)
 
 /-- The explicit instruction evaluator is exactly the native scheduler, at
 every suffix and for arbitrary behavioral policies. -/
-theorem native_segment_rounds (players : Player → nativeApp.Policy)
+theorem native_segment_rounds (players : Player → (serviceApp observation).Policy)
     (before rest after : List (ServiceInstruction nativeGraph))
-    (split : nativePlan = before ++ rest ++ after) (execution : nativeApp.Execution)
+    (split : nativePlan = before ++ rest ++ after) (execution : (serviceApp observation).Execution)
     (position : execution.environmentRecall.length = before.length) :
-    nativeApp.runRounds nativeScheduler players rest.length execution =
-      nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork rest execution := by
+    (serviceApp observation).runRounds (serviceScheduler observation) players rest.length
+      execution =
+      nativeRuntime.runInteractionPlan observation players (serviceNetwork observation) rest
+        execution := by
   induction rest generalizing before execution with
   | nil => rfl
   | cons instruction rest ih =>
       have selected : nativePlan[before.length]? = some instruction := by
         rw [split, List.append_assoc, List.getElem?_append_right (by omega), Nat.sub_self]
         rfl
-      have step : nativeApp.round nativeScheduler players execution =
-          nativeRuntime.interactionStep nativeLeaks players nativeNetwork instruction
+      have step : (serviceApp observation).round (serviceScheduler observation) players execution =
+          nativeRuntime.interactionStep observation players (serviceNetwork observation) instruction
             execution := by
-        simp only [ReactiveApplication.round, nativeScheduler, position, selected,
+        simp only [ReactiveApplication.round, serviceScheduler, position, selected,
           interactionStep]
       rw [List.length_cons, ReactiveApplication.runRounds, step, runInteractionPlan]
       apply FinDist.bind_congr
       intro next supported
       apply ih (before ++ [instruction])
       · simpa only [List.append_assoc, List.singleton_append] using split
-      · have advanced := nativeRuntime.interactionStep_recall nativeLeaks players nativeNetwork
+      · have advanced := nativeRuntime.interactionStep_recall observation players
+          (serviceNetwork observation)
           instruction execution next supported
         simp only [List.length_append, List.length_singleton]
         omega
 
-theorem native_plan_rounds (players : Player → nativeApp.Policy) :
-    nativeApp.runRounds nativeScheduler players nativeHorizon nativeRoot =
-      nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork nativePlan nativeRoot :=
+theorem native_plan_rounds (players : Player → (serviceApp observation).Policy) :
+    (serviceApp observation).runRounds (serviceScheduler observation) players nativeHorizon
+      nativeRoot =
+      nativeRuntime.runInteractionPlan observation players (serviceNetwork observation)
+        nativePlan nativeRoot :=
   native_segment_rounds players [] nativePlan [] (List.append_nil _).symm nativeRoot rfl
 
-theorem native_prefix_rounds (players : Player → nativeApp.Policy)
+theorem native_prefix_rounds (players : Player → (serviceApp observation).Policy)
     (before after : List (ServiceInstruction nativeGraph))
     (split : nativePlan = before ++ after) :
-    nativeApp.runRounds nativeScheduler players before.length nativeRoot =
-      nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork before nativeRoot :=
+    (serviceApp observation).runRounds (serviceScheduler observation) players before.length
+      nativeRoot =
+      nativeRuntime.runInteractionPlan observation players (serviceNetwork observation) before
+        nativeRoot :=
   native_segment_rounds players [] before after split nativeRoot rfl
 
-theorem native_rounds_complete (players : Player → nativeApp.Policy)
-    (execution : nativeApp.Execution)
-    (reached : execution ∈ (nativeApp.runRounds nativeScheduler players nativeHorizon
+theorem native_rounds_complete (players : Player → (serviceApp observation).Policy)
+    (execution : (serviceApp observation).Execution)
+    (reached : execution ∈ ((serviceApp observation).runRounds (serviceScheduler observation)
+      players nativeHorizon
       nativeRoot).support) : execution.application.config.cut.Terminal := by
   rw [native_plan_rounds] at reached
   exact native_plan_complete players execution reached

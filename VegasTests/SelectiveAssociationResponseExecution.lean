@@ -75,7 +75,7 @@ theorem native_response_execution (players : Player → nativeApp.Policy)
   have playerRound : nativeApp.round nativeScheduler players before =
       (before.environmentStep nativeApp (.activate (nativeOwner event))).bind
         (nativeApp.invoke players (nativeOwner event)) := by
-    simp only [ReactiveApplication.round, nativeScheduler, beforeCursor, count,
+    simp only [ReactiveApplication.round, serviceScheduler, beforeCursor, count,
       native_response_selected, interactionInstruction, FinDist.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
     rfl
@@ -99,7 +99,7 @@ theorem native_response_execution (players : Player → nativeApp.Policy)
     apply nativeMenu.trace_environment (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
       (nativeHorizon - (count + 1)) before observed (.activate (nativeOwner event))
       (by rwa [← remaining]) _ observedMem
-    simp only [nativeScheduler, beforeCursor, count, native_response_selected,
+    simp only [serviceScheduler, beforeCursor, count, native_response_selected,
       interactionInstruction, FinDist.mem_support_pure]
   · have observedCursor : observed.environmentRecall.length = count + 1 := by
       obtain ⟨next, _, rfl⟩ := FinDist.support_map .. ▸ observedMem
@@ -110,7 +110,7 @@ theorem native_response_execution (players : Player → nativeApp.Policy)
           count + 1 := by
       rw [nativeApp.respond_environmentRecall]
       exact observedCursor
-    simpa only [ReactiveApplication.round, nativeScheduler, respondedCursor, count,
+    simpa only [ReactiveApplication.round, serviceScheduler, respondedCursor, count,
       native_reserved_selected, interactionStep] using included
 
 end VegasTests.SelectiveAssociation

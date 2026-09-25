@@ -353,8 +353,10 @@ Failure to find a structural certificate must return `unresolved`, not impossibi
   activations do not automatically fit. This is relevant to a future backend.
   [Computational Extensive-Form Games, Definition 3.4 and Theorem 4.5](https://www.cs.cornell.edu/home/halpern/papers/kuhn.pdf)
 - Dilmé's integer-power sequences suggest finite relative-tremble-rate
-  certificates, without an established uniform exponent bound for our search.
-  [Proposition 4.2](https://d-nb.info/1314875949/34)
+  certificates. [Proposition 4.2](https://d-nb.info/1314875949/34)
+  Reny supplies an explicit exponent bound from a finite game tree. Applying
+  it to our search still needs a verified protocol adapter and bounds for the
+  represented tree. [Remark 2.5](https://doi.org/10.1007/s00182-026-00997-z)
 
 ## Next proof opportunities
 

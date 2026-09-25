@@ -8,8 +8,11 @@ below is a proved adapter for the Vegas native protocol.
 
 ## Verifiable disclosure: a close existing characterization
 
-Scott Saas, *Disclosure-Proof Correlated Equilibria*, working paper, June 2025,
-studies a finite complete-information base game with exogenous private signals.
+Scott Saas, *Disclosure-Proof Correlated Equilibria*, Games and Economic Behavior
+159 (2026), 546--563,
+[published article](https://doi.org/10.1016/j.geb.2026.08.001), studies a finite
+complete-information base game with exogenous private signals. The theorem
+numbers below refer to the accessible June 13, 2025 manuscript.
 Players may publicly disclose their exact signal before simultaneously playing
 the base game. Lemma 1 characterizes a no-disclosure sequential equilibrium for
 a **fixed** signal structure: its decision rules must induce the desired outcome,
@@ -83,6 +86,28 @@ recipient observations. A quantitative guessing bound additionally needs their
 probabilities; equal supports alone are insufficient. An equilibrium obstruction
 also needs feasible deviations and payoff comparisons. A new trace logic is
 unnecessary for the first experiment.
+
+## Strategy zeros and restrictions on the game
+
+Kreps--Wilson consistency requires a limit of fully mixed strategy profiles
+and their Bayes beliefs. The limiting profile may assign zero probability to
+available actions. Reny, *A simple proof of the sufficiency of Dilmé's
+power-sequence test for Kreps-Wilson consistency*, International Journal of
+Game Theory 55, article 29 (2026), restates this definition and fixes Nature's
+probabilities throughout every approximating sequence. Its Theorem 2.3 gives
+the power-sequence characterization; Remark 2.5 supplies a bound on the
+required integer exponents from the finite game tree.
+[Primary article, Sections 1--2](https://doi.org/10.1007/s00182-026-00997-z)
+
+**Application.** The native empty-observation experiment changes a fixed chance
+kernel. Restricting legal player responses instead changes available deviations
+and legal histories. Neither operation is equivalent to assigning a legal
+player action probability zero. The checked distinction and the additional
+obligations for restoring actions are described in
+[the restriction analysis](runtime-feature-restrictions.md#model-restrictions-and-zero-probability-play).
+Power sequences suggest finite certificates for the missing native posterior
+argument. A verified adapter from the protocol to the cited tree theorem,
+and a concrete certificate for this game, are still required.
 
 ## Concrete proof obligations and opportunities
 

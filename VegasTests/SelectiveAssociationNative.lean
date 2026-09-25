@@ -25,7 +25,10 @@ def nativeRuntime : EventGraphRuntime nativeGraph where
 def nativeLeaks : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph) :=
   fun who _ => FinDist.pure (if who = bob then {(alice, 0)} else ∅)
 
-abbrev nativeApp := nativeRuntime.reactiveApplication nativeLeaks
+abbrev serviceApp (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
+    nativeGraph)) := nativeRuntime.reactiveApplication observation
+
+abbrev nativeApp := serviceApp nativeLeaks
 
 def nativeInputs : nativeGraph.Inputs := sourceSetup.eventInputs (Env.empty _)
 def nativeInitial : State nativeGraph := State.initial nativeInputs
@@ -36,7 +39,10 @@ def nativeBounds : MessageBounds nativeGraph where
   candidateCount := 2
   values := {⟨.bool, false⟩, ⟨.bool, true⟩, ⟨.int, 0⟩}
 
-abbrev nativeMenu := nativeBounds.rawMenu nativeRuntime nativeLeaks
+abbrev serviceMenu (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
+    nativeGraph)) := nativeBounds.rawMenu nativeRuntime observation
+
+abbrev nativeMenu := serviceMenu nativeLeaks
 
 def nativeOwner (event : nativeGraph.EventId) : Player :=
   if event.val = 0 ∨ event.val = 3 then alice
@@ -55,20 +61,33 @@ def nativePlan : List (ServiceInstruction nativeGraph) :=
   [.player alice, .player bob] ++
     (List.finRange nativeGraph.order.eventCount).flatMap nativeVisit
 
-def nativeNetwork : nativeRuntime.NetworkPolicy nativeLeaks :=
+def serviceNetwork (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
+    nativeGraph)) : nativeRuntime.NetworkPolicy observation :=
   fun _ _ => FinDist.pure .wait
 
-def nativeScheduler : nativeApp.Scheduler := fun history view =>
+def serviceScheduler (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
+    nativeGraph)) : (serviceApp observation).Scheduler := fun history view =>
   match nativePlan[history.length]? with
   | none => FinDist.pure .wait
-  | some instruction => nativeRuntime.interactionInstruction nativeLeaks nativeNetwork
-      history view instruction
+  | some instruction => nativeRuntime.interactionInstruction observation
+      (serviceNetwork observation) history view instruction
 
 abbrev nativeHorizon : Nat := nativePlan.length
-abbrev nativeArena := nativeMenu.protocol (FinDist.pure nativeInitial)
-  nativeHorizon nativeScheduler
-abbrev nativeModel := nativeMenu.information (FinDist.pure nativeInitial)
-  nativeHorizon nativeScheduler
+
+abbrev serviceArena (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
+    nativeGraph)) :=
+  (serviceMenu observation).protocol (FinDist.pure nativeInitial) nativeHorizon
+    (serviceScheduler observation)
+
+abbrev serviceModel (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
+    nativeGraph)) :=
+  (serviceMenu observation).information (FinDist.pure nativeInitial) nativeHorizon
+    (serviceScheduler observation)
+
+abbrev nativeNetwork := serviceNetwork nativeLeaks
+abbrev nativeScheduler := serviceScheduler nativeLeaks
+abbrev nativeArena := serviceArena nativeLeaks
+abbrev nativeModel := serviceModel nativeLeaks
 
 theorem native_horizon : nativeHorizon = 89 := by decide
 theorem native_ticks : serviceTicks nativePlan = 63 := by decide
@@ -91,7 +110,9 @@ def nativeResults (config : nativeGraph.Config) : Results where
   bob := (bobPublicationRef.get? config.store).getD .failure
   carol := (carolPublicationRef.get? config.store).getD .failure
 
-def nativeUtility (who : Player) (state : nativeApp.ProtocolState) : ℝ :=
+def nativeUtility
+    {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+    (who : Player) (state : (nativeRuntime.reactiveApplication observation).ProtocolState) : ℝ :=
   state.elim 0 (fun control => utility (nativeResults control.execution.application.config) who)
 
 end VegasTests.SelectiveAssociation

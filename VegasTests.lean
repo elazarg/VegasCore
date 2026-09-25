@@ -126,5 +126,15 @@ import VegasTests.SelectiveAssociationSeparation
 import VegasTests.SelectiveAssociationSettlement
 import VegasTests.SelectiveAssociationPayoffSeparation
 import VegasTests.SelectiveAssociationRestricted
+import VegasTests.SelectiveAssociationRestrictedPolicy
+import VegasTests.SelectiveAssociationRestrictedRealization
+import VegasTests.SelectiveAssociationReservedContinuation
+import VegasTests.SelectiveAssociationRestrictedBinding
+import VegasTests.SelectiveAssociationRestrictedInitial
+import VegasTests.SelectiveAssociationRestrictedOpening
+import VegasTests.SelectiveAssociationRestrictedOpeningOptimality
+import VegasTests.SelectiveAssociationRestrictedSymmetry
+import VegasTests.SelectiveAssociationRestrictedStoreSymmetry
+import VegasTests.ReactiveReadinessRestrictions
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

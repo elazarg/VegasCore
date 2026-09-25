@@ -20,7 +20,7 @@ theorem native_initial_finish (players : Player → nativeApp.Policy) :
           nativeApp.finished := by
   have firstRound : nativeApp.runRounds nativeScheduler players 1 nativeRoot =
       nativeApp.invoke players alice activatedInitial := by
-    change nativeApp.runRounds nativeScheduler players
+    change (serviceApp nativeLeaks).runRounds (serviceScheduler nativeLeaks) players
       ([.player alice] : List (ServiceInstruction nativeGraph)).length nativeRoot = _
     rw [native_prefix_rounds players [.player alice] nativePlan.tail rfl]
     simp only [runInteractionPlan, interactionStep, interactionInstruction,

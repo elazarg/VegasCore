@@ -26,6 +26,12 @@ import GameTheoryExtensions.Analysis.Protocol.ObservationRequirement
 import Vegas.Pending.ReactiveEvidenceOrigin
 import VegasTests.SelectiveAssociationPayoffSeparation
 import VegasTests.SelectiveAssociationRestricted
+import VegasTests.SelectiveAssociationRestrictedRealization
+import VegasTests.SelectiveAssociationRestrictedBinding
+import VegasTests.SelectiveAssociationRestrictedOpeningOptimality
+import VegasTests.SelectiveAssociationRestrictedSymmetry
+import VegasTests.ReactiveReadinessRestrictions
+import GameTheoryExtensions.Math.Probability.ConditionalComparison
 
 /-! # Paper theorem audit
 
@@ -836,5 +842,46 @@ The restricted native equilibrium is a separate, open proof obligation.
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.SelectiveAssociation.Restricted.first_response_guess_bound
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.binding_success' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SelectiveAssociation.Restricted.binding_success
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.profile_opening_rational' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SelectiveAssociation.Restricted.profile_opening_rational
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.CandidateFlip.uniform_prob_of_known_ids' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.SelectiveAssociation.Restricted.CandidateFlip.uniform_prob_of_known_ids
+
+/-- info: 'VegasTests.ReactiveReadinessRestrictions.disclosure_with_ready_commitment_calls' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.ReactiveReadinessRestrictions.disclosure_with_ready_commitment_calls
+
+/-- info: 'VegasTests.ReactiveReadinessRestrictions.empty_pool_cleanup_preserves_asymmetry' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms VegasTests.ReactiveReadinessRestrictions.empty_pool_cleanup_preserves_asymmetry
+
+/-- info: 'GameTheory.Protocol.InformationModel.ContinuationDecision.rationalAt_of_omitted_dominated' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms
+  GameTheory.Protocol.InformationModel.ContinuationDecision.rationalAt_of_omitted_dominated
+
+/-- info: 'GameTheory.Math.Probability.FinDist.condOn_observation_probOf_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Math.Probability.FinDist.condOn_observation_probOf_le
+
+/-- info: 'GameTheory.Math.Probability.FinDistConvergesPointwise.probOf_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.Math.Probability.FinDistConvergesPointwise.probOf_le
 
 end Vegas.Paper

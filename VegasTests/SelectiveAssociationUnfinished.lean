@@ -16,6 +16,8 @@ namespace VegasTests.SelectiveAssociation
 
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
+variable {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+
 def nativeUntouched (event : nativeGraph.EventId) (count : Nat) : Prop :=
   ∀ index : Fin count, (nativePlan[index.val]?).any (fun instruction =>
     instruction.targets event) = false
@@ -30,18 +32,19 @@ private theorem untouched_current (event : nativeGraph.EventId) (count : Nat)
   have absent := untouched ⟨count, Nat.lt_succ_self count⟩
   simpa only [selected, Option.any_some] using absent
 
-private def nativeNoEarlyCompletion : nativeApp.ProtocolState → Prop
+private def nativeNoEarlyCompletion : (serviceApp observation).ProtocolState → Prop
   | none => True
   | some control => ∀ event, nativeUntouched event control.execution.environmentRecall.length →
       event ∉ control.execution.application.config.cut.completed
 
-private theorem noEarly_transition (before after : nativeApp.ProtocolState)
-    (joint : Player → Option nativeApp.Action)
-    (trace : (nativeApp.protocol (FinDist.pure nativeInitial)
-      nativeHorizon nativeScheduler).Trace before)
+private theorem noEarly_transition (before after : (serviceApp observation).ProtocolState)
+    (joint : Player → Option (serviceApp observation).Action)
+    (trace : ((serviceApp observation).protocol (FinDist.pure nativeInitial)
+      nativeHorizon (serviceScheduler observation)).Trace before)
     (valid : nativeNoEarlyCompletion before)
-    (reached : after ∈ (nativeApp.transition (FinDist.pure nativeInitial)
-      nativeHorizon nativeScheduler before joint).support) : nativeNoEarlyCompletion after := by
+    (reached : after ∈ ((serviceApp observation).transition (FinDist.pure nativeInitial)
+      nativeHorizon (serviceScheduler observation) before joint).support) : nativeNoEarlyCompletion
+        after := by
   cases before with
   | none =>
       obtain ⟨state, stateMem, rfl⟩ := FinDist.support_map .. ▸ reached
@@ -55,8 +58,8 @@ private theorem noEarly_transition (before after : nativeApp.ProtocolState)
           cases FinDist.mem_support_pure.mp reached
           intro event untouched
           have prior : nativeUntouched event execution.environmentRecall.length := by
-            simpa only [nativeApp.respond_environmentRecall] using untouched
-          rw [(nativeRuntime.reactive_respond_application nativeLeaks execution who _).1]
+            simpa only [(serviceApp observation).respond_environmentRecall] using untouched
+          rw [(nativeRuntime.reactive_respond_application observation execution who _).1]
           exact valid event prior
       | none =>
           cases remaining with
@@ -75,24 +78,26 @@ private theorem noEarly_transition (before after : nativeApp.ProtocolState)
                 (untouched_prior event execution.environmentRecall.length untouched)
               cases instruction : nativePlan[execution.environmentRecall.length]? with
               | none =>
-                  simp only [nativeScheduler, instruction, FinDist.mem_support_pure] at selected
+                  simp only [serviceScheduler, instruction, FinDist.mem_support_pure] at selected
                   subst command
                   simp only [ReactiveApplication.Execution.environmentStep,
                     FinDist.map_pure, FinDist.mem_support_pure] at moved
                   subst next
                   exact unfinished
               | some step =>
-                  have audit := nativeApp.submissionAudit_history ReactivePlayerView.publicView
+                  have audit := (serviceApp observation).submissionAudit_history
+                    ReactivePlayerView.publicView
                     (fun _ _ => rfl) (FinDist.pure nativeInitial) nativeHorizon
-                      nativeScheduler trace
-                  apply nativeRuntime.reactive_instruction_unfinished nativeLeaks nativeNetwork
+                      (serviceScheduler observation) trace
+                  apply nativeRuntime.reactive_instruction_unfinished observation (serviceNetwork
+                    observation)
                     execution next step command event audit.1
                     (untouched_current event _ untouched step instruction) unfinished _ moved
-                  simpa only [nativeScheduler, instruction] using selected
+                  simpa only [serviceScheduler, instruction] using selected
 
 private theorem native_no_early_history :
-    ∀ {state} (_trace : (nativeApp.protocol (FinDist.pure nativeInitial)
-      nativeHorizon nativeScheduler).Trace state), nativeNoEarlyCompletion state
+    ∀ {state} (_trace : ((serviceApp observation).protocol (FinDist.pure nativeInitial)
+      nativeHorizon (serviceScheduler observation)).Trace state), nativeNoEarlyCompletion state
   | _, .start => trivial
   | _, .extend prior joint _ reached =>
       noEarly_transition _ _ joint prior (native_no_early_history prior) reached
@@ -104,13 +109,15 @@ theorem native_response_untouched (event : nativeGraph.EventId) :
 
 /-- At every legal decision history, the granted current event is unfinished.
 This includes histories outside an assessment's positive-probability play. -/
-theorem native_decision_unfinished (event : nativeGraph.EventId) (control : nativeApp.Control)
-    (trace : nativeArena.Trace (some control)) (who : Player)
+theorem native_decision_unfinished (event : nativeGraph.EventId) (control : (serviceApp
+  observation).Control)
+    (trace : (serviceArena observation).Trace (some control)) (who : Player)
     (active : control.actor = some who)
     (granted : control.execution.application.serviceGrant = some event) :
     event ∉ control.execution.application.config.cut.completed := by
   have cursor := (native_decision_cursor event control trace who active granted).2
-  have raw := nativeMenu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon nativeScheduler trace
+  have raw := (serviceMenu observation).toRawTrace (FinDist.pure nativeInitial) nativeHorizon
+    (serviceScheduler observation) trace
   apply native_no_early_history raw event
   rw [cursor]
   exact native_response_untouched event

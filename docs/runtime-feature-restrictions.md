@@ -103,15 +103,53 @@ legal information site, including deviations involving raw certificates,
 replays, wrong addresses and failed openings. Matching the prescribed initial
 outcome alone is insufficient.
 
-Candidate prescriptions use silent preludes, a fresh binding for Alice,
-public-evidence guesses, and ordinary openings. A fair binding would require
-posterior symmetry at uncertified sites. A deterministic false binding with
-both guessers choosing false may need only a corresponding posterior inequality;
-it is an alternative proof candidate, not a checked assessment. Off-path
-binding repair must choose a fresh candidate after an arbitrary prelude. The
-finite-menu consistency machinery and native service facts are reusable; the
-named-source posterior proof is only a template. One common perturbation limit
-and whole-policy rationality at every native information site remain necessary.
+The [candidate profile](../VegasTests/SelectiveAssociationRestrictedPolicy.lean)
+uses silent preludes, a deterministic false binding for Alice, public-evidence
+guesses, and ordinary openings. Every response is admitted by the unchanged
+full raw menu, and the profile has some consistent belief completion. Neither
+fact establishes optimality. The checked
+[binding repair](../VegasTests/SelectiveAssociationRestrictedRealization.lean)
+can realize either bit at every legal unfinished binding decision, including
+after arbitrary prelude submissions, using the declared two candidate handles.
+The [binding continuation theorem](../VegasTests/SelectiveAssociationRestrictedBinding.lean)
+retains that chosen value throughout every subsequent raw-policy continuation.
+The [opening optimality theorem](../VegasTests/SelectiveAssociationRestrictedOpeningOptimality.lean)
+checks every legal opening information site against every complete behavioral
+policy deviation, for any belief system. Other players' public results remain
+fixed; the owner can publish its frozen successful value or incur failure.
+Failed bindings are also covered. Thus the remaining incentive obligations are
+the binding and prelude sites, rather than opening behavior.
+
+The remaining belief argument compares histories with an uncertified true
+Alice binding to histories with a false binding and the same guesser input.
+The [local candidate transformation](../VegasTests/SelectiveAssociationRestrictedSymmetry.lean)
+preserves registration, freezing, and the success or failure of evidence
+requests. It permutes the full raw response menu; paired views with equal known
+message identifiers also have equal menu weights. Extending this transformation
+to the [application store](../VegasTests/SelectiveAssociationRestrictedStoreSymmetry.lean)
+preserves public and other-player observations and commutes with accepted
+binding calls under their explicit admission premises. Rejected packets,
+expiry, selection, and recall across the complete prefix still need to be
+covered before claiming a transformation of legal histories. The required
+reach-probability inequality is also open. The checked
+[probability comparison](../GameTheoryExtensions/Math/Probability/ConditionalComparison.lean)
+then supplies the conditioning and finite-limit steps. One common perturbation
+limit and whole-policy rationality at the remaining native information sites
+are still required; independently selected beliefs at different sites do not
+suffice.
+
+The remaining incentive proof is organized by actual response opportunities:
+
+| Site | Obligation for the proposed profile |
+| --- | --- |
+| Alice's prelude and binding | Prove that every complete Alice deviation leaves the two prescribed guesses equal, hence cannot improve her payout above zero. Between the guesses, Carol's prescribed commitment carries no certificate; the service offers Alice no response. |
+| Bob's prelude | Prove that later correction and opening attain his maximum payout of one even after arbitrary earlier submissions. |
+| Carol's and Bob's bindings | For a public certificate, use its validity throughout the information set. Without one, prove that the common consistent beliefs put at least as much weight on Alice's false binding as on her true binding; failure states must also be included. |
+| All three openings | Checked whole-policy optimality, independent of beliefs, in `profile_opening_rational`. |
+
+The first three rows are proof obligations, not additional established native
+equilibrium claims. This decomposition keeps the posterior argument confined
+to the two guessing decisions.
 
 An operational positive control is already checked: private observation cannot
 change the scheduler's observation or its next choice after a silent response.
@@ -247,6 +285,149 @@ The resulting requirement is to represent the consequential conditional
 capability, or to restrict the admitted games until it is harmless. It is not
 a requirement to retain particular packet identities or an explicit network
 statement in the source language.
+
+## Model restrictions and zero-probability play
+
+An SE may assign an available action probability zero. Full support is required
+of the approximating profiles used to justify beliefs, not of the equilibrium
+profile itself. Our actual `IsSequentialEquilibriumFor` definition combines
+sequential rationality with a common limit of fully mixed Bayes assessments.
+
+The relevant distinctions are:
+
+| Operation | What changes |
+| --- | --- |
+| Prescribe an available action with probability zero | One candidate strategy changes. The action remains a deviation; histories following it and rationality at their information sets remain part of the game. |
+| Remove an action from a response menu | Feasible deviations, legal histories, information fibers and the space of consistency approximants change. An equilibrium of the smaller game need not extend. |
+| Set a chance outcome's probability to zero in the runtime | The transition kernel changes. Our legal traces use its support. Player trembles keep that kernel fixed and cannot restore the removed chance outcome. |
+| Hide an operation through an abstraction | The concrete capability remains. A preservation proof must represent its consequences, show it redundant for the claimed property, or restrict the admitted games. |
+
+This is a change in the domains of the rationality and consistency conditions,
+not a permutation of their quantifiers. At a fixed information site, rationality
+compares the prescribed continuation with every feasible deviation, including
+one assigned probability zero. Removing that deviation removes an inequality.
+Removing histories also changes which conditional beliefs must be justified.
+The [primary consistency reference](runtime-feature-literature.md#strategy-zeros-and-restrictions-on-the-game)
+explains the fixed role of Nature's probabilities.
+
+### Checked example and local omission certificate
+
+[`ActionRestriction.lean`](../GameTheoryExtensionsTests/ActionRestriction.lean)
+uses the existing terminal decision protocol, one state and one fixed payoff:
+`false` pays zero and `true` pays one. Either singleton action restriction has a
+standard SE. Restoring both actions makes the restricted `false` outcome
+impossible at every SE, with arbitrary target strategies and beliefs. The
+proposed always-false full-game assessment is nevertheless sequentially
+consistent: it fails rationality. Conversely, the optimal always-true assessment
+is an SE with the legal action `false` assigned probability zero. Thus the
+distinction already occurs in a decision with no off-path information problem.
+
+The generic
+[`rationalAt_iff_omitted_not_profitable`](../GameTheoryExtensions/Analysis/Protocol/ContinuationDecision.lean)
+states the additional local obligation exactly: once retained alternatives
+have been checked, every omitted alternative must offer no higher continuation
+value. `rationalAt_of_omitted_dominated` gives a sufficient certificate valid for
+every belief at the site: each omitted action has a retained replacement whose
+reward is at least as high at every compatible history. The replacement must
+be the same throughout that information set; choosing it using the hidden
+history would silently supply additional information.
+
+These results address local incentives. A full game extension still needs
+rational continuations at any added information sites and one consistent belief
+system across the entire game. A local dominance check alone is not an SE
+preservation theorem.
+
+### What justifies a runtime restriction
+
+The empty-observation experiment is a restriction on an external chance rule.
+It is a valid mathematical comparison because the rule is fixed independently
+of player strategies. Whether it describes the intended deployment is a
+separate assumption. Likewise, excluding premature transmissions from every
+legal menu needs either enforcement, an explicit behavioral restriction on the
+players under study, or a proof that restoring them preserves the claimed
+strategic content. Declaring that the compiler never emits them addresses only
+prescribed play.
+
+If the network is instead modeled as a strategic player, fixing its behavior
+would require its own incentive argument. A claim about miner incentives is
+not established by an SE theorem for a game whose network is an external law.
+
+The investigation uses such restrictions to locate the needed proof premises.
+Their mathematical usefulness does not establish their physical enforcement
+or their suitability as assumptions about a blockchain.
+
+## Readiness restrictions
+
+The [readiness experiment](../VegasTests/ReactiveReadinessRestrictions.lean)
+uses the same selective-association runtime. Its distinction is between
+**when a call can execute** and **when the evidence attached to that call can
+be read**. No additional production semantics is introduced.
+
+### Different meanings of ready
+
+| Restriction | What it excludes or requires | Checked scope |
+| --- | --- | --- |
+| No premature opening calls | Opening packet bodies before the opening event's dependencies complete | The selective-association prefix uses only commitment bodies, so this restriction leaves its information channel. |
+| Dependencies complete at submission | Event predecessors have completed in the original submission view | The original certified commitment satisfies the existing authorization condition. All three initial binding events are dependency-ready. |
+| Every submitted call is immediately accepted by the handler | Readiness plus the applicable deadline and call-specific admission checks | The first certified commitment and both competing association envelopes pass the actual handler before selection. |
+| Every pending call remains ready at every state | A persistent condition on the entire pool | The existing pool does not satisfy this: selecting one winner leaves a stale competitor. A clock step can also invalidate an otherwise ready call. |
+| Drop stale packets after state changes | Additional pool maintenance | Replacing the pool preserves current player inputs. Clearing it after association retains Bob's certified evidence and Carol's indistinguishability. This is a state calculation, not a checked new service. |
+
+The service grant records the service's current event; the application handler does
+not use it as authorization. Thus Alice's first certificate-bearing commitment
+already succeeds while its grant is `none`. Confusing the grant with a call's
+precondition would incorrectly classify this disclosure as premature.
+
+Here “premature opening” means an opening **call** whose dependencies are not
+yet complete. If the intended restriction instead excludes every certificate
+of a still-hidden value, including evidence attached to an executable commitment
+call, it directly removes the disclosure capability used by this witness.
+That is a different restriction to investigate: handler readiness alone does
+not enforce it. Also, handler acceptance is distinct from a successful game
+publication; the native semantics can accept a commitment whose binding result
+is failure. The witness above uses valid Boolean bindings throughout.
+
+The experiment checks the actual first five service rounds with Bob silent.
+Alice submits a certified candidate, Bob passively observes it, and Alice then
+submits a certificate-free commitment to the same candidate. Both envelopes
+could execute at that point. The scheduler includes the certificate-free one;
+Bob combines his earlier certificate with the public association, while Carol
+sees the same public data in both value worlds.
+
+**Consequence:** banning premature opening bodies or requiring immediate
+acceptability at submission does not eliminate this operational information
+pattern. This does not yet prove SE failure for the corresponding restricted
+games. Removing responses changes their rationality conditions, so the existing
+full-menu payoff bound cannot simply be applied to their assessments.
+
+### Where readiness does help
+
+The earlier [opening-race example](early-opening-and-spe.md) uses a fresh
+opening before its dependency has completed to improve a later selection
+probability. The checked
+[`ReactiveDependencyService`](../VegasTests/ReactiveDependencyService.lean)
+denies authorization to that envelope and to the earlier premature withholding
+call, and recalculates both compared continuations. This removes that particular
+profitable comparison. It supplies no general SE theorem and does not remove
+evidence attached to currently executable commitment calls.
+
+### Deployment interpretation
+
+Geth distinguishes executable pending transactions from queued transactions
+with nonce gaps, and exposes both through its transaction-pool API.
+[Geth's pool description](https://geth.ethereum.org/docs/monitoring/understanding-dashboards#transaction-pool),
+[pool API](https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-txpool).
+This network/client distinction must not be identified with a Vegas event's
+application preconditions. Ethereum receipts explicitly represent failed
+execution of included transactions.
+[EIP-658](https://eips.ethereum.org/EIPS/eip-658).
+
+It follows that requiring every modeled message to be an immediately successful
+game call is an extra abstraction or service premise, rather than a consequence
+of ordinary transaction validity. The evidence-bearing, immediately acceptable
+commitment above shows why that premise alone still leaves selective disclosure
+to analyze. A runtime-general result should state separately which traffic is
+observable, which calls are admissible, and what happens to stale competitors.
 
 ## Other controlled comparisons
 

@@ -20,18 +20,12 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 def leaks : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph) :=
   fun _ _ => FinDist.pure ∅
 
-abbrev app := nativeRuntime.reactiveApplication leaks
-abbrev menu := nativeBounds.rawMenu nativeRuntime leaks
-
-def network : nativeRuntime.NetworkPolicy leaks := fun _ _ => FinDist.pure .wait
-
-def scheduler : app.Scheduler := fun history view =>
-  match nativePlan[history.length]? with
-  | none => FinDist.pure .wait
-  | some instruction => nativeRuntime.interactionInstruction leaks network history view instruction
-
-abbrev arena := menu.protocol (FinDist.pure nativeInitial) nativeHorizon scheduler
-abbrev model := menu.information (FinDist.pure nativeInitial) nativeHorizon scheduler
+abbrev app := serviceApp leaks
+abbrev menu := serviceMenu leaks
+abbrev network := serviceNetwork leaks
+abbrev scheduler := serviceScheduler leaks
+abbrev arena := serviceArena leaks
+abbrev model := serviceModel leaks
 
 def initial : app.Execution := .initial app nativeInitial
 
@@ -71,7 +65,7 @@ def activate (execution : app.Execution) (who : Player) : app.Execution :=
 
 theorem activation_law (execution : app.Execution) (who : Player) :
     execution.environmentStep app (.activate who) = FinDist.pure (activate execution who) := by
-  simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
+  simp [ReactiveApplication.Execution.environmentStep, app, serviceApp, reactiveApplication,
     leaks, FinDist.map_pure, activate]
 
 def first (bit : Bool) : app.Execution :=
@@ -231,7 +225,7 @@ private theorem included_receipts (bit : Bool) :
 theorem beforeOffer_law (bit : Bool) :
     (((reacted bit).environmentStep app (.application (.grant aliceBinding))).bind
       fun next => next.environmentStep app (.activate alice)) = FinDist.pure (beforeOffer bit) := by
-  simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
+  simp [ReactiveApplication.Execution.environmentStep, app, serviceApp, reactiveApplication,
     environmentStep, leaks, FinDist.map_pure, beforeOffer, activate]
 
 theorem association_selected (bit : Bool) :

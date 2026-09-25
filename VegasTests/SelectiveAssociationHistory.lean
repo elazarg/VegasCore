@@ -16,6 +16,8 @@ namespace VegasTests.SelectiveAssociation
 
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
+variable {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+
 def nativeBeforeResponse (event : nativeGraph.EventId) : List (ServiceInstruction nativeGraph) :=
   nativeBefore event.val ++ [.grant event]
 
@@ -34,48 +36,58 @@ theorem native_response_selected (event : nativeGraph.EventId) :
   rw [native_response_split event, List.getElem?_append_right (by omega), Nat.sub_self]
   rfl
 
-theorem native_roundsFrom_prefix (players : Player → nativeApp.Policy)
+theorem native_roundsFrom_prefix (players : Player → (serviceApp observation).Policy)
     (before after : List (ServiceInstruction nativeGraph))
     (split : nativePlan = before ++ after) :
-    nativeApp.roundsFrom (FinDist.pure nativeInitial) nativeScheduler players before.length =
-      nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork before nativeRoot := by
+    (serviceApp observation).roundsFrom (FinDist.pure nativeInitial) (serviceScheduler
+      observation) players before.length =
+      nativeRuntime.runInteractionPlan observation players (serviceNetwork observation) before
+        nativeRoot := by
   rw [ReactiveApplication.roundsFrom, FinDist.pure_bind]
   exact native_prefix_rounds players before after split
 
 /-- A legal pending response has an actual predecessor under full-support
 play. The equilibrium strategy and beliefs play no role in this fact. -/
-theorem native_decision_predecessor (event : nativeGraph.EventId) (control : nativeApp.Control)
-    (trace : nativeArena.Trace (some control))
+theorem native_decision_predecessor (event : nativeGraph.EventId) (control : (serviceApp
+  observation).Control)
+    (trace : (serviceArena observation).Trace (some control))
     (active : control.actor = some (nativeOwner event))
     (position : control.execution.environmentRecall.length =
       (nativeBeforeResponse event).length + 1) :
     control.remaining + (nativeBeforeResponse event).length + 1 = nativeHorizon ∧
-    ∃ prior ∈ (nativeRuntime.runInteractionPlan nativeLeaks nativeMenu.uniformResponses
-        nativeNetwork (nativeBeforeResponse event) nativeRoot).support,
+    ∃ prior ∈ (nativeRuntime.runInteractionPlan observation (serviceMenu
+      observation).uniformResponses
+        (serviceNetwork observation) (nativeBeforeResponse event) nativeRoot).support,
       control.execution ∈
-        (prior.environmentStep nativeApp (.activate (nativeOwner event))).support := by
-  have valid := nativeMenu.roundSupported_uniform (FinDist.pure nativeInitial) nativeHorizon
-    nativeScheduler trace
+        (prior.environmentStep (serviceApp observation) (.activate (nativeOwner event))).support
+          := by
+  have valid := (serviceMenu observation).roundSupported_uniform (FinDist.pure nativeInitial)
+    nativeHorizon
+    (serviceScheduler observation) trace
   rcases valid with ⟨accounted, supported⟩
   rw [active] at supported
   obtain ⟨count, prior, command, countEq, priorMem, commandMem, _, observed⟩ := supported
   have countSame : count = (nativeBeforeResponse event).length := by omega
   subst count
   refine ⟨by omega, prior, ?_, ?_⟩
-  · rw [native_roundsFrom_prefix nativeMenu.uniformResponses (nativeBeforeResponse event)
+  · rw [native_roundsFrom_prefix (serviceMenu observation).uniformResponses
+    (nativeBeforeResponse event)
       (.player (nativeOwner event) :: nativeAfterResponse event) (native_response_split event)]
       at priorMem
     exact priorMem
-  · have cursor := nativeApp.roundsFrom_recall (FinDist.pure nativeInitial) nativeScheduler
-      nativeMenu.uniformResponses _ prior priorMem
-    simp only [nativeScheduler, cursor, native_response_selected, interactionInstruction,
+  · have cursor := (serviceApp observation).roundsFrom_recall (FinDist.pure nativeInitial)
+      (serviceScheduler observation)
+      (serviceMenu observation).uniformResponses _ prior priorMem
+    simp only [serviceScheduler, cursor, native_response_selected,
+      interactionInstruction,
       FinDist.mem_support_pure] at commandMem
     subst command
     exact observed
 
-theorem native_response_prefix_facts (players : Player → nativeApp.Policy)
-    (event : nativeGraph.EventId) (execution : nativeApp.Execution)
-    (reached : execution ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+theorem native_response_prefix_facts (players : Player → (serviceApp observation).Policy)
+    (event : nativeGraph.EventId) (execution : (serviceApp observation).Execution)
+    (reached : execution ∈ (nativeRuntime.runInteractionPlan observation players (serviceNetwork
+      observation)
       (nativeBeforeResponse event) nativeRoot).support) :
     execution.application.Invariant nativeInputs ∧
     execution.application.clock = nativeRuntime.deadline event - 1 ∧
@@ -83,10 +95,10 @@ theorem native_response_prefix_facts (players : Player → nativeApp.Policy)
       earlier ∈ execution.application.config.cut.completed) := by
   rw [nativeBeforeResponse, runInteractionPlan_append] at reached
   obtain ⟨prior, priorMem, grantMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-  have before := nativeRuntime.runInteractionPlan_facts nativeLeaks nativeInputs players
-    nativeNetwork _ nativeRoot prior (State.initial_invariant nativeInputs) priorMem
-  have grant := nativeRuntime.runInteractionPlan_facts nativeLeaks nativeInputs players
-    nativeNetwork _ prior execution before.invariant grantMem
+  have before := nativeRuntime.runInteractionPlan_facts observation nativeInputs players
+    (serviceNetwork observation) _ nativeRoot prior (State.initial_invariant nativeInputs) priorMem
+  have grant := nativeRuntime.runInteractionPlan_facts observation nativeInputs players
+    (serviceNetwork observation) _ prior execution before.invariant grantMem
   refine ⟨grant.invariant, ?_, ?_⟩
   · rw [grant.clock, before.clock, nativeBefore_ticks]
     change 0 + (nativeRuntime.deadline event - 1) + 0 = nativeRuntime.deadline event - 1
@@ -97,8 +109,9 @@ theorem native_response_prefix_facts (players : Player → nativeApp.Policy)
 
 /-- At every legal history at the response cursor, the current event is
 already settled or ready within its deadline; all earlier events are settled. -/
-theorem native_decision_service (event : nativeGraph.EventId) (control : nativeApp.Control)
-    (trace : nativeArena.Trace (some control))
+theorem native_decision_service (event : nativeGraph.EventId) (control : (serviceApp
+  observation).Control)
+    (trace : (serviceArena observation).Trace (some control))
     (active : control.actor = some (nativeOwner event))
     (position : control.execution.environmentRecall.length =
       (nativeBeforeResponse event).length + 1) :
@@ -109,8 +122,8 @@ theorem native_decision_service (event : nativeGraph.EventId) (control : nativeA
   obtain ⟨_, prior, priorMem, activated⟩ :=
     native_decision_predecessor event control trace active position
   obtain ⟨invariant, clockEq, earlier⟩ :=
-    native_response_prefix_facts nativeMenu.uniformResponses event prior priorMem
-  have progress := nativeRuntime.reactive_environment_progress nativeLeaks nativeInputs prior
+    native_response_prefix_facts (serviceMenu observation).uniformResponses event prior priorMem
+  have progress := nativeRuntime.reactive_environment_progress observation nativeInputs prior
     control.execution (.activate (nativeOwner event)) invariant activated
   refine ⟨progress.invariant, ?_⟩
   by_cases completed : event ∈ control.execution.application.config.cut.completed

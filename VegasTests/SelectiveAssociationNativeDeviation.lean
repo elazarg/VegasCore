@@ -101,7 +101,7 @@ theorem native_alice_association (execution : nativeApp.Execution) :
     nativeAlicePolicy ((beforeOffer execution).recall alice)
       ((beforeOffer execution).observe nativeApp alice) = FinDist.pure aliceAssociate := by
   simp [nativeAlicePolicy, beforeOffer, ReactiveApplication.Execution.observe,
-    nativeApp, reactiveApplication, State.publicView, aliceBinding]
+    nativeApp, serviceApp, reactiveApplication, State.publicView, aliceBinding]
 
 theorem native_alice_opening (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (granted : view.application.publicView.serviceGrant = some alicePublication) :

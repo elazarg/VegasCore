@@ -34,7 +34,7 @@ theorem native_initial_representation (control : nativeApp.Control)
     change _ + _ = nativePlan.length at accounted
     omega
   have selected : (nativePlan[count]?).bind nativeInstructionPlayer = some alice := by
-    simp only [nativeScheduler, cursor] at commandMem
+    simp only [serviceScheduler, cursor] at commandMem
     cases found : nativePlan[count]? with
     | none =>
         simp only [found, FinDist.mem_support_pure] at commandMem
@@ -87,7 +87,8 @@ theorem native_initial_trace : Nonempty (nativeArena.Trace (some nativeInitialCo
       · change ¬False
         trivial
       · intro who
-        simp [nativeArena, ReactiveApplication.ResponseMenu.protocol, ReactiveApplication.actor]
+        simp [nativeArena, serviceArena, ReactiveApplication.ResponseMenu.protocol,
+          ReactiveApplication.actor]
     · change _ ∈ ((FinDist.pure nativeInitial).map _).support
       rw [FinDist.map_pure, FinDist.mem_support_pure]
       rfl
