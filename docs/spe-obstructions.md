@@ -272,10 +272,12 @@ argument. This negative example has no standalone Lean canonical-SPE proof.
 
 **Compiler scope.** The command-service compiler checks the prospective
 resolution before constructing its public packet; its emission lemmas and
-initialized deviation law concern that service. The reactive compiler sends
-an opening when disclosure is chosen for an openable binding, including when
-the guard yields failure. The checked native SE obstruction applies to the
-reactive game. Neither compiler can remove arbitrary players' raw disclosure
+initialized deviation law concern that service. The reactive compiler also
+checks the prospective resolution: `reactiveResolutionPacket` sends an opening
+only for a successful resolution, and withholding on failure or absence of a
+resolution. Raw guard-failing openings remain available as native deviations.
+The checked native SE obstruction applies to the reactive game. Neither
+compiler can remove arbitrary players' raw disclosure
 capability. The [communication design](ambient-communication.md#theorem-contract)
 specifies the positive target and its remaining obligations.
 

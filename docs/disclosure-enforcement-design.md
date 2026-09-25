@@ -529,6 +529,10 @@ an SE theorem for the Vegas communication service.
 
 ## Remaining implementation boundary
 
+The [SE research plan](se-preservation-roadmap.md) orders these obligations and
+specifies the first native pilot. The broader routes are alternatives to assess
+after that concrete test, rather than additional compiler layers.
+
 The finite sender/receiver class establishes forward SE preservation with
 complete state and net payoff-law equality. The Boolean instance also has
 exact SE outcome-law correspondence under `D > 1`. Neither result is a

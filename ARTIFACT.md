@@ -1,5 +1,9 @@
 # Artifact and validation guide
 
+For open sequential-equilibrium work, start with the
+[research plan](docs/se-preservation-roadmap.md). It separates checked results
+from the native proof obligations and orders the next experiments.
+
 ## Reproduction
 
 Use the pinned Lean toolchain and dependency revisions:

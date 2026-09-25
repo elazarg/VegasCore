@@ -4,6 +4,11 @@ The checked path is `SourceProgram → EventGraph → EventGraphRuntime`.
 Sequential compilation adds predecessor barriers to this same graph. The
 native executor and strategic proof are shared by both execution modes.
 
+The [SE research plan](se-preservation-roadmap.md) is the entry point for the
+open sequential-equilibrium work: one native monitored decision-game pilot,
+explicit theorem quantifiers, competing routes and deferred investigations.
+It introduces no new compilation stage.
+
 The [communication-and-enforcement investigation](disclosure-enforcement-design.md)
 considers an optional semantic edge below the source. Its checked finite
 sender/receiver class extends every source SE with exact state and net payoff
