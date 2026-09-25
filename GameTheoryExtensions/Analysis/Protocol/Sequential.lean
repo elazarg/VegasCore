@@ -10,6 +10,9 @@ Reuse GameTheory's Kreps-Wilson predicate with its assessment-induced contexts.
 For a consistent source assessment, uniform preservation is exactly target
 consistency plus inclusion of the target incentive differences in the source
 cones. This separates the analytic belief obligation from incentive transport.
+The projected criterion applies to linear classes of joint utilities, so the
+restriction may relate different players' payoffs rather than constraining each
+player independently.
 -/
 
 noncomputable section
@@ -74,5 +77,46 @@ theorem sequential_equilibrium_preservation_iff
   · rintro ⟨consistent, included⟩ utility ⟨rational, _⟩
     exact ⟨(M.sequential_rationality_preservation_iff_cone N sourceObserve targetObserve
       sourceFuel targetFuel source target).mpr included utility rational, consistent⟩
+
+/-- For a consistent source assessment, preservation over a linear class of
+joint utilities is exactly target consistency and projected incentive inclusion.
+The zero utility belongs to every such class, so preservation also forces the
+target consistency obligation. -/
+theorem sequential_equilibrium_preservation_iff_coneWithin
+    (sourceAntichain : M.DecisionInformationAntichain)
+    (targetAntichain : N.DecisionInformationAntichain)
+    {Observation : Type*} [Fintype Observation]
+    (utilities : Submodule ℝ (EuclideanSpace ℝ (ι × Observation)))
+    (sourceObserve : E.History → Observation) (targetObserve : T.History → Observation)
+    (sourceFuel targetFuel : Nat)
+    (source : M.BehavioralAssessment) (target : N.BehavioralAssessment)
+    (sourceConsistent : source.IsSequentiallyConsistent sourceAntichain) :
+    (∀ utility : utilities,
+      source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
+        source.continuationContext site
+          (fun history => utility.val (who, sourceObserve history)) sourceFuel) →
+      target.IsSequentialEquilibriumFor targetAntichain (fun who site =>
+        target.continuationContext site
+          (fun history => utility.val (who, targetObserve history)) targetFuel)) ↔
+    target.IsSequentiallyConsistent targetAntichain ∧
+      ∀ deviation : Σ who, N.AssessmentDeviation who,
+        utilities.orthogonalProjectionOnto
+            (N.taggedAssessmentComparison targetObserve targetFuel target deviation).difference ∈
+          IncentiveComparison.coneWithin utilities
+            (M.taggedAssessmentComparison sourceObserve sourceFuel source) := by
+  constructor
+  · intro preserves
+    have sourceZero := source.isSequentiallyRationalWithin_zero sourceFuel
+    have targetConsistent :=
+      (preserves (0 : utilities) ⟨sourceZero, sourceConsistent⟩).2
+    refine ⟨targetConsistent, ?_⟩
+    apply (M.sequential_rationality_preservation_iff_coneWithin N utilities
+      sourceObserve targetObserve sourceFuel targetFuel source target).mp
+    intro utility rational
+    exact (preserves utility ⟨rational, sourceConsistent⟩).1
+  · rintro ⟨consistent, included⟩ utility ⟨rational, _⟩
+    exact ⟨(M.sequential_rationality_preservation_iff_coneWithin N utilities
+      sourceObserve targetObserve sourceFuel targetFuel source target).mpr
+        included utility rational, consistent⟩
 
 end GameTheory.Protocol.InformationModel

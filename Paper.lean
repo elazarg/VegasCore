@@ -36,6 +36,8 @@ import VegasTests.SelectiveAssociationRestrictedSeparation
 import Vegas.Game.ZeroSum
 import GameTheoryExtensions.Math.Probability.ConditionalComparison
 import GameTheoryExtensions.Analysis.ZeroSumRegularization
+import GameTheoryExtensions.Analysis.CorrelationPayoff
+import GameTheoryExtensions.Analysis.Protocol.Sequential
 
 /-! # Paper theorem audit
 
@@ -952,5 +954,26 @@ open Vegas.SourceProgram.Setup in
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.ZeroSumRegularization.exists_saddle
+
+/-- info: 'GameTheory.IncentiveComparison.mem_coneWithin_iff' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.IncentiveComparison.mem_coneWithin_iff
+
+/-- info: 'GameTheory.IncentiveComparison.regret_le_norm_comparison_residual' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.IncentiveComparison.regret_le_norm_comparison_residual
+
+/-- info: 'GameTheory.Protocol.InformationModel.sequential_equilibrium_preservation_iff_coneWithin' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms sequential_equilibrium_preservation_iff_coneWithin
+
+/-- info: 'GameTheory.CorrelationPayoff.preserves_marginals_iff_additive' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.CorrelationPayoff.preserves_marginals_iff_additive
 
 end Vegas.Paper

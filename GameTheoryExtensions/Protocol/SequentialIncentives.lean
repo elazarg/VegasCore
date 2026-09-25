@@ -10,6 +10,10 @@ player's whole continuation policy and retain those beliefs and all opponents.
 For fixed assessments and finite observed outcomes, cone inclusion exactly
 characterizes preservation of sequential rationality for every utility profile.
 Belief consistency is a separate obligation; no subgame roots are used here.
+
+Restrictions coupling different players' utilities use the joint payoff space
+on player-tagged observations. Projecting each player's comparisons separately
+would lose constraints such as zero-sum utilities.
 -/
 
 noncomputable section
@@ -47,6 +51,31 @@ theorem isSequentiallyRationalWithin_iff_comparisons
     simpa only [assessmentComparison, IncentiveComparison.Holds, FinDist.expect_map,
       Context.value, BehavioralAssessment.continuationContext] using
       respected who (site, alternative)
+
+/-- Tag each observed outcome by the player whose continuation is compared.
+This represents all incentive constraints in one joint utility space. -/
+def taggedAssessmentComparison {Observation : Type*} (observe : E.History → Observation)
+    (fuel : Nat) (assessment : M.BehavioralAssessment)
+    (deviation : Σ who, M.AssessmentDeviation who) :
+    IncentiveComparison (ι × Observation) where
+  prescribed :=
+    (M.assessmentComparison observe fuel assessment deviation.1 deviation.2).prescribed.map
+      (fun observation => (deviation.1, observation))
+  alternative :=
+    (M.assessmentComparison observe fuel assessment deviation.1 deviation.2).alternative.map
+      (fun observation => (deviation.1, observation))
+
+theorem isSequentiallyRationalWithin_iff_tagged_comparisons
+    {Observation : Type*} (observe : E.History → Observation) (fuel : Nat)
+    (assessment : M.BehavioralAssessment) (utility : ι × Observation → ℝ) :
+    assessment.IsSequentiallyRationalWithin (fun who history => utility (who, observe history))
+        fuel ↔
+      ∀ deviation,
+        (M.taggedAssessmentComparison observe fuel assessment deviation).Holds utility := by
+  rw [M.isSequentiallyRationalWithin_iff_comparisons observe fuel assessment
+    (fun observation who => utility (who, observation))]
+  simp only [taggedAssessmentComparison, IncentiveComparison.Holds, FinDist.expect_map,
+    Sigma.forall]
 
 variable {T : ExecutionProtocol ι} (N : InformationModel T)
 
@@ -86,5 +115,32 @@ theorem sequential_rationality_preservation_iff_cone
   · intro included utility sourceRespects who deviation
     exact (IncentiveComparison.mem_cone_iff _ _).mp (included who deviation)
       (utility · who) (sourceRespects who)
+
+/-- Exact preservation of sequential rationality over a linear class of joint
+utilities, including restrictions coupling different players' payoffs. -/
+theorem sequential_rationality_preservation_iff_coneWithin
+    {Observation : Type*} [Fintype Observation]
+    (utilities : Submodule ℝ (EuclideanSpace ℝ (ι × Observation)))
+    (sourceObserve : E.History → Observation) (targetObserve : T.History → Observation)
+    (sourceFuel targetFuel : Nat)
+    (source : M.BehavioralAssessment) (target : N.BehavioralAssessment) :
+    (∀ utility : utilities,
+      source.IsSequentiallyRationalWithin
+        (fun who history => utility.val (who, sourceObserve history)) sourceFuel →
+      target.IsSequentiallyRationalWithin
+        (fun who history => utility.val (who, targetObserve history)) targetFuel) ↔
+    ∀ deviation : Σ who, N.AssessmentDeviation who,
+      utilities.orthogonalProjectionOnto
+          (N.taggedAssessmentComparison targetObserve targetFuel target deviation).difference ∈
+        IncentiveComparison.coneWithin utilities
+          (M.taggedAssessmentComparison sourceObserve sourceFuel source) := by
+  simp only [M.isSequentiallyRationalWithin_iff_tagged_comparisons sourceObserve sourceFuel,
+    N.isSequentiallyRationalWithin_iff_tagged_comparisons targetObserve targetFuel,
+    IncentiveComparison.mem_coneWithin_iff]
+  constructor
+  · intro preserves deviation utility respected
+    exact preserves utility respected deviation
+  · intro included utility respected deviation
+    exact included deviation utility respected
 
 end GameTheory.Protocol.InformationModel

@@ -14,6 +14,16 @@ not match either outcome law separately or normalize nonnegative coefficients.
 
 The outcome carrier is finite. The family of comparisons can be infinite;
 the criterion uses its closed cone and asserts no decision procedure.
+
+When utilities are restricted to a linear subspace, only the orthogonal
+projections of the incentive differences onto that subspace matter. The same
+closed-cone criterion is exact within the subspace. This describes preservation
+for a specified class of utilities; it does not identify a canonical decomposition
+of games or, by itself, establish any equilibrium-preservation theorem.
+
+A finite nonnegative combination of projected comparisons also bounds regret
+for the original utility. Its comparison residual interacts only with the
+utility component outside the retained subspace.
 -/
 
 noncomputable section
@@ -127,6 +137,185 @@ theorem mem_cone_of_nonnegative_combination
   intro term member
   exact (cone comparisons).smul_mem (difference_mem_cone comparisons (index term))
     (nonnegative term member)
+
+section UtilitySubspace
+
+variable (utilities : Submodule ℝ (EuclideanSpace ℝ Outcome))
+
+/-- The least closed convex cone containing the source incentive differences,
+after projecting onto the specified class of utilities. -/
+def coneWithin (comparisons : Index → IncentiveComparison Outcome) :
+    ProperCone ℝ utilities :=
+  ProperCone.innerDual (ProperCone.innerDual (Set.range (fun index =>
+    utilities.orthogonalProjectionOnto (comparisons index).difference)) : Set utilities)
+
+theorem projected_difference_mem_coneWithin
+    (comparisons : Index → IncentiveComparison Outcome) (index : Index) :
+    utilities.orthogonalProjectionOnto (comparisons index).difference ∈
+      coneWithin utilities comparisons := by
+  intro utility nonnegative
+  change 0 ≤ ⟪utility, utilities.orthogonalProjectionOnto (comparisons index).difference⟫
+  rw [real_inner_comm]
+  exact nonnegative ⟨index, rfl⟩
+
+theorem coneWithin_le_iff (comparisons : Index → IncentiveComparison Outcome)
+    (C : ProperCone ℝ utilities) :
+    coneWithin utilities comparisons ≤ C ↔
+      ∀ index, utilities.orthogonalProjectionOnto (comparisons index).difference ∈ C := by
+  refine ⟨fun below index =>
+    below (projected_difference_mem_coneWithin utilities comparisons index), ?_⟩
+  intro contains
+  have included : Set.range (fun index =>
+      utilities.orthogonalProjectionOnto (comparisons index).difference) ⊆ C := by
+    rintro _ ⟨index, rfl⟩
+    exact contains index
+  have dual := ProperCone.innerDual_le_innerDual included
+  have doubleDual := ProperCone.innerDual_le_innerDual dual
+  simpa only [coneWithin, ProperCone.innerDual_innerDual] using doubleDual
+
+/-- Projection preserves exactly the incentive margin for every utility in the subspace. -/
+theorem inner_projected_difference (comparison : IncentiveComparison Outcome)
+    (utility : utilities) :
+    ⟪utilities.orthogonalProjectionOnto comparison.difference, utility⟫ =
+      comparison.prescribed.expect (WithLp.ofLp utility.val) -
+        comparison.alternative.expect (WithLp.ofLp utility.val) := by
+  rw [utilities.inner_orthogonalProjectionOnto_eq_of_mem_right]
+  exact comparison.inner_difference (WithLp.ofLp utility.val)
+
+/-- Exact incentive implication for every utility in the given linear subspace. -/
+theorem mem_coneWithin_iff (comparisons : Index → IncentiveComparison Outcome)
+    (target : IncentiveComparison Outcome) :
+    utilities.orthogonalProjectionOnto target.difference ∈ coneWithin utilities comparisons ↔
+      ∀ utility : utilities,
+        (∀ index, (comparisons index).Holds (WithLp.ofLp utility.val)) →
+          target.Holds (WithLp.ofLp utility.val) := by
+  constructor
+  · intro included utility respected
+    rw [Holds, ← sub_nonneg, ← inner_projected_difference utilities target utility,
+      real_inner_comm]
+    apply included
+    rintro _ ⟨index, rfl⟩
+    change 0 ≤ ⟪utilities.orthogonalProjectionOnto (comparisons index).difference, utility⟫
+    rw [inner_projected_difference]
+    exact sub_nonneg.mpr (respected index)
+  · intro preserves utility respected
+    have each (index : Index) : (comparisons index).Holds (WithLp.ofLp utility.val) := by
+      rw [Holds, ← sub_nonneg, ← inner_projected_difference utilities (comparisons index) utility]
+      exact respected ⟨index, rfl⟩
+    change 0 ≤ ⟪utility, utilities.orthogonalProjectionOnto target.difference⟫
+    rw [real_inner_comm, inner_projected_difference]
+    exact sub_nonneg.mpr (preserves utility each)
+
+/-- Failure of projected cone inclusion supplies a counterexample utility within the class. -/
+theorem separating_utilityWithin (comparisons : Index → IncentiveComparison Outcome)
+    (target : IncentiveComparison Outcome)
+    (outside : utilities.orthogonalProjectionOnto target.difference ∉
+      coneWithin utilities comparisons) :
+    ∃ utility : utilities,
+      (∀ index, (comparisons index).Holds (WithLp.ofLp utility.val)) ∧
+        target.prescribed.expect (WithLp.ofLp utility.val) <
+          target.alternative.expect (WithLp.ofLp utility.val) := by
+  rw [mem_coneWithin_iff] at outside
+  push Not at outside
+  simpa only [Holds, not_le] using outside
+
+/-- Projected differences agree exactly when every utility in the subspace has the same margin. -/
+theorem projected_difference_eq_iff (first second : IncentiveComparison Outcome) :
+    utilities.orthogonalProjectionOnto first.difference =
+        utilities.orthogonalProjectionOnto second.difference ↔
+      ∀ utility : utilities,
+        first.prescribed.expect (WithLp.ofLp utility.val) -
+            first.alternative.expect (WithLp.ofLp utility.val) =
+          second.prescribed.expect (WithLp.ofLp utility.val) -
+            second.alternative.expect (WithLp.ofLp utility.val) := by
+  constructor
+  · intro same utility
+    rw [← inner_projected_difference utilities first utility,
+      ← inner_projected_difference utilities second utility, same]
+  · intro same
+    apply ext_inner_right ℝ
+    intro utility
+    simpa only [inner_projected_difference] using same utility
+
+/-- A projected comparison certificate controls regret in the original game.
+Only the utility component outside the retained subspace contributes to the
+bound; the source comparisons must hold for the full utility, not its projection. -/
+theorem regret_le_norm_comparison_residual
+    (comparisons : Index → IncentiveComparison Outcome) (target : IncentiveComparison Outcome)
+    {Terms : Type*} (terms : Finset Terms) (index : Terms → Index) (weight : Terms → ℝ)
+    (nonnegative : ∀ term ∈ terms, 0 ≤ weight term)
+    (represents : utilities.orthogonalProjectionOnto target.difference =
+      ∑ term ∈ terms,
+        weight term • utilities.orthogonalProjectionOnto (comparisons (index term)).difference)
+    (utility : Outcome → ℝ)
+    (respected : ∀ term ∈ terms, (comparisons (index term)).Holds utility) :
+    target.alternative.expect utility - target.prescribed.expect utility ≤
+      ‖target.difference - ∑ term ∈ terms,
+        weight term • (comparisons (index term)).difference‖ *
+      ‖WithLp.toLp 2 utility -
+        (utilities.orthogonalProjectionOnto (WithLp.toLp 2 utility)).val‖ := by
+  let vector : EuclideanSpace ℝ Outcome := WithLp.toLp 2 utility
+  let combination : EuclideanSpace ℝ Outcome :=
+    ∑ term ∈ terms, weight term • (comparisons (index term)).difference
+  let residual := target.difference - combination
+  have projected_zero : utilities.orthogonalProjectionOnto residual = 0 := by
+    simp only [residual, combination, map_sub, map_sum, map_smul, represents, sub_self]
+  have orthogonal :
+      ⟪residual, (utilities.orthogonalProjectionOnto vector).val⟫ = 0 := by
+    rw [← utilities.inner_orthogonalProjectionOnto_eq_of_mem_right,
+      projected_zero, inner_zero_left]
+  have discards :
+      ⟪residual, vector - (utilities.orthogonalProjectionOnto vector).val⟫ =
+        ⟪residual, vector⟫ := by
+    rw [inner_sub_right, orthogonal, sub_zero]
+  have combination_nonnegative : 0 ≤ ⟪combination, vector⟫ := by
+    simp only [combination, sum_inner, real_inner_smul_left]
+    apply Finset.sum_nonneg
+    intro term member
+    exact mul_nonneg (nonnegative term member)
+      (((comparisons (index term)).holds_iff_inner utility).mp (respected term member))
+  have lower := (abs_le.mp (abs_real_inner_le_norm residual
+    (vector - (utilities.orthogonalProjectionOnto vector).val))).1
+  have target_margin : ⟪target.difference, vector⟫ =
+      target.prescribed.expect utility - target.alternative.expect utility :=
+    target.inner_difference utility
+  have residual_margin : ⟪residual, vector⟫ =
+      target.prescribed.expect utility - target.alternative.expect utility -
+        ⟪combination, vector⟫ := by
+    change ⟪target.difference - combination, vector⟫ = _
+    rw [inner_sub_left, target_margin]
+  rw [discards, residual_margin] at lower
+  change target.alternative.expect utility - target.prescribed.expect utility ≤
+    ‖residual‖ * ‖vector - (utilities.orthogonalProjectionOnto vector).val‖
+  linarith
+
+end UtilitySubspace
+
+/-- The orthogonal complement of the span of comparison errors is precisely the
+largest utility subspace on which all the prescribed margins are unchanged. -/
+theorem mem_comparison_error_orthogonal_iff
+    (first second : Index → IncentiveComparison Outcome) (utility : Outcome → ℝ) :
+    WithLp.toLp 2 utility ∈
+        (Submodule.span ℝ (Set.range (fun index =>
+          (first index).difference - (second index).difference)))ᗮ ↔
+      ∀ index, (first index).prescribed.expect utility - (first index).alternative.expect utility =
+        (second index).prescribed.expect utility - (second index).alternative.expect utility := by
+  rw [Submodule.mem_orthogonal]
+  constructor
+  · intro vanishes index
+    have atError := vanishes ((first index).difference - (second index).difference)
+      (Submodule.subset_span ⟨index, rfl⟩)
+    simpa only [inner_sub_left, inner_difference, sub_eq_zero] using atError
+  · intro same vector member
+    induction member using Submodule.span_induction with
+    | mem vector member =>
+      obtain ⟨index, rfl⟩ := member
+      simpa only [inner_sub_left, inner_difference, sub_eq_zero] using same index
+    | zero => exact inner_zero_left _
+    | add left right _ _ leftZero rightZero =>
+      rw [inner_add_left, leftZero, rightZero, add_zero]
+    | smul scalar vector _ vanishes =>
+      rw [real_inner_smul_left, vanishes, mul_zero]
 
 end IncentiveComparison
 end GameTheory

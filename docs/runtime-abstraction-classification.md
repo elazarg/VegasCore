@@ -228,6 +228,37 @@ a new deviation or security argument. The generic zero-sum results can then
 apply to that enlarged game; the existing ideal-runtime instance alone cannot
 establish the missing correspondence.
 
+### Payoff components that can survive an abstraction
+
+The [component analysis](zero-sum-communication-literature.md#preserving-a-component-of-the-game)
+gives two checked refinements of utility-independent preservation:
+
+- For a chosen linear class of joint payoffs, project incentive differences
+  into that class. Inclusion in the projected source cone exactly characterizes
+  preservation of sequential rationality at fixed assessments. Together with
+  target consistency, it characterizes SE preservation over that class for a
+  consistent source assessment. Joint payoffs can express zero-sum constraints
+  coupling different players.
+- A finite nonnegative comparison certificate bounds profitable target
+  deviations for the original full payoff by the norm of its unpreserved
+  component times the comparison residual. No equilibrium assumption about a
+  replacement component game is needed.
+
+For changes affecting only correlation, the
+[correlation theorem](../GameTheoryExtensions/Analysis/CorrelationPayoff.lean)
+identifies a concrete maximal preserved class: additive payoffs of the two
+coordinates are exactly those whose expectations depend only on their
+marginals. The centered interaction component accounts for the entire
+expectation change. A runtime application must prove the marginal premises
+for its actual prescribed and deviating continuation laws.
+
+These are game-independent analysis results, not a new native compiler theorem.
+Potential/harmonic decomposition on a fixed normal form does not automatically
+transport across added communication: even a wholly nonstrategic source payoff
+can gain strategic force when a receiver's fixed policy reacts to a message,
+as checked in
+[ComponentCommunication.lean](../GameTheoryExtensionsTests/ComponentCommunication.lean).
+
 ### Operational information and continuation incentives
 
 The terminal observation classification alone cannot be substituted into an

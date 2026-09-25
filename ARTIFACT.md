@@ -52,6 +52,9 @@ the subsequent kernel-checked build.
 | Finite zero-sum saddle existence with L1 feature penalties and a security-based penalty bound | `GameTheoryExtensions/Analysis/ZeroSumRegularization.lean` |
 | Identical normal-form CE correspondence does not imply SE outcome preservation | `GameTheoryExtensionsTests/CorrelatedSequentialGap.lean` |
 | Zero-sum Nash equilibria can have equal expected payouts and different payout laws | `GameTheoryExtensionsTests/ZeroSumOutcomeLaws.lean` |
+| Exact payoff-subspace incentive criteria and component-based bounds on deviation gains | `GameTheoryExtensions/Core/IncentiveCone.lean`, `GameTheoryExtensions/Protocol/SequentialIncentives.lean`, `GameTheoryExtensions/Analysis/Protocol/Sequential.lean` |
+| Additive payoffs are exactly those preserved by every change of correlation with fixed marginals | `GameTheoryExtensions/Analysis/CorrelationPayoff.lean` |
+| Communication can make source nonstrategic payoffs strategic; coupled zero-sum constraints give strictly stronger incentive implications | `GameTheoryExtensionsTests/ComponentCommunication.lean`, `GameTheoryExtensionsTests/CoupledIncentives.lean` |
 | Auction failure of dominance, including every faithful translation | `Vegas/Examples/CommitRevealAuction.lean` |
 | SE separation for accepted named evidence, with literal declared and compiled settlement payoffs | `VegasTests/SelectiveAssociationSourceEquilibrium.lean`, `VegasTests/SelectiveAssociationSettlement.lean`, `VegasTests/SelectiveAssociationPayoffSeparation.lean` |
 | Native SE with empty passive observation, all legal information sites and whole-policy deviations | `VegasTests/SelectiveAssociationRestrictedEquilibrium.lean`, `VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean`, `VegasTests/SelectiveAssociationRestrictedBeliefs.lean` |

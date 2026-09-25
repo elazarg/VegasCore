@@ -176,7 +176,7 @@ individual minimax strategies need not be Nash strategies.
 [Cai et al. (2016), Section 3](https://www.cs.yale.edu/homes/cai/publication/cai-zero-sum-2016/cai-zero-sum-2016.pdf)
 
 Their proof also gives payoff equality between the CCE and that product:
-writing `w_i` for the correlated payoff and `x` for its marginal profile,
+writing $w_i$ for the correlated payoff and `x` for its marginal profile,
 pairwise separability and CCE imply `w_i ≥ max_a U_i(a,x_-i) ≥ U_i(x)`.
 Both payoff sums are zero, so every inequality `w_i ≥ U_i(x)` is equality.
 This preserves expected payoffs, not the joint recommendation or terminal law.
@@ -205,3 +205,269 @@ The first does not imply the third in general, as the checked example proves.
 Two-player zero-sum structure supports the second and gives a substantive route
 to investigate the third. Multiplayer prize conservation alone does neither
 job; a stronger strategic structure must be established for the actual game.
+
+## Preserving a component of the game
+
+### What potential and harmonic components do identify
+
+For a fixed finite normal form, Candogan, Menache, Ozdaglar, and Parrilo
+decompose payoff tables into potential, harmonic, and nonstrategic parts.
+Potential differences come from one scalar function on strategy profiles;
+harmonic differences describe the remaining circulation of unilateral
+incentives. Nonstrategic payoffs are independent of the receiving player's
+own strategy. These statements concern incentives in that fixed normal form,
+not the existence of communication or coalitions. Their equality between CE
+and mixed Nash for two-player harmonic games is generic, rather than an
+unconditional identification of the concepts.
+[Candogan et al. (2011), Sections 4 and 5](https://arxiv.org/abs/1005.2405)
+
+Zero-sum and harmonic are not interchangeable hypotheses. For example, let
+Alice choose a bit `a`, let Bob have any finite nonempty action set, and set payoffs
+to `(a,-a)`. The game is zero-sum, but Alice strictly prefers `a = 1`.
+Consequently uniform play is not Nash, whereas uniform play is Nash in every
+harmonic game under the paper's uniform decomposition. Potential structure
+describes unilateral payoff differences; it does not specify which coalitions
+or messages players can use. Hwang and Rey-Bellet explicitly separate normalized zero-sum,
+normalized common-interest, and zero-sum-equivalent potential components;
+their decomposition is useful precisely because these classifications are
+not a single competition-versus-cooperation dichotomy.
+[Hwang and Rey-Bellet (2020), Theorem 2.1](https://arxiv.org/abs/1602.06648)
+
+A compiler presents an additional problem: source and target have different
+strategy spaces. Even duplicating a strategically redundant action can change
+the decomposition obtained by counting every action equally. Abdou,
+Pnevmatikos, Scarsini, and Venel give weighted decompositions whose components
+commute with elimination of duplicate strategies after the weights are
+transported appropriately. This supports component transport for genuine
+strategy duplication; it does not establish transport when a new message
+enables an opponent to react.
+[Abdou et al. (2020), Theorem 3.19](https://arxiv.org/abs/1901.06048)
+
+Thus a Hodge-component theorem would require a specified correspondence
+between strategy spaces, compatible weights, and a proof that decomposition
+commutes with that correspondence. For a runtime with additional information
+and reactions, those are substantive obligations. Calling its harmonic part
+the source's competitive content would not discharge them.
+
+### A nonstrategic payoff can acquire strategic force through a message
+
+The checked [component example](../GameTheoryExtensionsTests/ComponentCommunication.lean)
+is independent of cryptographic commitments. In
+the source Alice and Bob choose bits simultaneously, with payoffs `(b,0)`.
+Every profile is Nash: Alice cannot change Bob's bit, and Bob is indifferent.
+Alice's entire payoff is nonstrategic in this normal form.
+
+In the target, Alice first sends a bit `m`, after which Bob chooses `b`.
+Fix Bob's strategy to `b = m`. Alice's payoff now changes from zero to one
+when she changes her message. The payoff formula is unchanged, but Bob's
+fixed strategy is a response function, so fixing it no longer fixes Bob's
+action. The profile `m = 0, b = m` is not even Nash. Bob's indifference makes
+his response optimal after either message; no computational,
+ownership, authentication, or secrecy assumption is involved.
+
+This example does not claim a failure of existential outcome implementation:
+Bob could instead choose a constant response. It establishes the narrower
+point needed for component reasoning: being nonstrategic in the source is
+not enough to remain nonstrategic after adding communication. A similar
+warning applies to replacing a zero-sum-equivalent game by its zero-sum
+representative: the removed terms must remain irrelevant to *native*
+deviations, including continuations. Source strategic equivalence alone does
+not prove that.
+
+### A component criterion on the shared payoff space
+
+The direct alternative is to work with declared outcome utilities, whose
+coordinates have the same meaning on both sides of compilation. The following
+is checked by `IncentiveComparison.mem_coneWithin_iff` in
+[IncentiveCone.lean](../GameTheoryExtensions/Core/IncentiveCone.lean).
+
+Fix source and target assessments and their observed outcome maps into a
+common finite set `Omega`. Include private types in `Omega` if utilities
+depend on them. Let
+
+```text
+V = R^(Players × Omega).
+```
+
+An element of `V` is a complete payoff profile. For a comparison concerning
+player `i`, lift the prescribed-minus-deviation outcome difference `d` to
+`e_i ⊗ d` in `V`: its coordinates are zero for all other players. Write
+$s_j$ for these joint source vectors and $t_k$ for the joint target vectors.
+Then rationality is exactly the family of inequalities
+`<s_j,u> >= 0` or `<t_k,u> >= 0`, respectively.
+
+Choose a linear payoff class `L` in `V`, with orthogonal projection `P_L`.
+Examples include outcome-by-outcome two-player zero-sum utilities, payoffs
+depending only on designated outcome features, and linear combinations of
+specified transfers. The exact criterion is
+
+```text
+for every u in L:
+  (all <s_j,u> >= 0) implies (all <t_k,u> >= 0)
+
+iff
+
+every P_L(t_k) belongs to the closed convex cone generated by the P_L(s_j).
+```
+
+Proof: for `u` in `L`, taking the inner product with a vector or its projection
+gives the same result. Apply the finite-dimensional bipolar/separation
+criterion inside `L`, exactly as in
+[IncentiveCone.lean](../GameTheoryExtensions/Core/IncentiveCone.lean).
+Failure produces a separating payoff profile **inside the declared class**,
+rather than an arbitrary utility outside it.
+
+Using one joint payoff space is essential. Two-player zero-sum is the coupled
+restriction `u_A(omega) + u_B(omega) = 0`; each player's coordinate projection
+separately contains every utility. Treating players independently would lose
+the restriction. In the joint space the cone certificate can combine source
+incentive inequalities of different players, because their payoffs satisfy
+the declared relationship.
+
+[CoupledIncentives.lean](../GameTheoryExtensionsTests/CoupledIncentives.lean)
+checks a strict separation: Bob's preference for one outcome implies Alice's
+preference for the other under the joint zero-sum restriction. The projected
+target comparison belongs to the source cone, while its unrestricted
+counterpart lies outside it, with an explicit separating utility.
+
+This criterion compares the actual games under a specified payoff class.
+It is not an inference that an equilibrium of one summand of a payoff table
+is an equilibrium of the full table. It also does not provide belief
+consistency: a sequential-equilibrium theorem still needs a consistent target
+assessment and the desired initialized outcome law. Quantifying the criterion
+over a compiler's assessment construction supplies the incentive part of
+such a theorem; one fixed assessment comparison is not a compiler theorem.
+
+The actual protocol instantiations are
+`sequential_rationality_preservation_iff_coneWithin` in
+[SequentialIncentives.lean](../GameTheoryExtensions/Protocol/SequentialIncentives.lean)
+and `sequential_equilibrium_preservation_iff_coneWithin` in
+[Sequential.lean](../GameTheoryExtensions/Analysis/Protocol/Sequential.lean).
+They use the existing continuation assessments and whole-policy deviations.
+For a consistent source assessment, the latter characterizes preservation
+over the payoff class by target consistency plus the projected cone condition.
+It does not construct a native assessment or establish its decoded outcome law.
+
+### Extracting a retained component and bounding the rest
+
+There is also a constructive sufficient certificate. For each target
+comparison, choose a finite nonnegative combination of source comparisons,
+and define its residual:
+
+```text
+c_kj >= 0
+r_k = t_k - sum_j c_kj s_j
+W = intersection_k { u : <r_k,u> = 0 }.
+```
+
+For every utility in `W`, source rationality implies target rationality.
+This follows by taking inner products in the defining equality and summing
+the nonnegative source inequalities. `W` is the largest subspace on which
+**these chosen comparison combinations agree exactly**; it need not be the
+largest payoff class supporting preservation. Different certificates may
+produce different subspaces, and preservation classes need not be subspaces.
+With explicit finite comparison lists, finding `W` for given coefficients is
+ordinary linear algebra. No enumeration algorithm for arbitrary protocols or
+all assessments follows from that observation.
+
+More usefully, this certificate says something about the original game even
+when its utility is outside `W`. Write `u = P_W u + u_perp`. If the source
+assessment is rational for the **full utility** `u`, then
+
+```text
+<t_k,u> >= <r_k,u_perp> >= -norm(r_k) * norm(u_perp).
+```
+
+The first inequality expands the residual identity and uses source
+rationality; the second is Cauchy--Schwarz. Thus the component outside `W`
+bounds the size of profitable target continuation deviations. For finite
+comparison lists, their maximum is an explicit common bound. There is no
+assumption that the source assessment is rational separately for `P_W u`.
+This is a potentially useful preservation result even when exact SE transport
+fails: the retained component contributes no unexplained incentive change,
+and the remaining component gives a quantitative error bound. A consistent
+target assessment is still required to interpret it as approximate
+sequential rationality with consistent beliefs.
+
+The quantitative inequality is checked by
+`IncentiveComparison.regret_le_norm_comparison_residual` in
+[IncentiveCone.lean](../GameTheoryExtensions/Core/IncentiveCone.lean).
+`IncentiveComparison.mem_comparison_error_orthogonal_iff` additionally
+characterizes the largest subspace preserving every incentive margin for a
+specified alignment of source and target comparisons. Equality of margins is
+stronger than preservation of their signs.
+
+### An interpretable component associated with correlation
+
+Suppose a particular runtime difference changes only the coupling of two
+finite outcome features `x` and `y`, preserving both marginal laws. Every
+payoff of the form `f(x) + g(y)` then has exactly the same expectation on both
+sides. Conversely, if a payoff has the same expectation under every pair of
+joint laws with matching marginals, it has this additive form.
+
+For the converse, compare the equally weighted laws on `(x,y),(x0,y0)` and
+on `(x,y0),(x0,y)`. Their marginals agree, so
+
+```text
+u(x,y) + u(x0,y0) = u(x,y0) + u(x0,y).
+```
+
+Choosing fixed basepoints gives
+`u(x,y) = u(x,y0) + u(x0,y) - u(x0,y0)`, the required decomposition.
+The forward direction is linearity of expectation. Empty feature sets are
+vacuous; otherwise the basepoints exist.
+
+One can also extract the component explicitly. Choose reference distributions
+`alpha` and `beta`, and define
+
+```text
+I_u(x,y) = u(x,y) - E_beta[u(x,Y)] - E_alpha[u(X,y)]
+                   + E_(alpha × beta)[u(X,Y)].
+```
+
+The subtracted part is additive. Consequently any two joint laws `p,q` with
+matching marginals satisfy the exact identity
+
+```text
+E_p[u] - E_q[u] = E_p[I_u] - E_q[I_u].
+```
+
+This follows by cancelling the expectations of the additive terms. When
+`alpha,beta` are the marginals of `p` and `q = alpha × beta`, the mean of
+`I_u` under `q` is zero, so the gain from correlation is precisely `E_p[I_u]`.
+Finite support suffices for these identities; the feature carriers themselves
+need not be finite. This is a payoff identity for the original utility,
+rather than an equilibrium claim about a substituted component game.
+
+This identifies a genuine interaction component: sensitivity to correlations
+lies in the cross differences of the payoff table. It could certify that an
+abstraction preserving selected marginals also preserves selected incentives,
+provided the marginal premise is established for the relevant prescribed and
+deviating continuations. Early disclosure can change the recipient's action
+marginal as well as its correlation with a secret, so that premise must be
+proved for the particular runtime edge. Additive payoffs alone are not a
+general theorem that communication can be erased.
+
+These correlation statements are checked in
+[CorrelationPayoff.lean](../GameTheoryExtensions/Analysis/CorrelationPayoff.lean):
+`preserves_marginals_iff_additive`, `expectation_difference_eq_interaction`,
+and `correlation_gain_eq_interaction`. Their hypotheses concern the actual
+joint laws. They do not assume a particular message format or commitment owner.
+
+### Recommended scope
+
+The next runtime obligation is to instantiate the checked joint payoff-subspace
+criterion and residual bound against an isolated feature whose incentive
+differences are understood. They share the existing protocol and assessment
+semantics. Hodge decomposition can later supply a candidate
+subspace when a compatible strategy correspondence has been proved; it does
+not need to become another level of the compilation tower.
+
+These arguments themselves impose no rule about who may generate a
+commitment, copy its randomness, share an opening, or construct a message.
+Those rules affect the target comparison vectors. A certificate established
+for an owner-only ideal target must be checked again when cooperative
+construction, evidence sharing, or additional fabrication is admitted.
+Correlation in a distribution over strategies and a larger set of executable
+strategies are separate changes; allowing the former does not automatically
+account for the latter.
