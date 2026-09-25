@@ -2,6 +2,7 @@
 
 import VegasTests.SelectiveAssociationRestrictedPrefixExecution
 import VegasTests.SelectiveAssociationRestrictedProbability
+import VegasTests.SelectiveAssociationRestrictedPrefixPosterior
 import VegasTests.SelectiveAssociationRestrictedGuessOutcome
 import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
 import GameTheoryExtensions.Math.Probability.ConditionalComparison
@@ -220,5 +221,19 @@ theorem exists_consistent_guess_assessment_of_tremble
   exact ⟨assessment, strategy, consistent,
     guessBeliefs_limit (fun n => sequence (index n)) assessment converges
       (fun n => comparison (weight (index n)) (positive (index n)) (atMostOne (index n)))⟩
+
+/-- A consistent assessment of the complete native game with the posterior
+comparisons required at both guessing decisions. All beliefs arise from the
+same fully mixed sequence; no site is assigned a posterior independently. -/
+theorem exists_consistent_guess_assessment :
+    ∃ assessment : model.BehavioralAssessment,
+      assessment.strategy = profile ∧ assessment.IsSequentiallyConsistent
+        (menu.decisionInformationAntichain (FinDist.pure nativeInitial) nativeHorizon scheduler) ∧
+      GuessBeliefs assessment := by
+  apply exists_consistent_guess_assessment_of_tremble
+  intro weight positive atMostOne
+  exact tremble_guessBeliefs_of_prefix_comparison weight positive atMostOne
+    (Prefix.carol_joint_le weight positive atMostOne)
+    (Prefix.bob_joint_le weight positive atMostOne)
 
 end VegasTests.SelectiveAssociation.Restricted

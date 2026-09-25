@@ -47,11 +47,27 @@ the subsequent kernel-checked build.
 | Full-source pending-message deviations and Nash correspondence | `Vegas/Game/EventMessageStrategic.lean` |
 | Initial-parameter/public-result joint laws and Bayesian Nash correspondence | `Vegas/Source/InitialState.lean`, `Vegas/Game/ParameterOutcomes.lean` |
 | Auction failure of dominance, including every faithful translation | `Vegas/Examples/CommitRevealAuction.lean` |
+| SE separation for accepted named evidence, with literal declared and compiled settlement payoffs | `VegasTests/SelectiveAssociationSourceEquilibrium.lean`, `VegasTests/SelectiveAssociationSettlement.lean`, `VegasTests/SelectiveAssociationPayoffSeparation.lean` |
+| Native SE with empty passive observation, all legal information sites and whole-policy deviations | `VegasTests/SelectiveAssociationRestrictedEquilibrium.lean`, `VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean`, `VegasTests/SelectiveAssociationRestrictedBeliefs.lean` |
+| Isolated passive-observation change defeats preservation of that SE's payout law | `VegasTests/SelectiveAssociationRestrictedSeparation.lean` |
 | Generic simulation and equilibrium transport | `GameTheoryExtensions/` |
 | Paper-visible theorem selection and axiom pins | `Paper.lean` |
 
 The proved capstones are universally quantified proofs, not conclusions
 inferred from tests.
+
+The [selective-association comparison](docs/selective-association-proof-contract.md)
+keeps the compiled application, service calendar, deadlines, selector and full
+bounded raw menus fixed. Empty passive observation admits a sequential
+equilibrium giving Alice expected payout zero. Under the specified passive leak,
+every sequentially rational assessment gives her at least one half. Therefore
+even arbitrary, payoff-dependent strategy and belief translations cannot match
+that equilibrium's Alice payout law. The positive proof uses one common fully
+mixed Bayes sequence and checks every legal information site, including off-path
+sites. Payouts are the program's signed integer settlement expressions. This
+finite comparison does not establish general source-to-native SE preservation
+or a result for unrestricted packets and unbounded interaction.
+
 The source protocol and generic continuation-transfer results do not establish
 native SPE preservation. Recovery has checked initialized execution laws and
 local incentive guarantees, but

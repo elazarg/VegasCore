@@ -21,8 +21,9 @@ abstraction: the checked
 [native disclosure counterexample](sequential-disclosure-impossibility.md)
 rules out a utility-independent sequential-equilibrium translator for one actual
 source game and its bounded native message game, even allowing utility-dependent
-target beliefs. Positive results under additional semantic or service conditions
-remain open. The checked results are:
+target beliefs. General source-to-native preservation under additional semantic
+or service conditions remains open. Complete finite native equilibrium examples
+and an isolated observation comparison are checked below:
 
 - [SequentialIncentives.lean](../GameTheoryExtensions/Protocol/SequentialIncentives.lean):
   exact, utility-independent transport of sequential rationality between fixed
@@ -124,6 +125,19 @@ remain open. The checked results are:
   profile. Each equilibrium obtains payoff one at either certified bit view.
   This is native equilibrium construction, not source compilation preservation;
   the example's passive observation rule is empty.
+- [SelectiveAssociationRestrictedEquilibrium.lean](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean)
+  and [SelectiveAssociationRestrictedSeparation.lean](../VegasTests/SelectiveAssociationRestrictedSeparation.lean):
+  the selective-association native game with empty passive observation has a
+  checked SE giving Alice expected declared payout zero. The application, full
+  bounded raw menu, calendar, selector and deadlines are shared with the leaky
+  fixture, where every sequentially rational assessment gives her at least one
+  half. Thus no strategy-and-belief translation can match this SE's payout law,
+  even when chosen for the fixed program payoffs. The positive assessment covers
+  whole continuation-policy deviations at every legal information site. Its
+  beliefs come from one common fully mixed Bayes sequence, using checked
+  candidate-flip probability comparisons in the actual native prefixes. This
+  isolates one observation edge; it is not general SE preservation for a source
+  language or an empty-observation service.
 - [SequentialValidationCompletion.lean](../VegasTests/SequentialValidationCompletion.lean):
   the fixture's timeout suffix completes every graph event under arbitrary raw
   player policies, including policies outside the finite response menu. The
@@ -651,6 +665,7 @@ sites: the shared inactive information value does not remember own play.
 | Capability obstruction | Generic binary-decision theorem, with abstract and actual native instances | No universal claim about runtimes lacking the stated capability |
 | Independent evidence | Full SE separation for accepted named evidence: a genuine source SE gives Alice zero, while every sequentially rational native assessment gives at least one half; original public-result laws cannot agree | A stronger ambient interface must account for pre-acceptance candidate evidence and later association; preservation for such an interface remains open |
 | Positive example | Complete SEs for both native guessing objectives, all legal information sets, one common perturbation sequence | A source-to-native preservation instance, including partial observation |
+| Isolated native observation comparison | An SE with empty passive observation has Alice payout zero; restoring the specified leak gives every rational assessment payout at least one half, with the same application, service and complete bounded raw menus | Classify further observation or service changes; no general preservation theorem follows from this fixture |
 | Service coverage | Authorized inclusion, at-most-once publication, finite-menu coverage, recurring owner opportunities; prescribed binding and disclosure realization through arbitrary wire reactions and reserved inclusion | Earlier own-deviation prefixes and full communication-aware policy correspondence |
 | Private response aliases | SE preservation from normalized to raw finite native menus, with one common consistency sequence, every continuation deviation, projected beliefs, and initialized state laws | Separate correspondence from the communication-aware source game |
 | General compilation | Binding/disclosure step laws and original source compiler | Playerwise compiler for communication-aware policies and joint-law correspondence |

@@ -32,6 +32,7 @@ import VegasTests.SelectiveAssociationRestrictedOpeningOptimality
 import VegasTests.SelectiveAssociationRestrictedSymmetry
 import VegasTests.ReactiveReadinessRestrictions
 import VegasTests.SelectiveAssociationRestrictedEquilibrium
+import VegasTests.SelectiveAssociationRestrictedSeparation
 import GameTheoryExtensions.Math.Probability.ConditionalComparison
 
 /-! # Paper theorem audit
@@ -921,5 +922,17 @@ open GameTheory.Protocol.InformationModel in
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms VegasTests.SelectiveAssociation.Restricted.prescribed_sequentiallyRational
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.exists_sequentialEquilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.SelectiveAssociation.Restricted in
+#print axioms exists_sequentialEquilibrium
+
+/-- info: 'VegasTests.SelectiveAssociation.Restricted.exists_equilibrium_no_native_payout_match' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.SelectiveAssociation.Restricted in
+#print axioms exists_equilibrium_no_native_payout_match
 
 end Vegas.Paper

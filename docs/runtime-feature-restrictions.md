@@ -83,95 +83,96 @@ justify equilibrium behavior in the remaining game. In particular, the
 post-association equality is for the specified paired prefixes, not an
 assertion that every full-runtime strategy keeps the bit secret.
 
-### Exact equilibrium target and status
+The enabled runtime's information advantage has the following order. The
+service fixes this calendar and includes the latest event-addressed envelope;
+the complete deviation proof also accounts for Bob's intervening response.
 
-The candidate separating game is the existing declared-payoff game. The
-restricted-runtime witness must give Alice expected payout zero.
-**Existence of such an equilibrium in the native runtime
-with the empty observation rule is open.** The current source equilibrium
-proof uses a different communication interface and cannot fill this obligation.
-
-For the runtime with passive observation enabled, the checked
-[payout separation](../VegasTests/SelectiveAssociationPayoffSeparation.lean)
-already proves that every sequentially rational assessment gives Alice
-expected payout at least one half. Thus the missing restricted-runtime SE
-would complete a comparison isolating one native parameter. Until it is proved,
-the existing source/native theorem is not an isolated passive-observation result.
-
-The restricted equilibrium needs consistent beliefs and rationality at every
-legal information site, including deviations involving raw certificates,
-replays, wrong addresses and failed openings. Matching the prescribed initial
-outcome alone is insufficient.
-
-The [candidate profile](../VegasTests/SelectiveAssociationRestrictedPolicy.lean)
-uses silent preludes, a deterministic false binding for Alice, public-evidence
-guesses, and ordinary openings. Every response is admitted by the unchanged
-full raw menu, and the profile has some consistent belief completion. Neither
-fact establishes optimality. The checked
-[binding repair](../VegasTests/SelectiveAssociationRestrictedRealization.lean)
-can realize either bit at every legal unfinished binding decision, including
-after arbitrary prelude submissions, using the declared two candidate handles.
-The [binding continuation theorem](../VegasTests/SelectiveAssociationRestrictedBinding.lean)
-retains that chosen value throughout every subsequent raw-policy continuation.
-The [opening optimality theorem](../VegasTests/SelectiveAssociationRestrictedOpeningOptimality.lean)
-checks every legal opening information site against every complete behavioral
-policy deviation, for any belief system. Other players' public results remain
-fixed; the owner can publish its frozen successful value or incur failure.
-Failed bindings are also covered. The
-[initialized payoff law](../VegasTests/SelectiveAssociationRestrictedPrescribedOutcome.lean)
-is a point mass at zero for Alice and one for each guesser. This is an execution
-result for the candidate profile, not yet an equilibrium claim.
-
-The [guessing incentive proof](../VegasTests/SelectiveAssociationRestrictedGuessOptimality.lean)
-reduces whole-policy optimality to one precise posterior condition. When the
-public view has no certificate for a successful true binding, its belief must
-assign at least as much mass to Alice's successful false binding as to her
-successful true binding. Alice's failed bindings contribute zero to both guesses.
-A public true certificate instead determines the binding throughout the
-information set. The proof permits arbitrary future policies and every raw
-current response: reserved inclusion and timeout determine one binding result
-throughout the information set, and later actions cannot replace it.
-
-The probability calculation uses the actual native prefix law. The
-[response factorization](../VegasTests/SelectiveAssociationRestrictedPrefix.lean)
-and [history projection](../VegasTests/SelectiveAssociationRestrictedPrefixExecution.lean)
-identify the original protocol's distributions before Carol's and Bob's guesses
-with distributions over the three or four preceding responses. This avoids
-requiring a bijection of full trace representations. A successful comparison
-must still preserve the complete observed input, including the player's own
-prior actions, and compare the exact probabilities of the response tuples.
-
-The [candidate transformation](../VegasTests/SelectiveAssociationRestrictedSymmetry.lean)
-flips a selected candidate's Boolean meaning while preserving the success or
-failure of certificate requests. It permutes the raw menu, with equal uniform
-weights whenever paired inputs have the same known message identifiers. The
-[store transformation](../VegasTests/SelectiveAssociationRestrictedStoreSymmetry.lean)
-handles accepted and rejected binding calls and binding expiry. The missing
-concrete probability step is an injection from uncertified true-binding tuples
-into false-binding tuples with the same guesser input and at least as much mass.
-The fixed-depth Bayes formula and
-[finite limit comparison](../GameTheoryExtensions/Math/Probability/ConditionalComparison.lean)
-then transport that inequality to one common consistent assessment. An arbitrary
-consistent completion of the profile does not establish the needed posterior
-condition.
-
-| Site | Proof status for the proposed profile |
+| Step | Consequence |
 | --- | --- |
-| Alice's prelude and binding | Checked whole-policy optimality for arbitrary beliefs: both prescribed guesses stay equal under every complete Alice deviation, so her payout is at most zero; the prescribed continuation gives zero. |
-| Bob's prelude | Checked whole-policy optimality for arbitrary beliefs: later correction and opening give the maximum payoff of one despite arbitrary earlier submissions. |
-| Carol's and Bob's bindings | Checked whole-policy optimality conditional only on the stated posterior inequality. Its derivation from the common perturbation sequence remains open. |
-| All three openings | Checked whole-policy optimality for arbitrary beliefs, including failed bindings. |
+| Alice submits a candidate commitment with a certificate for its bit. | The evidence is carried by a pending envelope. |
+| Bob's activation reveals that envelope. | Bob possesses the certificate; Carol does not. |
+| Alice submits a commitment without a certificate, naming the same candidate. | The later envelope can associate that candidate with the game's binding. |
+| The service includes the later envelope. | The accepted handle is public; its earlier certificate is still absent from the ledger. |
+| Carol binds her guess, then Bob binds his. | Bob can combine his private certificate with the public association; Carol's guess remains subject to the information bound. |
+| Ordinary openings settle the game. | The difference is measured by the program's declared payout. |
 
-The [prelude proof](../VegasTests/SelectiveAssociationRestrictedPrelude.lean)
-and the guessing and opening proofs use the same protocol and profile.
-The [Alice proof](../VegasTests/SelectiveAssociationRestrictedAliceOptimality.lean)
-checks the actual seven-step continuation between the guesses; Carol’s
-prescribed commitment adds no certificate and cannot change Alice’s accepted
-association. The sole substantive remaining obligation is the concrete prefix
-probability comparison. The
-[Bayes and common-limit adapter](../VegasTests/SelectiveAssociationRestrictedBeliefs.lean)
-constructs one consistent assessment once that comparison is supplied. Thus the
-restricted-native SE and isolated observation separation are still open.
+### Checked equilibrium separation
+
+**Restoring passive observation prevents preservation of an actual restricted
+native equilibrium's declared payout law.** Both sides use the fixed bounded
+game and its complete raw response menus. The comparison changes only the
+pending-observation rule; it does not replace the restricted runtime by the
+source game or delete inconvenient responses.
+
+The [restricted equilibrium theorem](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean)
+constructs a standard sequential equilibrium with silent preludes, a false
+binding for Alice, guesses determined by public evidence, and ordinary
+openings. Its [initialized payoff law](../VegasTests/SelectiveAssociationRestrictedPrescribedOutcome.lean)
+gives Alice zero and each guesser one. Consistency uses one common sequence of
+fully mixed profiles. Rationality covers every legal information site and every
+complete behavioral-policy deviation, including raw certificates, replays,
+wrong addresses, failed bindings and withheld openings.
+
+With passive observation enabled, the
+[native payout bound](../VegasTests/SelectiveAssociationPayoffSeparation.lean)
+gives Alice expected payout at least one half in every sequentially rational
+assessment. The checked capstone
+[`exists_equilibrium_no_native_payout_match`](../VegasTests/SelectiveAssociationRestrictedSeparation.lean)
+therefore excludes every matching target assessment, even when its strategies
+and beliefs are chosen freely for this fixed declared payoff. The retained law
+is the actual native evaluator's payout to Alice on both sides. Target
+consistency is not needed for the lower bound, so the exclusion includes every
+target SE.
+
+This is a counterexample in one explicit bounded native game. It establishes
+neither a general positive SE-preservation theorem nor failure for every game,
+observation rule, scheduler or blockchain deployment.
+
+### Proof map
+
+The posterior argument uses the actual protocol law before the guesses. A
+fixed observed input determines Alice's accepted handle. When there is no
+public true certificate, soundness and its successful true binding exclude
+every public certificate for that handle. Flipping its private Boolean meaning
+then maps each true-binding response tuple to a false-binding tuple with the
+same guesser input and at least as much probability under the common trembles.
+Bob's and Carol's raw actions and full recall remain unchanged. Failed bindings
+remain separate; they contribute zero to the reward of either guess.
+
+| Obligation | Checked proof |
+| --- | --- |
+| Every prescribed response belongs to the full raw menu | [Profile and response availability](../VegasTests/SelectiveAssociationRestrictedPolicy.lean) |
+| Repair an arbitrary prelude and retain the chosen binding | [Binding realization](../VegasTests/SelectiveAssociationRestrictedRealization.lean) and [continuation](../VegasTests/SelectiveAssociationRestrictedBinding.lean) |
+| Factor the actual prefix law into three or four responses | [Response laws](../VegasTests/SelectiveAssociationRestrictedPrefix.lean) and [legal history projection](../VegasTests/SelectiveAssociationRestrictedPrefixExecution.lean) |
+| Recover evidence absence from legal histories | [Certificate soundness and acquisition](../VegasTests/SelectiveAssociationRestrictedPrefixEvidence.lean) |
+| Flip the accepted hidden bit while retaining each guesser's complete input | [Actual prefix transformation](../VegasTests/SelectiveAssociationRestrictedPrefixSymmetry.lean), [accepted-handle reconstruction](../VegasTests/SelectiveAssociationRestrictedPrefixAcceptance.lean), and [tuple injection facts](../VegasTests/SelectiveAssociationRestrictedPrefixInjection.lean) |
+| Compare exact tuple probabilities, including off-path responses | [Perturbation weights](../VegasTests/SelectiveAssociationRestrictedPrefixComparison.lean) and [joint event inequalities](../VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean) |
+| Obtain both posterior inequalities in one consistent assessment | [Bayes and common-limit proof](../VegasTests/SelectiveAssociationRestrictedBeliefs.lean), culminating in `exists_consistent_guess_assessment` |
+| Assemble rationality and consistency | [Restricted native SE](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean) |
+| Compare the same native payout evaluator under the two observation rules | [Payout separation](../VegasTests/SelectiveAssociationRestrictedSeparation.lean) |
+
+The tuple injection preserves certificate issuance and rejection, packet call
+bodies, message identifiers, public receipts, and the actual service steps.
+It changes Alice's two raw responses. No change is made to the other players'
+recorded actions, including unsuccessful certificate requests. An accepted
+handle is recovered from the actual inclusion; it is not assumed to be the
+handle transmitted by the prescribed strategy.
+
+| Site | Checked whole-policy optimality |
+| --- | --- |
+| Alice's prelude and binding | For arbitrary beliefs, both prescribed guesses stay equal under every complete Alice deviation, so her payout is at most zero; the prescribed continuation gives zero. |
+| Bob's prelude | For arbitrary beliefs, later correction and opening give the maximum payoff of one despite arbitrary earlier submissions. |
+| Carol's and Bob's bindings | The common consistent assessment supplies the required false-versus-true posterior comparison when no public true certificate exists. A public true certificate fixes the relevant binding throughout the information set. |
+| All three openings | For arbitrary beliefs, ordinary publication is optimal, including after failed bindings. |
+
+The incentive proofs are in [Prelude](../VegasTests/SelectiveAssociationRestrictedPrelude.lean),
+[AliceOptimality](../VegasTests/SelectiveAssociationRestrictedAliceOptimality.lean),
+[GuessOptimality](../VegasTests/SelectiveAssociationRestrictedGuessOptimality.lean),
+and [OpeningOptimality](../VegasTests/SelectiveAssociationRestrictedOpeningOptimality.lean).
+The Alice proof checks the actual seven-step continuation between the guesses:
+Carol's prescribed commitment adds no certificate and cannot change Alice's
+accepted association. The posterior proof and these incentive proofs concern
+the same native game and profile.
 
 An operational positive control is already checked: private observation cannot
 change the scheduler's observation or its next choice after a silent response.
@@ -247,8 +248,8 @@ to induce the relevant continuation must also be established.
 
 ## Requirements on arbitrary further abstractions
 
-There are two different conclusions. The local response requirement is checked;
-the initialized equilibrium comparison above is not yet proved.
+There are two checked conclusions: a local response requirement and an
+initialized equilibrium-outcome separation. Their quantifiers differ.
 
 ### Local conditional behavior
 
@@ -283,11 +284,11 @@ through action semantics instead of exposing separate information states.
 
 ### Initialized equilibrium outcomes
 
-To exclude arbitrary strategy translation, including payoff-dependent repair,
-prove that every rational full-runtime assessment has a payout above a
-restricted-runtime equilibrium's payout. The
+The native comparison excludes arbitrary strategy translation, including
+payoff-dependent repair: every rational assessment with passive observation
+has a payout above the checked restricted equilibrium's payout. The
 [`induced-information theorem`](../GameTheoryExtensions/Analysis/Protocol/InducedInformation.lean)
-already supplies this implication from operational information, feasible
+supplies the strategic bound from operational information, feasible
 deviation and continuation premises.
 
 Any further abstract model which still represents that restricted game and
@@ -301,7 +302,7 @@ The local requirement alone cannot replace the full initialized separation:
 an implementation may use different native histories or a state-aware macro,
 and a local information difference need not change any equilibrium outcome.
 The universal native payoff bound is what rules out all those alternative
-target assessments once the restricted equilibrium has been established.
+target assessments in the checked comparison.
 
 The resulting requirement is to represent the consequential conditional
 capability, or to restrict the admitted games until it is harmless. It is not

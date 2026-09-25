@@ -16,9 +16,11 @@ The operational investigation proceeds by
 [restricting one feature of the current runtime](runtime-feature-restrictions.md)
 and studying what survives when that restriction is lifted. Each comparison
 holds the surrounding application and service fixed and seeks a requirement
-on further abstractions retaining the relevant game. The generic results below
-support those comparisons; they do not replace the missing same-runtime
-equilibrium proofs with classifications of unrelated terminal experiments.
+on further abstractions retaining the relevant game. The first comparison is
+checked: restoring passive observation in the bounded native game prevents
+matching a restricted equilibrium's declared payout law. The generic results
+below support both that proof and further comparisons; terminal classifications
+alone do not discharge multiplayer runtime obligations.
 
 ## Checked results and their boundaries
 
@@ -69,6 +71,14 @@ equilibrium proofs with classifications of unrelated terminal experiments.
   gap from a relevant observation collision and lifts feasible deviations to
   initialized rationality bounds. The native selective-association proof uses
   its probability and continuation results directly.
+- The [isolated native observation comparison](../VegasTests/SelectiveAssociationRestrictedSeparation.lean)
+  retains the compiled graph, complete bounded raw menu, service, and declared
+  payoff, changing only passive observation. The empty-observation game has a
+  checked standard SE giving Alice payout zero; every sequentially rational
+  assessment with observation enabled gives her at least one half. No target
+  assessment can match that equilibrium's actual payout law, even with freely
+  chosen strategies and beliefs. This is one counterexample, not a general
+  positive preservation theorem or a classification of all communication games.
 
 The finite real-algebra reduction below is not a Lean theorem or implemented solver.
 
@@ -111,8 +121,10 @@ The first implies the second when its strategy component has the required form;
 the second implies the third. The relevant distinction is `exists b, forall u`
 versus `forall u, exists b`. A failed comparison for one proposed `b` does not
 rule out all other native assessments. The
-[selective-association separation](selective-association-proof-contract.md)
-does rule out outcome implementability for its specified games and utility.
+[isolated observation separation](../VegasTests/SelectiveAssociationRestrictedSeparation.lean)
+does rule out outcome implementability for its two native games and fixed
+declared utility. The [source/native separation](selective-association-proof-contract.md)
+is a separate checked comparison.
 
 Fixing `O` is substantive: a constant makes outcome comparison uninformative;
 the entire native trace can forbid useful erasures by definition.
@@ -144,6 +156,12 @@ strategy translation to work for two conflicting external utility functions.
 It does not remove impossibilities already established for one declared payoff.
 Nor does it exclude new target deviations: a receiver may still profit, under
 that same payoff, by using evidence the source hid.
+
+The native observation comparison establishes this failure with utility equal
+to the program's literal payout expressions. It excludes even an arbitrary
+payoff-dependent choice of target assessment matching the restricted SE's payout
+law; restricting the quantification to declared payoffs therefore does not
+remove this particular obstruction.
 
 For terminal decisions the exact fixed-payoff criterion is particularly simple:
 
@@ -200,6 +218,17 @@ depend on that bit, and Alice can still open. The generic calculation yields
 `1 - 1/2`; the generic continuation lift turns that deviation guarantee into a
 lower bound on every rational target assessment's initial payoff. The actual
 source equilibrium and its zero payoff remain separate proved facts.
+
+The [restricted native equilibrium](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean)
+also gives zero under the same application, full raw menus and service when
+passive observation is empty. Its
+[tuple injection](../VegasTests/SelectiveAssociationRestrictedPrefixInjection.lean)
+preserves complete guesser inputs, including recorded raw actions; the
+[joint probability bounds](../VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean)
+and [common consistency limit](../VegasTests/SelectiveAssociationRestrictedBeliefs.lean)
+justify both guessing posteriors. Together with the universal enabled-runtime
+payout bound, this completes the isolated feature comparison. It excludes all
+matching target assessments, rather than only a proposed strategy translation.
 
 This factors the strategic calculation without erasing the service assumptions.
 It does not subsume obstructions from missing opening capabilities, scarce
@@ -360,10 +389,11 @@ Failure to find a structural certificate must return `unresolved`, not impossibi
 
 ## Next proof opportunities
 
-1. Complete the [passive-observation comparison](runtime-feature-restrictions.md)
-   on the existing native fixture: prove the restricted native equilibrium,
-   retaining the same application, service and payoffs. The enabled-observation
-   native payoff bound is checked; the restricted native equilibrium is open.
+1. Use the completed [passive-observation comparison](runtime-feature-restrictions.md)
+   to seek positive game restrictions: for example, observations arriving after
+   every consequential action, or disclosure continuations that cannot benefit
+   the sender. The counterexample excludes the witnessed game from any safe
+   class; no general sufficient native criterion for these classes is proved.
 2. Instantiate the checked
    [observation requirement](../GameTheoryExtensions/Analysis/Protocol/ObservationRequirement.lean)
    on native continuation decisions. The

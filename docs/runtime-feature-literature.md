@@ -4,7 +4,10 @@ This note supports the [runtime feature investigation](runtime-feature-restricti
 The comparison fixes a native game, restricts one capability, and then restores
 it. Its objectives are preservation conditions, explicit counterexamples, and
 requirements inherited by further abstractions. None of the external results
-below is a proved adapter for the Vegas native protocol.
+below is a proved adapter for the Vegas native protocol. The first native
+comparison is now checked directly: restoring passive observation prevents
+matching a restricted equilibrium's declared payout law in the fixed bounded
+selective-association game, with all raw responses retained.
 
 ## Verifiable disclosure: a close existing characterization
 
@@ -55,7 +58,7 @@ must not receive a record of private observations. Players' later actions may
 still depend on what they observed. This separates an information feature from
 a scheduler feature. The cited characterization does not show that every
 equilibrium survives any particular expansion, and gives no shortcut to the
-missing no-leak native equilibrium.
+specific equilibrium and consistency obligations discharged by our native proof.
 
 ## Trace patterns need information alternatives and timing assumptions
 
@@ -105,20 +108,35 @@ and legal histories. Neither operation is equivalent to assigning a legal
 player action probability zero. The checked distinction and the additional
 obligations for restoring actions are described in
 [the restriction analysis](runtime-feature-restrictions.md#model-restrictions-and-zero-probability-play).
-Power sequences suggest finite certificates for the missing native posterior
-argument. A verified adapter from the protocol to the cited tree theorem,
-and a concrete certificate for this game, are still required.
+The native posterior proof instead uses the existing common uniform-tremble
+sequence, a concrete injection between response tuples, and finite limit
+comparison. It does not rely on a power-sequence adapter. Applying the cited
+finite exponent bound to other protocol examples still needs a verified
+adapter to that theorem's game-tree presentation.
 
 ## Concrete proof obligations and opportunities
 
-### The no-leak native fixture
+### Checked no-leak equilibrium and restored-observation separation
 
-Generic finite-game SE existence does not establish Alice's required payout of
-zero. The restricted fixture still has arbitrary legal responses, rejected
-public packets, malformed candidates, withholding, and deadlines. An assessment
-that ignores all unexpected information is not justified. The proof must cover
-off-path sites and one common consistency sequence, using the existing service
-and opening lemmas wherever their premises are independent of passive leakage.
+The [native SE construction](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean)
+proves the required zero payout for Alice in the game with empty passive
+observation. It covers the complete bounded raw menu, including rejected
+packets, malformed candidates, replays, withholding and deadlines. The
+[prefix injection](../VegasTests/SelectiveAssociationRestrictedPrefixInjection.lean)
+flips a privately fixed true candidate into a false one while preserving the
+guesser's whole input. The
+[probability comparison](../VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean)
+and [common consistency limit](../VegasTests/SelectiveAssociationRestrictedBeliefs.lean)
+justify the required beliefs at off-path sites as well as on the prescribed path.
+
+The [separation capstone](../VegasTests/SelectiveAssociationRestrictedSeparation.lean)
+compares the actual native payout evaluator under the two observation rules.
+Every sequentially rational assessment with the original passive observation
+gives Alice at least one half, so none can match the restricted SE's payout law.
+Utilities are the program's fixed declared payouts. The exclusion permits
+arbitrary target strategies and beliefs, including payoff-dependent choices.
+This is one isolated feature counterexample, not a positive preservation
+theorem or an impossibility for every game admitting communication.
 
 ### Positive patterns to investigate
 
@@ -138,5 +156,7 @@ and opening lemmas wherever their premises are independent of passive leakage.
   independence of a signal from a secret alone is insufficient.
 
 These are proposed native proof targets, not consequences already obtained from
-the cited literature. The first completed feature comparison should precede a
-general interface for describing them.
+the cited literature. The completed negative comparison identifies one game
+outside any class that safely erases the feature. A positive characterization
+of such classes remains open; it should precede a general interface for
+describing preservation certificates.

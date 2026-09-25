@@ -40,23 +40,29 @@ theorem native_initial_finish_value (players : Player → nativeApp.Policy) :
   rw [native_initial_finish, FinDist.expect_map]
   rfl
 
-theorem native_initial_value (profile : Profile nativeModel.behavioralSignature) :
-    (nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).expect
+theorem native_initial_value
+    {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+    (profile : Profile (serviceModel observation).behavioralSignature) :
+    ((serviceModel observation).runBehavioral profile (2 * nativeHorizon + 1)).expect
       (fun history => nativeUtility alice history.state) =
-        (nativeApp.runRounds nativeScheduler
-          (nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
+        ((serviceApp observation).runRounds (serviceScheduler observation)
+          ((serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+      (serviceScheduler observation)
             profile) nativeHorizon nativeRoot).expect
               (fun final => utility (nativeResults final.application.config) alice) := by
-  have law := nativeMenu.run_eq_finish (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
-    profile (2 * nativeHorizon + 1) nativeArena.initHistory (by exact le_rfl)
-  have value := congrArg (fun law : FinDist nativeApp.ProtocolState =>
+  have law := (serviceMenu observation).run_eq_finish (FinDist.pure nativeInitial) nativeHorizon
+      (serviceScheduler observation)
+    profile (2 * nativeHorizon + 1) (serviceArena observation).initHistory (by exact le_rfl)
+  have value := congrArg (fun law : FinDist (serviceApp observation).ProtocolState =>
     law.expect (nativeUtility alice)) law
   rw [FinDist.expect_map] at value
-  change (nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).expect
+  change ((serviceModel observation).runBehavioral profile (2 * nativeHorizon + 1)).expect
     (fun history => nativeUtility alice history.state) = _ at value
   rw [value]
-  change (nativeApp.finish (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
-    (nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon nativeScheduler profile)
+  change ((serviceApp observation).finish (FinDist.pure nativeInitial) nativeHorizon
+      (serviceScheduler observation)
+    ((serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+      (serviceScheduler observation) profile)
       none).expect (nativeUtility alice) = _
   simp only [ReactiveApplication.finish, FinDist.pure_bind, FinDist.expect_map]
   rfl

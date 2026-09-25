@@ -8,11 +8,17 @@ strategy and belief translations. It compares the original three publication
 results. The analyzed utilities are exactly the signed integer payoffs returned
 by the source program and evaluated by its compiled settlement.
 
+An [isolated native comparison](../VegasTests/SelectiveAssociationRestrictedSeparation.lean)
+also changes only passive observation. With an empty observation rule, the same
+bounded native game has an SE giving Alice zero. Restoring the stated leak rule
+prevents every sequentially rational assessment from matching that payout law.
+
 | Game | Checked conclusion |
 | --- | --- |
 | Source with finite claims, accepted named evidence, forwarding and replay | There exists an SE: Alice publishes a fair bit; both guessers publish `false`; Alice's expected payoff is zero. |
+| Same native runtime with empty passive observation | There exists an SE: all three players bind and publish `false`; Alice's expected payout is zero. |
 | Native with candidate evidence and later public association | Every sequentially rational assessment gives Alice expected payoff at least one half. |
-| Comparison | The source equilibrium's public-result law differs from every native SE's law. |
+| Comparisons | Neither the named-evidence source equilibrium nor the empty-observation native equilibrium can have its Alice payout law matched by a rational assessment of the leaky native game. |
 
 The stronger [returned-payoff separation](../VegasTests/SelectiveAssociationPayoffSeparation.lean)
 rules out matching even Alice's payout distribution: her expected source payout
@@ -27,6 +33,38 @@ assert that the native game lacks equilibria, or that every blockchain service
 has the same obstruction. The finite menus, calendar and passive leak rule
 below are part of the theorem. Evidence is ideal, and the utilities contain
 no computation or verification costs.
+
+## Isolating passive observation
+
+`Restricted.exists_sequentialEquilibrium` in
+[`SelectiveAssociationRestrictedEquilibrium.lean`](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean)
+constructs an SE of the native runtime with no passive leaks. The application,
+compiled graph, initial state, deadlines, service calendar, inclusion selector
+and response bounds use the same constructors as the leaky game. Both admit
+the complete bounded raw menu, including malformed calls, incorrect openings,
+owned and forwarded evidence, silence and every known replay. Public recording
+and voluntary disclosure remain available.
+
+The prescribed profile is silent in the prelude. Alice's fresh binding selects
+`false`; both guessers follow public evidence of her accepted candidate and
+otherwise choose `false`. Each player uses ordinary opening. Its initialized
+publications are all successful `false`, giving payouts `(0, 1, 1)`.
+
+| Obligation | Checked code |
+| --- | --- |
+| Concrete candidate flip preserves the guesser's full input; actual accepted handles and inclusion checks justify the pairing | [PrefixInjection](../VegasTests/SelectiveAssociationRestrictedPrefixInjection.lean), [PrefixAcceptance](../VegasTests/SelectiveAssociationRestrictedPrefixAcceptance.lean) |
+| Every positive perturbation assigns at least as much mass to successful `false` as successful `true` at an uncertified guessing input | [PrefixPosterior](../VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean) |
+| One common fully mixed Bayes sequence supplies consistent beliefs at every information site | [Beliefs](../VegasTests/SelectiveAssociationRestrictedBeliefs.lean) |
+| Optimality against whole replacement policies, including every off-path site | [AliceOptimality](../VegasTests/SelectiveAssociationRestrictedAliceOptimality.lean), [Prelude](../VegasTests/SelectiveAssociationRestrictedPrelude.lean), [GuessOptimality](../VegasTests/SelectiveAssociationRestrictedGuessOptimality.lean), [OpeningOptimality](../VegasTests/SelectiveAssociationRestrictedOpeningOptimality.lean) |
+| Exact initialized results and actual compiled payout comparison | [PrescribedOutcome](../VegasTests/SelectiveAssociationRestrictedPrescribedOutcome.lean), [RestrictedSeparation](../VegasTests/SelectiveAssociationRestrictedSeparation.lean) |
+
+`Restricted.exists_equilibrium_no_native_payout_match` then compares this SE's
+zero expected Alice payout with the leaky game's universal lower bound of one
+half. It allows arbitrary target strategies and beliefs, including translations
+chosen for these fixed declared payoffs. This isolates a failure of erasing
+passive observation in this finite runtime. It neither proves a general SE
+preservation theorem for empty-observation services nor makes a claim about an
+unbounded blockchain game.
 
 ## Why the evidence interfaces differ
 

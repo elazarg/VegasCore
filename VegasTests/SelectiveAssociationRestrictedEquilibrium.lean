@@ -92,4 +92,18 @@ theorem prescribed_sequentiallyRational (assessment : model.BehavioralAssessment
       · exact profile_opening_rational assessment strategy carol site past view observed grant
       · exact profile_opening_rational assessment strategy bob site past view observed grant
 
+/-- A sequential equilibrium of the original bounded native game when its
+passive observation rule always returns the empty set. The complete raw menus,
+service calendar, inclusion selector and application are retained. -/
+theorem exists_sequentialEquilibrium :
+    ∃ assessment : model.BehavioralAssessment,
+      assessment.strategy = profile ∧
+      assessment.IsSequentialEquilibriumFor
+        (menu.decisionInformationAntichain (FinDist.pure nativeInitial) nativeHorizon scheduler)
+        (fun who site => assessment.continuationContext site
+          (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) := by
+  obtain ⟨assessment, strategy, consistent, beliefs⟩ := exists_consistent_guess_assessment
+  exact ⟨assessment, strategy,
+    ⟨prescribed_sequentiallyRational assessment strategy beliefs, consistent⟩⟩
+
 end VegasTests.SelectiveAssociation.Restricted

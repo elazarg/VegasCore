@@ -15,11 +15,15 @@ noncomputable section
 
 namespace VegasTests.SelectiveAssociation
 
-open Vegas Interaction GameTheory GameTheory.Protocol GameTheory.Math.Probability
+open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
+open GameTheory.Math.Probability
 
-def nativePayoutLaw (profile : Profile nativeModel.behavioralSignature) : FinDist ℝ :=
-  (nativeApp.runRounds nativeScheduler
-    (nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon nativeScheduler profile)
+def nativePayoutLaw
+    {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+    (profile : Profile (serviceModel observation).behavioralSignature) : FinDist ℝ :=
+  ((serviceApp observation).runRounds (serviceScheduler observation)
+    ((serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+      (serviceScheduler observation) profile)
       nativeHorizon nativeRoot).map (fun final => nativeAlicePayout final.application.config)
 
 def sourcePayoutLaw {Claim : Type} [Fintype Claim]
@@ -27,9 +31,11 @@ def sourcePayoutLaw {Claim : Type} [Fintype Claim]
   ((NamedSource.model Claim).runBehavioral profile (2 * NamedSource.horizon + 1)).map
     (fun history => returnedPayoff (NamedSource.protocolResults history.state) alice)
 
-theorem native_payout_expectation (profile : Profile nativeModel.behavioralSignature) :
+theorem native_payout_expectation
+    {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+    (profile : Profile (serviceModel observation).behavioralSignature) :
     (nativePayoutLaw profile).expect id =
-      (nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).expect
+      ((serviceModel observation).runBehavioral profile (2 * nativeHorizon + 1)).expect
         (fun history => nativeUtility alice history.state) := by
   rw [native_initial_value]
   unfold nativePayoutLaw

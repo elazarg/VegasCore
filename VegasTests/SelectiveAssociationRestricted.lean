@@ -7,8 +7,10 @@ import VegasTests.SelectiveAssociationProbability
 
 The application, raw response bounds, service calendar, selector, and deadlines
 are the existing native fixture. Only its observation rule is changed. The
-paired prefix below checks the information effect of that single change. An
-equilibrium of this restricted native protocol remains a separate obligation.
+paired prefix below checks the information effect of that single change.
+`SelectiveAssociationRestrictedEquilibrium` supplies a sequential equilibrium
+for this native instance; `SelectiveAssociationRestrictedSeparation` proves
+that restoring passive observation prevents matching its payout law.
 -/
 
 noncomputable section
