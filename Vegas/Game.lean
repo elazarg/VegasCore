@@ -10,6 +10,7 @@ import Vegas.Game.ReactiveCompilation
 import Vegas.Game.EventMessageStrategic
 import Vegas.Game.PendingCompositions
 import Vegas.Game.ParameterOutcomes
+import Vegas.Game.ZeroSum
 import Vegas.Game.SetupSubgame
 import Vegas.Game.BehavioralSubgame
 

@@ -46,6 +46,11 @@ the subsequent kernel-checked build.
 | Asynchronous pending-message deviation reduction | `Vegas/Pending/EventDeviationLaw.lean`, `Vegas/Pending/EventStrategicLaw.lean` |
 | Full-source pending-message deviations and Nash correspondence | `Vegas/Game/EventMessageStrategic.lean` |
 | Initial-parameter/public-result joint laws and Bayesian Nash correspondence | `Vegas/Source/InitialState.lean`, `Vegas/Game/ParameterOutcomes.lean` |
+| Two-player zero-sum source Nash value equals every native coarse-correlated value under the paper service | `Vegas/Game/ZeroSum.lean`, `GameTheoryExtensions/Core/ZeroSum.lean` |
+| Finite decision tables preserve every legal continuation law | `GameTheoryExtensions/Protocol/FiniteInformation.lean` |
+| Finite zero-sum saddle existence with L1 feature penalties and a security-based penalty bound | `GameTheoryExtensions/Analysis/ZeroSumRegularization.lean` |
+| Identical normal-form CE correspondence does not imply SE outcome preservation | `GameTheoryExtensionsTests/CorrelatedSequentialGap.lean` |
+| Zero-sum Nash equilibria can have equal expected payouts and different payout laws | `GameTheoryExtensionsTests/ZeroSumOutcomeLaws.lean` |
 | Auction failure of dominance, including every faithful translation | `Vegas/Examples/CommitRevealAuction.lean` |
 | SE separation for accepted named evidence, with literal declared and compiled settlement payoffs | `VegasTests/SelectiveAssociationSourceEquilibrium.lean`, `VegasTests/SelectiveAssociationSettlement.lean`, `VegasTests/SelectiveAssociationPayoffSeparation.lean` |
 | Native SE with empty passive observation, all legal information sites and whole-policy deviations | `VegasTests/SelectiveAssociationRestrictedEquilibrium.lean`, `VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean`, `VegasTests/SelectiveAssociationRestrictedBeliefs.lean` |

@@ -26,6 +26,7 @@ import GameTheoryExtensions.Analysis.Protocol.Sequential
 import GameTheoryExtensions.Analysis.ObservationErasure
 import GameTheoryExtensions.Analysis.ObservationAbstraction
 import GameTheoryExtensions.Analysis.ObservationPayoff
+import GameTheoryExtensions.Analysis.ZeroSumRegularization
 import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
 import GameTheoryExtensions.Analysis.Protocol.DecisionPayoff
 import GameTheoryExtensions.Analysis.Protocol.ContinuationDecision
@@ -40,6 +41,7 @@ import GameTheoryExtensions.Analysis.Protocol.HistoryBayesProjection
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Core.PendingChoice
+import GameTheoryExtensions.Core.ZeroSum
 import GameTheoryExtensions.Core.IncentiveCone
 import GameTheoryExtensions.Core.RegularChoice
 import GameTheoryExtensions.Core.RegularChoiceSimulation

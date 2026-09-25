@@ -33,7 +33,9 @@ import VegasTests.SelectiveAssociationRestrictedSymmetry
 import VegasTests.ReactiveReadinessRestrictions
 import VegasTests.SelectiveAssociationRestrictedEquilibrium
 import VegasTests.SelectiveAssociationRestrictedSeparation
+import Vegas.Game.ZeroSum
 import GameTheoryExtensions.Math.Probability.ConditionalComparison
+import GameTheoryExtensions.Analysis.ZeroSumRegularization
 
 /-! # Paper theorem audit
 
@@ -934,5 +936,21 @@ open VegasTests.SelectiveAssociation.Restricted in
 #guard_msgs (whitespace := lax) in
 open VegasTests.SelectiveAssociation.Restricted in
 #print axioms exists_equilibrium_no_native_payout_match
+
+/-- info: 'GameTheory.IsCoarseCorrelatedEq.expectedUtility_eq_of_zeroSum' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.IsCoarseCorrelatedEq.expectedUtility_eq_of_zeroSum
+
+/-- info: 'Vegas.SourceProgram.Setup.valueBindingParameterPendingGame_coarseCorrelated_value' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SourceProgram.Setup in
+#print axioms valueBindingParameterPendingGame_coarseCorrelated_value
+
+/-- info: 'GameTheory.ZeroSumRegularization.exists_saddle' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms GameTheory.ZeroSumRegularization.exists_saddle
 
 end Vegas.Paper

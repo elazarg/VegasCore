@@ -2,6 +2,7 @@
 
 import GameTheoryExtensionsTests.CoalitionSimulation
 import GameTheoryExtensionsTests.CoalescingEquilibrium
+import GameTheoryExtensionsTests.CorrelatedSequentialGap
 import GameTheoryExtensionsTests.ContinuationMenus
 import GameTheoryExtensionsTests.ContinuationTransfer
 import GameTheoryExtensionsTests.ContinuationSimulation
@@ -26,5 +27,6 @@ import GameTheoryExtensionsTests.PendingChoice
 import GameTheoryExtensionsTests.RegularChoice
 import GameTheoryExtensionsTests.SelectiveStopping
 import GameTheoryExtensionsTests.UtilitySimulation
+import GameTheoryExtensionsTests.ZeroSumOutcomeLaws
 
 /-! # Regression tests for reusable game-theoretic extensions -/
