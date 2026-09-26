@@ -40,7 +40,7 @@ and *new* otherwise. A retained set may also contain noncompliant histories.
 Every first exit from `C` is therefore a forbidden action at a retained set.
 
 For player `i`, let base payoffs lie in `[L_i,U_i]`. A terminal charge indicator
-`c_i` in `[0,1]` gives net payoff `u_i - D_i c_i`. A binary indicator means a
+\(c_i\) in `[0,1]` gives net payoff `u_i - D_i c_i`. A binary indicator means a
 one-time collectible fine; a fractional indicator can represent its expected
 terminal collection when that collection introduces no further observations.
 Assume:
@@ -49,7 +49,7 @@ Assume:
    player. This covers all source strategies and deviations using retained
    actions, not just one prescribed equilibrium.
 2. **Uniform first-departure collection:** from every compliant history `h`
-   owned by `i`, each forbidden action has conditional expected `c_i` at least
+   owned by `i`, each forbidden action has conditional expected \(c_i\) at least
    `p_i > 0`, under every subsequent continuation profile. The bound applies
    separately at each history and action; averaging gives it under every belief
    on the compliant portion of that information set.
@@ -72,13 +72,13 @@ bound; passive observation probability alone is insufficient.
 ## Proof
 
 **1. Preserve the prescribed source trembles.** Fix a source assessment
-`(sigma,mu)` and a completely mixed sequence `sigma_n` witnessing its
-consistency. At every retained target set `I`, let `k_I` be its number of
-forbidden actions. Assign each forbidden action probability `delta_n` and each
+`(sigma,mu)` and a completely mixed sequence \(sigma_n\) witnessing its
+consistency. At every retained target set `I`, let \(k_I\) be its number of
+forbidden actions. Assign each forbidden action probability \(delta_n\) and each
 retained action `a` probability `(1-k_I delta_n) sigma_n(a|I)`.
 
-All compliant histories have positive reach under `sigma_n`. Let `r_n > 0`
-be their minimum reach, and choose positive `delta_n` tending to zero with
+All compliant histories have positive reach under \(sigma_n\). Let `r_n > 0`
+be their minimum reach, and choose positive \(delta_n\) tending to zero with
 `delta_n/r_n -> 0` and `k_I delta_n < 1`. For example, a sufficiently small
 constant times `r_n/(n+1)` works. This choice depends on the source consistency
 sequence, not on any new-site completion. It does not alter the target game.
@@ -86,17 +86,17 @@ sequence, not on any new-site completion. It does not alter the target game.
 **2. Complete all new decisions simultaneously.** For each `n`, put one
 normal-form agent at each new information set. Its payoff is its owner's
 unconditional expected *net* payoff in `T_D`. An agent chooses a distribution
-`x_I`; its actual local behavior is `(1-epsilon_n)x_I + epsilon_n uniform_I`,
+\(x_I\); its actual local behavior is `(1-epsilon_n)x_I + epsilon_n uniform_I`,
 where `0 < epsilon_n -> 0`. Retained-site behavior remains pinned as in step 1.
 This is a finite game (equivalently take the local pure actions and mix), so it
-has a mixed Nash equilibrium. Use one to define `beta_n`.
+has a mixed Nash equilibrium. Use one to define \(beta_n\).
 
-Every `beta_n` is completely mixed. At a new set `I`, its positive reach is
+Every \(beta_n\) is completely mixed. At a new set `I`, its positive reach is
 independent of its local agent's action: perfect recall precludes revisiting
 `I`. Changing that agent changes payoffs only after reaching `I`. Divide its
 unconditional best-response comparison by this positive reach **before**
-taking a limit. The actions used by `x_I` maximize conditional continuation
-payoff. Consequently `beta_n` has one-step conditional regret at most
+taking a limit. The actions used by \(x_I\) maximize conditional continuation
+payoff. Consequently \(beta_n\) has one-step conditional regret at most
 `epsilon_n (U_i-L_i+D_i)` there. The new sets need not form a closed region;
 subsequent retained-site behavior is simply fixed in these continuation payoffs.
 
@@ -105,18 +105,18 @@ retained set `I`. On each compliant history, target reach is source reach times
 a product of factors `1-k_J delta_n`. There are only finitely many factors,
 so these multipliers tend uniformly to 1. Conditional on `I intersect C`, the
 target Bayes belief therefore has the same limit as the source belief, namely
-`mu_I`.
+\(mu_I\).
 
 Every noncompliant history reaching `I` contains a first forbidden action at a
-retained set. Its probability has a factor `delta_n`. A finite union bound
+retained set. Its probability has a factor \(delta_n\). A finite union bound
 bounds all such reach by `K delta_n`, independently of the new agents' chosen
-equilibrium. Compliant reach in `I` is at least `r_n` times a product tending
+equilibrium. Compliant reach in `I` is at least \(r_n\) times a product tending
 to 1. Thus noncompliant reach divided by compliant reach tends to zero.
 Conditioning on all of `I` has the same limit as conditioning on `I intersect C`.
 No positive lower bound on the *limiting* reach of `I` is needed.
 
 **4. Take one common assessment limit.** Finite products of strategy and belief
-simplices are compact. Extract a single subsequence on which `beta_n` and its
+simplices are compact. Extract a single subsequence on which \(beta_n\) and its
 Bayes beliefs converge to `(beta,nu)`. This is a consistent target assessment.
 At every retained set its strategy is `sigma`, and its belief is `mu` extended
 by zero on noncompliant histories. At every new set, step 2 and continuity of
@@ -176,6 +176,91 @@ initial types, public results and the entire net-payoff vector, has equal law.
   information, or admitting unmonitored signaling through legal fields. Those
   changes require their own semantic correspondence. This theorem concerns
   unilateral SE deviations, not correlated equilibria or coalition robustness.
+
+## A finite certificate for inferring sanctions
+
+Uniform positive collection is sufficient, but an extra action that is already
+unprofitable needs no collection. The following certificate gives a sharper
+version of the extension theorem. Its mathematical argument is given here;
+the finite execution extraction and the composed Lean theorem remain open.
+
+Keep the finite action restriction and perfect-recall hypotheses. Fix
+nonnegative terminal charge features `C_ij(z)` and net utility
+`u_i(z) - sum_j d_j C_ij(z)`, with `d_j >= 0`. All features vanish on every
+compliant terminal history. Features describe actual collectible consequences
+in the game; they are fixed independently of deposit amounts. Reports and
+collection observations that affect later play remain in the execution tree.
+
+For each retained information set `I` of player `i`, forbidden action `a`,
+compliant history `h` in `I`, and pure future policy table `tau`, compute:
+
+- `B(h,a,tau)`: expected base utility after choosing `a` at `h`.
+- `L(h,b,tau)`: expected base utility after legal action `b` at `h`.
+- `c_j(h,a,tau)`: expected charge feature after choosing `a` at `h`.
+
+The table chooses one action per information set, legal at retained sets and
+unrestricted at new sets. The bad and legal runs use the **same** table. All
+expectations use the actual chance and service laws. For each pair `(I,a)`,
+choose one lottery `lambda_(I,a)` over legal source actions and require
+
+```text
+B(h,a,tau) - sum_b lambda_(I,a)(b) L(h,b,tau)
+  <= sum_j c_j(h,a,tau) d_j
+```
+
+for every `h` and `tau`. The lottery must be shared across every such row. A
+different comparator chosen using a hidden history or the future policies of
+other players would not be a source action available to the player.
+
+**Certificate theorem.** Feasible deposits and comparator lotteries give the
+same forward SE-extension and joint-law conclusions as the theorem above.
+
+**Proof.** Construct the common consistent completion as in steps 1--4, using
+the finite range of the resulting net utility for each player's regret bound.
+At a retained set its belief is supported on compliant histories, its retained
+behavior is the source strategy, and its future behavior is legal at retained
+sets. Independently predraw one action from each future local behavioral law.
+Perfect recall ensures no information set is visited twice along a play, so
+each finite path has the same product probability as behavioral execution.
+Thus these draws realize both the bad and legal continuation laws as mixtures
+over the same pure tables. Average the displayed inequalities over this table
+distribution and the retained belief. Action `a` has net value no greater than
+the legal deviation that plays `lambda_(I,a)` now and follows the source
+strategy thereafter. That deviation is bounded by the source SE's prescribed
+value. Retained actions inherit source rationality, and new sets have optimal
+local responses from the completion. The consistent one-shot principle and
+zero charges on compliant play finish steps 5--6. Equality suffices. Deposits
+and comparators are fixed before quantifying over source equilibria. This proof
+does not produce a fixed playerwise compiler. End of proof.
+
+With fixed rational execution coefficients, this is a finite linear feasibility
+problem in `d` and `lambda`: lawful zero charges avoid a product of lottery and
+deposit variables. Jointly synthesizing detection probabilities and deposits
+generally introduces products and is a different optimization problem.
+A linear objective can minimize total collateral or a common
+deposit. The range/detection certificate follows by bounding all bad base values
+above, all legal values below, and bad collection below. The finite certificate
+instead keeps gain and collection from the same execution together.
+
+For a fixed scalar comparison family `g_k <= c_k D`, with `c_k >= 0`, feasibility
+requires `g_k <= 0` whenever `c_k = 0`. Subject to those tests, the least weakly
+deterring nonnegative deposit is the maximum of zero and `g_k/c_k` over positive
+coefficients. Division by positive coefficients proves both directions; an empty
+family of positive coefficients needs only zero. A strict guarantee should use
+an explicit positive margin rather than claim this boundary value is strict.
+
+If `q_k >= 0`, `g_k <= q_k G` and `c_k >= alpha q_k` for one `alpha > 0`, then
+`D >= G/alpha` and `D >= 0` imply all comparisons, by multiplication and
+transitivity. Taking \(q_k\) to be leak probability requires a proof that failed
+leakage has no other beneficial effect; silence and timing can themselves carry
+information. No independence between leakage and collection is used.
+
+Certificate infeasibility is not an impossibility result: the rows include
+irrational completions and histories assigned zero belief by some source SEs.
+Conversely, a strategic reporter allowed to stay silent produces zero-collection
+rows. The certificate cannot assume that reporter away; a reporting-equilibrium
+proof or an explicit mechanical collection primitive is needed. Monetary
+amounts implement these utility inequalities only under a stated utility model.
 
 ### Forcing failure is a payoff-dependent alternative
 

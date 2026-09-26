@@ -450,6 +450,67 @@ This completeness route needs a verified finite-game adapter, formula translatio
 and real-algebra engine. It is not a practical proposal for the whole Vegas tree.
 Failure to find a structural certificate must return `unresolved`, not impossibility.
 
+### Fixed-template punishment synthesis
+
+Fix the source utilities and a finite native game template `T_d`, whose terminal
+utilities and any parameterized kernels have effective semialgebraic
+descriptions. Deposits are a simple example: `u_i(z) - sum_j d_j C_ij(z)`.
+Observation maps, information sets and legal actions are fixed by the template;
+changing them requires a separate template or an explicit finite case split.
+Parameterized chance supports likewise require the support cases above.
+
+Let `Match(a,b,d)` require the chosen retained joint law, and optionally the
+structural extension of source behavior and beliefs. The exact repair question is
+
+```text
+exists d in AllowedParameters, forall a,
+  SE_source(a) -> exists b, SE_target(d,b) and Match(a,b,d).
+```
+
+Deposits are chosen before source equilibria. Quantifier elimination on the
+inner preservation formula computes a semialgebraic set of successful real
+parameters. `AllowedParameters` must itself have an effective semialgebraic
+description or be a specified finite list. This is necessary and sufficient
+within the supplied finite template and matching requirement. It is a proposed
+application of the finite SE encoding, not an implemented synthesis tool or a theorem about arbitrary
+blockchain behavior. Falsity means each allowed parameter choice has some
+failing source equilibrium; that equilibrium need not be the same for all
+choices. A failed sufficient incentive certificate has weaker meaning.
+
+Actual net payoffs depend on `d`, so matching only a fixed decoded result or its
+expected payoff can lose part of the guarantee. Encode joint-law equality using
+a finite coupling `w(z_s,z_t) >= 0` between source and target terminal leaves:
+
+- Its row and column sums equal the respective terminal reach probabilities.
+- A positive entry requires equal decoded initial types and public results,
+  and equality of the actual source and target net-payoff vectors.
+
+All these conditions are finite polynomial equalities, inequalities and
+implications when payoffs are polynomial in `d`. More general semialgebraic
+payoffs use their graph formulas. A supported coupling implies equal decoded
+laws by summing its marginals over equal observations. Conversely, equal laws
+can be coupled independently within each equal-observation class: for positive
+common class mass `m`, use `w(z_s,z_t)=p_s(z_s)p_t(z_t)/m`, and use zero on
+zero-mass classes. This proves the coupling encoding is exact without fixing
+a finite alphabet of monetary amounts or weakening equality to expectations.
+
+The successful parameter region is not assumed to be upward closed or to have
+an attained minimum. Such properties need a theorem for the particular repair
+family; the nonnegative linear sufficient certificate in the
+[sanctions proof](research/se-ideal-sanctions.md) has them for weak scalar
+deterrence. Algebraic amounts must not be silently rounded to token units.
+Bounded integer currency choices can be checked by finite enumeration; more
+general integrality constraints are not ordinary real quantifiers.
+
+The algorithm is complete for the effective finite inputs just described.
+Arbitrary Lean functions returning real numbers, unbounded traffic, and
+unspecified runtime families do not supply those inputs. An extracted game
+must retain the actual observations and deviations, and the formula translation
+must be verified before a solver result becomes a compiler certificate. The
+[compiler roadmap](se-preservation-roadmap.md) therefore prioritizes the
+structural theorem and finite incentive inference; exact real-algebra checking
+serves as a small-instance completeness reference and diagnostic.
+
 ## Relation to established theory
 
 - Bergemann and Morris compare multiplayer information through Bayes correlated

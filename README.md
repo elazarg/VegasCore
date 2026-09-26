@@ -127,6 +127,11 @@ one-shot principle for whole-policy deviations. The source/target restriction
 adapter and general native conformance remain open. Forcing future actions to
 fail is sufficient only when their actual continuation loss deters the departure.
 
+The [SE compiler roadmap](docs/se-preservation-roadmap.md) specifies one tower,
+the remaining correspondence theorem, and inference of sufficient deposits from
+finite incentive comparisons. Exact finite-game checking is a separate proposed
+diagnostic; failure of a sufficient certificate is not an impossibility result.
+
 The [runtime abstraction investigation](docs/runtime-abstraction-classification.md)
 classifies what a game presentation may forget. Its generic continuation
 simulation theorem supplies composable sufficient certificates and is used by
