@@ -128,10 +128,13 @@ clocked perfect-recall protocols; general source-to-native correspondence and
 collection remain compiler obligations. Forcing future actions to fail is
 sufficient only when their actual continuation loss deters the departure.
 
-The [SE compiler roadmap](docs/se-preservation-roadmap.md) specifies one tower,
-the remaining native correspondence, and checked executable inference of the
-least sufficient deposit for a finite rational comparison table. Declared source
-payoff tables now supply an actual native deterrence instance and exact prescribed
+The [SE compiler roadmap](docs/se-preservation-roadmap.md) records the remaining
+native correspondence and checked executable inference of the least sufficient
+deposit for a finite rational comparison table. The
+[implementation stack](docs/se-compilation-stack.md) plans successive response
+restrictions over the same runtime, with early recall and monitoring feasibility
+gates. Declared source payoff tables now supply an actual native deterrence
+instance and exact prescribed
 net-payoff laws. General SE preservation for that payoff family remains open.
 Exact finite-game checking is a separate proposed diagnostic; failure of a
 sufficient certificate is not an impossibility result.

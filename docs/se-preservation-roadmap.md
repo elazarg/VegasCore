@@ -1,11 +1,13 @@
 # Sequential-equilibrium compiler: theorem, inference and boundaries
 
-This is the implementation plan and reading guide for SE compilation. The
+This is the results map and reading guide for SE compilation. The
 [ideal-sanctions proof](research/se-ideal-sanctions.md) contains the generic
 mathematics; the [native pilot](research/se-native-pilot.md) contains the checked
 source-to-runtime instance. The general action-restriction theorem and scalar
 deposit inference are checked in Lean. Instantiating the general theorem for
 arbitrary source programs and a native service remains open.
+The [stack and implementation plan](se-compilation-stack.md) fixes the next
+program class, proof edges, parallel work packages and early feasibility gates.
 
 ## Checked results and remaining compiler work
 
@@ -54,7 +56,7 @@ instead ranges over arbitrary external utilities, it must specify their bounds
 or another common incentive certificate. A monetary deduction has the claimed
 utility effect only under the stated preference model.
 
-## One compilation tower
+## Program artifacts and strategic proof stack
 
 ```text
 SourceProgram + Setup + declared payoffs
@@ -75,12 +77,25 @@ service used for SE are backend instances. A proof for one is not an
 intermediate SE edge to the other. Concrete cryptographic or ledger execution
 would require its own refinement beyond this idealized target.
 
-These are analysis constructions, not emitted tower levels:
+The proposed [strategic proof stack](se-compilation-stack.md#stack-one-runtime-several-strategic-games)
+uses genuine response-menu restrictions of this same runtime:
 
-- The permitted part of the native game, used to identify source choices.
-- Quotients by proved operational aliases of private response names.
-- Information-agent normal forms used to construct consistent continuations.
-- A finite tree/table extracted for checking incentives or exact SE formulas.
+```text
+Ordinary source
+  → source-representable native choices, prescribed reporting
+  → all effective ordinary-player choices, prescribed reporting
+  → all effective native choices, including the watcher
+  → full bounded raw native game
+```
+
+Restore ordinary-player choices while reporting is constrained, then restore
+the watcher's choices using its own incentive proof. Initially that proof uses
+zero watcher utility at every history. The final edge restores only proved
+private response aliases. These are games used in the proof, with the same
+runtime implementation and enforcement configuration; they add no source syntax
+or emitted interpreter. Their general source-to-native composition is proposed,
+not checked. Information-agent forms and extracted incentive tables remain
+internal proof and analysis constructions.
 
 Ambient communication is an alternative source interpretation when a capability
 must be retained. It is not automatically inserted to make an ordinary-source
@@ -147,6 +162,14 @@ sufficient horizon. It permits additional actions, histories and information
 sets. Extra service activations must first be aligned with forced source steps
 or eliminated by a separate correspondence proof. This is an obligation in
 connecting the ordinary source protocol to the native service calendar.
+
+There is also a recall compatibility obligation. Native information is empty
+while a player is inactive, whereas the current capstone assumes recall at all
+information values. Native own-play recall is already proved at decision sites.
+The plan first generalizes the necessary switching and one-shot lemmas to that
+decision-site property. It does not add clock observations to make the stronger
+premise hold. Common decision depth must separately follow from the service
+calendar and existing observations.
 
 ## Inference rather than compiler flags
 
@@ -265,22 +288,24 @@ compares such choices once their operational meaning is fixed.
 
 ## Implementation order and acceptance tests
 
-1. **Generic restriction theorem: checked.** Local operational embeddings
-   imply retained history laws and beliefs; completion and actual legal-comparator
-   inequalities imply genuine SE extension. The range/collection corollary is a
-   sufficient special case; finite table extraction remains a separate task.
-2. **Discharge the native correspondence on a game class.** Use the existing
-   source, graph and reactive protocols. Include multiple dependent decisions
-   and all bounded raw responses. Exercise the three cases below before claiming
-   coverage of general programs.
-3. **Scalar inference: checked; broader extraction remains.** The exact rational
-   checker and the declared-payoff native deterrence instance are implemented.
-   Extend operational extraction and source/native assessment transport to a
-   genuinely broader multistage class.
-4. **Add exact finite diagnosis.** Export the same games to the real-algebra
-   encoding, verify the extraction/translation, and use small cases to measure
-   conservatism and produce genuine failures. Keep general solver engineering
-   separate from closing the first compiler theorem.
+The [implementation plan](se-compilation-stack.md#implementation-work-packages)
+gives ownership, dependencies and acceptance gates. Its order is:
+
+1. **Resolve native feasibility in parallel.** Generalize recall premises,
+   construct menu-to-menu restrictions, classify private aliases, and test
+   collection against every ordinary player's effective responses. Include
+   accepted packets carrying extra evidence, not only rejected calls.
+2. **Freeze the service and conformance contract.** Use the actual two-reveal
+   integer-payoff family, retaining opening and withholding for both owners.
+   Validate timing and observations on every source branch before generalizing.
+3. **Prove source correspondence and collection in parallel.** Transport one
+   common consistency sequence through service blocks; establish actual
+   conditional comparisons while reporting is prescribed. Compose the checked
+   extension theorem twice, then the checked raw-alias lift.
+4. **Generalize and improve inference.** Extend to finite guard-free reveal
+   sequences with valid initialized commitments. The scalar checker is already
+   checked; broader extraction and sharper comparators follow the first composed
+   theorem. Exact finite diagnosis remains a separate diagnostic project.
 
 The decisive runtime cases are:
 
@@ -312,7 +337,8 @@ The public result should consist of the ordinary Nash/Bayesian theorem, a
 conditional SE compiler theorem with an inference algorithm, and precisely
 scoped obstructions. SE existence and agent-form games support the proof.
 The [artifact map](../ARTIFACT.md) records checked declarations. Detailed native
-audits and research notes explain their premises; they do not extend the tower.
+audits and research notes explain their premises. The strategic stack shares one
+runtime implementation; a research example does not itself justify a new level.
 
 CE and coalition enforcement, strategic paid watchers, cryptographic refinement,
 unbounded traffic, computational/approximate SE and channel-noise bounds remain

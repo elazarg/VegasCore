@@ -4,6 +4,8 @@ For sequential-equilibrium results and remaining work, start with the
 [research map](docs/se-preservation-roadmap.md). It distinguishes the checked
 monitored native fragment, the general action-restriction theorem, and the
 remaining native correspondence and collection obligations.
+The [implementation stack](docs/se-compilation-stack.md) specifies proposed
+proof edges and early feasibility gates; it does not add checked compiler claims.
 
 ## Reproduction
 
