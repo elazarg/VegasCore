@@ -64,7 +64,7 @@ normalized `πθBθ(y)` otherwise. A fixed optimal terminal response at each new
 signal can therefore handle monitoring without an equilibrium-specific game.
 
 For a general finite action restriction, the
-[written extension proof](se-ideal-sanctions.md) pins a
+[checked extension proof](se-ideal-sanctions.md) pins a
 source consistency sequence at compliant sites and makes forbidden trembles
 `o(minimum positive source-history reach)`. It completes new-only sites in
 finite perturbed continuation games, then takes one common subsequence.
@@ -74,14 +74,14 @@ does **not** yet prove a fixed playerwise compiler. A public terminal abort or
 a genuinely local terminal response could remove that dependence, but each is
 a further service/game restriction.
 
-Finite constrained agent-equilibrium existence, conditional contamination
-bounds, finite sanction criteria and the exact agent-form execution law are
-checked. Consistent local optimality also implies whole-policy sequential
-rationality in the finite clocked perfect-recall protocol class. The remaining
-Lean work is the structural action-restriction adapter and its instantiation:
-retained history laws and beliefs, and the first-departure collection bound.
-The linked proof records each boundary. The general theorem is not yet a
-checked source-to-native compiler result.
+The general action-restriction assembly is checked: a local operational square
+implies retained continuation laws, rare-tremble bounds preserve beliefs, and
+consistent local optimality implies whole-policy sequential rationality. This
+uses finite, clocked perfect-recall protocols with aligned source and target
+steps. The remaining compiler work is to establish that correspondence and
+conditional collection for a native game class. The native pilot handles its
+strategic watcher directly; universal collection against arbitrary watcher
+policies does not follow from that proof.
 
 Runtime obligations remain even after that theorem: sanctions must be sound
 for **all** permitted source strategies; observation/reporting/collection bounds

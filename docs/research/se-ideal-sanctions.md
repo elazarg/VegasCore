@@ -5,10 +5,14 @@
 There is a general finite-game route from an abstract game to a larger game
 with forbidden actions: retain the original information on compliant paths,
 make each first departure sufficiently costly, and complete the new decisions
-rationally. This note gives a mathematical proof of **forward extension of
-every source sequential equilibrium (SE)**. The general theorem is not yet
-formalized in Lean. The [actual native guessing instance](se-native-pilot.md)
-is checked; it does not establish the general structural premises below.
+rationally. This note gives the mathematical proof of **forward extension of
+every source sequential equilibrium (SE)**. The general legal-comparator theorem
+and its range/collection corollary are checked in
+[RestrictionExtension.lean](../../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean)
+for finite, clocked perfect-recall execution protocols with an adequate horizon.
+The [actual native guessing instance](se-native-pilot.md) is also checked by a
+direct continuation proof; it does not establish these structural premises for
+arbitrary source programs.
 
 The target game and fines are fixed before choosing a source equilibrium:
 
@@ -316,64 +320,66 @@ the source game; any additional admitted signaling must be normalized or
 otherwise accounted for. Cryptographic randomness is a further refinement
 obligation, not a field modeled or controlled by the current ideal catalog.
 
-## Checked ingredients and next proof boundary
+## Checked proof and native boundary
 
-[NegligibleContamination.lean](../../GameTheoryExtensions/Math/Probability/NegligibleContamination.lean)
-checks `conditional_contamination_bound`: each posterior-coordinate error is
-at most contaminating mass divided by compliant mass.
-`conditional_contamination_converges_of_bound` turns a vanishing upper/lower
-mass ratio into preservation of conditional beliefs, even when compliant
-reach tends to zero.
-[RelativeConditioning.lean](../../GameTheoryExtensions/Math/Probability/RelativeConditioning.lean)
-checks the clean-fiber step: relative point-mass losses bounded by `eta < 1`
-change a posterior coordinate by at most `eta/(1-eta)`; uniformly vanishing
-relative losses therefore preserve the conditional limit.
-[FirstDeparture.lean](../../GameTheoryExtensions/Math/Probability/FirstDeparture.lean)
-checks a kernel union bound: if each not-yet-bad state has probability at most
-`delta` of departing next, bad mass after `n` steps is at most initial bad mass
-plus `n delta`, with unrestricted behavior after departure. A game restriction
-must still supply its local first-departure and multiplicative reach bounds.
+The formal proof follows five obligations; none assumes a target equilibrium.
 
-[ConsistencyCompletion.lean](../../GameTheoryExtensions/Analysis/Protocol/ConsistencyCompletion.lean)
-provides common assessment subsequence and preserved-belief machinery.
-[ConstrainedNash.lean](../../GameTheoryExtensions/Analysis/ConstrainedNash.lean)
-checks existence of jointly optimal residual responses with pinned agents and
-mandatory trembles. [AgentForm.lean](../../GameTheoryExtensions/Analysis/Protocol/AgentForm.lean)
-identifies mixed information-agent play and local agent updates with execution
-and local behavioral updates in the original protocol.
-[LocalDeviation.lean](../../GameTheoryExtensions/Analysis/Protocol/LocalDeviation.lean)
-checks the positive-reach cancellation between root and Bayes continuation
-comparisons, with explicit perfect recall and common-depth premises.
-[AgentCompletionLimit.lean](../../GameTheoryExtensions/Analysis/Protocol/AgentCompletionLimit.lean)
-constructs one consistent assessment with jointly optimal local responses at
-all free information sites. Its exact approximating sequence remains available
-for proving source belief and strategy preservation.
+1. [ActionRestriction.lean](../../GameTheoryExtensions/Protocol/ActionRestriction.lean)
+   embeds histories, information and choices, with one local execution square.
+   [RestrictionExecution.lean](../../GameTheoryExtensions/Protocol/RestrictionExecution.lean)
+   derives every continuation and initialized execution law from that square.
+2. [RestrictionDomination.lean](../../GameTheoryExtensions/Protocol/RestrictionDomination.lean)
+   propagates the retained fraction of each local choice through actual execution.
+   With tremble rate `epsilon`, source history mass at depth `d` survives with
+   factor `(1-epsilon)^(numberOfPlayers*d)`, whatever happens after departure.
+3. [RestrictionBeliefs.lean](../../GameTheoryExtensions/Analysis/Protocol/RestrictionBeliefs.lean)
+   derives retained Bayes beliefs from that mass bound.
+   [RelativeTremble.lean](../../GameTheoryExtensions/Math/Probability/RelativeTremble.lean)
+   chooses a rate negligible relative to all source information-set reach masses.
+   [RestrictionCompletion.lean](../../GameTheoryExtensions/Analysis/Protocol/RestrictionCompletion.lean)
+   then constructs one consistent extension with all new decisions locally optimal,
+   using the common information-agent completion.
+4. [RestrictionIncentives.lean](../../GameTheoryExtensions/Analysis/Protocol/RestrictionIncentives.lean)
+   transports source-legal deviations and bounds actual forbidden continuations
+   by fixed legal comparator lotteries. It does not require detecting harmless
+   added actions. The comparison is pointwise in hidden history and covers
+   arbitrary paired continuation profiles, without assuming their rationality.
+   [SequentialOneShot.lean](../../GameTheoryExtensions/Analysis/Protocol/SequentialOneShot.lean)
+   converts consistent local optimality into whole-policy sequential rationality.
+5. [RestrictionExtension.lean](../../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean)
+   composes these facts into SE extension, exact retained behavior and beliefs,
+   and a joint completed-history/net-payoff law. Its bounded-horizon premise
+   proves the returned execution laws are terminal laws.
 
-[SequentialOneShot.lean](../../GameTheoryExtensions/Analysis/Protocol/SequentialOneShot.lean)
-checks that local optimality in a consistent assessment implies actual
-whole-policy sequential rationality for finite perfect-recall protocols with
-common-depth information sets. The quantitative intermediate theorem bounds
-whole-policy gain by remaining horizon times local regret. It retains and then
-cancels the starting site's reach mass, so the estimate stays uniform at rare
-information sets. These are operational law and incentive facts, without an
-assumed target-optimal assessment.
+[RestrictionEnforcement.lean](../../GameTheoryExtensionsTests/RestrictionEnforcement.lean)
+checks a nonvacuous two-player instance of this capstone. Alice's additional
+action creates a new Bob decision; Bob prefers a response that also benefits
+Alice. A deposit of one preserves every source SE and the exact zero-payoff
+law. The fixture proves actual collection, finite play, perfect recall, clock
+alignment, structural correspondence and source equilibrium existence.
 
-[SequentialExistence.lean](../../GameTheoryExtensions/Analysis/Protocol/SequentialExistence.lean)
-composes the construction with all information agents free, proving standard SE
-existence for that finite clocked protocol class and its stated remaining-horizon
-contexts. A terminal-payoff interpretation additionally needs enough evaluation
-fuel to complete play. Existence alone does not establish compilation preservation.
+[EnforcementSynthesis.lean](../../GameTheoryExtensions/Analysis/EnforcementSynthesis.lean)
+implements the scalar finite-table calculation, including minimality among real
+deposits and an infeasible-row witness. The SE theorem accepts legal comparator
+lotteries and their actual continuation inequalities. Generic extraction of
+finite pure-profile rows and synthesis of those lotteries remain unimplemented;
+the finite linear reduction is proved mathematically above. No general optimizer
+or exact SE decision procedure is implemented.
 
-[EnforcementLimits.lean](../../GameTheoryExtensions/Analysis/EnforcementLimits.lean)
-characterizes finite families of comparisons admitting all sufficiently large
-fines, and records the failure of a uniform bound for shrinking detection.
-The remaining general formalization is the action-restriction adapter: derive
-compliant-history reach bounds, retained belief and strategy transport, permitted
-continuation laws and first-departure incentive bounds from structural embeddings
-between the existing source and target protocols. A narrower information menu
-alone is invalid: execution legality and the resulting history space must agree.
-Forced administrative steps require their own observation-preserving elimination.
-Native conformance and collectible monitoring remain further runtime obligations.
+The structural correspondence preserves active players and step counts. The
+target's common-depth information sets are an additional restriction beyond
+boundedness and perfect recall. Thus an arbitrary native service calendar does
+not automatically instantiate the theorem. A compiler must align forced steps
+or prove their elimination preserves observations and decisions. Source and
+target chance behavior on compliant histories must also satisfy the local square.
+
+The uniform collection certificate covers arbitrary continuation policies.
+A strategic watcher with a legal option to remain silent need not satisfy it.
+The native pilot instead proves rational reporting and receiver completion
+directly; an automated collection backend or a more selective completion proof
+would discharge a different contract. Finite rational bounds alone do not prove
+attribution, reporting or collectibility. Native conformance and the operational
+limits above remain the decisive compiler obligations.
 
 ## Primary literature
 

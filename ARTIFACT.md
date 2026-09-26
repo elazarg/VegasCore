@@ -2,7 +2,8 @@
 
 For sequential-equilibrium results and remaining work, start with the
 [research map](docs/se-preservation-roadmap.md). It distinguishes the checked
-monitored native fragment from general preservation obligations.
+monitored native fragment, the general action-restriction theorem, and the
+remaining native correspondence and collection obligations.
 
 ## Reproduction
 
@@ -61,6 +62,10 @@ the subsequent kernel-checked build.
 | Communication can make source nonstrategic payoffs strategic; coupled zero-sum constraints give strictly stronger incentive implications | `GameTheoryExtensionsTests/ComponentCommunication.lean`, `GameTheoryExtensionsTests/CoupledIncentives.lean` |
 | Conditional sanction bounds, sufficient local sequential rationality, and the exact detection limit for alarms with zero false positives | `GameTheoryExtensions/Analysis/Enforcement.lean` |
 | Exact finite-family criterion for all sufficiently large sanctions, incremental liability, and first-departure gain/detection bounds | `GameTheoryExtensions/Analysis/EnforcementLimits.lean` |
+| Executable least scalar deposit for rational comparison tables; soundness, minimality over real deposits, and infeasible-row witnesses | `GameTheoryExtensions/Analysis/EnforcementSynthesis.lean`, `GameTheoryExtensionsTests/EnforcementSynthesis.lean` |
+| Local structural action restrictions imply continuation laws, retained beliefs, consistent rational completion, and general SE extension with exact net-payoff laws | `GameTheoryExtensions/Protocol/ActionRestriction.lean`, `GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean` |
+| Nonvacuous general-theorem instance: Alice's departure creates a new Bob decision; deposit one preserves every source SE and the exact zero-payoff law | `GameTheoryExtensionsTests/RestrictionEnforcement.lean` |
+| Declared integer return tables share operational graph execution; inferred charges deter every raw early submission; prescribed native play retains the exact type/result/net-payoff law | `Vegas/EventGraph/PayoffTransport.lean`, `VegasTests/MonitoredGuessingPayoffs.lean`, `VegasTests/MonitoredGuessingPayoffInference.lean`, `VegasTests/MonitoredGuessingPayoffLaw.lean` |
 | Exact caught/missed continuation criterion; forcing the sender's future actions to fail cannot repair disclosure when it has no remaining source actions | `GameTheoryExtensions/Analysis/FailureEnforcement.lean`, `GameTheoryExtensionsTests/ForcedFailureEnforcement.lean` |
 | Simultaneous finite-agent best responses with pinned behavior and mandatory trembles; exact realization by original protocol execution | `GameTheoryExtensions/Analysis/ConstrainedNash.lean`, `GameTheoryExtensions/Analysis/Protocol/AgentForm.lean` |
 | Construct fully mixed Bayes approximants and one consistent limit with jointly optimal local responses at all free information sites | `GameTheoryExtensions/Analysis/Protocol/AgentCompletion.lean`, `GameTheoryExtensions/Analysis/Protocol/AgentCompletionLimit.lean` |
@@ -109,6 +114,16 @@ experiment checks the visibility of explicit certificates, and the signaling
 experiment checks what a monitor lacking shared private information can detect.
 The abstract experiments do not themselves implement a native monitor or escrow.
 
+The [general restriction theorem](GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean)
+preserves every given source SE in a fixed target game under structural local
+execution correspondence and conditional enforcement bounds. It constructs
+consistent target beliefs and rational new decisions, and preserves the exact
+completed-history/net-payoff law. The protocols must have finite histories,
+perfect recall, common-depth decision sites and aligned steps. Its collection
+premise covers arbitrary continuations; a strategic watcher who can decline
+reporting needs a separate argument. This theorem is not yet an all-program
+source-to-native compiler theorem.
+
 The [monitored native theorem](VegasTests/MonitoredGuessingEquilibrium.lean)
 connects the actual initialized two-reveal source program to its compiled graph
 and the existing bounded raw-message runtime. Every source SE has a native SE
@@ -125,6 +140,11 @@ the proof supplies rational continuations at every information site and one
 consistent trembling sequence. Watcher is indifferent at zero utility, and
 collectibility is an explicit assumption; paid reporting and escrow are not
 implemented. See the [scope audit](docs/research/se-native-pilot.md).
+The declared-payoff family additionally checks operational graph transport,
+executable deposit inference, actual early-submission deterrence, and prescribed
+net-payoff laws for arbitrary integer return tables. Ordinary opening and
+receiver incentives, and a family-wide source-assessment translation, remain
+necessary for its full SE theorem.
 
 The [selective-association comparison](docs/selective-association-proof-contract.md)
 keeps the compiled application, service calendar, deadlines, selector and full

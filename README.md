@@ -120,17 +120,21 @@ no source construct; it does not cover arbitrary games, repeated communication,
 paid reporting or an escrow implementation.
 
 The [general sanctions investigation](docs/research/se-ideal-sanctions.md)
-gives a written finite-game SE extension proof under a genuine action restriction
-and sound conditional collection. Its checked ingredients include simultaneous
-continuation completion, preservation of rare-event beliefs, and a posterior
-one-shot principle for whole-policy deviations. The source/target restriction
-adapter and general native conformance remain open. Forcing future actions to
-fail is sufficient only when their actual continuation loss deters the departure.
+has a checked general SE extension theorem under a structural action restriction
+and sound conditional collection. It derives retained strategies and beliefs,
+constructs rational new continuations, and preserves the joint completed-history
+and actual net-payoff law. The theorem aligns decision steps and requires finite,
+clocked perfect-recall protocols; general source-to-native correspondence and
+collection remain compiler obligations. Forcing future actions to fail is
+sufficient only when their actual continuation loss deters the departure.
 
 The [SE compiler roadmap](docs/se-preservation-roadmap.md) specifies one tower,
-the remaining correspondence theorem, and inference of sufficient deposits from
-finite incentive comparisons. Exact finite-game checking is a separate proposed
-diagnostic; failure of a sufficient certificate is not an impossibility result.
+the remaining native correspondence, and checked executable inference of the
+least sufficient deposit for a finite rational comparison table. Declared source
+payoff tables now supply an actual native deterrence instance and exact prescribed
+net-payoff laws. General SE preservation for that payoff family remains open.
+Exact finite-game checking is a separate proposed diagnostic; failure of a
+sufficient certificate is not an impossibility result.
 
 The [runtime abstraction investigation](docs/runtime-abstraction-classification.md)
 classifies what a game presentation may forget. Its generic continuation

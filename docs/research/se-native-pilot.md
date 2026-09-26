@@ -99,3 +99,29 @@ it does not guarantee reporting, uniqueness, coalition resistance or preservatio
 in every target equilibrium. The fixed playerwise translation chooses Bob's
 off-path completion from his own source distribution `q`. The proof uses native
 continuations directly; the finite disclosure experiment supplies intuition.
+
+## Declared payoff tables and inferred charges
+
+[MonitoredGuessingPayoffs](../../VegasTests/MonitoredGuessingPayoffs.lean)
+replaces the literal return expressions by an arbitrary integer table over both
+publication results and players. It checks the actual source returns and common
+compiled operational graph. The production
+[payoff transport](../../Vegas/EventGraph/PayoffTransport.lean) preserves adaptive
+execution and public/player observations when changing a graph's settlement list.
+
+[MonitoredGuessingPayoffInference](../../VegasTests/MonitoredGuessingPayoffInference.lean)
+computes sender payoff extrema and calls the rational deposit checker with the
+proved collection coefficient one half. The result deters every raw early
+submission followed by any continuation policy or service plan; the original
+sender table computes charge two.
+[MonitoredGuessingPayoffLaw](../../VegasTests/MonitoredGuessingPayoffLaw.lean)
+preserves the exact initialized type/result/net-payoff law under the prescribed
+policies, including zero collected charge.
+
+These table-parametric results do not assert SE for arbitrary returns. A table
+can change Alice's incentive to open or Bob's optimal quiet guess. A family-wide
+SE theorem additionally needs these incentive proofs and source-assessment
+transport. It requires no new runtime representation. The general restriction
+theorem also does not automatically subsume this native proof: its arbitrary-
+continuation collection premise does not follow from a watcher's reporting by
+indifference, and its source/target decision clocks must align.

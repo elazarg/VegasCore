@@ -505,7 +505,7 @@ def compileRankedNodes {inputCount totalCount : Nat}
     (embedding : OutputEmbedding inputs outputs program) →
     ContextRefsBefore refs embedding →
     ∀ index, RankedNode inputs outputs (embedding.event index) (outputLayout program index)
-  | _, _, .ret _, _, _, _, _, _, index => nomatch index
+  | _, _, .ret _, _, _, _, _, _, index => Fin.elim0 index
   | _, _, .sample name fresh law next, refs, revelations, registry,
       embedding, refsBefore, index =>
       let headIndex : Fin (eventCount (.sample name fresh law next)) :=

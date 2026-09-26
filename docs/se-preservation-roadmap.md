@@ -3,7 +3,31 @@
 This is the implementation plan and reading guide for SE compilation. The
 [ideal-sanctions proof](research/se-ideal-sanctions.md) contains the generic
 mathematics; the [native pilot](research/se-native-pilot.md) contains the checked
-source-to-runtime instance. General source-to-native SE preservation is open.
+source-to-runtime instance. The general action-restriction theorem and scalar
+deposit inference are checked in Lean. Instantiating the general theorem for
+arbitrary source programs and a native service remains open.
+
+## Checked results and remaining compiler work
+
+| Result | Scope |
+| --- | --- |
+| General SE extension | Every source SE extends across a structural action restriction satisfying the conditional enforcement bounds. Preserves retained strategies, beliefs, and joint completed-history/net-payoff laws. |
+| Scalar deposit inference | Executably computes the least nonnegative deposit for a finite rational comparison table, or identifies an infeasible row. This decides the certificate, not semantic SE implementability. |
+| Native guessing compiler | Every SE of the stated source program has a native SE under the fixed bounded service, partial monitoring and collectible charge. Includes a fixed playerwise policy translation. |
+| Declared-payoff family | Arbitrary integer return tables share the compiled operational graph; inferred charges deter raw early submissions, and prescribed execution preserves the exact net-payoff law. A family-wide SE theorem is still open. |
+
+The central proof is
+[`sequential_equilibrium_extends_of_comparator`](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean).
+Its premises describe local execution and actual continuation payments; they
+do not assume a target equilibrium, a rational completion, or belief preservation.
+For each additional action, a fixed source-legal lottery must match or exceed
+its continuation value at every hidden history under every paired continuation
+profile. This permits harmless undetectable actions. The simpler
+`sequential_equilibrium_extends` corollary uses payoff bounds and collection.
+The [multiplayer regression](../GameTheoryExtensionsTests/RestrictionEnforcement.lean)
+instantiates that corollary: Alice can depart into a new Bob decision, where Bob
+prefers the response benefiting both players. A fixed charge of one preserves
+every source SE, and source equilibrium existence makes the result nonvacuous.
 
 ## Compiler contract
 
@@ -109,10 +133,20 @@ jointly. Preserve retained beliefs and apply the posterior one-shot principle
 to whole continuation policies. After a departure, behavior is allowed to differ
 from source behavior and must be rational with the information actually received.
 
-The generic completion and local-to-whole-policy results are checked. The
-remaining formal bridge derives their retained-strategy, belief and incentive
-premises from obligation 1 and the certificate in obligation 2. It must not
-assume a target SE, a rational completion, or the desired incentive inclusion.
+The complete bridge is checked. A local operational square in
+[`ActionRestriction`](../GameTheoryExtensions/Protocol/ActionRestriction.lean)
+implies continuation-law correspondence. Rare forbidden trembles retain a
+multiplicative share of each source history's probability; choosing their rate
+relative to source information-set reach preserves even off-path beliefs.
+One common completion solves all new information sites, and the conditional
+incentive bounds and one-shot principle establish whole-policy rationality.
+
+The current structural theorem preserves step counts and active players, and
+assumes finite histories, perfect recall, common-depth information sets and a
+sufficient horizon. It permits additional actions, histories and information
+sets. Extra service activations must first be aligned with forced source steps
+or eliminated by a separate correspondence proof. This is an obligation in
+connecting the ordinary source protocol to the native service calendar.
 
 ## Inference rather than compiler flags
 
@@ -133,13 +167,30 @@ gain. Otherwise the least sufficient nonnegative deposit for this certificate is
 
 The inner maximum ranges over positive collection coefficients; when there are
 none, zero suffices if every gain is nonpositive.
+[`EnforcementSynthesis`](../GameTheoryExtensions/Analysis/EnforcementSynthesis.lean)
+implements this calculation and proves soundness, minimality even against real
+deposits, and a concrete infeasible-row characterization. Its operational
+adapter proves the resulting actual distribution comparisons. The monitored
+native example extracts a range from declared integer source returns and checks
+the inferred deposit against every raw early submission and later policy.
 
 For several collectible charges, use a vector of deposits and linear
 inequalities. Source-legal comparator lotteries can also be inferred, provided
 one lottery works across every hidden history and continuation being compared.
 The [sanctions note](research/se-ideal-sanctions.md) gives the finite certificate
-and proof. Enumeration can be large; a solver may search for a candidate while
-Lean checks its inequalities and the operational extraction theorem.
+and proof. The general SE theorem accepts these legal comparator lotteries and
+their operational inequalities. Extracting all required finite rows from an
+arbitrary protocol and synthesizing comparators are not implemented. Enumeration
+can be large; a solver may search for a candidate while Lean checks its
+inequalities and the operational extraction theorem.
+
+That extraction has a specific next proof obligation: corresponding source and
+target decisions must share the same sampled pure choices when averaging finite
+rows back to behavioral policies. Independent source/target sampling would lose
+the profile correspondence. An executable extractor also needs explicit finite
+enumerators and rational kernels/payoffs, or certified rational bounds; the
+general theorem itself allows real probabilities. These are algorithmic work,
+not additional compilation levels.
 
 This is the least deposit for the chosen sufficient certificate, not necessarily
 the least deposit preserving SE. A comparison against every continuation can
@@ -205,7 +256,7 @@ synthesis of arbitrary unknown compiler functions is not this decision problem.
 | Perfect recall | Consistent local optimality implies whole-policy rationality. The current generic Lean construction also assumes common-depth information sites and adequate evaluation fuel. |
 | Faithful permitted histories and observations | Source behavior is genuinely implemented. Clock signals, rejected plaintext and visible encodings require proofs, not a declaration that they are administrative. |
 | Correct utility model | Deposit deductions and abort payoffs have the intended incentive effect. Voluntary entry and available wealth are separate questions. |
-| Sound, attributable, collectible consequences | A reporting opportunity becomes an expected utility loss. Strategic watcher behavior needs its own equilibrium argument. |
+| Sound, attributable, collectible consequences | A reporting opportunity becomes an expected utility loss. The generic bound covers arbitrary continuation policies. A watcher who may refuse to report needs a separate equilibrium argument; the native pilot supplies one directly. |
 | Stated commitment/evidence capabilities | Ideal ownership restrictions do not establish cryptographic security after secrets or keys are shared. |
 
 There is no globally weakest set across changes to utilities, available
@@ -214,17 +265,18 @@ compares such choices once their operational meaning is fixed.
 
 ## Implementation order and acceptance tests
 
-1. **Close the generic restriction theorem in Lean.** Derive retained history
-   laws and beliefs from a genuine action restriction; compose the checked
-   completion and sequential-rationality results. Add the finite comparator
-   certificate so positive detection is required only where incentives need it.
+1. **Generic restriction theorem: checked.** Local operational embeddings
+   imply retained history laws and beliefs; completion and actual legal-comparator
+   inequalities imply genuine SE extension. The range/collection corollary is a
+   sufficient special case; finite table extraction remains a separate task.
 2. **Discharge the native correspondence on a game class.** Use the existing
    source, graph and reactive protocols. Include multiple dependent decisions
    and all bounded raw responses. Exercise the three cases below before claiming
    coverage of general programs.
-3. **Infer and check enforcement parameters.** Extract finite comparisons from
-   those operational proofs, synthesize deposits, and check exact certificates.
-   Reproduce the native pilot and demonstrate a genuinely new multistage class.
+3. **Scalar inference: checked; broader extraction remains.** The exact rational
+   checker and the declared-payoff native deterrence instance are implemented.
+   Extend operational extraction and source/native assessment transport to a
+   genuinely broader multistage class.
 4. **Add exact finite diagnosis.** Export the same games to the real-algebra
    encoding, verify the extraction/translation, and use small cases to measure
    conservatism and produce genuine failures. Keep general solver engineering

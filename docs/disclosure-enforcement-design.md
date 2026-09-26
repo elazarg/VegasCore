@@ -550,9 +550,10 @@ experiment explains why simply increasing a sound fine cannot always fix that.
 
 The [sequential enforcement note](sequential-enforcement-design.md) distinguishes
 forward extension from reflection. The [ideal-sanctions theorem](research/se-ideal-sanctions.md)
-has a written general finite-game proof with fixed game-wide fines. Its Lean
-ingredients are mapped there; the general assembly and native action-restriction
-adapter remain open.
+has a checked general finite-protocol theorem with fixed game-wide fines,
+retained strategies and beliefs, and exact net-payoff laws. Its proof map is
+given there. Instantiating its aligned-step correspondence and conditional
+collection premises for a general native service remains open.
 
 Keep source syntax and the production tower unchanged while testing enforcement
 on the existing service. Enforcing a single prescribed strategy is a separate

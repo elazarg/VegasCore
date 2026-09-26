@@ -47,7 +47,7 @@ theorem exists_native_sequential_equilibrium (guesses : FinDist Bool)
         assessment.continuationContext site
           (fun history => nativeUtility deposit who history.state) (2 * nativeHorizon + 1)) := by
   obtain ⟨assessment, fixed, atQuiet, consistent, offQuiet⟩ :=
-    exists_native_bob_completion (nativeBaseline guesses) quietBobSite deposit
+    exists_native_bob_completion (nativeBaseline guesses) quietBobSite (nativeUtility deposit bob)
   have alicePolicy : assessment.strategy alice = nativeAliceBehavior :=
     fixed alice (by decide)
   have watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior :=

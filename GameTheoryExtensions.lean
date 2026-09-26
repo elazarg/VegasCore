@@ -5,6 +5,10 @@ import GameTheoryExtensions.Math.Probability.ActionSplitting
 import GameTheoryExtensions.Math.Probability.Compactness
 import GameTheoryExtensions.Math.Probability.NegligibleContamination
 import GameTheoryExtensions.Math.Probability.RelativeConditioning
+import GameTheoryExtensions.Math.Probability.ConditionalDomination
+import GameTheoryExtensions.Math.Probability.KernelDomination
+import GameTheoryExtensions.Math.Probability.ProductDomination
+import GameTheoryExtensions.Math.Probability.RelativeTremble
 import GameTheoryExtensions.Math.Probability.FirstDeparture
 import GameTheoryExtensions.Math.Probability.Regularity
 import GameTheoryExtensions.Math.Probability.RegularCoupling
@@ -15,6 +19,10 @@ import GameTheoryExtensions.Protocol.Continuation
 import GameTheoryExtensions.Protocol.HistoryProjection
 import GameTheoryExtensions.Protocol.BehavioralContinuation
 import GameTheoryExtensions.Protocol.FiniteInformation
+import GameTheoryExtensions.Protocol.ActionRestriction
+import GameTheoryExtensions.Protocol.RestrictionExecution
+import GameTheoryExtensions.Protocol.RestrictionProfile
+import GameTheoryExtensions.Protocol.RestrictionDomination
 import GameTheoryExtensions.Protocol.TremblingPlans
 import GameTheoryExtensions.Protocol.BehavioralIncentives
 import GameTheoryExtensions.Protocol.ContinuationLaw
@@ -35,6 +43,7 @@ import GameTheoryExtensions.Analysis.CorrelationPayoff
 import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Analysis.ConstrainedNash
 import GameTheoryExtensions.Analysis.EnforcementLimits
+import GameTheoryExtensions.Analysis.EnforcementSynthesis
 import GameTheoryExtensions.Analysis.FailureEnforcement
 import GameTheoryExtensions.Analysis.ObservableEnforcement
 import GameTheoryExtensions.Analysis.ZeroSumRegularization
@@ -65,6 +74,10 @@ import GameTheoryExtensions.Analysis.Protocol.BehavioralOneShot
 import GameTheoryExtensions.Analysis.Protocol.OneShotLimit
 import GameTheoryExtensions.Analysis.Protocol.SequentialOneShot
 import GameTheoryExtensions.Analysis.Protocol.SequentialExistence
+import GameTheoryExtensions.Analysis.Protocol.RestrictionBeliefs
+import GameTheoryExtensions.Analysis.Protocol.RestrictionCompletion
+import GameTheoryExtensions.Analysis.Protocol.RestrictionIncentives
+import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
 import GameTheoryExtensions.Analysis.Protocol.HistoryBayesProjection
 import GameTheoryExtensions.Analysis.Protocol.Perturbation

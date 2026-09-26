@@ -160,5 +160,9 @@ import VegasTests.ReactiveReadinessRestrictions
 import VegasTests.DisclosureMonitoring
 import VegasTests.PassiveDisclosureMonitoring
 import VegasTests.MonitoredGuessingCompilation
+import VegasTests.MonitoredGuessingPayoffBounds
+import VegasTests.MonitoredGuessingPayoffs
+import VegasTests.MonitoredGuessingPayoffInference
+import VegasTests.MonitoredGuessingPayoffLaw
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

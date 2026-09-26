@@ -59,7 +59,7 @@ def eventCount : {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
 def outputLayout : {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
     (program : SourceProgram Player L Γ openNames) →
       Fin (eventCount program) → Vegas.EventGraph.EventField Player L
-  | _, _, .ret _, event => nomatch event
+  | _, _, .ret _, event => Fin.elim0 event
   | _, _, .sample (payload := payload) _ _ _ next, event =>
       Fin.cases (.publicData payload) (outputLayout next) event
   | _, _, .commit (payload := payload) _ owner _ _ next, event =>

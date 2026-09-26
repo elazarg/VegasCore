@@ -43,6 +43,10 @@ import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Analysis.EnforcementLimits
 import GameTheoryExtensions.Analysis.Protocol.AgentCompletionLimit
 import GameTheoryExtensions.Analysis.Protocol.SequentialExistence
+import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
+import GameTheoryExtensions.Analysis.EnforcementSynthesis
+import VegasTests.MonitoredGuessingPayoffInference
+import VegasTests.MonitoredGuessingPayoffLaw
 import GameTheoryExtensions.Analysis.ObservableEnforcement
 import Interaction.MessageMonitoringProbability
 import Vegas.Pending.ReactiveConformance
@@ -1076,5 +1080,35 @@ open GameTheory.Protocol.InformationModel in
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel in
 #print axioms exists_sequential_equilibrium
+
+/-- info: 'GameTheory.Protocol.InformationModel.ActionRestriction.sequential_equilibrium_extends' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel.ActionRestriction in
+#print axioms sequential_equilibrium_extends
+
+/-- info: 'GameTheory.Protocol.InformationModel.ActionRestriction.sequential_equilibrium_extends_of_comparator' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel.ActionRestriction in
+#print axioms sequential_equilibrium_extends_of_comparator
+
+/-- info: 'GameTheory.Enforcement.inferred_deposit_minimal' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Enforcement in
+#print axioms inferred_deposit_minimal
+
+/-- info: 'VegasTests.MonitoredGuessing.inferredCharge_deters' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.MonitoredGuessing in
+#print axioms inferredCharge_deters
+
+/-- info: 'VegasTests.MonitoredGuessing.native_initialized_table_payoffs' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.MonitoredGuessing in
+#print axioms native_initialized_table_payoffs
 
 end Vegas.Paper
