@@ -138,7 +138,9 @@ first-departure SE extension with one common tremble sequence and rational
 continuations after violations. A prescribed source continuation need not stay
 optimal after disclosure. A fixed playerwise compiler needs a local completion
 rule; a theorem merely choosing a target assessment for each source assessment
-has weaker quantifiers. This general extension is currently unproved.
+has weaker quantifiers. The [general extension theorem](se-ideal-sanctions.md)
+has a written mathematical proof and checked generic ingredients. Its structural
+source/target adapter and the native premises listed here remain unproved.
 
 For a first positive fragment, require that disclosures are followed only by
 terminal receiver decisions with a local optimal-response rule. The finite

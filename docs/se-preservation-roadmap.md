@@ -8,6 +8,12 @@ described below. Source syntax and the compilation tower are unchanged.
 General SE preservation for VegasCore remains **open**. The next task is to
 identify a larger game class justified by these concrete operational proofs.
 
+The [ideal-sanctions note](research/se-ideal-sanctions.md) gives a general
+finite-game extension theorem with a written proof, plus the precise checked
+ingredients and remaining Lean assembly. It also tests forcing future actions
+to fail: failure must impose a sufficient continuation loss, and excluding a
+sender with no remaining source actions cannot undo its influence on others.
+
 The checked fragment fixes the source program, utilities, service and compiled
 game **before** choosing an equilibrium:
 
@@ -82,7 +88,7 @@ instead; keep these two claims distinct.
 
 1. **Generalize the native fragment.** Extend to another source decision or a
    genuinely necessary service feature, keeping the extra proof obligations explicit.
-   The proposed general first-departure/rare-tremble theorem is useful only if
+   The general first-departure/rare-tremble theorem is useful only if
    the actual permitted native game implements the source action restriction.
    Its continuation completion may select policies from the entire source
    assessment, giving the minimum theorem rather than a playerwise compiler.

@@ -529,16 +529,18 @@ an SE theorem for the Vegas communication service.
 
 ## Remaining implementation boundary
 
-The [SE research plan](se-preservation-roadmap.md) orders these obligations and
-specifies the first native pilot. The broader routes are alternatives to assess
-after that concrete test, rather than additional compiler layers.
+The [SE research plan](se-preservation-roadmap.md) orders the remaining
+obligations. Its [checked native pilot](research/se-native-pilot.md) preserves
+every source SE in the initialized guessing game with actual passive reporting
+and a collectible rejection charge. The broader routes are alternatives to
+generalize that result, rather than additional compiler layers.
 
 The finite sender/receiver class establishes forward SE preservation with
 complete state and net payoff-law equality. The Boolean instance also has
 exact SE outcome-law correspondence under `D > 1`. Neither result is a
 source-to-native preservation theorem.
 
-The direct next obligation is a concrete reporting and adjudication service
+For a larger source class, the next obligation is a reporting and adjudication service
 whose permitted packet behavior has the source interpretation required by the
 equilibrium proof. Sampling supplies evidence; successful collection, liability
 and additional observations still need proofs. A strategic reporter additionally
@@ -547,14 +549,14 @@ does not yet exclude all additional communication, and the permitted-signaling
 experiment explains why simply increasing a sound fine cannot always fix that.
 
 The [sequential enforcement note](sequential-enforcement-design.md) distinguishes
-forward extension from reflection and records a proposed broader theorem. That
-generalization remains unproved; the implemented theorem is the finite class
-specified above.
+forward extension from reflection. The [ideal-sanctions theorem](research/se-ideal-sanctions.md)
+has a written general finite-game proof with fixed game-wide fines. Its Lean
+ingredients are mapped there; the general assembly and native action-restriction
+adapter remain open.
 
-Keep the optional layer outside the production tower until a concrete receipt,
-observation and reporting service supplies the enforcement used by its upper
-edge. Enforcing a single prescribed strategy is a separate goal from retaining
-the source game's legal deviations.
+Keep source syntax and the production tower unchanged while testing enforcement
+on the existing service. Enforcing a single prescribed strategy is a separate
+goal from retaining the source game's legal deviations.
 
 Deferred implementation note: whether miner incentives support participating
 in this monitoring, and whether Ethereum supplies the required observation,

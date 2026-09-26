@@ -119,6 +119,14 @@ The zero-payoff watcher reports rationally by indifference. This theorem adds
 no source construct; it does not cover arbitrary games, repeated communication,
 paid reporting or an escrow implementation.
 
+The [general sanctions investigation](docs/research/se-ideal-sanctions.md)
+gives a written finite-game SE extension proof under a genuine action restriction
+and sound conditional collection. Its checked ingredients include simultaneous
+continuation completion, preservation of rare-event beliefs, and a posterior
+one-shot principle for whole-policy deviations. The source/target restriction
+adapter and general native conformance remain open. Forcing future actions to
+fail is sufficient only when their actual continuation loss deters the departure.
+
 The [runtime abstraction investigation](docs/runtime-abstraction-classification.md)
 classifies what a game presentation may forget. Its generic continuation
 simulation theorem supplies composable sufficient certificates and is used by

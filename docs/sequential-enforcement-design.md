@@ -36,16 +36,21 @@ target extension supported by making `Bad` trembles sufficiently rarer than
 
 ## General forward proof route
 
-A finite game obtained by adding forbidden actions to a genuine source action
-restriction should admit a forward extension theorem under perfect recall and
-uniform domination of the gain from a first violation. This general theorem is
-**not yet checked**. Its intended proof pins a source consistency sequence at
-old information sets, makes forbidden actions asymptotically rarer than every
-positive source-history reach probability, and completes behavior at new-only
-information sets by finite perturbed-game equilibria. Compactness then preserves
-the original beliefs at old sites while permitting optimal continuations after
-a disclosure. Perfect recall is needed for the passage from local optimality
-to whole continuation-policy optimality.
+The [ideal-sanctions theorem and proof](research/se-ideal-sanctions.md) give a
+general finite-game extension under perfect recall, a genuine source action
+restriction, sound collection, bounded utilities and a uniform positive
+collection probability after a first forbidden action. The target game and
+fines are fixed before quantifying over source equilibria. The general theorem
+has a written mathematical proof; **its Lean assembly remains open**.
+
+The proof pins the source consistency sequence at old information sets, makes
+forbidden actions asymptotically rarer than every positive source-history reach,
+and completes new information sets by simultaneous perturbed agent equilibria.
+Compactness preserves old beliefs while permitting rational reactions after
+disclosure. A one-time fine already incurred is not charged again in later
+incentive comparisons. Perfect recall is needed to pass from local optimality
+to whole continuation-policy optimality. The linked note maps the checked
+probability, enforcement and agent-form ingredients and the remaining bridges.
 
 The [checked implementation](../GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean)
 is the finite sender/receiver decision class,
@@ -54,7 +59,10 @@ after silence and select a receiver best response after authenticated
 disclosure. A common type-independent disclosure tremble retains the original
 prior on silence. State-dependent charges can deter the sender whenever they
 cover its conditional gain from disclosure. This class does not establish the
-full native compiler theorem or implement detection by a watchdog.
+general native compiler theorem. The [native guessing pilot](research/se-native-pilot.md)
+separately checks an actual bounded service with passive monitoring and a
+strategic indifferent watcher; neither result supplies general native conformance
+or collectible monitoring.
 
 Dilmé's [Sequentially Stable Outcomes](https://doi.org/10.3982/ECTA21402),
 Sections 2.4 and 4.1, gives a useful primary reference for perturbation-based
