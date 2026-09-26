@@ -22,8 +22,8 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 /-- The actual compiled disclosure response realizes its source result after
-arbitrary wire reactions and the reserved inclusion. Guard rejection does not
-remove the opening evidence from a true disclosure of a successful binding. -/
+arbitrary wire reactions and the reserved inclusion. A guard-rejected choice
+emits withholding, so prescribed traffic does not reveal its rejected value. -/
 theorem reactiveDecision_disclosure_service (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs) (owner : Player) (event : graph.EventId) (payload : L.Ty)
@@ -79,7 +79,8 @@ theorem reactiveDecision_disclosure_service (runtime : EventGraphRuntime graph)
       app.packet (app.submit execution.application owner material) owner
         (execution.network.known owner) material⟩
   have sent : response.transmission = some (.submit material) := by
-    simp only [response, reactiveDecision, node, material, packet, app]
+    simp only [response, reactiveDecision, node, material, packet, app,
+      reactiveResolutionSubmission_normal runtime leaks execution.application associated]
   let fields := insert binding.field (GuardCheck.listReadFields checks)
   have available : ∀ field ∈ fields,
       (execution.application.config.store field).isSome = true := by

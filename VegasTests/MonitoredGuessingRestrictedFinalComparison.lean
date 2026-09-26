@@ -1,0 +1,102 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import VegasTests.MonitoredGuessingFinalComparison
+import VegasTests.MonitoredGuessingRestrictedInformation
+import VegasTests.MonitoredGuessingPayoffs
+
+/-! # Every final raw response has a legal comparator at the source checkpoint
+
+The comparator uses only Alice's native information and the response. It keeps
+the terminal game result and can remove an additional rejection charge. The
+proof covers arbitrary declared return tables and arbitrary continuation policies;
+it does not identify the packet transcripts or constrain earlier raw deviations.
+-/
+
+noncomputable section
+
+namespace VegasTests.MonitoredGuessing.Restricted
+
+open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
+
+def finalComparator (information : nativeApp.Info) (response : nativeApp.Action) :
+    nativeApp.Action :=
+  let input := decodeAliceInput information
+  choiceAction alicePublication aliceHandle input.1
+    (finalResponseChoice (beforeAlice input.1 input.2) response)
+
+theorem final_comparator_eq (bit guess : Bool) (response : nativeApp.Action) :
+    finalComparator (aliceInput bit guess) response =
+      choiceAction alicePublication aliceHandle bit
+        (finalResponseChoice (beforeAlice bit guess) response) := by
+  simp only [finalComparator, decode_alice_input]
+
+/-- The comparison never chooses an action unavailable in the restricted game. -/
+theorem final_comparator_available (bit guess : Bool) (response : nativeApp.Action) :
+    finalComparator (aliceInput bit guess) response ∈
+      restrictedMenu.actions alice ((beforeAlice bit guess).recall alice)
+        ((beforeAlice bit guess).observe nativeApp alice) := by
+  rw [final_comparator_eq]
+  exact alice_choice_available bit guess _
+
+/-- Every raw response matches the game result of the local legal comparator.
+The two arbitrary policy families need not agree: no player acts in this suffix. -/
+theorem final_comparator_results (rawPlayers legalPlayers : Player → nativeApp.Policy)
+    (bit guess : Bool) (response : nativeApp.Action) :
+    (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork resolutionTail
+      ((beforeAlice bit guess).respond nativeApp alice response)).map
+        (fun final => nativeResults final.application.config) =
+    (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork resolutionTail
+      ((beforeAlice bit guess).respond nativeApp alice
+        (finalComparator (aliceInput bit guess) response))).map
+          (fun final => nativeResults final.application.config) := by
+  have summary := alice_service_summary legalPlayers bit guess
+    (finalResponseChoice (beforeAlice bit guess) response)
+  have results := congrArg (fun law : FinDist (Results × Bool) => law.map Prod.fst) summary
+  rw [FinDist.map_comp, FinDist.map_pure] at results
+  simp only [Function.comp_def] at results
+  rw [final_response_law, FinDist.map_pure, final_comparator_eq, results]
+  exact congrArg FinDist.pure (final_response_result (beforeAlice bit guess) response bit
+    (guessResult guess) (before_alice_fixed bit guess) (after_bob_stored bit guess))
+
+/-- A nonnegative collectible charge makes the legal comparator weakly better
+for Alice, for every real-valued payoff on source results. -/
+theorem final_comparator_payoff_le (payoff : Results → ℝ) (charge : ℝ)
+    (nonnegative : 0 ≤ charge) (rawPlayers legalPlayers : Player → nativeApp.Policy)
+    (bit guess : Bool) (response : nativeApp.Action) :
+    (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork resolutionTail
+      ((beforeAlice bit guess).respond nativeApp alice response)).expect
+        (fun final => payoff (nativeResults final.application.config) -
+          if rejectedAlice final.receipts then charge else 0) ≤
+    (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork resolutionTail
+      ((beforeAlice bit guess).respond nativeApp alice
+        (finalComparator (aliceInput bit guess) response))).expect
+          (fun final => payoff (nativeResults final.application.config) -
+            if rejectedAlice final.receipts then charge else 0) := by
+  have summary := alice_service_summary legalPlayers bit guess
+    (finalResponseChoice (beforeAlice bit guess) response)
+  have expected := congrArg (fun law : FinDist (Results × Bool) =>
+    law.expect (fun outcome => payoff outcome.1 - if outcome.2 then charge else 0)) summary
+  rw [FinDist.expect_map, FinDist.expect_pure] at expected
+  simp only [Bool.false_eq_true, ↓reduceIte, sub_zero] at expected
+  rw [final_response_law, FinDist.expect_pure, final_comparator_eq, expected,
+    final_response_result (beforeAlice bit guess) response bit (guessResult guess)
+      (before_alice_fixed bit guess) (after_bob_stored bit guess)]
+  exact sub_le_self _ (by split <;> first | exact nonnegative | exact le_rfl)
+
+/-- In particular the comparison applies to the program's literal return table. -/
+theorem final_comparator_declared_payoff_le (table : PayoffTable) (charge : ℝ)
+    (nonnegative : 0 ≤ charge) (rawPlayers legalPlayers : Player → nativeApp.Policy)
+    (bit guess : Bool) (response : nativeApp.Action) :
+    (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork resolutionTail
+      ((beforeAlice bit guess).respond nativeApp alice response)).expect
+        (fun final => (table (nativeResults final.application.config) alice : ℝ) -
+          if rejectedAlice final.receipts then charge else 0) ≤
+    (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork resolutionTail
+      ((beforeAlice bit guess).respond nativeApp alice
+        (finalComparator (aliceInput bit guess) response))).expect
+          (fun final => (table (nativeResults final.application.config) alice : ℝ) -
+            if rejectedAlice final.receipts then charge else 0) :=
+  final_comparator_payoff_le (fun outcome => (table outcome alice : ℝ)) charge nonnegative
+    rawPlayers legalPlayers bit guess response
+
+end VegasTests.MonitoredGuessing.Restricted

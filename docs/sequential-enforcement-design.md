@@ -37,7 +37,7 @@ target extension supported by making `Bad` trembles sufficiently rarer than
 ## General forward proof route
 
 The [ideal-sanctions theorem and proof](research/se-ideal-sanctions.md) give a
-general finite-game extension under perfect recall, a genuine source action
+general finite-game extension under decision-site recall, a genuine source action
 restriction, sound collection, bounded utilities and a uniform positive
 collection probability after a first forbidden action. The target game and
 fines are fixed before quantifying over source equilibria. The general theorem
@@ -51,9 +51,8 @@ forbidden actions asymptotically rarer than every positive source-history reach,
 and completes new information sets by simultaneous perturbed agent equilibria.
 Compactness preserves old beliefs while permitting rational reactions after
 disclosure. A one-time fine already incurred is not charged again in later
-incentive comparisons. Perfect recall is needed to pass from local optimality
-to whole continuation-policy optimality. The current capstone uses global recall;
-adapting its proof to the native model's decision-site recall is an early task.
+incentive comparisons. Decision-site recall suffices to pass from local optimality
+to whole continuation-policy optimality, and every reactive menu satisfies it.
 The linked note maps the checked probability, enforcement and agent-form proofs.
 
 The [checked implementation](../GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean)

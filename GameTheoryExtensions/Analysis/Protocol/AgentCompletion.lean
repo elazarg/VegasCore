@@ -32,7 +32,7 @@ The pinning and mandatory trembles are exact, not equilibrium assumptions. -/
 theorem exists_pinned_agent_completion
     (sites : (who : Player) → Finset (M.InfoState who))
     (fallback : (who : Player) → M.Policy who) (horizon : Nat)
-    (perfectRecall : M.PerfectRecall) (covered : M.CoversInformationSites sites horizon)
+    (decisionRecall : M.DecisionRecall) (covered : M.CoversInformationSites sites horizon)
     (decisionCovered : ∀ who (site : M.InformationSite who), site.1 ∈ sites who)
     (utility : E.History → Player → ℝ) (free : Finset (M.InformationAgent sites))
     (pinned reference : (agent : M.InformationAgent sites) →
@@ -47,7 +47,7 @@ theorem exists_pinned_agent_completion
           free pinned reference residual epsilon positive.le small.le) ∧
       assessment.IsFullyMixed ∧
       BehavioralAssessment.IsBayesConsistent M assessment
-        (M.decisionInformationAntichain_of_perfectRecall perfectRecall) ∧
+        decisionRecall.antichain ∧
       ∀ (who : Player) (site : M.InformationSite who) (present : site.1 ∈ sites who),
         (⟨who, ⟨site.1, present⟩⟩ : M.InformationAgent sites) ∈ free →
         ∀ depth fuel, InformationSite.CommonDepth M site depth → depth + fuel = horizon →
@@ -76,7 +76,7 @@ theorem exists_pinned_agent_completion
     have law := M.agentBehavior_at sites fallback played ⟨who, ⟨site.1, decisionCovered who site⟩⟩
     rw [law]
     exact playedFull ⟨who, ⟨site.1, decisionCovered who site⟩⟩ choice
-  let antichain := M.decisionInformationAntichain_of_perfectRecall perfectRecall
+  let antichain := decisionRecall.antichain
   let assessment := original.bayes mixed antichain
   have bayes : BehavioralAssessment.IsBayesConsistent M assessment antichain :=
     original.bayes_isBayesConsistent mixed antichain
@@ -91,14 +91,14 @@ theorem exists_pinned_agent_completion
         (fun history => utility history who) := by
     change (form.mixed.play laws).expect (fun history => utility history who) = _
     rw [M.informationAgentForm_mixed_play sites fallback horizon
-      (M.actsOnceWhereItMatters_of_perfectRecall perfectRecall) covered laws]
+      decisionRecall.actsOnceWhereItMatters covered laws]
     rfl
   have first := realization (Profile.update (sig := form.sig.mixed) played agent alternative)
   have second := realization (Profile.update (sig := form.sig.mixed) played agent (residual agent))
   have nativeBound := first.symm.trans_le (bound.trans_eq second)
   rw [M.agentBehavior_update sites fallback played agent alternative,
     M.agentBehavior_update sites fallback played agent (residual agent)] at nativeBound
-  apply (M.local_law_root_comparison_iff_context_comparison assessment perfectRecall
+  apply (M.local_law_root_comparison_iff_context_comparison assessment decisionRecall
     who site depth fuel
     sameDepth (mixed.informationMass_pos who site)
     (bayes who site (mixed.informationMass_pos who site)) (fun history => utility history who)

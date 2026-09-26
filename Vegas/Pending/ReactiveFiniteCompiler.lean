@@ -111,9 +111,14 @@ theorem reactiveDecision_available (runtime : EventGraphRuntime graph)
       have typed := values event
       rw [outputEq] at typed
       simp only [reactiveDecision, node]
-      exact bounds.disclosureSubmission_allowed _ _
+      have allowed := bounds.disclosureSubmission_allowed _
+        (ReactiveApplication.ResponseMenu.knownPackets past view)
         (bounds.resolutionPacket_allowed who event payload binding checks outputEq choice
           view.application typed handles)
+      have normalized := (bounds.submissions_mem _ _).mp
+        (bounds.normalize_submission_mem who view.application _ _
+          ((bounds.submissions_mem _ _).mpr allowed))
+      simpa only [disclosureSubmission_normalize_known] using normalized
 
 private theorem prescribed_response_available (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)

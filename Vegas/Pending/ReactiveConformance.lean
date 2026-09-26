@@ -44,6 +44,26 @@ theorem disclosure_submission_permitted (call : Payload graph) (state : State gr
       · simp [disclosureSubmission, WitnessedSubmission.emit, valid, unsupportedEvidence]
       · simp [disclosureSubmission, WitnessedSubmission.emit, valid, unsupportedEvidence]
 
+theorem normalized_disclosure_submission_permitted (call : Payload graph) (state : State graph)
+    (who : Player) (view : ReactivePlayerView graph)
+    (known : List (Message Player (WitnessedPacket graph))) :
+    unsupportedEvidence
+      (((disclosureSubmission call).normalizeReactive who view []).emit state who known) =
+        false := by
+  cases call with
+  | commitment | withhold | malformed =>
+      simp only [disclosureSubmission, WitnessedSubmission.normalizeReactive,
+        Submission.normalizeReactive_none, EvidenceRequest.normalize,
+        WitnessedSubmission.emit, unsupportedEvidence]
+  | opening event candidate raw =>
+      by_cases available : candidate.1 = who ∧ view.candidates candidate.2 = .openable raw
+      · rw [disclosureSubmission_normalize_opening who view [] event candidate raw
+          available.1 available.2]
+        exact disclosure_submission_permitted _ state who known
+      · simp only [disclosureSubmission, WitnessedSubmission.normalizeReactive,
+          Submission.normalizeReactive_none, Submission.candidateAfter, EvidenceRequest.normalize,
+          available, ↓reduceIte, WitnessedSubmission.emit, unsupportedEvidence]
+
 /-- The test covers every graph action, including source deviations, and any
 emission state and known packets; it is not restricted to an equilibrium path. -/
 theorem reactive_decision_submission_permitted (runtime : EventGraphRuntime graph)
@@ -67,7 +87,7 @@ theorem reactive_decision_submission_permitted (runtime : EventGraphRuntime grap
   | resolve =>
       simp only [node, Option.some.injEq] at sent
       cases sent
-      exact disclosure_submission_permitted _ state who known
+      exact normalized_disclosure_submission_permitted _ state who view known
   | sample =>
       simp [node] at sent
 

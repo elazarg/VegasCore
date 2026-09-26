@@ -98,6 +98,49 @@ def Submission.register (submission : Submission graph) (state : State graph)
       else state
   | _, _ => state
 
+/-- A submission affects just its authenticated candidate, fixing fresh
+prepared slots to their supplied value and all other fresh slots to failure. -/
+def Submission.candidateAfter (submission : Submission graph) (who : Player)
+    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
+    (query : CandidateSlot graph) : CommitmentCandidate (Raw L) :=
+  match submission.packet with
+  | .commitment _ (owner, slot) =>
+      if owner = who ∧ query = slot then
+        match candidates query with
+        | .fresh => match slot, submission.opening with
+          | .prepared _, some raw => .openable raw
+          | _, _ => .unopenable
+        | fixed => fixed
+      else candidates query
+  | _ => candidates query
+
+theorem Submission.candidateAfter_eq (submission : Submission graph) (who : Player)
+    (state : State graph) (query : CandidateSlot graph) :
+    (submitStep (submission.register state who) who submission.packet).candidates.lookup
+        (who, query) =
+      submission.candidateAfter who (fun slot => state.candidates.lookup (who, slot)) query := by
+  rcases submission with ⟨packet, opening⟩
+  cases packet with
+  | commitment event handle =>
+      rcases handle with ⟨owner, slot⟩
+      by_cases owned : owner = who
+      · subst owner
+        by_cases same : query = slot
+        · subst query
+          cases meaning : state.candidates.lookup (who, slot) <;>
+            cases slot <;> cases opening <;>
+              simp_all [Submission.register, submitStep, Submission.candidateAfter,
+                CommitmentCandidates.prepare, CommitmentCandidates.freeze,
+                CommitmentCandidates.lookup]
+        · cases meaning : state.candidates.lookup (who, slot) <;>
+            cases slot <;> cases opening <;>
+              simp_all [Submission.register, submitStep, Submission.candidateAfter,
+                CommitmentCandidates.prepare, CommitmentCandidates.freeze,
+                CommitmentCandidates.lookup]
+      · cases slot <;> cases opening <;>
+          simp [Submission.register, submitStep, Submission.candidateAfter, owned]
+  | opening event handle raw | withhold event | malformed raw => rfl
+
 def transmit (runtime : EventGraphRuntime graph) (who : Player)
     (state : runtime.application.State) : Option (Transmission graph) → runtime.application.State
   | none => state

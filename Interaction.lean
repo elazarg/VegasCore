@@ -22,6 +22,8 @@ import Interaction.ReactiveDecisionInformation
 import Interaction.ReactiveOwnPlay
 import Interaction.ReactiveRecallEntries
 import Interaction.ReactiveResponseMenu
+import Interaction.ReactiveMenuRestriction
+import Interaction.ReactiveLedgerConformance
 import Interaction.ReactiveResponseEmbedding
 import Interaction.ReactiveResponseEvaluation
 import Interaction.ReactiveReplayMenu

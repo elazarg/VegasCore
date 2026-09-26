@@ -62,7 +62,7 @@ theorem malformed_available (who : Bool) (past : List app.PlayerEntry)
   · cases bit <;> simp [MessageBounds.AllowsPacket, bounds]
   · simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
       WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
-      EvidenceRequest.normalizeKnown]
+      EvidenceRequest.normalize]
 
 
 /-- Neither the wrong method nor the foreign handle nor the wrong type erases
@@ -76,7 +76,7 @@ theorem invalid_opening_available (past : List app.PlayerEntry) (view : app.Play
   · simp [MessageBounds.AllowsPacket, MessageBounds.AllowsHandle, bounds]
   · simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
       WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
-      EvidenceRequest.normalizeKnown]
+      EvidenceRequest.normalize]
 
 
 /-- An arbitrary private annotation on a malformed packet has no semantic
@@ -88,7 +88,7 @@ theorem irrelevant_material_erased (raw : Raw simpleExpr) (who : Bool)
       ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩)⟩ := by
   simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
     WitnessedSubmission.normalizeReactive, Submission.normalizeReactive,
-    EvidenceRequest.normalizeKnown, openingEffective]
+    EvidenceRequest.normalize, openingEffective]
 
 theorem arbitrary_irrelevant_material_admitted (raw : Raw simpleExpr) (who : Bool)
     (past : List app.PlayerEntry) (view : app.PlayerView) :
@@ -114,7 +114,7 @@ theorem wrong_type_meaning_retained :
       (runtime.reactiveBinding leaks false 0 .int (.success 1) 0) =
         runtime.reactiveBinding leaks false 0 .int (.success 1) 0 := by
     simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-      reactiveBinding, WitnessedSubmission.normalizeReactive, EvidenceRequest.normalizeKnown]
+      reactiveBinding, WitnessedSubmission.normalizeReactive, EvidenceRequest.normalize]
     rw [Submission.normalizeReactive_effective false (initial.observe app false).application
       ⟨.commitment 0 (false, .prepared 0), some ⟨.int, 1⟩⟩ effective]
   refine ⟨normal, ?_,
@@ -138,7 +138,7 @@ theorem unopenable_available_and_binding :
   · norm_num [reactiveBinding, MessageBounds.AllowsPacket, MessageBounds.AllowsHandle, bounds]
   · simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
       reactiveBinding, WitnessedSubmission.normalizeReactive,
-      Submission.normalizeReactive_none, EvidenceRequest.normalizeKnown]
+      Submission.normalizeReactive_none, EvidenceRequest.normalize]
 
 
 /-- Different malformed messages are not collapsed into one public signal. -/
@@ -178,28 +178,31 @@ theorem known_replay_retained (execution : app.Execution) (who : Bool)
     execution who valid message.id).mpr ⟨message, known, rfl⟩
 
 /-- Evidence can accompany a call with no successful game effect. The request
-is available independently of whether the owner actually has the certificate. -/
+is raw-available independently of whether the owner actually has the certificate. -/
 theorem owned_evidence_with_malformed_call (who : Bool) (past : List app.PlayerEntry)
     (view : app.PlayerView) (bit : Bool) :
     (⟨some (.submit ⟨⟨.malformed ⟨.bool, bit⟩, none⟩,
       .owned ⟨(who, .prepared 1), ⟨.bool, bit⟩⟩⟩)⟩ : app.Action) ∈
-        menu.actions who past view := by
+        (bounds.rawMenu runtime leaks).actions who past view := by
   classical
-  rw [MessageBounds.menu_mem]
-  refine ⟨⟨⟨?_, trivial⟩, ?_⟩, ?_⟩
+  rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
+  change (⟨⟨.malformed ⟨.bool, bit⟩, none⟩,
+    .owned ⟨(who, .prepared 1), ⟨.bool, bit⟩⟩⟩ : WitnessedSubmission graph) ∈ _
+  rw [MessageBounds.submissions_mem]
+  refine ⟨⟨?_, trivial⟩, ?_⟩
   · cases bit <;> simp [MessageBounds.AllowsPacket, bounds]
   · cases bit <;>
       simp [MessageBounds.AllowsEvidence, MessageBounds.AllowsHandle, bounds]
-  · simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-      WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
-      EvidenceRequest.normalizeKnown]
 
 /-- Any known certificate can be copied onto a fresh packet without bounding
 the referenced envelope's serial number or requiring application acceptance. -/
 theorem known_forward_retained (who : Bool) (past : List app.PlayerEntry)
     (view : app.PlayerView) (id : MessageId Bool)
     (known : ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets past view,
-      message.id = id) :
+      message.id = id)
+    (certificate : ((ReactiveApplication.ResponseMenu.knownPackets past view).find?
+      (fun message => message.id = id) |>.bind fun message =>
+        message.payload.evidence).isSome = true) :
     (⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .forward id⟩)⟩ : app.Action) ∈
       menu.actions who past view := by
   classical
@@ -208,7 +211,32 @@ theorem known_forward_retained (who : Bool) (past : List app.PlayerEntry)
   · simp [MessageBounds.AllowsPacket, bounds]
   · simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
       WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none]
-    rw [EvidenceRequest.normalizeKnown_forward _ id known]
+    rw [EvidenceRequest.normalize_forward _ _ _ id certificate]
+
+/-- A failed private request emits the same malformed packet as no request.
+It supplies no extra action in the normalized game; the raw action remains legal. -/
+theorem failed_owned_request_erased :
+    (runtime.reactiveNormalization leaks).action false [] (initial.observe app false)
+        ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩,
+          .owned ⟨(false, .prepared 1), ⟨.bool, true⟩⟩⟩)⟩ =
+      ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩)⟩ := by
+  have fresh : (initial.observe app false).application.candidates (.prepared 1) = .fresh := rfl
+  simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+    WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
+    EvidenceRequest.normalize, Submission.candidateAfter, fresh]
+
+/-- A response can register fresh material and disclose its certificate at once.
+Normalization must test the candidate after the call, not its prior fresh status. -/
+theorem fresh_certificate_retained :
+    let response : app.Action := ⟨some (.submit
+      ⟨⟨.commitment 0 (false, .prepared 0), some ⟨.bool, true⟩⟩,
+        .owned ⟨(false, .prepared 0), ⟨.bool, true⟩⟩⟩)⟩
+    (runtime.reactiveNormalization leaks).action false []
+      (initial.observe app false) response = response := by
+  have fresh : (initial.observe app false).application.candidates (.prepared 0) = .fresh := rfl
+  simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+    WitnessedSubmission.normalizeReactive, Submission.normalizeReactive,
+    EvidenceRequest.normalize, Submission.candidateAfter, openingEffective, fresh]
 
 /-- Guessed reference integers do not create additional transmitted evidence.
 The normal form still permits the original malformed public claim. -/

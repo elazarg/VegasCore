@@ -101,7 +101,13 @@ theorem mismatched_intention :
       ⟨0, false⟩ := by
   have expected : runtime.reactiveDecision leaks () 0 true
       (openable.observe app ()).application = ReactiveApplication.Action.mk (app := app)
-        (some (.submit (disclosureSubmission (.opening 0 ((), .initial 0) ⟨.bool, true⟩)))) := rfl
+        (some (.submit (disclosureSubmission (.opening 0 ((), .initial 0) ⟨.bool, true⟩)))) := by
+    change ReactiveApplication.Action.mk (app := app)
+      (some (.submit (WitnessedSubmission.normalizeReactive ()
+        (openable.observe app ()).application []
+          (disclosureSubmission (.opening 0 ((), .initial 0) ⟨.bool, true⟩))))) = _
+    rw [disclosureSubmission_normalize_opening (graph := graph) () _ [] 0
+      ((), .initial 0) ⟨.bool, true⟩ rfl rfl]
   have different : (ReactiveApplication.Action.mk (app := app)
       (some (.submit ⟨⟨.withhold 0, none⟩, .none⟩))) ≠
         runtime.reactiveDecision leaks () 0 true (openable.observe app ()).application := by

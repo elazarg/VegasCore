@@ -119,7 +119,7 @@ theorem continuationBranch_probability [Finite E.History]
 /-- Switching at a selected information set leaves its branch probability
 equal to the original reach mass at every subsequent depth. -/
 theorem switched_continuationBranch_probability [DecidableEq Player] [Finite E.History]
-    (recall : M.PerfectRecall) (profile : ∀ who, M.BehavioralPolicy who)
+    (recall : M.DecisionRecall) (profile : ∀ who, M.BehavioralPolicy who)
     (who : Player) (site : M.InformationSite who)
     [Fintype (M.InformationHistory who site.1)] (alternative : M.BehavioralPolicy who)
     (depth : Nat) (sameDepth : InformationSite.CommonDepth M site depth) (fuel : Nat) :

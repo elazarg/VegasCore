@@ -124,7 +124,8 @@ has a checked general SE extension theorem under a structural action restriction
 and sound conditional collection. It derives retained strategies and beliefs,
 constructs rational new continuations, and preserves the joint completed-history
 and actual net-payoff law. The theorem aligns decision steps and requires finite,
-clocked perfect-recall protocols; general source-to-native correspondence and
+clocked protocols with decision-site recall; every reactive response menu has
+this recall property. General source-to-native correspondence and
 collection remain compiler obligations. Forcing future actions to fail is
 sufficient only when their actual continuation loss deters the departure.
 

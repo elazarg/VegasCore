@@ -35,16 +35,17 @@ game before quantifying over source equilibria.
 
 | Route | Exact intended quantifiers and conclusion | Additional sufficient assumptions | Main unresolved proof |
 | --- | --- | --- | --- |
-| A. Genuine action restriction plus sanctions | For fixed payoff bounds, monitoring and fines: `∀ SE(S), ∃ SE(N)` extending compliant play and preserving its initialized law. A fixed playerwise `C` requires an additional local completion construction. | Same game/information on compliant histories; source-respecting conditional incentive comparisons; sound, attributable, collectible consequences where needed; finite perfect recall. | General extension is checked. Adapt recall to native decision sites, prove source/service block correspondence, and instantiate conformance and collection on the actual runtime. |
+| A. Genuine action restriction plus sanctions | For fixed payoff bounds, monitoring and fines: `∀ SE(S), ∃ SE(N)` extending compliant play and preserving its initialized law. A fixed playerwise `C` requires an additional local completion construction. | Same game/information on compliant histories; source-respecting conditional incentive comparisons; sound, attributable, collectible consequences where needed; finite decision-site recall. | General extension and the native recall/menu adapters are checked. Prove source/service block correspondence and instantiate conformance and collection on the actual runtime. |
 | B. Ambient source with direct native quotient | `∃ playerwise C, ∀ u,σ,μ, SE(S_ambient,u,σ,μ) → ∃ν, SE(N,u∘d,Cσ,ν)` with joint law equality. Ordinary-source SEs qualify only through a separate extension theorem. | Source communication opportunities and observations match the actual service; all retained deviations have source accounts; erased distinctions are operational/incentive aliases; finite belief-compatible lifting. | Prove the source service correspondence, conditional deviation transport and common Bayes lift; the current synchronous experiment is not the native service. |
 | C. Two-player zero-sum repair | For one fixed native game: `∀ SE(S,u), ∃τ,ν, SE(N,u∘d,τ,ν)` with source initialized law, obtained by repairing `Cσ`. | Actual source Nash preservation into this same finite perfect-recall native game; exactly two strategic players; zero-sum native utility. | Finish the general law-preserving Nash-to-SE repair and the command-service/reactive-service bridge. |
 
 Common finite-model obligations are substantive: finite legal responses and
 bounded interaction, adequate evaluation fuel, positive chance reach for legal
 histories, and the actual observation/recall structure. Timeouts do not bound
-all pre-deadline communication. A decision antichain is not automatically the
-global perfect-recall hypothesis used by A/C. Prove the required decision-recall
-property or a semantics-preserving adapter; do not add scratch-memory states.
+all pre-deadline communication. The general extension in A uses decision-site
+recall, now proved for every reactive menu. A decision antichain alone does not
+supply recall, and the separate C route retains its stated recall obligations.
+No scratch-memory states are needed for the native decision-recall proof.
 
 ## A: what sanctions do and do not buy
 
@@ -77,7 +78,7 @@ a further service/game restriction.
 The general action-restriction assembly is checked: a local operational square
 implies retained continuation laws, rare-tremble bounds preserve beliefs, and
 consistent local optimality implies whole-policy sequential rationality. This
-uses finite, clocked perfect-recall protocols with aligned source and target
+uses finite, clocked protocols with decision-site recall and aligned source and target
 steps. The remaining compiler work is to establish that correspondence and
 conditional collection for a native game class. The native pilot handles its
 strategic watcher directly; universal collection against arbitrary watcher
@@ -90,8 +91,8 @@ initially uses identically zero watcher utility. This separates reporting from
 sender deterrence without assuming collection against arbitrary watcher play.
 Ordinary-player comparisons remain universal over the other allowed policies;
 accepted side evidence already exposes a gap in the pilot's Alice-only charge.
-The plan puts this coverage test and the native decision-recall adaptation ahead
-of the general source correspondence proof.
+The native decision-recall adaptation is checked; the plan puts response coverage
+ahead of the general source correspondence proof.
 
 Runtime obligations remain even after that theorem: sanctions must be sound
 for **all** permitted source strategies; observation/reporting/collection bounds

@@ -1,12 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import GameTheoryExtensions.Protocol.DecisionRecall
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 
 /-! # Ex ante and conditional comparisons at one information site
 
 At a positive-mass common-depth information site, changing only its behavioral
 law changes ex ante utility by the site's reach mass times its Bayes
-continuation gain. Perfect recall supplies the common own-reach coefficient;
+continuation gain. Decision-site recall supplies the common own-reach coefficient;
 the existing run decomposition supplies the actual protocol law identity.
 
 The two-alternative comparison is useful for perturbed agent-form equilibria:
@@ -21,15 +22,27 @@ namespace GameTheory.Protocol.InformationModel
 
 open GameTheory.Math.Probability ExecutionProtocol
 
-variable {Player : Type} [Fintype Player] [DecidableEq Player]
-  {E : ExecutionProtocol Player} (M : InformationModel E)
-  (assessment : M.BehavioralAssessment) (recall : M.PerfectRecall)
+variable {Player : Type} {E : ExecutionProtocol Player} (M : InformationModel E)
+
+/-- Decision recall makes the player's own reach constant on each decision
+fiber, even when inactive observations forget the player's earlier actions. -/
+theorem commonPlayerReachAt_of_decisionRecall (recall : M.DecisionRecall)
+    (strategy : ∀ player, M.BehavioralPolicy player)
+    (who : Player) (site : M.InformationSite who) : M.CommonPlayerReachAt strategy who site := by
+  obtain ⟨reference, _running, _action⟩ := site.2
+  refine ⟨M.playerReachProbability strategy who reference.1.trace, ?_⟩
+  intro history
+  rw [M.playerReachProbability_eq_ownPlayReachProbability,
+    M.playerReachProbability_eq_ownPlayReachProbability, recall who site history reference]
+
+variable [Fintype Player] [DecidableEq Player]
+  (assessment : M.BehavioralAssessment) (recall : M.DecisionRecall)
   (who : Player) (site : M.InformationSite who)
   [Fintype (M.InformationHistory who site.1)]
   (depth fuel : Nat) (sameDepth : InformationSite.CommonDepth M site depth)
   (positive : 0 < M.informationMass assessment.strategy who site)
   (bayes : BehavioralAssessment.IsBayesConsistentAt M assessment who site
-    (M.decisionInformationAntichain_of_perfectRecall recall who site) positive)
+    (recall.antichain who site) positive)
   (payoff : E.History → ℝ)
 
 include recall sameDepth positive bayes in
@@ -42,7 +55,7 @@ theorem root_gain_eq_mass_mul_context_gain
     M.informationMass assessment.strategy who site *
       ((assessment.continuationContext site payoff fuel).value alternative -
         (assessment.continuationContext site payoff fuel).value (assessment.strategy who)) := by
-  let antichain := M.decisionInformationAntichain_of_perfectRecall recall who site
+  let antichain := recall.antichain who site
   have belief : assessment.belief who site =
       M.bayesBelief assessment.strategy who site antichain positive := by
     apply FinDist.ext_of_prob
@@ -56,7 +69,7 @@ theorem root_gain_eq_mass_mul_context_gain
     rw [BehavioralAssessment.continuationContext_value, belief, FinDist.expect_bind]
     rfl
   obtain ⟨ownReach, shared⟩ :=
-    M.commonPlayerReachAt_of_perfectRecall recall assessment.strategy who site
+    M.commonPlayerReachAt_of_decisionRecall recall assessment.strategy who site
   rw [M.rootGain_eq_ownReach_mul_counterfactualRegret assessment.strategy who site
     alternative depth fuel sameDepth onlyHere ownReach shared payoff, context, context]
   exact (M.informationMass_mul_bayesGain_eq_ownReach_mul_counterfactualRegret

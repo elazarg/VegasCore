@@ -4,7 +4,7 @@ import GameTheoryExtensions.Analysis.Protocol.LocalDeviation
 
 /-! # Implementing a whole continuation deviation at one information site
 
-Perfect recall lets a player recognize that it has passed a specified own
+Decision-site recall lets a player recognize that it has passed a specified own
 decision. A policy can therefore switch to an arbitrary alternative precisely
 at and after that decision, while preserving play on the other branches.
 The switch uses the player's information record, never the hidden history.
@@ -60,15 +60,20 @@ def BehavioralPolicy.switchAt {who : Player} (baseline alternative : M.Behaviora
   then alternative info else baseline info
 
 open scoped Classical in
-theorem switchAt_at_history (recall : M.PerfectRecall) {who : Player}
+theorem switchAt_at_history (recall : M.DecisionRecall) {who : Player}
     (baseline alternative : M.BehavioralPolicy who) (site : M.InformationSite who)
-    (history : E.History) :
+    (history : E.History) (running : ¬ E.terminal history.state) :
     baseline.switchAt M alternative site (M.infoOf who history.trace) =
       if M.infoOf who history.trace = site.1 ∨ site.1 ∈ M.actedAt who history.trace
       then alternative (M.infoOf who history.trace) else baseline (M.infoOf who history.trace) := by
   classical
-  simp only [BehavioralPolicy.switchAt, M.recordAt_eq_ownPlay recall,
-    ← InfoSignals.actedAt_eq_map_ownPlay]
+  by_cases active : E.active history.state who
+  · simp only [BehavioralPolicy.switchAt,
+      recall.recordAt_eq_ownPlay_of_active who history running active,
+      ← InfoSignals.actedAt_eq_map_ownPlay]
+  · have same := M.behavioral_eq_of_not_active baseline alternative history.trace active
+    unfold BehavioralPolicy.switchAt
+    split <;> split <;> first | rfl | exact same | exact same.symm
 
 theorem site_recorded_after_step {who : Player} (site : M.InformationSite who)
     (history : M.InformationHistory who site.1)
@@ -86,7 +91,7 @@ variable [Fintype Player] [DecidableEq Player]
 
 /-- From the selected site onward, the switched policy implements the entire
 alternative behavioral policy, including all later decisions of the player. -/
-theorem run_switchAt_from_site (recall : M.PerfectRecall)
+theorem run_switchAt_from_site (recall : M.DecisionRecall)
     (profile : ∀ player, M.BehavioralPolicy player) (who : Player)
     (site : M.InformationSite who) (alternative : M.BehavioralPolicy who)
     (history : M.InformationHistory who site.1) (fuel : Nat) :
@@ -95,10 +100,10 @@ theorem run_switchAt_from_site (recall : M.PerfectRecall)
       M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature) profile who
         alternative) fuel history.1 := by
   apply M.runBehavioralFrom_congr
-  intro later reached _ player
+  intro later reached running player
   by_cases same : player = who
   · subst player
-    simp only [Profile.update_same, M.switchAt_at_history recall]
+    simp only [Profile.update_same, M.switchAt_at_history recall _ _ _ later running]
     apply ite_eq_left
     cases reached with
     | refl => exact Or.inl history.2
@@ -131,7 +136,7 @@ theorem site_unvisited_after_depth (who : Player) (site : M.InformationSite who)
 
 /-- The switch leaves the entire initialized prefix before the selected
 decision depth unchanged. -/
-theorem run_switchAt_prefix (recall : M.PerfectRecall)
+theorem run_switchAt_prefix (recall : M.DecisionRecall)
     (profile : ∀ player, M.BehavioralPolicy player) (who : Player)
     (site : M.InformationSite who) (alternative : M.BehavioralPolicy who)
     (depth : Nat) (sameDepth : InformationSite.CommonDepth M site depth) :
@@ -140,10 +145,10 @@ theorem run_switchAt_prefix (recall : M.PerfectRecall)
       M.runBehavioral profile depth := by
   unfold runBehavioral
   apply M.runBehavioralFrom_congr_before
-  intro history _ _ before player
+  intro history _ running before player
   by_cases same : player = who
   · subst player
-    rw [Profile.update_same, M.switchAt_at_history recall]
+    rw [Profile.update_same, M.switchAt_at_history recall _ _ _ history running]
     apply ite_eq_right
     have early : history.trace.length < depth := by
       simpa only [initHistory, Trace.length, zero_add] using before
@@ -158,7 +163,7 @@ theorem run_switchAt_prefix (recall : M.PerfectRecall)
 
 /-- At the decision-depth cut, the entire continuation on every other branch
 is unchanged, not only its immediate action or public result. -/
-theorem run_switchAt_outside_site (recall : M.PerfectRecall)
+theorem run_switchAt_outside_site (recall : M.DecisionRecall)
     (profile : ∀ player, M.BehavioralPolicy player) (who : Player)
     (site : M.InformationSite who) (alternative : M.BehavioralPolicy who)
     (depth : Nat) (sameDepth : InformationSite.CommonDepth M site depth)
@@ -169,23 +174,23 @@ theorem run_switchAt_outside_site (recall : M.PerfectRecall)
       M.runBehavioralFrom profile fuel history := by
   have absent := M.site_not_recorded_before_depth who site depth sameDepth history atDepth.le
   apply M.runBehavioralFrom_congr
-  intro later reached _ player
+  intro later reached running player
   by_cases same : player = who
   · subst player
-    rw [Profile.update_same, M.switchAt_at_history recall]
+    rw [Profile.update_same, M.switchAt_at_history recall _ _ _ later running]
     exact ite_eq_right (not_or.mpr (M.site_unvisited_after_depth who site depth sameDepth
       reached atDepth.ge outside absent))
   · simp only [Profile.update_of_ne _ _ same]
 
 section ConditionalGain
 
-variable (assessment : M.BehavioralAssessment) (recall : M.PerfectRecall)
+variable (assessment : M.BehavioralAssessment) (recall : M.DecisionRecall)
   (who : Player) (site : M.InformationSite who)
   [Fintype (M.InformationHistory who site.1)]
   (depth fuel : Nat) (sameDepth : InformationSite.CommonDepth M site depth)
   (positive : 0 < M.informationMass assessment.strategy who site)
   (bayes : BehavioralAssessment.IsBayesConsistentAt M assessment who site
-    (M.decisionInformationAntichain_of_perfectRecall recall who site) positive)
+    (recall.antichain who site) positive)
   (payoff : E.History → ℝ)
 
 include recall sameDepth positive bayes in
@@ -221,7 +226,7 @@ theorem switched_root_gain_eq_mass_mul_context_gain
         rw [M.run_switchAt_outside_site recall assessment.strategy who site alternative
           depth sameDepth history actualDepth outside fuel, sub_self]
   obtain ⟨ownReach, shared⟩ :=
-    M.commonPlayerReachAt_of_perfectRecall recall assessment.strategy who site
+    M.commonPlayerReachAt_of_decisionRecall recall assessment.strategy who site
   have first :
       (M.runBehavioral updated (depth + fuel)).expect payoff -
           (M.runBehavioral assessment.strategy (depth + fuel)).expect payoff =
@@ -236,7 +241,7 @@ theorem switched_root_gain_eq_mass_mul_context_gain
     intro history _
     dsimp only [gain]
     rw [M.run_switchAt_from_site recall assessment.strategy who site alternative history fuel]
-  let antichain := M.decisionInformationAntichain_of_perfectRecall recall who site
+  let antichain := recall.antichain who site
   have belief : assessment.belief who site =
       M.bayesBelief assessment.strategy who site antichain positive := by
     apply FinDist.ext_of_prob

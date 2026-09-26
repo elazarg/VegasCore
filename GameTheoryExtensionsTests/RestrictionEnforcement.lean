@@ -396,7 +396,8 @@ theorem exists_source_equilibrium :
         (fun who site => source.continuationContext site (fun _ => 0)
           (2 - siteDepth false who site)) := by
   apply (model false).exists_sequential_equilibrium (reference false) (reference_mixed false)
-    (perfectRecall false) 2 (fun _ _ => 0) (siteDepth false) (clock false)
+    ((model false).decisionRecall_of_perfectRecall (perfectRecall false))
+    2 (fun _ _ => 0) (siteDepth false) (clock false)
   intro who site
   cases who <;> simp [siteDepth]
 
@@ -543,7 +544,8 @@ theorem every_source_equilibrium_preserved (deposit : ℝ) (large : 1 ≤ deposi
   obtain ⟨target, equilibrium, agrees, _, law, _, _⟩ :=
     restriction.sequential_equilibrium_extends
       ((model false).decisionInformationAntichain_of_perfectRecall (perfectRecall false))
-      (reference true) (reference_mixed true) (perfectRecall true) 2 (bounded true)
+      (reference true) (reference_mixed true)
+      ((model true).decisionRecall_of_perfectRecall (perfectRecall true)) 2 (bounded true)
       (siteDepth true) (clock true) (fun _ _ => 0) base charge matching clean
       (fun _ => 0) (fun _ => 1) (fun _ => 1) (fun _ => deposit)
       (fun _ => le_trans (by norm_num) large) (fun _ _ => le_rfl)

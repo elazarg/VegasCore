@@ -38,7 +38,7 @@ theorem sequential_equilibrium_extends_of_comparator
     [∀ who, DecidableEq (M.InfoState who)]
     (sourceAntichain : M.DecisionInformationAntichain)
     (reference : N.BehavioralAssessment) (referenceMixed : reference.IsFullyMixed)
-    (perfectRecall : N.PerfectRecall) (horizon : Nat) (bounded : T.BoundedHorizon horizon)
+    (decisionRecall : N.DecisionRecall) (horizon : Nat) (bounded : T.BoundedHorizon horizon)
     (depth : ∀ who, N.InformationSite who → Nat)
     (clock : ∀ who site, InformationSite.CommonDepth N site (depth who site))
     (sourcePayoff : E.History → Player → ℝ) (targetPayoff : T.History → Player → ℝ)
@@ -69,7 +69,7 @@ theorem sequential_equilibrium_extends_of_comparator
         (horizon - depth who (restriction.site who site)))) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentialEquilibriumFor
-        (N.decisionInformationAntichain_of_perfectRecall perfectRecall)
+        decisionRecall.antichain
         (fun who site => target.continuationContext site
           (fun history => targetPayoff history who) (horizon - depth who site)) ∧
       restriction.ExtendsProfile source.strategy target.strategy ∧
@@ -93,18 +93,18 @@ theorem sequential_equilibrium_extends_of_comparator
     exact before.le
   obtain ⟨target, consistent, agrees, beliefs, newOptimal⟩ :=
     restriction.exists_consistent_extension source sourceAntichain sourceEquilibrium.2
-      reference referenceMixed perfectRecall horizon targetPayoff depth clock within
+      reference referenceMixed decisionRecall horizon targetPayoff depth clock within
   have rational : target.IsSequentiallyRational fun who site =>
       target.continuationContext site (fun history => targetPayoff history who)
         (horizon - depth who site) := by
-    apply consistent.sequentiallyRational_of_localOptimal perfectRecall horizon
+    apply consistent.sequentiallyRational_of_localOptimal decisionRecall horizon
       (fun who history => targetPayoff history who) depth clock within
     intro who site _ law
     by_cases retained : restriction.Retained who site.1
     · obtain ⟨original, observed⟩ := retained
       have same : restriction.site who original = site := Subtype.ext observed
       subst site
-      exact restriction.retained_localOptimal_of_comparator source target agrees perfectRecall
+      exact restriction.retained_localOptimal_of_comparator source target agrees decisionRecall
         who original (beliefs who original) (fun history => sourcePayoff history who)
         (fun history => targetPayoff history who) (fun history => matching history who)
         (horizon - depth who (restriction.site who original)) (sourceEquilibrium.1 who original)
@@ -135,7 +135,7 @@ Weak deterrence inequalities suffice for this forward existence conclusion. -/
 theorem sequential_equilibrium_extends
     (sourceAntichain : M.DecisionInformationAntichain)
     (reference : N.BehavioralAssessment) (referenceMixed : reference.IsFullyMixed)
-    (perfectRecall : N.PerfectRecall) (horizon : Nat) (bounded : T.BoundedHorizon horizon)
+    (decisionRecall : N.DecisionRecall) (horizon : Nat) (bounded : T.BoundedHorizon horizon)
     (depth : ∀ who, N.InformationSite who → Nat)
     (clock : ∀ who site, InformationSite.CommonDepth N site (depth who site))
     (sourcePayoff : E.History → Player → ℝ) (base charge : T.History → Player → ℝ)
@@ -162,7 +162,7 @@ theorem sequential_equilibrium_extends
         (horizon - depth who (restriction.site who site)))) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentialEquilibriumFor
-        (N.decisionInformationAntichain_of_perfectRecall perfectRecall)
+        decisionRecall.antichain
         (fun who site => target.continuationContext site
           (fun history => base history who - charge history who * deposit who)
           (horizon - depth who site)) ∧
@@ -183,7 +183,7 @@ theorem sequential_equilibrium_extends
       (_ : N.Choice who (restriction.site who site).1) : FinDist (M.Choice who site.1) :=
     FinDist.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
   apply restriction.sequential_equilibrium_extends_of_comparator sourceAntichain
-    reference referenceMixed perfectRecall horizon bounded depth clock sourcePayoff utility
+    reference referenceMixed decisionRecall horizon bounded depth clock sourcePayoff utility
     (fun history who => by simp only [utility, matching, clean, zero_mul, sub_zero])
     comparator _ source sourceEquilibrium
   intro sourceProfile targetProfile _ who site action forbidden history

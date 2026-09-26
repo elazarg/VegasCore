@@ -154,8 +154,8 @@ theorem execution_respond (original : app.Execution) (who : Principal) (response
       | submit submission =>
           have submitted := normal.submit original.application who
             (original.network.known who) submission
-          have packet := normal.packet (app.submit original.application who submission) who
-            (app.observePlayer original.application who) (original.network.known who) submission
+          have packet := normal.packet original.application who
+            (original.network.known who) submission
           simp only [action]
           rw [known]
           change normal.execution (original.respond app who ⟨some (.submit submission)⟩) =

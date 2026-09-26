@@ -164,5 +164,17 @@ import VegasTests.MonitoredGuessingPayoffBounds
 import VegasTests.MonitoredGuessingPayoffs
 import VegasTests.MonitoredGuessingPayoffInference
 import VegasTests.MonitoredGuessingPayoffLaw
+import VegasTests.MonitoredGuessingConformance
+import VegasTests.MonitoredGuessingRestricted
+import VegasTests.MonitoredGuessingNativeClock
+import VegasTests.MonitoredGuessingRestrictedClock
+import VegasTests.MonitoredGuessingWatcherExtension
+import VegasTests.MonitoredGuessingRestrictedExecution
+import VegasTests.MonitoredGuessingRestrictedInformation
+import VegasTests.MonitoredGuessingRestrictedSupport
+import VegasTests.MonitoredGuessingFinalComparison
+import VegasTests.MonitoredGuessingRestrictedFinalComparison
+import VegasTests.MonitoredGuessingBobContinuation
+import VegasTests.MonitoredGuessingWatcherRaw
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

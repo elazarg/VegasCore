@@ -147,7 +147,21 @@ theorem compiled_later (repair fresh : Bool) (possible : fresh = true → repair
       graph.playerObserve () (granted repair fresh).application.config,
       fun slot => (granted repair fresh).application.candidates.lookup ((), slot)⟩ = _
   rw [state]
-  cases repair <;> cases fresh <;> first | contradiction | rfl
+  have normal : (disclosureSubmission
+      (.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩)).normalizeReactive ()
+        ⟨(), (boundState repair fresh).publicView,
+          graph.playerObserve () (boundState repair fresh).config,
+          fun slot => (boundState repair fresh).candidates.lookup ((), slot)⟩ [] =
+      disclosureSubmission (.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩) := by
+    apply disclosureSubmission_normalize_opening
+    · rfl
+    · cases repair <;> cases fresh <;> first | contradiction | rfl
+  cases repair <;> cases fresh <;>
+    first
+    | contradiction
+    | exact congrArg
+        (fun submission => ReactiveApplication.Action.mk (app := app) (some (.submit submission)))
+        normal
 
 def earlyPolicy : app.Policy := fun history view =>
   if view.application.publicView.serviceGrant = some 0 then FinDist.pure earlyOpening

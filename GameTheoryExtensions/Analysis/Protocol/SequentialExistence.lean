@@ -23,20 +23,20 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} (M : InformationModel E) [Finite E.History]
   [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
 
-/-- Finite perfect-recall protocols with finite decision menus admit a
+/-- Finite decision-recall protocols with finite decision menus admit a
 sequential equilibrium in these remaining-horizon contexts for arbitrary real
 payoffs. The fully mixed reference supplies finite supported menus and need
 not satisfy any incentive condition. Adequacy for terminal payoffs is separate. -/
 theorem exists_sequential_equilibrium
     (reference : M.BehavioralAssessment) (referenceMixed : reference.IsFullyMixed)
-    (perfectRecall : M.PerfectRecall) (horizon : Nat)
+    (decisionRecall : M.DecisionRecall) (horizon : Nat)
     (payoff : Player → E.History → ℝ)
     (depth : ∀ who, M.InformationSite who → Nat)
     (clock : ∀ who site, InformationSite.CommonDepth M site (depth who site))
     (within : ∀ who site, depth who site ≤ horizon) :
     ∃ assessment : M.BehavioralAssessment,
       assessment.IsSequentialEquilibriumFor
-        (M.decisionInformationAntichain_of_perfectRecall perfectRecall)
+        decisionRecall.antichain
         (fun who site =>
           assessment.continuationContext site (payoff who) (horizon - depth who site)) := by
   classical
@@ -80,12 +80,12 @@ theorem exists_sequential_equilibrium
     simpa only [mul_zero] using
       (tendsto_one_div_add_atTop_nhds_zero_nat (𝕜 := ℝ)).const_mul (1 / 2 : ℝ)
   obtain ⟨_, _, assessment, _, _, _, _, _, _, consistent, localOptimal⟩ :=
-    exists_consistent_free_agent_completion sites fallback horizon perfectRecall covered
+    exists_consistent_free_agent_completion sites fallback horizon decisionRecall covered
       decisionCovered (fun history who => payoff who history) Finset.univ
       (fun _ => laws) laws (fun _ agent _ => full agent) full
       epsilon positive small vanishes
   refine ⟨assessment, ?_, consistent⟩
-  apply consistent.sequentiallyRational_of_localOptimal perfectRecall horizon payoff
+  apply consistent.sequentiallyRational_of_localOptimal decisionRecall horizon payoff
     depth clock within
   intro who site before law
   exact localOptimal who site (decisionCovered who site) (Finset.mem_univ _)

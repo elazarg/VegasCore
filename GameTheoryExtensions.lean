@@ -19,6 +19,7 @@ import GameTheoryExtensions.Protocol.Continuation
 import GameTheoryExtensions.Protocol.HistoryProjection
 import GameTheoryExtensions.Protocol.BehavioralContinuation
 import GameTheoryExtensions.Protocol.FiniteInformation
+import GameTheoryExtensions.Protocol.DecisionRecall
 import GameTheoryExtensions.Protocol.ActionRestriction
 import GameTheoryExtensions.Protocol.RestrictionExecution
 import GameTheoryExtensions.Protocol.RestrictionProfile
@@ -35,6 +36,7 @@ import GameTheoryExtensions.Protocol.ObservationRecall
 import GameTheoryExtensions.Protocol.SequentialIncentives
 import GameTheoryExtensions.Protocol.ContinuationSimulation
 import GameTheoryExtensions.Protocol.SequentialChoices
+import GameTheoryExtensions.Protocol.ContinuationHorizon
 import GameTheoryExtensions.Analysis.Protocol.Sequential
 import GameTheoryExtensions.Analysis.ObservationErasure
 import GameTheoryExtensions.Analysis.ObservationAbstraction

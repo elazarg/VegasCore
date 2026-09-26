@@ -102,7 +102,7 @@ theorem reactiveDecision_disclosure_public_law (runtime : EventGraphRuntime grap
       have packet := reactiveResolutionPacket_withhold owner event payload binding checks outputEq
         action ((runtime.reactiveApplication leaks).observePlayer state owner) discloses
       refine ⟨.failure, .withhold event, _, falseResult, ?_, withheld, rfl, ?_⟩
-      · simp only [reactiveDecision, node, packet]
+      · simp only [reactiveDecision, node, packet, disclosureSubmission_normalize_withhold]
       · exact completion_public_action_irrel state event ready _ action _
   | true =>
       have defined := EventCode.resolveOutput?_isSome binding checks true
@@ -122,7 +122,7 @@ theorem reactiveDecision_disclosure_public_law (runtime : EventGraphRuntime grap
               have packet := reactiveResolutionPacket_rejected owner event payload binding checks
                 outputEq action _ localFailed
               refine ⟨.failure, .withhold event, _, rfl, ?_, withheld, rfl, ?_⟩
-              · simp only [reactiveDecision, node, packet]
+              · simp only [reactiveDecision, node, packet, disclosureSubmission_normalize_withhold]
               · exact completion_public_action_irrel state event ready _ action _
           | success value =>
               have stored : binding.get? state.config.store = some (.success value) := by

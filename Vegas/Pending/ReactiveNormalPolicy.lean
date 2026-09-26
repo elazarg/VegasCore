@@ -20,12 +20,12 @@ open Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem disclosureSubmission_normal (who : Player) (view : ReactivePlayerView graph)
+theorem disclosureSubmission_normalized (who : Player) (view : ReactivePlayerView graph)
     (known : List (Message Player (WitnessedPacket graph))) (packet : Payload graph) :
-    (disclosureSubmission packet).normalizeReactive who view known =
-      disclosureSubmission packet := by
-  cases packet <;> simp [disclosureSubmission, WitnessedSubmission.normalizeReactive,
-    Submission.normalizeReactive_none, EvidenceRequest.normalizeKnown]
+    ((disclosureSubmission packet).normalizeReactive who view []).normalizeReactive who view known =
+      (disclosureSubmission packet).normalizeReactive who view [] := by
+  rw [← disclosureSubmission_normalize_known who view known packet]
+  exact WitnessedSubmission.normalizeReactive_idempotent who view known _
 
 theorem reactiveDecision_normal (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
@@ -45,9 +45,9 @@ theorem reactiveDecision_normal (runtime : EventGraphRuntime graph)
         have fresh := reactiveFreshSlot_spec view.application serial selected
         simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
           WitnessedSubmission.normalizeReactive, Submission.normalizeReactive,
-          EvidenceRequest.normalizeKnown, openingEffective, fresh]
+          EvidenceRequest.normalize, openingEffective, fresh]
   · simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-      disclosureSubmission_normal]
+      disclosureSubmission_normalized]
 
 private theorem prescribed_response_normal (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)

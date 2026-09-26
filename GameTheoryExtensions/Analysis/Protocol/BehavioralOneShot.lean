@@ -5,7 +5,7 @@ import GameTheoryExtensions.Analysis.Protocol.ContinuationBranch
 
 /-! # Approximate posterior one-shot deviations control whole policies
 
-For a fully mixed Bayes assessment with perfect recall and common-depth
+For a fully mixed Bayes assessment with decision-site recall and common-depth
 information sites, a bound on each local deviation gives the remaining
 horizon times that bound for a whole continuation-policy deviation. The
 proof telescopes deviating prefixes followed by the baseline continuation.
@@ -27,10 +27,10 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
 passing to a consistent limit needs a finite maximum over information sites,
 not an additional maximization over alternative policies or local lotteries. -/
 theorem whole_policy_gain_le_of_local_gains
-    (assessment : M.BehavioralAssessment) (recall : M.PerfectRecall)
+    (assessment : M.BehavioralAssessment) (recall : M.DecisionRecall)
     (mixed : assessment.IsFullyMixed)
     (bayes : BehavioralAssessment.IsBayesConsistent M assessment
-      (M.decisionInformationAntichain_of_perfectRecall recall))
+      recall.antichain)
     (who : Player) [DecidableEq (M.InfoState who)]
     (alternative : M.BehavioralPolicy who)
     (clock : ∀ site : M.InformationSite who,
@@ -53,7 +53,10 @@ theorem whole_policy_gain_le_of_local_gains
   let remaining := horizon - depth
   let branch := fun info : M.InfoState who =>
     info = site.1 ∨ site.1 ∈ (M.recordAt who info).map Prod.fst
-  let allowance := fun info : M.InfoState who => if branch info then epsilon else 0
+  let decisionInfo := fun info : M.InfoState who =>
+    ∃ current : M.InformationSite who, current.1 = info
+  let allowance := fun info : M.InfoState who =>
+    if decisionInfo info ∧ branch info then epsilon else 0
   let value := fun step : Nat =>
     (M.runBehavioral updated (depth + step)).expect (fun history =>
       (M.runBehavioralFrom assessment.strategy (remaining - step) history).expect payoff)
@@ -80,27 +83,37 @@ theorem whole_policy_gain_le_of_local_gains
       switched clock (depth + step) suffix payoff allowance
       (fun info => by dsimp [allowance]; split <;> positivity)
       (fun current currentDepth => by
+        have decision : decisionInfo current.1 := ⟨current, rfl⟩
         by_cases inside : branch current.1
         · have localChoice : switched current.1 = alternative current.1 :=
             ite_eq_left inside
           rw [localChoice]
-          change _ ≤ if branch current.1 then epsilon else 0
-          rw [ite_eq_left inside, ← total]
+          change _ ≤ if decisionInfo current.1 ∧ branch current.1 then epsilon else 0
+          rw [ite_eq_left ⟨decision, inside⟩, ← total]
           exact localBound current (depth + step) currentDepth atStep
         · have localChoice : switched current.1 = assessment.strategy who current.1 :=
             ite_eq_right inside
           rw [localChoice, BehavioralPolicy.withLaw_eq_self, sub_self]
-          change 0 ≤ if branch current.1 then epsilon else 0
-          rw [ite_eq_right inside])
-    apply bound.trans_eq
+          change 0 ≤ if decisionInfo current.1 ∧ branch current.1 then epsilon else 0
+          rw [ite_eq_right (fun both => inside both.2)])
+    apply bound.trans
     calc
-      _ = (M.runBehavioral updated (depth + step)).expect (fun history =>
+      _ ≤ (M.runBehavioral updated (depth + step)).expect (fun history =>
           epsilon * (if history ∈ M.continuationBranch who site then 1 else 0)) := by
-        apply FinDist.expect_congr
+        apply FinDist.expect_mono
         intro history _
-        dsimp only [allowance, branch]
-        rw [M.recordAt_eq_ownPlay recall, ← InfoSignals.actedAt_eq_map_ownPlay]
-        simp only [continuationBranch, Set.mem_ofPred_eq, mul_ite, mul_one, mul_zero]
+        by_cases decision : decisionInfo (M.infoOf who history.trace)
+        · obtain ⟨current, same⟩ := decision
+          have remembered : M.recordAt who (M.infoOf who history.trace) =
+              M.ownPlay who history.trace := by
+            rw [← same]
+            exact recall.recordAt_eq_ownPlay who current ⟨history, same.symm⟩
+          have available : decisionInfo (M.infoOf who history.trace) := ⟨current, same⟩
+          simp only [allowance, available, true_and, branch, remembered,
+            ← InfoSignals.actedAt_eq_map_ownPlay, continuationBranch, Set.mem_ofPred_eq,
+            mul_ite, mul_one, mul_zero, le_refl]
+        · simp only [allowance, decision, false_and, ite_false]
+          split <;> positivity
       _ = epsilon * (M.runBehavioral updated (depth + step)).probOf
           (M.continuationBranch who site) := by
         rw [FinDist.expect_smul, FinDist.expect_indicator_eq_probOf]

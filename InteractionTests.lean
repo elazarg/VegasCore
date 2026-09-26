@@ -5,5 +5,6 @@ import InteractionTests.MessageApplication
 import InteractionTests.Pending
 import InteractionTests.PendingPriority
 import InteractionTests.ReactiveProtocol
+import InteractionTests.ReactiveMenuRestriction
 import InteractionTests.ReactiveImplementation
 import InteractionTests.ReactivePublication

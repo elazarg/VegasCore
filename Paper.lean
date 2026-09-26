@@ -47,6 +47,8 @@ import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
 import GameTheoryExtensions.Analysis.EnforcementSynthesis
 import VegasTests.MonitoredGuessingPayoffInference
 import VegasTests.MonitoredGuessingPayoffLaw
+import VegasTests.MonitoredGuessingWatcherRaw
+import VegasTests.MonitoredGuessingRestrictedFinalComparison
 import GameTheoryExtensions.Analysis.ObservableEnforcement
 import Interaction.MessageMonitoringProbability
 import Vegas.Pending.ReactiveConformance
@@ -1110,5 +1112,17 @@ open VegasTests.MonitoredGuessing in
 #guard_msgs (whitespace := lax) in
 open VegasTests.MonitoredGuessing in
 #print axioms native_initialized_table_payoffs
+
+/-- info: 'VegasTests.MonitoredGuessing.Restricted.watcher_raw_equilibrium_extends' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.MonitoredGuessing.Restricted in
+#print axioms watcher_raw_equilibrium_extends
+
+/-- info: 'VegasTests.MonitoredGuessing.Restricted.final_comparator_declared_payoff_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.MonitoredGuessing.Restricted in
+#print axioms final_comparator_declared_payoff_le
 
 end Vegas.Paper

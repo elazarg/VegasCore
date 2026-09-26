@@ -17,6 +17,7 @@ program class, proof edges, parallel work packages and early feasibility gates.
 | Scalar deposit inference | Executably computes the least nonnegative deposit for a finite rational comparison table, or identifies an infeasible row. This decides the certificate, not semantic SE implementability. |
 | Native guessing compiler | Every SE of the stated source program has a native SE under the fixed bounded service, partial monitoring and collectible charge. Includes a fixed playerwise policy translation. |
 | Declared-payoff family | Arbitrary integer return tables share the compiled operational graph; inferred charges deter raw early submissions, and prescribed execution preserves the exact net-payoff law. A family-wide SE theorem is still open. |
+| Concrete strategic stack | C/W/N response menus and their all-history decision clocks are checked. Every watched-game SE extends to the full effective game for arbitrary ordinary-player payoffs and identically zero watcher utility. Source-to-C assessment transport and C-to-W comparisons remain open. |
 
 The central proof is
 [`sequential_equilibrium_extends_of_comparator`](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean).
@@ -90,7 +91,9 @@ Ordinary source
 
 Restore ordinary-player choices while reporting is constrained, then restore
 the watcher's choices using its own incentive proof. Initially that proof uses
-zero watcher utility at every history. The final edge restores only proved
+zero watcher utility at every history; this edge is now instantiated for the
+actual fixture in [WatcherExtension](../VegasTests/MonitoredGuessingWatcherExtension.lean).
+The final edge restores only proved
 private response aliases. These are games used in the proof, with the same
 runtime implementation and enforcement configuration; they add no source syntax
 or emitted interpreter. Their general source-to-native composition is proposed,
@@ -157,19 +160,26 @@ One common completion solves all new information sites, and the conditional
 incentive bounds and one-shot principle establish whole-policy rationality.
 
 The current structural theorem preserves step counts and active players, and
-assumes finite histories, perfect recall, common-depth information sets and a
+assumes finite histories, decision-site recall, common-depth information sets and a
 sufficient horizon. It permits additional actions, histories and information
 sets. Extra service activations must first be aligned with forced source steps
 or eliminated by a separate correspondence proof. This is an obligation in
 connecting the ordinary source protocol to the native service calendar.
 
-There is also a recall compatibility obligation. Native information is empty
-while a player is inactive, whereas the current capstone assumes recall at all
-information values. Native own-play recall is already proved at decision sites.
-The plan first generalizes the necessary switching and one-shot lemmas to that
-decision-site property. It does not add clock observations to make the stronger
-premise hold. Common decision depth must separately follow from the service
-calendar and existing observations.
+The recall compatibility proof is checked. The capstone uses
+[decision-site recall](../GameTheoryExtensions/Protocol/DecisionRecall.lean),
+and every reactive menu satisfies it with the existing native observations.
+Inactive information may remain empty. Common decision depth must separately
+follow from the service calendar and existing observations.
+
+[Pointwise menu inclusion](../Interaction/ReactiveMenuRestriction.lean) now
+constructs the structural action restriction, retaining every observation and
+the execution law under arbitrary policies. The
+[public ledger audit](../Interaction/ReactiveLedgerConformance.lean) proves
+detection and persistence of included nonconforming packets. Its
+[native regression](../VegasTests/MonitoredGuessingConformance.lean) checks an
+accepted disclosure missed by the pilot's charge. These are compiler ingredients;
+full response coverage, collection and source assessment transport remain open.
 
 ## Inference rather than compiler flags
 
@@ -276,7 +286,7 @@ synthesis of arbitrary unknown compiler functions is not this decision problem.
 | Assumption | What it enables; what remains outside it |
 | --- | --- |
 | Finite value/response alphabets and bounded interaction | Standard finite SE and finite inference. Timeouts alone do not bound pre-deadline traffic. Cover all source output values; do not silently truncate the game. |
-| Perfect recall | Consistent local optimality implies whole-policy rationality. The current generic Lean construction also assumes common-depth information sites and adequate evaluation fuel. |
+| Decision-site recall | Consistent local optimality implies whole-policy rationality. Every reactive menu satisfies this premise; common-depth information sites and adequate evaluation fuel remain separate requirements. |
 | Faithful permitted histories and observations | Source behavior is genuinely implemented. Clock signals, rejected plaintext and visible encodings require proofs, not a declaration that they are administrative. |
 | Correct utility model | Deposit deductions and abort payoffs have the intended incentive effect. Voluntary entry and available wealth are separate questions. |
 | Sound, attributable, collectible consequences | A reporting opportunity becomes an expected utility loss. The generic bound covers arbitrary continuation policies. A watcher who may refuse to report needs a separate equilibrium argument; the native pilot supplies one directly. |
@@ -291,8 +301,8 @@ compares such choices once their operational meaning is fixed.
 The [implementation plan](se-compilation-stack.md#implementation-work-packages)
 gives ownership, dependencies and acceptance gates. Its order is:
 
-1. **Resolve native feasibility in parallel.** Generalize recall premises,
-   construct menu-to-menu restrictions, classify private aliases, and test
+1. **Resolve native feasibility in parallel.** Recall and menu-to-menu
+   restrictions are checked. Complete private-alias classification and test
    collection against every ordinary player's effective responses. Include
    accepted packets carrying extra evidence, not only rejected calls.
 2. **Freeze the service and conformance contract.** Use the actual two-reveal

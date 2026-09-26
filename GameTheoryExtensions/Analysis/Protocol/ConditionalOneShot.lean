@@ -6,7 +6,7 @@ import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
 
 /-! # Averaging local deviation bounds after an arbitrary own-policy prefix
 
-Under perfect recall, changing one's earlier behavior does not change the
+Under decision-site recall, changing one's earlier behavior does not change the
 posterior at a reached information site. The one-step gain after such a prefix
 therefore obeys the baseline assessment's conditional bound. The bound may vary
 by information state, allowing zero outside a selected continuation branch.
@@ -21,10 +21,10 @@ open GameTheory.Math.Probability ExecutionProtocol
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} (M : InformationModel E) [Finite E.History]
   [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
-  (assessment : M.BehavioralAssessment) (recall : M.PerfectRecall)
+  (assessment : M.BehavioralAssessment) (recall : M.DecisionRecall)
   (mixed : assessment.IsFullyMixed)
   (bayes : BehavioralAssessment.IsBayesConsistent M assessment
-    (M.decisionInformationAntichain_of_perfectRecall recall))
+    recall.antichain)
   (who : Player) (alternative : M.BehavioralPolicy who)
 
 include recall mixed bayes in
@@ -41,7 +41,7 @@ theorem own_prefix_conditional_eq_belief (depth : Nat) (site : M.InformationSite
       (assessment.belief who site).map Subtype.val := by
   classical
   let updated := Profile.update (sig := M.behavioralSignature) assessment.strategy who alternative
-  let antichain := M.decisionInformationAntichain_of_perfectRecall recall who site
+  let antichain := recall.antichain who site
   have positive : 0 < M.informationMass updated who site := by
     rw [M.informationMass_eq_fixedDepth_probOf updated who site depth sameDepth]
     exact FinDist.probOf_pos reached
@@ -54,8 +54,8 @@ theorem own_prefix_conditional_eq_belief (depth : Nat) (site : M.InformationSite
     exact bayes who site originalPositive history
   have sameBelief := M.bayesBelief_eq_of_eq_off updated assessment.strategy who site antichain
     (fun player different => Profile.update_of_ne _ _ different)
-    (M.commonPlayerReachAt_of_perfectRecall recall updated who site)
-    (M.commonPlayerReachAt_of_perfectRecall recall assessment.strategy who site)
+    (M.commonPlayerReachAt_of_decisionRecall recall updated who site)
+    (M.commonPlayerReachAt_of_decisionRecall recall assessment.strategy who site)
     positive originalPositive
   rw [originalBelief, ← sameBelief,
     M.bayesBelief_map_eq_condOn updated who site depth sameDepth antichain positive reached]

@@ -39,7 +39,7 @@ theorem compiled_packet (bit : Bool) :
   have packet := reactiveResolutionPacket_rejected false secretEvent .bool nativeSecretBinding
     nativeSecretChecks rfl true ((nativeRuntime.reactiveApplication leaks).observePlayer
       (nativeDummyPublished bit) false) resolved
-  simp only [reactiveDecision, native_secret_node, packet]
+  simp only [reactiveDecision, native_secret_node, packet, disclosureSubmission_normalize_withhold]
 
 theorem decoded_fact (bit : Bool) :
     (secretOpening bit).packet.bindingEvidence = [fact bit] := by

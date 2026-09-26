@@ -2,6 +2,7 @@
 
 import Interaction.ReactiveResponseMenu
 import GameTheory.Analysis.Protocol.CounterfactualRegret
+import GameTheoryExtensions.Protocol.DecisionRecall
 
 /-! # Own play is determined by reactive decision recall
 
@@ -173,6 +174,12 @@ theorem ownPlay_at_site (initial : FinDist app.State) (horizon : Nat)
         first.2).trans
         (menu.ownPlay_of_info_some initial horizon scheduler who second.1 data.1 data.2
           second.2).symm
+
+/-- Every response-menu instance has decision recall with its existing native observations. -/
+theorem decisionRecall (initial : FinDist app.State) (horizon : Nat)
+    (scheduler : app.Scheduler) :
+    (menu.information initial horizon scheduler).DecisionRecall :=
+  menu.ownPlay_at_site initial horizon scheduler
 
 theorem commonPlayerReachAt (initial : FinDist app.State) (horizon : Nat)
     (scheduler : app.Scheduler)

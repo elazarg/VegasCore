@@ -141,14 +141,19 @@ theorem submissions_mem (known : List (Message Player (WitnessedPacket graph)))
 variable [DecidableEq Player]
 
 omit [Fintype Player] in
-theorem normalize_evidence_mem (known : List (Message Player (WitnessedPacket graph)))
+theorem normalize_evidence_mem (who : Player)
+    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
+    (known : List (Message Player (WitnessedPacket graph)))
     (request : EvidenceRequest graph) (member : bounds.AllowsEvidence known request) :
-    bounds.AllowsEvidence known (request.normalizeKnown known) := by
+    bounds.AllowsEvidence known (request.normalize who candidates known) := by
+  classical
   cases request with
-  | none | owned => exact member
-  | forward id =>
-      change (∃ message ∈ known, message.id = id) at member
-      simp only [EvidenceRequest.normalizeKnown, member, ↓reduceIte, AllowsEvidence]
+  | none => trivial
+  | owned fact | forward fact =>
+      simp only [EvidenceRequest.normalize]
+      split
+      · exact member
+      · trivial
 
 theorem normalize_submission_mem (who : Player) (view : ReactivePlayerView graph)
     (known : List (Message Player (WitnessedPacket graph)))
@@ -156,7 +161,8 @@ theorem normalize_submission_mem (who : Player) (view : ReactivePlayerView graph
     submission.normalizeReactive who view known ∈ bounds.submissions known := by
   rw [submissions_mem] at member ⊢
   exact ⟨(bounds.calls_mem _).mp (bounds.normalize_call_mem who view submission.call
-    ((bounds.calls_mem _).mpr member.1)), bounds.normalize_evidence_mem known _ member.2⟩
+    ((bounds.calls_mem _).mpr member.1)), bounds.normalize_evidence_mem who
+      (submission.call.candidateAfter who view.candidates) known _ member.2⟩
 
 
 def rawMenu (runtime : EventGraphRuntime graph)
@@ -229,7 +235,8 @@ theorem normalized_submission_available (runtime : EventGraphRuntime graph)
     (opening : bounds.AllowsOpening
       (submission.call.normalizeReactive who view.application).opening)
     (evidence : bounds.AllowsEvidence (ReactiveApplication.ResponseMenu.knownPackets past view)
-      (submission.evidence.normalizeKnown
+      (submission.evidence.normalize who
+        (submission.call.candidateAfter who view.application.candidates)
         (ReactiveApplication.ResponseMenu.knownPackets past view))) :
     (runtime.reactiveNormalization leaks).action who past view ⟨some (.submit submission)⟩ ∈
       (bounds.menu runtime leaks).actions who past view := by
@@ -261,8 +268,7 @@ theorem known_forward_available (runtime : EventGraphRuntime graph)
         ⟨some (.submit ⟨call, .forward id⟩)⟩ ∈
       (bounds.menu runtime leaks).actions who past view := by
   apply bounds.normalized_submission_available runtime leaks who past view _ packet opening
-  rw [EvidenceRequest.normalizeKnown_forward _ id known]
-  exact known
+  exact bounds.normalize_evidence_mem who _ _ _ known
 
 omit [Fintype Player] in
 /-- A guessed reference with no known envelope cannot manufacture evidence.
@@ -279,7 +285,7 @@ theorem unknown_forward_normalizes (runtime : EventGraphRuntime graph)
       ⟨some (.submit ⟨call.normalizeReactive who view.application, .none⟩)⟩ := by
   simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
     WitnessedSubmission.normalizeReactive]
-  rw [EvidenceRequest.normalizeKnown_unknown _ id unknown]
+  rw [EvidenceRequest.normalize_unknown _ _ _ id unknown]
 
 end MessageBounds
 end Vegas.EventGraphRuntime

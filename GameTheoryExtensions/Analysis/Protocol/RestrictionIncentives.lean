@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import GameTheoryExtensions.Protocol.DecisionRecall
 import GameTheoryExtensions.Protocol.RestrictionExecution
 import GameTheory.Analysis.Protocol.CounterfactualRegret
 
@@ -7,7 +8,7 @@ import GameTheory.Analysis.Protocol.CounterfactualRegret
 
 Compliant continuation values follow from the actual execution square and a
 mapped history belief. Sanctions then control the additional pure choices;
-affinity at a perfect-recall information site covers arbitrary local lotteries.
+affinity at a decision-recall information site covers arbitrary local lotteries.
 The construction of consistent target beliefs is separate from these incentive
 arguments.
 -/
@@ -96,7 +97,7 @@ theorem context_withLaw_value_eq
     sourcePayoff targetPayoff payoff fuel
 
 private theorem context_withLaw_affine (target : N.BehavioralAssessment)
-    (recall : N.PerfectRecall) (who : Player) [DecidableEq (N.InfoState who)]
+    (recall : N.DecisionRecall) (who : Player) [DecidableEq (N.InfoState who)]
     (site : N.InformationSite who) (payoff : T.History → ℝ) (fuel : Nat)
     (law : FinDist (N.Choice who site.1)) :
     (target.continuationContext site payoff fuel).value
@@ -120,7 +121,7 @@ private theorem context_withLaw_affine (target : N.BehavioralAssessment)
         · simp only [N.runBehavioralFrom_of_terminal _ _ stopped,
             FinDist.expect_pure, FinDist.expect_const]
         · exact N.behavioralContinuationValue_withLaw_eq_expect
-            (N.actsOnceWhereItMatters_of_perfectRecall recall) target.strategy who site
+            recall.actsOnceWhereItMatters target.strategy who site
             (target.strategy who) law history stopped payoff fuel
   calc
     _ = (target.belief who site).expect (fun history => law.expect (fun choice =>
@@ -137,7 +138,7 @@ comparator using hidden state or future opponents' random draws. -/
 theorem retained_localOptimal_of_comparator
     (source : M.BehavioralAssessment) (target : N.BehavioralAssessment)
     (agrees : restriction.ExtendsProfile source.strategy target.strategy)
-    (recall : N.PerfectRecall)
+    (recall : N.DecisionRecall)
     (who : Player) [DecidableEq (M.InfoState who)] [DecidableEq (N.InfoState who)]
     (site : M.InformationSite who)
     (belief : target.belief who (restriction.site who site) =

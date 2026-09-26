@@ -5,7 +5,7 @@ import GameTheoryExtensions.Analysis.Protocol.OneShotLimit
 
 /-! # Posterior one-shot deviations characterize sequential rationality
 
-At a consistent assessment of a finite perfect-recall protocol with clocked
+At a consistent assessment of a finite decision-recall protocol with clocked
 information sites, local optimality implies optimality against every whole
 continuation policy. A common fully mixed Bayesian sequence supplies compatible
 posteriors even at zero-probability sites. Its local regrets tend uniformly to
@@ -27,9 +27,9 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
 whole-policy deviations, including at off-path sites. Consistency is essential
 for the common posterior relationships used by this implication. -/
 theorem BehavioralAssessment.IsSequentiallyConsistent.rationalAt_of_localOptimal
-    {assessment : M.BehavioralAssessment} (perfectRecall : M.PerfectRecall)
+    {assessment : M.BehavioralAssessment} (decisionRecall : M.DecisionRecall)
     (consistent : assessment.IsSequentiallyConsistent
-      (M.decisionInformationAntichain_of_perfectRecall perfectRecall))
+      decisionRecall.antichain)
     (who : Player)
     (clock : ∀ site : M.InformationSite who,
       ∃ depth, InformationSite.CommonDepth M site depth)
@@ -63,16 +63,16 @@ theorem BehavioralAssessment.IsSequentiallyConsistent.rationalAt_of_localOptimal
   apply sub_nonpos.mp
   exact le_of_tendsto_of_tendsto (first.sub second) boundLimit
     (Eventually.of_forall fun n =>
-      M.whole_policy_gain_le_of_local_gains (sequence n) perfectRecall
+      M.whole_policy_gain_le_of_local_gains (sequence n) decisionRecall
         (approximates n).1 (approximates n).2 who alternative clock horizon payoff
         (error n) (nonnegative n) (localBound n) site depth sameDepth within)
 
 /-- The standard assessment predicate, with remaining fuel determined by the
 public decision clock, follows from one-shot comparisons at all sites. -/
 theorem BehavioralAssessment.IsSequentiallyConsistent.sequentiallyRational_of_localOptimal
-    {assessment : M.BehavioralAssessment} (perfectRecall : M.PerfectRecall)
+    {assessment : M.BehavioralAssessment} (decisionRecall : M.DecisionRecall)
     (consistent : assessment.IsSequentiallyConsistent
-      (M.decisionInformationAntichain_of_perfectRecall perfectRecall))
+      decisionRecall.antichain)
     (horizon : Nat) (payoff : Player → E.History → ℝ)
     (depth : ∀ who, M.InformationSite who → Nat)
     (clock : ∀ who site, InformationSite.CommonDepth M site (depth who site))
@@ -86,7 +86,7 @@ theorem BehavioralAssessment.IsSequentiallyConsistent.sequentiallyRational_of_lo
     assessment.IsSequentiallyRational fun who site =>
       assessment.continuationContext site (payoff who) (horizon - depth who site) := by
   intro who site
-  apply consistent.rationalAt_of_localOptimal perfectRecall who
+  apply consistent.rationalAt_of_localOptimal decisionRecall who
     (fun current => ⟨depth who current, clock who current⟩) horizon (payoff who)
       _ site (depth who site) (clock who site) (within who site)
   intro current atDepth uniformDepth before law

@@ -89,6 +89,53 @@ theorem reactiveResolutionPacket_provenance (runtime : EventGraphRuntime graph)
     (graph.playerStore owner state.config.store) = _
   rw [EventCode.resolveOutput?_playerStore, resolved]
 
+/-- Valid runtime states make every prescribed opening request authentic.
+Normalization therefore changes no compiled response at such a state. -/
+theorem reactiveResolutionSubmission_normal (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (state : State graph) (valid : state.BindingInvariant)
+    (owner : Player) (event : graph.EventId) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (action : graph.Action event) (known : List (Message Player (WitnessedPacket graph))) :
+    let view := (runtime.reactiveApplication leaks).observePlayer state owner
+    let packet := reactiveResolutionPacket owner event payload binding checks outputEq action view
+    (disclosureSubmission packet).normalizeReactive owner view known =
+      disclosureSubmission packet := by
+  let view := (runtime.reactiveApplication leaks).observePlayer state owner
+  change (disclosureSubmission (reactiveResolutionPacket owner event payload binding checks
+    outputEq action view)).normalizeReactive owner view known =
+      disclosureSubmission (reactiveResolutionPacket owner event payload binding checks
+        outputEq action view)
+  have localResult : EventCode.resolveOutput? binding checks true view.observation.store =
+      EventCode.resolveOutput? binding checks true state.config.store := by
+    exact EventCode.resolveOutput?_playerStore binding checks state.config.store true
+  cases discloses : cast (congrArg EventField.Action outputEq) action with
+  | false =>
+      simp only [reactiveResolutionPacket, discloses, Bool.false_eq_true, ↓reduceIte,
+        disclosureSubmission_normalize_withhold]
+  | true =>
+      cases resolved : EventCode.resolveOutput? binding checks true state.config.store with
+      | none =>
+          simp only [reactiveResolutionPacket, discloses, ↓reduceIte, localResult, resolved,
+            disclosureSubmission_normalize_withhold]
+      | some result =>
+          cases result with
+          | failure =>
+              simp only [reactiveResolutionPacket, discloses, ↓reduceIte, localResult, resolved,
+                disclosureSubmission_normalize_withhold]
+          | success value =>
+              obtain ⟨candidate, _associated, owned, verified, packet⟩ :=
+                reactiveResolutionPacket_provenance runtime leaks state valid owner event payload
+                  binding checks outputEq action discloses value resolved
+              dsimp only [view]
+              simp only [packet]
+              apply disclosureSubmission_normalize_opening owner _ known event candidate
+                ⟨payload, value⟩ owned
+              change state.candidates.lookup (owner, candidate.2) = _
+              simpa only [← owned, Prod.mk.eta] using verified
+
 /-- A successful prescribed disclosure sends its authentic opening and executes
 the corresponding successful graph transition. -/
 theorem reactiveDecision_opening_law (runtime : EventGraphRuntime graph)
@@ -118,7 +165,8 @@ theorem reactiveDecision_opening_law (runtime : EventGraphRuntime graph)
     reactiveResolutionPacket_provenance runtime leaks state valid owner event payload
       binding checks outputEq action discloses value resolved
   refine ⟨candidate, ?_, ?_⟩
-  · simp only [reactiveDecision, node, packet]
+  · simp only [reactiveDecision, node]
+    rw [reactiveResolutionSubmission_normal runtime leaks state valid, packet]
   · exact handle_opening_eq runtime state id event candidate owner payload binding checks
       outputEq codeEq node ready timely sender owned associated value verified stored
       (.success value) resolved

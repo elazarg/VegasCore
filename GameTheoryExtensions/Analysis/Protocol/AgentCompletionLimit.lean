@@ -10,7 +10,7 @@ responses. Compactness then gives one consistent assessment, with locally
 optimal behavior at every free information site. The actual approximating
 sequence remains available to establish prescribed beliefs at retained sites.
 Local optimality here compares one information-set law; whole-policy sequential
-rationality still requires its separate perfect-recall bridge.
+rationality still requires its separate decision-recall bridge.
 -/
 
 noncomputable section
@@ -86,7 +86,7 @@ exposed sequence using game-specific restriction and contamination facts. -/
 theorem exists_consistent_free_agent_completion
     (sites : (who : Player) → Finset (M.InfoState who))
     (fallback : (who : Player) → M.Policy who) (horizon : Nat)
-    (perfectRecall : M.PerfectRecall) (covered : M.CoversInformationSites sites horizon)
+    (decisionRecall : M.DecisionRecall) (covered : M.CoversInformationSites sites horizon)
     (decisionCovered : ∀ who (site : M.InformationSite who), site.1 ∈ sites who)
     (utility : E.History → Player → ℝ) (free : Finset (M.InformationAgent sites))
     (pinned : ℕ → (agent : M.InformationAgent sites) →
@@ -107,11 +107,11 @@ theorem exists_consistent_free_agent_completion
             (positive n).le (small n).le)) ∧
       (∀ n, (sequence n).IsFullyMixed) ∧
       (∀ n, BehavioralAssessment.IsBayesConsistent M (sequence n)
-        (M.decisionInformationAntichain_of_perfectRecall perfectRecall)) ∧
+        decisionRecall.antichain) ∧
       StrictMono index ∧
       BehavioralAssessmentConvergesPointwise (fun n => sequence (index n)) assessment ∧
       assessment.IsSequentiallyConsistent
-        (M.decisionInformationAntichain_of_perfectRecall perfectRecall) ∧
+        decisionRecall.antichain ∧
       ∀ (who : Player) (site : M.InformationSite who) (present : site.1 ∈ sites who),
         (⟨who, ⟨site.1, present⟩⟩ : M.InformationAgent sites) ∈ free →
         ∀ depth fuel, InformationSite.CommonDepth M site depth → depth + fuel = horizon →
@@ -128,12 +128,12 @@ theorem exists_consistent_free_agent_completion
       (fun _ _ equal => Subtype.ext
         (congrArg (fun entry : {info // info ∈ sites who} => entry.1) equal))
   choose residual sequence played mixed bayes optimal using fun n =>
-    M.exists_pinned_agent_completion sites fallback horizon perfectRecall covered
+    M.exists_pinned_agent_completion sites fallback horizon decisionRecall covered
       decisionCovered utility free (pinned n) reference (pinnedFull n) referenceFull
       (epsilon n) (positive n) (small n)
   obtain ⟨assessment, index, increasing, converges, consistent⟩ :=
     BehavioralAssessment.exists_sequentiallyConsistent_subsequence
-      (M.decisionInformationAntichain_of_perfectRecall perfectRecall) sequence mixed bayes
+      decisionRecall.antichain sequence mixed bayes
   refine ⟨residual, sequence, assessment, index, played, mixed, bayes,
     increasing, converges, consistent, ?_⟩
   intro who site present freeSite depth fuel sameDepth total

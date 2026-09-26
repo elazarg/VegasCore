@@ -23,9 +23,10 @@ structure SubmissionNormalization where
   idempotent : ∀ who view known submission,
     normalize who view known (normalize who view known submission) =
       normalize who view known submission
-  packet : ∀ state who view known submission,
-    app.packet state who known (normalize who view known submission) =
-      app.packet state who known submission
+  packet : ∀ state who known submission,
+    app.packet (app.submit state who submission) who known
+        (normalize who (app.observePlayer state who) known submission) =
+      app.packet (app.submit state who submission) who known submission
   submit : ∀ state who known submission,
     app.submit state who (normalize who (app.observePlayer state who) known submission) =
       app.submit state who submission

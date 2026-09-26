@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveRuntime
+import Vegas.Pending.ReactiveNormalization
 import Vegas.Pending.EventPolicies
 import Interaction.ReactiveRecovery
 import Interaction.ReactiveImplementation
@@ -71,6 +71,32 @@ def disclosureSubmission (packet : Payload graph) : WitnessedSubmission graph :=
     | .opening _ candidate raw => .owned ⟨candidate, raw⟩
     | .commitment .. | .withhold .. | .malformed .. => .none⟩
 
+/-- Prescribed disclosure requests use owned evidence, never forwarding references. -/
+theorem disclosureSubmission_normalize_known (who : Player) (view : ReactivePlayerView graph)
+    (known : List (Message Player (WitnessedPacket graph))) (packet : Payload graph) :
+    (disclosureSubmission packet).normalizeReactive who view known =
+      (disclosureSubmission packet).normalizeReactive who view [] := by
+  cases packet <;> rfl
+
+@[simp] theorem disclosureSubmission_normalize_withhold (who : Player)
+    (view : ReactivePlayerView graph) (known : List (Message Player (WitnessedPacket graph)))
+    (event : graph.EventId) :
+    (disclosureSubmission (.withhold event)).normalizeReactive who view known =
+      disclosureSubmission (.withhold event) := by
+  simp only [disclosureSubmission, WitnessedSubmission.normalizeReactive,
+    Submission.normalizeReactive_none, EvidenceRequest.normalize]
+
+/-- Normalization retains the authentic certificate of an owned opening. -/
+theorem disclosureSubmission_normalize_opening (who : Player) (view : ReactivePlayerView graph)
+    (known : List (Message Player (WitnessedPacket graph))) (event : graph.EventId)
+    (candidate : Handle graph) (raw : Raw L) (owned : candidate.1 = who)
+    (verified : view.candidates candidate.2 = .openable raw) :
+    (disclosureSubmission (.opening event candidate raw)).normalizeReactive who view known =
+      disclosureSubmission (.opening event candidate raw) := by
+  simp only [disclosureSubmission, WitnessedSubmission.normalizeReactive,
+    Submission.normalizeReactive_none, Submission.candidateAfter, EvidenceRequest.normalize,
+    owned, verified, and_self, ↓reduceIte]
+
 def reactiveDecision (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId)
@@ -86,8 +112,8 @@ def reactiveDecision (runtime : EventGraphRuntime graph)
             | .failure => none
             | .success value => some ⟨payload, value⟩⟩, .none⟩
     | .resolve _owner payload binding checks outputEq _codeEq =>
-        some (.submit (disclosureSubmission (reactiveResolutionPacket who event payload
-          binding checks outputEq action view)))
+        some (.submit ((disclosureSubmission (reactiveResolutionPacket who event payload
+          binding checks outputEq action view)).normalizeReactive who view []))
 
 open Classical in
 /-- Binding recall uses the value that actually took effect. A failed

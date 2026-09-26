@@ -35,14 +35,14 @@ theorem exists_consistent_extension
     (source : M.BehavioralAssessment) (sourceAntichain : M.DecisionInformationAntichain)
     (sourceConsistent : source.IsSequentiallyConsistent sourceAntichain)
     (reference : N.BehavioralAssessment) (referenceMixed : reference.IsFullyMixed)
-    (perfectRecall : N.PerfectRecall) (horizon : Nat)
+    (decisionRecall : N.DecisionRecall) (horizon : Nat)
     (payoff : T.History → Player → ℝ)
     (depth : ∀ who, N.InformationSite who → Nat)
     (clock : ∀ who site, InformationSite.CommonDepth N site (depth who site))
     (within : ∀ who site, depth who site ≤ horizon) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentiallyConsistent
-        (N.decisionInformationAntichain_of_perfectRecall perfectRecall) ∧
+        decisionRecall.antichain ∧
       restriction.ExtendsProfile source.strategy target.strategy ∧
       (∀ who site, target.belief who (restriction.site who site) =
         (source.belief who site).map (restriction.informationHistory who site)) ∧
@@ -112,7 +112,7 @@ theorem exists_consistent_extension
     Finset.univ.filter fun agent => ¬ restriction.Retained agent.1 agent.2.1
   obtain ⟨residual, sequence, target, index, played, mixed, bayes,
       increasing, converges, consistent, freeOptimal⟩ :=
-    exists_consistent_free_agent_completion sites fallback horizon perfectRecall covered
+    exists_consistent_free_agent_completion sites fallback horizon decisionRecall covered
       decisionCovered payoff free pinned referenceLaws (fun n agent _ => pinnedFull n agent)
       referenceFull epsilon positive small vanishes
   have perturbs (n : ℕ) : restriction.PerturbsProfile (sourceSequence n).strategy
@@ -165,7 +165,7 @@ theorem exists_consistent_extension
           (mul_le_mul_of_nonneg_left (reachBound n ⟨who, site⟩) (factorPositive n).le)
       · exact relativeTremble_power_ratio_tendsto reach reachPositive steps
     have beliefs := restriction.retained_beliefs_converge sourceSequence sequence
-      sourceAntichain (N.decisionInformationAntichain_of_perfectRecall perfectRecall)
+      sourceAntichain decisionRecall.antichain
       (fun n => (sourceApproximates n).1) mixed (fun n => (sourceApproximates n).2) bayes
       who site elapsed (clock who (restriction.site who site)) factor factorPositive factorBound
       (fun n history => restriction.perturbed_run_domination (sourceSequence n).strategy
