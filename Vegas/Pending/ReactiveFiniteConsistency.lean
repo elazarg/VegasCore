@@ -6,7 +6,7 @@ import Interaction.ReactiveConsistentAssessment
 /-! # Consistent beliefs for the finite reactive compiler
 
 Static output-value coverage and horizon-sized handle capacity place the actual
-compiler, including recovery, in the complete finite response menu. Its profile
+compiler, including recovery, in the complete finite raw response menu. Its profile
 then admits a consistent belief completion. The beliefs are not asserted to
 transport a source assessment or make compiled continuations optimal.
 -/
@@ -30,14 +30,14 @@ theorem compileFinitePolicy_exists_consistent_assessment
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (values : bounds.CoversOutputValues) (capacity : horizon ≤ bounds.candidateCount)
     (profile : graph.BehavioralProfile) :
-    ∃ assessment : ((bounds.menu runtime leaks).information (inputs.map State.initial)
+    ∃ assessment : ((bounds.rawMenu runtime leaks).information (inputs.map State.initial)
         horizon scheduler).BehavioralAssessment,
       assessment.strategy = (fun who => bounds.compileFinitePolicy runtime leaks inputs
         horizon scheduler values capacity who (profile who)) ∧
       assessment.IsSequentiallyConsistent
-        ((bounds.menu runtime leaks).decisionInformationAntichain
+        ((bounds.rawMenu runtime leaks).decisionInformationAntichain
           (inputs.map State.initial) horizon scheduler) :=
-  (bounds.menu runtime leaks).exists_consistent_assessment (inputs.map State.initial)
+  (bounds.rawMenu runtime leaks).exists_consistent_assessment (inputs.map State.initial)
     horizon scheduler _
 
 end Vegas.EventGraphRuntime.MessageBounds

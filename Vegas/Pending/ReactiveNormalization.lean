@@ -1,12 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveRuntime
+import Vegas.Pending.EvidenceNormalization
 import Interaction.ReactiveResponseNormalization
 
 /-! # Semantic normal forms of event submissions
 
 Opening material has an effect only when a submission fixes a fresh owned
 prepared handle. Other opening material is a private representation artifact.
+Successful certificate requests use the same representative exactly when they
+issue the same certificate, whether by ownership or a known forwarding reference.
 Normalization preserves the entire public packet, including malformed contents,
 and changes no application or network effect. It uses only the sender's view.
 -/
@@ -55,6 +58,14 @@ theorem Submission.normalizeReactive_none (who : Player) (view : ReactivePlayerV
   simp only [normalizeReactive, ite_self]
 
 variable [DecidableEq Player]
+
+theorem Submission.candidateAfter_opening (who : Player) (event : graph.EventId)
+    (handle : Handle graph) (raw : Raw L) (material : Option (Raw L))
+    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L)) :
+    (⟨.opening event handle raw, material⟩ : Submission graph).candidateAfter who candidates =
+      candidates := by
+  funext slot
+  rfl
 
 theorem Submission.normalizeReactive_candidateAfter (who : Player)
     (view : ReactivePlayerView graph) (submission : Submission graph)
@@ -109,62 +120,6 @@ theorem Submission.normalizeReactive_register (runtime : EventGraphRuntime graph
   | opening event candidate raw | withhold event | malformed raw =>
       cases material <;> simp [normalizeReactive, openingEffective, register]
 
-open Classical in
-/-- Remove requests that issue no certificate, using only the sender's local
-candidate meanings after its call and the evidence in known packets. -/
-def EvidenceRequest.normalize (who : Player)
-    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
-    (known : List (Message Player (WitnessedPacket graph))) :
-    EvidenceRequest graph → EvidenceRequest graph
-  | .none => .none
-  | .owned fact =>
-      if fact.handle.1 = who ∧ candidates fact.handle.2 = .openable fact.raw
-      then .owned fact else .none
-  | .forward id =>
-      if ((known.find? fun message => message.id = id).bind
-        fun message => message.payload.evidence).isSome then .forward id else .none
-
-theorem EvidenceRequest.normalize_forward (who : Player)
-    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
-    (known : List (Message Player (WitnessedPacket graph))) (id : MessageId Player)
-    (available : ((known.find? fun message => message.id = id).bind
-      fun message => message.payload.evidence).isSome = true) :
-    (EvidenceRequest.forward (graph := graph) id).normalize who candidates known =
-      .forward id := by
-  simp [normalize, available]
-
-theorem EvidenceRequest.normalize_unknown (who : Player)
-    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
-    (known : List (Message Player (WitnessedPacket graph))) (id : MessageId Player)
-    (absent : ¬ ∃ message ∈ known, message.id = id) :
-    (EvidenceRequest.forward (graph := graph) id).normalize who candidates known = .none := by
-  have missing : known.find? (fun message => message.id = id) = Option.none := by
-    apply List.find?_eq_none.mpr
-    intro message member found
-    exact absent ⟨message, member, of_decide_eq_true found⟩
-  simp [normalize, missing]
-
-theorem EvidenceRequest.normalize_empty_forward (who : Player)
-    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
-    (known : List (Message Player (WitnessedPacket graph))) (id : MessageId Player)
-    (empty : ((known.find? fun message => message.id = id).bind
-      fun message => message.payload.evidence) = Option.none) :
-    (EvidenceRequest.forward (graph := graph) id).normalize who candidates known = .none := by
-  simp [normalize, empty]
-
-theorem EvidenceRequest.normalize_idempotent (who : Player)
-    (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
-    (known : List (Message Player (WitnessedPacket graph))) (request : EvidenceRequest graph) :
-    (request.normalize who candidates known).normalize who candidates known =
-      request.normalize who candidates known := by
-  classical
-  cases request with
-  | none => rfl
-  | owned fact => by_cases available : fact.handle.1 = who ∧
-        candidates fact.handle.2 = .openable fact.raw <;> simp [normalize, available]
-  | forward id => by_cases available : ((known.find? fun message => message.id = id).bind
-        fun message => message.payload.evidence).isSome = true <;> simp [normalize, available]
-
 def WitnessedSubmission.normalizeReactive (who : Player) (view : ReactivePlayerView graph)
     (known : List (Message Player (WitnessedPacket graph)))
     (submission : WitnessedSubmission graph) : WitnessedSubmission graph :=
@@ -194,32 +149,14 @@ theorem WitnessedSubmission.normalizeReactive_emit
         (submitStep (submission.call.register state who) who submission.call.packet) who known =
       submission.emit
         (submitStep (submission.call.register state who) who submission.call.packet) who known := by
-  classical
-  rcases submission with ⟨call, request⟩
-  cases request with
-  | none => rfl
-  | owned fact =>
-      by_cases owner : fact.handle.1 = who
-      · have handle : fact.handle = (who, fact.handle.2) := by
-          rw [← owner]
-        have localMeaning :
-            (submitStep (call.register state who) who call.packet).candidates.lookup fact.handle =
-              call.candidateAfter who (fun slot => state.candidates.lookup (who, slot))
-                fact.handle.2 := by
-          conv_lhs => rw [handle]
-          exact call.candidateAfter_eq who state fact.handle.2
-        by_cases available : call.candidateAfter who
-            (fun slot => state.candidates.lookup (who, slot)) fact.handle.2 = .openable fact.raw
-        all_goals simp [normalizeReactive, EvidenceRequest.normalize, reactiveApplication,
-          emit, Submission.normalizeReactive_packet, CommitmentCandidates.verify,
-          owner, localMeaning, available]
-      · simp [normalizeReactive, EvidenceRequest.normalize, emit, owner,
-          Submission.normalizeReactive_packet]
-  | forward id =>
-      cases evidence : (known.find? fun message => message.id = id).bind
-          (fun message => message.payload.evidence) <;>
-        simp [normalizeReactive, EvidenceRequest.normalize, evidence, emit,
-          Submission.normalizeReactive_packet]
+  have candidates := funext (submission.call.candidateAfter_eq who state)
+  rw [emit_eq_resolve, emit_eq_resolve]
+  simp only [normalizeReactive, Submission.normalizeReactive_packet]
+  change WitnessedPacket.mk submission.call.packet
+      (EvidenceRequest.resolve who _ known (submission.evidence.normalize who
+        (submission.call.candidateAfter who (fun slot => state.candidates.lookup (who, slot)))
+          known)) = _
+  rw [candidates, EvidenceRequest.resolve_normalize]
 
 def reactiveNormalization (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :

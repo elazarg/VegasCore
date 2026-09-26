@@ -20,16 +20,26 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 theorem opening_eq (execution : nativeApp.Execution) (who : Player)
     (event : nativeGraph.EventId) (handle : Handle nativeGraph) (value : Bool)
     (owner : handle.1 = who)
-    (candidate : execution.application.candidates.lookup handle = .openable ⟨.bool, value⟩) :
+    (candidate : execution.application.candidates.lookup handle = .openable ⟨.bool, value⟩)
+    (unseen : EvidenceRequest.forwardingPacket
+      (ReactiveApplication.ResponseMenu.knownPackets (execution.recall who)
+        (execution.observe nativeApp who)) ⟨handle, ⟨.bool, value⟩⟩ = none) :
     opening who (execution.recall who) (execution.observe nativeApp who) event handle value =
       nativeOpeningAction event handle value := by
-  subst who
-  simp only [opening, normalization, nativeOpeningAction,
+  have normal := EvidenceRequest.normalize_owned_of_no_forward who
+    (execution.observe nativeApp who).application.candidates
+    (ReactiveApplication.ResponseMenu.knownPackets (execution.recall who)
+      (execution.observe nativeApp who)) ⟨handle, ⟨.bool, value⟩⟩ owner
+        (by
+          change execution.application.candidates.lookup (who, handle.2) = _
+          simpa only [← owner, Prod.mk.eta] using candidate) unseen
+  simpa only [opening, normalization, nativeOpeningAction,
     ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
     WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
-    EvidenceRequest.normalize, Submission.candidateAfter,
-    ReactiveApplication.Execution.observe, nativeApp, reactiveApplication]
-  simp only [candidate, and_self, ↓reduceIte]
+    Submission.candidateAfter_opening] using
+      congrArg (fun request : EvidenceRequest nativeGraph =>
+        (⟨some (.submit ⟨⟨.opening event handle ⟨.bool, value⟩, none⟩, request⟩)⟩ :
+          nativeApp.Action)) normal
 
 def choiceAction (event : nativeGraph.EventId) (handle : Handle nativeGraph)
     (value disclose : Bool) : nativeApp.Action :=
@@ -219,13 +229,22 @@ theorem before_alice_opening (bit guess : Bool) :
         (observedAliceBit ((beforeAlice bit guess).observe nativeApp alice)) =
       nativeOpeningAction alicePublication aliceHandle bit := by
   rw [native_observed_alice_bit bit _ (before_alice_fixed bit guess)]
-  exact opening_eq _ alice alicePublication aliceHandle bit rfl
+  apply opening_eq _ alice alicePublication aliceHandle bit rfl
     (before_alice_fixed bit guess).alice_candidate
+  have known : ReactiveApplication.ResponseMenu.knownPackets
+      ((beforeAlice bit guess).recall alice) ((beforeAlice bit guess).observe nativeApp alice) =
+        if guess then [⟨(bob, 0), ⟨.opening bobPublication bobHandle ⟨.bool, true⟩,
+          some ⟨bobHandle, ⟨.bool, true⟩⟩⟩⟩] else [] := by cases guess <;> rfl
+  rw [known]
+  cases guess <;> simp [EvidenceRequest.forwardingPacket, EvidenceRequest.forwardedEvidence,
+    aliceHandle, bobHandle, alice, bob]
 
 theorem quiet_bob_opening (bit : Bool) :
     opening bob ((quietBob bit).recall bob) ((quietBob bit).observe nativeApp bob)
-      bobPublication bobHandle true = nativeOpeningAction bobPublication bobHandle true :=
-  opening_eq _ bob bobPublication bobHandle true rfl (quiet_bob_fixed bit).bob_candidate
+      bobPublication bobHandle true = nativeOpeningAction bobPublication bobHandle true := by
+  apply opening_eq _ bob bobPublication bobHandle true rfl (quiet_bob_fixed bit).bob_candidate
+  change EvidenceRequest.forwardingPacket [] _ = none
+  rfl
 
 theorem before_alice_pending (bit guess : Bool) :
     (beforeAlice bit guess).network.pending = [] := by

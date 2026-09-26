@@ -8,7 +8,7 @@ import Vegas.Pending.ReactiveFiniteResponses
 The raw menu depends on remembered outputs, leaked packets and the ledger.
 Replacing earlier responses by their normal forms therefore changes neither
 the current raw menu nor its normal forms. Distinct emitted packets remain
-distinct: this only removes ineffective private submission metadata.
+distinct: only private submission representations with equal effects are merged.
 
 These are the operational premises for lifting a sequential equilibrium through
 private action splitting. They do not themselves prove equilibrium transport.

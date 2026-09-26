@@ -8,11 +8,11 @@ import Interaction.ReactiveNormalRecall
 An owner who already emitted an opening certificate can request the same
 certificate by ownership or by forwarding its earlier packet. Both requests
 produce identical application and network effects, while their private action
-records differ. The current event normalizer retains both successful requests.
+records differ. Certificate normalization identifies these successful requests.
 
 This is an operational coverage regression, not an equilibrium counterexample.
-The generic submission-normalization interface already permits merging these
-requests; its concrete event normalization does not yet choose a common request.
+The resulting common representative satisfies the existing submission
+normalization interface and its sequential-equilibrium alias theorem.
 -/
 
 noncomputable section
@@ -66,40 +66,61 @@ theorem actions_distinct : ownedAction ≠ forwardedAction := by
   have impossible := congrArg ReactiveApplication.Action.transmission same
   exact requests_distinct (ReactiveApplication.Transmission.submit.inj (Option.some.inj impossible))
 
-theorem owned_is_normal :
+theorem known_packets : ReactiveApplication.ResponseMenu.knownPackets
+    (afterFirst.recall alice) (afterFirst.observe nativeApp alice) =
+      [⟨(alice, 0), ⟨call.packet, some certificate⟩⟩] := rfl
+
+theorem canonical_packet : EvidenceRequest.forwardingPacket
+    (ReactiveApplication.ResponseMenu.knownPackets (afterFirst.recall alice)
+      (afterFirst.observe nativeApp alice)) certificate =
+        some ⟨(alice, 0), ⟨call.packet, some certificate⟩⟩ := by
+  rw [known_packets]
+  simp [EvidenceRequest.forwardingPacket, EvidenceRequest.forwardedEvidence]
+
+theorem owned_normalizes_to_forwarded :
     (nativeRuntime.reactiveNormalization nativeLeaks).action alice
         (afterFirst.recall alice) (afterFirst.observe nativeApp alice) ownedAction =
-      ownedAction := by
-  simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-    WitnessedSubmission.normalizeReactive, Submission.normalizeReactive, openingEffective,
-    EvidenceRequest.normalize, ownedAction, owned, call, certificate, Submission.candidateAfter,
-    afterFirst, ReactiveApplication.Execution.respond, reactiveApplication, aliceHandle]
-  rfl
+      forwardedAction := by
+  have available : certificate.handle.1 = alice ∧
+      (afterFirst.observe nativeApp alice).application.candidates certificate.handle.2 =
+        .openable certificate.raw := ⟨rfl, rfl⟩
+  have normal : (EvidenceRequest.owned certificate).normalize alice
+      (afterFirst.observe nativeApp alice).application.candidates
+      (ReactiveApplication.ResponseMenu.knownPackets (afterFirst.recall alice)
+        (afterFirst.observe nativeApp alice)) = .forward (alice, 0) := by
+    rw [EvidenceRequest.normalize, EvidenceRequest.resolve, ite_eq_left available,
+      EvidenceRequest.canonical, canonical_packet]
+  simpa only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+    WitnessedSubmission.normalizeReactive, ownedAction, forwardedAction, owned, forwarded,
+    call, Submission.normalizeReactive_none, Submission.candidateAfter_opening] using
+      congrArg (fun request : EvidenceRequest nativeGraph =>
+        (⟨some (.submit ⟨call, request⟩)⟩ : nativeApp.Action)) normal
 
 theorem forwarded_is_normal :
     (nativeRuntime.reactiveNormalization nativeLeaks).action alice
         (afterFirst.recall alice) (afterFirst.observe nativeApp alice) forwardedAction =
       forwardedAction := by
-  have known : ReactiveApplication.ResponseMenu.knownPackets
-      (afterFirst.recall alice) (afterFirst.observe nativeApp alice) =
-        afterFirst.network.known alice :=
-    (nativeApp.known_from_recall afterFirst alice
-      (nativeApp.respond_inputRecall _ alice ownedAction (nativeApp.initial_inputRecall _))).symm
-  have available : ((afterFirst.network.known alice).find?
-      (fun message => message.id = (alice, 0)) |>.bind
-        (fun message => message.payload.evidence)).isSome = true := rfl
-  simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-    WitnessedSubmission.normalizeReactive, Submission.normalizeReactive, openingEffective,
-    EvidenceRequest.normalize, forwardedAction, forwarded, call, known]
-  congr 1
+  have resolved : EvidenceRequest.forwardedEvidence
+      (ReactiveApplication.ResponseMenu.knownPackets (afterFirst.recall alice)
+        (afterFirst.observe nativeApp alice)) (alice, 0) = some certificate := rfl
+  have normal : (EvidenceRequest.forward (graph := nativeGraph) (alice, 0)).normalize alice
+      (afterFirst.observe nativeApp alice).application.candidates
+      (ReactiveApplication.ResponseMenu.knownPackets (afterFirst.recall alice)
+        (afterFirst.observe nativeApp alice)) = .forward (alice, 0) := by
+    rw [EvidenceRequest.normalize, EvidenceRequest.resolve, resolved,
+      EvidenceRequest.canonical, canonical_packet]
+  simpa only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
+    WitnessedSubmission.normalizeReactive, forwardedAction, forwarded,
+    call, Submission.normalizeReactive_none, Submission.candidateAfter_opening] using
+      congrArg (fun request : EvidenceRequest nativeGraph =>
+        (⟨some (.submit ⟨call, request⟩)⟩ : nativeApp.Action)) normal
 
-theorem distinct_normal_forms :
+theorem same_normal_form :
     (nativeRuntime.reactiveNormalization nativeLeaks).action alice
-        (afterFirst.recall alice) (afterFirst.observe nativeApp alice) ownedAction ≠
+        (afterFirst.recall alice) (afterFirst.observe nativeApp alice) ownedAction =
       (nativeRuntime.reactiveNormalization nativeLeaks).action alice
         (afterFirst.recall alice) (afterFirst.observe nativeApp alice) forwardedAction := by
-  rw [owned_is_normal, forwarded_is_normal]
-  exact actions_distinct
+  rw [owned_normalizes_to_forwarded, forwarded_is_normal]
 
 theorem both_available :
     ownedAction ∈ nativeMenu.actions alice (afterFirst.recall alice)

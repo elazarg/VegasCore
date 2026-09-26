@@ -8,3 +8,4 @@ import InteractionTests.ReactiveProtocol
 import InteractionTests.ReactiveMenuRestriction
 import InteractionTests.ReactiveImplementation
 import InteractionTests.ReactivePublication
+import InteractionTests.ReactiveMonitoring

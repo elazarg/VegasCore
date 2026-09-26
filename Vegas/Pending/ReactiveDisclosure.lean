@@ -98,14 +98,14 @@ theorem reactiveResolutionSubmission_normal (runtime : EventGraphRuntime graph)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
-    (action : graph.Action event) (known : List (Message Player (WitnessedPacket graph))) :
+    (action : graph.Action event) :
     let view := (runtime.reactiveApplication leaks).observePlayer state owner
     let packet := reactiveResolutionPacket owner event payload binding checks outputEq action view
-    (disclosureSubmission packet).normalizeReactive owner view known =
+    (disclosureSubmission packet).normalizeReactive owner view [] =
       disclosureSubmission packet := by
   let view := (runtime.reactiveApplication leaks).observePlayer state owner
   change (disclosureSubmission (reactiveResolutionPacket owner event payload binding checks
-    outputEq action view)).normalizeReactive owner view known =
+    outputEq action view)).normalizeReactive owner view [] =
       disclosureSubmission (reactiveResolutionPacket owner event payload binding checks
         outputEq action view)
   have localResult : EventCode.resolveOutput? binding checks true view.observation.store =
@@ -131,7 +131,7 @@ theorem reactiveResolutionSubmission_normal (runtime : EventGraphRuntime graph)
                   binding checks outputEq action discloses value resolved
               dsimp only [view]
               simp only [packet]
-              apply disclosureSubmission_normalize_opening owner _ known event candidate
+              apply disclosureSubmission_normalize_opening owner _ event candidate
                 ⟨payload, value⟩ owned
               change state.candidates.lookup (owner, candidate.2) = _
               simpa only [← owned, Prod.mk.eta] using verified

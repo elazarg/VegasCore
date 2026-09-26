@@ -53,15 +53,16 @@ theorem normalized_disclosure_submission_permitted (call : Payload graph) (state
   cases call with
   | commitment | withhold | malformed =>
       simp only [disclosureSubmission, WitnessedSubmission.normalizeReactive,
-        Submission.normalizeReactive_none, EvidenceRequest.normalize,
+        Submission.normalizeReactive_none, EvidenceRequest.normalize_none,
         WitnessedSubmission.emit, unsupportedEvidence]
   | opening event candidate raw =>
       by_cases available : candidate.1 = who ∧ view.candidates candidate.2 = .openable raw
-      · rw [disclosureSubmission_normalize_opening who view [] event candidate raw
+      · rw [disclosureSubmission_normalize_opening who view event candidate raw
           available.1 available.2]
         exact disclosure_submission_permitted _ state who known
       · simp only [disclosureSubmission, WitnessedSubmission.normalizeReactive,
-          Submission.normalizeReactive_none, Submission.candidateAfter, EvidenceRequest.normalize,
+          Submission.normalizeReactive_none, Submission.candidateAfter,
+          EvidenceRequest.normalize_owned_nil,
           available, ↓reduceIte, WitnessedSubmission.emit, unsupportedEvidence]
 
 /-- The test covers every graph action, including source deviations, and any

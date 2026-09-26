@@ -102,6 +102,17 @@ def AllowsEvidence (known : List (Message Player (WitnessedPacket graph))) :
   | .owned fact => bounds.AllowsHandle fact.handle ∧ fact.raw ∈ bounds.values
   | .forward id => ∃ message ∈ known, message.id = id
 
+omit [Fintype Player] in
+theorem allowsEvidence_mono
+    {first second : List (Message Player (WitnessedPacket graph))}
+    (included : first ⊆ second) (request : EvidenceRequest graph)
+    (allowed : bounds.AllowsEvidence first request) : bounds.AllowsEvidence second request := by
+  cases request with
+  | none | owned => exact allowed
+  | forward id =>
+      obtain ⟨message, member, same⟩ := allowed
+      exact ⟨message, included member, same⟩
+
 def facts : Finset (OpeningFact graph) := by
   classical
   exact (bounds.handles ×ˢ bounds.values).image (fun pair => ⟨pair.1, pair.2⟩)
@@ -147,13 +158,18 @@ theorem normalize_evidence_mem (who : Player)
     (request : EvidenceRequest graph) (member : bounds.AllowsEvidence known request) :
     bounds.AllowsEvidence known (request.normalize who candidates known) := by
   classical
-  cases request with
+  unfold EvidenceRequest.normalize
+  cases resolved : request.resolve who candidates known with
   | none => trivial
-  | owned fact | forward fact =>
-      simp only [EvidenceRequest.normalize]
-      split
-      · exact member
-      · trivial
+  | some fact =>
+      cases selected : EvidenceRequest.forwardingPacket known fact with
+      | some message =>
+          simp only [EvidenceRequest.canonical, selected, AllowsEvidence]
+          exact ⟨message, EvidenceRequest.forwardingPacket_mem known fact message selected, rfl⟩
+      | none =>
+          have original := (EvidenceRequest.resolve_owned_of_no_forward who candidates known
+            request fact resolved selected).1
+          simpa only [EvidenceRequest.canonical, selected, ← original] using member
 
 theorem normalize_submission_mem (who : Player) (view : ReactivePlayerView graph)
     (known : List (Message Player (WitnessedPacket graph)))

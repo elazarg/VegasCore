@@ -37,6 +37,12 @@ native SE with the same joint initial-bit/result/net-payoff law. Its deposits
 are fixed from the declared table; watcher returns are zero. Generalizing this
 family to arbitrary reveal sequences remains open.
 
+Reusable parts of that extension are checked separately: source reveal-only
+membership and guard acceptance, checkpoint Bayes projection across different
+step counts, successful-evidence normalization, and passive observation followed
+by actual public report inclusion. They do not yet constitute the arbitrary-length
+compiler theorem.
+
 ## Stack: one runtime, several strategic games
 
 The emitted program still follows SourceProgram + Setup → EventGraph → native
@@ -47,7 +53,7 @@ S  Ordinary source game
    |  Compile through EventGraph; expand decisions into service blocks
    v
 C  Native service with all source-representable choices;
-   prescribed reporting; canonical private response representation
+   prescribed reporting; harmless published replays represent silence
    |  Restore ordinary players' other effective responses
    v
 W  Full effective ordinary-player menus; prescribed reporting
@@ -72,6 +78,13 @@ normalization. It retains every publicly different packet, malformed payload,
 meaningful binding choice and disclosure capability. Deposits and the liability
 rule are identical throughout the native stack. Source-representable play
 incurs zero additional charge.
+
+For the reusable reveal class, C also includes rebroadcasts of already published
+envelopes as alternative implementations of silence. The source correspondence
+must account for the sender remembering that choice. These replays are not
+globally erased from the full target: with unpublished off-path traffic present,
+a sampler may react to the changed pending list. The final alias edge remains
+limited to the exact-effect private submission normalization.
 
 All games use the same player carrier for the restriction edges. The initial
 fixtures already contain an inactive, zero-payoff source watcher. Supporting a
@@ -136,6 +149,14 @@ arbitrary declared terminal payoffs. Owners may recur; setup types and
 commitments may be correlated. Retain every source withholding choice. Express
 membership as a predicate/certificate on existing programs, not new syntax.
 
+[RevealSequence](../Vegas/Source/RevealSequence.lean) defines this predicate on
+existing syntax and proves that the open-obligation index counts the remaining
+decisions. From an empty guard registry, every reveal returns its bound result
+or failure according to the player's disclosure choice, and every policy
+satisfies guard acceptance. The [repeated-owner source check](../VegasTests/RevealSequence.lean)
+retains withholding followed by later openings in an Alice → Bob → Alice
+sequence. This check does not assert native SE preservation for that sequence.
+
 Fresh commitment generation, deferred guards, adaptive activation calendars and
 unbounded traffic are outside this first theorem. Initial binding validity is a
 setup assumption. It does not establish a cryptographic setup protocol or
@@ -151,13 +172,14 @@ need a service-insensitivity argument, since old public content can still change
 the service's input history.
 
 The [successful-evidence regression](../VegasTests/SuccessfulEvidenceAliases.lean)
-proves this distinction for two available raw requests: their packets and every
-external effect agree, but private recall and the current normal forms differ.
-The existing submission-normalization interface and alias-SE theorem already
-support merging them. A concrete canonical request must preserve bounded-menu
-membership: previously received evidence can be forwardable even when its value
-is outside the menu's owned-issuance bounds. Selection must also respect the
-packet resolver's first matching message ID on arbitrary known lists.
+checks two available raw requests with identical external effects and different
+private recall. [EvidenceNormalization](../Vegas/Pending/EvidenceNormalization.lean)
+merges requests exactly when they resolve to the same certificate. It prefers
+valid forwarding references, preserving received evidence even when its value
+is outside the menu's owned-issuance bounds. Selection respects the packet
+resolver's first matching message ID on arbitrary known lists. The finite
+compiler remains in the raw menu; the existing alias-SE theorem handles the
+separate normalization edge.
 
 For general pending visibility, monitor each ordinary response opportunity and
 prove a conditional collection bound before settlement. Detection may follow a
@@ -167,18 +189,56 @@ the phase advances. Otherwise an early opening can become permitted before it
 is audited. On compliant paths the reporter remains silent and canonical
 traffic settles before the next meaningful source decision.
 
+[ReactiveMonitoring](../Interaction/ReactiveMonitoring.lean) implements the
+sampling-to-evidence step using ordinary watcher activation, local replay,
+public at-most-once inclusion, and receipt persistence under arbitrary later
+policies. The [Vegas phase lemma](../Vegas/Pending/ReactiveMonitoring.lean)
+proves that any packet addressed outside the current ready public event is
+rejected in a barrier-ordered graph. Timely reporting therefore records an
+early opening before it can become legal; no authenticated send-time field is
+needed for this service. Rejection alone is not a general misconduct test:
+the source correspondence must still prove canonical calls accepted and
+classify all additional responses.
+
+[MessageReplayObservation](../Interaction/MessageReplayObservation.lean) proves
+that pending traffic already published in the ledger cannot provide new private
+observations, under any sampling rule. Replaying a published identifier preserves
+that property. This does not erase the network input or sender's action recall;
+the [reserved inclusion selector](../Vegas/Pending/ReactiveReplaySelection.lean)
+also ignores spent pending copies. The source correspondence still needs the
+strategic proof that these C responses duplicate silence, including consistency
+at the additional private information sites.
+
+The intended projection is confined to C histories. Canonical openings settle
+before the watcher, and the watcher is silent; every other permitted pending
+envelope is already published. Erase those pending copies, retain each envelope's
+original input, and map each remembered spent replay and its emission to a silent
+response. The proof should lift one common source perturbation sequence using
+the existing action-splitting machinery, transport conditional beliefs, and
+derive local incentive equality. The existing local-to-whole-policy theorem can
+then establish sequential rationality. This argument remains to be completed;
+no full-target replay quotient is asserted.
+
 The general source correspondence needs induction over the existing reveal
 program and its service blocks. The fixture's explicit history classification
 and fair-bit posterior do not supply that induction or handle arbitrary
 correlated setup and off-path source decisions.
+
+[Checkpoint Bayes projection](../GameTheoryExtensions/Analysis/Protocol/HistoryBayesProjection.lean)
+allows different source and native prefix depths. Its premises are actual
+prefix-law projection and reflection of the selected information fiber; it
+does not assume a belief-preserving target assessment. The compiler must still
+discharge those premises along the source assessment's common perturbation
+sequence, including source sites with zero limiting probability.
 
 ### Calendar requirements to prove
 
 - Fix the activation roster independently of player responses. Inclusion
   decisions may vary only within the proved service contract.
 - A canonical owner response is followed by its inclusion attempt before any
-  other player activation; expiry and the next decision follow the checked
-  deadline schedule. Monitor extra-response windows separately.
+  other player activation. The watcher then reports any remaining unpublished
+  traffic before ticks and expiry. For an off-address departure the current
+  event is still ready; on a canonical opening path it has already completed.
 - Prove timely opportunities and completion for every source opening/withholding
   branch, and terminal settlement under every final raw policy.
 - Prove that compliant activations reveal no additional pending information.
@@ -191,6 +251,13 @@ Grants are not inclusion authorization in the current handler. A successor's
 deadline starts when its predecessor completes, potentially before the previous
 visit's ticks finish. Both facts need explicit treatment when constructing the
 calendar; a fixed list of commands alone supplies no timeliness theorem.
+
+[ReactiveRevealBlock](../Vegas/Pending/ReactiveRevealBlock.lean) proves the local
+opening and silence/expiry equations for the existing service, preserving the
+actual network, receipts, and recall. Readiness, opening acceptance, freshness,
+and expiry timing are explicit premises. The program induction must supply
+these premises for the complete calendar; a local block equation alone does
+not establish them for every source execution.
 
 ## Early risks and decisive gates
 
@@ -221,19 +288,18 @@ existing observations; the proof adds no public clock.
 ### G2. Effective responses versus invisible aliases
 
 [ReactiveNormalization](../Vegas/Pending/ReactiveNormalization.lean) removes
-ineffective opening material, failed owned-evidence requests, and forwarding
-requests whose selected packet supplies no certificate. The owned check uses
+ineffective opening material and canonicalizes requests by their resolved
+certificate, including failed requests and successful aliases. The owned check uses
 the candidate after the same atomic submission, so fresh creation followed by
 disclosure remains possible. Packet and submission effects are proved equal.
 Withholding cannot register private commitment material; its irrelevant opening
 field is a representation alias.
 
-Successful requests can still have several private representations: an owned
-request and a forward can carry the same certificate, as can forwards from two
-known envelopes. Prove these alternatives unavailable on the first-use retained
-histories of the fixture. Before generalizing to repeated owners, normalize or
-lift the relevant successful-request aliases; their names are not punishable
-public evidence.
+An owned request and a forward can carry the same certificate, as can forwards
+from two known envelopes. The normalization merges these private names with
+checked packet equality and finite-menu closure. Source canonical requests need
+normality only at their retained checkpoints; the raw compiler's requests need
+not be normal at arbitrary off-path histories.
 
 Enumerate canonical-packet response aliases in the bounded fixture. Extend
 normalization only with proofs of identical submission and packet effects, or
@@ -526,11 +592,22 @@ This consolidation follows the first composed SE result.
 
 ### Enforcement can support a smaller source game
 
-A backend enforcement certificate can also justify omitting source withholding
-or unusable commitments. These are additional source abstractions under stronger
-service and economic assumptions, rather than unconditional improvements to the
-unenforced compiler. The current fixture keeps withholding; it does not establish
-these further results.
+Commit-time failure is already eliminable for Nash and same-error epsilon-Nash
+under the existing public-outcome observation. The
+[value-binding edge](../Vegas/Game/ValueBindingEdge.lean) and
+[pending composition](../Vegas/Game/PendingCompositions.lean) replace an
+unusable binding by a value binding followed by withholding, preserving the
+public failure outcome. This does not require a rejecting guard or a watcher.
+The related type/outcome law also permits type-dependent utilities; it does not
+provide a local continuation correspondence for SE.
+
+A global deposit rule can instead supply the incentive premise for removing
+withholding, or move failure-penalty conditionals out of programmer-written
+payoffs and into a common backend rule. These are stronger enforcement
+assumptions supporting a smaller source strategy space. The current SE fixture
+keeps withholding and initializes valid commitments; it does not establish
+these further source simplifications. Its new enforcement role is chiefly to
+control strategically consequential extra communication.
 
 For required disclosure, enforce an attributable missed obligation using a
 deadline and a collectible penalty. Passive packet monitoring alone cannot
@@ -553,3 +630,22 @@ who has already made an unusable commitment cannot be assumed able to open it.
 The existing extension theorem is a candidate proof route; its premises must
 be instantiated for each smaller source game. No completeness or reflection
 claim follows merely from deterring these departures.
+
+### Watcher responsibilities
+
+A concrete watcher backend separates three tasks: obtain evidence of traffic,
+classify that evidence against the permitted game behavior, and authenticate
+the party responsible. The contract can apply a specified collectible penalty
+after receiving sufficient evidence. Observing pending traffic is a separate
+capability from inspecting included transactions, and a public conformance test
+does not prove the observer saw every relevant packet.
+
+The theorem needs an explicit conditional bound on timely attributable
+collection, rather than a claim that every sent message is recorded. Perfect
+recording is one possible stronger service assumption; the checked fixture uses
+partial sampling plus ledger evidence. The classification rule represents all
+legal source choices, not a selected equilibrium profile. Its soundness,
+observation coverage, attribution, and collectibility are separate obligations.
+Phase-sensitive reports additionally need timely inclusion or evidence of the
+phase in which the monitored departure occurred. Realizing these roles as an
+oracle and contract components is a backend refinement, not implemented here.

@@ -187,21 +187,23 @@ comparison are checked below:
   and [ReactiveNormalization.lean](../Vegas/Pending/ReactiveNormalization.lean):
   idempotent own-view normalization preserves the exact packet and one-step
   operational effects. The semantic menu omits unavailable replays and
-  ineffective private opening annotations and unavailable evidence references.
+  ineffective private opening annotations and equivalent evidence requests.
   Sender raw-action recall is outside
   the equality; no equilibrium quotient theorem is asserted.
 - [ReactiveFiniteResponses.lean](../Vegas/Pending/ReactiveFiniteResponses.lean):
   exact finite-menu completeness for every packet constructor under explicit
   value and handle bounds, including errors, silence, owned evidence requests,
   every known forwarding reference, and all known replays.
-- [ReactiveNormalPolicy.lean](../Vegas/Pending/ReactiveNormalPolicy.lean):
-  normalization fixes the compiler's full response law, including recovery,
-  at every input.
+- [EvidenceNormalization.lean](../Vegas/Pending/EvidenceNormalization.lean):
+  requests have the same canonical form exactly when they resolve to the same
+  certificate. Available forwarding references take precedence over owned
+  issuance, preserving finite-menu closure.
 - [ReactiveCandidateBudget.lean](../Vegas/Pending/ReactiveCandidateBudget.lean)
   and [ReactiveFiniteCompiler.lean](../Vegas/Pending/ReactiveFiniteCompiler.lean):
   `H` prepared serials per player suffice at every active decision under horizon
   `H`. Full coverage of binding/publication value types then puts every compiler
-  and recovery response inside the bounded menu, after arbitrary legal histories.
+  and recovery response inside the bounded raw menu, after arbitrary legal
+  histories. Normalization is a separate strategic edge.
 - [ReactiveMenuPolicy.lean](../Interaction/ReactiveMenuPolicy.lean):
   admissible raw policies have exact finite-game representations. The instantiated
   compiler theorem preserves complete continuation history laws from every legal

@@ -20,6 +20,8 @@ program class, proof edges, parallel work packages and early feasibility gates.
 | Native guessing compiler | Every SE of the stated source program has a native SE under the fixed bounded service, partial monitoring and collectible charge. Includes a fixed playerwise policy translation. |
 | Declared-payoff family | Every SE of the literal two-reveal source program, for any integer payoff table with zero watcher payoff, has a full bounded raw native SE with the exact joint initial-bit/result/net-payoff law. Both opening and withholding are retained. |
 | Concrete strategic stack | Source → C → W → N → raw is checked for the family. All native games share the runtime and utility; deposits are fixed from the table before choosing the source equilibrium. |
+| Reusable monitoring step | A watcher uses ordinary pending observations and replay; public at-most-once inclusion turns the sampling bound into persistent evidence under arbitrary later policies. Reporting a differently addressed packet before the current public event completes records its rejection. |
+| Generalization components | Reveal-only source syntax, successful-evidence normalization, and Bayes projection at checkpoints with different step counts are checked. Source/service induction and spent-replay equivalence still separate these components from an arbitrary-length compiler theorem. |
 
 The central proof is
 [`sequential_equilibrium_extends_of_comparator`](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean).

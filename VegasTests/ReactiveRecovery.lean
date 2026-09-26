@@ -106,7 +106,7 @@ theorem mismatched_intention :
       (some (.submit (WitnessedSubmission.normalizeReactive ()
         (openable.observe app ()).application []
           (disclosureSubmission (.opening 0 ((), .initial 0) ⟨.bool, true⟩))))) = _
-    rw [disclosureSubmission_normalize_opening (graph := graph) () _ [] 0
+    rw [disclosureSubmission_normalize_opening (graph := graph) () _ 0
       ((), .initial 0) ⟨.bool, true⟩ rfl rfl]
   have different : (ReactiveApplication.Action.mk (app := app)
       (some (.submit ⟨⟨.withhold 0, none⟩, .none⟩))) ≠

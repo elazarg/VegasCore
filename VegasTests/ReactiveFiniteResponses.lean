@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Expr.Simple
-import Vegas.Pending.ReactiveNormalPolicy
 import Vegas.Pending.ReactiveFiniteConsistency
 
 /-! # Bounded responses retain errors and signaling
@@ -51,6 +50,10 @@ private def bounds : MessageBounds graph := by
 
 private abbrev menu := bounds.menu runtime leaks
 
+private theorem initial_known (who : Bool) :
+    ReactiveApplication.ResponseMenu.knownPackets ([] : List app.PlayerEntry)
+      (initial.observe app who) = [] := rfl
+
 /-- Malformed traffic remains a choice, even at an off-path information state. -/
 theorem malformed_available (who : Bool) (past : List app.PlayerEntry)
     (view : app.PlayerView) (bit : Bool) :
@@ -62,7 +65,7 @@ theorem malformed_available (who : Bool) (past : List app.PlayerEntry)
   · cases bit <;> simp [MessageBounds.AllowsPacket, bounds]
   · simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
       WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
-      EvidenceRequest.normalize]
+      EvidenceRequest.normalize_none]
 
 
 /-- Neither the wrong method nor the foreign handle nor the wrong type erases
@@ -76,7 +79,7 @@ theorem invalid_opening_available (past : List app.PlayerEntry) (view : app.Play
   · simp [MessageBounds.AllowsPacket, MessageBounds.AllowsHandle, bounds]
   · simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
       WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
-      EvidenceRequest.normalize]
+      EvidenceRequest.normalize_none]
 
 
 /-- An arbitrary private annotation on a malformed packet has no semantic
@@ -88,7 +91,7 @@ theorem irrelevant_material_erased (raw : Raw simpleExpr) (who : Bool)
       ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩)⟩ := by
   simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
     WitnessedSubmission.normalizeReactive, Submission.normalizeReactive,
-    EvidenceRequest.normalize, openingEffective]
+    EvidenceRequest.normalize_none, openingEffective]
 
 theorem arbitrary_irrelevant_material_admitted (raw : Raw simpleExpr) (who : Bool)
     (past : List app.PlayerEntry) (view : app.PlayerView) :
@@ -114,7 +117,7 @@ theorem wrong_type_meaning_retained :
       (runtime.reactiveBinding leaks false 0 .int (.success 1) 0) =
         runtime.reactiveBinding leaks false 0 .int (.success 1) 0 := by
     simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-      reactiveBinding, WitnessedSubmission.normalizeReactive, EvidenceRequest.normalize]
+      reactiveBinding, WitnessedSubmission.normalizeReactive, EvidenceRequest.normalize_none]
     rw [Submission.normalizeReactive_effective false (initial.observe app false).application
       ⟨.commitment 0 (false, .prepared 0), some ⟨.int, 1⟩⟩ effective]
   refine ⟨normal, ?_,
@@ -138,7 +141,7 @@ theorem unopenable_available_and_binding :
   · norm_num [reactiveBinding, MessageBounds.AllowsPacket, MessageBounds.AllowsHandle, bounds]
   · simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
       reactiveBinding, WitnessedSubmission.normalizeReactive,
-      Submission.normalizeReactive_none, EvidenceRequest.normalize]
+      Submission.normalizeReactive_none, EvidenceRequest.normalize_none]
 
 
 /-- Different malformed messages are not collapsed into one public signal. -/
@@ -194,24 +197,22 @@ theorem owned_evidence_with_malformed_call (who : Bool) (past : List app.PlayerE
   · cases bit <;>
       simp [MessageBounds.AllowsEvidence, MessageBounds.AllowsHandle, bounds]
 
-/-- Any known certificate can be copied onto a fresh packet without bounding
-the referenced envelope's serial number or requiring application acceptance. -/
-theorem known_forward_retained (who : Bool) (past : List app.PlayerEntry)
+/-- Every known forwarding request has an available normal form, without
+bounding the referenced identifier or requiring application acceptance. -/
+theorem known_forward_normalized_available (who : Bool) (past : List app.PlayerEntry)
     (view : app.PlayerView) (id : MessageId Bool)
     (known : ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets past view,
-      message.id = id)
-    (certificate : ((ReactiveApplication.ResponseMenu.knownPackets past view).find?
-      (fun message => message.id = id) |>.bind fun message =>
-        message.payload.evidence).isSome = true) :
-    (⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .forward id⟩)⟩ : app.Action) ∈
+      message.id = id) :
+    (runtime.reactiveNormalization leaks).action who past view
+      (⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .forward id⟩)⟩ : app.Action) ∈
       menu.actions who past view := by
   classical
-  rw [MessageBounds.menu_mem]
-  refine ⟨⟨⟨?_, trivial⟩, known⟩, ?_⟩
-  · simp [MessageBounds.AllowsPacket, bounds]
-  · simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
-      WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none]
-    rw [EvidenceRequest.normalize_forward _ _ _ id certificate]
+  apply (ReactiveApplication.SubmissionNormalization.menu_mem _ _ _ _ _ _).mpr
+  refine ⟨_, ?_, rfl⟩
+  rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
+  change (⟨⟨.malformed ⟨.bool, true⟩, none⟩, .forward id⟩ : WitnessedSubmission graph) ∈ _
+  rw [MessageBounds.submissions_mem]
+  exact ⟨⟨by simp [MessageBounds.AllowsPacket, bounds], trivial⟩, known⟩
 
 /-- A failed private request emits the same malformed packet as no request.
 It supplies no extra action in the normalized game; the raw action remains legal. -/
@@ -223,7 +224,8 @@ theorem failed_owned_request_erased :
   have fresh : (initial.observe app false).application.candidates (.prepared 1) = .fresh := rfl
   simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
     WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
-    EvidenceRequest.normalize, Submission.candidateAfter, fresh]
+    initial_known, EvidenceRequest.normalize, EvidenceRequest.resolve, EvidenceRequest.canonical,
+    Submission.candidateAfter, fresh]
 
 /-- A response can register fresh material and disclose its certificate at once.
 Normalization must test the candidate after the call, not its prior fresh status. -/
@@ -236,7 +238,8 @@ theorem fresh_certificate_retained :
   have fresh : (initial.observe app false).application.candidates (.prepared 0) = .fresh := rfl
   simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
     WitnessedSubmission.normalizeReactive, Submission.normalizeReactive,
-    EvidenceRequest.normalize, Submission.candidateAfter, openingEffective, fresh]
+    initial_known, EvidenceRequest.normalize, EvidenceRequest.resolve, EvidenceRequest.canonical,
+    EvidenceRequest.forwardingPacket, Submission.candidateAfter, openingEffective, fresh]
 
 /-- Guessed reference integers do not create additional transmitted evidence.
 The normal form still permits the original malformed public claim. -/
@@ -275,9 +278,10 @@ private theorem values_covered : bounds.CoversOutputValues := by
 earlier deviations. The certificate is not restricted to first or honest play. -/
 theorem all_compilers_admissible (scheduler : app.Scheduler) (horizon : Nat)
     (capacity : horizon ≤ 2) (who : Bool) (policy : graph.BehavioralPolicy who) :
-    menu.Admissible (FinDist.pure initial.application) horizon scheduler who
+    (bounds.rawMenu runtime leaks).Admissible
+      (FinDist.pure initial.application) horizon scheduler who
       (runtime.compileReactivePolicy leaks who policy) := by
-  simpa only [FinDist.map_pure, initial, ReactiveApplication.Execution.initial, menu, app] using
+  simpa only [FinDist.map_pure, initial, ReactiveApplication.Execution.initial, app] using
     bounds.compiledPolicy_admissible runtime leaks (FinDist.pure (fun input => nomatch input))
       horizon scheduler values_covered capacity who policy
 
@@ -287,25 +291,29 @@ theorem compiled_perturbation_fullyMixed (scheduler : app.Scheduler)
     (profile : graph.BehavioralProfile) (weight : ℝ) (positive : 0 < weight)
     (atMostOne : weight ≤ 1) :
     GameTheory.Protocol.InformationModel.BehavioralAssessment.IsFullyMixed
-      (menu.perturbedAssessment (FinDist.pure initial.application) 2 scheduler
-        (fun who => menu.restrictPolicy (FinDist.pure initial.application) 2 scheduler who
+      ((bounds.rawMenu runtime leaks).perturbedAssessment
+        (FinDist.pure initial.application) 2 scheduler
+        (fun who => (bounds.rawMenu runtime leaks).restrictPolicy
+          (FinDist.pure initial.application) 2 scheduler who
           (runtime.compileReactivePolicy leaks who (profile who))
           (all_compilers_admissible scheduler 2 (by omega) who (profile who)))
         weight positive atMostOne) :=
-  menu.perturbedAssessment_fullyMixed _ _ _ _ _ _ _
+  (bounds.rawMenu runtime leaks).perturbedAssessment_fullyMixed _ _ _ _ _ _ _
 
 /-- The completion retains the actual compiled profile, including recovery.
 The menu still contains all of the malformed and unopenable choices above. -/
 theorem compiled_consistent_assessment (scheduler : app.Scheduler)
     (profile : graph.BehavioralProfile) :
-    ∃ assessment : (menu.information (FinDist.pure initial.application)
+    ∃ assessment : ((bounds.rawMenu runtime leaks).information (FinDist.pure initial.application)
         2 scheduler).BehavioralAssessment,
-      assessment.strategy = (fun who => menu.restrictPolicy (FinDist.pure initial.application)
+      assessment.strategy = (fun who => (bounds.rawMenu runtime leaks).restrictPolicy
+        (FinDist.pure initial.application)
         2 scheduler who (runtime.compileReactivePolicy leaks who (profile who))
           (all_compilers_admissible scheduler 2 (by omega) who (profile who))) ∧
       assessment.IsSequentiallyConsistent
-        (menu.decisionInformationAntichain (FinDist.pure initial.application) 2 scheduler) :=
-  menu.exists_consistent_assessment _ _ _ _
+        ((bounds.rawMenu runtime leaks).decisionInformationAntichain
+          (FinDist.pure initial.application) 2 scheduler) :=
+  (bounds.rawMenu runtime leaks).exists_consistent_assessment _ _ _ _
 
 private def usedZero : app.Execution :=
   initial.respond app false (runtime.reactiveBinding leaks false 0 .bool (.success true) 0)

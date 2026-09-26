@@ -197,5 +197,6 @@ import VegasTests.MonitoredGuessingRestrictedBobComparisons
 import VegasTests.MonitoredGuessingRestrictedExtension
 import VegasTests.MonitoredGuessingDeclaredCompilation
 import VegasTests.SuccessfulEvidenceAliases
+import VegasTests.RevealSequence
 
 /-! Regression tests for the source, typed graph, and message runtime. -/
