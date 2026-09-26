@@ -63,11 +63,7 @@ theorem watcher_equilibrium_extends
       ∀ history ∈ (effectiveModel.runBehavioral target.strategy
         (2 * nativeHorizon + 1)).support, effectiveArena.terminal history.state := by
   classical
-  let comparator (who : Player) (site : watchedModel.InformationSite who)
-      (_ : effectiveModel.Choice who (watcherRestriction.site who site).1) :
-      FinDist (watchedModel.Choice who site.1) :=
-    FinDist.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
-  apply watcherRestriction.sequential_equilibrium_extends_of_comparator
+  apply watcherRestriction.sequential_equilibrium_extends_of_indifference
     watched_decisionRecall.antichain
     (effectiveMenu.uniformAssessment nativeInitialLaw nativeHorizon nativeScheduler)
     (effectiveMenu.uniform_fullyMixed nativeInitialLaw nativeHorizon nativeScheduler)
@@ -76,11 +72,11 @@ theorem watcher_equilibrium_extends
     effectiveDepth effective_common_depth
     (fun history who => utility history.state who)
     (fun history who => utility history.state who) (fun _ _ => rfl)
-    comparator _ source equilibrium
-  intro sourceProfile targetProfile paired who site action extra history
+    _ source equilibrium
+  intro who
   by_cases same : who = watcher
   · subst who
-    simp only [indifferent, FinDist.expect_const, le_refl]
-  · exact (extra (ordinary_choice_surjective who same site.1 action)).elim
+    exact Or.inr ⟨0, fun history => indifferent history.state⟩
+  · exact Or.inl (ordinary_choice_surjective who same)
 
 end VegasTests.MonitoredGuessing.Restricted

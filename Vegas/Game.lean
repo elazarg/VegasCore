@@ -11,11 +11,15 @@ import Vegas.Game.RevealService
 import Vegas.Game.RevealServiceActions
 import Vegas.Game.RevealServiceBounds
 import Vegas.Game.RevealServiceClock
+import Vegas.Game.RevealServiceCompletion
+import Vegas.Game.RevealServiceBlock
+import Vegas.Game.RevealServiceEnforcement
 import Vegas.Game.RevealServiceCorrespondence
 import Vegas.Game.RevealServiceInformation
 import Vegas.Game.RevealServiceObservation
 import Vegas.Game.RevealServiceState
 import Vegas.Game.RevealServicePolicy
+import Vegas.Game.RevealServiceWatcher
 import Vegas.Game.EventMessageStrategic
 import Vegas.Game.PendingCompositions
 import Vegas.Game.ParameterOutcomes

@@ -17,6 +17,29 @@ no guard condition has to be supplied by an analysis of this class.
 
 noncomputable section
 
+namespace Vegas.State
+
+variable {Player : Type} {L : IExpr} {Γ : SourceCtx Player L}
+
+/-- Every commitment cell contains an actual value. This is an initial-state
+premise for the reveal service, not a restriction on disclosure or payoffs. -/
+def BindingsOpenable (state : State L Γ) : Prop :=
+  ∀ {name owner payload} (ref : HasVar Γ name (.commitment owner payload)),
+    ∃ value, state.get ref = .success value
+
+/-- Adding a publication result preserves all existing commitment meanings,
+whether the publication succeeded, was withheld, or failed a guard. -/
+theorem BindingsOpenable.cons_publication {state : State L Γ}
+    (openable : state.BindingsOpenable) (name : VarId) (payload : L.Ty)
+    (result : PublicationResult (L.Val payload)) :
+    BindingsOpenable (Env.cons (Val := CellVal (Player := Player) L) (x := name)
+      (τ := .publication payload) result state) := by
+  intro readName owner readPayload ref
+  cases ref with
+  | there prior => exact openable prior
+
+end Vegas.State
+
 namespace Vegas.SourceProgram
 
 open GameTheory.Math.Probability
@@ -63,6 +86,39 @@ theorem revealSuccessor_result_of_registry_empty {Γ : SourceCtx Player L}
   simp only [revealSuccessor, empty, Registry.completedBy, List.filter_nil, List.map_nil,
     List.all_nil, ↓reduceIte]
   rfl
+
+omit [IExpr.ResultTypes L] in
+/-- Revelation never invalidates a commitment, including other commitments
+owned by the same player. The statement needs no guard-acceptance premise. -/
+theorem revealSuccessor_bindingsOpenable {Γ : SourceCtx Player L}
+    {name : VarId} {owner : Player} {payload : L.Ty} (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload))
+    (config : Config Player L Γ) (openable : config.state.BindingsOpenable)
+    (disclose : Bool) :
+    (revealSuccessor published source config disclose).state.BindingsOpenable :=
+  openable.cons_publication published payload _
+
+/-- Every supported reveal-only continuation retains successful commitment
+meanings. This includes every source policy and every withholding choice. -/
+theorem RevealOnly.runFrom_bindingsOpenable {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (reveals : program.RevealOnly)
+    (profile : BehavioralProfile program) (config : Config Player L Γ)
+    (openable : config.state.BindingsOpenable) (terminal : State L program.terminalCtx)
+    (supported : terminal ∈ (runFrom program profile config).support) :
+    terminal.BindingsOpenable := by
+  induction program with
+  | ret payoffs =>
+      have same : terminal = config.state := by simpa [runFrom, runWith] using supported
+      rw [same]
+      exact @openable
+  | sample name fresh law next ih => exact reveals.elim
+  | commit name owner fresh guard next ih => exact reveals.elim
+  | reveal published owner name fresh source unresolved next ih =>
+      rw [runFrom_reveal, FinDist.support_bind] at supported
+      obtain ⟨disclose, _chosen, continued⟩ := Set.mem_iUnion₂.mp supported
+      exact ih reveals (afterReveal profile) (revealSuccessor published source config disclose)
+        (revealSuccessor_bindingsOpenable published source config openable disclose)
+        terminal continued
 
 /-- No source policy can create a guard obligation in a reveal-only suffix.
 The result covers withheld publications and every subsequent continuation. -/

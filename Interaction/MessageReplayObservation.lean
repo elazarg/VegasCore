@@ -67,4 +67,41 @@ theorem replay_pending_published (network : MessageNetwork Principal Payload)
       · obtain rfl := List.mem_singleton.mp added
         simpa only [same] using spent
 
+/-- Own output history contributes no hidden packet at a checkpoint where
+every input and every leaked identifier has already been published. -/
+theorem known_published (network : MessageNetwork Principal Payload) (who : Principal)
+    (inputs : ∀ input ∈ network.inputs, input.envelope.id ∈ network.ledger.map Message.id)
+    (leaked : ∀ message ∈ network.leaked who, message.id ∈ network.ledger.map Message.id) :
+    ∀ message ∈ network.known who, message.id ∈ network.ledger.map Message.id := by
+  intro message member
+  rcases List.mem_append.mp member with ownOrLeaked | published
+  · rcases List.mem_append.mp ownOrLeaked with own | observed
+    · obtain ⟨input, inputMember, selected⟩ := List.mem_filterMap.mp own
+      split at selected
+      · obtain rfl := Option.some.inj selected
+        exact inputs input inputMember
+      · cases selected
+    · exact leaked message observed
+  · exact List.mem_map.mpr ⟨message, published, rfl⟩
+
+/-- Replaying an already published identifier retains the fact that all
+input records refer to publications, while appending the actual rebroadcast. -/
+theorem replay_inputs_published (network : MessageNetwork Principal Payload)
+    (who : Principal) (id : MessageId Principal)
+    (published : ∀ input ∈ network.inputs, input.envelope.id ∈ network.ledger.map Message.id)
+    (spent : id ∈ network.ledger.map Message.id) :
+    ∀ input ∈ (network.replay who id).2.inputs,
+      input.envelope.id ∈ (network.replay who id).2.ledger.map Message.id := by
+  cases found : (network.known who).find? (fun packet => packet.id = id) with
+  | none => simpa only [replay, found] using published
+  | some packet =>
+      have same : packet.id = id := by
+        simpa using (List.find?_eq_some_iff_append.mp found).1
+      intro input member
+      simp only [replay, found] at member ⊢
+      rcases List.mem_append.mp member with prior | added
+      · exact published input prior
+      · obtain rfl := List.mem_singleton.mp added
+        simpa only [same] using spent
+
 end Interaction.MessageNetwork

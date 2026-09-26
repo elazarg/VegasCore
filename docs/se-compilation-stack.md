@@ -51,8 +51,11 @@ arbitrary-length theorem:
 | Native decision view determines the source decision view | Checked from typed store and completion-history agreement. |
 | Source view reconstructs native semantic observation and initial candidate catalogue | Checked at reachable ranked prefixes; public service/transcript fields still need their induction. |
 | Common decision depths for C/W/N/raw menus | Checked at all legal histories using existing grant and actor observations. |
+| Bounded settlement under arbitrary responses | Checked for every finite response menu and behavioral profile; each scheduled block completes its event even under malformed traffic. |
+| Full monitored block agrees with its source reveal | Checked for every ordinary response, including published-replay aliases of withholding; typed source store and action history agree afterward. |
 | Reverse information correspondence, checkpoint prefix laws and conditional beliefs | Open; required for source-to-C SE. |
-| Conditional monitoring, packet classification and persistent evidence | Checked locally; full C-prefix coverage and utility comparisons remain open. |
+| Conditional monitoring, packet classification and persistent evidence | Checked for the actual reserved inclusion/report suffix, with arbitrary later responses; full C-prefix coverage and utility comparisons remain open. |
+| W → N → raw equilibrium extension | Checked for arbitrary reveal sequences, normalization-invariant observations/utilities, and zero watcher utility at every history. |
 | End-to-end SE for arbitrary reveal sequences | Open. The checked end-to-end result remains the two-reveal payoff-table family. |
 
 ## Stack: one runtime, several strategic games
@@ -112,14 +115,15 @@ do not silently change the player universe in a theorem application.
 | W → N | Restore the watcher's full effective menu while retaining the equilibrium just constructed. | Initially use identically zero watcher utility at every history. Each extra watcher action then has value equal to its prescribed comparator. |
 | N → T | Restore private response representations without changing public packets or strategic outcomes. | Instantiate the checked alias theorem; prove the payoff/charge decoder is invariant under normalization. |
 
-The actual fixture's W → N edge is checked. All traffic caused by ordinary-player deviations is already possible
+The W → N edge is checked for the reusable reveal service. All traffic caused by ordinary-player deviations is already possible
 in W. Its reporting decisions are therefore retained by the second extension.
 New sites reached through watcher deviations receive rational completions.
 This is a forward-existence argument: it does not establish strict reporting,
 uniqueness, paid participation or coalition resistance. An interested watcher
 needs a different incentive certificate.
 
-The last two edges are composed for the fixture. The
+The last two edges are composed for both the fixture and the reusable service in
+[RevealServiceWatcher](../Vegas/Game/RevealServiceWatcher.lean). The
 [continuation-horizon lemma](../GameTheoryExtensions/Protocol/ContinuationHorizon.lean)
 proves that evaluating with remaining fuel or a full global bound gives the same
 context, so the extension and alias theorems use exactly the same equilibrium

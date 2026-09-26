@@ -55,8 +55,9 @@ The constructed reveal service order is owner response, inclusion reserved for t
 event, watcher/report, then ticks and expiry. A canonical opening is published
 before observation, so the watcher skips it. An off-address extra is ignored by
 the reserved inclusion; the current event remains ready for the report block.
-This order has local checkpoint and deadline proofs; their induction over the
-whole source execution remains open.
+This order has complete local source-step and deadline proofs. The fixed plan
+settles every event under arbitrary raw behavior. Its source correspondence
+still requires induction over all ordinary response histories.
 
 This service activates only the source owner for that event. With additional
 ambient activations, that owner could send a valid current opening before its
@@ -90,8 +91,11 @@ source guard condition.
   players; the utility comparison must tolerate every subsequent response.
 - Prove canonical opening and silence/expiry checkpoint laws for every legal
   source policy, including all withholding choices and correlated initial types.
-- Classify effective responses into legal representatives, rejected departures,
-  accepted departures with a sound ledger audit, and harmless responses.
+- Apply the checked effective-response classification at every ordinary prefix:
+  published replays represent withholding; all other extra responses create
+  attributable rejection or a public format violation. The actual reserved
+  inclusion/report suffix gives a persistent evidence lower bound equal to the
+  fresh packet's sampling probability, even with arbitrary later responses.
 - Handle spent-envelope replay and private response aliases honestly. Even when
   no other player learns anything, the sender's own recall can differ and later
   raw policies can branch on it. No uniform comparator follows just from equality

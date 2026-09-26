@@ -127,6 +127,60 @@ theorem sequential_equilibrium_extends_of_comparator
     exact N.runBehavioralFrom_terminal_of_bound target.strategy bounded
       T.initHistory history supported
 
+omit [∀ who, DecidableEq (N.InfoState who)] in
+/-- Restoring choices of payoff-indifferent players preserves every restricted
+sequential equilibrium. Other players retain all choices at their existing
+information sites. This supports a strategic zero-utility reporter without
+assuming its reporting policy is the unique or strict best response.
+
+Indifference concerns actual utility at every target history. It is not enough
+for reporting costs or payoffs merely to vanish along the implemented play. -/
+theorem sequential_equilibrium_extends_of_indifference
+    (sourceAntichain : M.DecisionInformationAntichain)
+    (reference : N.BehavioralAssessment) (referenceMixed : reference.IsFullyMixed)
+    (decisionRecall : N.DecisionRecall) (horizon : Nat) (bounded : T.BoundedHorizon horizon)
+    (depth : ∀ who, N.InformationSite who → Nat)
+    (clock : ∀ who site, InformationSite.CommonDepth N site (depth who site))
+    (sourcePayoff : E.History → Player → ℝ) (targetPayoff : T.History → Player → ℝ)
+    (matching : ∀ history who,
+      targetPayoff (restriction.history history) who = sourcePayoff history who)
+    (unchangedOrIndifferent : ∀ who,
+      (∀ info, Function.Surjective (restriction.choice who info)) ∨
+        ∃ constant, ∀ history, targetPayoff history who = constant)
+    (source : M.BehavioralAssessment)
+    (sourceEquilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
+      source.continuationContext site (fun history => sourcePayoff history who)
+        (horizon - depth who (restriction.site who site)))) :
+    ∃ target : N.BehavioralAssessment,
+      target.IsSequentialEquilibriumFor decisionRecall.antichain
+        (fun who site => target.continuationContext site
+          (fun history => targetPayoff history who) (horizon - depth who site)) ∧
+      restriction.ExtendsProfile source.strategy target.strategy ∧
+      (∀ who site, target.belief who (restriction.site who site) =
+        (source.belief who site).map (restriction.informationHistory who site)) ∧
+      (M.runBehavioral source.strategy horizon).map restriction.history =
+        N.runBehavioral target.strategy horizon ∧
+      (M.runBehavioral source.strategy horizon).map
+          (fun history => (restriction.history history, sourcePayoff history)) =
+        (N.runBehavioral target.strategy horizon).map
+          (fun history => (history, targetPayoff history)) ∧
+      ∀ history ∈ (N.runBehavioral target.strategy horizon).support,
+        T.terminal history.state := by
+  classical
+  let comparator (who : Player) (site : M.InformationSite who)
+      (_ : N.Choice who (restriction.site who site).1) : FinDist (M.Choice who site.1) :=
+    FinDist.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
+  apply restriction.sequential_equilibrium_extends_of_comparator sourceAntichain
+    reference referenceMixed decisionRecall horizon bounded depth clock
+    sourcePayoff targetPayoff matching comparator _ source sourceEquilibrium
+  intro sourceProfile targetProfile _ who site action extra history
+  rcases unchangedOrIndifferent who with unchanged | ⟨constant, indifferent⟩
+  · exact (extra (unchanged site.1 action)).elim
+  · have sourceConstant (final : E.History) : sourcePayoff final who = constant := by
+      rw [← matching]
+      exact indifferent _
+    simp only [indifferent, sourceConstant, FinDist.expect_const, le_refl]
+
 /-- Every source sequential equilibrium extends to the same fixed target
 game under finite, sound, sufficiently costly first-departure collection.
 The collection condition covers arbitrary target continuation profiles and

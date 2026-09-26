@@ -14,6 +14,7 @@ import Vegas.Source.ValueBinding
 import Vegas.Source.Disclosure
 import Vegas.Source.Honest
 import Vegas.Source.RevealSequence
+import Vegas.Source.ObservationRecall
 import Vegas.Source.Accounting
 import Vegas.Source.Safety
 import Vegas.Source.ProtocolEvaluation
