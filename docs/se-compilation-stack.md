@@ -150,6 +150,15 @@ invisible private distinctions cannot be audited. Replays of old envelopes also
 need a service-insensitivity argument, since old public content can still change
 the service's input history.
 
+The [successful-evidence regression](../VegasTests/SuccessfulEvidenceAliases.lean)
+proves this distinction for two available raw requests: their packets and every
+external effect agree, but private recall and the current normal forms differ.
+The existing submission-normalization interface and alias-SE theorem already
+support merging them. A concrete canonical request must preserve bounded-menu
+membership: previously received evidence can be forwardable even when its value
+is outside the menu's owned-issuance bounds. Selection must also respect the
+packet resolver's first matching message ID on arbitrary known lists.
+
 For general pending visibility, monitor each ordinary response opportunity and
 prove a conditional collection bound before settlement. Detection may follow a
 recipient's reading: the payoff-range bound covers the resulting gain. The audit
