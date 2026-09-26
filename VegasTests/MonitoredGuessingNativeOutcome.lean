@@ -179,7 +179,8 @@ private theorem quiet_step_alice (players : Player → nativeApp.Policy) (bit : 
   control_step_environment players _ _ 13 (.activate alice) rfl (initial_activation bit)
 
 private theorem quiet_step_alice_response (players : Player → nativeApp.Policy)
-    (prescribed : players alice = nativeAlicePolicy) (bit : Bool) :
+    (prescribed : ∀ bit, players alice ((aliceActivated bit).recall alice)
+      ((aliceActivated bit).observe nativeApp alice) = FinDist.pure nativeSilent) (bit : Bool) :
     nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players
       (some ⟨13, some alice, aliceActivated bit⟩) =
       FinDist.pure (some ⟨13, none, ambientRespond bit nativeSilent⟩) := by
@@ -194,7 +195,9 @@ private theorem quiet_step_watcher (players : Player → nativeApp.Policy) (bit 
   control_step_environment players _ _ 12 (.activate watcher) rfl (quiet_watcher_activation bit)
 
 private theorem quiet_step_watcher_response (players : Player → nativeApp.Policy)
-    (prescribed : players watcher = nativeWatcherPolicy) (bit : Bool) :
+    (prescribed : ∀ bit, players watcher ((watcherActivated bit nativeSilent ∅).recall watcher)
+      ((watcherActivated bit nativeSilent ∅).observe nativeApp watcher) =
+        FinDist.pure nativeSilent) (bit : Bool) :
     nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players
       (some ⟨12, some watcher, watcherActivated bit nativeSilent ∅⟩) =
       FinDist.pure (some ⟨12, none, watcherRespond bit nativeSilent ∅ nativeSilent⟩) := by
@@ -224,8 +227,11 @@ private theorem quiet_step_bob (players : Player → nativeApp.Policy) (bit : Bo
   control_step_environment players _ _ 9 (.activate bob) rfl (quiet_bob_activation bit)
 
 theorem quiet_bob_control_law (players : Player → nativeApp.Policy)
-    (alicePolicy : players alice = nativeAlicePolicy)
-    (watcherPolicy : players watcher = nativeWatcherPolicy) :
+    (alicePolicy : ∀ bit, players alice ((aliceActivated bit).recall alice)
+      ((aliceActivated bit).observe nativeApp alice) = FinDist.pure nativeSilent)
+    (watcherPolicy : ∀ bit, players watcher ((watcherActivated bit nativeSilent ∅).recall watcher)
+      ((watcherActivated bit nativeSilent ∅).observe nativeApp watcher) =
+        FinDist.pure nativeSilent) :
     (fun distribution => distribution.bind
       (nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players))^[8]
         (FinDist.pure none) =
@@ -245,11 +251,15 @@ theorem quiet_bob_history_law (profile : Profile nativeModel.behavioralSignature
         (fun bit => some ⟨9, some bob, quietBob bit⟩) := by
   rw [InformationModel.runBehavioral, nativeMenu.run_map_controlStep]
   apply quiet_bob_control_law
-  · change nativeApp.decodePolicy (nativeMenu.embedPolicy nativeInitialLaw nativeHorizon
-      nativeScheduler alice (profile alice)) = _
+  · intro bit
+    change nativeApp.decodePolicy (nativeMenu.embedPolicy nativeInitialLaw nativeHorizon
+      nativeScheduler alice (profile alice)) _ _ = _
     rw [alicePolicy, decode_native_alice]
-  · change nativeApp.decodePolicy (nativeMenu.embedPolicy nativeInitialLaw nativeHorizon
-      nativeScheduler watcher (profile watcher)) = _
+    rfl
+  · intro bit
+    change nativeApp.decodePolicy (nativeMenu.embedPolicy nativeInitialLaw nativeHorizon
+      nativeScheduler watcher (profile watcher)) _ _ = _
     rw [watcherPolicy, decode_native_watcher]
+    rfl
 
 end VegasTests.MonitoredGuessing

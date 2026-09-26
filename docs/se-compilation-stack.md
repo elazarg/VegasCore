@@ -24,8 +24,18 @@ and the [W → N → T equilibrium extension](../VegasTests/MonitoredGuessingWat
 are checked. The watcher extension allows arbitrary fixed ordinary-player
 utilities and requires watcher utility zero at every history. The raw lift
 preserves every joint observation/payoff law invariant under the proved private
-normalization. S → C and C → W
-are still open; the existing guessing-game pilot is a separate completed result.
+normalization. The [S → C equilibrium theorem](../VegasTests/MonitoredGuessingRestrictedEquilibrium.lean)
+and [all-profile joint law](../VegasTests/MonitoredGuessingRestrictedLaw.lean) are
+checked for arbitrary declared integer tables with zero watcher payoff. The
+ordinary-player continuation comparisons are checked for every retained history
+and arbitrary paired profiles. Their
+[C → W → N → T composition](../VegasTests/MonitoredGuessingRestrictedExtension.lean)
+is also checked. The
+[literal-source capstone](../VegasTests/MonitoredGuessingDeclaredCompilation.lean)
+composes these edges: every SE of the actual two-reveal program has a full raw
+native SE with the same joint initial-bit/result/net-payoff law. Its deposits
+are fixed from the declared table; watcher returns are zero. Generalizing this
+family to arbitrary reveal sequences remains open.
 
 ## Stack: one runtime, several strategic games
 
@@ -131,6 +141,28 @@ unbounded traffic are outside this first theorem. Initial binding validity is a
 setup assumption. It does not establish a cryptographic setup protocol or
 security under key/secret sharing.
 
+The first repeated-owner regression should use Alice → Bob → Alice. A
+successful owned opening and a forwarded certificate can emit the same packet
+while leaving different private response recall. A later decision makes this
+relevant to the universal comparator premise. Extend the proved alias
+normalization for such requests before applying the ordinary-response extension;
+invisible private distinctions cannot be audited. Replays of old envelopes also
+need a service-insensitivity argument, since old public content can still change
+the service's input history.
+
+For general pending visibility, monitor each ordinary response opportunity and
+prove a conditional collection bound before settlement. Detection may follow a
+recipient's reading: the payoff-range bound covers the resulting gain. The audit
+must retain the phase in which the packet was sent, or receive its report before
+the phase advances. Otherwise an early opening can become permitted before it
+is audited. On compliant paths the reporter remains silent and canonical
+traffic settles before the next meaningful source decision.
+
+The general source correspondence needs induction over the existing reveal
+program and its service blocks. The fixture's explicit history classification
+and fair-bit posterior do not supply that induction or handle arbitrary
+correlated setup and off-path source decisions.
+
 ### Calendar requirements to prove
 
 - Fix the activation roster independently of player responses. Inclusion
@@ -216,13 +248,18 @@ The eight [concrete branch laws](../VegasTests/MonitoredGuessingRestrictedExecut
 are checked, including the initial bit, both public results and zero pilot charge.
 The [meaningful checkpoint inputs](../VegasTests/MonitoredGuessingRestrictedInformation.lean)
 have one Bob input and four distinct Alice inputs, and both source choices are
-legal at each checkpoint. Classification of all C histories and a consistent
-assessment correspondence remain required.
+legal at each checkpoint. The all-history Bob and Alice classifications and
+consistent assessment correspondence are also checked.
 
 The [reference-run support proof](../VegasTests/MonitoredGuessingRestrictedSupport.lean)
 also classifies every legal C Bob decision as a quiet checkpoint, and every Bob
-information site as the same source-representable input. The corresponding
-all-history Alice classification and assessment proof remain open.
+information site as the same source-representable input. The
+[Alice classification](../VegasTests/MonitoredGuessingRestrictedAliceSupport.lean)
+identifies both her forced initial responses and every final decision. Her final
+information determines the complete continuation state; Bob's consistent belief
+has the initial fair-bit distribution. These facts support the checked
+[source equilibrium theorem](../VegasTests/MonitoredGuessingRestrictedEquilibrium.lean)
+without assuming a target belief or rational completion.
 
 The existing compiler withholds a guard-rejected value:
 [compiled_packet](../VegasTests/CommunicationNative.lean) checks that case.
@@ -277,10 +314,15 @@ classes. Two operational comparison gates are checked:
   allows her to read this pending traffic needs a different comparison or
   additional monitoring.
 
-These are actual service laws. Applying them inside the universal restriction
-certificate still requires retained-history classification and the bridge from
-service suffixes to behavioral continuation contexts. Bob's other included
-packets require the proposed ledger charge and its exhaustive collection law.
+The [early](../VegasTests/MonitoredGuessingRestrictedInitialComparison.lean),
+[receiver](../VegasTests/MonitoredGuessingRestrictedBobComparisons.lean), and
+[final](../VegasTests/MonitoredGuessingRestrictedComparisons.lean) comparison
+theorems now connect actual service suffixes to behavioral continuation
+contexts. They cover every retained hidden history and arbitrary paired
+continuation profiles. Extra Bob-addressed packets have unit persistent
+liability; wrong-addressed packets preserve his joint result/net-payoff law
+against the matched legal Alice response. No rationality premise supplies any
+of these bounds.
 
 ### G5. Reporting, attribution and collection
 
@@ -295,9 +337,13 @@ The [ledger audit](../Interaction/ReactiveLedgerConformance.lean) now proves
 public detection at inclusion and persistence under arbitrary raw continuations.
 Its native regression accepts the canonical matching-certificate opening,
 detects the accepted extra evidence and missing-certificate packet, and leaves
-silence/expiry clean. This is evidence availability, not full response coverage
-or monetary collection. It identifies the original author, not a replay's
-current broadcaster.
+silence/expiry clean. The
+[whole-outcome payoff bounds](../VegasTests/MonitoredGuessingEnforcementPayoffs.lean)
+use Alice's deposit twice her payoff range and Bob's deposit equal to his range.
+These bounds and the actual response coverage discharge the fixture's
+conditional inequalities. Monetary collectibility remains an assumption of the
+utility interpretation. Attribution uses the original author; it does not
+automatically identify who causes a replay.
 
 Prototype two complementary evidence paths in the existing runtime:
 
@@ -341,10 +387,10 @@ never the GameTheory submodule.
 | A | Decision-site recall and capstone refactor in GameTheoryExtensions; native instance in Interaction. **Checked.** | G1 audit | Closed for the existing information model. |
 | B | Menu-to-menu action restriction in Interaction; all-history fixture clocks. **Checked.** | Existing ResponseMenu; A for SE use | Generic roster inference remains outside the fixture result. |
 | C | Private submission/packet normalization and compiler compatibility. **Checked; successful-request alias coverage remains open.** | G2 | Prove unavailable or harmless on retained histories before extending to repeated owners. |
-| D | Concrete C/W/N menus **checked**; service checkpoints and source assessment correspondence in progress. | B, C, G3 | Source observation and deadline correspondence dominate. |
-| E | Generic persistent ledger evidence and concrete conformance witnesses **checked**; exhaustive ordinary-response comparisons and collection open. | B, G4, G5 | Check actual receiver observations and attribution before scaling D. |
-| F | SE lifting over fixed service blocks in GameTheoryExtensions; source instantiation and payoff laws in Vegas/Game. | A, D | Large; one common consistent belief sequence is essential. |
-| G | C → W → N → T composition and fixed deposits in Vegas/Game; **fixture W → N → T checked**. | A–F | C → W remains open; instantiate actual collectible utility and readout in the composed result. |
+| D | Concrete C/W/N menus, service checkpoints, all-history decision classification and source assessment correspondence. **Checked for the fixture.** | B, C, G3 | General source observation/deadline induction remains. |
+| E | Persistent ledger evidence, exhaustive ordinary-response comparisons and fixed deposit bounds. **Checked for the fixture.** | B, G4, G5 | Broader passive visibility needs monitoring at subsequent response opportunities. |
+| F | Source-to-C SE and all-profile joint type/result/net-payoff law. **Checked for the payoff-table family.** | A, D | General reveal sequences need a common consistency argument across blocks. |
+| G | Literal-source → C → W → N → T composition with the same fixed deposits and utility. **Checked for the payoff-table family.** | A–F | Collectibility remains a backend assumption. |
 | H | Generalize fixture to the finite reveal class, then extract sharper finite rational certificates. | G | Separate increments; keep solver engineering off the first critical path. |
 
 ### Parallel execution order
@@ -468,3 +514,33 @@ An epsilon-Nash transport theorem needs an explicit bound on deviation gains
 and any accumulated approximation loss. Reusing the stack does not by itself
 establish that bound, or identify the command-policy and reactive services.
 This consolidation follows the first composed SE result.
+
+### Enforcement can support a smaller source game
+
+A backend enforcement certificate can also justify omitting source withholding
+or unusable commitments. These are additional source abstractions under stronger
+service and economic assumptions, rather than unconditional improvements to the
+unenforced compiler. The current fixture keeps withholding; it does not establish
+these further results.
+
+For required disclosure, enforce an attributable missed obligation using a
+deadline and a collectible penalty. Passive packet monitoring alone cannot
+detect silence. Compliant players must have a proved timely opportunity to
+perform the obligation, so source play incurs no false charge.
+
+An unusable commitment need not be publicly recognizable when submitted if its
+owner must later provide a valid opening or incur sufficient loss. This route
+requires the obligation and collateral to survive every relevant continuation:
+an earlier abort, refund, or skipped disclosure cannot silently release the
+liability. Validity proofs at submission are an alternative backend mechanism.
+Neither mechanism is implemented by the current fixture, which initializes
+valid commitments.
+
+The permitted behavior must represent every legal source action and deviation,
+not a single equilibrium strategy. For NE, comparisons start at the initial
+game; for SE, retained decision histories need conditional comparisons and
+post-violation histories still need consistent rational completions. A player
+who has already made an unusable commitment cannot be assumed able to open it.
+The existing extension theorem is a candidate proof route; its premises must
+be instantiated for each smaller source game. No completeness or reflection
+claim follows merely from deterring these departures.

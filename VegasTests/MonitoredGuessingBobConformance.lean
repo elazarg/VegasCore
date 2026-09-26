@@ -1,0 +1,233 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import VegasTests.MonitoredGuessingConformance
+import VegasTests.MonitoredGuessingRestrictedInformation
+import VegasTests.MonitoredGuessingBobContinuation
+
+/-! # Exhaustive conformance coverage at the receiver's source decision
+
+Every effective response is either a legal source response, an unselected
+wrong-address packet, or an addressed packet carrying publicly checkable
+liability. Canonical packet recognition is proved after private normalization;
+the checker never charges an erased private representation.
+-/
+
+noncomputable section
+
+namespace VegasTests.MonitoredGuessing.Restricted
+
+open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability Conformance
+
+def canonicalBobPacket : WitnessedPacket nativeGraph :=
+  ⟨.opening bobPublication bobHandle ⟨.bool, true⟩,
+    some ⟨bobHandle, ⟨.bool, true⟩⟩⟩
+
+theorem bob_packet_permitted_iff (packet : WitnessedPacket nativeGraph) :
+    bobPacketPermitted packet = true ↔ packet = canonicalBobPacket := by
+  rcases packet with ⟨call, evidence⟩
+  cases call <;> cases evidence <;> simp only [bobPacketPermitted, Bool.false_eq_true,
+    canonicalBobPacket, WitnessedPacket.mk.injEq, false_and, and_false,
+    reduceCtorEq, decide_eq_true_eq]
+  rename_i event candidate raw fact
+  constructor
+  · rintro ⟨rfl, rfl, rfl, rfl⟩
+    exact ⟨rfl, rfl⟩
+  · rintro ⟨same, sameFact⟩
+    obtain ⟨rfl, rfl, rfl⟩ := Payload.opening.inj same
+    cases Option.some.inj sameFact
+    exact ⟨rfl, rfl, rfl, rfl⟩
+
+def bobEmittedPacket (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
+    WitnessedPacket nativeGraph :=
+  submission.emit (bobSubmission bit submission).application bob
+    ((quietBob bit).network.known bob)
+
+theorem bob_permitted_normal_submission (bit : Bool)
+    (submission : WitnessedSubmission nativeGraph)
+    (normal : submission.normalizeReactive bob ((quietBob bit).observe nativeApp bob).application
+      [] = submission)
+    (permitted : bobPacketPermitted (bobEmittedPacket bit submission) = true) :
+    submission = ⟨⟨.opening bobPublication bobHandle ⟨.bool, true⟩, none⟩,
+      .owned ⟨bobHandle, ⟨.bool, true⟩⟩⟩ := by
+  have packet := (bob_packet_permitted_iff _).mp permitted
+  have call := congrArg WitnessedPacket.call packet
+  change submission.call.packet = .opening bobPublication bobHandle ⟨.bool, true⟩ at call
+  rcases submission with ⟨⟨callPacket, material⟩, request⟩
+  dsimp only at call
+  subst callPacket
+  have materialEq := congrArg (fun value : WitnessedSubmission nativeGraph => value.call.opening)
+    normal
+  simp only [WitnessedSubmission.normalizeReactive, Submission.normalizeReactive,
+    openingEffective, ↓reduceIte] at materialEq
+  subst material
+  have evidence := congrArg WitnessedPacket.evidence packet
+  dsimp only [bobEmittedPacket, WitnessedSubmission.emit, canonicalBobPacket] at evidence
+  cases request with
+  | none => cases evidence
+  | owned fact =>
+      dsimp only at evidence
+      split at evidence
+      · cases Option.some.inj evidence
+        rfl
+      · cases evidence
+  | forward id =>
+      rw [quiet_bob_network] at evidence
+      cases evidence
+
+def bobIncluded (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
+    nativeApp.Execution :=
+  let before := bobSubmission bit submission
+  { before.includePending nativeApp (bob, 0) with
+    environmentRecall := before.environmentRecall ++
+      [⟨before.observeEnvironment nativeApp, .include (bob, 0)⟩] }
+
+/-- Addressed traffic is included even when its application call will fail. -/
+theorem bob_addressed_included (players : Player → nativeApp.Policy) (bit : Bool)
+    (submission : WitnessedSubmission nativeGraph)
+    (addressed : submission.call.packet.event? nativeGraph = some bobPublication) :
+    nativeRuntime.interactionStep nativeLeaks players nativeNetwork
+      (.includeLatest bobPublication bob) (bobSubmission bit submission) =
+        FinDist.pure (bobIncluded bit submission) := by
+  have selected : nativeRuntime.reactiveLatest nativeLeaks bobPublication bob
+      ((bobSubmission bit submission).observeEnvironment nativeApp) = .include (bob, 0) := by
+    simpa only [bobSubmission, quiet_bob_network, MessageNetwork.empty] using
+      nativeRuntime.reactiveLatest_after_submit nativeLeaks bob bobPublication
+        (quietBob bit) (quiet_bob_serials bit) submission addressed
+  rw [nativeRuntime.interaction_includeLatest_environment, selected]
+  change (FinDist.pure _).map _ = _
+  rw [FinDist.map_pure]
+  rfl
+
+theorem bob_submission_network (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
+    (bobSubmission bit submission).network =
+      (MessageNetwork.empty.submit bob (bobEmittedPacket bit submission)).2 := by
+  change ((quietBob bit).network.submit bob (bobEmittedPacket bit submission)).2 = _
+  rw [quiet_bob_network]
+
+theorem bob_included_ledger (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
+    (bobIncluded bit submission).network.ledger =
+      [⟨(bob, 0), bobEmittedPacket bit submission⟩] := by
+  change ((bobSubmission bit submission).includePending nativeApp (bob, 0)).network.ledger = _
+  rw [nativeApp.includePending_network, bob_submission_network]
+  simp [MessageNetwork.includePending, MessageNetwork.lookup, MessageNetwork.submit,
+    MessageNetwork.empty]
+
+theorem bob_nonconforming_detected (bit : Bool) (submission : WitnessedSubmission nativeGraph)
+    (nonconforming : bobPacketPermitted (bobEmittedPacket bit submission) = false) :
+    bobLedgerViolation (bobIncluded bit submission) = true := by
+  rw [bobLedgerViolation, bob_included_ledger]
+  simp only [ledgerViolation, List.any_cons, Message.sender, decide_true, nonconforming,
+    Bool.not_false, Bool.true_and, List.any_nil, Bool.or_false]
+
+theorem bob_nonconforming_liability (bit : Bool) (submission : WitnessedSubmission nativeGraph)
+    (nonconforming : bobPacketPermitted (bobEmittedPacket bit submission) = false) :
+    bobLedgerLiability (bobIncluded bit submission) = 1 := by
+  rw [bobLedgerLiability, bob_nonconforming_detected bit submission nonconforming]
+  rfl
+
+/-- Exhaustive coverage includes all effective responses, not just a selected
+equilibrium policy. Wrong-address traffic is handled by the separate observation
+comparison; the remaining non-source responses carry visible liability. -/
+theorem effective_bob_response_cases (bit : Bool) (response : nativeApp.Action)
+    (available : response ∈ effectiveMenu.actions bob [] ((quietBob bit).observe nativeApp bob)) :
+    response ∈ restrictedMenu.actions bob [] ((quietBob bit).observe nativeApp bob) ∨
+      ∃ submission, response = ⟨some (.submit submission)⟩ ∧
+        (submission.call.packet.event? nativeGraph ≠ some bobPublication ∨
+          (submission.call.packet.event? nativeGraph = some bobPublication ∧
+            bobPacketPermitted (bobEmittedPacket bit submission) = false)) := by
+  classical
+  obtain ⟨raw, normal⟩ :=
+    (normalization.menu_mem_iff_of_closed nativeMenu bob []
+      ((quietBob bit).observe nativeApp bob)
+      (nativeBounds.rawMenu_closed nativeRuntime nativeLeaks bob []
+        ((quietBob bit).observe nativeApp bob)) response).mp available
+  rcases quiet_bob_response_cases bit response raw with rfl | ⟨submission, rfl⟩
+  · exact Or.inl (bob_choice_available bit false)
+  · by_cases addressed : submission.call.packet.event? nativeGraph = some bobPublication
+    · by_cases permitted : bobPacketPermitted (bobEmittedPacket bit submission) = true
+      · have known : ReactiveApplication.ResponseMenu.knownPackets []
+            ((quietBob bit).observe nativeApp bob) = [] := by
+          change [] ++ (quietBob bit).network.leaked bob ++ (quietBob bit).network.ledger = []
+          rw [quiet_bob_network]
+          rfl
+        have equality := congrArg ReactiveApplication.Action.transmission normal
+        change some (ReactiveApplication.Transmission.submit (app := nativeApp)
+          (submission.normalizeReactive bob ((quietBob bit).observe nativeApp bob).application
+            (ReactiveApplication.ResponseMenu.knownPackets []
+              ((quietBob bit).observe nativeApp bob)))) = some (.submit submission) at equality
+        rw [known] at equality
+        have same := bob_permitted_normal_submission bit submission
+          (ReactiveApplication.Transmission.submit.inj (Option.some.inj equality)) permitted
+        subst submission
+        exact Or.inl (bob_choice_available bit true)
+      · exact Or.inr ⟨submission, rfl, Or.inr ⟨addressed, Bool.eq_false_iff.mpr permitted⟩⟩
+    · exact Or.inr ⟨submission, rfl, Or.inl addressed⟩
+
+/-- An actual extra addressed effective response is always publicly detected. -/
+theorem extra_addressed_bob_detected (bit : Bool) (submission : WitnessedSubmission nativeGraph)
+    (available : (⟨some (.submit submission)⟩ : nativeApp.Action) ∈
+      effectiveMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
+    (extra : (⟨some (.submit submission)⟩ : nativeApp.Action) ∉
+      restrictedMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
+    (addressed : submission.call.packet.event? nativeGraph = some bobPublication) :
+    bobLedgerViolation (bobIncluded bit submission) = true := by
+  rcases effective_bob_response_cases bit ⟨some (.submit submission)⟩ available with legal |
+      ⟨other, same, wrong | ⟨_, nonconforming⟩⟩
+  · exact (extra legal).elim
+  · have identical := congrArg ReactiveApplication.Action.transmission same
+    cases ReactiveApplication.Transmission.submit.inj (Option.some.inj identical)
+    exact (wrong addressed).elim
+  · have identical := congrArg ReactiveApplication.Action.transmission same
+    cases ReactiveApplication.Transmission.submit.inj (Option.some.inj identical)
+    exact bob_nonconforming_detected bit submission nonconforming
+
+/-- Neither subsequent player actions nor scheduling can erase the charge's
+public evidence. Collection of the resulting unit liability remains explicit. -/
+theorem bob_nonconforming_liability_persists (bit : Bool)
+    (submission : WitnessedSubmission nativeGraph)
+    (nonconforming : bobPacketPermitted (bobEmittedPacket bit submission) = false)
+    (players : Player → nativeApp.Policy) (scheduler : nativeApp.Scheduler)
+    (count : Nat) (next : nativeApp.Execution)
+    (reached : next ∈ (nativeApp.runRounds scheduler players count
+      (bobIncluded bit submission)).support) : bobLedgerLiability next = 1 := by
+  have detected := nativeApp.ledgerViolation_continuation bob bobPacketPermitted players scheduler
+    count (bobIncluded bit submission) next
+    (bob_nonconforming_detected bit submission nonconforming) reached
+  simp only [bobLedgerLiability, bobLedgerViolation, detected, ↓reduceIte]
+
+theorem bob_ledger_plan_persists (players : Player → nativeApp.Policy)
+    (plan : List (ServiceInstruction nativeGraph)) (before next : nativeApp.Execution)
+    (detected : bobLedgerViolation before = true)
+    (reached : next ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+      plan before).support) : bobLedgerViolation next = true := by
+  induction plan generalizing before with
+  | nil => cases FinDist.mem_support_pure.mp reached; exact detected
+  | cons instruction rest ih =>
+      obtain ⟨middle, moved, continued⟩ :=
+        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨command, _, executed⟩ :=
+        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
+      exact ih middle ((nativeApp.ledgerViolation_policyInvariant bob bobPacketPermitted
+        players).dispatch command before middle detected executed) continued
+
+/-- Deterministic reserved inclusion followed by any raw continuation has
+liability one. No acceptance, compliance, or future-policy premise is used. -/
+theorem bob_addressed_liability_law (players : Player → nativeApp.Policy)
+    (bit : Bool) (submission : WitnessedSubmission nativeGraph)
+    (addressed : submission.call.packet.event? nativeGraph = some bobPublication)
+    (nonconforming : bobPacketPermitted (bobEmittedPacket bit submission) = false)
+    (rest : List (ServiceInstruction nativeGraph)) :
+    (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+      (.includeLatest bobPublication bob :: rest) (bobSubmission bit submission)).map
+        bobLedgerLiability = FinDist.pure 1 := by
+  rw [runInteractionPlan, bob_addressed_included players bit submission addressed,
+    FinDist.pure_bind]
+  apply FinDist.eq_pure_of_support_subset_singleton
+  intro liability supported
+  obtain ⟨final, reached, rfl⟩ := FinDist.support_map .. ▸ supported
+  have detected := bob_ledger_plan_persists players rest (bobIncluded bit submission) final
+    (bob_nonconforming_detected bit submission nonconforming) reached
+  simp only [bobLedgerLiability, detected, ↓reduceIte]
+  rfl
+
+end VegasTests.MonitoredGuessing.Restricted

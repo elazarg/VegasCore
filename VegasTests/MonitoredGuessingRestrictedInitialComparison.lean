@@ -1,0 +1,195 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import VegasTests.MonitoredGuessingRestrictedComparator
+import VegasTests.MonitoredGuessingRestrictedValues
+import VegasTests.MonitoredGuessingNativeInitialRationality
+
+/-! # Early sender comparison for every paired continuation profile
+
+The restricted sender is initially silent. Every additional effective response
+submits a packet, whose fixed deposit bounds its entire continuation below the
+whole-outcome minimum. Every restricted continuation attains at least that
+minimum, including continuations that withhold the final opening. Reporting is
+forced by this edge's watched menu; no arbitrary watcher cooperation is assumed.
+-/
+
+noncomputable section
+
+namespace VegasTests.MonitoredGuessing.Restricted
+
+open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
+open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
+
+theorem restricted_watcher_policy (profile : Profile restrictedModel.behavioralSignature) :
+    restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile watcher =
+      nativeWatcherPolicy := by
+  funext past view
+  change _ = FinDist.pure (nativeWatcherResponse view)
+  apply FinDist.eq_pure_of_support_subset_singleton
+  intro response supported
+  have member := restrictedMenu.decode_embedPolicy_covered nativeInitialLaw nativeHorizon
+    nativeScheduler watcher (profile watcher) past view response supported
+  simpa only [restrictedMenu, ↓reduceIte, Finset.mem_singleton, Set.mem_singleton_iff] using member
+
+theorem initial_known_state (bit : Bool)
+    (history : restrictedModel.InformationHistory alice
+      (some ([], (aliceActivated bit).observe nativeApp alice))) :
+    history.1.state = some (initialAliceControl bit) := by
+  let middle := ordinaryRestriction.history history.1
+  let effective := watcherRestriction.history middle
+  let raw := effectiveRawRestriction.history effective
+  have observed : nativeModel.infoOf alice raw.trace = (initialAliceSite bit).1 :=
+    (effectiveRawRestriction.observed alice effective).trans
+      ((watcherRestriction.observed alice middle).trans
+        ((ordinaryRestriction.observed alice history.1).trans history.2))
+  exact initial_alice_information_control bit ⟨raw, observed⟩
+
+theorem initial_finish_le_lower (table : PayoffTable)
+    (players : Player → nativeApp.Policy) (reports : players watcher = nativeWatcherPolicy)
+    (bit : Bool) (submission : WitnessedSubmission nativeGraph)
+    (submits : players alice [] ((aliceActivated bit).observe nativeApp alice) =
+      FinDist.pure (submissionAction submission)) :
+    (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
+      (some (initialAliceControl bit))).expect
+        (fun state => Enforcement.stateUtility table state alice) ≤
+      Enforcement.payoffLower table alice := by
+  rw [initial_alice_finish, submits, FinDist.pure_bind, FinDist.expect_map]
+  change (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork nativePlan.tail
+    (ambientRespond bit (submissionAction submission))).expect
+      (fun execution => Enforcement.executionUtility table execution alice) ≤ _
+  rw [show nativePlan.tail = [.player watcher, .wire] ++ nativePlan.drop 3 from rfl,
+    runInteractionPlan_append, monitoring_plan players reports]
+  exact Enforcement.initial_submission_le_lower table bit submission players _
+
+theorem initial_clean_finish_lower (table : PayoffTable)
+    (profile : Profile restrictedModel.behavioralSignature) (bit : Bool) (who : Player) :
+    (Enforcement.payoffLower table who : ℝ) ≤
+      (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
+        (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
+        (some (initialAliceControl bit))).expect
+          (fun state => Enforcement.stateUtility table state who) := by
+  have silence : restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
+      profile alice [] ((aliceActivated bit).observe nativeApp alice) =
+        FinDist.pure nativeSilent := decoded_early_alice profile bit
+  rw [initial_alice_finish, silence, FinDist.pure_bind, FinDist.expect_map]
+  change _ ≤ (nativeRuntime.runInteractionPlan nativeLeaks _ nativeNetwork nativePlan.tail
+    (ambientRespond bit nativeSilent)).expect
+      (fun execution => Enforcement.executionUtility table execution who)
+  rw [show nativePlan.tail = [.player watcher, .wire, .grant bobPublication, .player bob] ++
+    nativePlan.drop 5 from rfl, runInteractionPlan_append,
+    quiet_silent_to_bob _ (restricted_watcher_policy profile)]
+  have guessing : restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
+      profile bob [] ((quietBob bit).observe nativeApp bob) =
+        (targetGuesses profile).map (choiceAction bobPublication bobHandle true) :=
+    decoded_bob_response profile bit
+  rw [guessing, FinDist.bind_map, FinDist.expect_bind, FinDist.expect_map]
+  rw [← FinDist.expect_const (targetGuesses profile) (Enforcement.payoffLower table who : ℝ)]
+  apply FinDist.expect_mono
+  intro guess _
+  change _ ≤ (nativeRuntime.runInteractionPlan nativeLeaks _ nativeNetwork
+    ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
+      .grant alicePublication, .player alice] ++ resolutionTail)
+    ((quietBob bit).respond nativeApp bob
+      (choiceAction bobPublication bobHandle true guess))).expect
+        (fun execution => Enforcement.executionUtility table execution who)
+  rw [bob_choice_value]
+  rw [← FinDist.expect_const (targetDisclosures profile bit guess)
+    (Enforcement.payoffLower table who : ℝ)]
+  apply FinDist.expect_mono
+  intro disclose _
+  change (Enforcement.payoffLower table who : ℝ) ≤
+    (table (sourceResults (finalConfig bit guess disclose).state) who : ℝ)
+  exact_mod_cast Enforcement.payoffLower_le table who
+    (sourceResults (finalConfig bit guess disclose).state)
+
+open Classical in
+/-- The exact local comparison required by the action-restriction theorem.
+No rationality assumption is imposed on either continuation profile. -/
+theorem initial_continuation_comparison (table : PayoffTable)
+    (sourceProfile : Profile restrictedModel.behavioralSignature)
+    (targetProfile : Profile watchedModel.behavioralSignature)
+    (bit : Bool) (site : restrictedModel.InformationSite alice)
+    (observed : site.1 = some ([], (aliceActivated bit).observe nativeApp alice))
+    (action : watchedModel.Choice alice (ordinaryRestriction.site alice site).1)
+    (extra : action ∉ Set.range (ordinaryRestriction.choice alice site.1))
+    (history : restrictedModel.InformationHistory alice site.1)
+    (fuel : Nat) (enough : 27 ≤ fuel) :
+    (watchedModel.runBehavioralFrom
+      (Profile.update (sig := watchedModel.behavioralSignature) targetProfile alice
+        ((targetProfile alice).commit (ordinaryRestriction.site alice site).1 action))
+      fuel (ordinaryRestriction.history history.1)).expect
+        (fun final => Enforcement.stateUtility table final.state alice) ≤
+    (restrictedModel.runBehavioralFrom
+      (Profile.update (sig := restrictedModel.behavioralSignature) sourceProfile alice
+        ((sourceProfile alice).withLaw site.1 (ordinaryComparator alice site action)))
+      fuel history.1).expect
+        (fun final => Enforcement.stateUtility table final.state alice) := by
+  classical
+  rcases site with ⟨information, occurs⟩
+  dsimp only at observed
+  subst information
+  have known := initial_known_state bit history
+  let rawProfile := Profile.update (sig := watchedModel.behavioralSignature) targetProfile alice
+    ((targetProfile alice).commit (some ([], (aliceActivated bit).observe nativeApp alice)) action)
+  let legalProfile := Profile.update (sig := restrictedModel.behavioralSignature)
+    sourceProfile alice ((sourceProfile alice).withLaw
+      (some ([], (aliceActivated bit).observe nativeApp alice))
+      (ordinaryComparator alice ⟨_, occurs⟩ action))
+  let rawPlayers := watchedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
+    rawProfile
+  have allowed := action.2
+  change ∃ response ∈ watchedMenu.actions alice []
+    ((aliceActivated bit).observe nativeApp alice), action.1 = some response at allowed
+  obtain ⟨response, available, same⟩ := allowed
+  have notWatcher : alice ≠ watcher := by decide
+  have covered : response ∈ nativeMenu.actions alice ((aliceActivated bit).recall alice)
+      ((aliceActivated bit).observe nativeApp alice) := by
+    change response ∈ nativeMenu.actions alice [] ((aliceActivated bit).observe nativeApp alice)
+    exact effective_in_raw alice _ _ (by simpa only [watchedMenu, notWatcher, ↓reduceIte]
+      using available)
+  obtain ⟨submission, responseEq⟩ := (initial_response_cases bit response covered).resolve_left
+    (by
+      intro silent
+      apply extra
+      refine ⟨⟨some nativeSilent, ?_⟩, ?_⟩
+      · exact ⟨nativeSilent, by
+          simp only [restrictedMenu, notWatcher, ↓reduceIte]
+          exact silent_ordinary alice _ _, rfl⟩
+      · apply Subtype.ext
+        exact (same.trans (congrArg some silent)).symm)
+  subst response
+  have rawChoice : rawPlayers alice [] ((aliceActivated bit).observe nativeApp alice) =
+      FinDist.pure (submissionAction submission) := by
+    simp only [rawPlayers, rawProfile, ReactiveApplication.ResponseMenu.decodeProfile,
+      ReactiveApplication.decodePolicy,
+      ReactiveApplication.ResponseMenu.embedPolicy, FinDist.map_comp]
+    change (((targetProfile alice).commit
+      (some ([], (aliceActivated bit).observe nativeApp alice)) action)
+      (some ([], (aliceActivated bit).observe nativeApp alice))).map
+        (fun chosen => chosen.1.getD nativeSilent) = _
+    rw [InformationModel.BehavioralPolicy.commit_self, FinDist.map_pure, same]
+    rfl
+  have rawLaw := watchedMenu.run_eq_finish nativeInitialLaw nativeHorizon nativeScheduler
+    rawProfile fuel (ordinaryRestriction.history history.1) (by
+      change nativeApp.rank nativeHorizon history.1.state ≤ fuel
+      rw [known]
+      exact enough)
+  have legalLaw := restrictedMenu.run_eq_finish nativeInitialLaw nativeHorizon nativeScheduler
+    legalProfile fuel history.1 (by rw [known]; exact enough)
+  have rawValue := congrArg (fun law : FinDist nativeApp.ProtocolState =>
+    law.expect (fun state => Enforcement.stateUtility table state alice)) rawLaw
+  have legalValue := congrArg (fun law : FinDist nativeApp.ProtocolState =>
+    law.expect (fun state => Enforcement.stateUtility table state alice)) legalLaw
+  rw [FinDist.expect_map] at rawValue legalValue
+  change (watchedModel.runBehavioralFrom rawProfile fuel
+    (ordinaryRestriction.history history.1)).expect _ ≤
+      (restrictedModel.runBehavioralFrom legalProfile fuel history.1).expect _
+  rw [rawValue, legalValue]
+  change (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler rawPlayers
+    history.1.state).expect _ ≤
+      (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler _ history.1.state).expect _
+  rw [known]
+  exact (initial_finish_le_lower table rawPlayers (watched_watcher_policy rawProfile)
+    bit submission rawChoice).trans (initial_clean_finish_lower table legalProfile bit alice)
+
+end VegasTests.MonitoredGuessing.Restricted

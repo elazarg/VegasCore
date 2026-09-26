@@ -91,6 +91,8 @@ the subsequent kernel-checked build.
 | Statewise constant-sum, including zero-sum, games in that decision class preserve every source SE under optional disclosure without sanctions | `GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean` |
 | Every SE of the actual initialized guessing program has a bounded native SE with identical joint private-bit/public-result/net-payoff law, for fixed collectible charge `D ≥ 2` | `VegasTests/MonitoredGuessingEquilibrium.lean`, `VegasTests/MonitoredGuessingNativePayoff.lean` |
 | One fixed playerwise policy translation preserves every source SE of that initialized guessing program and its joint secret/result/net-payoff law | `VegasTests/MonitoredGuessingCompilation.lean` |
+| Every SE of the literal two-reveal program with any integer return table and zero watcher payoff has a full bounded raw native SE preserving joint initial type, results and net payoffs | `VegasTests/MonitoredGuessingDeclaredCompilation.lean` |
+| Fixed source-to-restricted policies preserve all-profile joint laws and source SE; every restricted SE extends through ordinary, watcher and raw response restoration | `VegasTests/MonitoredGuessingRestrictedEquilibrium.lean`, `VegasTests/MonitoredGuessingRestrictedLaw.lean`, `VegasTests/MonitoredGuessingRestrictedExtension.lean` |
 | Sharp collateral thresholds against arbitrary target SE implementations: one half for fair guessing, one for all source guessing laws | `GameTheoryExtensionsTests/AmbientEnforcementThreshold.lean` |
 | Explicit pending certificates escape a ledger-only alarm; a network-input alarm requires stronger observations | `VegasTests/DisclosureMonitoring.lean` |
 | Shared randomness enables signaling through permitted traffic; even observing the receiver's public guess does not permit detection with zero false positives | `GameTheoryExtensionsTests/MonitoredSignaling.lean` |
@@ -150,11 +152,23 @@ the proof supplies rational continuations at every information site and one
 consistent trembling sequence. Watcher is indifferent at zero utility, and
 collectibility is an explicit assumption; paid reporting and escrow are not
 implemented. See the [scope audit](docs/research/se-native-pilot.md).
-The declared-payoff family additionally checks operational graph transport,
-executable deposit inference, actual early-submission deterrence, and prescribed
-net-payoff laws for arbitrary integer return tables. Ordinary opening and
-receiver incentives, and a family-wide source-assessment translation, remain
-necessary for its full SE theorem.
+The [declared-payoff family](VegasTests/MonitoredGuessingDeclaredCompilation.lean)
+has a separate end-to-end theorem for every integer return table with zero
+watcher payoff. It starts with the literal source program's assessment and
+evaluated returns, retains source opening and withholding, and preserves the
+joint initial-bit/result/net-payoff law in the full bounded raw game. Deposits
+are fixed at twice Alice's whole payoff range and Bob's whole payoff range.
+All extra ordinary responses have checked continuation comparisons; watcher
+restoration and private-alias lifting finish the native extension. Completion
+at new information sites may depend on the source assessment, so this broader
+result does not supply the pilot's fixed playerwise completion guarantee.
+
+The family uses the specified fair-bit setup, fixed service calendar, partial
+watcher sampling, and empty Alice pending sample after Bob's response. Initially
+valid commitments, ideal evidence and collectible deductions remain explicit
+assumptions. The result covers neither fresh source commitments nor arbitrary
+reveal sequences, and it retains source withholding. See the
+[response and scope audit](docs/research/monitored-response-coverage.md).
 
 The [selective-association comparison](docs/selective-association-proof-contract.md)
 keeps the compiled application, service calendar, deadlines, selector and full

@@ -49,6 +49,7 @@ import VegasTests.MonitoredGuessingPayoffInference
 import VegasTests.MonitoredGuessingPayoffLaw
 import VegasTests.MonitoredGuessingWatcherRaw
 import VegasTests.MonitoredGuessingRestrictedFinalComparison
+import VegasTests.MonitoredGuessingDeclaredCompilation
 import GameTheoryExtensions.Analysis.ObservableEnforcement
 import Interaction.MessageMonitoringProbability
 import Vegas.Pending.ReactiveConformance
@@ -1124,5 +1125,23 @@ open VegasTests.MonitoredGuessing.Restricted in
 #guard_msgs (whitespace := lax) in
 open VegasTests.MonitoredGuessing.Restricted in
 #print axioms final_comparator_declared_payoff_le
+
+/-- info: 'VegasTests.MonitoredGuessing.Restricted.source_equilibrium_compiles' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.MonitoredGuessing.Restricted in
+#print axioms source_equilibrium_compiles
+
+/-- info: 'VegasTests.MonitoredGuessing.Restricted.restricted_raw_equilibrium_extends' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.MonitoredGuessing.Restricted in
+#print axioms restricted_raw_equilibrium_extends
+
+/-- info: 'VegasTests.MonitoredGuessing.declared_sequential_equilibrium_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open VegasTests.MonitoredGuessing in
+#print axioms declared_sequential_equilibrium_preserved
 
 end Vegas.Paper

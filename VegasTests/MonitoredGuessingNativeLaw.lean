@@ -63,7 +63,8 @@ theorem native_finish_quiet (players : Player → nativeApp.Policy)
           (some ⟨9, some bob, quietBob bit⟩)) := by
   have stopped := nativeApp.finish_after_steps nativeInitialLaw nativeHorizon nativeScheduler
     players 8 (FinDist.pure none)
-  rw [quiet_bob_control_law players alicePolicy watcherPolicy,
+  rw [quiet_bob_control_law players (by intro bit; rw [alicePolicy]; rfl)
+    (by intro bit; rw [watcherPolicy]; rfl),
     FinDist.bind_map, FinDist.pure_bind] at stopped
   exact stopped.symm
 

@@ -44,43 +44,8 @@ theorem quiet_native_state_belief (assessment : nativeModel.BehavioralAssessment
     change nativeModel.infoOf bob history.trace = quietBobSite.1
     exact (nativeMenu.info nativeInitialLaw nativeHorizon nativeScheduler bob history.trace).trans
       ((congrArg (nativeApp.observe bob) same).symm.trans (quiet_bob_info bit))
-  have mass : law.probOf information = 1 := by
-    rw [← FinDist.expect_indicator_eq_probOf]
-    calc
-      law.expect (fun history => if history ∈ information then (1 : ℝ) else 0) =
-          law.expect (fun _ => 1) := by
-        apply FinDist.expect_congr
-        intro history supported
-        rw [ite_eq_left (seen history supported)]
-      _ = 1 := FinDist.expect_const _ _
-  have informationMass : nativeModel.informationMass assessment.strategy bob quietBobSite = 1 :=
-    (nativeModel.informationMass_eq_fixedDepth_probOf assessment.strategy bob quietBobSite 8
-      depth).trans mass
-  have positive : 0 < nativeModel.informationMass assessment.strategy bob quietBobSite := by
-    rw [informationMass]
-    norm_num
-  obtain ⟨witness, supported⟩ := law.support_nonempty
-  have meet : ∃ history ∈ information, history ∈ law.support :=
-    ⟨witness, seen witness supported, supported⟩
-  have bayes : assessment.belief bob quietBobSite =
-      nativeModel.bayesBelief assessment.strategy bob quietBobSite
-        (nativeAntichain bob quietBobSite) positive := by
-    apply FinDist.ext_of_prob
-    intro history
-    rw [nativeModel.bayesBelief_prob]
-    exact consistent.isBayesConsistent nativeAntichain bob quietBobSite positive history
-  have conditioned := nativeModel.bayesBelief_map_eq_condOn assessment.strategy bob
-    quietBobSite 8 depth (nativeAntichain bob quietBobSite) positive meet
-  rw [← bayes] at conditioned
-  have unchanged : law.condOn information meet = law := by
-    apply FinDist.ext_of_prob
-    intro history
-    rw [FinDist.prob_condOn, mass, div_one]
-    by_cases member : history ∈ information
-    · rw [ite_eq_left member]
-    · rw [ite_eq_right member]
-      exact (FinDist.prob_eq_zero_iff.mpr fun supported => member (seen history supported)).symm
-  rw [unchanged] at conditioned
+  have conditioned := assessment.belief_map_eq_run_of_full_reach nativeModel bob quietBobSite 8
+    nativeAntichain consistent depth seen
   have projected := congrArg (fun histories : FinDist nativeArena.History =>
     histories.map History.state) conditioned
   simpa only [FinDist.map_comp, Function.comp_def] using projected.trans prefixLaw

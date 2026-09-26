@@ -1,0 +1,252 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import VegasTests.MonitoredGuessingRestrictedComparator
+import VegasTests.MonitoredGuessingRestrictedValues
+import VegasTests.MonitoredGuessingRestrictedClock
+import VegasTests.MonitoredGuessingBobDeterrence
+import VegasTests.MonitoredGuessingBobIgnored
+
+/-! # Receiver comparisons for the generic action-restriction theorem
+
+Every extra effective receiver response is compared with source silence.
+Addressed extra traffic incurs the fixed deposit; ignored traffic preserves the
+actual terminal result and receiver payoff under every paired continuation.
+-/
+
+noncomputable section
+
+namespace VegasTests.MonitoredGuessing.Restricted
+
+open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
+open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
+
+theorem restricted_before_alice_trace (bit guess : Bool) :
+    Nonempty (restrictedArena.Trace (some ⟨4, some alice, beforeAlice bit guess⟩)) := by
+  have covered := fun who past view action supported =>
+    (restrictedMenu.uniformResponses_support who past view action).mp supported
+  obtain ⟨grantedBob⟩ := restrictedMenu.trace_roundsFrom nativeInitialLaw nativeHorizon
+    nativeScheduler restrictedMenu.uniformResponses covered 4 (by decide) (quietGranted bit) (by
+      rw [reference_rounds_four, FinDist.support_map]
+      exact ⟨bit, FinDist.mem_support_uniformOfFintype bit, rfl⟩)
+  obtain ⟨bobTrace⟩ := restrictedMenu.trace_environment nativeInitialLaw nativeHorizon
+    nativeScheduler 9 (quietGranted bit) (quietBob bit) (.activate bob) grantedBob
+    (FinDist.mem_support_pure.mpr rfl) (by
+      rw [quiet_bob_activation]
+      exact FinDist.mem_support_pure.mpr rfl)
+  obtain ⟨responded⟩ := restrictedMenu.trace_respond nativeInitialLaw nativeHorizon nativeScheduler
+    9 (quietBob bit) bob (choiceAction bobPublication bobHandle true guess) bobTrace
+    (bob_choice_available bit guess)
+  have rounds := native_segment_rounds restrictedMenu.uniformResponses (nativePlan.take 5)
+    [.includeLatest bobPublication bob, .tick, .expire bobPublication, .grant alicePublication]
+    (nativePlan.drop 9) rfl
+    ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess)) (by
+      rw [nativeApp.respond_environmentRecall]
+      rfl)
+  simp only [List.length_cons, List.length_nil] at rounds
+  obtain ⟨grantedAliceTrace⟩ := restrictedMenu.trace_runRounds nativeInitialLaw nativeHorizon
+    nativeScheduler restrictedMenu.uniformResponses covered 5 4 _ (grantedAlice bit guess) responded
+    (by rw [rounds, bob_to_granted_alice]; exact FinDist.mem_support_pure.mpr rfl)
+  exact restrictedMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler 4
+    (grantedAlice bit guess) (beforeAlice bit guess) (.activate alice) grantedAliceTrace
+    (by cases guess <;> exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [activate_alice]; exact FinDist.mem_support_pure.mpr rfl)
+
+theorem exists_retained_alice_site (bit guess : Bool) :
+    ∃ site : restrictedModel.InformationSite alice, site.1 = aliceInput bit guess := by
+  obtain ⟨trace⟩ := restricted_before_alice_trace bit guess
+  refine ⟨⟨aliceInput bit guess, ⟨⟨⟨some ⟨4, some alice, beforeAlice bit guess⟩, trace⟩,
+    ?_⟩, ?_, ?_⟩⟩, rfl⟩
+  · exact restrictedMenu.info nativeInitialLaw nativeHorizon nativeScheduler alice trace
+  · simp [ReactiveApplication.ResponseMenu.protocol, ReactiveApplication.terminal]
+  · refine ⟨nativeSilent, ?_⟩
+    exact ⟨nativeSilent, alice_choice_available bit guess false, rfl⟩
+
+theorem bob_finish_comparison (table : PayoffTable)
+    (rawPlayers legalPlayers : Player → nativeApp.Policy) (bit : Bool)
+    (response : nativeApp.Action)
+    (available : response ∈ effectiveMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
+    (extra : response ∉ restrictedMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
+    (choices : FinDist Bool)
+    (rawChoice : rawPlayers bob ((quietBob bit).recall bob)
+      ((quietBob bit).observe nativeApp bob) = FinDist.pure response)
+    (legalChoice : legalPlayers bob ((quietBob bit).recall bob)
+      ((quietBob bit).observe nativeApp bob) = FinDist.pure nativeSilent)
+    (rawAlice : rawPlayers alice ((beforeAlice bit false).recall alice)
+      ((beforeAlice bit false).observe nativeApp alice) =
+        choices.map (choiceAction alicePublication aliceHandle bit))
+    (legalAlice : legalPlayers alice ((beforeAlice bit false).recall alice)
+      ((beforeAlice bit false).observe nativeApp alice) =
+        choices.map (choiceAction alicePublication aliceHandle bit)) :
+    (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler rawPlayers
+      (some ⟨9, some bob, quietBob bit⟩)).expect
+        (fun state => Enforcement.stateUtility table state bob) ≤
+    (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler legalPlayers
+      (some ⟨9, some bob, quietBob bit⟩)).expect
+        (fun state => Enforcement.stateUtility table state bob) := by
+  have rawFinish := native_finish_response rawPlayers (nativePlan.take 4)
+    ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
+      .grant alicePublication, .player alice] ++ resolutionTail) bob rfl (quietBob bit) rfl
+  have legalFinish := native_finish_response legalPlayers (nativePlan.take 4)
+    ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
+      .grant alicePublication, .player alice] ++ resolutionTail) bob rfl (quietBob bit) rfl
+  change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler rawPlayers
+    (some ⟨9, some bob, quietBob bit⟩) = _ at rawFinish
+  change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler legalPlayers
+    (some ⟨9, some bob, quietBob bit⟩) = _ at legalFinish
+  rw [rawFinish, legalFinish, rawChoice, legalChoice, FinDist.pure_bind,
+    FinDist.pure_bind, FinDist.expect_map, FinDist.expect_map]
+  change (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork _
+      ((quietBob bit).respond nativeApp bob response)).expect
+        (fun execution => Enforcement.executionUtility table execution bob) ≤
+    (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork _
+      ((quietBob bit).respond nativeApp bob nativeSilent)).expect
+        (fun execution => Enforcement.executionUtility table execution bob)
+  rcases effective_bob_response_cases bit response available with legal |
+      ⟨submission, rfl, wrong | ⟨addressed, _⟩⟩
+  · exact (extra legal).elim
+  · have law := wrong_address_compared_with_silence table rawPlayers legalPlayers bit submission
+      (effective_in_raw bob [] _ available) wrong choices rawAlice legalAlice
+    have expected := congrArg (fun law : FinDist (Results × ℝ) => law.expect Prod.snd) law
+    simp only [FinDist.expect_map] at expected
+    exact le_of_eq expected
+  · have lower := bob_extra_addressed_le_clean_outcomes table
+      (choices.map (fun disclose => sourceResults (finalConfig bit false disclose).state))
+      rawPlayers bit submission available extra addressed
+      ([.tick, .expire bobPublication, .grant alicePublication, .player alice] ++ resolutionTail)
+    rw [FinDist.expect_map] at lower
+    have law := silence_continuation_payoff_law table legalPlayers bit choices legalAlice
+    have expected := congrArg (fun law : FinDist (Results × ℝ) => law.expect Prod.snd) law
+    simp only [FinDist.expect_map] at expected
+    exact lower.trans_eq expected.symm
+
+theorem bob_history_state (site : restrictedModel.InformationSite bob)
+    (history : restrictedModel.InformationHistory bob site.1) :
+    ∃ bit, history.1.state = some ⟨9, some bob, quietBob bit⟩ := by
+  have active := InformationModel.InformationSite.active restrictedModel site history
+  rcases history with ⟨⟨state, trace⟩, observed⟩
+  cases state with
+  | none => cases active
+  | some control =>
+      obtain ⟨bit, same⟩ := bob_control control trace active
+      exact ⟨bit, congrArg some same⟩
+
+open Classical in
+/-- The exact receiver obligation of the generic comparator theorem, for
+every paired profile and every hidden retained history. -/
+theorem bob_continuation_comparison (table : PayoffTable)
+    (sourceProfile : Profile restrictedModel.behavioralSignature)
+    (targetProfile : Profile watchedModel.behavioralSignature)
+    (paired : ordinaryRestriction.ExtendsProfile sourceProfile targetProfile)
+    (site : restrictedModel.InformationSite bob)
+    (action : watchedModel.Choice bob (ordinaryRestriction.site bob site).1)
+    (extra : action ∉ Set.range (ordinaryRestriction.choice bob site.1))
+    (history : restrictedModel.InformationHistory bob site.1)
+    (fuel : Nat) (enough : 19 ≤ fuel) :
+    (watchedModel.runBehavioralFrom
+      (Profile.update (sig := watchedModel.behavioralSignature) targetProfile bob
+        ((targetProfile bob).commit (ordinaryRestriction.site bob site).1 action))
+      fuel (ordinaryRestriction.history history.1)).expect
+        (fun final => Enforcement.stateUtility table final.state bob) ≤
+    (restrictedModel.runBehavioralFrom
+      (Profile.update (sig := restrictedModel.behavioralSignature) sourceProfile bob
+        ((sourceProfile bob).withLaw site.1 (ordinaryComparator bob site action)))
+      fuel history.1).expect
+        (fun final => Enforcement.stateUtility table final.state bob) := by
+  classical
+  obtain ⟨bit, known⟩ := bob_history_state site history
+  have observed := bob_site_input site
+  rcases site with ⟨information, occurs⟩
+  dsimp only at observed
+  subst information
+  let rawProfile := Profile.update (sig := watchedModel.behavioralSignature) targetProfile bob
+    ((targetProfile bob).commit quietBobInfo action)
+  let legalProfile := Profile.update (sig := restrictedModel.behavioralSignature) sourceProfile bob
+    ((sourceProfile bob).withLaw quietBobInfo
+      (ordinaryComparator bob ⟨quietBobInfo, occurs⟩ action))
+  let rawPlayers := watchedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
+    rawProfile
+  let legalPlayers := restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
+    legalProfile
+  have allowed := action.2
+  change ∃ response ∈ watchedMenu.actions bob [] ((quietBob false).observe nativeApp bob),
+    action.1 = some response at allowed
+  obtain ⟨response, allowed, same⟩ := allowed
+  have available : response ∈ effectiveMenu.actions bob [] ((quietBob bit).observe nativeApp bob) :=
+    by simpa only [watchedMenu, show bob ≠ watcher by decide, ↓reduceIte,
+      quiet_bob_observation bit] using allowed
+  have extraResponse : response ∉
+      restrictedMenu.actions bob [] ((quietBob bit).observe nativeApp bob) := by
+    intro member
+    have member' : response ∈ restrictedMenu.actions bob []
+        ((quietBob false).observe nativeApp bob) := by
+      simpa only [quiet_bob_observation bit] using member
+    let original : restrictedModel.Choice bob quietBobInfo :=
+      ⟨some response, ⟨response, member', rfl⟩⟩
+    apply extra
+    exact ⟨original, Subtype.ext same.symm⟩
+  have rawChoice : rawPlayers bob ((quietBob bit).recall bob)
+      ((quietBob bit).observe nativeApp bob) = FinDist.pure response := by
+    simp only [rawPlayers, rawProfile, ReactiveApplication.ResponseMenu.decodeProfile,
+      ReactiveApplication.decodePolicy,
+      ReactiveApplication.ResponseMenu.embedPolicy, FinDist.map_comp]
+    change (((targetProfile bob).commit quietBobInfo action)
+      (some ((quietBob bit).recall bob, (quietBob bit).observe nativeApp bob))).map
+        (fun chosen => chosen.1.getD nativeSilent) = _
+    rw [bob_input bit, InformationModel.BehavioralPolicy.commit_self, FinDist.map_pure, same]
+    rfl
+  have legalChoice : legalPlayers bob ((quietBob bit).recall bob)
+      ((quietBob bit).observe nativeApp bob) = FinDist.pure nativeSilent := by
+    simp only [legalPlayers, legalProfile, ReactiveApplication.ResponseMenu.decodeProfile,
+      ReactiveApplication.decodePolicy,
+      ReactiveApplication.ResponseMenu.embedPolicy, FinDist.map_comp]
+    change (((sourceProfile bob).withLaw quietBobInfo
+      (ordinaryComparator bob ⟨quietBobInfo, occurs⟩ action))
+      (some ((quietBob bit).recall bob, (quietBob bit).observe nativeApp bob))).map
+        (fun chosen => chosen.1.getD nativeSilent) = _
+    rw [bob_input bit, InformationModel.BehavioralPolicy.withLaw_self]
+    simp only [ordinaryComparator, FinDist.map_pure, Option.getD_some, comparatorResponse,
+      show bob ≠ watcher by decide, show bob ≠ alice by decide, false_and, ↓reduceIte]
+  obtain ⟨aliceSite, aliceObserved⟩ := exists_retained_alice_site bit false
+  have matching := restricted_in_watched.decoded_at_site nativeInitialLaw nativeHorizon
+    nativeScheduler sourceProfile targetProfile paired alice aliceSite
+    ((beforeAlice bit false).recall alice) ((beforeAlice bit false).observe nativeApp alice)
+    aliceObserved
+  have rawAlice : rawPlayers alice ((beforeAlice bit false).recall alice)
+      ((beforeAlice bit false).observe nativeApp alice) =
+        (targetDisclosures sourceProfile bit false).map
+          (choiceAction alicePublication aliceHandle bit) := by
+    simp only [rawPlayers, rawProfile, ReactiveApplication.ResponseMenu.decodeProfile,
+      Profile.update_of_ne _ _ (by decide : alice ≠ bob)]
+    exact matching.trans (decoded_alice_response sourceProfile bit false)
+  have legalAlice : legalPlayers alice ((beforeAlice bit false).recall alice)
+      ((beforeAlice bit false).observe nativeApp alice) =
+        (targetDisclosures sourceProfile bit false).map
+          (choiceAction alicePublication aliceHandle bit) := by
+    simp only [legalPlayers, legalProfile, ReactiveApplication.ResponseMenu.decodeProfile,
+      Profile.update_of_ne _ _ (by decide : alice ≠ bob)]
+    exact decoded_alice_response sourceProfile bit false
+  have rawLaw := watchedMenu.run_eq_finish nativeInitialLaw nativeHorizon nativeScheduler
+    rawProfile fuel (ordinaryRestriction.history history.1) (by
+      change nativeApp.rank nativeHorizon history.1.state ≤ fuel
+      rw [known]
+      exact enough)
+  have legalLaw := restrictedMenu.run_eq_finish nativeInitialLaw nativeHorizon nativeScheduler
+    legalProfile fuel history.1 (by rw [known]; exact enough)
+  have rawValue := congrArg (fun law : FinDist nativeApp.ProtocolState =>
+    law.expect (fun state => Enforcement.stateUtility table state bob)) rawLaw
+  have legalValue := congrArg (fun law : FinDist nativeApp.ProtocolState =>
+    law.expect (fun state => Enforcement.stateUtility table state bob)) legalLaw
+  rw [FinDist.expect_map] at rawValue legalValue
+  change (watchedModel.runBehavioralFrom rawProfile fuel
+    (ordinaryRestriction.history history.1)).expect _ ≤
+      (restrictedModel.runBehavioralFrom legalProfile fuel history.1).expect _
+  rw [rawValue, legalValue]
+  change (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler rawPlayers
+    history.1.state).expect _ ≤
+      (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler legalPlayers
+        history.1.state).expect _
+  rw [known]
+  exact bob_finish_comparison table rawPlayers legalPlayers bit response available extraResponse
+    (targetDisclosures sourceProfile bit false) rawChoice legalChoice rawAlice legalAlice
+
+end VegasTests.MonitoredGuessing.Restricted

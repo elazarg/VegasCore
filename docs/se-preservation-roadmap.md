@@ -4,8 +4,10 @@ This is the results map and reading guide for SE compilation. The
 [ideal-sanctions proof](research/se-ideal-sanctions.md) contains the generic
 mathematics; the [native pilot](research/se-native-pilot.md) contains the checked
 source-to-runtime instance. The general action-restriction theorem and scalar
-deposit inference are checked in Lean. Instantiating the general theorem for
-arbitrary source programs and a native service remains open.
+deposit inference are checked in Lean. The
+[literal two-reveal payoff-table family](../VegasTests/MonitoredGuessingDeclaredCompilation.lean)
+now instantiates the staged theorem end to end. Arbitrary source programs remain
+outside that result.
 The [stack and implementation plan](se-compilation-stack.md) fixes the next
 program class, proof edges, parallel work packages and early feasibility gates.
 
@@ -16,8 +18,8 @@ program class, proof edges, parallel work packages and early feasibility gates.
 | General SE extension | Every source SE extends across a structural action restriction satisfying the conditional enforcement bounds. Preserves retained strategies, beliefs, and joint completed-history/net-payoff laws. |
 | Scalar deposit inference | Executably computes the least nonnegative deposit for a finite rational comparison table, or identifies an infeasible row. This decides the certificate, not semantic SE implementability. |
 | Native guessing compiler | Every SE of the stated source program has a native SE under the fixed bounded service, partial monitoring and collectible charge. Includes a fixed playerwise policy translation. |
-| Declared-payoff family | Arbitrary integer return tables share the compiled operational graph; inferred charges deter raw early submissions, and prescribed execution preserves the exact net-payoff law. A family-wide SE theorem is still open. |
-| Concrete strategic stack | C/W/N response menus and their all-history decision clocks are checked. Every watched-game SE extends to the full effective game for arbitrary ordinary-player payoffs and identically zero watcher utility. Source-to-C assessment transport and C-to-W comparisons remain open. |
+| Declared-payoff family | Every SE of the literal two-reveal source program, for any integer payoff table with zero watcher payoff, has a full bounded raw native SE with the exact joint initial-bit/result/net-payoff law. Both opening and withholding are retained. |
+| Concrete strategic stack | Source → C → W → N → raw is checked for the family. All native games share the runtime and utility; deposits are fixed from the table before choosing the source equilibrium. |
 
 The central proof is
 [`sequential_equilibrium_extends_of_comparator`](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean).
@@ -78,7 +80,7 @@ service used for SE are backend instances. A proof for one is not an
 intermediate SE edge to the other. Concrete cryptographic or ledger execution
 would require its own refinement beyond this idealized target.
 
-The proposed [strategic proof stack](se-compilation-stack.md#stack-one-runtime-several-strategic-games)
+The [strategic proof stack](se-compilation-stack.md#stack-one-runtime-several-strategic-games)
 uses genuine response-menu restrictions of this same runtime:
 
 ```text
@@ -96,9 +98,20 @@ actual fixture in [WatcherExtension](../VegasTests/MonitoredGuessingWatcherExten
 The final edge restores only proved
 private response aliases. These are games used in the proof, with the same
 runtime implementation and enforcement configuration; they add no source syntax
-or emitted interpreter. Their general source-to-native composition is proposed,
-not checked. Information-agent forms and extracted incentive tables remain
-internal proof and analysis constructions.
+or emitted interpreter. Their source-to-native composition is checked for the
+two-reveal family. The fixed backend includes a fair initial private bit, one-half
+passive watcher sampling, no Alice pending sample after Bob's response, reserved
+inclusion and finite timeouts. It deducts Alice's deposit of twice her whole
+payoff range and Bob's deposit of his whole range on the respective proved
+liabilities. Collection is an economic/backend assumption, not an implemented
+escrow. These conservative bounds are not claimed minimal. Information-agent
+forms and extracted incentive tables remain internal proof constructions.
+
+General reveal sequences require source/service-block induction and monitoring
+coverage at subsequent response opportunities. Repeated owners additionally
+require evidence-alias and replay proofs. An unmonitored packet that a later
+player can read cannot be classified as harmless merely because inclusion
+ignores it.
 
 Ambient communication is an alternative source interpretation when a capability
 must be retained. It is not automatically inserted to make an ordinary-source
