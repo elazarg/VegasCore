@@ -37,11 +37,23 @@ native SE with the same joint initial-bit/result/net-payoff law. Its deposits
 are fixed from the declared table; watcher returns are zero. Generalizing this
 family to arbitrary reveal sequences remains open.
 
-Reusable parts of that extension are checked separately: source reveal-only
-membership and guard acceptance, checkpoint Bayes projection across different
-step counts, successful-evidence normalization, and passive observation followed
-by actual public report inclusion. They do not yet constitute the arbitrary-length
-compiler theorem.
+The reusable backend is assembled in
+[RevealService](../Vegas/Game/RevealService.lean), using the existing runtime.
+The following obligations distinguish its checked components from the missing
+arbitrary-length theorem:
+
+| Obligation | Status |
+| --- | --- |
+| Existing reveal-only syntax, repeated owners, both disclosure choices | Checked, including source store and completion-history agreement after either choice. |
+| Fixed service, deadlines, C menu inside the full effective menu | Constructed; source-wide execution correspondence remains open. |
+| Finite alphabet covering every supported initial value | Checked; extending the alphabet retains every previously admitted raw response. |
+| C actions project to opening/withholding with fully supported split perturbations | Checked locally at covered checkpoints. |
+| Native decision view determines the source decision view | Checked from typed store and completion-history agreement. |
+| Source view reconstructs native semantic observation and initial candidate catalogue | Checked at reachable ranked prefixes; public service/transcript fields still need their induction. |
+| Common decision depths for C/W/N/raw menus | Checked at all legal histories using existing grant and actor observations. |
+| Reverse information correspondence, checkpoint prefix laws and conditional beliefs | Open; required for source-to-C SE. |
+| Conditional monitoring, packet classification and persistent evidence | Checked locally; full C-prefix coverage and utility comparisons remain open. |
+| End-to-end SE for arbitrary reveal sequences | Open. The checked end-to-end result remains the two-reveal payoff-table family. |
 
 ## Stack: one runtime, several strategic games
 
@@ -121,27 +133,25 @@ combined extension. No game or fine may be chosen after seeing the source SE.
 
 ## First program class and service
 
-### Immediate fixture
+### Checked fixture
 
-Use the actual [two-publication payoff-table family](../VegasTests/MonitoredGuessingPayoffs.lean):
+The actual [two-publication payoff-table family](../VegasTests/MonitoredGuessingPayoffs.lean) has
 valid initialized commitments, Bob's reveal followed by Alice's reveal, and
-literal integer return tables. Keep **both opening and withholding at both
-source decisions**, under arbitrary source strategies. The first S → C proof
-must not rely on Alice opening in equilibrium.
+literal integer return tables. It retains **both opening and withholding at both
+source decisions**, under arbitrary source strategies. Its S → C proof does
+not rely on Alice opening in equilibrium.
 
-For C, implement opening with the actual matching-certificate packet and
+For C, opening uses the actual matching-certificate packet and
 withholding with silence followed by expiry. This gives omission a source
 meaning without assuming that passive packet monitoring detects silence.
-An explicit withholding packet is then extra observable traffic. Prove this
-implementation's service laws; the pilot's false branch transmits a withholding
-packet and does not already establish the required silent branch.
+An explicit withholding packet is extra observable traffic. The checked service
+laws cover both source branches.
 
-For the generic enforcement route, ordinary-player payoff tables may be
-arbitrary; the watcher is assigned zero utility. Every additional ordinary
-response still needs an actual comparison certificate. This requires more than
-the pilot's Alice-only rejected-receipt penalty.
+Ordinary-player payoff tables may be arbitrary; the watcher is assigned zero
+utility. Every additional ordinary response has an actual comparison certificate
+under the fixture's stated service and observation rule.
 
-### Reusable class after the fixture
+### Reusable reveal class
 
 Generalize by induction to finite sequences of guard-free revelations of valid
 initialized commitments, in a fixed public order, with finite setup support and
@@ -162,11 +172,34 @@ unbounded traffic are outside this first theorem. Initial binding validity is a
 setup assumption. It does not establish a cryptographic setup protocol or
 security under key/secret sharing.
 
-The first repeated-owner regression should use Alice → Bob → Alice. A
+The constructed block for event rank `k` grants that event, activates its owner,
+attempts reserved inclusion, activates the watcher, includes its report, advances
+the clock `k+1` times, and expires the event. Its relative deadline is `k+1`.
+The owner is activated once per source event; arbitrary intervening broadcast
+opportunities are outside this backend contract. All other players' passive
+sampling rules remain parameters.
+
+This roster restricts transmission opportunities, not just total traffic.
+For example, an owner whose first source decision is later cannot broadcast
+before an earlier owner's decision in this instance. A theorem for this service
+must not be presented as preservation against arbitrary ambient communication.
+Lifting that restriction requires monitored off-turn opportunities and an
+enforcement argument for early current-event openings; the ordinary packet
+format and other-event rejection tests alone do not establish it.
+
+[Finite initial-value coverage](../Vegas/Pending/ReactiveInitialValues.lean)
+extends the declared packet alphabet with the values in the finite setup law.
+It preserves the original raw menu, including malformed traffic and independent
+evidence. [Checkpoint coverage](../Vegas/Game/RevealServiceBounds.lean) then
+proves an authentic initialized opening available whenever the checkpoint retains
+its initial binding tables. The theorem needs neither finite value types nor
+a bound selected after seeing an equilibrium.
+
+The repeated-owner source regression uses Alice → Bob → Alice. A
 successful owned opening and a forwarded certificate can emit the same packet
 while leaving different private response recall. A later decision makes this
-relevant to the universal comparator premise. Extend the proved alias
-normalization for such requests before applying the ordinary-response extension;
+relevant to the universal comparator premise. The proved alias
+normalization handles such requests before the ordinary-response extension;
 invisible private distinctions cannot be audited. Replays of old envelopes also
 need a service-insensitivity argument, since old public content can still change
 the service's input history.
@@ -224,12 +257,36 @@ program and its service blocks. The fixture's explicit history classification
 and fair-bit posterior do not supply that induction or handle arbitrary
 correlated setup and off-path source decisions.
 
+[Source checkpoint agreement](../Vegas/Game/RevealServiceState.lean) proves
+initial store agreement and its preservation by actual native completion and
+source revelation. The local source decoder finds the authentic opening using
+the owner's view and the binding invariant.
+[Information recovery](../Vegas/Game/RevealServiceInformation.lean) recovers
+the exact source decision view from store and completion-history agreement.
+[Action splitting](../Vegas/Game/RevealServiceActions.lean) projects C actions
+to the source Boolean choice and lifts fully supported distributions; silence
+and spent replay share the withholding fiber. These facts still need the
+whole-history induction and reverse information correspondence.
+The [reverse observation lemmas](../Vegas/Game/RevealServiceObservation.lean)
+recover the native graph observation and candidate catalogue from the source
+view at reachable ranked prefixes. They reduce complete before-view equality
+to the actual public accepted-handle, clock, activation, grant, ledger, leak
+and receipt invariants. They do not assume information-fiber equality or a
+belief-preserving target assessment.
+The [policy adapter](../Vegas/Game/RevealServicePolicy.lean) uses the existing
+source-to-event compiler for the disclosure law and implements it using these
+action fibers. Its support belongs to C at every local input; the source-law
+equation additionally requires the operational checkpoint invariants.
+
 [Checkpoint Bayes projection](../GameTheoryExtensions/Analysis/Protocol/HistoryBayesProjection.lean)
 allows different source and native prefix depths. Its premises are actual
 prefix-law projection and reflection of the selected information fiber; it
 does not assume a belief-preserving target assessment. The compiler must still
 discharge those premises along the source assessment's common perturbation
 sequence, including source sites with zero limiting probability.
+Its focal-selector corollary cancels the focal player's own reach probability
+using decision recall, so private replay distinctions need not become source
+observations. The selected-prefix projection and fiber premises remain to prove.
 
 ### Calendar requirements to prove
 
@@ -259,6 +316,19 @@ and expiry timing are explicit premises. The program induction must supply
 these premises for the complete calendar; a local block equation alone does
 not establish them for every source execution.
 
+[Monitored settlement](../Vegas/Pending/ReactiveRevealSettlement.lean) composes
+the actual watcher/report, clock ticks and expiry into a deterministic tail
+for either source branch. It permits spent pending copies and retains the
+watcher's real silent response recall. No private sampling restriction is
+needed on these source-representable paths.
+
+[Sequential deadline lemmas](../Vegas/Pending/EventSequentialTiming.lean) prove
+that completing an event activates its immediate successor at the actual
+completion time. Early completion followed by `k+1` ticks leaves the successor
+younger than its deadline `k+2`; completing at expiry leaves age zero. This
+supplies the local timing step for both source choices. The full-calendar
+invariant is still part of the source correspondence proof.
+
 ## Early risks and decisive gates
 
 Run these gates before committing to a general source adapter or a large
@@ -278,6 +348,14 @@ A [regression](../GameTheoryExtensionsTests/DecisionRecall.lean) checks that a
 model failing global recall still satisfies this premise and admits an SE by
 the generic theorem. Common decision depth is a separate calendar obligation;
 no clock or memory observation is added to satisfy it.
+
+For the reusable reveal backend,
+[RevealServiceClock](../Vegas/Game/RevealServiceClock.lean) proves common
+decision depth at every raw history and for every response menu of the same
+service. The observed event grant identifies the block. Actor identity
+distinguishes its owner and watcher opportunities, with a watcher distinct
+from all source owners. The formulas include both actual environment steps
+and prior player responses; they do not assume source-conforming play.
 
 The [full raw fixture](../VegasTests/MonitoredGuessingNativeClock.lean) has common
 decision depths at all legal information sets: initial Alice at 2, Watcher at 4,
@@ -461,7 +539,7 @@ never the GameTheory submodule.
 | --- | --- | --- | --- |
 | A | Decision-site recall and capstone refactor in GameTheoryExtensions; native instance in Interaction. **Checked.** | G1 audit | Closed for the existing information model. |
 | B | Menu-to-menu action restriction in Interaction; all-history fixture clocks. **Checked.** | Existing ResponseMenu; A for SE use | Generic roster inference remains outside the fixture result. |
-| C | Private submission/packet normalization and compiler compatibility. **Checked; successful-request alias coverage remains open.** | G2 | Prove unavailable or harmless on retained histories before extending to repeated owners. |
+| C | Private submission/packet normalization and compiler compatibility, including successful-request aliases. **Checked.** | G2 | Published replay is handled separately in the source-representable menu. |
 | D | Concrete C/W/N menus, service checkpoints, all-history decision classification and source assessment correspondence. **Checked for the fixture.** | B, C, G3 | General source observation/deadline induction remains. |
 | E | Persistent ledger evidence, exhaustive ordinary-response comparisons and fixed deposit bounds. **Checked for the fixture.** | B, G4, G5 | Broader passive visibility needs monitoring at subsequent response opportunities. |
 | F | Source-to-C SE and all-profile joint type/result/net-payoff law. **Checked for the payoff-table family.** | A, D | General reveal sequences need a common consistency argument across blocks. |

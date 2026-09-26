@@ -40,6 +40,60 @@ theorem canonicalRevealResponse_application (runtime : EventGraphRuntime graph)
         execution.application := by
   cases disclose <;> rfl
 
+/-- Reserved inclusion never reprocesses an already published identifier,
+including one that a player has deliberately rebroadcast. -/
+theorem reactiveLatest_wait_of_pending_published (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (event : graph.EventId) (owner : Player)
+    (view : (runtime.reactiveApplication leaks).EnvironmentView)
+    (published : ∀ message ∈ view.network.pending,
+      message.id ∈ view.network.ledger.map Message.id) :
+    runtime.reactiveLatest leaks event owner view = .wait := by
+  have absent : view.network.pending.reverse.find? (fun message =>
+      message.sender = owner ∧ message.payload.call.event? graph = some event ∧
+        view.Unpublished (runtime.reactiveApplication leaks) message.id) = none := by
+    apply List.find?_eq_none.mpr
+    intro message member
+    have spent := published message (List.mem_reverse.mp member)
+    simp only [ReactiveApplication.EnvironmentView.Unpublished, spent, not_true_eq_false,
+      and_false, decide_false, Bool.false_eq_true, not_false_eq_true]
+  simp only [reactiveLatest, absent]
+
+theorem interaction_includeLatest_of_pending_published (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
+    (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
+    (event : graph.EventId)
+    (published : ∀ message ∈ execution.network.pending,
+      message.id ∈ execution.network.ledger.map Message.id) :
+    runtime.interactionStep leaks players network (.includeLatest event owner) execution =
+      execution.environmentStep (runtime.reactiveApplication leaks) .wait := by
+  unfold interactionStep
+  rw [interactionInstruction,
+    runtime.reactiveLatest_wait_of_pending_published leaks event owner _ published,
+    FinDist.pure_bind]
+  simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
+  exact FinDist.bind_pure _
+
+/-- A published replay follows the same application wait as silence, while
+retaining its actual broadcast and private response recall. -/
+theorem published_replay_inclusion (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
+    (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
+    (event : graph.EventId) (id : MessageId Player)
+    (published : ∀ message ∈ execution.network.pending,
+      message.id ∈ execution.network.ledger.map Message.id)
+    (spent : id ∈ execution.network.ledger.map Message.id) :
+    let app := runtime.reactiveApplication leaks
+    let submitted := execution.respond app owner ⟨some (.replay id)⟩
+    runtime.interactionStep leaks players network (.includeLatest event owner) submitted =
+      submitted.environmentStep app .wait := by
+  apply runtime.interaction_includeLatest_of_pending_published
+  exact execution.network.replay_pending_published owner id published spent
+
 /-- Empty-pool silence produces the actual service wait, including its command
 recall. Neither player nor network policy is consulted at this instruction. -/
 theorem canonical_silent_inclusion (runtime : EventGraphRuntime graph)
@@ -64,28 +118,29 @@ theorem canonical_silent_inclusion (runtime : EventGraphRuntime graph)
     ReactiveApplication.Command.actor?]
   exact FinDist.bind_pure _
 
-/-- A fresh canonical opening is selected by immediate reserved inclusion,
-including in the presence of earlier traffic. -/
-theorem canonical_opening_inclusion (runtime : EventGraphRuntime graph)
+/-- A fresh opening is selected by immediate reserved inclusion, independently
+of how its evidence is requested and in the presence of earlier traffic. -/
+theorem opening_inclusion (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
     (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
+    (evidence : EvidenceRequest graph)
     (fresh : (owner, execution.network.nextSerial owner) ∉
       execution.network.ledger.map Message.id) :
     let app := runtime.reactiveApplication leaks
     let submitted := execution.respond app owner
-      (runtime.canonicalRevealResponse leaks event candidate raw true)
+      ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
     runtime.interactionStep leaks players network (.includeLatest event owner) submitted =
       submitted.environmentStep app (.include (owner, execution.network.nextSerial owner)) := by
   let app := runtime.reactiveApplication leaks
   let submitted := execution.respond app owner
-    (runtime.canonicalRevealResponse leaks event candidate raw true)
+    ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
   change runtime.interactionStep leaks players network (.includeLatest event owner) submitted =
     submitted.environmentStep app (.include (owner, execution.network.nextSerial owner))
   let packet := app.packet execution.application owner (execution.network.known owner)
-    (disclosureSubmission (.opening event candidate raw))
+    ⟨⟨.opening event candidate raw, none⟩, evidence⟩
   have selected : runtime.reactiveLatest leaks event owner (submitted.observeEnvironment app) =
       .include (owner, execution.network.nextSerial owner) := by
     exact runtime.reactiveLatest_last leaks owner event _ execution.network.pending
@@ -95,62 +150,94 @@ theorem canonical_opening_inclusion (runtime : EventGraphRuntime graph)
   simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
   exact FinDist.bind_pure _
 
-/-- The successful opening branch restores an empty pending pool and adds only
-the accepted receipt. The full execution law retains its actual public ledger
-and private response recall, rather than replacing them by a source state. -/
-theorem canonical_opening_checkpoint (runtime : EventGraphRuntime graph)
+/-- A fresh opening also preserves quiescence when earlier spent replays are
+still pending. Inclusion publishes the new identifier; remaining copies carry
+only already published information. Its exact packet and response recall retain
+the supplied evidence request, including normalized forwarding requests. -/
+theorem opening_published_checkpoint (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
-    (event : graph.EventId) (candidate : Handle graph) (raw : Raw L) (after : State graph)
-    (empty : execution.network.pending = [])
+    (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
+    (evidence : EvidenceRequest graph) (after : State graph)
+    (published : ∀ message ∈ execution.network.pending,
+      message.id ∈ execution.network.ledger.map Message.id)
     (fresh : (owner, execution.network.nextSerial owner) ∉
       execution.network.ledger.map Message.id)
     (accepted : runtime.handle execution.application
       ⟨(owner, execution.network.nextSerial owner), .opening event candidate raw⟩ = some after) :
     let app := runtime.reactiveApplication leaks
     let submitted := execution.respond app owner
-      (runtime.canonicalRevealResponse leaks event candidate raw true)
+      ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
     ∃ next, runtime.interactionStep leaks players network (.includeLatest event owner)
         submitted = FinDist.pure next ∧
-      next.application = after ∧ next.network.pending = [] ∧
+      next.application = after ∧
+      (∀ message ∈ next.network.pending, message.id ∈ next.network.ledger.map Message.id) ∧
       next.receipts = execution.receipts ++
         [((owner, execution.network.nextSerial owner), true)] ∧
-      next.recall = submitted.recall := by
+      next.recall = submitted.recall ∧
+      next.network =
+        (submitted.network.includePending (owner, execution.network.nextSerial owner)).2 := by
   let app := runtime.reactiveApplication leaks
   let submitted := execution.respond app owner
-    (runtime.canonicalRevealResponse leaks event candidate raw true)
+    ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
   let packet := app.packet execution.application owner (execution.network.known owner)
-    (disclosureSubmission (.opening event candidate raw))
+    ⟨⟨.opening event candidate raw, none⟩, evidence⟩
   let envelope : Message Player app.Payload :=
     ⟨(owner, execution.network.nextSerial owner), packet⟩
-  have pending : submitted.network.pending = [envelope] := by
-    change execution.network.pending ++ [_] = _
-    rw [empty, List.nil_append]
-    rfl
+  have absent : execution.network.lookup envelope.id = none := by
+    unfold MessageNetwork.lookup
+    apply List.find?_eq_none.mpr
+    intro message member
+    have different : message.id ≠ envelope.id := by
+      intro same
+      apply fresh
+      change envelope.id ∈ execution.network.ledger.map Message.id
+      rw [← same]
+      exact published message member
+    simp only [different, decide_false, Bool.false_eq_true, not_false_eq_true]
+  have pending : submitted.network.pending = execution.network.pending ++ [envelope] := rfl
   have found : submitted.network.lookup envelope.id = some envelope := by
-    simp only [MessageNetwork.lookup, pending, List.find?_cons, decide_true]
+    simp only [MessageNetwork.lookup, pending, List.find?_append,
+      List.find?_cons, decide_true]
+    change (execution.network.lookup envelope.id).or (some envelope) = some envelope
+    rw [absent]
+    rfl
   have handled : app.handle submitted.application envelope = some after := accepted
   let next : app.Execution := { submitted.includePending app envelope.id with
     environmentRecall := submitted.environmentRecall ++
       [⟨submitted.observeEnvironment app, .include envelope.id⟩] }
-  refine ⟨next, ?_, ?_, ?_, ?_, ?_⟩
-  · rw [runtime.canonical_opening_inclusion leaks players network execution owner event
-      candidate raw fresh]
+  refine ⟨next, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [runtime.opening_inclusion leaks players network execution owner event
+      candidate raw evidence fresh]
     simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
     rfl
   · change (submitted.includePending app envelope.id).application = after
     simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       found, handled, Option.getD_some]
-  · change (submitted.includePending app envelope.id).network.pending = []
+  · intro message member
+    change message ∈ (submitted.includePending app envelope.id).network.pending at member
+    change message.id ∈ (submitted.includePending app envelope.id).network.ledger.map Message.id
     simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-      found, pending, MessagePool.removeFirst, ↓reduceIte]
+      found] at member ⊢
+    have prior := MessagePool.mem_of_mem_removeFirst envelope.id message _ member
+    rw [pending] at prior
+    rcases List.mem_append.mp prior with old | added
+    · exact List.mem_map.mpr (by
+        obtain ⟨packet, retained, same⟩ := List.mem_map.mp (published message old)
+        exact ⟨packet, List.mem_append_left _ retained, same⟩)
+    · obtain rfl := List.mem_singleton.mp added
+      exact List.mem_map.mpr ⟨envelope, List.mem_append_right _ (by simp), rfl⟩
   · change (submitted.includePending app envelope.id).receipts = _
     simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       found, handled, Option.isSome_some]
     rfl
   · change (submitted.includePending app envelope.id).recall = submitted.recall
+    simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+      found]
+  · change (submitted.includePending app envelope.id).network =
+      (submitted.network.includePending envelope.id).2
     simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       found]
 

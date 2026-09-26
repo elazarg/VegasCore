@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Protocol.BehavioralAssessment
+import GameTheoryExtensions.Analysis.Protocol.CounterfactualBeliefs
 import Mathlib.Algebra.BigOperators.Field
 
 /-! # Bayes projection from complete-history laws
@@ -141,6 +142,8 @@ theorem bayesBelief_projection
 
 end GameTheory.Protocol.InformationModel
 
+
+
 namespace GameTheory.Protocol.InformationModel
 
 open GameTheory.Math.Probability
@@ -265,5 +268,60 @@ theorem bayesBelief_projection_at_depth
   · have different : history ≠ ⟨project original.1, maps original.1 original.2⟩ :=
       fun equal => same (congrArg Subtype.val equal).symm
     simp only [same, different, ite_false, mul_zero, zero_div]
+
+end GameTheory.Protocol.InformationModel
+
+namespace GameTheory.Protocol.InformationModel
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} [Fintype Player] {E T : ExecutionProtocol Player}
+  (M : InformationModel E) (N : InformationModel T) [Finite E.History]
+
+/-- A focal selector can single out one private alias history without changing
+that player's Bayes belief. Only the selected profile must reflect the chosen
+raw information fiber; the native profile may mix over many aliases. Source
+and native checkpoints may occur at different depths. -/
+theorem bayesBelief_projection_at_depth_of_focal_selector
+    (native selected : ∀ who, M.BehavioralPolicy who)
+    (source : ∀ who, N.BehavioralPolicy who)
+    (project : E.History → T.History)
+    (who : Player) (rawSite : M.InformationSite who) (sourceSite : N.InformationSite who)
+    [Fintype (M.InformationHistory who rawSite.1)]
+    [Fintype (N.InformationHistory who sourceSite.1)]
+    (rawDepth sourceDepth : Nat)
+    (rawClock : ∀ history : M.InformationHistory who rawSite.1,
+      history.1.trace.length = rawDepth)
+    (sourceClock : ∀ history : N.InformationHistory who sourceSite.1,
+      history.1.trace.length = sourceDepth)
+    (law : (M.runBehavioral selected rawDepth).map project =
+      N.runBehavioral source sourceDepth)
+    (maps : ∀ history, M.infoOf who history.trace = rawSite.1 →
+      N.infoOf who (project history).trace = sourceSite.1)
+    (reflects : ∀ history, 0 < (M.runBehavioral selected rawDepth).prob history →
+      N.infoOf who (project history).trace = sourceSite.1 →
+        M.infoOf who history.trace = rawSite.1)
+    (agree : ∀ other, other ≠ who → native other = selected other)
+    (nativeCommon : M.CommonPlayerReachAt native who rawSite)
+    (selectedCommon : M.CommonPlayerReachAt selected who rawSite)
+    (rawAntichain : rawSite.IsHistoryAntichain)
+    (sourceAntichain : sourceSite.IsHistoryAntichain)
+    (nativePositive : 0 < M.informationMass native who rawSite)
+    (sourcePositive : 0 < N.informationMass source who sourceSite) :
+    (M.bayesBelief native who rawSite rawAntichain nativePositive).map
+      (fun original : M.InformationHistory who rawSite.1 =>
+        (⟨project original.1, maps original.1 original.2⟩ :
+          N.InformationHistory who sourceSite.1)) =
+      N.bayesBelief source who sourceSite sourceAntichain sourcePositive := by
+  have mass := M.informationMass_projection_at_depth N selected source project who rawSite
+    sourceSite rawDepth sourceDepth rawClock sourceClock law maps reflects
+  have selectedPositive : 0 < M.informationMass selected who rawSite := by
+    rw [mass]
+    exact sourcePositive
+  rw [M.bayesBelief_eq_of_eq_off native selected who rawSite rawAntichain agree
+    nativeCommon selectedCommon nativePositive selectedPositive]
+  exact M.bayesBelief_projection_at_depth N selected source project who rawSite sourceSite
+    rawDepth sourceDepth rawClock sourceClock law maps reflects rawAntichain sourceAntichain
+      selectedPositive sourcePositive
 
 end GameTheory.Protocol.InformationModel

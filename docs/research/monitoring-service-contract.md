@@ -51,13 +51,14 @@ covers a future event owned by the same player, not just another player's event.
 `sampling_out_of_phase_receipt_lower` combines that result with the report block.
 The failed receipt remains evidence even after the address becomes ready.
 
-A candidate service order is owner response, inclusion reserved for the current
+The constructed reveal service order is owner response, inclusion reserved for the current
 event, watcher/report, then ticks and expiry. A canonical opening is published
 before observation, so the watcher skips it. An off-address extra is ignored by
 the reserved inclusion; the current event remains ready for the report block.
-This order still needs its source execution, deadline, and checkpoint proofs.
+This order has local checkpoint and deadline proofs; their induction over the
+whole source execution remains open.
 
-This candidate activates only the source owner for that event. With additional
+This service activates only the source owner for that event. With additional
 ambient activations, that owner could send a valid current opening before its
 canonical slot: the handler ignores the public service grant, so neither rejection nor a
 static packet-format check detects that early timing. Covering such a roster
