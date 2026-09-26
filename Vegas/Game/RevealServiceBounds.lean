@@ -30,9 +30,10 @@ theorem opening_available_of_initial_tables (bounds : MessageBounds (graph setup
     (initial : State L setup.context) (supported : initial ∈ setup.initialLaw.support)
     (execution : (application setup leaks).Execution)
     (accepted : execution.application.accepted =
-      (EventGraphRuntime.State.initial (setup.eventInputs initial)).accepted)
+      (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted)
     (candidates : execution.application.candidates =
-      (EventGraphRuntime.State.initial (setup.eventInputs initial)).candidates)
+      (EventGraphRuntime.State.initial (graph := graph setup)
+        (setup.eventInputs initial)).candidates)
     (field : (graph setup).Field) (candidate : Handle (graph setup))
     (associated : execution.application.accepted field = some candidate)
     (who : Player) (owned : candidate.1 = who) (raw : Raw L)
@@ -45,8 +46,8 @@ theorem opening_available_of_initial_tables (bounds : MessageBounds (graph setup
         (execution.recall who) (execution.observe (application setup leaks) who) := by
   rw [accepted] at associated
   obtain ⟨input, owner, _payload, _field, _typed, same⟩ :=
-    EventGraphRuntime.State.initial_accepted_eq_some (setup.eventInputs initial)
-      field candidate associated
+    EventGraphRuntime.State.initial_accepted_eq_some (graph := graph setup)
+      (setup.eventInputs initial) field candidate associated
   have ownerEq : owner = who := by simpa only [same] using owned
   subst owner
   rw [same, candidates] at fixed
@@ -57,7 +58,8 @@ theorem opening_available_of_initial_tables (bounds : MessageBounds (graph setup
     exact ⟨initial, supported, rfl⟩
   rw [same]
   exact bounds.initialized_opening_available (initialLaw setup)
-    (EventGraphRuntime.State.initial (setup.eventInputs initial)) initialized who input raw fixed
+    (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial))
+    initialized who input raw fixed
     (runtime setup) leaks (execution.recall who)
     (execution.observe (application setup leaks) who) event
 

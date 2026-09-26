@@ -46,6 +46,7 @@ import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Analysis.ConstrainedNash
 import GameTheoryExtensions.Analysis.EnforcementLimits
 import GameTheoryExtensions.Analysis.EnforcementSynthesis
+import GameTheoryExtensions.Analysis.FinitePayoffBounds
 import GameTheoryExtensions.Analysis.FailureEnforcement
 import GameTheoryExtensions.Analysis.ObservableEnforcement
 import GameTheoryExtensions.Analysis.ZeroSumRegularization

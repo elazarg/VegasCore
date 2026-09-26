@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveRevealBlock
+import Vegas.Pending.ReactiveOpeningConformance
 
 /-! # Public transcript of canonical reveal service
 
@@ -285,5 +286,46 @@ theorem publicationReceipts_complete_none (accepted : AcceptedHandles graph)
       publicationReceipts accepted (graph.publicObserve config) := by
   unfold publicationReceipts
   rw [publicationLedger_complete_none accepted config event ready action value absent]
+
+/-- Every encoded packet has exactly the public certificate format audited by
+the monitor. This does not assert that a raw runtime ledger has this encoding. -/
+theorem publicationPacket?_certified (accepted : AcceptedHandles graph)
+    (store : EventGraph.Store graph.layout) (event : graph.EventId)
+    (packet : Player × WitnessedPacket graph)
+    (encoded : publicationPacket? accepted store event = some packet) :
+    certifiedOpening packet.2 = true := by
+  unfold publicationPacket? at encoded
+  cases node : nodeView graph event with
+  | sample => simp only [node] at encoded; cases encoded
+  | bind => simp only [node] at encoded; cases encoded
+  | resolve owner payload binding checks outputEq codeEq =>
+    simp only [node] at encoded
+    split at encoded
+    · cases encoded
+    · cases encoded
+    · cases found : accepted binding.field with
+      | none => simp only [found, Option.map_none] at encoded; cases encoded
+      | some candidate =>
+          simp only [found, Option.map_some, Option.some.injEq] at encoded
+          subst packet
+          simp only [certifiedOpening, decide_true]
+
+theorem publicationLedger_certified (accepted : AcceptedHandles graph)
+    (view : graph.PublicObservation) (message : Message Player (WitnessedPacket graph))
+    (member : message ∈ publicationLedger accepted view) :
+    certifiedOpening message.payload = true := by
+  have decoded : (message.sender, message.payload) ∈ publicationPackets accepted view := by
+    rw [← RevealTranscript.numberPackets_decode (fun _ : Player => 0)
+      (publicationPackets accepted view)]
+    exact List.mem_map_of_mem member
+  obtain ⟨event, _completed, encoded⟩ := List.mem_filterMap.mp decoded
+  exact publicationPacket?_certified accepted view.store event _ encoded
+
+theorem publicationReceipts_successful (accepted : AcceptedHandles graph)
+    (view : graph.PublicObservation) (id : MessageId Player) :
+    (id, false) ∉ publicationReceipts accepted view := by
+  intro rejected
+  obtain ⟨message, _published, impossible⟩ := List.mem_map.mp rejected
+  exact Bool.noConfusion (congrArg Prod.snd impossible)
 
 end Vegas.EventGraphRuntime

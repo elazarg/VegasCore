@@ -12,6 +12,39 @@ open GameTheory.Math.Probability
 
 variable {Player : Type*} {E : ExecutionProtocol Player} (M : InformationModel E)
 
+/-- A recorded own decision names an actual earlier history and its legal
+response, together with the continuation to the current history. -/
+theorem ownPlay_prefix (who : Player) {state} (trace : E.Trace state)
+    {observed : M.InfoState who} {action : E.Action who}
+    (member : (observed, action) ∈ M.ownPlay who trace) :
+    ∃ (prior : E.History) (joint : ∀ player, Option (E.Action player))
+      (legal : E.Legal prior.state joint) (next : E.State)
+      (reached : next ∈ (E.step prior.state ⟨joint, legal⟩).support) (fuel : Nat),
+      M.infoOf who prior.trace = observed ∧ joint who = some action ∧
+        E.ReachesWithin fuel (prior.extend legal reached) ⟨state, trace⟩ := by
+  induction trace with
+  | start => cases member
+  | @extend source target trace joint legal reached ih =>
+      have earlier (member : (observed, action) ∈ M.ownPlay who trace) :
+          ∃ (prior : E.History) (earlierJoint : ∀ player, Option (E.Action player))
+            (earlierLegal : E.Legal prior.state earlierJoint) (next : E.State)
+            (moved : next ∈ (E.step prior.state ⟨earlierJoint, earlierLegal⟩).support) (fuel : Nat),
+            M.infoOf who prior.trace = observed ∧ earlierJoint who = some action ∧
+              E.ReachesWithin fuel (prior.extend earlierLegal moved)
+                ⟨target, trace.extend joint legal reached⟩ := by
+        obtain ⟨prior, earlierJoint, earlierLegal, next, moved, fuel, same, chosen, path⟩ :=
+          ih member
+        exact ⟨prior, earlierJoint, earlierLegal, next, moved, fuel + 1, same, chosen,
+          path.trans (.step joint legal reached (.refl 0 _))⟩
+      cases chosen : joint who with
+      | none => exact earlier (by simpa only [InfoSignals.ownPlay, chosen] using member)
+      | some response =>
+          simp only [InfoSignals.ownPlay, chosen, List.mem_cons] at member
+          rcases member with same | member
+          · cases same
+            exact ⟨⟨source, trace⟩, joint, legal, target, reached, 0, rfl, chosen, .refl 0 _⟩
+          · exact earlier member
+
 theorem ownPlay_mem_menu (who : Player) {state} (trace : E.Trace state)
     {observed : M.InfoState who} {action : E.Action who}
     (member : (observed, action) ∈ M.ownPlay who trace) :

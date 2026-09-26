@@ -124,6 +124,8 @@ import Vegas.Pending.ReactiveOpeningConformance
 import Vegas.Pending.ReactiveRevealBlock
 import Vegas.Pending.ReactiveRevealSettlement
 import Vegas.Pending.ReactiveRevealResponse
+import Vegas.Pending.ReactiveRevealTranscript
+import Vegas.Pending.ReactiveResponseRecall
 import Vegas.Pending.RevealTranscript
 import Vegas.Pending.ReactiveObservedState
 import Vegas.Pending.ReactiveContinuationObservation

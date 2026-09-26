@@ -20,6 +20,7 @@ import Interaction.ReactiveRecall
 import Interaction.ReactiveHistory
 import Interaction.ReactiveDecisionInformation
 import Interaction.ReactiveOwnPlay
+import Interaction.ReactiveRecordedResponse
 import Interaction.ReactiveRecallEntries
 import Interaction.ReactiveResponseMenu
 import Interaction.ReactiveMenuRestriction

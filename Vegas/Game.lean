@@ -13,6 +13,15 @@ import Vegas.Game.RevealServiceBounds
 import Vegas.Game.RevealServiceClock
 import Vegas.Game.RevealServiceCompletion
 import Vegas.Game.RevealServiceBlock
+import Vegas.Game.RevealServiceCalendarState
+import Vegas.Game.RevealServiceCheckpoint
+import Vegas.Game.RevealServiceCollection
+import Vegas.Game.RevealServiceExecution
+import Vegas.Game.RevealServiceLaw
+import Vegas.Game.RevealServiceOrdinaryComparison
+import Vegas.Game.RevealServicePayoffs
+import Vegas.Game.RevealServiceSelector
+import Vegas.Game.RevealServiceTranscript
 import Vegas.Game.RevealServiceEnforcement
 import Vegas.Game.RevealServiceCorrespondence
 import Vegas.Game.RevealServiceInformation
@@ -25,6 +34,8 @@ import Vegas.Game.PendingCompositions
 import Vegas.Game.ParameterOutcomes
 import Vegas.Game.ZeroSum
 import Vegas.Game.SetupSubgame
+import Vegas.Game.SourceInformation
+import Vegas.Game.SourceObservationRecall
 import Vegas.Game.BehavioralSubgame
 
 /-! Strategic source-to-graph and graph-to-message correspondence. -/

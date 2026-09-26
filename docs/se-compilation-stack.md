@@ -53,10 +53,22 @@ arbitrary-length theorem:
 | Common decision depths for C/W/N/raw menus | Checked at all legal histories using existing grant and actor observations. |
 | Bounded settlement under arbitrary responses | Checked for every finite response menu and behavioral profile; each scheduled block completes its event even under malformed traffic. |
 | Full monitored block agrees with its source reveal | Checked for every ordinary response, including published-replay aliases of withholding; typed source store and action history agree afterward. |
+| Initialized compiler execution law for arbitrary reveal sequences | Checked for all source policies and all alias-splitting weights, with correlated valid initial bindings. This is an execution law, not yet an SE theorem. |
+| Source information prerequisites | Checked common decision depths and a fully mixed reference policy; finite legal histories require no finite ambient secret type. |
 | Reverse information correspondence, checkpoint prefix laws and conditional beliefs | Open; required for source-to-C SE. |
-| Conditional monitoring, packet classification and persistent evidence | Checked for the actual reserved inclusion/report suffix, with arbitrary later responses; full C-prefix coverage and utility comparisons remain open. |
+| Conditional monitoring, packet classification and persistent evidence | Checked in actual behavioral continuations at every hidden history satisfying the operational checkpoint invariant. |
+| Ordinary-player net-utility comparison | Checked at such checkpoints, against any clean legal continuation; global checkpoint coverage and clean-continuation induction remain open. |
+| Fixed deposits | Exact finite rational payoff bounds and sufficient range/rate deposits are checked. Collection rates and monetary implementation remain backend obligations. |
 | W → N → raw equilibrium extension | Checked for arbitrary reveal sequences, normalization-invariant observations/utilities, and zero watcher utility at every history. |
 | End-to-end SE for arbitrary reveal sequences | Open. The checked end-to-end result remains the two-reveal payoff-table family. |
+
+The remaining source-to-C belief proof compares distributions over the existing
+source protocol state. That state retains initial private values and source
+action memory. Standard source continuation values can therefore be evaluated
+from this marginal, while retaining the original history-based SE assessment.
+This avoids reconstructing a source execution history from every native history.
+The native selector must still account for recorded replay aliases, including at
+zero-probability information sets of the limiting strategy.
 
 ## Stack: one runtime, several strategic games
 

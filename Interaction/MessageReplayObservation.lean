@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.MessageNetwork
+import Interaction.MessageNetworkCounters
 
 /-! # Observation of already published traffic
 
@@ -103,5 +104,37 @@ theorem replay_inputs_published (network : MessageNetwork Principal Payload)
       · exact published input prior
       · obtain rfl := List.mem_singleton.mp added
         simpa only [same] using spent
+
+/-- Including the fresh envelope immediately after submission restores a
+published-only checkpoint, retaining old replay copies and the new input. -/
+theorem submit_include_published (network : MessageNetwork Principal Payload)
+    (who : Principal) (payload : Payload)
+    (pending : ∀ message ∈ network.pending, message.id ∈ network.ledger.map Message.id)
+    (inputs : ∀ input ∈ network.inputs, input.envelope.id ∈ network.ledger.map Message.id)
+    (serials : network.SerialsBeforeNext) :
+    let next := ((network.submit who payload).2.includePending (who, network.nextSerial who)).2
+    (∀ message ∈ next.pending, message.id ∈ next.ledger.map Message.id) ∧
+      (∀ input ∈ next.inputs, input.envelope.id ∈ next.ledger.map Message.id) ∧
+      next.leaked = network.leaked ∧ next.SerialsBeforeNext := by
+  dsimp only
+  have found := serials.lookup_submit who payload
+  refine ⟨?_, ?_, ?_, (serials.submit who payload).includePending _⟩
+  · intro message member
+    simp only [includePending, found] at member ⊢
+    simp only [submit, List.map_append, List.map_singleton] at member ⊢
+    have retained := MessagePool.mem_of_mem_removeFirst _ message _ member
+    rcases List.mem_append.mp retained with prior | added
+    · exact List.mem_append_left _ (pending message prior)
+    · obtain rfl := List.mem_singleton.mp added
+      exact List.mem_append_right _ (by simp)
+  · intro input member
+    simp only [includePending, found] at member ⊢
+    simp only [submit, List.map_append, List.map_singleton] at member ⊢
+    rcases List.mem_append.mp member with prior | added
+    · exact List.mem_append_left _ (inputs input prior)
+    · obtain rfl := List.mem_singleton.mp added
+      exact List.mem_append_right _ (by simp)
+  · simp only [includePending, found]
+    rfl
 
 end Interaction.MessageNetwork
