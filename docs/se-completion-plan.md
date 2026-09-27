@@ -63,7 +63,7 @@ a site has the same kind. The kinds and their comparisons:
 | 1. actorless event | `chance` | `sample_comparison_eq` (checked) |
 | 2. foreign visit | `foreignBinding`, `foreignDisclosure` | `foreign_binding_comparison_eq`, `foreign_disclosure_comparison_eq` (checked) |
 | 3. own binding, recorded | `recordedBinding` | `recorded_comparison_eq` (checked) |
-| 4. own binding, unsent | `unsentBinding` | M4 |
+| 4. own binding, unsent | `unsentBinding` | `unsent_binding_comparisons` (checked) |
 | 5. own disclosure, sent | `recordedDisclosure` | `recorded_disclosure_comparison_eq` (checked) |
 | 5. own disclosure, no opening | `absentOpening` | M5 |
 | 6. own disclosure, opening available | `availableOpening` | M5 |
@@ -133,21 +133,24 @@ prescribed source law (disclosure), the caller cannot establish the first
 identity and uses only the source side of `sourceService_owner_assessment_comparisons`:
 the mixture components bound source gains.
 
-### M4. Unsent binding (L)
+### M4. Unsent binding (checked)
 
-Exact simulation (mixture branch, zero error).
-
-1. From a `DecisionPhase` at an unrecorded binding, derive the premises of
-   `sourceServiceTimedPolicy_binding_response_continuation`:
-   `sourceService_decision_boundary`, `sourceService_binding_decision_resources`,
-   and the roster counts. Restate that theorem over `TimedApproximant`.
-2. Every legal owner response is a submission of some value or transport
-   (`sourceService_response_supported`). After transport, the conditioned
-   value law is the source kernel `q`, because value and timing are independent.
-   A local native lottery `λ` therefore yields the source local law
-   `v ↦ λ(submit v) + λ(transport) · q(v)`, and the prescribed native lottery
-   yields `q`.
-3. Apply M3.
+`TimedApproximant.unsent_binding_comparisons`
+([SourceServiceUnsentBinding](../Vegas/Game/SourceServiceUnsentBinding.lean)) is
+the exact simulation (mixture branch, zero error). Per decision,
+`TimedApproximant.unsent_binding_decision` gives the native continuation of
+every legal owner response: a submission fixes its value
+(`BindingSource.submission_readout`); a transport response rules out only the
+current timing slot, so every remaining slot completes the binding with the
+source commitment lottery `q` (`TimedApproximant.unsent_binding_transport_config_law`).
+The prescribed native lottery therefore averages to `q`. On the source side,
+`SourceServiceSpec.exists_bindingSource_step` unfolds the source continuation
+one binding step. It also gives the source step of any owner action, and shows
+that the owner's source action law has value marginal `q`. The local native
+lottery `λ` is simulated by the source local law that plays the submitted value
+after a submission and the prescribed source law after a transport response;
+`owner_site_source_histories` supplies the source histories on which
+`exists_admitted_local_law` realizes it. M3 then gives the common mixture.
 
 ### M5. Disclosure owner sites (L, largest)
 
@@ -214,7 +217,7 @@ as a delegating restatement.
 
 ## Ordering
 
-M1–M3 are checked. The critical path is M4, M5 → M6 → M7 → M8.
+M1–M4 are checked. The critical path is M5 → M6 → M7 → M8.
 Within M5, steps 2–3 and 5–6 do not depend on the operational steps 1 and 4.
 
 Parallel lanes must not run Lake builds concurrently. A build deletes the

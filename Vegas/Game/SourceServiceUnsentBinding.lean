@@ -5,6 +5,7 @@ import Vegas.Game.SourceServiceBindingContinuation
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Pending.ReactiveResolutionWindowState
+import Vegas.Game.SourceLocalPolicy
 
 /-! # The owner's unsent binding
 
@@ -324,13 +325,13 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
 end TimedApproximant
 
 omit [Fintype Player] in
-/-- A binding submission determines its source value. -/
+/-- A binding submission determines its source value, whatever its serial. -/
 theorem reactiveBinding_injective {setup : Setup (Player := Player) (L := L)}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (owner : Player) (event : (graph setup).EventId) (payload : L.Ty) (serial : Nat)
-    {first second : PublicationResult (L.Val payload)}
-    (same : (runtime setup).reactiveBinding leaks owner event payload first serial =
-      (runtime setup).reactiveBinding leaks owner event payload second serial) :
+    (owner : Player) (event : (graph setup).EventId) (payload : L.Ty)
+    {first second : PublicationResult (L.Val payload)} {firstSerial secondSerial : Nat}
+    (same : (runtime setup).reactiveBinding leaks owner event payload first firstSerial =
+      (runtime setup).reactiveBinding leaks owner event payload second secondSerial) :
     first = second := by
   have opening := congrArg
     (fun action : ((runtime setup).reactiveApplication leaks).Action =>
@@ -466,7 +467,7 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
     now, ↓reduceIte] at drawn
   rw [opening, FinDist.support_map] at drawn
   obtain ⟨value, valueSupport, valueEq⟩ := drawn
-  have sameValue := reactiveBinding_injective service.leaks siteOwner _ payload serial valueEq
+  have sameValue := reactiveBinding_injective service.leaks siteOwner _ payload valueEq
   subst sameValue
   refine (FinDist.bind_congr (g := fun _ => _) ?_).trans (FinDist.bind_const _ _)
   intro tag member
@@ -488,7 +489,7 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
   · simp only [ReactiveApplication.scheduledPolicy, Option.map_some, fires, ↓reduceIte,
       FinDist.mem_support_pure] at actionSupport
     rw [actionSupport] at actionEq
-    have tagValueEq := reactiveBinding_injective service.leaks siteOwner _ payload serial actionEq
+    have tagValueEq := reactiveBinding_injective service.leaks siteOwner _ payload actionEq
     subst tagValueEq
     rfl
   · simp only [ReactiveApplication.scheduledPolicy, Option.map_some, Option.some.injEq, fires,
@@ -506,7 +507,8 @@ hold at the event's boundary. The source continuation draws the commitment
 value and continues from the configuration that completes the binding with it.
 Any owner action steps to the configuration completing the binding with that
 action's value. The owner's source action law has the commitment lottery as its
-value marginal. -/
+value marginal. The native completion with any value decodes to the source
+commitment of that value. -/
 theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.program)
     {who : Player} {remaining : Nat}
     {execution : (application service.setup service.leaks).Execution}
@@ -516,6 +518,9 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
     {owner : Player} {payload : L.Ty}
     (isBinding : (graph service.setup).outputLayout phase.event = .binding owner payload) :
     ∃ site : BindingSource service.setup profile phase.event execution.application.config,
+      (∀ value, decodeEventAction service.setup.program phase.event
+        (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value) =
+          some (.commit site.owner site.name site.payload value)) ∧
       ∀ ready : execution.application.config.cut.Ready phase.event,
         (service.setup.continuationLaw profile
           (sourceServicePrefix? service.setup phase.event.val execution.application.config) =
@@ -586,10 +591,17 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
           execution.application.config :=
         ⟨Γ, names, name, siteOwner, sitePayload, fresh, guard, next, remainingProfile, refs,
           source, embedding, refsBefore, aligned, checkpoint.agrees, checkpoint.history, rfl⟩
-      refine ⟨site, fun ready => ?_⟩
       have outputEq : (graph service.setup).outputLayout
           (embedding.event ⟨0, by simp [eventCount]⟩) = .binding siteOwner sitePayload :=
         site.outputEq
+      have decoded (value : PublicationResult (L.Val sitePayload)) :
+          decodeEventAction service.setup.program (embedding.event ⟨0, by simp [eventCount]⟩)
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) value) =
+              some (.commit siteOwner name sitePayload value) := by
+        have action := aligned.actionEq ⟨0, by simp [eventCount]⟩
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+        simpa [outputEq, decodeEventAction] using action
+      refine ⟨site, decoded, fun ready => ?_⟩
       have now := transport 0 execution.application.config.store
         (decodeHistory service.setup.program (execution.application.config.history.map
           (service.setup.eventGraph.fromModeCompletion .sequential)))
@@ -603,15 +615,8 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
               (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)) =
           some (lift (Sum.inr (ProtocolState.entry next
             (commitSuccessor name guard source value)))) := by
-        have decoded : decodeEventAction service.setup.program
-            (embedding.event ⟨0, by simp [eventCount]⟩)
-            (cast (congrArg EventGraph.EventField.Action outputEq.symm) value) =
-              some (.commit siteOwner name sitePayload value) := by
-          have action := aligned.actionEq ⟨0, by simp [eventCount]⟩
-            (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
-          simpa [outputEq, decodeEventAction] using action
         have completed := checkpoint.commit name guard _ rfl ready outputEq
-          (fun ref => refsBefore ref ⟨0, by simp [eventCount]⟩) value decoded
+          (fun ref => refsBefore ref ⟨0, by simp [eventCount]⟩) value (decoded value)
         have recovered := completed.decode next (fun tail => embedding.ref tail.succ)
         change sourceServicePrefix? service.setup _
           (execution.application.complete (embedding.event ⟨0, by simp [eventCount]⟩) ready
@@ -697,5 +702,559 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
 
 end SourceServiceSpec
 
+
+namespace TimedApproximant
+
+variable {service : SourceServiceSpec Player L} (approx : TimedApproximant service)
+
+/-- At the owner's unsent binding, every legal current response continues as
+the source continuation after a binding value: the value the response submits,
+or, after a transport response, the source commitment lottery. The prescribed
+native lottery averages to the source continuation from the event's boundary.
+The source side is stated at the decoded boundary state: its continuation, the
+step of any owner action, and the value marginal of the owner's action law. -/
+theorem unsent_binding_decision {who : Player} {remaining : Nat}
+    {execution : (application service.setup service.leaks).Execution}
+    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
+      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
+    {payload : L.Ty}
+    (outputEq : (graph service.setup).outputLayout phase.event = .binding who payload)
+    (unsent : (runtime service.setup).eventRecorded service.leaks (execution.recall who)
+      phase.event = false)
+    (ready : execution.application.config.cut.Ready phase.event) :
+    ∃ (name : VarId) (values : FinDist (PublicationResult (L.Val payload))),
+      (∀ value, decodeEventAction service.setup.program phase.event
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) value) =
+          some (.commit who name payload value)) ∧
+      (service.setup.continuationLaw approx.profile (sourceServicePrefix? service.setup
+        phase.event.val execution.application.config)).map some =
+        values.bind (fun value => approx.boundaryContinuation (phase.event.val + 1)
+          (execution.application.config.complete phase.event ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm) value))) ∧
+      (∀ joint : Player → Option (OwnAction Player L),
+        service.setup.protocolStep (sourceServicePrefix? service.setup phase.event.val
+          execution.application.config) joint =
+        FinDist.pure (sourceServicePrefix? service.setup (phase.event.val + 1)
+          (execution.application.config.complete phase.event ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+              (OwnAction.binding who name payload (joint who)))
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+              (OwnAction.binding who name payload (joint who)))))) ∧
+      (∀ state, sourceServicePrefix? service.setup phase.event.val
+          execution.application.config = some state →
+        ¬ ProtocolState.terminal service.setup.program state →
+        ((approx.profile who).protocolAction service.setup.program
+          (ProtocolState.observe who service.setup.program state)).map
+            (OwnAction.binding who name payload) = values) ∧
+      (approx.players who (execution.recall who)
+        (execution.observe (application service.setup service.leaks) who)).bind
+          (approx.responseReadout phase) =
+        values.bind (fun value => approx.boundaryContinuation (phase.event.val + 1)
+          (execution.application.config.complete phase.event ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm) value))) ∧
+      ∀ response ∈ service.menu.actions who (execution.recall who)
+          (execution.observe (application service.setup service.leaks) who),
+        (∃ value ∈ values.support, (∃ serial, response =
+            (runtime service.setup).reactiveBinding service.leaks who phase.event payload value
+              serial) ∧
+          approx.responseReadout phase response =
+            approx.boundaryContinuation (phase.event.val + 1)
+              (execution.application.config.complete phase.event ready
+                (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+                (cast (congrArg EventGraph.EventField.Value outputEq.symm) value))) ∨
+        ((response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) ∧
+          approx.responseReadout phase response =
+            values.bind (fun value => approx.boundaryContinuation (phase.event.val + 1)
+              (execution.application.config.complete phase.event ready
+                (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+                (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)))) := by
+  have owned := binding_actor service.setup phase.event who payload outputEq
+  obtain ⟨codeEq, node⟩ := binding_nodeView service.setup phase.event who payload outputEq
+  obtain ⟨_, timely, _, _, _, serials, resources⟩ := sourceService_binding_decision_resources
+    service.setup service.leaks service.bounds service.values service.capacity service.rosters
+    service.opportunities.binding service.network who ⟨remaining, some who, execution⟩ trace rfl
+    phase.event phase.granted who payload outputEq codeEq node owned
+  obtain ⟨_, freshSlot, fresh, unused, vacant, _, published⟩ := resources unsent
+  have counted := service.recall_count trace phase
+  have visitsCount : ((service.rosters phase.event).take phase.slot).count who + 1 +
+      phase.visits.count who = (service.rosters phase.event).count who := by
+    conv_rhs => rw [phase.roster_split]
+    simp only [List.count_append, List.count_cons_self]
+    omega
+  have ending : rosterPhaseEnding service.setup phase.event =
+      .includeLatest phase.event who :: (List.replicate (phase.event.val + 1) .tick ++
+        [.expire phase.event]) := by
+    simp only [rosterPhaseEnding, owned, List.cons_append, List.nil_append]
+  have split : rosterPlanPrefix service.setup service.rosters (phase.event.val + 1) =
+      phase.before ++ .player who :: (phase.visits.map ServiceInstruction.player ++
+        (.includeLatest phase.event who :: List.replicate (phase.event.val + 1) .tick ++
+          [.expire phase.event])) := by
+    rw [phase.prefix_split, DecisionPhase.tail, ending]
+    simp only [List.cons_append]
+  obtain ⟨site, decodedAction, stepFacts⟩ := service.exists_bindingSource_step approx.profile
+    trace phase outputEq
+  obtain ⟨sourceStep, anyStep, marginal⟩ := stepFacts ready
+  obtain ⟨Γ, names, name, siteOwner, sitePayload, fresh', guard, next, residual, refs, source,
+    embedding, refsBefore, aligned, agree, history, head⟩ := site
+  have kinds := EventGraph.EventField.binding.inj
+    ((BindingSource.outputEq ⟨Γ, names, name, siteOwner, sitePayload, fresh', guard, next,
+      residual, refs, source, embedding, refsBefore, aligned, agree, history, head⟩).symm.trans
+        outputEq)
+  dsimp only at kinds
+  obtain ⟨rfl, rfl⟩ := kinds
+  let site : BindingSource service.setup approx.profile phase.event
+      execution.application.config :=
+    ⟨Γ, names, name, siteOwner, sitePayload, fresh', guard, next, residual, refs, source,
+      embedding, refsBefore, aligned, agree, history, head⟩
+  let values := commitKernel residual (source.view siteOwner)
+  have opening := BindingSource.opportunity_law service.leaks execution site phase.granted unsent
+    _ freshSlot fresh
+  have submitted (value : PublicationResult (L.Val sitePayload))
+      (allowed : (runtime service.setup).reactiveBinding service.leaks siteOwner phase.event
+        sitePayload value (execution.application.publicView.bindingCount siteOwner) ∈
+          service.menu.actions siteOwner (execution.recall siteOwner)
+            (execution.observe (application service.setup service.leaks) siteOwner)) :
+      approx.responseReadout phase ((runtime service.setup).reactiveBinding service.leaks
+        siteOwner phase.event sitePayload value
+          (execution.application.publicView.bindingCount siteOwner)) =
+        approx.boundaryContinuation (phase.event.val + 1)
+          (execution.application.config.complete phase.event ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)) := by
+    unfold responseReadout
+    rw [DecisionPhase.tail, ending]
+    exact BindingSource.submission_readout service approx.timing approx.timingFull
+      approx.profile approx.admitted approx.effective approx.covered approx.assessment
+      approx.strategy approx.mixed execution site siteOwner rfl remaining trace _ freshSlot
+      fresh phase.visits phase.before phase.granted unsent (by rw [counted]; omega) ready
+      timely vacant unused serials published split phase.position_before value allowed
+  have transported (response : (application service.setup service.leaks).Action)
+      (allowed : response ∈ service.menu.actions siteOwner (execution.recall siteOwner)
+        (execution.observe (application service.setup service.leaks) siteOwner))
+      (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) :
+      approx.responseReadout phase response =
+        values.bind (fun value => approx.boundaryContinuation (phase.event.val + 1)
+          (execution.application.config.complete phase.event ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm) value))) := by
+    rw [approx.response_continuation_law trace phase response allowed,
+      approx.unsent_binding_transport_config_law trace phase site rfl unsent ready response
+        allowed transport, FinDist.bind_bind]
+    simp only [FinDist.pure_bind]
+    rfl
+  have grant : PublicView.serviceGrant
+      (execution.observe (application service.setup service.leaks)
+        siteOwner).application.publicView = some phase.event := phase.granted
+  let mixtureImpl := (application service.setup service.leaks).policyMixture
+    (approx.timing phase.event siteOwner owned)
+    (sourceServiceTimedFamily service.setup service.leaks service.rosters approx.profile
+      siteOwner phase.event)
+  have policyEq : approx.players siteOwner (execution.recall siteOwner)
+      (execution.observe (application service.setup service.leaks) siteOwner) =
+      (mixtureImpl.posterior (execution.recall siteOwner)).bind fun slot =>
+        sourceServiceTimedFamily service.setup service.leaks service.rosters approx.profile
+          siteOwner phase.event slot (execution.recall siteOwner)
+            (execution.observe (application service.setup service.leaks) siteOwner) := by
+    simp only [players, sourceServiceTimedPolicy, grant, owned, ↓reduceDIte]
+    exact (application service.setup service.leaks).policyMixture_policy _ _ _ _
+  have slotLaw (slot : Fin ((service.rosters phase.event).count siteOwner)) :
+      (rosterOffset service.setup service.rosters siteOwner phase.event + slot.val =
+          (execution.recall siteOwner).length ∧
+        sourceServiceTimedFamily service.setup service.leaks service.rosters approx.profile
+          siteOwner phase.event slot (execution.recall siteOwner)
+            (execution.observe (application service.setup service.leaks) siteOwner) =
+          values.map fun value => (runtime service.setup).reactiveBinding service.leaks siteOwner
+            phase.event sitePayload value (execution.application.publicView.bindingCount siteOwner))
+      ∨ sourceServiceTimedFamily service.setup service.leaks service.rosters approx.profile
+          siteOwner phase.event slot (execution.recall siteOwner)
+            (execution.observe (application service.setup service.leaks) siteOwner) =
+          (application service.setup service.leaks).replayPolicy (execution.recall siteOwner)
+            (execution.observe (application service.setup service.leaks) siteOwner) := by
+    by_cases now : rosterOffset service.setup service.rosters siteOwner phase.event + slot.val =
+        (execution.recall siteOwner).length
+    · left
+      refine ⟨now, ?_⟩
+      simp only [sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy, Option.map_some,
+        now, ↓reduceIte]
+      exact opening
+    · right
+      simp only [sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy, Option.map_some,
+        Option.some.injEq, now, ↓reduceIte]
+  have classify (response : (application service.setup service.leaks).Action)
+      (supported : response ∈ (approx.players siteOwner (execution.recall siteOwner)
+        (execution.observe (application service.setup service.leaks) siteOwner)).support) :
+      (∃ value ∈ values.support, response = (runtime service.setup).reactiveBinding
+        service.leaks siteOwner phase.event sitePayload value
+          (execution.application.publicView.bindingCount siteOwner)) ∨
+      (response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) := by
+    rw [policyEq, FinDist.support_bind] at supported
+    obtain ⟨slot, _, drawn⟩ := Set.mem_iUnion₂.mp supported
+    rcases slotLaw slot with ⟨_, fires⟩ | waits
+    · rw [fires, FinDist.support_map] at drawn
+      obtain ⟨value, valueSupport, same⟩ := drawn
+      exact Or.inl ⟨value, valueSupport, same.symm⟩
+    · rw [waits] at drawn
+      exact Or.inr ((application service.setup service.leaks).replayPolicy_cases _ _ response drawn)
+  have allowedOf (response : (application service.setup service.leaks).Action)
+      (supported : response ∈ (approx.players siteOwner (execution.recall siteOwner)
+        (execution.observe (application service.setup service.leaks) siteOwner)).support) :
+      response ∈ service.menu.actions siteOwner (execution.recall siteOwner)
+        (execution.observe (application service.setup service.leaks) siteOwner) :=
+    approx.covered siteOwner ⟨remaining, some siteOwner, execution⟩ trace rfl response supported
+  refine ⟨name, values, decodedAction, ?_, anyStep, marginal, ?_, ?_⟩
+  · rw [sourceStep, FinDist.map_bind]
+    rfl
+  · rw [policyEq, FinDist.bind_bind]
+    refine (FinDist.bind_congr (g := fun _ => values.bind (fun value =>
+      approx.boundaryContinuation (phase.event.val + 1)
+        (execution.application.config.complete phase.event ready
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)))) ?_).trans
+      (FinDist.bind_const _ _)
+    intro slot slotSupport
+    have present (response : (application service.setup service.leaks).Action)
+        (drawn : response ∈ (sourceServiceTimedFamily service.setup service.leaks
+          service.rosters approx.profile siteOwner phase.event slot (execution.recall siteOwner)
+            (execution.observe (application service.setup service.leaks) siteOwner)).support) :
+        response ∈ (approx.players siteOwner (execution.recall siteOwner)
+          (execution.observe (application service.setup service.leaks) siteOwner)).support := by
+      rw [policyEq, FinDist.support_bind]
+      exact Set.mem_iUnion₂.mpr ⟨slot, slotSupport, drawn⟩
+    rcases slotLaw slot with ⟨_, fires⟩ | waits
+    · rw [fires, FinDist.bind_map]
+      apply FinDist.bind_congr
+      intro value valueSupport
+      exact submitted value (allowedOf _ (present _ (by
+        rw [fires, FinDist.support_map]
+        exact ⟨value, valueSupport, rfl⟩)))
+    · rw [waits]
+      refine (FinDist.bind_congr ?_).trans (FinDist.bind_const _ _)
+      intro response supported
+      exact transported response (allowedOf response (present response (by
+        rw [waits]
+        exact supported)))
+        ((application service.setup service.leaks).replayPolicy_cases _ _ response supported)
+  · intro response allowed
+    have present := roster_fullyMixed_response_support service.setup service.leaks
+      service.rosters service.network service.menu approx.players approx.covered
+      approx.assessment approx.strategy approx.mixed siteOwner remaining execution trace
+      response allowed
+    rcases classify response present with ⟨value, valueSupport, rfl⟩ | transport
+    · exact Or.inl ⟨value, valueSupport, ⟨_, rfl⟩, submitted value allowed⟩
+    · exact Or.inr ⟨transport, transported response allowed transport⟩
+
+end TimedApproximant
+
+namespace TimedApproximant
+
+/-- Each history of an owner site is an actual decision whose own recall and
+view are the site's information. -/
+private theorem site_decision {service : SourceServiceSpec Player L}
+    (who : Player) (site : service.model.InformationSite who)
+    (past : List (application service.setup service.leaks).PlayerEntry)
+    (view : (application service.setup service.leaks).PlayerView)
+    (observed : site.1 = some (past, view)) {event : (graph service.setup).EventId}
+    (granted : view.application.publicView.serviceGrant = some event)
+    (history : service.model.InformationHistory who site.1) :
+    ∃ (remaining : Nat) (execution : (application service.setup service.leaks).Execution)
+      (_ : history.1.state = some ⟨remaining, some who, execution⟩)
+      (phase : DecisionPhase service.setup service.leaks service.rosters who execution),
+      phase.event = event ∧ execution.recall who = past ∧
+        execution.observe (application service.setup service.leaks) who = view := by
+  have active := InformationModel.InformationSite.active service.model site history
+  obtain ⟨control, current⟩ : ∃ control, history.1.state = some control := by
+    cases state : history.1.state with
+    | none => rw [state] at active; cases active
+    | some control => exact ⟨control, rfl⟩
+  have actor : control.actor = some who := by rw [current] at active; exact active
+  obtain ⟨remaining, actorValue, execution⟩ := control
+  change actorValue = some who at actor
+  subst actorValue
+  have trace : (service.menu.protocol (initialLaw service.setup) service.planLength
+      service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
+    current ▸ history.1.trace
+  obtain ⟨phase⟩ := service.exists_decisionPhase who remaining execution trace
+  have input := Option.some.inj
+    ((service.infoOf_decision history.1 current).symm.trans (history.2.trans observed))
+  have grant : execution.application.serviceGrant = some event :=
+    (congrArg (fun pair : List (application service.setup service.leaks).PlayerEntry ×
+      (application service.setup service.leaks).PlayerView =>
+        pair.2.application.publicView.serviceGrant) input).trans granted
+  exact ⟨remaining, execution, current, phase, Option.some.inj (phase.granted.symm.trans grant),
+    congrArg Prod.fst input, congrArg Prod.snd input⟩
+
+/-- The prescribed local law of a timed approximant at an actual decision is
+the timed policy's response law. -/
+private theorem prescribed_response_law {service : SourceServiceSpec Player L}
+    (approx : TimedApproximant service) {who : Player} {remaining : Nat}
+    {execution : (application service.setup service.leaks).Execution}
+    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
+      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (info : service.model.InfoState who)
+    (observed : info = some (execution.recall who,
+      execution.observe (application service.setup service.leaks) who)) :
+    (approx.assessment.strategy who info).map (fun choice => choice.1.getD ⟨none⟩) =
+      approx.players who (execution.recall who)
+        (execution.observe (application service.setup service.leaks) who) := by
+  subst observed
+  have mapped := service.menu.restrictPolicy_map_val (initialLaw service.setup)
+    service.planLength service.scheduler who (approx.players who) (execution.recall who)
+    (execution.observe (application service.setup service.leaks) who)
+    (approx.covered who ⟨remaining, some who, execution⟩ trace rfl)
+  have split : (fun choice : service.model.Choice who (some (execution.recall who,
+      execution.observe (application service.setup service.leaks) who)) =>
+        choice.1.getD ⟨none⟩) = (fun action => action.getD ⟨none⟩) ∘ Subtype.val := rfl
+  have strategyAt : approx.assessment.strategy who (some (execution.recall who,
+      execution.observe (application service.setup service.leaks) who)) =
+      service.menu.restrictPolicy (initialLaw service.setup) service.planLength
+        service.scheduler who (approx.players who) (some (execution.recall who,
+          execution.observe (application service.setup service.leaks) who)) := by
+    rw [approx.strategy]
+  rw [split, ← FinDist.map_comp, strategyAt, mapped, FinDist.map_comp]
+  exact FinDist.map_id _
+
+open Classical in
+/-- At an owner's visit to its own unsent binding, every local lottery of the
+`ofSource` approximant has prescribed and alternative laws equal to the
+prescribed and alternative laws of one mixture of original source assessment
+comparisons. A native submission of a value is simulated by the source
+commitment of that value, and a transport response by the prescribed source
+action law, which it leaves unchanged. -/
+theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
+    (timing : ∀ event who, (graph service.setup).actor? event = some who →
+      FinDist (Fin ((service.rosters event).count who)))
+    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (source : (service.setup.informationModel
+      (CommitmentInterface.values service.setup.program)).BehavioralAssessment)
+    [∀ who (site : (service.setup.informationModel
+      (CommitmentInterface.values service.setup.program)).InformationSite who),
+      Fintype ((service.setup.informationModel
+        (CommitmentInterface.values service.setup.program)).InformationHistory who site.1)]
+    (full : ∀ who info, (source.strategy who info).FullSupport)
+    (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
+      (service.setup.informationModel (CommitmentInterface.values service.setup.program)) source
+      (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
+    (approx : TimedApproximant service)
+    (built : approx = ofSource service timing timingFull source.strategy full)
+    (who : Player) (site : service.model.InformationSite who)
+    (past : List (application service.setup service.leaks).PlayerEntry)
+    (view : (application service.setup service.leaks).PlayerView)
+    (observed : site.1 = some (past, view))
+    {event : (graph service.setup).EventId} {payload : L.Ty}
+    (outputEq : (graph service.setup).outputLayout event = .binding who payload)
+    (granted : view.application.publicView.serviceGrant = some event)
+    (unsent : (runtime service.setup).eventRecorded service.leaks past event = false)
+    (law : FinDist (service.model.Choice who site.1)) :
+    ∃ mixture : FinDist ((service.setup.informationModel
+        (CommitmentInterface.values service.setup.program)).AssessmentDeviation who),
+      (service.model.assessmentComparison service.readout service.fuel approx.assessment who
+        (site, (approx.assessment.strategy who).withLaw site.1 law)).prescribed =
+        mixture.bind (fun deviation => ((service.setup.informationModel
+          (CommitmentInterface.values service.setup.program)).assessmentComparison
+            (fun final => service.setup.protocolReadout final.state)
+            (instructionCount service.setup.program + 1) source who deviation).prescribed) ∧
+      (service.model.assessmentComparison service.readout service.fuel approx.assessment who
+        (site, (approx.assessment.strategy who).withLaw site.1 law)).alternative =
+        mixture.bind (fun deviation => ((service.setup.informationModel
+          (CommitmentInterface.values service.setup.program)).assessmentComparison
+            (fun final => service.setup.protocolReadout final.state)
+            (instructionCount service.setup.program + 1) source who deviation).alternative) := by
+  have owned := binding_actor service.setup event who payload outputEq
+  obtain ⟨codeEq, node⟩ := binding_nodeView service.setup event who payload outputEq
+  obtain ⟨sourceView, sourceHistories⟩ := owner_site_source_histories service timing
+    timingFull source full sourceBayes approx built who site past view observed owned granted
+  let admission := CommitmentInterface.values service.setup.program
+  let baseline := service.setup.toProtocolBehavioralPolicy admission who (approx.profile who)
+    (approx.admitted who) (some sourceView)
+  -- The decision data of every history of the site.
+  have atHistory (history : service.model.InformationHistory who site.1) :
+      ∃ (remaining : Nat) (execution : (application service.setup service.leaks).Execution)
+        (_ : history.1.state = some ⟨remaining, some who, execution⟩)
+        (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
+        (_ : phase.event = event) (trace : (service.menu.protocol (initialLaw service.setup)
+          service.planLength service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
+        (ready : execution.application.config.cut.Ready event),
+        execution.recall who = past ∧
+          execution.observe (application service.setup service.leaks) who = view ∧
+          ∃ (name : VarId) (values : FinDist (PublicationResult (L.Val payload))),
+            (∀ value, decodeEventAction service.setup.program event
+              (cast (congrArg EventGraph.EventField.Action outputEq.symm) value) =
+                some (.commit who name payload value)) ∧
+            (service.setup.continuationLaw approx.profile (sourceServicePrefix? service.setup
+              event.val execution.application.config)).map some =
+              values.bind (fun value => approx.boundaryContinuation (event.val + 1)
+                (execution.application.config.complete event ready
+                  (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+                  (cast (congrArg EventGraph.EventField.Value outputEq.symm) value))) ∧
+            (∀ joint : Player → Option (OwnAction Player L),
+              service.setup.protocolStep (sourceServicePrefix? service.setup event.val
+                execution.application.config) joint =
+              FinDist.pure (sourceServicePrefix? service.setup (event.val + 1)
+                (execution.application.config.complete event ready
+                  (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+                    (OwnAction.binding who name payload (joint who)))
+                  (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+                    (OwnAction.binding who name payload (joint who)))))) ∧
+            (∀ state, sourceServicePrefix? service.setup event.val
+                execution.application.config = some state →
+              ¬ ProtocolState.terminal service.setup.program state →
+              ((approx.profile who).protocolAction service.setup.program
+                (ProtocolState.observe who service.setup.program state)).map
+                  (OwnAction.binding who name payload) = values) ∧
+            (approx.players who (execution.recall who)
+              (execution.observe (application service.setup service.leaks) who)).bind
+                (approx.responseReadout phase) =
+              values.bind (fun value => approx.boundaryContinuation (event.val + 1)
+                (execution.application.config.complete event ready
+                  (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+                  (cast (congrArg EventGraph.EventField.Value outputEq.symm) value))) ∧
+            ∀ response ∈ service.menu.actions who (execution.recall who)
+                (execution.observe (application service.setup service.leaks) who),
+              (∃ value ∈ values.support, (∃ serial, response =
+                  (runtime service.setup).reactiveBinding service.leaks who event payload value
+                    serial) ∧
+                approx.responseReadout phase response =
+                  approx.boundaryContinuation (event.val + 1)
+                    (execution.application.config.complete event ready
+                      (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+                      (cast (congrArg EventGraph.EventField.Value outputEq.symm) value))) ∨
+              ((response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) ∧
+                approx.responseReadout phase response =
+                  values.bind (fun value => approx.boundaryContinuation (event.val + 1)
+                    (execution.application.config.complete event ready
+                      (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+                      (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)))) := by
+    obtain ⟨remaining, execution, current, phase, same, recallEq, viewEq⟩ :=
+      site_decision who site past view observed granted history
+    have trace : (service.menu.protocol (initialLaw service.setup) service.planLength
+        service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
+      current ▸ history.1.trace
+    obtain ⟨phaseEvent, slot, selected, position, phaseGranted⟩ := phase
+    dsimp only at same
+    subst same
+    let phase : DecisionPhase service.setup service.leaks service.rosters who execution :=
+      ⟨phaseEvent, slot, selected, position, phaseGranted⟩
+    obtain ⟨ready, _⟩ := sourceService_binding_decision_resources service.setup service.leaks
+      service.bounds service.values service.capacity service.rosters
+      service.opportunities.binding service.network who ⟨remaining, some who, execution⟩ trace
+      rfl phaseEvent phaseGranted who payload outputEq codeEq node owned
+    have unsentNow : (runtime service.setup).eventRecorded service.leaks (execution.recall who)
+        phaseEvent = false := recallEq ▸ unsent
+    exact ⟨remaining, execution, current, phase, rfl, trace, ready, recallEq, viewEq,
+      approx.unsent_binding_decision trace phase outputEq unsentNow ready⟩
+  obtain ⟨reference, _, _⟩ := site.2
+  obtain ⟨_, _, _, _, _, _, _, _, _, name, _, referenceDecoded, _⟩ := atHistory reference
+  let realize : PublicationResult (L.Val payload) →
+      (service.setup.informationModel admission).Choice who (some sourceView) := fun value =>
+    if found : ∃ choice ∈ baseline.support, OwnAction.binding who name payload choice.1 = value
+    then found.choose else baseline.support_nonempty.choose
+  let submittedValue : (application service.setup service.leaks).Action →
+      Option (PublicationResult (L.Val payload)) := fun response =>
+    if found : ∃ value serial, response = (runtime service.setup).reactiveBinding service.leaks
+      who event payload value serial then some found.choose else none
+  let sourceLaw : FinDist ((service.setup.informationModel admission).Choice who
+      (some sourceView)) :=
+    law.bind fun choice => match submittedValue (choice.1.getD ⟨none⟩) with
+      | some value => FinDist.pure (realize value)
+      | none => baseline
+  obtain ⟨alternative, admittedAlternative, alternativeLaw⟩ :=
+    service.setup.exists_admitted_local_law admission approx.profile approx.admitted who
+      (some sourceView) sourceLaw
+  apply owner_comparisons_of_continuations service timing timingFull source full sourceBayes
+    approx built who site past view observed owned granted law alternative admittedAlternative
+  · intro history _
+    obtain ⟨remaining, execution, current, phase, _, trace, ready, recallEq, viewEq, _, values,
+      _, sourceStep, _, _, prescribed, _⟩ := atHistory history
+    have localLaw := approx.local_law_readout history.1 current phase history.2
+      (approx.assessment.strategy who site.1)
+    rw [InformationModel.BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self] at localLaw
+    rw [localLaw, prescribed_response_law approx trace site.1
+      (observed.trans (by rw [recallEq, viewEq])), prescribed, ← sourceStep]
+    simp only [decodedState, current, Option.bind_some]
+  · intro history member
+    obtain ⟨remaining, execution, current, phase, _, trace, ready, recallEq, viewEq, otherName,
+      values, decodedHere, sourceStep, anyStep, marginal, _, responses⟩ := atHistory history
+    have sameName : otherName = name := by
+      have both := (decodedHere .failure).symm.trans (referenceDecoded .failure)
+      simpa using both
+    subst sameName
+    obtain ⟨sourceHistory, sourceState, running, active, info⟩ := sourceHistories history member
+    have decodedEq : decodedState service event history.1 =
+        sourceServicePrefix? service.setup event.val execution.application.config := by
+      simp only [decodedState, current, Option.bind_some]
+    rw [decodedEq] at sourceState
+    obtain ⟨state, stateEq⟩ : ∃ state, sourceServicePrefix? service.setup event.val
+        execution.application.config = some state := by
+      cases decoded : sourceServicePrefix? service.setup event.val execution.application.config
+        with
+      | none =>
+          rw [show (service.setup.informationModel admission).infoOf who sourceHistory.trace =
+            service.setup.protocolObserve who sourceHistory.state from
+              service.setup.protocol_info admission who sourceHistory.trace, sourceState,
+                decoded] at info
+          cases info
+      | some state => exact ⟨state, rfl⟩
+    have stateRunning : ¬ ProtocolState.terminal service.setup.program state := by
+      intro stopped
+      apply running
+      rw [sourceState, stateEq]
+      exact stopped
+    have stateView : ProtocolState.observe who service.setup.program state = sourceView := by
+      rw [show (service.setup.informationModel admission).infoOf who sourceHistory.trace =
+        service.setup.protocolObserve who sourceHistory.state from
+          service.setup.protocol_info admission who sourceHistory.trace, sourceState,
+            stateEq] at info
+      exact Option.some.inj info
+    have baselineValues : (baseline.map Subtype.val).map (OwnAction.binding who otherName payload) =
+        values := by
+      rw [Setup.toProtocolBehavioralPolicy_map_val]
+      rw [← marginal state stateEq stateRunning, stateView]
+      rfl
+    have localLaw := approx.local_law_readout history.1 current phase history.2 law
+    rw [localLaw, decodedEq, ← sourceState, alternativeLaw sourceHistory running active info,
+      sourceState]
+    simp only [anyStep, ↓reduceIte, FinDist.pure_bind, FinDist.map_bind, FinDist.bind_map,
+      sourceLaw, FinDist.bind_bind]
+    apply FinDist.bind_congr
+    intro choice _
+    have allowed := service.choice_allowed history.1 current history.2 choice
+    rcases responses _ allowed with ⟨value, valueSupport, ⟨serial, submitted⟩, readout⟩ |
+      ⟨transport, readout⟩
+    · have found : ∃ value serial, choice.1.getD ⟨none⟩ = (runtime service.setup).reactiveBinding
+          service.leaks who event payload value serial := ⟨value, serial, submitted⟩
+      have decodedValue : submittedValue (choice.1.getD ⟨none⟩) = some value := by
+        simp only [submittedValue, found, ↓reduceDIte]
+        obtain ⟨_, chosen⟩ := found.choose_spec
+        exact congrArg some (reactiveBinding_injective service.leaks who event payload
+          (chosen.symm.trans submitted))
+      have realizable : ∃ realized ∈ baseline.support,
+          OwnAction.binding who otherName payload realized.1 = value := by
+        rw [← baselineValues, FinDist.support_map, FinDist.support_map] at valueSupport
+        obtain ⟨action, ⟨realized, realizedSupport, rfl⟩, same⟩ := valueSupport
+        exact ⟨realized, realizedSupport, same⟩
+      have realized : OwnAction.binding who otherName payload (realize value).1 = value := by
+        simp only [realize, realizable, ↓reduceDIte]
+        exact realizable.choose_spec.2
+      rw [decodedValue, readout]
+      simp only [FinDist.pure_bind, realized]
+      rfl
+    · have decodedValue : submittedValue (choice.1.getD ⟨none⟩) = none := by
+        simp only [submittedValue]
+        split
+        · rename_i found
+          obtain ⟨value, serial, submitted⟩ := found
+          rcases transport with silent | ⟨id, replayed⟩
+          · rw [silent] at submitted
+            cases submitted
+          · rw [replayed] at submitted
+            cases submitted
+        · rfl
+      rw [decodedValue, readout, ← baselineValues, FinDist.bind_map, FinDist.bind_map]
+      rfl
+
+end TimedApproximant
 
 end Vegas.SourceProgram.RevealService

@@ -50,8 +50,8 @@ intentions erased by normalization. The
 [local comparison interface](../Vegas/Game/SourceServiceLocalComparison.lean)
 reduces every physical local comparison to the configuration law of the
 current phase after each legal response. Public-sampling sites, foreign visits,
-and owner visits after a recorded binding or opening are checked; unsent owner
-bindings and disclosures are still required. The
+owner visits after a recorded binding or opening, and unsent owner bindings are
+checked; unsent owner disclosures are still required. The
 [joint phase checkpoint laws](../Vegas/Game/SourceServiceTimedCheckpoint.lean)
 retain each chosen source successor together with its actual native traffic;
 equal terminal marginals do not establish that joint law.

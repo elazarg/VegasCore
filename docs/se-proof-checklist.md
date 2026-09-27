@@ -76,10 +76,11 @@ percentage estimate.
   box. The site-by-site interface is checked in
   [SourceServiceLocalComparison.lean](../Vegas/Game/SourceServiceLocalComparison.lean);
   public-sampling sites, foreign visits, and owner visits after a recorded
-  binding or opening have checked zero-gain comparisons
+  binding or opening have checked zero-gain comparisons, and unsent owner
+  bindings an exact simulation by original source deviations
   ([SourceServiceForeignComparison.lean](../Vegas/Game/SourceServiceForeignComparison.lean),
   [SourceServiceForeignDisclosure.lean](../Vegas/Game/SourceServiceForeignDisclosure.lean)).
-  Unsent owner bindings and unsent owner disclosures remain; the
+  Unsent owner disclosures remain; the
   [completion plan](se-completion-plan.md) orders the remaining work.
 
 - [ ] **S5. Full-language source-to-permitted-runtime SE theorem.** Combine
