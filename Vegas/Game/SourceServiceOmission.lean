@@ -51,7 +51,7 @@ theorem sourceService_plan_no_omission
     exact Nat.le_refl _
   have supported := reached
   rw [← same] at supported
-  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, boundary⟩ :=
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, boundary⟩ :=
     initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
       opportunities players lawful network profile (eventCount setup.program) (Nat.le_refl _)
         final supported

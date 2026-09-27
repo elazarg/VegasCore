@@ -106,6 +106,80 @@ theorem source_initial_memory_factorization
   rw [show read initial = read present.choose from
     source_initial_traffic_eq setup leaks focal initial present.choose present.choose_spec.2.symm]
 
+/-- A real grant, clock step or expiry preserves the traffic factorization.
+The carried source configuration is proof data; the native application still
+performs the specified command, including its public effects and service recall. -/
+theorem source_maintenance_factorization
+    {Seed : Type*} {Γ : SourceCtx Player L}
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (focal : Player) (prior : FinDist Seed) (source : Seed → Config Player L Γ)
+    (execution : Seed → (application setup leaks).Execution)
+    (noise : DecisionView focal Γ → FinDist _)
+    (factor : prior.map (fun seed => (source seed,
+        (runtime setup).bindingTraffic leaks focal (execution seed))) =
+      (prior.map source).bind fun config =>
+        (noise (config.view focal)).map fun extra => (config, extra))
+    (command : EnvironmentCommand (graph setup))
+    (maintenance : ∀ event, command ≠ .executeSample event) :
+    ∃ nextNoise : DecisionView focal Γ → FinDist _,
+      (prior.bind fun seed =>
+        ((execution seed).environmentStep (application setup leaks) (.application command)).map
+          fun final => (source seed, (runtime setup).bindingTraffic leaks focal final)) =
+      (prior.map source).bind fun config =>
+        (nextNoise (config.view focal)).map fun extra => (config, extra) := by
+  obtain ⟨nextNoise, law⟩ := FinDist.exists_updated_observation_kernel_of_readout prior source
+    (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
+    (fun config => config.view focal) noise factor (fun _ => FinDist.pure Unit.unit)
+    (fun config _ => config) (fun config => config.view focal)
+    (fun seed _ => ((execution seed).environmentStep (application setup leaks)
+      (.application command)).map ((runtime setup).bindingTraffic leaks focal))
+    (fun _ _ _ _ _ _ _ _ same => same)
+    (fun left _ _ _ right _ _ _ _ same =>
+      (runtime setup).bindingTraffic_maintenance leaks (execution left) (execution right)
+        focal same command maintenance)
+  exact ⟨nextNoise, by simpa only [FinDist.pure_bind, FinDist.map_pure,
+    FinDist.bind_pure, FinDist.map_id, FinDist.map_comp, Function.comp_def] using law⟩
+
+/-- An actual replay roster preserves the same source-conditioned traffic
+law while retaining all passive samples and all players' previous responses. -/
+theorem source_replay_factorization
+    {Seed : Type*} {Γ : SourceCtx Player L}
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (focal : Player) (prior : FinDist Seed) (source : Seed → Config Player L Γ)
+    (execution : Seed → (application setup leaks).Execution)
+    (recalled : ∀ seed ∈ prior.support, (execution seed).InputRecall (application setup leaks))
+    (noise : DecisionView focal Γ → FinDist _)
+    (factor : prior.map (fun seed => (source seed,
+        (runtime setup).bindingTraffic leaks focal (execution seed))) =
+      (prior.map source).bind fun config =>
+        (noise (config.view focal)).map fun extra => (config, extra))
+    (network : (runtime setup).NetworkPolicy leaks) (roster : List Player) :
+    ∃ nextNoise : DecisionView focal Γ → FinDist _,
+      (prior.bind fun seed =>
+        ((runtime setup).runInteractionPlan leaks
+          (fun _ => (application setup leaks).replayPolicy) network
+          (roster.map ServiceInstruction.player) (execution seed)).map fun final =>
+            (source seed, (runtime setup).bindingTraffic leaks focal final)) =
+      (prior.map source).bind fun config =>
+        (nextNoise (config.view focal)).map fun extra => (config, extra) := by
+  obtain ⟨nextNoise, law⟩ := FinDist.exists_updated_observation_kernel_of_readout prior source
+    (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
+    (fun config => config.view focal) noise factor (fun _ => FinDist.pure Unit.unit)
+    (fun config _ => config) (fun config => config.view focal)
+    (fun seed _ => ((runtime setup).runInteractionPlan leaks
+      (fun _ => (application setup leaks).replayPolicy) network
+      (roster.map ServiceInstruction.player) (execution seed)).map
+        ((runtime setup).bindingTraffic leaks focal))
+    (fun _ _ _ _ _ _ _ _ same => same)
+    (fun left leftSupport _ _ right rightSupport _ _ _ same =>
+      (runtime setup).replay_window_focal_law leaks network roster focal
+        (execution left) (execution right) (recalled left leftSupport)
+        (recalled right rightSupport) same)
+  exact ⟨nextNoise, by simpa only [FinDist.pure_bind, FinDist.map_pure,
+    FinDist.bind_pure, FinDist.map_id, FinDist.map_comp, Function.comp_def] using law⟩
+
 omit [IExpr.ResultTypes L] in
 private theorem commit_view_reflects {Γ : SourceCtx Player L} {owner : Player}
     {payload : L.Ty} (focal : Player) (name : VarId)
@@ -339,16 +413,20 @@ theorem guarded_opening_handler_focal
     ∃ candidate, candidate.1 = owner ∧
       left.application.candidates.lookup candidate = .openable ⟨payload, value⟩ ∧
       right.application.candidates.lookup candidate = .openable ⟨payload, value⟩ ∧
+      rosterOpening? setup leaks owner event (left.observe (application setup leaks) owner) =
+        some (candidate, ⟨payload, value⟩) ∧
+      rosterOpening? setup leaks owner event (right.observe (application setup leaks) owner) =
+        some (candidate, ⟨payload, value⟩) ∧
       ((application setup leaks).handle left.application
         ((runtime setup).windowEnvelope leaks owner event candidate ⟨payload, value⟩ left)).map
           (fun state => state.playerView focal) =
       ((application setup leaks).handle right.application
         ((runtime setup).windowEnvelope leaks owner event candidate ⟨payload, value⟩ left)).map
           (fun state => state.playerView focal) := by
-  obtain ⟨candidate, leftAssociated, owned, leftValid, _⟩ :=
+  obtain ⟨candidate, leftAssociated, owned, leftValid, leftOpening⟩ :=
     guarded_rosterOpening_success setup leaks published binding leftSource refs left leftAgrees
       leftBinding event outputEq leftCode leftNode value leftSuccess
-  obtain ⟨other, rightAssociated, _, rightValid, _⟩ :=
+  obtain ⟨other, rightAssociated, _, rightValid, rightOpening⟩ :=
     guarded_rosterOpening_success setup leaks published binding rightSource refs right rightAgrees
       rightBinding event outputEq rightCode rightNode value rightSuccess
   have publics : left.application.publicView = right.application.publicView :=
@@ -358,7 +436,7 @@ theorem guarded_opening_handler_focal
   have candidateEq : candidate = other := Option.some.inj
     (leftAssociated.symm.trans ((congrFun accepted (refs.get binding).field).trans rightAssociated))
   subst other
-  refine ⟨candidate, owned, leftValid, rightValid, ?_⟩
+  refine ⟨candidate, owned, leftValid, rightValid, leftOpening, rightOpening, ?_⟩
   have stored (source : Config Player L Γ) (native : EventGraphRuntime.State (graph setup))
       (agrees : refs.Agrees source.state native.config.store)
       (success : disclosureResult published binding source true = .success value) :

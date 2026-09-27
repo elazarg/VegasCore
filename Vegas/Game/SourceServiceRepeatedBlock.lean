@@ -4,6 +4,7 @@ import Vegas.Game.SourceServiceRepeatedWindow
 import Vegas.Game.SourceServiceImplementationSegment
 import Vegas.Pending.ReactiveRepeatedSubmissionData
 import Vegas.Pending.ReactiveBindingForeignInclusion
+import Vegas.Pending.ReactiveBindingFrameForeign
 
 /-! # Protected settlement after a stopped repeated binding window
 
@@ -51,15 +52,16 @@ theorem repeated_binding_block_coupling
     (unused : original.application.HandleUnused (owner, slot))
     (leftFixed : original.application.candidates.lookup (owner, slot) ≠ .fresh)
     (rightFixed : repaired.application.candidates.lookup (owner, slot) ≠ .fresh)
-    (rememberedAction : memory.shadow.actions event = some
-      (cast (congrArg EventField.Action outputEq.symm)
-        (original.application.bindingResult (owner, slot) payload)))
-    (rememberedValue : memory.shadow.values (.inr event) = some
-      (cast (congrArg EventField.Value outputEq.symm)
-        (original.application.bindingResult (owner, slot) payload)))
-    (successful : ∀ value,
-      original.application.bindingResult (owner, slot) payload = .success value →
-        repaired.application.bindingResult (owner, slot) payload = .success value)
+    (aligned :
+      (memory.shadow.actions event = some (cast (congrArg EventField.Action outputEq.symm)
+          (original.application.bindingResult (owner, slot) payload)) ∧
+        memory.shadow.values (.inr event) = some (cast (congrArg EventField.Value outputEq.symm)
+          (original.application.bindingResult (owner, slot) payload)) ∧
+        ∀ value, original.application.bindingResult (owner, slot) payload = .success value →
+          repaired.application.bindingResult (owner, slot) payload = .success value) ∨
+      (memory.shadow.actions event = none ∧ memory.shadow.values (.inr event) = none ∧
+        repaired.application.bindingResult (owner, slot) payload =
+          original.application.bindingResult (owner, slot) payload))
     (pending : (⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩ :
       Message Player (WitnessedPacket (graph setup))) ∈ original.network.pending)
     (unpublished : (owner, nonce) ∉ original.network.ledger.map Message.id)
@@ -196,13 +198,22 @@ theorem repeated_binding_block_coupling
       have selection := (runtime setup).repeated_window_clean_selection leaks bounds players
         network owner original event message rfl rfl packets pending unpublished leftRecall serials
           repeated available visits next.1 (leftReach next supported) clean
-      have included := paired.pending_binding_inclusion event payload outputEq codeEq node
-        message.id (owner, slot) rfl rfl selection.2 readyNow timelyNow vacantNow unusedNow
-        (by rwa [leftCandidate]) (by rwa [rightCandidate])
-        (by rw [shadow, leftResult]; exact rememberedAction)
-        (by rw [shadow, leftResult]; exact rememberedValue)
-        (by intro value success; rw [leftResult] at success; rw [rightResult];
-            exact successful value success)
+      have included : BindingMemory.Frame (runtime setup) leaks next.2.2 owner
+          (finish next.1) (finish next.2.1) := by
+        rcases aligned with ⟨rememberedAction, rememberedValue, successful⟩ |
+            ⟨noAction, noValue, sameResult⟩
+        · exact paired.pending_binding_inclusion event payload outputEq codeEq node
+            message.id (owner, slot) rfl rfl selection.2 readyNow timelyNow vacantNow unusedNow
+            (by rwa [leftCandidate]) (by rwa [rightCandidate])
+            (by rw [shadow, leftResult]; exact rememberedAction)
+            (by rw [shadow, leftResult]; exact rememberedValue)
+            (by intro value success; rw [leftResult] at success; rw [rightResult];
+                exact successful value success)
+        · exact paired.binding_inclusion_unmodified message.id event (owner, slot) owner payload
+            outputEq codeEq node readyNow timelyNow rfl rfl vacantNow unusedNow
+            (by rwa [leftCandidate]) (by rwa [rightCandidate])
+            (by rw [leftResult, rightResult]; exact sameResult)
+            (by rw [shadow]; exact noValue) (by rw [shadow]; exact noAction) none selection.2
       have completed : event ∈ (finish next.1).application.config.cut.completed := by
         have handled := (runtime setup).handle_commitment_eq next.1.application message.id event
           (owner, slot) owner payload outputEq codeEq node readyNow timelyNow rfl rfl vacantNow

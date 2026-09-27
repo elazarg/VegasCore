@@ -69,7 +69,7 @@ theorem sourceService_decision_boundary
   obtain ⟨event, slot, boundary, prior, selected, position, boundarySupport, phase, activated⟩ :=
     roster_decision_boundary setup leaks rosters network menu who control trace active
   obtain ⟨initial, initialSupport, _, _, _, Γ, names, remaining, remainingProfile, source,
-      refs, embedding, refsBefore, aligned, admitted, checkpoint⟩ :=
+      refs, embedding, refsBefore, aligned, admitted, _, _, _, _, _, checkpoint⟩ :=
     initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
       opportunities menu.uniformResponses
       (fun owner past view response supported =>
@@ -192,5 +192,64 @@ theorem sourceService_binding_decision_resources
       exact accounted
     · rw [sampled]
       exact published.learn who sample
+
+/-- At an actual unsent binding opportunity, the information-local required
+menu is selected exactly when the fixed roster has no later owner visit. -/
+theorem sourceService_bindingRequired_iff_no_later_owner
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (rosters : (graph setup).EventId → List Player)
+    (opportunities : ∀ event owner payload,
+      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (profile : BehavioralProfile setup.program)
+    (owner : Player) (control : (application setup leaks).Control)
+    (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+        (some control)) (active : control.actor = some owner)
+    (event : (graph setup).EventId)
+    (granted : control.execution.application.serviceGrant = some event)
+    (payload : L.Ty)
+    (binding : (graph setup).outputLayout event = .binding owner payload)
+    (owned : (graph setup).actor? event = some owner)
+    (unsent : (runtime setup).eventRecorded leaks (control.execution.recall owner) event = false)
+    (visited remaining : List Player)
+    (split : rosters event = visited ++ owner :: remaining)
+    (position : control.execution.environmentRecall.length =
+      (rosterPlanPrefix setup rosters event.val).length + 1 + visited.length + 1) :
+    bindingRequired setup leaks rosters owner (control.execution.recall owner)
+      (control.execution.observe (application setup leaks) owner) ↔ owner ∉ remaining := by
+  let app := application setup leaks
+  let menu := sourceServiceMenu setup leaks bounds rosters
+  obtain ⟨selectedEvent, slot, initial, _, _, Γ, names, program, programProfile, source,
+      refs, embedding, refsBefore, _, _, boundary, prior, sample, checkpoint, grant, reached,
+      _, sampled, _, publicEq, _, clock⟩ :=
+    sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
+      network profile owner control trace active
+  have eventEq : selectedEvent = event := Option.some.inj
+    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans granted)
+  subst selectedEvent
+  have slotEq : slot = visited.length := by omega
+  have visitedEq : (rosters event).take slot = visited := by
+    rw [slotEq, split, List.take_left]
+  have count := fixed_plan_response_counts setup leaks network menu.uniformResponses
+    (((rosters event).take slot).map ServiceInstruction.player)
+    (by intro member; obtain ⟨_, _, impossible⟩ := List.mem_map.mp member; cases impossible)
+    boundary prior reached owner
+  simp only [List.filterMap_map, instructionActor, Function.comp_def, List.filterMap_some,
+    checkpoint.response_offset event rfl owner, visitedEq] at count
+  have counted : (control.execution.recall owner).length =
+      rosterOffset setup rosters owner event + visited.count owner := by
+    rw [sampled]
+    exact count
+  have ready : (control.execution.observe app owner).application.publicView.EventReady event := by
+    change control.execution.application.publicView.EventReady event
+    rw [publicEq]
+    exact (boundary.application.publicView_eventReady event).mpr (checkpoint.ready event rfl)
+  rw [bindingRequired_iff_no_later_owner setup leaks rosters owner _ _ event payload granted
+    binding owned ready unsent visited remaining split counted]
+  exact List.count_eq_zero
 
 end Vegas.SourceProgram.RevealService

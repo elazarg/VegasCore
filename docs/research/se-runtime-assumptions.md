@@ -22,10 +22,12 @@ strategy compiler is fixed before choosing a source equilibrium; the full raw
 game conclusion supplies an equilibrium extension. The finite roster remains
 an explicit scheduling restriction. See the [proof and scope](se-ambient-rosters.md).
 
-Full-source compilation remains open. Operational source support and audit
-soundness are checked for all retained histories, including fresh bindings,
-public chance and guarded disclosure. Two proof chains remain: the original
-source assessment's execution, conditional beliefs and incentives; and the
+Full-source SE preservation remains open. The actual finite compiler preserves
+the original typed terminal-state law for every admitted source profile,
+including fresh bindings, public chance and guarded disclosure. Operational
+source support and audit soundness hold for all retained histories. Two proof
+chains remain: the original source assessment's conditional beliefs and
+incentives; and the
 whole-program comparison of raw deviations with repaired continuations and
 their incremental settlement. The finite-message instance must cover every
 admitted fresh commitment value. This is a genuine restriction for an
@@ -275,18 +277,24 @@ objective. The remaining proof obligations are:
    applies original-memory disclosure normalization and represents the result
    in the retained menu at every input. Exact replay behavior is checked for
    foreign, early and already-submitted opportunities. The final owned
-   decision law and complete initialized source fold still require composition.
+   decision law and complete initialized source fold are checked in the
+   [full-phase laws](../../Vegas/Game/SourceServicePhaseLaw.lean) and
+   [initialized source laws](../../Vegas/Game/SourceServiceLaw.lean).
    The [physical compiler law](../../Vegas/Game/SourceServiceCompiledExecution.lean)
    derives admissibility at every actual retained history from source legality
    and the declared resource bounds. Its complete finite-game execution equals
    the actual normalized source policy's physical execution, jointly retaining
-   native observations and recall. Relating that execution to the original
-   source protocol and assessment remains necessary. The
+   native observations and recall. Decoding its completed execution gives
+   exactly the original source terminal-state distribution for every admitted
+   profile. Conditional beliefs and continuation incentives remain separate
+   obligations. The
    [full-source prefix support](../../Vegas/Game/SourceServicePrefixSupport.lean)
    composes all event constructors under arbitrary retained policies. It
    derives the decoded source state, exact residual compiler alignment and
    complete operational boundary after every supported prefix, including
-   correlated initial types. The
+   correlated initial types. Its residual-state inclusion commutes with the
+   source transition and every future decoder, and inherits normalized
+   disclosure legality. The
    [decision support](../../Vegas/Game/SourceServiceDecisionSupport.lean)
    supplies these facts at every actual retained decision history and derives
    fresh binding resources from the actual partial roster. These are support
@@ -328,7 +336,7 @@ objective. The remaining proof obligations are:
    handler-result views to agree; composing these phase laws across the entire
    program remains necessary.
    The [source memory factorization](../../Vegas/Game/SourceServiceFactorization.lean)
-   derives initialization and binding constructors from actual service laws,
+   derives initialization, binding, replay and maintenance constructors from actual service laws,
    retains the original private-intention history through guarded disclosure,
    and discharges the successful opening handler-view comparison. These are
    constructor results; no complete-program posterior equality is assumed
@@ -339,6 +347,22 @@ objective. The remaining proof obligations are:
    factorization. Its [native likelihood law](../../Vegas/Pending/ReactiveSampleLikelihood.lean)
    couples the public draw while retaining actual scheduler observations and
    the focal player's recall.
+   The [guarded-disclosure likelihood](../../Vegas/Game/SourceServiceDisclosureFactorization.lean)
+   handles both effective withholding and successful publication through an
+   actual opening roster, protected inclusion and deadline settlement. Equal
+   resulting source views give equal traffic laws, including dynamically
+   allocated candidates and deferred guards. The
+   [native posterior calculation](../../Vegas/Game/SourceServicePosterior.lean)
+   derives source posterior equality from this kind of joint law and actual
+   checkpoint support. The whole-program traffic factorization, including
+   the compiler's evidence normalization, remains to be composed; posterior
+   correspondence is not an assumption of the intended compiler theorem.
+   Standard SE consistency also requires one actual fully mixed retained
+   sequence, covering earlier submissions and transport aliases. The limiting
+   compiler's terminal law does not establish that requirement. The timing
+   mixtures must use the same runtime interpreter and their complete phase
+   laws must feed the same source-prefix induction. Arbitrary off-path
+   completion cannot substitute for these conditional comparisons.
 4. **Raw deviations and settlement.** Finish the remaining-plan coupling to a
    legal retained continuation until the first attributable departure. Hidden
    unusability requires repair; it cannot be detected by a sound public audit.
@@ -414,6 +438,18 @@ objective. The remaining proof obligations are:
    extracts the actual first typed binding and remaining roster from every
    retained decision that already records a submission, including the sampled
    activation at that decision.
+   The [first binding block](../../Vegas/Game/SourceServiceFirstBindingBlock.lean)
+   carries an actual first opaque submission through the remaining roster and
+   settlement with the exact repaired private-memory distribution. The
+   [actual final binding opportunity](../../Vegas/Game/SourceServiceFinalBindingRepair.lean)
+   derives its deadline, freshness and coverage facts from a real retained
+   history, including the silence/replay omission branch. A
+   [foreign activation segment](../../Vegas/Game/SourceServiceRepairForeignWindow.lean)
+   preserves the exact joint law and yields another actual retained history;
+   opponent legality is used only at those histories. The
+   [repair-memory invariant](../../Vegas/Pending/ReactiveBindingMemoryInvariant.lean)
+   preserves the repaired player's own binding records through the actual
+   implementation runner without extending the runtime's private state.
    The
    [repeated window](../../Vegas/Pending/ReactiveRepeatedSubmissionWindow.lean)
    composes those alternatives across the entire remaining roster, retaining

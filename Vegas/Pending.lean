@@ -213,6 +213,7 @@ import Vegas.Pending.ReactiveBindingOmission
 import Vegas.Pending.ReactiveBindingRecordedOmission
 import Vegas.Pending.ReactiveBindingFirstSubmission
 import Vegas.Pending.ReactiveBindingFrameAudit
+import Vegas.Pending.ReactiveBindingMemoryInvariant
 import Vegas.Pending.ReactiveBindingDeadline
 import Vegas.Pending.ReactiveUnusableBinding
 import Vegas.Pending.ReactiveBindingRestoration

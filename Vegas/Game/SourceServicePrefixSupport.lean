@@ -4,6 +4,8 @@ import Vegas.Game.SourceServiceBindingBoundary
 import Vegas.Game.SourceServiceSampleBoundary
 import Vegas.Game.SourceServiceResolutionBoundary
 import Vegas.Game.SourceServicePrefix
+import Vegas.Game.SourceStateKernel
+import Vegas.Source.DisclosureNormalization
 
 /-! # Typed support of every retained full-source prefix
 
@@ -12,6 +14,8 @@ membership alone supplies the operational successor at each phase: private
 bindings may occur at any permitted opportunity, public chance keeps its real
 support, and guarded resolution records its effective disclosure. The decoded
 source position and the dynamic operational boundary are derived together.
+The residual-state inclusion also commutes with the existing source transition
+and every later decoder offset.
 -/
 
 noncomputable section
@@ -25,7 +29,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 /-- Every actual retained service prefix has an existing typed source state
 and a complete dynamic boundary. The arbitrary syntax profile supplies only
-static compiler alignment; the physical policy need not be its compilation. -/
+static compiler alignment; the physical policy need not be its compilation.
+The residual inclusion is built from the source protocol's own sum constructors. -/
 theorem run_sourceService_prefix_support
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -65,8 +70,20 @@ theorem run_sourceService_prefix_support
           ((∀ who, (profile who).Admitted program (CommitmentInterface.values program)) →
             ∀ who, (remainingProfile who).Admitted remaining
               (CommitmentInterface.values remaining)) ∧
-          ServiceBoundary setup leaks rosters initial current currentRefs
-            (offset + count) final := by
+          ∃ lift : ProtocolState remaining → ProtocolState program,
+            state = lift (ProtocolState.entry remaining current) ∧
+            (∀ tailState, ProtocolState.behavioralStateStep program profile (lift tailState) =
+              (ProtocolState.behavioralStateStep remaining remainingProfile tailState).map lift) ∧
+            (∀ more store history,
+              decodeSourcePrefix? program refs source.registry source.revelations embedding.ref
+                (count + more) store history =
+              (decodeSourcePrefix? remaining currentRefs current.registry current.revelations
+                currentEmbedding.ref more store history).map lift) ∧
+            ((∀ who, (profile who).EffectiveDisclosures program source.registry
+              source.revelations) → ∀ who, (remainingProfile who).EffectiveDisclosures remaining
+                current.registry current.revelations) ∧
+            ServiceBoundary setup leaks rosters initial current currentRefs
+              (offset + count) final := by
   intro count
   induction count with
   | zero =>
@@ -75,10 +92,15 @@ theorem run_sourceService_prefix_support
       simp only [List.take_zero, List.flatMap_nil, runInteractionPlan] at reached
       cases FinDist.mem_support_pure.mp reached
       refine ⟨ProtocolState.entry program source, ?_, Γ, openNames, program, profile,
-        source, refs, embedding, refsBefore, ?_, ?_, ?_⟩
+        source, refs, embedding, refsBefore, ?_, ?_, id, rfl, ?_, ?_, ?_, ?_⟩
       · cases program <;> exact ⟨source, rfl, rfl, rfl, boundary.toSourceCheckpoint⟩
       · simpa only [Nat.add_zero] using aligned
       · exact fun admitted => admitted
+      · intro state
+        simp only [id_eq, FinDist.map_id]
+      · intro more store history
+        simp only [Nat.zero_add, Option.map_id, id_eq]
+      · exact fun effective => effective
       · simpa only [Nat.add_zero] using boundary
   | succ count ih =>
       intro Γ openNames program profile source refs embedding refsBefore offset aligned bound
@@ -151,16 +173,30 @@ theorem run_sourceService_prefix_support
                 fresh distribution next profile refs
                 source.revelations source.registry embedding refsBefore offset
           obtain ⟨state, related, Δ, names, remaining, remainingProfile, current, currentRefs,
-            currentEmbedding, currentBefore, currentAligned, currentAdmitted, finalBoundary⟩ :=
+            currentEmbedding, currentBefore, currentAligned, currentAdmitted, lift, stateEq,
+            stepEq, decodeEq, currentEffective, finalBoundary⟩ :=
             ih next (afterSample profile) (sampleSuccessor name source value) tailRefs
               tailEmbedding tailBefore (offset + 1) tailAligned
               (by simpa only [eventCount, Nat.succ_le_succ_iff] using bound)
               middle nextBoundary final rest
           refine ⟨Sum.inr state, related, Δ, names, remaining, remainingProfile, current,
-            currentRefs, currentEmbedding, currentBefore, ?_, ?_, ?_⟩
+            currentRefs, currentEmbedding, currentBefore, ?_, ?_, Sum.inr ∘ lift,
+              congrArg Sum.inr stateEq, ?_, ?_, ?_, ?_⟩
           · simpa only [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using currentAligned
           · intro admitted
             exact currentAdmitted (fun who => admitted who)
+          · intro tailState
+            rw [Function.comp_apply, ProtocolState.behavioralStateStep_sample_tail, stepEq,
+              FinDist.map_comp]
+          · intro more store history
+            rw [show count + 1 + more = (count + more) + 1 by omega,
+              decodeSourcePrefix?_sample]
+            change (decodeSourcePrefix? next tailRefs _ _ tailEmbedding.ref
+              (count + more) store history).map Sum.inr = _
+            simpa only [sampleSuccessor, Option.map_map] using
+              congrArg (Option.map Sum.inr) (decodeEq more store history)
+          · intro effective
+            exact currentEffective (fun who => effective who)
           · simpa only [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using finalBoundary
       | @commit Γ openNames name owner payload fresh guard next =>
           let index : Fin (eventCount (.commit name owner fresh guard next)) :=
@@ -229,16 +265,30 @@ theorem run_sourceService_prefix_support
               aligned.commitTail setup.program wholeProfile fresh guard next profile refs
                 source.revelations source.registry embedding refsBefore offset
           obtain ⟨state, related, Δ, names, remaining, remainingProfile, current, currentRefs,
-            currentEmbedding, currentBefore, currentAligned, currentAdmitted, finalBoundary⟩ :=
+            currentEmbedding, currentBefore, currentAligned, currentAdmitted, lift, stateEq,
+            stepEq, decodeEq, currentEffective, finalBoundary⟩ :=
             ih next (afterCommit profile) (commitSuccessor name guard source (.success value))
               tailRefs tailEmbedding tailBefore (offset + 1) tailAligned
               (by simpa only [eventCount, Nat.succ_le_succ_iff] using bound)
               middle nextBoundary final rest
           refine ⟨Sum.inr state, related, Δ, names, remaining, remainingProfile, current,
-            currentRefs, currentEmbedding, currentBefore, ?_, ?_, ?_⟩
+            currentRefs, currentEmbedding, currentBefore, ?_, ?_, Sum.inr ∘ lift,
+              congrArg Sum.inr stateEq, ?_, ?_, ?_, ?_⟩
           · simpa only [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using currentAligned
           · intro admitted
             exact currentAdmitted (fun who => (admitted who).2)
+          · intro tailState
+            rw [Function.comp_apply, ProtocolState.behavioralStateStep_commit_tail, stepEq,
+              FinDist.map_comp]
+          · intro more store history
+            rw [show count + 1 + more = (count + more) + 1 by omega,
+              decodeSourcePrefix?_commit]
+            change (decodeSourcePrefix? next tailRefs _ _ tailEmbedding.ref
+              (count + more) store history).map Sum.inr = _
+            simpa only [commitSuccessor, Option.map_map] using
+              congrArg (Option.map Sum.inr) (decodeEq more store history)
+          · intro effective
+            exact currentEffective (fun who => effective who)
           · simpa only [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using finalBoundary
       | @reveal Γ openNames published owner name payload fresh selected unresolved next =>
           let index : Fin (eventCount
@@ -311,16 +361,30 @@ theorem run_sourceService_prefix_support
                 profile refs
                 source.revelations source.registry embedding refsBefore offset
           obtain ⟨state, related, Δ, names, remaining, remainingProfile, current, currentRefs,
-            currentEmbedding, currentBefore, currentAligned, currentAdmitted, finalBoundary⟩ :=
+            currentEmbedding, currentBefore, currentAligned, currentAdmitted, lift, stateEq,
+            stepEq, decodeEq, currentEffective, finalBoundary⟩ :=
             ih next (afterReveal profile) (revealSuccessor published selected source disclose)
               tailRefs tailEmbedding tailBefore (offset + 1) tailAligned
               (by simpa only [eventCount, Nat.succ_le_succ_iff] using bound)
               middle nextBoundary final rest
           refine ⟨Sum.inr state, related, Δ, names, remaining, remainingProfile, current,
-            currentRefs, currentEmbedding, currentBefore, ?_, ?_, ?_⟩
+            currentRefs, currentEmbedding, currentBefore, ?_, ?_, Sum.inr ∘ lift,
+              congrArg Sum.inr stateEq, ?_, ?_, ?_, ?_⟩
           · simpa only [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using currentAligned
           · intro admitted
             exact currentAdmitted (fun who => admitted who)
+          · intro tailState
+            rw [Function.comp_apply, ProtocolState.behavioralStateStep_reveal_tail, stepEq,
+              FinDist.map_comp]
+          · intro more store history
+            rw [show count + 1 + more = (count + more) + 1 by omega,
+              decodeSourcePrefix?_reveal]
+            change (decodeSourcePrefix? next tailRefs _ _ tailEmbedding.ref
+              (count + more) store history).map Sum.inr = _
+            simpa only [revealSuccessor, Option.map_map] using
+              congrArg (Option.map Sum.inr) (decodeEq more store history)
+          · intro effective
+            exact currentEffective (fun who => (effective who).2)
           · simpa only [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using finalBoundary
 
 /-- Every initialized retained prefix has a genuine source-state decoder and
@@ -364,11 +428,27 @@ theorem initialized_sourceService_prefix_support
           (CommitmentInterface.values setup.program)) →
             ∀ who, (remainingProfile who).Admitted remaining
               (CommitmentInterface.values remaining)) ∧
-        ServiceBoundary setup leaks rosters initial current refs count final := by
+        ∃ lift : ProtocolState remaining → ProtocolState setup.program,
+          state = lift (ProtocolState.entry remaining current) ∧
+          (∀ tailState, ProtocolState.behavioralStateStep setup.program profile (lift tailState) =
+            (ProtocolState.behavioralStateStep remaining remainingProfile tailState).map lift) ∧
+          (∀ more store history,
+            decodeSourcePrefix? setup.program
+              (ContextRefs.initial setup.context (outputLayout setup.program)) []
+              (Revelations.initial setup.context) (outputRef setup.program)
+              (count + more) store history =
+            (decodeSourcePrefix? remaining refs current.registry current.revelations
+              embedding.ref more store history).map lift) ∧
+          ((∀ who, (profile who).EffectiveDisclosures setup.program []
+            (Revelations.initial setup.context)) →
+              ∀ who, (remainingProfile who).EffectiveDisclosures remaining
+                current.registry current.revelations) ∧
+          ServiceBoundary setup leaks rosters initial current refs count final := by
   rw [initialLaw, FinDist.bind_map, FinDist.support_bind] at reached
   obtain ⟨initial, initialSupport, continued⟩ := Set.mem_iUnion₂.mp reached
   obtain ⟨state, related, Γ, names, remaining, remainingProfile, current, refs,
-      embedding, refsBefore, aligned, admitted, boundary⟩ :=
+      embedding, refsBefore, aligned, admitted, lift, stateEq, stepEq, decodeEq, effective,
+      boundary⟩ :=
     run_sourceService_prefix_support setup leaks bounds values capacity rosters opportunities
       players lawful network profile initial count setup.program profile
       (setup.initialConfig initial)
@@ -379,7 +459,8 @@ theorem initialized_sourceService_prefix_support
         (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)))
       (serviceBoundary_initial setup leaks rosters initial) final continued
   refine ⟨initial, initialSupport, state, related, ?_, Γ, names, remaining, remainingProfile,
-    current, refs, embedding, refsBefore, ?_, admitted, ?_⟩
+    current, refs, embedding, refsBefore, ?_, admitted, lift, stateEq, stepEq, decodeEq,
+      effective, ?_⟩
   · exact SourcePrefixCheckpoint.decode setup.program _ _ _ _ 0 count state _ related
   · simpa only [Nat.zero_add] using aligned
   · simpa only [Nat.zero_add] using boundary
