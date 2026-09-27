@@ -212,6 +212,7 @@ import Vegas.Pending.ReactiveOpeningPosterior
 import Vegas.Pending.ReactiveOpeningSettlement
 import Vegas.Pending.ReactiveOpeningRecords
 import Vegas.Pending.ReactiveOpeningExpiry
+import Vegas.Pending.ReactiveActiveOpening
 import Vegas.Pending.ReactiveOpeningCoupling
 import Vegas.Pending.ReactiveOpeningExpiryCoupling
 import Vegas.Pending.ReactiveBindingBlock
