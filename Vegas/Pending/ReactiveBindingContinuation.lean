@@ -110,8 +110,6 @@ def retainedPolicy [Fintype Player]
       who :=
   menu.restrictPolicy initial horizon scheduler who
     (retainedImplementation runtime leaks menu who reference policy).policy
-    (retainedImplementation_admissible runtime leaks menu initial horizon scheduler who
-      reference policy)
 
 theorem retainedPolicy_decode [Fintype Player]
     (initial : FinDist (runtime.reactiveApplication leaks).State)

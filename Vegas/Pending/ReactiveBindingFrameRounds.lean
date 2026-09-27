@@ -282,8 +282,9 @@ theorem run_transport_coupling
   let strategy := implementation runtime leaks owner reference (players owner)
   induction count generalizing original repaired memory with
   | zero =>
-      exact ⟨FinDist.pure (original, repaired), FinDist.map_pure .., FinDist.map_pure ..,
+      refine ⟨FinDist.pure (original, repaired), FinDist.map_pure .., ?_,
         fun next member => by cases FinDist.mem_support_pure.mp member; exact ⟨memory, frame⟩⟩
+      rw [ReactiveApplication.Implementation.run_zero, FinDist.map_pure]
   | succ count ih =>
       obtain ⟨step, first, second, related⟩ := frame.round_transport_coupling
         players scheduler reference started transport commands
@@ -310,7 +311,7 @@ theorem run_transport_coupling
           _ = (step.map Prod.snd).bind (fun next =>
               strategy.run owner players scheduler count next.1 next.2) := by
             rw [FinDist.bind_map]
-          _ = _ := by rw [second]; rfl
+          _ = _ := by rw [second, ReactiveApplication.Implementation.run_succ]
       · intro final member
         obtain ⟨next, chosen, reached⟩ :=
           Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ member)

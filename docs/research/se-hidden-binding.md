@@ -459,11 +459,22 @@ The binding response and activation cases now have an exhaustive checked split.
 `binding_stopped_response_coupling` and `binding_stopped_activation_coupling`
 couple every effective mixed raw response to the actual retained implementation.
 Each branch either preserves the full joint frame or carries an authentic
-record rejected by `permittedServiceEnvelope`. This includes repeated owner
-visits: `first_event_iff_public_serial` supplies the connection between the
-public serial test and the existing private submission recall. Neither theorem
-assumes that the deviator's response law is conforming. The final unsent binding
-visit still requires the separate missed-deadline branch.
+record rejected by `permittedServiceEnvelope`. After the first unpublished
+submission, `run_repeated_stopped_coupling` covers the complete finite response
+window, including further owner visits and arbitrary foreign responses.
+`repeated_roster_stopped_coupling` instantiates the actual roster scheduler and
+source service menu. Neither theorem assumes a conforming deviator response law.
+
+The repair marginal retains the exact joint execution and private-memory law.
+`Interaction.ReactiveApplication.Implementation.runJoint` is the single internal
+iteration, and `run` erases its memory. `runJoint_add` composes segments without
+choosing a memory witness from an observed endpoint. On branches without an owner
+alarm, `repeated_window_clean_selection` proves that protected inclusion still
+selects the original pending binding envelope, preserving arbitrary foreign
+pending traffic. `required_binding_final_block_coupling` handles the final
+unsent response together with its foreign tail, protected inclusion and expiry;
+its alternatives include actual public missed-binding evidence. The full
+remaining-plan composition and payoff comparison are still open.
 
 For disclosures, `service_opening_response` derives the actual successful
 compiler response from public conformance, authentic emitted evidence, the
@@ -495,8 +506,12 @@ set applies only at that final visit; own submission recall prevents a second
 fresh binding while the first is pending. The actual last-visit predicate and
 delayed protected inclusion are checked. Deadline evidence cannot punish an
 earlier silent response when a later timely submission could still meet the
-obligation. Transporting these facts through every full-source retained prefix
-and completing the stopped comparison remain open.
+obligation. The
+[actual decision support](../../Vegas/Game/SourceServiceDecisionSupport.lean)
+derives the phase boundary and binding resources at every retained history.
+The [omission theorem](../../Vegas/Game/SourceServiceOmission.lean) excludes
+false missed-binding evidence at all of those histories, including off-path
+ones. Completing the whole-program stopped comparison remains open.
 
 ## Guards and copying
 

@@ -76,7 +76,7 @@ theorem native_decode_alice_deviation (profile : Profile nativeModel.behavioralS
   rw [nativeMenu.decodeProfile_update]
   apply congrArg (Function.update _ alice)
   exact nativeMenu.decode_restrictPolicy_of_covered (FinDist.pure nativeInitial)
-    nativeHorizon nativeScheduler alice nativeAlicePolicy native_alice_admissible
+    nativeHorizon nativeScheduler alice nativeAlicePolicy
       native_alice_available
 
 theorem native_initial_result_law (profile : Profile nativeModel.behavioralSignature) :

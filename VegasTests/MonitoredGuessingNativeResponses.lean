@@ -114,11 +114,11 @@ theorem native_watcher_admissible : nativeMenu.Admissible nativeInitialLaw nativ
 
 def nativeAliceBehavior : nativeModel.BehavioralPolicy alice :=
   nativeMenu.restrictPolicy nativeInitialLaw nativeHorizon nativeScheduler alice
-    nativeAlicePolicy native_alice_admissible
+    nativeAlicePolicy
 
 def nativeWatcherBehavior : nativeModel.BehavioralPolicy watcher :=
   nativeMenu.restrictPolicy nativeInitialLaw nativeHorizon nativeScheduler watcher
-    nativeWatcherPolicy native_watcher_admissible
+    nativeWatcherPolicy
 
 /-- The actual execution after silent ambient responses and the first grant. -/
 def quietBob (bit : Bool) : nativeApp.Execution :=

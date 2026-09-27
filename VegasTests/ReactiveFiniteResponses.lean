@@ -295,8 +295,7 @@ theorem compiled_perturbation_fullyMixed (scheduler : app.Scheduler)
         (FinDist.pure initial.application) 2 scheduler
         (fun who => (bounds.rawMenu runtime leaks).restrictPolicy
           (FinDist.pure initial.application) 2 scheduler who
-          (runtime.compileReactivePolicy leaks who (profile who))
-          (all_compilers_admissible scheduler 2 (by omega) who (profile who)))
+          (runtime.compileReactivePolicy leaks who (profile who)))
         weight positive atMostOne) :=
   (bounds.rawMenu runtime leaks).perturbedAssessment_fullyMixed _ _ _ _ _ _ _
 
@@ -308,8 +307,7 @@ theorem compiled_consistent_assessment (scheduler : app.Scheduler)
         2 scheduler).BehavioralAssessment,
       assessment.strategy = (fun who => (bounds.rawMenu runtime leaks).restrictPolicy
         (FinDist.pure initial.application)
-        2 scheduler who (runtime.compileReactivePolicy leaks who (profile who))
-          (all_compilers_admissible scheduler 2 (by omega) who (profile who))) ∧
+        2 scheduler who (runtime.compileReactivePolicy leaks who (profile who))) ∧
       assessment.IsSequentiallyConsistent
         ((bounds.rawMenu runtime leaks).decisionInformationAntichain
           (FinDist.pure initial.application) 2 scheduler) :=

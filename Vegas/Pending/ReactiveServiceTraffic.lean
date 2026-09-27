@@ -22,6 +22,59 @@ variable {Player : Type} [DecidableEq Player]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
+/-- Grants, public sampling, inclusion and clock/expiry commands retain the
+entire recorded transmission sequence. A wire opportunity is excluded because
+it may activate a player. -/
+theorem executionTraffic_passive_step
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (instruction : ServiceInstruction graph)
+    (notWire : instruction ≠ .wire)
+    (notPlayer : ∀ who, instruction ≠ .player who)
+    (before after : (runtime.reactiveApplication leaks).Execution)
+    (reached : after ∈ (runtime.interactionStep leaks players network instruction before).support) :
+    (runtime.reactiveApplication leaks).executionTraffic after =
+      (runtime.reactiveApplication leaks).executionTraffic before := by
+  let app := runtime.reactiveApplication leaks
+  obtain ⟨command, selected, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  have inactive : command.actor? app = none := by
+    cases instruction with
+    | wire => exact (notWire rfl).elim
+    | player who => exact (notPlayer who rfl).elim
+    | grant event | sample event | tick | expire event =>
+        cases FinDist.mem_support_pure.mp selected
+        rfl
+    | includeLatest event owner =>
+        cases FinDist.mem_support_pure.mp selected
+        unfold reactiveLatest
+        split <;> rfl
+  obtain ⟨middle, environment, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
+  change after ∈ (app.resume players (command.actor? app) middle).support at resumed
+  rw [inactive] at resumed
+  cases FinDist.mem_support_pure.mp resumed
+  exact app.executionTraffic_environment before after command environment
+
+/-- A passive settlement suffix preserves all authentic traffic records
+exactly, including their original public phase and ledger snapshot. -/
+theorem executionTraffic_passive_plan
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
+    (passive : ∀ instruction ∈ plan,
+      instruction ≠ .wire ∧ ∀ who, instruction ≠ .player who)
+    (before after : (runtime.reactiveApplication leaks).Execution)
+    (reached : after ∈ (runtime.runInteractionPlan leaks players network plan before).support) :
+    (runtime.reactiveApplication leaks).executionTraffic after =
+      (runtime.reactiveApplication leaks).executionTraffic before := by
+  induction plan generalizing before with
+  | nil => cases FinDist.mem_support_pure.mp reached; rfl
+  | cons instruction rest ih =>
+      obtain ⟨middle, stepped, continued⟩ :=
+        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      have first := passive instruction (List.mem_cons_self ..)
+      exact (ih (fun other member => passive other (List.mem_cons_of_mem _ member))
+        middle continued).trans
+          (runtime.executionTraffic_passive_step leaks players network instruction first.1 first.2
+            before middle stepped)
+
 theorem executionTraffic_runInteractionPlan
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))

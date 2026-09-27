@@ -212,9 +212,9 @@ theorem aliasImplementation_run (who : Principal) (reference : List app.PlayerEn
         (fun other past view => players other (normal.recall other past) view) who policy)
           count execution).map normal.execution := by
   induction count generalizing execution with
-  | zero => simp only [Implementation.run, runRounds, FinDist.map_pure]
+  | zero => simp only [Implementation.run_zero, runRounds, FinDist.map_pure]
   | succ count ih =>
-      rw [Implementation.run, normal.aliasImplementation_round who reference policy players
+      rw [Implementation.run_succ, normal.aliasImplementation_round who reference policy players
         fixed scheduler execution valid, FinDist.bind_map, runRounds, FinDist.map_bind]
       apply FinDist.bind_congr
       intro next reached

@@ -78,7 +78,7 @@ def aliasContinuationSimulation
   refine GameTheory.ContinuationSimulation.ofMap_expect
     (fun who deviation =>
       (normal.site raw stable initial horizon scheduler who deviation.1,
-        normal.aliasDeviation raw stable initial horizon scheduler who
+        normal.aliasDeviation raw initial horizon scheduler who
           (data who deviation.1).1 deviation.2)) ?_ ?_
   · intro who deviation payoff
     simpa only [assessmentComparison, FinDist.expect_map, Context.value,

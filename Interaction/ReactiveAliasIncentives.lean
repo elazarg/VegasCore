@@ -78,11 +78,11 @@ theorem aliasDeviation_finish
       app.finish initial horizon scheduler
         ((normal.menu raw).decodeProfile initial horizon scheduler (GameTheory.Profile.update
           (sig := ((normal.menu raw).information initial horizon scheduler).behavioralSignature)
-            source who (normal.aliasDeviation raw stable initial horizon scheduler who
+            source who (normal.aliasDeviation raw initial horizon scheduler who
               (execution.recall who) alternative)))
           (normal.state (some ⟨remaining, actor, execution⟩)) := by
   rw [raw.decodeProfile_update, (normal.menu raw).decodeProfile_update,
-    normal.decode_canonicalProfile, normal.decode_aliasDeviation]
+    normal.decode_canonicalProfile, normal.decode_aliasDeviation raw stable]
   have law := normal.aliasImplementation_behavioral_continuation who
     (app.decodePolicy (raw.embedPolicy initial horizon scheduler who alternative))
     ((normal.menu raw).decodeProfile initial horizon scheduler source)
@@ -113,7 +113,7 @@ theorem aliasDeviation_historyLaw
       (((normal.menu raw).information initial horizon scheduler).runBehavioralFrom
         (GameTheory.Profile.update
           (sig := ((normal.menu raw).information initial horizon scheduler).behavioralSignature)
-            source who (normal.aliasDeviation raw stable initial horizon scheduler who
+            source who (normal.aliasDeviation raw initial horizon scheduler who
               past alternative)) (2 * horizon + 1)
           (normal.history raw stable initial horizon scheduler current)).map History.state := by
   have sourceBound := app.trace_bound initial horizon scheduler
@@ -200,7 +200,7 @@ theorem aliasDeviation_context_value
       (2 * horizon + 1)).value alternative =
       (source.continuationContext (normal.site raw stable initial horizon scheduler who original)
         (fun history => payoff history.state) (2 * horizon + 1)).value
-          (normal.aliasDeviation raw stable initial horizon scheduler who past alternative) := by
+          (normal.aliasDeviation raw initial horizon scheduler who past alternative) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
     InformationModel.BehavioralAssessment.continuationContext_value]
   simp only [FinDist.expect_bind]
@@ -211,7 +211,7 @@ theorem aliasDeviation_context_value
           (GameTheory.Profile.update
             (sig := ((normal.menu raw).information initial horizon scheduler).behavioralSignature)
               source.strategy who
-                (normal.aliasDeviation raw stable initial horizon scheduler who past alternative))
+                (normal.aliasDeviation raw initial horizon scheduler who past alternative))
           (2 * horizon + 1) (normal.history raw stable initial horizon scheduler history.1)).expect
             (fun final => payoff final.state)) := by
       apply FinDist.expect_congr

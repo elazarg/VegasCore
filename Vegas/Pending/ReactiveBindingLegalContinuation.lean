@@ -65,15 +65,8 @@ theorem retainedImplementation_legal_continuation
   intro app players strategy
   have covered := retainedImplementation_policy_available runtime leaks menu who reference
     policy
-  have legal : (bounds.menu runtime leaks).Admissible initial horizon scheduler who
-      strategy.policy := by
-    intro control _ _ response supported
-    exact included who _ _
-      (covered _ _ response supported)
   have law := included.runFrom_restrictPolicy_finish
-    initial horizon scheduler source target agrees who strategy.policy
-    (retainedImplementation_admissible runtime leaks menu initial horizon scheduler who
-      reference policy) legal covered fuel history enough
+    initial horizon scheduler source target agrees who strategy.policy covered fuel history enough
   change _ = app.finish initial horizon scheduler (Function.update players who strategy.policy)
     history.state at law
   rw [current] at law

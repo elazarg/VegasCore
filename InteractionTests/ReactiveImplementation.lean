@@ -51,7 +51,8 @@ private def twice (bit : Bool) : app.Execution :=
 
 theorem private_two (bit : Bool) :
     retainedBit.run false players scheduler 2 initial bit = FinDist.pure (twice bit) := by
-  simp only [ReactiveApplication.Implementation.run, ReactiveApplication.Implementation.round,
+  simp only [ReactiveApplication.Implementation.run, ReactiveApplication.Implementation.runJoint,
+    ReactiveApplication.Implementation.round,
     scheduler, FinDist.pure_bind, ReactiveApplication.Execution.environmentStep,
     FinDist.map_pure, MessageNetwork.learn_empty, ReactiveApplication.Command.actor?,
     ReactiveApplication.Implementation.resume, ↓reduceIte, retainedBit]

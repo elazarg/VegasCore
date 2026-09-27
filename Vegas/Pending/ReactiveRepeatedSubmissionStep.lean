@@ -116,7 +116,9 @@ theorem repeated_submission_stopped_response_coupling
           runtime.permittedServiceEnvelope record.observation record.ledger
             record.input.envelope = false) ∨
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
-          reference.length ≤ (next.2.1.recall owner).length) := by
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          next.2.2.shadow = memory.shadow ∧
+          next.2.1.application.playerView owner = repaired.application.playerView owner) := by
   classical
   let app := runtime.reactiveApplication leaks
   let law := players owner (original.recall owner) (original.observe app owner)
@@ -172,11 +174,12 @@ theorem repeated_submission_stopped_response_coupling
       rw [ite_eq_left legal]
       dsimp only [proposed]
       rw [unchanged]
-      refine ⟨frame.transport_response response ?_, ?_⟩
+      refine ⟨frame.transport_response response ?_, ?_, rfl, ?_⟩
       · intro material
         rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> simp
       · rw [app.respond_recall_length]
         omega
+      · rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> rfl
     · exact Or.inl departure
 
 /-- The repeated-submission split includes the real passive pending sample at
@@ -221,7 +224,9 @@ theorem repeated_submission_stopped_activation_coupling
           runtime.permittedServiceEnvelope record.observation record.ledger
             record.input.envelope = false) ∨
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
-          reference.length ≤ (next.2.1.recall owner).length) := by
+          reference.length ≤ (next.2.1.recall owner).length ∧
+          next.2.2.shadow = memory.shadow ∧
+          next.2.1.application.playerView owner = repaired.application.playerView owner) := by
   classical
   let app := runtime.reactiveApplication leaks
   let strategy := retainedImplementation runtime leaks menu owner reference (players owner)

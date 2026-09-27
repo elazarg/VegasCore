@@ -162,10 +162,6 @@ def compiledProfile (watcher : Player) (profile : BehavioralProfile setup.progra
   (menu setup leaks bounds watcher).restrictPolicy (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher) who
     (policy setup leaks bounds watcher profile weight nonnegative atMostOne who)
-    (fun control _trace _active response supported =>
-      policy_covered setup leaks bounds watcher profile weight nonnegative atMostOne who
-        (control.execution.recall who) (control.execution.observe (application setup leaks) who)
-        response supported)
 
 /-- The finite C-game policy decodes to the prescribed physical policy at
 every local input. This includes the inputs used by focal alias selectors. -/
@@ -177,7 +173,7 @@ theorem decoded_compiledProfile (watcher : Player) (profile : BehavioralProfile 
       policy setup leaks bounds watcher profile weight nonnegative atMostOne := by
   funext who
   exact (menu setup leaks bounds watcher).decode_restrictPolicy_of_covered (initialLaw setup)
-    (horizon setup watcher) (scheduler setup leaks watcher) who _ _
+    (horizon setup watcher) (scheduler setup leaks watcher) who _
     (policy_covered setup leaks bounds watcher profile weight nonnegative atMostOne who)
 
 end Vegas.SourceProgram.RevealService

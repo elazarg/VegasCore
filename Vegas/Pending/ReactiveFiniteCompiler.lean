@@ -251,20 +251,17 @@ theorem compiledPolicy_admissible (runtime : EventGraphRuntime graph)
     bounds.compiled_response_available_history runtime leaks inputs horizon scheduler
       values capacity control trace who active policy response supported
 
-/-- The finite-game compiler requires domain and capacity certificates. These
-are model premises; no out-of-bounds response is substituted on a legal history. -/
+/-- The total finite-game representation of the reactive compiler. Domain and
+capacity certificates establish its exactness on legal histories below. -/
 def compileFinitePolicy (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : FinDist graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (values : bounds.CoversOutputValues) (capacity : horizon ≤ bounds.candidateCount)
     (who : Player) (policy : graph.BehavioralPolicy who) :
     ((bounds.rawMenu runtime leaks).information (inputs.map State.initial)
       horizon scheduler).BehavioralPolicy who :=
   (bounds.rawMenu runtime leaks).restrictPolicy (inputs.map State.initial) horizon scheduler who
     (runtime.compileReactivePolicy leaks who policy)
-    (bounds.compiledPolicy_admissible runtime leaks inputs horizon scheduler
-      values capacity who policy)
 
 /-- All complete continuation histories agree with the actual reactive compiler,
 from every legal finite-instance prefix, including genuinely off-path prefixes.
@@ -280,7 +277,7 @@ theorem compileFinitePolicy_run (runtime : EventGraphRuntime graph)
     (((bounds.rawMenu runtime leaks).information (inputs.map State.initial)
       horizon scheduler).runBehavioralFrom
         (fun who => bounds.compileFinitePolicy runtime leaks inputs horizon scheduler
-          values capacity who (profile who)) fuel history).map
+          who (profile who)) fuel history).map
       ((bounds.rawMenu runtime leaks).toRawHistory (inputs.map State.initial) horizon scheduler) =
     ((runtime.reactiveApplication leaks).information (inputs.map State.initial)
       horizon scheduler).runBehavioralFrom

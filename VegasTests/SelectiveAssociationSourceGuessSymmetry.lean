@@ -252,9 +252,9 @@ theorem decode_profile (Claim : Type) [Fintype Claim] (defaultClaim : Claim) (wh
       (profile Claim defaultClaim) who past view = policy Claim defaultClaim who past view := by
   change ((menu Claim).embedPolicy (FinDist.pure initial) horizon (scheduler Claim) who
     ((menu Claim).restrictPolicy (FinDist.pure initial) horizon (scheduler Claim) who
-      (policy Claim defaultClaim who) _) (some (past, view))).map _ = _
+      (policy Claim defaultClaim who)) (some (past, view))).map _ = _
   rw [(menu Claim).embed_restrictPolicy (FinDist.pure initial) horizon (scheduler Claim) who
-    (policy Claim defaultClaim who) _ past view (policy_covered Claim defaultClaim who past view)]
+    (policy Claim defaultClaim who) past view (policy_covered Claim defaultClaim who past view)]
   change (application Claim).decodePolicy
     ((application Claim).encodePolicy (policy Claim defaultClaim who)) past view = _
   rw [ReactiveApplication.decode_encodePolicy]

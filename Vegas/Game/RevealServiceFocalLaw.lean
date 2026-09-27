@@ -39,7 +39,7 @@ theorem focal_plan_prefix_law
     (count : Nat) (within : count ≤ EventLowering.eventCount setup.program) :
     let extended := bounds.withInitialValues (initialLaw setup)
     let selected := focalProfile setup leaks extended watcher profile weight nonnegative
-      atMostOne who notWatcher reference
+      atMostOne who reference
     let players := (menu setup leaks extended watcher).decodeProfile (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher) selected
     ((initialLaw setup).bind fun state =>
@@ -63,7 +63,7 @@ theorem focal_plan_prefix_law
       ((menu setup leaks extended watcher).embedPolicy (initialLaw setup) (horizon setup watcher)
         (scheduler setup leaks watcher) actor (selected actor)) = _
     have same := focalProfile_other setup leaks extended watcher profile weight nonnegative
-      atMostOne who notWatcher reference actor different
+      atMostOne who reference actor different
     exact (congrArg (fun localPolicy => (application setup leaks).decodePolicy
       ((menu setup leaks extended watcher).embedPolicy (initialLaw setup) (horizon setup watcher)
         (scheduler setup leaks watcher) actor localPolicy)) same).trans

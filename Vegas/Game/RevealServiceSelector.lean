@@ -121,26 +121,20 @@ theorem focalPolicy_selects (profile : BehavioralProfile setup.program)
 watcher stays fixed, and this construction changes only the focal player. -/
 def focalProfile (watcher : Player) (profile : BehavioralProfile setup.program)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
-    (who : Player) (ordinary : who ≠ watcher)
+    (who : Player)
     (reference : List (application setup leaks).PlayerEntry) :
     GameTheory.Profile (information setup leaks bounds watcher).behavioralSignature :=
   (compiledProfile setup leaks bounds watcher profile weight nonnegative atMostOne).update who
     ((menu setup leaks bounds watcher).restrictPolicy (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) who
-      (focalPolicy setup leaks bounds profile weight nonnegative atMostOne who reference)
-      (by
-        intro control _trace _active response supported
-        change response ∈ (if who = watcher then _ else _)
-        rw [ite_eq_right ordinary]
-        exact focalPolicy_covered setup leaks bounds profile weight nonnegative atMostOne
-          who reference _ _ response supported))
+      (focalPolicy setup leaks bounds profile weight nonnegative atMostOne who reference))
 
 theorem focalProfile_other (watcher : Player) (profile : BehavioralProfile setup.program)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
-    (who : Player) (ordinary : who ≠ watcher)
+    (who : Player)
     (reference : List (application setup leaks).PlayerEntry)
     (other : Player) (different : other ≠ who) :
-    focalProfile setup leaks bounds watcher profile weight nonnegative atMostOne who ordinary
+    focalProfile setup leaks bounds watcher profile weight nonnegative atMostOne who
         reference other =
       compiledProfile setup leaks bounds watcher profile weight nonnegative atMostOne other := by
   simp only [focalProfile, GameTheory.Profile.update_of_ne _ _ different]
@@ -155,7 +149,7 @@ theorem focalProfile_decode (watcher : Player) (profile : BehavioralProfile setu
         ((menu setup leaks bounds watcher).embedPolicy (initialLaw setup) (horizon setup watcher)
           (scheduler setup leaks watcher) who
           (focalProfile setup leaks bounds watcher profile weight nonnegative atMostOne
-            who ordinary reference who)) =
+            who reference who)) =
       focalPolicy setup leaks bounds profile weight nonnegative atMostOne who reference := by
   simp only [focalProfile, GameTheory.Profile.update_same]
   apply (menu setup leaks bounds watcher).decode_restrictPolicy_of_covered

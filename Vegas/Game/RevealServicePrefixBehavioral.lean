@@ -99,7 +99,7 @@ theorem focal_behavioral_prefix_law
     (count : Nat) (within : count ≤ (graph setup).order.eventCount) :
     ((information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).runBehavioral
       (focalProfile setup leaks (bounds.withInitialValues (initialLaw setup)) watcher profile
-        weight nonnegative atMostOne who ordinary reference)
+        weight nonnegative atMostOne who reference)
       (blockOffset count + 2 * count + 1)).map
         (fun history => prefixReadout setup leaks count history.state) =
       ((setup.informationModel admission).runBehavioral

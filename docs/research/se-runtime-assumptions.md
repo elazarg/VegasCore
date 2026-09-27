@@ -22,9 +22,13 @@ strategy compiler is fixed before choosing a source equilibrium; the full raw
 game conclusion supplies an equilibrium extension. The finite roster remains
 an explicit scheduling restriction. See the [proof and scope](se-ambient-rosters.md).
 
-Full-source compilation additionally needs the evolving binding and guard
-continuation proof and remains open. Its finite-message instance must cover
-every admitted fresh commitment value. This is a genuine restriction for an
+Full-source compilation remains open. Operational source support and audit
+soundness are checked for all retained histories, including fresh bindings,
+public chance and guarded disclosure. Two proof chains remain: the original
+source assessment's execution, conditional beliefs and incentives; and the
+whole-program comparison of raw deviations with repaired continuations and
+their incremental settlement. The finite-message instance must cover every
+admitted fresh commitment value. This is a genuine restriction for an
 unbounded integer commitment; finite interaction alone does not imply it.
 Publication types need not be finite: the checked
 [candidate-value invariant](../../Vegas/Pending/ReactiveBoundedValues.lean)
@@ -262,8 +266,29 @@ objective. The remaining proof obligations are:
    [guarded disclosure phase](../../Vegas/Game/SourceServiceDisclosurePhase.lean)
    proves the actual limiting source policy's complete roster law, including
    failed deferred guards, withholding and the replay choices used by its
-   silent branch. The all-syntax fold and support theorem for every retained
-   history still need composition across event constructors.
+   silent branch. The [sampling boundary](../../Vegas/Game/SourceServiceSampleBoundary.lean)
+   and [disclosure boundary](../../Vegas/Game/SourceServiceResolutionBoundary.lean)
+   preserve every operational field for arbitrary retained policies as well.
+   Disclosure chooses an effective original Boolean action; it preserves
+   withholding and failed deferred checks, and assumes no opening schedule.
+   The [total source compiler](../../Vegas/Game/SourceServiceExecution.lean)
+   applies original-memory disclosure normalization and represents the result
+   in the retained menu at every input. Exact replay behavior is checked for
+   foreign, early and already-submitted opportunities. The final owned
+   decision law and complete initialized fold still require composition;
+   totality alone is not semantic correctness. The
+   [full-source prefix support](../../Vegas/Game/SourceServicePrefixSupport.lean)
+   composes all event constructors under arbitrary retained policies. It
+   derives the decoded source state, exact residual compiler alignment and
+   complete operational boundary after every supported prefix, including
+   correlated initial types. The
+   [decision support](../../Vegas/Game/SourceServiceDecisionSupport.lean)
+   supplies these facts at every actual retained decision history and derives
+   fresh binding resources from the actual partial roster. These are support
+   results; original-assessment distribution and incentive laws remain separate.
+   [Decision coverage](../../Vegas/Game/SourceServiceCoverage.lean) places the
+   original policy's final owned responses in the retained menu using source
+   legality and reachable candidate bounds, including ineffective disclosures.
 3. **Conditional incentives.** Derive the native information-fiber likelihood
    from those actual executions, including dynamic candidate catalogs and
    extra response recall. When failed disclosure and withholding both produce
@@ -343,8 +368,22 @@ objective. The remaining proof obligations are:
    [Disclosure-window support](../../Vegas/Pending/ReactiveResolutionWindowSupport.lean)
    proves that the reserved inclusion restores publication of every pending,
    known and remembered envelope, also when the player withholds throughout.
-   Establishing and composing the full phase boundaries on every retained
-   history remains part of the support induction.
+   The complete disclosure block preserves all historical checker verdicts,
+   using exact traffic preservation by passive grants, inclusions, public
+   samples and clock/expiry instructions. The
+   [complete traffic theorem](../../Vegas/Game/SourceServiceConformance.lean)
+   composes binding, public chance and disclosure phases. Every actual complete
+   retained execution and every completed-event prefix passes the checker on
+   its full historical traffic. This quantifies over all retained policies,
+   independently of the source equilibrium selected for compilation.
+   [Historical audit soundness](../../Vegas/Game/SourceServiceTrafficSound.lean)
+   extends this result to every intermediate command and every actual retained
+   protocol history. An authentic partial sample of signed phase evidence
+   collects zero traffic fines there; authenticating the rebroadcaster is
+   unnecessary. [Omission soundness](../../Vegas/Game/SourceServiceOmission.lean)
+   also rules out the existing public missed-binding detector at every such
+   history, using the actual accepted-handle transcript and persistence of
+   omission evidence. Neither result assumes positive equilibrium reach.
    The [opening classifier](../../Vegas/Pending/ReactiveServiceOpening.lean)
    derives actual successful inclusion and the precise guard-aware response
    from public conformance and the runtime's evidence and binding invariants.
@@ -361,6 +400,24 @@ objective. The remaining proof obligations are:
    gives the corresponding split without requiring a fresh candidate:
    transport preserves the repair frame; any fresh submission supplies an
    actual rejected record. The
+   [actual-history repair](../../Vegas/Game/SourceServiceBindingRepair.lean)
+   derives the optional first-submission coupling's freshness, capacity,
+   readiness and public serial facts from a real retained trace. Every repaired
+   endpoint has another real retained trace; the rejected alternative supplies
+   the newly emitted authentic traffic record.
+   The
+   [repeated window](../../Vegas/Pending/ReactiveRepeatedSubmissionWindow.lean)
+   composes those alternatives across the entire remaining roster, retaining
+   the exact repaired execution and private-memory joint law. Its
+   [source-service instance](../../Vegas/Game/SourceServiceRepeatedWindow.lean)
+   supplies the concrete scheduler and menu coverage. With no owner alarm,
+   [pending-packet preservation](../../Vegas/Pending/ReactiveRepeatedSubmissionData.lean)
+   proves that reserved inclusion still selects the original envelope despite
+   arbitrary foreign traffic. The
+   [complete repeated block](../../Vegas/Game/SourceServiceRepeatedBlock.lean)
+   composes this actual window with protected inclusion, ticks and expiry,
+   retaining the joint repaired execution and memory law. Its alternatives are
+   the concrete repair frame or actual attributed traffic evidence. The
    [required final response](../../Vegas/Pending/ReactiveBindingRequiredStep.lean)
    additionally covers silence or replay at the last binding opportunity:
    [actual omission](../../Vegas/Pending/ReactiveBindingFinalOmission.lean)

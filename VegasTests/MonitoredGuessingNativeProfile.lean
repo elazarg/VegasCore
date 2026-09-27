@@ -20,7 +20,7 @@ theorem native_guess_admissible (guesses : FinDist Bool) :
 
 def nativeGuessBehavior (guesses : FinDist Bool) : nativeModel.BehavioralPolicy bob :=
   nativeMenu.restrictPolicy nativeInitialLaw nativeHorizon nativeScheduler bob
-    (nativeGuessPolicy guesses) (native_guess_admissible guesses)
+    (nativeGuessPolicy guesses)
 
 theorem decode_native_guess (guesses : FinDist Bool) :
     nativeApp.decodePolicy (nativeMenu.embedPolicy nativeInitialLaw nativeHorizon nativeScheduler

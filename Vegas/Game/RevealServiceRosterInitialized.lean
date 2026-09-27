@@ -71,7 +71,7 @@ theorem roster_restrict_complete_state
     ((menu.information (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).runBehavioral
       (fun who => menu.restrictPolicy (initialLaw setup) (rosterPlan setup rosters).length
-        (rosterScheduler setup leaks rosters network) who (players who) (covered who))
+        (rosterScheduler setup leaks rosters network) who (players who))
       (2 * (rosterPlan setup rosters).length + 1)).map History.state =
       ((initialLaw setup).bind fun state =>
         (runtime setup).runInteractionPlan leaks players network (rosterPlan setup rosters)
@@ -105,8 +105,8 @@ theorem rosterPerturbedProfile_readout_law
     (((rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).runBehavioral
-      (rosterPerturbedProfile setup leaks bounds rosters network reveals openable admission
-        source mixed timing timingFull) (2 * (rosterPlan setup rosters).length + 1)).map
+      (rosterPerturbedProfile setup leaks bounds rosters network admission
+        source timing) (2 * (rosterPlan setup rosters).length + 1)).map
         (fun final => sourceReadout setup leaks final.state) =
       ((setup.informationModel admission).runBehavioral source.strategy
         (instructionCount setup.program + 1)).map

@@ -116,13 +116,55 @@ def round (who : Principal) (players : Principal → app.Policy) (scheduler : ap
     (execution.environmentStep app command).bind fun next =>
       implementation.resume who players (command.actor? app) next memory
 
-/-- The result retains the entire execution, but no implementation state. -/
-def run (who : Principal) (players : Principal → app.Policy) (scheduler : app.Scheduler) :
-    Nat → app.Execution → Memory → FinDist app.Execution
-  | 0, execution, _ => FinDist.pure execution
+/-- The single internal iteration retains private memory for composition of
+successive service segments. The memory is never placed in the execution. -/
+def runJoint (who : Principal) (players : Principal → app.Policy) (scheduler : app.Scheduler) :
+    Nat → app.Execution → Memory → FinDist (app.Execution × Memory)
+  | 0, execution, memory => FinDist.pure (execution, memory)
   | count + 1, execution, memory =>
       (implementation.round who players scheduler execution memory).bind fun next =>
-        run who players scheduler count next.1 next.2
+        runJoint who players scheduler count next.1 next.2
+
+/-- The external result discards private memory from the same joint iteration. -/
+def run (who : Principal) (players : Principal → app.Policy) (scheduler : app.Scheduler)
+    (count : Nat) (execution : app.Execution) (memory : Memory) : FinDist app.Execution :=
+  (implementation.runJoint who players scheduler count execution memory).map Prod.fst
+
+theorem run_zero (who : Principal) (players : Principal → app.Policy)
+    (scheduler : app.Scheduler) (execution : app.Execution) (memory : Memory) :
+    implementation.run who players scheduler 0 execution memory = FinDist.pure execution := by
+  simp only [run, runJoint, FinDist.map_pure]
+
+theorem run_succ (who : Principal) (players : Principal → app.Policy)
+    (scheduler : app.Scheduler) (count : Nat) (execution : app.Execution) (memory : Memory) :
+    implementation.run who players scheduler (count + 1) execution memory =
+      (implementation.round who players scheduler execution memory).bind
+        (fun next => implementation.run who players scheduler count next.1 next.2) := by
+  simp only [run, runJoint, FinDist.map_bind]
+
+/-- Exact composition retains the joint memory law, rather than choosing an
+arbitrary memory witness after observing an external execution. Binding the
+right-hand side to any terminal kernel gives the corresponding continuation
+law without defining another evaluator. -/
+theorem runJoint_add (who : Principal) (players : Principal → app.Policy)
+    (scheduler : app.Scheduler) (first second : Nat) (execution : app.Execution)
+    (memory : Memory) :
+    implementation.runJoint who players scheduler (first + second) execution memory =
+      (implementation.runJoint who players scheduler first execution memory).bind
+        (fun next => implementation.runJoint who players scheduler second next.1 next.2) := by
+  induction first generalizing execution memory with
+  | zero => simp only [Nat.zero_add, runJoint, FinDist.pure_bind]
+  | succ first ih =>
+      simp only [Nat.succ_add, runJoint, FinDist.bind_bind]
+      exact FinDist.bind_congr fun next _ => ih next.1 next.2
+
+theorem run_add (who : Principal) (players : Principal → app.Policy)
+    (scheduler : app.Scheduler) (first second : Nat) (execution : app.Execution)
+    (memory : Memory) :
+    implementation.run who players scheduler (first + second) execution memory =
+      (implementation.runJoint who players scheduler first execution memory).bind
+        (fun next => implementation.run who players scheduler second next.1 next.2) := by
+  simp only [run, runJoint_add, FinDist.map_bind]
 
 /-- Replacing any one player by its behavioral realization preserves the whole
 execution law against arbitrary opponents and observation-local scheduling. -/
@@ -133,7 +175,10 @@ theorem realize (who : Principal) (players : Principal → app.Policy) (schedule
       app.runRounds scheduler (Function.update players who implementation.policy)
         count execution := by
   induction count generalizing execution with
-  | zero => simp [run, runRounds]
+  | zero =>
+      change (implementation.posterior (execution.recall who)).bind
+        (fun memory => implementation.run who players scheduler 0 execution memory) = _
+      simp only [run_zero, runRounds, FinDist.bind_const]
   | succ count ih =>
       let next := implementation.run who players scheduler count
       have resumed (current : app.Execution) (actor : Option Principal) :
@@ -160,9 +205,10 @@ theorem realize (who : Principal) (players : Principal → app.Policy) (schedule
               intro action _
               rw [← app.respond_recall_other current owner who (Ne.symm same) action]
               exact ih _
-      simp only [run, round, runRounds, ReactiveApplication.round, dispatch, FinDist.bind_bind]
+      change (implementation.posterior (execution.recall who)).bind
+        (fun memory => implementation.run who players scheduler (count + 1) execution memory) = _
+      simp only [run_succ, round, runRounds, ReactiveApplication.round, dispatch, FinDist.bind_bind]
       rw [FinDist.bind_comm]
-      change _ = (scheduler execution.environmentRecall (execution.observeEnvironment app)).bind _
       apply FinDist.bind_congr
       intro command _
       rw [FinDist.bind_comm]

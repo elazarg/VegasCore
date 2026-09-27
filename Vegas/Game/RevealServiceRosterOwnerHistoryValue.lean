@@ -52,8 +52,8 @@ theorem roster_owner_history_local_value
     let menu := rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters
     let model := menu.information (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)
-    let baseline := rosterPerturbedProfile setup leaks bounds rosters network reveals openable
-      admission source mixed timing timingFull
+    let baseline := rosterPerturbedProfile setup leaks bounds rosters network
+      admission source timing
     ∀ (history : (menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).History)
       (remaining : Nat) (execution : (application setup leaks).Execution),

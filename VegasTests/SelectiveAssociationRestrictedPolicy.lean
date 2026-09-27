@@ -211,7 +211,6 @@ theorem policy_available (who : Player) (past : List app.PlayerEntry) (view : ap
 
 def profile : Profile model.behavioralSignature := fun who =>
   menu.restrictPolicy (FinDist.pure nativeInitial) nativeHorizon scheduler who (policy who)
-    (fun _ _ _ => policy_available who _ _)
 
 /-- Finite native histories admit one consistent completion of this exact
 profile. This theorem asserts neither posterior fairness nor optimality. -/

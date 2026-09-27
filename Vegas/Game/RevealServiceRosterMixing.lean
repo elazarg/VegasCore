@@ -252,7 +252,6 @@ def rosterCompiledProfile (profile : BehavioralProfile setup.program) :
     (initialLaw setup) (rosterPlan setup rosters).length
     (rosterScheduler setup leaks rosters network) who
     (rosterLimitPolicy setup leaks rosters profile who)
-    (rosterLimitPolicy_admissible setup leaks bounds rosters network reveals openable profile who)
 
 end Compilation
 
@@ -295,13 +294,12 @@ def rosterPerturbedProfile :
     (rosterScheduler setup leaks rosters network) who
     (rosterPolicy setup leaks rosters timing
       (setup.decodeBehavioralProfile admission source.strategy) who)
-    (rosterPolicy_admissible setup leaks bounds rosters network reveals openable admission
-      source mixed timing timingFull who)
 
+include reveals openable mixed timingFull in
 theorem rosterPerturbedProfile_fullyMixed :
     (InformationModel.BehavioralAssessment.ofStrategy
-      (rosterPerturbedProfile setup leaks bounds rosters network reveals openable admission
-        source mixed timing timingFull)).IsFullyMixed := by
+      (rosterPerturbedProfile setup leaks bounds rosters network admission
+        source timing)).IsFullyMixed := by
   exact ReactiveApplication.ResponseMenu.restrictProfile_fullSupport
       (rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters)
       (initialLaw setup) (rosterPlan setup rosters).length

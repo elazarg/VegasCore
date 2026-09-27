@@ -121,7 +121,7 @@ theorem owner_bayes_state
         cases member
     | some input => exact ⟨input.1, input.2, rfl⟩
   let selected := focalProfile setup leaks extended watcher decoded weight nonnegative small
-    who ordinary past
+    who past
   have encoded : (fun actor => setup.toProtocolBehavioralPolicy admission actor (decoded actor)
       (((setup.behavioralPolicyEquiv admission actor).symm (source.strategy actor)).2)) =
         source.strategy := by
@@ -171,7 +171,7 @@ theorem owner_bayes_state
   exact model.bayesBelief_readout_at_depth_of_focal_selector (setup.informationModel admission)
     selected who site _ clock source.strategy sourceSite _ sourceClock _ _ marked compiled.strategy
     (fun other different => (focalProfile_other setup leaks extended watcher decoded weight
-      nonnegative small who ordinary past other different).symm)
+      nonnegative small who past other different).symm)
     (responses.commonPlayerReachAt _ _ _ compiled.strategy who site)
     (responses.commonPlayerReachAt _ _ _ selected who site)
     (antichain who site) (setup.decision_antichain admission who sourceSite)

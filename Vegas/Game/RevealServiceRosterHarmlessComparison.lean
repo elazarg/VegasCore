@@ -88,8 +88,8 @@ theorem roster_harmless_history_laws
       (bounds.withInitialValues (initialLaw setup)) rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)
-    let baseline := rosterPerturbedProfile setup leaks bounds rosters network reveals openable
-      admission source mixed timing timingFull
+    let baseline := rosterPerturbedProfile setup leaks bounds rosters network
+      admission source timing
     (model.runBehavioralFrom (Profile.update baseline who
       ((baseline who).withLaw info first)) (2 * (rosterPlan setup rosters).length + 1)
         history).map (fun final => sourceReadout setup leaks final.state) =
@@ -223,6 +223,7 @@ theorem roster_harmless_history_laws
   exact (constant first).trans (constant second).symm
 
 open Classical in
+include reveals openable mixed timingFull in
 /-- Any posterior over a replay-only information site gives identical
 prescribed and locally deviating terminal laws. No additional Bayesian premise
 is needed: the equality holds at every history in the information fiber. -/
@@ -232,7 +233,7 @@ theorem roster_harmless_comparison_law
         (rosterPlan setup rosters).length
           (rosterScheduler setup leaks rosters network)).BehavioralAssessment)
     (strategy : assessment.strategy = rosterPerturbedProfile setup leaks bounds rosters network
-      reveals openable admission source mixed timing timingFull)
+      admission source timing)
     (who : Player)
     (site : ((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
@@ -291,6 +292,7 @@ theorem roster_harmless_comparison_law
   simpa only [InformationModel.BehavioralPolicy.withLaw_eq_self] using laws
 
 open Classical in
+include reveals openable mixed timingFull in
 /-- Thus a harmless local alternative has exactly zero gain for every
 utility of the retained terminal source state, including persistent types. -/
 theorem roster_harmless_comparison_gain
@@ -299,7 +301,7 @@ theorem roster_harmless_comparison_gain
         (rosterPlan setup rosters).length
           (rosterScheduler setup leaks rosters network)).BehavioralAssessment)
     (strategy : assessment.strategy = rosterPerturbedProfile setup leaks bounds rosters network
-      reveals openable admission source mixed timing timingFull)
+      admission source timing)
     (who : Player)
     (site : ((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)

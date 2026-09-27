@@ -70,12 +70,12 @@ theorem decode_perturbed (weight : ℝ) (positive : 0 < weight) (atMostOne : wei
   funext who past view
   rw [menu.decode_perturbedAssessment]
   have exactPolicy := menu.decode_restrictPolicy_of_covered (FinDist.pure nativeInitial)
-    nativeHorizon scheduler who (policy who) (fun _ _ _ => policy_available who _ _)
+    nativeHorizon scheduler who (policy who)
       (policy_available who)
   change FinDist.mix weight positive.le atMostOne _
     (app.decodePolicy (menu.embedPolicy (FinDist.pure nativeInitial) nativeHorizon scheduler who
-      (menu.restrictPolicy (FinDist.pure nativeInitial) nativeHorizon scheduler who (policy who)
-        _)) past view) = _
+      (menu.restrictPolicy (FinDist.pure nativeInitial) nativeHorizon scheduler who
+        (policy who))) past view) = _
   rw [exactPolicy]
   rfl
 

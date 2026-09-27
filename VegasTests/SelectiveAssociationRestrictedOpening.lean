@@ -25,7 +25,7 @@ theorem decode_profile :
     menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler profile = policy := by
   funext who
   exact menu.decode_restrictPolicy_of_covered (FinDist.pure nativeInitial) nativeHorizon
-    scheduler who (policy who) _ (policy_available who)
+    scheduler who (policy who) (policy_available who)
 
 theorem response_opens (who : Player) (view : app.PlayerView)
     (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who)) :

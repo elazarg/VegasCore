@@ -91,7 +91,7 @@ theorem native_alice_admissible : nativeMenu.Admissible (FinDist.pure nativeInit
 
 def nativeAliceBehavior : nativeModel.BehavioralPolicy alice :=
   nativeMenu.restrictPolicy (FinDist.pure nativeInitial) nativeHorizon nativeScheduler alice
-    nativeAlicePolicy native_alice_admissible
+    nativeAlicePolicy
 
 theorem native_alice_initial :
     nativeAlicePolicy (activatedInitial.recall alice) (activatedInitial.observe nativeApp alice) =

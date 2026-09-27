@@ -152,9 +152,9 @@ theorem rosterPerturbedProfile_converges
       (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).InformationSite who) :
     FinDistConvergesPointwise
-      (fun n => rosterPerturbedProfile setup leaks bounds rosters network reveals openable admission
-        (sequence n) (mixed n) (timing n) (timingFull n) who site.1)
-      (rosterCompiledProfile setup leaks bounds rosters network reveals openable
+      (fun n => rosterPerturbedProfile setup leaks bounds rosters network admission
+        (sequence n) (timing n) who site.1)
+      (rosterCompiledProfile setup leaks bounds rosters network
         (setup.decodeBehavioralProfile admission source) who site.1) := by
   classical
   let app := application setup leaks
@@ -188,20 +188,16 @@ theorem rosterPerturbedProfile_converges
       have approxLaw (n : Nat) := menu.restrictPolicy_map_val (initialLaw setup) horizon scheduler
         who (rosterPolicy setup leaks rosters (timing n)
           (setup.decodeBehavioralProfile admission (sequence n).strategy) who)
-        (rosterPolicy_admissible setup leaks bounds rosters network reveals openable admission
-          (sequence n) (mixed n) (timing n) (timingFull n) who)
         _ _ (rosterPolicy_admissible setup leaks bounds rosters network reveals openable admission
           (sequence n) (mixed n) (timing n) (timingFull n) who control traced acting)
       have limitLaw := menu.restrictPolicy_map_val (initialLaw setup) horizon scheduler who
         (rosterLimitPolicy setup leaks rosters (setup.decodeBehavioralProfile admission source) who)
-        (rosterLimitPolicy_admissible setup leaks bounds rosters network reveals openable
-          (setup.decodeBehavioralProfile admission source) who)
         _ _ (rosterLimitPolicy_admissible setup leaks bounds rosters network reveals openable
           (setup.decodeBehavioralProfile admission source) who control traced acting)
       intro choice
       have approxProb (n : Nat) :
-          (rosterPerturbedProfile setup leaks bounds rosters network reveals openable admission
-            (sequence n) (mixed n) (timing n) (timingFull n) who
+          (rosterPerturbedProfile setup leaks bounds rosters network admission
+            (sequence n) (timing n) who
             (some (control.execution.recall who, control.execution.observe app who))).prob choice =
           ((rosterPolicy setup leaks rosters (timing n)
             (setup.decodeBehavioralProfile admission (sequence n).strategy) who
@@ -210,7 +206,7 @@ theorem rosterPerturbedProfile_converges
         rw [← approxLaw n, FinDist.prob_map_of_injective Subtype.val Subtype.val_injective]
         rfl
       have limitProb :
-          (rosterCompiledProfile setup leaks bounds rosters network reveals openable
+          (rosterCompiledProfile setup leaks bounds rosters network
             (setup.decodeBehavioralProfile admission source) who
             (some (control.execution.recall who, control.execution.observe app who))).prob choice =
           ((rosterLimitPolicy setup leaks rosters (setup.decodeBehavioralProfile admission source)

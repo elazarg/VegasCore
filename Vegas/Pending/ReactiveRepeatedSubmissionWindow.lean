@@ -1,0 +1,474 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.ReactiveRepeatedSubmissionStep
+import Vegas.Pending.ReactiveBindingForeignWindow
+import Interaction.ReactiveTrafficContinuation
+import Interaction.ReactiveAllocation
+
+/-! # Stopped repair across a repeated response window
+
+After the first unpublished submission, any further fresh envelope of its
+author has an auditable serial mismatch. The complete finite activation window
+is coupled to the same legal private implementation. Other players retain
+their arbitrary response policies and all pending-message samples.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime
+
+open Interaction EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+  (runtime : EventGraphRuntime graph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+
+private def departed (owner : Player)
+    (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
+  ∃ record ∈ (runtime.reactiveApplication leaks).executionTraffic execution,
+    record.input.envelope.sender = owner ∧
+      runtime.permittedServiceEnvelope record.observation record.ledger
+        record.input.envelope = false
+
+omit [Fintype Player] in
+private theorem activation_resources
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (execution next : (runtime.reactiveApplication leaks).Execution) (actor owner : Player)
+    (event : graph.EventId)
+    (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
+    (serials : execution.network.SerialsBeforeNext)
+    (recorded : runtime.eventRecorded leaks (execution.recall owner) event = true)
+    (reached : next ∈ ((runtime.reactiveApplication leaks).dispatch players (.activate actor)
+      execution).support) :
+    next.InputRecall (runtime.reactiveApplication leaks) ∧ next.network.SerialsBeforeNext ∧
+      runtime.eventRecorded leaks (next.recall owner) event = true ∧
+      next.application.serviceGrant = execution.application.serviceGrant ∧
+      (execution.recall owner).length ≤ (next.recall owner).length := by
+  let app := runtime.reactiveApplication leaks
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ resumed
+  have middleRecall := app.environment_inputRecall execution middle (.activate actor) recalled moved
+  have middleSerials := (app.serialsBeforeNextInvariant
+    (fun _ _ => FinDist.pure (.activate actor))).environment execution middle (.activate actor)
+      serials (FinDist.mem_support_pure.mpr rfl) moved
+  have sameRecall := app.environmentStep_recall execution middle (.activate actor) moved
+  refine ⟨app.respond_inputRecall middle actor response middleRecall,
+    (app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure .wait)).respond
+      middle actor response middleSerials,
+    runtime.eventRecorded_respond_of_recorded leaks middle actor owner response event ?_, ?_, ?_⟩
+  · rw [sameRecall]
+    exact recorded
+  · obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸
+      ((congrArg (fun law : FinDist app.Execution => middle ∈ law.support)
+        (ReactiveApplication.Execution.activation_samples app execution actor)).mp moved)
+    exact congrArg PublicView.serviceGrant
+      (reactive_respond_application runtime leaks _ actor response).2
+  · rw [app.respond_recall_length, sameRecall]
+    split <;> omega
+
+private theorem activation_repeated_of_clean
+    (bounds : MessageBounds graph)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (execution next : (runtime.reactiveApplication leaks).Execution) (actor owner : Player)
+    (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
+    (serials : execution.network.SerialsBeforeNext)
+    (repeated : execution.network.nextSerial owner ≠
+      execution.network.ledger.countP (fun message => message.sender = owner))
+    (available : ∀ past view response, response ∈ (players owner past view).support →
+      response ∈ (bounds.menu runtime leaks).actions owner past view)
+    (reached : next ∈ ((runtime.reactiveApplication leaks).dispatch players (.activate actor)
+      execution).support)
+    (clean : ¬ departed runtime leaks owner next) :
+    next.network.nextSerial owner ≠
+      next.network.ledger.countP (fun message => message.sender = owner) := by
+  let app := runtime.reactiveApplication leaks
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ resumed
+  have same : middle.network.nextSerial = execution.network.nextSerial ∧
+      middle.network.ledger = execution.network.ledger := by
+    obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸
+      ((congrArg (fun law : FinDist app.Execution => middle ∈ law.support)
+        (ReactiveApplication.Execution.activation_samples app execution actor)).mp moved)
+    exact ⟨rfl, rfl⟩
+  have middleRepeated : middle.network.nextSerial owner ≠
+      middle.network.ledger.countP (fun message => message.sender = owner) := by
+    rw [same.1, same.2]
+    exact repeated
+  by_cases own : actor = owner
+  · subst actor
+    have middleRecall := app.environment_inputRecall execution middle (.activate owner)
+      recalled moved
+    have middleSerials := (app.serialsBeforeNextInvariant
+      (fun _ _ => FinDist.pure (.activate owner))).environment execution middle (.activate owner)
+        serials (FinDist.mem_support_pure.mpr rfl) moved
+    rcases runtime.repeated_submission_response_cases leaks bounds middle owner 0 middleRecall
+        middleSerials middleRepeated response (available _ _ response chosen) with replay | bad
+    · rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩
+      · exact middleRepeated
+      · change (middle.network.replay owner id).2.nextSerial owner ≠
+          (middle.network.replay owner id).2.ledger.countP (fun message => message.sender = owner)
+        unfold MessageNetwork.replay
+        split <;> exact middleRepeated
+    · obtain ⟨record, step, authored, rejected⟩ := bad
+      exfalso
+      apply clean
+      refine ⟨record, ?_, authored, rejected⟩
+      rw [app.executionTraffic_activated_response execution middle owner response 0 moved]
+      apply List.mem_append_right
+      change record ∈ app.trafficBetween (execution.observeEnvironment app)
+        ((middle.respond app owner response).observeEnvironment app)
+      have samePublic : execution.observeEnvironment app = middle.observeEnvironment app := by
+        obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸
+          ((congrArg (fun law : FinDist app.Execution => middle ∈ law.support)
+            (ReactiveApplication.Execution.activation_samples app execution owner)).mp moved)
+        rfl
+      rw [samePublic]
+      change record ∈ app.trafficStep (some ⟨0, some owner, middle⟩)
+        (some ⟨0, none, middle.respond app owner response⟩)
+      rw [step]
+      exact List.mem_singleton_self _
+  · rcases response with ⟨transmission⟩
+    cases transmission with
+    | none => exact middleRepeated
+    | some transmission =>
+        cases transmission with
+        | replay id =>
+            change (middle.network.replay actor id).2.nextSerial owner ≠
+              (middle.network.replay actor id).2.ledger.countP
+                (fun message => message.sender = owner)
+            unfold MessageNetwork.replay
+            split <;> exact middleRepeated
+        | submit material =>
+            simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit]
+            rw [ite_eq_right (Ne.symm own)]
+            exact middleRepeated
+
+omit [Fintype Player] in
+private theorem activation_step_evidence
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (execution next : (runtime.reactiveApplication leaks).Execution) (actor : Player)
+    (reached : next ∈ ((runtime.reactiveApplication leaks).dispatch players (.activate actor)
+      execution).support) (remaining : Nat)
+    (record : (runtime.reactiveApplication leaks).TrafficRecord)
+    (step : (runtime.reactiveApplication leaks).trafficStep
+      (some ⟨remaining + 1, none, execution⟩) (some ⟨remaining, none, next⟩) = [record]) :
+    record ∈ (runtime.reactiveApplication leaks).executionTraffic next := by
+  let app := runtime.reactiveApplication leaks
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ resumed
+  rw [app.executionTraffic_activated_response execution middle actor response remaining moved,
+    step]
+  exact List.mem_append_right _ (List.mem_singleton_self _)
+
+omit [Fintype Player] in
+private theorem private_activation_recall {Memory : Type}
+    (strategy : (runtime.reactiveApplication leaks).Implementation Memory)
+    (players : Player → (runtime.reactiveApplication leaks).Policy) (owner actor : Player)
+    (execution : (runtime.reactiveApplication leaks).Execution) (memory : Memory)
+    (next : (runtime.reactiveApplication leaks).Execution × Memory)
+    (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
+    (supported : next ∈ ((execution.environmentStep (runtime.reactiveApplication leaks)
+      (.activate actor)).bind (fun current => strategy.resume owner players (some actor)
+        current memory)).support) :
+    next.1.InputRecall (runtime.reactiveApplication leaks) := by
+  let app := runtime.reactiveApplication leaks
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  have valid := app.environment_inputRecall execution middle (.activate actor) recalled moved
+  by_cases same : actor = owner
+  · subst actor
+    simp only [ReactiveApplication.Implementation.resume, ↓reduceIte] at resumed
+    obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ resumed
+    exact app.respond_inputRecall middle owner response.1 valid
+  · simp only [ReactiveApplication.Implementation.resume, same, ↓reduceIte] at resumed
+    obtain ⟨final, reached, rfl⟩ := FinDist.support_map .. ▸ resumed
+    obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ reached
+    exact app.respond_inputRecall middle actor response valid
+
+omit [Fintype Player] in
+private theorem foreign_activation_view
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (execution next : (runtime.reactiveApplication leaks).Execution) (actor owner : Player)
+    (different : actor ≠ owner)
+    (supported : next ∈ ((runtime.reactiveApplication leaks).dispatch players (.activate actor)
+      execution).support) :
+    next.application.playerView owner = execution.application.playerView owner := by
+  let app := runtime.reactiveApplication leaks
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ resumed
+  rw [ReactiveApplication.Execution.activation_samples] at moved
+  obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ moved
+  rcases response with ⟨transmission⟩
+  cases transmission with
+  | none => rfl
+  | some transmission =>
+      cases transmission with
+      | replay id => rfl
+      | submit material =>
+          exact (submitStep_playerView_other (material.call.register execution.application actor)
+            actor owner different.symm material.call.packet).trans
+              (material.call.register_other execution.application actor owner different.symm)
+
+namespace BindingMemory.Frame
+
+variable {runtime leaks} {memory : BindingMemory runtime leaks} {owner : Player}
+  {original repaired : (runtime.reactiveApplication leaks).Execution}
+
+private theorem repeated_activation_coupling
+    (frame : Frame runtime leaks memory owner original repaired)
+    (bounds : MessageBounds graph) (menu : (runtime.reactiveApplication leaks).ResponseMenu)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (started : reference.length ≤ (repaired.recall owner).length)
+    (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
+    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
+    (serials : original.network.SerialsBeforeNext)
+    (repeated : original.network.nextSerial owner ≠
+      original.network.ledger.countP (fun message => message.sender = owner))
+    (event : graph.EventId) (granted : original.application.serviceGrant = some event)
+    (recorded : runtime.eventRecorded leaks (repaired.recall owner) event = true)
+    (coverage : ∀ past view, view.application.publicView.serviceGrant = some event →
+      runtime.eventRecorded leaks past event = true →
+        bounds.compiledActions runtime leaks owner past view ⊆ menu.actions owner past view)
+    (available : ∀ past view response, response ∈ (players owner past view).support →
+      response ∈ (bounds.menu runtime leaks).actions owner past view)
+    (actor : Player) :
+    let app := runtime.reactiveApplication leaks
+    let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
+    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+      coupling.map Prod.fst = app.dispatch players (.activate actor) original ∧
+      coupling.map Prod.snd = (repaired.environmentStep app (.activate actor)).bind
+        (fun execution => strategy.resume owner players (some actor) execution memory) ∧
+      ∀ next ∈ coupling.support,
+        departed runtime leaks owner next.1 ∨
+          (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
+            reference.length ≤ (next.2.1.recall owner).length ∧
+            next.2.2.shadow = memory.shadow ∧
+            next.2.1.application.playerView owner = repaired.application.playerView owner) := by
+  classical
+  let app := runtime.reactiveApplication leaks
+  by_cases same : actor = owner
+  · subst actor
+    have grantRight : repaired.application.serviceGrant = some event := by
+      exact (congrArg PublicView.serviceGrant frame.publicView).symm.trans granted
+    obtain ⟨coupling, first, second, related⟩ :=
+      frame.repeated_submission_stopped_activation_coupling bounds menu players reference started
+        leftRecall rightRecall 0 serials repeated (fun _ _ => coverage _ _ grantRight recorded)
+        (fun _ _ => available _ _)
+    refine ⟨coupling, first, second, ?_⟩
+    intro next supported
+    rcases related next supported with ⟨record, step, authored, rejected⟩ | good
+    · left
+      refine ⟨record, ?_, authored, rejected⟩
+      apply runtime.activation_step_evidence leaks players original next.1 owner
+        _ 0 record step
+      rw [← first, FinDist.support_map]
+      exact ⟨next, supported, rfl⟩
+    · exact Or.inr good
+  · obtain ⟨coupling, first, second, related⟩ :=
+      frame.foreign_activation_coupling players actor same
+    let lifted := coupling.map fun next => (next.1, next.2, memory)
+    refine ⟨lifted, ?_, ?_, ?_⟩
+    · simpa only [lifted, FinDist.map_comp, Function.comp_def] using first
+    · change (coupling.map fun next => (next.1, next.2, memory)).map Prod.snd = _
+      rw [FinDist.map_comp]
+      calc
+        _ = (coupling.map Prod.snd).map (fun execution => (execution, memory)) := by
+          rw [FinDist.map_comp]; rfl
+        _ = _ := by
+          rw [second, ReactiveApplication.dispatch, FinDist.map_bind]
+          apply FinDist.bind_congr
+          intro execution _
+          simp only [ReactiveApplication.resume, ReactiveApplication.Command.actor?,
+            ReactiveApplication.Implementation.resume, same, ↓reduceIte]
+    · intro next supported
+      obtain ⟨pair, chosen, rfl⟩ := FinDist.support_map .. ▸ supported
+      right
+      refine ⟨related pair chosen, ?_, rfl, ?_⟩
+      · have reached : pair.2 ∈ (app.dispatch players (.activate actor) repaired).support := by
+          rw [← second, FinDist.support_map]
+          exact ⟨pair, chosen, rfl⟩
+        rw [app.dispatch_recall_length players (.activate actor) repaired pair.2 reached owner]
+        omega
+      have reached : pair.2 ∈ (app.dispatch players (.activate actor) repaired).support := by
+        rw [← second, FinDist.support_map]
+        exact ⟨pair, chosen, rfl⟩
+      exact runtime.foreign_activation_view leaks players repaired pair.2 actor owner same reached
+
+/-- Every later visit before protected inclusion is covered, including further
+owner visits. A first audited departure stops the coupling argument, while its
+actual original continuation and the fixed repair continue with their full
+laws. No opponent policy is required to be globally conforming. -/
+theorem run_repeated_stopped_coupling
+    (frame : Frame runtime leaks memory owner original repaired)
+    (bounds : MessageBounds graph) (menu : (runtime.reactiveApplication leaks).ResponseMenu)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (started : reference.length ≤ (repaired.recall owner).length)
+    (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
+    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
+    (serials : original.network.SerialsBeforeNext)
+    (repeated : original.network.nextSerial owner ≠
+      original.network.ledger.countP (fun message => message.sender = owner))
+    (event : graph.EventId) (granted : original.application.serviceGrant = some event)
+    (recorded : runtime.eventRecorded leaks (repaired.recall owner) event = true)
+    (coverage : ∀ past view, view.application.publicView.serviceGrant = some event →
+      runtime.eventRecorded leaks past event = true →
+        bounds.compiledActions runtime leaks owner past view ⊆ menu.actions owner past view)
+    (available : ∀ past view response, response ∈ (players owner past view).support →
+      response ∈ (bounds.menu runtime leaks).actions owner past view)
+    (offset count : Nat) (position : original.environmentRecall.length = offset)
+    (commands : ∀ execution : (runtime.reactiveApplication leaks).Execution,
+      offset ≤ execution.environmentRecall.length →
+      execution.environmentRecall.length < offset + count →
+      ∀ command ∈ (scheduler execution.environmentRecall
+        (execution.observeEnvironment (runtime.reactiveApplication leaks))).support,
+        ∃ actor, command = .activate actor) :
+    let app := runtime.reactiveApplication leaks
+    let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
+    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+      coupling.map Prod.fst = app.runRounds scheduler players count original ∧
+      coupling.map Prod.snd = strategy.runJoint owner players scheduler count repaired memory ∧
+      ∀ next ∈ coupling.support,
+        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+          runtime.permittedServiceEnvelope record.observation record.ledger
+            record.input.envelope = false) ∨
+        Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
+          next.2.2.shadow = memory.shadow ∧
+          next.2.1.application.playerView owner = repaired.application.playerView owner := by
+  classical
+  let app := runtime.reactiveApplication leaks
+  let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
+  induction count generalizing original repaired memory offset with
+  | zero =>
+      exact ⟨FinDist.pure (original, repaired, memory), FinDist.map_pure .., FinDist.map_pure ..,
+        fun next member => by
+          cases FinDist.mem_support_pure.mp member
+          exact Or.inr ⟨frame, rfl, rfl⟩⟩
+  | succ count ih =>
+      let selected := scheduler original.environmentRecall (original.observeEnvironment app)
+      have commandStep (command : app.Command) (chosen : command ∈ selected.support) :
+          ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+            coupling.map Prod.fst = (app.dispatch players command original).bind
+              (app.runRounds scheduler players count) ∧
+            coupling.map Prod.snd = ((repaired.environmentStep app command).bind
+              (fun execution => strategy.resume owner players (command.actor? app)
+                execution memory)).bind
+                  (fun next => strategy.runJoint owner players scheduler count next.1 next.2) ∧
+            ∀ next ∈ coupling.support, departed runtime leaks owner next.1 ∨
+              Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
+                next.2.2.shadow = memory.shadow ∧
+                next.2.1.application.playerView owner = repaired.application.playerView owner := by
+        obtain ⟨actor, rfl⟩ := commands original (by omega) (by omega) command chosen
+        obtain ⟨step, first, second, related⟩ := frame.repeated_activation_coupling
+          bounds menu players reference started leftRecall rightRecall serials repeated event
+            granted recorded coverage available actor
+        have existsTail (next) (member : next ∈ step.support) :
+            ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+              coupling.map Prod.fst = app.runRounds scheduler players count next.1 ∧
+              coupling.map Prod.snd =
+                strategy.runJoint owner players scheduler count next.2.1 next.2.2 ∧
+              ∀ final ∈ coupling.support, departed runtime leaks owner final.1 ∨
+                Frame runtime leaks final.2.2 owner final.1 final.2.1 ∧
+                  final.2.2.shadow = memory.shadow ∧
+                  final.2.1.application.playerView owner =
+                    repaired.application.playerView owner := by
+          by_cases bad : departed runtime leaks owner next.1
+          · let coupling := FinDist.product (app.runRounds scheduler players count next.1)
+              (strategy.runJoint owner players scheduler count next.2.1 next.2.2)
+            refine ⟨coupling, FinDist.map_fst_product .., FinDist.map_snd_product .., ?_⟩
+            intro final supported
+            left
+            obtain ⟨record, present, authored, rejected⟩ := bad
+            refine ⟨record, ?_, authored, rejected⟩
+            have reached : final.1 ∈ (app.runRounds scheduler players count next.1).support := by
+              rw [← FinDist.map_fst_product (app.runRounds scheduler players count next.1)
+                (strategy.runJoint owner players scheduler count next.2.1 next.2.2),
+                FinDist.support_map]
+              exact ⟨final, supported, rfl⟩
+            exact (app.executionTraffic_runRounds scheduler players count next.1 final.1
+              reached).subset present
+          · have good := (related next member).resolve_left bad
+            have reached : next.1 ∈ (app.dispatch players (.activate actor) original).support := by
+              rw [← first, FinDist.support_map]
+              exact ⟨next, member, rfl⟩
+            have privateReached : next.2 ∈ ((repaired.environmentStep app (.activate actor)).bind
+                (fun execution => strategy.resume owner players (some actor) execution
+                  memory)).support := by
+              rw [← second, FinDist.support_map]
+              exact ⟨next, member, rfl⟩
+            have recordedLeft : runtime.eventRecorded leaks (original.recall owner) event =
+                true := (runtime.eventRecorded_congr leaks _ _ frame.submissions event).trans
+                  recorded
+            obtain ⟨valid, fresh, sent, grant, _⟩ := runtime.activation_resources leaks players
+              original next.1 actor owner event leftRecall serials recordedLeft reached
+            have recordedRight : runtime.eventRecorded leaks (next.2.1.recall owner) event =
+                true := (runtime.eventRecorded_congr leaks _ _ good.1.submissions event).symm.trans
+                  sent
+            have nextPosition : next.1.environmentRecall.length = offset + 1 := by
+              rw [app.dispatch_environmentRecall players (.activate actor) original next.1 reached,
+                List.length_append, List.length_singleton, position]
+            obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := ih good.1 good.2.1 valid
+              (runtime.private_activation_recall leaks strategy players owner actor repaired memory
+                next.2 rightRecall privateReached) fresh
+              (runtime.activation_repeated_of_clean leaks bounds players original next.1 actor owner
+                leftRecall serials repeated available reached bad)
+              (grant.trans granted) recordedRight (offset + 1) nextPosition
+              (fun execution lower upper => commands execution (by omega) (by omega))
+            refine ⟨coupling, leftLaw, rightLaw, ?_⟩
+            intro final supported
+            rcases connected final supported with bad | ⟨paired, shadow, view⟩
+            · exact Or.inl bad
+            · exact Or.inr ⟨paired, shadow.trans good.2.2.1,
+                view.trans good.2.2.2⟩
+        let tail := fun next member => (existsTail next member).choose
+        refine ⟨step.bindOnSupport tail, ?_, ?_, ?_⟩
+        · rw [FinDist.map_bindOnSupport]
+          calc
+            _ = step.bind (fun next => app.runRounds scheduler players count next.1) := by
+              apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+              intro next member
+              exact (existsTail next member).choose_spec.1
+            _ = _ := by rw [← FinDist.bind_map, first]
+        · rw [FinDist.map_bindOnSupport]
+          calc
+            _ = step.bind (fun next =>
+                strategy.runJoint owner players scheduler count next.2.1 next.2.2) := by
+              apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+              intro next member
+              exact (existsTail next member).choose_spec.2.1
+            _ = (step.map Prod.snd).bind (fun next =>
+                strategy.runJoint owner players scheduler count next.1 next.2) := by
+              rw [FinDist.bind_map]
+            _ = _ := by rw [second]; rfl
+        · intro final supported
+          obtain ⟨next, member, reached⟩ :=
+            Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+          exact (existsTail next member).choose_spec.2.2 final reached
+      let step := fun command chosen => (commandStep command chosen).choose
+      refine ⟨selected.bindOnSupport step, ?_, ?_, ?_⟩
+      · rw [FinDist.map_bindOnSupport]
+        change _ = (app.round scheduler players original).bind _
+        rw [ReactiveApplication.round, FinDist.bind_bind]
+        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        intro command chosen
+        exact (commandStep command chosen).choose_spec.1
+      · rw [FinDist.map_bindOnSupport]
+        change _ = (strategy.round owner players scheduler repaired memory).bind _
+        rw [ReactiveApplication.Implementation.round, FinDist.bind_bind]
+        have same : scheduler repaired.environmentRecall (repaired.observeEnvironment app) =
+            selected := by rw [← frame.service, ← frame.environment]
+        rw [same]
+        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        intro command chosen
+        simpa only [step, strategy, app, FinDist.bind_bind] using
+          (commandStep command chosen).choose_spec.2.1
+      · intro final supported
+        obtain ⟨command, chosen, reached⟩ :=
+          Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+        exact (commandStep command chosen).choose_spec.2.2 final reached
+
+end BindingMemory.Frame
+
+end Vegas.EventGraphRuntime

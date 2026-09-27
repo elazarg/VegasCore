@@ -25,10 +25,10 @@ theorem run_restrict_eq_finish (players : Principal → app.Policy)
     (fuel : Nat) (history : (menu.protocol initial horizon scheduler).History)
     (enough : app.rank horizon history.state ≤ fuel) :
     ((menu.information initial horizon scheduler).runBehavioralFrom
-      (fun who => menu.restrictPolicy initial horizon scheduler who (players who) (covered who))
+      (fun who => menu.restrictPolicy initial horizon scheduler who (players who))
       fuel history).map History.state =
       app.finish initial horizon scheduler players history.state := by
-  rw [menu.run_restrict_control_steps]
+  rw [menu.run_restrict_control_steps initial horizon scheduler players covered]
   exact app.iterate_eq_finish initial horizon scheduler players fuel history.state enough
 
 open Classical in
@@ -44,7 +44,7 @@ theorem run_local_law_restrict_finish (players : Principal → app.Policy)
       ((menu.information initial horizon scheduler).infoOf who history.trace)))
     (fuel : Nat) (enough : app.rank horizon history.state ≤ fuel + 1) :
     let baseline := fun player => menu.restrictPolicy initial horizon scheduler player
-      (players player) (covered player)
+      (players player)
     ((menu.information initial horizon scheduler).runBehavioralFrom
       (Profile.update (sig := (menu.information initial horizon scheduler).behavioralSignature)
         baseline who ((baseline who).withLaw
@@ -116,7 +116,7 @@ theorem run_local_law_restrict_remaining (players : Principal → app.Policy)
     (law : FinDist ((menu.information initial horizon scheduler).Choice who
       ((menu.information initial horizon scheduler).infoOf who history.trace))) :
     let baseline := fun player => menu.restrictPolicy initial horizon scheduler player
-      (players player) (covered player)
+      (players player)
     ((menu.information initial horizon scheduler).runBehavioralFrom
       (Profile.update (sig := (menu.information initial horizon scheduler).behavioralSignature)
         baseline who ((baseline who).withLaw

@@ -49,13 +49,14 @@ variable (setup : Setup (Player := Player) (L := L))
   (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
 
 open Classical in
+include reveals openable mixed timingFull in
 theorem roster_owner_context_value
     (assessment : ((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length
           (rosterScheduler setup leaks rosters network)).BehavioralAssessment)
     (strategy : assessment.strategy = rosterPerturbedProfile setup leaks bounds rosters network
-      reveals openable admission source mixed timing timingFull)
+      admission source timing)
     (who : Player) (event : (graph setup).EventId)
     (ownedEvent : (graph setup).actor? event = some who)
     (site : ((rosterMenu setup leaks

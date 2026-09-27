@@ -33,7 +33,7 @@ theorem roster_restrict_prefix_state
     ((menu.information (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).runBehavioral
       (fun who => menu.restrictPolicy (initialLaw setup) (rosterPlan setup rosters).length
-        (rosterScheduler setup leaks rosters network) who (players who) (covered who))
+        (rosterScheduler setup leaks rosters network) who (players who))
       (count + (((rosterPlan setup rosters).take count).filterMap instructionActor).length + 1)).map
         History.state =
       ((initialLaw setup).bind fun state =>
@@ -41,7 +41,7 @@ theorem roster_restrict_prefix_state
           ((rosterPlan setup rosters).take count)
           (ReactiveApplication.Execution.initial (application setup leaks) state)).map
         (fun next => some ⟨(rosterPlan setup rosters).length - count, none, next⟩) := by
-  rw [InformationModel.runBehavioral, menu.run_restrict_control_steps]
+  rw [InformationModel.runBehavioral, menu.run_restrict_control_steps _ _ _ players covered]
   have exactLaw := (application setup leaks).scheduled_prefix_control_steps (initialLaw setup)
     (rosterScheduler setup leaks rosters network) ((rosterPlan setup rosters).map instructionActor)
     (roster_scheduled_actor setup leaks rosters network) players count
@@ -67,7 +67,7 @@ theorem roster_restrict_activation_state
     ((menu.information (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).runBehavioral
       (fun player => menu.restrictPolicy (initialLaw setup) (rosterPlan setup rosters).length
-        (rosterScheduler setup leaks rosters network) player (players player) (covered player))
+        (rosterScheduler setup leaks rosters network) player (players player))
       (count + (((rosterPlan setup rosters).take count).filterMap instructionActor).length + 2)).map
         History.state =
       (((initialLaw setup).bind fun state =>
@@ -78,7 +78,7 @@ theorem roster_restrict_activation_state
           (fun next => some ⟨(rosterPlan setup rosters).length - count - 1, some who, next⟩) := by
   have within : count < (rosterPlan setup rosters).length :=
     List.getElem?_eq_some_iff.mp selected |>.1
-  rw [InformationModel.runBehavioral, menu.run_restrict_control_steps]
+  rw [InformationModel.runBehavioral, menu.run_restrict_control_steps _ _ _ players covered]
   change (fun law => law.bind ((application setup leaks).controlStep (initialLaw setup)
     (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) players))^[
       count + (((rosterPlan setup rosters).take count).filterMap instructionActor).length + 2]

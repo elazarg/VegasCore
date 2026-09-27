@@ -130,8 +130,8 @@ theorem roster_owner_bayes_posterior
     let horizon := (rosterPlan setup rosters).length
     let model := menu.information (initialLaw setup) horizon scheduler
     let assessment := InformationModel.BehavioralAssessment.ofStrategy
-      (rosterPerturbedProfile setup leaks bounds rosters network reveals openable admission
-        source mixed timing timingFull)
+      (rosterPerturbedProfile setup leaks bounds rosters network admission
+        source timing)
     let native := assessment.bayes
       (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
         admission source mixed timing timingFull)
@@ -252,8 +252,8 @@ theorem roster_owner_bayes_at_history
     let horizon := (rosterPlan setup rosters).length
     let model := menu.information (initialLaw setup) horizon scheduler
     let assessment := InformationModel.BehavioralAssessment.ofStrategy
-      (rosterPerturbedProfile setup leaks bounds rosters network reveals openable admission
-        source mixed timing timingFull)
+      (rosterPerturbedProfile setup leaks bounds rosters network admission
+        source timing)
     let native := assessment.bayes
       (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
         admission source mixed timing timingFull)
@@ -350,8 +350,8 @@ theorem roster_owner_bayes_source_state
     let horizon := (rosterPlan setup rosters).length
     let model := menu.information (initialLaw setup) horizon scheduler
     let assessment := InformationModel.BehavioralAssessment.ofStrategy
-      (rosterPerturbedProfile setup leaks bounds rosters network reveals openable admission
-        source mixed timing timingFull)
+      (rosterPerturbedProfile setup leaks bounds rosters network admission
+        source timing)
     let native := assessment.bayes
       (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
         admission source mixed timing timingFull)

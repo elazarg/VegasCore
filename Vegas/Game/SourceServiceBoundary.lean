@@ -155,6 +155,33 @@ theorem ServiceBoundary.binding_resources {setup : Setup (Player := Player) (L :
       exact False.elim ((boundary.ready event atRank).1
         (boundary.binding.toAssociationInvariant.accepted_complete event candidate associated))
 
+/-- One prepared slot per source event suffices for every binding boundary.
+The count uses actual completed binding events, so earlier samples and
+publications consume no private allocation capacity. -/
+theorem ServiceBoundary.binding_capacity {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {rosters : (graph setup).EventId → List Player} {initial : State L setup.context}
+    {Γ : SourceCtx Player L} {source : Config Player L Γ}
+    {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
+    {execution : (application setup leaks).Execution}
+    (boundary : ServiceBoundary setup leaks rosters initial source refs rank execution)
+    (bounds : MessageBounds (graph setup))
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (event : (graph setup).EventId) (atRank : event.val = rank) (who : Player) :
+    execution.application.publicView.bindingCount who < bounds.candidateCount := by
+  classical
+  let history := execution.application.config.history.map EventGraph.Completion.event
+  have absent : event ∉ history := fun present =>
+    (boundary.ready event atRank).1
+      ((execution.application.config.history_exact event).mp present)
+  have distinct : (event :: history).Nodup :=
+    List.nodup_cons.mpr ⟨absent, execution.application.config.history_nodup⟩
+  have lengthBound := distinct.length_le_card
+  change history.countP _ < bounds.candidateCount
+  apply lt_of_le_of_lt List.countP_le_length
+  simp only [List.length_cons, Fintype.card_fin] at lengthBound
+  omega
+
 /-- The actual grant command records the environment transition while leaving
 every completed-prefix fact intact. -/
 theorem ServiceBoundary.grant {setup : Setup (Player := Player) (L := L)}

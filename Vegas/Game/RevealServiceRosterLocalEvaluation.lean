@@ -48,7 +48,7 @@ theorem roster_local_law_state
       (rosterScheduler setup leaks rosters network)
     let baseline := fun player => menu.restrictPolicy (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) player
-        (players player) (covered player)
+        (players player)
     (model.runBehavioralFrom
       (Profile.update (sig := model.behavioralSignature) baseline who
         ((baseline who).withLaw (model.infoOf who history.trace) law))
@@ -109,7 +109,7 @@ theorem roster_local_law_complete_state
       (rosterScheduler setup leaks rosters network)
     let baseline := fun player => menu.restrictPolicy (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) player
-        (players player) (covered player)
+        (players player)
     (model.runBehavioralFrom
       (Profile.update (sig := model.behavioralSignature) baseline who
         ((baseline who).withLaw info law))

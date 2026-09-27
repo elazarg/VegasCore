@@ -96,16 +96,15 @@ def aliasDeviation (who : Principal) (reference : List app.PlayerEntry)
   (normal.menu raw).restrictPolicy initial horizon scheduler who
     (normal.aliasImplementation who reference
       (app.decodePolicy (raw.embedPolicy initial horizon scheduler who alternative))).policy
-    (normal.aliasImplementation_admissible raw stable initial horizon scheduler who reference _
-      (raw.decode_embedPolicy_covered initial horizon scheduler who alternative))
 
+include stable in
 theorem decode_aliasDeviation (who : Principal) (reference : List app.PlayerEntry)
     (alternative : (raw.information initial horizon scheduler).BehavioralPolicy who) :
     app.decodePolicy ((normal.menu raw).embedPolicy initial horizon scheduler who
-      (normal.aliasDeviation raw stable initial horizon scheduler who reference alternative)) =
+      (normal.aliasDeviation raw initial horizon scheduler who reference alternative)) =
         (normal.aliasImplementation who reference
           (app.decodePolicy (raw.embedPolicy initial horizon scheduler who alternative))).policy :=
-  (normal.menu raw).decode_restrictPolicy_of_covered initial horizon scheduler who _ _
+  (normal.menu raw).decode_restrictPolicy_of_covered initial horizon scheduler who _
     (normal.aliasImplementation_policy_admissible raw stable who reference _
       (raw.decode_embedPolicy_covered initial horizon scheduler who alternative))
 

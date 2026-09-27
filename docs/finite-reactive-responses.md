@@ -137,17 +137,15 @@ the theorem does not promise a further fresh handle inside that range.
 ## Exact finite-game representation
 
 [ReactiveMenuPolicy.lean](../Interaction/ReactiveMenuPolicy.lean) represents a
-raw policy as a behavioral policy of a finite-menu instance. Construction
-requires an admissibility certificate covering **all legal histories**.
-At every such history the response law is unchanged. The total function also
-has a default at inputs where coverage fails; admissibility proves those inputs
-cannot occur at a legal decision. No reachable out-of-bounds response is
-replaced by silence or another action.
+raw policy as a total behavioral policy of a finite-menu instance. It uses a
+default at inputs where coverage fails. Local coverage proves equality of the
+response laws at that input; an admissibility certificate covering **all legal
+histories** proves exactness at every legal decision and continuation.
 
-`MessageBounds.compileFinitePolicy` supplies the actual reactive compiler's
-certificate from the value and capacity premises. Its checked continuation
-theorem, `MessageBounds.compileFinitePolicy_run`, preserves the complete history
-law from every legal finite-instance prefix and for every evaluation fuel.
+`MessageBounds.compileFinitePolicy` constructs this total finite representation.
+Its checked continuation theorem, `MessageBounds.compileFinitePolicy_run`, uses
+the value and capacity premises to preserve the complete history law from every
+legal finite-instance prefix and for every evaluation fuel.
 It includes recovery at off-path prefixes and the actual remaining clock.
 The underlying generic theorem also applies to arbitrary covered policies.
 This represents the reactive compiler faithfully; source-to-reactive correctness

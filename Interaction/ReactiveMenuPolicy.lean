@@ -5,10 +5,9 @@ import Interaction.ReactivePolicy
 
 /-! # Representing covered policies in a finite menu
 
-Coverage is required at every legal decision history, including off-path ones.
-The total representation chooses a default only at inputs where coverage fails;
-the admissibility certificate proves that branch unreachable in this instance.
-At every legal history, response laws and complete continuation laws are exact.
+The total representation chooses a default only at inputs where coverage fails.
+Local coverage gives exact response laws. An admissibility certificate extends
+this equality to every legal decision history and complete continuation.
 -/
 
 noncomputable section
@@ -28,8 +27,7 @@ def Admissible (who : Principal) (policy : app.Policy) : Prop :=
       action ∈ menu.actions who (control.execution.recall who) (control.execution.observe app who)
 
 open Classical in
-def restrictPolicy (who : Principal) (policy : app.Policy)
-    (_admissible : menu.Admissible initial horizon scheduler who policy) :
+def restrictPolicy (who : Principal) (policy : app.Policy) :
     (menu.information initial horizon scheduler).BehavioralPolicy who
   | none => FinDist.pure ⟨none, rfl⟩
   | some (past, view) =>
@@ -41,11 +39,10 @@ def restrictPolicy (who : Principal) (policy : app.Policy)
         _, (menu.nonempty who past view).choose_spec, rfl⟩
 
 theorem embed_restrictPolicy (who : Principal) (policy : app.Policy)
-    (admissible : menu.Admissible initial horizon scheduler who policy)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (covered : ∀ action ∈ (policy past view).support, action ∈ menu.actions who past view) :
     menu.embedPolicy initial horizon scheduler who
-        (menu.restrictPolicy initial horizon scheduler who policy admissible) (some (past, view)) =
+        (menu.restrictPolicy initial horizon scheduler who policy) (some (past, view)) =
       app.encodePolicy policy (some (past, view)) := by
   simp only [embedPolicy, restrictPolicy, dite_eq_left covered, FinDist.map_bindOnSupport,
     FinDist.map_pure, encodePolicy]
@@ -57,10 +54,9 @@ theorem embed_restrictPolicy (who : Principal) (policy : app.Policy)
 /-- At a covered input, forgetting the finite-menu witness recovers the
 original physical response law exactly. -/
 theorem restrictPolicy_map_val (who : Principal) (policy : app.Policy)
-    (admissible : menu.Admissible initial horizon scheduler who policy)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (covered : ∀ action ∈ (policy past view).support, action ∈ menu.actions who past view) :
-    ((menu.restrictPolicy initial horizon scheduler who policy admissible)
+    ((menu.restrictPolicy initial horizon scheduler who policy)
       (some (past, view))).map Subtype.val = (policy past view).map some := by
   simp only [restrictPolicy, dite_eq_left covered, FinDist.map_bindOnSupport, FinDist.map_pure]
   rw [FinDist.map_eq_bind]
@@ -85,16 +81,15 @@ theorem decode_embedPolicy_covered (who : Principal)
 /-- All-input coverage makes finite restriction an exact decoding inverse,
 including inputs outside the legal histories used by `Admissible`. -/
 theorem decode_restrictPolicy_of_covered (who : Principal) (policy : app.Policy)
-    (admissible : menu.Admissible initial horizon scheduler who policy)
     (covered : ∀ past view response, response ∈ (policy past view).support →
       response ∈ menu.actions who past view) :
     app.decodePolicy (menu.embedPolicy initial horizon scheduler who
-      (menu.restrictPolicy initial horizon scheduler who policy admissible)) = policy := by
+      (menu.restrictPolicy initial horizon scheduler who policy)) = policy := by
   funext past view
   change ((menu.embedPolicy initial horizon scheduler who
-    (menu.restrictPolicy initial horizon scheduler who policy admissible))
+    (menu.restrictPolicy initial horizon scheduler who policy))
       (some (past, view))).map _ = _
-  rw [menu.embed_restrictPolicy initial horizon scheduler who policy admissible past view
+  rw [menu.embed_restrictPolicy initial horizon scheduler who policy past view
     (covered past view)]
   exact congrFun (congrFun (app.decode_encodePolicy policy) past) view
 
@@ -102,14 +97,14 @@ theorem embed_restrictPolicy_history (who : Principal) (policy : app.Policy)
     (covered : menu.Admissible initial horizon scheduler who policy)
     (history : (menu.protocol initial horizon scheduler).History) :
     menu.embedPolicy initial horizon scheduler who
-        (menu.restrictPolicy initial horizon scheduler who policy covered)
+        (menu.restrictPolicy initial horizon scheduler who policy)
         ((app.information initial horizon scheduler).infoOf who
           (menu.toRawTrace initial horizon scheduler history.trace)) =
       app.encodePolicy policy ((app.information initial horizon scheduler).infoOf who
         (menu.toRawTrace initial horizon scheduler history.trace)) := by
   suffices pointwise : ∀ info : app.Info, info = app.observe who history.state →
       menu.embedPolicy initial horizon scheduler who
-        (menu.restrictPolicy initial horizon scheduler who policy covered) info =
+        (menu.restrictPolicy initial horizon scheduler who policy) info =
           app.encodePolicy policy info by
     exact pointwise _ (app.info initial horizon scheduler who _)
   intro info observed
@@ -126,7 +121,7 @@ theorem embed_restrictPolicy_history (who : Principal) (policy : app.Policy)
           split at observed
           · rename_i active
             cases Option.some.inj observed
-            exact menu.embed_restrictPolicy initial horizon scheduler who policy covered _ _
+            exact menu.embed_restrictPolicy initial horizon scheduler who policy _ _
               (covered control trace active)
           · cases observed
 
@@ -142,8 +137,8 @@ theorem restrictProfile_fullSupport (profile : Principal → app.Policy)
           (control.execution.observe app who)).support) :
     ∀ who (site : (menu.information initial horizon scheduler).InformationSite who)
       (choice : (menu.information initial horizon scheduler).Choice who site.1),
-      choice ∈ (menu.restrictPolicy initial horizon scheduler who (profile who)
-        (covered who) site.1).support := by
+      choice ∈
+        (menu.restrictPolicy initial horizon scheduler who (profile who) site.1).support := by
   intro who site
   obtain ⟨history, _, _⟩ := site.2
   have active := InformationModel.InformationSite.active _ site history
@@ -167,13 +162,13 @@ theorem restrictProfile_fullSupport (profile : Principal → app.Policy)
       cases observed
       intro choice
       suffices choice.1 ∈ ((menu.restrictPolicy initial horizon scheduler who (profile who)
-          (covered who) (some (control.execution.recall who,
+          (some (control.execution.recall who,
             control.execution.observe app who))).map Subtype.val).support by
         obtain ⟨other, supported, same⟩ := FinDist.support_map .. ▸ this
         exact (Subtype.ext same) ▸ supported
       have member := choice.2
       obtain ⟨action, allowed, chosen⟩ := member
-      rw [menu.restrictPolicy_map_val initial horizon scheduler who (profile who) (covered who)
+      rw [menu.restrictPolicy_map_val initial horizon scheduler who (profile who)
         _ _ (covered who control traced acting), chosen, FinDist.support_map]
       exact ⟨action, positive who control traced acting action allowed, rfl⟩
 
@@ -187,7 +182,7 @@ theorem behavioralJoint_restrict (profile : Principal → app.Policy)
         (fun who => app.encodePolicy (profile who))
         (menu.toRawTrace initial horizon scheduler history.trace) running =
       ((menu.information initial horizon scheduler).behavioralJoint
-        (fun who => menu.restrictPolicy initial horizon scheduler who (profile who) (covered who))
+        (fun who => menu.restrictPolicy initial horizon scheduler who (profile who))
         history.trace running).map fun joint =>
           ⟨joint.1, menu.legal_raw initial horizon scheduler joint.2⟩ := by
   rw [← menu.behavioralJoint_embed]
@@ -202,7 +197,7 @@ theorem run_restrict (profile : Principal → app.Policy)
     (covered : ∀ who, menu.Admissible initial horizon scheduler who (profile who))
     (fuel : Nat) (history : (menu.protocol initial horizon scheduler).History) :
     ((menu.information initial horizon scheduler).runBehavioralFrom
-      (fun who => menu.restrictPolicy initial horizon scheduler who (profile who) (covered who))
+      (fun who => menu.restrictPolicy initial horizon scheduler who (profile who))
       fuel history).map (menu.toRawHistory initial horizon scheduler) =
     (app.information initial horizon scheduler).runBehavioralFrom
       (fun who => app.encodePolicy (profile who)) fuel

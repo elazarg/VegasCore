@@ -69,8 +69,7 @@ theorem responsePolicy_covered (guesses : FinDist Bool)
 def responseProfile (guesses : FinDist Bool) (disclosures : Bool → Bool → FinDist Bool) :
     Profile restrictedModel.behavioralSignature := fun who =>
   restrictedMenu.restrictPolicy nativeInitialLaw nativeHorizon nativeScheduler who
-    (responsePolicy guesses disclosures who) (fun _ _ _ _ supported =>
-      responsePolicy_covered guesses disclosures who _ _ _ supported)
+    (responsePolicy guesses disclosures who)
 
 theorem decode_responseProfile (guesses : FinDist Bool)
     (disclosures : Bool → Bool → FinDist Bool) :
@@ -78,7 +77,7 @@ theorem decode_responseProfile (guesses : FinDist Bool)
       (responseProfile guesses disclosures) = responsePolicy guesses disclosures := by
   funext who
   exact restrictedMenu.decode_restrictPolicy_of_covered nativeInitialLaw nativeHorizon
-    nativeScheduler who _ _ (responsePolicy_covered guesses disclosures who)
+    nativeScheduler who _ (responsePolicy_covered guesses disclosures who)
 
 theorem responsePolicy_bob (guesses : FinDist Bool)
     (disclosures : Bool → Bool → FinDist Bool) (bit : Bool) :

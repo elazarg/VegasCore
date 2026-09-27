@@ -129,8 +129,8 @@ theorem roster_owner_opening_probability
     (granted : view.application.publicView.serviceGrant = some event)
     (packet : (application setup leaks).Action)
     (fresh : rosterFresh? setup leaks rosters who past view = some packet) :
-    (rosterPerturbedProfile setup leaks bounds rosters network reveals openable admission
-      source mixed timing timingFull who site.1).probOf
+    (rosterPerturbedProfile setup leaks bounds rosters network admission
+      source timing who site.1).probOf
         {choice | choice.1.getD ⟨none⟩ = packet} =
       FinDist.deferredHazard
         ((sourceChoiceLaw setup leaks (setup.decodeBehavioralProfile admission source.strategy)
@@ -222,8 +222,7 @@ theorem roster_owner_opening_probability
     simpa only [← pastEq, ← viewEq, activated] using hazard
   have represented := menu.restrictPolicy_map_val (initialLaw setup)
     (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) who
-    (players who) (rosterPolicy_admissible setup leaks bounds rosters network reveals openable
-      admission source mixed timing timingFull who) past view
+    (players who) past view
     (by intro action supported; rw [← pastEq, ← viewEq] at supported ⊢
         exact rosterPolicy_admissible setup leaks bounds rosters network reveals openable
           admission source mixed timing timingFull who control trace acting action supported)

@@ -136,7 +136,6 @@ def profile (Claim : Type) [Fintype Claim] (defaultClaim : Claim) :
     Profile (model Claim).behavioralSignature := fun who =>
   (menu Claim).restrictPolicy (FinDist.pure initial) horizon (scheduler Claim) who
     (policy Claim defaultClaim who)
-    (fun _ _ _ => policy_covered Claim defaultClaim who _ _)
 
 /-- One positive mixture weight applies at every player and information site;
 the reference is uniform on the entire declared menu, including every replay. -/

@@ -50,7 +50,7 @@ theorem roster_source_sequential_equilibrium_preserved
     let model := menu.information (initialLaw setup) horizon scheduler
     let antichain := menu.decisionInformationAntichain (initialLaw setup) horizon scheduler
     ∃ target : model.BehavioralAssessment,
-      target.strategy = rosterCompiledProfile setup leaks bounds rosters network reveals openable
+      target.strategy = rosterCompiledProfile setup leaks bounds rosters network
         (setup.decodeBehavioralProfile admission source.strategy) ∧
       target.IsSequentialEquilibriumFor antichain (fun who site =>
         target.continuationContext site
@@ -91,13 +91,13 @@ theorem roster_source_sequential_equilibrium_preserved
       rosterTiming_converges setup rosters coverage (fun n => (positive n).le) small
         vanishes event who owned⟩
   let original (n : Nat) : model.BehavioralAssessment := .ofStrategy
-    (rosterPerturbedProfile setup leaks bounds rosters network reveals openable admission
-      (sourceSequence n) (approximates n).1 (timing n) (timingFull n))
+    (rosterPerturbedProfile setup leaks bounds rosters network admission
+      (sourceSequence n) (timing n))
   have mixed (n : Nat) : (original n).IsFullyMixed :=
     rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable admission
       (sourceSequence n) (approximates n).1 (timing n) (timingFull n)
   let sequence (n : Nat) := (original n).bayes (mixed n) antichain
-  let compiled := rosterCompiledProfile setup leaks bounds rosters network reveals openable
+  let compiled := rosterCompiledProfile setup leaks bounds rosters network
     (setup.decodeBehavioralProfile admission source.strategy)
   have strategies (who : Player) (site : model.InformationSite who) :
       FinDistConvergesPointwise (fun n => (sequence n).strategy who site.1)

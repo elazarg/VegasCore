@@ -4,6 +4,7 @@ import Vegas.Game.SourceServiceBoundary
 import Vegas.Game.SourceServiceBindingSupport
 import Vegas.Pending.ReactiveBindingWindowSupport
 import Vegas.Pending.ReactiveServiceSoundness
+import Vegas.Pending.ReactiveServiceTraffic
 import Vegas.Pending.ReactiveServiceEvents
 import Vegas.Pending.ReactiveRevealSettlement
 
@@ -192,7 +193,7 @@ theorem ServiceBoundary.binding_prefix_resources
           (fun message => message.id ∈ current.network.ledger.map Message.id)) := by
   obtain ⟨config, publicEq⟩ := (runtime setup).player_window_application leaks players network
     visits execution current reached
-  obtain ⟨_, binding, recall, serialRecall, serials⟩ := boundary.run_core players network
+  obtain ⟨_, binding, recalled, serialRecall, serials⟩ := boundary.run_core players network
     (visits.map ServiceInstruction.player) current reached
   have ready := boundary.ready event atRank
   have timely := boundary.timely event atRank (by rw [owned]; rfl)
@@ -200,7 +201,7 @@ theorem ServiceBoundary.binding_prefix_resources
   have activation := congrArg PublicView.activatedAt publicEq
   have grant := congrArg PublicView.serviceGrant publicEq
   refine ⟨by rw [config]; exact ready, ?_, grant.trans granted,
-    binding, recall, serialRecall, serials, ?_⟩
+    binding, recalled, serialRecall, serials, ?_⟩
   · unfold EventGraphRuntime.State.WithinDeadline at timely ⊢
     change current.application.clock = execution.application.clock at clock
     change current.application.activatedAt = execution.application.activatedAt at activation
@@ -228,7 +229,8 @@ theorem ServiceBoundary.binding_prefix_resources
 
 /-- Every envelope known or pending during an arbitrary permitted binding
 roster passes the public phase checker, including copies replayed before the
-protected inclusion. The conclusion holds at each actual prefix. -/
+protected inclusion. Earlier valid audit records remain valid at each actual
+prefix, with the phase recorded when the envelope was transmitted. -/
 theorem ServiceBoundary.binding_prefix_conformance
     {setup : Setup (Player := Player) (L := L)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
@@ -250,16 +252,23 @@ theorem ServiceBoundary.binding_prefix_conformance
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
     (owned : (graph setup).actor? event = some owner)
     (granted : execution.application.serviceGrant = some event)
+    (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
+      (runtime setup).permittedServiceEnvelope record.observation record.ledger
+        record.input.envelope = true)
     (visits : List Player) (current : (application setup leaks).Execution)
     (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) execution).support) :
-    current.network.Satisfies fun message => (runtime setup).permittedServiceEnvelope
-      current.application.publicView current.network.ledger message = true := by
+    current.network.Satisfies (fun message => (runtime setup).permittedServiceEnvelope
+      current.application.publicView current.network.ledger message = true) ∧
+    (∀ record ∈ (application setup leaks).executionTraffic current,
+      (runtime setup).permittedServiceEnvelope record.observation record.ledger
+        record.input.envelope = true) := by
   let app := application setup leaks
   induction visits using List.reverseRecOn generalizing current with
   | nil =>
       cases FinDist.mem_support_pure.mp reached
-      exact (runtime setup).service_published_conformance leaks execution boundary.published
+      exact ⟨(runtime setup).service_published_conformance leaks execution boundary.published,
+        traffic⟩
   | append_singleton visits actor ih =>
       rw [List.map_append, (runtime setup).runInteractionPlan_append] at reached
       obtain ⟨before, reachedBefore, reached⟩ :=
@@ -270,26 +279,38 @@ theorem ServiceBoundary.binding_prefix_conformance
       change current ∈ ((before.environmentStep app (.activate actor)).bind
         (app.invoke players actor)).support at reached
       rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨sample, selected, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
       obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ reached
       let activated := before.sampledActivation app actor sample
-      have sampled := (runtime setup).service_sampled_conformance leaks before actor sample prior
+      have activation : activated ∈ (before.environmentStep app (.activate actor)).support := by
+        rw [ReactiveApplication.Execution.activation_samples]
+        exact FinDist.support_map .. ▸ ⟨sample, selected, rfl⟩
+      have sampled := (runtime setup).service_sampled_conformance leaks before actor sample prior.1
       obtain ⟨ready, timely, grant, binding, _, _, _, unsent⟩ :=
         boundary.binding_prefix_resources bounds players lawful network event atRank
           owner payload outputEq codeEq node owned granted visits before reachedBefore
       have member := sourceServiceMenu_in_compiled setup leaks bounds rosters actor
         (activated.recall actor) (activated.observe app actor) (lawful actor _ _ response chosen)
-      apply (runtime setup).service_response_conformance leaks activated 0 actor response sampled
-      by_cases acting : actor = owner
-      · subst actor
-        exact bounds.compiled_binding_traffic (runtime setup) leaks activated binding 0 owner event
-          payload outputEq codeEq node grant ready timely
-          (fun absent => (unsent absent).2.1)
-          (fun absent => (unsent absent).2.2.1 owner)
-          (sampled.known owner) response member
-      · exact bounds.compiled_foreign_traffic (runtime setup) leaks activated 0 actor event grant
-          (by rw [owned]; exact fun equal => acting (Option.some.inj equal).symm)
-          (sampled.known actor) response member
+      have issued : ∀ record ∈ app.trafficStep (some ⟨0, some actor, activated⟩)
+          (some ⟨0, none, activated.respond app actor response⟩),
+          (runtime setup).permittedServiceEnvelope record.observation record.ledger
+            record.input.envelope = true := by
+        by_cases acting : actor = owner
+        · subst actor
+          exact bounds.compiled_binding_traffic (runtime setup) leaks activated binding 0
+            owner event payload outputEq codeEq node grant ready timely
+            (fun absent => (unsent absent).2.1)
+            (fun absent => (unsent absent).2.2.1 owner)
+            (sampled.known owner) response member
+        · exact bounds.compiled_foreign_traffic (runtime setup) leaks activated 0 actor event grant
+            (by rw [owned]; exact fun equal => acting (Option.some.inj equal).symm)
+            (sampled.known actor) response member
+      refine ⟨(runtime setup).service_response_conformance leaks activated 0 actor response
+        sampled issued, ?_⟩
+      intro record included
+      rw [app.executionTraffic_activated_response before activated actor response 0 activation,
+        List.mem_append] at included
+      exact included.elim (prior.2 record) (issued record)
 
 /-- The complete binding service block preserves the operational boundary
 under every permitted policy, including arbitrary early submission and later
@@ -361,7 +382,7 @@ theorem ServiceBoundary.binding_block
       (refs.cons (name := name) ⟨.inr event, outputEq⟩) (rank + 1) after.application.config := by
     rw [afterApp]
     exact checkpoint
-  obtain ⟨invariant, binding, recall, serialRecall, serials⟩ := boundary.run_core players network
+  obtain ⟨invariant, binding, recalled, serialRecall, serials⟩ := boundary.run_core players network
     (rosterBlock setup rosters event) after reached
   obtain ⟨clock, timely⟩ := boundary.roster_successor_timing players network event atRank after
     reached finalCheckpoint.ordered
@@ -372,7 +393,7 @@ theorem ServiceBoundary.binding_block
     prepared := ?_
     represented := ?_
     acceptedRecorded := ?_
-    recall := recall
+    «recall» := recalled
     serialRecall := serialRecall
     published := ?_
     serials := serials

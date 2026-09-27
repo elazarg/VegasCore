@@ -160,16 +160,17 @@ variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
   (players : Principal → app.Policy)
   (covered : ∀ who, menu.Admissible initial schedule.length scheduler who (players who))
 
-include scheduled in
+include scheduled covered in
 /-- Legal-history coverage suffices for the exact finite-game prefix law. -/
 theorem restrict_scheduled_prefix_state (count : Nat) (within : count ≤ schedule.length) :
     ((menu.information initial schedule.length scheduler).runBehavioral
       (fun who => menu.restrictPolicy initial schedule.length scheduler who
-        (players who) (covered who))
+        (players who))
       (count + ((schedule.take count).filterMap id).length + 1)).map History.state =
       (app.roundsFrom initial scheduler players count).map
         (fun next => some ⟨schedule.length - count, none, next⟩) := by
-  rw [InformationModel.runBehavioral, menu.run_restrict_control_steps]
+  rw [InformationModel.runBehavioral,
+    menu.run_restrict_control_steps initial schedule.length scheduler players covered]
   exact app.scheduled_prefix_control_steps initial scheduler schedule scheduled players count within
 
 include scheduled covered in
@@ -187,7 +188,7 @@ theorem restrict_scheduled_prefix_support [Finite Principal]
   have reached : some ⟨schedule.length - count, none, execution⟩ ∈
       (((menu.information initial schedule.length scheduler).runBehavioral
         (fun who => menu.restrictPolicy initial schedule.length scheduler who
-          (players who) (covered who))
+          (players who))
         (count + ((schedule.take count).filterMap id).length + 1)).map History.state).support := by
     rw [law, FinDist.support_map]
     exact ⟨execution, supported, rfl⟩

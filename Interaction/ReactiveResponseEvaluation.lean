@@ -73,13 +73,13 @@ theorem run_restrict_control_steps (profile : Principal → app.Policy)
     (covered : ∀ who, menu.Admissible initial horizon scheduler who (profile who))
     (fuel : Nat) (history : (menu.protocol initial horizon scheduler).History) :
     ((menu.information initial horizon scheduler).runBehavioralFrom
-      (fun who => menu.restrictPolicy initial horizon scheduler who (profile who) (covered who))
+      (fun who => menu.restrictPolicy initial horizon scheduler who (profile who))
       fuel history).map History.state =
       (fun law => law.bind (app.controlStep initial horizon scheduler profile))^[fuel]
         (FinDist.pure history.state) := by
   calc
     _ = (((menu.information initial horizon scheduler).runBehavioralFrom
-        (fun who => menu.restrictPolicy initial horizon scheduler who (profile who) (covered who))
+        (fun who => menu.restrictPolicy initial horizon scheduler who (profile who))
         fuel history).map (menu.toRawHistory initial horizon scheduler)).map History.state := by
       rw [FinDist.map_comp]
       rfl

@@ -118,14 +118,34 @@ theorem trace_implementation_run
     Nonempty ((menu.protocol initial horizon scheduler).Trace (some ⟨remaining, none, next⟩)) := by
   induction count generalizing execution memory with
   | zero =>
+      rw [Implementation.run_zero] at supported
       cases FinDist.mem_support_pure.mp supported
       exact ⟨trace⟩
   | succ count ih =>
+      rw [Implementation.run_succ] at supported
       obtain ⟨middle, moved, finished⟩ :=
         Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
       obtain ⟨middleTrace⟩ := menu.trace_implementation_round initial horizon scheduler
         implementation owner players opponents covered (remaining + count) execution memory
         trace middle moved
       exact ih middle.1 middle.2 middleTrace finished
+
+/-- Retaining the private memory in the analysis preserves the same actual
+menu history witness. The witness depends only on the execution projection. -/
+theorem trace_implementation_runJoint
+    (remaining count : Nat) (execution : app.Execution) (memory : Memory)
+    (trace : (menu.protocol initial horizon scheduler).Trace
+      (some ⟨remaining + count, none, execution⟩))
+    (next : app.Execution × Memory)
+    (supported : next ∈
+      (implementation.runJoint owner players scheduler count execution memory).support) :
+    Nonempty ((menu.protocol initial horizon scheduler).Trace
+      (some ⟨remaining, none, next.1⟩)) := by
+  apply menu.trace_implementation_run initial horizon scheduler implementation owner players
+    opponents covered remaining count execution memory trace next.1
+  change next.1 ∈ ((implementation.runJoint owner players scheduler count execution memory).map
+    Prod.fst).support
+  rw [FinDist.support_map]
+  exact ⟨next, supported, rfl⟩
 
 end Interaction.ReactiveApplication.ResponseMenu
