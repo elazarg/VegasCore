@@ -201,6 +201,8 @@ import Vegas.Pending.ReactiveContinuationObservation
 import Vegas.Pending.ReactiveBindingOrigin
 import Vegas.Pending.ReactiveBindingObservation
 import Vegas.Pending.ReactivePolicyMixture
+import Vegas.Pending.ReactiveResponseConditioning
+import Vegas.Pending.ReactiveOwnerWindow
 import Vegas.Pending.ReactiveHiddenResponse
 import Vegas.Pending.ReactiveHiddenEnvironment
 import Vegas.Pending.ReactiveHiddenInclusion

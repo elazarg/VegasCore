@@ -27,9 +27,9 @@ The full language has checked
 [initialized execution laws](../Vegas/Game/SourceServiceLaw.lean) and
 [settlement laws](../Vegas/Game/SourceServiceAudit.lean) for every admitted
 compiled profile, including fresh bindings, chance, correlated private inputs
-and guarded disclosure. Its SE theorem is still open. The proof has two
-remaining chains, described below; a terminal-law theorem does not discharge
-either chain by itself.
+and guarded disclosure. Its source-to-permitted-runtime SE theorem is still
+open. The permitted-to-full-runtime SE extension is checked, including actual
+conditional incentives, off-path completion and raw response aliases.
 
 ### Source beliefs and sequential incentives
 
@@ -43,8 +43,11 @@ there; this introduces no represented private scratch state. The
 exact laws retaining the whole native execution. The
 [whole-prefix factorization](../Vegas/Game/SourceServicePrefixFactorization.lean)
 proves the joint decoded-state and native-traffic law at every event boundary
-for the full language. Its extension to actual within-phase decision inputs
-and local continuation comparisons remains open. The
+for the full language. The [actual owner posteriors](../Vegas/Game/SourceServiceBayes.lean)
+and [original-assessment comparison](../Vegas/Game/SourceServiceAssessment.lean)
+connect every owner visit to the original source assessment, including private
+intentions erased by normalization. Physical local continuation comparisons
+and the treatment of all remaining visits are still required. The
 [joint phase checkpoint laws](../Vegas/Game/SourceServiceTimedCheckpoint.lean)
 retain each chosen source successor together with its actual native traffic;
 equal terminal marginals do not establish that joint law.
@@ -126,8 +129,11 @@ instantiates that bound for every actual whole deviation and every finite
 belief. The [SE extension](../Vegas/Game/SourceServiceRestrictionExtension.lean)
 therefore extends every permitted-runtime SE to the effective native menu,
 including rational off-path play and the exact joint observation/realized-payoff
-law. The raw response-alias lift remains separate. Utilities depend on initial
-types and public results; repaired future private values are excluded.
+law. The [raw response-alias lift](../Vegas/Game/SourceServiceRawExtension.lean)
+completes this edge to the full bounded raw runtime. Source readouts and their
+initial-type/public-result projections satisfy its proved normalization
+invariance condition. Utilities depend on initial types and public results;
+repaired future private values are excluded.
 
 One deposit can cover a first departure and every subsequent plan: the bound
 uses the whole continuation's payoff range. After an unavoidable charge, the

@@ -84,6 +84,7 @@ import Vegas.Game.SourceServiceActiveRepair
 import Vegas.Game.SourceServiceEvaluatorRepair
 import Vegas.Game.SourceServiceContinuationComparison
 import Vegas.Game.SourceServiceRestrictionExtension
+import Vegas.Game.SourceServiceRawExtension
 import Vegas.Game.SourceServiceSubmittedBinding
 import Vegas.Game.SourceServiceRepeatedWindow
 import Vegas.Game.SourceServiceImplementationSegment
@@ -108,6 +109,9 @@ import Vegas.Game.SourceServiceSettlement
 import Vegas.Game.SourceServicePrefix
 import Vegas.Game.SourceServicePrefixInformation
 import Vegas.Game.SourceServicePrefixFactorization
+import Vegas.Game.SourceServicePrefixPosterior
+import Vegas.Game.SourceServiceBayes
+import Vegas.Game.SourceServiceAssessment
 import Vegas.Game.DisclosureResponseComparison
 import Vegas.Game.RevealServiceRosterOwnerComparison
 import Vegas.Game.RevealServiceRosterPhase

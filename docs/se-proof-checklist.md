@@ -61,7 +61,10 @@ percentage estimate.
   assessment. A joint law only at event boundaries does not close this box.
   The event-boundary joint law is checked in
   [SourceServicePrefixFactorization.lean](../Vegas/Game/SourceServicePrefixFactorization.lean);
-  the actual within-phase decision posteriors remain required.
+  actual owner-visit Bayes posteriors and original-assessment comparisons are
+  checked in [SourceServiceBayes.lean](../Vegas/Game/SourceServiceBayes.lean) and
+  [SourceServiceAssessment.lean](../Vegas/Game/SourceServiceAssessment.lean).
+  Foreign and implementation-only visits must also be accounted for.
 
 - [ ] **S4. Sequential incentives for every permitted native choice.** Bound
   every actual local native deviation by comparisons in the original source
@@ -108,11 +111,15 @@ percentage estimate.
   It constructs one repair before quantifying over arbitrary finite beliefs and
   instantiates the actual evaluator coupling and fixed deposit bound.
 
-- [ ] **R4. Permitted-to-full-runtime SE theorem.** Instantiate the existing
+- [x] **R4. Permitted-to-full-runtime SE theorem.** Instantiate the existing
   restriction-extension theorem with R2–R3, supply rational consistent play at
   new information sites, and restore all bounded raw response aliases. Preserve
   the initialized joint result and realized settlement law. No continuation
-  comparison may remain an unproved compiler premise.
+  comparison may remain an unproved compiler premise. Evidence:
+  `sourceService_audited_raw_equilibrium_extends` in
+  [SourceServiceRawExtension.lean](../Vegas/Game/SourceServiceRawExtension.lean).
+  Source readouts and their initial-parameter/public-result projections satisfy
+  the proved raw-normalization invariance condition.
 
 ## End-to-end closure
 

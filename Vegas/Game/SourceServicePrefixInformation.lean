@@ -90,4 +90,58 @@ theorem SourcePrefixCheckpoint.source_view_eq_of_observe_eq
                     (ih next _ _ _ _ (offset + 1) left right nativeLeft nativeRight
                       first second same)
 
+/-- The source actor at a decoded checkpoint is the actor of that static
+instruction. Dynamic bindings and deferred guards do not change this position. -/
+theorem SourcePrefixCheckpoint.actor
+    {setup : Setup (Player := Player) (L := L)} (who : Player) :
+    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
+      (program : SourceProgram Player L Γ openNames)
+      (refs : ContextRefs (graph setup).layout Γ) (registry : Registry Γ)
+      (revelations : Revelations Γ)
+      (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout
+        (outputLayout program event))
+      (offset count : Nat) (state : ProtocolState program) (native : (graph setup).Config),
+      SourcePrefixCheckpoint setup program refs registry revelations outputs
+        offset count state native →
+      (inside : count < eventCount program) →
+      ProtocolView.actor who program (ProtocolState.observe who program state) =
+        eventOwner? program ⟨count, inside⟩ := by
+  intro Γ openNames program refs registry revelations outputs offset count
+  induction count generalizing Γ openNames program refs registry revelations outputs offset with
+  | zero =>
+      intro state native related inside
+      cases program with
+      | ret payoffs => simp only [eventCount] at inside; omega
+      | sample name fresh law next =>
+          obtain ⟨source, rfl, _, _, _⟩ := related
+          rfl
+      | commit name owner fresh guard next =>
+          obtain ⟨source, rfl, _, _, _⟩ := related
+          rfl
+      | reveal published owner name fresh selected unresolved next =>
+          obtain ⟨source, rfl, _, _, _⟩ := related
+          rfl
+  | succ count ih =>
+      intro state native related inside
+      cases program with
+      | ret payoffs => exact related.elim
+      | sample name fresh law next =>
+          cases state with
+          | inl source => exact related.elim
+          | inr rest =>
+              have within : count < eventCount next := by simpa [eventCount] using inside
+              exact ih next _ _ _ _ (offset + 1) rest native related within
+      | commit name owner fresh guard next =>
+          cases state with
+          | inl source => exact related.elim
+          | inr rest =>
+              have within : count < eventCount next := by simpa [eventCount] using inside
+              exact ih next _ _ _ _ (offset + 1) rest native related within
+      | reveal published owner name fresh selected unresolved next =>
+          cases state with
+          | inl source => exact related.elim
+          | inr rest =>
+              have within : count < eventCount next := by simpa [eventCount] using inside
+              exact ih next _ _ _ _ (offset + 1) rest native related within
+
 end Vegas.SourceProgram.RevealService
