@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceRepeatedWindow
+import Vegas.Game.SourceServiceImplementationSegment
 import Vegas.Pending.ReactiveRepeatedSubmissionData
 import Vegas.Pending.ReactiveBindingForeignInclusion
 
@@ -80,11 +81,9 @@ theorem repeated_binding_block_coupling
     ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player ++ ending) original ∧
-      coupling.map Prod.snd =
-        (strategy.runJoint owner players (rosterScheduler setup leaks rosters network)
-          visits.length repaired memory).bind (fun next =>
-            ((runtime setup).runInteractionPlan leaks players network ending next.1).map
-              fun final => (final, next.2)) ∧
+      coupling.map Prod.snd = strategy.runJoint owner players
+        (rosterScheduler setup leaks rosters network)
+          (visits.map ServiceInstruction.player ++ ending).length repaired memory ∧
       ∀ next ∈ coupling.support,
         (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
@@ -252,7 +251,10 @@ theorem repeated_binding_block_coupling
           ((runtime setup).runInteractionPlan leaks players network ending) :=
         (FinDist.bind_map ..).symm
       _ = _ := by rw [first, ← (runtime setup).runInteractionPlan_append]
-  · rw [FinDist.map_bindOnSupport]
+  · rw [roster_runJoint_append_reserved setup leaks rosters network strategy owner players
+      before (visits.map ServiceInstruction.player) ending after split
+      (by simp [ending]) repaired memory (by rw [← frame.service]; exact position),
+      List.length_map, FinDist.map_bindOnSupport]
     calc
       _ = window.bind (fun next =>
           ((runtime setup).runInteractionPlan leaks players network ending next.2.1).map

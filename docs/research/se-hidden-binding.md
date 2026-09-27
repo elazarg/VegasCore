@@ -327,7 +327,8 @@ window remains part of the full-source stopped-run proof.
 The actual omission block is checked in `ReactiveBindingDeadline` and
 `silent_or_spent_binding_omission`: after the
 required response, reserved inclusion skips already published replays, the
-specified clock steps reach the deadline, and expiry records `missedBinding`.
+specified clock steps reach the deadline, and expiry records
+`Vegas.EventGraphRuntime.PublicView.missedBinding`.
 That evidence persists under arbitrary later native responses and scheduling.
 This establishes the operational case, not a complete collected-penalty or SE
 comparison for the full source language.

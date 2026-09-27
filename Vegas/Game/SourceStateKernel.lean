@@ -5,8 +5,9 @@ import Vegas.Game.SourceContinuation
 /-! # One-step reductions for the actual source protocol
 
 The syntactic policy supplies the action marginals in the existing protocol
-step. These equations reduce that finite product at a reveal and commute with
-the protocol's residual-state embedding. They introduce no alternative runner.
+step. These equations reduce public sampling, binding and disclosure and
+commute with the protocol's residual-state embedding. They introduce no
+alternative runner.
 -/
 
 noncomputable section
@@ -35,6 +36,125 @@ theorem behavioralStateStep_ret {Γ : SourceCtx Player L}
     (profile : BehavioralProfile (.ret result)) (state : Config Player L Γ) :
     behavioralStateStep (.ret result) profile state = FinDist.pure state := by
   simp [behavioralStateStep, terminal]
+
+section Sample
+
+variable {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {payload : L.Ty}
+  {fresh : name ∉ Γ.map Prod.fst} {law : L.DistExpr (SourcePublicCtx L Γ) payload}
+  {next : SourceProgram Player L ((name, .publicData payload) :: Γ) O}
+
+/-- The source chance step draws the original public distribution and does
+not depend on the players' simultaneous action marginals. -/
+theorem behavioralStateStep_sample_entry
+    (profile : BehavioralProfile (.sample name fresh law next))
+    (config : Config Player L Γ) :
+    behavioralStateStep (.sample name fresh law next) profile (.inl config) =
+      (L.evalDist law (sourcePublicEnv config.state)).map (fun value =>
+        Sum.inr (entry next (sampleSuccessor name config value))) := by
+  simp only [behavioralStateStep, terminal, ite_false, step, Sum.elim_inl, FinDist.bind_const]
+
+theorem behavioralStateStep_sample_tail
+    (profile : BehavioralProfile (.sample name fresh law next))
+    (state : ProtocolState next) :
+    behavioralStateStep (.sample name fresh law next) profile (.inr state) =
+      (behavioralStateStep next (afterSample profile) state).map Sum.inr := by
+  classical
+  by_cases stopped : terminal next state
+  · simp [behavioralStateStep, terminal, stopped]
+  · simp only [behavioralStateStep, terminal, stopped, ite_false, observe,
+      BehavioralPolicy.protocolAction, Sum.elim_inr, afterSample, step, FinDist.map_bind]
+
+/-- A source prefix samples once and continues in the same residual protocol. -/
+theorem behavioralStatePrefix_sample
+    (profile : BehavioralProfile (.sample name fresh law next))
+    (config : Config Player L Γ) (count : Nat) :
+    (fun distribution => distribution.bind (behavioralStateStep
+      (.sample name fresh law next) profile))^[count + 1]
+        (FinDist.pure (entry _ config)) =
+      (L.evalDist law (sourcePublicEnv config.state)).bind fun value =>
+        ((fun distribution => distribution.bind
+          (behavioralStateStep next (afterSample profile)))^[count]
+          (FinDist.pure (entry next (sampleSuccessor name config value)))).map Sum.inr := by
+  induction count with
+  | zero =>
+      simp only [entry]
+      rw [Function.iterate_one, FinDist.pure_bind, behavioralStateStep_sample_entry]
+      simp only [Function.iterate_zero_apply, FinDist.map_pure, ← FinDist.map_eq_bind]
+      rfl
+  | succ count ih =>
+      rw [Function.iterate_succ_apply', ih, FinDist.bind_bind]
+      apply FinDist.bind_congr
+      intro value _supported
+      rw [Function.iterate_succ_apply', FinDist.bind_map, FinDist.map_bind]
+      exact FinDist.bind_congr fun state _ => behavioralStateStep_sample_tail profile state
+
+end Sample
+
+section Binding
+
+variable {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId}
+  {owner : Player} {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst}
+  {guard : SourceGuard L Γ owner name payload}
+  {next : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O)}
+
+/-- Only the owner's actual binding marginal affects the source commitment
+step; no support conditioning or new commitment interface is introduced. -/
+theorem behavioralStateStep_commit_entry
+    (profile : BehavioralProfile (.commit name owner fresh guard next))
+    (config : Config Player L Γ) :
+    behavioralStateStep (.commit name owner fresh guard next) profile (.inl config) =
+      (commitKernel profile (config.view owner)).map (fun value =>
+        Sum.inr (entry next (commitSuccessor name guard config value))) := by
+  classical
+  let program := SourceProgram.commit name owner fresh guard next
+  let laws who := (profile who).protocolAction program (observe who program (.inl config))
+  let advance (action : Option (OwnAction Player L)) :=
+    Sum.inr (α := Config Player L Γ)
+      (entry next (commitSuccessor name guard config (OwnAction.binding owner name payload action)))
+  simp only [behavioralStateStep, terminal, ite_false, step, Sum.elim_inl]
+  change ((FinDist.pi laws).bind fun joint => FinDist.pure (advance (joint owner))) = _
+  rw [← FinDist.map_eq_bind]
+  change (FinDist.pi laws).map (advance ∘ fun joint => joint owner) = _
+  rw [← FinDist.map_comp, FinDist.map_apply_pi]
+  simp only [laws, program, BehavioralPolicy.protocolAction, observe, Sum.elim_inl,
+    dite_true, FinDist.map_comp, Function.comp_def, advance, OwnAction.binding_commit, commitKernel]
+
+theorem behavioralStateStep_commit_tail
+    (profile : BehavioralProfile (.commit name owner fresh guard next))
+    (state : ProtocolState next) :
+    behavioralStateStep (.commit name owner fresh guard next) profile (.inr state) =
+      (behavioralStateStep next (afterCommit profile) state).map Sum.inr := by
+  classical
+  by_cases stopped : terminal next state
+  · simp [behavioralStateStep, terminal, stopped]
+  · simp only [behavioralStateStep, terminal, stopped, ite_false, observe,
+      BehavioralPolicy.protocolAction, Sum.elim_inr, afterCommit, step, FinDist.map_bind]
+
+/-- A finite source prefix draws the original binding policy and then executes
+its residual source protocol, retaining the exact private binding choice. -/
+theorem behavioralStatePrefix_commit
+    (profile : BehavioralProfile (.commit name owner fresh guard next))
+    (config : Config Player L Γ) (count : Nat) :
+    (fun law => law.bind (behavioralStateStep
+      (.commit name owner fresh guard next) profile))^[count + 1]
+        (FinDist.pure (entry _ config)) =
+      (commitKernel profile (config.view owner)).bind fun value =>
+        ((fun law => law.bind (behavioralStateStep next (afterCommit profile)))^[count]
+          (FinDist.pure (entry next (commitSuccessor name guard config value)))).map Sum.inr := by
+  induction count with
+  | zero =>
+      simp only [entry]
+      rw [Function.iterate_one, FinDist.pure_bind, behavioralStateStep_commit_entry]
+      simp only [Function.iterate_zero_apply, FinDist.map_pure, ← FinDist.map_eq_bind]
+      rfl
+  | succ count ih =>
+      rw [Function.iterate_succ_apply', ih, FinDist.bind_bind]
+      apply FinDist.bind_congr
+      intro value _supported
+      rw [Function.iterate_succ_apply', FinDist.bind_map, FinDist.map_bind]
+      exact FinDist.bind_congr fun state _ => behavioralStateStep_commit_tail profile state
+
+end Binding
 
 variable {Γ : SourceCtx Player L} {O : Finset VarId} {published name : VarId}
   {owner : Player} {payload : L.Ty} {fresh : published ∉ Γ.map Prod.fst}

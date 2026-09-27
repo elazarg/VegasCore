@@ -275,8 +275,13 @@ objective. The remaining proof obligations are:
    applies original-memory disclosure normalization and represents the result
    in the retained menu at every input. Exact replay behavior is checked for
    foreign, early and already-submitted opportunities. The final owned
-   decision law and complete initialized fold still require composition;
-   totality alone is not semantic correctness. The
+   decision law and complete initialized source fold still require composition.
+   The [physical compiler law](../../Vegas/Game/SourceServiceCompiledExecution.lean)
+   derives admissibility at every actual retained history from source legality
+   and the declared resource bounds. Its complete finite-game execution equals
+   the actual normalized source policy's physical execution, jointly retaining
+   native observations and recall. Relating that execution to the original
+   source protocol and assessment remains necessary. The
    [full-source prefix support](../../Vegas/Game/SourceServicePrefixSupport.lean)
    composes all event constructors under arbitrary retained policies. It
    derives the decoded source state, exact residual compiler alignment and
@@ -405,6 +410,10 @@ objective. The remaining proof obligations are:
    readiness and public serial facts from a real retained trace. Every repaired
    endpoint has another real retained trace; the rejected alternative supplies
    the newly emitted authentic traffic record.
+   [First-submission provenance](../../Vegas/Game/SourceServiceSubmittedBinding.lean)
+   extracts the actual first typed binding and remaining roster from every
+   retained decision that already records a submission, including the sampled
+   activation at that decision.
    The
    [repeated window](../../Vegas/Pending/ReactiveRepeatedSubmissionWindow.lean)
    composes those alternatives across the entire remaining roster, retaining
@@ -416,7 +425,8 @@ objective. The remaining proof obligations are:
    arbitrary foreign traffic. The
    [complete repeated block](../../Vegas/Game/SourceServiceRepeatedBlock.lean)
    composes this actual window with protected inclusion, ticks and expiry,
-   retaining the joint repaired execution and memory law. Its alternatives are
+   retaining the single implementation runner's joint execution and memory
+   law over the entire block, including settlement. Its alternatives are
    the concrete repair frame or actual attributed traffic evidence. The
    [required final response](../../Vegas/Pending/ReactiveBindingRequiredStep.lean)
    additionally covers silence or replay at the last binding opportunity:
@@ -432,6 +442,11 @@ objective. The remaining proof obligations are:
    rejected record, or the actual missed-binding obligation. Whole-program
    stopped composition and legal repaired-history support remain
    open. The
+   [frame audit laws](../../Vegas/Pending/ReactiveBindingFrameAudit.lean)
+   retain the exact authentic traffic sequence and public omission flags.
+   Combined with retained-history soundness, they prove that a forbidden
+   record cannot be an old, already incurred alarm on a good branch. They do
+   not replace the whole-program incremental-settlement comparison. The
    [physical continuation](../../Interaction/ReactiveTrafficContinuation.lean)
    and [service-plan persistence](../../Vegas/Pending/ReactiveServiceTraffic.lean)
    retain such records through arbitrary later responses and instructions.

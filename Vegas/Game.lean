@@ -37,9 +37,12 @@ import Vegas.Game.SourceServiceConformance
 import Vegas.Game.SourceServiceTrafficSound
 import Vegas.Game.SourceServiceOmission
 import Vegas.Game.SourceServiceBindingRepair
+import Vegas.Game.SourceServiceSubmittedBinding
 import Vegas.Game.SourceServiceRepeatedWindow
+import Vegas.Game.SourceServiceImplementationSegment
 import Vegas.Game.SourceServiceRepeatedBlock
 import Vegas.Game.SourceServiceExecution
+import Vegas.Game.SourceServiceCompiledExecution
 import Vegas.Game.SourceServiceCoverage
 import Vegas.Game.SourceServiceFactorization
 import Vegas.Game.SourceServiceSampleFactorization

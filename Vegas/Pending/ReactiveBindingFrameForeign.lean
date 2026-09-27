@@ -47,13 +47,13 @@ theorem setAccepted (frame : Frame runtime leaks memory owner original repaired)
       { view with publicView := { view.publicView with accepted := accepted } })
         (frame.views actor different)
 
-/-- Reserved inclusion of another player's fixed canonical candidate retains
-the complete frame, for successful or failed private material. -/
-theorem foreign_binding_inclusion
+/-- A pre-existing pending binding needs no shadow entry when both candidates
+have the same typed result. This includes the repaired player's own lawful
+binding submitted before the conditional continuation began. -/
+theorem binding_inclusion_unmodified
     (frame : Frame runtime leaks memory owner original repaired)
-    (past : memory.shadow.CompletedAt original.application.config)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
-    (actor : Player) (different : actor ≠ owner) (payload : L.Ty)
+    (actor : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding actor payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind actor payload)
@@ -64,6 +64,11 @@ theorem foreign_binding_inclusion
     (vacant : original.application.accepted (.inr event) = none)
     (unused : original.application.HandleUnused candidate)
     (fixed : original.application.candidates.lookup candidate ≠ .fresh)
+    (rightFixed : repaired.application.candidates.lookup candidate ≠ .fresh)
+    (sameResult : repaired.application.bindingResult candidate payload =
+      original.application.bindingResult candidate payload)
+    (noValue : memory.shadow.values (.inr event) = none)
+    (noAction : memory.shadow.actions event = none)
     (evidence : Option (OpeningFact graph))
     (found : original.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, evidence⟩⟩) :
@@ -91,26 +96,13 @@ theorem foreign_binding_inclusion
   have rightUnused : repaired.application.HandleUnused candidate := by
     intro field associated
     exact unused field ((congrFun accepted field).trans associated)
-  have candidates : original.application.candidates.lookup candidate =
-      repaired.application.candidates.lookup candidate := by
-    have observed := congrArg PlayerView.candidates (frame.views actor different)
-    have handleEq : candidate = (actor, candidate.2) := by
-      exact Prod.ext owned rfl
-    rw [handleEq]
-    exact congrFun observed candidate.2
-  have rightFixed : repaired.application.candidates.lookup candidate ≠ .fresh :=
-    candidates ▸ fixed
-  have sameResult : repaired.application.bindingResult candidate payload =
-      original.application.bindingResult candidate payload := by
-    unfold State.bindingResult
-    rw [candidates]
   let action : graph.Action event := cast (congrArg EventField.Action outputEq.symm)
     (original.application.bindingResult candidate payload)
   let value : (graph.outputLayout event).Value := cast (congrArg EventField.Value outputEq.symm)
     (original.application.bindingResult candidate payload)
   let association := Function.update original.application.accepted (.inr event) (some candidate)
   have completed := frame.complete_unmodified event ready rightReady
-    (past.ready_none event ready).2 (past.ready_none event ready).1 action value
+    noValue noAction action value
   have paired := completed.setAccepted association
   apply frame.include_accepted id _ found _ _ paired
   · rw [handle_commitment_eq runtime original.application id event candidate actor payload outputEq
@@ -124,5 +116,45 @@ theorem foreign_binding_inclusion
     change some { (repaired.application.complete event rightReady action value) with
       accepted := Function.update repaired.application.accepted (.inr event) (some candidate) } = _
     rw [← accepted]
+
+/-- Reserved inclusion of another player's fixed canonical candidate retains
+the complete frame, for successful or failed private material. -/
+theorem foreign_binding_inclusion
+    (frame : Frame runtime leaks memory owner original repaired)
+    (past : memory.shadow.CompletedAt original.application.config)
+    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
+    (actor : Player) (different : actor ≠ owner) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding actor payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind actor payload)
+    (node : nodeView graph event = .bind actor payload outputEq codeEq)
+    (ready : original.application.config.cut.Ready event)
+    (timely : original.application.WithinDeadline runtime event)
+    (sender : id.1 = actor) (owned : candidate.1 = actor)
+    (vacant : original.application.accepted (.inr event) = none)
+    (unused : original.application.HandleUnused candidate)
+    (fixed : original.application.candidates.lookup candidate ≠ .fresh)
+    (evidence : Option (OpeningFact graph))
+    (found : original.network.lookup id =
+      some ⟨id, ⟨.commitment event candidate, evidence⟩⟩) :
+    let app := runtime.reactiveApplication leaks
+    Frame runtime leaks memory owner
+      { original.includePending app id with environmentRecall := original.environmentRecall ++
+        [⟨original.observeEnvironment app, .include id⟩] }
+      { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
+        [⟨repaired.observeEnvironment app, .include id⟩] } := by
+  have candidates : original.application.candidates.lookup candidate =
+      repaired.application.candidates.lookup candidate := by
+    have observed := congrArg PlayerView.candidates (frame.views actor different)
+    have handleEq : candidate = (actor, candidate.2) := Prod.ext owned rfl
+    rw [handleEq]
+    exact congrFun observed candidate.2
+  have sameResult : repaired.application.bindingResult candidate payload =
+      original.application.bindingResult candidate payload := by
+    unfold State.bindingResult
+    rw [candidates]
+  exact frame.binding_inclusion_unmodified id event candidate actor payload outputEq codeEq node
+    ready timely sender owned vacant unused fixed (candidates ▸ fixed) sameResult
+    (past.ready_none event ready).2 (past.ready_none event ready).1 evidence found
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame
