@@ -1,0 +1,186 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.RevealServiceWatcherSupport
+import Vegas.Game.RevealServiceTrafficSound
+import Vegas.Game.RevealServiceReplayRelation
+import Vegas.Pending.ReactiveServicePublication
+
+/-! # Clean source prefixes used by replay continuation comparison
+
+The facts concern every legal history of the retained service, including
+histories outside equilibrium support. In particular, activation cannot sample
+a newly transmitted unpublished packet in this source restriction.
+-/
+
+noncomputable section
+
+namespace Vegas.SourceProgram.RevealService
+
+open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+open GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (bounds : MessageBounds (graph setup)) (watcher : Player)
+  (reveals : setup.program.RevealOnly)
+  (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
+  (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
+
+include reveals observer openable in
+theorem active_history_clean (history : (protocol setup leaks bounds watcher).History)
+    (control : (application setup leaks).Control) (state : history.state = some control)
+    (who : Player) (active : control.actor = some who) :
+    control.execution.network.leaked = (fun _ => []) ∧
+      (∀ message ∈ control.execution.network.pending,
+        message.id ∈ control.execution.network.ledger.map Message.id) ∧
+      (∀ input ∈ control.execution.network.inputs,
+        input.envelope.id ∈ control.execution.network.ledger.map Message.id) := by
+  by_cases watches : who = watcher
+  · subst who
+    exact watcher_history_clean setup leaks bounds watcher reveals observer openable
+      history control state active
+  · let responses := menu setup leaks bounds watcher
+    let reference := responses.uniformPolicy (initialLaw setup) (horizon setup watcher)
+      (scheduler setup leaks watcher)
+    have acts : (protocol setup leaks bounds watcher).active history.state who := by
+      change (application setup leaks).actor history.state = some who
+      rw [state]
+      exact active
+    obtain ⟨event, owned, _depth, supported⟩ := owner_history_supported setup leaks bounds
+      watcher who reveals watches history acts
+    obtain ⟨boundary, _boundarySupport, current, initial, _initialSupport, source,
+        _before, related, _decoded⟩ := owner_supported setup leaks bounds watcher who reveals
+      observer openable reference event owned history supported
+    have same : control =
+        ⟨horizon setup watcher - blockOffset event.val - 2, some who,
+          ownerOpportunity setup leaks event who boundary⟩ :=
+      Option.some.inj (state.symm.trans current)
+    subst control
+    exact PrefixCheckpoint.runtime_fact (fun execution =>
+      execution.network.leaked = (fun _ => []) ∧
+        (∀ message ∈ execution.network.pending,
+          message.id ∈ execution.network.ledger.map Message.id) ∧
+        (∀ input ∈ execution.network.inputs,
+          input.envelope.id ∈ execution.network.ledger.map Message.id))
+      (fun _ _ _ _ checkpoint => ⟨checkpoint.leaked, checkpoint.pending, checkpoint.inputs⟩)
+      _ _ _ _ _ _ _ _ related
+
+include reveals observer openable in
+/-- Cleanliness before activation follows from the actual reachable active
+history. No assumption about the passive sampler is needed. -/
+theorem before_activation_published
+    (history : (protocol setup leaks bounds watcher).History)
+    (remaining : Nat) (execution : (application setup leaks).Execution)
+    (state : history.state = some ⟨remaining + 1, none, execution⟩) (who : Player)
+    (scheduled : (.activate who) ∈
+      (scheduler setup leaks watcher execution.environmentRecall
+        (execution.observeEnvironment (application setup leaks))).support) :
+    ∀ message ∈ execution.network.pending,
+      message.id ∈ execution.network.ledger.map Message.id := by
+  let app := application setup leaks
+  let selected := (app.observePending who execution.network.pending).support_nonempty.choose
+  have selectedSupport : selected ∈ (app.observePending who execution.network.pending).support :=
+    (app.observePending who execution.network.pending).support_nonempty.choose_spec
+  let learned := { execution with network := execution.network.learn who selected }
+  let next : app.Execution := { learned with environmentRecall := execution.environmentRecall ++
+    [⟨execution.observeEnvironment app, .activate who⟩] }
+  have nextSupport : next ∈ (execution.environmentStep app (.activate who)).support := by
+    rw [ReactiveApplication.Execution.environmentStep, FinDist.support_map]
+    refine ⟨learned, ?_, rfl⟩
+    rw [FinDist.support_map]
+    exact ⟨selected, selectedSupport, rfl⟩
+  have legal : (protocol setup leaks bounds watcher).Legal history.state (fun _ => none) := by
+    rw [state]
+    refine ⟨?_, ?_⟩
+    · change ¬ app.terminal (some ⟨remaining + 1, none, execution⟩)
+      simp [ReactiveApplication.terminal]
+    · intro player
+      change ¬ app.actor (some ⟨remaining + 1, none, execution⟩) = some player
+      simp [ReactiveApplication.actor]
+  have transition : some ⟨remaining, some who, next⟩ ∈
+      ((protocol setup leaks bounds watcher).step history.state
+        ⟨fun _ => none, legal⟩).support := by
+    change _ ∈ (app.transition (initialLaw setup) (horizon setup watcher)
+      (scheduler setup leaks watcher) history.state (fun _ => none)).support
+    rw [state, ReactiveApplication.transition, FinDist.support_bind]
+    apply Set.mem_iUnion₂.mpr
+    refine ⟨.activate who, scheduled, ?_⟩
+    rw [FinDist.support_map]
+    exact ⟨next, nextSupport, rfl⟩
+  let after := history.extend legal transition
+  have clean := active_history_clean setup leaks bounds watcher reveals observer openable
+    after ⟨remaining, some who, next⟩ rfl who rfl
+  exact clean.2.1
+
+include reveals observer openable in
+/-- The retained watcher contributes no wire input at any source prefix. -/
+theorem watcher_input_absent
+    (history : (protocol setup leaks bounds watcher).History)
+    (control : (application setup leaks).Control) (state : history.state = some control)
+    (input : NetworkInput Player (application setup leaks).Payload)
+    (member : input ∈ control.execution.network.inputs) : input.broadcaster ≠ watcher := by
+  let app := application setup leaks
+  have allInputs := app.stateTraffic_inputs (initialLaw setup) (horizon setup watcher)
+    (scheduler setup leaks watcher)
+    ((menu setup leaks bounds watcher).toRawTrace (initialLaw setup) (horizon setup watcher)
+      (scheduler setup leaks watcher) history.trace)
+  change (app.stateTraffic history.state).map ReactiveApplication.TrafficRecord.input = _
+    at allInputs
+  rw [state] at allInputs
+  change (app.stateTraffic (some control)).map ReactiveApplication.TrafficRecord.input =
+    control.execution.network.inputs at allInputs
+  rw [← allInputs] at member
+  obtain ⟨record, recorded, rfl⟩ := List.mem_map.mp member
+  have allowed := retained_history_traffic setup leaks bounds watcher reveals observer openable
+    history record (by simpa only [state] using recorded)
+  exact ((permittedTraffic_iff setup leaks watcher record).mp allowed).1
+
+include reveals observer openable in
+/-- The fixed service makes the same scheduler choice after watcher aliases.
+Its report command is inert because the watcher's inputs are all published. -/
+theorem replay_scheduler_eq
+    (history : (protocol setup leaks bounds watcher).History)
+    (control : (application setup leaks).Control) (state : history.state = some control)
+    (second : (application setup leaks).Execution)
+    (same : ReplayAgreement setup leaks watcher control.execution second) :
+    scheduler setup leaks watcher control.execution.environmentRecall
+        (control.execution.observeEnvironment (application setup leaks)) =
+      scheduler setup leaks watcher second.environmentRecall
+        (second.observeEnvironment (application setup leaks)) := by
+  let app := application setup leaks
+  have firstQuiet := app.includeReported_wait_of_published watcher
+    (control.execution.observeEnvironment app) (by
+      intro input member watches
+      exact (watcher_input_absent setup leaks bounds watcher reveals observer openable
+        history control state input member watches).elim)
+  have secondQuiet := app.includeReported_wait_of_published watcher
+    (second.observeEnvironment app) same.watcherPublished
+  unfold scheduler
+  rw [same.position]
+  cases current : (plan setup watcher)[second.environmentRecall.length]? with
+  | none => rfl
+  | some instruction =>
+      cases instruction with
+      | player who | grant event | sample event | tick | expire event => rfl
+      | includeLatest event owner =>
+          exact congrArg FinDist.pure (same.reserved_selection event owner)
+      | wire =>
+          dsimp only
+          rw [(runtime setup).reportNetwork_instruction,
+            (runtime setup).reportNetwork_instruction, firstQuiet, secondQuiet]
+
+omit [Fintype Player] in
+theorem scheduler_inclusion_fresh
+    (past : List (application setup leaks).EnvironmentEntry)
+    (view : (application setup leaks).EnvironmentView) (id : MessageId Player)
+    (selected : (.include id) ∈ (scheduler setup leaks watcher past view).support) :
+    id ∉ view.network.ledger.map Message.id := by
+  unfold scheduler at selected
+  split at selected
+  · cases FinDist.mem_support_pure.mp selected
+  · exact (runtime setup).interactionInstruction_fresh leaks
+      ((runtime setup).reportNetwork leaks watcher) past view _ id selected
+
+end Vegas.SourceProgram.RevealService

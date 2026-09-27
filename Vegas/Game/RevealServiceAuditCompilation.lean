@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceEquilibrium
-import Vegas.Game.RevealServiceAuditExtension
+import Vegas.Pending.ReactiveAuditEquilibrium
 import Vegas.Game.RevealServiceAuditDeposits
 import Vegas.Game.RevealServiceTrafficDeparture
 import Vegas.Game.RevealServiceTrafficSound
@@ -99,8 +99,13 @@ theorem audited_source_sequential_equilibrium_preserved
       positive who
     change _ - _ ≤ probability who * deposit who at bound
     linarith
-  obtain ⟨target, targetSE, targetLaw⟩ := audited_raw_of_traffic setup leaks extended watcher
-    reveals observer (permittedTraffic setup leaks watcher) sample authentic
+  obtain ⟨target, targetSE, targetLaw⟩ := extended.audited_raw_sequential_equilibrium
+    (runtime setup) leaks (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)
+    (menu setup leaks extended watcher) (menu_in_effective setup leaks extended watcher)
+    (fun who site => decisionDepth setup leaks watcher who site.1)
+    (menu_common_decision_depth setup leaks (extended.menu (runtime setup) leaks) watcher
+      reveals observer)
+    (permittedTraffic setup leaks watcher) sample authentic
     (retained_history_traffic setup leaks extended watcher reveals observer openable)
     (extra_choice_traffic setup leaks extended watcher reveals observer openable)
     base (baseUtility_normalization setup leaks utility)

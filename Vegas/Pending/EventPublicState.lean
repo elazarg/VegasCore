@@ -77,4 +77,40 @@ theorem State.publicView_bindingIncludable (runtime : EventGraphRuntime graph)
     · simp [handle, ready, timely]
   · simp [handle, ready]
 
+/-- A withholding packet is accepted exactly at a timely, ready revelation
+owned by its author. Hidden binding values and remembered intentions do not
+enter this test. -/
+theorem handle_withhold_isSome_iff (runtime : EventGraphRuntime graph)
+    (state : State graph) (id : MessageId Player) (event : graph.EventId) :
+    (handle runtime state ⟨id, .withhold event⟩).isSome = true ↔
+      state.config.cut.Ready event ∧ state.WithinDeadline runtime event ∧
+        match nodeView graph event with
+        | .resolve owner _ _ _ _ _ => id.1 = owner
+        | _ => False := by
+  by_cases ready : state.config.cut.Ready event
+  · by_cases timely : state.WithinDeadline runtime event
+    · cases node : nodeView graph event with
+      | bind | sample => simp [handle, ready, timely, node]
+      | resolve owner payload binding checks outputEq codeEq =>
+          by_cases sender : id.1 = owner
+          · simp only [handle, ready, timely, node, Message.sender, sender, ↓reduceDIte,
+              and_self]
+            change ((EventCode.resolveOutput? binding checks _
+              state.config.store).bind _).isSome = true ↔ True
+            simp only [Option.isSome_bind]
+            change (EventCode.resolveOutput? binding checks _ state.config.store).isSome = true ↔
+              True
+            have defined (disclose : Bool) :
+                (EventCode.resolveOutput? binding checks disclose state.config.store).isSome =
+                  true := by
+              apply EventCode.resolveOutput?_isSome
+              intro field read
+              apply state.config.read_available ready
+              rw [← EventCode.readFields_cast outputEq (graph.nodes event), codeEq]
+              exact read
+            simp only [defined, iff_self]
+          · simp [handle, ready, timely, node, Message.sender, sender]
+    · simp [handle, ready, timely]
+  · simp [handle, ready]
+
 end Vegas.EventGraphRuntime

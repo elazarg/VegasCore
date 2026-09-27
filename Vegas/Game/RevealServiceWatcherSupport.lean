@@ -66,6 +66,8 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
     (pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
     (leaked : execution.network.leaked = fun _ => [])
+    (inputs : ∀ input ∈ execution.network.inputs,
+      input.envelope.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
     (response : (application setup leaks).Action)
     (allowed : response ∈ ordinaryActions setup leaks bounds owner (execution.recall owner)
@@ -76,7 +78,9 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
       (execution.respond (application setup leaks) owner response)).support) :
     (∀ message ∈ next.network.pending,
       message.id ∈ next.network.ledger.map Message.id) ∧
-      next.network.leaked = fun _ => [] := by
+      next.network.leaked = (fun _ => []) ∧
+      (∀ input ∈ next.network.inputs,
+        input.envelope.id ∈ next.network.ledger.map Message.id) := by
   let app := application setup leaks
   rcases ordinary_response_cases setup leaks bounds owner _ _ response allowed with
     silent | opening | replay
@@ -88,7 +92,7 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
     simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
       FinDist.mem_support_pure] at reached
     subst next
-    exact ⟨pending, leaked⟩
+    exact ⟨pending, leaked, inputs⟩
   · obtain ⟨candidate, raw, evidence, rfl⟩ := opening_shape setup leaks owner _ _ event
       granted response opening
     let submitted := execution.respond app owner
@@ -114,12 +118,15 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
     subst next
     change (∀ message ∈ (submitted.includePending app id).network.pending,
       message.id ∈ (submitted.includePending app id).network.ledger.map Message.id) ∧
-      (submitted.includePending app id).network.leaked = fun _ => []
+      (submitted.includePending app id).network.leaked = (fun _ => []) ∧
+      (∀ input ∈ (submitted.includePending app id).network.inputs,
+        input.envelope.id ∈ (submitted.includePending app id).network.ledger.map Message.id)
     rw [app.includePending_network]
-    exact ⟨submitted.network.include_pending_published_or_selected id _ found oldOrNew,
-      by change (submitted.network.includePending id).2.leaked = fun _ => []
-         rw [MessageNetwork.includePending, found]
-         exact leaked⟩
+    refine ⟨submitted.network.include_pending_published_or_selected id _ found oldOrNew, ?_, ?_⟩
+    · change (submitted.network.includePending id).2.leaked = fun _ => []
+      rw [MessageNetwork.includePending, found]
+      exact leaked
+    · exact (execution.network.submit_include_published owner packet pending inputs serials).2.1
   · obtain ⟨message, published, rfl⟩ := replay
     have spent : message.id ∈ execution.network.ledger.map Message.id :=
       List.mem_map.mpr ⟨message, published, rfl⟩
@@ -129,7 +136,8 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
     simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
       FinDist.mem_support_pure] at reached
     subst next
-    refine ⟨execution.network.replay_pending_published owner message.id pending spent, ?_⟩
+    refine ⟨execution.network.replay_pending_published owner message.id pending spent, ?_,
+      execution.network.replay_inputs_published owner message.id inputs spent⟩
     change (execution.network.replay owner message.id).2.leaked = fun _ => []
     unfold MessageNetwork.replay
     split <;> exact leaked
@@ -174,6 +182,8 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
     (pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
     (leaked : execution.network.leaked = fun _ => [])
+    (inputs : ∀ input ∈ execution.network.inputs,
+      input.envelope.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
     (ordinary : ∀ response ∈ (players owner (execution.recall owner)
       (execution.observe (application setup leaks) owner)).support,
@@ -184,7 +194,11 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
       (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher) players))^[3]
       (FinDist.pure (some ⟨remaining + 2, some owner, execution⟩))).support) :
     ∃ next, state = some ⟨remaining, some watcher, next⟩ ∧
-      next.network.leaked = fun _ => [] := by
+      next.network.leaked = (fun _ => []) ∧
+      (∀ message ∈ next.network.pending,
+        message.id ∈ next.network.ledger.map Message.id) ∧
+      (∀ input ∈ next.network.inputs,
+        input.envelope.id ∈ next.network.ledger.map Message.id) := by
   let app := application setup leaks
   have first : app.controlStep (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) players (some ⟨remaining + 2, some owner, execution⟩) =
@@ -208,8 +222,9 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
       (execution.respond app owner response) (remaining + 1) cursor responsePosition includeAt,
     FinDist.support_map] at middleReached
   obtain ⟨next, included, rfl⟩ := middleReached
-  obtain ⟨published, quiet⟩ := ordinary_inclusion_published setup leaks bounds players
-    watcher owner event execution granted pending leaked serials response
+  obtain ⟨published, quiet, inputPublished⟩ :=
+    ordinary_inclusion_published setup leaks bounds players
+    watcher owner event execution granted pending leaked inputs serials response
       (ordinary response supported) next included
   have nextPosition : next.environmentRecall.length = cursor + 1 := by
     have count := (runtime setup).interactionStep_recall leaks players
@@ -224,11 +239,11 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
   rw [scheduled, FinDist.pure_bind,
     next.activate_of_pending_published app watcher published,
     FinDist.map_pure, FinDist.mem_support_pure] at activated
-  exact ⟨_, activated, quiet⟩
+  exact ⟨_, activated, quiet, published, inputPublished⟩
 
 /-- At the watcher's exact service depth, every retained execution has no
 unpublished leaked packet. This holds for every C behavioral profile. -/
-theorem watcher_supported_quiet (bounds : MessageBounds (graph setup))
+theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
     (watcher owner : Player) (reveals : setup.program.RevealOnly)
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
@@ -238,7 +253,11 @@ theorem watcher_supported_quiet (bounds : MessageBounds (graph setup))
     (supported : history ∈ ((information setup leaks bounds watcher).runBehavioral profile
       (blockOffset event.val + 2 * event.val + 6)).support) :
     ∃ control : (application setup leaks).Control, history.state = some control ∧
-      control.actor = some watcher ∧ control.execution.network.leaked = fun _ => [] := by
+      control.actor = some watcher ∧ control.execution.network.leaked = (fun _ => []) ∧
+      (∀ message ∈ control.execution.network.pending,
+        message.id ∈ control.execution.network.ledger.map Message.id) ∧
+      (∀ input ∈ control.execution.network.inputs,
+        input.envelope.id ∈ control.execution.network.ledger.map Message.id) := by
   let responses := menu setup leaks bounds watcher
   let model := information setup leaks bounds watcher
   let players := responses.decodeProfile (initialLaw setup) (horizon setup watcher)
@@ -261,6 +280,11 @@ theorem watcher_supported_quiet (bounds : MessageBounds (graph setup))
   have leaked : execution.network.leaked = fun _ => [] :=
     PrefixCheckpoint.runtime_fact (fun next => next.network.leaked = fun _ => [])
       (fun _ _ _ _ checkpoint => checkpoint.leaked) _ _ _ _ _ _ _ _ related
+  have inputs : ∀ input ∈ execution.network.inputs,
+      input.envelope.id ∈ execution.network.ledger.map Message.id :=
+    PrefixCheckpoint.runtime_fact (fun next => ∀ input ∈ next.network.inputs,
+      input.envelope.id ∈ next.network.ledger.map Message.id)
+      (fun _ _ _ _ checkpoint => checkpoint.inputs) _ _ _ _ _ _ _ _ related
   have serials : execution.network.SerialsBeforeNext :=
     PrefixCheckpoint.runtime_fact (fun next => next.network.SerialsBeforeNext)
       (fun _ _ _ _ checkpoint => checkpoint.serials) _ _ _ _ _ _ _ _ related
@@ -302,24 +326,28 @@ theorem watcher_supported_quiet (bounds : MessageBounds (graph setup))
       (horizon setup watcher - blockOffset event.val - 4) + 2 := by omega
   rw [remaining] at stateSupport
   have different : owner ≠ watcher := fun same => observer event (same ▸ owned)
-  obtain ⟨next, stateEq, quiet⟩ := owner_to_watcher_clean setup leaks bounds players
+  obtain ⟨next, stateEq, quiet, pendingPublished, inputPublished⟩ :=
+    owner_to_watcher_clean setup leaks bounds players
     watcher owner event execution (horizon setup watcher - blockOffset event.val - 4)
-    (blockOffset event.val + 2) position includeAt watcherAt rfl pending leaked serials
+    (blockOffset event.val + 2) position includeAt watcherAt rfl pending leaked inputs serials
     (menu_decode_ordinary setup leaks bounds watcher profile owner different _ _)
     history.state stateSupport
-  exact ⟨_, stateEq, rfl, quiet⟩
+  exact ⟨_, stateEq, rfl, quiet, pendingPublished, inputPublished⟩
 
 /-- Every actual watcher decision in the retained game executes silence.
 The proof uses legal history support, not the selected equilibrium profile. -/
-theorem watcher_history_silent (bounds : MessageBounds (graph setup))
+theorem watcher_history_clean (bounds : MessageBounds (graph setup))
     (watcher : Player) (reveals : setup.program.RevealOnly)
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
     (history : (protocol setup leaks bounds watcher).History)
     (control : (application setup leaks).Control) (state : history.state = some control)
     (active : control.actor = some watcher) :
-    (application setup leaks).reportFirstUnpublished (control.execution.recall watcher)
-      (control.execution.observe (application setup leaks) watcher) = FinDist.pure ⟨none⟩ := by
+    control.execution.network.leaked = (fun _ => []) ∧
+      (∀ message ∈ control.execution.network.pending,
+        message.id ∈ control.execution.network.ledger.map Message.id) ∧
+      (∀ input ∈ control.execution.network.inputs,
+        input.envelope.id ∈ control.execution.network.ledger.map Message.id) := by
   let responses := menu setup leaks bounds watcher
   let reference := responses.uniformPolicy (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher)
@@ -347,10 +375,24 @@ theorem watcher_history_silent (bounds : MessageBounds (graph setup))
       (blockOffset event.val + 2 * event.val + 6)).support := by
     simpa only [actualDepth, ReactiveApplication.ResponseMenu.uniformAssessment,
       InformationModel.BehavioralAssessment.ofStrategy] using supported
-  obtain ⟨reachedControl, reachedState, _reachedActor, quiet⟩ := watcher_supported_quiet
+  obtain ⟨reachedControl, reachedState, _reachedActor, clean⟩ := watcher_supported_clean
     setup leaks bounds watcher owner reveals observer openable reference event owned history atDepth
   have same : reachedControl = control := Option.some.inj (reachedState.symm.trans state)
   subst reachedControl
+  exact clean
+
+/-- The prescribed watcher response is silent at every actual retained site. -/
+theorem watcher_history_silent (bounds : MessageBounds (graph setup))
+    (watcher : Player) (reveals : setup.program.RevealOnly)
+    (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
+    (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
+    (history : (protocol setup leaks bounds watcher).History)
+    (control : (application setup leaks).Control) (state : history.state = some control)
+    (active : control.actor = some watcher) :
+    (application setup leaks).reportFirstUnpublished (control.execution.recall watcher)
+      (control.execution.observe (application setup leaks) watcher) = FinDist.pure ⟨none⟩ := by
+  have quiet := (watcher_history_clean setup leaks bounds watcher reveals observer openable
+    history control state active).1
   apply (application setup leaks).reportFirstUnpublished_silent
   intro message seen
   change message ∈ control.execution.network.leaked watcher at seen

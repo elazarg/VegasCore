@@ -60,6 +60,78 @@ def stateTraffic : app.ProtocolState → List app.TrafficRecord
   | none => []
   | some control => app.executionTraffic control.execution
 
+/-- Service operations change delivery and application state, but do not
+invent player transmissions. -/
+theorem environmentStep_inputs (execution next : app.Execution) (command : app.Command)
+    (moved : next ∈ (execution.environmentStep app command).support) :
+    next.network.inputs = execution.network.inputs := by
+  cases command with
+  | wait =>
+      simp only [Execution.environmentStep, FinDist.map_pure] at moved
+      cases FinDist.mem_support_pure.mp moved
+      rfl
+  | activate who =>
+      simp only [Execution.environmentStep, FinDist.map_comp] at moved
+      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ moved
+      rfl
+  | application operation =>
+      simp only [Execution.environmentStep, FinDist.map_comp] at moved
+      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ moved
+      rfl
+  | «include» id =>
+      simp only [Execution.environmentStep, FinDist.map_pure] at moved
+      cases FinDist.mem_support_pure.mp moved
+      simp only [Execution.includePending, MessageNetwork.includePending]
+      cases execution.network.lookup id <;> rfl
+
+private theorem transition_traffic_inputs
+    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (before after : app.ProtocolState) (joint : Principal → Option app.Action)
+    (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
+    before.elim [] (fun control => control.execution.network.inputs) ++
+        (app.trafficStep before after).map TrafficRecord.input =
+      after.elim [] (fun control => control.execution.network.inputs) := by
+  cases before with
+  | none =>
+      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      rfl
+  | some control =>
+      rcases control with ⟨remaining, actor, execution⟩
+      cases actor with
+      | some who =>
+          cases FinDist.mem_support_pure.mp reached
+          clear reached
+          rcases (joint who).getD ⟨none⟩ with ⟨transmission⟩
+          cases transmission with
+          | none => simp [trafficStep, Execution.respond]
+          | some transmission =>
+              cases transmission with
+              | submit submission => simp [trafficStep, Execution.respond, MessageNetwork.submit]
+              | replay id =>
+                  simp only [trafficStep, Execution.respond, MessageNetwork.replay]
+                  split <;> simp
+      | none =>
+          cases remaining with
+          | zero =>
+              cases FinDist.mem_support_pure.mp reached
+              simp [trafficStep]
+          | succ remaining =>
+              obtain ⟨command, _, supported⟩ := Set.mem_iUnion₂.mp
+                (FinDist.support_bind .. ▸ reached)
+              obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+              rw [app.trafficStep_environment execution next command moved remaining]
+              simpa using (app.environmentStep_inputs execution next command moved).symm
+
+private theorem trafficAudit_inputs
+    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+    ∀ {state : app.ProtocolState} (trace : (app.protocol initial horizon scheduler).Trace state),
+      (app.trafficAudit initial horizon scheduler trace).map TrafficRecord.input =
+        state.elim [] (fun control => control.execution.network.inputs)
+  | _, .start => rfl
+  | _, .extend prior joint _legal reached => by
+      rw [trafficAudit, List.map_append, trafficAudit_inputs initial horizon scheduler prior]
+      exact app.transition_traffic_inputs initial horizon scheduler _ _ joint reached
+
 private def trafficReady : app.ProtocolState → Prop
   | none => True
   | some control => control.actor.isSome →
@@ -102,25 +174,7 @@ private theorem traffic_transition
                 obtain ⟨raw, _, rfl⟩ := FinDist.support_map .. ▸ moved
                 rfl
               have noTraffic := app.trafficStep_environment execution next command moved remaining
-              have sameInputs : next.network.inputs = execution.network.inputs := by
-                cases command with
-                | wait =>
-                    simp only [Execution.environmentStep, FinDist.map_pure] at moved
-                    cases FinDist.mem_support_pure.mp moved
-                    rfl
-                | activate who =>
-                    simp only [Execution.environmentStep, FinDist.map_comp] at moved
-                    obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ moved
-                    rfl
-                | application operation =>
-                    simp only [Execution.environmentStep, FinDist.map_comp] at moved
-                    obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ moved
-                    rfl
-                | «include» id =>
-                    simp only [Execution.environmentStep, FinDist.map_pure] at moved
-                    cases FinDist.mem_support_pure.mp moved
-                    simp only [Execution.includePending, MessageNetwork.includePending]
-                    cases execution.network.lookup id <;> rfl
+              have sameInputs := app.environmentStep_inputs execution next command moved
               refine ⟨?_, ?_⟩
               · rw [noTraffic, List.append_nil]
                 simp only [stateTraffic, executionTraffic, recorded, List.map_append,
@@ -161,6 +215,16 @@ theorem trafficAudit_eq_stateTraffic
     {state : app.ProtocolState} (trace : (app.protocol initial horizon scheduler).Trace state) :
     app.trafficAudit initial horizon scheduler trace = app.stateTraffic state :=
   (app.traffic_invariant initial horizon scheduler trace).1
+
+/-- Every input of an actual execution has exactly its corresponding audit
+record. This includes rebroadcasts, with their original multiplicity and order. -/
+theorem stateTraffic_inputs
+    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    {state : app.ProtocolState} (trace : (app.protocol initial horizon scheduler).Trace state) :
+    (app.stateTraffic state).map TrafficRecord.input =
+      state.elim [] (fun control => control.execution.network.inputs) := by
+  rw [← app.trafficAudit_eq_stateTraffic initial horizon scheduler trace]
+  exact app.trafficAudit_inputs initial horizon scheduler trace
 
 /-- Actual transmissions append their records to the state readout as well as
 to the history readout. No obedience or eventual settlement is required. -/

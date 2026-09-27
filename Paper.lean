@@ -1164,4 +1164,10 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 open Vegas.SourceProgram.RevealService in
 #print axioms audited_source_sequential_equilibrium_preserved
 
+/-- info: 'Vegas.EventGraphRuntime.MessageBounds.audited_raw_sequential_equilibrium'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime.MessageBounds in
+#print axioms audited_raw_sequential_equilibrium
+
 end Vegas.Paper

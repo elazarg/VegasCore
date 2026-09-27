@@ -45,6 +45,14 @@ incentive assumptions and the structural action restriction. It permits
 correlated partial audit verdicts and needs no strategic watcher. This is not
 yet an instantiation for every VegasCore program or arbitrary service.
 
+[ReactiveAuditEquilibrium](../Vegas/Pending/ReactiveAuditEquilibrium.lean)
+composes that enforcement with the actual runtime's private-alias lift. It
+accepts any retained response menu, initial law and service satisfying the
+decision-clock and traffic certificates. This native edge has no revelation-only
+or watcher premise. The source capstone separately supplies its revelation
+calendar, source correspondence and concrete conformance checker. Broader
+source classes need those operational proofs, not another enforcement tower.
+
 [ReactiveTrafficAudit](../Interaction/ReactiveTrafficAudit.lean) reads traffic
 from successive public service views of the existing runtime. It retains the
 broadcaster, envelope, observation phase and preceding ledger, including for replays. Its
@@ -668,10 +676,10 @@ never the GameTheory submodule.
 | B | Menu-to-menu action restriction in Interaction; all-history fixture clocks. **Checked.** | Existing ResponseMenu; A for SE use | Generic roster inference remains outside the fixture result. |
 | C | Private submission/packet normalization and compiler compatibility, including successful-request aliases. **Checked.** | G2 | Published replay is handled separately in the source-representable menu. |
 | D | Concrete C/W/N menus, service checkpoints, all-history decision classification and source assessment correspondence. **Checked for arbitrary finite reveal sequences.** | B, C, G3 | Broader rosters require a new conditional information proof. |
-| E | Persistent ledger evidence, exhaustive ordinary-response comparisons and fixed deposit bounds. **Checked for the revelation service.** | B, G4, G5 | Terminal auditing should remove the strategic reporter assumption. |
+| E | Persistent evidence, exhaustive response comparisons and fixed deposit bounds. **Checked for the revelation service, including terminal auditing.** | B, G4, G5 | Signed-author attribution without rebroadcaster evidence remains open. |
 | F | Source-to-C SE and all-profile joint typed state/payoff law. **Checked for arbitrary finite reveal sequences.** | A, D | Fresh binds and guarded programs remain outside this correspondence. |
 | G | Original source → C → W → N → T composition with the same fixed deposits and utility. **Checked for arbitrary finite reveal sequences.** | A–F | Collectibility remains a backend assumption. |
-| H | General activation rosters, native unusable-binding continuation repair and a direct terminal-audit instance. | G | Resolve strategic gaps before optimizing deposits or building solver machinery. |
+| H | General activation rosters, native unusable-binding continuation repair and weaker audit attribution. | G | The direct terminal-audit instance is checked; resolve the remaining strategic gaps before optimizing deposits. |
 
 ### Parallel execution order
 

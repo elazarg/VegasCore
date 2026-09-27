@@ -417,17 +417,35 @@ theorem evalLaw?_isSome {Field : Type} [DecidableEq Field]
   exact collectPublicReads_isSome (L.distDeps dist.code) dist.schema dist.reads store
     (fun ref member => available _ (dist.reads_mem ref member))
 
+/-- Only the typed reads used by the distribution can influence its law.
+Extra fields in a conservative footprint are immaterial. -/
+theorem evalLaw?_congr_reads {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {payload : L.Ty}
+    (dist : PublicDist (R := R) layout payload) (left right : Store layout)
+    (agree : ∀ {name input} (ref : HasVar dist.schema name input),
+      name ∈ L.distDeps dist.code → (dist.reads ref).get? left = (dist.reads ref).get? right) :
+    dist.evalLaw? left = dist.evalLaw? right := by
+  unfold evalLaw?
+  rw [collectPublicReads_congr (R := R) (L.distDeps dist.code)
+    dist.schema dist.reads left right agree]
+
 theorem evalLaw?_congr {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
     (dist : PublicDist (R := R) layout payload) (left right : Store layout)
     (agree : Store.AgreeOn left right dist.readFields) :
     dist.evalLaw? left = dist.evalLaw? right := by
-  unfold evalLaw?
-  have collected := collectPublicReads_congr (R := R) (L.distDeps dist.code)
-    dist.schema dist.reads left right
-    (fun ref member => PublicRead.get?_congr (dist.reads ref) left right
-      (agree _ (dist.reads_mem ref member)))
-  rw [collected]
+  exact dist.evalLaw?_congr_reads left right fun ref member =>
+    PublicRead.get?_congr (dist.reads ref) left right (agree _ (dist.reads_mem ref member))
+
+/-- Semantic public sampling has the same locality as its exact rational law. -/
+theorem eval?_congr_reads {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {payload : L.Ty}
+    (dist : PublicDist (R := R) layout payload) (left right : Store layout)
+    (agree : ∀ {name input} (ref : HasVar dist.schema name input),
+      name ∈ L.distDeps dist.code → (dist.reads ref).get? left = (dist.reads ref).get? right) :
+    dist.eval? left = dist.eval? right := by
+  unfold eval?
+  rw [dist.evalLaw?_congr_reads left right agree]
 
 theorem eval?_isSome {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}

@@ -70,12 +70,35 @@ before a phase retains its intended prior at that phase, with actual earlier
 own recall. The latent mixture is a proof device realized as a behavioral
 policy; it adds no player scratch-memory state, action or computation cost.
 
-These results do not yet establish SE for the broader roster. The scheduled
-family must implement the stated canonical opening/replay rules, preserve every
-source outcome through the service, and be fully mixed over that retained menu.
-At the next meaningful source decision, the joint timing/sampling/replay
-transcript must preserve the source posterior throughout the common perturbation
-sequence. Unconditional execution-law equality alone does not prove this.
+`Vegas/Pending/ReactiveOpeningWindow.lean` instantiates the family with an actual
+canonical opening and a fully supported policy for silence or any known-envelope
+replay. `openingWindowMixture_law` proves its behavioral realization.
+`openingWindow_coupling` couples every actual finite roster, including repeated
+owners and opponents, across hidden states with the same auxiliary starting
+transcript and focal source information. It retains pending-copy multiplicity,
+all message/action/emission recall, and the focal player's complete recall. No
+sampler-obliviousness assumption is added.
+
+`Vegas/Pending/ReactiveOpeningPosterior.lean` proves the one-phase conditional
+claim: `openingOutcome_posterior` starts with an arbitrary correlated law of the
+hidden execution and chosen source result. After conditioning on that result,
+the actual timing/sampling/replay transcript leaves the hidden-state posterior
+unchanged. Thus the source disclosure probability may depend on hidden type.
+The proof fixes the auxiliary starting transcript; induction over that
+transcript's distribution across multiple phases remains necessary.
+
+`Interaction/ScheduledOpening.lean` proves that a supported first opening pins
+the latent slot and makes every subsequent response use the waiting policy.
+`openingWindowMixture_after_open` instantiates this with replay/silence. In a
+fully mixed approximant every legal early opening is supported. The eventual
+limiting policy must retain this stop behavior, including at an early-opening
+history of limiting probability zero; evaluating a zero-weight mixture's
+fallback directly is not a valid substitute for taking the common limit.
+
+The broader-roster SE gate still requires protected final settlement, the
+multi-phase coupled-start invariant, full mixing on the actual retained menu,
+one common consistent limiting assessment, and local sequential incentives.
+The one-phase posterior theorem does not prove those remaining obligations.
 
 ## What is now proved about public replays
 
@@ -129,6 +152,6 @@ retained phase; prove protected final inclusion and the next clean checkpoint;
 derive the conditional source-belief and local-incentive correspondence; classify
 fresh departures under the phase rule; then apply the existing conditional
 terminal-audit collection and SE extension. The phase factorization retains an
-arbitrary sampler. Whether a further sampler restriction is needed for the
-conditional SE argument remains open; no such restriction is assumed by the
-checked phase-law theorem.
+arbitrary sampler, including in the checked one-phase posterior identity. The
+multi-phase SE proof remains open; no extra sampler restriction is currently
+assumed or established as necessary.

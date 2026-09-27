@@ -42,10 +42,27 @@ and every foreign player's actual recall/current input through inclusion;
 under the original observation rule. Initial correlations and previously known
 foreign evidence are unrestricted. The owner's own observations need not agree.
 
+`ReactiveHiddenResponse` proves that arbitrary opponent responses preserve the
+entire vector of other players' inputs jointly, including forwarding and raw
+evidence requests. `ReactiveHiddenEnvironment` couples passive samples and
+deterministic clock, grant and expiry commands without deleting pending reads.
+`Vegas.EventGraphRuntime.environmentStep_sample_hidden_congr` uses one common
+public chance draw to preserve that vector; the sampling law depends only on
+typed public reads, even if its declared footprint contains unused fields.
+These are checked transition laws, not the stopped-prefix induction below.
+`ReactiveHiddenInclusion` also preserves the joint frame through opaque binding
+inclusion, withholding, and a valid opening of a binding whose value was not
+repaired. Receipt equality follows from public acceptance tests; no additional
+observer or second player is assumed. For opening, the unchanged accepted
+candidate and stored value are explicit premises. An attempted opening of the
+repaired unusable binding is deliberately outside that inclusion lemma.
+
 ## Finite admission and clean-prefix contract
 
 A nonvacuous finite SE theorem for fresh commitments needs finite legal source
-payload domains, not merely finite target packet bounds. In particular, a full
+payload domains, not merely finite target packet bounds. Boolean, enum and
+bounded-word payloads can satisfy this without changing the source constructs.
+In particular, a full
 integer commitment menu has no fully mixed finite-support behavioral law under
 the current `FinDist` assessment definition. A theorem quantified over source
 SEs must not conceal that absence. The finite admission must retain every legal
@@ -86,10 +103,14 @@ binding with a valid value and then leaving a later opening unchanged can alter
 the public result. Failure of that one-action comparator is not strategic gain.
 
 Sequential rationality already compares every whole continuation policy. The
-required generic relaxation therefore allows an extra target action's future
+checked `ActionRestriction.sequential_equilibrium_extends_of_continuation`
+therefore allows an extra target action's future
 behavior to be simulated by a mixture of whole source continuation policies,
 instead of requiring one legal source action with the old continuation unchanged.
-Every mixture component is bounded by source sequential rationality.
+Every mixture component is bounded by source sequential rationality. The theorem
+accepts a comparator chosen for the whole posterior, uniformly over its hidden
+histories, and quantifies over arbitrary paired profiles without assuming target
+rationality.
 
 ## Exact remaining native obligations
 
@@ -112,10 +133,10 @@ native adapter must establish the following facts, rather than assume them:
    that mechanism only after its structural embedding and retained-belief
    hypotheses are actually instantiated.
 
-The existing generic restriction proof can retain its consistency-completion and
-one-shot-to-whole-policy machinery. Its retained-site comparison should accept
-whole continuation mixtures. That change alone does not discharge obligations
-1–3, and this note does not claim a completed full-language SE theorem.
+The generic restriction proof now combines whole-continuation comparison with
+its checked consistency completion and one-shot-to-whole-policy machinery.
+This closes the generic comparison interface; it does not discharge native
+obligations 1–3 or establish a completed full-language SE theorem.
 
 ## Stopped-path proof design
 
@@ -123,8 +144,9 @@ The target comparison is universal over paired source/target continuation
 profiles; it must not assume target sequential rationality.
 
 1. Draw a repair-policy seed independently of the hidden starting configuration,
-   using `exists_valueBinding_belief_mixture`. Retain that one seed for the whole
-   continuation. Replacing the mixture separately at each hidden history would
+   using `exists_valueBinding_belief_mixture`. Use that one mixture for the whole
+   continuation comparison; no seed field is added to native state. Replacing
+   the mixture separately at each hidden history would
    change correlations and is not a valid comparison.
 2. Couple the actual source/native execution until the first publicly
    nonconforming transmission. A privately unusable binding does not stop this
@@ -132,6 +154,10 @@ profiles; it must not assume target sequential rationality.
    owner withholds when the original binding could not publish. Common public
    chance draws, passive samples, inclusion decisions and protected deadlines
    must preserve the coupled prefix invariant by actual runtime transition laws.
+   The coupling preserves all opponents' inputs jointly with the persistent
+   private parameters. Separate marginal equality for each opponent would not
+   establish the required correlation claim. In particular, both sides use the
+   same public chance draw, rather than independently matching its marginals.
 3. At each nondeviating player's decision, prove its complete native input is a
    retained input with the corresponding source view. Then `ExtendsProfile`
    supplies its law. Equality of current ledger states alone is insufficient:

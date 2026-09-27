@@ -53,7 +53,8 @@ factor and leave the source posterior unchanged.
 The needed operational conditions are substantive:
 
 1. Before the window closes, other retained player responses are only silence
-   or already-public replays; they cannot make a meaningful source decision.
+   or known-envelope replays, including the phase's unpublished canonical
+   opening; they cannot make another meaningful source decision.
 2. The owner acquires no new payoff-relevant private information between visits.
    In particular, the window must not straddle another source decision, a new
    private chance event, or an informative unpublished message.
@@ -75,8 +76,8 @@ from it.
 Existing `LocalResponse.transcript_eq_iteration` handles execution coalescing
 when there is no incoming information. It does not erase other players' recall
 or prove SE preservation. `FinDist.splitKernel_project` and `split_prob` supply
-the finite action-splitting algebra, but the required timing transcript and
-posterior factorization are not yet instantiated.
+the finite action-splitting algebra. The concrete one-phase transcript and
+posterior factorization below do not yet establish the multi-phase SE result.
 
 ## Checked ingredients for choosing at the final opportunity
 
@@ -122,10 +123,10 @@ These facts support the following remaining proof obligations:
   at most one **fresh envelope** per event is a candidate: replaying that same
   envelope, even before publication, need not be forbidden. Fresh duplicate
   submissions and replay are different attribution obligations.
-- At later source decisions, prove that the complete timing, sampling and replay
-  transcript supplies a common likelihood factor conditional on the source
-  observation, throughout one fully mixed sequence. An arbitrary sampler may
-  respond to pending-copy multiplicity, so the factorization must include it.
+- Propagate the checked one-phase conditional factorization below across source
+  decisions, throughout one fully mixed sequence. An arbitrary sampler may
+  respond to pending-copy multiplicity, so the coupled auxiliary starting
+  transcript must be retained in this induction.
 
 No inclusion after every owner visit is assumed here. Adopting that service
 would be an additional backend restriction and would eliminate some in-flight
@@ -141,10 +142,28 @@ network policy are arbitrary. The proof reuses the existing private-strategy
 realization; it adds no runtime memory or second evaluator.
 [`policyMixture_posterior_dormant`](../../Interaction/ReactivePolicyMixture.lean)
 proves that a choice unused before a phase retains its original mixing law at
-that phase, including with nonempty earlier own recall. The remaining step is
-to connect this operational realization to the canonical opening/replay menu,
-common source posteriors and sequential incentives. Equality of unconditional
-execution laws alone does not establish those SE properties.
+that phase, including with nonempty earlier own recall.
+
+[`ReactiveOpeningWindow.lean`](../../Vegas/Pending/ReactiveOpeningWindow.lean)
+now instantiates actual canonical opening and known-envelope replay policies.
+`openingWindow_coupling` proves equal complete auxiliary/focal transcript laws
+across hidden states with coupled auxiliary starts and equal focal source
+information. This works for arbitrary finite rosters and observation rules,
+including repeated activations and unpublished replay.
+[`openingOutcome_posterior`](../../Vegas/Pending/ReactiveOpeningPosterior.lean)
+then proves the exact posterior identity for an arbitrary correlated law of
+hidden initial execution and source disclosure result: conditional on that
+result, timing/sampling/replay adds no further update. Coupling a fixed auxiliary
+start is proved; propagation of its distribution across successive phases is
+still required.
+
+[`scheduledMixture_after_open`](../../Interaction/ScheduledOpening.lean) and its
+runtime instance `openingWindowMixture_after_open` also prove that every
+supported first opening makes subsequent replies replay/silence. The common
+perturbation limit must retain this stop rule at zero-probability early-opening
+histories. A zero-weight latent mixture's arbitrary conditional fallback need
+not equal that limit. The actual retained-menu full-mixing, common limiting
+assessment and sequential-incentive arguments remain open.
 
 ## Why general coalescing is insufficient
 

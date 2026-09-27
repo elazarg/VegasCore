@@ -2,6 +2,7 @@
 
 import Vegas.Pending.EventApplication
 import Vegas.Pending.EventPublicState
+import Vegas.Pending.EventSampleObservation
 import Vegas.Pending.ReactiveServicePublication
 import Vegas.Pending.ReactiveSelection
 import Vegas.Pending.EventSequential
@@ -29,6 +30,7 @@ import Vegas.Pending.ReactiveFiniteResponses
 import Vegas.Pending.ReactiveInitialValues
 import Vegas.Pending.ReactiveResponseAliases
 import Vegas.Pending.ReactiveAliasEquilibrium
+import Vegas.Pending.ReactiveAuditEquilibrium
 import Vegas.Pending.ReactiveCandidateBudget
 import Vegas.Pending.ReactiveBoundedHandles
 import Vegas.Pending.ReactiveFiniteCompiler
@@ -133,6 +135,11 @@ import Vegas.Pending.ReactiveContinuationObservation
 import Vegas.Pending.ReactiveBindingOrigin
 import Vegas.Pending.ReactiveBindingObservation
 import Vegas.Pending.ReactivePolicyMixture
+import Vegas.Pending.ReactiveHiddenResponse
+import Vegas.Pending.ReactiveHiddenEnvironment
+import Vegas.Pending.ReactiveHiddenInclusion
+import Vegas.Pending.ReactiveOpeningWindow
+import Vegas.Pending.ReactiveOpeningPosterior
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveServiceFootprint
 import Vegas.Pending.ReactiveAssociationPersistence

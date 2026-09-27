@@ -98,6 +98,8 @@ import Interaction.ReactivePolicyInvariant
 import Interaction.ReactiveRecovery
 import Interaction.ReactiveImplementation
 import Interaction.ReactivePolicyMixture
+import Interaction.ReactiveReplayPolicy
+import Interaction.ScheduledOpening
 import Interaction.ReactiveImplementationContinuation
 import Interaction.ReactiveAssessmentDecoding
 import Interaction.ReactiveOwnerSelection
