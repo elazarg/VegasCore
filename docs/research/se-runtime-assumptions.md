@@ -295,6 +295,12 @@ objective. The remaining proof obligations are:
    and discharges the successful opening handler-view comparison. These are
    constructor results; no complete-program posterior equality is assumed
    or yet concluded.
+   The [public-sample constructor](../../Vegas/Game/SourceServiceSampleFactorization.lean)
+   derives the actual sampling instruction's traffic law from the source
+   distribution and preserves the joint effective/original source-memory
+   factorization. Its [native likelihood law](../../Vegas/Pending/ReactiveSampleLikelihood.lean)
+   couples the public draw while retaining actual scheduler observations and
+   the focal player's recall.
 4. **Raw deviations and settlement.** Finish the remaining-plan coupling to a
    legal retained continuation until the first attributable departure. Hidden
    unusability requires repair; it cannot be detected by a sound public audit.
@@ -335,7 +341,12 @@ objective. The remaining proof obligations are:
    frame or an attributed rejected traffic record. The
    [guarded-resolution audit step](../../Vegas/Pending/ReactiveResolutionAuditStep.lean)
    proves the same actual mixed-response and passive-activation split for
-   disclosures, using authentic evidence and arbitrary deferred guards. The
+   disclosures, using authentic evidence and arbitrary deferred guards. Once
+   a first submission has already consumed the next public serial, the
+   [repeat-submission step](../../Vegas/Pending/ReactiveRepeatedSubmissionStep.lean)
+   gives the corresponding split without requiring a fresh candidate:
+   transport preserves the repair frame; any fresh submission supplies an
+   actual rejected record. The
    [required final response](../../Vegas/Pending/ReactiveBindingRequiredStep.lean)
    additionally covers silence or replay at the last binding opportunity:
    [actual omission](../../Vegas/Pending/ReactiveBindingFinalOmission.lean)
