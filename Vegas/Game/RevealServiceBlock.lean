@@ -78,7 +78,8 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
         (submitted.network.includePending (owner, execution.network.nextSerial owner)).2
         else submitted.network) ∧
       next.receipts = (if disclose then execution.receipts ++
-        [((owner, execution.network.nextSerial owner), true)] else execution.receipts) := by
+        [((owner, execution.network.nextSerial owner), true)] else execution.receipts) ∧
+      ∀ observer, observer ≠ watcher → next.recall observer = submitted.recall observer := by
   dsimp only
   cases chosen : sourceChoice setup leaks response with
   | false =>
@@ -89,14 +90,17 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
         rcases refuses with silent | ⟨message, published, replay⟩
         · exact Or.inl silent
         · exact Or.inr ⟨message.id, replay, List.mem_map.mpr ⟨message, published, rfl⟩⟩
-      obtain ⟨next, law, applicationEq, networkEq, receiptsEq, _recallEq⟩ :=
+      obtain ⟨next, law, applicationEq, networkEq, receiptsEq, recallEq⟩ :=
         (runtime setup).refusing_response_settlement leaks players watcher policy execution
           pending leaked inputs owner event payload (refs.get selected) [] outputEq codeEq
           node ready entered ticks activated due response physical
-      refine ⟨next, law, ?_, ?_, ?_⟩
+      refine ⟨next, law, ?_, ?_, ?_, ?_⟩
       · simpa only [chosen, Bool.false_eq_true, ↓reduceIte] using applicationEq
       · simpa only [chosen, Bool.false_eq_true, ↓reduceIte] using networkEq
       · simpa only [chosen, Bool.false_eq_true, ↓reduceIte] using receiptsEq
+      · intro observer different
+        rw [recallEq]
+        exact (application setup leaks).respond_recall_other _ watcher observer different _
   | true =>
       obtain ⟨candidate, associated, owned, verified, opening⟩ :=
         opening_at_checkpoint setup leaks selected source refs execution agree valid event
@@ -129,16 +133,17 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
         intro stillReady
         exact stillReady.1 (by simp [after, EventGraphRuntime.State.complete,
           EventGraph.Config.complete, EventOrder.Cut.complete])
-      obtain ⟨next, law, applicationEq, networkEq, receiptsEq, _recallEq⟩ :=
+      obtain ⟨next, law, applicationEq, networkEq, receiptsEq, recallEq⟩ :=
         (runtime setup).opening_response_settlement leaks players watcher policy execution
           pending leaked inputs serials owner event candidate ⟨payload, value⟩ evidence after
           accepted settled ticks
-      refine ⟨next, ?_, ?_, ?_, ?_⟩
+      refine ⟨next, ?_, ?_, ?_, ?_, ?_⟩
       · simpa only [responseEq] using law
       · simpa only [chosen, ↓reduceIte, after, EventGraphRuntime.State.complete,
           action, result] using applicationEq
       · simpa only [chosen, ↓reduceIte, responseEq] using networkEq
       · simpa only [chosen, ↓reduceIte] using receiptsEq
+      · simpa only [responseEq] using recallEq
 
 /-- The completed native block advances the actual typed source configuration.
 Both the store and the owner's source-action history are transported; physical
@@ -201,7 +206,7 @@ theorem ordinary_response_source_step (setup : Setup (Player := Player) (L := L)
         (next.application.config.history.map
           (setup.eventGraph.fromModeCompletion .sequential)) = sourceNext.history := by
   dsimp only
-  obtain ⟨next, law, applicationEq, _networkEq, _receiptsEq⟩ :=
+  obtain ⟨next, law, applicationEq, _networkEq, _receiptsEq, _recallEq⟩ :=
     ordinary_response_settlement setup leaks bounds players watcher policy selected source.state
       refs execution agree valid event ownedEvent outputEq codeEq node granted value bound
       ready timely entered ticks activated due pending leaked inputs serials response member

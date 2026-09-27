@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceExecution
+import Vegas.Game.RevealServicePayoffs
 
 /-! # Initialized law of the actual revelation compiler
 
@@ -14,6 +15,7 @@ noncomputable section
 namespace Vegas.SourceProgram.RevealService
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -71,7 +73,45 @@ theorem compiled_plan_source_law
     (CompiledPolicySuffix.whole setup.program profile)
     (ReactiveApplication.Execution.initial (application setup leaks)
       (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)))
-    (checkpoint_initial setup leaks initial (openable initial supported))
+    (checkpoint_initial setup leaks reveals initial (openable initial supported))
   exact current
+
+/-- The actual C-game behavioral compiler preserves the complete typed source
+readout law. It quantifies over every source policy and every alias weight,
+without an equilibrium or independent-types premise. -/
+theorem compiled_behavioral_source_law
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (watcher : Player)
+    (reveals : setup.program.RevealOnly)
+    (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
+    (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
+    (profile : BehavioralProfile setup.program)
+    (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1) :
+    ((information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).runBehavioral
+      (compiledProfile setup leaks (bounds.withInitialValues (initialLaw setup)) watcher profile
+        weight nonnegative atMostOne) (2 * horizon setup watcher + 1)).map
+        (fun final => sourceReadout setup leaks final.state) = (setup.run profile).map some := by
+  rw [← compiled_plan_source_law setup leaks bounds watcher reveals observer openable
+    profile weight nonnegative atMostOne]
+  rw [show (fun final : (protocol setup leaks
+      (bounds.withInitialValues (initialLaw setup)) watcher).History =>
+      sourceReadout setup leaks final.state) = sourceReadout setup leaks ∘ History.state from rfl,
+    ← FinDist.map_comp, menu_execution_law setup leaks _ watcher, decoded_compiledProfile]
+  simp only [FinDist.map_bind, FinDist.map_comp]
+  rw [initialLaw, FinDist.bind_map, FinDist.bind_map]
+  apply FinDist.bind_congr
+  intro initial _supported
+  apply FinDist.map_congr_of_eq_on_support
+  intro final supported
+  have settled := plan_terminal setup leaks watcher reveals
+    (policy setup leaks (bounds.withInitialValues (initialLaw setup)) watcher profile
+      weight nonnegative atMostOne) ((runtime setup).reportNetwork leaks watcher)
+    (setup.eventInputs initial) _ final
+    (EventGraphRuntime.State.initial_invariant (graph := graph setup) (setup.eventInputs initial))
+    supported
+  change (if final.application.config.cut.Terminal then
+    decodeState? (terminalRefs setup.program) final.application.config.store else none) = _
+  exact ite_eq_left settled
 
 end Vegas.SourceProgram.RevealService

@@ -81,8 +81,10 @@ import GameTheoryExtensions.Analysis.Protocol.RestrictionBeliefs
 import GameTheoryExtensions.Analysis.Protocol.RestrictionCompletion
 import GameTheoryExtensions.Analysis.Protocol.RestrictionIncentives
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
+import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
 import GameTheoryExtensions.Analysis.Protocol.HistoryBayesProjection
+import GameTheoryExtensions.Analysis.Protocol.ReadoutBayesProjection
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity

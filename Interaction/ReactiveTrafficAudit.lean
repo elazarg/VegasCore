@@ -1,0 +1,237 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Interaction.ReactiveHistory
+import GameTheoryExtensions.Protocol.StateKernel
+
+/-! # Settlement evidence from the public traffic history
+
+An audit record contains a network input and the public application observation
+before that input. It distinguishes the broadcaster from the envelope author,
+and retains the phase even when the envelope later becomes acceptable.
+
+The readout uses only successive public environment views. It is not added to
+player observations. An implementation supplying this readout must authenticate
+its traffic and phase records; ordinary envelope signatures alone do not
+authenticate rebroadcasters or observation times. Partial observation and
+collection are separate probabilistic contracts.
+
+All results allow arbitrary raw responses and arbitrary schedulers. They do not
+assume reserved reporting opportunities or a single pending envelope.
+-/
+
+noncomputable section
+
+namespace Interaction.ReactiveApplication
+
+open GameTheory.Protocol GameTheory.Math.Probability
+
+variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
+
+structure TrafficRecord where
+  observation : app.PublicObservation
+  input : NetworkInput Principal app.Payload
+
+/-- Append-only network inputs identify successful transmissions, including
+replays. The record carries the public phase preceding the transmission. -/
+def trafficStep (before after : app.ProtocolState) : List app.TrafficRecord :=
+  match before, after with
+  | some previous, some next =>
+      (next.execution.network.inputs.drop previous.execution.network.inputs.length).map
+        fun input => ⟨app.observePublic previous.execution.application, input⟩
+  | _, _ => []
+
+omit [DecidableEq Principal] in
+/-- The audit reads no private candidate state, response representation, or
+recipient knowledge. Equal public service views give identical records. -/
+theorem trafficStep_public (firstBefore firstAfter secondBefore secondAfter : app.Control)
+    (before : firstBefore.execution.observeEnvironment app =
+      secondBefore.execution.observeEnvironment app)
+    (after : firstAfter.execution.observeEnvironment app =
+      secondAfter.execution.observeEnvironment app) :
+    app.trafficStep (some firstBefore) (some firstAfter) =
+      app.trafficStep (some secondBefore) (some secondAfter) := by
+  change
+    ((firstAfter.execution.observeEnvironment app).network.inputs.drop
+      (firstBefore.execution.observeEnvironment app).network.inputs.length).map
+        (fun input => (⟨(firstBefore.execution.observeEnvironment app).application, input⟩ :
+          app.TrafficRecord)) =
+      ((secondAfter.execution.observeEnvironment app).network.inputs.drop
+        (secondBefore.execution.observeEnvironment app).network.inputs.length).map
+          (fun input => (⟨(secondBefore.execution.observeEnvironment app).application, input⟩ :
+            app.TrafficRecord))
+  rw [before, after]
+
+/-- A settlement readout of the existing protocol history, not another
+interpreter or a new observation available to players during execution. -/
+def trafficAudit (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+    {state : app.ProtocolState} → (app.protocol initial horizon scheduler).Trace state →
+      List app.TrafficRecord
+  | _, .start => []
+  | state, .extend (source := before) prior _ _ _ =>
+      trafficAudit initial horizon scheduler prior ++ app.trafficStep before state
+
+theorem trafficStep_silent (execution : app.Execution) (remaining : Nat) (who : Principal) :
+    app.trafficStep (some ⟨remaining, some who, execution⟩)
+      (some ⟨remaining, none, execution.respond app who ⟨none⟩⟩) = [] := by
+  simp [trafficStep, Execution.respond]
+
+theorem trafficStep_submit (execution : app.Execution) (remaining : Nat) (who : Principal)
+    (submission : app.Submission) :
+    app.trafficStep (some ⟨remaining, some who, execution⟩)
+      (some ⟨remaining, none, execution.respond app who ⟨some (.submit submission)⟩⟩) =
+        [⟨app.observePublic execution.application,
+          ⟨who, ⟨(who, execution.network.nextSerial who),
+            app.packet (app.submit execution.application who submission) who
+              (execution.network.known who) submission⟩⟩⟩] := by
+  simp [trafficStep, Execution.respond, MessageNetwork.submit]
+
+/-- Rebroadcast evidence identifies this transmission's broadcaster even when
+the original envelope was authored by a different player. -/
+theorem trafficStep_replay (execution : app.Execution) (remaining : Nat) (who : Principal)
+    (id : MessageId Principal) (message : Message Principal app.Payload)
+    (known : (execution.network.known who).find? (fun packet => packet.id = id) = some message) :
+    app.trafficStep (some ⟨remaining, some who, execution⟩)
+      (some ⟨remaining, none, execution.respond app who ⟨some (.replay id)⟩⟩) =
+        [⟨app.observePublic execution.application, ⟨who, message⟩⟩] := by
+  simp [trafficStep, Execution.respond, MessageNetwork.replay, known]
+
+/-- Environment operations never invent a transmission record. -/
+theorem trafficStep_environment (execution next : app.Execution) (command : app.Command)
+    (reached : next ∈ (execution.environmentStep app command).support) (remaining : Nat) :
+    app.trafficStep (some ⟨remaining + 1, none, execution⟩)
+      (some ⟨remaining, command.actor? app, next⟩) = [] := by
+  cases command with
+  | wait =>
+      simp only [Execution.environmentStep, FinDist.map_pure] at reached
+      cases FinDist.mem_support_pure.mp reached
+      simp [trafficStep]
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      simp [trafficStep, MessageNetwork.learn]
+  | «include» id =>
+      simp only [Execution.environmentStep, FinDist.map_pure] at reached
+      cases FinDist.mem_support_pure.mp reached
+      cases found : execution.network.lookup id <;>
+        simp [trafficStep, Execution.includePending, MessageNetwork.includePending, found]
+  | application command =>
+      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      simp [trafficStep]
+
+/-- A per-transmission check can use the observation phase, packet and
+broadcaster. The checker itself must be proved sound for the compiler. -/
+def trafficViolation (permitted : app.TrafficRecord → Bool) (who : Principal)
+    (records : List app.TrafficRecord) : Bool :=
+  records.any fun record => decide (record.input.broadcaster = who) && !permitted record
+
+theorem trafficViolation_iff (permitted : app.TrafficRecord → Bool) (who : Principal)
+    (records : List app.TrafficRecord) :
+    app.trafficViolation permitted who records = true ↔
+      ∃ record ∈ records, record.input.broadcaster = who ∧ permitted record = false := by
+  simp [trafficViolation, List.any_eq_true]
+
+theorem trafficViolation_clear (permitted : app.TrafficRecord → Bool) (who : Principal)
+    (records : List app.TrafficRecord)
+    (compliant : ∀ record ∈ records, record.input.broadcaster = who → permitted record = true) :
+    app.trafficViolation permitted who records = false := by
+  cases alarm : app.trafficViolation permitted who records with
+  | false => rfl
+  | true =>
+      obtain ⟨record, member, owner, forbidden⟩ :=
+        (app.trafficViolation_iff permitted who records).mp alarm
+      have allowed := compliant record member owner
+      rw [allowed] at forbidden
+      contradiction
+
+theorem trafficViolation_mono (permitted : app.TrafficRecord → Bool) (who : Principal)
+    {before after : List app.TrafficRecord} (retained : before ⊆ after)
+    (detected : app.trafficViolation permitted who before = true) :
+    app.trafficViolation permitted who after = true := by
+  obtain ⟨record, member, owner, forbidden⟩ :=
+    (app.trafficViolation_iff permitted who before).mp detected
+  exact (app.trafficViolation_iff permitted who after).mpr
+    ⟨record, retained member, owner, forbidden⟩
+
+/-- Once a transmission is recorded, no subsequent player or scheduler choice
+can erase its phase or authorship from the settlement readout. -/
+theorem trafficAudit_reaches (initial : FinDist app.State) (horizon : Nat)
+    (scheduler : app.Scheduler)
+    {first last : (app.protocol initial horizon scheduler).History} {fuel : Nat}
+    (path : (app.protocol initial horizon scheduler).ReachesWithin fuel first last) :
+    app.trafficAudit initial horizon scheduler first.trace <+:
+      app.trafficAudit initial horizon scheduler last.trace := by
+  induction path with
+  | refl => rfl
+  | step _ _ _ _ ih =>
+      change _ ++ _ <+: _ at ih
+      exact (List.prefix_append ..).trans ih
+
+theorem trafficViolation_reaches (initial : FinDist app.State) (horizon : Nat)
+    (scheduler : app.Scheduler) (permitted : app.TrafficRecord → Bool) (who : Principal)
+    {first last : (app.protocol initial horizon scheduler).History} {fuel : Nat}
+    (path : (app.protocol initial horizon scheduler).ReachesWithin fuel first last)
+    (detected : app.trafficViolation permitted who
+      (app.trafficAudit initial horizon scheduler first.trace) = true) :
+    app.trafficViolation permitted who (app.trafficAudit initial horizon scheduler last.trace) =
+      true :=
+  app.trafficViolation_mono permitted who (app.trafficAudit_reaches initial horizon scheduler
+    path).subset detected
+
+/-- A complete audit detects recorded misconduct with probability one under
+every later behavioral or randomized continuation. Collecting a monetary
+penalty still requires the settlement service to honor this verdict. -/
+theorem trafficViolation_continuation (initial : FinDist app.State) (horizon : Nat)
+    (scheduler : app.Scheduler) (permitted : app.TrafficRecord → Bool) (who : Principal)
+    (chooser : (app.protocol initial horizon scheduler).RandomizedChooser)
+    (fuel : Nat) (history : (app.protocol initial horizon scheduler).History)
+    (detected : app.trafficViolation permitted who
+      (app.trafficAudit initial horizon scheduler history.trace) = true) :
+    ((app.protocol initial horizon scheduler).runRandomizedFor chooser fuel history).probOf
+      {final | app.trafficViolation permitted who
+        (app.trafficAudit initial horizon scheduler final.trace) = true} = 1 := by
+  classical
+  rw [← FinDist.expect_indicator_eq_probOf]
+  calc
+    _ = ((app.protocol initial horizon scheduler).runRandomizedFor chooser fuel history).expect
+        (fun _ => (1 : ℝ)) := by
+      apply FinDist.expect_congr
+      intro final supported
+      have retained := app.trafficViolation_reaches initial horizon scheduler permitted who
+        ((app.protocol initial horizon scheduler).runRandomizedFor_reachesWithin chooser
+          fuel history final supported) detected
+      simp [retained]
+    _ = 1 := FinDist.expect_const _ _
+
+/-- A partial audit cannot falsely accuse a player if every reported record
+is genuine and this player's actual transmissions conform. Missing records
+are never interpreted as proof that an action did not occur. -/
+theorem trafficViolation_partial_sound (permitted : app.TrafficRecord → Bool)
+    (who : Principal) (actual observed : List app.TrafficRecord)
+    (authentic : observed ⊆ actual)
+    (compliant : ∀ record ∈ actual,
+      record.input.broadcaster = who → permitted record = true) :
+    app.trafficViolation permitted who observed = false :=
+  app.trafficViolation_clear permitted who observed
+    (fun record member => compliant record (authentic member))
+
+/-- Recording any particular attributable violation suffices for detection.
+The audit may sample correlated subsets and need not observe every message. -/
+theorem trafficViolation_sampling_lower (permitted : app.TrafficRecord → Bool)
+    (who : Principal) (observations : FinDist (List app.TrafficRecord))
+    (record : app.TrafficRecord) (owner : record.input.broadcaster = who)
+    (forbidden : permitted record = false) :
+    observations.probOf {observed | record ∈ observed} ≤
+      observations.probOf {observed | app.trafficViolation permitted who observed = true} := by
+  classical
+  rw [← FinDist.expect_indicator_eq_probOf, ← FinDist.expect_indicator_eq_probOf]
+  apply FinDist.expect_mono
+  intro observed _
+  by_cases included : record ∈ observed
+  · have detected := (app.trafficViolation_iff permitted who observed).mpr
+      ⟨record, included, owner, forbidden⟩
+    simp [included, detected]
+  · simp only [Set.mem_ofPred_eq, included, ite_eq_right, not_false_eq_true]
+    split <;> norm_num
+
+end Interaction.ReactiveApplication

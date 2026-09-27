@@ -8,6 +8,54 @@ final game. Fix the program, service, monitoring rule, utilities and deposits
 before selecting an equilibrium. Preserve the joint initial-type, public-result
 and actual net-payoff law of **every source SE**.
 
+## Main theorem boundary: audit at settlement
+
+The end-to-end target must retain bounded off-turn transmissions and pending
+observations. The owner/watcher calendar below is a checked service instance,
+not a restriction on the final preservation claim. The source language and its
+legal opening/withholding choices remain unchanged.
+
+The compiler theorem uses a terminal audit service with four explicit duties:
+
+1. Report authentic, attributable traffic with the public phase needed by the
+   compiler's conformance checker. An envelope signature authenticates its
+   author; blaming a rebroadcaster requires additional evidence of that input.
+2. Charge no permitted source behavior, including off-equilibrium choices.
+   Missing audit records alone are not evidence of an omitted action.
+3. At every retained opportunity for a first departure, provide a conditional
+   collection probability sufficient for the fixed deposit and payoff bound,
+   uniformly over subsequent play. Later deviations cannot erase recorded
+   evidence, and an already unavoidable charge is not a fresh deterrent.
+4. Supply audit information to settlement without adding unmodeled observations
+   before the last strategic choice. Public intermediate reports require their
+   own information-correspondence proof.
+
+[TerminalAudit](../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean)
+checks the generic SE extension and exact joint realized-payoff law from these
+incentive assumptions and the structural action restriction. It permits
+correlated partial audit verdicts and needs no strategic watcher. This is not
+yet an instantiation for every VegasCore program or arbitrary service.
+
+[ReactiveTrafficAudit](../Interaction/ReactiveTrafficAudit.lean) reads traffic
+from successive public service views of the existing runtime. It retains the
+broadcaster, envelope and observation phase, including for replays. Its
+persistence and partial-observation soundness proofs allow arbitrary schedulers
+and raw responses; no reserved reporting slot or one-message pending pool is
+assumed. The complete readout is an ideal service specification, not a claim
+that an ordinary passive client sees all traffic or authenticates every sender.
+Coverage, accurate phase reports, attribution and collectible collateral are
+implementation obligations. A client/oracle realization may provide a partial
+record and a conditional collection bound instead of a complete log.
+
+The source-to-permitted-runtime proof must still establish observations,
+conditional laws and consistent beliefs. Single-trace membership does not
+establish those facts. The remaining main gates are that correspondence, a
+concrete checker covering extra transmission opportunities, and its audit
+collection certificate. Fresh bindings and guarded programs require actual
+classification or harmlessness proofs; they must not be excluded silently.
+
+## Checked service instance
+
 The [general extension theorem](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean),
 [private-alias lifting](../Vegas/Pending/ReactiveAliasEquilibrium.lean), and
 [scalar certificate checker](../GameTheoryExtensions/Analysis/EnforcementSynthesis.lean)
@@ -45,17 +93,17 @@ arbitrary-length theorem:
 | Obligation | Status |
 | --- | --- |
 | Existing reveal-only syntax, repeated owners, both disclosure choices | Checked, including source store and completion-history agreement after either choice. |
-| Fixed service, deadlines, C menu inside the full effective menu | Constructed; source-wide execution correspondence remains open. |
+| Fixed service, deadlines, C menu inside the full effective menu | Constructed, with initialized and prefix execution correspondence. |
 | Finite alphabet covering every supported initial value | Checked; extending the alphabet retains every previously admitted raw response. |
 | C actions project to opening/withholding with fully supported split perturbations | Checked locally at covered checkpoints. |
 | Native decision view determines the source decision view | Checked from typed store and completion-history agreement. |
-| Source view reconstructs native semantic observation and initial candidate catalogue | Checked at reachable ranked prefixes; public service/transcript fields still need their induction. |
+| Source view reconstructs native semantic observation and initial candidate catalogue | Checked at reachable ranked prefixes, including public service fields; the focal selector also reconstructs the sender's replay recall. |
 | Common decision depths for C/W/N/raw menus | Checked at all legal histories using existing grant and actor observations. |
 | Bounded settlement under arbitrary responses | Checked for every finite response menu and behavioral profile; each scheduled block completes its event even under malformed traffic. |
 | Full monitored block agrees with its source reveal | Checked for every ordinary response, including published-replay aliases of withholding; typed source store and action history agree afterward. |
 | Initialized compiler execution law for arbitrary reveal sequences | Checked for all source policies and all alias-splitting weights, with correlated valid initial bindings. This is an execution law, not yet an SE theorem. |
 | Source information prerequisites | Checked common decision depths and a fully mixed reference policy; finite legal histories require no finite ambient secret type. |
-| Reverse information correspondence, checkpoint prefix laws and conditional beliefs | Open; required for source-to-C SE. |
+| Reverse information correspondence and checkpoint prefix laws | Checked at actual native boundary and owner-decision depths; includes correlated initialization and replay selectors. Conditional-belief and SE composition remains open. |
 | Conditional monitoring, packet classification and persistent evidence | Checked in actual behavioral continuations at every hidden history satisfying the operational checkpoint invariant. |
 | Ordinary-player net-utility comparison | Checked at such checkpoints, against any clean legal continuation; global checkpoint coverage and clean-continuation induction remain open. |
 | Fixed deposits | Exact finite rational payoff bounds and sufficient range/rate deposits are checked. Collection rates and monetary implementation remain backend obligations. |

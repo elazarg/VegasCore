@@ -105,7 +105,8 @@ theorem run_source_suffix_option_law
                 .resolve owner payload (refs.get selected) [] := code.symm.trans codeEq
             cases codes
             rfl
-      obtain ⟨opportunity, activeCheckpoint, granted, _clock, _activation, opportunityLaw⟩ :=
+      obtain ⟨opportunity, activeCheckpoint, granted, _clock, _activation,
+          opportunityLaw, _opportunityRecall⟩ :=
         checkpoint.owner_opportunity players ((runtime setup).reportNetwork leaks watcher)
           event owner
       obtain ⟨value, bound⟩ := activeCheckpoint.openable selected
@@ -160,7 +161,7 @@ theorem run_source_suffix_option_law
         have embedded := aligned.actionEq index
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
         simpa [event, index, outputEq, decodeEventAction] using embedded
-      obtain ⟨after, afterLaw, afterCheckpoint⟩ :=
+      obtain ⟨after, afterLaw, afterCheckpoint, _afterRecall⟩ :=
         activeCheckpoint.reveal_response (bounds.withInitialValues (initialLaw setup)) players
           watcher watcherPolicy published selected event eventRank actor outputEq codeEq node
           (fun ref => refsBefore ref index) decoded granted response member

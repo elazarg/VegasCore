@@ -126,6 +126,7 @@ import Vegas.Pending.ReactiveRevealSettlement
 import Vegas.Pending.ReactiveRevealResponse
 import Vegas.Pending.ReactiveRevealTranscript
 import Vegas.Pending.ReactiveResponseRecall
+import Vegas.Pending.ReactiveServiceRecall
 import Vegas.Pending.RevealTranscript
 import Vegas.Pending.ReactiveObservedState
 import Vegas.Pending.ReactiveContinuationObservation

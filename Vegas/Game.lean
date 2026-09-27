@@ -18,6 +18,19 @@ import Vegas.Game.RevealServiceCheckpoint
 import Vegas.Game.RevealServiceCollection
 import Vegas.Game.RevealServiceExecution
 import Vegas.Game.RevealServiceLaw
+import Vegas.Game.RevealServicePrefix
+import Vegas.Game.RevealServicePrefixLaw
+import Vegas.Game.RevealServicePrefixSupport
+import Vegas.Game.RevealServicePrefixInformation
+import Vegas.Game.RevealServicePrefixHistory
+import Vegas.Game.RevealServicePrefixBehavioral
+import Vegas.Game.RevealServicePrefixContinuation
+import Vegas.Game.RevealServiceOwnerPrefix
+import Vegas.Game.RevealServiceOwnerSupport
+import Vegas.Game.RevealServiceOwnerInformation
+import Vegas.Game.RevealServicePerturbation
+import Vegas.Game.RevealServiceFocalLaw
+import Vegas.Game.RevealServiceFocalRecall
 import Vegas.Game.RevealServiceOrdinaryComparison
 import Vegas.Game.RevealServicePayoffs
 import Vegas.Game.RevealServiceSelector
@@ -35,6 +48,9 @@ import Vegas.Game.ParameterOutcomes
 import Vegas.Game.ZeroSum
 import Vegas.Game.SetupSubgame
 import Vegas.Game.SourceInformation
+import Vegas.Game.SourceContinuation
+import Vegas.Game.SourceStateKernel
+import Vegas.Game.SourcePrefixKernel
 import Vegas.Game.SourceObservationRecall
 import Vegas.Game.BehavioralSubgame
 

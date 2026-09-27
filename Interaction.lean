@@ -48,6 +48,7 @@ import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveConsistentAssessment
 import Interaction.ReactiveAuthorization
 import Interaction.ReactiveSubmissionAudit
+import Interaction.ReactiveTrafficAudit
 import Interaction.ReactiveSubmissionRounds
 import Interaction.ReactiveAuthorizedService
 import Interaction.ReactiveUniformService

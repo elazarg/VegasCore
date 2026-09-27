@@ -2,6 +2,9 @@
 
 import Vegas.Game.RevealServiceBlock
 import Vegas.Game.RevealServiceCalendarState
+import Vegas.Game.RevealServiceTranscript
+import Vegas.EventGraph.PrivateInputs
+import Vegas.Pending.ReactiveResponseRecall
 import Vegas.Pending.ReactiveAssociationEvidence
 import Vegas.Pending.ReactiveServiceProgress
 import Vegas.Pending.ReactiveStateInvariant
@@ -57,11 +60,27 @@ structure Checkpoint (setup : Setup (Player := Player) (L := L))
   recall : execution.InputRecall (application setup leaks)
   timely : ∀ event, event.val = rank → ((graph setup).actor? event).isSome = true →
     execution.application.WithinDeadline (runtime setup) event
+  reveals : setup.program.RevealOnly
+  covered : refs.CoversPrefix setup.program rank
+  ledger : execution.network.ledger = publicationLedger
+    (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
+    ((graph setup).publicObserve execution.application.config)
+  receipts : execution.receipts = publicationReceipts
+    (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
+    ((graph setup).publicObserve execution.application.config)
+  counters : execution.network.nextSerial = publicationSerial
+    (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
+    ((graph setup).publicObserve execution.application.config)
+  clock : execution.application.clock = clockAt rank
+  activated : execution.application.activatedAt = checkpointActivations setup
+    (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
+    ((graph setup).publicObserve execution.application.config) rank
 
 /-- The induction starts at every supplied valid source state, without any
 independence restriction on its private cells. -/
 theorem checkpoint_initial (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (reveals : setup.program.RevealOnly)
     (initial : State L setup.context) (openable : initial.BindingsOpenable) :
     Checkpoint setup leaks initial (setup.initialConfig initial)
       (ContextRefs.initial setup.context (outputLayout setup.program)) 0
@@ -70,7 +89,8 @@ theorem checkpoint_initial (setup : Setup (Player := Player) (L := L))
   refine ⟨rfl, openable, initial_agrees setup initial, initial_history setup initial, ?_,
     EventGraphRuntime.State.initial_invariant _, EventGraphRuntime.State.initial_bindingInvariant _,
     rfl, rfl, rfl, ?_, rfl, ?_, MessageNetwork.SerialsBeforeNext.empty,
-    (application setup leaks).initial_inputRecall _, ?_⟩
+    (application setup leaks).initial_inputRecall _, ?_, reveals,
+    ContextRefs.initial_coversPrefix setup.program, rfl, rfl, rfl, rfl, ?_⟩
   · exact EventOrder.Cut.empty_isPrefix _
   · simp only [ReactiveApplication.Execution.initial, MessageNetwork.empty,
       List.not_mem_nil, IsEmpty.forall_iff, implies_true]
@@ -84,6 +104,7 @@ theorem checkpoint_initial (setup : Setup (Player := Player) (L := L))
     have same : (⟨0, positive⟩ : (graph setup).EventId) = event := Fin.ext first.symm
     rw [← same]
     exact start.ready positive
+  · exact (initial_calendar setup reveals (setup.eventInputs initial) _).2
 
 /-- Every known packet at a checkpoint is already public, including remembered
 own transmissions and earlier rebroadcasts. -/
@@ -97,6 +118,71 @@ theorem Checkpoint.known_published {setup : Setup (Player := Player) (L := L)}
       message.id ∈ execution.network.ledger.map Message.id := by
   apply execution.network.known_published who checkpoint.inputs
   simp only [checkpoint.leaked, List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+
+/-- At matched source ranks, the actual public metadata formulas make the
+native before-view a function of the source view. This permits different
+initial private states and does not identify the players' replay recalls. -/
+theorem Checkpoint.observe_eq {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {leftInitial rightInitial : State L setup.context} {Γ : SourceCtx Player L}
+    {left right : Config Player L Γ} {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
+    {nativeLeft nativeRight : (application setup leaks).Execution}
+    (leftCheckpoint : Checkpoint setup leaks leftInitial left refs rank nativeLeft)
+    (rightCheckpoint : Checkpoint setup leaks rightInitial right refs rank nativeRight)
+    (who : Player)
+    (grant : nativeLeft.application.serviceGrant = nativeRight.application.serviceGrant)
+    (same : left.view who = right.view who) :
+    nativeLeft.observe (application setup leaks) who =
+      nativeRight.observe (application setup leaks) who := by
+  have leftCandidates : nativeLeft.application.candidates =
+      (EventGraphRuntime.State.initial (graph := graph setup)
+        nativeLeft.application.config.inputs).candidates := by
+    rw [leftCheckpoint.invariant.reachable.inputs_eq]
+    exact leftCheckpoint.candidates
+  have rightCandidates : nativeRight.application.candidates =
+      (EventGraphRuntime.State.initial (graph := graph setup)
+        nativeRight.application.config.inputs).candidates := by
+    rw [rightCheckpoint.invariant.reachable.inputs_eq]
+    exact rightCheckpoint.candidates
+  exact source_checkpoint_observe_eq setup leaks refs rank leftCheckpoint.covered
+    who left right nativeLeft
+    nativeRight leftCheckpoint.invariant.reachable rightCheckpoint.invariant.reachable
+    leftCheckpoint.ordered rightCheckpoint.ordered leftCheckpoint.agrees rightCheckpoint.agrees
+    leftCheckpoint.history rightCheckpoint.history leftCandidates rightCandidates
+    (EventGraphRuntime.State.initial (graph := graph setup)
+      (setup.eventInputs leftInitial)).accepted
+    leftCheckpoint.accepted rightCheckpoint.accepted leftCheckpoint.clock rightCheckpoint.clock
+    leftCheckpoint.activated rightCheckpoint.activated nativeRight.application.serviceGrant grant
+    rfl leftCheckpoint.ledger rightCheckpoint.ledger
+    (congrFun leftCheckpoint.leaked who) (congrFun rightCheckpoint.leaked who)
+    leftCheckpoint.receipts rightCheckpoint.receipts same
+
+/-- Matching source views and an already matching focal alias prefix also
+reconstruct the next whole recall entry, including its emitted packet. -/
+theorem Checkpoint.respond_recall_eq {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {leftInitial rightInitial : State L setup.context} {Γ : SourceCtx Player L}
+    {left right : Config Player L Γ} {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
+    {nativeLeft nativeRight : (application setup leaks).Execution}
+    (leftCheckpoint : Checkpoint setup leaks leftInitial left refs rank nativeLeft)
+    (rightCheckpoint : Checkpoint setup leaks rightInitial right refs rank nativeRight)
+    (who : Player)
+    (grant : nativeLeft.application.serviceGrant = nativeRight.application.serviceGrant)
+    (same : left.view who = right.view who)
+    (past : nativeLeft.recall who = nativeRight.recall who)
+    (response : (application setup leaks).Action) :
+    (nativeLeft.respond (application setup leaks) who response).recall who =
+      (nativeRight.respond (application setup leaks) who response).recall who := by
+  have views := leftCheckpoint.observe_eq rightCheckpoint who grant same
+  have publicViews := congrArg (fun view : (application setup leaks).PlayerView =>
+    view.application.publicView.observation) views
+  change (graph setup).publicObserve nativeLeft.application.config =
+    (graph setup).publicObserve nativeRight.application.config at publicViews
+  apply respond_recall_eq_of_input_eq (runtime setup) leaks nativeLeft nativeRight who response
+    leftCheckpoint.recall rightCheckpoint.recall past views
+    (leftCheckpoint.remembered.trans rightCheckpoint.remembered.symm)
+  rw [leftCheckpoint.counters, rightCheckpoint.counters, publicViews]
+  rfl
 
 /-- Grant and owner activation reach the actual response opportunity. Passive
 sampling is inert here because every pending identifier is already public. -/
@@ -118,7 +204,8 @@ theorem Checkpoint.owner_opportunity
           execution =
         (players owner (opportunity.recall owner)
           (opportunity.observe (application setup leaks) owner)).map
-            (opportunity.respond (application setup leaks) owner) := by
+            (opportunity.respond (application setup leaks) owner) ∧
+      opportunity.recall = execution.recall := by
   let app := application setup leaks
   let granted : app.Execution := { execution with
     application := { execution.application with serviceGrant := some event }
@@ -134,7 +221,7 @@ theorem Checkpoint.owner_opportunity
       reactiveApplication, environmentStep, FinDist.map_pure,
       ReactiveApplication.Command.actor?, ReactiveApplication.resume]
     rfl
-  refine ⟨activated, ?_, rfl, rfl, rfl, ?_⟩
+  refine ⟨activated, ?_, rfl, rfl, rfl, ?_, rfl⟩
   · exact { checkpoint with
       invariant := checkpoint.invariant.copy rfl rfl rfl
       binding := checkpoint.binding.copy rfl rfl rfl }
@@ -246,7 +333,9 @@ theorem Checkpoint.reveal_response [Fintype Player]
         (execution.respond (application setup leaks) owner response) = FinDist.pure next ∧
       Checkpoint setup leaks initial
         (revealSuccessor published selected source (sourceChoice setup leaks response))
-        (refs.cons (name := published) ⟨.inr event, outputEq⟩) (rank + 1) next := by
+        (refs.cons (name := published) ⟨.inr event, outputEq⟩) (rank + 1) next ∧
+      ∀ observer, observer ≠ watcher → next.recall observer =
+        (execution.respond (application setup leaks) owner response).recall observer := by
   let app := application setup leaks
   let submitted := execution.respond app owner response
   let suffix : List (ServiceInstruction (graph setup)) :=
@@ -266,7 +355,7 @@ theorem Checkpoint.reveal_response [Fintype Player]
       message.id ∈ execution.network.ledger.map Message.id := by
     simp only [checkpoint.leaked, List.not_mem_nil, IsEmpty.forall_iff, implies_true]
   obtain ⟨value, bound⟩ := checkpoint.openable selected
-  obtain ⟨next, law, applicationEq, networkEq, _receiptsEq⟩ :=
+  obtain ⟨next, law, applicationEq, networkEq, receiptsEq, recallEq⟩ :=
     ordinary_response_settlement setup leaks bounds players watcher policy selected source.state
       refs execution checkpoint.agrees checkpoint.binding event ownedEvent outputEq codeEq node
       granted value bound ready timely entered (event.val + 1) activated due checkpoint.pending
@@ -317,13 +406,53 @@ theorem Checkpoint.reveal_response [Fintype Player]
     respond state who reply valid _ := app.respond_inputRecall state who reply valid
     environment state after command valid moved :=
       app.environment_inputRecall state after command valid moved }
-  refine ⟨next, law, ?_⟩
+  let initialAccepted :=
+    (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
+  have transcript := ordinary_response_transcript setup leaks bounds selected source.state refs
+    execution next checkpoint.agrees checkpoint.binding checkpoint.recall checkpoint.serials
+    initialAccepted checkpoint.accepted event ownedEvent outputEq codeEq node granted value bound
+    ready response member checkpoint.ledger checkpoint.receipts checkpoint.counters configEq
+    networkEq receiptsEq
+  obtain ⟨candidate, associated, _owned, _verified, _opening⟩ :=
+    opening_at_checkpoint setup leaks selected source.state refs execution checkpoint.agrees
+      checkpoint.binding event ownedEvent outputEq codeEq node granted value bound
+  rw [checkpoint.accepted] at associated
+  change initialAccepted (refs.get selected).field = some candidate at associated
+  have packetPresence : (publicationPacket? initialAccepted
+      (execution.application.config.complete event ready action result).store event).isSome =
+      sourceChoice setup leaks response := by
+    cases chosen : sourceChoice setup leaks response with
+    | false =>
+        simp only [result, chosen, Bool.false_eq_true, ↓reduceIte]
+        rw [publicationPacket?_complete_resolve initialAccepted execution.application.config
+          event ready owner payload (refs.get selected) [] outputEq codeEq node action .failure]
+        rfl
+    | true =>
+        simp only [result, chosen, ↓reduceIte]
+        rw [publicationPacket?_complete_resolve initialAccepted execution.application.config
+          event ready owner payload (refs.get selected) [] outputEq codeEq node action
+            (.success value)]
+        change ((initialAccepted (refs.get selected).field).map _).isSome = true
+        rw [associated]
+        rfl
+  have calendar := settlement_calendar setup checkpoint.reveals execution.application
+    checkpoint.invariant event ready action result (sourceChoice setup leaks response)
+    initialAccepted (eventRank.symm ▸ checkpoint.clock) packetPresence
+  have actualCalendar : next.application.clock = clockAt (rank + 1) ∧
+      next.application.activatedAt = checkpointActivations setup initialAccepted
+        ((graph setup).publicObserve next.application.config) (rank + 1) := by
+    rw [applicationEq]
+    simpa only [eventRank] using calendar
+  refine ⟨next, law, ?_, recallEq⟩
   refine ⟨revealSuccessor_registry_empty published selected source checkpoint.emptyRegistry _,
     revealSuccessor_bindingsOpenable published selected source checkpoint.openable _,
     @store, history, ?_, progressed.invariant, ?_, tables.1.trans checkpoint.accepted,
     tables.2.1.trans checkpoint.candidates, tables.2.2.trans checkpoint.remembered,
     networkClean.1, networkClean.2.2.1.trans checkpoint.leaked, networkClean.2.1,
-    networkClean.2.2.2, ?_, ?_⟩
+    networkClean.2.2.2, ?_, ?_, checkpoint.reveals,
+    checkpoint.covered.cons setup.program (cell := .publication payload)
+      ⟨.inr event, outputEq⟩ event rfl eventRank,
+    transcript.1, transcript.2.1, transcript.2.2, actualCalendar.1, actualCalendar.2⟩
   · rw [configEq]
     exact checkpoint.ordered.complete_at event ready eventRank
   · exact boundAfter.copy configEq tables.1 tables.2.1

@@ -1,0 +1,148 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceContinuation
+
+/-! # One-step reductions for the actual source protocol
+
+The syntactic policy supplies the action marginals in the existing protocol
+step. These equations reduce that finite product at a reveal and commute with
+the protocol's residual-state embedding. They introduce no alternative runner.
+-/
+
+noncomputable section
+
+namespace Vegas.SourceProgram
+
+open GameTheory GameTheory.Protocol GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+
+namespace ProtocolState
+
+open Classical in
+/-- The existing protocol step after drawing the encoded syntactic action
+marginals, retaining the protocol's ordinary terminal absorption. -/
+def behavioralStateStep {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
+    (state : ProtocolState program) : FinDist (ProtocolState program) :=
+  if terminal program state then FinDist.pure state else
+    (FinDist.pi fun who => (profile who).protocolAction program
+      (observe who program state)).bind (step program state)
+
+theorem behavioralStateStep_ret {Γ : SourceCtx Player L}
+    (result : List (Player × L.Expr (SourcePublicCtx L Γ) L.int))
+    (profile : BehavioralProfile (.ret result)) (state : Config Player L Γ) :
+    behavioralStateStep (.ret result) profile state = FinDist.pure state := by
+  simp [behavioralStateStep, terminal]
+
+variable {Γ : SourceCtx Player L} {O : Finset VarId} {published name : VarId}
+  {owner : Player} {payload : L.Ty} {fresh : published ∉ Γ.map Prod.fst}
+  {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
+  {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
+
+theorem behavioralStateStep_reveal_entry
+    (profile : BehavioralProfile (.reveal published owner name fresh source unresolved next))
+    (config : Config Player L Γ) :
+    behavioralStateStep (.reveal published owner name fresh source unresolved next)
+        profile (.inl config) =
+      (revealKernel profile (config.view owner)).map (fun disclose =>
+        Sum.inr (entry next (revealSuccessor published source config disclose))) := by
+  classical
+  let program := SourceProgram.reveal published owner name fresh source unresolved next
+  let laws who := (profile who).protocolAction program (observe who program (.inl config))
+  let advance (action : Option (OwnAction Player L)) :=
+    Sum.inr (α := Config Player L Γ)
+      (entry next (revealSuccessor published source config (OwnAction.disclosure action)))
+  simp only [behavioralStateStep, terminal, ite_false, step, Sum.elim_inl]
+  change ((FinDist.pi laws).bind fun joint => FinDist.pure (advance (joint owner))) = _
+  rw [← FinDist.map_eq_bind]
+  change (FinDist.pi laws).map (advance ∘ fun joint => joint owner) = _
+  rw [← FinDist.map_comp, FinDist.map_apply_pi]
+  simp only [laws, program, BehavioralPolicy.protocolAction, observe, Sum.elim_inl,
+    dite_true, FinDist.map_comp, Function.comp_def, advance, OwnAction.disclosure, revealKernel]
+
+theorem behavioralStateStep_reveal_tail
+    (profile : BehavioralProfile (.reveal published owner name fresh source unresolved next))
+    (state : ProtocolState next) :
+    behavioralStateStep (.reveal published owner name fresh source unresolved next)
+        profile (.inr state) =
+      (behavioralStateStep next (afterReveal profile) state).map Sum.inr := by
+  classical
+  by_cases stopped : terminal next state
+  · simp [behavioralStateStep, terminal, stopped]
+  · simp only [behavioralStateStep, terminal, stopped, ite_false, observe,
+      BehavioralPolicy.protocolAction, Sum.elim_inr, afterReveal, step, FinDist.map_bind]
+
+/-- A finite source prefix first draws its actual reveal choice and then
+executes the residual source protocol. -/
+theorem behavioralStatePrefix_reveal
+    (profile : BehavioralProfile (.reveal published owner name fresh source unresolved next))
+    (config : Config Player L Γ) (count : Nat) :
+    (fun law => law.bind (behavioralStateStep
+      (.reveal published owner name fresh source unresolved next) profile))^[count + 1]
+        (FinDist.pure (entry _ config)) =
+      (revealKernel profile (config.view owner)).bind fun disclose =>
+        ((fun law => law.bind (behavioralStateStep next (afterReveal profile)))^[count]
+          (FinDist.pure (entry next
+            (revealSuccessor published source config disclose)))).map Sum.inr := by
+  induction count with
+  | zero =>
+      simp only [entry]
+      rw [Function.iterate_one, FinDist.pure_bind, behavioralStateStep_reveal_entry]
+      simp only [Function.iterate_zero_apply, FinDist.map_pure, ← FinDist.map_eq_bind]
+      rfl
+  | succ count ih =>
+      rw [Function.iterate_succ_apply', ih, FinDist.bind_bind]
+      apply FinDist.bind_congr
+      intro disclose _supported
+      rw [Function.iterate_succ_apply', FinDist.bind_map, FinDist.map_bind]
+      exact FinDist.bind_congr fun state _ => behavioralStateStep_reveal_tail profile state
+
+end ProtocolState
+
+namespace Setup
+
+variable (setup : Setup (Player := Player) (L := L))
+  (admission : CommitmentInterface setup.program)
+
+/-- The actual initial protocol step samples setup once, irrespective of the
+strategic profile. Correlations in the setup law are retained. -/
+theorem behavioralStateStep_none
+    (profile : Profile (setup.informationModel admission).behavioralSignature) :
+    setup.behavioralStateStep admission profile none =
+      setup.initialLaw.map (fun initial =>
+        some (ProtocolState.entry setup.program (setup.initialConfig initial))) := by
+  simp [behavioralStateStep, protocolStep, FinDist.bind_const]
+
+/-- Encoding the syntactic policies gives exactly their action-marginal
+kernel after setup, with only the existing `some` state embedding. -/
+theorem behavioralStateStep_encoded_some
+    (profile : BehavioralProfile setup.program)
+    (permitted : ∀ who, (profile who).Admitted setup.program admission)
+    (state : SourceProgram.ProtocolState setup.program) :
+    setup.behavioralStateStep admission
+        (fun who => setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who))
+        (some state) =
+      (ProtocolState.behavioralStateStep setup.program profile state).map some := by
+  classical
+  by_cases stopped : ProtocolState.terminal setup.program state
+  · simp [behavioralStateStep, ProtocolState.behavioralStateStep, stopped]
+  · simp only [behavioralStateStep, Option.elim_some, stopped, ite_false, protocolStep,
+      ProtocolState.behavioralStateStep, FinDist.map_bind]
+    let choices who := setup.toProtocolBehavioralPolicy admission who
+      (profile who) (permitted who) (setup.protocolObserve who (some state))
+    have factors :
+        FinDist.pi (fun who => (profile who).protocolAction setup.program
+          (ProtocolState.observe who setup.program state)) =
+        (FinDist.pi choices).map (fun selected who => (selected who).1) := by
+      rw [← FinDist.pi_map]
+      congr 1
+      funext who
+      exact (setup.toProtocolBehavioralPolicy_map_val admission who (profile who)
+        (permitted who) (some (ProtocolState.observe who setup.program state))).symm
+    rw [factors, FinDist.bind_map]
+
+end Setup
+
+end Vegas.SourceProgram
