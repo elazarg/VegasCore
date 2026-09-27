@@ -37,6 +37,8 @@ import Vegas.Game.SourceServiceTimedSupport
 import Vegas.Game.SourceServiceTimedAdmissibility
 import Vegas.Game.SourceServiceTimedMixing
 import Vegas.Game.SourceServiceTimedConsistency
+import Vegas.Game.SourceServiceTimedLaw
+import Vegas.Game.SourceServiceTimedContinuation
 import Vegas.Game.SourceServiceChoiceSupport
 import Vegas.Game.SourceServiceLocalSupport
 import Vegas.Game.SourceChoiceCompletion

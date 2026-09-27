@@ -30,7 +30,7 @@ private theorem origins_sampled
       (execution.sampledActivation (application setup leaks) who sample) :=
   origin.learn who sample
 
-private theorem origins_replayed
+theorem origins_replayed
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (execution : (application setup leaks).Execution)
@@ -258,20 +258,20 @@ theorem sourceServiceTimedFamily_reveal_law
     (effective : (profile owner).EffectiveDisclosures
       (.reveal published owner name fresh binding unresolved next)
         source.registry source.revelations)
-    (network : (runtime setup).NetworkPolicy leaks) (visited remaining : List Player) :
+    (network : (runtime setup).NetworkPolicy leaks) (visits visited remaining : List Player) :
     let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
     ∀ (slot : Fin ((rosters event).count owner))
-      (_position : rosters event = visited ++ owner :: remaining)
-      (_selected : slot.val = visited.count owner)
+      (_position : visits = visited ++ owner :: remaining)
+      (_selected : rosterOffset setup rosters owner event + slot.val =
+        (execution.recall owner).length + visited.count owner)
       (_granted : execution.application.serviceGrant = some event)
-      (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
-      (_counted : (execution.recall owner).length = rosterOffset setup rosters owner event),
+      (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false),
     (runtime setup).runInteractionPlan leaks
       (Function.update (fun _ => (application setup leaks).replayPolicy) owner
         (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event slot)) network
-      ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) execution =
+      (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) execution =
       (revealKernel profile (source.view owner)).bind fun disclose =>
         (runtime setup).runInteractionPlan leaks
           (Function.update (fun _ => (application setup leaks).replayPolicy) owner
@@ -283,9 +283,9 @@ theorem sourceServiceTimedFamily_reveal_law
                 | some (candidate, raw) =>
                     FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
               (application setup leaks).replayPolicy)) network
-          ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner])
+          (visits.map ServiceInstruction.player ++ [.includeLatest event owner])
           execution := by
-  intro index event slot position selected granted unsent counted
+  intro index event slot position selected granted unsent
   let app := application setup leaks
   let offset := rosterOffset setup rosters owner event
   let opening := sourceServiceOpportunity setup leaks wholeProfile owner event
@@ -301,16 +301,16 @@ theorem sourceServiceTimedFamily_reveal_law
     (app.scheduledPolicy offset (some slot) (branch disclose) app.replayPolicy)
   let transport : Player → app.Policy := fun _ => app.replayPolicy
   have before : (execution.recall owner).length + visited.count owner ≤ offset + slot.val := by
-    rw [counted, selected]
+    exact selected.ge
   have sourcePrefix := scheduled_window_waiting setup leaks network owner offset slot opening
     visited execution (Or.inl before)
   have branchPrefix := fun disclose => scheduled_window_waiting setup leaks network owner offset
     slot (branch disclose) visited execution (Or.inl before)
   change (runtime setup).runInteractionPlan leaks sourcePlayers network
-    ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) execution =
+    (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) execution =
     (revealKernel profile (source.view owner)).bind fun disclose =>
       (runtime setup).runInteractionPlan leaks (branchPlayers disclose) network
-        ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) execution
+        (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) execution
   simp only [position, List.map_append, List.map_cons, List.append_assoc,
     (runtime setup).runInteractionPlan_append]
   rw [sourcePrefix]
@@ -344,7 +344,8 @@ theorem sourceServiceTimedFamily_reveal_law
   simp only [List.filterMap_map, Function.comp_def, instructionActor,
     List.filterMap_some] at currentCount
   have atSlot : (current.recall owner).length = offset + slot.val := by
-    rw [currentCount, counted, selected]
+    rw [currentCount]
+    exact selected.symm
   simp only [List.cons_append, runInteractionPlan, interactionStep, interactionInstruction,
     FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     ReactiveApplication.resume, ReactiveApplication.invoke,
@@ -498,8 +499,9 @@ theorem sourceServiceTimedPolicy_reveal_phase_law
     split_owner_visit owner (rosters event) slot.val slot.isLt
   have prefixLaw := sourceServiceTimedFamily_reveal_law setup leaks rosters fresh binding
     unresolved next wholeProfile profile refs source embedding refsBefore rank aligned execution
-    agree history valid recalled origins effective network visited remaining slot position
-    selected.symm granted unsent counted
+    agree history valid recalled origins effective network (rosters event) visited remaining slot
+    position
+    (by rw [counted, selected]) granted unsent
   have splitPlan : phase =
       ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) ++
         (List.replicate ticks .tick ++ [.expire event]) := by

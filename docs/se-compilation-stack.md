@@ -65,6 +65,12 @@ supported by the actual source policy. The
 [common consistency sequence](../Vegas/Game/SourceServiceTimedConsistency.lean)
 are checked for the full language. Belief correspondence and local incentives
 remain separate obligations: a consistent assessment need not be rational.
+The [initialized timed law](../Vegas/Game/SourceServiceTimedLaw.lean) identifies
+every actual native approximant's outcome law with its original finite source
+strategy. The [timed continuation law](../Vegas/Game/SourceServiceTimedContinuation.lean)
+derives the whole typed source continuation from any supported native phase
+boundary. Local response comparisons must still connect those boundary laws
+to the actual intermediate choices.
 
 Private-intention normalization has checked posterior and conditional
 continuation comparisons. The

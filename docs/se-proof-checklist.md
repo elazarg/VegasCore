@@ -77,7 +77,9 @@ percentage estimate.
   S1–S4 into an actual compiler theorem: every original source SE has a permitted
   native SE with the required joint law. Prove the law of the resulting
   assessment limit, rather than assuming that it is the final-opportunity
-  strategy from S1.
+  strategy from S1. The initialized equality for every timed approximant is
+  checked in [SourceServiceTimedLaw.lean](../Vegas/Game/SourceServiceTimedLaw.lean);
+  rationality and the resulting limit law still require S3–S4.
 
 ## Permitted runtime to full runtime
 
