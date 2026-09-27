@@ -17,6 +17,26 @@ are fixed before choosing an equilibrium. The
 instead uses passive sampling and an indifferent watcher. General activation
 rosters and fresh source commitments remain outside both checked instances.
 
+The checked extension work has three concrete boundaries:
+
+- [`replay_equilibrium_extends`](../Vegas/Game/RevealServiceReplayExtension.lean) restores harmless
+  public rebroadcasts without punishment. It preserves arbitrary
+  application-state utilities and actual continuation laws. The evidence
+  projection needed to use this in the terminal-audit compiler is separate.
+- [`openingWindow_settlement`](../Vegas/Pending/ReactiveOpeningSettlement.lean) evaluates an arbitrary
+  finite activation roster followed by protected inclusion. The selected
+  opening has its exact initial application effect; withholding has none.
+  All retained packet identifiers are published afterward, including leaked
+  copies. Common timing-policy limits and one-phase posterior laws are checked;
+  source correspondence across phases and local SE incentives remain open.
+- [`reactive_commit_repair`](../Vegas/Game/BindingRepairBlock.lean) carries the typed source repair
+  invariant through actual fresh native binding and inclusion. It is a block
+  theorem, not yet the stopped-run continuation repair needed by the general
+  restriction theorem.
+
+These are proof relations and restrictions of the existing runtime. They add
+no emitted language, interpreter, source operation, or player-memory model.
+
 ## Main theorem boundary: audit at settlement
 
 The end-to-end target must retain bounded off-turn transmissions and pending

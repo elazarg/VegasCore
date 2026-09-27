@@ -106,4 +106,90 @@ theorem openingOutcome_posterior (runtime : EventGraphRuntime graph)
         (privateView _ leftSupported _ rightSupported) owned (fun _ =>
           ⟨meaning _ leftSupported raw rfl, meaning _ rightSupported raw rfl⟩)
 
+/-- For the owner, its own opening value and source-choice law are fixed on
+its information fiber. At any prefix of the phase, the actual behavioral
+mixture's observed traffic therefore adds no information about hidden opponent
+state, without conditioning on the future source result. The readout can be
+any projection of the coupled transcript, including the owner's own recall. -/
+theorem openingWindow_owner_posterior {Observation : Type}
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
+    (offset : Nat) {slots : Nat} (choices : FinDist (Option (Fin slots)))
+    (network : runtime.NetworkPolicy leaks) (roster : List Player)
+    (prior : FinDist (runtime.reactiveApplication leaks).Execution)
+    (reference : (runtime.reactiveApplication leaks).Execution)
+    (before : (reference.recall owner).length ≤ offset)
+    (referenceRecall : reference.InputRecall (runtime.reactiveApplication leaks))
+    (recalls : ∀ start ∈ prior.support,
+      start.InputRecall (runtime.reactiveApplication leaks))
+    (messages : ∀ start ∈ prior.support,
+      (runtime.reactiveApplication leaks).messageView start =
+        (runtime.reactiveApplication leaks).messageView reference)
+    (recall : ∀ start ∈ prior.support, start.recall owner = reference.recall owner)
+    (publicView : ∀ start ∈ prior.support,
+      start.application.publicView = reference.application.publicView)
+    (privateView : ∀ start ∈ prior.support,
+      (runtime.reactiveApplication leaks).observePlayer start.application owner =
+        (runtime.reactiveApplication leaks).observePlayer reference.application owner)
+    (owned : candidate.1 = owner)
+    (referenceMeaning : reference.application.candidates.lookup candidate = .openable raw)
+    (meaning : ∀ start ∈ prior.support,
+      start.application.candidates.lookup candidate = .openable raw)
+    (observe : (runtime.reactiveApplication leaks).MessageReadout ×
+      List (runtime.reactiveApplication leaks).PlayerEntry → Observation)
+    (observed : Observation) :
+    let app := runtime.reactiveApplication leaks
+    let players := runtime.openingWindowMixturePlayers leaks owner event candidate raw
+      offset choices
+    let readout := fun execution : app.Execution =>
+      observe (app.messageView execution, execution.recall owner)
+    let joint := prior.bind fun start =>
+      ((runtime.runInteractionPlan leaks players network
+        (roster.map ServiceInstruction.player) start).map readout).map
+          (fun output => (output, start))
+    (joint.condOnFibre Prod.fst observed).map Prod.snd = prior := by
+  dsimp only
+  let app := runtime.reactiveApplication leaks
+  let players := runtime.openingWindowMixturePlayers leaks owner event candidate raw offset choices
+  let kernel := fun start : app.Execution =>
+    (runtime.runInteractionPlan leaks players network
+      (roster.map ServiceInstruction.player) start).map
+        (fun execution => observe (app.messageView execution, execution.recall owner))
+  have same (start : app.Execution) (supported : start ∈ prior.support) :
+      kernel start = kernel reference := by
+    have atStart : (start.recall owner).length ≤ offset := by
+      rw [recall start supported]
+      exact before
+    dsimp only [kernel, players]
+    rw [runtime.openingWindowMixture_law leaks owner event candidate raw offset choices
+      network _ start atStart,
+      runtime.openingWindowMixture_law leaks owner event candidate raw offset choices
+        network _ reference before, FinDist.map_bind, FinDist.map_bind]
+    apply FinDist.bind_congr
+    intro selected _
+    have coupled := runtime.openingWindow_coupling leaks owner event candidate raw offset selected
+      network roster owner start reference (recalls start supported) referenceRecall
+      (messages start supported) (recall start supported) (publicView start supported)
+      (privateView start supported) owned (fun _ => ⟨meaning start supported, referenceMeaning⟩)
+    have projected := congrArg (FinDist.map observe) coupled
+    simpa only [FinDist.map_comp, Function.comp_def] using projected
+  have independent : (prior.bind fun start =>
+      (kernel start).map fun output => (output, start)) =
+        FinDist.product (kernel reference) prior := by
+    calc
+      _ = prior.bind (fun start =>
+          (kernel reference).map fun output => (output, start)) := by
+        apply FinDist.bind_congr
+        intro start supported
+        rw [same start supported]
+      _ = _ := by
+        simp only [FinDist.product, FinDist.map_eq_bind]
+        rw [FinDist.bind_comm]
+  change (((prior.bind fun start =>
+    (kernel start).map fun output => (output, start)).condOnFibre Prod.fst observed).map
+      Prod.snd) = prior
+  rw [independent]
+  exact FinDist.conditional_snd_product (kernel reference) prior observed
+
 end Vegas.EventGraphRuntime

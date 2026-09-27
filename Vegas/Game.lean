@@ -50,6 +50,11 @@ import Vegas.Game.RevealServiceWatcherSupport
 import Vegas.Game.RevealServiceReplayMenu
 import Vegas.Game.RevealServiceReplayRelation
 import Vegas.Game.RevealServiceReplaySource
+import Vegas.Game.RevealServiceReplayContinuation
+import Vegas.Game.RevealServiceReplayComparison
+import Vegas.Game.RevealServiceReplayExtension
+import Vegas.Game.RevealServiceReplaySupport
+import Vegas.Game.BindingRepairBlock
 import Vegas.Game.RevealServiceTraffic
 import Vegas.Game.RevealServiceTrafficSound
 import Vegas.Game.RevealServiceTrafficDeparture

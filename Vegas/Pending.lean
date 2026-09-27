@@ -140,6 +140,8 @@ import Vegas.Pending.ReactiveHiddenEnvironment
 import Vegas.Pending.ReactiveHiddenInclusion
 import Vegas.Pending.ReactiveOpeningWindow
 import Vegas.Pending.ReactiveOpeningPosterior
+import Vegas.Pending.ReactiveOpeningSettlement
+import Vegas.Pending.ReactiveBindingBlock
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveServiceFootprint
 import Vegas.Pending.ReactiveAssociationPersistence

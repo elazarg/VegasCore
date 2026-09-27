@@ -6,6 +6,10 @@ import Vegas.Game.EventMessages
 import Vegas.Game.EventMessageStrategic
 import Vegas.Game.RevealServiceCompilation
 import Vegas.Game.RevealServiceAuditCompilation
+import Vegas.Game.RevealServiceReplayExtension
+import Vegas.Game.BindingRepairBlock
+import Vegas.Pending.ReactiveOpeningSettlement
+import Interaction.ScheduledOpeningPosterior
 import Vegas.Game.PendingCompositions
 import Vegas.Game.ParameterOutcomes
 import Vegas.Examples.CommitRevealAuction
@@ -1169,5 +1173,29 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas.EventGraphRuntime.MessageBounds in
 #print axioms audited_raw_sequential_equilibrium
+
+/-- info: 'Vegas.SourceProgram.RevealService.replay_equilibrium_extends' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SourceProgram.RevealService in
+#print axioms replay_equilibrium_extends
+
+/-- info: 'Vegas.EventGraphRuntime.openingWindow_settlement' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.EventGraphRuntime in
+#print axioms openingWindow_settlement
+
+/-- info: 'Interaction.ReactiveApplication.scheduledMixture_waiting_limit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Interaction.ReactiveApplication in
+#print axioms scheduledMixture_waiting_limit
+
+/-- info: 'Vegas.SourceProgram.EventLowering.reactive_commit_repair' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SourceProgram.EventLowering in
+#print axioms reactive_commit_repair
 
 end Vegas.Paper

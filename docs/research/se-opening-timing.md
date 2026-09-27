@@ -158,12 +158,18 @@ start is proved; propagation of its distribution across successive phases is
 still required.
 
 [`scheduledMixture_after_open`](../../Interaction/ScheduledOpening.lean) and its
-runtime instance `openingWindowMixture_after_open` also prove that every
-supported first opening makes subsequent replies replay/silence. The common
-perturbation limit must retain this stop rule at zero-probability early-opening
-histories. A zero-weight latent mixture's arbitrary conditional fallback need
-not equal that limit. The actual retained-menu full-mixing, common limiting
-assessment and sequential-incentive arguments remain open.
+runtime instance `openingWindowMixture_after_open` prove that every supported
+first opening makes subsequent replies replay/silence.
+[`ScheduledOpeningSupport.lean`](../../Interaction/ScheduledOpeningSupport.lean)
+proves positivity at all lawful waiting histories.
+[`ScheduledOpeningPosterior.lean`](../../Interaction/ScheduledOpeningPosterior.lean)
+computes the exact latent posterior and hazard from actual own recall, then
+proves the common policy limit before and after opening. It retains the stop
+rule at zero-probability early-opening histories; a zero-weight latent mixture's
+arbitrary conditional fallback need not equal that limit. Instantiating these
+local facts at every actual roster information site, constructing one common
+consistent assessment across phases, and proving sequential incentives remain
+open.
 
 ## Why general coalescing is insufficient
 

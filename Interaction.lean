@@ -100,6 +100,8 @@ import Interaction.ReactiveImplementation
 import Interaction.ReactivePolicyMixture
 import Interaction.ReactiveReplayPolicy
 import Interaction.ScheduledOpening
+import Interaction.ScheduledOpeningSupport
+import Interaction.ScheduledOpeningPosterior
 import Interaction.ReactiveImplementationContinuation
 import Interaction.ReactiveAssessmentDecoding
 import Interaction.ReactiveOwnerSelection

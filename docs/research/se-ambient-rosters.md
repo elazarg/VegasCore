@@ -89,15 +89,19 @@ transcript's distribution across multiple phases remains necessary.
 
 `Interaction/ScheduledOpening.lean` proves that a supported first opening pins
 the latent slot and makes every subsequent response use the waiting policy.
-`openingWindowMixture_after_open` instantiates this with replay/silence. In a
-fully mixed approximant every legal early opening is supported. The eventual
-limiting policy must retain this stop behavior, including at an early-opening
-history of limiting probability zero; evaluating a zero-weight mixture's
-fallback directly is not a valid substitute for taking the common limit.
+`openingWindowMixture_after_open` instantiates this with replay/silence.
+`Interaction/ScheduledOpeningSupport.lean` proves full support for every lawful
+pre-opening replay history. `Interaction/ScheduledOpeningPosterior.lean` computes
+the actual recall-conditioned hazard and proves the explicit common policy
+limit: wait at earlier visits, use the source mixture at the last, and stop
+fresh submissions after every legal opening. The last case includes histories
+of limiting probability zero. Evaluating a zero-weight mixture's fallback
+directly is not a valid substitute for this checked limit.
 
 The broader-roster SE gate still requires protected final settlement, the
-multi-phase coupled-start invariant, full mixing on the actual retained menu,
-one common consistent limiting assessment, and local sequential incentives.
+multi-phase coupled-start invariant, instantiation of the checked local support
+and limit facts at every actual retained-menu information site, one common
+consistent limiting assessment, and local sequential incentives.
 The one-phase posterior theorem does not prove those remaining obligations.
 
 ## What is now proved about public replays

@@ -57,6 +57,19 @@ observer or second player is assumed. For opening, the unchanged accepted
 candidate and stored value are explicit premises. An attempted opening of the
 repaired unusable binding is deliberately outside that inclusion lemma.
 
+The checked commit block is now connected to source compilation.
+`reactiveBinding_reserved_config` executes the real atomic response followed by
+the real reserved selector and obtains the exact graph completion and successful
+receipt, for valid or failed binding choices. `reactiveBinding_initialized_config`
+derives its local freshness and timing conditions from a first initialized
+binding node and a positive deadline. In `Vegas/Game/BindingRepairBlock.lean`,
+`reactive_commit_agrees` and `reactive_commit_history` preserve the compiler's
+typed store and source-action-history decoding; `reactive_commit_repair` carries
+the existing source `Patched` invariant through paired original/repaired blocks,
+with unchanged deferred registry and revelation bookkeeping. The next inductive
+obligation is to reconstruct retained opponent inputs and the repaired owner's
+source view throughout later blocks, not merely to identify the binding output.
+
 ## Finite admission and clean-prefix contract
 
 A nonvacuous finite SE theorem for fresh commitments needs finite legal source

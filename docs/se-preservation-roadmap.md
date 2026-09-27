@@ -26,6 +26,9 @@ and the remaining service and language boundaries.
 | Concrete strategic stack | Source → C → W → N → raw is checked for arbitrary revelation sequences. All native games share the runtime and utility; deposits are fixed from actual finite watched-history payoff extrema before choosing the source equilibrium. |
 | Reusable monitoring step | A watcher uses ordinary pending observations and replay; public at-most-once inclusion turns the sampling bound into persistent evidence under arbitrary later policies. Reporting a differently addressed packet before the current public event completes records its rejection. |
 | Source correspondence | Service-block induction, replay recall, one common consistency sequence and conditional incentives establish the arbitrary-length revelation theorem. |
+| Harmless public replay extension | Every retained SE extends to a menu permitting auxiliary-player public replays, for arbitrary application-state utilities. Exact continuation laws and all-legal-history counterparts are checked; no fine or reporter indifference is needed for this edge. |
+| General-roster phase facts | Actual scheduled-opening policies, full support, their common off-path limit, conditional transcript laws, and protected final settlement are checked. Multi-phase source beliefs and sequential incentives remain to be composed. |
+| Fresh commitment blocks | Actual atomic binding and reserved inclusion preserve typed source-store and decoded source-history agreement. Paired blocks carry the source hidden-binding repair invariant. The stopped native continuation induction remains open. |
 
 The central proof is
 [`sequential_equilibrium_extends_of_continuation`](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean).

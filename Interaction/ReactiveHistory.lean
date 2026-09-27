@@ -31,6 +31,18 @@ theorem respond_actions (execution : app.Execution) (who : Principal) (action : 
       cases transmission <;>
         simp only [Execution.respond, ↓reduceIte, List.map_append, List.map_cons, List.map_nil]
 
+theorem respond_recall_length (execution : app.Execution) (who observer : Principal)
+    (action : app.Action) :
+    ((execution.respond app who action).recall observer).length =
+      (execution.recall observer).length + if who = observer then 1 else 0 := by
+  by_cases same : who = observer
+  · subst observer
+    have counts := congrArg List.length (app.respond_actions execution who action)
+    simpa only [List.length_map, List.length_append, List.length_singleton, ↓reduceIte]
+      using counts
+  · rw [app.respond_recall_other execution who observer (Ne.symm same) action]
+    simp only [same, ↓reduceIte, Nat.add_zero]
+
 theorem respond_recall_prefix (execution : app.Execution) (who observer : Principal)
     (action : app.Action) :
     execution.recall observer <+: (execution.respond app who action).recall observer := by

@@ -190,7 +190,7 @@ theorem openingWindowPlayers_eq (runtime : EventGraphRuntime graph)
       ReactiveApplication.scheduledPolicy, counts, replay]
   · simpa only [openingWindowPlayers, active, ↓reduceIte] using replay
 
-private theorem windowOpening_packet (runtime : EventGraphRuntime graph)
+theorem windowOpening_packet (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
     (state : State graph) (known : List (Message Player (WitnessedPacket graph)))
