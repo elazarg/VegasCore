@@ -28,13 +28,21 @@ and the remaining service and language boundaries.
 | Source correspondence | Service-block induction, replay recall, one common consistency sequence and conditional incentives establish the arbitrary-length revelation theorem. |
 
 The central proof is
-[`sequential_equilibrium_extends_of_comparator`](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean).
-Its premises describe local execution and actual continuation payments; they
-do not assume a target equilibrium, a rational completion, or belief preservation.
-For each additional action, a fixed source-legal lottery must match or exceed
-its continuation value at every hidden history under every paired continuation
-profile. This permits harmless undetectable actions. The simpler
-`sequential_equilibrium_extends` corollary uses payoff bounds and collection.
+[`sequential_equilibrium_extends_of_continuation`](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean).
+Its premises describe execution and actual continuation values; they do not
+assume a target equilibrium, a rational completion, or belief preservation.
+Under every paired profile and finite posterior, each additional target choice
+must be bounded by one whole legal source continuation. That policy may depend
+on the posterior, but cannot be selected separately at each hidden history.
+This permits repairs that change later choices, such as replacing an unusable
+binding by a valid value and later withholding. Instantiating that repair for
+native execution remains a separate obligation.
+
+The `sequential_equilibrium_extends_of_comparator` specialization uses a fixed
+source-legal local lottery whose value dominates at every hidden history.
+It permits harmless undetectable actions. The simpler
+`sequential_equilibrium_extends` corollary derives comparison from payoff bounds
+and collection.
 The [multiplayer regression](../GameTheoryExtensionsTests/RestrictionEnforcement.lean)
 instantiates that corollary: Alice can depart into a new Bob decision, where Bob
 prefers the response benefiting both players. A fixed charge of one preserves

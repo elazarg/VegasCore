@@ -29,6 +29,110 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
   [∀ who (site : N.InformationSite who), Fintype (N.InformationHistory who site.1)]
   (restriction : M.ActionRestriction N)
 
+/-- Extend every source SE when each additional target action is bounded by
+a whole legal source continuation under every paired profile and finite
+posterior. One continuation serves all hidden histories in that posterior.
+The comparison may repair later choices as well as the current action; it
+contains no premise that any target continuation is rational.
+
+The common consistency construction supplies rational play at new information
+sites. Source whole-policy rationality and the comparison establish incentives
+at retained sites, with exact initialized history and payoff laws. -/
+theorem sequential_equilibrium_extends_of_continuation
+    (sourceAntichain : M.DecisionInformationAntichain)
+    (reference : N.BehavioralAssessment) (referenceMixed : reference.IsFullyMixed)
+    (decisionRecall : N.DecisionRecall) (horizon : Nat) (bounded : T.BoundedHorizon horizon)
+    (depth : ∀ who, N.InformationSite who → Nat)
+    (clock : ∀ who site, InformationSite.CommonDepth N site (depth who site))
+    (sourcePayoff : E.History → Player → ℝ) (targetPayoff : T.History → Player → ℝ)
+    (matching : ∀ history who,
+      targetPayoff (restriction.history history) who = sourcePayoff history who)
+    (comparison : ∀ (sourceProfile : ∀ who, M.BehavioralPolicy who)
+      (targetProfile : ∀ who, N.BehavioralPolicy who),
+      restriction.ExtendsProfile sourceProfile targetProfile →
+      ∀ who (site : M.InformationSite who)
+        (action : N.Choice who (restriction.site who site).1),
+        action ∉ Set.range (restriction.choice who site.1) →
+        ∀ belief : FinDist (M.InformationHistory who site.1),
+          ∃ alternative : M.BehavioralPolicy who,
+            belief.expect (fun history => (N.runBehavioralFrom
+              (Profile.update (sig := N.behavioralSignature) targetProfile who
+                ((targetProfile who).commit (restriction.site who site).1 action))
+              (horizon - depth who (restriction.site who site))
+              (restriction.history history.1)).expect (fun final => targetPayoff final who)) ≤
+            belief.expect (fun history => (M.runBehavioralFrom
+              (Profile.update (sig := M.behavioralSignature) sourceProfile who alternative)
+              (horizon - depth who (restriction.site who site))
+              history.1).expect (fun final => sourcePayoff final who)))
+    (source : M.BehavioralAssessment)
+    (sourceEquilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
+      source.continuationContext site (fun history => sourcePayoff history who)
+        (horizon - depth who (restriction.site who site)))) :
+    ∃ target : N.BehavioralAssessment,
+      target.IsSequentialEquilibriumFor
+        decisionRecall.antichain
+        (fun who site => target.continuationContext site
+          (fun history => targetPayoff history who) (horizon - depth who site)) ∧
+      restriction.ExtendsProfile source.strategy target.strategy ∧
+      (∀ who site, target.belief who (restriction.site who site) =
+        (source.belief who site).map (restriction.informationHistory who site)) ∧
+      (M.runBehavioral source.strategy horizon).map restriction.history =
+        N.runBehavioral target.strategy horizon ∧
+      (M.runBehavioral source.strategy horizon).map
+          (fun history => (restriction.history history, sourcePayoff history)) =
+        (N.runBehavioral target.strategy horizon).map (fun history =>
+          (history, targetPayoff history)) ∧
+      ∀ history ∈ (N.runBehavioral target.strategy horizon).support,
+        T.terminal history.state := by
+  classical
+  have within (who : Player) (site : N.InformationSite who) : depth who site ≤ horizon := by
+    have before : depth who site < horizon := by
+      by_contra late
+      have stopped := bounded site.2.choose.1.state site.2.choose.1.trace
+        (by have := clock who site site.2.choose; omega)
+      exact site.2.choose_spec.1 stopped
+    exact before.le
+  obtain ⟨target, consistent, agrees, beliefs, newOptimal⟩ :=
+    restriction.exists_consistent_extension source sourceAntichain sourceEquilibrium.2
+      reference referenceMixed decisionRecall horizon targetPayoff depth clock within
+  have rational : target.IsSequentiallyRational fun who site =>
+      target.continuationContext site (fun history => targetPayoff history who)
+        (horizon - depth who site) := by
+    apply consistent.sequentiallyRational_of_localOptimal decisionRecall horizon
+      (fun who history => targetPayoff history who) depth clock within
+    intro who site _ law
+    by_cases retained : restriction.Retained who site.1
+    · obtain ⟨original, observed⟩ := retained
+      have same : restriction.site who original = site := Subtype.ext observed
+      subst site
+      apply restriction.retained_localOptimal_of_continuation source target agrees decisionRecall
+        who original (beliefs who original) (fun history => sourcePayoff history who)
+        (fun history => targetPayoff history who) (fun history => matching history who)
+        (horizon - depth who (restriction.site who original)) (sourceEquilibrium.1 who original)
+        _ law
+      intro action extra
+      obtain ⟨alternative, bound⟩ := comparison source.strategy target.strategy agrees who original
+        action extra (source.belief who original)
+      refine ⟨alternative, ?_⟩
+      simpa only [BehavioralAssessment.continuationContext_value, beliefs,
+        FinDist.expect_bind, FinDist.expect_map, informationHistory_val] using bound
+    · exact newOptimal who site retained law
+  have historyLaw := restriction.initialized_law source.strategy target.strategy agrees horizon
+  refine ⟨target, ⟨rational, consistent⟩, agrees, beliefs, historyLaw, ?_, ?_⟩
+  · calc
+      _ = ((M.runBehavioral source.strategy horizon).map restriction.history).map
+          (fun history => (history, targetPayoff history)) := by
+        rw [FinDist.map_comp]
+        congr 1
+        funext history
+        have samePayoff : sourcePayoff history = targetPayoff (restriction.history history) :=
+          funext fun who => (matching history who).symm
+        exact congrArg (fun values : Player → ℝ => (restriction.history history, values)) samePayoff
+      _ = _ := congrArg (FinDist.map _) historyLaw
+  · intro history supported
+    exact N.runBehavioralFrom_terminal_of_bound target.strategy bounded
+      T.initHistory history supported
+
 /-- A fixed legal comparator for each additional action suffices when its
 actual continuation value bounds the extra action under every paired profile.
 The comparator is independent of the hidden history and future random draws.
@@ -83,49 +187,13 @@ theorem sequential_equilibrium_extends_of_comparator
           (history, targetPayoff history)) ∧
       ∀ history ∈ (N.runBehavioral target.strategy horizon).support,
         T.terminal history.state := by
-  classical
-  have within (who : Player) (site : N.InformationSite who) : depth who site ≤ horizon := by
-    have before : depth who site < horizon := by
-      by_contra late
-      have stopped := bounded site.2.choose.1.state site.2.choose.1.trace
-        (by have := clock who site site.2.choose; omega)
-      exact site.2.choose_spec.1 stopped
-    exact before.le
-  obtain ⟨target, consistent, agrees, beliefs, newOptimal⟩ :=
-    restriction.exists_consistent_extension source sourceAntichain sourceEquilibrium.2
-      reference referenceMixed decisionRecall horizon targetPayoff depth clock within
-  have rational : target.IsSequentiallyRational fun who site =>
-      target.continuationContext site (fun history => targetPayoff history who)
-        (horizon - depth who site) := by
-    apply consistent.sequentiallyRational_of_localOptimal decisionRecall horizon
-      (fun who history => targetPayoff history who) depth clock within
-    intro who site _ law
-    by_cases retained : restriction.Retained who site.1
-    · obtain ⟨original, observed⟩ := retained
-      have same : restriction.site who original = site := Subtype.ext observed
-      subst site
-      exact restriction.retained_localOptimal_of_comparator source target agrees decisionRecall
-        who original (beliefs who original) (fun history => sourcePayoff history who)
-        (fun history => targetPayoff history who) (fun history => matching history who)
-        (horizon - depth who (restriction.site who original)) (sourceEquilibrium.1 who original)
-        (comparator who original) (comparison source.strategy target.strategy agrees who original)
-        law
-    · exact newOptimal who site retained law
-  have historyLaw := restriction.initialized_law source.strategy target.strategy agrees horizon
-  refine ⟨target, ⟨rational, consistent⟩, agrees, beliefs, historyLaw, ?_, ?_⟩
-  · calc
-      _ = ((M.runBehavioral source.strategy horizon).map restriction.history).map
-          (fun history => (history, targetPayoff history)) := by
-        rw [FinDist.map_comp]
-        congr 1
-        funext history
-        have samePayoff : sourcePayoff history = targetPayoff (restriction.history history) :=
-          funext fun who => (matching history who).symm
-        exact congrArg (fun values : Player → ℝ => (restriction.history history, values)) samePayoff
-      _ = _ := congrArg (FinDist.map _) historyLaw
-  · intro history supported
-    exact N.runBehavioralFrom_terminal_of_bound target.strategy bounded
-      T.initHistory history supported
+  apply restriction.sequential_equilibrium_extends_of_continuation sourceAntichain reference
+    referenceMixed decisionRecall horizon bounded depth clock sourcePayoff targetPayoff matching
+    _ source sourceEquilibrium
+  intro sourceProfile targetProfile agrees who site action extra belief
+  refine ⟨(sourceProfile who).withLaw site.1 (comparator who site action), ?_⟩
+  exact FinDist.expect_mono fun history _ =>
+    comparison sourceProfile targetProfile agrees who site action extra history
 
 omit [∀ who, DecidableEq (N.InfoState who)] in
 /-- Restoring choices of payoff-indifferent players preserves every restricted

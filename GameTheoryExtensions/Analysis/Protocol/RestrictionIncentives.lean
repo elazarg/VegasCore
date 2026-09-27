@@ -131,6 +131,58 @@ private theorem context_withLaw_affine (target : N.BehavioralAssessment)
       FinDist.expect_congr fun history _ => each history
     _ = _ := FinDist.expect_comm _ _ _
 
+/-- Each extra target choice can be compared with an entire legal source
+continuation, uniformly over the current posterior. The replacement may change
+future source choices; sequential rationality bounds the whole policy. It need
+not be the same comparator at different beliefs, but cannot use the actual
+hidden history when selecting its policy. -/
+theorem retained_localOptimal_of_continuation
+    (source : M.BehavioralAssessment) (target : N.BehavioralAssessment)
+    (agrees : restriction.ExtendsProfile source.strategy target.strategy)
+    (recall : N.DecisionRecall)
+    (who : Player) [DecidableEq (N.InfoState who)]
+    (site : M.InformationSite who)
+    (belief : target.belief who (restriction.site who site) =
+      (source.belief who site).map (restriction.informationHistory who site))
+    (sourcePayoff : E.History → ℝ) (targetPayoff : T.History → ℝ)
+    (payoff : ∀ history, targetPayoff (restriction.history history) = sourcePayoff history)
+    (fuel : Nat)
+    (rational : source.IsSequentiallyRationalAt site
+      (source.continuationContext site sourcePayoff fuel))
+    (comparison : ∀ action : N.Choice who (restriction.site who site).1,
+      action ∉ Set.range (restriction.choice who site.1) →
+      ∃ alternative : M.BehavioralPolicy who,
+        (target.continuationContext (restriction.site who site) targetPayoff fuel).value
+            ((target.strategy who).commit (restriction.site who site).1 action) ≤
+          (source.continuationContext site sourcePayoff fuel).value alternative)
+    (law : FinDist (N.Choice who (restriction.site who site).1)) :
+    (target.continuationContext (restriction.site who site) targetPayoff fuel).value
+        ((target.strategy who).withLaw (restriction.site who site).1 law) ≤
+      (target.continuationContext (restriction.site who site) targetPayoff fuel).value
+        (target.strategy who) := by
+  classical
+  have baseline := restriction.context_value_eq source target who site belief
+    (source.strategy who) (target.strategy who)
+    (by simpa only [Profile.update_eq_self] using agrees) sourcePayoff targetPayoff payoff fuel
+  have pureOptimal (action : N.Choice who (restriction.site who site).1) :
+      (target.continuationContext (restriction.site who site) targetPayoff fuel).value
+          ((target.strategy who).commit (restriction.site who site).1 action) ≤
+        (target.continuationContext (restriction.site who site) targetPayoff fuel).value
+          (target.strategy who) := by
+    by_cases permitted : action ∈ Set.range (restriction.choice who site.1)
+    · obtain ⟨original, rfl⟩ := permitted
+      have equality := restriction.context_withLaw_value_eq source target agrees who site belief
+        (FinDist.pure original) sourcePayoff targetPayoff payoff fuel
+      simp only [FinDist.map_pure] at equality
+      change (target.continuationContext _ targetPayoff fuel).value
+          ((target.strategy who).withLaw _ (FinDist.pure _)) ≤ _
+      rw [equality, baseline]
+      exact rational ((source.strategy who).withLaw site.1 (FinDist.pure original)) (Set.mem_univ _)
+    · obtain ⟨alternative, bound⟩ := comparison action permitted
+      exact bound.trans ((rational alternative (Set.mem_univ _)).trans_eq baseline.symm)
+  rw [context_withLaw_affine target recall who (restriction.site who site) targetPayoff fuel law]
+  exact (FinDist.expect_mono fun action _ => pureOptimal action).trans_eq (FinDist.expect_const _ _)
+
 /-- Each forbidden action is bounded by one legal source lottery, shared by
 all hidden histories in the information set. The comparison concerns actual
 execution under the same remaining paired profiles, so it cannot select a
@@ -165,30 +217,12 @@ theorem retained_localOptimal_of_comparator
         ((target.strategy who).withLaw (restriction.site who site).1 law) ≤
       (target.continuationContext (restriction.site who site) targetPayoff fuel).value
         (target.strategy who) := by
-  have baseline := restriction.context_value_eq source target who site belief
-    (source.strategy who) (target.strategy who)
-    (by simpa only [Profile.update_eq_self] using agrees) sourcePayoff targetPayoff payoff fuel
-  have pureOptimal (action : N.Choice who (restriction.site who site).1) :
-      (target.continuationContext (restriction.site who site) targetPayoff fuel).value
-          ((target.strategy who).commit (restriction.site who site).1 action) ≤
-        (target.continuationContext (restriction.site who site) targetPayoff fuel).value
-          (target.strategy who) := by
-    by_cases permitted : action ∈ Set.range (restriction.choice who site.1)
-    · obtain ⟨original, rfl⟩ := permitted
-      have equality := restriction.context_withLaw_value_eq source target agrees who site belief
-        (FinDist.pure original) sourcePayoff targetPayoff payoff fuel
-      simp only [FinDist.map_pure] at equality
-      change (target.continuationContext _ targetPayoff fuel).value
-          ((target.strategy who).withLaw _ (FinDist.pure _)) ≤ _
-      rw [equality, baseline]
-      exact rational ((source.strategy who).withLaw site.1 (FinDist.pure original)) (Set.mem_univ _)
-    · apply le_trans _ ((rational
-        ((source.strategy who).withLaw site.1 (comparator action)) (Set.mem_univ _)).trans_eq
-          baseline.symm)
-      simp only [BehavioralAssessment.continuationContext_value, belief,
-        FinDist.expect_bind, FinDist.expect_map, informationHistory_val]
-      exact FinDist.expect_mono fun history _ => comparison action permitted history
-  rw [context_withLaw_affine target recall who (restriction.site who site) targetPayoff fuel law]
-  exact (FinDist.expect_mono fun action _ => pureOptimal action).trans_eq (FinDist.expect_const _ _)
+  apply restriction.retained_localOptimal_of_continuation source target agrees recall who site
+    belief sourcePayoff targetPayoff payoff fuel rational _ law
+  intro action extra
+  refine ⟨(source.strategy who).withLaw site.1 (comparator action), ?_⟩
+  simp only [BehavioralAssessment.continuationContext_value, belief,
+    FinDist.expect_bind, FinDist.expect_map, informationHistory_val]
+  exact FinDist.expect_mono fun history _ => comparison action extra history
 
 end GameTheory.Protocol.InformationModel.ActionRestriction

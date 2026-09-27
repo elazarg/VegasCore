@@ -1098,6 +1098,12 @@ open GameTheory.Protocol.InformationModel.ActionRestriction in
 open GameTheory.Protocol.InformationModel.ActionRestriction in
 #print axioms sequential_equilibrium_extends_of_comparator
 
+/-- info: 'GameTheory.Protocol.InformationModel.ActionRestriction.sequential_equilibrium_extends_of_continuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel.ActionRestriction in
+#print axioms sequential_equilibrium_extends_of_continuation
+
 /-- info: 'GameTheory.Enforcement.inferred_deposit_minimal' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
