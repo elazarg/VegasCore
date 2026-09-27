@@ -180,6 +180,73 @@ theorem source_replay_factorization
   exact ⟨nextNoise, by simpa only [FinDist.pure_bind, FinDist.map_pure,
     FinDist.bind_pure, FinDist.map_id, FinDist.map_comp, Function.comp_def] using law⟩
 
+/-- Passive activation turns the complete traffic factorization into a law
+for the player's actual input: its response history and current observation.
+The same network sample is used on each coupled branch; no observer receives
+another player's sample or any of the auxiliary proof projection. -/
+theorem source_activation_input_factorization
+    {Seed : Type*} {Γ : SourceCtx Player L}
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (focal : Player) (prior : FinDist Seed) (source : Seed → Config Player L Γ)
+    (execution : Seed → (application setup leaks).Execution)
+    (noise : DecisionView focal Γ → FinDist _)
+    (factor : prior.map (fun seed => (source seed,
+        (runtime setup).bindingTraffic leaks focal (execution seed))) =
+      (prior.map source).bind fun config =>
+        (noise (config.view focal)).map fun extra => (config, extra)) :
+    ∃ channel : DecisionView focal Γ → FinDist
+        (List (application setup leaks).PlayerEntry × (application setup leaks).PlayerView),
+      (prior.bind fun seed =>
+        ((execution seed).environmentStep (application setup leaks) (.activate focal)).map
+          fun final => (source seed,
+            (final.recall focal, final.observe (application setup leaks) focal))) =
+      (prior.map source).bind fun config =>
+        (channel (config.view focal)).map fun input => (config, input) := by
+  let app := application setup leaks
+  have coupled (left right : app.Execution)
+      (same : (runtime setup).bindingTraffic leaks focal left =
+        (runtime setup).bindingTraffic leaks focal right) :
+      (left.environmentStep app (.activate focal)).map
+          (fun final => (final.recall focal, final.observe app focal)) =
+        (right.environmentStep app (.activate focal)).map
+          (fun final => (final.recall focal, final.observe app focal)) := by
+    have networks : left.network = right.network := congrArg Prod.fst same
+    simp only [ReactiveApplication.Execution.activation_samples, FinDist.map_comp]
+    rw [networks]
+    apply FinDist.map_congr_of_eq_on_support
+    intro sample _supported
+    let first := left.sampledActivation app focal sample
+    let second := right.sampledActivation app focal sample
+    have equal := (runtime setup).bindingTraffic_activation leaks left right focal focal same sample
+    have sampledNetworks : first.network = second.network := congrArg Prod.fst equal
+    have receipts : first.receipts = second.receipts :=
+      congrArg (fun traffic => traffic.2.1) equal
+    have recalled : first.recall focal = second.recall focal :=
+      congrArg (fun traffic => traffic.2.2.2.1) equal
+    have views : first.application.playerView focal = second.application.playerView focal :=
+      congrArg (fun traffic => traffic.2.2.2.2.1) equal
+    have projected := congrArg (fun view : EventGraphRuntime.PlayerView (graph setup) =>
+      (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
+        ReactivePlayerView (graph setup))) views
+    change (first.recall focal, first.observe app focal) =
+      (second.recall focal, second.observe app focal)
+    apply Prod.ext recalled
+    change ReactiveApplication.PlayerView.mk _ _ _ = _
+    rw [sampledNetworks]
+    exact congrArg₂ (fun view evidence =>
+      (⟨second.network.observe focal, view, evidence⟩ : app.PlayerView)) projected receipts
+  obtain ⟨channel, law⟩ := FinDist.exists_updated_observation_kernel_of_readout prior source
+    (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
+    (fun config => config.view focal) noise factor (fun _ => FinDist.pure Unit.unit)
+    (fun config _ => config) (fun config => config.view focal)
+    (fun seed _ => ((execution seed).environmentStep app (.activate focal)).map
+      fun final => (final.recall focal, final.observe app focal))
+    (fun _ _ _ _ _ _ _ _ same => same)
+    (fun left _ _ _ right _ _ _ _ same => coupled (execution left) (execution right) same)
+  exact ⟨channel, by simpa only [FinDist.pure_bind, FinDist.map_pure,
+    FinDist.bind_pure, FinDist.map_id, FinDist.map_comp, Function.comp_def] using law⟩
+
 omit [IExpr.ResultTypes L] in
 private theorem commit_view_reflects {Γ : SourceCtx Player L} {owner : Player}
     {payload : L.Ty} (focal : Player) (name : VarId)

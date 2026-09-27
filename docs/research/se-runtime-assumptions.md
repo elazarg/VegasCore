@@ -341,6 +341,11 @@ objective. The remaining proof obligations are:
    and discharges the successful opening handler-view comparison. These are
    constructor results; no complete-program posterior equality is assumed
    or yet concluded.
+   Actual passive activation converts this auxiliary traffic law into the
+   law of the player's real input, retaining its response history and sampled
+   observation. The [binding execution law](../../Vegas/Game/SourceServiceBindingExecution.lean)
+   disintegrates the actual compiler's complete binding window without
+   discarding private recall or network state.
    The [public-sample constructor](../../Vegas/Game/SourceServiceSampleFactorization.lean)
    derives the actual sampling instruction's traffic law from the source
    distribution and preserves the joint effective/original source-memory
@@ -450,6 +455,10 @@ objective. The remaining proof obligations are:
    [repair-memory invariant](../../Vegas/Pending/ReactiveBindingMemoryInvariant.lean)
    preserves the repaired player's own binding records through the actual
    implementation runner without extending the runtime's private state.
+   The [next owner opportunity](../../Vegas/Game/SourceServiceRepairOpportunity.lean)
+   additionally includes the actual passive activation, yielding both its
+   sampled predecessor and a real retained active trace. This supplies the
+   next-step witness needed after an optional waiting response.
    The
    [repeated window](../../Vegas/Pending/ReactiveRepeatedSubmissionWindow.lean)
    composes those alternatives across the entire remaining roster, retaining
