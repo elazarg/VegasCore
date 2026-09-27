@@ -13,7 +13,9 @@ open EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem flatMap_position {α β : Type} (items : List α) (expand : α → List β)
+/-- Locate an actual command in its expanded block and retain its exact
+position after all preceding blocks. -/
+theorem flatMap_position {α β : Type} (items : List α) (expand : α → List β)
     (index : Nat) (value : β) (found : (items.flatMap expand)[index]? = some value) :
     ∃ rank item offset, items[rank]? = some item ∧ (expand item)[offset]? = some value ∧
       index = ((items.take rank).flatMap expand).length + offset := by

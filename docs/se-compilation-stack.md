@@ -34,7 +34,8 @@ runtime. [Timed policies](../Vegas/Game/SourceServiceTimedPolicy.lean) choose
 an owner opportunity using a common timing law and select the source action
 there; this introduces no represented private scratch state. The
 [timed binding phase](../Vegas/Game/SourceServiceTimedBinding.lean) and
-[guarded disclosure phase](../Vegas/Game/SourceServiceTimedDisclosure.lean) have
+[guarded disclosure phase](../Vegas/Game/SourceServiceTimedDisclosure.lean), and
+[public sampling phase](../Vegas/Game/SourceServiceTimedSample.lean) have
 exact laws retaining the whole native execution. The whole-prefix information
 fold still needs to supply the native local continuation comparisons along a
 common fully mixed sequence.
@@ -44,7 +45,11 @@ one original Bayes sequence at abstract views outside actual decision sites.
 It preserves all actual continuation laws and the original assessment limit.
 The required finite choices follow from existing binding-value coverage;
 normalization then supports every effective source choice. This supplies a
-source support fact, not a native belief or SE correspondence theorem.
+source support fact. The
+[actual decision support theorem](../Vegas/Game/SourceServiceLocalSupport.lean)
+then proves that every permitted physical response is a replay alias or is
+supported by the actual source policy. The timed mixture's full-support and
+belief correspondence obligations remain separate.
 
 Private-intention normalization has checked posterior and conditional
 continuation comparisons. The

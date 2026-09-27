@@ -29,7 +29,9 @@ import Vegas.Game.SourceServiceBindingExecution
 import Vegas.Game.SourceServiceTimedPolicy
 import Vegas.Game.SourceServiceTimedBinding
 import Vegas.Game.SourceServiceTimedDisclosure
+import Vegas.Game.SourceServiceTimedSample
 import Vegas.Game.SourceServiceChoiceSupport
+import Vegas.Game.SourceServiceLocalSupport
 import Vegas.Game.SourceChoiceCompletion
 import Vegas.Game.SourceServiceBindingCheckpoint
 import Vegas.Game.SourceServiceBoundary
