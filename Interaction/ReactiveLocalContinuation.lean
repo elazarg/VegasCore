@@ -64,6 +64,37 @@ theorem run_one_response
     actor, Option.bind_some, transition, ↓reduceIte, Option.getD_some]
   exact (FinDist.map_eq_bind _ _).symm
 
+open Classical in
+/-- A pure information-site deviation performs the selected physical response
+in the actual history evaluator, independently of the other players' policies. -/
+theorem run_commit_response
+    (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (history : (menu.protocol initial horizon scheduler).History)
+    (who : Principal) (remaining : Nat) (execution : app.Execution)
+    (current : history.state = some ⟨remaining, some who, execution⟩)
+    (choice : (menu.information initial horizon scheduler).Choice who
+      ((menu.information initial horizon scheduler).infoOf who history.trace))
+    (response : app.Action) (selected : choice.1 = some response) :
+    ((menu.information initial horizon scheduler).runBehavioralFrom
+      (Profile.update (sig := (menu.information initial horizon scheduler).behavioralSignature)
+        profile who ((profile who).commit
+          ((menu.information initial horizon scheduler).infoOf who history.trace) choice))
+      1 history).map History.state =
+        FinDist.pure (some ⟨remaining, none, execution.respond app who response⟩) := by
+  classical
+  have observed : (menu.information initial horizon scheduler).infoOf who history.trace =
+      some (execution.recall who, execution.observe app who) := by
+    change (menu.signals initial horizon scheduler).infoOf who history.trace = _
+    rw [menu.info, current]
+    simp [observe]
+  rw [menu.run_one_response initial horizon scheduler _ history who remaining execution current]
+  simp only [decodeProfile, decodePolicy, embedPolicy, Profile.update_same, FinDist.map_comp]
+  rw [← observed]
+  rw [InformationModel.BehavioralPolicy.commit_self, FinDist.map_pure]
+  change FinDist.pure (some (Control.mk remaining none
+    (execution.respond app who (choice.1.getD ⟨none⟩)))) = _
+  rw [selected, Option.getD_some]
+
 /-- A lawful response in the local behavioral law has an actual next history. -/
 theorem response_history_exists
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)

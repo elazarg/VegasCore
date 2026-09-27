@@ -170,6 +170,22 @@ def actionRestriction :
   observed := included.observed initial horizon scheduler
   step := included.localStep initial horizon scheduler
 
+/-- An additional local choice is exactly a physical response absent from the
+smaller menu. The result applies to every input, not only reached histories. -/
+theorem extra_choice_response (who : Principal)
+    (past : List app.PlayerEntry) (view : app.PlayerView)
+    (action : (larger.information initial horizon scheduler).Choice who (some (past, view)))
+    (extra : action ∉ Set.range
+      ((included.actionRestriction initial horizon scheduler).choice who (some (past, view)))) :
+    ∃ response, action.1 = some response ∧ response ∈ larger.actions who past view ∧
+      response ∉ smaller.actions who past view := by
+  obtain ⟨response, allowed, same⟩ := action.2
+  refine ⟨response, same, allowed, ?_⟩
+  intro permitted
+  let original : (smaller.information initial horizon scheduler).Choice who (some (past, view)) :=
+    ⟨some response, response, permitted, rfl⟩
+  exact extra ⟨original, Subtype.ext same.symm⟩
+
 /-- Extending a behavioral profile means answering with the same physical
 response law at each retained decision input. -/
 theorem decoded_at_site

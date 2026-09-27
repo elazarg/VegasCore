@@ -46,6 +46,13 @@ import Vegas.Game.RevealServiceClean
 import Vegas.Game.RevealServiceOrdinaryExtension
 import Vegas.Game.RevealServiceDeposits
 import Vegas.Game.RevealServiceCompilation
+import Vegas.Game.RevealServiceWatcherSupport
+import Vegas.Game.RevealServiceTraffic
+import Vegas.Game.RevealServiceTrafficSound
+import Vegas.Game.RevealServiceTrafficDeparture
+import Vegas.Game.RevealServiceAuditDeposits
+import Vegas.Game.RevealServiceAuditExtension
+import Vegas.Game.RevealServiceAuditCompilation
 import Vegas.Game.RevealServicePerturbation
 import Vegas.Game.RevealServiceFocalLaw
 import Vegas.Game.RevealServiceFocalRecall

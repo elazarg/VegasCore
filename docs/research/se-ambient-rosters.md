@@ -8,7 +8,7 @@ timeout service. Arbitrary raw responses at those activations do not include
 arbitrary additional activations. The generic reactive runtime already permits
 the latter; this is a service-calendar restriction, not an impossibility result.
 
-## Smallest useful enlargement
+## Bounded phase design
 
 Parameterize each event's block by a finite list of additional player visits.
 Use the existing `.player`, `.includeLatest`, `.wire`, tick and expiry
@@ -16,16 +16,18 @@ instructions. No new interpreter, source operation, or private scratch state is
 needed. All actual visits retain the full bounded raw response menu and the
 existing passive observation rule.
 
-The simplest first adapter has one current-owner visit and arbitrarily many
-visits by other players before and after it. This would already permit Alice to
-broadcast before Bob's source choice. It is an intermediate theorem scope:
-allowing repeated current-owner visits requires the additional refinement below.
-It must not be presented as covering every bounded interaction calendar.
+The intended phase has a fixed finite roster, containing at least one visit by
+the current owner and possibly repeated visits by every player. It ends with
+protected current-event inclusion and deadline settlement. There may be foreign
+observations between submission and inclusion; adding an inclusion after every
+owner visit would impose a different, stronger service contract.
 
-The retained menu at an off-turn visit contains silence and already-published
-replays. At the owner's visit it also contains the canonical opening. A terminal
-audit deters fresh traffic outside that menu; it does not remove that traffic
-from the full target. Withholding remains legal and must not be fined.
+The retained responses are silence, replay of already-published envelopes, and
+replay of the phase's canonical opening once possessed, even before it is
+published. The owner may submit at most one fresh canonical opening envelope at
+any of its visits. A terminal audit deters other fresh traffic; full raw target
+menus retain it. Withholding remains legal and must not be fined. These are
+proposed conformance rules, not yet an instantiated roster menu theorem.
 
 ## Repeated current-owner visits
 
@@ -35,14 +37,45 @@ owner opening solely because it missed a designated microstep would require
 additional authenticated scheduling evidence and would enforce an incidental
 compiler schedule.
 
-One credible interpretation allows the owner to defer through several visits;
-the first accepted canonical opening fixes the source revelation choice, and
-expiry fixes withholding if none was included. Reserved inclusion after each
-visit removes competing canonical packets. All other retained visits carry only
-already-public traffic. This is a proposed source-to-native sequential refinement,
-not a checked SE theorem: the extra deferral choices and private recall must be
-handled in the common consistency construction. Existing one-owner prefix laws
-do not establish that refinement automatically.
+Before the first submission, both source outcomes remain available. After it,
+protected final inclusion must guarantee revelation despite later silence and
+exact-envelope replays. Expiry implements withholding when there was no opening.
+One fresh submission has one identifier; including it publishes that identifier
+for every remaining replay copy. A second fresh envelope has a different
+identifier and is an attributable multiplicity departure. A rebroadcaster need
+not be attributed or punished merely for retransmitting the original envelope.
+
+This is a proposed source-to-native sequential refinement. The extra deferral
+choices and private recall require one common consistency construction;
+the checked single-owner calendar theorem does not establish that refinement.
+
+## Checked phase distribution and deferred-choice algebra
+
+`GameTheoryExtensions/Math/Probability/DeferredChoice.lean` constructs behavioral
+opening hazards from a source probability `q` and a conditional timing law `t`.
+It proves exact first-opening mass `q * t(slot)`, exact withholding mass `1-q`,
+and corresponding binary-outcome payoff equality. Fully supported timing and
+`0<q<1` make opening and waiting positive at every opportunity. Concentrating
+timing on the final owner opportunity gives zero earlier opening hazards and
+the source probability at the final one, including when that probability tends
+to one.
+
+`Vegas/Pending/ReactivePolicyMixture.lean` connects a scheduled response family
+to the actual existing `runInteractionPlan`: one behavioral policy has exactly
+the complete execution law of first choosing an opening slot, or never opening,
+and running that component policy. This holds for arbitrary finite plans,
+intervening player responses, network policies and passive observation rules.
+`Interaction/ReactivePolicyMixture.lean` proves that a latent choice unused
+before a phase retains its intended prior at that phase, with actual earlier
+own recall. The latent mixture is a proof device realized as a behavioral
+policy; it adds no player scratch-memory state, action or computation cost.
+
+These results do not yet establish SE for the broader roster. The scheduled
+family must implement the stated canonical opening/replay rules, preserve every
+source outcome through the service, and be fully mixed over that retained menu.
+At the next meaningful source decision, the joint timing/sampling/replay
+transcript must preserve the source posterior throughout the common perturbation
+sequence. Unconditional execution-law equality alone does not prove this.
 
 ## What is now proved about public replays
 
@@ -62,6 +95,13 @@ These results do **not** erase own action recall, pending copies, network input
 history, audit records, or scheduler recall. Arbitrary schedulers can react to
 those records. If unpublished packets coexist, an arbitrary sampling rule can
 also react to the changed pending list; the clean-checkpoint premise matters.
+
+`Interaction/DeferredObservation.lean` handles two parts of a delayed-inclusion
+phase: an owner's activation adds no passive information when every foreign
+pending envelope is already known or published; and including the selected
+identifier makes remaining copies of that envelope published. Other players
+can still read the owner's unpublished envelope. This does not assert identical
+sampler laws for pools with different replay multiplicities.
 
 ## Audit evidence and attribution
 
@@ -84,9 +124,11 @@ first-departure comparison can use its author without identifying rebroadcasters
 Accountability after arbitrary earlier misconduct is a stronger requirement:
 charging a rebroadcaster requires separately authenticated transmission evidence.
 
-The immediate implementation gate is therefore: insert finite ambient windows;
-prove the clean-prefix and source-information correspondence using the checked
-window lemma; classify every fresh extra response against a semantic phase rule;
-then apply the existing conditional terminal-audit collection and SE extension.
-Repeated-owner deferral and adaptive service timing remain explicit proof gates,
-not established obstructions or silently excluded target actions.
+The implementation gates are: instantiate the deferred policy in the actual
+retained phase; prove protected final inclusion and the next clean checkpoint;
+derive the conditional source-belief and local-incentive correspondence; classify
+fresh departures under the phase rule; then apply the existing conditional
+terminal-audit collection and SE extension. The phase factorization retains an
+arbitrary sampler. Whether a further sampler restriction is needed for the
+conditional SE argument remains open; no such restriction is assumed by the
+checked phase-law theorem.

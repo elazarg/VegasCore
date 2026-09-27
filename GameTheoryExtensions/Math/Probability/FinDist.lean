@@ -40,6 +40,38 @@ theorem eq_bind_fst_conditional_snd (law : FinDist (α × β)) :
       exact Prod.ext coordinate.symm rfl
     _ = _ := map_id _
 
+/-- Observing one independent coordinate leaves the other law unchanged.
+This also respects the existing fallback at an impossible observation. -/
+theorem conditional_snd_product (first : FinDist α) (second : FinDist β) (observed : α) :
+    ((product first second).condOnFibre Prod.fst observed).map Prod.snd = second := by
+  classical
+  unfold condOnFibre
+  split
+  · rename_i meets
+    have positive : 0 < first.prob observed := by
+      apply prob_pos_iff.mpr
+      rw [← map_fst_product first second, support_map]
+      obtain ⟨pair, same, supported⟩ := meets
+      exact ⟨pair, supported, same⟩
+    have total : (product first second).probOf (Prod.fst ⁻¹' {observed}) =
+        first.prob observed := by
+      rw [← prob_map_eq_probOf_preimage_singleton, map_fst_product]
+    have conditional : (product first second).condOn (Prod.fst ⁻¹' {observed}) meets =
+        product (pure observed) second := by
+      apply ext_of_prob
+      rintro ⟨left, right⟩
+      rw [prob_condOn, total, prob_product, prob_product, prob_pure_eq_ite]
+      change (if left = observed then first.prob left * second.prob right /
+        first.prob observed else 0) =
+          (if left = observed then 1 else 0) * second.prob right
+      by_cases same : left = observed
+      · subst left
+        simp only [↓reduceIte, one_mul]
+        exact mul_div_cancel_left₀ _ (ne_of_gt positive)
+      · simp only [same, ↓reduceIte, zero_mul]
+    rw [conditional, map_snd_product]
+  · exact map_snd_product first second
+
 theorem map_mix (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
     (first second : FinDist α) (observe : α → β) :
     (mix weight nonnegative atMostOne first second).map observe =

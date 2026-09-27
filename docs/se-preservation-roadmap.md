@@ -5,7 +5,7 @@ This is the results map and reading guide for SE compilation. The
 mathematics; the [native pilot](research/se-native-pilot.md) contains the checked
 source-to-runtime instance. The general action-restriction theorem and scalar
 deposit inference are checked in Lean. The
-[general revelation compiler](../Vegas/Game/RevealServiceCompilation.lean)
+[general revelation compiler](../Vegas/Game/RevealServiceAuditCompilation.lean)
 instantiates the staged theorem end to end for arbitrary finite reveal sequences,
 with repeated owners, correlated valid initial bindings and all source
 withholding choices. Arbitrary activation rosters and fresh source commitments
@@ -22,6 +22,7 @@ and the remaining service and language boundaries.
 | Native guessing compiler | Every SE of the stated source program has a native SE under the fixed bounded service, partial monitoring and collectible charge. Includes a fixed playerwise policy translation. |
 | Declared-payoff family | Every SE of the literal two-reveal source program, for any integer payoff table with zero watcher payoff, has a full bounded raw native SE with the exact joint initial-bit/result/net-payoff law. Both opening and withholding are retained. |
 | General revelation compiler | Every SE of an arbitrary finite reveal sequence has a full bounded raw native SE preserving the joint typed terminal-state/net-payoff law, under the explicit owner/watcher service and positive monitoring coverage. |
+| Terminal-audit compiler | A direct source → C → effective → raw theorem uses authentic partial traffic records and fixed deposits for all players, with no zero-utility reporter. The exact realized settlement law is preserved. Its calendar remains the specified revelation service. |
 | Concrete strategic stack | Source → C → W → N → raw is checked for arbitrary revelation sequences. All native games share the runtime and utility; deposits are fixed from actual finite watched-history payoff extrema before choosing the source equilibrium. |
 | Reusable monitoring step | A watcher uses ordinary pending observations and replay; public at-most-once inclusion turns the sampling bound into persistent evidence under arbitrary later policies. Reporting a differently addressed packet before the current public event completes records its rejection. |
 | Source correspondence | Service-block induction, replay recall, one common consistency sequence and conditional incentives establish the arbitrary-length revelation theorem. |
@@ -90,36 +91,37 @@ uses genuine response-menu restrictions of this same runtime:
 
 ```text
 Ordinary source
-  → source-representable native choices, prescribed reporting
-  → all effective ordinary-player choices, prescribed reporting
-  → all effective native choices, including the watcher
+  → source-representable native choices
+  → all effective native choices, with terminal audit and fixed deposits
   → full bounded raw native game
 ```
 
-Restore ordinary-player choices while reporting is constrained, then restore
-the watcher's choices using its own incentive proof. Initially that proof uses
-zero watcher utility at every history; this edge is now instantiated for the
-actual fixture in [WatcherExtension](../VegasTests/MonitoredGuessingWatcherExtension.lean).
-The final edge restores only proved
-private response aliases. These are games used in the proof, with the same
-runtime implementation and enforcement configuration; they add no source syntax
-or emitted interpreter. Their source-to-native composition is checked for
-arbitrary finite revelation sequences. The concrete two-reveal example uses a
-fair initial private bit, one-half
-passive watcher sampling, no Alice pending sample after Bob's response, reserved
-inclusion and finite timeouts. It deducts Alice's deposit of twice her whole
-payoff range and Bob's deposit of his whole range on the respective proved
-liabilities. Collection is an economic/backend assumption, not an implemented
-escrow. These conservative bounds are not claimed minimal. Information-agent
-forms and extracted incentive tables remain internal proof constructions.
+The terminal-audit theorem applies the enforcement edge to every player at once.
+Its auxiliary player can have any source utility; passive player observations
+need no coverage bound. Instead, the settlement oracle supplies authentic
+partial traffic records with the specified conditional coverage. The current
+checker needs transmission phase and broadcaster attribution, which an ordinary
+envelope signature does not establish. Collection is an economic/backend
+assumption, not an implemented escrow.
 
-The general revelation theorem permits arbitrary correlated valid initialization
-and any passive sampler satisfying the stated positive per-envelope coverage.
-It retains the service's scheduled owner and watcher activations. Extending
-that schedule needs a new correspondence proof: an unmonitored packet that a
-later player can read cannot be classified as harmless merely because inclusion
-ignores it. Fresh source bindings also require native continuation repair for
-privately unusable commitments; public auditing alone cannot identify them.
+The final edge restores only proved private response aliases. All these games
+use the same runtime and enforcement configuration; they add no source syntax
+or emitted interpreter. Their composition is checked for arbitrary finite
+revelation sequences, with correlated valid initialization. The fixed real
+range-based deposits are sufficient, not claimed minimal or executable.
+
+The separate [strategic-reporting compiler](../Vegas/Game/RevealServiceCompilation.lean)
+uses an intermediate game with prescribed reporting. It restores ordinary
+players' choices first, then the reporter's choices under identically zero
+reporter utility. That implementation requires passive sampling coverage and
+protected report inclusion. Its assumptions must not be combined implicitly
+with those of the terminal-audit theorem.
+
+Both instances retain the specified owner and auxiliary-player activation
+calendar. Extending it needs a new correspondence proof: a pending message that
+a later player can read cannot be classified as harmless merely because
+inclusion ignores it. Fresh bindings also require native continuation repair
+for privately unusable commitments; public auditing alone cannot identify them.
 
 Ambient communication is an alternative source interpretation when a capability
 must be retained. It is not automatically inserted to make an ordinary-source
@@ -326,9 +328,11 @@ records the checked revelation-service composition. The remaining priorities are
    pending observation opportunities. Prove conditional source correspondence
    for repeated owner opportunities; extra timing recall alone is not an SE
    impossibility.
-2. **Terminal auditing.** Instantiate the checked generic terminal-audit
-   theorem on actual traffic. Remove strategic-reporter assumptions through
-   authentic records, sound classification and conditional collection.
+2. **Weaker audit assumptions.** The actual terminal-audit compiler is checked.
+   Reduce its need for broadcaster attribution by allowing harmless public
+   replays at auxiliary opportunities. Original-envelope signatures do not
+   authenticate a rebroadcaster; the current capstone states that oracle
+   requirement explicitly.
 3. **Fresh commitments and guards.** Couple the checked source value-only
    continuation repair to actual native opponent observations and consistent
    continuation play. Do not require public detection of a privately unusable

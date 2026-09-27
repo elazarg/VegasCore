@@ -8,12 +8,14 @@ final game. Fix the program, service, monitoring rule, utilities and deposits
 before selecting an equilibrium. Preserve the joint initial-type, public-result
 and actual net-payoff law of **every source SE**.
 
-The [source-to-raw theorem](../Vegas/Game/RevealServiceCompilation.lean) is
-checked for arbitrary finite revelation sequences under the explicit service
+The [terminal-audit source-to-raw theorem](../Vegas/Game/RevealServiceAuditCompilation.lean)
+is checked for arbitrary finite revelation sequences under the explicit calendar
 below. It includes repeated owners, correlated valid initial bindings, both
-disclosure choices and arbitrary terminal utilities with zero watcher utility.
-The deposits are fixed before choosing an equilibrium. General activation
-rosters and fresh source commitments remain outside this checked instance.
+disclosure choices and arbitrary terminal utilities for every player. Deposits
+are fixed before choosing an equilibrium. The
+[strategic-reporting theorem](../Vegas/Game/RevealServiceCompilation.lean)
+instead uses passive sampling and an indifferent watcher. General activation
+rosters and fresh source commitments remain outside both checked instances.
 
 ## Main theorem boundary: audit at settlement
 
@@ -58,11 +60,24 @@ that continuation bound from per-record sampling coverage and actual first-step
 evidence, against arbitrary later strategies. It also proves zero charges for
 conformant traffic under authentic partial sampling.
 
-The source-to-permitted-runtime proof must still establish observations,
+[ReactiveTrafficState](../Interaction/ReactiveTrafficState.lean) reconstructs
+the same audit from existing service recall at every actual prefix. This adds
+neither runtime memory nor player observations. Its normalization invariance
+lets the final raw-response lift preserve the actual randomized settlement law.
+[Traffic soundness](../Vegas/Game/RevealServiceTrafficSound.lean) and
+[departure evidence](../Vegas/Game/RevealServiceTrafficDeparture.lean) discharge
+the concrete checker obligations for the revelation service. The resulting
+capstone needs no strategic reporting or zero-utility assumption. Its explicit
+oracle contract authenticates broadcasters as well as phases; an envelope
+signature alone does not prove rebroadcast attribution. Permitting harmless
+auxiliary-player replays is a route to reducing that assumption, not a fact
+established by this capstone.
+
+The source-to-permitted-runtime proof must establish observations,
 conditional laws and consistent beliefs. Single-trace membership does not
-establish those facts. The remaining main gates are that correspondence, a
-concrete checker covering extra transmission opportunities, and its audit
-collection certificate. Fresh bindings and guarded programs require actual
+establish those facts. These gates are checked for the revelation calendar.
+The remaining main gates extend the correspondence and checker to extra
+transmission opportunities. Fresh bindings and guarded programs require actual
 classification or harmlessness proofs; they must not be excluded silently.
 
 ## Checked service instance
@@ -120,7 +135,8 @@ The following obligations establish its arbitrary-length theorem:
 | Fixed deposits | Actual finite watched-history extrema yield sufficient real-valued range/rate deposits before an equilibrium is chosen. This is mathematical synthesis; executable rational-table inference is a separate checked result. Collection rates and monetary implementation remain backend obligations. |
 | C → W extension | Checked for every retained SE, preserving retained strategies, beliefs and the full history/net-payoff law. |
 | W → N → raw equilibrium extension | Checked for arbitrary reveal sequences, normalization-invariant observations/utilities, and zero watcher utility at every history. |
-| End-to-end SE for arbitrary reveal sequences | Checked: every original source SE has a full bounded raw SE with the exact joint typed terminal-state/net-payoff law under this service. |
+| Terminal-audit enforcement | Checked: the actual public checker accepts every retained prefix and every extra effective response produces forbidden traffic. Authentic partial sampling plus fixed all-player deposits gives the full raw SE and actual joint randomized settlement law. |
+| End-to-end SE for arbitrary reveal sequences | Checked under either terminal auditing or the separate indifferent-reporter service assumptions. Both preserve every original source SE and the exact joint typed terminal-state/net-payoff law. |
 
 The source-to-C belief proof compares distributions over the existing
 source protocol state. That state retains initial private values and source
@@ -149,6 +165,26 @@ perturbations. Their conditional-law and sequential-incentive proofs remain open
 
 The emitted program still follows SourceProgram + Setup → EventGraph → native
 application/service. The strategic proof uses the following derived games:
+
+The terminal-audit capstone takes the direct path:
+
+```text
+S  Original source game
+   | Source choices, conditional incentives and common consistent beliefs
+   v
+C  Source-representable responses in the actual native service
+   | Sound terminal traffic audit and fixed deposits for every player
+   v
+N  Every effective native response
+   | Proved private-response aliases
+   v
+T  Every bounded raw native response
+```
+
+This path has no strategic reporting edge. Its auxiliary player may have any
+source utility; the audit deters its extra transmissions like every other
+player's. The existing calendar and its auxiliary activations are still present.
+The reporting-based instance uses the following alternative enforcement path:
 
 ```text
 S  Ordinary source game

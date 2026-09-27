@@ -104,6 +104,13 @@ the subsequent kernel-checked build.
 | Every retained revelation-service SE extends to the full bounded raw game under sufficient range deposits and positive passive-observation coverage | `Vegas/Game/RevealServiceOrdinaryExtension.lean` |
 | Actual finite watched-history payoff extrema supply sufficient fixed deposits before choosing an equilibrium | `Vegas/Game/RevealServiceDeposits.lean` |
 | End-to-end SE preservation for arbitrary finite revelation sequences, repeated owners and correlated valid initial bindings, with exact joint typed terminal-state/net-payoff law | `Vegas/Game/RevealServiceCompilation.lean` |
+| The full history traffic audit is exactly reconstructible from existing service recall at every legal prefix and invariant under private normalization | `Interaction/ReactiveTrafficState.lean` |
+| Every retained prefix has conforming traffic; every extra effective action produces actual attributable forbidden traffic | `Vegas/Game/RevealServiceWatcherSupport.lean`, `Vegas/Game/RevealServiceTraffic.lean`, `Vegas/Game/RevealServiceTrafficSound.lean`, `Vegas/Game/RevealServiceTrafficDeparture.lean` |
+| Direct source-to-raw SE with authentic terminal traffic auditing, fixed deposits for every player and exact joint typed outcome/realized settlement law; no indifferent reporter premise | `Vegas/Game/RevealServiceAuditExtension.lean`, `Vegas/Game/RevealServiceAuditDeposits.lean`, `Vegas/Game/RevealServiceAuditCompilation.lean` |
+| Deferred binary hazards realize the exact choice law and admit full-support perturbations converging to a final-opportunity compiler | `GameTheoryExtensions/Math/Probability/DeferredChoice.lean` |
+| A finite mixture of scheduled response policies is realized behaviorally by the actual interaction-plan evaluator under arbitrary sampling and intervening responses | `Interaction/ReactivePolicyMixture.lean`, `Vegas/Pending/ReactivePolicyMixture.lean` |
+| Unpublished own packets add no passive information; including one identifier makes every remaining copy of that identifier public | `Interaction/DeferredObservation.lean` |
+| Opaque binding submission and inclusion preserve foreign recall and pending-observation laws across different privately fixed binding meanings | `Vegas/Pending/ReactiveBindingObservation.lean` |
 | Two ready canonical opening times give different remembered pending observations despite equal final public states and equal phase/ledger traffic-audit records; this is an information distinction, not an SE impossibility | `VegasTests/OpeningTimingChannel.lean` |
 | An actual unusable binding and a valid binding followed by withholding have equal public audit transcripts, so a sound public audit cannot distinguish them | `VegasTests/UnusableBindingAudit.lean` |
 | From an arbitrary residual source belief, behavioral deviations using unusable bindings admit value-only continuation mixtures with the same joint parameter/result law and a conditional best-response comparator | `Vegas/Source/ValueBindingContinuation.lean` |
@@ -224,6 +231,16 @@ bounded raw response menu at the service's specified activations. Arbitrary
 intervening activations and fresh source commitments remain open. It is forward
 existence, with a noncomputable consistent completion; it does not assert
 reflection, unique target equilibria or a fixed playerwise completion algorithm.
+
+The [terminal-audit capstone](Vegas/Game/RevealServiceAuditCompilation.lean)
+uses the same source class and calendar, but imposes no zero-utility reporter
+condition. It derives fixed all-player deposits from the effective game's finite
+payoff range. The native SE uses expected audited utilities and preserves the
+joint law of the actual randomized settlement vector, including any correlation
+between players' audit verdicts. Authentic phase-and-broadcaster records,
+positive conditional record coverage and collection are explicit service
+assumptions. No audit information is added before the last strategic choice.
+Envelope signatures alone do not satisfy the broadcaster-attribution contract.
 
 The [selective-association comparison](docs/selective-association-proof-contract.md)
 keeps the compiled application, service calendar, deadlines, selector and full

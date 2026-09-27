@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceWatcher
+import GameTheoryExtensions.Analysis.FinitePayoffBounds
 
 /-! # Fixed deposits from the actual bounded backend's payoff range
 
@@ -36,17 +37,15 @@ local instance : Nonempty ((watchedMenu setup leaks bounds watcher).protocol
 
 open Classical in
 def historyPayoffLower (who : Player) : ℝ :=
-  let values := Finset.univ.image (fun history : ((watchedMenu setup leaks bounds watcher).protocol
+  FinitePayoffBounds.lower (fun history : ((watchedMenu setup leaks bounds watcher).protocol
     (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)).History =>
       base history.state who)
-  values.min' (Finset.univ_nonempty.image _)
 
 open Classical in
 def historyPayoffUpper (who : Player) : ℝ :=
-  let values := Finset.univ.image (fun history : ((watchedMenu setup leaks bounds watcher).protocol
+  FinitePayoffBounds.upper (fun history : ((watchedMenu setup leaks bounds watcher).protocol
     (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)).History =>
       base history.state who)
-  values.max' (Finset.univ_nonempty.image _)
 
 theorem historyPayoffLower_le
     (history : ((watchedMenu setup leaks bounds watcher).protocol
@@ -54,8 +53,7 @@ theorem historyPayoffLower_le
     (who : Player) :
     historyPayoffLower setup leaks bounds watcher base who ≤ base history.state who := by
   classical
-  unfold historyPayoffLower
-  exact Finset.min'_le _ _ (Finset.mem_image_of_mem _ (Finset.mem_univ history))
+  exact FinitePayoffBounds.lower_le (Value := ℝ) _ history
 
 theorem le_historyPayoffUpper
     (history : ((watchedMenu setup leaks bounds watcher).protocol
@@ -63,9 +61,7 @@ theorem le_historyPayoffUpper
     (who : Player) :
     base history.state who ≤ historyPayoffUpper setup leaks bounds watcher base who := by
   classical
-  unfold historyPayoffUpper
-  apply Finset.le_max'
-  exact Finset.mem_image.mpr ⟨history, Finset.mem_univ _, rfl⟩
+  exact FinitePayoffBounds.le_upper (fun next => base next.state who) history
 
 /-- Every retained history is an actual watched history with unchanged state. -/
 theorem retained_historyPayoffLower_le
@@ -77,10 +73,8 @@ theorem retained_historyPayoffLower_le
 theorem historyPayoffLower_le_upper (who : Player) :
     historyPayoffLower setup leaks bounds watcher base who ≤
       historyPayoffUpper setup leaks bounds watcher base who := by
-  let initial := ((watchedMenu setup leaks bounds watcher).protocol
-    (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)).initHistory
-  exact (historyPayoffLower_le setup leaks bounds watcher base initial who).trans
-    (le_historyPayoffUpper setup leaks bounds watcher base initial who)
+  classical
+  exact FinitePayoffBounds.lower_le_upper (Value := ℝ) _
 
 open Classical in
 /-- One deposit per ordinary player; the reporting player posts none. -/

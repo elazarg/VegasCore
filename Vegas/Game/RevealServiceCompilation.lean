@@ -82,7 +82,7 @@ theorem source_raw_sequential_equilibrium_preserved
   intro extended base deposit model
   obtain ⟨retained, _compiled, retainedSE, sourceLaw⟩ :=
     source_sequential_equilibrium_preserved setup leaks bounds watcher reveals observer openable
-      admission utility watcherZero source equilibrium
+      admission utility source equilibrium
   have retainedNet := (sequential_equilibrium_net_iff setup leaks extended watcher reveals
     observer openable retained _ base deposit).mpr retainedSE
   obtain ⟨target, targetSE, targetLaw⟩ := ordinary_raw_equilibrium_extends setup leaks extended

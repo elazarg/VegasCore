@@ -4,7 +4,8 @@ import GameTheoryExtensions.Analysis.EnforcementSynthesis
 
 /-! # Fixed payoff bounds from a finite carrier
 
-Rational payoffs on a finite nonempty carrier determine executable extrema.
+Ordered payoffs on a finite nonempty carrier determine extrema. Rational
+payoffs give executable bounds and sanction inference.
 Every distribution on that carrier satisfies the resulting bounds, so the
 range bounds all continuation gains without enumerating strategy profiles.
 The existing sanction checker then computes the range divided by a positive
@@ -21,38 +22,44 @@ open Math.Probability
 
 variable {Outcome : Type*} [Fintype Outcome] [Nonempty Outcome]
 
-def lower (payoff : Outcome → ℚ) : ℚ :=
+section Ordered
+
+variable {Value : Type*} [LinearOrder Value]
+
+def lower (payoff : Outcome → Value) : Value :=
   (Finset.univ.image payoff).min' (Finset.univ_nonempty.image payoff)
 
-def upper (payoff : Outcome → ℚ) : ℚ :=
+def upper (payoff : Outcome → Value) : Value :=
   (Finset.univ.image payoff).max' (Finset.univ_nonempty.image payoff)
 
-def range (payoff : Outcome → ℚ) : ℚ := upper payoff - lower payoff
-
-theorem lower_le (payoff : Outcome → ℚ) (outcome : Outcome) : lower payoff ≤ payoff outcome :=
+theorem lower_le (payoff : Outcome → Value) (outcome : Outcome) : lower payoff ≤ payoff outcome :=
   Finset.min'_le _ _ (Finset.mem_image_of_mem payoff (Finset.mem_univ outcome))
 
-theorem le_upper (payoff : Outcome → ℚ) (outcome : Outcome) : payoff outcome ≤ upper payoff :=
+theorem le_upper (payoff : Outcome → Value) (outcome : Outcome) : payoff outcome ≤ upper payoff :=
   Finset.le_max' _ _ (Finset.mem_image_of_mem payoff (Finset.mem_univ outcome))
 
-theorem lower_le_upper (payoff : Outcome → ℚ) : lower payoff ≤ upper payoff := by
+theorem lower_le_upper (payoff : Outcome → Value) : lower payoff ≤ upper payoff := by
   obtain ⟨outcome⟩ := ‹Nonempty Outcome›
   exact (lower_le payoff outcome).trans (le_upper payoff outcome)
+
+end Ordered
+
+def range (payoff : Outcome → ℚ) : ℚ := upper payoff - lower payoff
 
 theorem range_nonnegative (payoff : Outcome → ℚ) : 0 ≤ range payoff :=
   sub_nonneg.mpr (lower_le_upper payoff)
 
 /-- This bound includes arbitrary randomized continuation strategies. -/
 theorem lower_le_expect (payoff : Outcome → ℚ) (law : FinDist Outcome) :
-    (lower payoff : ℝ) ≤ law.expect (fun outcome => (payoff outcome : ℝ)) := by
-  rw [← FinDist.expect_const law (lower payoff : ℝ)]
+    ((lower payoff : ℚ) : ℝ) ≤ law.expect (fun outcome => (payoff outcome : ℝ)) := by
+  rw [← FinDist.expect_const law ((lower payoff : ℚ) : ℝ)]
   apply FinDist.expect_mono
   intro outcome _
   exact_mod_cast lower_le payoff outcome
 
 theorem expect_le_upper (payoff : Outcome → ℚ) (law : FinDist Outcome) :
-    law.expect (fun outcome => (payoff outcome : ℝ)) ≤ (upper payoff : ℝ) := by
-  rw [← FinDist.expect_const law (upper payoff : ℝ)]
+    law.expect (fun outcome => (payoff outcome : ℝ)) ≤ ((upper payoff : ℚ) : ℝ) := by
+  rw [← FinDist.expect_const law ((upper payoff : ℚ) : ℝ)]
   apply FinDist.expect_mono
   intro outcome _
   exact_mod_cast le_upper payoff outcome

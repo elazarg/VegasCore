@@ -131,6 +131,8 @@ import Vegas.Pending.RevealTranscript
 import Vegas.Pending.ReactiveObservedState
 import Vegas.Pending.ReactiveContinuationObservation
 import Vegas.Pending.ReactiveBindingOrigin
+import Vegas.Pending.ReactiveBindingObservation
+import Vegas.Pending.ReactivePolicyMixture
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveServiceFootprint
 import Vegas.Pending.ReactiveAssociationPersistence

@@ -33,6 +33,43 @@ policies and observations. Utility may depend on persistent private parameters
 and public results; it may not reward the hidden representation of a future
 commitment that the repair deliberately changes.
 
+The native prefix facts are checked in
+`Vegas/Pending/ReactiveBindingObservation.lean`:
+`reactiveBinding_network` equates the complete network after either private
+meaning is fixed; `reactiveBinding_include_other_input` also preserves receipts
+and every foreign player's actual recall/current input through inclusion;
+`reactiveBinding_activation_other_input` preserves the law of passive reads
+under the original observation rule. Initial correlations and previously known
+foreign evidence are unrestricted. The owner's own observations need not agree.
+
+## Finite admission and clean-prefix contract
+
+A nonvacuous finite SE theorem for fresh commitments needs finite legal source
+payload domains, not merely finite target packet bounds. In particular, a full
+integer commitment menu has no fully mixed finite-support behavioral law under
+the current `FinDist` assessment definition. A theorem quantified over source
+SEs must not conceal that absence. The finite admission must retain every legal
+source value and every legal withholding action; it is fixed before the source
+equilibrium is chosen. The target capacity includes these values, one repair
+default in each nonempty admitted domain, and fresh canonical handles for every
+remaining source binding site. The program's finite event count bounds those
+handles. No default depends on the unobserved state of an opponent.
+
+At the starting retained prefix, runtime/source stores agree except for the
+owner-private bindings explicitly tracked by `Patched`. Public data, other
+players' private cells, accepted handles, completion order, network state,
+receipts, and other players' response recall agree. Candidate meanings are fixed
+at transmission. Earlier pending and known packets must already be accounted
+for by the retained transcript. A preexisting raw opening of the repaired handle
+is not harmless: it may reject on the unusable side and succeed on the valid
+side. Such a packet belongs to the observable-departure branch below.
+
+The service assumptions must be proved for each compiled construct. The checked
+revelation service does not already supply a full-language binding/chance
+calendar or an arbitrary ambient-communication schedule. The ordinary target
+message space remains available; admission bounds and protected opportunities
+are explicit backend assumptions, not exclusions justified by an equilibrium.
+
 ## Why the repair is local enough, and why the current comparator is too strong
 
 At the start of a continuation, replace any future failed binding with a
@@ -79,6 +116,40 @@ The existing generic restriction proof can retain its consistency-completion and
 one-shot-to-whole-policy machinery. Its retained-site comparison should accept
 whole continuation mixtures. That change alone does not discharge obligations
 1–3, and this note does not claim a completed full-language SE theorem.
+
+## Stopped-path proof design
+
+The target comparison is universal over paired source/target continuation
+profiles; it must not assume target sequential rationality.
+
+1. Draw a repair-policy seed independently of the hidden starting configuration,
+   using `exists_valueBinding_belief_mixture`. Retain that one seed for the whole
+   continuation. Replacing the mixture separately at each hidden history would
+   change correlations and is not a valid comparison.
+2. Couple the actual source/native execution until the first publicly
+   nonconforming transmission. A privately unusable binding does not stop this
+   coupling. Its repaired value uses the same opaque handle, and the repaired
+   owner withholds when the original binding could not publish. Common public
+   chance draws, passive samples, inclusion decisions and protected deadlines
+   must preserve the coupled prefix invariant by actual runtime transition laws.
+3. At each nondeviating player's decision, prove its complete native input is a
+   retained input with the corresponding source view. Then `ExtendsProfile`
+   supplies its law. Equality of current ledger states alone is insufficient:
+   private response recall, prior leaks and timing are part of that input.
+4. If no visible departure occurs, the terminal private-parameter/public-result
+   law is exactly the source repair law. Hidden owner representations are not
+   required to match.
+5. At a first visible departure, condition on the coupled prefix. A fresh
+   collectible loss must cover the full remaining payoff range, uniformly over
+   later policies and later authentic audit transcripts. This permits arbitrary
+   post-departure target play. A penalty already sunk on that branch provides no
+   further deterrence; charges are not silently counted twice.
+6. Average over the starting posterior and the single seed. Source whole-policy
+   sequential rationality bounds every legal repair continuation. Only then use
+   the common-consistency completion theorem for the native extra private sites.
+
+Steps 2–3 are the missing native induction. The checked prefix lemmas and source
+repair establish ingredients, not this induction or the final comparison.
 
 ## Guards and copying
 

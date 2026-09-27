@@ -4,6 +4,8 @@ import Vegas.Game.EventScheduling
 import Vegas.Game.EventCompilation
 import Vegas.Game.EventMessages
 import Vegas.Game.EventMessageStrategic
+import Vegas.Game.RevealServiceCompilation
+import Vegas.Game.RevealServiceAuditCompilation
 import Vegas.Game.PendingCompositions
 import Vegas.Game.ParameterOutcomes
 import Vegas.Examples.CommitRevealAuction
@@ -1143,5 +1145,17 @@ open VegasTests.MonitoredGuessing.Restricted in
 #guard_msgs (whitespace := lax) in
 open VegasTests.MonitoredGuessing in
 #print axioms declared_sequential_equilibrium_preserved
+
+/-- info: 'Vegas.SourceProgram.RevealService.source_raw_sequential_equilibrium_preserved'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SourceProgram.RevealService in
+#print axioms source_raw_sequential_equilibrium_preserved
+
+/-- info: 'Vegas.SourceProgram.RevealService.audited_source_sequential_equilibrium_preserved'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SourceProgram.RevealService in
+#print axioms audited_source_sequential_equilibrium_preserved
 
 end Vegas.Paper

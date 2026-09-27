@@ -40,13 +40,37 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   [∀ who (site : (setup.informationModel admission).InformationSite who),
     Fintype ((setup.informationModel admission).InformationHistory who site.1)]
 
+/-- Reporting is forced by this restricted menu, at every local input. Its
+optimality therefore imposes no assumption on the reporting player's utility. -/
+theorem watcher_choice_subsingleton (info : (application setup leaks).Info) :
+    Subsingleton ((information setup leaks bounds watcher).Choice watcher info) := by
+  classical
+  refine ⟨fun first second => Subtype.ext ?_⟩
+  cases info with
+  | none => exact first.2.trans second.2.symm
+  | some data =>
+      obtain ⟨past, view⟩ := data
+      have deterministic : ∃ response,
+          (application setup leaks).reportFirstUnpublished past view = FinDist.pure response := by
+        unfold ReactiveApplication.reportFirstUnpublished
+        split <;> exact ⟨_, rfl⟩
+      obtain ⟨response, chosen⟩ := deterministic
+      obtain ⟨left, leftMember, leftEq⟩ := first.2
+      obtain ⟨right, rightMember, rightEq⟩ := second.2
+      have leftChoice : left = response := by
+        simpa only [menu, ↓reduceIte, chosen, FinDist.mem_supportFinset,
+          FinDist.mem_support_pure, Set.mem_singleton_iff] using leftMember
+      have rightChoice : right = response := by
+        simpa only [menu, ↓reduceIte, chosen, FinDist.mem_supportFinset,
+          FinDist.mem_support_pure, Set.mem_singleton_iff] using rightMember
+      exact leftEq.trans ((congrArg some (leftChoice.trans rightChoice.symm)).trans rightEq.symm)
+
 include reveals observer openable in
 /-- The complete typed source state and utility vector are preserved jointly.
 The target game, menus, utility and strategy compiler are fixed before choosing
 the source equilibrium. Only the consistent belief completion is existential. -/
 theorem source_sequential_equilibrium_preserved
     (utility : State L setup.program.terminalCtx → Player → ℝ)
-    (watcherZero : ∀ state, utility state watcher = 0)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
       (fun who site => source.continuationContext site
@@ -101,12 +125,12 @@ theorem source_sequential_equilibrium_preserved
     intro who site _before law
     by_cases watches : who = watcher
     · subst who
-      have zero : (fun final : (protocol setup leaks extended watcher).History =>
-          baseUtility setup leaks utility final.state watcher) = fun _ => 0 :=
-        funext fun final => baseUtility_watcher setup leaks utility watcher watcherZero final.state
-      rw [zero]
-      simp [InformationModel.BehavioralAssessment.continuationContext, Context.value,
-        FinDist.expect]
+      let _ := watcher_choice_subsingleton setup leaks extended watcher site.1
+      obtain ⟨choice, _supported⟩ := law.support_nonempty
+      have same : law = target.strategy watcher site.1 :=
+        (FinDist.eq_pure_of_subsingleton law choice).trans
+          (FinDist.eq_pure_of_subsingleton _ choice).symm
+      rw [same, InformationModel.BehavioralPolicy.withLaw_eq_self]
     · obtain ⟨history, _running, _action⟩ := site.2
       have active := InformationModel.InformationSite.active model site history
       obtain ⟨event, owned, length, supported⟩ := owner_history_supported setup leaks extended

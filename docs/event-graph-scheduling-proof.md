@@ -180,7 +180,7 @@ the reconstructed observation equals the actual observation passed to `tau`.
 This gives the whole-run replacement law under the same scheduler.
 
 All policies in that replaced profile are normalized: unchanged opponents
-already use `normalizeProfile`, and `replayPolicy` is a fixed point of
+already use `normalizeProfile`, and `Vegas.EventGraph.replayPolicy` is a fixed point of
 normalization. The honest scheduler-erasure theorem therefore applies to the
 entire replaced profile. It produces the canonical deviation law for this
 pure scheduler without commuting an order-sensitive focal kernel. Averaging
