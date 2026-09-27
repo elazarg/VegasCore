@@ -54,7 +54,7 @@ percentage estimate.
   This establishes consistency, not rationality or outcome preservation of the
   resulting limit.
 
-- [ ] **S3. Information correspondence at every native decision.** Derive the
+- [x] **S3. Information correspondence at every native decision.** Derive the
   actual conditional information laws throughout every source constructor and
   every intermediate owner visit. Account for private source intentions,
   timing, replay and passive observations using the original source
@@ -66,9 +66,12 @@ percentage estimate.
   [SourceServiceAssessment.lean](../Vegas/Game/SourceServiceAssessment.lean).
   Foreign and implementation-only visits need no information law: every legal
   response at such a site has the same complete continuation law at every
-  history of the site, so its comparison holds for every belief.
+  history of the site, so its comparison holds for every belief. Evidence: the
+  owner-site comparisons `TimedApproximant.owner_source_comparisons` in
+  [SourceServiceOwnerComparison.lean](../Vegas/Game/SourceServiceOwnerComparison.lean),
+  used at every owner site by the S4 comparisons.
 
-- [ ] **S4. Sequential incentives for every permitted native choice.** Bound
+- [x] **S4. Sequential incentives for every permitted native choice.** Bound
   every actual local native deviation by comparisons in the original source
   assessment, along the common sequence from S2. Include waiting, replay,
   binding and guarded disclosure; any comparison error must vanish uniformly
@@ -84,16 +87,23 @@ percentage estimate.
   and with an available opening gain at most the source comparison error
   divided by the remaining timing mass
   ([SourceServiceAvailableOpening.lean](../Vegas/Game/SourceServiceAvailableOpening.lean)).
-  Every kind of site is covered; the box closes with the S5 assembly, which the
-  [completion plan](se-completion-plan.md) orders.
+  Every native site has a kind (`SourceServiceSpec.exists_siteKind`). Evidence:
+  the local comparisons of `SourceServiceSpec.exists_native_sequentialEquilibrium`
+  in [SourceServiceEquilibrium.lean](../Vegas/Game/SourceServiceEquilibrium.lean),
+  with one vanishing error for all sites and players: twice the sum over
+  players of the uniform source gain bounds.
 
-- [ ] **S5. Full-language source-to-permitted-runtime SE theorem.** Combine
+- [x] **S5. Full-language source-to-permitted-runtime SE theorem.** Combine
   S1–S4 into an actual compiler theorem: every original source SE has a permitted
   native SE with the required joint law. Prove the law of the resulting
   assessment limit, rather than assuming that it is the final-opportunity
   strategy from S1. The initialized equality for every timed approximant is
-  checked in [SourceServiceTimedLaw.lean](../Vegas/Game/SourceServiceTimedLaw.lean);
-  rationality and the resulting limit law still require S3–S4.
+  checked in [SourceServiceTimedLaw.lean](../Vegas/Game/SourceServiceTimedLaw.lean).
+  Evidence: `SourceServiceSpec.exists_native_sequentialEquilibrium` in
+  [SourceServiceEquilibrium.lean](../Vegas/Game/SourceServiceEquilibrium.lean).
+  The native SE is a limit of the timed approximants of one fully supported
+  Bayes sequence of the source SE, and its law of typed source terminal states
+  is the source law.
 
 ## Permitted runtime to full runtime
 

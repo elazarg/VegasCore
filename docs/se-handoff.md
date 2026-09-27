@@ -3,8 +3,9 @@
 ## Read this first
 
 The full-language end-to-end theorem is **not proved**. The fixed completion
-ledger is [se-proof-checklist.md](se-proof-checklist.md): S1, S2 and R1–R4 are
-checked; S3–S5 and E1–E2 remain open. The main mathematical work is S3–S4.
+ledger is [se-proof-checklist.md](se-proof-checklist.md): S1–S5 and R1–R4 are
+checked; E1–E2 remain open. What remains is composing S5 with R4 and
+validating the result.
 Do not create new milestone boxes for helper lemmas or close existing boxes
 using conditional theorems with unproved compiler premises.
 
@@ -17,8 +18,7 @@ resuming; never overwrite existing work blindly.
 Do not modify the GameTheory submodule. Generic mathematics belongs in
 `GameTheoryExtensions/`, generic execution in `Interaction/`, pending-message
 semantics in `Vegas/Pending/`, and source/compiler proofs in `Vegas/Game/`.
-Read `AGENTS.md`; all Lean options come from `lakefile.toml`. The user's
-untracked `docs/Lean434BumpLessons.md` is unrelated and must remain untouched.
+Read `AGENTS.md`; all Lean options come from `lakefile.toml`.
 
 ## Fixed theorem and semantic decisions
 
@@ -146,8 +146,8 @@ disclosure events (`TimedApproximant.foreign_binding_comparison_eq`,
 `TimedApproximant.foreign_disclosure_comparison_eq`), and owner visits after a
 recorded binding or opening (`TimedApproximant.recorded_comparison_eq`,
 `TimedApproximant.recorded_disclosure_comparison_eq`). The
-[completion plan](se-completion-plan.md) orders the remaining work: S5
-assembly, E1 composition and E2 validation. Without an available opening the
+[completion plan](se-completion-plan.md) orders the remaining work: E1
+composition and E2 validation. Without an available opening the
 owner's disclosure site has zero gain
 (`TimedApproximant.absent_opening_comparison_eq`); with one, it gains at most
 the source comparison error divided by the remaining timing mass
@@ -155,7 +155,8 @@ the source comparison error divided by the remaining timing mass
 to an unsent binding are an exact simulation by original source deviations
 (`TimedApproximant.unsent_binding_comparisons`).
 Every site has a `DecisionSiteKind` (`SourceServiceSpec.exists_siteKind`), which
-selects its comparison.
+selects its comparison. `SourceServiceSpec.exists_native_sequentialEquilibrium`
+combines them into the S5 theorem.
 
 ## Build and validation discipline
 

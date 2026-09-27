@@ -27,8 +27,9 @@ The full language has checked
 [initialized execution laws](../Vegas/Game/SourceServiceLaw.lean) and
 [settlement laws](../Vegas/Game/SourceServiceAudit.lean) for every admitted
 compiled profile, including fresh bindings, chance, correlated private inputs
-and guarded disclosure. Its source-to-permitted-runtime SE theorem is still
-open. The permitted-to-full-runtime SE extension is checked, including actual
+and guarded disclosure. Its
+[source-to-permitted-runtime SE theorem](../Vegas/Game/SourceServiceEquilibrium.lean)
+is checked. The permitted-to-full-runtime SE extension is checked, including actual
 conditional incentives, off-path completion and raw response aliases.
 
 ### Source beliefs and sequential incentives
@@ -68,14 +69,14 @@ then proves that every permitted physical response is a replay alias or is
 supported by the actual source policy. The
 [native full-mixing theorem](../Vegas/Game/SourceServiceTimedMixing.lean) and
 [common consistency sequence](../Vegas/Game/SourceServiceTimedConsistency.lean)
-are checked for the full language. Belief correspondence and local incentives
-remain separate obligations: a consistent assessment need not be rational.
+are checked for the full language. A consistent assessment need not be
+rational, so belief correspondence and local incentives are separate proofs.
 The [initialized timed law](../Vegas/Game/SourceServiceTimedLaw.lean) identifies
 every actual native approximant's outcome law with its original finite source
 strategy. The [timed continuation law](../Vegas/Game/SourceServiceTimedContinuation.lean)
 derives the whole typed source continuation from any supported native phase
-boundary. Local response comparisons must still connect those boundary laws
-to the actual intermediate choices.
+boundary. The local response comparisons connect those boundary laws to the
+actual intermediate choices.
 
 The active [binding law](../Vegas/Game/SourceServiceActiveBindingLaw.lean),
 [binding checkpoint](../Vegas/Game/SourceServiceActiveBindingCheckpoint.lean)
@@ -102,9 +103,9 @@ continuation comparisons. The
 both prescribed and deviating normalized continuations using the same mixture
 of original source information views. Actual owner observations are connected
 to these comparisons by the checked source-prefix recovery and traffic
-factorization. The remaining local-incentive proofs must identify the actual
-physical continuation after each permitted response. No posterior correspondence
-is an assumed premise of the intended compiler theorem.
+factorization. The local-incentive proofs identify the actual physical
+continuation after each permitted response. No posterior correspondence is an
+assumed premise of the compiler theorem.
 
 At zero-mass effective views, normalizing erased intentions need not commute
 with limits. Use the existing common-subsequence SE limit theorem for an

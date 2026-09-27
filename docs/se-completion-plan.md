@@ -20,7 +20,7 @@ payoff.
 
 It composes two theorems:
 
-- **S5** (a theorem still to be written): every source
+- **S5** `SourceServiceSpec.exists_native_sequentialEquilibrium` (checked): every source
   SE has a sequential equilibrium of the permitted native model with
   `(runBehavioral target).map service.readout =
    (runBehavioral source).map protocolReadout`.
@@ -193,12 +193,19 @@ after a submission and the prescribed source law after a transport response;
   native gain. The per-decision laws are the record
   `TimedApproximant.AvailableOpeningLaws` (`available_opening_decision`).
 
-### M6. S5 assembly (M)
+### M6. S5 assembly (checked)
 
-Combine M1–M5 into the local-comparison hypothesis for every stage, site and
-lottery; apply the limit theorem; state the S5 theorem. This closes S3, S4
-and S5 together. S3 accounts for foreign and implementation-only visits by
-belief-independent continuation equality (M2), as the checklist records.
+`SourceServiceSpec.exists_native_sequentialEquilibrium`
+([SourceServiceEquilibrium](../Vegas/Game/SourceServiceEquilibrium.lean))
+combines M1–M5 into the local-comparison hypothesis for every stage, site and
+lottery and applies the limit theorem. The comparison error is twice the sum
+over players of the uniform source gain bounds of
+`exists_uniform_policy_gain_bound`. It is nonnegative, so zero-gain sites use
+the error branch and unsent bindings the mixture branch; a disclosure with an
+available opening gains at most twice its player's bound, because
+`rosterTiming_prefix_le` at weight ½ leaves remaining mass at least ½. The
+source histories' finiteness is an instance argument, as it already is for
+the source SE in the hypothesis. This closes S3, S4 and S5 together.
 
 ### M7. E1 composition (S)
 
@@ -220,7 +227,7 @@ as a delegating restatement.
 
 ## Ordering
 
-M1–M5 are checked. The critical path is M6 → M7 → M8.
+M1–M6 are checked. The critical path is M7 → M8.
 
 Parallel lanes must not run Lake builds concurrently. A build deletes the
 oleans it replaces, so a concurrent check fails on missing imports. A separate

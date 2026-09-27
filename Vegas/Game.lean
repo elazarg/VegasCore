@@ -51,6 +51,7 @@ import Vegas.Game.SourceServiceOwnerComparison
 import Vegas.Game.SourceServiceUnsentBinding
 import Vegas.Game.SourceServiceAbsentOpening
 import Vegas.Game.SourceServiceAvailableOpening
+import Vegas.Game.SourceServiceEquilibrium
 import Vegas.Game.SourceServiceHarmlessContinuation
 import Vegas.Game.SourceServiceSampleComparison
 import Vegas.Game.SourceServiceRecordedContinuation
