@@ -2,8 +2,8 @@
 
 For sequential-equilibrium results and remaining work, start with the
 [research map](docs/se-preservation-roadmap.md). It distinguishes the checked
-general-roster revelation compiler, full-language execution/settlement laws,
-the action-restriction theorem, and the remaining full-language SE obligations.
+full-language SE compiler, the general-roster revelation compiler, the
+action-restriction theorem, and the remaining research boundaries.
 The [implementation stack](docs/se-compilation-stack.md) records the checked
 proof edges and explicit assumptions of the source-to-raw theorem.
 
@@ -54,6 +54,8 @@ the subsequent kernel-checked build.
 | Full-source pending-message deviations and Nash correspondence | `Vegas/Game/EventMessageStrategic.lean` |
 | Full-source initialized compiler law, including fresh bindings, sampling and guarded disclosure | `Vegas/Game/SourceServiceLaw.lean` |
 | Authentic partial traffic audit and public binding omissions preserve the full-source joint typed-outcome/realized-settlement law on every admitted compiled profile | `Vegas/Pending/ReactiveServiceAudit.lean`, `Vegas/Game/SourceServiceAudit.lean` |
+| Every source SE of the full language has a permitted native SE with the same typed source terminal law; each native decision site is compared with original source deviations by its kind | `Vegas/Game/SourceServiceEquilibrium.lean`, `Vegas/Game/SourceServiceSiteKind.lean`, `Vegas/Game/SourceServiceUnsentBinding.lean`, `Vegas/Game/SourceServiceAvailableOpening.lean` |
+| Every source SE of the full language has an audited bounded raw-runtime SE with the source joint initial-parameter/public-outcome/payoff law, the payoff realized as settlement (`Vegas.Paper.source_audited_raw_sequential_equilibrium`) | `Vegas/Game/SourceServiceCompilation.lean`, `Paper.lean` |
 | Actual continuation-repair couplings imply settlement comparisons; a deposit fixed from all effective-history payoff extrema removes the separate gain-bound premise | `Vegas/Game/SourceServiceRepairSettlement.lean`, `Vegas/Game/ServicePayoffBounds.lean` |
 | Actual timed binding, guarded disclosure and public sampling with exact physical policy mixtures and full execution laws | `Vegas/Game/SourceServiceTimedPolicy.lean`, `Vegas/Game/SourceServiceTimedBinding.lean`, `Vegas/Game/SourceServiceTimedDisclosure.lean`, `Vegas/Game/SourceServiceTimedSample.lean` |
 | Every physical response at an actual permitted source-service decision is a replay alias or supported by the actual source compiler, given derived effective source support | `Vegas/Game/SourceServiceLocalSupport.lean` |

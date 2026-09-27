@@ -149,13 +149,21 @@ observation, replay and withholding remain available. Authentic partial audit
 evidence, positive conditional collection coverage and collectible deposits
 are explicit backend assumptions.
 
-For the full source language, including fresh commitments and public chance,
-the [completion checklist](docs/se-proof-checklist.md) is the status ledger and
-the [implementation stack](docs/se-compilation-stack.md) the proof map.
-Execution and settlement correspondence, one common consistency sequence, and
-the whole permitted-to-raw-runtime extension are checked. Belief
-correspondence at every native decision, local sequential incentives, and the
-composed end-to-end theorem remain open.
+For the full source language, including private inputs, fresh commitments,
+public chance and guarded disclosure, the
+[full-language compiler theorem](Vegas/Game/SourceServiceCompilation.lean)
+(`Vegas.Paper.source_audited_raw_sequential_equilibrium`) preserves every
+source SE in the audited bounded raw runtime. The native SE has the source
+joint law of initial parameters, public outcome and payoff, with the payoff
+realized as settlement. The native service, activation rosters, audit backend
+and deposits are fixed before an equilibrium is chosen. Authentic partial
+audit evidence, positive conditional collection coverage, protected service
+and collectible fixed deposits are explicit backend assumptions; the theorem
+retains bounded interaction and a finite response interface, and asserts no
+cryptographic or EVM refinement. The
+[completion checklist](docs/se-proof-checklist.md) is the status ledger and
+the [implementation stack](docs/se-compilation-stack.md) the proof map and
+assumption list.
 
 The [runtime abstraction investigation](docs/runtime-abstraction-classification.md)
 classifies what a game presentation may forget. Its generic continuation

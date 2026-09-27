@@ -203,9 +203,13 @@ over players of the uniform source gain bounds of
 `exists_uniform_policy_gain_bound`. It is nonnegative, so zero-gain sites use
 the error branch and unsent bindings the mixture branch; a disclosure with an
 available opening gains at most twice its player's bound, because
-`rosterTiming_prefix_le` at weight ½ leaves remaining mass at least ½. The
-source histories' finiteness is an instance argument, as it already is for
-the source SE in the hypothesis. This closes S3, S4 and S5 together.
+`rosterTiming_prefix_le` at weight ½ leaves remaining mass at least ½. Relative
+to GameTheory's current finite SE definition, finiteness is no new premise:
+finiteness of the source information histories is an explicit instance that
+the definition already requires to state the source SE, and finiteness of all
+source histories is derived from consistency and the bounded source horizon
+(`IsFullyMixed.finite_history` with `Setup.protocol_bounded`). This closes
+S3, S4 and S5 together.
 
 ### M7. E1 composition (checked)
 
@@ -217,20 +221,22 @@ parameter-and-public-outcome utility on `sourceReadout`, so it is R4's
 `RevealService.baseUtility`. `Paper.lean` restates it as
 `Vegas.Paper.source_audited_raw_sequential_equilibrium` with its axiom pin.
 
-### M8. E2 validation and claims (M)
+### M8. E2 validation and claims (checked up to the push)
 
-- Full warning-strict build and every repository gate.
-- Dependency walk from the final theorem: no draft or test module in its
-  closure, standard axioms only.
-- Update README, `ARTIFACT.md`, the stack document and the paper sources with
-  the exact assumptions: authentic partial audit, positive conditional
-  coverage, protected service, collectible fixed deposits, bounded interaction,
-  a finite response interface, and no cryptographic or EVM refinement.
-- Commit and push after review.
+- Full warning-strict build and every repository gate pass.
+- The dependency walk from `Vegas.Paper.source_audited_raw_sequential_equilibrium`
+  reaches no draft, test, example, experimental or prototype module; its axioms
+  are the standard three.
+- README, `ARTIFACT.md`, the research map, the stack document (with its
+  assumptions table) and the paper's mechanization section state the exact
+  assumptions: authentic partial audit, positive conditional coverage,
+  protected service, collectible fixed deposits, bounded interaction, a finite
+  response interface, and no cryptographic or EVM refinement.
+- What remains is to push after review.
 
 ## Ordering
 
-M1–M7 are checked. What remains is M8.
+M1–M8 are checked; what remains is the push after review.
 
 Parallel lanes must not run Lake builds concurrently. A build deletes the
 oleans it replaces, so a concurrent check fails on missing imports. A separate

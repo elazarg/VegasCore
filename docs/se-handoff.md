@@ -2,11 +2,11 @@
 
 ## Read this first
 
-The full-language end-to-end theorem is proved; its validation and claims
-audit is not complete. The fixed completion ledger is [se-proof-checklist.md](se-proof-checklist.md): S1–S5 and R1–R4 are
+The full-language end-to-end theorem is proved and audited. The fixed
+completion ledger is [se-proof-checklist.md](se-proof-checklist.md): S1–S5 and R1–R4 are
 checked, and E1 composes them
-(`Vegas.Paper.source_audited_raw_sequential_equilibrium`). E2, the validation
-and claims audit, remains open.
+(`Vegas.Paper.source_audited_raw_sequential_equilibrium`). The E2 validation
+and claims audit is done; E2 closes when the reviewed result is pushed.
 Do not create new milestone boxes for helper lemmas or close existing boxes
 using conditional theorems with unproved compiler premises.
 

@@ -35,6 +35,27 @@ conditional incentives, off-path completion and raw response aliases. Their
 source SE of the full language in the audited bounded raw runtime, with the
 joint law of initial parameters, public outcome and realized settlement.
 
+### Assumptions of the full-language theorem
+
+`Vegas.Paper.source_audited_raw_sequential_equilibrium` has the following
+hypotheses and modeling choices. The first column says what the theorem
+requires, the second what it is used for in the proof, and the third why it is
+reasonable and what it leaves outside the claim.
+
+| Assumption | Mathematical role | Justification and impact |
+| --- | --- | --- |
+| Finite response interface (`SourceServiceSpec.values`, `SourceServiceSpec.initialValues`, `SourceServiceSpec.capacity`) | Every source binding value and supported initial binding table has a native message form and a candidate slot, so the native game is finite and implements every source choice. | Declared once for the service. A value outside the interface would be a truncated game; the theorem does not cover unbounded value spaces. |
+| Bounded interaction (`SourceServiceSpec.rosters`, `SourceServiceSpec.opportunities`) | Finite activation rosters give a bounded native horizon; each actor has an activation at its own event. | Rosters may add arbitrary finite extra visits and passive observation. Unbounded interaction and PMF-valued traffic are separate refinements. |
+| Protected service | The modeled runtime includes each submission at most once and completes events at their deadlines; public binding omissions are attributable. | A property of the service being modeled, not a hypothesis of the theorem. It is not implemented here by a ledger or contract. |
+| Authentic partial audit (`authentic`) | Sampled evidence is a subset of actual traffic, so the audit charges no permitted history. | Missing records are never evidence. Authenticating phase and prior-ledger context remains an oracle obligation beyond signatures. |
+| Positive conditional coverage (`positive`, `coverage`) | Each forbidden record of a player is sampled with at least a fixed positive probability, so a fixed deposit deters every first departure. | The rate is a property of the audit backend; the theorem does not construct a sampler achieving it. |
+| Collectible fixed deposits (`rosterAuditDeposit`) | Settlement subtracts a deposit fixed from the finite payoff range before an equilibrium is chosen. | Collectibility is an interpretation of the settlement utility; no escrow implementation is proved. |
+| Utility of initial parameters and public outcome | The source utility is the raw utility evaluated on the typed source readout, invariant under private response normalization. | Utilities that read repaired private future values are outside the claim. |
+| Finite source information histories (instance argument) | Required by the finite SE definition of the pinned GameTheory library to state the source SE; finiteness of all source histories then follows from consistency and the bounded source horizon. | No premise beyond that definition. |
+
+The theorem asserts no cryptographic or EVM refinement: commitments are ideal,
+and signed evidence is attributed to accounts, not to physical senders.
+
 ### Source beliefs and sequential incentives
 
 The actual compiler policy implements the full source program on the existing
@@ -254,10 +275,10 @@ non-framing property after arbitrary other departures is not established.
 
 The source-to-permitted-runtime proof must establish observations,
 conditional laws and consistent beliefs. Single-trace membership does not
-establish those facts. These gates are checked for the revelation calendar.
-The remaining main gates extend the correspondence and checker to extra
-transmission opportunities. Fresh bindings and guarded programs require actual
-classification or harmlessness proofs; they must not be excluded silently.
+establish those facts. These gates are checked for the revelation calendar and,
+through the full-language roster service, for every source constructor: fresh
+bindings, public chance and guarded disclosure are classified site by site
+(`Vegas.SourceProgram.RevealService.DecisionSiteKind`), not excluded.
 
 ## Checked service instance
 

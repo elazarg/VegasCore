@@ -168,6 +168,16 @@ percentage estimate.
   and align the paper and artifact claims with its exact assumptions and scope.
   Document the justification and impact of the backend assumptions separately
   from their mathematical consequences. Commit and push the reviewable result.
+  Status: the warning-strict build and all gates pass; the dependency walk
+  from `Vegas.Paper.source_audited_raw_sequential_equilibrium` reaches 502
+  modules of `Vegas`, `Interaction`, `GameTheoryExtensions` and the pinned
+  `GameTheory` library, none of them test, example, experimental or prototype
+  modules, and its axioms are the three standard ones pinned in `Paper.lean`.
+  README, `ARTIFACT.md`, the [research map](se-preservation-roadmap.md) and
+  the paper's mechanization section state the result and its assumptions; the
+  [stack document](se-compilation-stack.md#assumptions-of-the-full-language-theorem)
+  separates each assumption's role from its justification. The box closes when
+  the reviewed result is pushed.
 
 The [stack document](se-compilation-stack.md) gives the detailed proof map and
 backend assumptions. The [results roadmap](se-preservation-roadmap.md) records
