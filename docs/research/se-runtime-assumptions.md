@@ -243,9 +243,19 @@ objective. The remaining proof obligations are:
    typed commitment law through the remaining roster and reserved inclusion.
    Its [supported endpoint theorem](../../Vegas/Game/SourceServiceBindingCheckpoint.lean)
    also carries the semantic source successor and the evolving candidate and
-   accepted-handle catalogues through that entire phase.
-   The all-syntax initialized fold still needs the evolving boundary invariants;
-   this phase law alone is not a sequential-equilibrium theorem.
+   accepted-handle catalogues through that entire phase. It preserves canonical
+   allocation, restores the serial/ledger counts, and proves all pending and
+   known copies published at the completed boundary. The
+   [boundary invariant](../../Vegas/Game/SourceServiceBoundary.lean) combines
+   those facts with actual response counts, future-event recall, source store
+   agreement and deadline accounting. Initialization, grant, passive activation
+   and general service invariant preservation are checked. The
+   [retained binding support](../../Vegas/Game/SourceServiceBindingSupport.lean)
+   theorem covers every legal retained policy, including early typed submissions:
+   every supported completed roster has an actual first-binding witness and
+   immediate-inclusion provenance. The required final menu rules out all-wait
+   paths. The all-syntax fold and support theorem for every retained history
+   still need composition across event constructors.
 3. **Conditional incentives.** Derive the native information-fiber likelihood
    from those actual executions, including dynamic candidate catalogs and
    extra response recall. When failed disclosure and withholding both produce
@@ -273,6 +283,18 @@ objective. The remaining proof obligations are:
    to the complete source assessment remains part of the full-source fold.
    The coupling covers the owner as well when the owner's source-visible
    binding result agrees; it does not claim that owners forget their choices.
+   The [opening likelihood](../../Vegas/Pending/ReactiveOpeningLikelihood.lean)
+   uses the same focal readout through actual opening windows, reserved inclusion
+   and clock/expiry tails. It therefore permits foreign private binding responses
+   to differ while retaining their true runtime recall. It requires the actual
+   handler-result views to agree; composing these phase laws across the entire
+   program remains necessary.
+   The [source memory factorization](../../Vegas/Game/SourceServiceFactorization.lean)
+   derives initialization and binding constructors from actual service laws,
+   retains the original private-intention history through guarded disclosure,
+   and discharges the successful opening handler-view comparison. These are
+   constructor results; no complete-program posterior equality is assumed
+   or yet concluded.
 4. **Raw deviations and settlement.** Finish the remaining-plan coupling to a
    legal retained continuation until the first attributable departure. Hidden
    unusability requires repair; it cannot be detected by a sound public audit.
@@ -295,6 +317,14 @@ objective. The remaining proof obligations are:
    and the current certified opening whose public guards succeed. Its phase
    classification supplies the packet branches; the stopped whole-run proof
    must still derive its evidence and collection probability.
+   [Local soundness](../../Vegas/Pending/ReactiveServiceSoundness.lean) proves
+   that all ordinary retained binding, guarded-resolution and foreign-player
+   choices pass this checker under their operational phase facts. The result
+   covers arbitrary retained choices, not just the selected source profile.
+   Published boundaries establish network conformance; passive observation and
+   conforming responses preserve it, including known pending-envelope replays.
+   Establishing those phase facts on every retained history remains part of
+   the full support induction.
    The [opening classifier](../../Vegas/Pending/ReactiveServiceOpening.lean)
    derives actual successful inclusion and the precise guard-aware response
    from public conformance and the runtime's evidence and binding invariants.
@@ -306,6 +336,16 @@ objective. The remaining proof obligations are:
    [guarded-resolution audit step](../../Vegas/Pending/ReactiveResolutionAuditStep.lean)
    proves the same actual mixed-response and passive-activation split for
    disclosures, using authentic evidence and arbitrary deferred guards. The
+   [required final response](../../Vegas/Pending/ReactiveBindingRequiredStep.lean)
+   additionally covers silence or replay at the last binding opportunity:
+   [actual omission](../../Vegas/Pending/ReactiveBindingFinalOmission.lean)
+   is proved after the complete foreign tail, reserved inclusion and expiry.
+   The [good binding block](../../Vegas/Pending/ReactiveBindingForeignInclusion.lean)
+   carries the repair frame through that same complete suffix for usable,
+   missing or mistyped private material. Foreign responses may be arbitrary;
+   the proof uses authenticated authorship, not assumed opponent conformance.
+   Whole-program stopped composition and legal repaired-history support remain
+   open. The
    [physical continuation](../../Interaction/ReactiveTrafficContinuation.lean)
    and [service-plan persistence](../../Vegas/Pending/ReactiveServiceTraffic.lean)
    retain such records through arbitrary later responses and instructions.

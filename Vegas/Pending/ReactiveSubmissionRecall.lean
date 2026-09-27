@@ -138,4 +138,21 @@ theorem eventRecorded_respond_of_recorded
   exact ⟨entry, (runtime.reactiveApplication leaks).respond_recall_mono execution who observer
     response member, submitted⟩
 
+/-- A response which does not submit this event leaves its recorded status
+unchanged. Foreign responses also leave the observer's own record unchanged. -/
+theorem eventRecorded_respond_other
+    (execution : (runtime.reactiveApplication leaks).Execution) (who observer : Player)
+    (response : (runtime.reactiveApplication leaks).Action) (event : graph.EventId)
+    (other : who = observer → runtime.submittedEvent? leaks response ≠ some event) :
+    runtime.eventRecorded leaks
+      ((execution.respond (runtime.reactiveApplication leaks) who response).recall observer)
+        event = runtime.eventRecorded leaks (execution.recall observer) event := by
+  classical
+  by_cases same : observer = who
+  · subst observer
+    simp only [eventRecorded, ReactiveApplication.Execution.respond, ↓reduceIte,
+      List.any_append, List.any_cons, List.any_nil, other rfl, decide_false,
+      Bool.or_false]
+  · simp only [ReactiveApplication.Execution.respond, ite_eq_right same]
+
 end Vegas.EventGraphRuntime

@@ -41,6 +41,29 @@ theorem EventCode.binding_success_of_resolve_success
           cases disclose <;> cases accepted <;>
             simp_all
 
+/-- A successful publication has passed every deferred check on the published
+value. This is the same check an auditor can run from the public store. -/
+theorem EventCode.guards_pass_of_resolve_success
+    {owner : Player} {payload : L.Ty}
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (disclose : Bool) (store : Store graph.layout) (value : L.Val payload)
+    (resolved : EventCode.resolveOutput? binding checks disclose store =
+      some (.success value)) :
+    GuardCheck.allAccepted? checks store (.success value) = some true := by
+  have stored := EventCode.binding_success_of_resolve_success binding checks disclose
+    store value resolved
+  unfold EventCode.resolveOutput? at resolved
+  cases disclose with
+  | false =>
+      cases accepted : GuardCheck.allAccepted? checks store .failure with
+      | none => simp [stored, accepted] at resolved
+      | some flag => cases flag <;> simp [stored, accepted] at resolved
+  | true =>
+      cases accepted : GuardCheck.allAccepted? checks store (.success value) with
+      | none => simp [stored, accepted] at resolved
+      | some flag => cases flag <;> simp_all
+
 omit R in
 private theorem option_value_cast_roundtrip
     {left right : EventField Player L} (same : left = right)

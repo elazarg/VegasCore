@@ -46,10 +46,12 @@ theorem sourceServiceLastPolicy_commit_catalog_checkpoint
     (checkpoint : SourceCheckpoint setup source refs offset execution.application.config)
     (represented : execution.application.CandidatesRepresented)
     (recorded : execution.application.AcceptedRecorded)
-    (prepared : execution.application.PreparedPrefix owner)
+    (prepared : ∀ who, execution.application.PreparedPrefix who)
     (unused : execution.application.HandleUnused
       (owner, .prepared (execution.application.publicView.bindingCount owner)))
     (serials : execution.network.SerialsBeforeNext)
+    (accounted : ∀ who, execution.network.nextSerial who =
+      execution.network.ledger.countP (fun message => message.sender = who))
     (published : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -73,6 +75,10 @@ theorem sourceServiceLastPolicy_commit_catalog_checkpoint
         ((rosters event).map ServiceInstruction.player ++
           [.includeLatest event owner]) execution).support →
       final.application.CandidatesRepresented ∧ final.application.AcceptedRecorded ∧
+      (∀ who, final.application.PreparedPrefix who) ∧
+      (∀ who, final.network.nextSerial who =
+        final.network.ledger.countP (fun message => message.sender = who)) ∧
+      final.network.Satisfies (fun message => message.id ∈ final.network.ledger.map Message.id) ∧
       ∃ choice ∈ (commitKernel profile (source.view owner)).support,
         SourceCheckpoint setup (commitSuccessor name guard source choice)
           (refs.cons (name := name) ⟨.inr event, outputEq⟩) (offset + 1)
@@ -83,9 +89,9 @@ theorem sourceServiceLastPolicy_commit_catalog_checkpoint
   let app := application setup leaks
   let serial := execution.application.publicView.bindingCount owner
   have selected : reactiveFreshSlot (execution.observe app owner).application = some serial :=
-    prepared.freshSlot (runtime setup) leaks
+    (prepared owner).freshSlot (runtime setup) leaks
   have candidate : execution.application.candidates.lookup (owner, .prepared serial) = .fresh :=
-    (prepared serial).mpr (Nat.le_refl _)
+    (prepared owner serial).mpr (Nat.le_refl _)
   have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload := by
     change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
@@ -101,8 +107,8 @@ theorem sourceServiceLastPolicy_commit_catalog_checkpoint
   have owned : (graph setup).actor? event = some owner := by
     change (toEventGraph setup.program).actor? event = some owner
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
-  obtain ⟨before, immediate, applicationEq, _, receiptsEq, countersEq, beforeSerials, included,
-    finalApplication, _, finalReceipts, _⟩ :=
+  obtain ⟨before, immediate, applicationEq, ledgerEq, receiptsEq, countersEq, beforeSerials,
+    included, finalApplication, finalLedger, finalReceipts, finalCounters, finalPublished⟩ :=
       sourceServiceLastPolicy_binding_provenance setup leaks bounds rosters wholeProfile network
         execution event owner payload outputEq codeEq node granted owned ready serial selected
           candidate serials published visited remaining absent position counted unsent final reached
@@ -115,9 +121,13 @@ theorem sourceServiceLastPolicy_commit_catalog_checkpoint
   have beforeRecorded : before.application.AcceptedRecorded := by
     rw [applicationEq]
     exact recorded
-  have beforePrepared : before.application.PreparedPrefix owner := by
+  have beforePrepared : ∀ who, before.application.PreparedPrefix who := by
     rw [applicationEq]
     exact prepared
+  have beforeAccounted : ∀ who, before.network.nextSerial who =
+      before.network.ledger.countP (fun message => message.sender = who) := by
+    rw [countersEq, ledgerEq]
+    exact accounted
   have beforeUnused : before.application.HandleUnused
       (owner, .prepared (before.application.publicView.bindingCount owner)) := by
     rw [applicationEq]
@@ -136,9 +146,19 @@ theorem sourceServiceLastPolicy_commit_catalog_checkpoint
     exact vacant
   have completed := sourceServicePolicy_commit_catalog_checkpoint setup leaks fresh guard next
     wholeProfile profile refs source embedding refsBefore offset aligned before beforeCheckpoint
-      beforeRepresented beforeRecorded beforePrepared beforeUnused beforeSerials
+      beforeRepresented beforeRecorded beforePrepared beforeUnused beforeSerials beforeAccounted
       (fun _ => app.replayPolicy) network beforeGrant beforeReady beforeTimely beforeVacant
         immediate included
-  simpa only [finalApplication, finalReceipts, receiptsEq, countersEq] using completed
+  refine ⟨?_, ?_, ?_, ?_, finalPublished, ?_⟩
+  · rw [finalApplication]
+    exact completed.1
+  · rw [finalApplication]
+    exact completed.2.1
+  · rw [finalApplication]
+    exact completed.2.2.1
+  · rw [finalCounters, finalLedger]
+    exact completed.2.2.2.1
+  · simpa only [finalApplication, finalReceipts, receiptsEq, countersEq]
+      using completed.2.2.2.2
 
 end Vegas.SourceProgram.RevealService

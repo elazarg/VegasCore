@@ -26,6 +26,9 @@ import Vegas.Game.SourceServiceCandidateStep
 import Vegas.Game.SourceServiceBindingRoster
 import Vegas.Game.SourceServiceBindingPhase
 import Vegas.Game.SourceServiceBindingCheckpoint
+import Vegas.Game.SourceServiceBoundary
+import Vegas.Game.SourceServiceBindingSupport
+import Vegas.Game.SourceServiceFactorization
 import Vegas.Game.SourceServiceRosterPolicy
 import Vegas.Game.SourceServiceWaiting
 import Vegas.Game.SourceServiceDisclosure

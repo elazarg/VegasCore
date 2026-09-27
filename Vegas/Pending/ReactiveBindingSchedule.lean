@@ -20,7 +20,7 @@ open Interaction GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-private theorem bindingTraffic_activation (runtime : EventGraphRuntime graph)
+theorem bindingTraffic_activation (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (left right : (runtime.reactiveApplication leaks).Execution) (focal actor : Player)
     (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
@@ -48,7 +48,7 @@ private theorem bindingTraffic_activation (runtime : EventGraphRuntime graph)
     rw [environments, observed]
     rfl
 
-private theorem bindingTraffic_replay (runtime : EventGraphRuntime graph)
+theorem bindingTraffic_replay (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (left right : (runtime.reactiveApplication leaks).Execution) (focal actor : Player)
     (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)

@@ -2,6 +2,7 @@
 
 import Vegas.Game.RevealServiceBlock
 import Vegas.Game.RevealServiceCalendarState
+import Vegas.Pending.ReactiveServiceRecall
 import Vegas.Game.RevealServiceTranscript
 import Vegas.EventGraph.PrivateInputs
 import Vegas.Pending.ReactiveResponseRecall
@@ -277,27 +278,6 @@ theorem Checkpoint.owner_opportunity
     exact (runtime setup).player_instruction_published leaks players network
       granted owner checkpoint.pending
 
-private theorem plan_invariant {nativeGraph : Vegas.EventGraph Player L}
-    (runtime : EventGraphRuntime nativeGraph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph))
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (predicate : (runtime.reactiveApplication leaks).Execution → Prop)
-    (invariant : (runtime.reactiveApplication leaks).PolicyInvariant players predicate)
-    (plan : List (ServiceInstruction nativeGraph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (valid : predicate execution)
-    (supported : next ∈ (runtime.runInteractionPlan leaks players network plan execution).support) :
-    predicate next := by
-  induction plan generalizing execution with
-  | nil => cases FinDist.mem_support_pure.mp supported; exact valid
-  | cons instruction rest ih =>
-      obtain ⟨middle, stepped, continued⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-      obtain ⟨command, _selected, moved⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ stepped)
-      exact ih middle (invariant.dispatch command execution middle valid moved) continued
-
 private theorem ordinary_network_checkpoint [Fintype Player]
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -525,7 +505,8 @@ theorem Checkpoint.reveal_response [Fintype Player]
     rw [applicationEq]
     exact settlement_successor_timely setup execution.application checkpoint.invariant
       event successor ready (by omega) actor action result (sourceChoice setup leaks response)
-  · exact plan_invariant (runtime setup) leaks players ((runtime setup).reportNetwork leaks watcher)
+  · exact (runtime setup).runInteractionPlan_preserves leaks players
+      ((runtime setup).reportNetwork leaks watcher)
       _ recallInvariant suffix submitted next
       (app.respond_inputRecall execution owner response checkpoint.recall) supported
 

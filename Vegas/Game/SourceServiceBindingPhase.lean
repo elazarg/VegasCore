@@ -34,8 +34,13 @@ private theorem include_players_eq
       (runtime setup).interactionStep leaks second network
         (.includeLatest event owner) execution := by
   simp only [interactionStep, interactionInstruction, FinDist.pure_bind]
-  unfold reactiveLatest
-  split <;> rfl
+  rcases (runtime setup).reactiveLatest_wait_or_owned leaks event owner
+      (execution.observeEnvironment ((runtime setup).reactiveApplication leaks)) with
+    waiting | ⟨id, _authored, included⟩
+  · rw [waiting]
+    rfl
+  · rw [included]
+    rfl
 
 private theorem foreign_tail_law
     (setup : Setup (Player := Player) (L := L))
@@ -452,7 +457,9 @@ private theorem binding_opportunity_provenance
             (before.respond (application setup leaks) owner response)).support ∧
       final.application = immediate.application ∧ final.network.ledger = immediate.network.ledger ∧
       final.receipts = immediate.receipts ∧
-      final.network.nextSerial = immediate.network.nextSerial := by
+      final.network.nextSerial = immediate.network.nextSerial ∧
+      final.network.Satisfies
+        (fun message => message.id ∈ final.network.ledger.map Message.id) := by
   let := Fintype.ofFinite Player
   let app := application setup leaks
   let players := sourceServiceLastPolicy setup leaks rosters profile
@@ -521,10 +528,25 @@ private theorem binding_opportunity_provenance
     | success value => exact delayed (some ⟨payload, value⟩)
   rw [delayedChoice] at mapped
   obtain ⟨immediate, included, equal⟩ := FinDist.support_map .. ▸ mapped
+  have publishedFinal : final.network.Satisfies fun message =>
+      message.id ∈ final.network.ledger.map Message.id := by
+    have publish (submission : WitnessedSubmission (graph setup))
+        (addressed : submission.call.packet.event? (graph setup) = some event)
+        (supported : final ∈ ((runtime setup).runInteractionPlan leaks transport network
+          (remaining.map ServiceInstruction.player ++ [.includeLatest event owner])
+            (activated.respond app owner ⟨some (.submit submission)⟩)).support) :=
+      (runtime setup).submission_replay_settled_published leaks transport network owner activated
+        submission event addressed (currentPublished.learn owner sample)
+        (currentSerials.learn owner sample)
+        (fun current who response _ _ chosen => app.replayPolicy_cases _ _ response chosen)
+        remaining final supported
+    cases choice with
+    | failure => exact publish _ rfl tail
+    | success value => exact publish _ rfl tail
   refine ⟨activated, immediate, rfl, rfl, rfl, rfl, currentSerials.learn owner sample, ?_,
     (congrArg Prod.fst equal).symm, (congrArg (fun value => value.2.1) equal).symm,
     (congrArg (fun value => value.2.2.1) equal).symm,
-    (congrArg (fun value => value.2.2.2) equal).symm⟩
+    (congrArg (fun value => value.2.2.2) equal).symm, publishedFinal⟩
   rw [FinDist.support_bind]
   apply Set.mem_iUnion₂.mpr
   refine ⟨response, sourceChosen, ?_⟩
@@ -580,7 +602,9 @@ theorem sourceServiceLastPolicy_binding_provenance
             (before.respond (application setup leaks) owner response)).support ∧
       final.application = immediate.application ∧ final.network.ledger = immediate.network.ledger ∧
       final.receipts = immediate.receipts ∧
-      final.network.nextSerial = immediate.network.nextSerial := by
+      final.network.nextSerial = immediate.network.nextSerial ∧
+      final.network.Satisfies
+        (fun message => message.id ∈ final.network.ledger.map Message.id) := by
   let app := application setup leaks
   let players := sourceServiceLastPolicy setup leaks rosters profile
   have total : (rosters event).count owner = visited.count owner + 1 := by
@@ -624,7 +648,7 @@ theorem sourceServiceLastPolicy_binding_provenance
     rw [currentCount, counted, total]
     omega
   obtain ⟨before, immediate, applicationEq, ledgerEq, receiptEq, counterEq, nextSerials, supported,
-    applicationFinal, ledgerFinal, receiptsFinal, countersFinal⟩ :=
+    applicationFinal, ledgerFinal, receiptsFinal, countersFinal, publishedFinal⟩ :=
       binding_opportunity_provenance setup leaks bounds rosters
       profile network current event owner payload outputEq codeEq node currentGrant owned
         currentReady serial currentSelected currentCandidate currentSerials currentPublished
@@ -632,6 +656,6 @@ theorem sourceServiceLastPolicy_binding_provenance
   exact ⟨before, immediate, applicationEq.trans same, ledgerEq.trans ledger,
     receiptEq.trans receipts,
     counterEq.trans counters, nextSerials, supported, applicationFinal, ledgerFinal, receiptsFinal,
-    countersFinal⟩
+    countersFinal, publishedFinal⟩
 
 end Vegas.SourceProgram.RevealService

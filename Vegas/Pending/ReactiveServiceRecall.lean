@@ -21,6 +21,28 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
+/-- Supported physical responses and environment commands preserve the same
+execution predicate throughout an actual service plan. -/
+theorem runInteractionPlan_preserves (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
+    (predicate : (runtime.reactiveApplication leaks).Execution → Prop)
+    (invariant : (runtime.reactiveApplication leaks).PolicyInvariant players predicate)
+    (plan : List (ServiceInstruction graph))
+    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (valid : predicate execution)
+    (supported : next ∈ (runtime.runInteractionPlan leaks players network plan execution).support) :
+    predicate next := by
+  induction plan generalizing execution with
+  | nil => cases FinDist.mem_support_pure.mp supported; exact valid
+  | cons instruction rest ih =>
+      obtain ⟨middle, stepped, continued⟩ :=
+        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+      obtain ⟨command, _selected, moved⟩ :=
+        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ stepped)
+      exact ih middle (invariant.dispatch command execution middle valid moved) continued
+
 theorem runInteractionPlan_serials (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
@@ -143,13 +165,7 @@ theorem runInteractionPlan_inputRecall
     respond := fun execution who action valid _ =>
       app.respond_inputRecall execution who action valid
     environment := app.environment_inputRecall }
-  induction plan generalizing initial with
-  | nil => cases FinDist.mem_support_pure.mp reached; exact valid
-  | cons instruction rest ih =>
-      obtain ⟨middle, stepped, later⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨command, _, dispatched⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ stepped)
-      exact ih middle (preserved.dispatch command initial middle valid dispatched) later
+  exact runtime.runInteractionPlan_preserves leaks players network _ preserved plan
+    initial final valid reached
 
 end Vegas.EventGraphRuntime

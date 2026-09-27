@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveHistory
+import Interaction.MessageNetworkInvariant
 import GameTheoryExtensions.Protocol.StateKernel
 
 /-! # Settlement evidence from the public traffic history
@@ -99,6 +100,51 @@ theorem trafficStep_replay (execution : app.Execution) (remaining : Nat) (who : 
       (some ⟨remaining, none, execution.respond app who ⟨some (.replay id)⟩⟩) =
         [⟨app.observePublic execution.application, execution.network.ledger, ⟨who, message⟩⟩] := by
   simp [trafficStep, Execution.respond, MessageNetwork.replay, known]
+
+/-- A transport-only response emits a previously known envelope, with the
+actual public observation and ledger at transmission. An unknown replay id
+emits nothing. This does not require a legal-menu or recall hypothesis. -/
+theorem trafficStep_transport (execution : app.Execution) (remaining : Nat)
+    (who : Principal) (response : app.Action)
+    (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+    (record : app.TrafficRecord)
+    (member : record ∈ app.trafficStep (some ⟨remaining, some who, execution⟩)
+      (some ⟨remaining, none, execution.respond app who response⟩)) :
+    record.observation = app.observePublic execution.application ∧
+      record.ledger = execution.network.ledger ∧
+      record.input.envelope ∈ execution.network.known who := by
+  rcases transport with rfl | ⟨id, rfl⟩
+  · rw [app.trafficStep_silent] at member
+    cases member
+  · cases found : (execution.network.known who).find? (fun packet => packet.id = id) with
+    | none =>
+        simp only [trafficStep, Execution.respond, MessageNetwork.replay, found,
+          List.drop_length, List.map_nil, List.not_mem_nil] at member
+    | some message =>
+        rw [app.trafficStep_replay execution remaining who id message found,
+          List.mem_singleton] at member
+        subst record
+        exact ⟨rfl, rfl, List.mem_of_find?_eq_some found⟩
+
+/-- Checking the actual emitted traffic extends any envelope invariant to the
+post-response network, including all private pending-message observations. -/
+theorem trafficStep_network (execution : app.Execution) (remaining : Nat)
+    (who : Principal) (response : app.Action)
+    (safe : Message Principal app.Payload → Prop)
+    (prior : execution.network.Satisfies safe)
+    (issued : ∀ record ∈ app.trafficStep (some ⟨remaining, some who, execution⟩)
+      (some ⟨remaining, none, execution.respond app who response⟩), safe record.input.envelope) :
+    (execution.respond app who response).network.Satisfies safe := by
+  rcases response with ⟨transmission⟩
+  cases transmission with
+  | none => exact prior
+  | some transmission =>
+      cases transmission with
+      | replay id => exact prior.replay who id
+      | submit submission =>
+          apply prior.submit who
+          rw [app.trafficStep_submit] at issued
+          exact issued _ (List.mem_singleton_self _)
 
 /-- Environment operations never invent a transmission record. -/
 theorem trafficStep_environment (execution next : app.Execution) (command : app.Command)

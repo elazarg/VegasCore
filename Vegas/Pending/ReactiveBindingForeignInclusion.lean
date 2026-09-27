@@ -1,0 +1,378 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.ReactiveBindingForeignData
+import Vegas.Pending.ReactiveBindingWindowLaw
+import Vegas.Pending.ReactiveBindingFrameStep
+
+/-! # Good binding repair after a foreign response tail
+
+The exact pending canonical binding survives arbitrary foreign raw responses.
+Reserved inclusion then preserves the same joint repair frame, using candidate
+and local-memory facts already established by the actual binding submission.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime.BindingMemory.Frame
+
+open Interaction EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+  {runtime : EventGraphRuntime graph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
+  {memory : BindingMemory runtime leaks} {owner : Player}
+  {original repaired : (runtime.reactiveApplication leaks).Execution}
+
+private theorem binding_inclusion_completed
+    (execution : (runtime.reactiveApplication leaks).Execution)
+    (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (node : nodeView graph event = .bind owner payload outputEq codeEq)
+    (slot : CandidateSlot graph) (nonce : Nat)
+    (found : execution.network.lookup (owner, nonce) =
+      some ⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩)
+    (ready : execution.application.config.cut.Ready event)
+    (timely : execution.application.WithinDeadline runtime event)
+    (vacant : execution.application.accepted (.inr event) = none)
+    (unused : execution.application.HandleUnused (owner, slot)) :
+    event ∈ (execution.includePending (runtime.reactiveApplication leaks)
+      (owner, nonce)).application.config.cut.completed := by
+  have handled := runtime.handle_commitment_eq execution.application (owner, nonce) event
+    (owner, slot) owner payload outputEq codeEq node ready timely rfl rfl vacant unused
+  simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
+  change event ∈ ((runtime.handle execution.application
+    ⟨(owner, nonce), .commitment event (owner, slot)⟩).getD
+      execution.application).config.cut.completed
+  rw [handled]
+  exact Finset.mem_insert_self event _
+
+/-- The pending original binding and the repaired typed binding have the
+actual foreign-roster/include laws as their marginals. Foreign participants
+need not follow the retained menu; they receive their full original inputs. -/
+theorem pending_binding_foreign_coupling
+    (frame : Frame runtime leaks memory owner original repaired)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
+    (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (node : nodeView graph event = .bind owner payload outputEq codeEq)
+    (slot : CandidateSlot graph) (nonce : Nat)
+    (ready : original.application.config.cut.Ready event)
+    (timely : original.application.WithinDeadline runtime event)
+    (vacant : original.application.accepted (.inr event) = none)
+    (unused : original.application.HandleUnused (owner, slot))
+    (leftFixed : original.application.candidates.lookup (owner, slot) ≠ .fresh)
+    (rightFixed : repaired.application.candidates.lookup (owner, slot) ≠ .fresh)
+    (rememberedAction : memory.shadow.actions event = some
+      (cast (congrArg EventField.Action outputEq.symm)
+        (original.application.bindingResult (owner, slot) payload)))
+    (rememberedValue : memory.shadow.values (.inr event) = some
+      (cast (congrArg EventField.Value outputEq.symm)
+        (original.application.bindingResult (owner, slot) payload)))
+    (successful : ∀ value,
+      original.application.bindingResult (owner, slot) payload = .success value →
+        repaired.application.bindingResult (owner, slot) payload = .success value)
+    (pending : (⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩ :
+      Message Player (WitnessedPacket graph)) ∈ original.network.pending)
+    (unpublished : (owner, nonce) ∉ original.network.ledger.map Message.id)
+    (packets : original.network.Satisfies fun packet => packet.sender = owner →
+      packet.id ∈ original.network.ledger.map Message.id ∨
+        packet = ⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩)
+    (visits : List Player) (absent : owner ∉ visits) :
+    let app := runtime.reactiveApplication leaks
+    let plan := visits.map ServiceInstruction.player ++ [.includeLatest event owner]
+    ∃ coupling : FinDist (app.Execution × app.Execution),
+      coupling.map Prod.fst = runtime.runInteractionPlan leaks players network plan original ∧
+      coupling.map Prod.snd = runtime.runInteractionPlan leaks players network plan repaired ∧
+      ∀ next ∈ coupling.support, Frame runtime leaks memory owner next.1 next.2 ∧
+        event ∈ next.1.application.config.cut.completed := by
+  let app := runtime.reactiveApplication leaks
+  let message : Message Player (WitnessedPacket graph) :=
+    ⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩
+  let finish (execution : app.Execution) : app.Execution :=
+    { execution.includePending app message.id with
+      environmentRecall := execution.environmentRecall ++
+        [⟨execution.observeEnvironment app, .include message.id⟩] }
+  obtain ⟨window, first, second, related⟩ := frame.foreign_window_coupling players network
+    visits absent
+  have leftReach (pair) (supported : pair ∈ window.support) :
+      pair.1 ∈ (runtime.runInteractionPlan leaks players network
+        (visits.map ServiceInstruction.player) original).support := by
+    rw [← first, FinDist.support_map]
+    exact ⟨pair, supported, rfl⟩
+  have rightReach (pair) (supported : pair ∈ window.support) :
+      pair.2 ∈ (runtime.runInteractionPlan leaks players network
+        (visits.map ServiceInstruction.player) repaired).support := by
+    rw [← second, FinDist.support_map]
+    exact ⟨pair, supported, rfl⟩
+  have selection (pair) (supported : pair ∈ window.support) :=
+    runtime.foreign_window_selection leaks players network owner original event message rfl rfl
+      packets pending unpublished visits absent pair.1 (leftReach pair supported)
+  have settled (execution : app.Execution)
+      (selected : runtime.reactiveLatest leaks event owner
+        (execution.observeEnvironment app) = .include message.id) :
+      runtime.interactionStep leaks players network (.includeLatest event owner) execution =
+        FinDist.pure (finish execution) := by
+    simp only [interactionStep, interactionInstruction, FinDist.pure_bind]
+    change app.dispatch players (runtime.reactiveLatest leaks event owner
+      (execution.observeEnvironment app)) execution = _
+    rw [selected]
+    change (execution.environmentStep app (.include message.id)).bind FinDist.pure = _
+    rw [FinDist.bind_pure]
+    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    rfl
+  have leftLaw (pair) (supported : pair ∈ window.support) :=
+    settled pair.1 (selection pair supported).1
+  have rightLaw (pair) (supported : pair ∈ window.support) :
+      runtime.interactionStep leaks players network (.includeLatest event owner) pair.2 =
+        FinDist.pure (finish pair.2) := by
+    apply settled
+    rw [← (related pair supported).environment]
+    exact (selection pair supported).1
+  refine ⟨window.map (fun pair => (finish pair.1, finish pair.2)), ?_, ?_, ?_⟩
+  · rw [FinDist.map_comp, runtime.runInteractionPlan_append, ← first, FinDist.bind_map,
+      FinDist.map_eq_bind]
+    apply FinDist.bind_congr
+    intro pair supported
+    simp only [runInteractionPlan, FinDist.bind_pure, leftLaw pair supported]
+    rfl
+  · rw [FinDist.map_comp, runtime.runInteractionPlan_append, ← second, FinDist.bind_map,
+      FinDist.map_eq_bind]
+    apply FinDist.bind_congr
+    intro pair supported
+    simp only [runInteractionPlan, FinDist.bind_pure, rightLaw pair supported]
+    rfl
+  · intro next supported
+    obtain ⟨pair, chosen, rfl⟩ := FinDist.support_map .. ▸ supported
+    have leftData := runtime.foreign_window_data leaks players network owner _
+      (fun packet different same => (different same).elim) visits absent original pair.1
+        packets (leftReach pair chosen)
+    have rightPackets : repaired.network.Satisfies (fun packet => packet.sender = owner →
+        packet.id ∈ original.network.ledger.map Message.id ∨ packet = message) :=
+      frame.network ▸ packets
+    have rightData := runtime.foreign_window_data leaks players network owner _
+      (fun packet different same => (different same).elim) visits absent repaired pair.2
+        rightPackets (rightReach pair chosen)
+    have leftApplication := runtime.player_window_application leaks players network visits
+      original pair.1 (leftReach pair chosen)
+    have leftSlot : pair.1.application.candidates.lookup (owner, slot) =
+        original.application.candidates.lookup (owner, slot) :=
+      congrFun (congrArg PlayerView.candidates leftData.1) slot
+    have rightSlot : pair.2.application.candidates.lookup (owner, slot) =
+        repaired.application.candidates.lookup (owner, slot) :=
+      congrFun (congrArg PlayerView.candidates rightData.1) slot
+    have leftResult : pair.1.application.bindingResult (owner, slot) payload =
+        original.application.bindingResult (owner, slot) payload := by
+      unfold State.bindingResult
+      rw [leftSlot]
+    have rightResult : pair.2.application.bindingResult (owner, slot) payload =
+        repaired.application.bindingResult (owner, slot) payload := by
+      unfold State.bindingResult
+      rw [rightSlot]
+    have currentReady : pair.1.application.config.cut.Ready event := by
+      rw [leftApplication.1]
+      exact ready
+    have currentTimely : pair.1.application.WithinDeadline runtime event := by
+      unfold State.WithinDeadline
+      rw [show pair.1.application.activatedAt = original.application.activatedAt from
+        congrArg PublicView.activatedAt leftApplication.2,
+        show pair.1.application.clock = original.application.clock from
+          congrArg PublicView.clock leftApplication.2]
+      exact timely
+    have accepted : pair.1.application.accepted = original.application.accepted :=
+      congrArg PublicView.accepted leftApplication.2
+    have currentVacant : pair.1.application.accepted (.inr event) = none := by
+      rw [accepted]
+      exact vacant
+    have currentUnused : pair.1.application.HandleUnused (owner, slot) := by
+      intro field same
+      rw [accepted] at same
+      exact unused field same
+    constructor
+    · apply (related pair chosen).pending_binding_inclusion event payload outputEq codeEq node
+        message.id (owner, slot) rfl rfl (selection pair chosen).2 currentReady currentTimely
+          currentVacant currentUnused
+      · rw [leftSlot]
+        exact leftFixed
+      · rw [rightSlot]
+        exact rightFixed
+      · rw [leftResult]
+        exact rememberedAction
+      · rw [leftResult]
+        exact rememberedValue
+      · intro value equal
+        rw [rightResult]
+        exact successful value (leftResult ▸ equal)
+    · exact binding_inclusion_completed pair.1 event payload outputEq codeEq node slot nonce
+        (selection pair chosen).2 currentReady currentTimely currentVacant currentUnused
+
+/-- All facts for delayed good-branch inclusion are supplied by the actual
+canonical binding response, including missing or mistyped private material.
+The only old-envelope premise concerns this owner; foreign traffic is arbitrary. -/
+theorem binding_submission_foreign_coupling
+    (frame : Frame runtime leaks memory owner original repaired)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
+    (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (node : nodeView graph event = .bind owner payload outputEq codeEq)
+    (serial : Nat) (opening : Option (Raw L))
+    (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
+    (ready : original.application.config.cut.Ready event)
+    (timely : original.application.WithinDeadline runtime event)
+    (vacant : original.application.accepted (.inr event) = none)
+    (unused : original.application.HandleUnused (owner, .prepared serial))
+    (serials : original.network.SerialsBeforeNext)
+    (published : original.network.Satisfies fun packet => packet.sender = owner →
+      packet.id ∈ original.network.ledger.map Message.id)
+    (visits : List Player) (absent : owner ∉ visits) :
+    let app := runtime.reactiveApplication leaks
+    let view := repaired.observe app owner
+    let response : app.Action :=
+      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+    let changed := memory.repairResponse runtime leaks owner view response
+    let remembered : BindingMemory runtime leaks :=
+      ⟨changed.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩
+    let plan := visits.map ServiceInstruction.player ++ [.includeLatest event owner]
+    ∃ coupling : FinDist (app.Execution × app.Execution),
+      coupling.map Prod.fst = runtime.runInteractionPlan leaks players network plan
+        (original.respond app owner response) ∧
+      coupling.map Prod.snd = runtime.runInteractionPlan leaks players network plan
+        (repaired.respond app owner changed.1) ∧
+      ∀ next ∈ coupling.support, Frame runtime leaks remembered owner next.1 next.2 ∧
+        event ∈ next.1.application.config.cut.completed := by
+  intro app view response changed remembered plan
+  let left := original.respond app owner response
+  let right := repaired.respond app owner changed.1
+  let packet : WitnessedPacket graph := ⟨.commitment event (owner, .prepared serial), none⟩
+  let message : Message Player (WitnessedPacket graph) :=
+    ⟨(owner, original.network.nextSerial owner), packet⟩
+  have coupled := frame.binding_submission event payload outputEq codeEq node serial opening
+    fresh ready
+  have data := frame.binding_submission_pending event payload outputEq codeEq node serial opening
+    fresh
+  have unchanged := runtime.reactive_respond_application leaks original owner response
+  have leftReady : left.application.config.cut.Ready event := by
+    rw [unchanged.1]
+    exact ready
+  have leftTimely : left.application.WithinDeadline runtime event := by
+    unfold State.WithinDeadline
+    rw [show left.application.clock = original.application.clock from
+      congrArg PublicView.clock unchanged.2,
+      show left.application.activatedAt = original.application.activatedAt from
+        congrArg PublicView.activatedAt unchanged.2]
+    exact timely
+  have accepted : left.application.accepted = original.application.accepted :=
+    congrArg PublicView.accepted unchanged.2
+  have leftVacant : left.application.accepted (.inr event) = none := by
+    rw [accepted]
+    exact vacant
+  have leftUnused : left.application.HandleUnused (owner, .prepared serial) := by
+    intro field same
+    rw [accepted] at same
+    exact unused field same
+  have packets : left.network.Satisfies fun candidate => candidate.sender = owner →
+      candidate.id ∈ left.network.ledger.map Message.id ∨ candidate = message := by
+    change (original.network.submit owner packet).2.Satisfies _
+    apply (published.mono (fun candidate prior same => Or.inl (prior same))).submit owner packet
+    exact fun _ => Or.inr rfl
+  have pending : message ∈ left.network.pending :=
+    List.mem_append_right _ (List.mem_singleton_self _)
+  exact coupled.pending_binding_foreign_coupling players network event payload outputEq codeEq
+    node (.prepared serial) (original.network.nextSerial owner) leftReady leftTimely leftVacant
+    leftUnused data.1 data.2.1 data.2.2.1 data.2.2.2.1 data.2.2.2.2 pending
+    (serials.next_unpublished owner) packets visits absent
+
+/-- The complete remaining binding block, including actual clock padding and
+expiry, preserves the good-branch frame. The original private candidate may be
+unusable; both the repaired response and every subsequent policy remain fixed. -/
+theorem binding_submission_foreign_block_coupling
+    (frame : Frame runtime leaks memory owner original repaired)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
+    (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (node : nodeView graph event = .bind owner payload outputEq codeEq)
+    (serial : Nat) (opening : Option (Raw L))
+    (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
+    (ready : original.application.config.cut.Ready event)
+    (timely : original.application.WithinDeadline runtime event)
+    (vacant : original.application.accepted (.inr event) = none)
+    (unused : original.application.HandleUnused (owner, .prepared serial))
+    (serials : original.network.SerialsBeforeNext)
+    (published : original.network.Satisfies fun packet => packet.sender = owner →
+      packet.id ∈ original.network.ledger.map Message.id)
+    (visits : List Player) (absent : owner ∉ visits) (ticks : Nat) :
+    let app := runtime.reactiveApplication leaks
+    let view := repaired.observe app owner
+    let response : app.Action :=
+      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+    let changed := memory.repairResponse runtime leaks owner view response
+    let remembered : BindingMemory runtime leaks :=
+      ⟨changed.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩
+    let plan := (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
+      (List.replicate ticks .tick ++ [.expire event])
+    ∃ coupling : FinDist (app.Execution × app.Execution),
+      coupling.map Prod.fst = runtime.runInteractionPlan leaks players network plan
+        (original.respond app owner response) ∧
+      coupling.map Prod.snd = runtime.runInteractionPlan leaks players network plan
+        (repaired.respond app owner changed.1) ∧
+      ∀ next ∈ coupling.support, Frame runtime leaks remembered owner next.1 next.2 := by
+  classical
+  intro app view response changed remembered plan
+  obtain ⟨included, first, second, related⟩ := frame.binding_submission_foreign_coupling
+    players network event payload outputEq codeEq node serial opening fresh ready timely vacant
+      unused serials published visits absent
+  have existsTail next (supported : next ∈ included.support) :
+      ∃ coupling : FinDist (app.Execution × app.Execution),
+        coupling.map Prod.fst = runtime.runInteractionPlan leaks players network
+          (List.replicate ticks .tick ++ [.expire event]) next.1 ∧
+        coupling.map Prod.snd = runtime.runInteractionPlan leaks players network
+          (List.replicate ticks .tick ++ [.expire event]) next.2 ∧
+        ∀ after ∈ coupling.support, Frame runtime leaks remembered owner after.1 after.2 := by
+    obtain ⟨left, right, leftLaw, rightLaw, paired⟩ :=
+      (related next supported).1.completed_clock_tail players network event
+        (related next supported).2 ticks
+    refine ⟨FinDist.pure (left, right), ?_, ?_, ?_⟩
+    · rw [FinDist.map_pure, leftLaw]
+    · rw [FinDist.map_pure, rightLaw]
+    · intro after member
+      cases FinDist.mem_support_pure.mp member
+      exact paired
+  let tail := fun next supported => (existsTail next supported).choose
+  refine ⟨included.bindOnSupport tail, ?_, ?_, ?_⟩
+  · rw [FinDist.map_bindOnSupport]
+    calc
+      _ = included.bind (fun next => runtime.runInteractionPlan leaks players network
+          (List.replicate ticks .tick ++ [.expire event]) next.1) := by
+        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        intro next supported
+        exact (existsTail next supported).choose_spec.1
+      _ = (included.map Prod.fst).bind (runtime.runInteractionPlan leaks players network
+          (List.replicate ticks .tick ++ [.expire event])) := (FinDist.bind_map ..).symm
+      _ = _ := by rw [first, ← runtime.runInteractionPlan_append]
+  · rw [FinDist.map_bindOnSupport]
+    calc
+      _ = included.bind (fun next => runtime.runInteractionPlan leaks players network
+          (List.replicate ticks .tick ++ [.expire event]) next.2) := by
+        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        intro next supported
+        exact (existsTail next supported).choose_spec.2.1
+      _ = (included.map Prod.snd).bind (runtime.runInteractionPlan leaks players network
+          (List.replicate ticks .tick ++ [.expire event])) := (FinDist.bind_map ..).symm
+      _ = _ := by rw [second, ← runtime.runInteractionPlan_append]
+  · intro after supported
+    obtain ⟨next, chosen, reached⟩ :=
+      Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+    exact (existsTail next chosen).choose_spec.2.2 after reached
+
+end Vegas.EventGraphRuntime.BindingMemory.Frame

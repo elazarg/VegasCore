@@ -21,7 +21,9 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-private theorem replay_response_data (runtime : EventGraphRuntime graph)
+/-- Silence and exact known-envelope replay retain the application and public
+allocation state; every existing pending envelope remains available. -/
+theorem replay_response_preserves (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (safe : Message Player (WitnessedPacket graph) → Prop)
     (current : (runtime.reactiveApplication leaks).Execution)
@@ -106,8 +108,8 @@ theorem replay_window_preserves (runtime : EventGraphRuntime graph)
       obtain ⟨sample, _, first⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ first)
       obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ first
       let activated := current.sampledActivation app who sample
-      have data := replay_response_data runtime leaks safe activated (valid.learn who sample) who
-        response (responses activated who response application recalled chosen)
+      have data := replay_response_preserves runtime leaks safe activated (valid.learn who sample)
+        who response (responses activated who response application recalled chosen)
       exact ih (activated.respond app who response) (data.1.trans application)
         (data.2.1.trans ledger) (data.2.2.1.trans receipts) (data.2.2.2.1.trans counters)
         (List.Subset.trans recalled (app.respond_recall_mono activated who owner response))
@@ -250,5 +252,98 @@ theorem replay_window_settlement (runtime : EventGraphRuntime graph)
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
     found, application, ledger, receipts, counters]
   rfl
+
+/-- Protected inclusion makes every retained copy public, including copies
+learned or replayed during the delay. No pending envelope or private knowledge
+is erased to establish the next service boundary. -/
+theorem replay_window_settled_published (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (owner : Player)
+    (initial : (runtime.reactiveApplication leaks).Execution)
+    (responses : ∀ (current : (runtime.reactiveApplication leaks).Execution) who response,
+      current.application = initial.application →
+      initial.recall owner ⊆ current.recall owner →
+      response ∈ (players who (current.recall who)
+        (current.observe (runtime.reactiveApplication leaks) who)).support →
+      response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+    (event : graph.EventId) (message : Message Player (WitnessedPacket graph))
+    (authored : message.sender = owner)
+    (addressed : message.payload.call.event? graph = some event)
+    (packets : initial.network.Satisfies fun packet =>
+      packet.id ∈ initial.network.ledger.map Message.id ∨ packet = message)
+    (pending : message ∈ initial.network.pending)
+    (unpublished : message.id ∉ initial.network.ledger.map Message.id)
+    (roster : List Player) (final : (runtime.reactiveApplication leaks).Execution)
+    (reached : final ∈ (runtime.runInteractionPlan leaks players network
+      (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) initial).support) :
+    final.network.Satisfies fun packet => packet.id ∈ final.network.ledger.map Message.id := by
+  let app := runtime.reactiveApplication leaks
+  rw [runtime.runInteractionPlan_append] at reached
+  obtain ⟨current, prior, included⟩ :=
+    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨_, ledger, _, _, valid, _⟩ := runtime.replay_window_preserves leaks players network
+    owner initial responses _ packets roster current prior
+  obtain ⟨selected, found⟩ := runtime.replay_window_selection leaks players network owner initial
+    responses event message authored addressed packets pending unpublished roster current prior
+  simp only [runInteractionPlan, FinDist.bind_pure, interactionStep, interactionInstruction,
+    selected, FinDist.pure_bind] at included
+  change final ∈ ((current.environmentStep app (.include message.id)).bind FinDist.pure).support
+    at included
+  rw [FinDist.bind_pure] at included
+  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at included
+  cases FinDist.mem_support_pure.mp included
+  change (current.includePending app message.id).network.Satisfies _
+  rw [app.includePending_network]
+  apply (valid.includePending message.id).mono
+  intro packet safe
+  change packet.id ∈ (current.network.includePending message.id).2.ledger.map Message.id
+  simp only [MessageNetwork.includePending, found, List.map_append, List.map_cons, List.map_nil]
+  rcases safe with earlier | rfl
+  · exact List.mem_append_left _ (ledger ▸ earlier)
+  · exact List.mem_append_right _ (List.mem_singleton_self _)
+
+/-- A fresh addressed submission followed by arbitrary known-envelope replay
+and protected inclusion restores the all-published network boundary. This does
+not assume the submitted call is valid or accepted. -/
+theorem submission_replay_settled_published (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (owner : Player)
+    (initial : (runtime.reactiveApplication leaks).Execution)
+    (submission : WitnessedSubmission graph) (event : graph.EventId)
+    (addressed : submission.call.packet.event? graph = some event)
+    (published : initial.network.Satisfies fun packet =>
+      packet.id ∈ initial.network.ledger.map Message.id)
+    (serials : initial.network.SerialsBeforeNext)
+    (responses : ∀ (current : (runtime.reactiveApplication leaks).Execution) who response,
+      current.application = (initial.respond (runtime.reactiveApplication leaks) owner
+        ⟨some (.submit submission)⟩).application →
+      (initial.respond (runtime.reactiveApplication leaks) owner
+        ⟨some (.submit submission)⟩).recall owner ⊆ current.recall owner →
+      response ∈ (players who (current.recall who)
+        (current.observe (runtime.reactiveApplication leaks) who)).support →
+      response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+    (roster : List Player) (final : (runtime.reactiveApplication leaks).Execution)
+    (reached : final ∈ (runtime.runInteractionPlan leaks players network
+      (roster.map ServiceInstruction.player ++ [.includeLatest event owner])
+        (initial.respond (runtime.reactiveApplication leaks) owner
+          ⟨some (.submit submission)⟩)).support) :
+    final.network.Satisfies fun packet => packet.id ∈ final.network.ledger.map Message.id := by
+  let app := runtime.reactiveApplication leaks
+  let packet := app.packet (app.submit initial.application owner submission) owner
+    (initial.network.known owner) submission
+  let message : Message Player (WitnessedPacket graph) :=
+    ⟨(owner, initial.network.nextSerial owner), packet⟩
+  let submitted := initial.respond app owner ⟨some (.submit submission)⟩
+  have packets : submitted.network.Satisfies fun candidate =>
+      candidate.id ∈ submitted.network.ledger.map Message.id ∨ candidate = message := by
+    change (initial.network.submit owner packet).2.Satisfies _
+    exact (published.mono (fun _ prior => Or.inl prior)).submit owner packet (Or.inr rfl)
+  have pending : message ∈ submitted.network.pending :=
+    List.mem_append_right _ (List.mem_singleton_self _)
+  exact runtime.replay_window_settled_published leaks players network owner submitted responses
+    event message rfl addressed packets pending (serials.next_unpublished owner)
+      roster final reached
 
 end Vegas.EventGraphRuntime
