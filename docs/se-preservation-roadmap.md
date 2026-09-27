@@ -360,9 +360,11 @@ records the checked revelation-service composition. The remaining priorities are
    guarded disclosure and sampling laws. Recover source posteriors at native
    decisions along one common fully mixed sequence, then use the existing
    private-intention comparison and SE limit theorem.
-2. **Whole-program repair.** Compose the binding stopped coupling with all
-   other event constructors and off-turn visits. Keep one legal repair policy
-   for the whole starting belief, with actual permitted endpoint traces.
+2. **Whole-program repair.** Compose the checked binding, sampling and guarded
+   disclosure blocks across the remaining program, starting at any actual
+   decision. The checked behavioral realization supplies one legal repair
+   policy for the whole starting belief; the whole-program coupling must
+   identify both marginals and retain actual permitted endpoint traces.
 3. **Apply the settlement comparison.** Instantiate the checked
    [repair settlement theorem](../Vegas/Game/SourceServiceRepairSettlement.lean)
    with the whole-program coupling and the original continuation marginals.

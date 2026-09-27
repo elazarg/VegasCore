@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveServiceEvaluation
 import Vegas.Pending.ReactiveStateInvariant
 import Interaction.ReactiveReplayPolicy
+import Interaction.ReactivePublication
 
 /-! # Application observations during arbitrary response windows
 
@@ -49,6 +50,32 @@ theorem player_window_application (runtime : EventGraphRuntime graph)
       have unchanged := runtime.reactive_respond_application leaks
         (initial.sampledActivation app who sample) who action
       exact ⟨remaining.1.trans unchanged.1, remaining.2.trans unchanged.2⟩
+
+/-- An arbitrary response roster has no inclusion action, so its pending
+submissions cannot change the public ledger. -/
+theorem player_window_ledger (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (visits : List Player)
+    (initial final : (runtime.reactiveApplication leaks).Execution)
+    (reached : final ∈ (runtime.runInteractionPlan leaks players network
+      (visits.map ServiceInstruction.player) initial).support) :
+    final.network.ledger = initial.network.ledger := by
+  let app := runtime.reactiveApplication leaks
+  induction visits generalizing initial with
+  | nil =>
+      cases FinDist.mem_support_pure.mp reached
+      rfl
+  | cons who rest ih =>
+      simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
+        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        ReactiveApplication.resume, ReactiveApplication.invoke,
+        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
+        FinDist.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨action, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      exact (ih _ reached).trans (app.respond_ledger (initial.sampledActivation app who sample)
+        who action)
 
 /-- Every service command retains prior own responses, including arbitrary
 network-selected commands and application changes. -/

@@ -49,6 +49,20 @@ theorem includePending_network (execution : app.Execution) (id : MessageId Princ
   cases found : execution.network.lookup id <;>
     simp only [Execution.includePending, MessageNetwork.includePending, found]
 
+/-- Player responses may submit or rebroadcast envelopes but do not include
+them in the ledger. Inclusion is a separate environment action. -/
+theorem respond_ledger (execution : app.Execution) (who : Principal) (action : app.Action) :
+    (execution.respond app who action).network.ledger = execution.network.ledger := by
+  rcases action with ⟨transmission⟩
+  cases transmission with
+  | none => rfl
+  | some transmission =>
+      cases transmission with
+      | submit submission => rfl
+      | replay id =>
+          cases found : (execution.network.known who).find? (fun message => message.id = id) <;>
+            simp only [Execution.respond, MessageNetwork.replay, found]
+
 theorem pendingOrPublishedInvariant (scheduler : app.Scheduler) :
     app.ServiceInvariant scheduler (fun execution => execution.network.PendingOrPublished) where
   respond execution who action valid := by

@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceDisclosureMemory
 import Vegas.Game.SourceServiceCandidateObservation
 import Vegas.Game.SourceServiceDisclosure
+import Vegas.Game.RevealServiceRosterLaw
 import Vegas.Pending.ReactiveOpeningLikelihood
 import GameTheoryExtensions.Math.Probability.ConditionalNoise
 import Vegas.Source.ObservationRecall
@@ -277,7 +278,7 @@ def bindingPhaseTranscript
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (network : (runtime setup).NetworkPolicy leaks) (roster : List Player)
     (owner focal : Player) (event : (graph setup).EventId) (payload : L.Ty)
-    (offset : Nat) {slots : Nat} (timing : FinDist (Option (Fin slots)))
+    (offset ticks : Nat) {slots : Nat} (timing : FinDist (Option (Fin slots)))
     (execution : (application setup leaks).Execution)
     (result : PublicationResult (L.Val payload)) :=
   let app := application setup leaks
@@ -288,7 +289,8 @@ def bindingPhaseTranscript
   let players := Function.update (fun _ => app.replayPolicy) owner
     (app.policyMixture timing family).policy
   ((runtime setup).runInteractionPlan leaks players network
-    (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) execution).map
+    ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
+      (List.replicate ticks .tick ++ [.expire event])) execution).map
       ((runtime setup).bindingTraffic leaks focal)
 
 /-- The binding constructor preserves the joint source/auxiliary factorization
@@ -308,7 +310,7 @@ theorem binding_successor_memory_factorization
       (execution seed).InputRecall (application setup leaks))
     (published : ∀ seed ∈ prior.support, (execution seed).network.Satisfies fun message =>
       message.id ∈ (execution seed).network.ledger.map Message.id)
-    (offset : Nat) (counts : ∀ seed ∈ prior.support,
+    (offset ticks : Nat) (counts : ∀ seed ∈ prior.support,
       ((execution seed).recall owner).length = offset)
     {slots : Nat} (timing : FinDist (Option (Fin slots)))
     (noise : DecisionView focal Γ → FinDist _)
@@ -319,7 +321,7 @@ theorem binding_successor_memory_factorization
     (choice : Config Player L Γ → FinDist (PublicationResult (L.Val payload))) :
     ∃ nextNoise : DecisionView focal ((name, .commitment owner payload) :: Γ) → FinDist _,
       (prior.bind fun seed => (choice (original seed)).bind fun result =>
-        (bindingPhaseTranscript setup leaks network roster owner focal event payload offset
+        (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
           timing (execution seed) result).map fun extra =>
             ((commitSuccessor name guard (source seed) result,
               commitSuccessor name guard (original seed) result), extra)) =
@@ -351,7 +353,28 @@ theorem binding_successor_memory_factorization
           ((execution left).application.publicView.bindingCount owner) offset timing traffic
             ((counts left leftSupport).trans (counts right rightSupport).symm)
             (le_of_eq (counts left leftSupport)) (published left leftSupport)
-    simpa only [bindingPhaseTranscript, serialEq] using coupled
+    dsimp only [bindingPhaseTranscript]
+    conv_lhs => rw [runInteractionPlan_append, FinDist.map_bind]
+    conv_rhs => rw [runInteractionPlan_append, FinDist.map_bind]
+    apply FinDist.bind_eq_of_map_eq _ _ _ _ (by simpa only [serialEq] using coupled)
+    intro before _ after _ equal
+    let replay := fun _ : Player => (application setup leaks).replayPolicy
+    calc
+      _ = ((runtime setup).runInteractionPlan leaks replay network
+          (List.replicate ticks .tick ++ [.expire event]) before).map
+            ((runtime setup).bindingTraffic leaks focal) := by
+        apply congrArg (FinDist.map ((runtime setup).bindingTraffic leaks focal))
+        exact servicePlan_players_eq setup leaks _ replay network _ (by simp)
+          (by intro who; simp) before
+      _ = ((runtime setup).runInteractionPlan leaks replay network
+          (List.replicate ticks .tick ++ [.expire event]) after).map
+            ((runtime setup).bindingTraffic leaks focal) :=
+        (runtime setup).settlement_focal_law leaks replay network event ticks before after
+          focal equal
+      _ = _ := by
+        apply congrArg (FinDist.map ((runtime setup).bindingTraffic leaks focal))
+        exact servicePlan_players_eq setup leaks replay _ network _ (by simp)
+          (by intro who; simp) after
 
 /-- Restoring the owner's original intentions commutes with the real binding
 window. The same conditional memory law supplies both the chosen binding and
@@ -364,24 +387,24 @@ theorem binding_phase_memory
     (name : VarId) (guard : SourceGuard L Γ owner name payload)
     (focal : Player) (event : (graph setup).EventId)
     (source : Config Player L Γ) (execution : (application setup leaks).Execution)
-    (offset : Nat) {slots : Nat} (timing : FinDist (Option (Fin slots)))
+    (offset ticks : Nat) {slots : Nat} (timing : FinDist (Option (Fin slots)))
     (remember : DecisionView owner Γ → FinDist (List (OwnAction Player L)))
     (choose : DecisionView owner Γ → FinDist (PublicationResult (L.Val payload))) :
     let memory := bindingMemoryLaw name payload remember choose (source.view owner)
     ((source.restoreMemory owner remember).bind fun original =>
       (choose (original.view owner)).bind fun result =>
-        (bindingPhaseTranscript setup leaks network roster owner focal event payload offset
+        (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
           timing execution result).map fun traffic =>
             (traffic, commitSuccessor name guard original result)) =
       (memory.map Prod.fst).bind fun result =>
         ((memory.condOnFibre Prod.fst result).map Prod.snd).bind fun past =>
-          (bindingPhaseTranscript setup leaks network roster owner focal event payload offset
+          (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
             timing execution result).map fun traffic =>
               (traffic, (commitSuccessor name guard source result).withOwnHistory owner past) := by
   intro memory
   have law := bindingMemoryLaw_disintegrate name payload remember choose (source.view owner)
     (fun result past =>
-      (bindingPhaseTranscript setup leaks network roster owner focal event payload offset
+      (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
         timing execution result).map fun traffic =>
           (traffic, (commitSuccessor name guard source result).withOwnHistory owner past))
   simpa only [Config.restoreMemory, FinDist.bind_map, Config.view, Config.withOwnHistory,

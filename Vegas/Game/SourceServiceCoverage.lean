@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceCheckpoint
-import Vegas.Game.SourceServiceRosterPolicy
+import Vegas.Game.SourceServiceTimedPolicy
 import Vegas.Game.SourceServiceAdmission
 import Vegas.Pending.ReactiveBoundedValues
 import Vegas.Pending.ReactiveGuardedResponse
@@ -114,7 +114,7 @@ theorem sourceService_opening_covered
     · apply bounds.normalize_evidence_mem
       exact ⟨handles binding.field candidate associated, values candidate ⟨payload, value⟩ fixed⟩
 
-theorem sourceServiceLastPolicy_commit_covered
+theorem sourceServiceOpportunity_commit_covered
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
@@ -151,15 +151,14 @@ theorem sourceServiceLastPolicy_commit_covered
     ∀ (_granted : execution.application.serviceGrant = some event)
       (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
-      (_last : (execution.recall owner).length + 1 =
-        rosterOffset setup rosters owner event + (rosters event).count owner)
       response,
-      response ∈ (sourceServiceLastPolicy setup leaks rosters wholeProfile owner
+      response ∈ (sourceServiceOpportunity setup leaks wholeProfile owner event
         (execution.recall owner) (execution.observe (application setup leaks) owner)).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions owner
-        (execution.recall owner) (execution.observe (application setup leaks) owner) := by
+        (execution.recall owner) (execution.observe (application setup leaks) owner) ∧
+      (runtime setup).submittedEvent? leaks response = some event := by
   classical
-  intro index event granted ready unsent last response supported
+  intro index event granted ready unsent response supported
   let app := application setup leaks
   have outputEq : (graph setup).outputLayout event = .binding owner payload := by
     change outputLayout setup.program (embedding.event index) = _
@@ -179,9 +178,7 @@ theorem sourceServiceLastPolicy_commit_covered
   have owned : (graph setup).actor? event = some owner := by
     change (toEventGraph setup.program).actor? event = some owner
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
-  rw [sourceServiceLastPolicy_at_last setup leaks rosters wholeProfile owner
-    (execution.recall owner) (execution.observe app owner) event granted owned unsent last]
-      at supported
+  simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte] at supported
   obtain ⟨chosen, chosenSupported, supported⟩ :=
     Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
   obtain ⟨value, _sourceSupported, chosenEq⟩ := sourceServicePolicy_commit_supported
@@ -201,13 +198,13 @@ theorem sourceServiceLastPolicy_commit_covered
     unsent serial selected capacity value (bounded value)
   rw [serviceDecision_binding_fresh (runtime setup) leaks execution owner event payload
     outputEq codeEq node serial selected candidate (.success value)] at member
-  exact required_binding_sourceService setup leaks bounds rosters owner
-    (execution.recall owner) (execution.observe app owner) _ member
+  exact ⟨required_binding_sourceService setup leaks bounds rosters owner
+    (execution.recall owner) (execution.observe app owner) _ member, rfl⟩
 
-/-- Every supported guarded disclosure is retained at the final unsent owner
+/-- Every supported guarded disclosure is retained at any unsent owner
 visit. Failed intentions and withholding use actual replay aliases; successful
 intentions use the bounded authentic opening. -/
-theorem sourceServiceLastPolicy_reveal_covered
+theorem sourceServiceOpportunity_reveal_covered
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
@@ -238,15 +235,13 @@ theorem sourceServiceLastPolicy_reveal_covered
     ∀ (_granted : execution.application.serviceGrant = some event)
       (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
-      (_last : (execution.recall owner).length + 1 =
-        rosterOffset setup rosters owner event + (rosters event).count owner)
       response,
-      response ∈ (sourceServiceLastPolicy setup leaks rosters wholeProfile owner
+      response ∈ (sourceServiceOpportunity setup leaks wholeProfile owner event
         (execution.recall owner) (execution.observe (application setup leaks) owner)).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions owner
         (execution.recall owner) (execution.observe (application setup leaks) owner) := by
   classical
-  intro index event granted ready unsent last response supported
+  intro index event granted ready unsent response supported
   let app := application setup leaks
   have outputEq : (graph setup).outputLayout event = .publication payload := by
     change outputLayout setup.program (embedding.event index) = _
@@ -279,9 +274,8 @@ theorem sourceServiceLastPolicy_reveal_covered
     have same : other = event := Option.some.inj (otherGrant.symm.trans granted)
     subst other
     cases otherBinding.symm.trans outputEq
-  rw [sourceServiceLastPolicy_at_last setup leaks rosters wholeProfile owner _ _ event
-    granted owned unsent last,
-    sourceServicePolicy_reveal setup leaks fresh binding unresolved next wholeProfile profile
+  simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte] at supported
+  rw [sourceServicePolicy_reveal setup leaks fresh binding unresolved next wholeProfile profile
       refs source embedding refsBefore offset aligned execution checkpoint.agrees checkpoint.history
         granted, FinDist.bind_map] at supported
   obtain ⟨disclose, _chosen, supported⟩ :=

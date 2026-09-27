@@ -57,6 +57,22 @@ structure ServiceBoundary (setup : Setup (Player := Player) (L := L))
   timely : ∀ event, event.val = rank → ((graph setup).actor? event).isSome = true →
     execution.application.WithinDeadline (runtime setup) event
 
+/-- Operational boundary facts depend on the actual native execution. A
+source checkpoint derived from its exact conditional branch may replace the
+existential source witness returned by a supported service block. -/
+theorem ServiceBoundary.withSourceCheckpoint
+    {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {rosters : (graph setup).EventId → List Player} {initial : State L setup.context}
+    {Γ Δ : SourceCtx Player L} {source : Config Player L Γ} {other : Config Player L Δ}
+    {refs : ContextRefs (graph setup).layout Γ}
+    {otherRefs : ContextRefs (graph setup).layout Δ} {rank : Nat}
+    {execution : (application setup leaks).Execution}
+    (boundary : ServiceBoundary setup leaks rosters initial source refs rank execution)
+    (checkpoint : SourceCheckpoint setup other otherRefs rank execution.application.config) :
+    ServiceBoundary setup leaks rosters initial other otherRefs rank execution :=
+  { boundary with toSourceCheckpoint := checkpoint }
+
 /-- The complete source service starts at each actual supplied initial state.
 Initial types may be correlated and the source may contain any constructor. -/
 theorem serviceBoundary_initial

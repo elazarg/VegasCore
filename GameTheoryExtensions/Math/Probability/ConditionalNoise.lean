@@ -348,4 +348,25 @@ theorem exists_updated_observation_kernel_of_readout
     _ = _ := by
       simpa only [joint, bind_bind, bind_map, channel] using nextLaw
 
+/-- Re-encoding the state preserves an observation-local auxiliary law when
+its new observation explicitly recovers the old one. -/
+theorem map_observation_factor
+    {Source View Extra Next NextView : Type*}
+    (law : FinDist (Source × Extra)) (observe : Source → View)
+    (noise : View → FinDist Extra)
+    (factor : law = (law.map Prod.fst).bind fun state =>
+      (noise (observe state)).map fun extra => (state, extra))
+    (embed : Source → Next) (nextObserve : Next → NextView) (recover : NextView → View)
+    (recovers : ∀ state, recover (nextObserve (embed state)) = observe state) :
+    let mapped := law.map (fun pair => (embed pair.1, pair.2))
+    mapped = (mapped.map Prod.fst).bind fun state =>
+      (noise (recover (nextObserve state))).map fun extra => (state, extra) := by
+  dsimp only
+  have transformed := congrArg
+    (fun μ : FinDist (Source × Extra) => μ.map (fun pair => (embed pair.1, pair.2))) factor
+  simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def] at transformed
+  rw [transformed]
+  simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def,
+    FinDist.map_const, FinDist.bind_map, FinDist.bind_bind, FinDist.pure_bind, recovers]
+
 end GameTheory.Math.Probability.FinDist

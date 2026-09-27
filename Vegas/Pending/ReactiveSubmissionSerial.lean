@@ -87,6 +87,32 @@ theorem first_event_iff_public_serial
   exact ((runtime.reactiveApplication leaks).serial_eq_ledger_iff_no_submission
     before after who beforeRecall afterRecall settled ledger suffix recalled).symm
 
+/-- An unchanged public serial at a settled phase proves that no fresh
+submission has occurred, regardless of which events new messages could name.
+In particular, every previously unsent event remains unsent. -/
+theorem eventRecorded_false_of_public_serial
+    (before after : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (event : graph.EventId)
+    (beforeRecall : before.SerialRecall (runtime.reactiveApplication leaks))
+    (afterRecall : after.SerialRecall (runtime.reactiveApplication leaks))
+    (settled : before.network.nextSerial who =
+      before.network.ledger.countP (fun message => message.sender = who))
+    (ledger : after.network.ledger = before.network.ledger)
+    (unsent : runtime.eventRecorded leaks (before.recall who) event = false)
+    (suffix : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (recalled : after.recall who = before.recall who ++ suffix)
+    (clean : after.network.nextSerial who =
+      after.network.ledger.countP (fun message => message.sender = who)) :
+    runtime.eventRecorded leaks (after.recall who) event = false := by
+  have zero := ((runtime.reactiveApplication leaks).serial_eq_ledger_iff_no_submission
+    before after who beforeRecall afterRecall settled ledger suffix recalled).mp clean
+  apply (runtime.first_event_iff_public_serial leaks before after who event beforeRecall
+    afterRecall settled ledger unsent suffix recalled ?_).mpr clean
+  intro entry member fresh
+  have absent := (List.countP_eq_zero.mp zero) entry member
+  rw [fresh] at absent
+  exact (absent rfl).elim
+
 /-- Waiting and replay preserve the clean serial test. A fresh submission for
 the owner and current event makes its unsent premise false. Thus the test
 propagates through a complete retained window without assuming an empty pool. -/

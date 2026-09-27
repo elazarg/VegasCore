@@ -2,6 +2,7 @@
 
 import Vegas.Source.ValueBinding
 import Vegas.Source.RevealSequence
+import GameTheoryExtensions.Math.Probability.ConditionalNoise
 
 /-! # Recovering earlier source observations
 
@@ -372,6 +373,39 @@ theorem prefix_observations_eq {Γ : SourceCtx Player L} {O : Finset VarId}
   have right := recover_prefix who program admission rightInitial rightReached
   rw [depth, same] at left
   exact Option.some.inj (left.symm.trans right)
+
+/-- Encoding an entry configuration in the actual source protocol preserves
+an observation-local auxiliary law. The source entry view is recovered from
+the protocol observation, including before non-strategic instructions. -/
+theorem entry_noise_factor
+    {Seed : Type*} {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (focal : Player)
+    {Extra : Type*} (prior : FinDist Seed) (source : Seed → Config Player L Γ)
+    (extra : Seed → Extra) (noise : DecisionView focal Γ → FinDist Extra)
+    (factor : prior.map (fun seed => (source seed, extra seed)) =
+      (prior.map source).bind fun config =>
+        (noise (config.view focal)).map fun value => (config, value)) :
+    ∃ nextNoise : Option (ProtocolView focal program) → FinDist Extra,
+      let law := prior.map fun seed =>
+        (some (ProtocolState.entry program (source seed)), extra seed)
+      law = (law.map Prod.fst).bind fun state =>
+        (nextNoise (state.map (ProtocolState.observe focal program))).map fun value =>
+          (state, value) := by
+  let recover := fun view : Option (ProtocolView focal program) =>
+    view.elim ((source prior.support_nonempty.choose).view focal)
+      (ProtocolView.entryView focal program)
+  have recovered (state : Config Player L Γ) :
+      recover ((some (ProtocolState.entry program state)).map
+        (ProtocolState.observe focal program)) = state.view focal := by
+    simp only [recover, Option.map_some, Option.elim_some,
+      ProtocolView.entryView_observe_entry]
+  refine ⟨fun view => noise (recover view), ?_⟩
+  have result := FinDist.map_observation_factor (prior.map fun seed => (source seed, extra seed))
+    (fun config => config.view focal) noise (by
+      simpa only [FinDist.map_comp, Function.comp_def] using factor)
+      (fun config => some (ProtocolState.entry program config))
+      (Option.map (ProtocolState.observe focal program)) recover recovered
+  simpa only [FinDist.map_comp, Function.comp_def] using result
 
 end ProtocolView
 

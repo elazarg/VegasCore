@@ -30,6 +30,9 @@ import Vegas.Game.SourceServiceTimedPolicy
 import Vegas.Game.SourceServiceTimedBinding
 import Vegas.Game.SourceServiceTimedDisclosure
 import Vegas.Game.SourceServiceTimedSample
+import Vegas.Game.SourceServiceTimedCheckpoint
+import Vegas.Game.SourceServiceTimedBindingCheckpoint
+import Vegas.Game.SourceServiceTimedSupport
 import Vegas.Game.SourceServiceChoiceSupport
 import Vegas.Game.SourceServiceLocalSupport
 import Vegas.Game.SourceChoiceCompletion
@@ -41,6 +44,9 @@ import Vegas.Game.SourceServiceSampleBoundary
 import Vegas.Game.SourceServiceResolutionBoundary
 import Vegas.Game.SourceServicePrefixSupport
 import Vegas.Game.SourceServiceDecisionSupport
+import Vegas.Game.SourceServiceDecisionResources
+import Vegas.Game.SourceServiceGrantSupport
+import Vegas.Game.SourceServiceInclusionSupport
 import Vegas.Game.SourceServiceConformance
 import Vegas.Game.SourceServiceTrafficSound
 import Vegas.Game.SourceServiceOmission
@@ -56,6 +62,12 @@ import Vegas.Game.SourceServiceRepairOpportunity
 import Vegas.Game.SourceServiceBindingWaiting
 import Vegas.Game.SourceServiceStoppedBindingWindow
 import Vegas.Game.SourceServiceOffTurnWindow
+import Vegas.Game.SourceServiceSampleRepair
+import Vegas.Game.SourceServiceResolutionRepair
+import Vegas.Game.SourceServiceResolutionWindow
+import Vegas.Game.SourceServiceResolutionBlock
+import Vegas.Game.SourceServiceReservedRepair
+import Vegas.Game.SourceServiceForeignBindingRepair
 import Vegas.Game.SourceServiceSubmittedBinding
 import Vegas.Game.SourceServiceRepeatedWindow
 import Vegas.Game.SourceServiceImplementationSegment

@@ -16,57 +16,10 @@ namespace Vegas.SourceProgram.RevealService
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
 
-private theorem map_noise_factor
-    {Source View Extra Next NextView : Type*}
-    (law : FinDist (Source × Extra)) (observe : Source → View)
-    (noise : View → FinDist Extra)
-    (factor : law = (law.map Prod.fst).bind fun state =>
-      (noise (observe state)).map fun extra => (state, extra))
-    (embed : Source → Next) (nextObserve : Next → NextView) (recover : NextView → View)
-    (recovers : ∀ state, recover (nextObserve (embed state)) = observe state) :
-    let mapped := law.map (fun pair => (embed pair.1, pair.2))
-    mapped = (mapped.map Prod.fst).bind fun state =>
-      (noise (recover (nextObserve state))).map fun extra => (state, extra) := by
-  dsimp only
-  have transformed := congrArg
-    (fun μ : FinDist (Source × Extra) => μ.map (fun pair => (embed pair.1, pair.2))) factor
-  simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def] at transformed
-  rw [transformed]
-  simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def,
-    FinDist.map_const, FinDist.bind_map, FinDist.bind_bind, FinDist.pure_bind, recovers]
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem entry_noise_factor
-    {Seed : Type*} {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (focal : Player)
-    {Extra : Type*} (prior : FinDist Seed) (source : Seed → Config Player L Γ)
-    (extra : Seed → Extra) (noise : DecisionView focal Γ → FinDist Extra)
-    (factor : prior.map (fun seed => (source seed, extra seed)) =
-      (prior.map source).bind fun config =>
-        (noise (config.view focal)).map fun value => (config, value)) :
-    ∃ nextNoise : Option (ProtocolView focal program) → FinDist Extra,
-      let law := prior.map fun seed =>
-        (some (ProtocolState.entry program (source seed)), extra seed)
-      law = (law.map Prod.fst).bind fun state =>
-        (nextNoise (state.map (ProtocolState.observe focal program))).map fun value =>
-          (state, value) := by
-  let recover := fun view : Option (ProtocolView focal program) =>
-    view.elim ((source prior.support_nonempty.choose).view focal)
-      (ProtocolView.entryView focal program)
-  have recovered (state : Config Player L Γ) :
-      recover ((some (ProtocolState.entry program state)).map
-        (ProtocolState.observe focal program)) = state.view focal := by
-    simp only [recover, Option.map_some, Option.elim_some,
-      ProtocolView.entryView_observe_entry]
-  refine ⟨fun view => noise (recover view), ?_⟩
-  have result := map_noise_factor (prior.map fun seed => (source seed, extra seed))
-    (fun config => config.view focal) noise (by
-      simpa only [FinDist.map_comp, Function.comp_def] using factor)
-      (fun config => some (ProtocolState.entry program config))
-      (Option.map (ProtocolState.observe focal program)) recover recovered
-  simpa only [FinDist.map_comp, Function.comp_def] using result
 
 /-- A finite joint input law may already contain correlated traffic. Every
 source prefix preserves its conditional independence given the focal source
@@ -131,7 +84,7 @@ theorem run_roster_source_prefix_noise
         count within
       have zero : count = 0 := by simpa [eventCount] using within
       subst count
-      obtain ⟨nextNoise, law⟩ := entry_noise_factor (.ret payoffs) focal prior source
+      obtain ⟨nextNoise, law⟩ := ProtocolView.entry_noise_factor (.ret payoffs) focal prior source
         (fun seed => ((application setup leaks).messageView (execution seed),
           (execution seed).recall focal)) noise factor
       refine ⟨nextNoise, ?_⟩
@@ -157,7 +110,7 @@ theorem run_roster_source_prefix_noise
         aligned checkpoint counts clean serials recalls grant granted noise factor count within
       cases count with
       | zero =>
-          obtain ⟨nextNoise, law⟩ := entry_noise_factor
+          obtain ⟨nextNoise, law⟩ := ProtocolView.entry_noise_factor
             (.reveal published owner name fresh selected unresolved next) focal prior source
               (fun seed => ((application setup leaks).messageView (execution seed),
                 (execution seed).recall focal)) noise factor
@@ -434,7 +387,8 @@ theorem run_roster_source_prefix_noise
                 (.reveal published owner name fresh selected unresolved next))) =
                 state.map (ProtocolState.observe focal next) := by
             cases state <;> rfl
-          have lifted := map_noise_factor tailJoint (Option.map (ProtocolState.observe focal next))
+          have lifted := FinDist.map_observation_factor tailJoint
+            (Option.map (ProtocolState.observe focal next))
             tailNoise tailFactor embed (Option.map (ProtocolState.observe focal
               (.reveal published owner name fresh selected unresolved next))) recover recovered
           refine ⟨fun view => tailNoise (recover view), ?_⟩

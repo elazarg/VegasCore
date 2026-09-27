@@ -38,7 +38,10 @@ there; this introduces no represented private scratch state. The
 [public sampling phase](../Vegas/Game/SourceServiceTimedSample.lean) have
 exact laws retaining the whole native execution. The whole-prefix information
 fold still needs to supply the native local continuation comparisons along a
-common fully mixed sequence.
+common fully mixed sequence. The
+[joint phase checkpoint laws](../Vegas/Game/SourceServiceTimedCheckpoint.lean)
+retain each chosen source successor together with its actual native traffic;
+equal terminal marginals do not establish that joint law.
 
 [Source choice completion](../Vegas/Game/SourceChoiceCompletion.lean) extends
 one original Bayes sequence at abstract views outside actual decision sites.
@@ -77,8 +80,19 @@ forbidden traffic, certifies a missed binding, or preserves the required
 observation relation. The
 [off-turn roster coupling](../Vegas/Game/SourceServiceOffTurnWindow.lean)
 retains known pending replays and classifies fresh focal transmissions while
-another actor has the grant. Composition through reserved inclusion/expiry
-and across all event constructors remains to be proved.
+another actor has the grant. Complete stopped couplings also cover
+[public sampling](../Vegas/Game/SourceServiceSampleRepair.lean),
+[guarded disclosure](../Vegas/Game/SourceServiceResolutionBlock.lean), and
+[foreign binding settlement](../Vegas/Game/SourceServiceForeignBindingRepair.lean).
+Each includes its real inclusion or sample, clock padding and expiry.
+Composition across successive blocks and from arbitrary active decision
+histories remains to be proved.
+
+The [behavioral realization](../Vegas/Pending/ReactiveBindingRealization.lean)
+identifies the seeded repair runner with one legal behavioral continuation
+against the original target opponents. The seed depends only on starting own
+recall, so it is shared by every hidden history in the information set. The
+whole-program coupling must still supply the matching original marginal.
 
 The [combined audit](../Vegas/Pending/ReactiveServiceAudit.lean) charges once
 for sampled forbidden traffic or a public binding omission. Its source instance
