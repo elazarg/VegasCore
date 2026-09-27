@@ -6,6 +6,7 @@ import Vegas.Game.EventMessages
 import Vegas.Game.EventMessageStrategic
 import Vegas.Game.RevealServiceCompilation
 import Vegas.Game.RevealServiceAuditCompilation
+import Vegas.Game.RevealServiceSignedCompilation
 import Vegas.Game.RevealServiceReplayExtension
 import Vegas.Game.BindingRepairBlock
 import Vegas.Pending.ReactiveOpeningSettlement
@@ -1197,5 +1198,11 @@ open Interaction.ReactiveApplication in
 #guard_msgs (whitespace := lax) in
 open Vegas.SourceProgram.EventLowering in
 #print axioms reactive_commit_repair
+
+/-- info: 'Vegas.SourceProgram.RevealService.signed_audit_source_sequential_equilibrium_preserved'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SourceProgram.RevealService in
+#print axioms signed_audit_source_sequential_equilibrium_preserved
 
 end Vegas.Paper

@@ -86,6 +86,37 @@ the actual timing/sampling/replay transcript leaves the hidden-state posterior
 unchanged. Thus the source disclosure probability may depend on hidden type.
 The proof fixes the auxiliary starting transcript; induction over that
 transcript's distribution across multiple phases remains necessary.
+`openingWindow_owner_posterior` separately proves that the owner's observations
+at an arbitrary roster prefix reveal no additional hidden opponent information
+within a coupled initial information fiber, without conditioning on the future
+source result.
+
+`Vegas/Pending/ReactiveOpeningSettlement.lean` proves protected final inclusion
+for the actual roster followed by its reserved inclusion instruction.
+`openingWindow_settlement` settles the unique fresh canonical opening exactly
+when a slot was selected. Afterwards every pending, leaked and remembered
+network envelope identifier is published, including duplicate replay copies.
+`openingWindowMixture_settlement` lifts this to the actual behavioral timing
+mixture: its application law is exactly the source opening/withholding mixture,
+independently of the conditional opening-time distribution. The
+[expiry proof](../../Vegas/Pending/ReactiveOpeningExpiry.lean) turns the
+never-opening branch into source failure, and the
+[typed source step](../../Vegas/Game/RevealServiceRosterBlock.lean) proves store
+and decoded-history agreement. These local facts still need the multi-phase
+information and incentive argument.
+`openingWindow_inclusion_coupling` also couples the
+complete auxiliary transcript through inclusion itself. Successful receipt
+equality is derived from acceptance of the canonical opening; withholding
+requires no agreement on the undisclosed value.
+
+`Vegas/Game/RevealServiceRosterPolicy.lean` supplies one native policy over all
+events and visits. It recovers the source law from the current application
+observation and uses the fixed roster's own-response offset.
+`rosterPolicy_phase_data` proves that its source law and opening data remain
+unchanged along every supported activation-window prefix, including early
+openings. `rosterPolicy_window_eq` identifies its actual execution law with
+the local timing mixture. Thus the phase family is implemented by one policy;
+it is not selected separately for each hidden execution history.
 
 `Interaction/ScheduledOpening.lean` proves that a supported first opening pins
 the latent slot and makes every subsequent response use the waiting policy.
@@ -98,11 +129,22 @@ fresh submissions after every legal opening. The last case includes histories
 of limiting probability zero. Evaluating a zero-weight mixture's fallback
 directly is not a valid substitute for this checked limit.
 
-The broader-roster SE gate still requires protected final settlement, the
+The broader-roster SE gate still requires the complete source-block and
 multi-phase coupled-start invariant, instantiation of the checked local support
 and limit facts at every actual retained-menu information site, one common
 consistent limiting assessment, and local sequential incentives.
 The one-phase posterior theorem does not prove those remaining obligations.
+The proof chain is: define the finite retained menu and prove all-history
+coverage; propagate the semantic/public checkpoint and auxiliary noise law;
+construct one fully mixed compiled sequence and its source-state posteriors;
+transfer the two source continuation values to owner visits and equal values
+to replay-only visits; apply the existing one-shot principle and audit extension.
+
+The conditional-on-result argument is specific to revelation. A fresh hidden
+commitment does not make its value public at phase end, so distinguishable
+submission timing requires a separate source-belief argument. This is a
+possible signaling channel, not by itself an equilibrium-preservation
+impossibility: independent timing may still support a forward refinement.
 
 ## What is now proved about public replays
 
@@ -152,7 +194,8 @@ Accountability after arbitrary earlier misconduct is a stronger requirement:
 charging a rebroadcaster requires separately authenticated transmission evidence.
 
 The implementation gates are: instantiate the deferred policy in the actual
-retained phase; prove protected final inclusion and the next clean checkpoint;
+retained phase; compose checked protected inclusion with expiry and the next
+source checkpoint;
 derive the conditional source-belief and local-incentive correspondence; classify
 fresh departures under the phase rule; then apply the existing conditional
 terminal-audit collection and SE extension. The phase factorization retains an

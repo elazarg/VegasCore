@@ -5,7 +5,7 @@ This is the results map and reading guide for SE compilation. The
 mathematics; the [native pilot](research/se-native-pilot.md) contains the checked
 source-to-runtime instance. The general action-restriction theorem and scalar
 deposit inference are checked in Lean. The
-[general revelation compiler](../Vegas/Game/RevealServiceAuditCompilation.lean)
+[general revelation compiler](../Vegas/Game/RevealServiceSignedCompilation.lean)
 instantiates the staged theorem end to end for arbitrary finite reveal sequences,
 with repeated owners, correlated valid initial bindings and all source
 withholding choices. Arbitrary activation rosters and fresh source commitments
@@ -23,12 +23,14 @@ and the remaining service and language boundaries.
 | Declared-payoff family | Every SE of the literal two-reveal source program, for any integer payoff table with zero watcher payoff, has a full bounded raw native SE with the exact joint initial-bit/result/net-payoff law. Both opening and withholding are retained. |
 | General revelation compiler | Every SE of an arbitrary finite reveal sequence has a full bounded raw native SE preserving the joint typed terminal-state/net-payoff law, under the explicit owner/watcher service and positive monitoring coverage. |
 | Terminal-audit compiler | A direct source → C → effective → raw theorem uses authentic partial traffic records and fixed deposits for all players, with no zero-utility reporter. The exact realized settlement law is preserved. Its calendar remains the specified revelation service. |
+| Signed-evidence compiler | Source → C → public-replay menu → effective → raw preserves the exact joint typed-state/realized-settlement law. The sampled evidence contains phase, prior ledger and signed envelope, with no broadcaster field. Coverage, authentic context and collectible account penalties remain assumptions. |
 | Concrete strategic stack | Source → C → W → N → raw is checked for arbitrary revelation sequences. All native games share the runtime and utility; deposits are fixed from actual finite watched-history payoff extrema before choosing the source equilibrium. |
 | Reusable monitoring step | A watcher uses ordinary pending observations and replay; public at-most-once inclusion turns the sampling bound into persistent evidence under arbitrary later policies. Reporting a differently addressed packet before the current public event completes records its rejection. |
 | Source correspondence | Service-block induction, replay recall, one common consistency sequence and conditional incentives establish the arbitrary-length revelation theorem. |
 | Harmless public replay extension | Every retained SE extends to a menu permitting auxiliary-player public replays, for arbitrary application-state utilities. Exact continuation laws and all-legal-history counterparts are checked; no fine or reporter indifference is needed for this edge. |
-| General-roster phase facts | Actual scheduled-opening policies, full support, their common off-path limit, conditional transcript laws, and protected final settlement are checked. Multi-phase source beliefs and sequential incentives remain to be composed. |
-| Fresh commitment blocks | Actual atomic binding and reserved inclusion preserve typed source-store and decoded source-history agreement. Paired blocks carry the source hidden-binding repair invariant. The stopped native continuation induction remains open. |
+| General-roster phase facts | Actual scheduled-opening policies, their common off-path limit, conditional transcript laws, protected final settlement and exact public records are checked. One total native policy and all-permitted-prefix classification are checked. Full support for that policy at all legal sites, multi-phase source beliefs and sequential incentives remain to be composed. |
+| Fresh commitment blocks | Actual atomic binding and reserved inclusion preserve typed source-store and decoded source-history agreement. Paired blocks carry the source hidden-binding repair invariant and the actual native joint observation law. The stopped native continuation induction remains open. |
+| Guarded source actions | Failed disclosure and withholding can erase different private intentions into the same native behavior. Their SE aggregation must preserve private correlations and a common perturbation sequence. Operational correspondence does not discharge this remaining source-to-retained-runtime gate. |
 
 The central proof is
 [`sequential_equilibrium_extends_of_continuation`](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean).
@@ -103,6 +105,7 @@ uses genuine response-menu restrictions of this same runtime:
 ```text
 Ordinary source
   → source-representable native choices
+  → harmless public-replay choices
   → all effective native choices, with terminal audit and fixed deposits
   → full bounded raw native game
 ```
@@ -111,9 +114,11 @@ The terminal-audit theorem applies the enforcement edge to every player at once.
 Its auxiliary player can have any source utility; passive player observations
 need no coverage bound. Instead, the settlement oracle supplies authentic
 partial traffic records with the specified conditional coverage. The current
-checker needs transmission phase and broadcaster attribution, which an ordinary
-envelope signature does not establish. Collection is an economic/backend
-assumption, not an implemented escrow.
+signed checker needs authentic transmission phase, prior ledger and signed
+envelope. It permits harmless public replays and charges the signing account
+for forbidden fresh traffic; it needs no physical-broadcaster attribution.
+Signatures alone do not authenticate the reported phase or ledger context.
+Collection is an economic/backend assumption, not an implemented escrow.
 
 The final edge restores only proved private response aliases. All these games
 use the same runtime and enforcement configuration; they add no source syntax

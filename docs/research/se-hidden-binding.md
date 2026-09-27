@@ -70,6 +70,24 @@ with unchanged deferred registry and revelation bookkeeping. The next inductive
 obligation is to reconstruct retained opponent inputs and the repaired owner's
 source view throughout later blocks, not merely to identify the binding output.
 
+`reactiveBinding_reserved_hidden_congr` now proves the joint block law from
+prefixes that already contain repairs: network, receipts, public state, service
+recall, all nonowners' actual response recall and views, and the owner's remaining
+fresh-slot predicate. `reactiveFreshSlot_congr` shows why the compiler continues
+to allocate the same opaque handles: an unusable and an openable candidate are
+both nonfresh. Inclusion consumes no further candidate. This argument does not
+assume an unlimited finite response menu or an additional observing player.
+
+`Vegas/Game/BindingRepairPrefix.lean` packages these facts as an invariant of
+the existing source configurations and reactive executions. Its checked
+`RepairedPrefix.initial` and `RepairedPrefix.commit` establish initialization
+and preservation by an actual commitment block, including native persistent
+inputs, typed store/history decoding and the whole opponent frame. The
+`decisionView`, `owner_decisionView` and `foreign_decisionView` lemmas recover
+the actual compiler-decoded source views. This is not a claim that the owner's
+entire raw response history is already reconstructed, nor an induction through
+arbitrary subsequent native play.
+
 ## Finite admission and clean-prefix contract
 
 A nonvacuous finite SE theorem for fresh commitments needs finite legal source
@@ -126,6 +144,32 @@ histories, and quantifies over arbitrary paired profiles without assuming target
 rationality.
 
 ## Exact remaining native obligations
+
+### Guard-failing source disclosures
+
+Full-source correspondence has a second obligation besides repairing unusable
+target bindings. A source disclosure can fail a deferred guard. The compiler's
+`reactiveResolutionPacket` then withholds instead of publishing a certificate
+that would expose a value hidden by the source failure result. Both source
+choices have the same resulting store, registry and revelation bookkeeping,
+but their owner's source action memories differ.
+
+The existing `prescribedReactiveImplementation` retains this intention inside
+the strategy, and behavioral realization conditions it on actual own recall.
+That supplies execution machinery. It does not yet prove that every source SE
+survives the aggregation of these private action aliases. The general theorem
+must establish the corresponding posterior and continuation-value aggregation;
+it must not silently assume every guard succeeds. The guarded source language
+needs no extra public failure payload to state this obligation.
+
+An outcome-preserving action transformation alone is insufficient justification:
+[Clark, Fudenberg and He, Section 3.2, Figure 4](https://kevinhe.net/papers/induction.pdf)
+give games with the same reduced normal form whose sequential-equilibrium
+outcome sets differ after splitting a decision. Their example is a warning
+against that general inference, not a counterexample to this particular
+private-alias elimination.
+
+### Native continuation repair
 
 The conditional source result does not yet prove native SE preservation. The
 native adapter must establish the following facts, rather than assume them:
@@ -198,6 +242,31 @@ does not publish successfully. A raw opening that still carries a rejected
 secret is extra traffic and may be audited. The source repair preserves guard
 results because guard reads use public data and revelation results; its existing
 proof covers the whole obligation registry.
+
+This introduces a separate source-to-retained-native proof obligation. When
+source disclosure fails its guard, `true` and `false` have the same publication,
+but retain different private `OwnAction` histories. The checked
+`patched_reveal_own` permits exactly this difference and reconstructs the
+original choice with a fixed `ViewMap.afterReveal`. The existing
+`prescribedReactiveImplementation` also retains intentions internally, and
+`Interaction.ReactiveApplication.Implementation.realize` converts such private
+implementations into behavioral policies with the same execution law. These
+facts do not by themselves prove that every source SE survives erasure of the
+redundant private choice. Its beliefs and continuation values must be aggregated
+using one common consistency sequence. The checked private-alias SE theorem
+lifts a normalized game into a game with extra aliases; it is not a theorem
+reflecting every alias-dependent equilibrium in the reverse direction. No
+assumption that all guards pass may replace this missing argument.
+
+There is also a remaining raw-action case within binding repair. A commitment
+can carry private material of the wrong type and still expose the same opaque
+packet. Its typed binding result is failure, while its private catalog may
+support a later certificate for that wrong-typed material. The current source
+commit-block theorem covers canonical failed submissions without opening data.
+The stopped induction must also repair this raw case, retaining its owner's
+purified policy information until any certificate transmission is detected as
+an observable departure. Source `Patched` alone does not reconstruct those raw
+private response records.
 
 In the current ideal runtime, binding acceptance requires ownership of the
 candidate handle; a third party cannot bind another player's opaque handle as

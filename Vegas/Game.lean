@@ -55,11 +55,16 @@ import Vegas.Game.RevealServiceReplayComparison
 import Vegas.Game.RevealServiceReplayExtension
 import Vegas.Game.RevealServiceReplaySupport
 import Vegas.Game.BindingRepairBlock
+import Vegas.Game.BindingRepairPrefix
+import Vegas.Game.RevealServiceRosterBlock
+import Vegas.Game.RevealServiceRosterPolicy
+import Vegas.Game.RevealServiceRosterMenu
 import Vegas.Game.RevealServiceTraffic
 import Vegas.Game.RevealServiceTrafficSound
 import Vegas.Game.RevealServiceTrafficDeparture
 import Vegas.Game.RevealServiceAuditDeposits
 import Vegas.Game.RevealServiceAuditCompilation
+import Vegas.Game.RevealServiceSignedCompilation
 import Vegas.Game.RevealServicePerturbation
 import Vegas.Game.RevealServiceFocalLaw
 import Vegas.Game.RevealServiceFocalRecall

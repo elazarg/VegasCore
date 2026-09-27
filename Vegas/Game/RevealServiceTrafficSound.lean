@@ -65,7 +65,7 @@ private theorem prefix_current_service (initial : State L setup.context) :
           | inr source =>
               exact ih next _ _ _ (offset + 1) source execution related event (by omega) strategic
 
-private theorem owner_history_traffic (bounds : MessageBounds (graph setup))
+theorem retained_owner_response_traffic (bounds : MessageBounds (graph setup))
     (watcher who : Player) (reveals : setup.program.RevealOnly)
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
@@ -165,7 +165,8 @@ theorem retained_step_traffic (bounds : MessageBounds (graph setup))
               · have ordinary : response ∈ ordinaryActions setup leaks bounds who
                     (control.execution.recall who) (control.execution.observe app who) := by
                   simpa only [menu, same, ↓reduceIte] using allowed
-                exact owner_history_traffic setup leaks bounds watcher who reveals observer
+                exact retained_owner_response_traffic setup leaks bounds watcher who reveals
+                  observer
                   openable same history control state actor response ordinary
       | none =>
           cases countEq : control.remaining with

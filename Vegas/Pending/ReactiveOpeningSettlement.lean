@@ -46,8 +46,8 @@ structure OpeningWindowFrame (runtime : EventGraphRuntime graph)
   ledger : current.network.ledger = initial.network.ledger
   receipts : current.receipts = initial.receipts
   count : (current.recall owner).length = offset + visits
-  serial : current.network.nextSerial owner = initial.network.nextSerial owner +
-    if openingPassed selected visits then 1 else 0
+  counters : current.network.nextSerial = fun who => initial.network.nextSerial who +
+    if who = owner ∧ openingPassed selected visits then 1 else 0
   serials : current.network.SerialsBeforeNext
   packets : current.network.Satisfies fun message =>
     message.id ∈ initial.network.ledger.map Message.id ∨
@@ -69,7 +69,8 @@ theorem OpeningWindowFrame.initial (runtime : EventGraphRuntime graph)
   ledger := rfl
   receipts := rfl
   count := by simp
-  serial := by rw [openingPassed_zero]; simp
+  counters := by simp only [openingPassed_zero, Bool.false_eq_true, and_false, ↓reduceIte,
+    Nat.add_zero]
   serials := serials
   packets := published.mono fun _ member => Or.inl member
   opened := by simp only [openingPassed_zero, Bool.false_eq_true, false_implies]
@@ -87,7 +88,7 @@ theorem OpeningWindowFrame.activate (runtime : EventGraphRuntime graph)
   ledger := frame.ledger
   receipts := frame.receipts
   count := frame.count
-  serial := frame.serial
+  counters := frame.counters
   serials := frame.serials.learn who sample
   packets := frame.packets.learn who sample
   opened := frame.opened
@@ -136,7 +137,7 @@ theorem OpeningWindowFrame.waiting_response (runtime : EventGraphRuntime graph)
   · rw [app.respond_recall_length, frame.count]
     omega
   · rw [passed, data.2.2.2.1]
-    exact frame.serial
+    exact frame.counters
   · intro opened
     rw [passed] at opened
     exact data.2.2.2.2.2.2 (frame.opened opened)
@@ -159,7 +160,11 @@ theorem OpeningWindowFrame.opening_response (runtime : EventGraphRuntime graph)
   have before : openingPassed (some slot) slot.val = false := by simp [openingPassed]
   have after : openingPassed (some slot) (slot.val + 1) = true := by simp [openingPassed]
   have serial : current.network.nextSerial owner = initial.network.nextSerial owner := by
-    simpa only [before, Bool.false_eq_true, ↓reduceIte, Nat.add_zero] using frame.serial
+    simpa only [before, Bool.false_eq_true, and_false, ↓reduceIte, Nat.add_zero] using
+      congrFun frame.counters owner
+  have prior : current.network.nextSerial = initial.network.nextSerial := by
+    simpa only [before, Bool.false_eq_true, and_false, ↓reduceIte, Nat.add_zero] using
+      frame.counters
   have materialized := runtime.windowOpening_packet leaks owner event candidate raw
     current.application (current.network.known owner) owned (frame.application ▸ valid)
   have network : (current.respond app owner
@@ -175,7 +180,9 @@ theorem OpeningWindowFrame.opening_response (runtime : EventGraphRuntime graph)
     simp only [↓reduceIte]
     omega
   · rw [network, after]
-    simp only [MessageNetwork.submit, ↓reduceIte, serial]
+    simp only [MessageNetwork.submit, and_true, prior]
+    funext who
+    split <;> simp_all
   · rw [network]
     exact frame.serials.submit owner packet
   · rw [network]
@@ -197,7 +204,7 @@ theorem OpeningWindowFrame.response (runtime : EventGraphRuntime graph)
       selected who (current.recall who)
         (current.observe (runtime.reactiveApplication leaks) who)).support)
     (owned : candidate.1 = owner)
-    (valid : initial.application.candidates.lookup candidate = .openable raw) :
+    (valid : selected.isSome → initial.application.candidates.lookup candidate = .openable raw) :
     runtime.OpeningWindowFrame leaks owner event candidate raw offset selected
       (visits + if who = owner then 1 else 0) initial
       (current.respond (runtime.reactiveApplication leaks) who action) := by
@@ -216,7 +223,7 @@ theorem OpeningWindowFrame.response (runtime : EventGraphRuntime graph)
           cases FinDist.mem_support_pure.mp supported
           simpa only [↓reduceIte] using
             frame.opening_response runtime leaks owner event candidate raw offset slot
-              initial current owned valid
+              initial current owned (valid rfl)
     · rename_i waiting
       apply frame.waiting_response runtime leaks owner event candidate raw offset selected
         visits initial current owner action (app.replayPolicy_cases _ _ action supported)
@@ -248,7 +255,7 @@ theorem OpeningWindowFrame.run (runtime : EventGraphRuntime graph)
       (runtime.openingWindowPlayers leaks owner event candidate raw offset selected) network
         (roster.map ServiceInstruction.player) current).support)
     (owned : candidate.1 = owner)
-    (valid : initial.application.candidates.lookup candidate = .openable raw) :
+    (valid : selected.isSome → initial.application.candidates.lookup candidate = .openable raw) :
     runtime.OpeningWindowFrame leaks owner event candidate raw offset selected
       (visits + roster.count owner) initial final := by
   let app := runtime.reactiveApplication leaks
@@ -285,7 +292,8 @@ theorem OpeningWindowFrame.before_published (runtime : EventGraphRuntime graph)
     current.network.Satisfies fun message =>
       message.id ∈ current.network.ledger.map Message.id := by
   have serial : current.network.nextSerial owner = initial.network.nextSerial owner := by
-    simpa only [before, Bool.false_eq_true, ↓reduceIte, Nat.add_zero] using frame.serial
+    simpa only [before, Bool.false_eq_true, and_false, ↓reduceIte, Nat.add_zero] using
+      congrFun frame.counters owner
   have impossible (message : Message Player (WitnessedPacket graph))
       (bound : message.id.2 < current.network.nextSerial message.id.1)
       (safe : message.id ∈ initial.network.ledger.map Message.id ∨
@@ -457,7 +465,7 @@ theorem openingWindow_settlement (runtime : EventGraphRuntime graph)
     (published : initial.network.Satisfies fun message =>
       message.id ∈ initial.network.ledger.map Message.id)
     (owned : candidate.1 = owner)
-    (valid : initial.application.candidates.lookup candidate = .openable raw)
+    (valid : selected.isSome → initial.application.candidates.lookup candidate = .openable raw)
     (network : runtime.NetworkPolicy leaks)
     (final : (runtime.reactiveApplication leaks).Execution)
     (reached : final ∈ (runtime.runInteractionPlan leaks
@@ -512,6 +520,6 @@ theorem openingWindowMixture_settlement (runtime : EventGraphRuntime graph)
   intro result supported
   obtain ⟨final, reached, rfl⟩ := FinDist.support_map .. ▸ supported
   exact (runtime.openingWindow_settlement leaks owner event candidate raw roster selected
-    initial serials published owned valid network final reached).1
+    initial serials published owned (fun _ => valid) network final reached).1
 
 end Vegas.EventGraphRuntime

@@ -205,8 +205,7 @@ theorem source_checkpoint_observe_eq
       ((graph setup).publicObserve nativeLeft.application.config))
     (rightLedger : nativeRight.network.ledger = publicationLedger accepted
       ((graph setup).publicObserve nativeRight.application.config))
-    (leftLeaked : nativeLeft.network.leaked who = [])
-    (rightLeaked : nativeRight.network.leaked who = [])
+    (leaked : nativeLeft.network.leaked who = nativeRight.network.leaked who)
     (leftReceipts : nativeLeft.receipts = publicationReceipts accepted
       ((graph setup).publicObserve nativeLeft.application.config))
     (rightReceipts : nativeRight.receipts = publicationReceipts accepted
@@ -226,7 +225,7 @@ theorem source_checkpoint_observe_eq
   · rw [leftActivated, rightActivated, publicObservation]
   · exact leftGrant.trans rightGrant.symm
   · rw [leftLedger, rightLedger, publicObservation]
-  · exact leftLeaked.trans rightLeaked.symm
+  · exact leaked
   · rw [leftReceipts, rightReceipts, publicObservation]
 
 /-- Both actual settlement branches leave the next event within its deadline.

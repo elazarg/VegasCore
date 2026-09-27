@@ -8,7 +8,7 @@ final game. Fix the program, service, monitoring rule, utilities and deposits
 before selecting an equilibrium. Preserve the joint initial-type, public-result
 and actual net-payoff law of **every source SE**.
 
-The [terminal-audit source-to-raw theorem](../Vegas/Game/RevealServiceAuditCompilation.lean)
+The [signed-audit source-to-raw theorem](../Vegas/Game/RevealServiceSignedCompilation.lean)
 is checked for arbitrary finite revelation sequences under the explicit calendar
 below. It includes repeated owners, correlated valid initial bindings, both
 disclosure choices and arbitrary terminal utilities for every player. Deposits
@@ -21,18 +21,30 @@ The checked extension work has three concrete boundaries:
 
 - [`replay_equilibrium_extends`](../Vegas/Game/RevealServiceReplayExtension.lean) restores harmless
   public rebroadcasts without punishment. It preserves arbitrary
-  application-state utilities and actual continuation laws. The evidence
-  projection needed to use this in the terminal-audit compiler is separate.
+  application-state utilities and actual continuation laws. The signed-audit
+  compiler composes this edge with terminal enforcement. Its evidence records
+  phase, prior ledger and signed envelope, without a broadcaster field.
 - [`openingWindow_settlement`](../Vegas/Pending/ReactiveOpeningSettlement.lean) evaluates an arbitrary
   finite activation roster followed by protected inclusion. The selected
   opening has its exact initial application effect; withholding has none.
   All retained packet identifiers are published afterward, including leaked
-  copies. Common timing-policy limits and one-phase posterior laws are checked;
-  source correspondence across phases and local SE incentives remain open.
+  copies. Exact ledger, receipt and allocation-counter laws, typed source
+  completion, one total roster policy, and support classification for arbitrary
+  permitted policies are checked. Common timing-policy limits and one-phase
+  posterior laws are checked; source correspondence across phases and local
+  SE incentives remain open.
 - [`reactive_commit_repair`](../Vegas/Game/BindingRepairBlock.lean) carries the typed source repair
-  invariant through actual fresh native binding and inclusion. It is a block
-  theorem, not yet the stopped-run continuation repair needed by the general
-  restriction theorem.
+  invariant through actual fresh native binding and inclusion. The native joint
+  law and repaired-prefix induction step are checked. The stopped-run
+  continuation repair needed by the general restriction theorem remains open.
+
+Guarded source programs also require a strategic proof for erased private
+reveal intentions. A rejected disclosure and withholding can have identical
+public effects while leaving different owner recall. Their operational
+equivalence alone does not prove SE preservation. The general theorem must
+carry private randomization and one common consistent perturbation sequence
+through that erasure, with utilities depending on initial types and public
+outcomes.
 
 These are proof relations and restrictions of the existing runtime. They add
 no emitted language, interpreter, source operation, or player-memory model.
@@ -46,9 +58,10 @@ legal opening/withholding choices remain unchanged.
 
 The compiler theorem uses a terminal audit service with four explicit duties:
 
-1. Report authentic, attributable traffic with the public phase needed by the
-   compiler's conformance checker. An envelope signature authenticates its
-   author; blaming a rebroadcaster requires additional evidence of that input.
+1. Report authentic signed envelopes with their public phase and prior ledger.
+   The signed-audit checker permits public replay by every player and attributes
+   forbidden fresh traffic to its signing account. Authenticating phase and
+   prior-ledger evidence remains an oracle obligation beyond the signature.
 2. Charge no permitted source behavior, including off-equilibrium choices.
    Missing audit records alone are not evidence of an omitted action.
 3. At every retained opportunity for a first departure, provide a conditional
@@ -92,14 +105,15 @@ conformant traffic under authentic partial sampling.
 the same audit from existing service recall at every actual prefix. This adds
 neither runtime memory nor player observations. Its normalization invariance
 lets the final raw-response lift preserve the actual randomized settlement law.
-[Traffic soundness](../Vegas/Game/RevealServiceTrafficSound.lean) and
-[departure evidence](../Vegas/Game/RevealServiceTrafficDeparture.lean) discharge
-the concrete checker obligations for the revelation service. The resulting
-capstone needs no strategic reporting or zero-utility assumption. Its explicit
-oracle contract authenticates broadcasters as well as phases; an envelope
-signature alone does not prove rebroadcast attribution. Permitting harmless
-auxiliary-player replays is a route to reducing that assumption, not a fact
-established by this capstone.
+[Replay traffic soundness](../Vegas/Game/RevealServiceReplayTraffic.lean) and
+[signed departure evidence](../Vegas/Game/RevealServiceSignedDeparture.lean)
+discharge the concrete checker obligations for the revelation service. The
+[signed capstone](../Vegas/Game/RevealServiceSignedCompilation.lean) needs no
+strategic reporting, zero-utility player or broadcaster attribution. The
+projection to signed evidence occurs before partial sampling. Account liability
+is not a theorem about physical senders or cryptographic key sharing. Soundness
+is proved for every retained history and each actor's first departure; a general
+non-framing property after arbitrary other departures is not established.
 
 The source-to-permitted-runtime proof must establish observations,
 conditional laws and consistent beliefs. Single-trace membership does not

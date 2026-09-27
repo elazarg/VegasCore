@@ -186,7 +186,7 @@ Reduced-normal-form equivalence alone cannot discharge these obligations.
 
 If a desired backend instead enforces one canonical send opportunity, it needs
 an authenticated opportunity marker or a public clock boundary visible to its
-audit. Existing `environmentRecall` is scheduler recall, not player observation;
+audit. Existing environment recall belongs to the scheduler, not player observation;
 `TrafficRecord` does not record its cursor. Merely assuming that cursor is
 public would change the observation model.
 

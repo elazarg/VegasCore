@@ -42,13 +42,14 @@ theorem audited_raw_sequential_equilibrium
       ((bounds.menu runtime leaks).information initial count service).InformationSite who → Nat)
     (clock : ∀ who site, InformationModel.InformationSite.CommonDepth
       ((bounds.menu runtime leaks).information initial count service) site (depth who site))
-    (permitted : (runtime.reactiveApplication leaks).TrafficRecord → Bool)
-    (sample : List (runtime.reactiveApplication leaks).TrafficRecord →
-      FinDist (List (runtime.reactiveApplication leaks).TrafficRecord))
+    {Evidence : Type}
+    (project : (runtime.reactiveApplication leaks).TrafficRecord → Evidence)
+    (attribution : Evidence → Player) (permitted : Evidence → Bool)
+    (sample : List Evidence → FinDist (List Evidence))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (conforming : ∀ (history : (retained.protocol initial count service).History) record,
       record ∈ (runtime.reactiveApplication leaks).stateTraffic history.state →
-        permitted record = true)
+        permitted (project record) = true)
     (evidence : ∀ (profile : Profile
         ((bounds.menu runtime leaks).information initial count service).behavioralSignature) who
       (site : (retained.information initial count service).InformationSite who)
@@ -61,7 +62,7 @@ theorem audited_raw_sequential_equilibrium
           ((included.actionRestriction initial count service).site who site).1 action))
         1 ((included.actionRestriction initial count service).history history.1)).support,
       ∃ record ∈ (runtime.reactiveApplication leaks).stateTraffic next.state,
-        record.input.broadcaster = who ∧ permitted record = false)
+        attribution (project record) = who ∧ permitted (project record) = false)
     (base : (runtime.reactiveApplication leaks).ProtocolState → Player → ℝ)
     (baseInvariant : ∀ state,
       base ((runtime.reactiveNormalization leaks).state state) = base state)
@@ -74,7 +75,7 @@ theorem audited_raw_sequential_equilibrium
       base history.state who ≤ upper who)
     (sufficient : ∀ who, upper who - probability who * deposit who ≤ lower who)
     (coverage : ∀ who actual record, record ∈ actual →
-      record.input.broadcaster = who → permitted record = false →
+      attribution record = who → permitted record = false →
       probability who ≤ (sample actual).probOf {observed | record ∈ observed})
     {Observation : Type}
     (observe : (runtime.reactiveApplication leaks).ProtocolState → Observation)
@@ -86,7 +87,8 @@ theorem audited_raw_sequential_equilibrium
         count service)
       (fun who site => source.continuationContext site (fun final => base final.state who)
         (2 * count + 1))) :
-    let audit := (runtime.reactiveApplication leaks).sampledTrafficAudit permitted sample
+    let audit := (runtime.reactiveApplication leaks).sampledTrafficAudit
+      project attribution permitted sample
     let utility := TerminalAudit.utility base
       (runtime.reactiveApplication leaks).stateTraffic audit deposit
     let settle := TerminalAudit.settlement base
@@ -128,7 +130,8 @@ theorem audited_raw_sequential_equilibrium
   have sound (history : (retained.protocol initial count service).History) (who : Player) :
       TerminalAudit.charge (fun final => app.stateTraffic final.state) audit
         (restriction.history history) who = 0 :=
-    app.sampledTrafficAudit_sound permitted sample (app.stateTraffic history.state) who
+    app.sampledTrafficAudit_sound project attribution permitted sample
+      (app.stateTraffic history.state) who
       (authentic _) (fun record present _ => conforming history record present)
   have collection (profile : Profile
       ((bounds.menu runtime leaks).information initial count service).behavioralSignature) who
@@ -151,7 +154,8 @@ theorem audited_raw_sequential_equilibrium
         (by
           change ¬ depth who (restriction.site who site) < 2 * count + 1 at late
           omega))
-    have bound := effective.trafficAudit_collection_after_step initial count service permitted
+    have bound := effective.trafficAudit_collection_after_step initial count service
+      project attribution permitted
       sample who (probability who) (coverage who)
       (Profile.update profile who ((profile who).commit (restriction.site who site).1 action))
       (2 * count + 1 - depth who (restriction.site who site) - 1)

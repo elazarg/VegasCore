@@ -3,29 +3,17 @@
 import Vegas.Game.RevealServiceEquilibrium
 import Vegas.Pending.ReactiveAuditEquilibrium
 import Vegas.Game.RevealServiceAuditDeposits
-import Vegas.Game.RevealServiceTrafficDeparture
-import Vegas.Game.RevealServiceTrafficSound
+import Vegas.Game.RevealServiceSignedDeparture
+import Vegas.Game.RevealServiceReplayExtension
 
-/-! # Source sequential equilibrium under an authenticated terminal audit
+/-! # Source sequential equilibrium from signed-author terminal evidence
 
-Fix a revelation program, bounded response alphabet, service calendar, declared
-utilities and terminal audit service. Its fixed range-based deposits preserve
-every original source sequential equilibrium, with the exact joint typed
-terminal-state and realized settlement-payoff law in the full raw game.
-
-The audit observes an authentic partial record of transmission phases,
-broadcasters and prior ledger states, and collects the indicated deductions.
-Its uniform record-coverage bound is explicit. No passive-reading coverage,
-strategic reporting policy or zero-utility player is assumed for enforcement.
-The final settlement lottery occurs after strategic play and adds no earlier
-player observation. Envelope signatures alone do not authenticate a
-rebroadcaster or its transmission phase.
-
-The service still has one owner and one auxiliary activation per source event,
-with protected inclusion and bounded expiry. Initial bindings are openable;
-fresh source commitments and arbitrary intervening activations require separate
-correspondence proofs. The result is forward preservation, not reflection or
-uniqueness of the target equilibrium.
+One fixed full bounded native game preserves every original reveal-only source
+SE and its joint typed outcome/realized settlement law. Public envelope replays
+remain lawful for every player. The auditor authenticates the signed envelope,
+its transmission phase and prior ledger, and never authenticates a rebroadcaster.
+The terminal audit is sampled after strategic play; its conditional coverage and
+actual collection are explicit assumptions.
 -/
 
 noncomputable section
@@ -51,14 +39,14 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 include reveals observer openable in
 /-- One audited native game and deposit vector implement every original source
 SE. Utilities may depend on persistent private initial data as well as results. -/
-theorem audited_source_sequential_equilibrium_preserved
+theorem signed_audit_source_sequential_equilibrium_preserved
     (utility : State L setup.program.terminalCtx → Player → ℝ)
-    (sample : List (application setup leaks).TrafficRecord →
-      FinDist (List (application setup leaks).TrafficRecord))
+    (sample : List (EnvelopeEvidence setup leaks) →
+      FinDist (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
-    (coverage : ∀ who actual record, record ∈ actual → record.input.broadcaster = who →
-      permittedTraffic setup leaks watcher record = false →
+    (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
+      permittedEnvelope setup leaks record = false →
       probability who ≤ (sample actual).probOf {observed | record ∈ observed})
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
@@ -68,9 +56,8 @@ theorem audited_source_sequential_equilibrium_preserved
     let extended := bounds.withInitialValues (initialLaw setup)
     let base := baseUtility setup leaks utility
     let deposit := auditRangeDeposit setup leaks extended watcher base probability
-    let audit := (application setup leaks).sampledTrafficAudit id (fun record =>
-      record.input.broadcaster)
-      (permittedTraffic setup leaks watcher) sample
+    let audit := (application setup leaks).sampledTrafficAudit (envelopeEvidence setup leaks)
+      (fun evidence => evidence.2.2.sender) (permittedEnvelope setup leaks) sample
     let net := TerminalAudit.utility base (application setup leaks).stateTraffic audit deposit
     let settle := TerminalAudit.settlement base (application setup leaks).stateTraffic audit deposit
     let model := rawInformation setup leaks extended watcher
@@ -93,6 +80,26 @@ theorem audited_source_sequential_equilibrium_preserved
   obtain ⟨retained, _compiled, retainedSE, sourceLaw⟩ :=
     source_sequential_equilibrium_preserved setup leaks bounds watcher reveals observer openable
       admission utility source equilibrium
+  let appPayoff (state : Option (application setup leaks).State) (who : Player) : ℝ :=
+    (state.bind (fun native => if native.config.cut.Terminal then
+      EventLowering.decodeState? (EventLowering.terminalRefs setup.program) native.config.store
+        else none)).elim 0 (fun final => utility final who)
+  have factors (state : (application setup leaks).ProtocolState) (who : Player) :
+      appPayoff (state.map (fun control => control.execution.application)) who =
+        base state who := by
+    cases state <;> rfl
+  have originalSE : retained.IsSequentialEquilibriumFor
+      ((menu setup leaks extended watcher).decisionInformationAntichain (initialLaw setup)
+        (horizon setup watcher) (scheduler setup leaks watcher))
+      (fun who site => retained.continuationContext site
+        (fun final => appPayoff (final.state.map
+          (fun control => control.execution.application)) who)
+        (2 * horizon setup watcher + 1)) := by
+    simpa only [factors] using retainedSE
+  obtain ⟨replayed, replayedSE, _paired, replayLaw⟩ := replay_equilibrium_extends setup leaks
+    extended watcher reveals observer openable appPayoff retained originalSE
+  have replayedBase := replayedSE
+  simp only [factors] at replayedBase
   have sufficient (who : Player) :
       auditPayoffUpper setup leaks extended watcher base who - probability who * deposit who ≤
         auditPayoffLower setup leaks extended watcher base who := by
@@ -102,21 +109,26 @@ theorem audited_source_sequential_equilibrium_preserved
     linarith
   obtain ⟨target, targetSE, targetLaw⟩ := extended.audited_raw_sequential_equilibrium
     (runtime setup) leaks (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)
-    (menu setup leaks extended watcher) (menu_in_effective setup leaks extended watcher)
+    (replayMenu setup leaks extended watcher) (replay_in_effective setup leaks extended watcher)
     (fun who site => decisionDepth setup leaks watcher who site.1)
     (menu_common_decision_depth setup leaks (extended.menu (runtime setup) leaks) watcher
       reveals observer)
-    id (fun record => record.input.broadcaster)
-    (permittedTraffic setup leaks watcher) sample authentic
-    (retained_history_traffic setup leaks extended watcher reveals observer openable)
-    (extra_choice_traffic setup leaks extended watcher reveals observer openable)
+    (envelopeEvidence setup leaks) (fun evidence => evidence.2.2.sender)
+    (permittedEnvelope setup leaks) sample authentic
+    (replay_history_traffic setup leaks extended watcher reveals observer openable)
+    (replay_extra_choice_traffic setup leaks extended watcher reveals observer openable)
     base (baseUtility_normalization setup leaks utility)
     (auditPayoffLower setup leaks extended watcher base)
     (auditPayoffUpper setup leaks extended watcher base) probability deposit
     (auditRangeDeposit_nonnegative setup leaks extended watcher base probability positive)
-    (retained_auditPayoffLower_le setup leaks extended watcher base)
+    (fun history who => auditPayoffLower_le setup leaks extended watcher base
+      (((replay_in_effective setup leaks extended watcher).actionRestriction (initialLaw setup)
+        (horizon setup watcher) (scheduler setup leaks watcher)).history history) who)
     (le_auditPayoffUpper setup leaks extended watcher base) sufficient coverage
-    (sourceReadout setup leaks) (sourceReadout_normalization setup leaks) retained retainedSE
-  exact ⟨target, targetSE, targetLaw.trans sourceLaw⟩
+    (sourceReadout setup leaks) (sourceReadout_normalization setup leaks) replayed replayedBase
+  have joint := congrArg (fun law => law.map (fun final =>
+    (sourceReadout setup leaks final.state, base final.state))) replayLaw
+  rw [FinDist.map_comp] at joint
+  exact ⟨target, targetSE, targetLaw.trans (joint.symm.trans sourceLaw)⟩
 
 end Vegas.SourceProgram.RevealService
