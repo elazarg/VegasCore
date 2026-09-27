@@ -23,102 +23,6 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem include_players_eq
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (first second : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (event : (graph setup).EventId) (owner : Player)
-    (execution : (application setup leaks).Execution) :
-    (runtime setup).interactionStep leaks first network (.includeLatest event owner) execution =
-      (runtime setup).interactionStep leaks second network
-        (.includeLatest event owner) execution := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind]
-  rcases (runtime setup).reactiveLatest_wait_or_owned leaks event owner
-      (execution.observeEnvironment ((runtime setup).reactiveApplication leaks)) with
-    waiting | ⟨id, _authored, included⟩
-  · rw [waiting]
-    rfl
-  · rw [included]
-    rfl
-
-private theorem foreign_tail_law
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
-    (profile : BehavioralProfile setup.program)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (event : (graph setup).EventId) (owner : Player)
-    (owned : (graph setup).actor? event = some owner)
-    (visits : List Player) (absent : owner ∉ visits)
-    (initial : (application setup leaks).Execution)
-    (granted : initial.application.serviceGrant = some event) :
-    (runtime setup).runInteractionPlan leaks
-        (sourceServiceLastPolicy setup leaks rosters profile) network
-        (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) initial =
-      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
-        network (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) initial := by
-  let app := application setup leaks
-  induction visits generalizing initial with
-  | nil =>
-      simpa only [List.map_nil, List.nil_append, runInteractionPlan, FinDist.bind_pure] using
-        include_players_eq setup leaks _ _ network event owner initial
-  | cons who rest ih =>
-      have foreign : who ≠ owner := fun same => absent (by simp only [same, List.mem_cons_self])
-      have restAbsent : owner ∉ rest := fun member => absent (List.mem_cons_of_mem _ member)
-      simp only [List.map_cons, List.cons_append, runInteractionPlan, interactionStep,
-        interactionInstruction, FinDist.pure_bind, ReactiveApplication.dispatch,
-        ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map, FinDist.bind_bind]
-      apply FinDist.bind_congr
-      intro sample _
-      let activated := initial.sampledActivation app who sample
-      have law := sourceServiceLastPolicy_wait setup leaks rosters profile who
-        (activated.recall who) (activated.observe app who) event granted
-          (Or.inl (fun equal => foreign (Option.some.inj (equal.symm.trans owned))))
-      change (sourceServiceLastPolicy setup leaks rosters profile who
-        (activated.recall who) (activated.observe app who)).bind _ =
-        (app.replayPolicy (activated.recall who) (activated.observe app who)).bind _
-      rw [law]
-      apply FinDist.bind_congr
-      intro response supported
-      apply ih restAbsent
-      rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;> exact granted
-
-private theorem replay_recorded
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
-    (initial final : (application setup leaks).Execution)
-    (reached : final ∈ ((runtime setup).runInteractionPlan leaks
-      (fun _ => (application setup leaks).replayPolicy) network
-        (visits.map ServiceInstruction.player) initial).support)
-    (owner : Player) (event : (graph setup).EventId) :
-    (runtime setup).eventRecorded leaks (final.recall owner) event =
-      (runtime setup).eventRecorded leaks (initial.recall owner) event := by
-  classical
-  let app := application setup leaks
-  induction visits generalizing initial with
-  | nil => cases FinDist.mem_support_pure.mp reached; rfl
-  | cons who rest ih =>
-      simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-        ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨response, supported, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      rw [ih _ reached]
-      by_cases same : owner = who
-      · subst who
-        rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;>
-          simp only [eventRecorded, ReactiveApplication.Execution.respond, ↓reduceIte,
-            List.any_append, List.any_cons, List.any_nil, submittedEvent?, reduceCtorEq,
-            decide_false, Bool.or_false] <;> rfl
-      · rw [app.respond_recall_other _ who owner same]
-        rfl
-
 variable [Finite Player]
 
 /-- At the selected owner activation, the actual full source policy makes
@@ -264,8 +168,8 @@ theorem sourceServiceLastPolicy_commit_opportunity
     apply FinDist.bind_congr
     intro response _
     apply congrArg (FinDist.map result)
-    apply foreign_tail_law setup leaks rosters wholeProfile network event owner owned
-      remaining absent
+    apply sourceServiceLastPolicy_foreign_tail setup leaks rosters wholeProfile network event owner
+      owned remaining absent
     exact (congrArg PublicView.serviceGrant ((runtime setup).reactive_respond_application leaks
       activated owner response).2).trans granted
   · exact FinDist.bind_const _ expected
@@ -393,7 +297,7 @@ theorem sourceServiceLastPolicy_commit_roster
     have pureReplay := reached
     rw [sourceServiceLastPolicy_waiting_law setup leaks rosters wholeProfile network event owner
       owned visited execution granted before] at pureReplay
-    have currentUnsent := (replay_recorded setup leaks network visited execution current
+    have currentUnsent := (replay_window_eventRecorded setup leaks network visited execution current
       pureReplay owner event).trans unsent
     have fixed : (ServiceInstruction.wire : ServiceInstruction (graph setup)) ∉
         visited.map ServiceInstruction.player := by simp
@@ -500,8 +404,8 @@ private theorem binding_opportunity_provenance
   have responseGrant : (activated.respond app owner response).application.serviceGrant =
       some event := (congrArg PublicView.serviceGrant ((runtime setup).reactive_respond_application
         leaks activated owner response).2).trans currentGrant
-  rw [foreign_tail_law setup leaks rosters profile network event owner owned remaining absent
-    (activated.respond app owner response) responseGrant, responseEq] at tail
+  rw [sourceServiceLastPolicy_foreign_tail setup leaks rosters profile network event owner owned
+    remaining absent (activated.respond app owner response) responseGrant, responseEq] at tail
   let readout (point : app.Execution) :=
     (point.application, point.network.ledger, point.receipts, point.network.nextSerial)
   have mapped : readout final ∈ (((runtime setup).runInteractionPlan leaks transport network
@@ -635,8 +539,8 @@ theorem sourceServiceLastPolicy_binding_provenance
   have pureReplay := priorSupport
   rw [sourceServiceLastPolicy_waiting_law setup leaks rosters profile network event owner owned
     visited initial granted waiting] at pureReplay
-  have currentUnsent := (replay_recorded setup leaks network visited initial current pureReplay
-    owner event).trans unsent
+  have currentUnsent := (replay_window_eventRecorded setup leaks network visited initial current
+    pureReplay owner event).trans unsent
   have fixed : (ServiceInstruction.wire : ServiceInstruction (graph setup)) ∉
       visited.map ServiceInstruction.player := by simp
   have currentCount := fixed_plan_response_counts setup leaks network players

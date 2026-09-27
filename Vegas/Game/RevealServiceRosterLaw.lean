@@ -21,7 +21,7 @@ variable {Player : Type} [DecidableEq Player]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-private theorem passive_players
+theorem servicePlan_players_eq
     (left right : Player → (application setup leaks).Policy)
     (network : (runtime setup).NetworkPolicy leaks)
     (plan : List (ServiceInstruction (graph setup)))
@@ -104,7 +104,7 @@ theorem rosterPolicy_phase_law
       granted owned candidate raw opening rfl network (rosters event)]
     apply FinDist.bind_congr
     intro current _
-    exact passive_players setup leaks _ _ network tail noWire noPlayers current
+    exact servicePlan_players_eq setup leaks _ _ network tail noWire noPlayers current
   rw [mixedLaw, openingWindowMixture_law _ _ _ _ _ _ _ _ _ _ _ offset]
   change (rosterSelection _ _).bind _ = _
   rw [rosterSelection, FinDist.bind_bind]

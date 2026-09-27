@@ -6,6 +6,7 @@ import Vegas.Pending.ReactiveBindingPrefix
 import Interaction.ReactiveSubmissionSerial
 import Vegas.Pending.ReactiveServiceRecall
 import Vegas.Pending.ReactiveAssociationEvidence
+import Vegas.Pending.ReactiveServiceOpportunity
 
 /-! # Operational boundaries for the complete source syntax
 
@@ -167,6 +168,8 @@ theorem ServiceBoundary.grant {setup : Setup (Player := Player) (L := L)}
     (network : (runtime setup).NetworkPolicy leaks) (event : (graph setup).EventId) :
     ∃ granted, ServiceBoundary setup leaks rosters initial source refs rank granted ∧
       granted.application.serviceGrant = some event ∧
+      granted.application = { execution.application with serviceGrant := some event } ∧
+      granted.recall = execution.recall ∧
       (runtime setup).interactionStep leaks players network (.grant event) execution =
         FinDist.pure granted := by
   let app := application setup leaks
@@ -174,7 +177,7 @@ theorem ServiceBoundary.grant {setup : Setup (Player := Player) (L := L)}
     application := { execution.application with serviceGrant := some event }
     environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  refine ⟨granted, ?_, rfl, ?_⟩
+  refine ⟨granted, ?_, rfl, rfl, rfl, ?_⟩
   · exact { boundary with
       invariant := boundary.invariant.copy rfl rfl rfl
       binding := boundary.binding.copy rfl rfl rfl }
@@ -264,5 +267,58 @@ theorem ServiceBoundary.roster_counts {setup : Setup (Player := Player) (L := L)
     (rosterPlanPrefix_succ setup rosters event)
   simpa only [List.filterMap_append, rosterPlanPrefix_actors, rosterBlock_actors,
     List.count_append, atRank] using counts.symm
+
+/-- One actual roster block has exactly its declared number of clock ticks. -/
+theorem rosterBlock_ticks (setup : Setup (Player := Player) (L := L))
+    (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
+    serviceTicks (rosterBlock setup rosters event) = event.val + 1 := by
+  unfold rosterBlock
+  cases (graph setup).actor? event <;>
+    simp [serviceTicks, ServiceInstruction.ticks, Function.comp_def]
+
+/-- Every actual completed roster block leaves its successor timely. Only
+the completed cut is constructor-specific: clock advancement and activation
+age follow from the existing runtime transition laws for arbitrary policies. -/
+theorem ServiceBoundary.roster_successor_timing
+    {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {rosters : (graph setup).EventId → List Player} {initial : State L setup.context}
+    {Γ : SourceCtx Player L} {source : Config Player L Γ}
+    {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
+    {execution : (application setup leaks).Execution}
+    (boundary : ServiceBoundary setup leaks rosters initial source refs rank execution)
+    (players : Player → (application setup leaks).Policy)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (event : (graph setup).EventId) (atRank : event.val = rank)
+    (final : (application setup leaks).Execution)
+    (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network
+      (rosterBlock setup rosters event) execution).support)
+    (ordered : final.application.config.cut.IsPrefix (rank + 1)) :
+    final.application.clock = clockAt (rank + 1) ∧
+      ∀ next, next.val = rank + 1 → ((graph setup).actor? next).isSome = true →
+        final.application.WithinDeadline (runtime setup) next := by
+  have progress := (runtime setup).runInteractionPlan_facts leaks (setup.eventInputs initial)
+    players network (rosterBlock setup rosters event) execution final boundary.invariant reached
+  have advanced : final.application.clock = execution.application.clock + (rank + 1) := by
+    simpa only [rosterBlock_ticks, atRank] using progress.clock
+  refine ⟨by rw [advanced, boundary.clock, clockAt_succ], ?_⟩
+  intro next nextRank strategic
+  have ready := (ready_iff_rank setup _ (rank + 1) ordered next).mpr nextRank
+  obtain ⟨entered, activated⟩ := Option.isSome_iff_exists.mp
+    ((progress.invariant.activated_iff next).mpr ⟨ready, strategic⟩)
+  have origin := (runtime setup).runInteractionPlan_activationOrigin leaks
+    (setup.eventInputs initial) players network (rosterBlock setup rosters event)
+      execution final boundary.invariant reached
+  have lower : execution.application.clock ≤ entered := by
+    rcases origin next entered activated ready.1 with retained | recent
+    · have beforeReady := ((boundary.invariant.activated_iff next).mp
+        (Option.isSome_iff_exists.mpr ⟨entered, retained⟩)).1
+      have same := (ready_iff_rank setup _ rank boundary.ordered next).mp beforeReady
+      omega
+    · exact recent
+  unfold EventGraphRuntime.State.WithinDeadline
+  rw [activated, advanced]
+  change execution.application.clock + (rank + 1) - entered < next.val + 1
+  omega
 
 end Vegas.SourceProgram.RevealService

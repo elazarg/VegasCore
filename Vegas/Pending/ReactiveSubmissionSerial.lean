@@ -87,4 +87,35 @@ theorem first_event_iff_public_serial
   exact ((runtime.reactiveApplication leaks).serial_eq_ledger_iff_no_submission
     before after who beforeRecall afterRecall settled ledger suffix recalled).symm
 
+/-- Waiting and replay preserve the clean serial test. A fresh submission for
+the owner and current event makes its unsent premise false. Thus the test
+propagates through a complete retained window without assuming an empty pool. -/
+theorem event_accounted_response
+    (execution : (runtime.reactiveApplication leaks).Execution) (who owner : Player)
+    (event : graph.EventId) (response : (runtime.reactiveApplication leaks).Action)
+    (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
+      execution.network.nextSerial owner =
+        execution.network.ledger.countP (fun message => message.sender = owner))
+    (shape : (response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) ∨
+      (who = owner ∧ runtime.submittedEvent? leaks response = some event)) :
+    let next := execution.respond (runtime.reactiveApplication leaks) who response
+    runtime.eventRecorded leaks (next.recall owner) event = false →
+      next.network.nextSerial owner =
+        next.network.ledger.countP (fun message => message.sender = owner) := by
+  intro next unsent
+  rcases shape with (rfl | ⟨id, rfl⟩) | ⟨rfl, submitted⟩
+  · have previous := runtime.eventRecorded_respond_other leaks execution who owner ⟨none⟩ event
+      (fun _ impossible => by cases impossible)
+    have account := counted (previous ▸ unsent)
+    exact account
+  · have previous := runtime.eventRecorded_respond_other leaks execution who owner
+      ⟨some (.replay id)⟩ event (fun _ impossible => by cases impossible)
+    have account := counted (previous ▸ unsent)
+    cases found : (execution.network.known who).find? (fun message => message.id = id) <;>
+      simpa only [next, ReactiveApplication.Execution.respond, MessageNetwork.replay, found]
+        using account
+  · have sent := runtime.eventRecorded_respond leaks execution who response event submitted
+    rw [show runtime.eventRecorded leaks (next.recall who) event = true from sent] at unsent
+    cases unsent
+
 end Vegas.EventGraphRuntime

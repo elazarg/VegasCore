@@ -113,4 +113,100 @@ theorem sourceServiceLastPolicy_waiting_data
         (current.recall who) (current.observe (application setup leaks) who) response supported)
       safe packets visits final reached
 
+private theorem include_players_eq
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (first second : Player → (application setup leaks).Policy)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (event : (graph setup).EventId) (owner : Player)
+    (execution : (application setup leaks).Execution) :
+    (runtime setup).interactionStep leaks first network (.includeLatest event owner) execution =
+      (runtime setup).interactionStep leaks second network
+        (.includeLatest event owner) execution := by
+  simp only [interactionStep, interactionInstruction, FinDist.pure_bind]
+  rcases (runtime setup).reactiveLatest_wait_or_owned leaks event owner
+      (execution.observeEnvironment ((runtime setup).reactiveApplication leaks)) with
+    waiting | ⟨id, _authored, included⟩
+  · rw [waiting]
+    rfl
+  · rw [included]
+    rfl
+
+theorem sourceServiceLastPolicy_foreign_tail
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (profile : BehavioralProfile setup.program)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (event : (graph setup).EventId) (owner : Player)
+    (owned : (graph setup).actor? event = some owner)
+    (visits : List Player) (absent : owner ∉ visits)
+    (initial : (application setup leaks).Execution)
+    (granted : initial.application.serviceGrant = some event) :
+    (runtime setup).runInteractionPlan leaks
+        (sourceServiceLastPolicy setup leaks rosters profile) network
+        (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) initial =
+      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
+        network (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) initial := by
+  let app := application setup leaks
+  induction visits generalizing initial with
+  | nil =>
+      simpa only [List.map_nil, List.nil_append, runInteractionPlan, FinDist.bind_pure] using
+        include_players_eq setup leaks _ _ network event owner initial
+  | cons who rest ih =>
+      have foreign : who ≠ owner := fun same => absent (by simp only [same, List.mem_cons_self])
+      have restAbsent : owner ∉ rest := fun member => absent (List.mem_cons_of_mem _ member)
+      simp only [List.map_cons, List.cons_append, runInteractionPlan, interactionStep,
+        interactionInstruction, FinDist.pure_bind, ReactiveApplication.dispatch,
+        ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke,
+        ReactiveApplication.Execution.activation_samples, FinDist.bind_map, FinDist.bind_bind]
+      apply FinDist.bind_congr
+      intro sample _
+      let activated := initial.sampledActivation app who sample
+      have law := sourceServiceLastPolicy_wait setup leaks rosters profile who
+        (activated.recall who) (activated.observe app who) event granted
+          (Or.inl (fun equal => foreign (Option.some.inj (equal.symm.trans owned))))
+      change (sourceServiceLastPolicy setup leaks rosters profile who
+        (activated.recall who) (activated.observe app who)).bind _ =
+        (app.replayPolicy (activated.recall who) (activated.observe app who)).bind _
+      rw [law]
+      apply FinDist.bind_congr
+      intro response supported
+      apply ih restAbsent
+      rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;> exact granted
+
+theorem replay_window_eventRecorded
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
+    (initial final : (application setup leaks).Execution)
+    (reached : final ∈ ((runtime setup).runInteractionPlan leaks
+      (fun _ => (application setup leaks).replayPolicy) network
+        (visits.map ServiceInstruction.player) initial).support)
+    (owner : Player) (event : (graph setup).EventId) :
+    (runtime setup).eventRecorded leaks (final.recall owner) event =
+      (runtime setup).eventRecorded leaks (initial.recall owner) event := by
+  classical
+  let app := application setup leaks
+  induction visits generalizing initial with
+  | nil => cases FinDist.mem_support_pure.mp reached; rfl
+  | cons who rest ih =>
+      simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
+        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        ReactiveApplication.resume, ReactiveApplication.invoke,
+        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
+        FinDist.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨response, supported, reached⟩ :=
+        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      rw [ih _ reached]
+      by_cases same : owner = who
+      · subst who
+        rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;>
+          simp only [eventRecorded, ReactiveApplication.Execution.respond, ↓reduceIte,
+            List.any_append, List.any_cons, List.any_nil, submittedEvent?, reduceCtorEq,
+            decide_false, Bool.or_false] <;> rfl
+      · rw [app.respond_recall_other _ who owner same]
+        rfl
+
 end Vegas.SourceProgram.RevealService

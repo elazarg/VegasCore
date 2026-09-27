@@ -254,8 +254,16 @@ objective. The remaining proof obligations are:
    theorem covers every legal retained policy, including early typed submissions:
    every supported completed roster has an actual first-binding witness and
    immediate-inclusion provenance. The required final menu rules out all-wait
-   paths. The all-syntax fold and support theorem for every retained history
-   still need composition across event constructors.
+   paths. The [complete binding boundary](../../Vegas/Game/SourceServiceBindingBoundary.lean)
+   carries every such retained policy through grant, the whole roster,
+   reserved inclusion and expiry to the next typed source successor. This
+   includes the dynamic allocator, all copy locations, future-event recall,
+   serial accounting and the next event's timing. The
+   [guarded disclosure phase](../../Vegas/Game/SourceServiceDisclosurePhase.lean)
+   proves the actual limiting source policy's complete roster law, including
+   failed deferred guards, withholding and the replay choices used by its
+   silent branch. The all-syntax fold and support theorem for every retained
+   history still need composition across event constructors.
 3. **Conditional incentives.** Derive the native information-fiber likelihood
    from those actual executions, including dynamic candidate catalogs and
    extra response recall. When failed disclosure and withholding both produce
@@ -329,8 +337,14 @@ objective. The remaining proof obligations are:
    covers arbitrary retained choices, not just the selected source profile.
    Published boundaries establish network conformance; passive observation and
    conforming responses preserve it, including known pending-envelope replays.
-   Establishing those phase facts on every retained history remains part of
-   the full support induction.
+   [Disclosure-window conformance](../../Vegas/Pending/ReactiveResolutionWindowConformance.lean)
+   preserves the serial test and the actual phase-stamped traffic records
+   through every retained roster, including early opening and pending replay.
+   [Disclosure-window support](../../Vegas/Pending/ReactiveResolutionWindowSupport.lean)
+   proves that the reserved inclusion restores publication of every pending,
+   known and remembered envelope, also when the player withholds throughout.
+   Establishing and composing the full phase boundaries on every retained
+   history remains part of the support induction.
    The [opening classifier](../../Vegas/Pending/ReactiveServiceOpening.lean)
    derives actual successful inclusion and the precise guard-aware response
    from public conformance and the runtime's evidence and binding invariants.
@@ -355,7 +369,11 @@ objective. The remaining proof obligations are:
    carries the repair frame through that same complete suffix for usable,
    missing or mistyped private material. Foreign responses may be arbitrary;
    the proof uses authenticated authorship, not assumed opponent conformance.
-   Whole-program stopped composition and legal repaired-history support remain
+   The [required final block](../../Vegas/Pending/ReactiveBindingFinalBlock.lean)
+   combines the actual mixed final response with the entire foreign tail and
+   settlement: its exact coupling yields either the repair frame, a persistent
+   rejected record, or the actual missed-binding obligation. Whole-program
+   stopped composition and legal repaired-history support remain
    open. The
    [physical continuation](../../Interaction/ReactiveTrafficContinuation.lean)
    and [service-plan persistence](../../Vegas/Pending/ReactiveServiceTraffic.lean)
