@@ -29,7 +29,9 @@ import Vegas.Game.SourceServiceBindingExecution
 import Vegas.Game.SourceServiceTimedPolicy
 import Vegas.Game.SourceServiceTimedBinding
 import Vegas.Game.SourceServiceActiveBindingLaw
+import Vegas.Game.SourceServiceActiveBindingCheckpoint
 import Vegas.Game.SourceServiceTimedDisclosure
+import Vegas.Game.SourceServiceActiveDisclosureLaw
 import Vegas.Game.SourceServiceTimedSample
 import Vegas.Game.SourceServiceTimedCheckpoint
 import Vegas.Game.SourceServiceTimedBindingCheckpoint
@@ -253,6 +255,7 @@ import Vegas.Game.SetupSubgame
 import Vegas.Game.SourceInformation
 import Vegas.Game.SourceContinuation
 import Vegas.Game.SourceLocalContinuation
+import Vegas.Game.SourceLocalPolicy
 import Vegas.Game.SourceStateKernel
 import Vegas.Game.SourcePrefixKernel
 import Vegas.Game.SourceObservationRecall

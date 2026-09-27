@@ -72,14 +72,34 @@ derives the whole typed source continuation from any supported native phase
 boundary. Local response comparisons must still connect those boundary laws
 to the actual intermediate choices.
 
+The active [binding law](../Vegas/Game/SourceServiceActiveBindingLaw.lean),
+[binding checkpoint](../Vegas/Game/SourceServiceActiveBindingCheckpoint.lean)
+and [disclosure law](../Vegas/Game/SourceServiceActiveDisclosureLaw.lean)
+start after the current passive observation has occurred. Disclosure retains
+timing opportunities that passed with a silent source choice; binding excludes
+passed opportunities when no binding was submitted. The
+[local source policy theorem](../Vegas/Game/SourceLocalPolicy.lean) realizes an
+arbitrary one-site choice law as one admitted syntactic policy shared by all
+hidden histories at that observation, followed by the baseline continuation.
+
+The checked [conditional-regret bound](../GameTheoryExtensions/Math/Probability/DeferredChoice.lean)
+divides original binary regret by a positive lower bound on remaining timing
+mass. A fixed half-uniform, half-final timing law has remaining mass at least
+one half at every owner opportunity, by
+[rosterTiming_prefix_le](../Vegas/Game/RevealServiceRosterTiming.lean).
+Thus a factor of two suffices for the binary comparison once its physical
+continuation laws are established. This is a choice of implementing strategy;
+the permitted response menus retain every timing choice.
+
 Private-intention normalization has checked posterior and conditional
 continuation comparisons. The
 [assessment comparison](../Vegas/Game/DisclosureAssessment.lean) expresses
 both prescribed and deviating normalized continuations using the same mixture
-of original source information views. The remaining connection is from actual
-native observations to these comparisons, using the checked source-prefix
-recovery and traffic factorization. No posterior correspondence is an assumed
-premise of the intended compiler theorem.
+of original source information views. Actual owner observations are connected
+to these comparisons by the checked source-prefix recovery and traffic
+factorization. The remaining local-incentive proofs must identify the actual
+physical continuation after each permitted response. No posterior correspondence
+is an assumed premise of the intended compiler theorem.
 
 At zero-mass effective views, normalizing erased intentions need not commute
 with limits. Use the existing common-subsequence SE limit theorem for an

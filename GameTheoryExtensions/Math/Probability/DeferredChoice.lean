@@ -215,6 +215,84 @@ theorem deferredRemaining_local_comparison (probability : ℝ) (nonnegative : 0 
     rw [algebra]
     linarith
 
+/-- Positive remaining timing mass bounds conditional regret by a fixed
+multiple of the original binary regret. The alternative may be any mixture of
+the same two continuation values; timing need not converge to a final slot. -/
+theorem deferredRemaining_regret_le (probability : ℝ) (nonnegative : 0 ≤ probability)
+    (small : probability < 1) (timing : FinDist (Fin slots)) (count : Nat)
+    (lower : ℝ) (positive : 0 < lower)
+    (remainingMass : lower ≤ 1 - timing.timingPrefix count)
+    (replacement : ℝ) (replacementNonnegative : 0 ≤ replacement)
+    (replacementBounded : replacement ≤ 1) (whenTrue whenFalse error : ℝ)
+    (trueGain : whenTrue - (probability * whenTrue + (1 - probability) * whenFalse) ≤ error)
+    (falseGain : whenFalse - (probability * whenTrue + (1 - probability) * whenFalse) ≤ error) :
+    (replacement * whenTrue + (1 - replacement) * whenFalse) -
+      (deferredRemaining probability timing count * whenTrue +
+        (1 - deferredRemaining probability timing count) * whenFalse) ≤ error / lower := by
+  let survival := deferredSurvival probability timing count
+  let conditioned := deferredRemaining probability timing count
+  let prescribed := conditioned * whenTrue + (1 - conditioned) * whenFalse
+  have prefixNonnegative := timing.timingPrefix_nonnegative count
+  have prefixBounded := timing.timingPrefix_le_one count
+  have survivalPositive : 0 < survival :=
+    deferredSurvival_positive probability nonnegative small timing count
+  have survivalBound : lower ≤ survival := by
+    dsimp only [survival, deferredSurvival]
+    nlinarith [mul_nonneg (sub_nonneg.mpr small.le) prefixNonnegative]
+  have conditionedNonnegative : 0 ≤ conditioned :=
+    deferredRemaining_nonnegative probability nonnegative small timing count
+  have conditionedBound : conditioned ≤ 1 := by
+    have bound := (deferredRemaining_error probability nonnegative small timing count).1
+    change 0 ≤ probability - conditioned at bound
+    linarith
+  have numerator : survival * conditioned =
+      probability * (1 - timing.timingPrefix count) := by
+    dsimp only [conditioned, deferredRemaining, survival]
+    exact mul_div_cancel₀ _ (ne_of_gt survivalPositive)
+  have survivalEq : survival = 1 - probability * timing.timingPrefix count := rfl
+  rcases le_total whenFalse whenTrue with ordered | ordered
+  · have alternative : replacement * whenTrue + (1 - replacement) * whenFalse ≤
+        whenTrue := by
+      nlinarith [mul_nonneg (sub_nonneg.mpr replacementBounded) (sub_nonneg.mpr ordered)]
+    have gainNonnegative : 0 ≤ whenTrue - prescribed := by
+      dsimp only [prescribed]
+      nlinarith [mul_nonneg (sub_nonneg.mpr conditionedBound) (sub_nonneg.mpr ordered)]
+    have exactGain : survival * (whenTrue - prescribed) =
+        whenTrue - (probability * whenTrue + (1 - probability) * whenFalse) := by
+      dsimp only [prescribed]
+      nlinarith [congrArg (fun value => value * whenTrue) numerator,
+        congrArg (fun value => value * whenFalse) numerator,
+        congrArg (fun value => value * whenTrue) survivalEq,
+        congrArg (fun value => value * whenFalse) survivalEq]
+    have lowerGain := mul_le_mul_of_nonneg_right survivalBound gainNonnegative
+    have bounded : whenTrue - prescribed ≤ error / lower := by
+      apply (le_div_iff₀ positive).mpr
+      nlinarith [trueGain]
+    exact (sub_le_sub_right alternative prescribed).trans bounded
+  · have alternative : replacement * whenTrue + (1 - replacement) * whenFalse ≤
+        whenFalse := by
+      nlinarith [mul_nonneg replacementNonnegative (sub_nonneg.mpr ordered)]
+    have gainNonnegative : 0 ≤ whenFalse - prescribed := by
+      dsimp only [prescribed]
+      nlinarith [mul_nonneg conditionedNonnegative (sub_nonneg.mpr ordered)]
+    have exactGain : survival * (whenFalse - prescribed) =
+        (1 - timing.timingPrefix count) *
+          (whenFalse - (probability * whenTrue + (1 - probability) * whenFalse)) := by
+      dsimp only [prescribed]
+      nlinarith [congrArg (fun value => value * whenTrue) numerator,
+        congrArg (fun value => value * whenFalse) numerator,
+        congrArg (fun value => value * whenFalse) survivalEq]
+    have sourceGainNonnegative :
+        0 ≤ whenFalse - (probability * whenTrue + (1 - probability) * whenFalse) := by
+      nlinarith [mul_nonneg nonnegative (sub_nonneg.mpr ordered)]
+    have sourceBound := mul_le_mul_of_nonneg_right
+      (show 1 - timing.timingPrefix count ≤ 1 by linarith) sourceGainNonnegative
+    have lowerGain := mul_le_mul_of_nonneg_right survivalBound gainNonnegative
+    have bounded : whenFalse - prescribed ≤ error / lower := by
+      apply (le_div_iff₀ positive).mpr
+      nlinarith [falseGain]
+    exact (sub_le_sub_right alternative prescribed).trans bounded
+
 /-- Conditional probability of choosing true at an opportunity not yet used.
 The value outside the finite opportunity list is irrelevant and is zero. -/
 def deferredHazard (probability : ℝ) (timing : FinDist (Fin slots)) (count : Nat) : ℝ :=
