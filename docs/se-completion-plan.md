@@ -50,24 +50,27 @@ every local-comparison statement uses `open Classical` for `withLaw`.
 
 Sizes: S up to about 150 lines, M up to about 500, L beyond.
 
-### M1. Classification of native decision sites (M)
+### M1. Classification of native decision sites (checked)
 
-State one theorem classifying every native information site of the permitted
-model into exactly one kind, with the facts each kind needs, all derived from
-the information state itself:
+`SourceServiceSpec.exists_siteKind`
+([SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean)) gives
+every native information site its recall, view and granted event, together
+with a `DecisionSiteKind` computed from those three alone, so every history of
+a site has the same kind. The kinds and their comparisons:
 
-1. actorless event (public sampling);
-2. foreign visit: the event's actor is another player;
-3. owner visit to a binding event, binding recorded in own recall;
-4. owner visit to a binding event, binding not yet recorded;
-5. owner visit to a disclosure event, opening already sent, or no available
-   opening (`rosterOpening? = none`);
-6. owner visit to a disclosure event with an available unsent opening.
+| Plan kind | `DecisionSiteKind` | Comparison |
+|---|---|---|
+| 1. actorless event | `chance` | `sample_comparison_eq` (checked) |
+| 2. foreign visit | `foreignBinding`, `foreignDisclosure` | `foreign_binding_comparison_eq`, `foreign_disclosure_comparison_eq` (checked) |
+| 3. own binding, recorded | `recordedBinding` | `recorded_comparison_eq` (checked) |
+| 4. own binding, unsent | `unsentBinding` | M4 |
+| 5. own disclosure, sent | `recordedDisclosure` | `recorded_disclosure_comparison_eq` (checked) |
+| 5. own disclosure, no opening | `absentOpening` | M5 |
+| 6. own disclosure, opening available | `availableOpening` | M5 |
 
-Kinds 3–6 are decided by the view's service grant and the owner's recall, so
-every history of an owner site has the same kind.
-`SourceServiceSpec.exists_decisionPhase` supplies the event; the grant and
-recall facts come from `SourceServiceSpec.infoOf_decision`.
+Only coverage is used by M6. The kinds are mutually exclusive by construction:
+each is fixed by the event's node, the actor, the recorded bit and
+`rosterOpening?`.
 
 ### M2. Foreign visits (checked)
 
@@ -203,8 +206,8 @@ as a delegating restatement.
 
 ## Ordering
 
-M2 is checked. The critical path is M1 → M3 → M4, M5 → M6 → M7 → M8. Within M5, steps 2–3 and 5–6 do not depend on the
-operational steps 1 and 4.
+M1 and M2 are checked. The critical path is M3 → M4, M5 → M6 → M7 → M8.
+Within M5, steps 2–3 and 5–6 do not depend on the operational steps 1 and 4.
 
 Parallel lanes must not run Lake builds concurrently. A build deletes the
 oleans it replaces, so a concurrent check fails on missing imports. A separate

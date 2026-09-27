@@ -146,9 +146,10 @@ disclosure events (`TimedApproximant.foreign_binding_comparison_eq`,
 `TimedApproximant.foreign_disclosure_comparison_eq`), and owner visits after a
 recorded binding or opening (`TimedApproximant.recorded_comparison_eq`,
 `TimedApproximant.recorded_disclosure_comparison_eq`). The
-[completion plan](se-completion-plan.md) orders the remaining work: site
-classification, unsent owner bindings and disclosures, S5 assembly, E1
-composition and E2 validation.
+[completion plan](se-completion-plan.md) orders the remaining work: unsent
+owner bindings and disclosures, S5 assembly, E1 composition and E2 validation.
+Every site has a `DecisionSiteKind` (`SourceServiceSpec.exists_siteKind`), which
+selects its comparison.
 
 ## Build and validation discipline
 
