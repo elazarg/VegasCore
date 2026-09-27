@@ -152,7 +152,7 @@ theorem exists_decisionPhase (who : Player) (remaining : Nat)
       service.scheduler).Trace (some ⟨remaining, some who, execution⟩)) :
     Nonempty (DecisionPhase service.setup service.leaks service.rosters who execution) := by
   obtain ⟨event, slot, _, selected, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-      grant, _, _, _, _, publicEq, _, position⟩ :=
+      grant, _, _, _, _, publicEq, _, position, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network
       (failureProfile service.setup.program) who ⟨remaining, some who, execution⟩ trace rfl

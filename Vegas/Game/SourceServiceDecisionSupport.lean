@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServicePrefixSupport
 import Vegas.Game.RevealServiceRosterDecisionSupport
+import Vegas.Pending.ReactiveResolutionEvidence
 
 /-! # Actual full-source decision histories start at typed boundaries
 
@@ -86,7 +87,8 @@ theorem sourceService_decision_boundary
           control.execution.application.publicView = granted.application.publicView ∧
           SourceCheckpoint setup source refs event.val control.execution.application.config ∧
           control.execution.environmentRecall.length =
-            (rosterPlanPrefix setup rosters event.val).length + 1 + slot + 1 := by
+            (rosterPlanPrefix setup rosters event.val).length + 1 + slot + 1 ∧
+          (runtime setup).ResolutionEvidenceOrigins leaks granted := by
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨event, slot, boundary, prior, selected, position, boundarySupport, phase, activated⟩ :=
     roster_decision_boundary setup leaks rosters network menu who control trace active
@@ -104,6 +106,27 @@ theorem sourceService_decision_boundary
     (.grant event) boundary).bind fun execution =>
       (runtime setup).runInteractionPlan leaks menu.uniformResponses network
         (((rosters event).take slot).map ServiceInstruction.player) execution).support at phase
+  have grantedOrigins : (runtime setup).ResolutionEvidenceOrigins leaks granted := by
+    obtain ⟨state, stateSupport, reachedBoundary⟩ :=
+      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ boundarySupport)
+    have grantedReached : granted ∈ ((runtime setup).runInteractionPlan leaks
+        menu.uniformResponses network (rosterPlanPrefix setup rosters event.val ++
+          [.grant event]) (ReactiveApplication.Execution.initial (application setup leaks)
+            state)).support := by
+      rw [(runtime setup).runInteractionPlan_append, FinDist.support_bind]
+      refine Set.mem_iUnion₂.mpr ⟨boundary, reachedBoundary, ?_⟩
+      change granted ∈ (((runtime setup).interactionStep leaks menu.uniformResponses network
+        (.grant event) boundary).bind fun next => FinDist.pure next).support
+      rw [grantLaw, FinDist.pure_bind]
+      exact FinDist.mem_support_pure.mpr rfl
+    obtain ⟨initial, _, rfl⟩ := FinDist.support_map .. ▸ stateSupport
+    exact ((runtime setup).resolutionEvidenceOrigins_run leaks bounds menu.uniformResponses
+      (fun owner past view response supported => sourceServiceMenu_in_compiled setup leaks bounds
+        rosters owner past view ((menu.uniformResponses_support owner past view response).mp
+          supported)) network _ _ granted
+      (State.initial_bindingInvariant (graph := graph setup) (setup.eventInputs initial))
+      ((application setup leaks).initial_inputRecall _) MessageNetwork.Satisfies.empty
+      grantedReached).2.2
   rw [grantLaw, FinDist.pure_bind] at phase
   have sampling := activated
   rw [ReactiveApplication.Execution.activation_samples, FinDist.support_map] at sampling
@@ -121,7 +144,7 @@ theorem sourceService_decision_boundary
     ⟨supported, effective, lift, commutes, transport⟩,
     granted, prior, sample, grantedBoundary,
     grant, phase, activated, same.symm, config, publicEq,
-    config.symm ▸ grantedBoundary.toSourceCheckpoint, position⟩
+    config.symm ▸ grantedBoundary.toSourceCheckpoint, position, grantedOrigins⟩
 
 /-- Binding resources hold at every legal retained information site, including
 sites reached only after deviations in an implementation. Before submission,
@@ -246,7 +269,7 @@ theorem sourceService_bindingRequired_iff_no_later_owner
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨selectedEvent, slot, initial, _, _, Γ, names, program, programProfile, source,
       refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
-      _, sampled, _, publicEq, _, clock⟩ :=
+      _, sampled, _, publicEq, _, clock, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network (failureProfile setup.program) owner control trace active
   have eventEq : selectedEvent = event := Option.some.inj

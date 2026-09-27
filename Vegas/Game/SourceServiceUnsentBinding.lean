@@ -42,7 +42,7 @@ theorem recall_count {who : Player} {remaining : Nat}
       rosterOffset service.setup service.rosters who phase.event +
         ((service.rosters phase.event).take phase.slot).count who := by
   obtain ⟨event, slot, _, selected, _, _, _, _, _, _, _, _, _, _, _, _, granted, prior, sample,
-      boundary, grant, reached, _, sampled, _, publicEq, _, position⟩ :=
+      boundary, grant, reached, _, sampled, _, publicEq, _, position, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network
       (failureProfile service.setup.program) who ⟨remaining, some who, execution⟩ trace rfl

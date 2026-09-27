@@ -74,7 +74,7 @@ theorem active_history_stopped_coupling
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨event, slot, initial, selected, _, Γ, names, sourceProgram, sourceProfile, config,
       refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
-      activated, sampled, configEq, publicEq, _, currentPosition⟩ :=
+      activated, sampled, configEq, publicEq, _, currentPosition, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network (failureProfile setup.program) owner ⟨remaining, some owner, execution⟩ trace rfl
   let visited := (rosters event).take slot

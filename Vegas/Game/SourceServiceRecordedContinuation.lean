@@ -63,6 +63,74 @@ theorem sourceServiceTimedPolicy_recorded_transport
     simp only [sourceServiceTimedPolicy, grant, dite_eq_right different] at supported
     exact (application setup leaks).replayPolicy_cases _ _ response supported
 
+/-- From any execution after the owner's recorded submission, whose envelope
+is pending and the only unpublished one, the rest of the phase has the exact
+application settlement law: the envelope's handling, followed by the clock
+commands. -/
+theorem sourceService_recorded_plan_application_law
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (timing : ∀ event who, (graph setup).actor? event = some who →
+      FinDist (Fin ((rosters event).count who)))
+    (profile : BehavioralProfile setup.program)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (event : (graph setup).EventId) (owner : Player)
+    (owned : (graph setup).actor? event = some owner)
+    (execution : (application setup leaks).Execution)
+    (granted : execution.application.serviceGrant = some event)
+    (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true)
+    (message : Message Player (WitnessedPacket (graph setup)))
+    (authored : message.sender = owner)
+    (addressed : message.payload.call.event? (graph setup) = some event)
+    (packets : execution.network.Satisfies fun candidate =>
+      candidate.id ∈ execution.network.ledger.map Message.id ∨ candidate = message)
+    (pending : message ∈ execution.network.pending)
+    (unpublished : message.id ∉ execution.network.ledger.map Message.id)
+    (visits : List Player) (ticks : Nat) :
+    let app := application setup leaks
+    let players := sourceServiceTimedPolicy setup leaks rosters timing profile
+    let ending := List.replicate ticks .tick ++ [.expire event]
+    ((runtime setup).runInteractionPlan leaks players network
+      (visits.map ServiceInstruction.player ++ [.includeLatest event owner] ++ ending)
+      execution).map ReactiveApplication.Execution.application =
+      ((runtime setup).runInteractionPlan leaks players network ending
+        { execution with
+          application := (app.handle execution.application message).getD
+            execution.application }).map ReactiveApplication.Execution.application := by
+  intro app players ending
+  have settled := (runtime setup).replay_window_settlement leaks players network owner execution
+    (fun current actor action same recalled supported =>
+      sourceServiceTimedPolicy_recorded_transport setup leaks rosters timing profile event owner
+        owned execution granted recorded current same recalled actor action supported)
+    event message authored addressed packets pending unpublished visits
+  have applicationLaw := congrArg (FinDist.map Prod.fst) settled
+  simp only [FinDist.map_comp, Function.comp_def, FinDist.map_pure] at applicationLaw
+  have passive : ∀ instruction ∈ ending, instruction ≠ .wire ∧
+      (∀ actor, instruction ≠ .player actor) ∧
+      ∀ selected actor, instruction ≠ .includeLatest selected actor := by
+    intro instruction member
+    simp only [ending, List.mem_append, List.mem_replicate, List.mem_singleton] at member
+    rcases member with ⟨_, rfl⟩ | rfl <;> simp
+  rw [runInteractionPlan_append, FinDist.map_bind]
+  calc
+    _ = ((runtime setup).runInteractionPlan leaks players network
+        (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) execution).bind
+          (fun _ => ((runtime setup).runInteractionPlan leaks players network ending
+            { execution with
+              application := (app.handle execution.application message).getD
+                execution.application }).map ReactiveApplication.Execution.application) := by
+      apply FinDist.bind_congr
+      intro final reached
+      have present : final.application ∈ (((runtime setup).runInteractionPlan leaks players
+          network (visits.map ServiceInstruction.player ++ [.includeLatest event owner])
+          execution).map ReactiveApplication.Execution.application).support :=
+        FinDist.support_map .. ▸ ⟨final, reached, rfl⟩
+      rw [applicationLaw, FinDist.mem_support_pure] at present
+      exact (runtime setup).application_service_law leaks players network ending passive _ _
+        present
+    _ = _ := FinDist.bind_const _ _
+
 /-- Any transport response after a known current submission leaves the exact
 application settlement law unchanged, including all later clock commands. -/
 theorem sourceService_recorded_response_application_law
@@ -102,8 +170,7 @@ theorem sourceService_recorded_response_application_law
   let after := execution.respond app who response
   have unchanged := (runtime setup).replay_response_preserves leaks _ execution packets who
     response transport
-  have respondApplication : (execution.respond app who response).application =
-      execution.application := unchanged.1
+  have respondApplication : after.application = execution.application := unchanged.1
   have grant : after.application.serviceGrant = some event := by
     rw [unchanged.1]
     exact granted
@@ -118,37 +185,19 @@ theorem sourceService_recorded_response_application_law
   have unspent : message.id ∉ after.network.ledger.map Message.id := by
     rw [unchanged.2.1]
     exact unpublished
-  have settled := (runtime setup).replay_window_settlement leaks players network owner after
-    (fun current actor action same recalled supported =>
-      sourceServiceTimedPolicy_recorded_transport setup leaks rosters timing profile event owner
-        owned after grant still current same recalled actor action supported)
-    event message authored addressed safe remains unspent visits
-  have applicationLaw := congrArg (FinDist.map Prod.fst) settled
-  simp only [FinDist.map_comp, Function.comp_def, FinDist.map_pure] at applicationLaw
+  have law := sourceService_recorded_plan_application_law setup leaks rosters timing profile
+    network event owner owned after grant still message authored addressed safe remains unspent
+    visits ticks
+  dsimp only at law
+  rw [law]
   have passive : ∀ instruction ∈ ending, instruction ≠ .wire ∧
       (∀ actor, instruction ≠ .player actor) ∧
       ∀ selected actor, instruction ≠ .includeLatest selected actor := by
     intro instruction member
     simp only [ending, List.mem_append, List.mem_replicate, List.mem_singleton] at member
     rcases member with ⟨_, rfl⟩ | rfl <;> simp
-  rw [runInteractionPlan_append, FinDist.map_bind]
-  calc
-    _ = ((runtime setup).runInteractionPlan leaks players network
-        (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) after).bind
-          (fun _ => ((runtime setup).runInteractionPlan leaks players network ending
-            { execution with
-              application := (app.handle execution.application message).getD
-                execution.application }).map ReactiveApplication.Execution.application) := by
-      apply FinDist.bind_congr
-      intro final reached
-      have present : final.application ∈ (((runtime setup).runInteractionPlan leaks players
-          network (visits.map ServiceInstruction.player ++ [.includeLatest event owner])
-          after).map ReactiveApplication.Execution.application).support :=
-        FinDist.support_map .. ▸ ⟨final, reached, rfl⟩
-      rw [applicationLaw, FinDist.mem_support_pure] at present
-      exact (runtime setup).application_service_law leaks players network ending passive _ _
-        (by simpa only [after, respondApplication] using present)
-    _ = _ := FinDist.bind_const _ _
+  exact (runtime setup).application_service_law leaks players network ending passive _ _
+    (by simp only [respondApplication]; rfl)
 
 /-- A binding output has the binding node code. -/
 theorem binding_nodeView (setup : Setup (Player := Player) (L := L))

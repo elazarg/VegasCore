@@ -4,6 +4,7 @@ import Vegas.Pending.ReactiveCompiledResolution
 import Vegas.Pending.ReactiveGuardedResponse
 import Vegas.Pending.ReactiveOpeningWindow
 import Vegas.Pending.ReactiveAssociationPersistence
+import Vegas.Pending.ReactiveServiceRecall
 import Vegas.EventGraph.ResolutionProvenance
 import Vegas.EventGraph.ResolutionFields
 import Interaction.ReactiveMenuInvariant
@@ -337,6 +338,37 @@ theorem resolutionEvidenceOrigins_environment
       obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
       obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
       exact prior
+
+/-- Every lawful execution of a service plan keeps the binding invariant, input
+recall and authentic resolution origins. -/
+theorem resolutionEvidenceOrigins_run (bounds : MessageBounds graph)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (lawful : ∀ who past view response, response ∈ (players who past view).support →
+      response ∈ bounds.compiledActions runtime leaks who past view)
+    (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
+    (initial final : (runtime.reactiveApplication leaks).Execution)
+    (valid : initial.application.BindingInvariant)
+    (recalled : initial.InputRecall (runtime.reactiveApplication leaks))
+    (origin : runtime.ResolutionEvidenceOrigins leaks initial)
+    (reached : final ∈ (runtime.runInteractionPlan leaks players network plan initial).support) :
+    final.application.BindingInvariant ∧ final.InputRecall (runtime.reactiveApplication leaks) ∧
+      runtime.ResolutionEvidenceOrigins leaks final := by
+  let app := runtime.reactiveApplication leaks
+  have invariant : app.PolicyInvariant players (fun execution =>
+      execution.application.BindingInvariant ∧ execution.InputRecall app ∧
+        runtime.ResolutionEvidenceOrigins leaks execution) := {
+    respond := fun execution who action valid member =>
+      ⟨(runtime.reactiveBindingInvariant leaks).respond execution who action valid.1,
+        app.respond_inputRecall execution who action valid.2.1,
+        runtime.resolutionEvidenceOrigins_respond leaks bounds execution valid.2.1 valid.1
+          valid.2.2 who action (lawful who _ _ action member)⟩
+    environment := fun execution next command valid reached =>
+      ⟨(runtime.reactiveBindingInvariant leaks).environmentStep execution next command
+        valid.1 reached, app.environment_inputRecall execution next command valid.2.1 reached,
+        runtime.resolutionEvidenceOrigins_environment leaks execution next valid.1 valid.2.2
+          command reached⟩ }
+  exact runtime.runInteractionPlan_preserves leaks players network _ invariant plan initial final
+    ⟨valid, recalled, origin⟩ reached
 
 /-- Every legal prefix of any sub-menu of the compiled responses has authentic
 resolution origins. This ranges over all policies and scheduler behavior. -/
