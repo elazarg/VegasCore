@@ -21,7 +21,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 omit [Fintype Player] in
-private theorem frame_recall_length
+theorem frame_recall_length
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (memory : BindingMemory (runtime setup) leaks) (owner : Player)
@@ -32,7 +32,7 @@ private theorem frame_recall_length
   exact Nat.min_self _
 
 omit [Fintype Player] in
-private theorem omission_plan_persistent
+theorem omission_plan_persistent
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (players : Player → (application setup leaks).Policy)

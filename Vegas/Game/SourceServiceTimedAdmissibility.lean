@@ -7,8 +7,9 @@ import GameTheoryExtensions.Protocol.TremblingPlans
 
 /-! # Legal shared timing at full-source decisions
 
-At a final unsent binding visit, earlier scheduled binding slots have zero
+At every unsent binding visit, earlier scheduled binding slots have zero
 posterior probability: each would have submitted at its recorded legal input.
+At the final visit only the current slot remains.
 This uses actual own recall and original source-policy admission, rather than
 requiring a normalized policy to be fully mixed in the original source game.
 -/
@@ -166,6 +167,101 @@ private theorem recalled_binding_not_selected
       rw [unsent] at contradiction
       cases contradiction
 
+/-- At an actual unsent binding decision, every timing slot in the posterior
+is current or future. An earlier slot would have submitted a binding, which
+would still be recorded in the player's own recall. -/
+theorem sourceServiceTimedMixture_binding_future
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
+    (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (rosters : (graph setup).EventId → List Player)
+    (opportunities : ∀ event owner payload,
+      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (profile : BehavioralProfile setup.program)
+    (permitted : ∀ who, (profile who).Admitted setup.program
+      (CommitmentInterface.values setup.program))
+    (who : Player) (control : (application setup leaks).Control)
+    (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+        (some control)) (active : control.actor = some who)
+    (event : (graph setup).EventId)
+    (granted : control.execution.application.serviceGrant = some event)
+    (owned : (graph setup).actor? event = some who)
+    (payload : L.Ty) (binding : (graph setup).outputLayout event = .binding who payload)
+    (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
+    (timing : FinDist (Fin ((rosters event).count who)))
+    (witness : Fin ((rosters event).count who)) (positive : witness ∈ timing.support)
+    (future : (control.execution.recall who).length ≤
+      rosterOffset setup rosters who event + witness.val) :
+    ∀ selected ∈ (((application setup leaks).policyMixture timing
+      (sourceServiceTimedFamily setup leaks rosters profile who event)).posterior
+        (control.execution.recall who)).support,
+      (control.execution.recall who).length ≤
+        rosterOffset setup rosters who event + selected.val := by
+  let app := application setup leaks
+  let family := sourceServiceTimedFamily setup leaks rosters profile who event
+  let offset := rosterOffset setup rosters who event
+  have witnessSupported := sourceServiceTimedPolicy_future_supported setup leaks bounds values
+    capacity rosters opportunities network profile who control trace active event granted owned
+      unsent timing witness positive future
+  obtain ⟨past, suffix, recalled, count, legal⟩ := sourceService_unsubmitted_recall setup leaks
+    bounds values capacity rosters opportunities network profile who control trace active
+      event granted owned unsent
+  intro selected selectedSupported
+  by_contra notFuture
+  have passed : offset + selected.val < (control.execution.recall who).length :=
+    Nat.lt_of_not_ge notFuture
+  have inside : selected.val < suffix.length := by
+    have lengths := congrArg List.length recalled
+    simp only [List.length_append, count] at lengths
+    dsimp only [offset] at passed
+    omega
+  let before := suffix.take selected.val
+  let entry := suffix[selected.val]
+  let after := suffix.drop (selected.val + 1)
+  have split : suffix = before ++ entry :: after := by
+    have actual := List.take_append_drop selected.val suffix
+    rw [List.drop_eq_getElem_cons inside] at actual
+    exact actual.symm
+  have pastLength : (past ++ before).length = offset + selected.val := by
+    simp only [List.length_append, count, before, List.length_take,
+      Nat.min_eq_left inside.le, offset]
+  have afterSelected : selected ∈ ((app.policyMixture timing family).posterior
+      ((past ++ before) ++ [entry])).support := by
+    apply posterior_prefix app timing family _ after selected
+    simpa only [recalled, split, List.append_assoc, List.singleton_append] using selectedSupported
+  have beforeWitness : witness ∈ ((app.policyMixture timing family).posterior
+      (past ++ before)).support := by
+    apply posterior_prefix app timing family _ (entry :: after) witness
+    simpa only [recalled, split, List.append_assoc] using witnessSupported
+  have waiting : family witness (past ++ before) entry.beforeView =
+      app.replayPolicy (past ++ before) entry.beforeView := by
+    have unused : some (offset + witness.val) ≠ some (past ++ before).length := by
+      rw [pastLength]
+      intro equal
+      have equal := Option.some.inj equal
+      change (control.execution.recall who).length ≤ offset + witness.val at future
+      omega
+    exact ite_eq_right unused
+  have possible : entry.action ∈ ((app.policyMixture timing family).policy
+      (past ++ before) entry.beforeView).support := by
+    apply app.policyMixture_action_support timing family _ _ witness _ beforeWitness
+    rw [waiting]
+    exact (legal before entry after split).1
+  have selectedAction := posterior_action app timing family (past ++ before) entry selected
+    possible afterSelected
+  have opportunity : entry.action ∈ (sourceServiceOpportunity setup leaks profile who event
+      (past ++ before) entry.beforeView).support := by
+    simpa only [family, sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
+      Option.map_some, pastLength, offset, ↓reduceIte] using selectedAction
+  exact recalled_binding_not_selected setup leaks bounds values initialValues capacity rosters
+    opportunities network profile permitted who control trace active event owned payload binding
+    unsent (past ++ before) entry after (by rw [recalled, split, List.append_assoc])
+    (legal before entry after split).2 opportunity
+
 /-- At the actual final unsent binding opportunity, conditioning the shared
 timing lottery leaves only the current slot. The complete physical response
 law is exactly the existing source opportunity law. -/
@@ -209,62 +305,17 @@ theorem sourceServiceTimedMixture_binding_last
   have currentTime : offset + current.val = (control.execution.recall who).length := by
     dsimp only [offset, current]
     omega
-  have currentSupported := sourceServiceTimedPolicy_future_supported setup leaks bounds values
-    capacity rosters opportunities network profile who control trace active event granted owned
-      unsent timing current (full current) currentTime.ge
-  obtain ⟨past, suffix, recalled, count, legal⟩ := sourceService_unsubmitted_recall setup leaks
-    bounds values capacity rosters opportunities network profile who control trace active
-      event granted owned unsent
+  have future := sourceServiceTimedMixture_binding_future setup leaks bounds values initialValues
+    capacity rosters opportunities network profile permitted who control trace active event granted
+      owned payload binding unsent timing current (full current) currentTime.ge
   have selectedNow : ∀ selected ∈ ((app.policyMixture timing family).posterior
       (control.execution.recall who)).support,
       offset + selected.val = (control.execution.recall who).length := by
-    intro selected selectedSupported
-    by_contra different
-    have inside : selected.val < suffix.length := by
-      have lengths := congrArg List.length recalled
-      simp only [List.length_append, count] at lengths
-      have bound := selected.isLt
-      dsimp only [offset] at different
-      omega
-    let before := suffix.take selected.val
-    let entry := suffix[selected.val]
-    let after := suffix.drop (selected.val + 1)
-    have split : suffix = before ++ entry :: after := by
-      have actual := List.take_append_drop selected.val suffix
-      rw [List.drop_eq_getElem_cons inside] at actual
-      exact actual.symm
-    have pastLength : (past ++ before).length = offset + selected.val := by
-      simp only [List.length_append, count, before, List.length_take,
-        Nat.min_eq_left inside.le, offset]
-    have afterSelected : selected ∈ ((app.policyMixture timing family).posterior
-        ((past ++ before) ++ [entry])).support := by
-      apply posterior_prefix app timing family _ after selected
-      simpa only [recalled, split, List.append_assoc, List.singleton_append] using selectedSupported
-    have beforeCurrent : current ∈ ((app.policyMixture timing family).posterior
-        (past ++ before)).support := by
-      apply posterior_prefix app timing family _ (entry :: after) current
-      simpa only [recalled, split, List.append_assoc] using currentSupported
-    have waiting : family current (past ++ before) entry.beforeView =
-        app.replayPolicy (past ++ before) entry.beforeView := by
-      have unused : some (offset + current.val) ≠ some (past ++ before).length := by
-        rw [currentTime, pastLength]
-        exact fun equal => different (Option.some.inj equal).symm
-      exact ite_eq_right unused
-    have possible : entry.action ∈ ((app.policyMixture timing family).policy
-        (past ++ before) entry.beforeView).support := by
-      apply app.policyMixture_action_support timing family _ _ current _ beforeCurrent
-      rw [waiting]
-      exact (legal before entry after split).1
-    have selectedAction := posterior_action app timing family (past ++ before) entry selected
-      possible afterSelected
-    have opportunity : entry.action ∈ (sourceServiceOpportunity setup leaks profile who event
-        (past ++ before) entry.beforeView).support := by
-      simpa only [family, sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
-        Option.map_some, pastLength, offset, ↓reduceIte] using selectedAction
-    exact recalled_binding_not_selected setup leaks bounds values initialValues capacity rosters
-      opportunities network profile permitted who control trace active event owned payload binding
-      unsent (past ++ before) entry after (by rw [recalled, split, List.append_assoc])
-      (legal before entry after split).2 opportunity
+    intro selected supported
+    have lower := future selected supported
+    have upper := selected.isLt
+    dsimp only [offset] at currentTime ⊢
+    omega
   rw [app.policyMixture_policy]
   trans ((app.policyMixture timing family).posterior (control.execution.recall who)).bind
     (fun _ => sourceServiceOpportunity setup leaks profile who event (control.execution.recall who)

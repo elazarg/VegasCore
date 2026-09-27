@@ -28,6 +28,7 @@ import Vegas.Game.SourceServiceBindingPhase
 import Vegas.Game.SourceServiceBindingExecution
 import Vegas.Game.SourceServiceTimedPolicy
 import Vegas.Game.SourceServiceTimedBinding
+import Vegas.Game.SourceServiceActiveBindingLaw
 import Vegas.Game.SourceServiceTimedDisclosure
 import Vegas.Game.SourceServiceTimedSample
 import Vegas.Game.SourceServiceTimedCheckpoint
@@ -77,6 +78,12 @@ import Vegas.Game.SourceServiceEventRepair
 import Vegas.Game.SourceServiceRemainingRepair
 import Vegas.Game.SourceServiceActiveResolutionRepair
 import Vegas.Game.SourceServiceActiveOffTurnRepair
+import Vegas.Game.SourceServiceActiveBlockRepair
+import Vegas.Game.SourceServiceActiveRepeatedBindingRepair
+import Vegas.Game.SourceServiceActiveRepair
+import Vegas.Game.SourceServiceEvaluatorRepair
+import Vegas.Game.SourceServiceContinuationComparison
+import Vegas.Game.SourceServiceRestrictionExtension
 import Vegas.Game.SourceServiceSubmittedBinding
 import Vegas.Game.SourceServiceRepeatedWindow
 import Vegas.Game.SourceServiceImplementationSegment

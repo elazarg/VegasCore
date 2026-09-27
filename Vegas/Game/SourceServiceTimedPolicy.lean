@@ -219,6 +219,62 @@ theorem sourceServiceTimedPolicy_phase_law
   · exact sourceServiceTimedFamily_execution setup leaks rosters profile owner event
       (timing event owner owned) (fun _ => app.replayPolicy) network phase execution before
 
+/-- The actual continuation from an active owner decision is the posterior
+mixture of scheduled continuations, retaining the already sampled input. -/
+theorem sourceServiceTimedPolicy_active_phase_law
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (timing : ∀ event who, (graph setup).actor? event = some who →
+      FinDist (Fin ((rosters event).count who)))
+    (profile : BehavioralProfile setup.program) (event : (graph setup).EventId) (owner : Player)
+    (owned : (graph setup).actor? event = some owner)
+    (network : (runtime setup).NetworkPolicy leaks) (remaining : List Player) (ticks : Nat)
+    (execution : (application setup leaks).Execution)
+    (granted : execution.application.serviceGrant = some event) :
+    let app := application setup leaks
+    let players := sourceServiceTimedPolicy setup leaks rosters timing profile
+    let family := sourceServiceTimedFamily setup leaks rosters profile owner event
+    let phase := remaining.map ServiceInstruction.player ++
+      (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
+    (app.invoke players owner execution).bind
+      ((runtime setup).runInteractionPlan leaks players network phase) =
+      ((app.policyMixture (timing event owner owned) family).posterior
+        (execution.recall owner)).bind fun slot =>
+          let scheduled := Function.update (fun _ => app.replayPolicy) owner (family slot)
+          (app.invoke scheduled owner execution).bind
+            ((runtime setup).runInteractionPlan leaks scheduled network phase) := by
+  intro app players family phase
+  let mixture := app.policyMixture (timing event owner owned) family
+  let mixed := Function.update (fun _ => app.replayPolicy) owner mixture.policy
+  trans (app.invoke mixed owner execution).bind
+    ((runtime setup).runInteractionPlan leaks mixed network phase)
+  · simp only [ReactiveApplication.invoke, FinDist.bind_map]
+    have responseLaw : players owner (execution.recall owner) (execution.observe app owner) =
+        mixed owner (execution.recall owner) (execution.observe app owner) := by
+      simp only [players, sourceServiceTimedPolicy, mixed, Function.update_self]
+      have grant : (execution.observe app owner).application.publicView.serviceGrant =
+          some event := granted
+      simp only [grant, dite_eq_left owned]
+      rfl
+    rw [responseLaw]
+    apply FinDist.bind_congr
+    intro response _
+    have currentGrant : (execution.respond app owner response).application.serviceGrant =
+        some event := (congrArg PublicView.serviceGrant
+          ((runtime setup).reactive_respond_application leaks execution owner response).2).trans
+            granted
+    dsimp only [phase]
+    rw [runInteractionPlan_append, runInteractionPlan_append,
+      sourceServiceTimedPolicy_window_eq setup leaks rosters timing profile event owner owned
+        network remaining _ currentGrant]
+    apply FinDist.bind_congr
+    intro current _
+    exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
+  · exact ((runtime setup).invoke_runInteractionPlan_policyMixture leaks
+      (timing event owner owned) family owner (fun _ => app.replayPolicy) network phase
+      execution).symm
+
 /-- A pure final timing slot is the checked limiting source compiler at
 every input, including native inputs that are unreachable in its own law. -/
 theorem sourceServiceTimedPolicy_final

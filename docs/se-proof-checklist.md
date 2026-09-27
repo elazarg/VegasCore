@@ -87,22 +87,26 @@ percentage estimate.
   [SourceServiceRemainingRepair.lean](../Vegas/Game/SourceServiceRemainingRepair.lean).
   The arbitrary active-decision entry is the separate obligation R2.
 
-- [ ] **R2. One legal repair for every whole native deviation.** Start at any
+- [x] **R2. One legal repair for every whole native deviation.** Start at any
   retained information site, including intermediate visits. Couple the entire
   native continuation to one legal behavioral policy shared by all hidden
   histories at that site, against unchanged opponents. Derive the starting
   invariants from actual histories and identify both laws with the standard
-  continuation evaluators. Event-boundary repair alone does not close this box.
+  continuation evaluators. Evidence: `active_evaluator_stopped_coupling` in
+  [SourceServiceEvaluatorRepair.lean](../Vegas/Game/SourceServiceEvaluatorRepair.lean).
+  The reference recall and repair policy are fixed before the hidden history;
+  both marginals are the actual `runBehavioralFrom` evaluator laws.
 
-- [ ] **R3. Actual conditional settlement dominance with one fixed deposit.**
+- [x] **R3. Actual conditional settlement dominance with one fixed deposit.**
   Instantiate the gain and collection bounds on the continuations from R2,
   uniformly over paired profiles and finite beliefs. Infer a sufficient finite
   deposit from the declared utility bounds and conditional collection rate
   before choosing an equilibrium. Do not count a sunk fine twice or require
-  increasing punishment after a departure. The generic range/deposit inequality
-  is checked in
-  [SourceServiceRepairSettlement.lean](../Vegas/Game/SourceServiceRepairSettlement.lean);
-  its actual continuation instantiation is required to close this box.
+  increasing punishment after a departure. Evidence:
+  `sourceService_continuation_settlement_comparison` in
+  [SourceServiceContinuationComparison.lean](../Vegas/Game/SourceServiceContinuationComparison.lean).
+  It constructs one repair before quantifying over arbitrary finite beliefs and
+  instantiates the actual evaluator coupling and fixed deposit bound.
 
 - [ ] **R4. Permitted-to-full-runtime SE theorem.** Instantiate the existing
   restriction-extension theorem with R2–R3, supply rational consistent play at

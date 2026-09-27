@@ -82,6 +82,36 @@ theorem runInteractionPlan_policyMixture (runtime : EventGraphRuntime graph)
       rw [← app.environmentStep_recall execution current command reached]
       exact resumed current (command.actor? app)
 
+/-- At an already activated information site, disintegrate the current response
+and all later service steps using the posterior from actual own recall. The
+current passive observation is retained; it is not sampled again. -/
+theorem invoke_runInteractionPlan_policyMixture (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    {Index : Type} (initial : FinDist Index)
+    (policies : Index → (runtime.reactiveApplication leaks).Policy)
+    (who : Player) (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
+    (execution : (runtime.reactiveApplication leaks).Execution) :
+    let app := runtime.reactiveApplication leaks
+    let mixture := app.policyMixture initial policies
+    (mixture.posterior (execution.recall who)).bind (fun index =>
+      (app.invoke (Function.update players who (policies index)) who execution).bind
+        (runtime.runInteractionPlan leaks (Function.update players who (policies index))
+          network plan)) =
+      (app.invoke (Function.update players who mixture.policy) who execution).bind
+        (runtime.runInteractionPlan leaks (Function.update players who mixture.policy)
+          network plan) := by
+  intro app mixture
+  have split := mixture.response_disintegrate execution who (fun next index =>
+    runtime.runInteractionPlan leaks (Function.update players who (policies index))
+      network plan next)
+  simp only [mixture, app, ReactiveApplication.policyMixture, FinDist.bind_map] at split
+  simp only [ReactiveApplication.invoke, Function.update_self, FinDist.bind_map]
+  refine split.trans ?_
+  apply FinDist.bind_congr
+  intro response _
+  exact runtime.runInteractionPlan_policyMixture leaks initial policies who players network plan _
+
 /-- A planned response slot, or never selecting that response, is realized
 behaviorally in the existing runtime. The exact law includes all passive
 samples and intervening responses. The family is dormant before `offset`, so

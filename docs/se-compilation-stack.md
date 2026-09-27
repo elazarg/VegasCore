@@ -96,15 +96,18 @@ another actor has the grant. Complete stopped couplings also cover
 Each includes its real inclusion or sample, clock padding and expiry.
 The [remaining-event induction](../Vegas/Game/SourceServiceRemainingRepair.lean)
 composes these blocks through any complete-event suffix, preserving both
-actual marginal laws and one fixed repair implementation. Entry from an
-arbitrary active decision, followed by its standard continuation evaluator,
-remains to be proved.
+actual marginal laws and one fixed repair implementation. The
+[active-history coupling](../Vegas/Game/SourceServiceActiveRepair.lean) starts at
+any intermediate decision. The [evaluator theorem](../Vegas/Game/SourceServiceEvaluatorRepair.lean)
+identifies both marginals with the standard behavioral continuation evaluators,
+using one repair policy across all hidden histories at the information site.
 
 The [behavioral realization](../Vegas/Pending/ReactiveBindingRealization.lean)
 identifies the seeded repair runner with one legal behavioral continuation
 against the original target opponents. The seed depends only on starting own
 recall, so it is shared by every hidden history in the information set. The
-whole-program coupling must still supply the matching original marginal.
+whole-program coupling supplies the matching original marginal against unchanged
+opponents.
 
 The [combined audit](../Vegas/Pending/ReactiveServiceAudit.lean) charges once
 for sampled forbidden traffic or a public binding omission. Its source instance
@@ -117,10 +120,14 @@ assumed.
 The [settlement comparison](../Vegas/Game/SourceServiceRepairSettlement.lean)
 derives actual incremental collection from this coupling and the repaired
 traces' zero charge. Its range corollary fixes the deposit from all effective
-native-history payoff extrema, before any equilibrium is chosen. The remaining
-obligation is to construct the coupling for every whole native continuation and
-identify its marginals with the local strategic comparison. Utilities depend
-on initial types and public results; repaired future private values are excluded.
+native-history payoff extrema, before any equilibrium is chosen. The
+[conditional continuation comparison](../Vegas/Game/SourceServiceContinuationComparison.lean)
+instantiates that bound for every actual whole deviation and every finite
+belief. The [SE extension](../Vegas/Game/SourceServiceRestrictionExtension.lean)
+therefore extends every permitted-runtime SE to the effective native menu,
+including rational off-path play and the exact joint observation/realized-payoff
+law. The raw response-alias lift remains separate. Utilities depend on initial
+types and public results; repaired future private values are excluded.
 
 One deposit can cover a first departure and every subsequent plan: the bound
 uses the whole continuation's payoff range. After an unavoidable charge, the
