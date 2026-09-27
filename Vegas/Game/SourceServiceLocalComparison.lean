@@ -199,7 +199,10 @@ strategy is exactly that compilation. -/
 structure TimedApproximant (service : SourceServiceSpec Player L) where
   timing : ∀ event who, (graph service.setup).actor? event = some who →
     FinDist (Fin ((service.rosters event).count who))
+  timingFull : ∀ event who owned, (timing event who owned).FullSupport
   profile : BehavioralProfile service.setup.program
+  admitted : ∀ who, (profile who).Admitted service.setup.program
+    (CommitmentInterface.values service.setup.program)
   covered : ∀ who, service.menu.Admissible (initialLaw service.setup) service.planLength
     service.scheduler who
       (sourceServiceTimedPolicy service.setup service.leaks service.rosters timing profile who)
@@ -239,7 +242,9 @@ def ofSource (service : SourceServiceSpec Player L)
       service.values service.initialValues service.capacity service.rosters
       service.opportunities.binding service.network timing timingFull source full
   { timing := timing
+    timingFull := timingFull
     profile := normalized
+    admitted := normalized_sourceService_admitted service.setup original permitted
     covered := sourceServiceTimedPolicy_admissible service.setup service.leaks service.bounds
       service.values service.initialValues service.capacity service.rosters
       service.opportunities.binding service.network timing timingFull normalized

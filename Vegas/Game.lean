@@ -48,6 +48,7 @@ import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Game.SourceServiceForeignDisclosure
 import Vegas.Game.SourceServiceSiteKind
 import Vegas.Game.SourceServiceOwnerComparison
+import Vegas.Game.SourceServiceUnsentBinding
 import Vegas.Game.SourceServiceHarmlessContinuation
 import Vegas.Game.SourceServiceSampleComparison
 import Vegas.Game.SourceServiceRecordedContinuation
