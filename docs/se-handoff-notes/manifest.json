@@ -1,0 +1,19 @@
+{
+  "base": "c6fa4ca154f6f90c846552538a965620a5767cd5",
+  "branch": "spe-handoff-20260927",
+  "status": "Unfinished proof snapshot; not a verified build. See lane notes for per-file status.",
+  "files": {
+    "Interaction/ScheduledChoicePosterior.lean": "41017dd15f8b8ec40cf13f61c448c5ed4d4bfb9bf2af7df967f71028f0a977fc",
+    "Vegas/Game/SourceServiceBindingContinuation.lean": "cce48453735fb3c645ab014213202b42009bc06eb8c2721064a8cec8a9e2ebe1",
+    "Vegas/Game/SourceServiceDisclosureContinuation.lean": "b1a7e0dcf23975012cb6878468a843b983e56d3260b0ec1541818f32694eef59",
+    "Vegas/Game/SourceServiceHarmlessContinuation.lean": "5b028339aaa03f38dfc9d4d7efed785667a3fe16eb9d8c6f2a8bbd3b8184addd",
+    "Vegas/Game/SourceServiceRecordedContinuation.lean": "bbd50a22e364d83971a5f58424a9aa12330cf68d9d31a8fe6a8ddffe21abd118",
+    "Vegas/Game/SourceServiceSampleComparison.lean": "ea22eef43db084b8ae92a4136ae82cc12cf9342237b103368fb1ed8c3ba34d20",
+    "Vegas/Game/SourceServiceTimedReachability.lean": "d1d7dcb842b1f84deec722a3f06ad1464d96fdc1a91ba955b04f593b62fd023d",
+    "Vegas/Game/SourceServiceTimingPosterior.lean": "64b953c8f26d930c6b5dbcb5f4af7d16c86e3013ac7b787048208e480bd7557e",
+    "docs/se-handoff-notes/binding.md": "976b57edf189148c5128f255a3f3d06b048ad385ae1327a42f930927a51001cd",
+    "docs/se-handoff-notes/disclosure.md": "16ed70c9c2e5f8984fb67e0ca847679c3003aeb853bd0a43520bf69e9112f48b",
+    "docs/se-handoff-notes/harmless.md": "3ab3f6fdcc52ea72ba1e87e6b221b7add00c2ddbd2d3a5c28b05832141767e2e",
+    "docs/se-handoff-notes/diagnostics.zip": "d8a49f859cfb58340436be9eb0a3987811b435a5d16f4582a31c498e332602b1"
+  }
+}
