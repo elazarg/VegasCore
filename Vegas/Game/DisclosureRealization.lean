@@ -39,7 +39,7 @@ private theorem disclosure_continuation_entry {Γ : SourceCtx Player L} {O : Fin
 
 private def DisclosurePrefixRealizes {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) : Prop :=
-  ∀ (profile : BehavioralProfile program) (policy : BehavioralPolicy who program)
+  ∀ (profile continuation : BehavioralProfile program) (policy : BehavioralPolicy who program)
     (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
     (config : Config Player L Γ) (count : Nat) (state : ProtocolState program),
     state ∈ ((fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
@@ -47,8 +47,8 @@ private def DisclosurePrefixRealizes {Γ : SourceCtx Player L} {O : Finset VarId
         config.revelations remember))))^[count]
         (FinDist.pure (ProtocolState.entry program config))).support →
     (policy.disclosureMemory program config.registry config.revelations remember state).bind
-      (ProtocolState.continuationLaw program (Function.update profile who policy)) =
-      ProtocolState.continuationLaw program (Function.update profile who
+      (ProtocolState.continuationLaw program (Function.update continuation who policy)) =
+      ProtocolState.continuationLaw program (Function.update continuation who
         (policy.normalizeDisclosureFrom program config.registry config.revelations remember)) state
 
 private theorem disclosurePrefixRealizes_sample {Γ : SourceCtx Player L} {O : Finset VarId}
@@ -57,17 +57,17 @@ private theorem disclosurePrefixRealizes_sample {Γ : SourceCtx Player L} {O : F
     (next : SourceProgram Player L ((name, .publicData payload) :: Γ) O)
     (ih : DisclosurePrefixRealizes (who := who) next) :
     DisclosurePrefixRealizes (who := who) (.sample name fresh law next) := by
-  intro profile policy remember config count state supported
+  intro profile continuation policy remember config count state supported
   cases count with
   | zero =>
       have equal := FinDist.mem_support_pure.mp supported
       subst state
-      exact disclosure_continuation_entry _ profile policy remember config
+      exact disclosure_continuation_entry _ continuation policy remember config
   | succ count =>
       rw [ProtocolState.behavioralStatePrefix_sample] at supported
       obtain ⟨value, _, later⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
       obtain ⟨state, reached, rfl⟩ := FinDist.support_map .. ▸ later
-      have result := ih profile policy (fun view => remember (view.back false))
+      have result := ih profile continuation policy (fun view => remember (view.back false))
         (sampleSuccessor name config value) count state reached
       simpa only [BehavioralPolicy.disclosureMemory, Sum.elim_inr, FinDist.bind_map,
         BehavioralPolicy.normalizeDisclosureFrom, ProtocolState.continuationLaw,
@@ -79,12 +79,12 @@ private theorem disclosurePrefixRealizes_commit {Γ : SourceCtx Player L} {O : F
     (next : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O))
     (ih : DisclosurePrefixRealizes (who := who) next) :
     DisclosurePrefixRealizes (who := who) (.commit name owner fresh guard next) := by
-  intro profile policy remember config count state supported
+  intro profile continuation policy remember config count state supported
   cases count with
   | zero =>
       have equal := FinDist.mem_support_pure.mp supported
       subst state
-      exact disclosure_continuation_entry _ profile policy remember config
+      exact disclosure_continuation_entry _ continuation policy remember config
   | succ count =>
       rw [ProtocolState.behavioralStatePrefix_commit] at supported
       obtain ⟨binding, _, later⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
@@ -96,17 +96,18 @@ private theorem disclosurePrefixRealizes_commit {Γ : SourceCtx Player L} {O : F
               (view.back true)).condOnFibre Prod.fst
                 ((view.1.cells.get .here).getD .failure)).map Prod.snd
         else remember (view.back false)
-      have result := ih (afterCommit profile) policy.2 posterior
+      have result := ih (afterCommit profile) (afterCommit continuation) policy.2 posterior
         (commitSuccessor name guard config binding) count state (by
           simpa only [afterCommit_update, BehavioralPolicy.normalizeDisclosureFrom,
             commitSuccessor, posterior] using reached)
       change ((policy.2.disclosureMemory next _ _ posterior state).map Sum.inr).bind
-        (ProtocolState.continuationLaw _ (Function.update profile who policy)) = _
+        (ProtocolState.continuationLaw _ (Function.update continuation who policy)) = _
       rw [FinDist.bind_map]
       change (policy.2.disclosureMemory next _ _ posterior state).bind
-        (ProtocolState.continuationLaw next (afterCommit (Function.update profile who policy))) =
+        (ProtocolState.continuationLaw next
+          (afterCommit (Function.update continuation who policy))) =
           ProtocolState.continuationLaw next
-            (afterCommit (Function.update profile who
+            (afterCommit (Function.update continuation who
               (policy.normalizeDisclosureFrom _ config.registry config.revelations remember))) state
       rw [afterCommit_update, afterCommit_update]
       exact result
@@ -119,12 +120,12 @@ private theorem disclosurePrefixRealizes_reveal {Γ : SourceCtx Player L} {O : F
     (ih : DisclosurePrefixRealizes (who := who) next) :
     DisclosurePrefixRealizes (who := who)
       (.reveal published owner name fresh selected unresolved next) := by
-  intro profile policy remember config count state supported
+  intro profile continuation policy remember config count state supported
   cases count with
   | zero =>
       have equal := FinDist.mem_support_pure.mp supported
       subst state
-      exact disclosure_continuation_entry _ profile policy remember config
+      exact disclosure_continuation_entry _ continuation policy remember config
   | succ count =>
       rw [ProtocolState.behavioralStatePrefix_reveal] at supported
       obtain ⟨disclose, _, later⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
@@ -136,27 +137,30 @@ private theorem disclosurePrefixRealizes_reveal {Γ : SourceCtx Player L} {O : F
               remember (policy.1 own) (view.back true)).condOnFibre Prod.fst
                 (OwnAction.disclosure view.2.getLast?)).map Prod.snd
         else remember (view.back false)
-      have result := ih (afterReveal profile) policy.2 posterior
+      have result := ih (afterReveal profile) (afterReveal continuation) policy.2 posterior
         (revealSuccessor published selected config disclose) count state (by
           simpa only [afterReveal_update, BehavioralPolicy.normalizeDisclosureFrom,
             revealSuccessor, posterior] using reached)
       change ((policy.2.disclosureMemory next _ _ posterior state).map Sum.inr).bind
-        (ProtocolState.continuationLaw _ (Function.update profile who policy)) = _
+        (ProtocolState.continuationLaw _ (Function.update continuation who policy)) = _
       rw [FinDist.bind_map]
       change (policy.2.disclosureMemory next _ _ posterior state).bind
-        (ProtocolState.continuationLaw next (afterReveal (Function.update profile who policy))) =
+        (ProtocolState.continuationLaw next
+          (afterReveal (Function.update continuation who policy))) =
           ProtocolState.continuationLaw next
-            (afterReveal (Function.update profile who
+            (afterReveal (Function.update continuation who
               (policy.normalizeDisclosureFrom _ config.registry config.revelations remember))) state
       rw [afterReveal_update, afterReveal_update]
       exact result
 
-/-- The actual prefix's private-memory posterior reproduces its whole
-prescribed source continuation, with every hidden configuration retained. -/
+/-- The actual prefix's private-memory posterior reproduces its whole source
+continuation against arbitrary opponent continuation policies. The prefix
+uses the original profile; opponents may deviate throughout the suffix. -/
 theorem disclosure_prefix_continuation_realizes {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) →
-    (profile : BehavioralProfile program) → (policy : BehavioralPolicy who program) →
+    (profile continuation : BehavioralProfile program) →
+    (policy : BehavioralPolicy who program) →
     (remember : DecisionView who Γ → FinDist (List (OwnAction Player L))) →
     (config : Config Player L Γ) → (count : Nat) → (state : ProtocolState program) →
     state ∈ ((fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
@@ -164,28 +168,30 @@ theorem disclosure_prefix_continuation_realizes {who : Player} :
         config.revelations remember))))^[count]
         (FinDist.pure (ProtocolState.entry program config))).support →
     (policy.disclosureMemory program config.registry config.revelations remember state).bind
-      (ProtocolState.continuationLaw program (Function.update profile who policy)) =
-      ProtocolState.continuationLaw program (Function.update profile who
+      (ProtocolState.continuationLaw program (Function.update continuation who policy)) =
+      ProtocolState.continuationLaw program (Function.update continuation who
         (policy.normalizeDisclosureFrom program config.registry config.revelations remember)) state
-  | _, _, .ret result, profile, policy, remember, config, count, state, supported => by
+  | _, _, .ret result, profile, continuation, policy, remember, config,
+      count, state, supported => by
       have equal : state = config := by
         simpa only [ProtocolState.entry, ProtocolState.behavioralStatePrefix_ret,
           FinDist.mem_support_pure] using supported
       subst state
-      exact disclosure_continuation_entry (.ret result) profile policy remember config
-  | _, _, .sample name fresh law next, profile, policy, remember, config, count, state, supported =>
+      exact disclosure_continuation_entry (.ret result) continuation policy remember config
+  | _, _, .sample name fresh law next, profile, continuation, policy, remember, config,
+      count, state, supported =>
       disclosurePrefixRealizes_sample name fresh law next
         (disclosure_prefix_continuation_realizes next)
-        profile policy remember config count state supported
-  | _, _, .commit name owner fresh guard next, profile, policy, remember, config,
+        profile continuation policy remember config count state supported
+  | _, _, .commit name owner fresh guard next, profile, continuation, policy, remember, config,
       count, state, supported =>
       disclosurePrefixRealizes_commit name owner fresh guard next
-        (disclosure_prefix_continuation_realizes next) profile policy remember config
+        (disclosure_prefix_continuation_realizes next) profile continuation policy remember config
           count state supported
-  | _, _, .reveal published owner name fresh selected unresolved next, profile, policy,
-      remember, config, count, state, supported =>
+  | _, _, .reveal published owner name fresh selected unresolved next, profile, continuation,
+      policy, remember, config, count, state, supported =>
       disclosurePrefixRealizes_reveal published owner name fresh selected unresolved next
-        (disclosure_prefix_continuation_realizes next) profile policy remember config
+        (disclosure_prefix_continuation_realizes next) profile continuation policy remember config
           count state supported
 
 end Vegas.SourceProgram

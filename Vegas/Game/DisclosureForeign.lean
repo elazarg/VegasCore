@@ -1,0 +1,123 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.DisclosureComparison
+
+/-! # Other players' continuation comparisons under private alias erasure
+
+Only the normalized owner's private recall changes. Every other player's
+entire observation is retained, and the same owner-memory kernel restores
+both prescribed play and any whole-policy deviation by that other player.
+-/
+
+noncomputable section
+
+namespace Vegas.SourceProgram
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] [Fintype Player]
+  {L : IExpr} [IExpr.ResultTypes L] {owner who : Player}
+
+/-- Erasing one owner's private ineffective intentions preserves every other
+player's whole continuation comparison at the same original information
+view. The posterior is reconstructed from the actual initialized prefix. -/
+theorem normalized_disclosure_foreign_comparison {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (different : who ≠ owner)
+    (profile : BehavioralProfile program) (policy : BehavioralPolicy owner program)
+    (alternative : BehavioralPolicy who program)
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (initial : FinDist (Config Player L Γ))
+    (registryEq : ∀ config ∈ initial.support, config.registry = registry)
+    (revelationsEq : ∀ config ∈ initial.support, @config.revelations = @revelations)
+    (count : Nat) :
+    let original := initial.bind fun config =>
+      (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
+        (Function.update profile owner policy)))^[count]
+          (FinDist.pure (ProtocolState.entry program config))
+    let normalizedPolicy := policy.normalizeDisclosures program registry revelations
+    let normalized := initial.bind fun config =>
+      (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
+        (Function.update profile owner normalizedPolicy)))^[count]
+          (FinDist.pure (ProtocolState.entry program config))
+    let observe := ProtocolState.observe who program
+    ∀ view ∈ (normalized.map observe).support,
+      view ∈ (original.map observe).support ∧
+      ((normalized.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+        (Function.update profile owner normalizedPolicy))) =
+        (original.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+          (Function.update profile owner policy)) ∧
+      ((normalized.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+        (Function.update (Function.update profile owner normalizedPolicy) who alternative))) =
+        (original.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+          (Function.update (Function.update profile owner policy) who alternative)) := by
+  classical
+  dsimp only
+  intro view present
+  let original := initial.bind fun config =>
+    (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
+      (Function.update profile owner policy)))^[count]
+        (FinDist.pure (ProtocolState.entry program config))
+  let normalized := initial.bind fun config =>
+    (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
+      (Function.update profile owner (policy.normalizeDisclosures program registry revelations))))
+        ^[count] (FinDist.pure (ProtocolState.entry program config))
+  let observe := ProtocolState.observe who program
+  let kernel := policy.disclosureMemory program registry revelations
+    (fun view => FinDist.pure view.2)
+  have expanded : original = normalized.bind kernel := by
+    rw [FinDist.bind_bind]
+    apply FinDist.bind_congr
+    intro config supported
+    have equation := normalized_disclosure_prefix program profile policy config count
+    rw [registryEq config supported, revelationsEq config supported] at equation
+    exact equation
+  have observes : ∀ state ∈ normalized.support, ∀ old ∈ (kernel state).support,
+      observe old = observe state := by
+    intro state supported old member
+    obtain ⟨config, supportedConfig, reached⟩ :=
+      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    have retained := disclosure_prefix_retracts program profile policy
+      (fun view => FinDist.pure view.2) (fun view => view.2) config
+      (fun past chosen => FinDist.mem_support_pure.mp chosen) count
+    rw [registryEq config supportedConfig, revelationsEq config supportedConfig] at retained
+    rw [← retained state reached old member]
+    exact (ProtocolState.foreign_observe_normalizeDisclosureRecall who different program
+      (fun view => view.2) old).symm
+  have conditional : original.condOnFibre observe view =
+      (normalized.condOnFibre observe view).bind kernel := by
+    rw [expanded]
+    exact FinDist.conditional_bind_of_observation normalized kernel observe observe
+      observes view present
+  have realization (continuation : BehavioralProfile program) :
+      ((normalized.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+        (Function.update continuation owner
+          (policy.normalizeDisclosures program registry revelations)))) =
+      (original.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+        (Function.update continuation owner policy)) := by
+    rw [conditional, FinDist.bind_bind]
+    apply FinDist.bind_congr
+    intro state supported
+    obtain ⟨witness, member, equal⟩ := FinDist.support_map .. ▸ present
+    have meets : ∃ state ∈ observe ⁻¹' {view}, state ∈ normalized.support :=
+      ⟨witness, equal, member⟩
+    rw [FinDist.condOnFibre, dite_eq_left meets] at supported
+    obtain ⟨config, configSupport, reached⟩ := Set.mem_iUnion₂.mp
+      (FinDist.support_bind .. ▸ (FinDist.support_condOn _ _ _ supported).2)
+    have realizes := disclosure_prefix_continuation_realizes program profile continuation policy
+      (fun view => FinDist.pure view.2) config count
+    rw [registryEq config configSupport, revelationsEq config configSupport] at realizes
+    exact (realizes state reached).symm
+  refine ⟨?_, realization profile, ?_⟩
+  · obtain ⟨state, supported, observed⟩ := FinDist.support_map .. ▸ present
+    obtain ⟨old, member⟩ := (kernel state).support_nonempty
+    rw [FinDist.support_map]
+    refine ⟨old, ?_, (observes state supported old member).trans observed⟩
+    change old ∈ original.support
+    rw [expanded, FinDist.support_bind]
+    exact Set.mem_iUnion₂.mpr ⟨state, supported, member⟩
+  · have equation := realization (Function.update profile who alternative)
+    rw [Function.update_comm different] at equation
+    rw [Function.update_comm different] at equation
+    exact equation
+
+end Vegas.SourceProgram

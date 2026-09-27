@@ -290,6 +290,40 @@ def PublicPrefixCheckpoint (setup : Setup (Player := Player) (L := L))
           (revelations.reveal selected) (fun tail => outputs tail.succ) (offset + 1)
           count rest execution
 
+theorem PublicPrefixCheckpoint.checkpoint
+    {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {initial : State L setup.context} :
+    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
+      (program : SourceProgram Player L Γ openNames)
+      (refs : ContextRefs (graph setup).layout Γ) (revelations : Revelations Γ)
+      (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event))
+      (offset count : Nat) (state : ProtocolState program)
+      (execution : (application setup leaks).Execution),
+      PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
+        offset count state execution →
+      ∃ context : SourceCtx Player L, ∃ source : Config Player L context,
+        ∃ sourceRefs, PublicCheckpoint setup leaks initial source sourceRefs (offset + count)
+          execution := by
+  intro Γ openNames program refs revelations outputs offset count
+  induction count generalizing Γ openNames program refs revelations outputs offset with
+  | zero =>
+      intro state execution related
+      cases program <;> obtain ⟨source, _, _, checkpoint⟩ := related <;>
+        exact ⟨Γ, source, refs, checkpoint⟩
+  | succ count ih =>
+      intro state execution related
+      cases program with
+      | ret => exact related.elim
+      | sample => exact related.elim
+      | commit => exact related.elim
+      | reveal published owner name fresh selected unresolved next =>
+          cases state with
+          | inl source => exact related.elim
+          | inr state =>
+              simpa only [Nat.add_assoc, Nat.add_comm 1 count] using
+                ih next _ _ _ (offset + 1) state execution related
+
 /-- Every operationally related prefix decodes to its complete existing source
 state. In particular the partial decoder never fails on these prefixes. -/
 theorem PublicPrefixCheckpoint.decode

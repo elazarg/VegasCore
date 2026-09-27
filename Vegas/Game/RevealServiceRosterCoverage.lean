@@ -59,8 +59,12 @@ theorem roster_owner_coverage
       (visits.map ServiceInstruction.player) initial).support)
     (sample : Finset (MessageId Player))
     (choices : FinDist (Option (Fin ((rosters event).count owner)))) (full : choices.FullSupport)
-    (available : (runtime setup).windowOpening leaks event candidate raw ∈
-      (bounds.rawMenu (runtime setup) leaks).actions owner (current.recall owner)
+    (available : rosterFresh? setup leaks rosters owner (current.recall owner)
+        ((current.sampledActivation (application setup leaks) owner sample).observe
+          (application setup leaks) owner) =
+        some ((runtime setup).windowOpening leaks event candidate raw) →
+      (runtime setup).windowOpening leaks event candidate raw ∈
+      (bounds.menu (runtime setup) leaks).actions owner (current.recall owner)
         ((current.sampledActivation (application setup leaks) owner sample).observe
           (application setup leaks) owner))
     (action : (application setup leaks).Action)
@@ -132,7 +136,7 @@ theorem roster_owner_coverage
         then none else some packet) = some packet
       rw [ite_eq_right absent]
     apply Finset.mem_inter.mpr
-    refine ⟨Finset.mem_union_right _ ?_, available⟩
+    refine ⟨Finset.mem_union_right _ ?_, available fresh⟩
     change packet ∈
       (rosterFresh? setup leaks rosters owner (current.recall owner) view).toList.toFinset
     rw [fresh]

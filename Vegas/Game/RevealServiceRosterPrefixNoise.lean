@@ -38,30 +38,6 @@ private theorem map_noise_factor
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-private theorem plan_inputRecall
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (players : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (plan : List (ServiceInstruction (graph setup)))
-    (initial final : (application setup leaks).Execution)
-    (valid : initial.InputRecall (application setup leaks))
-    (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network plan
-      initial).support) : final.InputRecall (application setup leaks) := by
-  let app := application setup leaks
-  have preserved : app.PolicyInvariant players (fun execution => execution.InputRecall app) := {
-    respond := fun execution who action valid _ =>
-      app.respond_inputRecall execution who action valid
-    environment := app.environment_inputRecall }
-  induction plan generalizing initial with
-  | nil => cases FinDist.mem_support_pure.mp reached; exact valid
-  | cons instruction rest ih =>
-      obtain ⟨middle, stepped, later⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨command, _, dispatched⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ stepped)
-      exact ih middle (preserved.dispatch command initial middle valid dispatched) later
-
 private theorem entry_noise_factor
     {Seed : Type*} {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (focal : Player)
@@ -262,7 +238,8 @@ theorem run_roster_source_prefix_noise
           simp only [grantLaw, FinDist.map_pure, ← FinDist.map_eq_bind] at grantFactor
           have opportunityRecall (seed : Seed) :
               (opportunity seed).InputRecall (application setup leaks) :=
-            plan_inputRecall setup leaks players network [.grant event] (execution seed)
+            (runtime setup).runInteractionPlan_inputRecall leaks players network [.grant event]
+              (execution seed)
               (opportunity seed) (recalls seed) (by
                 rw [(opportunityFacts seed).2.2.2.2]; exact FinDist.mem_support_pure.mpr rfl)
           obtain ⟨nextNoise, nextFactor⟩ := roster_successor_observation_kernel setup leaks
@@ -379,7 +356,8 @@ theorem run_roster_source_prefix_noise
           have nextRecalls (point : NextSeed) :
               (nextExecution point).InputRecall (application setup leaks) := by
             obtain ⟨slot, _disclosure, reached⟩ := nextSupported point
-            exact plan_inputRecall setup leaks _ network phase (opportunity point.val.1)
+            exact (runtime setup).runInteractionPlan_inputRecall leaks _ network phase
+              (opportunity point.val.1)
               point.val.2.2 (opportunityRecall point.val.1) reached
           have nextAligned (point : NextSeed) : CompiledPolicySuffix setup.program wholeProfile next
               (afterReveal profile) tailRefs (nextSource point).revelations [] tailEmbedding

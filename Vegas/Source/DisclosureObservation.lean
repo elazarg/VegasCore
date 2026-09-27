@@ -200,6 +200,56 @@ def ProtocolView.normalizeDisclosureRecall {who : Player} :
         (fun later => .inr (normalizeDisclosureRecall next
           (publicationRecall published name owner payload recall) later))
 
+theorem ProtocolView.normalizeDisclosureRecall_actor {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) →
+    (recall : DecisionView who Γ → List (OwnAction Player L)) →
+    (view : ProtocolView who program) →
+    actor who program (normalizeDisclosureRecall program recall view) = actor who program view
+  | _, _, .ret _, _, _ => rfl
+  | _, _, .sample _ _ _ next, recall, view => by
+      cases view with
+      | inl _ => rfl
+      | inr later =>
+          exact normalizeDisclosureRecall_actor next (fun v => recall (v.back false)) later
+  | _, _, .commit (payload := payload) name owner _ _ next, recall, view => by
+      cases view with
+      | inl _ => rfl
+      | inr later =>
+          exact normalizeDisclosureRecall_actor next (bindingRecall name owner payload recall) later
+  | _, _, .reveal (payload := payload) published owner name _ _ _ next, recall, view => by
+      cases view with
+      | inl _ => rfl
+      | inr later =>
+          exact normalizeDisclosureRecall_actor next
+            (publicationRecall published name owner payload recall) later
+
+theorem ProtocolView.normalizeDisclosureRecall_position {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) →
+    (recall : DecisionView who Γ → List (OwnAction Player L)) →
+    (view : ProtocolView who program) →
+    position who program (normalizeDisclosureRecall program recall view) = position who program view
+  | _, _, .ret _, _, _ => rfl
+  | _, _, .sample _ _ _ next, recall, view => by
+      cases view with
+      | inl _ => rfl
+      | inr later =>
+          exact congrArg (· + 1)
+            (normalizeDisclosureRecall_position next (fun v => recall (v.back false)) later)
+  | _, _, .commit (payload := payload) name owner _ _ next, recall, view => by
+      cases view with
+      | inl _ => rfl
+      | inr later =>
+          exact congrArg (· + 1) (normalizeDisclosureRecall_position next
+            (bindingRecall name owner payload recall) later)
+  | _, _, .reveal (payload := payload) published owner name _ _ _ next, recall, view => by
+      cases view with
+      | inl _ => rfl
+      | inr later =>
+          exact congrArg (· + 1) (normalizeDisclosureRecall_position next
+            (publicationRecall published name owner payload recall) later)
+
 /-- The matching readout on existing source configurations changes exactly
 one owner's action history. It is an analysis map, not an execution state. -/
 def ProtocolState.normalizeDisclosureRecall {who : Player} :

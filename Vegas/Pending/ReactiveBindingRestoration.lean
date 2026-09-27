@@ -208,7 +208,6 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
     (serial : Nat) (opening : Option (Raw L))
     (originalFresh : left.application.candidates.lookup (who, .prepared serial) = .fresh)
     (actualFresh : right.application.candidates.lookup (who, .prepared serial) = .fresh)
-    (unusable : opening.bind (fun raw => raw.as? payload) = none)
     (ready : left.application.config.cut.Ready event)
     (timely : left.application.WithinDeadline runtime event)
     (vacant : left.application.accepted (.inr event) = none)
@@ -231,6 +230,11 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
   let app := runtime.reactiveApplication leaks
   let view := right.observe app who
   let originalCall : Submission graph := ⟨.commitment event (who, .prepared serial), opening⟩
+  let replacementOpening := match opening.bind (fun raw => raw.as? payload) with
+    | none => some (⟨payload, L.someValue payload⟩ : Raw L)
+    | some _ => opening
+  let repairedCall : Submission graph :=
+    ⟨.commitment event (who, .prepared serial), replacementOpening⟩
   let original : app.Action := ⟨some (.submit ⟨originalCall, .none⟩)⟩
   let repaired := memory.repairResponse runtime leaks who view original
   let remembered : BindingMemory runtime leaks :=
@@ -245,7 +249,7 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
     exact ready
   have input := memory.repairResponse_submit_input runtime leaks who left right lengths past
     observed network event payload outputEq codeEq node serial opening originalFresh actualFresh
-      unusable ready'
+      ready'
   change remembered.restoreRecall runtime leaks (after.recall who) = before.recall who ∧
     remembered.shadow.inputView runtime leaks (after.observe app who) = before.observe app who ∧
       (after.recall who).length = remembered.responses.length at input
@@ -254,10 +258,17 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
     rw [observed]
     exact originalFresh
   have localFresh : view.application.candidates (.prepared serial) = .fresh := actualFresh
-  have afterAction : repaired.1 =
-      runtime.reactiveBinding leaks who event payload (.success (L.someValue payload)) serial :=
-    memory.repairResponse_unusable runtime leaks who view event payload outputEq codeEq node
-      serial opening ownFresh actualFresh unusable
+  have afterAction : repaired.1 = ⟨some (.submit ⟨repairedCall, .none⟩)⟩ := by
+    cases decoded : opening.bind (fun raw => raw.as? payload) with
+    | none =>
+        rw [memory.repairResponse_unusable runtime leaks who view event payload outputEq codeEq
+          node serial opening ownFresh actualFresh decoded]
+        simp only [repairedCall, replacementOpening, decoded]
+        rfl
+    | some value =>
+        rw [memory.repairResponse_usable runtime leaks who view event payload outputEq codeEq
+          node serial opening ownFresh actualFresh value decoded]
+        simp only [repairedCall, replacementOpening, decoded]
   have networkEq : before.network = after.network := by
     dsimp only [before, after]
     rw [afterAction]
@@ -295,22 +306,20 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
     dsimp only [after]
     rw [afterAction]
     exact submitStep_commitment_fixed _ who event (.prepared serial)
-  have result : before.application.bindingResult (who, .prepared serial) payload = .failure := by
-    have decoded := runtime.submitted_bindingResult leaks left who event payload serial opening
-      originalFresh
-    rw [unusable] at decoded
-    exact decoded
+  have result : before.application.bindingResult (who, .prepared serial) payload =
+      (opening.bind fun raw => raw.as? payload).elim .failure PublicationResult.success :=
+    runtime.submitted_bindingResult leaks left who event payload serial opening originalFresh
   have actionMemory : remembered.shadow.actions event = some
       (cast (congrArg EventField.Action outputEq.symm)
         (before.application.bindingResult (who, .prepared serial) payload)) := by
     simp only [remembered, repaired, repairResponse, original, originalCall, node, ownFresh,
-      localFresh, unusable, and_self, ↓reduceIte, result, BindingShadow.rememberCompletion,
+      localFresh, and_self, ↓reduceIte, result, BindingShadow.rememberCompletion,
       Function.update_self]
   have valueMemory : remembered.shadow.values (.inr event) = some
       (cast (congrArg EventField.Value outputEq.symm)
         (before.application.bindingResult (who, .prepared serial) payload)) := by
     simp only [remembered, repaired, repairResponse, original, originalCall, node, ownFresh,
-      localFresh, unusable, and_self, ↓reduceIte, result, BindingShadow.rememberCompletion,
+      localFresh, and_self, ↓reduceIte, result, BindingShadow.rememberCompletion,
       Function.update_self]
   have included := remembered.shadow.include_binding_input runtime leaks before after who
     input.2.1 networkEq event payload outputEq codeEq node id (who, .prepared serial) rfl rfl

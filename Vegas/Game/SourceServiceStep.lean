@@ -1,0 +1,251 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServicePolicy
+import Vegas.Game.BindingRepairBlock
+import Vegas.Compile.EventGraphStep
+import Vegas.Source.DisclosureAliases
+
+/-! # Full-source steps in the actual native service
+
+Public sampling uses the source's exact chance law. A randomized binding
+response and reserved inclusion use the source's exact binding kernel, with
+freshness checked at entry. Source-store agreement for disclosure includes
+deferred guards; no empty-registry or initial-only binding assumption is used.
+
+These local equations preserve the existing source configuration and runtime
+completion functions. They are ingredients for the multi-phase correspondence,
+not an assumption of that correspondence or of sequential rationality.
+-/
+
+noncomputable section
+
+namespace Vegas.SourceProgram.EventLowering
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+omit [DecidableEq Player] in
+/-- The actual environment sample, including refreshed activation clocks, has
+the original source distribution under typed store agreement. -/
+theorem source_sample_environment (runtime : EventGraphRuntime graph)
+    {Γ : SourceCtx Player L} {payload : L.Ty}
+    (native : EventGraphRuntime.State graph) (event : graph.EventId)
+    (ready : native.config.cut.Ready event)
+    (outputEq : graph.outputLayout event = .publicData payload)
+    (refs : ContextRefs graph.layout Γ)
+    (law : L.DistExpr (SourcePublicCtx L Γ) payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
+      (graph.nodes event) = .sample payload (compilePublicDist refs law))
+    (node : nodeView graph event =
+      .sample payload (compilePublicDist refs law) outputEq codeEq)
+    (source : State L Γ) (agree : refs.Agrees source native.config.store) :
+    environmentStep runtime native (.executeSample event) =
+      (L.evalDist law (sourcePublicEnv source)).map fun value =>
+        native.complete event ready
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm) value) := by
+  rw [environmentStep_executeSample_eq runtime native event ready payload
+    (compilePublicDist refs law) outputEq codeEq node]
+  rw [sample_step native.config event ready outputEq refs law codeEq source agree,
+    FinDist.map_comp]
+  rfl
+
+omit [DecidableEq Player] in
+/-- Sampling extends the existing source environment by the actual sampled
+value while keeping every earlier typed cell unchanged. -/
+theorem complete_sample_agrees {Γ : SourceCtx Player L} {payload : L.Ty}
+    (name : VarId) (source : Config Player L Γ) (refs : ContextRefs graph.layout Γ)
+    (native : EventGraphRuntime.State graph)
+    (agree : refs.Agrees source.state native.config.store)
+    (event : graph.EventId) (ready : native.config.cut.Ready event)
+    (outputEq : graph.outputLayout event = .publicData payload)
+    (before : ∀ {readName cell} (ref : HasVar Γ readName cell),
+      FieldBefore event (refs.get ref).field) (value : L.Val payload) :
+    (refs.cons (name := name) ⟨.inr event, outputEq⟩).Agrees
+      (sampleSuccessor name source value).state
+      (native.complete event ready
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
+        (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)).config.store := by
+  apply ContextRefs.Agrees.cons
+  · exact ContextRefs.Agrees.complete ready _ _ refs source.state agree before
+  · rw [EventGraphRuntime.State.complete, EventGraph.store_complete]
+    simp only [EventGraph.FieldRef.get?, Function.update_self]
+    have castSome {A B : Type} (same : A = B) (value : A) :
+        cast (congrArg Option same) (some value) = some (cast same value) := by
+      cases same
+      rfl
+    rw [castSome (congrArg EventGraph.EventField.Value outputEq)]
+    have castInverse {A B : Type} (same : A = B) (value : B) :
+        cast same (cast same.symm value) = value := by
+      cases same
+      rfl
+    exact congrArg some (castInverse (congrArg EventGraph.EventField.Value outputEq) _)
+
+/-- The source successor stores the deferred-check result, including guard
+failure. It is unnecessary to discard the registry to obtain store agreement. -/
+theorem complete_guarded_reveal_agrees
+    {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
+    (published : VarId) (selected : HasVar Γ name (.commitment owner payload))
+    (source : Config Player L Γ) (refs : ContextRefs graph.layout Γ)
+    (native : EventGraphRuntime.State graph)
+    (agree : refs.Agrees source.state native.config.store)
+    (event : graph.EventId) (ready : native.config.cut.Ready event)
+    (outputEq : graph.outputLayout event = .publication payload)
+    (before : ∀ {readName cell} (ref : HasVar Γ readName cell),
+      FieldBefore event (refs.get ref).field) (disclose : Bool) :
+    (refs.cons (name := published) ⟨.inr event, outputEq⟩).Agrees
+      (revealSuccessor published selected source disclose).state
+      (native.complete event ready
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
+        (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+          (disclosureResult published selected source disclose))).config.store := by
+  change (refs.cons _).Agrees (Env.cons _ source.state) _
+  apply ContextRefs.Agrees.cons
+  · exact ContextRefs.Agrees.complete ready _ _ refs source.state agree before
+  · rw [EventGraphRuntime.State.complete, EventGraph.store_complete]
+    simp only [EventGraph.FieldRef.get?, Function.update_self]
+    have castSome {A B : Type} (same : A = B) (value : A) :
+        cast (congrArg Option same) (some value) = some (cast same value) := by
+      cases same
+      rfl
+    rw [castSome (congrArg EventGraph.EventField.Value outputEq)]
+    have castInverse {A B : Type} (same : A = B) (value : B) :
+        cast same (cast same.symm value) = value := by
+      cases same
+      rfl
+    exact congrArg some (castInverse (congrArg EventGraph.EventField.Value outputEq) _)
+
+/-- The owner's compiled guard check returns the existing source publication
+result, even with deferred obligations from earlier commitments. -/
+theorem compiled_disclosure_result {Γ : SourceCtx Player L}
+    {name : VarId} {owner : Player} {payload : L.Ty}
+    (published : VarId) (selected : HasVar Γ name (.commitment owner payload))
+    (source : Config Player L Γ) (refs : ContextRefs graph.layout Γ)
+    (store : EventGraph.Store graph.layout) (agree : refs.Agrees source.state store)
+    (disclose : Bool) :
+    EventGraph.EventCode.resolveOutput? (refs.get selected)
+        (compileChecks (published := published) refs source.registry source.revelations selected)
+        disclose (graph.playerStore owner store) =
+      some (disclosureResult published selected source disclose) := by
+  rw [EventGraph.EventCode.resolveOutput?_playerStore]
+  have evaluated := compileResolve_eval? refs source.registry source.revelations
+    source.state store agree (published := published) selected disclose
+  rw [EventGraph.EventCode.resolve_eval?] at evaluated
+  change Option.map FinDist.pure _ =
+    some (FinDist.pure (disclosureResult published selected source disclose)) at evaluated
+  cases result : EventGraph.EventCode.resolveOutput? (refs.get selected)
+      (compileChecks (published := published) refs source.registry source.revelations selected)
+      disclose store with
+  | none => simp only [result, Option.map_none, reduceCtorEq] at evaluated
+  | some value =>
+      rw [result, Option.map_some, Option.some.injEq] at evaluated
+      have member : value ∈ (FinDist.pure value).support := by simp
+      rw [evaluated, FinDist.mem_support_pure] at member
+      exact congrArg some member
+
+/-- Guard normalization leaves the actual emitted response unchanged. This
+does not identify the source owner's private intention histories: their
+strategic aggregation is supplied by the source disclosure comparison. -/
+theorem serviceDecision_effectiveDisclosure (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
+    (published : VarId) (selected : HasVar Γ name (.commitment owner payload))
+    (source : Config Player L Γ) (refs : ContextRefs graph.layout Γ)
+    (execution : (runtime.reactiveApplication leaks).Execution)
+    (agree : refs.Agrees source.state execution.application.config.store)
+    (event : graph.EventId) (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload (refs.get selected)
+        (compileChecks (published := published) refs source.registry source.revelations selected))
+    (node : nodeView graph event = .resolve owner payload (refs.get selected)
+      (compileChecks (published := published) refs source.registry source.revelations selected)
+      outputEq codeEq) (disclose : Bool) :
+    runtime.serviceDecision leaks owner (execution.recall owner)
+        (execution.observe (runtime.reactiveApplication leaks) owner) event
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) =
+      runtime.serviceDecision leaks owner (execution.recall owner)
+        (execution.observe (runtime.reactiveApplication leaks) owner) event
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+          (effectiveDisclosure published selected source disclose)) := by
+  cases disclose with
+  | false => rw [effectiveDisclosure_false]
+  | true =>
+      cases result : disclosureResult published selected source true with
+      | success value => simp only [effectiveDisclosure, result]
+      | failure =>
+          have resolved := compiled_disclosure_result published selected source refs
+            execution.application.config.store agree true
+          rw [result] at resolved
+          change EventGraph.EventCode.resolveOutput? (refs.get selected)
+            (compileChecks (published := published) refs source.registry
+              source.revelations selected) true
+            (execution.observe (runtime.reactiveApplication leaks)
+              owner).application.observation.store = some PublicationResult.failure at resolved
+          simp only [effectiveDisclosure, result, serviceDecision, reactiveDecision, node,
+            reactiveResolutionPacket, cast_cast, cast_eq, ↓reduceIte,
+            Bool.false_eq_true, resolved, disclosureSubmission_normalize_withhold]
+
+/-- A real mixed binding response followed by reserved inclusion preserves the
+whole binding distribution. Receipt success is independent of its hidden value.
+The statement permits failure for raw deviations; source admission separately
+restricts source bindings to the allowed domain. -/
+theorem source_binding_service (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
+    (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (node : nodeView graph event = .bind owner payload outputEq codeEq)
+    (choices : FinDist (PublicationResult (L.Val payload))) (serial : Nat)
+    (ready : execution.application.config.cut.Ready event)
+    (timely : execution.application.WithinDeadline runtime event)
+    (fresh : execution.application.candidates.lookup (owner, .prepared serial) = .fresh)
+    (vacant : execution.application.accepted (.inr event) = none)
+    (unused : execution.application.HandleUnused (owner, .prepared serial))
+    (serials : execution.network.SerialsBeforeNext)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) :
+    ((choices.map (runtime.reactiveBinding leaks owner event payload · serial)).bind
+      (fun response => runtime.interactionStep leaks players network (.includeLatest event owner)
+        (execution.respond (runtime.reactiveApplication leaks) owner response))).map
+          (fun next => (next.application.config, next.receipts)) =
+      choices.map fun choice =>
+        (execution.application.config.complete event ready
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice),
+          execution.receipts ++ [((owner, execution.network.nextSerial owner), true)]) := by
+  rw [FinDist.bind_map, FinDist.map_bind, FinDist.map_eq_bind]
+  apply FinDist.bind_congr
+  intro choice _
+  exact runtime.reactiveBinding_reserved_config leaks execution owner event payload outputEq
+    codeEq node choice serial ready timely fresh vacant unused serials players network
+
+/-- At a fresh binding checkpoint, the physical compiler response is already
+normal. The successful-evidence normalizer does not alter the selected value. -/
+theorem serviceDecision_binding_fresh (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
+    (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (node : nodeView graph event = .bind owner payload outputEq codeEq)
+    (serial : Nat)
+    (selected : reactiveFreshSlot (execution.observe
+      (runtime.reactiveApplication leaks) owner).application = some serial)
+    (fresh : execution.application.candidates.lookup (owner, .prepared serial) = .fresh)
+    (choice : PublicationResult (L.Val payload)) :
+    runtime.serviceDecision leaks owner (execution.recall owner)
+        (execution.observe (runtime.reactiveApplication leaks) owner) event
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
+      runtime.reactiveBinding leaks owner event payload choice serial := by
+  rw [runtime.serviceDecision_binding leaks owner (execution.recall owner)
+    (execution.observe (runtime.reactiveApplication leaks) owner) event payload outputEq
+    codeEq node serial selected]
+  exact runtime.reactiveBinding_normal_of_fresh leaks owner (execution.recall owner)
+    (execution.observe (runtime.reactiveApplication leaks) owner) event payload choice serial fresh
+
+end Vegas.SourceProgram.EventLowering

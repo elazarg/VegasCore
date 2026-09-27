@@ -1,12 +1,18 @@
 # Monitored transmission opportunities between source choices
 
-## Current boundary
+## Service contract and theorem boundary
 
-`RevealService.block` currently grants one event, activates its owner once,
-includes the latest matching packet, activates the watcher, and finishes the
-timeout service. Arbitrary raw responses at those activations do not include
-arbitrary additional activations. The generic reactive runtime already permits
-the latter; this is a service-calendar restriction, not an impossibility result.
+The roster service grants one event, visits a fixed finite list of players,
+includes the current event's protected packet, and finishes the timeout service.
+The list may repeat the owner and other players. Every visit retains the full
+bounded raw response menu and passive observation rule. The fixed finite service
+calendar is an explicit restriction on scheduling; arbitrary extra visits are
+not obtained merely by quantifying over all responses at the declared visits.
+
+The checked audit theorem extends any retained roster SE to the full bounded
+raw game and preserves the joint outcome and realized settlement law. Deriving
+that retained SE from an original source SE still requires the continuation
+comparison described below. The complete source-to-runtime theorem is open.
 
 ## Bounded phase design
 
@@ -28,9 +34,9 @@ published. The owner may submit at most one fresh canonical opening envelope at
 any of its visits. A terminal audit deters other fresh traffic; full raw target
 menus retain it. Withholding remains legal and must not be fined.
 `RevealServiceRosterMenu` instantiates these retained responses as an existing
-finite response menu; its inclusion in the full raw menu is checked. Coverage
-of the prescribed policy at every complete-game information site and the
-roster audit extension remain separate obligations.
+finite response menu. Its inclusion in both the effective and full raw menus,
+and coverage of the prescribed policy at every legal history, are checked.
+The source-to-roster incentive correspondence remains a separate obligation.
 
 ## Repeated current-owner visits
 
@@ -48,9 +54,10 @@ for every remaining replay copy. A second fresh envelope has a different
 identifier and is an attributable multiplicity departure. A rebroadcaster need
 not be attributed or punished merely for retransmitting the original envelope.
 
-This is a proposed source-to-native sequential refinement. The extra deferral
-choices and private recall require one common consistency construction;
-the checked single-owner calendar theorem does not establish that refinement.
+The extra deferral choices and private recall use one common consistency
+construction. Its checked limit waits until the final owner visit on path and
+stops fresh submissions after an earlier opening at an off-path visit. Sequential
+rationality of that limit still requires the local continuation comparison.
 
 ## Checked phase distribution and deferred-choice algebra
 
@@ -150,11 +157,9 @@ fresh submissions after every legal opening. The last case includes histories
 of limiting probability zero. Evaluating a zero-weight mixture's fallback
 directly is not a valid substitute for this checked limit.
 
-The broader-roster SE gate still requires the multi-phase conditional noise
-invariant, instantiation of the checked local support and limit facts at every
-actual retained-menu information site, one common
-consistent limiting assessment, and local sequential incentives.
-The one-phase posterior theorem does not prove those remaining obligations.
+The multi-phase conditional noise invariant, actual-history support, and common
+consistent limiting assessment are checked below. The broader-roster SE gate
+still requires local sequential incentives.
 The proof chain is: define the finite retained menu and prove all-history
 coverage; propagate the semantic/public checkpoint and auxiliary noise law;
 construct one fully mixed compiled sequence and its source-state posteriors;
@@ -208,11 +213,40 @@ ledger, authenticated along with its phase. Partial observations must
 not turn missing records into a proof of absence.
 
 The envelope authenticates its original author, not a subsequent broadcaster.
-At a retained clean checkpoint, every known envelope is already published, so
+The retained menu admits every known replay, including pending envelopes, so
 every extra effective response is a fresh submission. Attribution for that
 first-departure comparison can use its author without identifying rebroadcasters.
 Accountability after arbitrary earlier misconduct is a stronger requirement:
 charging a rebroadcaster requires separately authenticated transmission evidence.
+
+The [roster checker](../../Vegas/Game/RevealServiceRosterTraffic.lean) compares a
+fresh envelope's serial with the number of its author's entries in the prior
+ledger. `roster_fresh_iff_serial` proves that this public test is exactly the
+owner's private stopping test at every legal retained activation. A second
+fresh opening has an incorrect serial; replaying the first preserves its
+identifier. Thus one authentic sampled record can witness the departure;
+the auditor need not observe two transmissions together or infer anything from
+missing records. The proof uses the actual allocator and protected inclusion,
+not a uniqueness assumption imposed on raw player responses.
+
+The [departure theorem](../../Vegas/Game/RevealServiceRosterDeparture.lean)
+classifies every extra effective response at every retained history. The
+[conformance theorem](../../Vegas/Game/RevealServiceRosterTrafficSound.lean)
+proves every retained history passes, including foreign rebroadcasts of pending
+openings. These are first-departure and retained-history guarantees, not a claim
+of nonframing after arbitrary prior misconduct. Deployment still needs authentic
+phase and prior-ledger evidence and a positive conditional collection rate.
+
+[`roster_audited_sequential_equilibrium`](../../Vegas/Game/RevealServiceRosterAudit.lean)
+composes these operational facts with the generic audit extension. A fixed
+deposit for each player is its full finite continuation-payoff range divided by
+a positive lower bound on conditional detection probability. The theorem
+quantifies every retained SE, so the checker and deposit do not select an
+equilibrium. It restores every bounded raw response and preserves the joint
+readout and realized randomized settlement law. The terminal audit is an
+explicit service assumption, with no strategic watcher activation. It may
+return only a partial authentic sample; its coverage bound must hold for a
+forbidden record whenever that record is present.
 
 The [roster service](../../Vegas/Game/RevealServiceRoster.lean) is connected to
 the existing scheduler evaluator. Its
@@ -254,13 +288,28 @@ recall carry no additional information about the hidden source state. The
 proof derives initialization from the empty network and iterates the actual
 grant, response, inclusion, tick and expiry instructions. It permits arbitrary
 correlated initial states, source profiles, timing distributions and passive
-sampling rules. Decisions within a phase still require a separate conditional
-posterior argument before this gives SE incentives.
+sampling rules.
 
-The remaining implementation gates are to derive the multi-phase conditional
-source-belief and local-incentive correspondence, classify fresh departures
-under the phase rule, and apply the existing conditional terminal-audit
-collection and SE extension. The phase factorization retains an
-arbitrary sampler, including in the checked one-phase posterior identity. The
-multi-phase SE proof remains open; no extra sampler restriction is currently
-assumed or established as necessary.
+The [native Bayes theorem](../../Vegas/Game/RevealServiceRosterBayes.lean)
+identifies the actual finite game's owner belief with the original source
+posterior at every legal owner history. It conditions on full native recall and
+the current passive sample, including histories following an early own opening.
+The [common consistency construction](../../Vegas/Game/RevealServiceRosterConsistency.lean)
+uses one subsequence for all native sites and preserves those belief marginals
+at the fixed limiting policy. No player observes a new scheduler cursor.
+
+The remaining strategic gate is the actual within-phase continuation comparison
+and its composition with the remaining source program. Along the perturbation
+sequence, conditioning on no earlier opening generally changes the eventual
+disclosure probability. Exact equality with the original source action law at
+every approximant is therefore not a valid premise. The checked
+[local comparison theorem](../../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean)
+allows a uniform incentive error tending to zero, retaining one common sequence.
+The native error and continuation laws still need to be supplied. Nonowners may
+learn the impending publication early; their local alternatives must be proved
+harmless, rather than their information identified with the source's.
+
+General-roster sequential rationality and full-source SE compilation remain open.
+The latter additionally needs the evolving binding/guard checkpoint and stopped
+native continuation comparison described in [se-hidden-binding.md](se-hidden-binding.md).
+No extra sampler restriction is currently assumed or established as necessary.

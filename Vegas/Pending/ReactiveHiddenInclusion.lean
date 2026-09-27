@@ -148,7 +148,9 @@ private theorem checks_public_congr {payload : L.Ty}
       simp only [GuardCheck.allAccepted?, checked, ih]
 
 omit [DecidableEq Player] in
-private theorem opening_right_facts
+/-- Public service conditions and the checked result transport when the
+resolved binding itself has the same successful value. -/
+theorem opening_right_facts
     (left right : State graph) (publicEq : left.publicView = right.publicView)
     (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))

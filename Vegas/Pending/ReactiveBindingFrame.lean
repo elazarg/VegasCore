@@ -1,0 +1,322 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.ReactiveBindingServiceRepair
+import Vegas.Pending.ReactiveBindingCoupling
+import Vegas.Pending.ReactiveRawBindingFrame
+
+/-! # The concrete frame carried by a repaired native continuation
+
+The relation pairs two existing executions and the repaired player's private
+implementation memory. It preserves the complete joint observations of the
+other players, network and service, and reconstructs the original player's
+input. It is a proof invariant, not additional runtime state or an observer.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime.BindingMemory
+
+open Interaction GameTheory.Math.Probability EventGraph
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+  (runtime : EventGraphRuntime graph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+
+structure Frame (memory : BindingMemory runtime leaks) (owner : Player)
+    (original repaired : (runtime.reactiveApplication leaks).Execution) : Prop where
+  past : memory.restoreRecall runtime leaks (repaired.recall owner) = original.recall owner
+  observed : memory.shadow.inputView runtime leaks
+    (repaired.observe (runtime.reactiveApplication leaks) owner) =
+      original.observe (runtime.reactiveApplication leaks) owner
+  lengths : (repaired.recall owner).length = memory.responses.length
+  network : original.network = repaired.network
+  service : original.environmentRecall = repaired.environmentRecall
+  views : ∀ who, who ≠ owner →
+    original.application.playerView who = repaired.application.playerView who
+  recall : ∀ who, who ≠ owner → original.recall who = repaired.recall who
+  slots : ∀ query, original.application.candidates.lookup (owner, query) = .fresh ↔
+    repaired.application.candidates.lookup (owner, query) = .fresh
+
+theorem frame_atRecall (owner : Player)
+    (execution : (runtime.reactiveApplication leaks).Execution) :
+    Frame runtime leaks (atRecall runtime leaks (execution.recall owner)) owner
+      execution execution where
+  past := restoreRecall_atRecall runtime leaks _
+  observed := BindingShadow.inputView_empty runtime leaks _
+  lengths := by simp only [atRecall, List.length_map]
+  network := rfl
+  service := rfl
+  views := fun _ _ => rfl
+  recall := fun _ _ => rfl
+  slots := fun _ => Iff.rfl
+
+namespace Frame
+
+variable {runtime leaks} {memory : BindingMemory runtime leaks} {owner : Player}
+  {original repaired : (runtime.reactiveApplication leaks).Execution}
+
+theorem receipts (frame : Frame runtime leaks memory owner original repaired) :
+    original.receipts = repaired.receipts :=
+  (congrArg ReactiveApplication.PlayerView.receipts frame.observed).symm
+
+theorem publicView (frame : Frame runtime leaks memory owner original repaired) :
+    original.application.publicView = repaired.application.publicView :=
+  (congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
+    view.application.publicView) frame.observed).symm
+
+theorem environment (frame : Frame runtime leaks memory owner original repaired) :
+    original.observeEnvironment (runtime.reactiveApplication leaks) =
+      repaired.observeEnvironment (runtime.reactiveApplication leaks) := by
+  change (⟨original.network.publicView, original.application.publicView,
+    original.receipts⟩ : (runtime.reactiveApplication leaks).EnvironmentView) =
+      ⟨repaired.network.publicView, repaired.application.publicView, repaired.receipts⟩
+  rw [frame.network, frame.receipts, frame.publicView]
+
+/-- A passive sample is shared on the equal pending pool. The sampled set is
+not restricted, including when the activated player is the repaired owner. -/
+theorem activate (frame : Frame runtime leaks memory owner original repaired)
+    (actor : Player) (selected : Finset (MessageId Player)) :
+    let app := runtime.reactiveApplication leaks
+    Frame runtime leaks memory owner
+      { original with
+        network := original.network.learn actor selected
+        environmentRecall := original.environmentRecall ++
+          [⟨original.observeEnvironment app, .activate actor⟩] }
+      { repaired with
+        network := repaired.network.learn actor selected
+        environmentRecall := repaired.environmentRecall ++
+          [⟨repaired.observeEnvironment app, .activate actor⟩] } := by
+  refine ⟨frame.past, ?_, frame.lengths, ?_, ?_, frame.views, frame.recall, frame.slots⟩
+  · have ownApplication := congrArg ReactiveApplication.PlayerView.application frame.observed
+    change (⟨(repaired.network.learn actor selected).observe owner,
+      memory.shadow.view ((runtime.reactiveApplication leaks).observePlayer
+        repaired.application owner), repaired.receipts⟩ :
+          (runtime.reactiveApplication leaks).PlayerView) =
+      ⟨(original.network.learn actor selected).observe owner,
+        (runtime.reactiveApplication leaks).observePlayer original.application owner,
+          original.receipts⟩
+    rw [frame.network, frame.receipts]
+    exact congrArg (fun view => (⟨(repaired.network.learn actor selected).observe owner,
+      view, repaired.receipts⟩ : (runtime.reactiveApplication leaks).PlayerView)) ownApplication
+  · rw [frame.network]
+  · rw [frame.service, frame.environment]
+
+private theorem foreign_catalog (execution : (runtime.reactiveApplication leaks).Execution)
+    (actor : Player) (different : owner ≠ actor)
+    (response : (runtime.reactiveApplication leaks).Action) :
+    (fun query => (execution.respond (runtime.reactiveApplication leaks)
+      actor response).application.candidates.lookup (owner, query)) =
+        fun query => execution.application.candidates.lookup (owner, query) := by
+  have same : (execution.respond (runtime.reactiveApplication leaks)
+      actor response).application.playerView owner = execution.application.playerView owner := by
+    rcases response with ⟨transmission⟩
+    cases transmission with
+    | none => rfl
+    | some transmission =>
+        cases transmission with
+        | submit material =>
+            exact (submitStep_playerView_other (material.call.register execution.application actor)
+              actor owner different material.call.packet).trans
+                (material.call.register_other execution.application actor owner different)
+        | replay id =>
+            cases (execution.network.known actor).find? (fun packet => packet.id = id) <;> rfl
+  exact congrArg PlayerView.candidates same
+
+/-- Arbitrary foreign raw responses, including forwarding and local evidence
+aliases, preserve the repaired player's input and the joint outside frame. -/
+theorem foreign_response (frame : Frame runtime leaks memory owner original repaired)
+    (actor : Player) (foreign : actor ≠ owner)
+    (response : (runtime.reactiveApplication leaks).Action) :
+    Frame runtime leaks memory owner
+      (original.respond (runtime.reactiveApplication leaks) actor response)
+      (repaired.respond (runtime.reactiveApplication leaks) actor response) := by
+  let app := runtime.reactiveApplication leaks
+  have paired := memory.foreign_response runtime leaks original repaired owner actor foreign
+    frame.past frame.observed frame.network frame.views frame.recall response
+  refine ⟨paired.1, paired.2.1, ?_, paired.2.2.1, ?_, paired.2.2.2.2.1,
+    paired.2.2.2.2.2, ?_⟩
+  · rw [app.respond_recall_other repaired actor owner foreign.symm response]
+    exact frame.lengths
+  · exact frame.service
+  · intro query
+    rw [congrFun (foreign_catalog original actor foreign.symm response) query,
+      congrFun (foreign_catalog repaired actor foreign.symm response) query]
+    exact frame.slots query
+
+/-- Silence and replay preserve the concrete frame while recording the
+original response in private memory. No pending observation is discarded. -/
+theorem transport_response (frame : Frame runtime leaks memory owner original repaired)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (notSubmitted : ∀ submission, response.transmission ≠ some (.submit submission)) :
+    let app := runtime.reactiveApplication leaks
+    let remembered := memory.record runtime leaks
+      (memory.shadow.inputView runtime leaks (repaired.observe app owner)) response
+    Frame runtime leaks remembered owner (original.respond app owner response)
+      (repaired.respond app owner response) := by
+  let app := runtime.reactiveApplication leaks
+  have paired := memory.transport_response runtime leaks original repaired owner frame.lengths
+    frame.past frame.observed frame.network response notSubmitted
+  have unchanged (execution : app.Execution) :
+      (execution.respond app owner response).application = execution.application := by
+    rcases response with ⟨transmission⟩
+    cases transmission with
+    | none => rfl
+    | some transmission =>
+        cases transmission with
+        | submit submission => exact (notSubmitted submission rfl).elim
+        | replay id => rfl
+  refine ⟨paired.1, paired.2.1, paired.2.2, ?_, ?_, ?_, ?_, ?_⟩
+  · rcases response with ⟨transmission⟩
+    cases transmission with
+    | none => exact frame.network
+    | some transmission =>
+        cases transmission with
+        | submit submission => exact (notSubmitted submission rfl).elim
+        | replay id =>
+            change (original.network.replay owner id).2 = (repaired.network.replay owner id).2
+            rw [frame.network]
+  · rw [app.respond_environmentRecall, app.respond_environmentRecall]
+    exact frame.service
+  · intro who different
+    rw [unchanged original, unchanged repaired]
+    exact frame.views who different
+  · intro who different
+    rw [app.respond_recall_other original owner who different response,
+      app.respond_recall_other repaired owner who different response]
+    exact frame.recall who different
+  · intro query
+    rw [unchanged original, unchanged repaired]
+    exact frame.slots query
+
+/-- Every canonical binding is carried through the actual atomic response and
+reserved inclusion. Usable material stays unchanged; unusable material receives
+a valid private replacement. Every frame field refers to the same executions. -/
+theorem binding (frame : Frame runtime leaks memory owner original repaired)
+    (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (node : nodeView graph event = .bind owner payload outputEq codeEq)
+    (serial : Nat) (opening : Option (Raw L))
+    (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
+    (ready : original.application.config.cut.Ready event)
+    (timely : original.application.WithinDeadline runtime event)
+    (vacant : original.application.accepted (.inr event) = none)
+    (unused : original.application.HandleUnused (owner, .prepared serial))
+    (serials : original.network.SerialsBeforeNext) :
+    let app := runtime.reactiveApplication leaks
+    let view := repaired.observe app owner
+    let response : app.Action :=
+      ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+    let change := memory.repairResponse runtime leaks owner view response
+    let remembered : BindingMemory runtime leaks :=
+      ⟨change.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩
+    let left := original.respond app owner response
+    let right := repaired.respond app owner change.1
+    let id := (owner, original.network.nextSerial owner)
+    Frame runtime leaks remembered owner
+      { left.includePending app id with environmentRecall := left.environmentRecall ++
+        [⟨left.observeEnvironment app, .include id⟩] }
+      { right.includePending app id with environmentRecall := right.environmentRecall ++
+        [⟨right.observeEnvironment app, .include id⟩] } := by
+  let app := runtime.reactiveApplication leaks
+  let view := repaired.observe app owner
+  let replacementOpening := match opening.bind (fun raw => raw.as? payload) with
+    | none => some (⟨payload, L.someValue payload⟩ : Raw L)
+    | some _ => opening
+  let response : app.Action :=
+    ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
+  let change := memory.repairResponse runtime leaks owner view response
+  let remembered : BindingMemory runtime leaks :=
+    ⟨change.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, response)]⟩
+  let left := original.respond app owner response
+  let right := repaired.respond app owner change.1
+  let id := (owner, original.network.nextSerial owner)
+  let leftNext : app.Execution := { left.includePending app id with
+    environmentRecall := left.environmentRecall ++ [⟨left.observeEnvironment app, .include id⟩] }
+  let rightNext : app.Execution := { right.includePending app id with
+    environmentRecall := right.environmentRecall ++ [⟨right.observeEnvironment app, .include id⟩] }
+  have actualFresh := (frame.slots (.prepared serial)).mp fresh
+  have ownFresh : (memory.shadow.inputView runtime leaks view).application.candidates
+      (.prepared serial) = .fresh := by
+    rw [frame.observed]
+    exact fresh
+  have changed : change.1 =
+      ⟨some (.submit
+        ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩)⟩ := by
+    cases decoded : opening.bind (fun raw => raw.as? payload) with
+    | none =>
+        rw [memory.repairResponse_unusable runtime leaks owner view event payload outputEq codeEq
+          node serial opening ownFresh actualFresh decoded]
+        simp only [replacementOpening, decoded]
+        rfl
+    | some value =>
+        rw [memory.repairResponse_usable runtime leaks owner view event payload outputEq codeEq
+          node serial opening ownFresh actualFresh value decoded]
+        simp only [replacementOpening, decoded]
+  have restored := memory.repairResponse_include_input runtime leaks owner original repaired
+    frame.lengths frame.past frame.observed frame.network event payload outputEq codeEq node
+      serial opening fresh actualFresh ready timely vacant unused serials
+  change remembered.restoreRecall runtime leaks (rightNext.recall owner) =
+      leftNext.recall owner ∧
+    remembered.shadow.inputView runtime leaks (rightNext.observe app owner) =
+      leftNext.observe app owner ∧
+    (rightNext.recall owner).length = remembered.responses.length at restored
+  let players : Player → app.Policy := fun _ _ _ => FinDist.pure ⟨none⟩
+  let scheduler : runtime.NetworkPolicy leaks := fun _ _ => FinDist.pure .wait
+  have coupled := runtime.rawBinding_reserved_hidden_congr leaks original repaired owner
+    frame.network frame.receipts frame.publicView frame.service frame.views frame.recall
+      frame.slots event payload outputEq codeEq node opening
+        replacementOpening serial ready timely vacant unused serials
+          players scheduler
+  have firstStep : runtime.interactionStep leaks players scheduler (.includeLatest event owner)
+      left = FinDist.pure leftNext := by
+    rw [show left = original.respond app owner response from rfl,
+      runtime.rawBinding_reserved_selection leaks original owner event serial opening
+        serials players scheduler]
+    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    rfl
+  have secondStep : runtime.interactionStep leaks players scheduler (.includeLatest event owner)
+      right = FinDist.pure rightNext := by
+    dsimp only [right, rightNext]
+    rw [changed, runtime.rawBinding_reserved_selection leaks repaired owner event serial
+      replacementOpening (frame.network ▸ serials) players scheduler,
+      show repaired.network.nextSerial owner = original.network.nextSerial owner from
+        congrArg (fun net => net.nextSerial owner) frame.network.symm]
+    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    rfl
+  change (runtime.interactionStep leaks players scheduler (.includeLatest event owner) left).map
+      _ = (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
+        (repaired.respond app owner ⟨some (.submit
+          ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩)⟩)).map _
+            at coupled
+  rw [← changed, firstStep, secondStep, FinDist.map_pure, FinDist.map_pure] at coupled
+  let readout (next : app.Execution) :=
+    (next.network, next.receipts, next.application.publicView, next.environmentRecall,
+      (fun who => if who = owner then none
+        else some (next.recall who, next.application.playerView who)),
+      fun query => next.application.candidates.lookup (owner, query) = .fresh)
+  change FinDist.pure (readout leftNext) = FinDist.pure (readout rightNext) at coupled
+  have facts : readout leftNext = readout rightNext := FinDist.mem_support_pure.mp
+    (coupled ▸ (FinDist.mem_support_pure.mpr rfl))
+  have equalities := Prod.mk.inj facts
+  have rest := Prod.mk.inj equalities.2
+  have publicAndRest := Prod.mk.inj rest.2
+  have serviceAndRest := Prod.mk.inj publicAndRest.2
+  have playersAndSlots := Prod.mk.inj serviceAndRest.2
+  change Frame runtime leaks remembered owner leftNext rightNext
+  refine ⟨restored.1, restored.2.1, restored.2.2, equalities.1, serviceAndRest.1, ?_, ?_, ?_⟩
+  · intro who different
+    have selected := congrFun playersAndSlots.1 who
+    simp only [different, ↓reduceIte, Option.some.injEq, Prod.mk.injEq] at selected
+    exact selected.2
+  · intro who different
+    have selected := congrFun playersAndSlots.1 who
+    simp only [different, ↓reduceIte, Option.some.injEq, Prod.mk.injEq] at selected
+    exact selected.1
+  · intro query
+    exact Eq.to_iff (congrFun playersAndSlots.2 query)
+
+end Frame
+end Vegas.EventGraphRuntime.BindingMemory

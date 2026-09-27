@@ -111,18 +111,63 @@ including absent and mistyped material. The two results concern the same
 deterministic protected block; they do not yet constitute the remaining-plan
 induction or a stopped payoff comparison.
 
+`ReactiveBindingFrame` now joins these components as a relation on the same
+two actual executions. `Frame.binding` proves that response and
+reserved inclusion preserve reconstructed own input, all opponents' views and
+recall, network, service recall and allocation freshness together, for usable,
+absent and mistyped private binding material. Its
+`BindingMemory.Frame.activate` and `BindingMemory.Frame.foreign_response` cases preserve arbitrary passive samples and
+arbitrary foreign raw responses. `ReactiveBindingFrameStep` closes clock,
+grant and common public-completion constructors. `Frame.inputs` recovers the
+entire equal initialized environment, including correlated private parameters.
+The shadow's `CompletedAt` predicate records the additional boundary invariant
+that private completion overrides concern past events. These are concrete
+induction cases, not a claim that the remaining-plan or stopped payoff theorem
+has already been assembled.
+
+`Vegas/Game/BindingRepairOpening.lean` closes the successful-opening provenance
+gate. `Patched.success_kept` proves that an originally successful typed binding
+is never replaced. `repaired_success_provenance` then derives the same accepted
+handle and authentic candidate on both actual native sides from their checked
+binding invariants and typed store agreement. This includes foreign owners and
+correlated initial states. Preserving every raw openable candidate would be
+incorrect: a mistyped original candidate can be openable as raw evidence while
+its typed game binding is a failure. Publishing that raw evidence remains a
+separate visible departure under the successful typed-opening rule.
+
+`opening_submission` in `ReactiveBindingFrameOpening` includes both owned and
+forwarded certificate requests. `BindingMemory.Frame.opening_inclusion` preserves the same actual
+receipt and checked result; it does not identify acceptance with publication
+success. `foreign_binding_inclusion` in `ReactiveBindingFrameForeign` covers other
+players' fixed bindings, and `expire_resolution` in `ReactiveBindingFrameExpiry`
+couples the actual due disclosure expiry independently of repaired meanings.
+
+The probability statements use the existing evaluators.
+`binding_response_coupling` in `ReactiveBindingFrameLaw` couples the original mixed
+policy invocation with the actual private implementation response, followed by
+the real reserved inclusion. Every supported pair satisfies the complete frame.
+`run_transport_coupling` in `ReactiveBindingFrameRounds` proves a finite induction for
+activation/wait windows, allowing arbitrary foreign responses and passive leak
+samples while the repaired owner uses silence or replay. It retains private
+recalls and scheduler input. This window theorem does not cover new owned
+submissions; the binding and successful-opening constructor laws handle those
+separately. Combining all constructors with clean checkpoint invariants and
+first-departure evidence remains the full-source stopped-run obligation.
+
 `BindingShadow.OwnBindings` and `repairResponse_ownBindings` prove that these
 overrides concern only the repaired owner's private bindings.
-`OwnBindings.complete_public_observation` therefore commutes with the same
-actual public completion on both sides, including chance results and successful,
-failed or withheld publications. It does not substitute a public value from
-private memory.
+`BindingShadow.complete_unmodified_observation` therefore commutes with the same
+actual completion outside the shadow on both sides, including other players'
+bindings, chance results and successful, failed or withheld publications. It
+does not substitute a public value from private memory.
 
 `BindingMemory.implementation` is an actual private implementation using only
 the current own input and this memory. Its reference memory is constant across
 every hidden execution in the starting information set, and
 `implementation_behavioral_continuation` realizes it as an ordinary behavioral
-policy. It repairs fresh owned unusable material with a fixed valid value.
+policy. It records each fresh owned binding uniformly and repairs only unusable
+material with a fixed valid value; `repairResponse_usable` checks that a usable
+binding's response remains unchanged.
 [`repairResponse_submit_input`](../../Vegas/Pending/ReactiveBindingShadowStep.lean) connects this to
 the actual pair of original/repaired atomic responses, with exact original own
 input reconstruction after missing or mistyped private material.

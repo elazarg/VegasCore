@@ -195,7 +195,7 @@ theorem BindingMemory.repairResponse_protected_input
     rfl
   have restored := memory.repairResponse_include_input runtime leaks who left right lengths past
     observed network event payload outputEq codeEq node serial opening originalFresh actualFresh
-      unusable ready timely vacant unused serials
+      ready timely vacant unused serials
   change remembered.restoreRecall runtime leaks (afterIncluded.recall who) =
       beforeIncluded.recall who ∧
     remembered.shadow.inputView runtime leaks (afterIncluded.observe app who) =

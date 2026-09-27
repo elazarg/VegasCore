@@ -1,4 +1,8 @@
 import Interaction.MessagePool
+import Interaction.MessageNetworkIdentity
+import Interaction.ReactiveMessageIdentity
+import Interaction.ReactiveScheduleEvaluation
+import Interaction.ReactiveBayes
 import Interaction.MessagePoolFreshness
 import Interaction.MessageReplay
 import Interaction.MessageInvariant

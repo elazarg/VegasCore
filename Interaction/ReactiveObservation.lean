@@ -18,6 +18,21 @@ open GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
 
+/-- Equal player inputs and pending pools give equal actual inputs after
+passive observation, including the player's complete response recall. -/
+theorem activation_info_congr (left right : app.Execution) (who : Principal)
+    (network : left.network = right.network) (receipts : left.receipts = right.receipts)
+    (localView : app.observePlayer left.application who =
+      app.observePlayer right.application who)
+    (recall : left.recall who = right.recall who) :
+    (left.environmentStep app (.activate who)).map
+        (fun next => (next.recall who, next.observe app who)) =
+      (right.environmentStep app (.activate who)).map
+        (fun next => (next.recall who, next.observe app who)) := by
+  simp only [Execution.environmentStep, FinDist.map_comp, Function.comp_def,
+    Execution.observe]
+  rw [network, receipts, localView, recall]
+
 theorem activation_visible (execution next : app.Execution) (who : Principal)
     (reached : next ∈ (execution.environmentStep app (.activate who)).support) :
     next.observeEnvironment app = execution.observeEnvironment app ∧

@@ -16,6 +16,35 @@ namespace GameTheory.Math.Probability.FinDist
 
 variable {State Observation Noise : Type*}
 
+/-- Conditioning ignores differences between information events outside the
+finite law's support, including the empty-event fallback. -/
+theorem condOnFibre_eq_of_support_fiber {A First Second : Type*} (law : FinDist A)
+    (first : A → First) (second : A → Second) (left : First) (right : Second)
+    (same : ∀ value ∈ law.support, first value = left ↔ second value = right) :
+    law.condOnFibre first left = law.condOnFibre second right := by
+  classical
+  by_cases meets : ∃ value ∈ first ⁻¹' {left}, value ∈ law.support
+  · obtain ⟨witness, matched, supported⟩ := meets
+    have meets : ∃ value ∈ first ⁻¹' {left}, value ∈ law.support :=
+      ⟨witness, matched, supported⟩
+    have other : ∃ value ∈ second ⁻¹' {right}, value ∈ law.support :=
+      ⟨witness, (same witness supported).mp matched, supported⟩
+    rw [condOnFibre, dite_eq_left meets, condOnFibre, dite_eq_left other]
+    apply ext_of_prob
+    intro value
+    rw [prob_condOn, prob_condOn]
+    have mass : law.probOf (first ⁻¹' {left}) = law.probOf (second ⁻¹' {right}) :=
+      law.probOf_congr same
+    rw [mass]
+    by_cases present : value ∈ law.support
+    · simp only [Set.mem_preimage, Set.mem_singleton_iff, same value present]
+    · have zero := prob_eq_zero_iff.mpr present
+      simp only [zero, zero_div, ite_self]
+  · have other : ¬ ∃ value ∈ second ⁻¹' {right}, value ∈ law.support := by
+      rintro ⟨value, matched, supported⟩
+      exact meets ⟨value, (same value supported).mpr matched, supported⟩
+    rw [condOnFibre, dite_eq_right meets, condOnFibre, dite_eq_right other]
+
 theorem conditional_observation_kernel (prior : FinDist State)
     (observe : State → Observation) (noise : Observation → FinDist Noise)
     (observed : Observation) (extra : Noise)
@@ -77,6 +106,38 @@ theorem conditional_observation_kernel (prior : FinDist State)
   change (joint.condOnFibre information (observed, extra)).map Prod.fst = _
   rw [conditional, map_comp]
   exact map_id _
+
+/-- If the extra input itself determines the old observation on its supported
+fiber, conditioning on that actual input gives the original source posterior. -/
+theorem conditional_observation_kernel_recovered (prior : FinDist State)
+    (observe : State → Observation) (noise : Observation → FinDist Noise)
+    (observed : Observation) (extra : Noise)
+    (present : ∃ state ∈ prior.support,
+      observe state = observed ∧ extra ∈ (noise observed).support)
+    (recovers : ∀ state ∈ prior.support, extra ∈ (noise (observe state)).support →
+      observe state = observed) :
+    let joint := prior.bind fun state =>
+      (noise (observe state)).map fun signal => (state, signal)
+    (joint.condOnFibre Prod.snd extra).map Prod.fst =
+      prior.condOnFibre observe observed := by
+  obtain ⟨witness, supported, matched, possible⟩ := present
+  have oldPresent : observed ∈ (prior.map observe).support := by
+    rw [support_map]
+    exact ⟨witness, supported, matched⟩
+  have ordinary := conditional_observation_kernel prior observe noise observed extra
+    oldPresent possible
+  dsimp only at ordinary ⊢
+  have conditioning := condOnFibre_eq_of_support_fiber
+    (prior.bind fun state => (noise (observe state)).map fun signal => (state, signal))
+    (fun pair => (observe pair.1, pair.2)) Prod.snd (observed, extra) extra (by
+      intro pair member
+      obtain ⟨state, stateSupport, member⟩ :=
+        Set.mem_iUnion₂.mp (support_bind .. ▸ member)
+      obtain ⟨signal, signalSupport, rfl⟩ := support_map .. ▸ member
+      exact ⟨fun equal => (Prod.mk.inj equal).2, fun equal =>
+        Prod.ext (recovers state stateSupport (equal ▸ signalSupport)) equal⟩)
+  rw [conditioning] at ordinary
+  exact ordinary
 
 /-- The same calculation needs channel equality only on supported states in
 each original information fiber. No global factorization is supplied as a

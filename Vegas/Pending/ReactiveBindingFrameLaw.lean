@@ -1,0 +1,155 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.ReactiveBindingFrameOpening
+
+/-! # Actual mixed protected binding responses
+
+The private implementation and the original policy sample the same original
+response. Their real response and reserved inclusion laws are the marginals of
+one finite coupling. No implementation memory is added to the game state.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime.BindingMemory.Frame
+
+open Interaction EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+  {runtime : EventGraphRuntime graph}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
+  {memory : BindingMemory runtime leaks} {owner : Player}
+  {original repaired : (runtime.reactiveApplication leaks).Execution}
+
+/-- Any mixed canonical raw binding law is repaired by the actual private
+implementation. The hidden raw material may be usable, absent, or mistyped.
+The support condition states the clean branch of the response classification;
+it does not assert that all raw deviations are clean. -/
+theorem binding_response_coupling
+    (frame : Frame runtime leaks memory owner original repaired)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : runtime.NetworkPolicy leaks)
+    (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (started : reference.length ≤ (repaired.recall owner).length)
+    (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (node : nodeView graph event = .bind owner payload outputEq codeEq)
+    (serial : Nat)
+    (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
+    (ready : original.application.config.cut.Ready event)
+    (timely : original.application.WithinDeadline runtime event)
+    (vacant : original.application.accepted (.inr event) = none)
+    (unused : original.application.HandleUnused (owner, .prepared serial))
+    (serials : original.network.SerialsBeforeNext)
+    (canonical : ∀ response ∈ (players owner (original.recall owner)
+      (original.observe (runtime.reactiveApplication leaks) owner)).support,
+      ∃ opening, response =
+        ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) :
+    let app := runtime.reactiveApplication leaks
+    let strategy := implementation runtime leaks owner reference (players owner)
+    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+      coupling.map Prod.fst = (app.invoke players owner original).bind
+        (runtime.interactionStep leaks players scheduler (.includeLatest event owner)) ∧
+      coupling.map Prod.snd =
+        (strategy.resume owner players (some owner) repaired memory).bind (fun next =>
+          (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
+            next.1).map fun execution => (execution, next.2)) ∧
+      ∀ next ∈ coupling.support,
+        Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
+  let app := runtime.reactiveApplication leaks
+  let strategy := implementation runtime leaks owner reference (players owner)
+  let law := players owner (original.recall owner) (original.observe app owner)
+  let id : MessageId Player := (owner, original.network.nextSerial owner)
+  let finish (execution : app.Execution) : app.Execution :=
+    { execution.includePending app id with environmentRecall := execution.environmentRecall ++
+      [⟨execution.observeEnvironment app, .include id⟩] }
+  let responsePair (response : app.Action) :=
+    let changed := memory.repairResponse runtime leaks owner (repaired.observe app owner) response
+    (changed.1, (⟨changed.2, memory.responses ++
+      [(memory.shadow.inputView runtime leaks (repaired.observe app owner), response)]⟩ :
+        BindingMemory runtime leaks))
+  let coupling := law.map fun response =>
+    (finish (original.respond app owner response),
+      finish (repaired.respond app owner (responsePair response).1), (responsePair response).2)
+  have selected (execution : app.Execution) (opening : Option (Raw L))
+      (before : execution.network.SerialsBeforeNext)
+      (nonce : execution.network.nextSerial owner = original.network.nextSerial owner) :
+      runtime.interactionStep leaks players scheduler (.includeLatest event owner)
+        (execution.respond app owner
+          ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) =
+        FinDist.pure (finish (execution.respond app owner
+          ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩)) := by
+    rw [runtime.rawBinding_reserved_selection leaks execution owner event serial opening
+      before players scheduler, nonce]
+    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    rfl
+  have originalStep (response : app.Action) (member : response ∈ law.support) :
+      runtime.interactionStep leaks players scheduler (.includeLatest event owner)
+        (original.respond app owner response) =
+        FinDist.pure (finish (original.respond app owner response)) := by
+    obtain ⟨opening, rfl⟩ := canonical response member
+    exact selected original opening serials rfl
+  have repairedStep (response : app.Action) (member : response ∈ law.support) :
+      runtime.interactionStep leaks players scheduler (.includeLatest event owner)
+        (repaired.respond app owner (responsePair response).1) =
+        FinDist.pure (finish (repaired.respond app owner (responsePair response).1)) := by
+    obtain ⟨opening, rfl⟩ := canonical response member
+    have originalFresh : (memory.shadow.inputView runtime leaks
+        (repaired.observe app owner)).application.candidates (.prepared serial) = .fresh := by
+      rw [frame.observed]
+      exact fresh
+    have actualFresh := (frame.slots (.prepared serial)).mp fresh
+    cases decoded : opening.bind (fun raw => raw.as? payload) with
+    | none =>
+        change runtime.interactionStep leaks players scheduler (.includeLatest event owner)
+          (repaired.respond app owner
+            (memory.repairResponse runtime leaks owner (repaired.observe app owner) _).1) = _
+        rw [memory.repairResponse_unusable runtime leaks owner (repaired.observe app owner)
+          event payload outputEq codeEq node serial opening originalFresh actualFresh decoded]
+        exact selected repaired (some ⟨payload, L.someValue payload⟩)
+          (frame.network ▸ serials)
+          (congrArg (fun net => net.nextSerial owner) frame.network.symm)
+    | some value =>
+        change runtime.interactionStep leaks players scheduler (.includeLatest event owner)
+          (repaired.respond app owner
+            (memory.repairResponse runtime leaks owner (repaired.observe app owner) _).1) = _
+        rw [memory.repairResponse_usable runtime leaks owner (repaired.observe app owner)
+          event payload outputEq codeEq node serial opening originalFresh actualFresh value decoded]
+        exact selected repaired opening (frame.network ▸ serials)
+          (congrArg (fun net => net.nextSerial owner) frame.network.symm)
+  have responseLaw : strategy.respond memory (repaired.recall owner,
+      repaired.observe app owner) = law.map responsePair := by
+    rw [implementation_respond runtime leaks owner reference (players owner) memory
+      (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed]
+    simp only [responsePair, law, app, frame.observed]
+  refine ⟨coupling, ?_, ?_, ?_⟩
+  · simp only [coupling, FinDist.map_comp, ReactiveApplication.invoke, FinDist.bind_map]
+    change law.map (fun response => finish (original.respond app owner response)) = _
+    rw [FinDist.map_eq_bind]
+    apply FinDist.bind_congr
+    intro response member
+    exact (originalStep response member).symm
+  · simp only [coupling, FinDist.map_comp, ReactiveApplication.Implementation.resume,
+      ↓reduceIte, FinDist.bind_map]
+    change law.map (fun response =>
+      (finish (repaired.respond app owner (responsePair response).1),
+        (responsePair response).2)) =
+      (strategy.respond memory (repaired.recall owner, repaired.observe app owner)).bind
+        (fun response => (runtime.interactionStep leaks players scheduler
+          (.includeLatest event owner) (repaired.respond app owner response.1)).map
+            fun execution => (execution, response.2))
+    rw [responseLaw, FinDist.bind_map]
+    rw [FinDist.map_eq_bind]
+    apply FinDist.bind_congr
+    intro response member
+    rw [repairedStep response member, FinDist.map_pure]
+  · intro next member
+    obtain ⟨response, supported, rfl⟩ := FinDist.support_map .. ▸ member
+    obtain ⟨opening, rfl⟩ := canonical response supported
+    exact frame.binding event payload outputEq codeEq node serial opening fresh ready timely
+      vacant unused serials
+
+end Vegas.EventGraphRuntime.BindingMemory.Frame

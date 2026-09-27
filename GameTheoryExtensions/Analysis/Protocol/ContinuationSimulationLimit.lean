@@ -1,8 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Analysis.Protocol.UniformContinuationLimit
+import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
 import GameTheoryExtensions.Protocol.ContinuationSimulation
-import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Sequential equilibrium from simulations along a common perturbation
 
@@ -25,7 +24,6 @@ open Protocol Protocol.InformationModel Protocol.ExecutionProtocol Math.Probabil
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E T : ExecutionProtocol Player} {M : InformationModel E} {N : InformationModel T}
   [Finite E.History] [Finite T.History]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
   [∀ who (site : N.InformationSite who), Fintype (N.InformationHistory who site.1)]
 
 /-- A common sequence of exact continuation simulations yields an actual
@@ -33,15 +31,10 @@ target SE. The initialized law is retained separately and exactly; it may
 include private types and every public result rather than only utilities. -/
 theorem exists_sequentialEquilibrium_limit
     {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
-    (sourceFuel targetFuel : Nat) (bounded : E.BoundedHorizon sourceFuel)
-    (sourceRecall : M.DecisionRecall) (targetAntichain : N.DecisionInformationAntichain)
-    (clock : ∀ who (site : M.InformationSite who),
-      ∃ depth, InformationSite.CommonDepth M site depth)
+    (sourceFuel targetFuel : Nat) (targetAntichain : N.DecisionInformationAntichain)
     (utility : Outcome → Player → ℝ)
     (source : M.BehavioralAssessment) (sourceSequence : ℕ → M.BehavioralAssessment)
-    (sourceMixed : ∀ n, (sourceSequence n).IsFullyMixed)
-    (sourceBayes : ∀ n, BehavioralAssessment.IsBayesConsistent M (sourceSequence n)
-      sourceRecall.antichain)
+    (sourceMixed : (sourceSequence 0).IsFullyMixed)
     (sourceConverges : BehavioralAssessmentConvergesPointwise sourceSequence source)
     (sourceRational : source.IsSequentiallyRationalWithin
       (fun who history => utility (sourceObserve history) who) sourceFuel)
@@ -68,29 +61,15 @@ theorem exists_sequentialEquilibrium_limit
   refine ⟨target, ⟨?_, consistent⟩, ?_⟩
   · intro who site alternative _
     obtain ⟨error, _nonnegative, vanishes, bound⟩ :=
-      sourceConverges.exists_uniform_continuation_gain_bound sourceRecall sourceMixed sourceBayes
-        who (clock who) sourceFuel (fun history => utility (sourceObserve history) who)
-        (fun decision depth common _within => by
-          rw [source.continuationContext_remaining M sourceFuel bounded who decision depth common]
-          exact sourceRational who decision)
+      sourceConverges.exists_uniform_policy_gain_bound (sourceSequence 0) sourceMixed
+        who (fun history => utility (sourceObserve history) who) sourceFuel (sourceRational who)
     have sourceBound (n : ℕ) (deviation : M.AssessmentDeviation who) :
         ((M.assessmentComparison sourceObserve sourceFuel (sourceSequence n)
           who deviation).alternative).expect (utility · who) -
           ((M.assessmentComparison sourceObserve sourceFuel (sourceSequence n)
             who deviation).prescribed).expect (utility · who) ≤ error n := by
-      obtain ⟨depth, common⟩ := clock who deviation.1
-      have within : depth ≤ sourceFuel := by
-        by_contra exceeds
-        obtain ⟨history, running, _action⟩ := deviation.1.2
-        have terminal := bounded history.1.state history.1.trace (by
-          rw [common history]
-          omega)
-        exact running terminal
-      have result := bound n deviation.1 depth common within deviation.2
-      rw [(sourceSequence n).continuationContext_remaining M sourceFuel bounded who deviation.1
-        depth common] at result
       simpa only [assessmentComparison, FinDist.expect_map, Context.value,
-        BehavioralAssessment.continuationContext] using result
+        BehavioralAssessment.continuationContext] using bound n deviation.1 deviation.2
     have targetBound (n : ℕ) :
         ((targetSequence n).continuationContext site
             (fun history => utility (targetObserve history) who) targetFuel).value alternative -
@@ -125,7 +104,7 @@ theorem exists_sequentialEquilibrium_limit
   · apply FinDist.ext_of_prob
     intro outcome
     let indicator (observed : Outcome) := (FinDist.pure observed).prob outcome
-    have sourceLimit := M.runBehavioralFrom_expect_tendsto (sourceSequence 0) (sourceMixed 0)
+    have sourceLimit := M.runBehavioralFrom_expect_tendsto (sourceSequence 0) sourceMixed
       (fun n => (sourceSequence n).strategy) source.strategy sourceConverges.strategy
       (fun history => indicator (sourceObserve history)) sourceFuel E.initHistory
     have targetLimit := N.runBehavioralFrom_expect_tendsto (targetSequence (index 0))

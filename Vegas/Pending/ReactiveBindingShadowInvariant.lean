@@ -77,11 +77,9 @@ theorem OwnBindings.public_action_none {memory : BindingShadow graph} {who : Pla
 
 variable [DecidableEq Player]
 
-/-- The same public completion is read from the actual runtime on both sides.
-Private reconstruction neither substitutes a public sample nor changes a
-successful, failed or withheld publication result. -/
-theorem OwnBindings.complete_public_observation {memory : BindingShadow graph} {who : Player}
-    (onlyBindings : memory.OwnBindings who)
+/-- A completion with no private override is read from the real runtime.
+This includes public results and other owners' private bindings. -/
+theorem complete_unmodified_observation (memory : BindingShadow graph) (who : Player)
     (left right : graph.Config)
     (stores : memory.store (graph.playerObserve who right).store =
       (graph.playerObserve who left).store)
@@ -89,7 +87,8 @@ theorem OwnBindings.complete_public_observation {memory : BindingShadow graph} {
       (graph.playerObserve who left).ownActions)
     (event : graph.EventId) (leftReady : left.cut.Ready event)
     (rightReady : right.cut.Ready event)
-    (visible : (graph.outputLayout event).IsPublic)
+    (noValue : memory.values (.inr event) = none)
+    (noAction : memory.actions event = none)
     (action : graph.Action event) (value : (graph.outputLayout event).Value) :
     memory.store (graph.playerObserve who
       (right.complete event rightReady action value)).store =
@@ -98,19 +97,16 @@ theorem OwnBindings.complete_public_observation {memory : BindingShadow graph} {
       (right.complete event rightReady action value)).ownActions.map memory.completion) =
         (graph.playerObserve who (left.complete event leftReady action value)).ownActions := by
   classical
-  have visible' : graph.fieldVisibleTo who (.inr event) := by
-    change (graph.outputLayout event).VisibleTo who
-    cases kind : graph.outputLayout event <;>
-      simp only [kind, EventField.IsPublic, EventField.VisibleTo] at visible ⊢
-  have noValue := onlyBindings.public_value_none (.inr event) visible
-  have noAction := onlyBindings.public_action_none event visible
   constructor
   · funext field
     by_cases selected : field = .inr event
     · subst field
-      simp only [store, EventGraph.playerObserve, EventGraph.playerStore_of_visible,
-        visible', EventGraph.Config.store_output, EventGraph.Config.complete_output_same,
-        noValue, Option.map_some, Option.getD_none]
+      by_cases visible : graph.fieldVisibleTo who (.inr event)
+      · simp only [store, EventGraph.playerObserve, EventGraph.playerStore_of_visible,
+          visible, EventGraph.Config.store_output, EventGraph.Config.complete_output_same,
+          noValue, Option.map_some, Option.getD_none]
+      · simp only [store, EventGraph.playerObserve,
+          EventGraph.playerStore, visible, ↓reduceIte, Option.map_none]
     · change memory.store (graph.playerStore who
         (right.complete event rightReady action value).store) field =
           graph.playerStore who (left.complete event leftReady action value).store field

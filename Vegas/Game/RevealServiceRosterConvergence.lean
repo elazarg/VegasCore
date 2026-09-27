@@ -88,7 +88,7 @@ theorem roster_policy_converges
     obtain ⟨last, final, timingLimit⟩ := timingConverges event who ownedEvent
     rw [activated]
     exact roster_owner_policy_limit setup leaks extended rosters granted event who grant ownedEvent
-      candidate raw opening owned valid offset serials published menu.uniformResponses
+      candidate raw opening owned valid (offset who) serials published menu.uniformResponses
       (fun player past view response supported =>
         (menu.uniformResponses_support player past view response).mp supported)
       network ((rosters event).take slot) (roster_count_before selected) prior reached sample

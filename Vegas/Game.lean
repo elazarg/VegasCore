@@ -1,6 +1,27 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.PurificationEdge
+import Vegas.Game.DisclosureForeign
+import Vegas.Game.DisclosureProfileComparison
+import Vegas.Game.SourceBayes
+import Vegas.Game.DisclosureAssessment
+import Vegas.Game.BindingRepairOpening
+import Vegas.Game.SourceServicePolicy
+import Vegas.Game.SourceServiceStep
+import Vegas.Game.SourceServiceBinding
+import Vegas.Game.RevealServiceRosterEvaluation
+import Vegas.Game.RevealServiceRosterEvidence
+import Vegas.Game.RevealServiceRosterBoundaryPosterior
+import Vegas.Game.RevealServiceRosterOwnerNoise
+import Vegas.Game.RevealServiceRosterOwnerPosterior
+import Vegas.Game.RevealServiceRosterBayes
+import Vegas.Game.RevealServiceRosterConsistency
+import Vegas.Game.RevealServiceRosterTraffic
+import Vegas.Game.RevealServiceRosterDeparture
+import Vegas.Game.RevealServiceRosterTrafficSound
+import Vegas.Game.RevealServiceRosterChoiceEvidence
+import Vegas.Game.RevealServiceRosterAudit
+import Vegas.Game.RevealServiceRosterWindowContinuation
 import Vegas.Game.ValueBindingEdge
 import Vegas.Game.EventScheduling
 import Vegas.Game.EventCompilation

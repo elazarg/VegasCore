@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceCompletion
+import Interaction.ReactiveScheduleEvaluation
 
 /-! # Counted native histories at service-prefix boundaries
 
@@ -29,47 +30,6 @@ private theorem iterate_bind {A B : Type} (kernel : B → FinDist B)
   | zero => rfl
   | succ count ih =>
       simp only [Function.iterate_succ_apply', ih, FinDist.bind_bind]
-
-private theorem control_round (app : ReactiveApplication Player)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
-    (players : Player → app.Policy) (remaining : Nat) (execution : app.Execution)
-    (actor : Option Player)
-    (scheduled : ∀ command ∈
-      (scheduler execution.environmentRecall (execution.observeEnvironment app)).support,
-      command.actor? app = actor) :
-    (fun law => law.bind (app.controlStep initial horizon scheduler players))^[
-        1 + actor.toList.length] (FinDist.pure (some ⟨remaining + 1, none, execution⟩)) =
-      (app.round scheduler players execution).map
-        (fun next => some ⟨remaining, none, next⟩) := by
-  classical
-  cases actor with
-  | none =>
-      simp only [Option.toList_none, List.length_nil, Nat.add_zero, Function.iterate_one,
-        FinDist.pure_bind, ReactiveApplication.controlStep, ReactiveApplication.actor,
-        Option.bind_some, ReactiveApplication.transition, ReactiveApplication.round,
-        FinDist.map_bind]
-      apply FinDist.bind_congr
-      intro command supported
-      rw [scheduled command supported]
-      simp only [ReactiveApplication.dispatch, scheduled command supported]
-      change _ = ((execution.environmentStep app command).bind FinDist.pure).map _
-      rw [FinDist.bind_pure]
-  | some who =>
-      simp only [Option.toList_some, List.length_singleton]
-      rw [show 1 + 1 = 1 + 1 from rfl, Function.iterate_add_apply,
-        Function.iterate_one, FinDist.pure_bind]
-      simp only [ReactiveApplication.controlStep, ReactiveApplication.actor,
-        Option.bind_some, ReactiveApplication.transition, ReactiveApplication.round,
-        FinDist.map_bind, FinDist.bind_bind, FinDist.bind_map]
-      apply FinDist.bind_congr
-      intro command supported
-      rw [scheduled command supported]
-      simp only [ReactiveApplication.dispatch, scheduled command supported,
-        ReactiveApplication.resume, FinDist.map_bind]
-      apply FinDist.bind_congr
-      intro observed _
-      simp only [↓reduceIte, Option.getD_some, ReactiveApplication.invoke,
-        FinDist.map_eq_bind, FinDist.bind_bind, FinDist.pure_bind]
 
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -114,7 +74,7 @@ theorem segment_control_steps (watcher : Player)
         rw [schedulerEq]
         exact instruction_actor setup leaks watcher execution.environmentRecall
           (execution.observeEnvironment (application setup leaks)) instruction
-      have one := control_round (application setup leaks) (initialLaw setup)
+      have one := (application setup leaks).control_round (initialLaw setup)
         (horizon setup watcher) (scheduler setup leaks watcher) players
         (segment.length + rest.length) execution (instructionActor instruction) scheduled
       have start : (instruction :: segment).length + rest.length =

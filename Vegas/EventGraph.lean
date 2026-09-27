@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.EventGraph.Order
+import Vegas.EventGraph.ResolutionFields
 import Vegas.EventGraph.Sequential
 import Vegas.EventGraph.SequentialLaw
 import Vegas.EventGraph.ExecutionMode

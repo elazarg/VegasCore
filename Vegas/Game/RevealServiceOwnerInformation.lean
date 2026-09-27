@@ -54,10 +54,19 @@ theorem owner_information_projects
   rw [responses.info, responses.info, leftState, rightState] at same
   simp only [ReactiveApplication.observe, ↓reduceIte] at same
   have beforeView := congrArg Prod.snd (Option.some.inj same)
-  have sourceView := (PrefixCheckpoint.observe_eq_iff who setup.program
+  have leftLeaks := PrefixCheckpoint.runtime_fact
+    (fun execution => execution.network.leaked = fun _ => [])
+    (fun _ _ _ _ checkpoint => checkpoint.leaked) _ _ _ _ _ _ _ _ leftOpportunity
+  have rightLeaks := PrefixCheckpoint.runtime_fact
+    (fun execution => execution.network.leaked = fun _ => [])
+    (fun _ _ _ _ checkpoint => checkpoint.leaked) _ _ _ _ _ _ _ _ rightOpportunity
+  have sourceView := (PublicPrefixCheckpoint.observe_eq_iff who setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputRef setup.program) 0 event.val
-    leftSource rightSource _ _ leftOpportunity rightOpportunity rfl).mpr beforeView
+    leftSource rightSource _ _
+    (PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ leftOpportunity)
+    (PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ rightOpportunity) rfl
+    (by rw [leftLeaks, rightLeaks])).mpr beforeView
   simpa only [leftState, rightState, prefixReadout, ownerOpportunity,
     leftDecoded, rightDecoded, Setup.protocolObserve, Option.map_some] using
       congrArg some sourceView
@@ -140,10 +149,19 @@ theorem owner_focal_information
       ProtocolState.observe who setup.program rightSource := by
     rw [leftDecoded, rightDecoded] at boundarySame
     exact Option.some.inj boundarySame
-  have beforeView := (PrefixCheckpoint.observe_eq_iff who setup.program
+  have leftLeaks := PrefixCheckpoint.runtime_fact
+    (fun execution => execution.network.leaked = fun _ => [])
+    (fun _ _ _ _ checkpoint => checkpoint.leaked) _ _ _ _ _ _ _ _ leftOpportunity
+  have rightLeaks := PrefixCheckpoint.runtime_fact
+    (fun execution => execution.network.leaked = fun _ => [])
+    (fun _ _ _ _ checkpoint => checkpoint.leaked) _ _ _ _ _ _ _ _ rightOpportunity
+  have beforeView := (PublicPrefixCheckpoint.observe_eq_iff who setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputRef setup.program) 0 event.val
-    leftSource rightSource _ _ leftOpportunity rightOpportunity rfl).mp sourceView
+    leftSource rightSource _ _
+    (PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ leftOpportunity)
+    (PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ rightOpportunity) rfl
+    (by rw [leftLeaks, rightLeaks])).mp sourceView
   rw [leftInfo, rightInfo, past, beforeView]
 
 end Vegas.SourceProgram.RevealService

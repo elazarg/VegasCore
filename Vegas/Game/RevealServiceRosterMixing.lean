@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterDecisionData
+import Vegas.Game.RevealServiceRosterEvidence
 import Vegas.Game.RevealServiceMixing
 
 /-! # Fully mixed source profiles cover every legal roster decision
@@ -125,16 +126,24 @@ theorem roster_policy_support_exact
       exact (menu.uniformResponses_support player past view response).mp supported
     refine ⟨?_, ?_⟩
     · intro supported
-      exact roster_owner_coverage setup leaks extended rosters granted event who grant ownedEvent
-        candidate raw opening owned valid offset serials published menu.uniformResponses covered
-        network ((rosters event).take slot) (roster_count_before selected) prior reached sample
-        _ full (roster_opening_raw_available setup leaks extended event candidate raw handle value
-          who _ _) action supported
+      refine roster_owner_coverage setup leaks extended rosters granted event who grant ownedEvent
+        candidate raw opening owned valid (offset who) serials published menu.uniformResponses
+        covered network ((rosters event).take slot) (roster_count_before selected)
+        prior reached sample _ full (fun fresh => ?_) action supported
+      have normal := roster_fresh_normal setup leaks extended rosters network reveals openable
+        who control trace active ((runtime setup).windowOpening leaks event candidate raw)
+        (by rw [activated]; exact fresh)
+      apply (((runtime setup).reactiveNormalization leaks).menu_mem
+        (extended.rawMenu (runtime setup) leaks) who _ _ _).mpr
+      refine ⟨_, roster_opening_raw_available setup leaks extended event candidate raw handle value
+        who _ _, ?_⟩
+      rw [activated] at normal
+      exact normal
     · intro member
       exact roster_owner_fullSupport setup leaks extended rosters granted event who grant ownedEvent
-        candidate raw opening owned valid offset serials published menu.uniformResponses covered
-        network ((rosters event).take slot) (roster_count_before selected) prior reached sample
-        _ full action member
+        candidate raw opening owned valid (offset who) serials published menu.uniformResponses
+        covered network ((rosters event).take slot) (roster_count_before selected)
+        prior reached sample _ full action member
   · have waiting : rosterPolicy setup leaks rosters timing decoded who
         (control.execution.recall who) (control.execution.observe app who) =
           app.replayPolicy (control.execution.recall who) (control.execution.observe app who) := by
@@ -155,8 +164,8 @@ theorem roster_policy_support_exact
       rw [absent] at fresh
       cases fresh
 
-/-- Every fresh response allowed at a legal decision fits the static raw
-bound extended by the finite initialized commitment values. -/
+/-- Every fresh response at a legal decision fits the effective finite menu,
+using the initialized commitment values and actual certificate provenance. -/
 theorem roster_fresh_available
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -172,7 +181,7 @@ theorem roster_fresh_available
     (active : control.actor = some who) (action : (application setup leaks).Action)
     (fresh : rosterFresh? setup leaks rosters who (control.execution.recall who)
       (control.execution.observe (application setup leaks) who) = some action) :
-    action ∈ ((bounds.withInitialValues (initialLaw setup)).rawMenu (runtime setup) leaks).actions
+    action ∈ ((bounds.withInitialValues (initialLaw setup)).menu (runtime setup) leaks).actions
       who (control.execution.recall who)
       (control.execution.observe (application setup leaks) who) :=
     by
@@ -198,8 +207,11 @@ theorem roster_fresh_available
     unchanged
   rw [sentOpening, opening] at same
   cases Option.some.inj same
-  exact roster_opening_raw_available setup leaks extended event candidate raw handle value
-    who _ _
+  apply (((runtime setup).reactiveNormalization leaks).menu_mem
+    (extended.rawMenu (runtime setup) leaks) who _ _ _).mpr
+  exact ⟨_, roster_opening_raw_available setup leaks extended event candidate raw handle value
+    who _ _, roster_fresh_normal setup leaks extended rosters network reveals openable
+      who control trace active _ fresh⟩
 
 section Compilation
 

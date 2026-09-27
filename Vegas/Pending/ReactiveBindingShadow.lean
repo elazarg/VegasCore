@@ -374,9 +374,10 @@ theorem restoreRecall_submit (memory : BindingMemory runtime leaks)
     Message Player (WitnessedPacket graph))) packet.symm
 
 open Classical in
-/-- Repair only newly fixed, owned, unusable commitment material. Every test
-and memory update uses the current own input. Other responses are left intact;
-the stopped-run proof must intercept their first observable departure separately. -/
+/-- Record each newly fixed owned binding and replace only unusable private
+material. Every test and memory update uses the current own input. Recording
+usable bindings keeps their response unchanged and gives one reconstruction
+rule for subsequent inclusion. Other responses are left intact. -/
 def repairResponse (who : Player) (memory : BindingMemory runtime leaks)
     (actual : (runtime.reactiveApplication leaks).PlayerView)
     (response : (runtime.reactiveApplication leaks).Action) :
@@ -388,17 +389,20 @@ def repairResponse (who : Player) (memory : BindingMemory runtime leaks)
       | .bind owner payload outputEq _ =>
           if author = who ∧ owner = who ∧
               original.application.candidates (.prepared serial) = .fresh ∧
-              actual.application.candidates (.prepared serial) = .fresh ∧
-              opening.bind (fun raw => raw.as? payload) = none then
+              actual.application.candidates (.prepared serial) = .fresh then
             let call : Submission graph := ⟨.commitment event (who, .prepared serial), opening⟩
             let remembered := memory.shadow.rememberCandidate (.prepared serial)
               (call.candidateAfter who original.application.candidates (.prepared serial))
-            let failed : PublicationResult (L.Val payload) := .failure
-            (runtime.reactiveBinding leaks who event payload
-              (.success (L.someValue payload)) serial,
+            let decoded := opening.bind (fun raw => raw.as? payload)
+            let result := decoded.elim PublicationResult.failure PublicationResult.success
+            let replacement := match decoded with
+              | none => runtime.reactiveBinding leaks who event payload
+                  (.success (L.someValue payload)) serial
+              | some _ => response
+            (replacement,
               remembered.rememberCompletion event
-                (cast (congrArg EventGraph.EventField.Action outputEq.symm) failed)
-                (cast (congrArg EventGraph.EventField.Value outputEq.symm) failed))
+                (cast (congrArg EventGraph.EventField.Action outputEq.symm) result)
+                (cast (congrArg EventGraph.EventField.Value outputEq.symm) result))
           else (response, memory.shadow)
       | .sample .. | .resolve .. => (response, memory.shadow)
   | _ => (response, memory.shadow)
@@ -421,6 +425,24 @@ theorem repairResponse_unusable (who : Player) (memory : BindingMemory runtime l
       ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩).1 =
       runtime.reactiveBinding leaks who event payload (.success (L.someValue payload)) serial := by
   simp only [repairResponse, node, originalFresh, actualFresh, unusable, and_self, ↓reduceIte]
+
+/-- Uniform private recording does not change a usable binding response. -/
+theorem repairResponse_usable (who : Player) (memory : BindingMemory runtime leaks)
+    (actual : (runtime.reactiveApplication leaks).PlayerView)
+    (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind who payload)
+    (node : nodeView graph event = .bind who payload outputEq codeEq)
+    (serial : Nat) (opening : Option (Raw L))
+    (originalFresh : (memory.shadow.inputView runtime leaks actual).application.candidates
+      (.prepared serial) = .fresh)
+    (actualFresh : actual.application.candidates (.prepared serial) = .fresh)
+    (value : L.Val payload) (usable : opening.bind (fun raw => raw.as? payload) = some value) :
+    (memory.repairResponse runtime leaks who actual
+      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩).1 =
+      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩ := by
+  simp only [repairResponse, node, originalFresh, actualFresh, usable, and_self, ↓reduceIte]
 
 open Classical in
 /-- Shadowing is an ordinary private implementation. Its argument is an own

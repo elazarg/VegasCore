@@ -2,17 +2,27 @@
 
 ## Recommendation and claim boundary
 
-The smallest defensible general route is to retain ambient communication in
-the source **interpretation**, with one explicit service contract, and prove
-the existing compiler preserves that game's sequential equilibria. Keep the
-language's game operations unchanged. Hide packet encodings and bookkeeping
-only after proving they add no observations or continuation choices.
+The compiler goal keeps the ordinary source game unchanged and implements it
+with an explicit inclusion, observation and settlement contract. The proof has
+two strategic obligations: retained native responses implement source choices
+and incentives; every additional effective response produces collectible audit
+evidence. The raw native game continues to admit those additional responses.
+Source correspondence cannot be replaced by a packet-shape checker.
 
-For an ordinary source game that omits communication, use an additional,
-utility-dependent extension theorem for a supported game class. Monitoring
-can support that theorem when every profitable extra channel is accountable;
-packet-shape checking alone does not establish this premise. This is a route
-recommendation, not a completed native SE theorem.
+The [signed-audit compiler theorem](../../Vegas/Game/RevealServiceSignedCompilation.lean)
+closes this route for finite reveal-only programs with the fixed owner/watcher
+calendar. It preserves standard SE and the joint typed-outcome/realized-settlement
+law. The [general-roster work](se-ambient-rosters.md) removes the dedicated watcher
+and permits repeated player visits, partial pending reads and pending replays.
+Its native beliefs, common consistency construction and operational audit
+certificates are checked; native sequential rationality is still open.
+Full-source compilation additionally needs the evolving binding and guard
+continuation proof. Neither generalization is an end-to-end theorem yet.
+
+Interpreting source games with ambient communication remains an alternative
+for environments whose extra channels cannot satisfy the audit contract.
+This changes the game being preserved even when the source syntax stays the same;
+it is not the claim of the ordinary-source monitored compiler.
 
 The narrower [monitored guessing instance](se-native-pilot.md) does have a
 checked native SE theorem, using the existing source syntax, full bounded raw

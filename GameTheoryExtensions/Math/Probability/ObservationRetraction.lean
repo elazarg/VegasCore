@@ -16,7 +16,9 @@ namespace GameTheory.Math.Probability.FinDist
 
 variable {Source Native SourceInfo NativeInfo : Type*}
 
-private theorem map_conditional_readout {A B Info : Type*} (law : FinDist A)
+/-- Conditioning on an observation of a readout commutes with retaining that
+readout. The positivity premise avoids the arbitrary empty-fiber fallback. -/
+theorem map_conditional_readout {A B Info : Type*} (law : FinDist A)
     (read : A → B) (observe : B → Info) (observed : Info)
     (present : observed ∈ (law.map (observe ∘ read)).support) :
     (law.condOnFibre (observe ∘ read) observed).map read =

@@ -78,6 +78,22 @@ theorem forwardingPacket_exists (known : List (Message Player (WitnessedPacket g
           simp only [identified, available, decide_true] at excluded
           contradiction
 
+theorem forwardingPacket_eq_none (known : List (Message Player (WitnessedPacket graph)))
+    (fact : OpeningFact graph)
+    (absent : ∀ message ∈ known, message.payload.evidence ≠ some fact) :
+    forwardingPacket known fact = Option.none := by
+  cases selected : forwardingPacket known fact with
+  | none => rfl
+  | some message =>
+      have forwarded := forwardingPacket_resolves known fact message selected
+      cases origin : known.find? (fun envelope => envelope.id = message.id) with
+      | none =>
+          simp only [forwardedEvidence, origin, Option.bind_none] at forwarded
+          cases forwarded
+      | some envelope =>
+          exact False.elim (absent envelope (List.mem_of_find?_eq_some origin) (by
+            simpa only [forwardedEvidence, origin, Option.bind_some] using forwarded))
+
 theorem resolve_owned_of_no_forward (who : Player)
     (candidates : CandidateSlot graph → CommitmentCandidate (Raw L))
     (known : List (Message Player (WitnessedPacket graph))) (request : EvidenceRequest graph)

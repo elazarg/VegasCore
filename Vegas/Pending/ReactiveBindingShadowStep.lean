@@ -38,7 +38,6 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
     (serial : Nat) (opening : Option (Raw L))
     (originalFresh : left.application.candidates.lookup (who, .prepared serial) = .fresh)
     (actualFresh : right.application.candidates.lookup (who, .prepared serial) = .fresh)
-    (unusable : opening.bind (fun raw => raw.as? payload) = none)
     (ready : right.application.config.cut.Ready event) :
     let app := runtime.reactiveApplication leaks
     let view := right.observe app who
@@ -56,17 +55,22 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
   let app := runtime.reactiveApplication leaks
   let beforeView := right.observe app who
   let originalCall : Submission graph := ⟨.commitment event (who, .prepared serial), opening⟩
+  let decoded := opening.bind (fun raw => raw.as? payload)
+  let replacementOpening := match decoded with
+    | none => some (⟨payload, L.someValue payload⟩ : Raw L)
+    | some _ => opening
   let repairedCall : Submission graph :=
-    ⟨.commitment event (who, .prepared serial), some ⟨payload, L.someValue payload⟩⟩
+    ⟨.commitment event (who, .prepared serial), replacementOpening⟩
   let original : app.Action := ⟨some (.submit ⟨originalCall, .none⟩)⟩
   let repaired : app.Action := ⟨some (.submit ⟨repairedCall, .none⟩)⟩
   let catalog := memory.shadow.rememberCandidate (.prepared serial)
     (originalCall.candidateAfter who
       (memory.shadow.inputView runtime leaks beforeView).application.candidates (.prepared serial))
-  let failed : PublicationResult (L.Val payload) := .failure
+  let result : PublicationResult (L.Val payload) :=
+    decoded.elim PublicationResult.failure PublicationResult.success
   let shadow := catalog.rememberCompletion event
-    (cast (congrArg EventGraph.EventField.Action outputEq.symm) failed)
-    (cast (congrArg EventGraph.EventField.Value outputEq.symm) failed)
+    (cast (congrArg EventGraph.EventField.Action outputEq.symm) result)
+    (cast (congrArg EventGraph.EventField.Value outputEq.symm) result)
   have ownFresh : (memory.shadow.inputView runtime leaks beforeView).application.candidates
       (.prepared serial) = .fresh := by
     rw [observed]
@@ -76,8 +80,15 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
   have repairedEq : memory.repairResponse runtime leaks who beforeView original =
       (repaired, shadow) := by
     simp only [repairResponse, original, originalCall, node, ownFresh, actualLocalFresh,
-      unusable, and_self, ↓reduceIte]
-    rfl
+      and_self, ↓reduceIte]
+    change ((match decoded with
+      | none => runtime.reactiveBinding leaks who event payload
+          (.success (L.someValue payload)) serial
+      | some _ => original), shadow) = (repaired, shadow)
+    apply Prod.ext
+    · dsimp only [repaired, repairedCall, replacementOpening]
+      cases decoded <;> rfl
+    · rfl
   let before := left.respond app who original
   let after := right.respond app who repaired
   let remembered : BindingMemory runtime leaks :=
@@ -102,7 +113,7 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
   have catalogEq := memory.shadow.rememberCandidate_submit_view runtime leaks
     left.application right.application who
       (congrArg ReactiveApplication.PlayerView.application observed) event serial opening
-        (some ⟨payload, L.someValue payload⟩)
+        replacementOpening
   change catalog.view (app.observePlayer after.application who) =
     app.observePlayer before.application who at catalogEq
   have shadowEq : shadow.view (app.observePlayer after.application who) =

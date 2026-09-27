@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveServiceEvaluation
 import Interaction.ReactiveHistory
 import Interaction.ReactiveAllocation
+import Interaction.ReactivePolicyInvariant
 
 /-! # Own-response prefixes during actual service execution
 
@@ -126,5 +127,29 @@ theorem runInteractionPlan_recall_prefix (runtime : EventGraphRuntime graph)
         Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
       exact (runtime.interactionStep_recall_prefix leaks players network instruction
         before middle stepped who).trans (ih middle continued)
+
+theorem runInteractionPlan_inputRecall
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks)
+    (plan : List (ServiceInstruction graph))
+    (initial final : (runtime.reactiveApplication leaks).Execution)
+    (valid : initial.InputRecall (runtime.reactiveApplication leaks))
+    (reached : final ∈ (runtime.runInteractionPlan leaks players network plan
+      initial).support) : final.InputRecall (runtime.reactiveApplication leaks) := by
+  let app := runtime.reactiveApplication leaks
+  have preserved : app.PolicyInvariant players (fun execution => execution.InputRecall app) := {
+    respond := fun execution who action valid _ =>
+      app.respond_inputRecall execution who action valid
+    environment := app.environment_inputRecall }
+  induction plan generalizing initial with
+  | nil => cases FinDist.mem_support_pure.mp reached; exact valid
+  | cons instruction rest ih =>
+      obtain ⟨middle, stepped, later⟩ :=
+        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨command, _, dispatched⟩ :=
+        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ stepped)
+      exact ih middle (preserved.dispatch command initial middle valid dispatched) later
 
 end Vegas.EventGraphRuntime

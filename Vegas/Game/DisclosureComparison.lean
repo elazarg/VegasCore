@@ -150,7 +150,7 @@ theorem normalized_disclosure_prefix_comparison {Γ : SourceCtx Player L} {O : F
       rw [FinDist.condOnFibre, dite_eq_left targetMeets] at supported
       obtain ⟨config, supportedConfig, reached⟩ := Set.mem_iUnion₂.mp
         (FinDist.support_bind .. ▸ (FinDist.support_condOn _ _ _ supported).2)
-      have realized := disclosure_prefix_continuation_realizes program profile policy
+      have realized := disclosure_prefix_continuation_realizes program profile profile policy
         (fun view => FinDist.pure view.2) config count
       rw [registryEq config supportedConfig, revelationsEq config supportedConfig] at realized
       exact (realized state reached).symm

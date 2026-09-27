@@ -4,7 +4,7 @@ import Vegas.Game.RevealServiceRosterPolicy
 
 /-! # Retained responses in a finite revelation roster
 
-This finite menu uses the existing raw response bound. It retains all known
+This finite menu uses the existing effective response bound. It retains all known
 envelope replays, including a pending canonical opening, and permits one fresh
 canonical opening per phase. Its stopping test reads the player's actual own
 response recall. The full target menu still permits every bounded raw response.
@@ -79,7 +79,7 @@ def rosterActions (setup : Setup (Player := Player) (L := L))
     (view : (application setup leaks).PlayerView) : Finset (application setup leaks).Action :=
   (((application setup leaks).replayPolicy past view).supportFinset ∪
     (rosterFresh? setup leaks rosters who past view).toList.toFinset) ∩
-      (bounds.rawMenu (runtime setup) leaks).actions who past view
+      (bounds.menu (runtime setup) leaks).actions who past view
 
 theorem silence_roster (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -92,8 +92,8 @@ theorem silence_roster (setup : Setup (Player := Player) (L := L))
   refine Finset.mem_inter.mpr ⟨Finset.mem_union_left _ (FinDist.mem_supportFinset.mpr ?_), ?_⟩
   · exact (application setup leaks).replayPolicy_support past view none
       (Finset.mem_insert_self _ _)
-  · rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
-    trivial
+  · rw [bounds.menu_mem]
+    exact ⟨True.intro, rfl⟩
 
 /-- The replay law's support is exactly lawful raw traffic, without imposing a
 static bound on identifiers already known through actual recall or observation. -/
@@ -109,14 +109,16 @@ theorem replay_roster (setup : Setup (Player := Player) (L := L))
     (FinDist.mem_supportFinset.mpr member), ?_⟩
   obtain ⟨selected, supported, rfl⟩ := FinDist.support_map .. ▸ member
   have eligible := (FinDist.mem_support_uniformSet_iff _ _ _).mp supported
-  rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
   cases selected with
-  | none => trivial
+  | none =>
+      rw [bounds.menu_mem]
+      exact ⟨True.intro, rfl⟩
   | some id =>
       simp only [ReactiveApplication.replayOptions, Finset.mem_insert, Option.some_ne_none,
         false_or, Finset.mem_image, List.mem_toFinset, List.mem_map, Option.some.injEq] at eligible
       obtain ⟨key, ⟨message, known, same⟩, rfl⟩ := eligible
-      exact ⟨message, known, same⟩
+      exact bounds.known_replay_available (runtime setup) leaks who past view key
+        ⟨message, known, same⟩
 
 def rosterMenu (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -125,13 +127,24 @@ def rosterMenu (setup : Setup (Player := Player) (L := L))
   actions := rosterActions setup leaks bounds rosters
   nonempty who past view := ⟨⟨none⟩, silence_roster setup leaks bounds rosters who past view⟩
 
+theorem rosterMenu_in_effective (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player) :
+    (rosterMenu setup leaks bounds rosters).IncludedIn (bounds.menu (runtime setup) leaks) := by
+  classical
+  intro who past view
+  exact Finset.inter_subset_right
+
 theorem rosterMenu_in_raw (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player) :
     (rosterMenu setup leaks bounds rosters).IncludedIn (bounds.rawMenu (runtime setup) leaks) := by
-  classical
-  intro who past view
-  exact Finset.inter_subset_right
+  intro who past view action member
+  obtain ⟨original, allowed, normal⟩ := ((runtime setup).reactiveNormalization leaks).menu_mem
+    (bounds.rawMenu (runtime setup) leaks) who past view action |>.mp
+      (rosterMenu_in_effective setup leaks bounds rosters who past view member)
+  rw [← normal]
+  exact bounds.rawMenu_closed (runtime setup) leaks who past view original allowed
 
 theorem roster_response_cases (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))

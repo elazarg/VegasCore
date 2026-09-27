@@ -30,6 +30,13 @@ theorem Satisfies.mono (valid : network.Satisfies safe)
     fun who message member => implies message (valid.leaked who message member),
     fun input member => implies input.envelope (valid.inputs input member)⟩
 
+theorem Satisfies.and (left : network.Satisfies safe) (right : network.Satisfies weaker) :
+    network.Satisfies (fun message => safe message ∧ weaker message) :=
+  ⟨fun message member => ⟨left.pending message member, right.pending message member⟩,
+    fun message member => ⟨left.ledger message member, right.ledger message member⟩,
+    fun who message member => ⟨left.leaked who message member, right.leaked who message member⟩,
+    fun input member => ⟨left.inputs input member, right.inputs input member⟩⟩
+
 variable [DecidableEq Principal]
 
 theorem Satisfies.lookup (valid : network.Satisfies safe)

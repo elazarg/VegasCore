@@ -105,7 +105,7 @@ theorem roster_decision_phase
           (FinDist.pure (ProtocolState.entry setup.program
             (setup.initialConfig initial)))).support ∧
       granted.application.serviceGrant = some event ∧
-      (granted.recall who).length = rosterOffset setup rosters who event ∧
+      (∀ player, (granted.recall player).length = rosterOffset setup rosters player event) ∧
       granted.network.SerialsBeforeNext ∧
       granted.network.Satisfies (fun message =>
         message.id ∈ granted.network.ledger.map Message.id) ∧
@@ -131,15 +131,16 @@ theorem roster_decision_phase
     network ((rosters event).take slot) granted prior phase
   rw [FinDist.support_bind] at boundarySupport
   obtain ⟨nativeInitial, _, reached⟩ := Set.mem_iUnion₂.mp boundarySupport
-  have counts := roster_prefix_response_counts setup leaks rosters network menu.uniformResponses
-    event (ReactiveApplication.Execution.initial app nativeInitial) boundary reached who
   have serials := (runtime setup).runInteractionPlan_serials leaks menu.uniformResponses network
     (rosterPlanPrefix setup rosters event.val)
     (ReactiveApplication.Execution.initial app nativeInitial) boundary
     MessageNetwork.SerialsBeforeNext.empty reached
   refine ⟨event, slot, granted, prior, sample, initial, state, selected, initialSupport,
     related, sourceSupport, grant, ?_, ?_, ?_, phase, same.symm, ?_⟩
-  · rw [recall]
+  · intro player
+    have counts := roster_prefix_response_counts setup leaks rosters network menu.uniformResponses
+      event (ReactiveApplication.Execution.initial app nativeInitial) boundary reached player
+    rw [recall]
     simpa only [ReactiveApplication.Execution.initial, List.length_nil, Nat.zero_add] using counts
   · rwa [net]
   · rwa [net]
