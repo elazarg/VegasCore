@@ -953,7 +953,7 @@ namespace TimedApproximant
 
 /-- Each history of an owner site is an actual decision whose own recall and
 view are the site's information. -/
-private theorem site_decision {service : SourceServiceSpec Player L}
+theorem site_decision {service : SourceServiceSpec Player L}
     (who : Player) (site : service.model.InformationSite who)
     (past : List (application service.setup service.leaks).PlayerEntry)
     (view : (application service.setup service.leaks).PlayerView)
@@ -989,7 +989,7 @@ private theorem site_decision {service : SourceServiceSpec Player L}
 
 /-- The prescribed local law of a timed approximant at an actual decision is
 the timed policy's response law. -/
-private theorem prescribed_response_law {service : SourceServiceSpec Player L}
+theorem prescribed_response_law {service : SourceServiceSpec Player L}
     (approx : TimedApproximant service) {who : Player} {remaining : Nat}
     {execution : (application service.setup service.leaks).Execution}
     (trace : (service.menu.protocol (initialLaw service.setup) service.planLength

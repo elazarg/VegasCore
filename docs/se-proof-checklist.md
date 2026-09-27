@@ -80,9 +80,12 @@ percentage estimate.
   bindings an exact simulation by original source deviations; owner visits to
   a disclosure without an available opening have zero gain
   ([SourceServiceForeignComparison.lean](../Vegas/Game/SourceServiceForeignComparison.lean),
-  [SourceServiceForeignDisclosure.lean](../Vegas/Game/SourceServiceForeignDisclosure.lean)).
-  Unsent owner disclosures with an available opening remain; the
-  [completion plan](se-completion-plan.md) orders the remaining work.
+  [SourceServiceForeignDisclosure.lean](../Vegas/Game/SourceServiceForeignDisclosure.lean)),
+  and with an available opening gain at most the source comparison error
+  divided by the remaining timing mass
+  ([SourceServiceAvailableOpening.lean](../Vegas/Game/SourceServiceAvailableOpening.lean)).
+  Every kind of site is covered; the box closes with the S5 assembly, which the
+  [completion plan](se-completion-plan.md) orders.
 
 - [ ] **S5. Full-language source-to-permitted-runtime SE theorem.** Combine
   S1–S4 into an actual compiler theorem: every original source SE has a permitted

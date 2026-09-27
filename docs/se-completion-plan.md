@@ -66,7 +66,7 @@ a site has the same kind. The kinds and their comparisons:
 | 4. own binding, unsent | `unsentBinding` | `unsent_binding_comparisons` (checked) |
 | 5. own disclosure, sent | `recordedDisclosure` | `recorded_disclosure_comparison_eq` (checked) |
 | 5. own disclosure, no opening | `absentOpening` | `absent_opening_comparison_eq` (checked) |
-| 6. own disclosure, opening available | `availableOpening` | M5 |
+| 6. own disclosure, opening available | `availableOpening` | `available_opening_gain_le` (checked) |
 
 Only coverage is used by M6. The kinds are mutually exclusive by construction:
 each is fixed by the event's node, the actor, the recorded bit and
@@ -130,8 +130,10 @@ The caller supplies the alternative, from `exists_admitted_local_law` at the
 site's common source view (`SourcePrefixCheckpoint.source_view_eq_of_observe_eq`),
 before choosing any hidden history. Where the prescribed native law is not the
 prescribed source law (disclosure), the caller cannot establish the first
-identity and uses only the source side of `sourceService_owner_assessment_comparisons`:
-the mixture components bound source gains.
+identity and uses only the source half, `TimedApproximant.owner_source_comparisons`:
+the source continuations averaged under the native belief are the laws of one
+mixture of original source comparisons, so their gains are mixtures of source
+gains.
 
 ### M4. Unsent binding (checked)
 
@@ -152,7 +154,7 @@ after a submission and the prescribed source law after a transport response;
 `owner_site_source_histories` supplies the source histories on which
 `exists_admitted_local_law` realizes it. M3 then gives the common mixture.
 
-### M5. Disclosure owner sites (L, largest)
+### M5. Disclosure owner sites (checked)
 
 - **Kind 5 (checked):** zero gain by `comparison_eq_of_phase_invariant`. A sent
   opening: `TimedApproximant.recorded_disclosure_comparison_eq`. No available
@@ -162,38 +164,34 @@ after a submission and the prescribed source law after a transport response;
   submission, and the timed compiler responds only by transport at every point
   of the phase (`sourceServiceTimedPolicy_absent_transport`), so the application
   stays fixed and all traffic published (`transport_phase_application_law`).
-- **Kind 6:** error branch.
-  Keep two baselines apart. With `V_true` and `V_false` the continuation
-  values after disclosing and withholding at this view, averaged under the
-  native belief:
+- **Kind 6 (checked):** error branch,
+  `TimedApproximant.available_opening_gain_le`
+  ([SourceServiceAvailableOpening](../Vegas/Game/SourceServiceAvailableOpening.lean)).
+  Every local lottery gains at most `error / lower` when every original source
+  comparison gains at most `error` and the timing law leaves mass at least
+  `lower` after each of the owner's visits but its last. With `V_true` and
+  `V_false` the source continuation values after disclosing and withholding,
+  averaged under the native belief, and `c` the owner's earlier visits:
 
-  - source prescribed value `B = q·V_true + (1 − q)·V_false`;
-  - native prescribed value `B' = p·V_true + (1 − p)·V_false`, where
-    `p = deferredRemaining q timing count`.
+  - the source prescribed value is `q·V_true + (1 − q)·V_false`, from the
+    boundary unfold of `exists_revealSource_step`;
+  - the native prescribed value is `p·V_true + (1 − p)·V_false` with
+    `p = deferredRemaining q timing c`, from the timing posterior at the
+    decision and `deferredRemaining_hazard_value`;
+  - a native lottery has value `r·V_true + (1 − r)·V_false`: the opening
+    completes the disclosure (`RevealSource.opening_config_law`), and a
+    transport response defers it with `deferredRemaining q timing (c + 1)`
+    (`TimedApproximant.available_transport_expect`).
 
-  1. Typed continuation after opening now (`openingWindow_active_expiry` for an
-     unpassed selected slot; a passed slot gives replay) and after transport,
-     each as a source Bernoulli continuation.
-  2. Source side: apply M3 with the admitted alternatives "disclose" and
-     "withhold" at the common view. This gives `V_true − B` and `V_false − B`
-     as expectations of original source deviation gains. The source local law
-     at the view is `q`, so `B` is the `q`-mixture of the two values.
-  3. Bound every original source deviation gain uniformly by a vanishing error
-     with `exists_uniform_policy_gain_bound` (`UniformPolicyLimit.lean`). It
-     covers whole-policy deviations at any source site with a fixed fuel, so it
-     bounds these mixtures directly; no remaining-fuel conversion is needed.
-  4. Native side: the prescribed native law discloses eventually with
-     probability `p`, from the timing posterior
-     (`sourceServiceTimedMixture_replay_window_posterior_initial`) and
-     `scheduledChoice_remaining_probability`. A native local lottery discloses
-     eventually with some probability `r` in `[0, 1]`, the same at every
-     history of the site, so its value is `r·V_true + (1 − r)·V_false`.
-  5. `deferredRemaining_regret_le`, with `rosterTiming_prefix_le` at weight ½
-     (remaining mass at least ½), bounds the native gain relative to `B'` by
-     twice the bound of step 3.
-  6. The limit theorem takes one error for all sites and players: twice the
-     sum over players of the step-3 errors. It is nonnegative, so the
-     zero-error comparisons of M2, M4 and kind 5 remain valid.
+  Both disclosures are legal source choices at the common source view,
+  because an authentic opening makes both effective
+  (`RevealSource.disclosure_mem_support`, from `SupportsEffectiveChoices`).
+  So the source alternatives "disclose" and "withhold" exist
+  (`exists_admitted_local_law`), and `owner_source_comparisons` makes
+  `V_true − B` and `V_false − B` mixtures of original source gains, where `B`
+  is the source prescribed value. `deferredRemaining_regret_le` then bounds the
+  native gain. The per-decision laws are the record
+  `TimedApproximant.AvailableOpeningLaws` (`available_opening_decision`).
 
 ### M6. S5 assembly (M)
 
@@ -222,8 +220,7 @@ as a delegating restatement.
 
 ## Ordering
 
-M1–M4 are checked. The critical path is M5 → M6 → M7 → M8.
-Within M5, steps 2–3 and 5–6 do not depend on the operational steps 1 and 4.
+M1–M5 are checked. The critical path is M6 → M7 → M8.
 
 Parallel lanes must not run Lake builds concurrently. A build deletes the
 oleans it replaces, so a concurrent check fails on missing imports. A separate

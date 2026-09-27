@@ -10,7 +10,10 @@ At an owner's visit to its own unsent disclosure whose authentic opening is
 available, the timed compiler defers the source disclosure over the owner's
 remaining roster visits. On the source side, the continuation from the event's
 boundary draws the source disclosure and continues from the configuration that
-completes the publication with it.
+completes the publication with it. Both disclosures are legal source choices
+there, so the source gains of disclosing and of withholding bound every native
+local gain at the site
+(`Vegas.SourceProgram.RevealService.TimedApproximant.available_opening_gain_le`).
 -/
 
 noncomputable section
@@ -117,7 +120,7 @@ theorem RevealSource.opening_success {setup : Setup (Player := Player) (L := L)}
       execution.application.candidates.lookup candidate = .openable ⟨site.payload, value⟩ := by
   have outputEq := site.outputEq
   obtain ⟨Γ, names, publishedName, owner, name, payload, fresh, binding, unresolved, next,
-    residual, refs, source, embedding, refsBefore, aligned, agree, history, head, _⟩ := site
+    residual, refs, source, embedding, refsBefore, aligned, agree, history, head, _, _⟩ := site
   dsimp only at *
   subst head
   have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -191,7 +194,7 @@ theorem RevealSource.opening_config_law (setup : Setup (Player := Player) (L := 
   have outputEq := site.outputEq
   have owned := site.owned
   obtain ⟨Γ, names, publishedName, owner, name, payload, fresh, binding, unresolved, next,
-    residual, refs, source, embedding, refsBefore, aligned, agree, history, head, _⟩ := site
+    residual, refs, source, embedding, refsBefore, aligned, agree, history, head, _, _⟩ := site
   dsimp only at *
   subst head
   have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -392,7 +395,7 @@ theorem RevealSource.opportunity_law {setup : Setup (Player := Player) (L := L)}
         else (application setup leaks).replayPolicy (execution.recall site.owner)
           (execution.observe (application setup leaks) site.owner) := by
   obtain ⟨Γ, names, publishedName, owner, name, payload, fresh, binding, unresolved, next,
-    residual, refs, source, embedding, refsBefore, aligned, agree, history, head, _⟩ := site
+    residual, refs, source, embedding, refsBefore, aligned, agree, history, head, _, _⟩ := site
   dsimp only at *
   subst head
   have law := sourceServiceOpportunity_reveal setup leaks fresh binding unresolved next
@@ -478,7 +481,8 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
   obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseGranted⟩ := phase
   dsimp only at isPublication ⊢
   obtain ⟨event, slot, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
-      refsBefore, aligned, _, ⟨_, inherits, lift, commutes, transport⟩, granted, prior, sample,
+      refsBefore, aligned, _, ⟨supported, inherits, lift, commutes, transport⟩, granted, prior,
+      sample,
       boundary, grant, reachedPrior, _, sampled, _, publicEq, checkpoint, position,
       grantedOrigins⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
@@ -524,7 +528,7 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
           execution.application.config :=
         ⟨Γ, names, published, siteOwner, name, sitePayload, fresh, binding, unresolved, next,
           remainingProfile, refs, source, embedding, refsBefore, aligned, checkpoint.agrees,
-          checkpoint.history, rfl, inherits⟩
+          checkpoint.history, rfl, inherits, supported⟩
       have outputEq : (graph service.setup).outputLayout
           (embedding.event ⟨0, by simp [eventCount]⟩) = .publication sitePayload :=
         site.outputEq
@@ -720,6 +724,26 @@ theorem RevealSource.completion_expect {setup : Setup (Player := Player) (L := L
   rw [show (revealKernel site.residual (site.source.view site.owner)).prob false =
     1 - (revealKernel site.residual (site.source.view site.owner)).prob true by linarith]
 
+omit [Fintype Player] in
+/-- When the source disclosure succeeds, a profile supporting its effective
+choices keeps both disclosure choices in the owner's source lottery. -/
+theorem RevealSource.disclosure_mem_support {setup : Setup (Player := Player) (L := L)}
+    {profile : BehavioralProfile setup.program} {event : (graph setup).EventId}
+    {config : (graph setup).Config} (site : RevealSource setup profile event config)
+    (supports : ∀ who, (profile who).SupportsEffectiveChoices setup.program
+      (CommitmentInterface.values setup.program) [] (Revelations.initial setup.context))
+    {value : L.Val site.payload}
+    (success : disclosureResult site.published site.binding site.source true = .success value)
+    (disclose : Bool) :
+    disclose ∈ (revealKernel site.residual (site.source.view site.owner)).support := by
+  refine (site.supported supports site.owner).1 rfl (site.source.view site.owner) disclose ?_
+  change effectiveDisclosureView site.published site.binding site.source.registry
+    site.source.revelations (sourceObserve site.owner site.source.state) disclose = disclose
+  rw [effectiveDisclosureView_observe]
+  cases disclose with
+  | false => exact effectiveDisclosure_false _ _ _
+  | true => simp only [effectiveDisclosure, success]
+
 namespace TimedApproximant
 
 variable {service : SourceServiceSpec Player L} (approx : TimedApproximant service)
@@ -763,13 +787,15 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
           (approx.timing phase.event who owned) (phase.earlier + 1)) *
             utility (site.completion ready false) := by
   obtain ⟨Γ, names, publishedName, owner, name, payload, fresh, binding, unresolved, next,
-    residual, refs, source, embedding, refsBefore, aligned, agree, history, head, inherits⟩ := site
+    residual, refs, source, embedding, refsBefore, aligned, agree, history, head, inherits,
+    supported⟩ := site
   dsimp only at ownerEq
   subst ownerEq
   let site : RevealSource service.setup approx.profile phase.event
       execution.application.config :=
     ⟨Γ, names, publishedName, owner, name, payload, fresh, binding, unresolved, next,
-      residual, refs, source, embedding, refsBefore, aligned, agree, history, head, inherits⟩
+      residual, refs, source, embedding, refsBefore, aligned, agree, history, head, inherits,
+      supported⟩
   change (approx.phaseConfigLaw phase response).expect utility =
     FinDist.deferredRemaining site.disclosureProbability (approx.timing phase.event owner owned)
         (phase.earlier + 1) * utility (site.completion ready true) +
@@ -1003,6 +1029,633 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
     _ = _ := by
       rw [← remainingMass]
       ring
+
+/-- The native and source laws at an owner's decision on its unsent disclosure
+at `event` with an available opening. The source continuation from the
+event's boundary draws a disclosure from `disclosures`, both of whose values
+are possible, and continues from `completion` of it. The native continuation
+after the owner's opening is the source continuation after disclosing; after a
+transport response it discloses with the deferred remaining probability after
+one more visit. The prescribed native lottery discloses with the deferred
+remaining probability at the current visit. The source side holds at the
+decoded boundary state: the step of any owner action and the disclosure
+marginal of the owner's action law. -/
+structure AvailableOpeningLaws {who : Player}
+    {execution : (application service.setup service.leaks).Execution}
+    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
+    {event : (graph service.setup).EventId}
+    (owned : (graph service.setup).actor? event = some who)
+    (candidate : Handle (graph service.setup)) (raw : Raw L) where
+  disclosures : FinDist Bool
+  completion : Bool → (graph service.setup).Config
+  both : ∀ disclose, disclose ∈ disclosures.support
+  boundary : (service.setup.continuationLaw approx.profile (sourceServicePrefix? service.setup
+    event.val execution.application.config)).map some =
+      disclosures.bind fun disclose =>
+        approx.boundaryContinuation (event.val + 1) (completion disclose)
+  step : ∀ joint : Player → Option (OwnAction Player L),
+    service.setup.protocolStep (sourceServicePrefix? service.setup event.val
+      execution.application.config) joint =
+    FinDist.pure (sourceServicePrefix? service.setup (event.val + 1)
+      (completion (OwnAction.disclosure (joint who))))
+  marginal : ∀ state, sourceServicePrefix? service.setup event.val
+      execution.application.config = some state →
+    ¬ ProtocolState.terminal service.setup.program state →
+    ((approx.profile who).protocolAction service.setup.program
+      (ProtocolState.observe who service.setup.program state)).map OwnAction.disclosure =
+        disclosures
+  prescribed : ∀ utility : Option (State L service.setup.program.terminalCtx) → ℝ,
+    ((approx.players who (execution.recall who)
+      (execution.observe (application service.setup service.leaks) who)).bind
+        (approx.responseReadout phase)).expect utility =
+      FinDist.deferredRemaining (disclosures.prob true) (approx.timing event who owned)
+          phase.earlier *
+        (approx.boundaryContinuation (event.val + 1) (completion true)).expect utility +
+      (1 - FinDist.deferredRemaining (disclosures.prob true)
+          (approx.timing event who owned) phase.earlier) *
+        (approx.boundaryContinuation (event.val + 1) (completion false)).expect utility
+  responses : ∀ response ∈ service.menu.actions who (execution.recall who)
+      (execution.observe (application service.setup service.leaks) who),
+    (response = (runtime service.setup).windowOpening service.leaks event candidate raw ∧
+      approx.responseReadout phase response =
+        approx.boundaryContinuation (event.val + 1) (completion true)) ∨
+    ((response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) ∧
+      ∀ utility : Option (State L service.setup.program.terminalCtx) → ℝ,
+        (approx.responseReadout phase response).expect utility =
+          FinDist.deferredRemaining (disclosures.prob true) (approx.timing event who owned)
+              (phase.earlier + 1) *
+            (approx.boundaryContinuation (event.val + 1) (completion true)).expect
+              utility +
+          (1 - FinDist.deferredRemaining (disclosures.prob true)
+              (approx.timing event who owned) (phase.earlier + 1)) *
+            (approx.boundaryContinuation (event.val + 1) (completion false)).expect
+              utility)
+
+/-- Every decision of the owner on its unsent disclosure with an available
+opening has its native and source laws. -/
+theorem available_opening_decision {who : Player} {remaining : Nat}
+    {execution : (application service.setup service.leaks).Execution}
+    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
+      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
+    (owned : (graph service.setup).actor? phase.event = some who) {payload : L.Ty}
+    (isPublication : (graph service.setup).outputLayout phase.event = .publication payload)
+    (unsent : (runtime service.setup).eventRecorded service.leaks (execution.recall who)
+      phase.event = false)
+    (candidate : Handle (graph service.setup)) (raw : Raw L)
+    (opening : rosterOpening? service.setup service.leaks who phase.event
+      (execution.observe (application service.setup service.leaks) who) = some (candidate, raw)) :
+    Nonempty (approx.AvailableOpeningLaws phase owned candidate raw) := by
+  obtain ⟨site, _, posterior, stepFacts⟩ := service.exists_revealSource_step approx.profile
+    trace phase isPublication
+  obtain ⟨entered, state, activated, due, ready, timely, valid, recalled, origins⟩ :=
+    service.disclosure_decision_resources trace phase owned isPublication
+  obtain ⟨sourceStep, anyStep, marginal⟩ := stepFacts ready
+  have ownerEq : site.owner = who := Option.some.inj (site.owned.symm.trans owned)
+  obtain ⟨Γ, names, publishedName, owner, name, sitePayload, fresh, binding, unresolved, next,
+    residual, refs, source, embedding, refsBefore, aligned, agree, history, head, inherits,
+    supported⟩ := site
+  dsimp only at ownerEq
+  subst ownerEq
+  let site : RevealSource service.setup approx.profile phase.event
+      execution.application.config :=
+    ⟨Γ, names, publishedName, owner, name, sitePayload, fresh, binding, unresolved, next,
+      residual, refs, source, embedding, refsBefore, aligned, agree, history, head, inherits,
+      supported⟩
+  let app := application service.setup service.leaks
+  let disclosures := revealKernel residual (source.view owner)
+  let timing := approx.timing phase.event owner owned
+  have both (disclose : Bool) : disclose ∈ disclosures.support := by
+    obtain ⟨value, success, _⟩ := RevealSource.opening_success service.leaks execution site valid
+      candidate raw opening
+    exact RevealSource.disclosure_mem_support site approx.supports success disclose
+  have total := disclosures.sum_prob
+  simp only [Fintype.sum_bool] at total
+  have small : disclosures.prob true < 1 := by
+    have positive := FinDist.prob_pos_iff.mpr (both false)
+    linarith
+  have published := state.2.2.1 unsent
+  have serials := state.2.1
+  have counted := service.recall_count trace phase
+  have visitsCount : phase.earlier + 1 + phase.visits.count owner =
+      (service.rosters phase.event).count owner := by
+    conv_rhs => rw [phase.roster_split]
+    simp only [DecisionPhase.earlier, List.count_append, List.count_cons_self]
+    omega
+  have effective := inherits approx.effective owner
+  have opportunity := RevealSource.opportunity_law service.leaks execution site phase.granted
+    unsent valid recalled origins effective candidate raw opening
+  have old := posterior timing candidate raw approx.effective opening unsent small
+  let family := sourceServiceTimedFamily service.setup service.leaks service.rosters
+    approx.profile owner phase.event
+  let mixtureImpl := app.policyMixture timing family
+  obtain ⟨current, currentVal⟩ : ∃ current : Fin ((service.rosters phase.event).count owner),
+      current.val = phase.earlier := ⟨⟨phase.earlier, by omega⟩, rfl⟩
+  have fires : family current (execution.recall owner) (execution.observe app owner) =
+      sourceServiceOpportunity service.setup service.leaks approx.profile owner phase.event
+        (execution.recall owner) (execution.observe app owner) := by
+    have firing : rosterOffset service.setup service.rosters owner phase.event + current.val =
+        (execution.recall owner).length := by
+      rw [currentVal, counted]
+      rfl
+    simp only [family, sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
+      Option.map_some, firing, ↓reduceIte]
+  have waits (slot : Fin ((service.rosters phase.event).count owner)) (other : slot ≠ current) :
+      family slot (execution.recall owner) (execution.observe app owner) =
+        app.replayPolicy (execution.recall owner) (execution.observe app owner) := by
+    have waiting : ¬ rosterOffset service.setup service.rosters owner phase.event + slot.val =
+        (execution.recall owner).length := by
+      intro now
+      apply other
+      apply Fin.ext
+      rw [currentVal]
+      rw [counted] at now
+      change rosterOffset service.setup service.rosters owner phase.event + slot.val =
+        rosterOffset service.setup service.rosters owner phase.event + phase.earlier at now
+      omega
+    simp only [family, sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
+      Option.map_some, Option.some.injEq, waiting, ↓reduceIte]
+    rfl
+  have grant : PublicView.serviceGrant
+      (execution.observe app owner).application.publicView = some phase.event := phase.granted
+  have policyEq : approx.players owner (execution.recall owner) (execution.observe app owner) =
+      (mixtureImpl.posterior (execution.recall owner)).bind fun slot =>
+        family slot (execution.recall owner) (execution.observe app owner) := by
+    simp only [players, sourceServiceTimedPolicy, grant, owned, ↓reduceDIte]
+    exact app.policyMixture_policy _ _ _ _
+  have allowedOf (response : app.Action)
+      (supported : response ∈ (approx.players owner (execution.recall owner)
+        (execution.observe app owner)).support) :
+      response ∈ service.menu.actions owner (execution.recall owner)
+        (execution.observe app owner) :=
+    approx.covered owner ⟨remaining, some owner, execution⟩ trace rfl response supported
+  have present (slot : Fin ((service.rosters phase.event).count owner))
+      (slotSupport : slot ∈ (mixtureImpl.posterior (execution.recall owner)).support)
+      (response : app.Action)
+      (drawn : response ∈ (family slot (execution.recall owner)
+        (execution.observe app owner)).support) :
+      response ∈ service.menu.actions owner (execution.recall owner)
+        (execution.observe app owner) := by
+    apply allowedOf
+    rw [policyEq, FinDist.support_bind]
+    exact Set.mem_iUnion₂.mpr ⟨slot, slotSupport, drawn⟩
+  let completion := site.completion ready
+  have ending : rosterPhaseEnding service.setup phase.event =
+      .includeLatest phase.event owner :: (List.replicate (phase.event.val + 1) .tick ++
+        [.expire phase.event]) := by
+    simp only [rosterPhaseEnding, owned, List.cons_append, List.nil_append]
+  have opened (allowed : (runtime service.setup).windowOpening service.leaks phase.event
+      candidate raw ∈ service.menu.actions owner (execution.recall owner)
+        (execution.observe app owner)) :
+      approx.responseReadout phase ((runtime service.setup).windowOpening service.leaks
+        phase.event candidate raw) =
+        approx.boundaryContinuation (phase.event.val + 1) (completion true) := by
+    have law := RevealSource.opening_config_law service.setup service.leaks service.rosters
+      approx.timing approx.profile service.network execution site phase.granted ready timely
+      valid serials published candidate raw opening phase.visits (phase.event.val + 1)
+    simp only [List.append_assoc, List.singleton_append] at law
+    have configLaw : approx.phaseConfigLaw phase ((runtime service.setup).windowOpening
+        service.leaks phase.event candidate raw) = FinDist.pure (completion true) := by
+      unfold phaseConfigLaw phaseLaw DecisionPhase.tail
+      rw [ending]
+      exact law
+    rw [approx.response_continuation_law trace phase _ allowed, configLaw, FinDist.pure_bind]
+  have transported (response : app.Action)
+      (allowed : response ∈ service.menu.actions owner (execution.recall owner)
+        (execution.observe app owner))
+      (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+      (utility : Option (State L service.setup.program.terminalCtx) → ℝ) :
+      (approx.responseReadout phase response).expect utility =
+        FinDist.deferredRemaining (disclosures.prob true) timing (phase.earlier + 1) *
+          (approx.boundaryContinuation (phase.event.val + 1) (completion true)).expect utility +
+        (1 - FinDist.deferredRemaining (disclosures.prob true) timing (phase.earlier + 1)) *
+          (approx.boundaryContinuation (phase.event.val + 1) (completion false)).expect
+            utility := by
+    rw [approx.response_continuation_law trace phase response allowed, FinDist.expect_bind]
+    exact approx.available_transport_expect trace phase site rfl owned unsent ready candidate
+      raw opening small old response allowed transport
+      (fun config => (approx.boundaryContinuation (phase.event.val + 1) config).expect utility)
+  refine ⟨⟨disclosures, completion, both, ?_, anyStep, marginal, ?_, ?_⟩⟩
+  · rw [sourceStep, FinDist.map_bind]
+    rfl
+  · intro utility
+    let whenTrue := (approx.boundaryContinuation (phase.event.val + 1)
+      (completion true)).expect utility
+    let whenFalse := (approx.boundaryContinuation (phase.event.val + 1)
+      (completion false)).expect utility
+    let later := FinDist.deferredRemaining (disclosures.prob true) timing (phase.earlier + 1) *
+      whenTrue + (1 - FinDist.deferredRemaining (disclosures.prob true) timing
+        (phase.earlier + 1)) * whenFalse
+    have replayed (slot : Fin ((service.rosters phase.event).count owner))
+        (slotSupport : slot ∈ (mixtureImpl.posterior (execution.recall owner)).support)
+        (replayFamily : ∀ response ∈ (app.replayPolicy (execution.recall owner)
+          (execution.observe app owner)).support,
+            response ∈ (family slot (execution.recall owner)
+              (execution.observe app owner)).support) :
+        (app.replayPolicy (execution.recall owner) (execution.observe app owner)).expect
+          (fun response => (approx.responseReadout phase response).expect utility) = later := by
+      rw [← FinDist.expect_const (app.replayPolicy (execution.recall owner)
+        (execution.observe app owner)) later]
+      apply FinDist.expect_congr
+      intro response supported
+      exact transported response (present slot slotSupport response
+        (replayFamily response supported)) (app.replayPolicy_cases _ _ response supported) utility
+    rw [policyEq, FinDist.expect_bind, FinDist.expect_bind]
+    calc
+      _ = (mixtureImpl.posterior (execution.recall owner)).expect (fun slot =>
+          later + if slot = current then disclosures.prob true * (whenTrue - later) else 0) := by
+        apply FinDist.expect_congr
+        intro slot slotSupport
+        by_cases same : slot = current
+        · subst same
+          simp only [↓reduceIte]
+          rw [fires, opportunity, FinDist.expect_bind, FinDist.expect_eq_sum, Fintype.sum_bool]
+          simp only [↓reduceIte, Bool.false_eq_true, FinDist.expect_pure]
+          have openedHere := opened (present slot slotSupport _ (by
+            rw [fires, opportunity, FinDist.support_bind]
+            exact Set.mem_iUnion₂.mpr ⟨true, both true, by
+              simp only [↓reduceIte, FinDist.mem_support_pure]⟩))
+          rw [openedHere, replayed slot slotSupport (fun response supported => by
+            rw [fires, opportunity, FinDist.support_bind]
+            exact Set.mem_iUnion₂.mpr ⟨false, both false, by
+              simpa only [Bool.false_eq_true, ↓reduceIte] using supported⟩)]
+          rw [show disclosures.prob false = 1 - disclosures.prob true by linarith]
+          change disclosures.prob true * whenTrue + (1 - disclosures.prob true) * later = _
+          ring
+        · simp only [same, ↓reduceIte, add_zero]
+          rw [waits slot same]
+          exact replayed slot slotSupport (fun response supported => by
+            rw [waits slot same]
+            exact supported)
+      _ = later + (mixtureImpl.posterior (execution.recall owner)).prob current *
+          (disclosures.prob true * (whenTrue - later)) := by
+        rw [FinDist.expect_add, FinDist.expect_const, FinDist.expect_eq_sum]
+        simp only [mul_ite, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
+      _ = _ := by
+        have oldCurrent : (mixtureImpl.posterior (execution.recall owner)).prob current =
+            timing.prob current /
+              FinDist.deferredSurvival (disclosures.prob true) timing phase.earlier := by
+          rw [old current, currentVal]
+          simp only [DecisionPhase.earlier, lt_irrefl, ↓reduceIte, mul_one]
+          rfl
+        have hazard := FinDist.deferredRemaining_hazard_value (disclosures.prob true)
+          (FinDist.prob_nonneg _ _) small timing current whenTrue whenFalse
+        rw [FinDist.deferredHazard_at, currentVal] at hazard
+        rw [oldCurrent]
+        simp only [later, whenTrue, whenFalse, timing] at hazard ⊢
+        linear_combination hazard
+  · intro response allowed
+    have supportedResponse := roster_fullyMixed_response_support service.setup service.leaks
+      service.rosters service.network service.menu approx.players approx.covered
+      approx.assessment approx.strategy approx.mixed owner remaining execution trace response
+      allowed
+    rw [policyEq, FinDist.support_bind] at supportedResponse
+    obtain ⟨slot, _, drawn⟩ := Set.mem_iUnion₂.mp supportedResponse
+    by_cases same : slot = current
+    · subst same
+      rw [fires, opportunity, FinDist.support_bind] at drawn
+      obtain ⟨disclose, _, drawn⟩ := Set.mem_iUnion₂.mp drawn
+      cases disclose
+      · simp only [Bool.false_eq_true, ↓reduceIte] at drawn
+        have transport := app.replayPolicy_cases _ _ response drawn
+        exact Or.inr ⟨transport, transported response allowed transport⟩
+      · simp only [↓reduceIte, FinDist.mem_support_pure] at drawn
+        subst drawn
+        exact Or.inl ⟨rfl, opened allowed⟩
+    · rw [waits slot same] at drawn
+      have transport := app.replayPolicy_cases _ _ response drawn
+      exact Or.inr ⟨transport, transported response allowed transport⟩
+
+end TimedApproximant
+
+namespace TimedApproximant
+
+open Classical in
+/-- At an owner's visit to its own unsent disclosure with an available opening,
+every local lottery of the `ofSource` approximant gains at most `error / lower`
+when every original source assessment comparison gains at most `error` and the
+timing law leaves mass at least `lower` after each of the owner's visits but
+its last. The source prescribed law discloses with some probability `q`, the
+native prescribed law with the deferred remaining probability of `q`, and a
+native lottery with some probability in `[0, 1]`; the source gains of
+disclosing and of withholding at the common source view bound the difference
+(`FinDist.deferredRemaining_regret_le`). -/
+theorem available_opening_gain_le (service : SourceServiceSpec Player L)
+    (timing : ∀ event who, (graph service.setup).actor? event = some who →
+      FinDist (Fin ((service.rosters event).count who)))
+    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (source : (service.setup.informationModel
+      (CommitmentInterface.values service.setup.program)).BehavioralAssessment)
+    [∀ who (site : (service.setup.informationModel
+      (CommitmentInterface.values service.setup.program)).InformationSite who),
+      Fintype ((service.setup.informationModel
+        (CommitmentInterface.values service.setup.program)).InformationHistory who site.1)]
+    (full : ∀ who info, (source.strategy who info).FullSupport)
+    (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
+      (service.setup.informationModel (CommitmentInterface.values service.setup.program)) source
+      (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
+    (approx : TimedApproximant service)
+    (built : approx = ofSource service timing timingFull source.strategy full)
+    (who : Player) (site : service.model.InformationSite who)
+    (past : List (application service.setup service.leaks).PlayerEntry)
+    (view : (application service.setup service.leaks).PlayerView)
+    (observed : site.1 = some (past, view))
+    {event : (graph service.setup).EventId} {payload : L.Ty}
+    (isPublication : (graph service.setup).outputLayout event = .publication payload)
+    (owned : (graph service.setup).actor? event = some who)
+    (granted : view.application.publicView.serviceGrant = some event)
+    (unsent : (runtime service.setup).eventRecorded service.leaks past event = false)
+    (candidate : Handle (graph service.setup)) (raw : Raw L)
+    (opening : rosterOpening? service.setup service.leaks who event view = some (candidate, raw))
+    (utility : Option (State L service.setup.program.terminalCtx) → ℝ) (error : ℝ)
+    (sourceGains : ∀ deviation : (service.setup.informationModel
+        (CommitmentInterface.values service.setup.program)).AssessmentDeviation who,
+      let comparison := (service.setup.informationModel
+        (CommitmentInterface.values service.setup.program)).assessmentComparison
+          (fun final => service.setup.protocolReadout final.state)
+          (instructionCount service.setup.program + 1) source who deviation
+      comparison.alternative.expect utility - comparison.prescribed.expect utility ≤ error)
+    (lower : ℝ) (positive : 0 < lower)
+    (remainingMass : ∀ count < (service.rosters event).count who,
+      lower ≤ 1 - (timing event who owned).timingPrefix count)
+    (law : FinDist (service.model.Choice who site.1)) :
+    let comparison := service.model.assessmentComparison service.readout service.fuel
+      approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
+    comparison.alternative.expect utility - comparison.prescribed.expect utility ≤
+      error / lower := by
+  intro comparison
+  have timingEq : approx.timing = timing := by
+    subst built
+    rfl
+  obtain ⟨sourceView, sourceHistories⟩ := owner_site_source_histories service timing
+    timingFull source full sourceBayes approx built who site past view observed owned granted
+  let admission := CommitmentInterface.values service.setup.program
+  let baseline := service.setup.toProtocolBehavioralPolicy admission who (approx.profile who)
+    (approx.admitted who) (some sourceView)
+  let earlier := past.length - rosterOffset service.setup service.rosters who event
+  -- The decision data and the source side of every history in the belief.
+  have atHistory (history : service.model.InformationHistory who site.1)
+      (member : history ∈ (approx.assessment.belief who site).support) :
+      ∃ (remaining : Nat) (execution : (application service.setup service.leaks).Execution)
+        (current : history.1.state = some ⟨remaining, some who, execution⟩)
+        (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
+        (_ : (service.menu.protocol (initialLaw service.setup) service.planLength
+          service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
+        (laws : approx.AvailableOpeningLaws phase owned candidate raw)
+        (sourceHistory : (service.setup.executionProtocol admission).History),
+        execution.recall who = past ∧
+        execution.observe (application service.setup service.leaks) who = view ∧
+        phase.earlier = earlier ∧ earlier < (service.rosters event).count who ∧
+        decodedState service event history.1 =
+          sourceServicePrefix? service.setup event.val execution.application.config ∧
+        sourceHistory.state =
+          sourceServicePrefix? service.setup event.val execution.application.config ∧
+        ¬ (service.setup.executionProtocol admission).terminal sourceHistory.state ∧
+        (service.setup.executionProtocol admission).active sourceHistory.state who ∧
+        (service.setup.informationModel admission).infoOf who sourceHistory.trace =
+          some sourceView ∧
+        laws.disclosures = (baseline.map Subtype.val).map OwnAction.disclosure := by
+    obtain ⟨remaining, execution, current, phase, same, recallEq, viewEq⟩ :=
+      site_decision who site past view observed granted history
+    have trace : (service.menu.protocol (initialLaw service.setup) service.planLength
+        service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
+      current ▸ history.1.trace
+    obtain ⟨phaseEvent, slot, selected, position, phaseGranted⟩ := phase
+    dsimp only at same
+    subst same
+    let phase : DecisionPhase service.setup service.leaks service.rosters who execution :=
+      ⟨phaseEvent, slot, selected, position, phaseGranted⟩
+    have counted := service.recall_count trace phase
+    rw [recallEq] at counted
+    change past.length = rosterOffset service.setup service.rosters who phaseEvent +
+      ((service.rosters phaseEvent).take slot).count who at counted
+    have visitsCount : phase.earlier + 1 + phase.visits.count who =
+        (service.rosters phase.event).count who := by
+      conv_rhs => rw [phase.roster_split]
+      simp only [DecisionPhase.earlier, List.count_append, List.count_cons_self]
+      omega
+    change ((service.rosters phaseEvent).take slot).count who + 1 + phase.visits.count who =
+      (service.rosters phaseEvent).count who at visitsCount
+    have unsentNow : (runtime service.setup).eventRecorded service.leaks (execution.recall who)
+        phaseEvent = false := recallEq ▸ unsent
+    have openingNow : rosterOpening? service.setup service.leaks who phaseEvent
+        (execution.observe (application service.setup service.leaks) who) =
+          some (candidate, raw) := viewEq ▸ opening
+    obtain ⟨laws⟩ := approx.available_opening_decision trace phase owned isPublication
+      unsentNow candidate raw openingNow
+    obtain ⟨sourceHistory, sourceState, running, active, info⟩ := sourceHistories history member
+    have decodedEq : decodedState service phaseEvent history.1 =
+        sourceServicePrefix? service.setup phaseEvent.val execution.application.config := by
+      simp only [decodedState, current, Option.bind_some]
+    rw [decodedEq] at sourceState
+    obtain ⟨state, stateEq⟩ : ∃ state, sourceServicePrefix? service.setup phaseEvent.val
+        execution.application.config = some state := by
+      cases decoded : sourceServicePrefix? service.setup phaseEvent.val
+          execution.application.config with
+      | none =>
+          rw [show (service.setup.informationModel admission).infoOf who sourceHistory.trace =
+            service.setup.protocolObserve who sourceHistory.state from
+              service.setup.protocol_info admission who sourceHistory.trace, sourceState,
+                decoded] at info
+          cases info
+      | some state => exact ⟨state, rfl⟩
+    have stateRunning : ¬ ProtocolState.terminal service.setup.program state := by
+      intro stopped
+      apply running
+      rw [sourceState, stateEq]
+      exact stopped
+    have stateView : ProtocolState.observe who service.setup.program state = sourceView := by
+      rw [show (service.setup.informationModel admission).infoOf who sourceHistory.trace =
+        service.setup.protocolObserve who sourceHistory.state from
+          service.setup.protocol_info admission who sourceHistory.trace, sourceState,
+            stateEq] at info
+      exact Option.some.inj info
+    refine ⟨remaining, execution, current, phase, trace, laws, sourceHistory, recallEq, viewEq,
+      ?_, ?_, decodedEq, sourceState, running, active, info, ?_⟩
+    · change ((service.rosters phaseEvent).take slot).count who =
+        past.length - rosterOffset service.setup service.rosters who phaseEvent
+      omega
+    · change past.length - rosterOffset service.setup service.rosters who phaseEvent <
+        (service.rosters phaseEvent).count who
+      omega
+    · rw [Setup.toProtocolBehavioralPolicy_map_val, ← laws.marginal state stateEq stateRunning,
+        stateView]
+      rfl
+  let disclosures := (baseline.map Subtype.val).map OwnAction.disclosure
+  let q := disclosures.prob true
+  obtain ⟨reference, referenceMember⟩ := (approx.assessment.belief who site).support_nonempty
+  obtain ⟨_, _, _, _, _, referenceLaws, _, _, _, _, inside, _, _, _, _, _, referenceDisclosures⟩ :=
+    atHistory reference referenceMember
+  have both (disclose : Bool) : disclose ∈ disclosures.support := by
+    have possible := referenceLaws.both disclose
+    rwa [referenceDisclosures] at possible
+  have total := disclosures.sum_prob
+  simp only [Fintype.sum_bool] at total
+  have small : q < 1 := by
+    have withholding := FinDist.prob_pos_iff.mpr (both false)
+    change disclosures.prob true < 1
+    linarith
+  have nonnegative : 0 ≤ q := FinDist.prob_nonneg _ _
+  -- The source choice realizing each disclosure at the common source view.
+  let realize : Bool → (service.setup.informationModel admission).Choice who
+      (some sourceView) := fun disclose =>
+    if found : ∃ choice ∈ baseline.support, OwnAction.disclosure choice.1 = disclose
+    then found.choose else baseline.support_nonempty.choose
+  have realized (disclose : Bool) : OwnAction.disclosure (realize disclose).1 = disclose := by
+    have possible := both disclose
+    rw [FinDist.support_map, FinDist.support_map] at possible
+    obtain ⟨action, ⟨choice, choiceSupport, rfl⟩, same⟩ := possible
+    have found : ∃ choice ∈ baseline.support, OwnAction.disclosure choice.1 = disclose :=
+      ⟨choice, choiceSupport, same⟩
+    simp only [realize, found, ↓reduceDIte]
+    exact found.choose_spec.2
+  have exists_alternative (disclose : Bool) := service.setup.exists_admitted_local_law admission
+    approx.profile approx.admitted who (some sourceView) (FinDist.pure (realize disclose))
+  choose alternative admittedAlternative alternativeLaw using exists_alternative
+  -- The source value of each disclosure at each history.
+  let value (disclose : Bool) (history : service.model.InformationHistory who site.1) : ℝ :=
+    ((service.setup.continuationLaw (Function.update approx.profile who (alternative disclose))
+      (decodedState service event history.1)).map some).expect utility
+  let later := FinDist.deferredRemaining q (timing event who owned) (earlier + 1)
+  let prescribedProbability := FinDist.deferredRemaining q (timing event who owned) earlier
+  let replacement := law.expect fun choice =>
+    if choice.1.getD ⟨none⟩ = (runtime service.setup).windowOpening service.leaks event
+      candidate raw then 1 else later
+  have laterBounds : 0 ≤ later ∧ later ≤ 1 := by
+    refine ⟨FinDist.deferredRemaining_nonnegative q nonnegative small _ _, ?_⟩
+    have below := (FinDist.deferredRemaining_error q nonnegative small
+      (timing event who owned) (earlier + 1)).1
+    change 0 ≤ q - later at below
+    linarith
+  have replacementNonnegative : 0 ≤ replacement := by
+    rw [← FinDist.expect_const law 0]
+    apply FinDist.expect_mono
+    intro choice _
+    split
+    · exact zero_le_one
+    · exact laterBounds.1
+  have replacementBounded : replacement ≤ 1 := by
+    apply FinDist.expect_le_of_forall
+    intro choice _
+    split
+    · exact le_rfl
+    · exact laterBounds.2
+  -- History by history: the source and native values.
+  have perHistory (history : service.model.InformationHistory who site.1)
+      (member : history ∈ (approx.assessment.belief who site).support) :
+      ((service.setup.continuationLaw approx.profile
+        (decodedState service event history.1)).map some).expect utility =
+          q * value true history + (1 - q) * value false history ∧
+      ((service.model.runBehavioralFrom approx.assessment.strategy service.fuel
+        history.1).map service.readout).expect utility =
+          prescribedProbability * value true history +
+            (1 - prescribedProbability) * value false history ∧
+      ((service.model.runBehavioralFrom (Profile.update (sig := service.model.behavioralSignature)
+        approx.assessment.strategy who ((approx.assessment.strategy who).withLaw site.1 law))
+          service.fuel history.1).map service.readout).expect utility =
+          replacement * value true history + (1 - replacement) * value false history := by
+    obtain ⟨remaining, execution, current, phase, trace, laws, sourceHistory, recallEq, viewEq,
+      earlierEq, _, decodedEq, sourceState, running, active, info, disclosuresEq⟩ :=
+      atHistory history member
+    have valueEq (disclose : Bool) : value disclose history =
+        (approx.boundaryContinuation (event.val + 1) (laws.completion disclose)).expect
+          utility := by
+      change ((service.setup.continuationLaw (Function.update approx.profile who
+        (alternative disclose)) (decodedState service event history.1)).map some).expect
+          utility = _
+      rw [decodedEq, ← sourceState, alternativeLaw disclose sourceHistory running active info,
+        sourceState, FinDist.pure_bind, laws.step]
+      simp only [↓reduceIte, FinDist.pure_bind, realized]
+      rfl
+    have probabilityEq : laws.disclosures.prob true = q := by
+      rw [disclosuresEq]
+    have prescribedLaw := laws.prescribed utility
+    have responses := laws.responses
+    rw [timingEq, probabilityEq, earlierEq, ← valueEq true, ← valueEq false] at prescribedLaw
+    refine ⟨?_, ?_, ?_⟩
+    · rw [decodedEq, laws.boundary, FinDist.expect_bind, FinDist.expect_eq_sum, Fintype.sum_bool,
+        ← valueEq true, ← valueEq false, probabilityEq,
+        show laws.disclosures.prob false = 1 - q by rw [disclosuresEq]; linarith]
+    · have localLaw := approx.local_law_readout history.1 current phase history.2
+        (approx.assessment.strategy who site.1)
+      rw [InformationModel.BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self] at localLaw
+      rw [localLaw, prescribed_response_law approx trace site.1
+        (observed.trans (by rw [recallEq, viewEq]))]
+      exact prescribedLaw
+    · rw [approx.local_law_readout history.1 current phase history.2 law, FinDist.expect_bind,
+        FinDist.expect_map]
+      calc
+        _ = law.expect (fun choice => value false history +
+            (value true history - value false history) *
+              if choice.1.getD ⟨none⟩ = (runtime service.setup).windowOpening service.leaks
+                event candidate raw then 1 else later) := by
+          apply FinDist.expect_congr
+          intro choice _
+          have allowed := service.choice_allowed history.1 current history.2 choice
+          rcases responses _ allowed with ⟨isOpening, readout⟩ | ⟨transport, readout⟩
+          · rw [readout, ← valueEq true]
+            simp only [isOpening, ↓reduceIte]
+            ring
+          · have different : choice.1.getD ⟨none⟩ ≠ (runtime service.setup).windowOpening
+                service.leaks event candidate raw := by
+              intro same
+              rcases transport with silent | ⟨id, replayed⟩
+              · rw [silent] at same
+                cases same
+              · rw [replayed] at same
+                cases same
+            rw [readout utility, timingEq, probabilityEq, earlierEq, ← valueEq true,
+              ← valueEq false]
+            simp only [different, ↓reduceIte]
+            ring
+        _ = _ := by
+          rw [FinDist.expect_add, FinDist.expect_const, FinDist.expect_smul]
+          ring
+  -- The source gains of disclosing and of withholding.
+  have sourceGain (disclose : Bool) :
+      (approx.assessment.belief who site).expect (value disclose) -
+        (q * (approx.assessment.belief who site).expect (value true) +
+          (1 - q) * (approx.assessment.belief who site).expect (value false)) ≤ error := by
+    obtain ⟨mixture, prescribedLaw, alternativeLaw⟩ := owner_source_comparisons service timing
+      timingFull source full sourceBayes approx built who site past view observed owned granted
+      (alternative disclose) (admittedAlternative disclose)
+    have gain := mixture_gain_eq mixture _ _ _ _ prescribedLaw alternativeLaw utility
+    rw [FinDist.expect_bind, FinDist.expect_bind] at gain
+    have prescribedValue : (approx.assessment.belief who site).expect (fun history =>
+        ((service.setup.continuationLaw approx.profile
+          (decodedState service event history.1)).map some).expect utility) =
+        q * (approx.assessment.belief who site).expect (value true) +
+          (1 - q) * (approx.assessment.belief who site).expect (value false) := by
+      rw [FinDist.expect_congr (fun history member => (perHistory history member).1),
+        FinDist.expect_add, FinDist.expect_smul, FinDist.expect_smul]
+    rw [prescribedValue] at gain
+    change (approx.assessment.belief who site).expect (value disclose) - _ = _ at gain
+    rw [gain]
+    exact FinDist.expect_le_of_forall mixture _ error fun deviation _ => sourceGains deviation
+  have regret := FinDist.deferredRemaining_regret_le q nonnegative small
+    (timing event who owned) earlier lower positive (remainingMass earlier inside)
+    replacement replacementNonnegative replacementBounded
+    ((approx.assessment.belief who site).expect (value true))
+    ((approx.assessment.belief who site).expect (value false)) error
+    (by simpa only using sourceGain true) (by simpa only using sourceGain false)
+  have prescribedValue : comparison.prescribed.expect utility =
+      prescribedProbability * (approx.assessment.belief who site).expect (value true) +
+        (1 - prescribedProbability) * (approx.assessment.belief who site).expect (value false) := by
+    simp only [comparison, InformationModel.assessmentComparison,
+      InformationModel.BehavioralAssessment.continuationContext, Profile.update_eq_self,
+      FinDist.map_bind, FinDist.expect_bind]
+    rw [FinDist.expect_congr (fun history member => (perHistory history member).2.1),
+      FinDist.expect_add, FinDist.expect_smul, FinDist.expect_smul]
+  have alternativeValue : comparison.alternative.expect utility =
+      replacement * (approx.assessment.belief who site).expect (value true) +
+        (1 - replacement) * (approx.assessment.belief who site).expect (value false) := by
+    simp only [comparison, InformationModel.assessmentComparison,
+      InformationModel.BehavioralAssessment.continuationContext, FinDist.map_bind,
+      FinDist.expect_bind]
+    rw [FinDist.expect_congr (fun history member => (perHistory history member).2.2),
+      FinDist.expect_add, FinDist.expect_smul, FinDist.expect_smul]
+  rw [alternativeValue, prescribedValue]
+  exact regret
 
 end TimedApproximant
 

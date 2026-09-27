@@ -208,6 +208,9 @@ structure TimedApproximant (service : SourceServiceSpec Player L) where
       (sourceServiceTimedPolicy service.setup service.leaks service.rosters timing profile who)
   effective : ∀ who, (profile who).EffectiveDisclosures service.setup.program []
     (Revelations.initial service.setup.context)
+  supports : ∀ who, (profile who).SupportsEffectiveChoices service.setup.program
+    (CommitmentInterface.values service.setup.program) []
+      (Revelations.initial service.setup.context)
   assessment : service.model.BehavioralAssessment
   strategy : assessment.strategy = fun who =>
     service.menu.restrictPolicy (initialLaw service.setup) service.planLength service.scheduler
@@ -252,6 +255,7 @@ def ofSource (service : SourceServiceSpec Player L)
     effective := fun who => (original who).normalizeDisclosureFrom_effective
       service.setup.program [] (Revelations.initial service.setup.context)
         (fun view => FinDist.pure view.2)
+    supports := sourceService_normalized_support service.setup source full
     assessment := native.bayes nativeMixed
       (service.menu.decisionInformationAntichain (initialLaw service.setup) service.planLength
         service.scheduler)

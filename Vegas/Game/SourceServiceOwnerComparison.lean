@@ -89,6 +89,74 @@ private theorem owner_site_position (service : SourceServiceSpec Player L) (who 
   exact ⟨reference, ⟨remaining, some who, execution⟩, current, _, _, selected, before,
     phase.position_before⟩
 
+/-- At an owner site of the `ofSource` approximant, the source continuations
+from the decoded states of the site's histories, averaged under the native
+belief, are the prescribed laws of one mixture of original source assessment
+comparisons; after replacing the owner's policy by any admitted alternative,
+they are the mixture's alternative laws. -/
+theorem owner_source_comparisons (service : SourceServiceSpec Player L)
+    (timing : ∀ event who, (graph service.setup).actor? event = some who →
+      FinDist (Fin ((service.rosters event).count who)))
+    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (source : (service.setup.informationModel
+      (CommitmentInterface.values service.setup.program)).BehavioralAssessment)
+    [∀ who (site : (service.setup.informationModel
+      (CommitmentInterface.values service.setup.program)).InformationSite who),
+      Fintype ((service.setup.informationModel
+        (CommitmentInterface.values service.setup.program)).InformationHistory who site.1)]
+    (full : ∀ who info, (source.strategy who info).FullSupport)
+    (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
+      (service.setup.informationModel (CommitmentInterface.values service.setup.program)) source
+      (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
+    (approx : TimedApproximant service)
+    (built : approx = ofSource service timing timingFull source.strategy full)
+    (who : Player) (site : service.model.InformationSite who)
+    (past : List (application service.setup service.leaks).PlayerEntry)
+    (view : (application service.setup service.leaks).PlayerView)
+    (observed : site.1 = some (past, view))
+    {event : (graph service.setup).EventId}
+    (owned : (graph service.setup).actor? event = some who)
+    (granted : view.application.publicView.serviceGrant = some event)
+    (alternative : BehavioralPolicy who service.setup.program)
+    (admitted : alternative.Admitted service.setup.program
+      (CommitmentInterface.values service.setup.program)) :
+    ∃ mixture : FinDist ((service.setup.informationModel
+        (CommitmentInterface.values service.setup.program)).AssessmentDeviation who),
+      ((approx.assessment.belief who site).bind fun history =>
+        (service.setup.continuationLaw approx.profile
+          (decodedState service event history.1)).map some) =
+        mixture.bind (fun deviation => ((service.setup.informationModel
+          (CommitmentInterface.values service.setup.program)).assessmentComparison
+            (fun final => service.setup.protocolReadout final.state)
+            (instructionCount service.setup.program + 1) source who deviation).prescribed) ∧
+      ((approx.assessment.belief who site).bind fun history =>
+        (service.setup.continuationLaw (Function.update approx.profile who alternative)
+          (decodedState service event history.1)).map some) =
+        mixture.bind (fun deviation => ((service.setup.informationModel
+          (CommitmentInterface.values service.setup.program)).assessmentComparison
+            (fun final => service.setup.protocolReadout final.state)
+            (instructionCount service.setup.program + 1) source who deviation).alternative) := by
+  subst built
+  obtain ⟨reference, control, current, visits, count, selected, before, position⟩ :=
+    owner_site_position service who site past view observed granted
+  obtain ⟨_, mixture, prescribedLaw, alternativeLaw⟩ := sourceService_owner_assessment_comparisons
+    service.setup service.leaks service.bounds service.values service.initialValues
+    service.capacity service.rosters service.opportunities.binding timing timingFull
+    service.network source (fun player site => full player site.1) sourceBayes
+    (ofSource service timing timingFull source.strategy full).assessment rfl
+    (ofSource service timing timingFull source.strategy full).mixed
+    (ofSource_bayes service timing timingFull source.strategy full) event who owned
+    visits count selected before site reference control current position alternative admitted
+  refine ⟨mixture, ?_, ?_⟩
+  · rw [← prescribedLaw]
+    simp only [InformationModel.BehavioralAssessment.stateBelief, FinDist.map_bind,
+      FinDist.bind_map]
+    rfl
+  · rw [← alternativeLaw]
+    simp only [InformationModel.BehavioralAssessment.stateBelief, FinDist.map_bind,
+      FinDist.bind_map]
+    rfl
+
 open Classical in
 /-- An owner site whose native prescribed and alternative continuations are,
 history by history, the prescribed source continuation and the continuation of
@@ -147,29 +215,20 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
           (CommitmentInterface.values service.setup.program)).assessmentComparison
             (fun final => service.setup.protocolReadout final.state)
             (instructionCount service.setup.program + 1) source who deviation).alternative) := by
-  subst built
-  obtain ⟨reference, control, current, visits, count, selected, before, position⟩ :=
-    owner_site_position service who site past view observed granted
-  obtain ⟨_, mixture, prescribedLaw, alternativeLaw⟩ := sourceService_owner_assessment_comparisons
-    service.setup service.leaks service.bounds service.values service.initialValues
-    service.capacity service.rosters service.opportunities.binding timing timingFull
-    service.network source (fun player site => full player site.1) sourceBayes
-    (ofSource service timing timingFull source.strategy full).assessment rfl
-    (ofSource service timing timingFull source.strategy full).mixed
-    (ofSource_bayes service timing timingFull source.strategy full) event who owned
-    visits count selected before site reference control current position alternative admitted
+  obtain ⟨mixture, prescribedLaw, alternativeLaw⟩ := owner_source_comparisons service timing
+    timingFull source full sourceBayes approx built who site past view observed owned granted
+    alternative admitted
   refine ⟨mixture, ?_, ?_⟩
   · rw [← prescribedLaw]
     simp only [InformationModel.assessmentComparison,
       InformationModel.BehavioralAssessment.continuationContext, Profile.update_eq_self,
-      InformationModel.BehavioralAssessment.stateBelief, FinDist.map_bind, FinDist.bind_map]
+      FinDist.map_bind]
     apply FinDist.bind_congr
     intro history member
     exact prescribedContinuation history member
   · rw [← alternativeLaw]
     simp only [InformationModel.assessmentComparison,
-      InformationModel.BehavioralAssessment.continuationContext,
-      InformationModel.BehavioralAssessment.stateBelief, FinDist.map_bind, FinDist.bind_map]
+      InformationModel.BehavioralAssessment.continuationContext, FinDist.map_bind]
     apply FinDist.bind_congr
     intro history member
     exact alternativeContinuation history member

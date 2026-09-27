@@ -105,6 +105,12 @@ structure RevealSource (setup : Setup (Player := Player) (L := L))
       ∀ who, (residual who).EffectiveDisclosures
         (.reveal published owner name fresh binding unresolved next)
           source.registry source.revelations
+  supported : (∀ who, (profile who).SupportsEffectiveChoices setup.program
+    (CommitmentInterface.values setup.program) [] (Revelations.initial setup.context)) →
+      ∀ who, (residual who).SupportsEffectiveChoices
+        (.reveal published owner name fresh binding unresolved next)
+        (CommitmentInterface.values (.reveal published owner name fresh binding unresolved next))
+          source.registry source.revelations
 
 namespace RevealSource
 
@@ -197,8 +203,8 @@ theorem exists_revealSource (profile : BehavioralProfile service.setup.program)
     (isPublication : (graph service.setup).outputLayout phase.event = .publication payload) :
     Nonempty (RevealSource service.setup profile phase.event execution.application.config) := by
   obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
-      refsBefore, aligned, _, ⟨_, inherits, _⟩, _, _, _, _, grant, _, _, _, _, publicEq, checkpoint,
-      _⟩ :=
+      refsBefore, aligned, _, ⟨supported, inherits, _⟩, _, _, _, _, grant, _, _, _, _, publicEq,
+      checkpoint, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network profile
       who ⟨remaining, some who, execution⟩ trace rfl
@@ -235,7 +241,7 @@ theorem exists_revealSource (profile : BehavioralProfile service.setup.program)
         simpa only [Nat.add_zero] using aligned.graphSuffix.rankEq ⟨0, by simp [eventCount]⟩
       exact ⟨⟨Γ, names, published, owner, name, payload, fresh, binding, unresolved, next,
         remainingProfile, refs, source, embedding, refsBefore, aligned, checkpoint.agrees,
-        checkpoint.history, head, inherits⟩⟩
+        checkpoint.history, head, inherits, supported⟩⟩
 
 end SourceServiceSpec
 
