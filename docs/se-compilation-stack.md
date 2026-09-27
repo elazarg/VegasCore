@@ -51,7 +51,8 @@ intentions erased by normalization. The
 reduces every physical local comparison to the configuration law of the
 current phase after each legal response. Public-sampling sites, foreign visits,
 owner visits after a recorded binding or opening, and unsent owner bindings are
-checked; unsent owner disclosures are still required. The
+checked, as are unsent owner disclosures without an available opening;
+disclosures with an available opening are still required. The
 [joint phase checkpoint laws](../Vegas/Game/SourceServiceTimedCheckpoint.lean)
 retain each chosen source successor together with its actual native traffic;
 equal terminal marginals do not establish that joint law.

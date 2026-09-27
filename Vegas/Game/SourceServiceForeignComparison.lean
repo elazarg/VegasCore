@@ -28,6 +28,57 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
+/-- With all traffic published, a roster window whose players respond only by
+transport while the application is unchanged, followed by protected inclusion,
+leaves the application unchanged, so a phase has the application law of its
+passive suffix. -/
+theorem transport_phase_application_law (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (players : Player → (application setup leaks).Policy)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (event : (graph setup).EventId) (owner : Player) (visits : List Player)
+    (rest : List (ServiceInstruction (graph setup)))
+    (passive : ∀ instruction ∈ rest, instruction ≠ .wire ∧
+      (∀ who, instruction ≠ .player who) ∧ ∀ event who, instruction ≠ .includeLatest event who)
+    (execution : (application setup leaks).Execution)
+    (responses : ∀ (current : (application setup leaks).Execution) who response,
+      current.application = execution.application →
+      execution.recall owner ⊆ current.recall owner →
+      response ∈ (players who (current.recall who)
+        (current.observe (application setup leaks) who)).support →
+      response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+    (published : execution.network.Satisfies fun message =>
+      message.id ∈ execution.network.ledger.map Message.id) :
+    ((runtime setup).runInteractionPlan leaks players network
+      (visits.map ServiceInstruction.player ++ .includeLatest event owner :: rest)
+        execution).map ReactiveApplication.Execution.application =
+      ((runtime setup).runInteractionPlan leaks players network rest execution).map
+        ReactiveApplication.Execution.application := by
+  rw [runInteractionPlan_append, FinDist.map_bind]
+  calc
+    _ = ((runtime setup).runInteractionPlan leaks players network
+        (visits.map ServiceInstruction.player) execution).bind (fun _ =>
+          ((runtime setup).runInteractionPlan leaks players network rest
+            execution).map ReactiveApplication.Execution.application) := by
+      apply FinDist.bind_congr
+      intro current reached
+      obtain ⟨sameApp, ledger, _, _, valid, _⟩ := (runtime setup).replay_window_preserves leaks
+        players network owner execution responses _ published visits current reached
+      have waiting : (runtime setup).reactiveLatest leaks event owner
+          (current.observeEnvironment ((runtime setup).reactiveApplication leaks)) = .wait := by
+        apply (runtime setup).reactiveLatest_wait_of_pending_published leaks event owner
+        intro message member
+        have spent := valid.1 message member
+        rw [← ledger] at spent
+        exact spent
+      simp only [runInteractionPlan, interactionStep, interactionInstruction, waiting,
+        FinDist.pure_bind, ReactiveApplication.dispatch,
+        ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
+        ReactiveApplication.Command.actor?, ReactiveApplication.resume]
+      exact (runtime setup).application_service_law leaks _ network rest passive _ execution
+        sameApp
+    _ = _ := FinDist.bind_const _ _
+
 /-- With all traffic published, a replay-only roster window and protected
 inclusion leave the application unchanged, so a phase has the application law
 of its passive suffix. -/
@@ -45,34 +96,10 @@ theorem replay_phase_application_law (setup : Setup (Player := Player) (L := L))
       network (visits.map ServiceInstruction.player ++ .includeLatest event owner :: rest)
         execution).map ReactiveApplication.Execution.application =
       ((runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
-        network rest execution).map ReactiveApplication.Execution.application := by
-  let app := application setup leaks
-  rw [runInteractionPlan_append, FinDist.map_bind]
-  calc
-    _ = ((runtime setup).runInteractionPlan leaks (fun _ => app.replayPolicy) network
-        (visits.map ServiceInstruction.player) execution).bind (fun _ =>
-          ((runtime setup).runInteractionPlan leaks (fun _ => app.replayPolicy) network rest
-            execution).map ReactiveApplication.Execution.application) := by
-      apply FinDist.bind_congr
-      intro current reached
-      obtain ⟨sameApp, ledger, _, _, valid, _⟩ := (runtime setup).replay_window_preserves leaks
-        (fun _ => app.replayPolicy) network owner execution
-        (fun _ _ response _ _ supported => app.replayPolicy_cases _ _ response supported)
-        _ published visits current reached
-      have waiting : (runtime setup).reactiveLatest leaks event owner
-          (current.observeEnvironment ((runtime setup).reactiveApplication leaks)) = .wait := by
-        apply (runtime setup).reactiveLatest_wait_of_pending_published leaks event owner
-        intro message member
-        have spent := valid.1 message member
-        rw [← ledger] at spent
-        exact spent
-      simp only [runInteractionPlan, interactionStep, interactionInstruction, waiting,
-        FinDist.pure_bind, ReactiveApplication.dispatch,
-        ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-        ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-      exact (runtime setup).application_service_law leaks _ network rest passive _ execution
-        sameApp
-    _ = _ := FinDist.bind_const _ _
+        network rest execution).map ReactiveApplication.Execution.application :=
+  transport_phase_application_law setup leaks _ network event owner visits rest passive execution
+    (fun _ _ response _ _ supported =>
+      (application setup leaks).replayPolicy_cases _ _ response supported) published
 
 section
 

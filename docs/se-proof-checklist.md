@@ -77,10 +77,11 @@ percentage estimate.
   [SourceServiceLocalComparison.lean](../Vegas/Game/SourceServiceLocalComparison.lean);
   public-sampling sites, foreign visits, and owner visits after a recorded
   binding or opening have checked zero-gain comparisons, and unsent owner
-  bindings an exact simulation by original source deviations
+  bindings an exact simulation by original source deviations; owner visits to
+  a disclosure without an available opening have zero gain
   ([SourceServiceForeignComparison.lean](../Vegas/Game/SourceServiceForeignComparison.lean),
   [SourceServiceForeignDisclosure.lean](../Vegas/Game/SourceServiceForeignDisclosure.lean)).
-  Unsent owner disclosures remain; the
+  Unsent owner disclosures with an available opening remain; the
   [completion plan](se-completion-plan.md) orders the remaining work.
 
 - [ ] **S5. Full-language source-to-permitted-runtime SE theorem.** Combine

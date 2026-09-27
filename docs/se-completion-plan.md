@@ -65,7 +65,7 @@ a site has the same kind. The kinds and their comparisons:
 | 3. own binding, recorded | `recordedBinding` | `recorded_comparison_eq` (checked) |
 | 4. own binding, unsent | `unsentBinding` | `unsent_binding_comparisons` (checked) |
 | 5. own disclosure, sent | `recordedDisclosure` | `recorded_disclosure_comparison_eq` (checked) |
-| 5. own disclosure, no opening | `absentOpening` | M5 |
+| 5. own disclosure, no opening | `absentOpening` | `absent_opening_comparison_eq` (checked) |
 | 6. own disclosure, opening available | `availableOpening` | M5 |
 
 Only coverage is used by M6. The kinds are mutually exclusive by construction:
@@ -154,9 +154,14 @@ after a submission and the prescribed source law after a transport response;
 
 ### M5. Disclosure owner sites (L, largest)
 
-- **Kind 5:** zero gain by `comparison_eq_of_phase_invariant`. For an absent
-  opening use `sourceServiceTimedPolicy_active_reveal_absent`. A sent opening
-  is checked: `TimedApproximant.recorded_disclosure_comparison_eq`.
+- **Kind 5 (checked):** zero gain by `comparison_eq_of_phase_invariant`. A sent
+  opening: `TimedApproximant.recorded_disclosure_comparison_eq`. No available
+  opening: `TimedApproximant.absent_opening_comparison_eq`
+  ([SourceServiceAbsentOpening](../Vegas/Game/SourceServiceAbsentOpening.lean)).
+  Without an authentic opening in view the resolution menu offers no
+  submission, and the timed compiler responds only by transport at every point
+  of the phase (`sourceServiceTimedPolicy_absent_transport`), so the application
+  stays fixed and all traffic published (`transport_phase_application_law`).
 - **Kind 6:** error branch.
   Keep two baselines apart. With `V_true` and `V_false` the continuation
   values after disclosing and withholding at this view, averaged under the

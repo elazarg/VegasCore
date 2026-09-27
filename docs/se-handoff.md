@@ -147,7 +147,9 @@ disclosure events (`TimedApproximant.foreign_binding_comparison_eq`,
 recorded binding or opening (`TimedApproximant.recorded_comparison_eq`,
 `TimedApproximant.recorded_disclosure_comparison_eq`). The
 [completion plan](se-completion-plan.md) orders the remaining work: unsent
-owner disclosures, S5 assembly, E1 composition and E2 validation. Owner visits
+owner disclosures with an available opening, S5 assembly, E1 composition and
+E2 validation. Without an available opening the owner's site has zero gain
+(`TimedApproximant.absent_opening_comparison_eq`). Owner visits
 to an unsent binding are an exact simulation by original source deviations
 (`TimedApproximant.unsent_binding_comparisons`).
 Every site has a `DecisionSiteKind` (`SourceServiceSpec.exists_siteKind`), which
