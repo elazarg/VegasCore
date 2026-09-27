@@ -174,7 +174,7 @@ percentage estimate.
   `GameTheory` library, none of them test, example, experimental or prototype
   modules, and its axioms are the three standard ones pinned in `Paper.lean`.
   README, `ARTIFACT.md`, the [research map](se-preservation-roadmap.md) and
-  the paper's mechanization section state the result and its assumptions; the
+  the paper (Theorem `thm:sequential`) state the result and its assumptions; the
   [stack document](se-compilation-stack.md#assumptions-of-the-full-language-theorem)
   separates each assumption's role from its justification. The box closes when
   the reviewed result is pushed.

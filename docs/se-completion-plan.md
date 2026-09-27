@@ -228,7 +228,7 @@ parameter-and-public-outcome utility on `sourceReadout`, so it is R4's
   reaches no draft, test, example, experimental or prototype module; its axioms
   are the standard three.
 - README, `ARTIFACT.md`, the research map, the stack document (with its
-  assumptions table) and the paper's mechanization section state the exact
+  assumptions table) and the paper (Theorem `thm:sequential`) state the exact
   assumptions: authentic partial audit, positive conditional coverage,
   protected service, collectible fixed deposits, bounded interaction, a finite
   response interface, and no cryptographic or EVM refinement.
