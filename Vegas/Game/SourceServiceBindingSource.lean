@@ -197,7 +197,7 @@ theorem exists_revealSource (profile : BehavioralProfile service.setup.program)
     (isPublication : (graph service.setup).outputLayout phase.event = .publication payload) :
     Nonempty (RevealSource service.setup profile phase.event execution.application.config) := by
   obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
-      refsBefore, aligned, _, ⟨_, inherits⟩, _, _, _, _, grant, _, _, _, _, publicEq, checkpoint,
+      refsBefore, aligned, _, ⟨_, inherits, _⟩, _, _, _, _, grant, _, _, _, _, publicEq, checkpoint,
       _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network profile

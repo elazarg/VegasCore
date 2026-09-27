@@ -59,7 +59,9 @@ private theorem statePrefix_readout
       exact FinDist.bind_congr fun disclose _ => ih (afterReveal profile)
         (revealSuccessor published binding source disclose)
 
-private theorem sourceStep_continuation
+/-- One source step followed by the source continuation is the source
+continuation. -/
+theorem sourceStep_continuation
     {Γ : SourceCtx Player L} {names : Finset VarId}
     (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
     (state : ProtocolState program) :
@@ -349,7 +351,7 @@ theorem sourceServiceTimedPolicy_continuation_law
   simp only [FinDist.map_comp, Function.comp_def, sourceServicePrefix?_terminal_readout]
     at readout
   have conserved := liftedPrefix_continuation setup.program profile program tailProfile lift
-    commutes source (eventCount program)
+    commutes.1 source (eventCount program)
   have finished : sourceLaw.map (fun current => ProtocolState.readout setup.program
       (lift current)) =
         (ProtocolState.continuationLaw setup.program profile

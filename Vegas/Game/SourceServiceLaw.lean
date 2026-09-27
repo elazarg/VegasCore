@@ -97,7 +97,7 @@ theorem sourceService_prefix_state_law
       change setup.behavioralStateStep admission encoded
         (sourceServicePrefix? setup rank execution.application.config) = _
       rw [decoded, stateEq, setup.behavioralStateStep_encoded_some admission profile permitted,
-        stepEq, FinDist.map_comp]
+        stepEq.1, FinDist.map_comp]
     rw [sourceStep]
     have expected := projected
     rw [eventEq] at expected

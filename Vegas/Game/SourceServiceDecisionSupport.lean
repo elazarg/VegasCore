@@ -57,7 +57,21 @@ theorem sourceService_decision_boundary
           ((∀ player, (profile player).EffectiveDisclosures setup.program []
             (Revelations.initial setup.context)) →
               ∀ player, (remainingProfile player).EffectiveDisclosures remaining
-                source.registry source.revelations)) ∧
+                source.registry source.revelations) ∧
+          ∃ lift : ProtocolState remaining → ProtocolState setup.program,
+            ((∀ tailState, ProtocolState.behavioralStateStep setup.program profile
+              (lift tailState) =
+                (ProtocolState.behavioralStateStep remaining remainingProfile tailState).map
+                  lift) ∧
+              ∀ tailState joint, ProtocolState.step setup.program (lift tailState) joint =
+                (ProtocolState.step remaining tailState joint).map lift) ∧
+            ∀ more store history,
+              decodeSourcePrefix? setup.program
+                (ContextRefs.initial setup.context (outputLayout setup.program)) []
+                (Revelations.initial setup.context) (outputRef setup.program)
+                (HAdd.hAdd event.val more) store history =
+              (decodeSourcePrefix? remaining refs source.registry source.revelations
+                embedding.ref more store history).map lift) ∧
         ∃ granted prior sample,
           ServiceBoundary setup leaks rosters initial source refs event.val granted ∧
           granted.application.serviceGrant = some event ∧
@@ -76,8 +90,8 @@ theorem sourceService_decision_boundary
   obtain ⟨event, slot, boundary, prior, selected, position, boundarySupport, phase, activated⟩ :=
     roster_decision_boundary setup leaks rosters network menu who control trace active
   obtain ⟨initial, initialSupport, _, _, _, Γ, names, remaining, remainingProfile, source,
-      refs, embedding, refsBefore, aligned, admitted, _, _, _, _, effective, supported,
-      checkpoint⟩ :=
+      refs, embedding, refsBefore, aligned, admitted, lift, _, commutes, transport, effective,
+      supported, checkpoint⟩ :=
     initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
       opportunities menu.uniformResponses
       (fun owner past view response supported =>
@@ -102,7 +116,8 @@ theorem sourceService_decision_boundary
     rw [← same]
     exact unchanged.2
   exact ⟨event, slot, initial, selected, initialSupport, Γ, names, remaining, remainingProfile,
-    source, refs, embedding, refsBefore, aligned, admitted, ⟨supported, effective⟩,
+    source, refs, embedding, refsBefore, aligned, admitted,
+    ⟨supported, effective, lift, commutes, transport⟩,
     granted, prior, sample, grantedBoundary,
     grant, phase, activated, same.symm, config, publicEq,
     config.symm ▸ grantedBoundary.toSourceCheckpoint, position⟩

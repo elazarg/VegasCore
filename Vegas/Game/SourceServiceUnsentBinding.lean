@@ -496,4 +496,124 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
     exact (submitted action actionSupport actionEq).elim
 
 
+namespace SourceServiceSpec
+
+variable (service : SourceServiceSpec Player L)
+
+/-- At every retained decision during a binding event's phase, the residual
+source commitment is aligned with the given profile, and the source
+continuation from the event's boundary draws the commitment value and then
+continues from the configuration that completes the binding with it. -/
+theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.program)
+    {who : Player} {remaining : Nat}
+    {execution : (application service.setup service.leaks).Execution}
+    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
+      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
+    {owner : Player} {payload : L.Ty}
+    (isBinding : (graph service.setup).outputLayout phase.event = .binding owner payload) :
+    ∃ site : BindingSource service.setup profile phase.event execution.application.config,
+      ∀ ready : execution.application.config.cut.Ready phase.event,
+        service.setup.continuationLaw profile
+          (sourceServicePrefix? service.setup phase.event.val execution.application.config) =
+        (commitKernel site.residual (site.source.view site.owner)).bind fun choice =>
+          service.setup.continuationLaw profile (sourceServicePrefix? service.setup
+            (phase.event.val + 1) (execution.application.config.complete phase.event ready
+              (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) choice)
+              (cast (congrArg EventGraph.EventField.Value site.outputEq.symm) choice))) := by
+  obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseGranted⟩ := phase
+  dsimp only at isBinding ⊢
+  obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
+      refsBefore, aligned, _, ⟨_, _, lift, commutes, transport⟩, _, _, _, _, grant, _, _, _, _,
+      publicEq, checkpoint, _⟩ :=
+    sourceService_decision_boundary service.setup service.leaks service.bounds service.values
+      service.capacity service.rosters service.opportunities.binding service.network profile
+      who ⟨remaining, some who, execution⟩ trace rfl
+  have same : event = phaseEvent := Option.some.inj
+    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans phaseGranted)
+  subst same
+  cases remaining with
+  | ret result =>
+      have count := aligned.graphSuffix.countEq
+      simp only [eventCount, Nat.add_zero] at count
+      have inside := event.isLt
+      change event.val < eventCount service.setup.program at inside
+      omega
+  | sample name fresh law next =>
+      have headEq : embedding.event ⟨0, by simp [eventCount]⟩ = event := by
+        apply Fin.ext
+        simpa only [Nat.add_zero] using aligned.graphSuffix.rankEq ⟨0, by simp [eventCount]⟩
+      have actor := aligned.actorEq ⟨0, by simp [eventCount]⟩
+      rw [headEq] at actor
+      change (graph service.setup).actor? event = none at actor
+      rw [binding_actor service.setup event owner payload isBinding] at actor
+      cases actor
+  | @reveal Γ names published owner name payload fresh binding unresolved next =>
+      have headEq : embedding.event ⟨0, by simp [eventCount]⟩ = event := by
+        apply Fin.ext
+        simpa only [Nat.add_zero] using aligned.graphSuffix.rankEq ⟨0, by simp [eventCount]⟩
+      have output : (graph service.setup).outputLayout event = .publication payload := by
+        rw [← headEq]
+        change outputLayout service.setup.program (embedding.event _) = _
+        simpa [outputLayout, eventCount] using embedding.layout_eq ⟨0, by simp [eventCount]⟩
+      cases output.symm.trans isBinding
+  | @commit Γ names name siteOwner sitePayload fresh guard next =>
+      have headEq : embedding.event ⟨0, by simp [eventCount]⟩ = event := by
+        apply Fin.ext
+        simpa only [Nat.add_zero] using aligned.graphSuffix.rankEq ⟨0, by simp [eventCount]⟩
+      subst headEq
+      let site : BindingSource service.setup profile (embedding.event ⟨0, by simp [eventCount]⟩)
+          execution.application.config :=
+        ⟨Γ, names, name, siteOwner, sitePayload, fresh, guard, next, remainingProfile, refs,
+          source, embedding, refsBefore, aligned, checkpoint.agrees, checkpoint.history, rfl⟩
+      refine ⟨site, fun ready => ?_⟩
+      have outputEq : (graph service.setup).outputLayout
+          (embedding.event ⟨0, by simp [eventCount]⟩) = .binding siteOwner sitePayload :=
+        site.outputEq
+      have now := transport 0 execution.application.config.store
+        (decodeHistory service.setup.program (execution.application.config.history.map
+          (service.setup.eventGraph.fromModeCompletion .sequential)))
+      rw [checkpoint.decode _ embedding.ref] at now
+      simp only [Nat.add_zero, Option.map_some] at now
+      change sourceServicePrefix? service.setup _ execution.application.config = _ at now
+      rw [now]
+      change ProtocolState.continuationLaw service.setup.program profile
+        (lift (ProtocolState.entry _ source)) = _
+      rw [← sourceStep_continuation, commutes.1]
+      change (((ProtocolState.behavioralStateStep _ remainingProfile (.inl source)).map
+        lift).bind _) = _
+      rw [ProtocolState.behavioralStateStep_commit_entry, FinDist.bind_map, FinDist.bind_map]
+      apply FinDist.bind_congr
+      intro choice _
+      have decoded : decodeEventAction service.setup.program
+          (embedding.event ⟨0, by simp [eventCount]⟩)
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
+            some (.commit siteOwner name sitePayload choice) := by
+        have action := aligned.actionEq ⟨0, by simp [eventCount]⟩
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+        simpa [outputEq, decodeEventAction] using action
+      have completed := checkpoint.commit name guard _ rfl ready outputEq
+        (fun ref => refsBefore ref ⟨0, by simp [eventCount]⟩) choice decoded
+      have recovered := completed.decode next (fun tail => embedding.ref tail.succ)
+      have later : sourceServicePrefix? service.setup
+          ((embedding.event ⟨0, by simp [eventCount]⟩).val + 1)
+          (execution.application.complete (embedding.event ⟨0, by simp [eventCount]⟩) ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice)).config =
+          some (lift (Sum.inr (ProtocolState.entry next
+            (commitSuccessor name guard source choice)))) := by
+        unfold sourceServicePrefix?
+        rw [transport 1, decodeSourcePrefix?_commit]
+        exact congrArg (fun decoded => (Option.map Sum.inr decoded).map lift) recovered
+      change _ = service.setup.continuationLaw profile (sourceServicePrefix? service.setup
+        ((embedding.event ⟨0, by simp [eventCount]⟩).val + 1)
+        (execution.application.complete (embedding.event ⟨0, by simp [eventCount]⟩) ready
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice)).config)
+      rw [later]
+      rfl
+
+end SourceServiceSpec
+
+
 end Vegas.SourceProgram.RevealService
