@@ -103,6 +103,37 @@ private theorem evidence_sampling_lower {Evidence : Type}
   · simp only [Set.mem_ofPred_eq, included, ite_eq_right, not_false_eq_true]
     split <;> norm_num
 
+/-- Per-record coverage applies to an arbitrary actual continuation law once
+the attributed record is present in every possible final readout. -/
+theorem sampledTrafficAudit_collection_from_record {Evidence Outcome : Type}
+    (project : app.TrafficRecord → Evidence) (attribution : Evidence → Principal)
+    (permitted : Evidence → Bool) (sample : List Evidence → FinDist (List Evidence))
+    (law : FinDist Outcome) (readout : Outcome → List app.TrafficRecord)
+    (who : Principal) (rate : ℝ)
+    (coverage : ∀ actual record, record ∈ actual →
+      attribution record = who → permitted record = false →
+      rate ≤ (sample actual).probOf {observed | record ∈ observed})
+    (record : app.TrafficRecord)
+    (present : ∀ outcome ∈ law.support, record ∈ readout outcome)
+    (owner : attribution (project record) = who)
+    (forbidden : permitted (project record) = false) :
+    rate ≤ ((((law.map readout).bind
+      (app.sampledTrafficAudit project attribution permitted sample)).map
+        (fun verdict => verdict who)).prob true) := by
+  rw [TerminalAudit.collection_probability]
+  calc
+    rate = law.expect (fun _ => rate) := (FinDist.expect_const _ _).symm
+    _ ≤ _ := by
+      apply FinDist.expect_mono
+      intro outcome supported
+      have projected : project record ∈ (readout outcome).map project :=
+        List.mem_map.mpr ⟨record, present outcome supported, rfl⟩
+      change _ ≤ ((app.sampledTrafficAudit project attribution permitted sample
+        (readout outcome)).map (fun verdict => verdict who)).prob true
+      rw [app.sampledTrafficAudit_collection]
+      exact (coverage _ (project record) projected owner forbidden).trans
+        (evidence_sampling_lower attribution permitted who _ (project record) owner forbidden)
+
 namespace ResponseMenu
 
 variable {app} (menu : app.ResponseMenu)
@@ -156,27 +187,13 @@ theorem trafficAudit_collection_from_record {Evidence : Type}
       history).map (menu.trafficAudit initial horizon scheduler)).bind
         (app.sampledTrafficAudit project attribution permitted sample)).map
           (fun verdict => verdict who)).prob true := by
-  rw [TerminalAudit.collection_probability]
-  calc
-    rate = ((menu.information initial horizon scheduler).runBehavioralFrom profile fuel
-      history).expect (fun _ => rate) := (FinDist.expect_const _ _).symm
-    _ ≤ _ := by
-      apply FinDist.expect_mono
-      intro final supported
-      have path := (menu.protocol initial horizon scheduler).runRandomizedFor_reachesWithin
-        ((menu.information initial horizon scheduler).randomizedChooser profile)
-        fuel history final supported
-      have retained := (menu.trafficAudit_reaches initial horizon scheduler path).subset present
-      have projected : project record ∈
-          (menu.trafficAudit initial horizon scheduler final).map project :=
-        List.mem_map.mpr ⟨record, retained, rfl⟩
-      exact (coverage _ (project record) projected owner forbidden).trans
-        (by
-          change _ ≤ ((app.sampledTrafficAudit project attribution permitted sample _).map
-            (fun verdict => verdict who)).prob true
-          rw [app.sampledTrafficAudit_collection]
-          exact evidence_sampling_lower attribution permitted who _ (project record)
-            owner forbidden)
+  apply app.sampledTrafficAudit_collection_from_record project attribution permitted sample
+    _ _ who rate coverage record _ owner forbidden
+  intro final supported
+  have path := (menu.protocol initial horizon scheduler).runRandomizedFor_reachesWithin
+    ((menu.information initial horizon scheduler).randomizedChooser profile)
+    fuel history final supported
+  exact (menu.trafficAudit_reaches initial horizon scheduler path).subset present
 
 /-- Only the first additional response is classified; subsequent play is
 unrestricted. Persistent projected evidence retains the conditional charge bound. -/

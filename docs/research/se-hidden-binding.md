@@ -332,7 +332,7 @@ That evidence persists under arbitrary later native responses and scheduling.
 This establishes the operational case, not a complete collected-penalty or SE
 comparison for the full source language.
 
-## Why the repair is local enough, and why the current comparator is too strong
+## Why whole-continuation comparison is needed
 
 At the start of a continuation, replace any future failed binding with a
 canonical valid value. At that binding's later disclosure, withhold instead.
@@ -455,6 +455,25 @@ facts at every retained prefix must identify each inclusion and each first
 auditable departure. The checked constructor laws do not yet establish that
 induction or the final stopped payoff comparison.
 
+The binding response and activation cases now have an exhaustive checked split.
+`binding_stopped_response_coupling` and `binding_stopped_activation_coupling`
+couple every effective mixed raw response to the actual retained implementation.
+Each branch either preserves the full joint frame or carries an authentic
+record rejected by `permittedServiceEnvelope`. This includes repeated owner
+visits: `first_event_iff_public_serial` supplies the connection between the
+public serial test and the existing private submission recall. Neither theorem
+assumes that the deviator's response law is conforming. The final unsent binding
+visit still requires the separate missed-deadline branch.
+
+For disclosures, `service_opening_response` derives the actual successful
+compiler response from public conformance, authentic emitted evidence, the
+runtime binding invariant and effective response normalization. The checker
+does not read the private candidate table. In particular,
+`failed_binding_submission_forbidden` proves that a failed original binding
+cannot subsequently emit a conforming fresh opening; silence and known replay
+remain legitimate responses. These facts are local transition cases, not the
+whole-service stopped induction.
+
 ## Missing required commitments
 
 A missing accepted handle is a separate case from an accepted opaque handle
@@ -470,13 +489,14 @@ legal submission at the required opportunity is accepted before expiry. This
 is a service/fair-inclusion obligation, not an inference from a missing partial
 watcher record.
 
-The local value-only menu uses an owned, ready public grant to identify the
-required binding response. A backend with earlier owner visits must permit
-waiting there or provide a separate continuation comparison. Deadline evidence
-cannot punish every earlier silent response when a later timely submission
-could still meet the obligation. The simplest candidate service places the
-binding grant immediately before one protected required response; extending
-fresh binding to arbitrary granted rosters remains separate work.
+The retained menu permits waiting and known-envelope replay before the final
+unsent owner visit in an arbitrary finite granted roster. Its required binding
+set applies only at that final visit; own submission recall prevents a second
+fresh binding while the first is pending. The actual last-visit predicate and
+delayed protected inclusion are checked. Deadline evidence cannot punish an
+earlier silent response when a later timely submission could still meet the
+obligation. Transporting these facts through every full-source retained prefix
+and completing the stopped comparison remain open.
 
 ## Guards and copying
 

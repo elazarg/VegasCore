@@ -2,6 +2,8 @@
 
 import Interaction.ReactiveRecall
 import Interaction.ReactiveServiceInvariant
+import Interaction.ReactivePublication
+import Interaction.MessageNetworkCounters
 
 /-! # Envelope serials count fresh own submissions
 
@@ -122,5 +124,23 @@ theorem serial_eq_ledger_iff_no_submission
   rw [afterRecall who, recalled, app.submissionCount_append, ← beforeRecall who, ledger,
     ← settled]
   omega
+
+/-- A completed fresh submission restores the public serial test for the next
+phase. The fact concerns network inclusion, so rejected application calls have
+the same accounting as successful calls. -/
+theorem submit_include_serials_match_ledger (execution : app.Execution)
+    (serials : execution.network.SerialsBeforeNext)
+    (settled : ∀ observer, execution.network.nextSerial observer =
+      execution.network.ledger.countP (fun message => message.sender = observer))
+    (who : Principal) (submission : app.Submission) (observer : Principal) :
+    let next := (execution.respond app who ⟨some (.submit submission)⟩).includePending app
+      (who, execution.network.nextSerial who)
+    next.network.nextSerial observer =
+      next.network.ledger.countP (fun message => message.sender = observer) := by
+  dsimp only
+  rw [app.includePending_network]
+  exact serials.submit_include_serials_match_ledger settled who
+    (app.packet (app.submit execution.application who submission) who
+      (execution.network.known who) submission) observer
 
 end Interaction.ReactiveApplication

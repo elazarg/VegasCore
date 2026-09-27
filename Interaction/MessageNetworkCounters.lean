@@ -93,4 +93,22 @@ theorem SerialsBeforeNext.next_unpublished (valid : network.SerialsBeforeNext)
   rw [same] at bound
   exact Nat.lt_irrefl _ bound
 
+/-- When every earlier serial has been settled, submitting and including the
+new envelope restores the public counter equality. Application acceptance is
+irrelevant: inclusion also consumes an envelope whose call is rejected. -/
+theorem SerialsBeforeNext.submit_include_serials_match_ledger
+    (valid : network.SerialsBeforeNext)
+    (settled : ∀ observer, network.nextSerial observer =
+      network.ledger.countP (fun message => message.sender = observer))
+    (who : Principal) (payload : Payload) (observer : Principal) :
+    ((network.submit who payload).2.includePending (who, network.nextSerial who)).2.nextSerial
+        observer =
+      ((network.submit who payload).2.includePending (who, network.nextSerial who)).2.ledger.countP
+        (fun message => message.sender = observer) := by
+  rw [MessageNetwork.includePending, valid.lookup_submit who payload]
+  by_cases same : observer = who
+  · subst observer
+    simpa [MessageNetwork.submit, Message.sender] using congrArg Nat.succ (settled who)
+  · simpa [MessageNetwork.submit, Message.sender, same, Ne.symm same] using settled observer
+
 end Interaction.MessageNetwork

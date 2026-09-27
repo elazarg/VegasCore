@@ -60,6 +60,7 @@ import Interaction.ReactiveSubmissionAudit
 import Interaction.ReactiveTrafficAudit
 import Interaction.ReactiveAuditCollection
 import Interaction.ReactiveTrafficState
+import Interaction.ReactiveTrafficContinuation
 import Interaction.ReactiveLocalContinuation
 import Interaction.ReactivePublishedResponses
 import Interaction.ReactiveSubmissionRounds

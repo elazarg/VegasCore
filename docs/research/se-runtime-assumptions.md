@@ -5,9 +5,11 @@
 The compiler goal keeps the ordinary source game unchanged and implements it
 with an explicit inclusion, observation and settlement contract. The proof has
 two strategic obligations: retained native responses implement source choices
-and incentives; every additional effective response produces collectible audit
-evidence. The raw native game continues to admit those additional responses.
-Source correspondence cannot be replaced by a packet-shape checker.
+and incentives; every raw deviation has a retained continuation with at least
+as good an expected settlement. Some responses are repaired without accusation;
+attributable departures supply audit evidence. The raw native game continues
+to admit those additional responses. Source correspondence cannot be replaced
+by a packet-shape checker.
 
 The [roster compiler theorem](../../Vegas/Game/RevealServiceRosterCompilation.lean)
 closes this route for finite reveal-only programs with initially openable
@@ -123,11 +125,12 @@ See [ObservableEnforcement](../../GameTheoryExtensions/Analysis/ObservableEnforc
 [MessageMonitoringProbability](../../Interaction/MessageMonitoringProbability.lean),
 and [DisclosureEnforcementEquilibrium](../../GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean).
 
-The native certificate-shape checker permits ordinary matching opening
-certificates and detects the checked selective-association packet. It also
-permits premature matching openings. The shared-pad experiment shows why even
+Certificate-shape checking permits ordinary matching opening certificates and
+detects the checked selective-association packet. By itself it also permits
+premature matching openings; the service conformance checker separately checks
+the authorized phase. The shared-pad experiment shows why even
 complete public packet observation need not expose signaling inside lawful
-formats. These are concrete missing cases for a complete protocol checker;
+formats. These are concrete requirements for a complete protocol checker;
 neither relies on an assumed external private channel.
 [ReactiveConformance](../../Vegas/Pending/ReactiveConformance.lean),
 [MonitoredSignaling](../../GameTheoryExtensionsTests/MonitoredSignaling.lean).
@@ -234,6 +237,15 @@ objective. The remaining proof obligations are:
    [Delayed binding inclusion](../../Vegas/Pending/ReactiveBindingReplay.lean)
    permits arbitrary intervening retained responses after submission and proves
    the same application, ledger and receipt result as immediate inclusion.
+   The [complete binding phase](../../Vegas/Game/SourceServiceBindingPhase.lean)
+   now starts before the first roster visit: the actual limiting source policy
+   waits, submits at its final owner opportunity, and preserves the original
+   typed commitment law through the remaining roster and reserved inclusion.
+   Its [supported endpoint theorem](../../Vegas/Game/SourceServiceBindingCheckpoint.lean)
+   also carries the semantic source successor and the evolving candidate and
+   accepted-handle catalogues through that entire phase.
+   The all-syntax initialized fold still needs the evolving boundary invariants;
+   this phase law alone is not a sequential-equilibrium theorem.
 3. **Conditional incentives.** Derive the native information-fiber likelihood
    from those actual executions, including dynamic candidate catalogs and
    extra response recall. When failed disclosure and withholding both produce
@@ -245,6 +257,22 @@ objective. The remaining proof obligations are:
    removes an assumed private catalog correspondence, using the source view
    and the coupled public and own-response records instead. Deriving that
    joint coupling and its conditional likelihood remains necessary.
+   The [binding-window likelihood](../../Vegas/Pending/ReactiveBindingLikelihood.lean)
+   and [conditional law](../../Vegas/Pending/ReactiveBindingPosterior.lean)
+   prove that an actual opaque submission, replay roster and reserved inclusion
+   convey no further private-result information to a foreign player, conditional
+   on the initial auxiliary readout. This includes the actual pending pool,
+   passive samples and focal recall. The auxiliary projection excludes other
+   players' private response parameters without removing them from the runtime.
+   The full-source likelihood fold must still establish its relation to the
+   source information sets and include the timing before first submission.
+   [Scheduled binding](../../Vegas/Pending/ReactiveBindingSchedule.lean) extends
+   the foreign-readout equality to the entire roster and protected inclusion,
+   including an actual behavioral mixture over submission opportunities.
+   Its timing distribution is shared across private values. Relating that law
+   to the complete source assessment remains part of the full-source fold.
+   The coupling covers the owner as well when the owner's source-visible
+   binding result agrees; it does not claim that owners forget their choices.
 4. **Raw deviations and settlement.** Finish the remaining-plan coupling to a
    legal retained continuation until the first attributable departure. Hidden
    unusability requires repair; it cannot be detected by a sound public audit.
@@ -258,11 +286,34 @@ objective. The remaining proof obligations are:
    [serial evidence](../../Vegas/Pending/ReactiveSubmissionSerial.lean)
    connects first-event recall to the public next-envelope serial during a
    clean single-event phase, without requiring complete pending observation.
+   Fresh submission followed by inclusion restores the baseline serial/ledger
+   equality, including rejected application calls; arbitrary later replay
+   affects neither counter. This accounting is checked in the same generic
+   [serial module](../../Interaction/ReactiveSubmissionSerial.lean).
    The [public phase checker](../../Vegas/Pending/ReactiveServiceConformance.lean)
    admits the first canonical opaque binding, independently of hidden material,
    and the current certified opening whose public guards succeed. Its phase
    classification supplies the packet branches; the stopped whole-run proof
    must still derive its evidence and collection probability.
+   The [opening classifier](../../Vegas/Pending/ReactiveServiceOpening.lean)
+   derives actual successful inclusion and the precise guard-aware response
+   from public conformance and the runtime's evidence and binding invariants.
+   A failed original binding cannot produce a conforming fresh opening.
+   The [binding audit step](../../Vegas/Pending/ReactiveBindingAuditStep.lean)
+   couples arbitrary effective binding responses and their actual passive
+   activation to the retained implementation, preserving either the repair
+   frame or an attributed rejected traffic record. The
+   [guarded-resolution audit step](../../Vegas/Pending/ReactiveResolutionAuditStep.lean)
+   proves the same actual mixed-response and passive-activation split for
+   disclosures, using authentic evidence and arbitrary deferred guards. The
+   [physical continuation](../../Interaction/ReactiveTrafficContinuation.lean)
+   and [service-plan persistence](../../Vegas/Pending/ReactiveServiceTraffic.lean)
+   retain such records through arbitrary later responses and instructions.
+   Sampling and collection remain separate service obligations; evidence
+   persistence does not turn an unauthenticated or unseen record into a charge.
+   Given uniform per-record sampling coverage, the physical service-plan
+   theorem derives the conditional collection lower bound for every remaining
+   plan and player policy, even when sampling depends on the final transcript.
    The [terminal comparison](../../GameTheoryExtensions/Analysis/Protocol/TerminalAuditCoupling.lean)
    turns a coupled execution law into an inequality between actual randomized
    settlements when the bounded departure gain is covered by incremental
