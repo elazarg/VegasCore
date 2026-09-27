@@ -589,7 +589,8 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
   have config := scheduledBindingPhase_config setup leaks bounds network owner event payload
     outputEq codeEq node owned execution granted ready timely serial candidate vacant unused
     boundary.serials boundary.published (rosters event) slot
-    (rosterOffset setup rosters owner event) counted choice ticks final (by
+    (rosterOffset setup rosters owner event) (by rw [counted]; omega)
+    (by rw [counted]; exact Nat.add_lt_add_left slot.isLt _) choice ticks final (by
       convert reached using 1
       simp only [List.append_assoc, List.singleton_append]
       rfl)

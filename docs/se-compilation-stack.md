@@ -2,6 +2,10 @@
 
 ## Objective and status
 
+The [fixed proof checklist](se-proof-checklist.md) tracks theorem-level
+completion. Supporting lemmas belong to its existing obligations; they do not
+close an obligation until its full statement is proved.
+
 Implement a source-to-native sequential-equilibrium theorem for a reusable
 class of VegasCore programs, with all bounded raw responses available in the
 final game. Fix the program, service, monitoring rule, utilities and deposits
@@ -36,9 +40,11 @@ there; this introduces no represented private scratch state. The
 [timed binding phase](../Vegas/Game/SourceServiceTimedBinding.lean) and
 [guarded disclosure phase](../Vegas/Game/SourceServiceTimedDisclosure.lean), and
 [public sampling phase](../Vegas/Game/SourceServiceTimedSample.lean) have
-exact laws retaining the whole native execution. The whole-prefix information
-fold still needs to supply the native local continuation comparisons along a
-common fully mixed sequence. The
+exact laws retaining the whole native execution. The
+[whole-prefix factorization](../Vegas/Game/SourceServicePrefixFactorization.lean)
+proves the joint decoded-state and native-traffic law at every event boundary
+for the full language. Its extension to actual within-phase decision inputs
+and local continuation comparisons remains open. The
 [joint phase checkpoint laws](../Vegas/Game/SourceServiceTimedCheckpoint.lean)
 retain each chosen source successor together with its actual native traffic;
 equal terminal marginals do not establish that joint law.
@@ -51,8 +57,11 @@ normalization then supports every effective source choice. This supplies a
 source support fact. The
 [actual decision support theorem](../Vegas/Game/SourceServiceLocalSupport.lean)
 then proves that every permitted physical response is a replay alias or is
-supported by the actual source policy. The timed mixture's full-support and
-belief correspondence obligations remain separate.
+supported by the actual source policy. The
+[native full-mixing theorem](../Vegas/Game/SourceServiceTimedMixing.lean) and
+[common consistency sequence](../Vegas/Game/SourceServiceTimedConsistency.lean)
+are checked for the full language. Belief correspondence and local incentives
+remain separate obligations: a consistent assessment need not be rational.
 
 Private-intention normalization has checked posterior and conditional
 continuation comparisons. The
@@ -85,8 +94,11 @@ another actor has the grant. Complete stopped couplings also cover
 [guarded disclosure](../Vegas/Game/SourceServiceResolutionBlock.lean), and
 [foreign binding settlement](../Vegas/Game/SourceServiceForeignBindingRepair.lean).
 Each includes its real inclusion or sample, clock padding and expiry.
-Composition across successive blocks and from arbitrary active decision
-histories remains to be proved.
+The [remaining-event induction](../Vegas/Game/SourceServiceRemainingRepair.lean)
+composes these blocks through any complete-event suffix, preserving both
+actual marginal laws and one fixed repair implementation. Entry from an
+arbitrary active decision, followed by its standard continuation evaluator,
+remains to be proved.
 
 The [behavioral realization](../Vegas/Pending/ReactiveBindingRealization.lean)
 identifies the seeded repair runner with one legal behavioral continuation

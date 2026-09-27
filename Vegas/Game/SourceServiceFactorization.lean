@@ -111,28 +111,29 @@ theorem source_initial_memory_factorization
 The carried source configuration is proof data; the native application still
 performs the specified command, including its public effects and service recall. -/
 theorem source_maintenance_factorization
-    {Seed : Type*} {Γ : SourceCtx Player L}
+    {Seed Source View : Type}
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (focal : Player) (prior : FinDist Seed) (source : Seed → Config Player L Γ)
+    (focal : Player) (prior : FinDist Seed) (source : Seed → Source)
+    (observe : Source → View)
     (execution : Seed → (application setup leaks).Execution)
-    (noise : DecisionView focal Γ → FinDist _)
+    (noise : View → FinDist _)
     (factor : prior.map (fun seed => (source seed,
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
-        (noise (config.view focal)).map fun extra => (config, extra))
+        (noise (observe config)).map fun extra => (config, extra))
     (command : EnvironmentCommand (graph setup))
     (maintenance : ∀ event, command ≠ .executeSample event) :
-    ∃ nextNoise : DecisionView focal Γ → FinDist _,
+    ∃ nextNoise : View → FinDist _,
       (prior.bind fun seed =>
         ((execution seed).environmentStep (application setup leaks) (.application command)).map
           fun final => (source seed, (runtime setup).bindingTraffic leaks focal final)) =
       (prior.map source).bind fun config =>
-        (nextNoise (config.view focal)).map fun extra => (config, extra) := by
+        (nextNoise (observe config)).map fun extra => (config, extra) := by
   obtain ⟨nextNoise, law⟩ := FinDist.exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
-    (fun config => config.view focal) noise factor (fun _ => FinDist.pure Unit.unit)
-    (fun config _ => config) (fun config => config.view focal)
+    observe noise factor (fun _ => FinDist.pure Unit.unit)
+    (fun config _ => config) observe
     (fun seed _ => ((execution seed).environmentStep (application setup leaks)
       (.application command)).map ((runtime setup).bindingTraffic leaks focal))
     (fun _ _ _ _ _ _ _ _ same => same)
@@ -186,24 +187,25 @@ for the player's actual input: its response history and current observation.
 The same network sample is used on each coupled branch; no observer receives
 another player's sample or any of the auxiliary proof projection. -/
 theorem source_activation_input_factorization
-    {Seed : Type*} {Γ : SourceCtx Player L}
+    {Seed Source View : Type}
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (focal : Player) (prior : FinDist Seed) (source : Seed → Config Player L Γ)
+    (focal : Player) (prior : FinDist Seed) (source : Seed → Source)
+    (observe : Source → View)
     (execution : Seed → (application setup leaks).Execution)
-    (noise : DecisionView focal Γ → FinDist _)
+    (noise : View → FinDist _)
     (factor : prior.map (fun seed => (source seed,
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
-        (noise (config.view focal)).map fun extra => (config, extra)) :
-    ∃ channel : DecisionView focal Γ → FinDist
+        (noise (observe config)).map fun extra => (config, extra)) :
+    ∃ channel : View → FinDist
         (List (application setup leaks).PlayerEntry × (application setup leaks).PlayerView),
       (prior.bind fun seed =>
         ((execution seed).environmentStep (application setup leaks) (.activate focal)).map
           fun final => (source seed,
             (final.recall focal, final.observe (application setup leaks) focal))) =
       (prior.map source).bind fun config =>
-        (channel (config.view focal)).map fun input => (config, input) := by
+        (channel (observe config)).map fun input => (config, input) := by
   let app := application setup leaks
   have coupled (left right : app.Execution)
       (same : (runtime setup).bindingTraffic leaks focal left =
@@ -239,8 +241,8 @@ theorem source_activation_input_factorization
       (⟨second.network.observe focal, view, evidence⟩ : app.PlayerView)) projected receipts
   obtain ⟨channel, law⟩ := FinDist.exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
-    (fun config => config.view focal) noise factor (fun _ => FinDist.pure Unit.unit)
-    (fun config _ => config) (fun config => config.view focal)
+    observe noise factor (fun _ => FinDist.pure Unit.unit)
+    (fun config _ => config) observe
     (fun seed _ => ((execution seed).environmentStep app (.activate focal)).map
       fun final => (final.recall focal, final.observe app focal))
     (fun _ _ _ _ _ _ _ _ same => same)

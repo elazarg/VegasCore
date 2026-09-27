@@ -103,9 +103,10 @@ theorem scheduled_tail_waiting
   intro current _
   exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
 
-/-- At any selected owner slot, the actual source family is exactly the
-original binding lottery followed by the corresponding signed native window.
-The equality retains full executions and does not require an empty network. -/
+/-- From any unsent point before the selected owner slot, the actual source
+family is the original binding lottery followed by its signed native window.
+The remaining visits need not be the complete phase roster. The equality
+retains full executions and does not require an empty network. -/
 theorem sourceServiceTimedFamily_binding_law
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -133,20 +134,21 @@ theorem sourceServiceTimedFamily_binding_law
     (freshSlot : reactiveFreshSlot (execution.observe
       (application setup leaks) owner).application = some serial)
     (candidate : execution.application.candidates.lookup (owner, .prepared serial) = .fresh)
-    (network : (runtime setup).NetworkPolicy leaks) (visited remaining : List Player) :
+    (network : (runtime setup).NetworkPolicy leaks)
+    (visits visited remaining : List Player) :
     let index : Fin (eventCount (.commit name owner fresh guard next)) :=
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
     ∀ (slot : Fin ((rosters event).count owner))
-      (_position : rosters event = visited ++ owner :: remaining)
-      (_selected : slot.val = visited.count owner)
+      (_position : visits = visited ++ owner :: remaining)
+      (_selected : rosterOffset setup rosters owner event + slot.val =
+        (execution.recall owner).length + visited.count owner)
       (_granted : execution.application.serviceGrant = some event)
-      (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
-      (_counted : (execution.recall owner).length = rosterOffset setup rosters owner event),
+      (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false),
     (runtime setup).runInteractionPlan leaks
       (Function.update (fun _ => (application setup leaks).replayPolicy) owner
         (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event slot)) network
-      ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) execution =
+      (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) execution =
       (commitKernel profile (source.view owner)).bind fun choice =>
         (runtime setup).runInteractionPlan leaks
           (Function.update (fun _ => (application setup leaks).replayPolicy) owner
@@ -155,9 +157,9 @@ theorem sourceServiceTimedFamily_binding_law
               (fun _ _ => FinDist.pure
                 ((runtime setup).reactiveBinding leaks owner event payload choice serial))
               (application setup leaks).replayPolicy)) network
-          ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner])
+          (visits.map ServiceInstruction.player ++ [.includeLatest event owner])
           execution := by
-  intro index event slot position selected granted unsent counted
+  intro index event slot position selected granted unsent
   let app := application setup leaks
   let offset := rosterOffset setup rosters owner event
   let opening := sourceServiceOpportunity setup leaks wholeProfile owner event
@@ -168,16 +170,16 @@ theorem sourceServiceTimedFamily_binding_law
     (app.scheduledPolicy offset (some slot) (fun _ _ => FinDist.pure (raw choice)) app.replayPolicy)
   let transport : Player → app.Policy := fun _ => app.replayPolicy
   have before : (execution.recall owner).length + visited.count owner ≤ offset + slot.val := by
-    rw [counted, selected]
+    exact selected.ge
   have sourcePrefix := scheduled_window_waiting setup leaks network owner offset slot opening
     visited execution (Or.inl before)
   have rawPrefix := fun choice => scheduled_window_waiting setup leaks network owner offset slot
     (fun _ _ => FinDist.pure (raw choice)) visited execution (Or.inl before)
   change (runtime setup).runInteractionPlan leaks sourcePlayers network
-    ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) execution =
+    (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) execution =
     (commitKernel profile (source.view owner)).bind fun choice =>
       (runtime setup).runInteractionPlan leaks (rawPlayers choice) network
-        ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) execution
+        (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) execution
   simp only [position, List.map_append, List.map_cons, List.append_assoc,
     (runtime setup).runInteractionPlan_append]
   rw [sourcePrefix]
@@ -212,7 +214,8 @@ theorem sourceServiceTimedFamily_binding_law
   simp only [List.filterMap_map, Function.comp_def, instructionActor,
     List.filterMap_some] at currentCount
   have atSlot : (current.recall owner).length = offset + slot.val := by
-    rw [currentCount, counted, selected]
+    rw [currentCount]
+    exact selected.symm
   have outputEq : (graph setup).outputLayout event = .binding owner payload := by
     change outputLayout setup.program (embedding.event index) = _
     simpa [index, outputLayout, eventCount] using embedding.layout_eq index
@@ -220,7 +223,7 @@ theorem sourceServiceTimedFamily_binding_law
       ((graph setup).nodes event) = .bind owner payload := by
     change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
       ((toEventGraph setup.program).nodes event) = _
-    simpa [event, index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
+    exact aligned.graphSuffix.nodeEq index
   have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq := by
     cases viewed : nodeView (graph setup) event with
     | sample otherPayload law kind code => cases kind.symm.trans outputEq
@@ -369,8 +372,8 @@ theorem sourceServiceTimedPolicy_binding_phase_law
     split_owner_visit owner (rosters event) slot.val slot.isLt
   have prefixLaw := sourceServiceTimedFamily_binding_law setup leaks rosters fresh guard next
     wholeProfile profile refs source embedding refsBefore rank aligned execution agree history
-    serial freshSlot candidate network visited remaining slot position selected.symm
-    granted unsent counted
+    serial freshSlot candidate network (rosters event) visited remaining slot position
+    (by rw [counted, selected]) granted unsent
   have splitPlan : phase =
       ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) ++
         (List.replicate ticks .tick ++ [.expire event]) := by

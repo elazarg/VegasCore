@@ -33,6 +33,9 @@ import Vegas.Game.SourceServiceTimedSample
 import Vegas.Game.SourceServiceTimedCheckpoint
 import Vegas.Game.SourceServiceTimedBindingCheckpoint
 import Vegas.Game.SourceServiceTimedSupport
+import Vegas.Game.SourceServiceTimedAdmissibility
+import Vegas.Game.SourceServiceTimedMixing
+import Vegas.Game.SourceServiceTimedConsistency
 import Vegas.Game.SourceServiceChoiceSupport
 import Vegas.Game.SourceServiceLocalSupport
 import Vegas.Game.SourceChoiceCompletion
@@ -68,6 +71,12 @@ import Vegas.Game.SourceServiceResolutionWindow
 import Vegas.Game.SourceServiceResolutionBlock
 import Vegas.Game.SourceServiceReservedRepair
 import Vegas.Game.SourceServiceForeignBindingRepair
+import Vegas.Game.SourceServiceForeignBindingBlock
+import Vegas.Game.SourceServiceProgramRepair
+import Vegas.Game.SourceServiceEventRepair
+import Vegas.Game.SourceServiceRemainingRepair
+import Vegas.Game.SourceServiceActiveResolutionRepair
+import Vegas.Game.SourceServiceActiveOffTurnRepair
 import Vegas.Game.SourceServiceSubmittedBinding
 import Vegas.Game.SourceServiceRepeatedWindow
 import Vegas.Game.SourceServiceImplementationSegment
@@ -91,6 +100,7 @@ import Vegas.Game.SourceServiceResolution
 import Vegas.Game.SourceServiceSettlement
 import Vegas.Game.SourceServicePrefix
 import Vegas.Game.SourceServicePrefixInformation
+import Vegas.Game.SourceServicePrefixFactorization
 import Vegas.Game.DisclosureResponseComparison
 import Vegas.Game.RevealServiceRosterOwnerComparison
 import Vegas.Game.RevealServiceRosterPhase

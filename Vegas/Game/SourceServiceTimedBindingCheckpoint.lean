@@ -45,8 +45,9 @@ theorem scheduledBindingWindow_config
     (serials : execution.network.SerialsBeforeNext)
     (published : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
-    (roster : List Player) (slot : Fin (roster.count owner)) (offset : Nat)
-    (counted : (execution.recall owner).length = offset)
+    (roster : List Player) {slots : Nat} (slot : Fin slots) (offset : Nat)
+    (notPassed : (execution.recall owner).length ≤ offset + slot.val)
+    (within : offset + slot.val < (execution.recall owner).length + roster.count owner)
     (choice : PublicationResult (L.Val payload))
     (final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
@@ -65,9 +66,10 @@ theorem scheduledBindingWindow_config
   let transport : Player → app.Policy := fun _ => app.replayPolicy
   let players := Function.update transport owner
     (app.scheduledPolicy offset (some slot) (fun _ _ => FinDist.pure response) app.replayPolicy)
-  obtain ⟨visited, remaining, split, selected⟩ := split_owner_visit owner roster slot.val slot.isLt
+  obtain ⟨visited, remaining, split, selected⟩ := split_owner_visit owner roster
+    (offset + slot.val - (execution.recall owner).length) (by omega)
   have before : (execution.recall owner).length + visited.count owner ≤ offset + slot.val := by
-    rw [counted, selected]
+    omega
   have waiting := scheduled_window_waiting setup leaks network owner offset slot
     (fun _ _ => FinDist.pure response) visited execution (Or.inl before)
   change final ∈ ((runtime setup).runInteractionPlan leaks players network
@@ -102,7 +104,8 @@ theorem scheduledBindingWindow_config
   simp only [List.filterMap_map, Function.comp_def, instructionActor, List.filterMap_some]
     at currentCount
   have atSlot : (current.recall owner).length = offset + slot.val := by
-    rw [currentCount, counted, selected]
+    rw [currentCount]
+    omega
   simp only [List.cons_append, runInteractionPlan, interactionStep, interactionInstruction,
     FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     ReactiveApplication.resume, ReactiveApplication.invoke,
@@ -191,8 +194,9 @@ theorem scheduledBindingPhase_config
     (serials : execution.network.SerialsBeforeNext)
     (published : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
-    (roster : List Player) (slot : Fin (roster.count owner)) (offset : Nat)
-    (counted : (execution.recall owner).length = offset)
+    (roster : List Player) {slots : Nat} (slot : Fin slots) (offset : Nat)
+    (notPassed : (execution.recall owner).length ≤ offset + slot.val)
+    (within : offset + slot.val < (execution.recall owner).length + roster.count owner)
     (choice : PublicationResult (L.Val payload))
     (ticks : Nat) (final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
@@ -219,7 +223,7 @@ theorem scheduledBindingPhase_config
     Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
   have config := scheduledBindingWindow_config setup leaks bounds network owner event payload
     outputEq codeEq node owned execution granted ready timely serial fresh vacant unused serials
-      published roster slot offset counted choice included supported
+      published roster slot offset notPassed within choice included supported
   have settled : ¬included.application.config.cut.Ready event := by
     rw [config]
     intro unfinished
