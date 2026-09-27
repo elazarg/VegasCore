@@ -4,7 +4,7 @@ import Vegas.Pending.ReactiveBindingServiceRepair
 import Vegas.Pending.ReactiveBindingCoupling
 import Vegas.Pending.ReactiveRawBindingFrame
 import Vegas.EventGraph.BindingRefinement
-import Vegas.Pending.ReactiveOpeningRecall
+import Vegas.Pending.ReactiveSubmissionRecall
 
 /-! # The concrete frame carried by a repaired native continuation
 
@@ -40,8 +40,8 @@ structure Frame (memory : BindingMemory runtime leaks) (owner : Player)
   slots : ∀ query, original.application.candidates.lookup (owner, query) = .fresh ↔
     repaired.application.candidates.lookup (owner, query) = .fresh
   successful : original.application.config.store.BindingRefines repaired.application.config.store
-  openings : runtime.openingRecall leaks (original.recall owner) =
-    runtime.openingRecall leaks (repaired.recall owner)
+  submissions : runtime.submissionRecall leaks (original.recall owner) =
+    runtime.submissionRecall leaks (repaired.recall owner)
 
 theorem frame_atRecall (owner : Player)
     (execution : (runtime.reactiveApplication leaks).Execution) :
@@ -56,7 +56,7 @@ theorem frame_atRecall (owner : Player)
   recall := fun _ _ => rfl
   slots := fun _ => Iff.rfl
   successful := Store.BindingRefines.refl _
-  openings := rfl
+  submissions := rfl
 
 namespace Frame
 
@@ -72,15 +72,15 @@ theorem publicView (frame : Frame runtime leaks memory owner original repaired) 
   (congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
     view.application.publicView) frame.observed).symm
 
-theorem firstOpening (frame : Frame runtime leaks memory owner original repaired)
+theorem firstSubmission (frame : Frame runtime leaks memory owner original repaired)
     (response : (runtime.reactiveApplication leaks).Action) :
-    runtime.firstOpening leaks (original.recall owner) response =
-      runtime.firstOpening leaks (repaired.recall owner) response := by
-  unfold EventGraphRuntime.firstOpening
-  cases runtime.submittedOpening? leaks response with
+    runtime.firstSubmission leaks (original.recall owner) response =
+      runtime.firstSubmission leaks (repaired.recall owner) response := by
+  unfold EventGraphRuntime.firstSubmission
+  cases runtime.submittedEvent? leaks response with
   | none => rfl
   | some event =>
-      exact congrArg Bool.not (runtime.openingRecorded_congr leaks _ _ frame.openings event)
+      exact congrArg Bool.not (runtime.eventRecorded_congr leaks _ _ frame.submissions event)
 
 theorem environment (frame : Frame runtime leaks memory owner original repaired) :
     original.observeEnvironment (runtime.reactiveApplication leaks) =
@@ -105,7 +105,7 @@ theorem activate (frame : Frame runtime leaks memory owner original repaired)
         environmentRecall := repaired.environmentRecall ++
           [⟨repaired.observeEnvironment app, .activate actor⟩] } := by
   refine ⟨frame.past, ?_, frame.lengths, ?_, ?_, frame.views, frame.recall, frame.slots,
-    frame.successful, frame.openings⟩
+    frame.successful, frame.submissions⟩
   · have ownApplication := congrArg ReactiveApplication.PlayerView.application frame.observed
     change (⟨(repaired.network.learn actor selected).observe owner,
       memory.shadow.view ((runtime.reactiveApplication leaks).observePlayer
@@ -166,7 +166,7 @@ theorem foreign_response (frame : Frame runtime leaks memory owner original repa
     exact frame.successful
   · rw [app.respond_recall_other original actor owner foreign.symm response,
       app.respond_recall_other repaired actor owner foreign.symm response]
-    exact frame.openings
+    exact frame.submissions
 
 /-- Silence and replay preserve the concrete frame while recording the
 original response in private memory. No pending observation is discarded. -/
@@ -214,7 +214,7 @@ theorem transport_response (frame : Frame runtime leaks memory owner original re
     exact frame.slots query
   · rw [unchanged original, unchanged repaired]
     exact frame.successful
-  · rw [runtime.openingRecall_respond, runtime.openingRecall_respond, frame.openings]
+  · rw [runtime.submissionRecall_respond, runtime.submissionRecall_respond, frame.submissions]
 
 /-- Every canonical binding is carried through the actual atomic response and
 reserved inclusion. Usable material stays unchanged; unusable material receives
@@ -393,16 +393,17 @@ theorem binding (frame : Frame runtime leaks memory owner original repaired)
     | some value =>
         simp only [replacementOpening, decoded, Option.elim_some]
         exact EventField.BindingRefines.refl _ _
-  · change runtime.openingRecall leaks ((left.includePending app id).recall owner) =
-      runtime.openingRecall leaks ((right.includePending app id).recall owner)
+  · change runtime.submissionRecall leaks ((left.includePending app id).recall owner) =
+      runtime.submissionRecall leaks ((right.includePending app id).recall owner)
     have unchanged (execution : app.Execution) :
         (execution.includePending app id).recall = execution.recall := by
       simp only [ReactiveApplication.Execution.includePending]
       split <;> rfl
     rw [unchanged left, unchanged right]
-    change runtime.openingRecall leaks ((original.respond app owner response).recall owner) =
-      runtime.openingRecall leaks ((repaired.respond app owner change.1).recall owner)
-    rw [runtime.openingRecall_respond, runtime.openingRecall_respond, frame.openings, changed]
+    change runtime.submissionRecall leaks ((original.respond app owner response).recall owner) =
+      runtime.submissionRecall leaks ((repaired.respond app owner change.1).recall owner)
+    rw [runtime.submissionRecall_respond, runtime.submissionRecall_respond,
+      frame.submissions, changed]
     rfl
 
 end Frame

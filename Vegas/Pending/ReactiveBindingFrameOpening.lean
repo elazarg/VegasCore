@@ -113,10 +113,10 @@ theorem inert_submission (frame : Frame runtime leaks memory owner original repa
     exact frame.slots slot
   · rw [application original left leftInert, application repaired right rightInert]
     exact frame.successful
-  · rw [runtime.openingRecall_respond, runtime.openingRecall_respond, frame.openings]
+  · rw [runtime.submissionRecall_respond, runtime.submissionRecall_respond, frame.submissions]
     have calls := congrArg WitnessedPacket.call packet
     change left.call.packet = right.call.packet at calls
-    simp only [submittedOpening?, calls]
+    simp only [submittedEvent?, calls]
 
 /-- Accepted application transitions lift to actual inclusion, including the
 network update and public receipt. Constructor-specific lemmas establish the
@@ -199,10 +199,10 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
       (repaired.includePending app id).application.config.store
     rw [leftApplied.1, rightApplied.1]
     exact completed.successful
-  · change runtime.openingRecall leaks ((original.includePending app id).recall owner) =
-      runtime.openingRecall leaks ((repaired.includePending app id).recall owner)
+  · change runtime.submissionRecall leaks ((original.includePending app id).recall owner) =
+      runtime.submissionRecall leaks ((repaired.includePending app id).recall owner)
     rw [leftApplied.2.2, rightApplied.2.2]
-    exact frame.openings
+    exact frame.submissions
 
 /-- A request that discloses an unchanged authentic candidate transmits the
 same certificate on the repaired side. Forwarding is included, with identical

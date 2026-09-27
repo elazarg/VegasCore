@@ -149,7 +149,7 @@ theorem advanceClock (frame : Frame runtime leaks memory owner original repaired
         environmentRecall := repaired.environmentRecall ++
           [⟨repaired.observeEnvironment app, .application .advanceClock⟩] } := by
   refine ⟨frame.past, ?_, frame.lengths, frame.network, ?_, ?_, frame.recall, frame.slots,
-    frame.successful, frame.openings⟩
+    frame.successful, frame.submissions⟩
   · exact congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
       { view with application := { view.application with publicView :=
         { view.application.publicView with clock := view.application.publicView.clock + 1 } } })
@@ -173,7 +173,7 @@ theorem grant (frame : Frame runtime leaks memory owner original repaired)
         environmentRecall := repaired.environmentRecall ++
           [⟨repaired.observeEnvironment app, .application (.grant event)⟩] } := by
   refine ⟨frame.past, ?_, frame.lengths, frame.network, ?_, ?_, frame.recall, frame.slots,
-    frame.successful, frame.openings⟩
+    frame.successful, frame.submissions⟩
   · exact congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
       { view with application := { view.application with publicView :=
         { view.application.publicView with serviceGrant := some event } } }) frame.observed
@@ -263,7 +263,7 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
     exact congr (congr (congrArg (ReactivePlayerView.mk owner) nextPublic.symm) nextObservation)
       (congrArg ReactivePlayerView.candidates application)
   refine ⟨frame.past, ?_, frame.lengths, frame.network, frame.service, ?_,
-    frame.recall, frame.slots, ?_, frame.openings⟩
+    frame.recall, frame.slots, ?_, frame.submissions⟩
   · change (⟨repaired.network.observe owner, memory.shadow.view (app.observePlayer
       (repaired.application.complete event rightReady action value) owner),
         repaired.receipts⟩ : app.PlayerView) =

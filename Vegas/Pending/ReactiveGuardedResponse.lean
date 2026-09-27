@@ -98,7 +98,8 @@ theorem guarded_submission_retained [Fintype Player] (bounds : MessageBounds gra
     (available : (⟨some (.submit submission)⟩ : (runtime.reactiveApplication leaks).Action) ∈
       (bounds.menu runtime leaks).actions owner (execution.recall owner)
         (execution.observe (runtime.reactiveApplication leaks) owner))
-    (first : runtime.firstOpening leaks (execution.recall owner) ⟨some (.submit submission)⟩ = true)
+    (first : runtime.firstSubmission leaks (execution.recall owner)
+      ⟨some (.submit submission)⟩ = true)
     (addressed : submission.call.packet.event? graph = some event)
     (serial : Nat) (next : State graph)
     (certified : certifiedOpening (submission.emit

@@ -35,6 +35,7 @@ theorem repairResponse_binding_available
     (granted : view.application.publicView.serviceGrant = some event)
     (owned : graph.actor? event = some who)
     (ready : view.application.publicView.EventReady event)
+    (unsent : runtime.eventRecorded leaks past event = false)
     (serial : Nat) (fresh : reactiveFreshSlot view.application = some serial)
     (capacity : serial < bounds.candidateCount)
     (default : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values)
@@ -43,18 +44,19 @@ theorem repairResponse_binding_available
       (.prepared serial) = .fresh) :
     (memory.repairResponse runtime leaks who view
       ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩).1 ∈
-        bounds.compiledActions runtime leaks who past view := by
+        bounds.requiredBindingActions runtime leaks who past view := by
   cases decoded : opening.bind (fun raw => raw.as? payload) with
   | none =>
-      exact repairResponse_compiled runtime leaks bounds who memory past view event payload
-        outputEq codeEq node granted owned ready serial fresh capacity default opening
+      exact repairResponse_required runtime leaks bounds who memory past view event payload
+        outputEq codeEq node granted owned ready unsent serial fresh capacity default opening
           originalFresh decoded
   | some value =>
       rw [memory.repairResponse_usable runtime leaks who view event payload outputEq codeEq node
         serial opening originalFresh (reactiveFreshSlot_spec view.application serial fresh)
           value decoded]
       have cases := bounds.canonical_binding_response_cases runtime leaks who past view event
-        payload outputEq codeEq node granted owned ready serial fresh capacity opening bounded
+        payload outputEq codeEq node granted owned ready unsent serial fresh capacity
+        opening bounded
       rcases cases with available | impossible
       · exact available
       · rw [decoded] at impossible
@@ -62,7 +64,8 @@ theorem repairResponse_binding_available
 
 /-- At a clean required opportunity, the legal private implementation equals
 its original repair kernel for every mixed canonical bounded response law. -/
-theorem compiledImplementation_binding_response
+theorem retainedImplementation_binding_response
+    (menu : (runtime.reactiveApplication leaks).ResponseMenu)
     (who : Player) (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (policy : (runtime.reactiveApplication leaks).Policy)
     (memory : BindingMemory runtime leaks)
@@ -76,25 +79,29 @@ theorem compiledImplementation_binding_response
     (granted : view.application.publicView.serviceGrant = some event)
     (owned : graph.actor? event = some who)
     (ready : view.application.publicView.EventReady event)
+    (unsent : runtime.eventRecorded leaks past event = false)
     (serial : Nat) (fresh : reactiveFreshSlot view.application = some serial)
     (capacity : serial < bounds.candidateCount)
     (default : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values)
     (originalFresh : (memory.shadow.inputView runtime leaks view).application.candidates
       (.prepared serial) = .fresh)
+    (coverage : bounds.requiredBindingActions runtime leaks who past view ⊆
+      menu.actions who past view)
     (canonical : ∀ response ∈ (policy (memory.restoreRecall runtime leaks past)
       (memory.shadow.inputView runtime leaks view)).support,
       ∃ opening, bounds.AllowsOpening opening ∧ response =
         ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩) :
-    (compiledImplementation runtime leaks bounds who reference policy).respond memory (past, view) =
+    (retainedImplementation runtime leaks menu who reference policy).respond memory (past, view) =
       (implementation runtime leaks who reference policy).respond memory (past, view) := by
-  apply compiledImplementation_respond_eq
+  apply retainedImplementation_respond_eq
   intro result supported
   change result ∈ ((policy (memory.restoreRecall runtime leaks past)
     (memory.shadow.inputView runtime leaks view)).map _).support at supported
   obtain ⟨response, selected, rfl⟩ := FinDist.support_map .. ▸ supported
   obtain ⟨opening, bounded, rfl⟩ := canonical response selected
+  apply coverage
   exact repairResponse_binding_available runtime leaks bounds who memory past view event payload
-    outputEq codeEq node granted owned ready serial fresh capacity default opening bounded
+    outputEq codeEq node granted owned ready unsent serial fresh capacity default opening bounded
     originalFresh
 
 end Vegas.EventGraphRuntime.BindingMemory

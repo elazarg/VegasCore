@@ -132,8 +132,8 @@ under the relevant typed completions. `Frame.successful_opening` uses it with
 the two actual native binding invariants to derive the same accepted handle and
 authentic opening value. The native recurrence therefore does not need to
 reconstruct a second source interpreter to justify each successful opening.
-It also preserves the event sequence of submitted openings in the owner's
-actual recall. `Frame.firstOpening` transports the once-per-event response
+It also preserves the event sequence of fresh submitted calls in the owner's
+actual recall. `Frame.firstSubmission` transports the once-per-event response
 condition through private binding repair; changing hidden binding material
 cannot reset that condition.
 
@@ -173,7 +173,7 @@ noncanonical packet; or a protected inclusion/expiry suffix with public
 missed-binding evidence. The last case detects obligation failure from the
 ledger and deadline, not from absence in a partial packet sample. The
 [retained implementation coupling](../../Vegas/Pending/ReactiveBindingRetainedBlock.lean)
-covers the first case using its actual compiled-menu implementation and proves
+covers the first case using its actual menu-restricted implementation and proves
 its off-path fallback unnecessary at that binding.
 
 The [legal continuation theorem](../../Vegas/Pending/ReactiveBindingLegalContinuation.lean)
@@ -193,6 +193,24 @@ places the successful case in the actual compiled menu, including its raw
 private request aliases. It requires the actual first-opening condition, which
 the repair frame preserves. Hidden unusability remains outside the public
 audit predicate.
+
+The [guarded repair step](../../Vegas/Pending/ReactiveBindingGuardedStep.lean)
+proves equality of the normalized successful response across the frame,
+including forwarding representatives and finite-menu availability.
+[`resolve_response_coupling`](../../Vegas/Pending/ReactiveBindingResolveLaw.lean)
+then couples the complete mixed clean response law to the actual legal private
+implementation: silence, every known replay, and first successful guarded
+openings. The
+[guarded inclusion theorem](../../Vegas/Pending/ReactiveBindingGuardedInclusion.lean)
+derives the unchanged hidden value from the actual accepted certified packet
+and public guards. Its caller does not supply secret equality as an assumption.
+
+[`compiled_resolution_cases`](../../Vegas/Pending/ReactiveCompiledResolution.lean)
+classifies every retained response at a granted resolution. Its single-step and
+finite-roster consequences preserve the actual application throughout passive
+sampling and response windows, for arbitrary deferred guards and all retained
+choices. Network state and private recalls may change. Protected inclusion and
+expiry remain separate operations.
 
 These operational comparisons still need the stopped remaining-plan induction
 and the original source conditional-assessment correspondence. In particular,
@@ -219,20 +237,26 @@ the actual pair of original/repaired atomic responses, with exact original own
 input reconstruction after missing or mistyped private material.
 
 `ReactiveCompiledMenu` supplies a finite response restriction for every existing
-event-code constructor. Retained bindings are exactly typed successes;
-`binding_value_compiled` retains every source value, and `compiled_binding_cases`
-excludes silent fallback and public replay at covered, ready binding checkpoints.
+event-code constructor. Fresh retained bindings are exactly typed successes.
+`binding_value_required` retains every source value, and `required_binding_cases`
+excludes fallback and transport at a covered, unsent required binding opportunity.
+Ordinary opportunities retain silence and every known replay.
+`ordinary_binding_cases` classifies transport versus the first typed binding;
+`ordinary_binding_recorded` excludes a second fresh binding even while the first
+is pending. `sourceServiceMenu` selects the required set only at the last unsent
+owner visit, derived from the actual roster and existing own recall.
 `canonical_binding_response_cases` separates represented valid material from
 unusable material under the same public canonical packet. The latter is a repair
 case, not an audit violation. `finite_binding_values` verifies the substantive
 finite-domain requirement instead of mistaking a finite wire alphabet for a
 finite unbounded source type.
 
-[`compiledPolicy`](../../Vegas/Pending/ReactiveBindingContinuation.lean) realizes the implementation
-as an actual retained behavioral continuation. All-input admissibility is
+[`retainedPolicy`](../../Vegas/Pending/ReactiveBindingContinuation.lean) realizes the implementation
+as an actual behavioral continuation for the supplied retained menu.
+This includes the service-derived final-opportunity menu. All-input admissibility is
 proved: an excluded proposed output is replaced by a fixed locally legal output.
-`repairResponse_compiled` proves that canonical hidden unusability uses its valid
-repair rather than that fallback. `compiledImplementation_continuation` fixes
+`repairResponse_required` proves that canonical hidden unusability uses its valid
+repair rather than that fallback. `retainedImplementation_continuation` fixes
 one initial private memory uniformly across the starting information set.
 The remaining obligation is the stopped-run payoff comparison: exact coupling
 before excluded traffic, and actual collectible evidence for a first departure.
@@ -290,13 +314,15 @@ message space remains available; admission bounds and protected opportunities
 are explicit backend assumptions, not exclusions justified by an equilibrium.
 
 At a value-only binding, sending no commitment differs from submitting an opaque
-unusable handle. Silence or public replay can miss the binding obligation;
-neither is retained as a source value choice. Collection then needs public
-evidence of the missed mandatory binding deadline under protected timely
-inclusion. The absence of a watcher record is not such evidence. A grant that
-designates one required binding response is a sufficient backend discipline;
-earlier ambient waiting must remain legal. This does not yet establish fresh
-binding preservation under repeated owner visits within the same granted phase.
+unusable handle. Silence and replay remain legal at earlier roster visits, but
+cannot replace the last unsent binding opportunity. The actual service menu
+uses `bindingRequired_iff_no_later_owner` to identify that opportunity from the
+public roster and existing own response count. Collection for omission requires
+public missed-deadline evidence under protected timely inclusion; absence of a
+watcher record is not evidence. After the first binding, all later visits permit
+transport and prohibit another fresh binding. The response-level menu facts are
+checked; carrying the private repair through the complete delayed-inclusion
+window remains part of the full-source stopped-run proof.
 
 The actual omission block is checked in `ReactiveBindingDeadline` and
 `silent_or_spent_binding_omission`: after the
@@ -422,8 +448,12 @@ profiles; it must not assume target sequential rationality.
    sequential rationality bounds every legal repair continuation. Only then use
    the common-consistency completion theorem for the native extra private sites.
 
-Steps 2–3 are the missing native induction. The checked prefix lemmas and source
-repair establish ingredients, not this induction or the final comparison.
+Step 3 is supplied by the legal-continuation and implementation-trace theorems
+above once the repaired prefix is started at a retained history. Step 2 still
+requires the complete service induction: grant, deadline and pending-envelope
+facts at every retained prefix must identify each inclusion and each first
+auditable departure. The checked constructor laws do not yet establish that
+induction or the final stopped payoff comparison.
 
 ## Missing required commitments
 

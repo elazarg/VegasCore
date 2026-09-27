@@ -96,6 +96,7 @@ theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
     (granted : execution.application.serviceGrant = some event)
     (owned : graph.actor? event = some who)
     (ready : execution.application.config.cut.Ready event)
+    (unsent : runtime.eventRecorded leaks (execution.recall who) event = false)
     (prefixFresh : execution.application.PreparedPrefix who)
     (capacity : execution.application.publicView.bindingCount who < bounds.candidateCount)
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
@@ -106,7 +107,7 @@ theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
       (execution.recall who) (execution.observe (runtime.reactiveApplication leaks) who)) :
     let app := runtime.reactiveApplication leaks
     let serial := execution.application.publicView.bindingCount who
-    response ∈ bounds.compiledActions runtime leaks who
+    response ∈ bounds.requiredBindingActions runtime leaks who
         (execution.recall who) (execution.observe app who) ∨
       (∃ opening, response =
         ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩ ∧
@@ -158,7 +159,8 @@ theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
             have rawBound : bounds.AllowsOpening submission.call.opening := member.1.1.2
             have classified := bounds.canonical_binding_response_cases runtime leaks who
               (execution.recall who) (execution.observe app who) event payload outputEq codeEq node
-              granted owned publicReady serial allocator capacity submission.call.opening rawBound
+              granted owned publicReady unsent serial allocator capacity
+              submission.call.opening rawBound
             rcases classified with legal | unusable
             · exact Or.inl (shape ▸ legal)
             · exact Or.inr (Or.inl ⟨submission.call.opening,

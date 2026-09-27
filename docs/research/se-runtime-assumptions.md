@@ -21,7 +21,22 @@ game conclusion supplies an equilibrium extension. The finite roster remains
 an explicit scheduling restriction. See the [proof and scope](se-ambient-rosters.md).
 
 Full-source compilation additionally needs the evolving binding and guard
-continuation proof and remains open.
+continuation proof and remains open. Its finite-message instance must cover
+every admitted fresh commitment value. This is a genuine restriction for an
+unbounded integer commitment; finite interaction alone does not imply it.
+Publication types need not be finite: the checked
+[candidate-value invariant](../../Vegas/Pending/ReactiveBoundedValues.lean)
+covers all actual initial values and preserves the declared alphabet through
+arbitrary bounded raw responses. The
+[allocation theorem](../../Vegas/Pending/ReactiveBindingResources.lean)
+derives a fresh unused handle at every legal active history from a capacity
+at least as large as the interaction horizon.
+
+These bounds describe the current compiler theorem. General PMF support in
+upstream GameTheory removes the finite-support obstacle to countable response
+menus, but does not itself remove the interaction horizon or the finite
+equilibrium-completion argument. The [PMF assessment](se-pmf-interaction.md)
+separates the available upstream results from those remaining proof obligations.
 
 Interpreting source games with ambient communication remains an alternative
 for environments whose extra channels cannot satisfy the audit contract.
@@ -194,19 +209,59 @@ bounds at every relevant information set, including rare ones; an average
 noise or mutual-information bound alone supplies no such result. An
 approximate-SE bridge from these bounds remains future work.
 
-## Cheapest concrete next proof
+## Remaining end-to-end obligations
 
-Use the existing raw reactive response space. Classify its effects into game
-moves, ambient communication, and operationally inert distinctions; prove
-that classification preserves the actual observations and continuations.
-This gives a falsifiable operational target for one semantic edge. It avoids
-postulating the strategic conclusion as a service axiom.
+The target is the full existing source syntax with an explicit bounded service
+and audit contract. The reveal-only capstone is a completed fragment of that
+objective. The remaining proof obligations are:
 
-Then discharge an ordinary-source extension criterion for a useful subclass:
-the checked finite decision class, or a concretely enforced communication
-policy. Stop weakening the environment when a permitted observable channel
-fails that criterion; retain that channel in the interpretation instead.
-Do not add language flags for every backend mechanism.
+1. **Binding opportunities.** Repeated owner activations before inclusion must
+   allow waiting before the first binding and forbid a second fresh binding.
+   A submission becomes required at the final owner opportunity. Early silence
+   is not evidence of a missed deadline. The checked
+   [required-choice timing laws](../../GameTheoryExtensions/Math/Probability/DeferredChoice.lean)
+   assign positive waiting probability before the final slot, force submission
+   there, and recover the exact chosen first-submission distribution. The
+   [service menu](../../Vegas/Game/SourceServiceMenu.lean) selects the required
+   binding set exactly at the last unsent owner opportunity. The actual
+   compiler policy must still realize the timing laws throughout a full run.
+2. **Full source execution.** Compose actual sample, binding and guarded
+   disclosure phases across arbitrary finite reaction rosters. The
+   [source checkpoint](../../Vegas/Game/SourceServiceCheckpoint.lean) and
+   [prefix decoder](../../Vegas/Game/SourceServicePrefix.lean) retain the
+   evolving accepted bindings, source configuration and deferred guard registry;
+   their constructor proofs do not by themselves establish the complete run.
+   [Delayed binding inclusion](../../Vegas/Pending/ReactiveBindingReplay.lean)
+   permits arbitrary intervening retained responses after submission and proves
+   the same application, ledger and receipt result as immediate inclusion.
+3. **Conditional incentives.** Derive the native information-fiber likelihood
+   from those actual executions, including dynamic candidate catalogs and
+   extra response recall. When failed disclosure and withholding both produce
+   silence, use the
+   [conditional private-history law](../../Vegas/Game/SourceServiceDisclosureMemory.lean)
+   and a common mixture of original source assessment comparisons. Native
+   observations determining a source view is weaker than posterior equality.
+   [Candidate reconstruction](../../Vegas/Game/SourceServiceCandidateObservation.lean)
+   removes an assumed private catalog correspondence, using the source view
+   and the coupled public and own-response records instead. Deriving that
+   joint coupling and its conditional likelihood remains necessary.
+4. **Raw deviations and settlement.** Finish the remaining-plan coupling to a
+   legal retained continuation until the first attributable departure. Hidden
+   unusability requires repair; it cannot be detected by a sound public audit.
+   Publicly missing obligations require deadline evidence. Compose the stopped
+   comparison with authentic partial terminal sampling and collectible deposits,
+   preserving the joint initial-type/public-outcome/realized-settlement law.
+   The [repair frame](../../Vegas/Pending/ReactiveBindingSubmissionFrame.lean)
+   now holds at submission, before any inclusion. Its
+   [parameter/public-outcome readout](../../Vegas/Game/BindingRepairReadout.lean)
+   gives exact base-utility equality while the frame holds. The
+   [serial evidence](../../Vegas/Pending/ReactiveSubmissionSerial.lean)
+   connects first-event recall to the public next-envelope serial during a
+   clean single-event phase, without requiring complete pending observation.
+
+The compiler must fix its service, alphabet, conformance rules and deposit
+before selecting an equilibrium. No source-level flag for a backend mechanism
+or assumed strategic correspondence discharges these obligations.
 
 All current unilateral-SE conclusions remain distinct from CE or coalition
 preservation. Shared recommendations, keys, witnesses, side payments and

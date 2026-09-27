@@ -3,11 +3,11 @@
 import Vegas.Pending.ReactiveNormalization
 import Interaction.ReactiveRecall
 
-/-! # A fresh opening is submitted at most once per event
+/-! # A fresh submission is made at most once per event
 
 The test reads only the player's existing response recall and the unique event
 identifier. It requires no phase counter, timing oracle, or memory cost. Replays
-are distinct responses and do not count as a new opening submission.
+are distinct responses and do not count as a new submission.
 -/
 
 noncomputable section
@@ -21,63 +21,61 @@ variable {Player : Type} [DecidableEq Player]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-/-- Only a new submitted opening records an event; certificate representation
+/-- Only a new submitted event call records an event; certificate representation
 and private submission material do not enter the test. -/
-def submittedOpening? (response : (runtime.reactiveApplication leaks).Action) :
+def submittedEvent? (response : (runtime.reactiveApplication leaks).Action) :
     Option graph.EventId :=
   match response.transmission with
   | some (.submit material) =>
-      match material.call.packet with
-      | .opening event _ _ => some event
-      | .commitment .. | .withhold .. | .malformed .. => none
+      material.call.packet.event? graph
   | none | some (.replay _) => none
 
 open Classical in
-def openingRecorded (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+def eventRecorded (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (event : graph.EventId) : Bool :=
-  past.any fun entry => decide (runtime.submittedOpening? leaks entry.action = some event)
+  past.any fun entry => decide (runtime.submittedEvent? leaks entry.action = some event)
 
 /-- The submitted event identities already present in the player's own recall. -/
-def openingRecall (past : List (runtime.reactiveApplication leaks).PlayerEntry) :
+def submissionRecall (past : List (runtime.reactiveApplication leaks).PlayerEntry) :
     List (Option graph.EventId) :=
-  past.map fun entry => runtime.submittedOpening? leaks entry.action
+  past.map fun entry => runtime.submittedEvent? leaks entry.action
 
-theorem openingRecorded_congr
+theorem eventRecorded_congr
     (left right : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (same : runtime.openingRecall leaks left = runtime.openingRecall leaks right)
+    (same : runtime.submissionRecall leaks left = runtime.submissionRecall leaks right)
     (event : graph.EventId) :
-    runtime.openingRecorded leaks left event = runtime.openingRecorded leaks right event := by
+    runtime.eventRecorded leaks left event = runtime.eventRecorded leaks right event := by
   classical
   have observed := congrArg (fun records : List (Option graph.EventId) =>
     records.any fun selected => decide (selected = some event)) same
-  simpa only [openingRecall, openingRecorded, List.any_map, Function.comp_def] using observed
+  simpa only [submissionRecall, eventRecorded, List.any_map, Function.comp_def] using observed
 
-theorem openingRecall_respond
+theorem submissionRecall_respond
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action) :
-    runtime.openingRecall leaks
+    runtime.submissionRecall leaks
       ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) =
-      runtime.openingRecall leaks (execution.recall who) ++
-        [runtime.submittedOpening? leaks response] := by
-  simp only [openingRecall, ReactiveApplication.Execution.respond, ↓reduceIte, List.map_append,
+      runtime.submissionRecall leaks (execution.recall who) ++
+        [runtime.submittedEvent? leaks response] := by
+  simp only [submissionRecall, ReactiveApplication.Execution.respond, ↓reduceIte, List.map_append,
     List.map_cons, List.map_nil]
 
-/-- A fresh opening is allowed only before the first submitted opening naming
+/-- A fresh event call is allowed only before the first submitted call naming
 the same event. Every other response is unaffected by this discipline. -/
-def firstOpening (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+def firstSubmission (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (response : (runtime.reactiveApplication leaks).Action) : Bool :=
-  match runtime.submittedOpening? leaks response with
+  match runtime.submittedEvent? leaks response with
   | none => true
-  | some event => !(runtime.openingRecorded leaks past event)
+  | some event => !(runtime.eventRecorded leaks past event)
 
-/-- Semantic normalization changes no opening event identity. Private evidence
+/-- Semantic normalization changes no submitted event identity. Private evidence
 requests and inert material do not create additional transmission choices. -/
-theorem submittedOpening_normalization (who : Player)
+theorem submittedEvent_normalization (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (response : (runtime.reactiveApplication leaks).Action) :
-    runtime.submittedOpening? leaks ((runtime.reactiveNormalization leaks).action
-      who past view response) = runtime.submittedOpening? leaks response := by
+    runtime.submittedEvent? leaks ((runtime.reactiveNormalization leaks).action
+      who past view response) = runtime.submittedEvent? leaks response := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
@@ -88,55 +86,55 @@ theorem submittedOpening_normalization (who : Player)
           simp only [ReactiveApplication.SubmissionNormalization.action]
           split <;> rfl
 
-theorem firstOpening_normalization (who : Player)
+theorem firstSubmission_normalization (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (response : (runtime.reactiveApplication leaks).Action) :
-    runtime.firstOpening leaks past ((runtime.reactiveNormalization leaks).action
-      who past view response) = runtime.firstOpening leaks past response := by
-  simp only [firstOpening, runtime.submittedOpening_normalization]
+    runtime.firstSubmission leaks past ((runtime.reactiveNormalization leaks).action
+      who past view response) = runtime.firstSubmission leaks past response := by
+  simp only [firstSubmission, runtime.submittedEvent_normalization]
 
-theorem openingRecorded_iff (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+theorem eventRecorded_iff (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (event : graph.EventId) :
-    runtime.openingRecorded leaks past event = true ↔
-      ∃ entry ∈ past, runtime.submittedOpening? leaks entry.action = some event := by
+    runtime.eventRecorded leaks past event = true ↔
+      ∃ entry ∈ past, runtime.submittedEvent? leaks entry.action = some event := by
   classical
-  simp only [openingRecorded, List.any_eq_true, decide_eq_true_eq]
+  simp only [eventRecorded, List.any_eq_true, decide_eq_true_eq]
 
 /-- The actual native response records the submitted event immediately,
 independently of later inclusion or rejection. -/
-theorem openingRecorded_respond
+theorem eventRecorded_respond
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action) (event : graph.EventId)
-    (submitted : runtime.submittedOpening? leaks response = some event) :
-    runtime.openingRecorded leaks
+    (submitted : runtime.submittedEvent? leaks response = some event) :
+    runtime.eventRecorded leaks
       ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) event =
         true := by
-  apply (runtime.openingRecorded_iff leaks _ event).mpr
+  apply (runtime.eventRecorded_iff leaks _ event).mpr
   simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
   exact ⟨_, List.mem_append_right _ (List.mem_singleton_self _), submitted⟩
 
 /-- Any later own recall containing the actual previous submission rejects a
-second fresh opening of the event. Publicly observable retransmission by replay
+second fresh call of the event. Publicly observable retransmission by replay
 is not silently identified with another fresh signed envelope. -/
-theorem firstOpening_false_of_recorded
+theorem firstSubmission_false_of_recorded
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (event : graph.EventId) (recorded : runtime.openingRecorded leaks past event = true)
+    (event : graph.EventId) (recorded : runtime.eventRecorded leaks past event = true)
     (response : (runtime.reactiveApplication leaks).Action)
-    (submitted : runtime.submittedOpening? leaks response = some event) :
-    runtime.firstOpening leaks past response = false := by
-  simp only [firstOpening, submitted, recorded, Bool.not_true]
+    (submitted : runtime.submittedEvent? leaks response = some event) :
+    runtime.firstSubmission leaks past response = false := by
+  simp only [firstSubmission, submitted, recorded, Bool.not_true]
 
 /-- The discipline persists when any player takes another native response. -/
-theorem openingRecorded_respond_of_recorded
+theorem eventRecorded_respond_of_recorded
     (execution : (runtime.reactiveApplication leaks).Execution) (who observer : Player)
     (response : (runtime.reactiveApplication leaks).Action) (event : graph.EventId)
-    (recorded : runtime.openingRecorded leaks (execution.recall observer) event = true) :
-    runtime.openingRecorded leaks
+    (recorded : runtime.eventRecorded leaks (execution.recall observer) event = true) :
+    runtime.eventRecorded leaks
       ((execution.respond (runtime.reactiveApplication leaks) who response).recall observer)
         event = true := by
-  obtain ⟨entry, member, submitted⟩ := (runtime.openingRecorded_iff leaks _ event).mp recorded
-  apply (runtime.openingRecorded_iff leaks _ event).mpr
+  obtain ⟨entry, member, submitted⟩ := (runtime.eventRecorded_iff leaks _ event).mp recorded
+  apply (runtime.eventRecorded_iff leaks _ event).mpr
   exact ⟨entry, (runtime.reactiveApplication leaks).respond_recall_mono execution who observer
     response member, submitted⟩
 

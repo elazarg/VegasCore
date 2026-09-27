@@ -26,9 +26,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 /-- The finite mixed protected binding branch is realized by an actual legal
 compiled-menu continuation. In particular the same repaired strategy works
 across all hidden initial executions sharing its private-memory seed. -/
-theorem binding_compiled_coupling
+theorem binding_retained_coupling
     (frame : Frame runtime leaks memory owner original repaired)
     (bounds : MessageBounds graph)
+    (menu : (runtime.reactiveApplication leaks).ResponseMenu)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (scheduler : runtime.NetworkPolicy leaks)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -46,16 +47,21 @@ theorem binding_compiled_coupling
     (default : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values)
     (granted : repaired.application.serviceGrant = some event)
     (ready : original.application.config.cut.Ready event)
+    (unsent : runtime.eventRecorded leaks (repaired.recall owner) event = false)
     (timely : original.application.WithinDeadline runtime event)
     (vacant : original.application.accepted (.inr event) = none)
     (unused : original.application.HandleUnused (owner, .prepared serial))
     (serials : original.network.SerialsBeforeNext)
+    (coverage : bounds.requiredBindingActions runtime leaks owner (repaired.recall owner)
+      (repaired.observe (runtime.reactiveApplication leaks) owner) ⊆
+        menu.actions owner (repaired.recall owner)
+          (repaired.observe (runtime.reactiveApplication leaks) owner))
     (canonical : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
       ∃ opening, bounds.AllowsOpening opening ∧ response =
         ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) :
     let app := runtime.reactiveApplication leaks
-    let strategy := compiledImplementation runtime leaks bounds owner reference (players owner)
+    let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
     ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = (app.invoke players owner original).bind
         (runtime.interactionStep leaks players scheduler (.includeLatest event owner)) ∧
@@ -84,12 +90,14 @@ theorem binding_compiled_coupling
         ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩ := by
     rw [frame.past, frame.observed]
     exact canonical
-  have responseEq := compiledImplementation_binding_response runtime leaks bounds owner reference
+  have responseEq := retainedImplementation_binding_response runtime leaks bounds menu owner
+    reference
     (players owner) memory (repaired.recall owner) (repaired.observe app owner) event payload
-    outputEq codeEq node granted owned rightReady serial actualSlot capacity default originalFresh
-      currentCanonical
+    outputEq codeEq node granted owned rightReady unsent serial actualSlot capacity default
+      originalFresh
+      coverage currentCanonical
   have resumeEq :
-      (compiledImplementation runtime leaks bounds owner reference (players owner)).resume
+      (retainedImplementation runtime leaks menu owner reference (players owner)).resume
         owner players (some owner) repaired memory =
       (implementation runtime leaks owner reference (players owner)).resume
         owner players (some owner) repaired memory := by
