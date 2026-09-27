@@ -38,6 +38,11 @@ def entry : {Γ : SourceCtx Player L} → {O : Finset VarId} →
   | _, _, .commit _ _ _ _ _, config => Sum.inl config
   | _, _, .reveal _ _ _ _ _ _ _, config => Sum.inl config
 
+/-- Distinct entry configurations are distinct protocol states. -/
+theorem entry_injective {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) : Function.Injective (entry program) := by
+  cases program <;> intro left right same <;> cases same <;> rfl
+
 def observe (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → ProtocolState program → ProtocolView who program
   | _, _, .ret _ => fun config => config.view who

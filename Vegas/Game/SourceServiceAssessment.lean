@@ -84,6 +84,14 @@ theorem sourceService_owner_assessment_comparisons
       (Revelations.initial setup.context) original
     let decodedBelief := (native.stateBelief owner site).map (fun state => state.bind
       fun current => sourceServicePrefix? setup event.val current.execution.application.config)
+    let prefixLaw := (setup.initialLaw.map setup.initialConfig).bind fun config =>
+      (fun distribution => distribution.bind
+        (ProtocolState.behavioralStateStep setup.program normalized))^[event.val]
+          (FinDist.pure (ProtocolState.entry setup.program config))
+    (∃ view ∈ (prefixLaw.map (ProtocolState.observe owner setup.program)).support,
+      SourceProgram.ProtocolView.actor owner setup.program view = some owner ∧
+      decodedBelief =
+        (prefixLaw.condOnFibre (ProtocolState.observe owner setup.program) view).map some) ∧
     ∃ mixture : FinDist ((setup.informationModel
         (CommitmentInterface.values setup.program)).AssessmentDeviation owner),
       ((decodedBelief.bind (setup.continuationLaw normalized)).map some) =
@@ -97,7 +105,7 @@ theorem sourceService_owner_assessment_comparisons
           (CommitmentInterface.values setup.program)).assessmentComparison
             (fun final => setup.protocolReadout final.state) (instructionCount setup.program + 1)
               source owner deviation).alternative) := by
-  intro original normalized decodedBelief
+  intro original normalized decodedBelief prefixLaw
   let admission := CommitmentInterface.values setup.program
   have permitted (who : Player) : (original who).Admitted setup.program admission :=
     ((setup.behavioralPolicyEquiv admission who).symm (source.strategy who)).2
@@ -111,10 +119,6 @@ theorem sourceService_owner_assessment_comparisons
         visits.map ServiceInstruction.player)
       (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
     fun prior => prior.environmentStep (application setup leaks) (.activate owner)
-  let prefixLaw := (setup.initialLaw.map setup.initialConfig).bind fun config =>
-    (fun distribution => distribution.bind
-      (ProtocolState.behavioralStateStep setup.program normalized))^[event.val]
-        (FinDist.pure (ProtocolState.entry setup.program config))
   obtain ⟨supported, projected⟩ := sourceService_owner_bayes_at_history setup leaks bounds values
     initialValues capacity rosters opportunities timing full network original permitted native
       strategy mixed bayes event owner owned visits count selected before site history control
@@ -180,7 +184,7 @@ theorem sourceService_owner_assessment_comparisons
   obtain ⟨mixture, prescribed, deviating⟩ :=
     setup.normalized_disclosure_assessment_comparison admission source sourceMixed sourceBayes
       event.val owner alternative admitted view viewSupport active
-  refine ⟨mixture, ?_, ?_⟩
+  refine ⟨⟨view, viewSupport, active, belief⟩, mixture, ?_, ?_⟩
   · rw [belief, FinDist.bind_map]
     exact prescribed
   · rw [belief, FinDist.bind_map]

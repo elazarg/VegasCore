@@ -74,8 +74,9 @@ theorem run_sourceService_prefix_support
             state = lift (ProtocolState.entry remaining current) ∧
             ((∀ tailState, ProtocolState.behavioralStateStep program profile (lift tailState) =
               (ProtocolState.behavioralStateStep remaining remainingProfile tailState).map lift) ∧
-              ∀ tailState joint, ProtocolState.step program (lift tailState) joint =
+              (∀ tailState joint, ProtocolState.step program (lift tailState) joint =
                 (ProtocolState.step remaining tailState joint).map lift) ∧
+              Function.Injective lift) ∧
             (∀ more store history,
               decodeSourcePrefix? program refs source.registry source.revelations embedding.ref
                 (count + more) store history =
@@ -102,7 +103,7 @@ theorem run_sourceService_prefix_support
       · cases program <;> exact ⟨source, rfl, rfl, rfl, boundary.toSourceCheckpoint⟩
       · simpa only [Nat.add_zero] using aligned
       · exact fun admitted => admitted
-      · refine ⟨fun state => ?_, fun state joint => ?_⟩ <;>
+      · refine ⟨fun state => ?_, fun state joint => ?_, Function.injective_id⟩ <;>
           simp only [id_eq, FinDist.map_id]
       · intro more store history
         simp only [Nat.zero_add, Option.map_id, id_eq]
@@ -192,11 +193,12 @@ theorem run_sourceService_prefix_support
           · simpa only [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using currentAligned
           · intro admitted
             exact currentAdmitted (fun who => admitted who)
-          · refine ⟨fun tailState => ?_, fun tailState joint => ?_⟩
+          · refine ⟨fun tailState => ?_, fun tailState joint => ?_,
+              Sum.inr_injective.comp stepEq.2.2⟩
             · rw [Function.comp_apply, ProtocolState.behavioralStateStep_sample_tail, stepEq.1,
                 FinDist.map_comp]
             · change (ProtocolState.step _ (lift tailState) joint).map Sum.inr = _
-              rw [stepEq.2, FinDist.map_comp]
+              rw [stepEq.2.1, FinDist.map_comp]
           · intro more store history
             rw [show count + 1 + more = (count + more) + 1 by omega,
               decodeSourcePrefix?_sample]
@@ -288,11 +290,12 @@ theorem run_sourceService_prefix_support
           · simpa only [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using currentAligned
           · intro admitted
             exact currentAdmitted (fun who => (admitted who).2)
-          · refine ⟨fun tailState => ?_, fun tailState joint => ?_⟩
+          · refine ⟨fun tailState => ?_, fun tailState joint => ?_,
+              Sum.inr_injective.comp stepEq.2.2⟩
             · rw [Function.comp_apply, ProtocolState.behavioralStateStep_commit_tail, stepEq.1,
                 FinDist.map_comp]
             · change (ProtocolState.step _ (lift tailState) joint).map Sum.inr = _
-              rw [stepEq.2, FinDist.map_comp]
+              rw [stepEq.2.1, FinDist.map_comp]
           · intro more store history
             rw [show count + 1 + more = (count + more) + 1 by omega,
               decodeSourcePrefix?_commit]
@@ -388,11 +391,12 @@ theorem run_sourceService_prefix_support
           · simpa only [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using currentAligned
           · intro admitted
             exact currentAdmitted (fun who => admitted who)
-          · refine ⟨fun tailState => ?_, fun tailState joint => ?_⟩
+          · refine ⟨fun tailState => ?_, fun tailState joint => ?_,
+              Sum.inr_injective.comp stepEq.2.2⟩
             · rw [Function.comp_apply, ProtocolState.behavioralStateStep_reveal_tail, stepEq.1,
                 FinDist.map_comp]
             · change (ProtocolState.step _ (lift tailState) joint).map Sum.inr = _
-              rw [stepEq.2, FinDist.map_comp]
+              rw [stepEq.2.1, FinDist.map_comp]
           · intro more store history
             rw [show count + 1 + more = (count + more) + 1 by omega,
               decodeSourcePrefix?_reveal]
@@ -451,8 +455,9 @@ theorem initialized_sourceService_prefix_support
           ((∀ tailState, ProtocolState.behavioralStateStep setup.program profile
             (lift tailState) =
               (ProtocolState.behavioralStateStep remaining remainingProfile tailState).map lift) ∧
-            ∀ tailState joint, ProtocolState.step setup.program (lift tailState) joint =
+            (∀ tailState joint, ProtocolState.step setup.program (lift tailState) joint =
               (ProtocolState.step remaining tailState joint).map lift) ∧
+            Function.Injective lift) ∧
           (∀ more store history,
             decodeSourcePrefix? setup.program
               (ContextRefs.initial setup.context (outputLayout setup.program)) []

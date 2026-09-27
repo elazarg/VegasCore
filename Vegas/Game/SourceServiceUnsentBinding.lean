@@ -501,9 +501,12 @@ namespace SourceServiceSpec
 variable (service : SourceServiceSpec Player L)
 
 /-- At every retained decision during a binding event's phase, the residual
-source commitment is aligned with the given profile, and the source
-continuation from the event's boundary draws the commitment value and then
-continues from the configuration that completes the binding with it. -/
+source commitment is aligned with the given profile, and three source facts
+hold at the event's boundary. The source continuation draws the commitment
+value and continues from the configuration that completes the binding with it.
+Any owner action steps to the configuration completing the binding with that
+action's value. The owner's source action law has the commitment lottery as its
+value marginal. -/
 theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.program)
     {who : Player} {remaining : Nat}
     {execution : (application service.setup service.leaks).Execution}
@@ -514,13 +517,30 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
     (isBinding : (graph service.setup).outputLayout phase.event = .binding owner payload) :
     ∃ site : BindingSource service.setup profile phase.event execution.application.config,
       ∀ ready : execution.application.config.cut.Ready phase.event,
-        service.setup.continuationLaw profile
+        (service.setup.continuationLaw profile
           (sourceServicePrefix? service.setup phase.event.val execution.application.config) =
         (commitKernel site.residual (site.source.view site.owner)).bind fun choice =>
           service.setup.continuationLaw profile (sourceServicePrefix? service.setup
             (phase.event.val + 1) (execution.application.config.complete phase.event ready
               (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) choice)
-              (cast (congrArg EventGraph.EventField.Value site.outputEq.symm) choice))) := by
+              (cast (congrArg EventGraph.EventField.Value site.outputEq.symm) choice)))) ∧
+        (∀ joint : Player → Option (OwnAction Player L),
+          service.setup.protocolStep
+            (sourceServicePrefix? service.setup phase.event.val execution.application.config)
+            joint =
+          FinDist.pure (sourceServicePrefix? service.setup (phase.event.val + 1)
+            (execution.application.config.complete phase.event ready
+              (cast (congrArg EventGraph.EventField.Action site.outputEq.symm)
+                (OwnAction.binding site.owner site.name site.payload (joint site.owner)))
+              (cast (congrArg EventGraph.EventField.Value site.outputEq.symm)
+                (OwnAction.binding site.owner site.name site.payload (joint site.owner)))))) ∧
+        ∀ state, sourceServicePrefix? service.setup phase.event.val
+            execution.application.config = some state →
+          ¬ ProtocolState.terminal service.setup.program state →
+          ((profile site.owner).protocolAction service.setup.program
+              (ProtocolState.observe site.owner service.setup.program state)).map
+            (OwnAction.binding site.owner site.name site.payload) =
+          commitKernel site.residual (site.source.view site.owner) := by
   obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseGranted⟩ := phase
   dsimp only at isBinding ⊢
   obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
@@ -576,42 +596,104 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
       rw [checkpoint.decode _ embedding.ref] at now
       simp only [Nat.add_zero, Option.map_some] at now
       change sourceServicePrefix? service.setup _ execution.application.config = _ at now
-      rw [now]
-      change ProtocolState.continuationLaw service.setup.program profile
-        (lift (ProtocolState.entry _ source)) = _
-      rw [← sourceStep_continuation, commutes.1]
-      change (((ProtocolState.behavioralStateStep _ remainingProfile (.inl source)).map
-        lift).bind _) = _
-      rw [ProtocolState.behavioralStateStep_commit_entry, FinDist.bind_map, FinDist.bind_map]
-      apply FinDist.bind_congr
-      intro choice _
-      have decoded : decodeEventAction service.setup.program
-          (embedding.event ⟨0, by simp [eventCount]⟩)
-          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
-            some (.commit siteOwner name sitePayload choice) := by
-        have action := aligned.actionEq ⟨0, by simp [eventCount]⟩
-          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
-        simpa [outputEq, decodeEventAction] using action
-      have completed := checkpoint.commit name guard _ rfl ready outputEq
-        (fun ref => refsBefore ref ⟨0, by simp [eventCount]⟩) choice decoded
-      have recovered := completed.decode next (fun tail => embedding.ref tail.succ)
-      have later : sourceServicePrefix? service.setup
-          ((embedding.event ⟨0, by simp [eventCount]⟩).val + 1)
-          (execution.application.complete (embedding.event ⟨0, by simp [eventCount]⟩) ready
-            (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
-            (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice)).config =
+      have later (value : PublicationResult (L.Val sitePayload)) :
+          sourceServicePrefix? service.setup ((embedding.event ⟨0, by simp [eventCount]⟩).val + 1)
+            (execution.application.config.complete (embedding.event ⟨0, by simp [eventCount]⟩)
+              ready (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+              (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)) =
           some (lift (Sum.inr (ProtocolState.entry next
-            (commitSuccessor name guard source choice)))) := by
+            (commitSuccessor name guard source value)))) := by
+        have decoded : decodeEventAction service.setup.program
+            (embedding.event ⟨0, by simp [eventCount]⟩)
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) value) =
+              some (.commit siteOwner name sitePayload value) := by
+          have action := aligned.actionEq ⟨0, by simp [eventCount]⟩
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+          simpa [outputEq, decodeEventAction] using action
+        have completed := checkpoint.commit name guard _ rfl ready outputEq
+          (fun ref => refsBefore ref ⟨0, by simp [eventCount]⟩) value decoded
+        have recovered := completed.decode next (fun tail => embedding.ref tail.succ)
+        change sourceServicePrefix? service.setup _
+          (execution.application.complete (embedding.event ⟨0, by simp [eventCount]⟩) ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)).config = _
         unfold sourceServicePrefix?
         rw [transport 1, decodeSourcePrefix?_commit]
         exact congrArg (fun decoded => (Option.map Sum.inr decoded).map lift) recovered
-      change _ = service.setup.continuationLaw profile (sourceServicePrefix? service.setup
-        ((embedding.event ⟨0, by simp [eventCount]⟩).val + 1)
-        (execution.application.complete (embedding.event ⟨0, by simp [eventCount]⟩) ready
-          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
-          (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice)).config)
-      rw [later]
-      rfl
+      refine ⟨?_, ?_, ?_⟩
+      · rw [now]
+        change ProtocolState.continuationLaw service.setup.program profile
+          (lift (ProtocolState.entry _ source)) = _
+        rw [← sourceStep_continuation, commutes.1]
+        change (((ProtocolState.behavioralStateStep _ remainingProfile (.inl source)).map
+          lift).bind _) = _
+        rw [ProtocolState.behavioralStateStep_commit_entry, FinDist.bind_map, FinDist.bind_map]
+        apply FinDist.bind_congr
+        intro choice _
+        rw [later choice]
+        rfl
+      · intro joint
+        rw [now, later]
+        change ((ProtocolState.step _ (lift (ProtocolState.entry _ source)) joint).map some) = _
+        rw [commutes.2.1]
+        change ((FinDist.pure (Sum.inr (ProtocolState.entry next (commitSuccessor name guard
+          source (OwnAction.binding siteOwner name sitePayload (joint siteOwner)))))).map
+            lift).map some = _
+        simp only [FinDist.map_pure]
+        rfl
+      · intro state decoded running
+        rw [now] at decoded
+        have stateEq := Option.some.inj decoded
+        subst stateEq
+        have viaResidual := commutes.1 (ProtocolState.entry _ source)
+        change _ = ((ProtocolState.behavioralStateStep _ remainingProfile (.inl source)).map
+          lift) at viaResidual
+        rw [ProtocolState.behavioralStateStep_commit_entry] at viaResidual
+        let advance := fun value : PublicationResult (L.Val sitePayload) =>
+          lift (Sum.inr (ProtocolState.entry next (commitSuccessor name guard source value)))
+        have viaWhole : ProtocolState.behavioralStateStep service.setup.program profile
+            (lift (ProtocolState.entry _ source)) =
+            ((profile siteOwner).protocolAction service.setup.program
+              (ProtocolState.observe siteOwner service.setup.program
+                (lift (ProtocolState.entry _ source)))).map
+              (fun action => advance (OwnAction.binding siteOwner name sitePayload action)) := by
+          unfold ProtocolState.behavioralStateStep
+          simp only [running, ↓reduceIte]
+          have stepped (joint : Player → Option (OwnAction Player L)) :
+              ProtocolState.step service.setup.program (lift (ProtocolState.entry _ source))
+                joint = FinDist.pure (advance
+                  (OwnAction.binding siteOwner name sitePayload (joint siteOwner))) := by
+            rw [commutes.2.1]
+            change (FinDist.pure (Sum.inr (ProtocolState.entry next (commitSuccessor name guard
+              source (OwnAction.binding siteOwner name sitePayload (joint siteOwner)))))).map
+                lift = _
+            simp only [FinDist.map_pure]
+            rfl
+          rw [show ProtocolState.step service.setup.program (lift (ProtocolState.entry _ source)) =
+            fun joint : Player → Option (OwnAction Player L) => FinDist.pure (advance
+              (OwnAction.binding siteOwner name sitePayload (joint siteOwner))) from
+                funext stepped, ← FinDist.map_eq_bind]
+          change (FinDist.pi _).map ((fun action =>
+            advance (OwnAction.binding siteOwner name sitePayload action)) ∘
+              fun joint : Player → Option (OwnAction Player L) => joint siteOwner) = _
+          rw [← FinDist.map_comp, FinDist.map_apply_pi]
+        have injective : Function.Injective advance := by
+          intro first second same
+          have successor := commutes.2.2 same
+          have entries := (Sum.inr_injective successor)
+          have configs := ProtocolState.entry_injective next entries
+          simpa only [commitSuccessor, Env.cons_get_here] using
+            congrArg (fun config : Config Player L
+              ((name, .commitment siteOwner sitePayload) :: Γ) =>
+                config.state.get HasVar.here) configs
+        apply FinDist.map_injective injective
+        rw [FinDist.map_comp]
+        change ((profile siteOwner).protocolAction service.setup.program
+          (ProtocolState.observe siteOwner service.setup.program
+            (lift (ProtocolState.entry _ source)))).map
+              (fun action => advance (OwnAction.binding siteOwner name sitePayload action)) = _
+        rw [← viaWhole, viaResidual, FinDist.map_comp]
+        rfl
 
 end SourceServiceSpec
 

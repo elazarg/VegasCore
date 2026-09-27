@@ -63,8 +63,9 @@ theorem sourceService_decision_boundary
               (lift tailState) =
                 (ProtocolState.behavioralStateStep remaining remainingProfile tailState).map
                   lift) ∧
-              ∀ tailState joint, ProtocolState.step setup.program (lift tailState) joint =
+              (∀ tailState joint, ProtocolState.step setup.program (lift tailState) joint =
                 (ProtocolState.step remaining tailState joint).map lift) ∧
+              Function.Injective lift) ∧
             ∀ more store history,
               decodeSourcePrefix? setup.program
                 (ContextRefs.initial setup.context (outputLayout setup.program)) []

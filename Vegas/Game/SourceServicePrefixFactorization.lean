@@ -624,11 +624,6 @@ private theorem observe_entry {Γ : SourceCtx Player L} {names : Finset VarId}
       entryObservation who program (source.view who) := by
   cases program <;> rfl
 
-private theorem entry_injective {Γ : SourceCtx Player L} {names : Finset VarId}
-    (program : SourceProgram Player L Γ names) :
-    Function.Injective (ProtocolState.entry program) := by
-  cases program <;> intro left right same <;> cases same <;> rfl
-
 /-- The actual typed decoder determines the next source configuration. Its
 joint law supplies both the source marginal and the preceding observation
 factor; the ordered cut is supplied by actual retained-prefix support. -/
@@ -1145,7 +1140,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
             nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
               nextRegistry nextRevelations advanced encoded
-              (Sum.inr_injective.comp (entry_injective next)) decode (by
+              (Sum.inr_injective.comp (ProtocolState.entry_injective next)) decode (by
                 intro seed final
                 simp only [decode, decodeSourcePrefix?,
                   Option.map_map, Function.comp_def]
@@ -1252,7 +1247,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
             nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
               nextRegistry nextRevelations advanced encoded
-              (Sum.inr_injective.comp (entry_injective next)) decode (by
+              (Sum.inr_injective.comp (ProtocolState.entry_injective next)) decode (by
                 intro seed final
                 simp only [decode, decodeSourcePrefix?,
                   Option.map_map, Function.comp_def]
@@ -1363,7 +1358,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
             nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
               nextRegistry nextRevelations advanced encoded
-              (Sum.inr_injective.comp (entry_injective next)) decode (by
+              (Sum.inr_injective.comp (ProtocolState.entry_injective next)) decode (by
                 intro seed final
                 simp only [decode, decodeSourcePrefix?,
                   Option.map_map, Function.comp_def]
