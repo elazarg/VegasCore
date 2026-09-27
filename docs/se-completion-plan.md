@@ -105,25 +105,33 @@ needs no separate case: `EffectiveDisclosures`, inherited by the residual
 profile through `RevealSource.inherits`, makes the source withhold whenever
 the opening would fail.
 
-### M3. Owner-site combinator (M)
+### M3. Owner-site combinator (checked)
 
-Shared by M4 and M5. Fix an owner site. All its histories share one source
-view (`SourcePrefixCheckpoint.source_view_eq_of_observe_eq`). The quantifiers
-come in this order:
+`TimedApproximant.owner_comparisons_of_continuations`
+([SourceServiceOwnerComparison](../Vegas/Game/SourceServiceOwnerComparison.lean))
+is shared by M4 and M5. It fixes an owner site of the `ofSource` approximant of
+a fully supported, Bayes-consistent source assessment, a local native lottery,
+and one admitted source alternative chosen for the whole site. Its hypotheses
+are the two per-history identities, stated at the source state decoded at the
+start of the event's phase (`TimedApproximant.decodedState`):
 
-1. choose one admitted source alternative for the whole site, from
-   `exists_admitted_local_law` at the common view, before any hidden history;
-2. for every history of the site, require both identities: the prescribed
-   native continuation equals the prescribed source continuation (the
-   normalized profile) at the decoded state, and the alternative native
-   continuation equals the continuation of that one alternative;
-3. conclude that the native prescribed and alternative laws are the prescribed
-   and alternative laws of the same mixture of original source deviations,
-   from `sourceService_owner_assessment_comparisons`.
+- the prescribed native continuation is the prescribed source continuation of
+  the normalized profile;
+- the native continuation under the local lottery is the continuation of the
+  normalized profile updated by the alternative.
 
-The native belief is the `ofSource` assessment's Bayes belief. Where the
-prescribed native law is not the source prescribed law (disclosure), use only
-the source side of this result: the mixture components bound source gains.
+It concludes that the native prescribed and alternative laws are the
+prescribed and alternative laws of one mixture of original source assessment
+comparisons, via `sourceService_owner_assessment_comparisons`.
+`TimedApproximant.mixture_gain_eq` turns this into the mixture branch of the
+limit theorem's local comparison.
+
+The caller supplies the alternative, from `exists_admitted_local_law` at the
+site's common source view (`SourcePrefixCheckpoint.source_view_eq_of_observe_eq`),
+before choosing any hidden history. Where the prescribed native law is not the
+prescribed source law (disclosure), the caller cannot establish the first
+identity and uses only the source side of `sourceService_owner_assessment_comparisons`:
+the mixture components bound source gains.
 
 ### M4. Unsent binding (L)
 
@@ -206,7 +214,7 @@ as a delegating restatement.
 
 ## Ordering
 
-M1 and M2 are checked. The critical path is M3 → M4, M5 → M6 → M7 → M8.
+M1–M3 are checked. The critical path is M4, M5 → M6 → M7 → M8.
 Within M5, steps 2–3 and 5–6 do not depend on the operational steps 1 and 4.
 
 Parallel lanes must not run Lake builds concurrently. A build deletes the
