@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceRosterPrefix
+import Vegas.Game.RevealServicePrefix
+import Vegas.Game.RevealServiceRosterCheckpoint
 import Vegas.Game.RevealServiceRosterCounts
 import Vegas.Game.SourceStateKernel
 import Vegas.Game.SourceInformation

@@ -226,6 +226,17 @@ observations. The
 all actual retained owner prefixes, including early openings with zero limiting
 probability; its policy explicitly stops opening after such a response.
 
+The [decision-support bridge](../../Vegas/Game/RevealServiceRosterDecisionSupport.lean)
+connects every legal retained protocol history to those initialized source
+prefixes, including histories reached only through trembles. A fixed activation
+schedule and own response recall determine decision depth; no scheduler cursor
+is added to observations. The
+[compiled-prefix law](../../Vegas/Game/RevealServiceRosterPrefixLaw.lean)
+holds for every source behavioral profile and timing distribution. The
+[complete phase coupling](../../Vegas/Pending/ReactiveOpeningExpiryCoupling.lean)
+retains service recall through protected inclusion, ticks and expiry, subject
+to equality of the actual public application result.
+
 The remaining implementation gates are to derive the multi-phase conditional
 source-belief and local-incentive correspondence, classify fresh departures
 under the phase rule, and apply the existing conditional terminal-audit

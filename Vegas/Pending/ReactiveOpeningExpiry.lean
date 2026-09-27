@@ -148,7 +148,14 @@ theorem openingWindow_expiry (runtime : EventGraphRuntime graph)
       else ({ initial.application with clock := initial.application.clock + ticks } : State graph)
         |>.complete event ready (cast (congrArg EventField.Action outputEq.symm) false)
           (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure)) ∧
-    final.network.Satisfies (fun message => message.id ∈ final.network.ledger.map Message.id) := by
+    final.network.Satisfies (fun message => message.id ∈ final.network.ledger.map Message.id) ∧
+    final.network.ledger = (if selected.isSome then List.append initial.network.ledger
+      [runtime.windowEnvelope leaks owner event candidate ⟨payload, value⟩ initial]
+      else initial.network.ledger) ∧
+    final.receipts = (if selected.isSome then initial.receipts ++
+      [((owner, initial.network.nextSerial owner), true)] else initial.receipts) ∧
+    final.network.nextSerial = fun who => initial.network.nextSerial who +
+      if who = owner ∧ selected.isSome then 1 else 0 := by
   let players := runtime.openingWindowPlayers leaks owner event candidate ⟨payload, value⟩
     (initial.recall owner).length selected
   rw [List.append_assoc, List.append_assoc, runtime.runInteractionPlan_append] at reached
@@ -162,6 +169,6 @@ theorem openingWindow_expiry (runtime : EventGraphRuntime graph)
   have settled := frame.expiry runtime leaks owner event payload binding checks outputEq codeEq
     node candidate value initial current (initial.recall owner).length selected ready serials
       accepted entered ticks activated due players network final reached
-  exact ⟨settled.1, settled.2.1⟩
+  exact settled
 
 end Vegas.EventGraphRuntime

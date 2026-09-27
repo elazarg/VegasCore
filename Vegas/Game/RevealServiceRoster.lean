@@ -112,15 +112,15 @@ theorem rosterPlan_split (setup : Setup (Player := Player) (L := L))
   rw [rosterPlanPrefix_succ] at split
   exact split.symm
 
-/-- The plan evaluator is exactly the existing native game scheduler, from
-every supported service position and for arbitrary response policies. -/
-theorem roster_suffix_rounds (setup : Setup (Player := Player) (L := L))
+/-- Every plan segment is exactly the existing native game scheduler, from
+its service position and for arbitrary response policies. -/
+theorem roster_segment_rounds (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
     (players : Player → (application setup leaks).Policy)
-    (before rest : List (ServiceInstruction (graph setup)))
-    (split : rosterPlan setup rosters = before ++ rest)
+    (before rest after : List (ServiceInstruction (graph setup)))
+    (split : rosterPlan setup rosters = before ++ rest ++ after)
     (execution : (application setup leaks).Execution)
     (position : execution.environmentRecall.length = before.length) :
     (application setup leaks).runRounds (rosterScheduler setup leaks rosters network)
@@ -130,7 +130,7 @@ theorem roster_suffix_rounds (setup : Setup (Player := Player) (L := L))
   | nil => rfl
   | cons instruction rest ih =>
       have selected : (rosterPlan setup rosters)[before.length]? = some instruction := by
-        rw [split, List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]
+        rw [split, List.append_assoc, List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]
         rfl
       have step : (application setup leaks).round (rosterScheduler setup leaks rosters network)
           players execution = (runtime setup).interactionStep leaks players network

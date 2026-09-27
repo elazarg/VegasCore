@@ -36,7 +36,7 @@ theorem owner_choices_at_prefix
         embedding refsBefore offset →
       ∀ (count : Nat), count < eventCount program →
       ∀ (state : ProtocolState program) (execution : (application setup leaks).Execution),
-      PrefixCheckpoint setup leaks initial program refs revelations embedding.ref
+      PublicPrefixCheckpoint setup leaks initial program refs revelations embedding.ref
         offset count state execution →
       ∀ event : (graph setup).EventId, event.val = offset + count →
       (graph setup).actor? event = some who →

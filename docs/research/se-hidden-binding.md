@@ -97,6 +97,20 @@ memory does not expose a field before inclusion. `BindingMemory.restoreRecall_su
 restores original before-views and actions while taking the emitted envelope
 from actual own recall. It does not predict network nonces.
 
+`rawBinding_reserved_config` includes arbitrary private raw material, including
+wrong-typed material, with its exact typed result and successful inclusion
+receipt. `BindingMemory.repairResponse_include_input` composes the actual
+submission and inclusion: the repaired implementation reconstructs the original
+complete own input and response recall after both operations. Its memory update
+still uses only the current own input and original response.
+
+`BindingShadow.OwnBindings` and `repairResponse_ownBindings` prove that these
+overrides concern only the repaired owner's private bindings.
+`OwnBindings.complete_public_observation` therefore commutes with the same
+actual public completion on both sides, including chance results and successful,
+failed or withheld publications. It does not substitute a public value from
+private memory.
+
 `BindingMemory.implementation` is an actual private implementation using only
 the current own input and this memory. Its reference memory is constant across
 every hidden execution in the starting information set, and
@@ -335,15 +349,15 @@ lifts a normalized game into a game with extra aliases; it is not a theorem
 reflecting every alias-dependent equilibrium in the reverse direction. No
 assumption that all guards pass may replace this missing argument.
 
-There is also a remaining raw-action case within binding repair. A commitment
+There is also a raw-action case within binding repair. A commitment
 can carry private material of the wrong type and still expose the same opaque
 packet. Its typed binding result is failure, while its private catalog may
-support a later certificate for that wrong-typed material. The current source
-commit-block theorem covers canonical failed submissions without opening data.
-The stopped induction must also repair this raw case, retaining its owner's
-purified policy information until any certificate transmission is detected as
-an observable departure. Source `Patched` alone does not reconstruct those raw
-private response records.
+support a later certificate for that wrong-typed material. The checked native
+submission/inclusion repair now covers this case and reconstructs its private
+response records. The stopped induction must retain that information through
+later choices until any nonconforming certificate transmission is handled as
+an observable departure. Source `Patched` alone does not establish this native
+continuation claim.
 
 In the current ideal runtime, binding acceptance requires ownership of the
 candidate handle; a third party cannot bind another player's opaque handle as

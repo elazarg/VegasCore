@@ -134,7 +134,7 @@ theorem owner_choice_data
     (Revelations.initial setup.context) (outputEmbedding setup.program)
     (initialRefsBefore setup.program) 0 (CompiledPolicySuffix.whole setup.program decoded)
     event.val event.isLt source (ownerOpportunity setup leaks event who boundary)
-    opportunityCheckpoint event (by omega) owned rfl
+    (opportunityCheckpoint.toPublic _ _ _ _ _ _ _ _) event (by omega) owned rfl
   refine ⟨?_, data.2⟩
   have encoded : setup.toProtocolBehavioralPolicy admission who (decoded who)
       (((setup.behavioralPolicyEquiv admission who).symm (sourceProfile who)).2) =

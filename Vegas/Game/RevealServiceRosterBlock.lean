@@ -86,7 +86,8 @@ theorem roster_reveal_source_step (setup : Setup (Player := Player) (L := L))
     handle_opening_eq (runtime setup) initial.application _ event candidate owner payload
       (refs.get binding) [] outputEq codeEq node ready timely rfl owned associated
       value valid stored (.success value) resolved
-  obtain ⟨state, publishedPackets⟩ := (runtime setup).openingWindow_expiry leaks owner event payload
+  obtain ⟨state, publishedPackets, _records⟩ :=
+    (runtime setup).openingWindow_expiry leaks owner event payload
     (refs.get binding) [] outputEq codeEq node candidate value initial ready serials clean owned
       valid accepted entered ticks activated due roster selected network final reached
   refine ⟨?_, ?_, publishedPackets⟩

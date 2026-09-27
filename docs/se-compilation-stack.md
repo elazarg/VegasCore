@@ -33,9 +33,13 @@ The checked extension work has three concrete boundaries:
   permitted policies are checked. The concrete roster scheduler evaluates the
   same runtime; actual response counts determine policy offsets. The initialized
   all-phase induction gives a legal source prefix, its decoder, public checkpoint
-  and published packet identifiers for every permitted policy. Common timing
-  limits and exact conditional owner timing posteriors are checked. Multi-phase
-  source-belief correspondence and SE incentives remain open.
+  and published packet identifiers for every permitted policy. Every actual
+  legal decision, including off-path decisions, starts at such a source prefix;
+  own response counts determine its depth without exposing scheduler memory.
+  The compiled policy has the exact source-prefix state law for any timing
+  distribution. Full auxiliary transcript coupling includes protected inclusion,
+  ticks and expiry. Common timing limits and conditional owner timing posteriors
+  are checked. Multi-phase source-belief correspondence and SE incentives remain open.
 - [`reactive_commit_repair`](../Vegas/Game/BindingRepairBlock.lean) carries the typed source repair
   invariant through actual fresh native binding and inclusion. The native joint
   law and repaired-prefix induction step are checked. The stopped-run
@@ -48,15 +52,24 @@ equivalence alone does not prove SE preservation. The general theorem must
 carry private randomization and one common consistent perturbation sequence
 through that erasure, with utilities depending on initial types and public
 outcomes. The owner-local normalization and one finite policy mixture shared
-across a whole starting belief are checked. The generic limit theorem accepts
+across a whole starting belief are checked. A fixed playerwise behavioral
+normalizer now preserves joint initial parameters and typed terminal states.
+The actual source-prefix disintegration restores only the focal player's
+private original intentions, with observation-local posterior weights. The
+generic limit theorem accepts
 perturbation-dependent continuation simulations and proves SE from vanishing
-uniform source regret. Constructing the actual multi-step posterior simulations
-remains an obligation.
+uniform source regret. Information-fiber conditioning and deviation lifting
+still need to instantiate that limit theorem.
 
 Required commitments introduce a separate enforcement case: a player can omit
 the submission without emitting forbidden traffic. A public deadline obligation
 must inspect acceptance under a protected timely-inclusion contract. Absence
-from a partial audit is insufficient. Before the final required opportunity,
+from a partial audit is insufficient. The checked public omission detector
+recognizes a completed binding with no accepted handle, and its evidence
+survives arbitrary native continuations. Accepted unusable handles require the
+separate checked owner-memory repair, including absent or mistyped private
+material. The full stopped continuation comparison is still open.
+Before the final required opportunity,
 waiting must either remain permitted or receive a proved whole-continuation
 comparison. For guarded reveals, acceptance of an opening packet alone is also
 insufficient: permitted disclosure must pass the publication guard. These are

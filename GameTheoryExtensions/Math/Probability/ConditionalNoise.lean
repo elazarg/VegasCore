@@ -120,4 +120,76 @@ theorem conditional_kernel_of_fiber (prior : FinDist State)
   rw [joint]
   exact conditional_observation_kernel prior observe noise observed extra oldPresent noisePresent
 
+/-- Conditional auxiliary noise remains ancillary after one hidden-state
+transition. The new observation must determine the old observation, and the
+conditional noise transition may depend on the hidden state/action only
+through that new observation. Source action probabilities may depend on the
+entire hidden state; no independence of source choices is assumed. -/
+theorem exists_updated_observation_kernel
+    {Action NextState NextObservation NextNoise : Type*}
+    (prior : FinDist State) (observe : State → Observation)
+    (noise : Observation → FinDist Noise) (choice : State → FinDist Action)
+    (advance : State → Action → NextState) (nextObserve : NextState → NextObservation)
+    (channel : State → Action → Noise → FinDist NextNoise)
+    (reflects : ∀ left ∈ prior.support, ∀ leftAction ∈ (choice left).support,
+      ∀ right ∈ prior.support, ∀ rightAction ∈ (choice right).support,
+      nextObserve (advance left leftAction) = nextObserve (advance right rightAction) →
+        observe left = observe right)
+    (coupled : ∀ left ∈ prior.support, ∀ leftAction ∈ (choice left).support,
+      ∀ right ∈ prior.support, ∀ rightAction ∈ (choice right).support,
+      nextObserve (advance left leftAction) = nextObserve (advance right rightAction) →
+      ∀ extra ∈ (noise (observe left)).support,
+        channel left leftAction extra = channel right rightAction extra) :
+    ∃ nextNoise : NextObservation → FinDist NextNoise,
+      (prior.bind fun state => (noise (observe state)).bind fun extra =>
+        (choice state).bind fun action => (channel state action extra).map fun next =>
+          (advance state action, next)) =
+      (prior.bind fun state => (choice state).map (advance state)).bind fun state =>
+        (nextNoise (nextObserve state)).map fun extra => (state, extra) := by
+  classical
+  let pairs := prior.bind fun state => (choice state).map fun action => (state, action)
+  let observation := fun pair : State × Action => nextObserve (advance pair.1 pair.2)
+  let branch := fun pair : State × Action =>
+    (noise (observe pair.1)).bind (channel pair.1 pair.2)
+  have supported (pair : State × Action) (member : pair ∈ pairs.support) :
+      pair.1 ∈ prior.support ∧ pair.2 ∈ (choice pair.1).support := by
+    obtain ⟨state, stateSupport, member⟩ := Set.mem_iUnion₂.mp (support_bind .. ▸ member)
+    obtain ⟨action, actionSupport, same⟩ := support_map .. ▸ member
+    cases same
+    exact ⟨stateSupport, actionSupport⟩
+  have same (left : State × Action) (leftSupport : left ∈ pairs.support)
+      (right : State × Action) (rightSupport : right ∈ pairs.support)
+      (equal : observation left = observation right) : branch left = branch right := by
+    obtain ⟨leftPrior, leftAction⟩ := supported left leftSupport
+    obtain ⟨rightPrior, rightAction⟩ := supported right rightSupport
+    have priorView := reflects left.1 leftPrior left.2 leftAction right.1 rightPrior right.2
+      rightAction equal
+    change (noise (observe left.1)).bind _ = (noise (observe right.1)).bind _
+    rw [← priorView]
+    exact bind_congr fun extra member => coupled left.1 leftPrior left.2 leftAction right.1
+      rightPrior right.2 rightAction equal extra member
+  let nextNoise := fun view =>
+    if present : ∃ pair ∈ pairs.support, observation pair = view then branch present.choose
+    else branch pairs.support_nonempty.choose
+  have factors (pair : State × Action) (member : pair ∈ pairs.support) :
+      branch pair = nextNoise (observation pair) := by
+    have present : ∃ other ∈ pairs.support, observation other = observation pair :=
+      ⟨pair, member, rfl⟩
+    simp only [nextNoise, dite_eq_left present]
+    exact same pair member present.choose present.choose_spec.1 present.choose_spec.2.symm
+  refine ⟨nextNoise, ?_⟩
+  calc
+    _ = pairs.bind (fun pair => (branch pair).map fun extra =>
+        (advance pair.1 pair.2, extra)) := by
+      simp only [pairs, branch, bind_bind, bind_map, map_bind]
+      apply bind_congr
+      intro state _
+      exact bind_comm _ _ _
+    _ = pairs.bind (fun pair => (nextNoise (observation pair)).map fun extra =>
+        (advance pair.1 pair.2, extra)) := by
+      apply bind_congr
+      intro pair member
+      rw [factors pair member]
+    _ = _ := by simp only [pairs, observation, bind_bind, bind_map]
+
 end GameTheory.Math.Probability.FinDist
