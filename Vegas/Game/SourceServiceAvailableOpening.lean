@@ -313,6 +313,96 @@ theorem RevealSource.opening_config_law (setup : Setup (Player := Player) (L := 
       rw [mapped, endpointApp]
       rfl
 
+omit [Fintype Player] in
+/-- With all traffic published and every roster response a transport, a
+disclosure phase ends by expiry: the publication is completed as withheld. -/
+theorem withhold_phase_config (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (players : Player → (application setup leaks).Policy)
+    (network : (runtime setup).NetworkPolicy leaks)
+    {owner : Player} {event : (graph setup).EventId} {payload : L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
+    (execution : (application setup leaks).Execution)
+    (responses : ∀ (current : (application setup leaks).Execution) who response,
+      current.application = execution.application →
+      execution.recall owner ⊆ current.recall owner →
+      response ∈ (players who (current.recall who)
+        (current.observe (application setup leaks) who)).support →
+      response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+    (published : execution.network.Satisfies fun message =>
+      message.id ∈ execution.network.ledger.map Message.id)
+    (ready : execution.application.config.cut.Ready event)
+    (entered ticks : Nat) (activated : execution.application.activatedAt event = some entered)
+    (due : (runtime setup).deadline event ≤ execution.application.clock + ticks - entered)
+    (visits : List Player) :
+    ((runtime setup).runInteractionPlan leaks players network
+      (visits.map ServiceInstruction.player ++
+        .includeLatest event owner :: (List.replicate ticks .tick ++ [.expire event]))
+      execution).map (fun final => final.application.config) =
+      FinDist.pure (execution.application.config.complete event ready
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)
+        (cast (congrArg EventGraph.EventField.Value outputEq.symm) PublicationResult.failure)) := by
+  have passive : ∀ instruction ∈ (List.replicate ticks .tick ++ [.expire event] :
+      List (ServiceInstruction (graph setup))), instruction ≠ .wire ∧
+      (∀ player, instruction ≠ .player player) ∧
+      ∀ selected player, instruction ≠ .includeLatest selected player := by
+    intro instruction member
+    simp only [List.mem_append, List.mem_replicate, List.mem_singleton] at member
+    rcases member with ⟨_, rfl⟩ | rfl <;> simp
+  have applications := transport_phase_application_law setup leaks players network event owner
+    visits _ passive execution responses published
+  obtain ⟨next, expiry, nextApp, _⟩ := (runtime setup).canonical_silent_expiry leaks players
+    network execution owner event payload binding checks outputEq codeEq node ready entered ticks
+    activated due
+  rw [expiry, FinDist.map_pure] at applications
+  have mapped := congrArg (FinDist.map EventGraphRuntime.State.config) applications
+  simp only [FinDist.map_comp, FinDist.map_pure, Function.comp_def] at mapped
+  rw [mapped, nextApp]
+  rfl
+
+omit [Fintype Player] in
+/-- With an available authentic opening and the disclosure unsent, the owner's
+source opportunity draws the source disclosure and opens exactly when it
+discloses. -/
+theorem RevealSource.opportunity_law {setup : Setup (Player := Player) (L := L)}
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    {wholeProfile : BehavioralProfile setup.program} {event : (graph setup).EventId}
+    (execution : (application setup leaks).Execution)
+    (site : RevealSource setup wholeProfile event execution.application.config)
+    (granted : execution.application.serviceGrant = some event)
+    (unsent : (runtime setup).eventRecorded leaks (execution.recall site.owner) event = false)
+    (valid : execution.application.BindingInvariant)
+    (recalled : execution.InputRecall (application setup leaks))
+    (origins : (runtime setup).ResolutionEvidenceOrigins leaks execution)
+    (effective : (site.residual site.owner).EffectiveDisclosures
+      (.reveal site.published site.owner site.name site.fresh site.binding site.unresolved
+        site.next) site.source.registry site.source.revelations)
+    (candidate : Handle (graph setup)) (raw : Raw L)
+    (opening : rosterOpening? setup leaks site.owner event
+      (execution.observe (application setup leaks) site.owner) = some (candidate, raw)) :
+    sourceServiceOpportunity setup leaks wholeProfile site.owner event
+      (execution.recall site.owner) (execution.observe (application setup leaks) site.owner) =
+      (revealKernel site.residual (site.source.view site.owner)).bind fun disclose =>
+        if disclose then FinDist.pure ((runtime setup).windowOpening leaks event candidate raw)
+        else (application setup leaks).replayPolicy (execution.recall site.owner)
+          (execution.observe (application setup leaks) site.owner) := by
+  obtain ⟨Γ, names, publishedName, owner, name, payload, fresh, binding, unresolved, next,
+    residual, refs, source, embedding, refsBefore, aligned, agree, history, head, _⟩ := site
+  dsimp only at *
+  subst head
+  have law := sourceServiceOpportunity_reveal setup leaks fresh binding unresolved next
+    wholeProfile residual refs source embedding refsBefore _ aligned execution agree history
+    valid recalled origins effective granted unsent
+  refine law.trans ?_
+  apply FinDist.bind_congr
+  intro disclose _
+  cases disclose <;> simp only [Bool.false_eq_true, ↓reduceIte, opening]
+
 namespace SourceServiceSpec
 
 variable (service : SourceServiceSpec Player L)
@@ -587,5 +677,333 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
         rfl
 
 end SourceServiceSpec
+
+/-- The acting player's earlier visits in the roster of its decision's event. -/
+def DecisionPhase.earlier {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {rosters : (graph setup).EventId → List Player} {who : Player}
+    {execution : (application setup leaks).Execution}
+    (phase : DecisionPhase setup leaks rosters who execution) : Nat :=
+  ((rosters phase.event).take phase.slot).count who
+
+/-- The source disclosure probability at a disclosure's source view. -/
+def RevealSource.disclosureProbability {setup : Setup (Player := Player) (L := L)}
+    {profile : BehavioralProfile setup.program} {event : (graph setup).EventId}
+    {config : (graph setup).Config} (site : RevealSource setup profile event config) : ℝ :=
+  (revealKernel site.residual (site.source.view site.owner)).prob true
+
+/-- The configuration completing the publication with a source disclosure. -/
+def RevealSource.completion {setup : Setup (Player := Player) (L := L)}
+    {profile : BehavioralProfile setup.program} {event : (graph setup).EventId}
+    {config : (graph setup).Config} (site : RevealSource setup profile event config)
+    (ready : config.cut.Ready event) (disclose : Bool) : (graph setup).Config :=
+  config.complete event ready
+    (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) disclose)
+    (cast (congrArg EventGraph.EventField.Value site.outputEq.symm)
+      (disclosureResult site.published site.binding site.source disclose))
+
+omit [Fintype Player] in
+/-- The source disclosure lottery, completed into configurations, averages the
+two completions with the disclosure probability. -/
+theorem RevealSource.completion_expect {setup : Setup (Player := Player) (L := L)}
+    {profile : BehavioralProfile setup.program} {event : (graph setup).EventId}
+    {config : (graph setup).Config} (site : RevealSource setup profile event config)
+    (ready : config.cut.Ready event) (utility : (graph setup).Config → ℝ) :
+    ((revealKernel site.residual (site.source.view site.owner)).bind fun disclose =>
+      FinDist.pure (site.completion ready disclose)).expect utility =
+      site.disclosureProbability * utility (site.completion ready true) +
+        (1 - site.disclosureProbability) * utility (site.completion ready false) := by
+  have total := (revealKernel site.residual (site.source.view site.owner)).sum_prob
+  simp only [Fintype.sum_bool] at total
+  rw [FinDist.expect_bind, FinDist.expect_eq_sum, Fintype.sum_bool]
+  simp only [FinDist.expect_pure, RevealSource.disclosureProbability]
+  rw [show (revealKernel site.residual (site.source.view site.owner)).prob false =
+    1 - (revealKernel site.residual (site.source.view site.owner)).prob true by linarith]
+
+namespace TimedApproximant
+
+variable {service : SourceServiceSpec Player L} (approx : TimedApproximant service)
+
+/-- At the owner's unsent disclosure with an available opening, a current
+transport response leaves the eventual disclosure probability deferred to the
+owner's remaining visits: the next-boundary configuration completes the
+publication with the disclosure, with the deferred remaining probability after
+one more silent visit. -/
+theorem available_transport_expect {who : Player} {remaining : Nat}
+    {execution : (application service.setup service.leaks).Execution}
+    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
+      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
+    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
+    (site : RevealSource service.setup approx.profile phase.event execution.application.config)
+    (ownerEq : site.owner = who)
+    (owned : (graph service.setup).actor? phase.event = some who)
+    (unsent : (runtime service.setup).eventRecorded service.leaks (execution.recall who)
+      phase.event = false)
+    (ready : execution.application.config.cut.Ready phase.event)
+    (candidate : Handle (graph service.setup)) (raw : Raw L)
+    (opening : rosterOpening? service.setup service.leaks who phase.event
+      (execution.observe (application service.setup service.leaks) who) = some (candidate, raw))
+    (small : site.disclosureProbability < 1)
+    (old : ∀ slot, (((application service.setup service.leaks).policyMixture
+      (approx.timing phase.event who owned) (sourceServiceTimedFamily service.setup service.leaks
+        service.rosters approx.profile who phase.event)).posterior (execution.recall who)).prob
+          slot = (approx.timing phase.event who owned).prob slot *
+            (if slot.val < phase.earlier then 1 - site.disclosureProbability else 1) /
+              FinDist.deferredSurvival site.disclosureProbability
+                (approx.timing phase.event who owned) phase.earlier)
+    (response : (application service.setup service.leaks).Action)
+    (allowed : response ∈ service.menu.actions who (execution.recall who)
+      (execution.observe (application service.setup service.leaks) who))
+    (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
+    (utility : (graph service.setup).Config → ℝ) :
+    (approx.phaseConfigLaw phase response).expect utility =
+      FinDist.deferredRemaining site.disclosureProbability (approx.timing phase.event who owned)
+          (phase.earlier + 1) * utility (site.completion ready true) +
+        (1 - FinDist.deferredRemaining site.disclosureProbability
+          (approx.timing phase.event who owned) (phase.earlier + 1)) *
+            utility (site.completion ready false) := by
+  obtain ⟨Γ, names, publishedName, owner, name, payload, fresh, binding, unresolved, next,
+    residual, refs, source, embedding, refsBefore, aligned, agree, history, head, inherits⟩ := site
+  dsimp only at ownerEq
+  subst ownerEq
+  let site : RevealSource service.setup approx.profile phase.event
+      execution.application.config :=
+    ⟨Γ, names, publishedName, owner, name, payload, fresh, binding, unresolved, next,
+      residual, refs, source, embedding, refsBefore, aligned, agree, history, head, inherits⟩
+  change (approx.phaseConfigLaw phase response).expect utility =
+    FinDist.deferredRemaining site.disclosureProbability (approx.timing phase.event owner owned)
+        (phase.earlier + 1) * utility (site.completion ready true) +
+      (1 - FinDist.deferredRemaining site.disclosureProbability
+        (approx.timing phase.event owner owned) (phase.earlier + 1)) *
+          utility (site.completion ready false)
+  let app := application service.setup service.leaks
+  let q := site.disclosureProbability
+  let timing := approx.timing phase.event owner owned
+  have isPublication : (graph service.setup).outputLayout phase.event = .publication payload :=
+    site.outputEq
+  obtain ⟨actor, resolveBinding, checks, resolveCode, node⟩ :=
+    publication_nodeView service.setup phase.event payload isPublication
+  have actorEq : actor = owner := by
+    have acts := congrArg EventGraph.EventCode.actor resolveCode
+    rw [EventGraph.EventCode.actor_cast isPublication
+      ((graph service.setup).nodes phase.event)] at acts
+    exact Option.some.inj (acts.symm.trans owned)
+  subst actorEq
+  obtain ⟨entered, state, activated, due, _, timely, valid, recalled, origins⟩ :=
+    service.disclosure_decision_resources trace phase owned isPublication
+  have published := state.2.2.1 unsent
+  have serials := state.2.1
+  have counted := service.recall_count trace phase
+  have visitsCount : phase.earlier + 1 + phase.visits.count actor =
+      (service.rosters phase.event).count actor := by
+    conv_rhs => rw [phase.roster_split]
+    simp only [DecisionPhase.earlier, List.count_append, List.count_cons_self]
+    omega
+  have effective := inherits approx.effective actor
+  have opportunity := RevealSource.opportunity_law service.leaks execution site phase.granted
+    unsent valid recalled origins effective candidate raw opening
+  let offset := rosterOffset service.setup service.rosters actor phase.event
+  let family := sourceServiceTimedFamily service.setup service.leaks service.rosters
+    approx.profile actor phase.event
+  let mixtureImpl := app.policyMixture timing family
+  let current : Fin ((service.rosters phase.event).count actor) :=
+    ⟨phase.earlier, by omega⟩
+  have firing : rosterOffset service.setup service.rosters actor phase.event + current.val =
+      (execution.recall actor).length := by
+    rw [counted]
+    rfl
+  have member := sourceServiceMenu_in_compiled service.setup service.leaks service.bounds
+    service.rosters actor _ _ allowed
+  have replaySupport : response ∈ (app.replayPolicy (execution.recall actor)
+      (execution.observe app actor)).support := by
+    rcases service.bounds.compiled_resolution_cases (runtime service.setup) service.leaks actor
+      _ _ phase.event actor payload resolveBinding checks isPublication resolveCode node
+      phase.granted response member with silent | replay | ⟨_, _, _, _, _, _, _, _, _, shape⟩
+    · rw [silent]
+      exact app.replayPolicy_support _ _ none (Finset.mem_insert_self _ _)
+    · exact replay
+    · rcases transport with silent | ⟨id, replayed⟩
+      · rw [silent] at shape
+        cases shape
+      · rw [replayed] at shape
+        cases shape
+  obtain ⟨entry, entryRecall, entryView, entryAction⟩ :=
+    (runtime service.setup).response_recall_entry service.leaks execution actor response
+  have likelihood (slot : Fin ((service.rosters phase.event).count actor)) :
+      (family slot (execution.recall actor) entry.beforeView).prob entry.action =
+        (if slot = current then 1 - q else 1) *
+          (app.replayPolicy (execution.recall actor) entry.beforeView).prob entry.action := by
+    rw [entryView, entryAction]
+    by_cases same : slot = current
+    · subst same
+      have fires : family current (execution.recall actor) (execution.observe app actor) =
+          sourceServiceOpportunity service.setup service.leaks approx.profile actor phase.event
+            (execution.recall actor) (execution.observe app actor) := by
+        simp only [family, sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
+          Option.map_some, firing, ↓reduceIte]
+      have different : response ≠ (runtime service.setup).windowOpening service.leaks
+          phase.event candidate raw := by
+        rcases transport with rfl | ⟨id, rfl⟩ <;> simp [windowOpening]
+      rw [fires, opportunity, FinDist.bind_bool_mix, FinDist.prob_mix,
+        FinDist.prob_pure_of_ne different]
+      simp only [↓reduceIte, mul_zero, zero_add]
+      rfl
+    · have waiting : ¬ rosterOffset service.setup service.rosters actor phase.event + slot.val =
+          (execution.recall actor).length := by
+        intro now
+        apply same
+        apply Fin.ext
+        change slot.val = phase.earlier
+        rw [counted] at now
+        change rosterOffset service.setup service.rosters actor phase.event + slot.val =
+          rosterOffset service.setup service.rosters actor phase.event + phase.earlier at now
+        omega
+      simp only [family, sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
+        Option.map_some, Option.some.injEq, waiting, ↓reduceIte, same, one_mul]
+      rfl
+  have possible : entry.action ∈
+      (app.replayPolicy (execution.recall actor) entry.beforeView).support := by
+    rw [entryAction, entryView]
+    exact replaySupport
+  have updated := app.scheduledChoice_posterior_step timing family q (FinDist.prob_nonneg _ _)
+    small (execution.recall actor) entry current
+    (app.replayPolicy (execution.recall actor) entry.beforeView) possible likelihood old
+  have remainingMass := ReactiveApplication.scheduledChoice_remaining_probability timing
+    (mixtureImpl.posterior (execution.recall actor ++ [entry])) q (phase.earlier + 1) updated
+  have preserved := (runtime service.setup).replay_response_preserves service.leaks _
+    execution published actor response transport
+  have counters := (runtime service.setup).replay_response_preserves service.leaks _
+    execution serials actor response transport
+  have afterUnsent := (runtime service.setup).eventRecorded_respond_transport service.leaks
+    execution actor actor response transport phase.event
+  have afterRecalled := app.respond_inputRecall execution actor response recalled
+  have afterOrigins := origins_replayed service.setup service.leaks execution origins actor
+    response transport
+  have grant : PublicView.serviceGrant
+      (execution.observe (application service.setup service.leaks) actor).application.publicView =
+        some phase.event := phase.granted
+  set after := execution.respond app actor response with afterDef
+  have sameApp : after.application = execution.application := preserved.1
+  have afterGrant : after.application.serviceGrant = some phase.event := by
+    rw [sameApp]
+    exact phase.granted
+  have afterPublished : after.network.Satisfies fun message =>
+      message.id ∈ after.network.ledger.map Message.id := by
+    rw [preserved.2.1]
+    exact preserved.2.2.2.2.1
+  have afterSerials : after.network.SerialsBeforeNext := by
+    unfold MessageNetwork.SerialsBeforeNext
+    rw [counters.2.2.2.1]
+    exact counters.2.2.2.2.1
+  have afterLength : (after.recall actor).length = offset + phase.earlier + 1 := by
+    rw [afterDef, entryRecall, List.length_append, counted]
+    rfl
+  let rest : List (ServiceInstruction (graph service.setup)) :=
+    List.replicate (phase.event.val + 1) .tick ++ [.expire phase.event]
+  have ending : rosterPhaseEnding service.setup phase.event =
+      .includeLatest phase.event actor :: rest := by
+    simp only [rosterPhaseEnding, owned, rest, List.cons_append, List.nil_append]
+  have mixed : (runtime service.setup).runInteractionPlan service.leaks approx.players
+      service.network (phase.visits.map ServiceInstruction.player ++
+        .includeLatest phase.event actor :: rest) after =
+      (runtime service.setup).runInteractionPlan service.leaks
+        (Function.update (fun _ => app.replayPolicy) actor mixtureImpl.policy)
+        service.network (phase.visits.map ServiceInstruction.player ++
+          .includeLatest phase.event actor :: rest) after := by
+    rw [runInteractionPlan_append, runInteractionPlan_append,
+      sourceServiceTimedPolicy_window_eq service.setup service.leaks service.rosters
+        approx.timing approx.profile phase.event actor owned service.network phase.visits
+        after afterGrant]
+    apply FinDist.bind_congr
+    intro current _
+    exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
+      (by simp [rest]) (by intro player; simp [rest]) current
+  have mixture := (runtime service.setup).runInteractionPlan_policyMixture service.leaks
+    timing family actor (fun _ => app.replayPolicy) service.network
+    (phase.visits.map ServiceInstruction.player ++ .includeLatest phase.event actor :: rest) after
+  dsimp only at mixture
+  have slotLaw (slot : Fin ((service.rosters phase.event).count actor)) :
+      ((runtime service.setup).runInteractionPlan service.leaks
+        (Function.update (fun _ => app.replayPolicy) actor (family slot)) service.network
+        (phase.visits.map ServiceInstruction.player ++ .includeLatest phase.event actor :: rest)
+        after).map (fun final => final.application.config) =
+        if phase.earlier + 1 ≤ slot.val then
+          (revealKernel site.residual (site.source.view site.owner)).bind fun disclose =>
+            FinDist.pure (site.completion ready disclose)
+        else FinDist.pure (site.completion ready false) := by
+    by_cases future : phase.earlier + 1 ≤ slot.val
+    · simp only [future, ↓reduceIte]
+      exact reveal_slot_config_law service.setup service.leaks service.rosters service.network
+        approx.profile after site (by rw [sameApp]) afterGrant
+        (afterUnsent.trans unsent) effective ready (by rw [sameApp]; exact timely)
+        (by rw [sameApp]; exact valid) afterRecalled afterOrigins entered (phase.event.val + 1)
+        (by rw [sameApp]; exact activated) (by rw [sameApp]; exact due) afterSerials
+        afterPublished phase.visits slot
+        (by rw [afterLength]; change offset + phase.earlier + 1 ≤ offset + slot.val; omega)
+        (by
+          rw [afterLength]
+          have bound := slot.isLt
+          change offset + slot.val < offset + phase.earlier + 1 + phase.visits.count actor
+          omega)
+    · simp only [future, ↓reduceIte]
+      have separated : (after.recall actor).length + phase.visits.count actor ≤
+          offset + slot.val ∨ offset + slot.val < (after.recall actor).length := by
+        rw [afterLength]
+        omega
+      have replayed : (runtime service.setup).runInteractionPlan service.leaks
+          (Function.update (fun _ => app.replayPolicy) actor (family slot)) service.network
+          (phase.visits.map ServiceInstruction.player ++
+            .includeLatest phase.event actor :: rest) after =
+          (runtime service.setup).runInteractionPlan service.leaks
+            (fun _ => app.replayPolicy) service.network
+            (phase.visits.map ServiceInstruction.player ++
+              .includeLatest phase.event actor :: rest) after := by
+        rw [runInteractionPlan_append, runInteractionPlan_append]
+        unfold family sourceServiceTimedFamily
+        rw [scheduled_window_waiting service.setup service.leaks service.network actor offset
+          slot _ phase.visits after separated]
+        apply FinDist.bind_congr
+        intro current _
+        exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
+          (by simp [rest]) (by intro player; simp [rest]) current
+      rw [replayed, withhold_phase_config service.setup service.leaks _ service.network node
+        after (fun _ _ action _ _ supported => app.replayPolicy_cases _ _ action supported)
+        afterPublished (by rw [sameApp]; exact ready) entered (phase.event.val + 1)
+        (by rw [sameApp]; exact activated) (by rw [sameApp]; exact due) phase.visits]
+      simp only [RevealSource.completion, disclosureResult_false, sameApp]
+  have posteriorEq : mixtureImpl.posterior (after.recall actor) =
+      mixtureImpl.posterior (execution.recall actor ++ [entry]) := by
+    rw [afterDef, entryRecall]
+  unfold phaseConfigLaw phaseLaw DecisionPhase.tail
+  rw [ending, mixed, ← mixture, FinDist.map_bind, FinDist.expect_bind]
+  change (mixtureImpl.posterior (after.recall actor)).expect _ = _
+  rw [posteriorEq]
+  calc
+    _ = (mixtureImpl.posterior (execution.recall actor ++ [entry])).expect (fun slot =>
+        utility (site.completion ready false) +
+          q * (utility (site.completion ready true) - utility (site.completion ready false)) *
+            (if slot ∈ {slot : Fin ((service.rosters phase.event).count actor) |
+              phase.earlier + 1 ≤ slot.val} then 1 else 0)) := by
+      apply FinDist.expect_congr
+      intro slot _
+      rw [slotLaw slot]
+      by_cases future : phase.earlier + 1 ≤ slot.val
+      · simp only [future, ↓reduceIte, Set.mem_ofPred_eq]
+        rw [site.completion_expect ready utility]
+        change q * _ + (1 - q) * _ = _
+        ring
+      · simp only [future, ↓reduceIte, Set.mem_ofPred_eq, FinDist.expect_pure]
+        ring
+    _ = utility (site.completion ready false) +
+        q * (utility (site.completion ready true) - utility (site.completion ready false)) *
+          (mixtureImpl.posterior (execution.recall actor ++ [entry])).probOf
+            {slot | phase.earlier + 1 ≤ slot.val} := by
+      rw [FinDist.expect_add, FinDist.expect_const, FinDist.expect_smul,
+        FinDist.expect_indicator_eq_probOf]
+    _ = _ := by
+      rw [← remainingMass]
+      ring
+
+end TimedApproximant
 
 end Vegas.SourceProgram.RevealService
