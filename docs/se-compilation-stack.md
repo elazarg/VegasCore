@@ -33,10 +33,18 @@ The actual compiler policy implements the full source program on the existing
 runtime. [Timed policies](../Vegas/Game/SourceServiceTimedPolicy.lean) choose
 an owner opportunity using a common timing law and select the source action
 there; this introduces no represented private scratch state. The
-[timed binding phase](../Vegas/Game/SourceServiceTimedBinding.lean) has an exact
-law retaining the whole native execution. Guarded timed disclosure and the
-whole-prefix information fold still need to supply the native local
-continuation comparisons along a common fully mixed sequence.
+[timed binding phase](../Vegas/Game/SourceServiceTimedBinding.lean) and
+[guarded disclosure phase](../Vegas/Game/SourceServiceTimedDisclosure.lean) have
+exact laws retaining the whole native execution. The whole-prefix information
+fold still needs to supply the native local continuation comparisons along a
+common fully mixed sequence.
+
+[Source choice completion](../Vegas/Game/SourceChoiceCompletion.lean) extends
+one original Bayes sequence at abstract views outside actual decision sites.
+It preserves all actual continuation laws and the original assessment limit.
+The required finite choices follow from existing binding-value coverage;
+normalization then supports every effective source choice. This supplies a
+source support fact, not a native belief or SE correspondence theorem.
 
 Private-intention normalization has checked posterior and conditional
 continuation comparisons. The
@@ -61,8 +69,11 @@ submission, repeated owner and foreign visits, protected inclusion and expiry.
 Its repaired marginal uses one fixed implementation and every repaired endpoint
 has a permitted trace. Each original endpoint either contains attributed
 forbidden traffic, certifies a missed binding, or preserves the required
-observation relation. Composition with the other event constructors and
-arbitrary off-turn departures remains to be proved.
+observation relation. The
+[off-turn roster coupling](../Vegas/Game/SourceServiceOffTurnWindow.lean)
+retains known pending replays and classifies fresh focal transmissions while
+another actor has the grant. Composition through reserved inclusion/expiry
+and across all event constructors remains to be proved.
 
 The [combined audit](../Vegas/Pending/ReactiveServiceAudit.lean) charges once
 for sampled forbidden traffic or a public binding omission. Its source instance
@@ -72,10 +83,19 @@ protected timely-inclusion contract. Accepted unusable handles instead use the
 checked owner-memory repair; no public test for privately unusable material is
 assumed.
 
-The final continuation comparison must combine that repair with actual
-incremental collection. It cannot count an already unavoidable charge as a
-fresh deterrent. Its utilities depend on initial types and public results,
-not on the repaired representation of later private binding material.
+The [settlement comparison](../Vegas/Game/SourceServiceRepairSettlement.lean)
+derives actual incremental collection from this coupling and the repaired
+traces' zero charge. Its range corollary fixes the deposit from all effective
+native-history payoff extrema, before any equilibrium is chosen. The remaining
+obligation is to construct the coupling for every whole native continuation and
+identify its marginals with the local strategic comparison. Utilities depend
+on initial types and public results; repaired future private values are excluded.
+
+One deposit can cover a first departure and every subsequent plan: the bound
+uses the whole continuation's payoff range. After an unavoidable charge, the
+proof permits rational off-path continuations rather than requiring further
+compliance. No increasing sequence of fines is required. An already unavoidable
+charge cannot be counted again when justifying a later comparison.
 
 ### Layering
 

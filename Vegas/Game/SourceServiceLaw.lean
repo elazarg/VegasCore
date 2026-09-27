@@ -83,7 +83,7 @@ theorem sourceService_prefix_state_law
       covered rank execution supported
     obtain ⟨initial, _selected, state, _related, decoded, Γ, names, remaining, remainingProfile,
       current, refs, embedding, refsBefore, aligned, _admitted, lift, stateEq, stepEq, decodeEq,
-      inheritedEffective, boundary⟩ :=
+      inheritedEffective, _, boundary⟩ :=
       initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
         bindingOpportunities menu.uniformResponses
         (fun who past view response chosen =>

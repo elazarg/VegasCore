@@ -250,7 +250,7 @@ theorem initialized_sourceService_prefix_conformance
       obtain ⟨before, prior, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
       have traffic := ih (by omega) before prior
       obtain ⟨_, _, _, _, _, Δ, names, remaining, remainingProfile, current, currentRefs,
-          embedding, refsBefore, _, _, _, _, _, _, _, boundary⟩ :=
+          embedding, refsBefore, _, _, _, _, _, _, _, _, boundary⟩ :=
         initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
           opportunities players lawful network profile count (by omega) before prior
       exact boundary.roster_block_conformance bounds players lawful network event rfl

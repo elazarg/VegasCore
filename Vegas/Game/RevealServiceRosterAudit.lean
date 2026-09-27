@@ -3,7 +3,7 @@
 import Vegas.Game.RevealServiceRosterChoiceEvidence
 import Vegas.Game.RevealServiceRosterTrafficSound
 import Vegas.Pending.ReactiveAuditEquilibrium
-import GameTheoryExtensions.Analysis.FinitePayoffBounds
+import Vegas.Game.ServicePayoffBounds
 
 /-! # Audited revelation rosters extend to the full bounded native game
 
@@ -31,16 +31,6 @@ local instance : Nonempty ((bounds.menu (runtime setup) leaks).protocol (initial
     (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History :=
   ⟨((bounds.menu (runtime setup) leaks).protocol (initialLaw setup)
     (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).initHistory⟩
-
-open Classical in
-/-- A sufficient fixed deposit. The extrema include off-path continuations and
-all effective responses, and do not depend on the equilibrium to be compiled. -/
-def rosterAuditDeposit (base : (application setup leaks).ProtocolState → Player → ℝ)
-    (probability : Player → ℝ) (who : Player) : ℝ :=
-  let payoff := fun history : ((bounds.menu (runtime setup) leaks).protocol (initialLaw setup)
-    (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History =>
-      base history.state who
-  (FinitePayoffBounds.upper payoff - FinitePayoffBounds.lower payoff) / probability who
 
 open Classical in
 /-- Standard SE and the joint observation/realized settlement law survive

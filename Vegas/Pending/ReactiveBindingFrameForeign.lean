@@ -121,7 +121,7 @@ theorem binding_inclusion_unmodified
 the complete frame, for successful or failed private material. -/
 theorem foreign_binding_inclusion
     (frame : Frame runtime leaks memory owner original repaired)
-    (past : memory.shadow.CompletedAt original.application.config)
+    (onlyBindings : memory.shadow.OwnBindings owner)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (actor : Player) (different : actor ≠ owner) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding actor payload)
@@ -153,8 +153,24 @@ theorem foreign_binding_inclusion
       original.application.bindingResult candidate payload := by
     unfold State.bindingResult
     rw [candidates]
+  have noValue : memory.shadow.values (.inr event) = none := by
+    cases stored : memory.shadow.values (.inr event) with
+    | none => rfl
+    | some value =>
+        obtain ⟨selected, _, same, binding⟩ :=
+          onlyBindings.1 (.inr event) (by simp only [stored]; rfl)
+        cases Sum.inr.inj same
+        rw [outputEq] at binding
+        exact (different (EventField.binding.inj binding).1).elim
+  have noAction : memory.shadow.actions event = none := by
+    cases stored : memory.shadow.actions event with
+    | none => rfl
+    | some action =>
+        obtain ⟨_, binding⟩ := onlyBindings.2 event (by simp only [stored]; rfl)
+        rw [outputEq] at binding
+        exact (different (EventField.binding.inj binding).1).elim
   exact frame.binding_inclusion_unmodified id event candidate actor payload outputEq codeEq node
     ready timely sender owned vacant unused fixed (candidates ▸ fixed) sameResult
-    (past.ready_none event ready).2 (past.ready_none event ready).1 evidence found
+    noValue noAction evidence found
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

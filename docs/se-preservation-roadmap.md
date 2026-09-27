@@ -21,6 +21,7 @@ and the remaining service and language boundaries.
 | --- | --- |
 | General SE extension | Every source SE extends across a structural action restriction satisfying the conditional enforcement bounds. Preserves retained strategies, beliefs, and joint completed-history/net-payoff laws. |
 | Scalar deposit inference | Executably computes the least nonnegative deposit for a finite rational comparison table, or identifies an infeasible row. This decides the certificate, not semantic SE implementability. |
+| Full-source repair settlement | An actual continuation coupling with permitted repaired traces and forbidden-record/omission/observation alternatives gives the expected settlement comparison. A fixed deposit from all bounded effective-history payoff extrema supplies the gain bound; constructing that coupling across the whole program remains open. |
 | Native guessing compiler | Every SE of the stated source program has a native SE under the fixed bounded service, partial monitoring and collectible charge. Includes a fixed playerwise policy translation. |
 | Declared-payoff family | Every SE of the literal two-reveal source program, for any integer payoff table with zero watcher payoff, has a full bounded raw native SE with the exact joint initial-bit/result/net-payoff law. Both opening and withholding are retained. |
 | General revelation compiler | Every SE of an arbitrary finite reveal sequence has a full bounded raw native SE preserving the joint typed terminal-state/net-payoff law, under the explicit owner/watcher service and positive monitoring coverage. |
@@ -32,8 +33,10 @@ and the remaining service and language boundaries.
 | Harmless public replay extension | Every retained SE extends to a menu permitting auxiliary-player public replays, for arbitrary application-state utilities. Exact continuation laws and all-legal-history counterparts are checked; no fine or reporter indifference is needed for this edge. |
 | General-roster revelation SE | Every SE of a reveal-only program with openable initial bindings has a retained-runtime SE and an audited bounded raw-runtime SE with the original joint typed-outcome/settlement law. Every actor has a visit at its event; arbitrary additional finite roster visits are retained. |
 | Full-source execution and settlement | Every admitted profile has its exact typed terminal-state law under the actual compiler, including fresh bindings, chance and guards. Authentic partial traffic auditing plus public omission checks charge no permitted history, so the joint realized-settlement law is preserved. This is not a full-source SE theorem. |
-| Timed binding execution | One physical policy family chooses submission timing and a source value at the selected opportunity. Its actual binding-phase law retains the whole native execution. Guarded timed disclosure, whole-prefix information factorization and local sequential comparisons remain to be composed. |
+| Timed source phases | One physical policy family chooses an owner opportunity and runs the source choice there. Binding and guarded-disclosure phase laws retain the whole native execution, including preceding passive samples and replay. Whole-prefix information factorization and local sequential comparisons remain to be composed. |
+| Common source perturbations | Existing value coverage implies finite legal source choices. Completing strategy coordinates outside actual decision sites gives one globally supported Bayes sequence with the original assessment limit and unchanged actual continuations. Normalization supports every effective choice; native full mixing and conditional incentives still need their operational proofs. |
 | Fresh commitment repair | The stopped coupling covers the whole remaining binding roster, including waiting, repeated visits, protected inclusion and expiry. Every repaired endpoint is a permitted trace; each original endpoint has a forbidden record, a public omission or the required observation relation. Composition across all source constructors remains open. |
+| Off-turn repair | During another actor's phase, arbitrary focal responses through the whole roster have an exact stopped coupling. Fresh forbidden transmissions retain signed evidence; silence and known pending replays retain the observation relation. Actual repaired endpoint traces are proved. Reserved inclusion/expiry and whole-program composition remain. |
 | Guarded source actions | Failed disclosure and withholding can erase different private intentions into the same native behavior. Their SE aggregation must preserve private correlations and a common perturbation sequence. Operational correspondence does not discharge this remaining source-to-retained-runtime gate. |
 | Private-intention normalization | A fixed playerwise behavioral normalizer preserves joint initial parameters and typed outcomes. Supported prefix fibers retract exactly; conditioning gives the actual compressed posterior. Whole deviations lift uniformly over hidden states, and prescribed continuations realize the original private-intention mixture. Assembly with the native common-sequence SE limit theorem remains open. |
 | Required-binding enforcement | Public completion without an accepted handle certifies omission under protected inclusion and persists under arbitrary native continuations. The combined terminal service charges once for forbidden traffic or a public omission. Partial packet samples alone cannot certify omission; whole-program incremental charge comparison remains open. |
@@ -360,10 +363,11 @@ records the checked revelation-service composition. The remaining priorities are
 2. **Whole-program repair.** Compose the binding stopped coupling with all
    other event constructors and off-turn visits. Keep one legal repair policy
    for the whole starting belief, with actual permitted endpoint traces.
-3. **Incremental settlement comparison.** Connect persistent forbidden
-   records and public omissions to the combined audit, proving that additional
-   expected collection covers the possible payoff gain. Do not count sunk
-   liability again or assume detection of privately unusable binding material.
+3. **Apply the settlement comparison.** Instantiate the checked
+   [repair settlement theorem](../Vegas/Game/SourceServiceRepairSettlement.lean)
+   with the whole-program coupling and the original continuation marginals.
+   The theorem derives incremental collection from actual evidence and zero
+   repaired charges, with a deposit fixed from the finite game's payoff range.
 4. **Sharper inference.** Extract rational comparison tables or terminal-only
    payoff bounds after the preceding semantic gates. Exact finite diagnosis
    remains a separate diagnostic project.

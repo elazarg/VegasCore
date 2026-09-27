@@ -46,7 +46,7 @@ theorem sourceServiceLastPolicy_admissible
   let horizon := (rosterPlan setup rosters).length
   let scheduler := rosterScheduler setup leaks rosters network
   obtain ⟨event, slot, initial, _selected, _initialSupport, Γ, names, remaining,
-      remainingProfile, source, refs, embedding, refsBefore, aligned, inherited,
+      remainingProfile, source, refs, embedding, refsBefore, aligned, inherited, _,
       granted, prior, sample, boundary, grant, _phase, _activated, _sampled, _config,
       publicEq, checkpoint, _position⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities

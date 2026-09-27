@@ -41,7 +41,7 @@ theorem recorded_compiled_sourceService
   rw [sourceServiceActions, ite_eq_right optional]
 
 omit [Fintype Player] in
-private theorem roster_activation_segment
+theorem roster_activation_segment
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)

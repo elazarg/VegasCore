@@ -15,6 +15,8 @@ import Vegas.Source.ValueBindingContinuation
 import Vegas.Source.Disclosure
 import Vegas.Source.DisclosureAliases
 import Vegas.Source.DisclosureNormalization
+import Vegas.Source.DisclosureSupport
+import Vegas.Source.ProtocolChoiceFiniteness
 import Vegas.Source.DisclosureBehavioral
 import Vegas.Source.DisclosurePosterior
 import Vegas.Source.DisclosureObservation

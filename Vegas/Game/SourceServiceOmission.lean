@@ -51,7 +51,7 @@ theorem sourceService_plan_no_omission
     exact Nat.le_refl _
   have supported := reached
   rw [← same] at supported
-  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, boundary⟩ :=
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, boundary⟩ :=
     initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
       opportunities players lawful network profile (eventCount setup.program) (Nat.le_refl _)
         final supported
@@ -126,7 +126,7 @@ theorem sourceService_history_no_omission
   let menu := sourceServiceMenu setup leaks bounds rosters
   cases actor : control.actor with
   | some who =>
-      obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+      obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
           boundary, _, _, checkpoint, _, _, _, _, _, publicEq, _, _⟩ :=
         sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
           network profile who control trace actor

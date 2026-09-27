@@ -8,6 +8,8 @@ import Vegas.Pending.ReactiveSampleLikelihood
 import Vegas.Pending.ReactiveServiceTraffic
 import Vegas.Pending.ReactiveServiceAudit
 import Vegas.Pending.ReactiveResolutionEvidence
+import Vegas.Pending.ReactiveOffTurnRepair
+import Vegas.Pending.ReactiveOffTurnWindow
 import Vegas.Pending.ReactiveServiceEvents
 import Vegas.Pending.ReactiveBindingAuditStep
 import Vegas.Pending.ReactiveBindingFinalOmission

@@ -91,7 +91,7 @@ theorem final_binding_history_coupling
         granted owner payload outputEq codeEq node owned
   obtain ⟨small, selected, fresh, unused, vacant, _, published⟩ := beforeFirst unsent
   obtain ⟨_, _, initial, _, _, Γ, names, residual, residualProfile, source, refs, embedding,
-      refsBefore, _, _, boundary, _, _, checkpoint, _, _, _, _, _, publicEq, _, _⟩ :=
+      refsBefore, _, _, _, boundary, _, _, checkpoint, _, _, _, _, _, publicEq, _, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile owner ⟨remaining, some owner, repaired⟩ trace rfl
   have boundaryReady : boundary.application.config.cut.Ready event := by

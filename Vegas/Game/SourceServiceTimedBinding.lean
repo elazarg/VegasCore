@@ -281,7 +281,7 @@ theorem sourceServiceTimedFamily_binding_law
         (fun _ _ => FinDist.pure (raw choice)) remaining
         (activated.respond app owner (raw choice)) after).symm
 
-private theorem split_owner_visit (owner : Player) (visits : List Player)
+theorem split_owner_visit (owner : Player) (visits : List Player)
     (count : Nat) (inside : count < visits.count owner) :
     ∃ before after, visits = before ++ owner :: after ∧ before.count owner = count := by
   induction visits generalizing count with

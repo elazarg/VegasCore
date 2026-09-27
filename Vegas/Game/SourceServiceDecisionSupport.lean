@@ -51,6 +51,10 @@ theorem sourceService_decision_boundary
           (CommitmentInterface.values setup.program)) →
             ∀ player, (remainingProfile player).Admitted remaining
               (CommitmentInterface.values remaining)) ∧
+        ((∀ player, (profile player).SupportsEffectiveChoices setup.program
+          (CommitmentInterface.values setup.program) [] (Revelations.initial setup.context)) →
+            ∀ player, (remainingProfile player).SupportsEffectiveChoices remaining
+              (CommitmentInterface.values remaining) source.registry source.revelations) ∧
         ∃ granted prior sample,
           ServiceBoundary setup leaks rosters initial source refs event.val granted ∧
           granted.application.serviceGrant = some event ∧
@@ -69,7 +73,7 @@ theorem sourceService_decision_boundary
   obtain ⟨event, slot, boundary, prior, selected, position, boundarySupport, phase, activated⟩ :=
     roster_decision_boundary setup leaks rosters network menu who control trace active
   obtain ⟨initial, initialSupport, _, _, _, Γ, names, remaining, remainingProfile, source,
-      refs, embedding, refsBefore, aligned, admitted, _, _, _, _, _, checkpoint⟩ :=
+      refs, embedding, refsBefore, aligned, admitted, _, _, _, _, _, supported, checkpoint⟩ :=
     initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
       opportunities menu.uniformResponses
       (fun owner past view response supported =>
@@ -94,7 +98,8 @@ theorem sourceService_decision_boundary
     rw [← same]
     exact unchanged.2
   exact ⟨event, slot, initial, selected, initialSupport, Γ, names, remaining, remainingProfile,
-    source, refs, embedding, refsBefore, aligned, admitted, granted, prior, sample, grantedBoundary,
+    source, refs, embedding, refsBefore, aligned, admitted, supported,
+    granted, prior, sample, grantedBoundary,
     grant, phase, activated, same.symm, config, publicEq,
     config.symm ▸ grantedBoundary.toSourceCheckpoint, position⟩
 
@@ -144,7 +149,7 @@ theorem sourceService_binding_decision_resources
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨selectedEvent, slot, initial, _, _, Γ, names, remaining, remainingProfile, source,
-      refs, embedding, refsBefore, _, _, boundary, prior, sample, checkpoint, grant, reached,
+      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
       activated, sampled, _, publicEq, _, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile who control trace active
@@ -224,7 +229,7 @@ theorem sourceService_bindingRequired_iff_no_later_owner
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨selectedEvent, slot, initial, _, _, Γ, names, program, programProfile, source,
-      refs, embedding, refsBefore, _, _, boundary, prior, sample, checkpoint, grant, reached,
+      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
       _, sampled, _, publicEq, _, clock⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile owner control trace active
