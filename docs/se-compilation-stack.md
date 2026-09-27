@@ -38,8 +38,14 @@ The checked extension work has three concrete boundaries:
   own response counts determine its depth without exposing scheduler memory.
   The compiled policy has the exact source-prefix state law for any timing
   distribution. Full auxiliary transcript coupling includes protected inclusion,
-  ticks and expiry. Common timing limits and conditional owner timing posteriors
-  are checked. Multi-phase source-belief correspondence and SE incentives remain open.
+  ticks and expiry. The actual finite compiled profile is admissible at every
+  legal history. A single fully mixed source sequence and positive timing
+  sequence give fully mixed native profiles converging to that profile at
+  every information site, including early-opening histories. Conditional owner
+  timing posteriors are checked. The initialized whole-program traffic law is
+  conditionally independent of hidden source state given the focal source view
+  at each completed prefix. Within-phase source-belief correspondence and SE
+  incentives remain open.
 - [`reactive_commit_repair`](../Vegas/Game/BindingRepairBlock.lean) carries the typed source repair
   invariant through actual fresh native binding and inclusion. The native joint
   law and repaired-prefix induction step are checked. The stopped-run
@@ -55,11 +61,19 @@ outcomes. The owner-local normalization and one finite policy mixture shared
 across a whole starting belief are checked. A fixed playerwise behavioral
 normalizer now preserves joint initial parameters and typed terminal states.
 The actual source-prefix disintegration restores only the focal player's
-private original intentions, with observation-local posterior weights. The
-generic limit theorem accepts
+private original intentions, with observation-local posterior weights. Its
+supported fibers retract exactly, and conditioning actual prefix laws gives
+the correct compressed posterior. Whole deviations lift to one admitted
+original policy per original private observation, uniformly over hidden
+configurations. Prescribed continuations realize the same private-intention
+mixture at every supported prefix. For normalization of one focal player, the
+actual prescribed and deviating conditional laws use exactly the same finite
+mixture of original information views and legal deviations. Transport of
+other players' incentives and finite composition of these normalizations
+remain open. The generic limit theorem accepts
 perturbation-dependent continuation simulations and proves SE from vanishing
-uniform source regret. Information-fiber conditioning and deviation lifting
-still need to instantiate that limit theorem.
+uniform source regret. These operational laws still need to instantiate that
+limit theorem together with the native compiler's common perturbations.
 
 Required commitments introduce a separate enforcement case: a player can omit
 the submission without emitting forbidden traffic. A public deadline obligation
@@ -68,7 +82,13 @@ from a partial audit is insufficient. The checked public omission detector
 recognizes a completed binding with no accepted handle, and its evidence
 survives arbitrary native continuations. Accepted unusable handles require the
 separate checked owner-memory repair, including absent or mistyped private
-material. The full stopped continuation comparison is still open.
+material. Public completion counts identify the canonical fresh handle, and
+the allocation invariant survives bindings by every player. Effective bounded
+binding responses have an exhaustive classification: legal typed value,
+privately unusable material with the canonical packet, visible packet
+departure, or omission. The complete protected binding block preserves the
+reconstructed owner input and the joint opponent/public frame. The full
+stopped continuation comparison is still open.
 Before the final required opportunity,
 waiting must either remain permitted or receive a proved whole-continuation
 comparison. For guarded reveals, acceptance of an opening packet alone is also

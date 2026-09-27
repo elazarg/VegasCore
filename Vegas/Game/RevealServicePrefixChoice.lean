@@ -3,6 +3,7 @@
 import Vegas.Game.RevealServicePrefix
 import Vegas.Game.RevealServicePerturbation
 import Vegas.Game.SourceContinuation
+import Vegas.Game.RevealServiceRosterCheckpoint
 
 /-! # Source action marginals at every native owner checkpoint
 
@@ -45,10 +46,16 @@ theorem owner_choices_at_prefix
           (execution.observe (application setup leaks) who) =
         ((profile who).protocolAction program (ProtocolState.observe who program state)).map
           OwnAction.disclosure ∧
-      ∃ opening, opening? setup leaks who (execution.recall who)
+      (∃ opening, opening? setup leaks who (execution.recall who)
           (execution.observe (application setup leaks) who) = some opening ∧
         opening ∈ ((bounds.withInitialValues (initialLaw setup)).menu (runtime setup) leaks).actions
-          who (execution.recall who) (execution.observe (application setup leaks) who) := by
+          who (execution.recall who) (execution.observe (application setup leaks) who)) ∧
+      ∃ candidate raw,
+        rosterOpening? setup leaks who event (execution.observe (application setup leaks) who) =
+          some (candidate, raw) ∧ candidate.1 = who ∧
+        execution.application.candidates.lookup candidate = .openable raw ∧
+        (bounds.withInitialValues (initialLaw setup)).AllowsHandle candidate ∧
+        raw ∈ (bounds.withInitialValues (initialLaw setup)).values := by
   intro Γ openNames program
   induction program with
   | ret payoffs =>
@@ -123,9 +130,18 @@ theorem owner_choices_at_prefix
                 checkpoint.agrees checkpoint.binding (embedding.event index)
                 (by rw [head]; exact actor) outputEq codeEq node
                 (by rw [head]; exact granted) value bound
-            exact ⟨_, found, opening_available_of_initial_tables setup leaks bounds initial
+            refine ⟨⟨_, found, opening_available_of_initial_tables setup leaks bounds initial
               initialSupport execution checkpoint.accepted checkpoint.candidates _ candidate
-                associated owner owned ⟨payload, value⟩ fixed (embedding.event index)⟩
+                associated owner owned ⟨payload, value⟩ fixed (embedding.event index)⟩, ?_⟩
+            obtain ⟨rawCandidate, rawAssociated, rawOwned, rawFixed, rawFound⟩ :=
+              roster_opening_at_checkpoint setup leaks selected source.state refs execution
+                checkpoint.agrees checkpoint.binding (embedding.event index) outputEq codeEq
+                node value bound
+            refine ⟨rawCandidate, ⟨payload, value⟩, ?_, rawOwned, rawFixed, ?_⟩
+            · simpa only [head] using rawFound
+            · exact opening_data_covered setup leaks bounds initial initialSupport execution
+                checkpoint.accepted checkpoint.candidates _ rawCandidate rawAssociated
+                ⟨payload, value⟩ rawFixed
       | succ count =>
           cases state with
           | inl source => exact related.elim

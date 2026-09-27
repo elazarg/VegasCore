@@ -146,6 +146,53 @@ theorem roster_response_cases (setup : Setup (Player := Player) (L := L))
   · exact Or.inl (FinDist.mem_supportFinset.mp waiting)
   · exact Or.inr (by simpa only [List.mem_toFinset, Option.mem_toList] using opening)
 
+omit [Fintype Player] in
+/-- The explicit limiting policy stops after an earlier disclosure at every
+input, including histories with zero limiting probability. -/
+theorem rosterLimitPolicy_cases (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (action : (application setup leaks).Action)
+    (supported : action ∈ (rosterLimitPolicy setup leaks rosters profile who past view).support) :
+    action ∈ ((application setup leaks).replayPolicy past view).support ∨
+      rosterFresh? setup leaks rosters who past view = some action := by
+  classical
+  unfold rosterLimitPolicy at supported
+  split at supported
+  · exact Or.inl supported
+  · rename_i event granted
+    split at supported
+    · rename_i owned
+      split at supported
+      · exact Or.inl supported
+      · rename_i candidate raw opening
+        dsimp only at supported
+        split at supported
+        · exact Or.inl supported
+        · rename_i notStopped
+          obtain ⟨disclose, _, supported⟩ :=
+            Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+          cases disclose with
+          | false => exact Or.inl supported
+          | true =>
+              cases FinDist.mem_support_pure.mp supported
+              apply Or.inr
+              unfold rosterFresh?
+              rw [granted]
+              dsimp only [bind, Option.bind]
+              rw [ite_eq_right (not_not_intro owned), opening]
+              dsimp only [bind, Option.bind]
+              have absent : ¬ ((past.drop (rosterOffset setup rosters who event)).any
+                  fun entry => decide (entry.action =
+                    (runtime setup).windowOpening leaks event candidate raw)) = true := by
+                intro present
+                apply notStopped
+                simp only [present, Bool.true_or]
+              exact ite_eq_right absent
+    · exact Or.inl supported
+
 /-- Application constancy holds for all permitted responses, not only the
 compiled policy. This is the support-level phase invariant required at
 zero-probability retained histories. -/
@@ -165,5 +212,37 @@ theorem roster_response_application (setup : Setup (Player := Player) (L := L))
   · obtain ⟨event, candidate, raw, _, _, _, rfl, _⟩ :=
       rosterFresh?_shape setup leaks rosters who _ _ action fresh
     rfl
+
+/-- Arbitrary retained responses preserve the application throughout an
+activation-only prefix, including private observation and replay branches. -/
+theorem roster_run_application (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
+    (players : Player → (application setup leaks).Policy)
+    (covered : ∀ who past view response, response ∈ (players who past view).support →
+      response ∈ rosterActions setup leaks bounds rosters who past view)
+    (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
+    (initial final : (application setup leaks).Execution)
+    (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network
+      (visits.map ServiceInstruction.player) initial).support) :
+    final.application = initial.application := by
+  let app := application setup leaks
+  induction visits generalizing initial with
+  | nil =>
+      cases FinDist.mem_support_pure.mp reached
+      rfl
+  | cons who rest ih =>
+      simp only [List.map_cons, EventGraphRuntime.runInteractionPlan,
+        EventGraphRuntime.interactionStep, EventGraphRuntime.interactionInstruction,
+        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        ReactiveApplication.resume, ReactiveApplication.invoke,
+        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
+        FinDist.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨action, supported, reached⟩ :=
+        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      exact (ih _ reached).trans
+        (roster_response_application setup leaks bounds rosters who
+          (initial.sampledActivation app who sample) action (covered who _ _ action supported))
 
 end Vegas.SourceProgram.RevealService

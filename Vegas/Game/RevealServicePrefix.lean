@@ -265,52 +265,6 @@ theorem PrefixCheckpoint.map_execution
           | inl source => exact related.elim
           | inr state => exact ih next _ _ _ (offset + 1) state related
 
-/-- A decoded prefix has exactly the source actor at the corresponding static
-event rank. This fact is independent of private values and source policies. -/
-theorem PrefixCheckpoint.actor
-    {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {initial : State L setup.context} (who : Player) :
-    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
-      (program : SourceProgram Player L Γ openNames)
-      (refs : ContextRefs (graph setup).layout Γ) (revelations : Revelations Γ)
-      (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout
-        (outputLayout program event))
-      (offset count : Nat) (state : ProtocolState program)
-      (execution : (application setup leaks).Execution),
-      PrefixCheckpoint setup leaks initial program refs revelations outputs
-        offset count state execution →
-      (inside : count < eventCount program) →
-      ProtocolView.actor who program (ProtocolState.observe who program state) =
-        eventOwner? program ⟨count, inside⟩ := by
-  intro Γ openNames program refs revelations outputs offset count
-  induction count generalizing Γ openNames program refs revelations outputs offset with
-  | zero =>
-      intro state execution related inside
-      cases program with
-      | ret payoffs => simp only [eventCount] at inside; omega
-      | sample name fresh law next =>
-          obtain ⟨source, rfl, _, _⟩ := related
-          rfl
-      | commit name owner fresh guard next =>
-          obtain ⟨source, rfl, _, _⟩ := related
-          rfl
-      | reveal published owner name fresh selected unresolved next =>
-          obtain ⟨source, rfl, _, _⟩ := related
-          rfl
-  | succ count ih =>
-      intro state execution related inside
-      cases program with
-      | ret payoffs => exact related.elim
-      | sample name fresh law next => exact related.elim
-      | commit name owner fresh guard next => exact related.elim
-      | reveal published owner name fresh selected unresolved next =>
-          cases state with
-          | inl source => exact related.elim
-          | inr rest =>
-              have within : count < eventCount next := by simpa [eventCount] using inside
-              exact ih next _ _ _ (offset + 1) rest execution related within
-
 def PublicPrefixCheckpoint (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (initial : State L setup.context) :
@@ -431,5 +385,90 @@ theorem PrefixCheckpoint.toPublic
           cases state with
           | inl source => exact related.elim
           | inr rest => exact ih next _ _ _ (offset + 1) rest execution related
+
+/-- Preserve a prefix relation by preserving each actual typed checkpoint;
+native execution and private response recall remain explicit arguments. -/
+theorem PublicPrefixCheckpoint.map_execution
+    {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {initial : State L setup.context}
+    (before after : (application setup leaks).Execution)
+    (preserves : ∀ {Γ : SourceCtx Player L} (source : Config Player L Γ)
+      (refs : ContextRefs (graph setup).layout Γ) rank,
+      PublicCheckpoint setup leaks initial source refs rank before →
+        PublicCheckpoint setup leaks initial source refs rank after) :
+    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
+      (program : SourceProgram Player L Γ openNames)
+      (refs : ContextRefs (graph setup).layout Γ) (revelations : Revelations Γ)
+      (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout
+        (outputLayout program event))
+      (offset count : Nat) (state : ProtocolState program),
+      PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
+        offset count state before →
+      PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
+        offset count state after := by
+  intro Γ openNames program refs revelations outputs offset count
+  induction count generalizing Γ openNames program refs revelations outputs offset with
+  | zero =>
+      intro state related
+      cases program <;>
+        obtain ⟨source, stateEq, revelationsEq, checkpoint⟩ := related <;>
+        exact ⟨source, stateEq, revelationsEq, preserves source refs offset checkpoint⟩
+  | succ count ih =>
+      intro state related
+      cases program with
+      | ret payoffs => exact related.elim
+      | sample name fresh law next => exact related.elim
+      | commit name owner fresh guard next => exact related.elim
+      | reveal published owner name fresh selected unresolved next =>
+          cases state with
+          | inl source => exact related.elim
+          | inr state => exact ih next _ _ _ (offset + 1) state related
+
+/-- A decoded prefix has exactly the source actor at the corresponding static
+event rank. This fact is independent of private values and source policies. -/
+theorem PublicPrefixCheckpoint.actor
+    {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {initial : State L setup.context} (who : Player) :
+    ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
+      (program : SourceProgram Player L Γ openNames)
+      (refs : ContextRefs (graph setup).layout Γ) (revelations : Revelations Γ)
+      (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout
+        (outputLayout program event))
+      (offset count : Nat) (state : ProtocolState program)
+      (execution : (application setup leaks).Execution),
+      PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
+        offset count state execution →
+      (inside : count < eventCount program) →
+      ProtocolView.actor who program (ProtocolState.observe who program state) =
+        eventOwner? program ⟨count, inside⟩ := by
+  intro Γ openNames program refs revelations outputs offset count
+  induction count generalizing Γ openNames program refs revelations outputs offset with
+  | zero =>
+      intro state execution related inside
+      cases program with
+      | ret payoffs => simp only [eventCount] at inside; omega
+      | sample name fresh law next =>
+          obtain ⟨source, rfl, _, _⟩ := related
+          rfl
+      | commit name owner fresh guard next =>
+          obtain ⟨source, rfl, _, _⟩ := related
+          rfl
+      | reveal published owner name fresh selected unresolved next =>
+          obtain ⟨source, rfl, _, _⟩ := related
+          rfl
+  | succ count ih =>
+      intro state execution related inside
+      cases program with
+      | ret payoffs => exact related.elim
+      | sample name fresh law next => exact related.elim
+      | commit name owner fresh guard next => exact related.elim
+      | reveal published owner name fresh selected unresolved next =>
+          cases state with
+          | inl source => exact related.elim
+          | inr rest =>
+              have within : count < eventCount next := by simpa [eventCount] using inside
+              exact ih next _ _ _ (offset + 1) rest execution related within
 
 end Vegas.SourceProgram.RevealService

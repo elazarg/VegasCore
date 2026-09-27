@@ -357,7 +357,8 @@ theorem PublicCheckpoint.reveal_scheduled
         List.replicate (event.val + 1) .tick ++ [.expire event]) execution).support) :
     PublicCheckpoint setup leaks initial (revealSuccessor published binding source slot.isSome)
       (refs.cons (name := published) ⟨.inr event, outputEq⟩) (rank + 1) next ∧
-    next.network.Satisfies (fun message => message.id ∈ next.network.ledger.map Message.id) := by
+    next.network.Satisfies (fun message => message.id ∈ next.network.ledger.map Message.id) ∧
+    next.application.serviceGrant = execution.application.serviceGrant := by
   have ready : execution.application.config.cut.Ready event := by
     have active : rank < (graph setup).order.eventCount := eventRank ▸ event.isLt
     have chosenEvent : (⟨rank, active⟩ : (graph setup).EventId) = event := Fin.ext eventRank.symm
@@ -400,6 +401,8 @@ theorem PublicCheckpoint.reveal_scheduled
     _ network _ execution next checkpoint.invariant reached
   exact ⟨checkpoint.reveal_endpoint published binding event eventRank outputEq codeEq node ready
     value candidate associated slot.isSome next progressed.invariant store history applicationEq
-      ledger receipts counters, cleanAfter⟩
+      ledger receipts counters, cleanAfter, by
+        rw [applicationEq]
+        cases slot <;> rfl⟩
 
 end Vegas.SourceProgram.RevealService

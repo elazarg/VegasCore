@@ -237,6 +237,26 @@ holds for every source behavioral profile and timing distribution. The
 retains service recall through protected inclusion, ticks and expiry, subject
 to equality of the actual public application result.
 
+The [finite roster compiler](../../Vegas/Game/RevealServiceRosterMixing.lean)
+has proved admissibility at every retained history. Fully mixed source choices
+and strictly positive timing give exactly the retained response support, even
+after an earlier opening. The
+[common convergence theorem](../../Vegas/Game/RevealServiceRosterConvergence.lean)
+uses one source sequence and one timing sequence for every native information
+site. Its limit is the explicit policy that waits until the final owner visit
+and stops after any earlier opening. It does not use a zero-probability
+fallback of the timing mixture as the limiting continuation.
+
+The [initialized traffic factorization](../../Vegas/Game/RevealServiceRosterPrefixNoise.lean)
+now covers every completed source prefix. Conditional on a player's source
+observation, the full accumulated message transcript and that player's native
+recall carry no additional information about the hidden source state. The
+proof derives initialization from the empty network and iterates the actual
+grant, response, inclusion, tick and expiry instructions. It permits arbitrary
+correlated initial states, source profiles, timing distributions and passive
+sampling rules. Decisions within a phase still require a separate conditional
+posterior argument before this gives SE incentives.
+
 The remaining implementation gates are to derive the multi-phase conditional
 source-belief and local-incentive correspondence, classify fresh departures
 under the phase rule, and apply the existing conditional terminal-audit

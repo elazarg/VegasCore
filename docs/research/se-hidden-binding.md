@@ -103,6 +103,13 @@ receipt. `BindingMemory.repairResponse_include_input` composes the actual
 submission and inclusion: the repaired implementation reconstructs the original
 complete own input and response recall after both operations. Its memory update
 still uses only the current own input and original response.
+`BindingMemory.repairResponse_protected_input` carries this
+through the actual reserved selector, arbitrary clock padding and expiry of the
+already completed event. `rawBinding_reserved_hidden_congr` separately extends
+the joint opponent-frame block law to arbitrary raw material on both sides,
+including absent and mistyped material. The two results concern the same
+deterministic protected block; they do not yet constitute the remaining-plan
+induction or a stopped payoff comparison.
 
 `BindingShadow.OwnBindings` and `repairResponse_ownBindings` prove that these
 overrides concern only the repaired owner's private bindings.
@@ -138,6 +145,28 @@ repair rather than that fallback. `compiledImplementation_continuation` fixes
 one initial private memory uniformly across the starting information set.
 The remaining obligation is the stopped-run payoff comparison: exact coupling
 before excluded traffic, and actual collectible evidence for a first departure.
+
+`ReactiveBindingAllocation` connects canonical handles to a public counter.
+`State.PreparedPrefix.freshSlot` identifies the actual next prepared serial with
+the owner's completed-binding count. `rawBinding_reserved_preparedPrefix`
+preserves this invariant through actual submission and reserved inclusion,
+whether the private material is valid, absent, or mistyped. The initial
+invariant is checked. `rawBinding_reserved_all_preparedPrefix`
+preserves every player's allocation invariant through the binding block,
+including owners other than the current actor. `State.PreparedPrefix.complete_public`
+preserves it through chance and publication completions. Assembly across the
+actual service remains part of the full induction; the auditor is not given a
+private catalog or a claimed freshness oracle.
+
+`binding_response_cases` exhausts all effective
+bounded responses at a clean required binding opportunity: a retained typed
+value, a canonical opaque packet with unusable private material, a different
+emitted packet, or silence/spent replay. It uses the actual post-submission
+certificate resolution and physical known-message list. Normalized ownership
+and forwarding requests cannot conceal an additional effective certificate
+under the same canonical packet. The public check therefore compares only the
+event, sender, public-count handle, and absence of a certificate; it never tests
+private material validity.
 
 ## Finite admission and clean-prefix contract
 
@@ -177,6 +206,14 @@ inclusion. The absence of a watcher record is not such evidence. A grant that
 designates one required binding response is a sufficient backend discipline;
 earlier ambient waiting must remain legal. This does not yet establish fresh
 binding preservation under repeated owner visits within the same granted phase.
+
+The actual omission block is checked in `ReactiveBindingDeadline` and
+`silent_or_spent_binding_omission`: after the
+required response, reserved inclusion skips already published replays, the
+specified clock steps reach the deadline, and expiry records `missedBinding`.
+That evidence persists under arbitrary later native responses and scheduling.
+This establishes the operational case, not a complete collected-penalty or SE
+comparison for the full source language.
 
 ## Why the repair is local enough, and why the current comparator is too strong
 

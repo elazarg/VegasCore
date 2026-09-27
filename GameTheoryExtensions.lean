@@ -4,6 +4,7 @@ import GameTheoryExtensions.Math.Probability.Tremble
 import GameTheoryExtensions.Math.Probability.ActionSplitting
 import GameTheoryExtensions.Math.Probability.DeferredChoice
 import GameTheoryExtensions.Math.Probability.ConditionalNoise
+import GameTheoryExtensions.Math.Probability.ObservationRetraction
 import GameTheoryExtensions.Math.Probability.Compactness
 import GameTheoryExtensions.Math.Probability.NegligibleContamination
 import GameTheoryExtensions.Math.Probability.RelativeConditioning

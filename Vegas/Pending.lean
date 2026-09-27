@@ -157,6 +157,11 @@ import Vegas.Pending.ReactiveUnusableBinding
 import Vegas.Pending.ReactiveBindingRestoration
 import Vegas.Pending.ReactiveBindingShadowInvariant
 import Vegas.Pending.ReactiveBindingCoupling
+import Vegas.Pending.ReactiveBindingAllocation
+import Vegas.Pending.ReactiveBindingClassification
+import Vegas.Pending.ReactiveBindingPrefix
+import Vegas.Pending.ReactiveBindingServiceRepair
+import Vegas.Pending.ReactiveRawBindingFrame
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveServiceFootprint
 import Vegas.Pending.ReactiveAssociationPersistence

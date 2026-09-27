@@ -63,4 +63,31 @@ theorem opening_available_of_initial_tables (bounds : MessageBounds (graph setup
     (runtime setup) leaks (execution.recall who)
     (execution.observe (application setup leaks) who) event
 
+/-- Initial handle provenance supplies both components of raw opening coverage. -/
+theorem opening_data_covered (bounds : MessageBounds (graph setup))
+    (initial : State L setup.context) (supported : initial ∈ setup.initialLaw.support)
+    (execution : (application setup leaks).Execution)
+    (accepted : execution.application.accepted =
+      (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted)
+    (candidates : execution.application.candidates =
+      (EventGraphRuntime.State.initial (graph := graph setup)
+        (setup.eventInputs initial)).candidates)
+    (field : (graph setup).Field) (candidate : Handle (graph setup))
+    (associated : execution.application.accepted field = some candidate) (raw : Raw L)
+    (fixed : execution.application.candidates.lookup candidate = .openable raw) :
+    (bounds.withInitialValues (initialLaw setup)).AllowsHandle candidate ∧
+      raw ∈ (bounds.withInitialValues (initialLaw setup)).values := by
+  rw [accepted] at associated
+  obtain ⟨input, owner, _payload, _field, _typed, same⟩ :=
+    EventGraphRuntime.State.initial_accepted_eq_some (graph := graph setup)
+      (setup.eventInputs initial) field candidate associated
+  rw [same, candidates] at fixed
+  rw [same]
+  refine ⟨True.intro, ?_⟩
+  apply bounds.initial_value_covered (initialLaw setup)
+    (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial))
+      _ owner input raw fixed
+  rw [initialLaw, FinDist.support_map]
+  exact ⟨initial, supported, rfl⟩
+
 end Vegas.SourceProgram.RevealService

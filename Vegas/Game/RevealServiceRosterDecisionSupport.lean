@@ -79,6 +79,11 @@ theorem roster_decision_source (setup : Setup (Player := Player) (L := L))
       (rosters event)[slot]? = some who ∧
       control.execution.environmentRecall.length =
         (rosterPlanPrefix setup rosters event.val).length + 1 + slot + 1 ∧
+      boundary ∈ ((initialLaw setup).bind fun state =>
+        (runtime setup).runInteractionPlan leaks
+          (rosterMenu setup leaks bounds rosters).uniformResponses network
+          (rosterPlanPrefix setup rosters event.val)
+          (ReactiveApplication.Execution.initial (application setup leaks) state)).support ∧
       prior ∈ ((runtime setup).runInteractionPlan leaks
         (rosterMenu setup leaks bounds rosters).uniformResponses network
         ([.grant event] ++ ((rosters event).take slot).map ServiceInstruction.player)
@@ -107,7 +112,7 @@ theorem roster_decision_source (setup : Setup (Player := Player) (L := L))
       (fun owner past view response supported =>
         (menu.uniformResponses_support owner past view response).mp supported)
       event.val event.isLt.le boundary boundarySupport
-  exact ⟨event, slot, boundary, prior, owner, position, phase, activated,
+  exact ⟨event, slot, boundary, prior, owner, position, boundarySupport, phase, activated,
     initial, initialSupport, state, checkpoint, decoded, sourceSupport, clean⟩
 
 end Vegas.SourceProgram.RevealService

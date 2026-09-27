@@ -1,0 +1,209 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Pending.ReactiveBindingAllocation
+import Vegas.Pending.ReactiveBindingDeadline
+import Vegas.Pending.ReactiveCompiledMenu
+import Interaction.ReactivePublishedResponses
+
+/-! # The protected binding response
+
+A public canonical commitment packet determines the normalized submission
+except for its private opening material. That material is either a represented
+source value or unusable; the latter is repaired rather than audited. Silence
+and previously published replay at the required response instead produce
+public omission evidence at the actual deadline.
+-/
+
+noncomputable section
+
+namespace Vegas.EventGraphRuntime
+
+open Interaction EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+  (runtime : EventGraphRuntime graph)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+
+/-- The public packet fixes the normalized evidence request as well as the
+call. Private binding material is deliberately absent from the conclusion's
+public premise. -/
+theorem normalize_binding_of_canonical_packet
+    (state : State graph) (who : Player)
+    (known : List (Message Player (WitnessedPacket graph)))
+    (submission : WitnessedSubmission graph) (event : graph.EventId) (serial : Nat)
+    (fresh : state.candidates.lookup (who, .prepared serial) = .fresh)
+    (emitted : submission.emit
+      ((runtime.reactiveApplication leaks).submit state who submission) who known =
+        ⟨.commitment event (who, .prepared serial), none⟩) :
+    submission.normalizeReactive who
+        ((runtime.reactiveApplication leaks).observePlayer state who) known =
+      ⟨⟨.commitment event (who, .prepared serial), submission.call.opening⟩, .none⟩ := by
+  have call := congrArg WitnessedPacket.call emitted
+  change submission.call.packet = .commitment event (who, .prepared serial) at call
+  rcases submission with ⟨⟨packet, material⟩, evidence⟩
+  dsimp only at call
+  subst packet
+  have certificate := congrArg WitnessedPacket.evidence emitted
+  rw [WitnessedSubmission.emit_eq_resolve] at certificate
+  let binding : Submission graph := ⟨.commitment event (who, .prepared serial), material⟩
+  have candidates := funext (binding.candidateAfter_eq who state)
+  change evidence.resolve who
+    (fun slot => (submitStep (binding.register state who) who binding.packet).candidates.lookup
+      (who, slot)) known = none at certificate
+  rw [candidates] at certificate
+  have empty : evidence.normalize who
+      (binding.candidateAfter who (fun slot => state.candidates.lookup (who, slot))) known =
+        .none := by
+    apply (EvidenceRequest.normalize_eq_iff_resolve_eq _ _ _ evidence .none).mpr
+    exact certificate
+  simp only [WitnessedSubmission.normalizeReactive]
+  change WitnessedSubmission.mk
+      (binding.normalizeReactive who ((runtime.reactiveApplication leaks).observePlayer state who))
+      (evidence.normalize who
+        (binding.candidateAfter who (fun slot => state.candidates.lookup (who, slot))) known) = _
+  rw [empty]
+  congr 1
+  apply Submission.normalizeReactive_effective
+  exact ⟨rfl, fresh⟩
+
+/-- An already normalized submission with the canonical public packet cannot
+hide any additional effective certificate choice. -/
+theorem normal_binding_of_canonical_packet
+    (state : State graph) (who : Player)
+    (known : List (Message Player (WitnessedPacket graph)))
+    (submission : WitnessedSubmission graph) (event : graph.EventId) (serial : Nat)
+    (fresh : state.candidates.lookup (who, .prepared serial) = .fresh)
+    (normal : submission.normalizeReactive who
+      ((runtime.reactiveApplication leaks).observePlayer state who) known = submission)
+    (emitted : submission.emit
+      ((runtime.reactiveApplication leaks).submit state who submission) who known =
+        ⟨.commitment event (who, .prepared serial), none⟩) :
+    submission = ⟨⟨.commitment event (who, .prepared serial), submission.call.opening⟩, .none⟩ :=
+  normal.symm.trans (runtime.normalize_binding_of_canonical_packet leaks state who known
+    submission event serial fresh emitted)
+
+/-- Exhaustive effective-response split at a clean required binding slot.
+Only the third case is a packet violation; the second is hidden unusability
+and the last is handled by the public deadline obligation. -/
+theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
+    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind who payload)
+    (node : nodeView graph event = .bind who payload outputEq codeEq)
+    (granted : execution.application.serviceGrant = some event)
+    (owned : graph.actor? event = some who)
+    (ready : execution.application.config.cut.Ready event)
+    (prefixFresh : execution.application.PreparedPrefix who)
+    (capacity : execution.application.publicView.bindingCount who < bounds.candidateCount)
+    (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
+    (knownPublished : ∀ message ∈ execution.network.known who,
+      message.id ∈ execution.network.ledger.map Message.id)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (available : response ∈ (bounds.menu runtime leaks).actions who
+      (execution.recall who) (execution.observe (runtime.reactiveApplication leaks) who)) :
+    let app := runtime.reactiveApplication leaks
+    let serial := execution.application.publicView.bindingCount who
+    response ∈ bounds.compiledActions runtime leaks who
+        (execution.recall who) (execution.observe app who) ∨
+      (∃ opening, response =
+        ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩ ∧
+        opening.bind (fun raw => raw.as? payload) = none) ∨
+      (∃ submission, response = ⟨some (.submit submission)⟩ ∧
+        submission.emit (app.submit execution.application who submission) who
+          (execution.network.known who) ≠ ⟨.commitment event (who, .prepared serial), none⟩) ∨
+      (response = ⟨none⟩ ∨ ∃ id ∈ execution.network.ledger.map Message.id,
+        response = ⟨some (.replay id)⟩) := by
+  let app := runtime.reactiveApplication leaks
+  let serial := execution.application.publicView.bindingCount who
+  have fresh : execution.application.candidates.lookup (who, .prepared serial) = .fresh :=
+    (prefixFresh serial).mpr (Nat.le_refl _)
+  have allocator := prefixFresh.freshSlot runtime leaks
+  have publicReady := (execution.application.publicView_eventReady event).mpr ready
+  have known := app.known_from_recall execution who recalled
+  change execution.network.known who = ReactiveApplication.ResponseMenu.knownPackets
+    (execution.recall who) (execution.observe app who) at known
+  have member := (bounds.menu_mem runtime leaks who (execution.recall who)
+    (execution.observe app who) response).mp available
+  rcases response with ⟨transmission⟩
+  cases transmission with
+  | none => exact Or.inr (Or.inr (Or.inr (Or.inl rfl)))
+  | some transmission =>
+      cases transmission with
+      | replay id =>
+          have remembered : ∃ message ∈ execution.network.known who, message.id = id :=
+            (ReactiveApplication.SubmissionNormalization.replayKnown_iff execution who
+              recalled id).mp member.1
+          obtain ⟨message, inKnown, same⟩ := remembered
+          exact Or.inr (Or.inr (Or.inr (Or.inr
+            ⟨id, same ▸ knownPublished message inKnown, rfl⟩)))
+      | submit submission =>
+          by_cases emitted : submission.emit (app.submit execution.application who submission)
+              who (execution.network.known who) =
+                ⟨.commitment event (who, .prepared serial), none⟩
+          · have normal : submission.normalizeReactive who
+                ((runtime.reactiveApplication leaks).observePlayer execution.application who)
+                  (execution.network.known who) = submission := by
+              have fixed := member.2
+              change (⟨some (.submit (submission.normalizeReactive who _ _))⟩ : app.Action) =
+                ⟨some (.submit submission)⟩ at fixed
+              have packets := congrArg ReactiveApplication.Action.transmission fixed
+              have same := ReactiveApplication.Transmission.submit.inj (Option.some.inj packets)
+              rw [← known] at same
+              exact same
+            have shape := runtime.normal_binding_of_canonical_packet leaks execution.application
+              who (execution.network.known who) submission event serial fresh normal emitted
+            have rawBound : bounds.AllowsOpening submission.call.opening := member.1.1.2
+            have classified := bounds.canonical_binding_response_cases runtime leaks who
+              (execution.recall who) (execution.observe app who) event payload outputEq codeEq node
+              granted owned publicReady serial allocator capacity submission.call.opening rawBound
+            rcases classified with legal | unusable
+            · exact Or.inl (shape ▸ legal)
+            · exact Or.inr (Or.inl ⟨submission.call.opening,
+                congrArg (fun material => (⟨some (.submit material)⟩ : app.Action)) shape,
+                  unusable⟩)
+          · exact Or.inr (Or.inr (Or.inl ⟨submission, rfl, emitted⟩))
+
+/-- Actual reserved inclusion and expiry detect silence or spent replay at the
+one required binding response. No assumption is made about later policies. -/
+theorem silent_or_spent_binding_omission
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : runtime.NetworkPolicy leaks)
+    (execution : (runtime.reactiveApplication leaks).Execution)
+    (who : Player) (event : graph.EventId) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind who payload)
+    (node : nodeView graph event = .bind who payload outputEq codeEq)
+    (ready : execution.application.config.cut.Ready event)
+    (absent : execution.application.accepted (.inr event) = none)
+    (published : ∀ message ∈ execution.network.pending,
+      message.id ∈ execution.network.ledger.map Message.id)
+    (entered ticks : Nat)
+    (activated : execution.application.activatedAt event = some entered)
+    (due : runtime.deadline event ≤ execution.application.clock + ticks - entered)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (quiet : response = ⟨none⟩ ∨ ∃ id ∈ execution.network.ledger.map Message.id,
+      response = ⟨some (.replay id)⟩) :
+    ∃ next, runtime.runInteractionPlan leaks players scheduler
+        (.includeLatest event who :: List.replicate ticks .tick ++ [.expire event])
+          (execution.respond (runtime.reactiveApplication leaks) who response) =
+            FinDist.pure next ∧
+      next.application.publicView.missedBinding event = true := by
+  have same := (runtime.reactiveApplication leaks).respond_published execution who response
+    published quiet
+  apply runtime.protected_binding_omission leaks players scheduler _ who event payload
+    outputEq codeEq node
+  · rw [same.1]
+    exact ready
+  · rw [same.1]
+    exact absent
+  · exact same.2.2.2
+  · rw [same.1]
+    exact activated
+  · rw [same.1]
+    exact due
+
+end Vegas.EventGraphRuntime

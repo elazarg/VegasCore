@@ -17,6 +17,9 @@ import Vegas.Source.DisclosureAliases
 import Vegas.Source.DisclosureNormalization
 import Vegas.Source.DisclosureBehavioral
 import Vegas.Source.DisclosurePosterior
+import Vegas.Source.DisclosureObservation
+import Vegas.Source.HistoryRebase
+import Vegas.Source.DisclosureContinuation
 import Vegas.Source.Honest
 import Vegas.Source.RevealSequence
 import Vegas.Source.ObservationRecall

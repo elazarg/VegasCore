@@ -54,6 +54,20 @@ theorem embed_restrictPolicy (who : Principal) (policy : app.Policy)
   intro action supported
   rfl
 
+/-- At a covered input, forgetting the finite-menu witness recovers the
+original physical response law exactly. -/
+theorem restrictPolicy_map_val (who : Principal) (policy : app.Policy)
+    (admissible : menu.Admissible initial horizon scheduler who policy)
+    (past : List app.PlayerEntry) (view : app.PlayerView)
+    (covered : ∀ action ∈ (policy past view).support, action ∈ menu.actions who past view) :
+    ((menu.restrictPolicy initial horizon scheduler who policy admissible)
+      (some (past, view))).map Subtype.val = (policy past view).map some := by
+  simp only [restrictPolicy, dite_eq_left covered, FinDist.map_bindOnSupport, FinDist.map_pure]
+  rw [FinDist.map_eq_bind]
+  apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+  intro action supported
+  rfl
+
 theorem decode_embedPolicy_covered (who : Principal)
     (policy : (menu.information initial horizon scheduler).BehavioralPolicy who)
     (past : List app.PlayerEntry) (view : app.PlayerView) (response : app.Action)
@@ -115,6 +129,53 @@ theorem embed_restrictPolicy_history (who : Principal) (policy : app.Policy)
             exact menu.embed_restrictPolicy initial horizon scheduler who policy covered _ _
               (covered control trace active)
           · cases observed
+
+/-- Full support is checked at all legal decisions. The representing policy's
+irrelevant default at nonexistent inputs imposes no extra obligation. -/
+theorem restrictProfile_fullSupport (profile : Principal → app.Policy)
+    (covered : ∀ who, menu.Admissible initial horizon scheduler who (profile who))
+    (positive : ∀ who control,
+      (menu.protocol initial horizon scheduler).Trace (some control) →
+      control.actor = some who → ∀ action ∈
+        menu.actions who (control.execution.recall who) (control.execution.observe app who),
+        action ∈ (profile who (control.execution.recall who)
+          (control.execution.observe app who)).support) :
+    ∀ who (site : (menu.information initial horizon scheduler).InformationSite who)
+      (choice : (menu.information initial horizon scheduler).Choice who site.1),
+      choice ∈ (menu.restrictPolicy initial horizon scheduler who (profile who)
+        (covered who) site.1).support := by
+  intro who site
+  obtain ⟨history, _, _⟩ := site.2
+  have active := InformationModel.InformationSite.active _ site history
+  have observed := (menu.info initial horizon scheduler who history.1.trace).symm.trans history.2
+  cases stateEq : history.1.state with
+  | none =>
+      rw [stateEq] at active
+      cases active
+  | some control =>
+      rw [stateEq] at active
+      have acting : control.actor = some who := active
+      have traced : (menu.protocol initial horizon scheduler).Trace (some control) :=
+        stateEq ▸ history.1.trace
+      rw [stateEq] at observed
+      change (if control.actor = some who then
+        some (control.execution.recall who, control.execution.observe app who) else none) = site.1
+        at observed
+      rw [ite_eq_left acting] at observed
+      rcases site with ⟨info, occurs⟩
+      dsimp only at observed ⊢
+      cases observed
+      intro choice
+      suffices choice.1 ∈ ((menu.restrictPolicy initial horizon scheduler who (profile who)
+          (covered who) (some (control.execution.recall who,
+            control.execution.observe app who))).map Subtype.val).support by
+        obtain ⟨other, supported, same⟩ := FinDist.support_map .. ▸ this
+        exact (Subtype.ext same) ▸ supported
+      have member := choice.2
+      obtain ⟨action, allowed, chosen⟩ := member
+      rw [menu.restrictPolicy_map_val initial horizon scheduler who (profile who) (covered who)
+        _ _ (covered who control traced acting), chosen, FinDist.support_map]
+      exact ⟨action, positive who control traced acting action allowed, rfl⟩
 
 variable [Fintype Principal]
 

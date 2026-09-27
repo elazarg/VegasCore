@@ -19,31 +19,6 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-omit [Fintype Player] in
-private theorem terminal_actor_none (who : Player) :
-    ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
-      (program : SourceProgram Player L Γ O) (state : ProtocolState program),
-      ProtocolState.terminal program state →
-      ProtocolView.actor who program (ProtocolState.observe who program state) = none := by
-  intro Γ O program
-  induction program with
-  | ret payoffs => intro state stopped; rfl
-  | sample name fresh law next ih =>
-      intro state stopped
-      cases state with
-      | inl source => exact stopped.elim
-      | inr state => exact ih state stopped
-  | commit name owner fresh guard next ih =>
-      intro state stopped
-      cases state with
-      | inl source => exact stopped.elim
-      | inr state => exact ih state stopped
-  | reveal published owner name fresh selected unresolved next ih =>
-      intro state stopped
-      cases state with
-      | inl source => exact stopped.elim
-      | inr state => exact ih state stopped
-
 /-- The native source-state readout is the state of an actual source
 decision history at the corresponding rank, including off-path C histories. -/
 theorem owner_source_history
@@ -80,10 +55,10 @@ theorem owner_source_history
     (fun player => RevealOnly.uniformPolicy player setup.program reveals)
     (fun player => RevealOnly.uniformPolicy_admitted player setup.program reveals admission)
     initial initialSupport event.val state sourceReach
-  have acting := PrefixCheckpoint.actor who setup.program
+  have acting := PublicPrefixCheckpoint.actor who setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputRef setup.program) 0 event.val state boundary
-    related event.isLt
+    (related.toPublic _ _ _ _ _ _ _ _) event.isLt
   rw [eventOwner?_eq_actor] at acting
   change ProtocolView.actor who setup.program (ProtocolState.observe who setup.program state) =
     (graph setup).actor? event at acting
@@ -94,7 +69,7 @@ theorem owner_source_history
     exact acting
   · rw [sourceState]
     intro stopped
-    have absent := terminal_actor_none who setup.program state stopped
+    have absent := ProtocolState.terminal_actor_none who setup.program state stopped
     rw [acting] at absent
     cases absent
 

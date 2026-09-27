@@ -117,4 +117,28 @@ theorem ProtocolState.actor_observe : {Γ : SourceCtx Player L} → {O : Finset 
       | inl _ => rfl
       | inr rest => exact actor_observe next rest first second
 
+theorem ProtocolState.terminal_actor_none (who : Player) :
+    ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
+      (program : SourceProgram Player L Γ O) (state : ProtocolState program),
+      ProtocolState.terminal program state →
+      ProtocolView.actor who program (ProtocolState.observe who program state) = none := by
+  intro Γ O program
+  induction program with
+  | ret payoffs => intro state stopped; rfl
+  | sample name fresh law next ih =>
+      intro state stopped
+      cases state with
+      | inl source => exact stopped.elim
+      | inr state => exact ih state stopped
+  | commit name owner fresh guard next ih =>
+      intro state stopped
+      cases state with
+      | inl source => exact stopped.elim
+      | inr state => exact ih state stopped
+  | reveal published owner name fresh selected unresolved next ih =>
+      intro state stopped
+      cases state with
+      | inl source => exact stopped.elim
+      | inr state => exact ih state stopped
+
 end Vegas.SourceProgram

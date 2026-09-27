@@ -192,4 +192,99 @@ theorem exists_updated_observation_kernel
       rw [factors pair member]
     _ = _ := by simp only [pairs, observation, bind_bind, bind_map]
 
+/-- Readout form of the conditional-noise induction. A native state may contain
+more information than its source state and auxiliary readout; that remainder
+is eliminated by actual transition coupling on supported inputs. -/
+theorem exists_updated_observation_kernel_of_readout
+    {Native Action NextState NextObservation NextNoise : Type*}
+    (law : FinDist Native) (state : Native → State) (read : Native → Noise)
+    (observe : State → Observation) (noise : Observation → FinDist Noise)
+    (factor : law.map (fun point => (state point, read point)) =
+      (law.map state).bind fun source => (noise (observe source)).map fun extra => (source, extra))
+    (choice : State → FinDist Action) (advance : State → Action → NextState)
+    (nextObserve : NextState → NextObservation) (step : Native → Action → FinDist NextNoise)
+    (reflects : ∀ left ∈ (law.map state).support, ∀ leftAction ∈ (choice left).support,
+      ∀ right ∈ (law.map state).support, ∀ rightAction ∈ (choice right).support,
+      nextObserve (advance left leftAction) = nextObserve (advance right rightAction) →
+        observe left = observe right)
+    (coupled : ∀ left ∈ law.support, ∀ leftAction ∈ (choice (state left)).support,
+      ∀ right ∈ law.support, ∀ rightAction ∈ (choice (state right)).support,
+      nextObserve (advance (state left) leftAction) =
+        nextObserve (advance (state right) rightAction) →
+      read left = read right → step left leftAction = step right rightAction) :
+    ∃ nextNoise : NextObservation → FinDist NextNoise,
+      (law.bind fun point => (choice (state point)).bind fun action =>
+        (step point action).map fun extra => (advance (state point) action, extra)) =
+      ((law.map state).bind fun source => (choice source).map (advance source)).bind fun source =>
+        (nextNoise (nextObserve source)).map fun extra => (source, extra) := by
+  classical
+  let joint := (law.map state).bind fun source =>
+    (noise (observe source)).map fun extra => (source, extra)
+  let representative := fun source extra =>
+    if present : ∃ point ∈ law.support, (state point, read point) = (source, extra) then
+      present.choose else law.support_nonempty.choose
+  have realizes (source : State) (sourceSupport : source ∈ (law.map state).support)
+      (extra : Noise) (extraSupport : extra ∈ (noise (observe source)).support) :
+      representative source extra ∈ law.support ∧
+      state (representative source extra) = source ∧
+      read (representative source extra) = extra := by
+    have jointSupport : (source, extra) ∈ joint.support := by
+      rw [show joint = _ from rfl, support_bind]
+      apply Set.mem_iUnion₂.mpr
+      refine ⟨source, sourceSupport, ?_⟩
+      rw [support_map]
+      exact ⟨extra, extraSupport, rfl⟩
+    change (source, extra) ∈ ((law.map state).bind fun source =>
+      (noise (observe source)).map fun extra => (source, extra)).support at jointSupport
+    rw [← factor, support_map] at jointSupport
+    obtain ⟨point, pointSupport, same⟩ := jointSupport
+    have present : ∃ point ∈ law.support, (state point, read point) = (source, extra) :=
+      ⟨point, pointSupport, same⟩
+    simp only [representative, dite_eq_left present]
+    exact ⟨present.choose_spec.1, (Prod.mk.inj present.choose_spec.2).1,
+      (Prod.mk.inj present.choose_spec.2).2⟩
+  let channel := fun source action extra => step (representative source extra) action
+  have channels : ∀ left ∈ (law.map state).support,
+      ∀ leftAction ∈ (choice left).support, ∀ right ∈ (law.map state).support,
+      ∀ rightAction ∈ (choice right).support,
+      nextObserve (advance left leftAction) = nextObserve (advance right rightAction) →
+      ∀ extra ∈ (noise (observe left)).support,
+        channel left leftAction extra = channel right rightAction extra := by
+    intro left leftSupport leftAction leftChoice right rightSupport rightAction rightChoice
+      same extra extraSupport
+    obtain ⟨leftPresent, leftState, leftRead⟩ := realizes left leftSupport extra extraSupport
+    have priorView := reflects left leftSupport leftAction leftChoice right rightSupport
+      rightAction rightChoice same
+    obtain ⟨rightPresent, rightState, rightRead⟩ := realizes right rightSupport extra
+      (by rwa [← priorView])
+    apply coupled _ leftPresent leftAction (by rwa [leftState]) _ rightPresent rightAction
+      (by rwa [rightState])
+    · simpa only [leftState, rightState] using same
+    · exact leftRead.trans rightRead.symm
+  obtain ⟨nextNoise, nextLaw⟩ := exists_updated_observation_kernel (law.map state) observe noise
+    choice advance nextObserve channel reflects channels
+  refine ⟨nextNoise, ?_⟩
+  calc
+    _ = joint.bind (fun pair => (choice pair.1).bind fun action =>
+        (channel pair.1 action pair.2).map fun extra => (advance pair.1 action, extra)) := by
+      apply bind_eq_of_map_eq law joint (fun point => (state point, read point)) id
+        (factor.trans (map_id joint).symm)
+      intro point pointSupport pair pairSupport equal
+      obtain ⟨source, sourceSupport, member⟩ :=
+        Set.mem_iUnion₂.mp (support_bind .. ▸ pairSupport)
+      obtain ⟨extra, extraSupport, pairEq⟩ := support_map .. ▸ member
+      cases pairEq
+      have sourceEq : state point = source := (Prod.mk.inj equal).1
+      have extraEq : read point = extra := (Prod.mk.inj equal).2
+      obtain ⟨present, represented, readEq⟩ := realizes source sourceSupport extra extraSupport
+      rw [sourceEq]
+      apply bind_congr
+      intro action chosen
+      have steps := coupled point pointSupport action (by rwa [sourceEq])
+        (representative source extra) present action (by rwa [represented])
+          (by rw [sourceEq, represented]) (extraEq.trans readEq.symm)
+      exact congrArg (fun selected => selected.map fun next => (advance source action, next)) steps
+    _ = _ := by
+      simpa only [joint, bind_bind, bind_map, channel] using nextLaw
+
 end GameTheory.Math.Probability.FinDist
