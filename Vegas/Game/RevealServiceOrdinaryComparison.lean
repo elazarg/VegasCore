@@ -25,7 +25,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup))
 
-private theorem extra_choice_response (watcher owner : Player) (different : owner ≠ watcher)
+theorem extra_choice_response (watcher owner : Player) (different : owner ≠ watcher)
     (site : (information setup leaks bounds watcher).InformationSite owner)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (observed : site.1 = some (past, view))

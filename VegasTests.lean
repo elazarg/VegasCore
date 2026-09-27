@@ -199,5 +199,6 @@ import VegasTests.MonitoredGuessingDeclaredCompilation
 import VegasTests.SuccessfulEvidenceAliases
 import VegasTests.RevealSequence
 import VegasTests.UnusableBindingAudit
+import VegasTests.OpeningTimingChannel
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

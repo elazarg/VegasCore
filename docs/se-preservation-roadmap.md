@@ -5,11 +5,13 @@ This is the results map and reading guide for SE compilation. The
 mathematics; the [native pilot](research/se-native-pilot.md) contains the checked
 source-to-runtime instance. The general action-restriction theorem and scalar
 deposit inference are checked in Lean. The
-[literal two-reveal payoff-table family](../VegasTests/MonitoredGuessingDeclaredCompilation.lean)
-now instantiates the staged theorem end to end. Arbitrary source programs remain
-outside that result.
-The [stack and implementation plan](se-compilation-stack.md) fixes the next
-program class, proof edges, parallel work packages and early feasibility gates.
+[general revelation compiler](../Vegas/Game/RevealServiceCompilation.lean)
+instantiates the staged theorem end to end for arbitrary finite reveal sequences,
+with repeated owners, correlated valid initial bindings and all source
+withholding choices. Arbitrary activation rosters and fresh source commitments
+remain outside that result.
+The [stack and implementation plan](se-compilation-stack.md) records proof edges
+and the remaining service and language boundaries.
 
 ## Checked results and remaining compiler work
 
@@ -19,9 +21,10 @@ program class, proof edges, parallel work packages and early feasibility gates.
 | Scalar deposit inference | Executably computes the least nonnegative deposit for a finite rational comparison table, or identifies an infeasible row. This decides the certificate, not semantic SE implementability. |
 | Native guessing compiler | Every SE of the stated source program has a native SE under the fixed bounded service, partial monitoring and collectible charge. Includes a fixed playerwise policy translation. |
 | Declared-payoff family | Every SE of the literal two-reveal source program, for any integer payoff table with zero watcher payoff, has a full bounded raw native SE with the exact joint initial-bit/result/net-payoff law. Both opening and withholding are retained. |
-| Concrete strategic stack | Source → C → W → N → raw is checked for the family. All native games share the runtime and utility; deposits are fixed from the table before choosing the source equilibrium. |
+| General revelation compiler | Every SE of an arbitrary finite reveal sequence has a full bounded raw native SE preserving the joint typed terminal-state/net-payoff law, under the explicit owner/watcher service and positive monitoring coverage. |
+| Concrete strategic stack | Source → C → W → N → raw is checked for arbitrary revelation sequences. All native games share the runtime and utility; deposits are fixed from actual finite watched-history payoff extrema before choosing the source equilibrium. |
 | Reusable monitoring step | A watcher uses ordinary pending observations and replay; public at-most-once inclusion turns the sampling bound into persistent evidence under arbitrary later policies. Reporting a differently addressed packet before the current public event completes records its rejection. |
-| Generalization components | Reveal-only source syntax, successful-evidence normalization, and Bayes projection at checkpoints with different step counts are checked. Source/service induction and spent-replay equivalence still separate these components from an arbitrary-length compiler theorem. |
+| Source correspondence | Service-block induction, replay recall, one common consistency sequence and conditional incentives establish the arbitrary-length revelation theorem. |
 
 The central proof is
 [`sequential_equilibrium_extends_of_comparator`](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean).
@@ -100,8 +103,9 @@ actual fixture in [WatcherExtension](../VegasTests/MonitoredGuessingWatcherExten
 The final edge restores only proved
 private response aliases. These are games used in the proof, with the same
 runtime implementation and enforcement configuration; they add no source syntax
-or emitted interpreter. Their source-to-native composition is checked for the
-two-reveal family. The fixed backend includes a fair initial private bit, one-half
+or emitted interpreter. Their source-to-native composition is checked for
+arbitrary finite revelation sequences. The concrete two-reveal example uses a
+fair initial private bit, one-half
 passive watcher sampling, no Alice pending sample after Bob's response, reserved
 inclusion and finite timeouts. It deducts Alice's deposit of twice her whole
 payoff range and Bob's deposit of his whole range on the respective proved
@@ -109,11 +113,13 @@ liabilities. Collection is an economic/backend assumption, not an implemented
 escrow. These conservative bounds are not claimed minimal. Information-agent
 forms and extracted incentive tables remain internal proof constructions.
 
-General reveal sequences require source/service-block induction and monitoring
-coverage at subsequent response opportunities. Repeated owners additionally
-require evidence-alias and replay proofs. An unmonitored packet that a later
-player can read cannot be classified as harmless merely because inclusion
-ignores it.
+The general revelation theorem permits arbitrary correlated valid initialization
+and any passive sampler satisfying the stated positive per-envelope coverage.
+It retains the service's scheduled owner and watcher activations. Extending
+that schedule needs a new correspondence proof: an unmonitored packet that a
+later player can read cannot be classified as harmless merely because inclusion
+ignores it. Fresh source bindings also require native continuation repair for
+privately unusable commitments; public auditing alone cannot identify them.
 
 Ambient communication is an alternative source interpretation when a capability
 must be retained. It is not automatically inserted to make an ordinary-source
@@ -314,23 +320,22 @@ compares such choices once their operational meaning is fixed.
 ## Implementation order and acceptance tests
 
 The [implementation plan](se-compilation-stack.md#implementation-work-packages)
-gives ownership, dependencies and acceptance gates. Its order is:
+records the checked revelation-service composition. The remaining priorities are:
 
-1. **Resolve native feasibility in parallel.** Recall and menu-to-menu
-   restrictions are checked. Complete private-alias classification and test
-   collection against every ordinary player's effective responses. Include
-   accepted packets carrying extra evidence, not only rejected calls.
-2. **Freeze the service and conformance contract.** Use the actual two-reveal
-   integer-payoff family, retaining opening and withholding for both owners.
-   Validate timing and observations on every source branch before generalizing.
-3. **Prove source correspondence and collection in parallel.** Transport one
-   common consistency sequence through service blocks; establish actual
-   conditional comparisons while reporting is prescribed. Compose the checked
-   extension theorem twice, then the checked raw-alias lift.
-4. **Generalize and improve inference.** Extend to finite guard-free reveal
-   sequences with valid initialized commitments. The scalar checker is already
-   checked; broader extraction and sharper comparators follow the first composed
-   theorem. Exact finite diagnosis remains a separate diagnostic project.
+1. **General activation rosters.** Retain bounded off-turn transmission and
+   pending observation opportunities. Prove conditional source correspondence
+   for repeated owner opportunities; extra timing recall alone is not an SE
+   impossibility.
+2. **Terminal auditing.** Instantiate the checked generic terminal-audit
+   theorem on actual traffic. Remove strategic-reporter assumptions through
+   authentic records, sound classification and conditional collection.
+3. **Fresh commitments and guards.** Couple the checked source value-only
+   continuation repair to actual native opponent observations and consistent
+   continuation play. Do not require public detection of a privately unusable
+   binding when it is observationally identical to lawful withholding.
+4. **Sharper inference.** Extract rational comparison tables or terminal-only
+   payoff bounds after the preceding semantic gates. Exact finite diagnosis
+   remains a separate diagnostic project.
 
 The decisive runtime cases are:
 

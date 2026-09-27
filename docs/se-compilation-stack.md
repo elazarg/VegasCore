@@ -8,6 +8,13 @@ final game. Fix the program, service, monitoring rule, utilities and deposits
 before selecting an equilibrium. Preserve the joint initial-type, public-result
 and actual net-payoff law of **every source SE**.
 
+The [source-to-raw theorem](../Vegas/Game/RevealServiceCompilation.lean) is
+checked for arbitrary finite revelation sequences under the explicit service
+below. It includes repeated owners, correlated valid initial bindings, both
+disclosure choices and arbitrary terminal utilities with zero watcher utility.
+The deposits are fixed before choosing an equilibrium. General activation
+rosters and fresh source commitments remain outside this checked instance.
+
 ## Main theorem boundary: audit at settlement
 
 The end-to-end target must retain bounded off-turn transmissions and pending
@@ -65,9 +72,9 @@ The [general extension theorem](../GameTheoryExtensions/Analysis/Protocol/Restri
 [scalar certificate checker](../GameTheoryExtensions/Analysis/EnforcementSynthesis.lean)
 are checked. Decision-site recall now suffices for the general theorem, and
 [nested reactive menus](../Interaction/ReactiveMenuRestriction.lean) instantiate
-its structural restriction. Their composition with a general source/native
-correspondence remains open. Proposed backend certificates below are not
-existing theorems. The [roadmap](se-preservation-roadmap.md) records current
+its structural restriction. Their composition with the actual source/native
+correspondence is checked for the revelation service. The
+[roadmap](se-preservation-roadmap.md) records current
 results and broader research boundaries.
 
 For the actual initialized fixture, [C/W/N menus](../VegasTests/MonitoredGuessingRestricted.lean),
@@ -86,13 +93,11 @@ is also checked. The
 [literal-source capstone](../VegasTests/MonitoredGuessingDeclaredCompilation.lean)
 composes these edges: every SE of the actual two-reveal program has a full raw
 native SE with the same joint initial-bit/result/net-payoff law. Its deposits
-are fixed from the declared table; watcher returns are zero. Generalizing this
-family to arbitrary reveal sequences remains open.
+are fixed from the declared table; watcher returns are zero.
 
 The reusable backend is assembled in
 [RevealService](../Vegas/Game/RevealService.lean), using the existing runtime.
-The following obligations distinguish its checked components from the missing
-arbitrary-length theorem:
+The following obligations establish its arbitrary-length theorem:
 
 | Obligation | Status |
 | --- | --- |
@@ -105,15 +110,17 @@ arbitrary-length theorem:
 | Common decision depths for C/W/N/raw menus | Checked at all legal histories using existing grant and actor observations. |
 | Bounded settlement under arbitrary responses | Checked for every finite response menu and every legal terminal history, including zero-probability histories. Remaining suffixes settle whenever preceding events have completed. |
 | Full monitored block agrees with its source reveal | Checked for every ordinary response, including published-replay aliases of withholding; typed source store and action history agree afterward. |
-| Initialized compiler execution law for arbitrary reveal sequences | Checked for all source policies and all alias-splitting weights, with correlated valid initial bindings. This is an execution law, not yet an SE theorem. |
+| Initialized compiler execution law for arbitrary reveal sequences | Checked for all source policies and all alias-splitting weights, with correlated valid initial bindings. |
 | Source information prerequisites | Checked common decision depths and a fully mixed reference policy; finite legal histories require no finite ambient secret type. |
 | Reverse information correspondence and checkpoint prefix laws | Checked at actual native boundary and owner-decision depths; includes correlated initialization and replay selectors. |
-| Consistent native beliefs | Checked: one common perturbation sequence preserves the source-state posterior at every owner information site, including aliases with zero limiting probability. Local rationality and enforcement composition remain open. |
+| Consistent native beliefs | Checked: one common perturbation sequence preserves the source-state posterior at every owner information site, including aliases with zero limiting probability. |
+| Source-to-C sequential rationality | Checked against arbitrary whole continuation policies through conditional local comparisons and the posterior one-shot principle. |
 | Conditional monitoring, packet classification and persistent evidence | Checked in actual behavioral continuations at every hidden history satisfying the operational checkpoint invariant. |
-| Ordinary-player net-utility comparison | Checked at such checkpoints, against any clean legal continuation; global checkpoint coverage and clean-continuation induction remain open. |
-| Fixed deposits | Exact finite rational payoff bounds and sufficient range/rate deposits are checked. Collection rates and monetary implementation remain backend obligations. |
+| Ordinary-player net-utility comparison | Checked at every retained information history; every retained continuation is clean and every extra ordinary response has the required conditional collection bound. |
+| Fixed deposits | Actual finite watched-history extrema yield sufficient real-valued range/rate deposits before an equilibrium is chosen. This is mathematical synthesis; executable rational-table inference is a separate checked result. Collection rates and monetary implementation remain backend obligations. |
+| C → W extension | Checked for every retained SE, preserving retained strategies, beliefs and the full history/net-payoff law. |
 | W → N → raw equilibrium extension | Checked for arbitrary reveal sequences, normalization-invariant observations/utilities, and zero watcher utility at every history. |
-| End-to-end SE for arbitrary reveal sequences | Open. The checked end-to-end result remains the two-reveal payoff-table family. |
+| End-to-end SE for arbitrary reveal sequences | Checked: every original source SE has a full bounded raw SE with the exact joint typed terminal-state/net-payoff law under this service. |
 
 The source-to-C belief proof compares distributions over the existing
 source protocol state. That state retains initial private values and source
@@ -130,6 +137,13 @@ publicly indistinguishable from valid binding followed by withholding. Within
 source semantics, however, value-only continuations match every such behavioral
 deviation from an arbitrary posterior over residual configurations. The native
 opponent-view simulation and consistent extension remain proof obligations.
+
+For the calendar boundary, [opening-timing analysis](research/se-opening-timing.md)
+exhibits a real remembered timing channel between two otherwise valid opening
+opportunities. The phase-and-ledger traffic audit does not distinguish those
+traces. This refutes an information-isomorphism proof for that extension, not
+SE preservation itself: a forward construction may use type-independent timing
+perturbations. Their conditional-law and sequential-incentive proofs remain open.
 
 ## Stack: one runtime, several strategic games
 
@@ -617,11 +631,11 @@ never the GameTheory submodule.
 | A | Decision-site recall and capstone refactor in GameTheoryExtensions; native instance in Interaction. **Checked.** | G1 audit | Closed for the existing information model. |
 | B | Menu-to-menu action restriction in Interaction; all-history fixture clocks. **Checked.** | Existing ResponseMenu; A for SE use | Generic roster inference remains outside the fixture result. |
 | C | Private submission/packet normalization and compiler compatibility, including successful-request aliases. **Checked.** | G2 | Published replay is handled separately in the source-representable menu. |
-| D | Concrete C/W/N menus, service checkpoints, all-history decision classification and source assessment correspondence. **Checked for the fixture.** | B, C, G3 | General source observation/deadline induction remains. |
-| E | Persistent ledger evidence, exhaustive ordinary-response comparisons and fixed deposit bounds. **Checked for the fixture.** | B, G4, G5 | Broader passive visibility needs monitoring at subsequent response opportunities. |
-| F | Source-to-C SE and all-profile joint type/result/net-payoff law. **Checked for the payoff-table family.** | A, D | General reveal sequences need a common consistency argument across blocks. |
-| G | Literal-source → C → W → N → T composition with the same fixed deposits and utility. **Checked for the payoff-table family.** | A–F | Collectibility remains a backend assumption. |
-| H | Generalize fixture to the finite reveal class, then extract sharper finite rational certificates. | G | Separate increments; keep solver engineering off the first critical path. |
+| D | Concrete C/W/N menus, service checkpoints, all-history decision classification and source assessment correspondence. **Checked for arbitrary finite reveal sequences.** | B, C, G3 | Broader rosters require a new conditional information proof. |
+| E | Persistent ledger evidence, exhaustive ordinary-response comparisons and fixed deposit bounds. **Checked for the revelation service.** | B, G4, G5 | Terminal auditing should remove the strategic reporter assumption. |
+| F | Source-to-C SE and all-profile joint typed state/payoff law. **Checked for arbitrary finite reveal sequences.** | A, D | Fresh binds and guarded programs remain outside this correspondence. |
+| G | Original source → C → W → N → T composition with the same fixed deposits and utility. **Checked for arbitrary finite reveal sequences.** | A–F | Collectibility remains a backend assumption. |
+| H | General activation rosters, native unusable-binding continuation repair and a direct terminal-audit instance. | G | Resolve strategic gaps before optimizing deposits or building solver machinery. |
 
 ### Parallel execution order
 

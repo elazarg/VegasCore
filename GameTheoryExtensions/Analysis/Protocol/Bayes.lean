@@ -57,6 +57,20 @@ theorem BehavioralAssessment.IsFullyMixed.history_supported
       · rw [FinDist.support_bindOnSupport]
         exact Set.mem_iUnion₂.mpr ⟨_, realized, FinDist.mem_support_pure.mpr rfl⟩
 
+/-- Every legal terminal history remains supported when evaluation is padded
+to any larger horizon. No particular equilibrium needs to reach that history. -/
+theorem BehavioralAssessment.IsFullyMixed.terminal_supported
+    {assessment : M.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
+    (history : E.History) (terminal : E.terminal history.state)
+    (fuel : Nat) (enough : history.trace.length ≤ fuel) :
+    history ∈ (M.runBehavioral assessment.strategy fuel).support := by
+  rw [show fuel = history.trace.length + (fuel - history.trace.length) by omega]
+  change history ∈ (M.runBehavioralFrom assessment.strategy _ E.initHistory).support
+  rw [M.runBehavioralFrom_add, FinDist.support_bind]
+  refine Set.mem_iUnion₂.mpr ⟨history, mixed.history_supported history.trace, ?_⟩
+  rw [M.runBehavioralFrom_of_terminal assessment.strategy _ terminal]
+  exact FinDist.mem_support_pure.mpr rfl
+
 theorem BehavioralAssessment.IsFullyMixed.historyReachProbability_pos
     {assessment : M.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
     (history : E.History) : 0 < M.historyReachProbability assessment.strategy history :=

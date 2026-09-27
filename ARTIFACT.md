@@ -2,10 +2,10 @@
 
 For sequential-equilibrium results and remaining work, start with the
 [research map](docs/se-preservation-roadmap.md). It distinguishes the checked
-monitored native fragment, the general action-restriction theorem, and the
-remaining native correspondence and collection obligations.
-The [implementation stack](docs/se-compilation-stack.md) specifies proposed
-proof edges and early feasibility gates; it does not add checked compiler claims.
+general revelation compiler, the action-restriction theorem, and the remaining
+full-language and activation-schedule obligations.
+The [implementation stack](docs/se-compilation-stack.md) records the checked
+proof edges and explicit assumptions of the source-to-raw theorem.
 
 ## Reproduction
 
@@ -99,6 +99,12 @@ the subsequent kernel-checked build.
 | One native information-site law replacement is one actual response followed by the original profile's continuation, with sufficient remaining fuel | `Interaction/ReactiveLocalContinuation.lean` |
 | Source one-site continuation values factor through the original posterior state, current action law and unchanged baseline continuation | `Vegas/Game/SourceLocalContinuation.lean` |
 | Fully mixed source perturbations compile to fully mixed native profiles; one common native consistent assessment preserves source-state posteriors at every owner site | `Vegas/Game/RevealServiceMixing.lean`, `Vegas/Game/RevealServiceBayes.lean`, `Vegas/Game/RevealServiceConsistency.lean` |
+| Every original revelation-sequence source SE compiles to a restricted native SE, with whole-policy conditional optimality and exact joint typed state/payoff law | `Vegas/Game/RevealServiceOwnerValue.lean`, `Vegas/Game/RevealServiceOwnerIncentives.lean`, `Vegas/Game/RevealServiceEquilibrium.lean` |
+| Every retained terminal history is clean; concrete conditional sampling supplies collection against every extra ordinary response at every retained site | `Vegas/Game/RevealServiceClean.lean`, `Vegas/Game/RevealServicePrefixEnforcement.lean`, `Vegas/Game/RevealServiceOwnerCollection.lean` |
+| Every retained revelation-service SE extends to the full bounded raw game under sufficient range deposits and positive passive-observation coverage | `Vegas/Game/RevealServiceOrdinaryExtension.lean` |
+| Actual finite watched-history payoff extrema supply sufficient fixed deposits before choosing an equilibrium | `Vegas/Game/RevealServiceDeposits.lean` |
+| End-to-end SE preservation for arbitrary finite revelation sequences, repeated owners and correlated valid initial bindings, with exact joint typed terminal-state/net-payoff law | `Vegas/Game/RevealServiceCompilation.lean` |
+| Two ready canonical opening times give different remembered pending observations despite equal final public states and equal phase/ledger traffic-audit records; this is an information distinction, not an SE impossibility | `VegasTests/OpeningTimingChannel.lean` |
 | An actual unusable binding and a valid binding followed by withholding have equal public audit transcripts, so a sound public audit cannot distinguish them | `VegasTests/UnusableBindingAudit.lean` |
 | From an arbitrary residual source belief, behavioral deviations using unusable bindings admit value-only continuation mixtures with the same joint parameter/result law and a conditional best-response comparator | `Vegas/Source/ValueBindingContinuation.lean` |
 | Completing a sequential event starts its successor's deadline at the actual completion time; local early and expiry branches both admit increasing deadlines | `Vegas/Pending/EventSequentialTiming.lean` |
@@ -207,6 +213,17 @@ valid commitments, ideal evidence and collectible deductions remain explicit
 assumptions. The result covers neither fresh source commitments nor arbitrary
 reveal sequences, and it retains source withholding. See the
 [response and scope audit](docs/research/monitored-response-coverage.md).
+
+The [general revelation theorem](Vegas/Game/RevealServiceCompilation.lean)
+covers arbitrary finite reveal sequences, including repeated owners, correlated
+valid initialization, and arbitrary typed terminal utilities with zero watcher
+utility. A single game and deposit vector, computed mathematically from finite
+watched-history payoff extrema and positive coverage, preserve every original
+source SE and its joint typed terminal-state/net-payoff law. This is the full
+bounded raw response menu at the service's specified activations. Arbitrary
+intervening activations and fresh source commitments remain open. It is forward
+existence, with a noncomputable consistent completion; it does not assert
+reflection, unique target equilibria or a fixed playerwise completion algorithm.
 
 The [selective-association comparison](docs/selective-association-proof-contract.md)
 keeps the compiled application, service calendar, deadlines, selector and full
