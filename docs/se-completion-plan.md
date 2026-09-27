@@ -207,12 +207,15 @@ available opening gains at most twice its player's bound, because
 source histories' finiteness is an instance argument, as it already is for
 the source SE in the hypothesis. This closes S3, S4 and S5 together.
 
-### M7. E1 composition (S)
+### M7. E1 composition (checked)
 
-Compose M6 with R4 as described under Target. Check that `rosters`,
-`opportunities` (the E1 statement takes `ActorOpportunities`; R4 takes its
-`ActorOpportunities.binding` projection) and the deposit agree. Pin the theorem in `Paper.lean`
-as a delegating restatement.
+`SourceServiceSpec.audited_raw_sequentialEquilibrium_preserved`
+([SourceServiceCompilation](../Vegas/Game/SourceServiceCompilation.lean))
+composes M6 with R4 for one `SourceServiceSpec`. R4 takes its rosters, network,
+bounds and `ActorOpportunities.binding` projection; the S5 utility is the
+parameter-and-public-outcome utility on `sourceReadout`, so it is R4's
+`RevealService.baseUtility`. `Paper.lean` restates it as
+`Vegas.Paper.source_audited_raw_sequential_equilibrium` with its axiom pin.
 
 ### M8. E2 validation and claims (M)
 
@@ -227,7 +230,7 @@ as a delegating restatement.
 
 ## Ordering
 
-M1–M6 are checked. The critical path is M7 → M8.
+M1–M7 are checked. What remains is M8.
 
 Parallel lanes must not run Lake builds concurrently. A build deletes the
 oleans it replaces, so a concurrent check fails on missing imports. A separate

@@ -30,7 +30,10 @@ compiled profile, including fresh bindings, chance, correlated private inputs
 and guarded disclosure. Its
 [source-to-permitted-runtime SE theorem](../Vegas/Game/SourceServiceEquilibrium.lean)
 is checked. The permitted-to-full-runtime SE extension is checked, including actual
-conditional incentives, off-path completion and raw response aliases.
+conditional incentives, off-path completion and raw response aliases. Their
+[composition](../Vegas/Game/SourceServiceCompilation.lean) preserves every
+source SE of the full language in the audited bounded raw runtime, with the
+joint law of initial parameters, public outcome and realized settlement.
 
 ### Source beliefs and sequential incentives
 

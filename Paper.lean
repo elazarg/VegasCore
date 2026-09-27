@@ -8,6 +8,7 @@ import Vegas.Game.RevealServiceCompilation
 import Vegas.Game.RevealServiceAuditCompilation
 import Vegas.Game.RevealServiceRosterCompilation
 import Vegas.Game.SourceServiceRawExtension
+import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.RevealServiceSignedCompilation
 import Vegas.Game.RevealServiceReplayExtension
 import Vegas.Game.BindingRepairBlock
@@ -835,6 +836,82 @@ theorem declared_payoff_sequential_separation (Claim : Type) [Fintype Claim]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.declared_payoff_sequential_separation
+
+/-! ## Full-language sequential equilibrium
+
+The native service, the audit backend and the deposit are fixed before a
+source equilibrium is chosen. The statement retains bounded interaction and a
+finite response interface; it asserts no cryptographic or EVM refinement.
+-/
+
+open Vegas.SourceProgram Vegas.SourceProgram.RevealService Vegas.EventGraphRuntime
+  GameTheory.Protocol GameTheory.Enforcement in
+/-- Every original sequential equilibrium of the full source language has a
+sequential equilibrium of the audited bounded raw runtime with the source joint
+law of initial parameters, public outcome and payoff, the payoff realized as
+settlement. The authentic partial audit and positive conditional coverage are
+explicit service assumptions. -/
+theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
+    {Parameter : Type} (service : SourceServiceSpec Player L)
+    (parameter : State L service.setup.context → Parameter)
+    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
+    (sample : List (EnvelopeEvidence service.setup service.leaks) →
+      FinDist (List (EnvelopeEvidence service.setup service.leaks)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
+    (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
+      (runtime service.setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
+      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
+    (source : (service.setup.informationModel
+      (CommitmentInterface.values service.setup.program)).BehavioralAssessment)
+    [∀ who (site : (service.setup.informationModel
+      (CommitmentInterface.values service.setup.program)).InformationSite who),
+      Fintype ((service.setup.informationModel
+        (CommitmentInterface.values service.setup.program)).InformationHistory who site.1)]
+    (equilibrium : source.IsSequentialEquilibriumFor
+      (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
+      (fun who site => source.continuationContext site
+        (fun final => (service.setup.protocolReadout final.state).elim 0
+          (fun state => utility (service.setup.parameterOutcome parameter state) who))
+        (instructionCount service.setup.program + 1))) :
+    let raw := service.bounds.rawMenu (runtime service.setup) service.leaks
+    let base := baseUtility service.setup service.leaks
+      (fun state => utility (service.setup.parameterOutcome parameter state))
+    let deposit := rosterAuditDeposit service.setup service.leaks service.bounds service.rosters
+      service.network base (fun owner => min (probability owner) 1)
+    let payoff := TerminalAudit.utility base
+      ((runtime service.setup).serviceAuditObservation service.leaks)
+      (sourceServiceAudit service.setup service.leaks sample) deposit
+    let settle := TerminalAudit.settlement base
+      ((runtime service.setup).serviceAuditObservation service.leaks)
+      (sourceServiceAudit service.setup service.leaks sample) deposit
+    ∃ target : (raw.information (initialLaw service.setup) service.planLength
+        service.scheduler).BehavioralAssessment,
+      target.IsSequentialEquilibriumFor
+        (raw.decisionInformationAntichain (initialLaw service.setup) service.planLength
+          service.scheduler)
+        (fun who site => target.continuationContext site
+          (fun history => payoff history.state who) service.fuel) ∧
+      ((raw.information (initialLaw service.setup) service.planLength
+          service.scheduler).runBehavioral target.strategy service.fuel).bind
+          (fun final => (settle final.state).map (fun payoffs =>
+            ((sourceReadout service.setup service.leaks final.state).map
+              (service.setup.parameterOutcome parameter), payoffs))) =
+        ((service.setup.informationModel
+          (CommitmentInterface.values service.setup.program)).runBehavioral source.strategy
+            (instructionCount service.setup.program + 1)).map
+              (fun final => ((service.setup.protocolReadout final.state).map
+                (service.setup.parameterOutcome parameter),
+                fun who => (service.setup.protocolReadout final.state).elim 0
+                  (fun state => utility (service.setup.parameterOutcome parameter state)
+                    who))) :=
+  service.audited_raw_sequentialEquilibrium_preserved parameter utility sample authentic
+    probability positive coverage source equilibrium
+
+/-- info: 'Vegas.Paper.source_audited_raw_sequential_equilibrium' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_audited_raw_sequential_equilibrium
 
 /-! ## Runtime feature investigation
 

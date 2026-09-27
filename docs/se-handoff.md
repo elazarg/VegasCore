@@ -2,10 +2,11 @@
 
 ## Read this first
 
-The full-language end-to-end theorem is **not proved**. The fixed completion
-ledger is [se-proof-checklist.md](se-proof-checklist.md): S1–S5 and R1–R4 are
-checked; E1–E2 remain open. What remains is composing S5 with R4 and
-validating the result.
+The full-language end-to-end theorem is proved; its validation and claims
+audit is not complete. The fixed completion ledger is [se-proof-checklist.md](se-proof-checklist.md): S1–S5 and R1–R4 are
+checked, and E1 composes them
+(`Vegas.Paper.source_audited_raw_sequential_equilibrium`). E2, the validation
+and claims audit, remains open.
 Do not create new milestone boxes for helper lemmas or close existing boxes
 using conditional theorems with unproved compiler premises.
 
@@ -146,8 +147,8 @@ disclosure events (`TimedApproximant.foreign_binding_comparison_eq`,
 `TimedApproximant.foreign_disclosure_comparison_eq`), and owner visits after a
 recorded binding or opening (`TimedApproximant.recorded_comparison_eq`,
 `TimedApproximant.recorded_disclosure_comparison_eq`). The
-[completion plan](se-completion-plan.md) orders the remaining work: E1
-composition and E2 validation. Without an available opening the
+[completion plan](se-completion-plan.md) orders the remaining work: E2
+validation. Without an available opening the
 owner's disclosure site has zero gain
 (`TimedApproximant.absent_opening_comparison_eq`); with one, it gains at most
 the source comparison error divided by the remaining timing mass

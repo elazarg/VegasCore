@@ -149,10 +149,18 @@ percentage estimate.
 
 ## End-to-end closure
 
-- [ ] **E1. Compose the full compiler theorem.** Compose S5 and R4 for the fixed
+- [x] **E1. Compose the full compiler theorem.** Compose S5 and R4 for the fixed
   target above. Its public statement quantifies over every source SE and leaves
   only the stated source, utility and backend assumptions. Check that shared
-  parameters, readouts and deposits agree across the composition.
+  parameters, readouts and deposits agree across the composition. Evidence:
+  `SourceServiceSpec.audited_raw_sequentialEquilibrium_preserved` in
+  [SourceServiceCompilation.lean](../Vegas/Game/SourceServiceCompilation.lean),
+  restated and pinned in `Paper.lean` as
+  `Vegas.Paper.source_audited_raw_sequential_equilibrium`. One
+  `SourceServiceSpec` supplies both edges: R4 takes its rosters, network,
+  bounds and the binding projection of its opportunities; the observed result
+  is the parameter and public-outcome readout, invariant under normalization
+  (`sourceParameterReadout_normalization`).
 
 - [ ] **E2. Validate and audit the delivered claim.** Integrate the proof into
   the build roots; pass the warning-strict build and repository proof/document
