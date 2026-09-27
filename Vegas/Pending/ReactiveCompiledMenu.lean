@@ -174,6 +174,34 @@ theorem silence_compiled (who : Player)
   · rw [bounds.menu_mem]
     exact ⟨trivial, rfl⟩
 
+/-- Every response using only already known envelopes is retained, regardless
+of whether the envelope is still pending or has already been published. -/
+theorem replay_compiled (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (supported : response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support) :
+    response ∈ bounds.compiledActions runtime leaks who past view := by
+  classical
+  apply Finset.mem_inter.mpr
+  refine ⟨Finset.mem_union_right _ (FinDist.mem_supportFinset.mpr supported), ?_⟩
+  let app := runtime.reactiveApplication leaks
+  obtain ⟨selected, member, rfl⟩ := FinDist.support_map .. ▸ supported
+  have selectedIn := (FinDist.mem_support_uniformSet_iff _ _ _).mp member
+  cases selected with
+  | none =>
+      rw [bounds.menu_mem]
+      exact ⟨trivial, rfl⟩
+  | some id =>
+      apply bounds.known_replay_available runtime leaks who past view id
+      have found : id ∈ (app.outputs past ++ view.messages.leaked ++ view.messages.ledger).map
+          Message.id := by
+        simpa only [ReactiveApplication.replayOptions, Finset.mem_insert, Option.some_ne_none,
+          false_or, Finset.mem_image, Finset.mem_coe, List.mem_toFinset, Option.some.injEq,
+          exists_eq_right] using selectedIn
+      obtain ⟨message, member, same⟩ := List.mem_map.mp found
+      exact ⟨message, member, same⟩
+
 theorem compiledActions_nonempty (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :

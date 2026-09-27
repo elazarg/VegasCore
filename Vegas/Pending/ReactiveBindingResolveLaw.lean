@@ -24,40 +24,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {memory : BindingMemory runtime leaks} {owner : Player}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
 
-private theorem replay_retained (bounds : MessageBounds graph)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (supported : response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support)
-    (available : response ∈ (bounds.menu runtime leaks).actions owner past view) :
-    response ∈ bounds.compiledActions runtime leaks owner past view := by
-  classical
-  exact Finset.mem_inter.mpr ⟨Finset.mem_union_right _
-    (FinDist.mem_supportFinset.mpr supported), available⟩
-
-private theorem replay_effective (bounds : MessageBounds graph)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (supported : response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support) :
-    response ∈ (bounds.menu runtime leaks).actions owner past view := by
-  let app := runtime.reactiveApplication leaks
-  obtain ⟨selected, member, rfl⟩ := FinDist.support_map .. ▸ supported
-  have selectedIn := (FinDist.mem_support_uniformSet_iff _ _ _).mp member
-  cases selected with
-  | none =>
-      rw [bounds.menu_mem]
-      exact ⟨trivial, rfl⟩
-  | some id =>
-      apply bounds.known_replay_available runtime leaks owner past view id
-      have found : id ∈ (app.outputs past ++ view.messages.leaked ++ view.messages.ledger).map
-          Message.id := by
-        simpa only [ReactiveApplication.replayOptions, Finset.mem_insert, Option.some_ne_none,
-          false_or, Finset.mem_image, Finset.mem_coe, List.mem_toFinset, Option.some.injEq,
-          exists_eq_right] using selectedIn
-      obtain ⟨message, member, same⟩ := List.mem_map.mp found
-      exact ⟨message, member, same⟩
-
 omit [Fintype Player] in
 /-- The exact canonical physical response preserves the repaired frame; the
 certificate can use owned issuance or any semantic forwarding representative. -/
@@ -200,8 +166,7 @@ theorem resolve_response_coupling
         (repaired.observe app owner) := by
     rcases clean response supported with replay | ⟨value, stored, resolved, same, first⟩
     · rw [replayLaw] at replay
-      exact replay_retained bounds _ _ response replay (replay_effective bounds _ _ _
-        replay)
+      exact bounds.replay_compiled runtime leaks owner _ _ response replay
     · exact frame.successful_serviceDecision_retained bounds leftRecall rightRecall leftBinding
         rightBinding event payload binding checks outputEq codeEq node granted actor ready timely
           value stored resolved response same (available response supported) first

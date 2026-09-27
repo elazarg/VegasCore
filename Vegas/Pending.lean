@@ -2,6 +2,8 @@
 
 import Vegas.Pending.ReactiveSubmissionRecall
 import Vegas.Pending.ReactiveSubmissionSerial
+import Vegas.Pending.ReactiveServiceConformance
+import Vegas.Pending.ReactiveBindingWindowLaw
 import Vegas.Pending.ReactiveBindingSubmissionFrame
 import Vegas.Pending.ReactiveBindingTranscript
 import Vegas.Pending.ReactiveReplaySettlement

@@ -258,6 +258,15 @@ objective. The remaining proof obligations are:
    [serial evidence](../../Vegas/Pending/ReactiveSubmissionSerial.lean)
    connects first-event recall to the public next-envelope serial during a
    clean single-event phase, without requiring complete pending observation.
+   The [public phase checker](../../Vegas/Pending/ReactiveServiceConformance.lean)
+   admits the first canonical opaque binding, independently of hidden material,
+   and the current certified opening whose public guards succeed. Its phase
+   classification supplies the packet branches; the stopped whole-run proof
+   must still derive its evidence and collection probability.
+   The [terminal comparison](../../GameTheoryExtensions/Analysis/Protocol/TerminalAuditCoupling.lean)
+   turns a coupled execution law into an inequality between actual randomized
+   settlements when the bounded departure gain is covered by incremental
+   collection. It does not construct the coupling or the audit coverage.
 
 The compiler must fix its service, alphabet, conformance rules and deposit
 before selecting an equilibrium. No source-level flag for a backend mechanism

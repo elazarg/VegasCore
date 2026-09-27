@@ -22,6 +22,10 @@ import Vegas.Game.SourceServiceMenu
 import Vegas.Game.SourceServiceBindingWindow
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Game.SourceServiceCandidateObservation
+import Vegas.Game.SourceServiceCandidateStep
+import Vegas.Game.SourceServiceBindingRoster
+import Vegas.Game.SourceServiceRosterPolicy
+import Vegas.Game.SourceServiceWaiting
 import Vegas.Game.SourceServiceDisclosure
 import Vegas.Game.SourceServiceDisclosurePosterior
 import Vegas.Game.SourceServiceDisclosureMemory

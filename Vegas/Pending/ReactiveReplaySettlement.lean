@@ -70,26 +70,25 @@ theorem replay_window_preserves (runtime : EventGraphRuntime graph)
       response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
     (safe : Message Player (WitnessedPacket graph) → Prop)
     (packets : initial.network.Satisfies safe)
-    (message : Message Player (WitnessedPacket graph)) (pending : message ∈ initial.network.pending)
     (roster : List Player) (final : (runtime.reactiveApplication leaks).Execution)
     (reached : final ∈ (runtime.runInteractionPlan leaks players network
       (roster.map ServiceInstruction.player) initial).support) :
     final.application = initial.application ∧ final.network.ledger = initial.network.ledger ∧
       final.receipts = initial.receipts ∧ final.network.nextSerial = initial.network.nextSerial ∧
-      final.network.Satisfies safe ∧ message ∈ final.network.pending := by
+      final.network.Satisfies safe ∧ initial.network.pending ⊆ final.network.pending := by
   let app := runtime.reactiveApplication leaks
   suffices ∀ (current : (runtime.reactiveApplication leaks).Execution),
       current.application = initial.application →
       current.network.ledger = initial.network.ledger → current.receipts = initial.receipts →
       current.network.nextSerial = initial.network.nextSerial →
       initial.recall owner ⊆ current.recall owner → current.network.Satisfies safe →
-      message ∈ current.network.pending →
+      initial.network.pending ⊆ current.network.pending →
       final ∈ (runtime.runInteractionPlan leaks players network
         (roster.map ServiceInstruction.player) current).support →
       final.application = initial.application ∧ final.network.ledger = initial.network.ledger ∧
         final.receipts = initial.receipts ∧ final.network.nextSerial = initial.network.nextSerial ∧
-        final.network.Satisfies safe ∧ message ∈ final.network.pending from
-    this initial rfl rfl rfl rfl (List.Subset.refl _) packets pending reached
+        final.network.Satisfies safe ∧ initial.network.pending ⊆ final.network.pending from
+    this initial rfl rfl rfl rfl (List.Subset.refl _) packets (List.Subset.refl _) reached
   clear reached
   induction roster with
   | nil =>
@@ -112,7 +111,7 @@ theorem replay_window_preserves (runtime : EventGraphRuntime graph)
       exact ih (activated.respond app who response) (data.1.trans application)
         (data.2.1.trans ledger) (data.2.2.1.trans receipts) (data.2.2.2.1.trans counters)
         (List.Subset.trans recalled (app.respond_recall_mono activated who owner response))
-        data.2.2.2.2.1 (data.2.2.2.2.2 present) supported
+        data.2.2.2.2.1 (List.Subset.trans present data.2.2.2.2.2) supported
 
 /-- Published traffic and copies of one unspent canonical envelope cannot
 redirect reserved inclusion to a different identifier. -/
@@ -173,8 +172,9 @@ theorem replay_window_selection (runtime : EventGraphRuntime graph)
     runtime.reactiveLatest leaks event owner
         (final.observeEnvironment (runtime.reactiveApplication leaks)) = .include message.id ∧
       final.network.lookup message.id = some message := by
-  obtain ⟨_, ledger, _, _, valid, present⟩ := runtime.replay_window_preserves leaks players network
-    owner initial responses _ packets message pending roster final reached
+  obtain ⟨_, ledger, _, _, valid, retained⟩ := runtime.replay_window_preserves leaks players network
+    owner initial responses _ packets roster final reached
+  have present := retained pending
   have unspent : message.id ∉ final.network.ledger.map Message.id := by rwa [ledger]
   have safe : ∀ packet ∈ final.network.pending,
       packet.id ∈ final.network.ledger.map Message.id ∨ packet = message := by
@@ -236,7 +236,7 @@ theorem replay_window_settlement (runtime : EventGraphRuntime graph)
   obtain ⟨current, prior, included⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ runSupport)
   obtain ⟨application, ledger, receipts, counters, _, _⟩ :=
     runtime.replay_window_preserves leaks players network owner initial responses _ packets
-      message pending roster current prior
+      roster current prior
   obtain ⟨selected, found⟩ := runtime.replay_window_selection leaks players network owner initial
     responses event message authored addressed packets pending unpublished roster current prior
   simp only [runInteractionPlan, FinDist.bind_pure, interactionStep, interactionInstruction,

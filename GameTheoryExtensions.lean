@@ -1,5 +1,6 @@
 import GameTheory.Core.MixtureSimulationComposition
 import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
+import GameTheoryExtensions.Analysis.Protocol.TerminalAuditCoupling
 import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
 import GameTheoryExtensions.Math.Probability.FinDist
 import GameTheoryExtensions.Math.Probability.Tremble

@@ -1,0 +1,120 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceMenu
+import Vegas.Game.SourceServicePolicy
+
+/-! # A full-source policy on arbitrary finite service rosters
+
+Each source decision is made at its last owner opportunity. Earlier and later
+visits retain the native replay policy. Source withholding is represented by
+silence or a known-envelope replay. The policy uses only existing local input;
+the roster is a fixed compiler parameter, not a hidden scheduler cursor.
+
+This is the limiting physical policy. Coverage at reached checkpoints and
+fully mixed timing approximants are separate proofs. Guarded private-intention
+aliases require the existing normalized source policy and its memory law in
+the multi-phase correspondence.
+-/
+
+noncomputable section
+
+namespace Vegas.SourceProgram.RevealService
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+
+open Classical in
+def sourceServiceLastPolicy (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (profile : BehavioralProfile setup.program) (who : Player) :
+    (application setup leaks).Policy := fun past view =>
+  match view.application.publicView.serviceGrant with
+  | none => (application setup leaks).replayPolicy past view
+  | some event =>
+      if (graph setup).actor? event = some who ∧
+          (runtime setup).eventRecorded leaks past event = false ∧
+          past.length + 1 = rosterOffset setup rosters who event + (rosters event).count who then
+        (sourceServicePolicy setup leaks profile who past view).bind fun response =>
+          if response.transmission = none then
+            (application setup leaks).replayPolicy past view
+          else FinDist.pure response
+      else (application setup leaks).replayPolicy past view
+
+/-- A response count outside the final owner opportunity uses the original
+native replay law, including its actual known pending envelopes. -/
+theorem sourceServiceLastPolicy_wait
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
+    (granted : view.application.publicView.serviceGrant = some event)
+    (waiting : (graph setup).actor? event ≠ some who ∨
+      (runtime setup).eventRecorded leaks past event = true ∨
+      past.length + 1 ≠ rosterOffset setup rosters who event + (rosters event).count who) :
+    sourceServiceLastPolicy setup leaks rosters profile who past view =
+      (application setup leaks).replayPolicy past view := by
+  classical
+  unfold sourceServiceLastPolicy
+  rw [granted]
+  apply ite_eq_right
+  intro selected
+  rcases waiting with foreign | recorded | earlier
+  · exact foreign selected.1
+  · simp only [recorded, Bool.true_eq_false] at selected
+    exact selected.2.1
+  · exact earlier selected.2.2
+
+/-- At the final unsent opportunity, only the silent branch of the actual
+source compiler is split into harmless transport aliases. -/
+theorem sourceServiceLastPolicy_at_last
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
+    (granted : view.application.publicView.serviceGrant = some event)
+    (owned : (graph setup).actor? event = some who)
+    (unsent : (runtime setup).eventRecorded leaks past event = false)
+    (last : past.length + 1 = rosterOffset setup rosters who event + (rosters event).count who) :
+    sourceServiceLastPolicy setup leaks rosters profile who past view =
+      (sourceServicePolicy setup leaks profile who past view).bind (fun response =>
+        if response.transmission = none then
+          (application setup leaks).replayPolicy past view else FinDist.pure response) := by
+  classical
+  unfold sourceServiceLastPolicy
+  rw [granted]
+  exact ite_eq_left ⟨owned, unsent, last⟩
+
+/-- A source kernel containing only real submissions is unchanged at its
+selected opportunity. In particular legal value-only binding kernels satisfy
+this premise by the actual compiler's checked binding-support theorem. -/
+theorem sourceServiceLastPolicy_submissions
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
+    (granted : view.application.publicView.serviceGrant = some event)
+    (owned : (graph setup).actor? event = some who)
+    (unsent : (runtime setup).eventRecorded leaks past event = false)
+    (last : past.length + 1 = rosterOffset setup rosters who event + (rosters event).count who)
+    (submits : ∀ response ∈ (sourceServicePolicy setup leaks profile who past view).support,
+      response.transmission ≠ none) :
+    sourceServiceLastPolicy setup leaks rosters profile who past view =
+      sourceServicePolicy setup leaks profile who past view := by
+  classical
+  rw [sourceServiceLastPolicy_at_last setup leaks rosters profile who past view event
+    granted owned unsent last]
+  conv_rhs => rw [← FinDist.bind_pure (sourceServicePolicy setup leaks profile who past view)]
+  apply FinDist.bind_congr
+  intro response supported
+  exact ite_eq_right (submits response supported)
+
+end Vegas.SourceProgram.RevealService
