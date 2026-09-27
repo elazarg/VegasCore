@@ -186,4 +186,46 @@ theorem roster_runJoint_append_reserved
   rw [joint_position implementation owner players (rosterScheduler setup leaks rosters network)
     leading.length execution memory next supported, position, List.length_append]
 
+/-- Split the actual joint runner at an owner's next scheduled response.
+The preceding segment may contain arbitrary instructions, including earlier
+owner responses: its complete execution and memory distribution is retained. -/
+theorem roster_runJoint_at_owner
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (network : (runtime setup).NetworkPolicy leaks)
+    {Memory : Type} (implementation : (application setup leaks).Implementation Memory)
+    (owner : Player) (players : Player → (application setup leaks).Policy)
+    (before leading rest after : List (ServiceInstruction (graph setup)))
+    (split : rosterPlan setup rosters = before ++ leading ++ (.player owner :: rest) ++ after)
+    (execution : (application setup leaks).Execution) (memory : Memory)
+    (position : execution.environmentRecall.length = before.length) :
+    implementation.runJoint owner players (rosterScheduler setup leaks rosters network)
+        (leading.length + 1 + rest.length) execution memory =
+      (implementation.runJoint owner players (rosterScheduler setup leaks rosters network)
+        leading.length execution memory).bind fun pair =>
+          (pair.1.environmentStep (application setup leaks) (.activate owner)).bind fun observed =>
+            (implementation.resume owner players (some owner) observed pair.2).bind fun resumed =>
+              implementation.runJoint owner players (rosterScheduler setup leaks rosters network)
+                rest.length resumed.1 resumed.2 := by
+  rw [show leading.length + 1 + rest.length = leading.length + (rest.length + 1) by omega,
+    ReactiveApplication.Implementation.runJoint_add]
+  apply FinDist.bind_congr
+  intro pair supported
+  have cursor := joint_position implementation owner players
+    (rosterScheduler setup leaks rosters network) leading.length execution memory pair supported
+  rw [position] at cursor
+  have arranged : rosterPlan setup rosters =
+      (before ++ leading) ++ .player owner :: (rest ++ after) := by
+    simpa only [List.append_assoc, List.cons_append] using split
+  have selected : (rosterPlan setup rosters)[pair.1.environmentRecall.length]? =
+      some (.player owner) := by
+    rw [cursor, ← List.length_append, arranged,
+      List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]
+    rfl
+  simp only [ReactiveApplication.Implementation.runJoint,
+    ReactiveApplication.Implementation.round, rosterScheduler, selected,
+    interactionInstruction, FinDist.pure_bind, ReactiveApplication.Command.actor?,
+    FinDist.bind_bind]
+
 end Vegas.SourceProgram.RevealService

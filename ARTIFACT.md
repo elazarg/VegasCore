@@ -2,8 +2,8 @@
 
 For sequential-equilibrium results and remaining work, start with the
 [research map](docs/se-preservation-roadmap.md). It distinguishes the checked
-general revelation compiler, the action-restriction theorem, and the remaining
-full-language and activation-schedule obligations.
+general-roster revelation compiler, full-language execution/settlement laws,
+the action-restriction theorem, and the remaining full-language SE obligations.
 The [implementation stack](docs/se-compilation-stack.md) records the checked
 proof edges and explicit assumptions of the source-to-raw theorem.
 
@@ -52,6 +52,11 @@ the subsequent kernel-checked build.
 | Asynchronous pending-message service and arbitrary-player completion | `Vegas/Pending/EventService.lean`, `Vegas/Pending/EventServiceCompletion.lean` |
 | Asynchronous pending-message deviation reduction | `Vegas/Pending/EventDeviationLaw.lean`, `Vegas/Pending/EventStrategicLaw.lean` |
 | Full-source pending-message deviations and Nash correspondence | `Vegas/Game/EventMessageStrategic.lean` |
+| Full-source initialized compiler law, including fresh bindings, sampling and guarded disclosure | `Vegas/Game/SourceServiceLaw.lean` |
+| Authentic partial traffic audit and public binding omissions preserve the full-source joint typed-outcome/realized-settlement law on every admitted compiled profile | `Vegas/Pending/ReactiveServiceAudit.lean`, `Vegas/Game/SourceServiceAudit.lean` |
+| Actual timed binding execution and exact physical policy mixtures | `Vegas/Game/SourceServiceTimedPolicy.lean`, `Vegas/Game/SourceServiceTimedBinding.lean` |
+| Stopped repair through a whole remaining binding roster, with permitted repaired traces and forbidden-record/omission/observation alternatives | `Vegas/Game/SourceServiceBindingWaiting.lean`, `Vegas/Game/SourceServiceStoppedBindingWindow.lean` |
+| Every certificate in a permitted network execution originates in a recorded successful resolution; actual guarded opening aliases agree at an unsent source opportunity | `Vegas/Pending/ReactiveResolutionEvidence.lean`, `Vegas/Game/SourceServiceEvidence.lean` |
 | Initial-parameter/public-result joint laws and Bayesian Nash correspondence | `Vegas/Source/InitialState.lean`, `Vegas/Game/ParameterOutcomes.lean` |
 | Two-player zero-sum source Nash value equals every native coarse-correlated value under the paper service | `Vegas/Game/ZeroSum.lean`, `GameTheoryExtensions/Core/ZeroSum.lean` |
 | Finite decision tables preserve every legal continuation law | `GameTheoryExtensions/Protocol/FiniteInformation.lean` |

@@ -5,11 +5,13 @@ This is the results map and reading guide for SE compilation. The
 mathematics; the [native pilot](research/se-native-pilot.md) contains the checked
 source-to-runtime instance. The general action-restriction theorem and scalar
 deposit inference are checked in Lean. The
-[general revelation compiler](../Vegas/Game/RevealServiceSignedCompilation.lean)
-instantiates the staged theorem end to end for arbitrary finite reveal sequences,
-with repeated owners, correlated valid initial bindings and all source
-withholding choices. Arbitrary activation rosters and fresh source commitments
-remain outside that result.
+[revelation compiler with general rosters](../Vegas/Game/RevealServiceRosterCompilation.lean)
+instantiates the theorem end to end for arbitrary finite reveal sequences,
+with repeated activation opportunities, correlated valid initial bindings,
+partial pending observations and all source withholding choices.
+For the full language, [execution preservation](../Vegas/Game/SourceServiceLaw.lean)
+and [actual settlement preservation](../Vegas/Game/SourceServiceAudit.lean) are
+checked for every admitted profile. Full-language SE preservation remains open.
 The [stack and implementation plan](se-compilation-stack.md) records proof edges
 and the remaining service and language boundaries.
 
@@ -28,12 +30,13 @@ and the remaining service and language boundaries.
 | Reusable monitoring step | A watcher uses ordinary pending observations and replay; public at-most-once inclusion turns the sampling bound into persistent evidence under arbitrary later policies. Reporting a differently addressed packet before the current public event completes records its rejection. |
 | Source correspondence | Service-block induction, replay recall, one common consistency sequence and conditional incentives establish the arbitrary-length revelation theorem. |
 | Harmless public replay extension | Every retained SE extends to a menu permitting auxiliary-player public replays, for arbitrary application-state utilities. Exact continuation laws and all-legal-history counterparts are checked; no fine or reporter indifference is needed for this edge. |
-| General-roster source prefixes | Every actual legal decision starts from an initialized legal source prefix; own recall identifies its depth. The compiled policy has the exact source-prefix state law for arbitrary timing distributions. Full auxiliary coupling includes pending observations, inclusion, ticks and expiry. Multi-phase source beliefs and sequential incentives remain open. |
-| Common roster perturbation | The actual finite compiled profile is admissible at all legal histories. One fully mixed source sequence and positive timing sequence produce fully mixed native profiles converging at every information site, including early-opening histories. This supplies the strategy half of consistency; posterior correspondence and sequential incentives remain. |
-| Fresh commitment blocks | Actual atomic binding and reserved inclusion preserve typed source-store and decoded source-history agreement. Paired blocks carry the source hidden-binding repair invariant and the actual native joint observation law. The stopped native continuation induction remains open. |
+| General-roster revelation SE | Every SE of a reveal-only program with openable initial bindings has a retained-runtime SE and an audited bounded raw-runtime SE with the original joint typed-outcome/settlement law. Every actor has a visit at its event; arbitrary additional finite roster visits are retained. |
+| Full-source execution and settlement | Every admitted profile has its exact typed terminal-state law under the actual compiler, including fresh bindings, chance and guards. Authentic partial traffic auditing plus public omission checks charge no permitted history, so the joint realized-settlement law is preserved. This is not a full-source SE theorem. |
+| Timed binding execution | One physical policy family chooses submission timing and a source value at the selected opportunity. Its actual binding-phase law retains the whole native execution. Guarded timed disclosure, whole-prefix information factorization and local sequential comparisons remain to be composed. |
+| Fresh commitment repair | The stopped coupling covers the whole remaining binding roster, including waiting, repeated visits, protected inclusion and expiry. Every repaired endpoint is a permitted trace; each original endpoint has a forbidden record, a public omission or the required observation relation. Composition across all source constructors remains open. |
 | Guarded source actions | Failed disclosure and withholding can erase different private intentions into the same native behavior. Their SE aggregation must preserve private correlations and a common perturbation sequence. Operational correspondence does not discharge this remaining source-to-retained-runtime gate. |
 | Private-intention normalization | A fixed playerwise behavioral normalizer preserves joint initial parameters and typed outcomes. Supported prefix fibers retract exactly; conditioning gives the actual compressed posterior. Whole deviations lift uniformly over hidden states, and prescribed continuations realize the original private-intention mixture. Assembly with the native common-sequence SE limit theorem remains open. |
-| Required-binding enforcement | Public completion without an accepted handle certifies omission and persists under arbitrary native continuations. The actual protected binding deadline produces this evidence when no required submission arrives. Partial packet samples alone cannot certify omission; the full stopped continuation comparison remains open. |
+| Required-binding enforcement | Public completion without an accepted handle certifies omission under protected inclusion and persists under arbitrary native continuations. The combined terminal service charges once for forbidden traffic or a public omission. Partial packet samples alone cannot certify omission; whole-program incremental charge comparison remains open. |
 
 The central proof is
 [`sequential_equilibrium_extends_of_continuation`](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean).
@@ -75,6 +78,13 @@ continuation completion can depend on the whole source assessment. It therefore
 does not yet supply a fixed playerwise policy compiler, although the native
 guessing pilot has one. Do not claim executable strategy synthesis from a
 noncomputable equilibrium-existence proof.
+
+For full-source guards, the current proof route uses the common-subsequence
+limit theorem. Normalizing erased private intentions involves conditioning;
+at zero-mass effective views its default need not be the limit of normalized
+trembles. Exact initialized compiler laws do not establish pointwise strategy
+convergence there. The intended SE conclusion is existential, with the original
+initialized outcome law, unless a separate fixed-strategy limit proof is given.
 
 The compiler may inspect declared utilities to select deposits. If a theorem
 instead ranges over arbitrary external utilities, it must specify their bounds
@@ -343,19 +353,17 @@ compares such choices once their operational meaning is fixed.
 The [implementation plan](se-compilation-stack.md#implementation-work-packages)
 records the checked revelation-service composition. The remaining priorities are:
 
-1. **General activation rosters.** Retain bounded off-turn transmission and
-   pending observation opportunities. Prove conditional source correspondence
-   for repeated owner opportunities; extra timing recall alone is not an SE
-   impossibility.
-2. **Weaker audit assumptions.** The actual terminal-audit compiler is checked.
-   Reduce its need for broadcaster attribution by allowing harmless public
-   replays at auxiliary opportunities. Original-envelope signatures do not
-   authenticate a rebroadcaster; the current capstone states that oracle
-   requirement explicitly.
-3. **Fresh commitments and guards.** Couple the checked source value-only
-   continuation repair to actual native opponent observations and consistent
-   continuation play. Do not require public detection of a privately unusable
-   binding when it is observationally identical to lawful withholding.
+1. **Full-source sequential incentives.** Compose actual timed binding,
+   guarded disclosure and sampling laws. Recover source posteriors at native
+   decisions along one common fully mixed sequence, then use the existing
+   private-intention comparison and SE limit theorem.
+2. **Whole-program repair.** Compose the binding stopped coupling with all
+   other event constructors and off-turn visits. Keep one legal repair policy
+   for the whole starting belief, with actual permitted endpoint traces.
+3. **Incremental settlement comparison.** Connect persistent forbidden
+   records and public omissions to the combined audit, proving that additional
+   expected collection covers the possible payoff gain. Do not count sunk
+   liability again or assume detection of privately unusable binding material.
 4. **Sharper inference.** Extract rational comparison tables or terminal-only
    payoff bounds after the preceding semantic gates. Exact finite diagnosis
    remains a separate diagnostic project.

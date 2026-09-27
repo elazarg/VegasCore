@@ -8,95 +8,84 @@ final game. Fix the program, service, monitoring rule, utilities and deposits
 before selecting an equilibrium. Preserve the joint initial-type, public-result
 and actual net-payoff law of **every source SE**.
 
-The [signed-audit source-to-raw theorem](../Vegas/Game/RevealServiceSignedCompilation.lean)
-is checked for arbitrary finite revelation sequences under the explicit calendar
-below. It includes repeated owners, correlated valid initial bindings, both
-disclosure choices and arbitrary terminal utilities for every player. Deposits
-are fixed before choosing an equilibrium. The
-[strategic-reporting theorem](../Vegas/Game/RevealServiceCompilation.lean)
-instead uses passive sampling and an indifferent watcher. General activation
-rosters and fresh source commitments remain outside both checked instances.
+### Checked end-to-end scope
 
-The checked extension work has three concrete boundaries:
+The [general-roster revelation theorem](../Vegas/Game/RevealServiceRosterCompilation.lean)
+preserves every source SE for reveal-only programs with openable initial
+bindings. Each actor has at least one visit at its event; arbitrary additional
+finite roster visits, passive partial observations, replay and source
+withholding remain available. Authentic signed phase evidence, positive
+conditional monitoring coverage and collectible deposits are explicit service
+assumptions. The conclusion is existence of a bounded raw-runtime SE with the
+same joint typed source outcome and actual settlement law.
 
-- [`replay_equilibrium_extends`](../Vegas/Game/RevealServiceReplayExtension.lean) restores harmless
-  public rebroadcasts without punishment. It preserves arbitrary
-  application-state utilities and actual continuation laws. The signed-audit
-  compiler composes this edge with terminal enforcement. Its evidence records
-  phase, prior ledger and signed envelope, without a broadcaster field.
-- [`openingWindow_settlement`](../Vegas/Pending/ReactiveOpeningSettlement.lean) evaluates an arbitrary
-  finite activation roster followed by protected inclusion. The selected
-  opening has its exact initial application effect; withholding has none.
-  All retained packet identifiers are published afterward, including leaked
-  copies. Exact ledger, receipt and allocation-counter laws, typed source
-  completion, one total roster policy, and support classification for arbitrary
-  permitted policies are checked. The concrete roster scheduler evaluates the
-  same runtime; actual response counts determine policy offsets. The initialized
-  all-phase induction gives a legal source prefix, its decoder, public checkpoint
-  and published packet identifiers for every permitted policy. Every actual
-  legal decision, including off-path decisions, starts at such a source prefix;
-  own response counts determine its depth without exposing scheduler memory.
-  The compiled policy has the exact source-prefix state law for any timing
-  distribution. Full auxiliary transcript coupling includes protected inclusion,
-  ticks and expiry. The actual finite compiled profile is admissible at every
-  legal history. A single fully mixed source sequence and positive timing
-  sequence give fully mixed native profiles converging to that profile at
-  every information site, including early-opening histories. Conditional owner
-  timing posteriors are checked. The initialized whole-program traffic law is
-  conditionally independent of hidden source state given the focal source view
-  at each completed prefix. Within-phase source-belief correspondence and SE
-  incentives remain open.
-- [`reactive_commit_repair`](../Vegas/Game/BindingRepairBlock.lean) carries the typed source repair
-  invariant through actual fresh native binding and inclusion. The native joint
-  law and repaired-prefix induction step are checked. The stopped-run
-  continuation repair needed by the general restriction theorem remains open.
+The full language has checked
+[initialized execution laws](../Vegas/Game/SourceServiceLaw.lean) and
+[settlement laws](../Vegas/Game/SourceServiceAudit.lean) for every admitted
+compiled profile, including fresh bindings, chance, correlated private inputs
+and guarded disclosure. Its SE theorem is still open. The proof has two
+remaining chains, described below; a terminal-law theorem does not discharge
+either chain by itself.
 
-Guarded source programs also require a strategic proof for erased private
-reveal intentions. A rejected disclosure and withholding can have identical
-public effects while leaving different owner recall. Their operational
-equivalence alone does not prove SE preservation. The general theorem must
-carry private randomization and one common consistent perturbation sequence
-through that erasure, with utilities depending on initial types and public
-outcomes. The owner-local normalization and one finite policy mixture shared
-across a whole starting belief are checked. A fixed playerwise behavioral
-normalizer now preserves joint initial parameters and typed terminal states.
-The actual source-prefix disintegration restores only the focal player's
-private original intentions, with observation-local posterior weights. Its
-supported fibers retract exactly, and conditioning actual prefix laws gives
-the correct compressed posterior. Whole deviations lift to one admitted
-original policy per original private observation, uniformly over hidden
-configurations. Prescribed continuations realize the same private-intention
-mixture at every supported prefix. For normalization of one focal player, the
-actual prescribed and deviating conditional laws use exactly the same finite
-mixture of original information views and legal deviations. Transport of
-other players' incentives and finite composition of these normalizations
-remain open. The generic limit theorem accepts
-perturbation-dependent continuation simulations and proves SE from vanishing
-uniform source regret. These operational laws still need to instantiate that
-limit theorem together with the native compiler's common perturbations.
+### Source beliefs and sequential incentives
 
-Required commitments introduce a separate enforcement case: a player can omit
-the submission without emitting forbidden traffic. A public deadline obligation
-must inspect acceptance under a protected timely-inclusion contract. Absence
-from a partial audit is insufficient. The checked public omission detector
-recognizes a completed binding with no accepted handle, and its evidence
-survives arbitrary native continuations. Accepted unusable handles require the
-separate checked owner-memory repair, including absent or mistyped private
-material. Public completion counts identify the canonical fresh handle, and
-the allocation invariant survives bindings by every player. Effective bounded
-binding responses have an exhaustive classification: legal typed value,
-privately unusable material with the canonical packet, visible packet
-departure, or omission. The complete protected binding block preserves the
-reconstructed owner input and the joint opponent/public frame. The full
-stopped continuation comparison is still open.
-Before the final required opportunity,
-waiting must either remain permitted or receive a proved whole-continuation
-comparison. For guarded reveals, acceptance of an opening packet alone is also
-insufficient: permitted disclosure must pass the publication guard. These are
-full-source checker and continuation gates, not additional source constructs.
+The actual compiler policy implements the full source program on the existing
+runtime. [Timed policies](../Vegas/Game/SourceServiceTimedPolicy.lean) choose
+an owner opportunity using a common timing law and select the source action
+there; this introduces no represented private scratch state. The
+[timed binding phase](../Vegas/Game/SourceServiceTimedBinding.lean) has an exact
+law retaining the whole native execution. Guarded timed disclosure and the
+whole-prefix information fold still need to supply the native local
+continuation comparisons along a common fully mixed sequence.
 
-These are proof relations and restrictions of the existing runtime. They add
-no emitted language, interpreter, source operation, or player-memory model.
+Private-intention normalization has checked posterior and conditional
+continuation comparisons. The
+[assessment comparison](../Vegas/Game/DisclosureAssessment.lean) expresses
+both prescribed and deviating normalized continuations using the same mixture
+of original source information views. The remaining connection is from actual
+native observations to these comparisons, using the checked source-prefix
+recovery and traffic factorization. No posterior correspondence is an assumed
+premise of the intended compiler theorem.
+
+At zero-mass effective views, normalizing erased intentions need not commute
+with limits. Use the existing common-subsequence SE limit theorem for an
+existential target assessment and prove its initialized outcome law. Do not
+infer that the fixed terminal-law compiler is the pointwise SE strategy limit.
+A fixed strategy translation would require a separate proof at those views.
+
+### Raw deviations and actual settlement
+
+The [binding stopped coupling](../Vegas/Game/SourceServiceStoppedBindingWindow.lean)
+handles the whole remaining binding roster: optional waiting, a first opaque
+submission, repeated owner and foreign visits, protected inclusion and expiry.
+Its repaired marginal uses one fixed implementation and every repaired endpoint
+has a permitted trace. Each original endpoint either contains attributed
+forbidden traffic, certifies a missed binding, or preserves the required
+observation relation. Composition with the other event constructors and
+arbitrary off-turn departures remains to be proved.
+
+The [combined audit](../Vegas/Pending/ReactiveServiceAudit.lean) charges once
+for sampled forbidden traffic or a public binding omission. Its source instance
+charges no permitted history. Missing records in a partial sample are never
+omission evidence. A public omission is attributable only under the explicit
+protected timely-inclusion contract. Accepted unusable handles instead use the
+checked owner-memory repair; no public test for privately unusable material is
+assumed.
+
+The final continuation comparison must combine that repair with actual
+incremental collection. It cannot count an already unavoidable charge as a
+fresh deterrent. Its utilities depend on initial types and public results,
+not on the repaired representation of later private binding material.
+
+### Layering
+
+These are proof relations, policy families and restrictions of the existing
+runtime. They add no emitted language, interpreter, source operation or
+player-memory representation. Generic equilibrium and probability arguments
+belong in GameTheoryExtensions; generic reactive execution belongs in
+Interaction; pending-message semantics belongs in Vegas/Pending; source
+correspondence and compiler composition belong in Vegas/Game. The GameTheory
+submodule is not an implementation workspace.
 
 ## Main theorem boundary: audit at settlement
 

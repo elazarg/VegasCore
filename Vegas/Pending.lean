@@ -6,6 +6,8 @@ import Vegas.Pending.ReactiveServiceConformance
 import Vegas.Pending.ReactiveServiceSoundness
 import Vegas.Pending.ReactiveSampleLikelihood
 import Vegas.Pending.ReactiveServiceTraffic
+import Vegas.Pending.ReactiveServiceAudit
+import Vegas.Pending.ReactiveResolutionEvidence
 import Vegas.Pending.ReactiveServiceEvents
 import Vegas.Pending.ReactiveBindingAuditStep
 import Vegas.Pending.ReactiveBindingFinalOmission
