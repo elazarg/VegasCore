@@ -29,15 +29,15 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
   [∀ who (site : N.InformationSite who), Fintype (N.InformationHistory who site.1)]
 
 /-- Local target gains bounded by original-source gain mixtures, up to one
-uniformly vanishing error, construct a single consistent target sequential
-equilibrium. Mixtures may depend on the perturbation, site, and local lottery;
+uniformly vanishing error, preserve sequential rationality at a common consistent
+assessment limit. Mixtures may depend on the perturbation, site, and local lottery;
 the source and target games and utilities remain fixed. An error-bound-only
 branch covers harmless implementation choices with no source decision site.
 
 The bounded target horizon covers completion. The source conclusion is its law
 at the stated source fuel; choosing an adequate source horizon makes this a
 terminal-law theorem. -/
-theorem exists_sequentialEquilibrium_limit_of_local_comparisons
+theorem sequentialEquilibrium_of_local_comparisons_limit
     {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
     (sourceFuel targetFuel : Nat)
     (targetBounded : T.BoundedHorizon targetFuel) (targetRecall : N.DecisionRecall)
@@ -51,8 +51,6 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons
       (fun who history => utility (sourceObserve history) who) sourceFuel)
     (targetSequence : ℕ → N.BehavioralAssessment)
     (targetMixed : ∀ n, (targetSequence n).IsFullyMixed)
-    (targetBayes : ∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
-      targetRecall.antichain)
     (comparisonError : ℕ → ℝ)
     (errorVanishes : Tendsto comparisonError atTop (nhds 0))
     (localComparisons : ∀ n who (site : N.InformationSite who)
@@ -71,17 +69,17 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons
                 sourceComparison.prescribed.expect (utility · who)) + comparisonError n)
     (initialized : ∀ n,
       (N.runBehavioral (targetSequence n).strategy targetFuel).map targetObserve =
-        (M.runBehavioral (sourceSequence n).strategy sourceFuel).map sourceObserve) :
-    ∃ target : N.BehavioralAssessment,
-      target.IsSequentialEquilibriumFor targetRecall.antichain
+        (M.runBehavioral (sourceSequence n).strategy sourceFuel).map sourceObserve)
+    (target : N.BehavioralAssessment) (index : ℕ → ℕ) (increasing : StrictMono index)
+    (targetConverges : BehavioralAssessmentConvergesPointwise
+      (fun n => targetSequence (index n)) target)
+    (consistent : target.IsSequentiallyConsistent targetRecall.antichain) :
+    target.IsSequentialEquilibriumFor targetRecall.antichain
         (fun who site => target.continuationContext site
           (fun history => utility (targetObserve history) who) targetFuel) ∧
       (N.runBehavioral target.strategy targetFuel).map targetObserve =
         (M.runBehavioral source.strategy sourceFuel).map sourceObserve := by
   classical
-  obtain ⟨target, index, increasing, targetConverges, consistent⟩ :=
-    BehavioralAssessment.exists_sequentiallyConsistent_subsequence targetRecall.antichain
-      targetSequence targetMixed targetBayes
   have localOptimal (who : Player) (site : N.InformationSite who)
       (law : FinDist (N.Choice who site.1)) :
       (target.continuationContext site
@@ -143,7 +141,7 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons
       (by simpa only [zero_add, Function.comp_def] using
         (vanishes.add errorVanishes).comp increasing.tendsto_atTop)
       (Eventually.of_forall fun n => targetBound (index n)))
-  refine ⟨target, ⟨?_, consistent⟩, ?_⟩
+  refine ⟨⟨?_, consistent⟩, ?_⟩
   · intro who site
     obtain ⟨depth, common⟩ := targetClock who site
     have within : depth ≤ targetFuel := by
@@ -191,6 +189,69 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons
       _ = ((M.runBehavioral source.strategy sourceFuel).map sourceObserve).prob outcome := by
         rw [← FinDist.expect_prob_pure, FinDist.expect_map]
 
+/-- Local target gains bounded by original-source gain mixtures, up to one
+uniformly vanishing error, construct a single consistent target sequential
+equilibrium. Mixtures may depend on the perturbation, site, and local lottery;
+the source and target games and utilities remain fixed. An error-bound-only
+branch covers harmless implementation choices with no source decision site.
+
+The bounded target horizon covers completion. The source conclusion is its law
+at the stated source fuel; choosing an adequate source horizon makes this a
+terminal-law theorem. -/
+theorem exists_sequentialEquilibrium_limit_of_local_comparisons
+    {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
+    (sourceFuel targetFuel : Nat)
+    (targetBounded : T.BoundedHorizon targetFuel) (targetRecall : N.DecisionRecall)
+    (targetClock : ∀ who (site : N.InformationSite who),
+      ∃ depth, InformationSite.CommonDepth N site depth)
+    (utility : Outcome → Player → ℝ)
+    (source : M.BehavioralAssessment) (sourceSequence : ℕ → M.BehavioralAssessment)
+    (sourceMixed : (sourceSequence 0).IsFullyMixed)
+    (sourceConverges : BehavioralAssessmentConvergesPointwise sourceSequence source)
+    (sourceRational : source.IsSequentiallyRationalWithin
+      (fun who history => utility (sourceObserve history) who) sourceFuel)
+    (targetSequence : ℕ → N.BehavioralAssessment)
+    (targetMixed : ∀ n, (targetSequence n).IsFullyMixed)
+    (targetBayes : ∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
+      targetRecall.antichain)
+    (comparisonError : ℕ → ℝ)
+    (errorVanishes : Tendsto comparisonError atTop (nhds 0))
+    (localComparisons : ∀ n who (site : N.InformationSite who)
+      (law : FinDist (N.Choice who site.1)),
+      let comparison := N.assessmentComparison targetObserve targetFuel (targetSequence n)
+        who (site, ((targetSequence n).strategy who).withLaw site.1 law)
+      comparison.alternative.expect (utility · who) -
+          comparison.prescribed.expect (utility · who) ≤ comparisonError n ∨
+        ∃ mixture : FinDist (M.AssessmentDeviation who),
+          comparison.alternative.expect (utility · who) -
+              comparison.prescribed.expect (utility · who) ≤
+            mixture.expect (fun deviation =>
+              let sourceComparison := M.assessmentComparison sourceObserve sourceFuel
+                (sourceSequence n) who deviation
+              sourceComparison.alternative.expect (utility · who) -
+                sourceComparison.prescribed.expect (utility · who)) + comparisonError n)
+    (initialized : ∀ n,
+      (N.runBehavioral (targetSequence n).strategy targetFuel).map targetObserve =
+        (M.runBehavioral (sourceSequence n).strategy sourceFuel).map sourceObserve) :
+    ∃ target : N.BehavioralAssessment,
+      target.IsSequentialEquilibriumFor targetRecall.antichain
+        (fun who site => target.continuationContext site
+          (fun history => utility (targetObserve history) who) targetFuel) ∧
+      (N.runBehavioral target.strategy targetFuel).map targetObserve =
+        (M.runBehavioral source.strategy sourceFuel).map sourceObserve ∧
+      ∃ index : ℕ → ℕ, StrictMono index ∧
+        BehavioralAssessmentConvergesPointwise (fun n => targetSequence (index n)) target := by
+  classical
+  obtain ⟨target, index, increasing, targetConverges, consistent⟩ :=
+    BehavioralAssessment.exists_sequentiallyConsistent_subsequence targetRecall.antichain
+      targetSequence targetMixed targetBayes
+  have result := sequentialEquilibrium_of_local_comparisons_limit sourceObserve targetObserve
+    sourceFuel targetFuel targetBounded targetRecall targetClock utility source sourceSequence
+    sourceMixed sourceConverges sourceRational targetSequence targetMixed
+    comparisonError errorVanishes localComparisons initialized target index increasing
+    targetConverges consistent
+  exact ⟨target, result.1, result.2, index, increasing, targetConverges⟩
+
 /-- Exact local law-pair simulations are the zero-error case. Both laws must
 use the same mixture of original source comparisons; harmless choices may
 instead preserve their observed continuation law directly. -/
@@ -230,7 +291,9 @@ theorem exists_sequentialEquilibrium_limit_of_local_simulations
         (fun who site => target.continuationContext site
           (fun history => utility (targetObserve history) who) targetFuel) ∧
       (N.runBehavioral target.strategy targetFuel).map targetObserve =
-        (M.runBehavioral source.strategy sourceFuel).map sourceObserve := by
+        (M.runBehavioral source.strategy sourceFuel).map sourceObserve ∧
+      ∃ index : ℕ → ℕ, StrictMono index ∧
+        BehavioralAssessmentConvergesPointwise (fun n => targetSequence (index n)) target := by
   apply exists_sequentialEquilibrium_limit_of_local_comparisons sourceObserve targetObserve
     sourceFuel targetFuel targetBounded targetRecall targetClock utility source sourceSequence
     sourceMixed sourceConverges sourceRational targetSequence targetMixed targetBayes

@@ -9,10 +9,19 @@ bounded raw response menu and passive observation rule. The fixed finite service
 calendar is an explicit restriction on scheduling; arbitrary extra visits are
 not obtained merely by quantifying over all responses at the declared visits.
 
-The checked audit theorem extends any retained roster SE to the full bounded
-raw game and preserves the joint outcome and realized settlement law. Deriving
-that retained SE from an original source SE still requires the continuation
-comparison described below. The complete source-to-runtime theorem is open.
+The [source-to-roster theorem](../../Vegas/Game/RevealServiceRosterEquilibrium.lean)
+preserves every original source SE for reveal-only programs with initially
+openable bindings and at least one owner visit per event. The retained strategy
+is the fixed playerwise compiler. The
+[audited compilation theorem](../../Vegas/Game/RevealServiceRosterCompilation.lean)
+then gives a standard SE of the full bounded raw game, with the same joint typed
+source outcome and realized settlement-payoff law. Its service assumptions are
+the fixed finite roster, protected inclusion, authentic partial terminal audit,
+positive conditional record coverage and collectible deposits. It is a forward
+existence result for the full raw game; it does not identify all native equilibria
+or provide a fixed playerwise off-path raw strategy compiler.
+
+Full-source compilation, including fresh bindings and sampling, remains open.
 
 ## Bounded phase design
 
@@ -36,7 +45,8 @@ menus retain it. Withholding remains legal and must not be fined.
 `RevealServiceRosterMenu` instantiates these retained responses as an existing
 finite response menu. Its inclusion in both the effective and full raw menus,
 and coverage of the prescribed policy at every legal history, are checked.
-The source-to-roster incentive correspondence remains a separate obligation.
+The source-to-roster incentive correspondence is discharged by the local
+comparisons and common limit construction below.
 
 ## Repeated current-owner visits
 
@@ -56,8 +66,8 @@ not be attributed or punished merely for retransmitting the original envelope.
 
 The extra deferral choices and private recall use one common consistency
 construction. Its checked limit waits until the final owner visit on path and
-stops fresh submissions after an earlier opening at an off-path visit. Sequential
-rationality of that limit still requires the local continuation comparison.
+stops fresh submissions after an earlier opening at an off-path visit. The local
+continuation comparison proves sequential rationality of this same fixed limit.
 
 ## Checked phase distribution and deferred-choice algebra
 
@@ -298,18 +308,52 @@ The [common consistency construction](../../Vegas/Game/RevealServiceRosterConsis
 uses one subsequence for all native sites and preserves those belief marginals
 at the fixed limiting policy. No player observes a new scheduler cursor.
 
-The remaining strategic gate is the actual within-phase continuation comparison
-and its composition with the remaining source program. Along the perturbation
+The [phase continuation law](../../Vegas/Game/RevealServiceRosterPhase.lean)
+connects an intermediate window to the original source step and the entire
+remaining source program, with the actual guarded terminal readout. Its finite
+coupling keeps the native final ledger, receipts and serials, so the existing
+public checkpoint applies at the next phase. The
+[local evaluation bridge](../../Vegas/Game/RevealServiceRosterLocalEvaluation.lean)
+identifies one finite-menu response alternative followed by the physical global
+policy, at every legal history and at the standard assessment horizon.
+
+The [initialized finite-profile law](../../Vegas/Game/RevealServiceRosterInitialized.lean)
+preserves the original source profile's complete typed outcome distribution at
+the actual finite assessment horizon. The
+[owner history values](../../Vegas/Game/RevealServiceRosterOwnerHistoryValue.lean)
+identify every local response's continuation value at every legal owner history.
+The [harmless comparison](../../Vegas/Game/RevealServiceRosterHarmlessComparison.lean)
+proves equality of the complete alternative and prescribed outcome laws when
+the player is a nonowner or has already opened. It permits arbitrary native
+beliefs because its proof holds separately at every compatible hidden history.
+
+The [common timing construction](../../Vegas/Game/RevealServiceRosterTiming.lean)
+requires each event owner to appear at least once in its finite roster. A
+positive uniform component provides every opening time; its vanishing weight
+bounds the earlier timing mass at every site. The
+[source payoff range](../../Vegas/Game/RevealSourcePayoffBounds.lean) bounds the
+two source continuation values uniformly over legal histories and assessments.
+It imposes no global boundedness assumption on the source state carrier or
+utility outside reachable source histories.
+
+The strategic proof combines these laws with the owner posteriors and
+the local incentive bounds at every native information site. Along the perturbation
 sequence, conditioning on no earlier opening generally changes the eventual
 disclosure probability. Exact equality with the original source action law at
 every approximant is therefore not a valid premise. The checked
 [local comparison theorem](../../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean)
 allows a uniform incentive error tending to zero, retaining one common sequence.
-The native error and continuation laws still need to be supplied. Nonowners may
-learn the impending publication early; their local alternatives must be proved
-harmless, rather than their information identified with the source's.
+`FinDist.deferredRemaining_error` bounds the conditional probability change by
+the timing mass already passed, uniformly even when the source probability tends
+to one. The [owner incentive comparison](../../Vegas/Game/RevealServiceRosterOwnerIncentives.lean)
+bounds each local native gain by one actual original-source deviation's gain,
+plus this vanishing error. The finite source payoff range bounds the error
+uniformly over all sites and all local alternatives. One common consistent
+assessment limit supplies SE of the fixed compiled profile. Nonowners may learn
+the impending publication early; the harmless comparison justifies their local
+alternatives directly.
 
-General-roster sequential rationality and full-source SE compilation remain open.
-The latter additionally needs the evolving binding/guard checkpoint and stopped
-native continuation comparison described in [se-hidden-binding.md](se-hidden-binding.md).
+Full-source SE compilation remains open. It additionally needs the evolving
+binding/guard checkpoint and stopped native continuation comparison described
+in [se-hidden-binding.md](se-hidden-binding.md).
 No extra sampler restriction is currently assumed or established as necessary.

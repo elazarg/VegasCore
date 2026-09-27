@@ -113,10 +113,12 @@ theorem roster_decision_phase
         (rosterMenu setup leaks bounds rosters).uniformResponses network
         (((rosters event).take slot).map ServiceInstruction.player) granted).support ∧
       control.execution = prior.sampledActivation (application setup leaks) who sample ∧
-      control.execution.application = granted.application := by
+      control.execution.application = granted.application ∧
+      control.execution.environmentRecall.length =
+        (rosterPlanPrefix setup rosters event.val).length + 1 + slot + 1 := by
   let app := application setup leaks
   let menu := rosterMenu setup leaks bounds rosters
-  obtain ⟨event, slot, boundary, prior, selected, _, boundarySupport, phase, activated,
+  obtain ⟨event, slot, boundary, prior, selected, position, boundarySupport, phase, activated,
       initial, initialSupport, state, checkpoint, _, sourceSupport, clean⟩ :=
     roster_decision_source setup leaks bounds rosters network reveals openable
       who control trace active
@@ -136,7 +138,7 @@ theorem roster_decision_phase
     (ReactiveApplication.Execution.initial app nativeInitial) boundary
     MessageNetwork.SerialsBeforeNext.empty reached
   refine ⟨event, slot, granted, prior, sample, initial, state, selected, initialSupport,
-    related, sourceSupport, grant, ?_, ?_, ?_, phase, same.symm, ?_⟩
+    related, sourceSupport, grant, ?_, ?_, ?_, phase, same.symm, ?_, position⟩
   · intro player
     have counts := roster_prefix_response_counts setup leaks rosters network menu.uniformResponses
       event (ReactiveApplication.Execution.initial app nativeInitial) boundary reached player

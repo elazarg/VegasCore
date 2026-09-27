@@ -43,7 +43,7 @@ theorem roster_owner_source_site
         (sourcePrefix? setup event.val control.execution.application.config) ∧
       setup.decisionDepth who site.1 = event.val + 1 := by
   obtain ⟨actual, _, granted, _, _, initial, state, _, initialSupport, related,
-      sourceSupport, grantedAt, _, _, _, _, _, unchanged⟩ :=
+      sourceSupport, grantedAt, _, _, _, _, _, unchanged, _⟩ :=
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
   have same : actual = event := by

@@ -678,6 +678,111 @@ theorem roster_window_posterior
       fun choices full => by
         cases selected <;> simpa only [Nat.zero_add] using exactModes choices full⟩
 
+/-- The actual posterior and settlement frame after one arbitrary retained
+response at a sampled activation. This includes local deviations and retains
+the concrete action and emitted-envelope recall. -/
+theorem roster_response_posterior
+    (initial : (application setup leaks).Execution)
+    (event : (graph setup).EventId) (owner : Player)
+    (granted : initial.application.serviceGrant = some event)
+    (ownedEvent : (graph setup).actor? event = some owner)
+    (candidate : Handle (graph setup)) (raw : Raw L)
+    (opening : rosterOpening? setup leaks owner event
+      (initial.observe (application setup leaks) owner) = some (candidate, raw))
+    (owned : candidate.1 = owner)
+    (valid : initial.application.candidates.lookup candidate = .openable raw)
+    (offset : (initial.recall owner).length = rosterOffset setup rosters owner event)
+    (serials : initial.network.SerialsBeforeNext)
+    (published : initial.network.Satisfies fun message =>
+      message.id ∈ initial.network.ledger.map Message.id)
+    (players : Player → (application setup leaks).Policy)
+    (covered : ∀ who history view response, response ∈ (players who history view).support →
+      response ∈ rosterActions setup leaks bounds rosters who history view)
+    (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
+    (current : (application setup leaks).Execution)
+    (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
+      (visits.map ServiceInstruction.player) initial).support)
+    (who : Player) (sample : Finset (MessageId Player))
+    (action : (application setup leaks).Action)
+    (member : action ∈ rosterActions setup leaks bounds rosters who
+      ((current.sampledActivation (application setup leaks) who sample).recall who)
+      ((current.sampledActivation (application setup leaks) who sample).observe
+        (application setup leaks) who))
+    (within : visits.count owner + (if who = owner then 1 else 0) ≤
+      (rosters event).count owner) :
+    let app := application setup leaks
+    let after := (current.sampledActivation app who sample).respond app who action
+    let count := visits.count owner + if who = owner then 1 else 0
+    ∃ selected : Option (Fin ((rosters event).count owner)),
+      (runtime setup).OpeningWindowFrame leaks owner event candidate raw
+        (rosterOffset setup rosters owner event) selected count initial after ∧
+      (selected.isSome ↔ ∃ entry ∈
+        (after.recall owner).drop (rosterOffset setup rosters owner event),
+          entry.action = (runtime setup).windowOpening leaks event candidate raw) ∧
+      (selected.isSome ↔
+        (∃ entry ∈ (current.recall owner).drop (rosterOffset setup rosters owner event),
+          entry.action = (runtime setup).windowOpening leaks event candidate raw) ∨
+        (owner = who ∧ action = (runtime setup).windowOpening leaks event candidate raw)) ∧
+      ∀ choices : FinDist (Option (Fin ((rosters event).count owner))),
+        ∀ full : choices.FullSupport,
+        ((app.policyMixture choices (fun mode =>
+          app.scheduledPolicy (rosterOffset setup rosters owner event) mode
+            (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+              app.replayPolicy)).posterior (after.recall owner)) =
+          match selected with
+          | none => choices.condOn (ReactiveApplication.remainingOpeningSlots count)
+              ⟨none, True.intro, full none⟩
+          | some slot => FinDist.pure (some slot) := by
+  intro app after count
+  have start := OpeningWindowFrame.initial (runtime setup) leaks owner event candidate raw
+    (none : Option (Fin ((rosters event).count owner))) initial serials published
+  rw [offset] at start
+  have modes : mixtureModes setup leaks rosters owner event candidate raw
+      (none : Option (Fin ((rosters event).count owner))) 0 initial := by
+    intro choices full mode _
+    have exactModes := initial_exact setup leaks rosters initial owner event candidate raw _
+      offset choices full
+    have all : ReactiveApplication.remainingOpeningSlots (slots := (rosters event).count owner)
+        0 = Set.univ := by
+      ext mode
+      cases mode <;> simp [ReactiveApplication.remainingOpeningSlots]
+    rw [exactModes]
+    simp only [all, FinDist.condOn_univ]
+    exact full mode
+  obtain ⟨selected, frame, past, recorded, absent, possible, exactModes⟩ :=
+    frame_run setup leaks bounds rosters initial initial event owner granted ownedEvent
+      candidate raw opening owned valid none 0 start (by simp) (by simp)
+      (by simp only [← offset, List.drop_length, List.not_mem_nil, false_implies, implies_true])
+      modes (initial_exact setup leaks rosters initial owner event candidate raw _ offset)
+      players covered network visits (by omega) current reached
+  obtain ⟨next, nextFrame, _past, nextRecorded, nextAbsent, _possible, nextModes⟩ :=
+    frame_response setup leaks bounds rosters initial (current.sampledActivation app who sample)
+      event owner granted ownedEvent candidate raw opening owned valid selected
+      (0 + visits.count owner)
+      (frame.activate (runtime setup) leaks owner event candidate raw
+        (rosterOffset setup rosters owner event) selected _ initial current who sample)
+      past recorded absent possible exactModes who action member (by omega)
+  have recordedAfter : next.isSome ↔ ∃ entry ∈
+      (after.recall owner).drop (rosterOffset setup rosters owner event),
+        entry.action = (runtime setup).windowOpening leaks event candidate raw := by
+    refine ⟨nextRecorded, ?_⟩
+    intro present
+    cases next with
+    | some slot => rfl
+    | none =>
+        obtain ⟨entry, entryMember, same⟩ := present
+        exact False.elim (nextAbsent rfl entry entryMember same)
+  refine ⟨next, by simpa only [Nat.zero_add] using nextFrame, recordedAfter, ?_, ?_⟩
+  · exact recordedAfter.trans (app.respond_recorded_action
+      (current.sampledActivation app who sample) who owner action
+      ((runtime setup).windowOpening leaks event candidate raw)
+      (rosterOffset setup rosters owner event) (by
+        change rosterOffset setup rosters owner event ≤ (current.recall owner).length
+        rw [frame.count]
+        omega))
+  · intro choices full
+    cases next <;> simpa only [Nat.zero_add] using nextModes choices full
+
 /-- At every permitted phase prefix, every retained owner response receives
 positive probability under a fully supported timing law. The prefix can be
 generated by any retained policies, including early off-path openings. Passive

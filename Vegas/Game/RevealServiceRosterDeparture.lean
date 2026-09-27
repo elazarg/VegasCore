@@ -85,8 +85,19 @@ theorem openingTraffic_roster_normalization
           obtain ⟨ownerEq, _, _, _, _⟩ := linked
           subst owner
           have associated : execution.application.accepted ref.field = some candidate := by
+            change (execution.observe (application setup leaks) who).application.publicView.accepted
+              ref.field = some candidate
+            generalize viewEq : execution.observe (application setup leaks) who = view at opening ⊢
             unfold rosterOpening? at opening
-            simp only [node] at opening
+            rw [node] at opening
+            change (match EventCode.resolveOutput? ref checks true
+                view.application.observation.store with
+              | none => none
+              | some .failure => none
+              | some (.success value) => do
+                  let handle ← view.application.publicView.accepted ref.field
+                  if handle.1 ≠ who then none else some (handle, ⟨payload, value⟩)) =
+                    some (candidate, raw) at opening
             split at opening
             · cases opening
             · cases opening
@@ -151,7 +162,7 @@ theorem roster_extra_traffic (bounds : MessageBounds (graph setup))
         (permittedRosterEnvelope_iff setup leaks record rfl).mp verdict
       · exact (serials.next_unpublished who published).elim
       · obtain ⟨event, slot, granted, prior, sample, initial, state, selected, initialSupport,
-          related, _, grant, _, _, _, _, _, unchanged⟩ :=
+          related, _, grant, _, _, _, _, _, unchanged, _⟩ :=
           roster_decision_phase setup leaks bounds rosters network reveals openable
             who control trace active
         have currentGrant : control.execution.application.serviceGrant = some event := by

@@ -103,7 +103,8 @@ theorem roster_policy_support_exact
   let menu := rosterMenu setup leaks extended rosters
   let decoded := setup.decodeBehavioralProfile admission source.strategy
   obtain ⟨event, slot, granted, prior, sample, initial, state, selected, initialSupport,
-      related, sourceSupport, grant, offset, serials, published, reached, activated, unchanged⟩ :=
+      related, sourceSupport, grant, offset, serials, published, reached, activated,
+      unchanged, _⟩ :=
     roster_decision_phase setup leaks extended rosters network reveals openable
       who control trace active
   have grantNow : (control.execution.observe app who).application.publicView.serviceGrant =
@@ -189,7 +190,7 @@ theorem roster_fresh_available
   let profile : BehavioralProfile setup.program :=
     fun player => RevealOnly.uniformPolicy player setup.program reveals
   obtain ⟨event, _, granted, _, _, initial, state, _, initialSupport,
-      related, _, grant, _, _, _, _, _, unchanged⟩ :=
+      related, _, grant, _, _, _, _, _, unchanged, _⟩ :=
     roster_decision_phase setup leaks extended rosters network reveals openable
       who control trace active
   obtain ⟨sentEvent, candidate, raw, sentGrant, owned, sentOpening, rfl, _⟩ :=

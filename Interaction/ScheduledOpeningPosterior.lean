@@ -251,6 +251,63 @@ private theorem remainingOpeningSlots_mass {slots : Nat} (probability : ℝ)
     FinDist.deferredSurvival]
   ring
 
+/-- The eventual binary value under the actual waiting posterior. Past
+waiting changes the binary probability; it does not simply leave it equal
+to the source probability. -/
+theorem remainingOpeningSlots_value {slots : Nat} (probability : ℝ)
+    (nonnegative : 0 ≤ probability) (small : probability < 1)
+    (timing : FinDist (Fin slots)) (count : Nat) (whenTrue whenFalse : ℝ) :
+    let initial := FinDist.mix probability nonnegative small.le
+      (timing.map some) (FinDist.pure none)
+    (initial.condOn (remainingOpeningSlots count) ⟨none, True.intro,
+      FinDist.mem_support_mix_right probability nonnegative small.le small (by simp)⟩).expect
+        (fun selected => if selected.isSome then whenTrue else whenFalse) =
+      FinDist.deferredRemaining probability timing count * whenTrue +
+        (1 - FinDist.deferredRemaining probability timing count) * whenFalse := by
+  classical
+  intro initial
+  let post := initial.condOn (remainingOpeningSlots count) ⟨none, True.intro,
+    FinDist.mem_support_mix_right probability nonnegative small.le small (by simp)⟩
+  have absent : (timing.map some).prob none = 0 := by
+    apply FinDist.prob_eq_zero_iff.mpr
+    simp only [FinDist.support_map, Set.mem_image, not_exists, not_and]
+    intro slot _
+    simp
+  have noneMass : post.prob none =
+      (1 - probability) / FinDist.deferredSurvival probability timing count := by
+    change (initial.condOn _ _).prob none = _
+    rw [FinDist.prob_condOn,
+      ite_eq_left (show none ∈ remainingOpeningSlots count from True.intro)]
+    dsimp only [initial]
+    rw [remainingOpeningSlots_mass, FinDist.prob_mix, absent, FinDist.prob_pure_self]
+    ring
+  have values (selected : Option (Fin slots)) :
+      (if selected.isSome then whenTrue else whenFalse) =
+        whenTrue + if none = selected then whenFalse - whenTrue else 0 := by
+    cases selected <;> simp
+  change post.expect _ = _
+  simp_rw [values]
+  rw [FinDist.expect_add, FinDist.expect_const, FinDist.expect_ite_eq, noneMass,
+    FinDist.deferredRemaining_eq probability nonnegative small timing count]
+  ring
+
+/-- The exact recall-conditioned waiting law has a uniform vanishing value
+error. Its bound is independent of how small either source tremble becomes. -/
+theorem remainingOpeningSlots_value_error {slots : Nat} (probability : ℝ)
+    (nonnegative : 0 ≤ probability) (small : probability < 1)
+    (timing : FinDist (Fin slots)) (count : Nat) (whenTrue whenFalse : ℝ) :
+    let initial := FinDist.mix probability nonnegative small.le
+      (timing.map some) (FinDist.pure none)
+    |(initial.condOn (remainingOpeningSlots count) ⟨none, True.intro,
+      FinDist.mem_support_mix_right probability nonnegative small.le small (by simp)⟩).expect
+        (fun selected => if selected.isSome then whenTrue else whenFalse) -
+      (probability * whenTrue + (1 - probability) * whenFalse)| ≤
+        timing.timingPrefix count * |whenTrue - whenFalse| := by
+  dsimp only
+  rw [remainingOpeningSlots_value probability nonnegative small timing count whenTrue whenFalse]
+  exact FinDist.deferredRemaining_value_error probability nonnegative small timing count
+    whenTrue whenFalse
+
 /-- The real probability of each response under the actual recall-conditioned
 policy is its deferred hazard mixture. All replay likelihoods have cancelled. -/
 theorem scheduledMixture_probability_of_posterior {slots : Nat}

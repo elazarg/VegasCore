@@ -42,6 +42,7 @@ private theorem roster_opening_permitted
     ⟨execution.application.publicView, execution.network.ledger,
       ⟨owner, ⟨(owner, serial), ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩⟩⟩⟩ rfl).mpr
   refine Or.inr ⟨counted, ?_⟩
+  generalize viewEq : execution.observe (application setup leaks) owner = view at opening
   unfold rosterOpening? at opening
   cases node : nodeView (graph setup) event with
   | bind | sample => simp only [node] at opening; cases opening
@@ -51,11 +52,20 @@ private theorem roster_opening_permitted
       change (graph setup).actor? event = some actual at actors
       rw [actor] at actors
       cases Option.some.inj actors
-      simp only [node] at opening
+      rw [node] at opening
+      change (match EventCode.resolveOutput? binding checks true
+          view.application.observation.store with
+        | none => none
+        | some .failure => none
+        | some (.success value) => do
+            let handle ← view.application.publicView.accepted binding.field
+            if handle.1 ≠ owner then none else some (handle, ⟨payload, value⟩)) =
+              some (candidate, raw) at opening
       split at opening
       · cases opening
       · cases opening
       · obtain ⟨actual, associated, opening⟩ := Option.bind_eq_some_iff.mp opening
+        rw [← viewEq] at associated
         split at opening
         · cases opening
         · rename_i owned
@@ -89,7 +99,8 @@ theorem roster_known_permitted (bounds : MessageBounds (graph setup))
   let profile : BehavioralProfile setup.program :=
     fun owner => RevealOnly.uniformPolicy owner setup.program reveals
   obtain ⟨event, slot, granted, prior, sample, initial, state, selected, initialSupport,
-      related, _, grant, offset, serials, published, reached, activated, unchanged⟩ :=
+      related, _, grant, offset, serials, published, reached, activated,
+      unchanged, _⟩ :=
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
   obtain ⟨owner, ownedEvent⟩ := source_owner setup reveals event
@@ -160,7 +171,7 @@ theorem roster_fresh_traffic (bounds : MessageBounds (graph setup))
       permittedRosterEnvelope setup leaks (envelopeEvidence setup leaks record) = true := by
   let app := application setup leaks
   obtain ⟨event, _, granted, _, _, initial, state, _, initialSupport,
-      related, _, grant, _, _, _, _, _, unchanged⟩ :=
+      related, _, grant, _, _, _, _, _, unchanged, _⟩ :=
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
   obtain ⟨sentEvent, candidate, raw, sentGrant, ownedEvent, opening, rfl, _⟩ :=

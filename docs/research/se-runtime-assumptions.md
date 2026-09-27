@@ -9,15 +9,19 @@ and incentives; every additional effective response produces collectible audit
 evidence. The raw native game continues to admit those additional responses.
 Source correspondence cannot be replaced by a packet-shape checker.
 
-The [signed-audit compiler theorem](../../Vegas/Game/RevealServiceSignedCompilation.lean)
-closes this route for finite reveal-only programs with the fixed owner/watcher
-calendar. It preserves standard SE and the joint typed-outcome/realized-settlement
-law. The [general-roster work](se-ambient-rosters.md) removes the dedicated watcher
-and permits repeated player visits, partial pending reads and pending replays.
-Its native beliefs, common consistency construction and operational audit
-certificates are checked; native sequential rationality is still open.
+The [roster compiler theorem](../../Vegas/Game/RevealServiceRosterCompilation.lean)
+closes this route for finite reveal-only programs with initially openable
+bindings. It permits repeated player visits, partial pending reads and pending
+replays, with no dedicated strategic watcher. Each owner needs one visit per
+event. Under protected final inclusion, authentic terminal sampling with a
+positive conditional coverage bound, and collectible deposits, it preserves
+standard SE and the joint typed-outcome/realized-settlement law. The retained
+strategy compiler is fixed before choosing a source equilibrium; the full raw
+game conclusion supplies an equilibrium extension. The finite roster remains
+an explicit scheduling restriction. See the [proof and scope](se-ambient-rosters.md).
+
 Full-source compilation additionally needs the evolving binding and guard
-continuation proof. Neither generalization is an end-to-end theorem yet.
+continuation proof and remains open.
 
 Interpreting source games with ambient communication remains an alternative
 for environments whose extra channels cannot satisfy the audit contract.

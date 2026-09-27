@@ -132,7 +132,8 @@ theorem roster_fresh_iff_serial (bounds : MessageBounds (graph setup))
   let profile : BehavioralProfile setup.program :=
     fun owner => RevealOnly.uniformPolicy owner setup.program reveals
   obtain ⟨phase, slot, granted, prior, sample, initial, state, selected, initialSupport,
-      related, _, grant, offset, serials, published, reached, activated, unchanged⟩ :=
+      related, _, grant, offset, serials, published, reached, activated,
+      unchanged, _⟩ :=
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
   have samePhase : phase = event := by

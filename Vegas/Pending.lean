@@ -1,5 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Pending.ReactiveOpeningRecall
+import Vegas.Pending.ReactiveBindingRetainedBlock
+import Vegas.Pending.ReactiveBindingLegalContinuation
+import Vegas.Pending.ReactiveGuardConformance
+import Vegas.Pending.ReactiveGuardedResponse
+import Vegas.Pending.ReactiveBindingStopped
+import Vegas.Pending.ReactiveOpeningContinuationExpiry
+import Vegas.Pending.ReactiveOpeningNoninterference
 import Vegas.Pending.EventApplication
 import Vegas.Pending.RevealEvidence
 import Vegas.Pending.ReactiveServiceGrant

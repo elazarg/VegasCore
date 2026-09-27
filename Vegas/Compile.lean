@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Compile.EventGraphReadoutComplete
 import Vegas.Compile.EventGraphLayout
 import Vegas.Compile.EventGraphResolutionFields
 import Vegas.Compile.EventGraphCompiler

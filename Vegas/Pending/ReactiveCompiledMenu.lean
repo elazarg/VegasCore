@@ -1,15 +1,21 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveFiniteCompiler
+import Vegas.Pending.ReactiveOpeningRecall
+import Interaction.ReactiveReplayPolicy
 
 /-! # Finite retained responses for every event-code constructor
 
 This is a response restriction of the existing reactive application. Its
 binding domain is fixed before selecting an equilibrium and must cover every
 source payload value. A ready binding opportunity requires a binding response;
-silence and public replay are not silently identified with a value-only source
+silence and replay are not silently identified with a value-only source
 commitment. Detecting an omitted required binding needs a separate public
 deadline obligation, not just an audit of emitted packets.
+
+Fresh openings are permitted once per unique event, using existing own response
+recall. Replaying any already known envelope remains available, including a pending
+canonical opening. Such a replay has the original author's signature.
 
 At a resolution, failed owner-local validation and withholding use silence.
 Their eventual publication failure requires the existing protected expiry
@@ -143,10 +149,10 @@ def compiledCandidates (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     Finset (runtime.reactiveApplication leaks).Action :=
-  let decisions := bounds.decisionActions runtime leaks who past view
+  let decisions := (bounds.decisionActions runtime leaks who past view).filter
+    (fun response => runtime.firstOpening leaks past response)
   let aliases := if bindingOpportunity runtime leaks who view then ∅ else
-    (view.messages.ledger.map (fun message =>
-      (⟨some (.replay message.id)⟩ : (runtime.reactiveApplication leaks).Action))).toFinset
+    ((runtime.reactiveApplication leaks).replayPolicy past view).supportFinset
   (decisions ∪ aliases) ∩ (bounds.menu runtime leaks).actions who past view
 
 open Classical in
@@ -190,16 +196,41 @@ theorem compiledActions_effective (who : Player)
     rw [bounds.menu_mem]
     exact ⟨trivial, rfl⟩
 
+/-- Every retained fresh opening is the first for its event in the player's
+actual recall. Silence and known-envelope replay do not bypass or consume it. -/
+theorem compiledActions_firstOpening (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (member : response ∈ bounds.compiledActions runtime leaks who past view) :
+    runtime.firstOpening leaks past response = true := by
+  classical
+  unfold compiledActions at member
+  dsimp only at member
+  split at member
+  · have selected := (Finset.mem_inter.mp member).1
+    rcases Finset.mem_union.mp selected with decision | replayed
+    · exact (Finset.mem_filter.mp decision).2
+    · split at replayed
+      · cases Finset.notMem_empty _ replayed
+      · have supported := FinDist.mem_supportFinset.mp replayed
+        rcases (runtime.reactiveApplication leaks).replayPolicy_cases past view response
+            supported with rfl | ⟨id, rfl⟩ <;> rfl
+  · cases Finset.mem_singleton.mp member
+    rfl
+
 theorem decision_compiled (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (response : (runtime.reactiveApplication leaks).Action)
     (decision : response ∈ bounds.decisionActions runtime leaks who past view)
+    (first : runtime.firstOpening leaks past response = true)
     (available : response ∈ (bounds.menu runtime leaks).actions who past view) :
     response ∈ bounds.compiledActions runtime leaks who past view := by
   classical
   have member : response ∈ bounds.compiledCandidates runtime leaks who past view :=
-    Finset.mem_inter.mpr ⟨Finset.mem_union_left _ decision, available⟩
+    Finset.mem_inter.mpr ⟨Finset.mem_union_left _
+      (Finset.mem_filter.mpr ⟨decision, first⟩), available⟩
   unfold compiledActions
   rw [ite_eq_left ⟨response, member⟩]
   exact member
@@ -247,6 +278,9 @@ theorem binding_value_compiled (who : Player)
   · simp only [decisionActions, granted, owned, ready, and_self, ↓reduceIte, node]
     exact Finset.mem_image.mpr ⟨value, (bounds.typedValues_mem payload value).mpr
       ⟨⟨payload, value⟩, included, Raw.as?_mk payload value⟩, rfl⟩
+  · rw [runtime.serviceDecision_binding leaks who past view event payload outputEq codeEq
+      node serial fresh, runtime.firstOpening_normalization]
+    rfl
   · rw [runtime.serviceDecision_binding leaks who past view event payload outputEq codeEq
       node serial fresh]
     apply bounds.binding_normalized_available runtime leaks who past view event payload _
@@ -336,10 +370,15 @@ theorem compiled_binding_cases (covered : bounds.CoversBindingValues)
       (cast (congrArg EventField.Action outputEq.symm)
         (PublicationResult.success (L.someValue payload))), Finset.mem_inter.mpr ⟨?_, ?_⟩⟩
     · apply Finset.mem_union_left
-      simp only [decisionActions, granted, owned, ready, and_self, ↓reduceIte, node]
-      exact Finset.mem_image.mpr ⟨L.someValue payload,
-        (bounds.typedValues_mem payload _).mpr
-          ⟨⟨payload, L.someValue payload⟩, typed _, Raw.as?_mk payload _⟩, rfl⟩
+      apply Finset.mem_filter.mpr
+      constructor
+      · simp only [decisionActions, granted, owned, ready, and_self, ↓reduceIte, node]
+        exact Finset.mem_image.mpr ⟨L.someValue payload,
+          (bounds.typedValues_mem payload _).mpr
+            ⟨⟨payload, L.someValue payload⟩, typed _, Raw.as?_mk payload _⟩, rfl⟩
+      · rw [runtime.serviceDecision_binding leaks who past view event payload outputEq codeEq
+          node serial fresh, runtime.firstOpening_normalization]
+        rfl
     · rw [runtime.serviceDecision_binding leaks who past view event payload outputEq codeEq
         node serial fresh]
       exact bounds.binding_normalized_available runtime leaks who past view event payload _ serial
@@ -349,6 +388,7 @@ theorem compiled_binding_cases (covered : bounds.CoversBindingValues)
   rw [compiledActions, ite_eq_left usable] at member
   have choices := (Finset.mem_inter.mp member).1
   simp only [opportunity, ↓reduceIte, Finset.union_empty] at choices
+  have choices := (Finset.mem_filter.mp choices).1
   simp only [decisionActions, granted, owned, ready, and_self, ↓reduceIte, node,
     Finset.mem_image] at choices
   obtain ⟨value, admitted, same⟩ := choices

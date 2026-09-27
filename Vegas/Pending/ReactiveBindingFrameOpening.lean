@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveBindingFrameStep
 import Vegas.Pending.ReactiveDisclosure
 import Vegas.Pending.ReactiveHiddenInclusion
+import Vegas.Pending.EventBindingInvariant
 
 /-! # Disclosure transitions of the repaired native continuation
 
@@ -23,6 +24,32 @@ variable {Player : Type} [DecidableEq Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
   {memory : BindingMemory runtime leaks} {owner : Player}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
+
+/-- The native repair invariant itself preserves successful-opening provenance.
+No source-state decoder or independence of the initial private values is needed. -/
+theorem successful_opening (frame : Frame runtime leaks memory owner original repaired)
+    (leftBinding : original.application.BindingInvariant)
+    (rightBinding : repaired.application.BindingInvariant)
+    {actor : Player} {payload : L.Ty}
+    (binding : FieldRef graph.layout (.binding actor payload)) (value : L.Val payload)
+    (successful : binding.get? original.application.config.store = some (.success value)) :
+    binding.get? repaired.application.config.store = some (.success value) ∧
+      ∃ candidate,
+        original.application.accepted binding.field = some candidate ∧
+        repaired.application.accepted binding.field = some candidate ∧ candidate.1 = actor ∧
+        original.application.candidates.lookup candidate = .openable ⟨payload, value⟩ ∧
+        repaired.application.candidates.lookup candidate = .openable ⟨payload, value⟩ := by
+  have sameValue := Store.BindingRefines.success frame.successful binding value successful
+  obtain ⟨candidate, associated, owned, fixed⟩ :=
+    leftBinding.success_provenance binding value successful
+  obtain ⟨other, rightAssociated, _, rightFixed⟩ :=
+    rightBinding.success_provenance binding value sameValue
+  have accepted : original.application.accepted = repaired.application.accepted :=
+    congrArg PublicView.accepted frame.publicView
+  have same : candidate = other := Option.some.inj
+    (associated.symm.trans ((congrFun accepted binding.field).trans rightAssociated))
+  subst other
+  exact ⟨sameValue, candidate, associated, rightAssociated, owned, fixed, rightFixed⟩
 
 /-- An inert application submission is recorded privately using its original
 response. Only equality of the actual emitted packet is needed; private request
@@ -60,7 +87,7 @@ theorem inert_submission (frame : Frame runtime leaks memory owner original repa
         execution.application := inert
   refine ⟨memory.restoreRecall_submit runtime leaks original repaired owner left right
     frame.lengths frame.past frame.observed frame.network emitted, ?_, ?_, nextNetwork, ?_,
-      ?_, ?_, ?_⟩
+      ?_, ?_, ?_, ?_, ?_⟩
   · change (⟨(repaired.respond app owner ⟨some (.submit right)⟩).network.observe owner,
       memory.shadow.view (app.observePlayer (app.submit repaired.application owner right) owner),
         repaired.receipts⟩ : app.PlayerView) =
@@ -84,6 +111,12 @@ theorem inert_submission (frame : Frame runtime leaks memory owner original repa
   · intro slot
     rw [application original left leftInert, application repaired right rightInert]
     exact frame.slots slot
+  · rw [application original left leftInert, application repaired right rightInert]
+    exact frame.successful
+  · rw [runtime.openingRecall_respond, runtime.openingRecall_respond, frame.openings]
+    have calls := congrArg WitnessedPacket.call packet
+    change left.call.packet = right.call.packet at calls
+    simp only [submittedOpening?, calls]
 
 /-- Accepted application transitions lift to actual inclusion, including the
 network update and public receipt. Constructor-specific lemmas establish the
@@ -126,7 +159,7 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
     exact ⟨rfl, rfl, trivial⟩
   have leftApplied := applyHandler original found leftState leftHandled
   have rightApplied := applyHandler repaired rightFound rightState rightHandled
-  refine ⟨?_, ?_, ?_, nextNetwork, ?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, nextNetwork, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · change memory.restoreRecall runtime leaks ((repaired.includePending app id).recall owner) =
       (original.includePending app id).recall owner
     rw [leftApplied.2.2, rightApplied.2.2]
@@ -162,6 +195,14 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
       (repaired.includePending app id).application.candidates.lookup (owner, slot) = .fresh
     rw [leftApplied.1, rightApplied.1]
     exact completed.slots slot
+  · change (original.includePending app id).application.config.store.BindingRefines
+      (repaired.includePending app id).application.config.store
+    rw [leftApplied.1, rightApplied.1]
+    exact completed.successful
+  · change runtime.openingRecall leaks ((original.includePending app id).recall owner) =
+      runtime.openingRecall leaks ((repaired.includePending app id).recall owner)
+    rw [leftApplied.2.2, rightApplied.2.2]
+    exact frame.openings
 
 /-- A request that discloses an unchanged authentic candidate transmits the
 same certificate on the repaired side. Forwarding is included, with identical

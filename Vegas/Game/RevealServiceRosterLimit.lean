@@ -16,19 +16,6 @@ namespace Vegas.SourceProgram.RevealService
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
-private theorem bind_bool_mix {α : Type} (choice : FinDist Bool)
-    (opening waiting : FinDist α) :
-    (choice.bind fun disclose => if disclose then opening else waiting) =
-      FinDist.mix (choice.prob true) (choice.prob_nonneg true) (choice.prob_le_one true)
-        opening waiting := by
-  have total := choice.sum_prob
-  simp only [Fintype.sum_bool] at total
-  have complement : choice.prob false = 1 - choice.prob true := by linarith
-  apply FinDist.ext_of_prob
-  intro action
-  rw [FinDist.prob_bind, FinDist.expect_eq_sum, Fintype.sum_bool, FinDist.prob_mix]
-  simp only [Bool.false_eq_true, ↓reduceIte, complement]
-
 private theorem hazard_tendsto_final {slots : Nat} (last : Fin slots)
     (final : last.val + 1 = slots) {probability : Nat → ℝ} {limit : ℝ}
     (probabilityConverges : Filter.Tendsto probability Filter.atTop (nhds limit))
@@ -184,7 +171,8 @@ theorem roster_owner_mixture_limit
                 (FinDist.pure packet).prob action +
               (1 - FinDist.deferredHazard ((choice n).prob true) (timing n) slot.val) *
                 (app.replayPolicy past view).prob action := by
-        have representation := bind_bool_mix (choice n) ((timing n).map some) (FinDist.pure none)
+        have representation :=
+          FinDist.bind_bool_mix (choice n) ((timing n).map some) (FinDist.pure none)
         change rosterSelection (choice n) (timing n) = _ at representation
         have exactPost := posterior _ (full n)
         simp only [representation] at exactPost ⊢
@@ -210,7 +198,7 @@ theorem roster_owner_mixture_limit
       have actual := combined.congr' (Filter.Eventually.of_forall
         (fun n => (probabilities n action).symm))
       by_cases finalSlot : slot = last
-      · rw [ite_eq_left (lastIff.mp finalSlot), bind_bool_mix]
+      · rw [ite_eq_left (lastIff.mp finalSlot), FinDist.bind_bool_mix]
         simpa only [finalSlot, ↓reduceIte, FinDist.prob_mix] using actual
       · rw [ite_eq_right (fun same => finalSlot (lastIff.mpr same))]
         simpa only [finalSlot, ↓reduceIte, zero_mul, sub_zero, one_mul, zero_add] using actual

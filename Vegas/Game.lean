@@ -1,5 +1,26 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Game.RevealServiceRosterContinuation
+import Vegas.Game.RevealServiceRosterLocalEvaluation
+import Vegas.Game.RevealServiceRosterHarmless
+import Vegas.Game.RevealServiceRosterHarmlessComparison
+import Vegas.Game.RevealServiceRosterInitialized
+import Vegas.Game.RevealServiceRosterOwnerHistoryValue
+import Vegas.Game.RevealServiceRosterOwnerHazard
+import Vegas.Game.RevealServiceRosterOwnerValue
+import Vegas.Game.RevealServiceRosterOwnerSite
+import Vegas.Game.RevealServiceRosterOwnerIncentives
+import Vegas.Game.RevealServiceRosterEquilibrium
+import Vegas.Game.RevealServiceRosterCompilation
+import Vegas.Game.RevealServiceRosterSitePosition
+import Vegas.Game.RevealServiceRosterTiming
+import Vegas.Game.RevealServiceRosterWindowSource
+import Vegas.Game.RevealSourceContinuation
+import Vegas.Game.RevealSourcePayoffBounds
+import Vegas.Game.SourceServiceAdmission
+import Vegas.Game.RevealServiceRosterOwnerComparison
+import Vegas.Game.RevealServiceRosterPhase
+import Vegas.Game.RevealServiceRosterWindowValue
 import Vegas.Game.PurificationEdge
 import Vegas.Game.DisclosureForeign
 import Vegas.Game.DisclosureProfileComparison

@@ -125,6 +125,18 @@ that private completion overrides concern past events. These are concrete
 induction cases, not a claim that the remaining-plan or stopped payoff theorem
 has already been assembled.
 
+The frame also preserves every originally successful typed binding in the
+actual native stores. The
+[binding refinement](../../Vegas/EventGraph/BindingRefinement.lean) is stable
+under the relevant typed completions. `Frame.successful_opening` uses it with
+the two actual native binding invariants to derive the same accepted handle and
+authentic opening value. The native recurrence therefore does not need to
+reconstruct a second source interpreter to justify each successful opening.
+It also preserves the event sequence of submitted openings in the owner's
+actual recall. `Frame.firstOpening` transports the once-per-event response
+condition through private binding repair; changing hidden binding material
+cannot reset that condition.
+
 `Vegas/Game/BindingRepairOpening.lean` closes the successful-opening provenance
 gate. `Patched.success_kept` proves that an originally successful typed binding
 is never replaced. `repaired_success_provenance` then derives the same accepted
@@ -153,6 +165,40 @@ recalls and scheduler input. This window theorem does not cover new owned
 submissions; the binding and successful-opening constructor laws handle those
 separately. Combining all constructors with clean checkpoint invariants and
 first-departure evidence remains the full-source stopped-run obligation.
+
+[`protected_binding_response_cases`](../../Vegas/Pending/ReactiveBindingStopped.lean)
+classifies every bounded effective response at a required protected binding:
+a canonical public packet with arbitrary hidden material; an actual signed
+noncanonical packet; or a protected inclusion/expiry suffix with public
+missed-binding evidence. The last case detects obligation failure from the
+ledger and deadline, not from absence in a partial packet sample. The
+[retained implementation coupling](../../Vegas/Pending/ReactiveBindingRetainedBlock.lean)
+covers the first case using its actual compiled-menu implementation and proves
+its off-path fallback unnecessary at that binding.
+
+The [legal continuation theorem](../../Vegas/Pending/ReactiveBindingLegalContinuation.lean)
+realizes the private repair as one actual retained continuation against the
+unchanged target opponents. The
+[implementation trace induction](../../Interaction/ReactiveMenuImplementation.lean)
+keeps every intermediate repaired control in a legal retained history, so
+checkpoint and classification facts apply throughout the continuation.
+
+The [guarded response classification](../../Vegas/Pending/ReactiveGuardConformance.lean)
+checks a claimed typed value against the recorded public guard inputs. An
+accepted call with a matching certificate and successful public guards is the
+canonical successful opening; the other cases are rejection, invalid certified
+format, or publicly failed guards. The
+[retained-response theorem](../../Vegas/Pending/ReactiveGuardedResponse.lean)
+places the successful case in the actual compiled menu, including its raw
+private request aliases. It requires the actual first-opening condition, which
+the repair frame preserves. Hidden unusability remains outside the public
+audit predicate.
+
+These operational comparisons still need the stopped remaining-plan induction
+and the original source conditional-assessment correspondence. In particular,
+an attempted guarded disclosure and withholding may have the same public
+result while remaining distinct in source own-action recall. The source proof
+must account for that difference when comparing continuation incentives.
 
 `BindingShadow.OwnBindings` and `repairResponse_ownBindings` prove that these
 overrides concern only the repaired owner's private bindings.

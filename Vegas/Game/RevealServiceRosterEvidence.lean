@@ -103,7 +103,8 @@ theorem roster_fresh_normal
   let profile : BehavioralProfile setup.program :=
     fun owner => RevealOnly.uniformPolicy owner setup.program reveals
   obtain ⟨event, slot, granted, prior, sample, initial, state, selected, initialSupport,
-      related, _, grant, offset, serials, published, reached, activated, unchanged⟩ :=
+      related, _, grant, offset, serials, published, reached, activated,
+      unchanged, _⟩ :=
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
   obtain ⟨sentEvent, candidate, raw, sentGrant, ownedEvent, opening, rfl, absent⟩ :=

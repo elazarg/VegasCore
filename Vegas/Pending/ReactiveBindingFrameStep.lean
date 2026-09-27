@@ -148,7 +148,8 @@ theorem advanceClock (frame : Frame runtime leaks memory owner original repaired
         application := { repaired.application with clock := repaired.application.clock + 1 }
         environmentRecall := repaired.environmentRecall ++
           [⟨repaired.observeEnvironment app, .application .advanceClock⟩] } := by
-  refine ⟨frame.past, ?_, frame.lengths, frame.network, ?_, ?_, frame.recall, frame.slots⟩
+  refine ⟨frame.past, ?_, frame.lengths, frame.network, ?_, ?_, frame.recall, frame.slots,
+    frame.successful, frame.openings⟩
   · exact congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
       { view with application := { view.application with publicView :=
         { view.application.publicView with clock := view.application.publicView.clock + 1 } } })
@@ -171,7 +172,8 @@ theorem grant (frame : Frame runtime leaks memory owner original repaired)
         application := { repaired.application with serviceGrant := some event }
         environmentRecall := repaired.environmentRecall ++
           [⟨repaired.observeEnvironment app, .application (.grant event)⟩] } := by
-  refine ⟨frame.past, ?_, frame.lengths, frame.network, ?_, ?_, frame.recall, frame.slots⟩
+  refine ⟨frame.past, ?_, frame.lengths, frame.network, ?_, ?_, frame.recall, frame.slots,
+    frame.successful, frame.openings⟩
   · exact congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
       { view with application := { view.application with publicView :=
         { view.application.publicView with serviceGrant := some event } } }) frame.observed
@@ -261,7 +263,7 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
     exact congr (congr (congrArg (ReactivePlayerView.mk owner) nextPublic.symm) nextObservation)
       (congrArg ReactivePlayerView.candidates application)
   refine ⟨frame.past, ?_, frame.lengths, frame.network, frame.service, ?_,
-    frame.recall, frame.slots⟩
+    frame.recall, frame.slots, ?_, frame.openings⟩
   · change (⟨repaired.network.observe owner, memory.shadow.view (app.observePlayer
       (repaired.application.complete event rightReady action value) owner),
         repaired.receipts⟩ : app.PlayerView) =
@@ -278,6 +280,8 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
       (congrArg PlayerView.remembered (frame.views who different))
       (congrArg PlayerView.candidates (frame.views who different)) event leftReady rightReady
       action action value value (fun _ => rfl) (fun _ => rfl)
+  · exact Config.bindingRefines_complete frame.successful event leftReady rightReady action action
+      value value (EventField.BindingRefines.refl _ _)
 
 /-- Public chance has an explicit common-draw coupling of the two actual
 environment steps. Its support carries the full concrete frame, including the

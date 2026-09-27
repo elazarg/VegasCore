@@ -51,7 +51,8 @@ theorem roster_policy_converges
   let extended := bounds.withInitialValues (initialLaw setup)
   let menu := rosterMenu setup leaks extended rosters
   obtain ⟨event, slot, granted, prior, sample, initial, state, selected, initialSupport,
-      related, sourceSupport, grant, offset, serials, published, reached, activated, unchanged⟩ :=
+      related, sourceSupport, grant, offset, serials, published, reached, activated,
+      unchanged, _⟩ :=
     roster_decision_phase setup leaks extended rosters network reveals openable
       who control trace active
   have grantNow : (control.execution.observe app who).application.publicView.serviceGrant =
@@ -101,14 +102,20 @@ theorem roster_policy_converges
         rosterPolicy setup leaks rosters when profile who (control.execution.recall who)
           (control.execution.observe app who) =
           app.replayPolicy (control.execution.recall who) (control.execution.observe app who) := by
-      simp only [rosterPolicy, grantNow, dite_eq_right ownedEvent]
-      rfl
+      have grant := grantNow
+      generalize input : control.execution.observe app who = view at grant ⊢
+      unfold rosterPolicy
+      rw [grant]
+      exact dite_eq_right ownedEvent
     have limitWaiting : rosterLimitPolicy setup leaks rosters
         (setup.decodeBehavioralProfile admission source) who (control.execution.recall who)
         (control.execution.observe app who) =
           app.replayPolicy (control.execution.recall who) (control.execution.observe app who) := by
-      simp only [rosterLimitPolicy, grantNow, ite_eq_right ownedEvent]
-      rfl
+      have grant := grantNow
+      generalize input : control.execution.observe app who = view at grant ⊢
+      unfold rosterLimitPolicy
+      rw [grant]
+      exact ite_eq_right ownedEvent
     change FinDistConvergesPointwise
       (fun n => rosterPolicy setup leaks rosters (timing n)
         (setup.decodeBehavioralProfile admission (sequence n).strategy) who
