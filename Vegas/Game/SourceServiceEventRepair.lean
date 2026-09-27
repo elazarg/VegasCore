@@ -26,10 +26,8 @@ theorem event_block_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -101,7 +99,7 @@ theorem event_block_stopped_coupling
       List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]
     rfl
   obtain ⟨initial, _, Γ, config, refs, boundary⟩ := sourceService_grant_boundary setup leaks
-    bounds values capacity rosters opportunities network profile
+    bounds values capacity rosters opportunities network
       ⟨remaining + (rosterBlock setup rosters event).length, none, repaired⟩ trace rfl event
       selected
   have phase := (roster_grant_prefix setup rosters _ event selected).1
@@ -223,7 +221,7 @@ theorem event_block_stopped_coupling
       · subst actor
         have deadline : (runtime setup).deadline event = event.val + 1 := rfl
         obtain ⟨coupling, first, second, related⟩ := binding_phase_stopped_coupling setup leaks
-          bounds values capacity rosters opportunities network profile source target agrees owner
+          bounds values capacity rosters opportunities network source target agrees owner
           policy available reference memory (advance original) (advance repaired) paired
           nextStarted leftNextRecall event payload outputEq codeEq node granted
           (boundary.unsent owner event (Nat.le_refl _)) remaining phaseTrace
@@ -239,7 +237,7 @@ theorem event_block_stopped_coupling
           · exact Or.inr (Or.inl (PublicView.missedBindingBy_of_event _ owner event owned missed))
           · exact Or.inr (Or.inr framed)
       · obtain ⟨coupling, first, second, related⟩ := foreign_binding_block_stopped_coupling setup
-          leaks bounds values capacity rosters opportunities network profile source target agrees
+          leaks bounds values capacity rosters opportunities network source target agrees
           owner policy available reference memory (advance original) (advance repaired) paired
           onlyBindings nextStarted leftNextRecall event actor same payload outputEq codeEq node
           granted remaining (rosters event) (event.val + 1) phaseTrace
@@ -255,7 +253,7 @@ theorem event_block_stopped_coupling
           (congrArg (fun code : EventCode (graph setup).layout (.publication payload) =>
             code.actor) codeEq)
       obtain ⟨coupling, first, second, related⟩ := resolution_block_stopped_coupling setup leaks
-        bounds values capacity rosters opportunities network profile source target agrees owner
+        bounds values capacity rosters opportunities network source target agrees owner
         policy available reference memory (advance original) (advance repaired) paired onlyBindings
         nextStarted leftNextRecall leftSound leftNextBinding event actor payload binding checks
         outputEq codeEq node granted remaining (rosters event) (event.val + 1) phaseTrace

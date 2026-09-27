@@ -26,10 +26,8 @@ theorem sourceService_decision_resources
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -52,7 +50,7 @@ theorem sourceService_decision_resources
       refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
       activated, sampled, config, publicEq, _, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
-      network profile who control trace active
+      network (failureProfile setup.program) who control trace active
   have eventEq : selectedEvent = event := Option.some.inj
     (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans granted)
   subst selectedEvent

@@ -79,10 +79,10 @@ The watchdog may use only its ledger and sampled foreign pending messages.
 [MessageMonitoring](../../Interaction/MessageMonitoring.lean) gives report
 material and persistence; [the probability adapter](../../Interaction/MessageMonitoringProbability.lean)
 composes actual sampling and conditional report-delivery bounds. The
-[native test](../../VegasTests/PassiveDisclosureMonitoring.lean) detects the
+[native test](../../Vegas/Examples/PassiveDisclosureMonitoring.lean) detects the
 selective-association packet without reading the network's complete input log.
 These results alone do not supply general coverage, timely activation or collection. The pilot's
-[actual prefix](../../VegasTests/MonitoredGuessingNativeMonitoring.lean) proves
+[actual prefix](../../Vegas/Examples/MonitoredGuessing/NativeMonitoring.lean) proves
 exactly one-half rejection probability for every legal initial raw submission,
 using only Watcher's ordinary passive sample and public replay. It proves the
 required coverage at the one early sender decision, not at arbitrary histories.
@@ -108,7 +108,7 @@ model. It does not replace public report randomness by an invisible mean fine.
 
 | Test | Evidence or required experiment | Design consequence |
 |---|---|---|
-| Readiness, immediate acceptability, no premature reveals | [Native ready-commitment witness](../../VegasTests/ReactiveReadinessRestrictions.lean): the selectively leaked certificate rides on a ready, immediately acceptable commitment. | Readiness alone does not exclude the known information mechanism. |
+| Readiness, immediate acceptability, no premature reveals | [Native ready-commitment witness](../../Vegas/Examples/ReactiveReadinessRestrictions.lean): the selectively leaked certificate rides on a ready, immediately acceptable commitment. | Readiness alone does not exclude the known information mechanism. |
 | Packet shape alone | The shape checker permits ordinary opening bodies with matching evidence, irrespective of their emission stage. | Add context and information obligations; do not claim shape is full conformance. |
 | Free lawful field | [MonitoredSignaling](../../GameTheoryExtensionsTests/MonitoredSignaling.lean): a shared private pad permits signaling with identical public message law; complete signaling transcripts also lie in lawful support. | Zero false positives cannot punish this channel, even after the secret is public. |
 | Canonical shape but selectable handle or retry count | **Next small native test:** two allowed representations of the same source choice, distinguished by a receiver before its move. Reuse the actual submission/observation prefix. | Reject the contract unless representation is fixed, source-visible, or proved irrelevant. This test is not yet a native SE counterexample. |
@@ -150,7 +150,7 @@ monitoring, report-gated inclusion and receipt-dependent terminal liability.
 The extra final Alice decision is proved rational at every native site. Every
 initial submission, including its whole later policy, has value at most
 `1 − D/2`; `D ≥ 2` makes silence optimal. Source SE laws and the native joint
-law with zero extra charge are checked. The [capstone](../../VegasTests/MonitoredGuessingCompilation.lean)
+law with zero extra charge are checked. The [capstone](../../Vegas/Examples/MonitoredGuessing/Compilation.lean)
 proves all-player SE and joint net-payoff preservation for one fixed playerwise
 policy translation. Bob's completion uses only his own source policy; Alice's
 and Watcher's policies are fixed. The completion uses classical choice, so this

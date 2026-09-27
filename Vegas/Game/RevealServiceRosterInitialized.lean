@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterContinuation
-import Vegas.Game.RevealServiceRosterEvaluation
+import Vegas.Game.ServiceRosterEvaluation
 import Interaction.ReactiveRestrictedContinuation
 import Vegas.Game.SourceContinuation
 

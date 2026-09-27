@@ -12,7 +12,7 @@
 | `Vegas.Pending` | Graph-directed pending-message runtime, strategy compilation, service, and correctness |
 | `Vegas.Compile` | Source-to-graph construction and correspondence proofs |
 | `Vegas.Game` | Strategic composition across source, graph, setup, and native runtime |
-| `Vegas.Examples` | Concrete source mechanisms and checked incentive analyses; depends on expression, source, and game layers |
+| `Vegas.Examples` | Concrete source programs and native fixtures with their checked results, including the counterexamples that delimit the compiler theorems; may depend on every other semantic layer except the surface prototype |
 | test libraries | Executable regressions and theorem instances |
 | `Paper` | Direct paper-visible theorem restatements and axiom pins |
 

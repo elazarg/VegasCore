@@ -4,7 +4,7 @@ import Vegas.Game.SourceServiceTimedCheckpoint
 import Vegas.Game.SourceServiceTimedSample
 import Vegas.Game.SourceServiceBoundary
 import Vegas.Game.SourceServicePrefixSupport
-import Vegas.Game.RevealServiceRosterEvaluation
+import Vegas.Game.ServiceRosterEvaluation
 import Vegas.Source.ObservationRecall
 import Vegas.Compile.EventGraphParameterReadout
 import Vegas.Game.SourcePrefixKernel
@@ -556,10 +556,8 @@ theorem sourceService_prefix_boundary_of_checkpoint [Fintype Player]
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (players : Player → (application setup leaks).Policy)
     (covered : ∀ who, (sourceServiceMenu setup leaks bounds rosters).Admissible
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -585,7 +583,7 @@ theorem sourceService_prefix_boundary_of_checkpoint [Fintype Player]
       opportunities menu.uniformResponses
       (fun who past view response chosen =>
         (menu.uniformResponses_support who past view response).mp chosen)
-      network profile rank within execution uniform
+      network (failureProfile setup.program) rank within execution uniform
   refine ⟨⟨initial, selected, boundary.withSourceCheckpoint checkpoint⟩, ?_⟩
   let prefixPlan := rosterPlanPrefix setup rosters rank
   have prefixFact := rosterPlanPrefix_isPrefix setup rosters rank
@@ -733,8 +731,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : ∀ event who, (graph setup).actor? event = some who →
       FinDist (Fin ((rosters event).count who)))
     (network : (runtime setup).NetworkPolicy leaks)
@@ -812,7 +809,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
         have counted := (aligned prior.support_nonempty.choose).graphSuffix.countEq
         omega
       have actualFacts (seed : Seed) := sourceService_prefix_boundary_of_checkpoint setup leaks
-        bounds values capacity rosters opportunities network wholeProfile players covered
+        bounds values capacity rosters opportunities network players covered
           offset offsetBound (execution seed) (supported seed) (source seed) refs (checkpoint seed)
       let initial := fun seed => (actualFacts seed).1.choose
       have boundary (seed : Seed) : ServiceBoundary setup leaks rosters (initial seed)
@@ -1410,8 +1407,7 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : ∀ event who, (graph setup).actor? event = some who →
       FinDist (Fin ((rosters event).count who)))
     (network : (runtime setup).NetworkPolicy leaks)
@@ -1512,8 +1508,7 @@ theorem sourceServiceTimedProfile_prefix_factorization [Fintype Player]
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : ∀ event who, (graph setup).actor? event = some who →
       FinDist (Fin ((rosters event).count who)))
     (full : ∀ event who owned, (timing event who owned).FullSupport)

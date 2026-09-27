@@ -34,8 +34,7 @@ theorem exists_sourceService_timed_consistent
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (source : (setup.informationModel
       (CommitmentInterface.values setup.program)).BehavioralAssessment)

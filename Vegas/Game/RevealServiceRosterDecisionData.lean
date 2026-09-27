@@ -4,7 +4,7 @@ import Vegas.Game.RevealServiceRosterDecisionSupport
 import Vegas.Game.RevealServicePrefixChoice
 import Vegas.Game.RevealServiceRosterCoverage
 import Vegas.Game.SourcePrefixKernel
-import Vegas.Game.RevealServiceRosterCounts
+import Vegas.Game.ServiceRosterCounts
 import Vegas.Pending.ReactiveServiceRecall
 
 /-! # Source information and opening data at legal roster decisions -/

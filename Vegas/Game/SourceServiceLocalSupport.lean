@@ -30,8 +30,7 @@ theorem sourceService_decision_supported
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (full : ∀ player, (profile player).SupportsEffectiveChoices setup.program
@@ -52,7 +51,7 @@ theorem sourceService_decision_supported
   let app := application setup leaks
   let execution := control.execution
   obtain ⟨event, slot, initial, _, _, Γ, names, remaining, remainingProfile, source,
-      refs, embedding, refsBefore, aligned, _, inherited,
+      refs, embedding, refsBefore, aligned, _, ⟨inherited, _⟩,
       granted, prior, sample, _, grant, _, _, _, _, publicEq, checkpoint, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile who control trace active
@@ -192,8 +191,7 @@ theorem sourceService_response_supported
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (full : ∀ player, (profile player).SupportsEffectiveChoices setup.program

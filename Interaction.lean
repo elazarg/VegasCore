@@ -112,6 +112,7 @@ import Interaction.ReactiveReplayPolicy
 import Interaction.ScheduledOpening
 import Interaction.ScheduledOpeningSupport
 import Interaction.ScheduledOpeningPosterior
+import Interaction.ScheduledChoicePosterior
 import Interaction.ReactiveImplementationContinuation
 import Interaction.ReactiveAssessmentDecoding
 import Interaction.ReactiveOwnerSelection

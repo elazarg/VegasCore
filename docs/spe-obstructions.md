@@ -157,7 +157,7 @@ commitment to 1, then sends another opening at disclosure. For success payoffs
 | Compiled recovery | 5/4 |
 | Early-opening deviation | 4/3 |
 
-[ReactiveEarlyOpeningSPE.lean](../VegasTests/ReactiveEarlyOpeningSPE.lean)
+[ReactiveEarlyOpeningSPE.lean](../Vegas/Examples/ReactiveEarlyOpeningSPE.lean)
 proves an honest source SPE, a proper native root, both values, failure of the
 actual graph-policy compiler to preserve SPE, and at-most-once inclusion.
 Both compared continuations finish. This refutes that compiler under the
@@ -181,7 +181,7 @@ response law is checked. A ledger certificate and the complete continuation
 argument remain open; ordinary execution-time dependency checks do not imply
 the contract.
 
-[ReactiveDependencyService.lean](../VegasTests/ReactiveDependencyService.lean)
+[ReactiveDependencyService.lean](../Vegas/Examples/ReactiveDependencyService.lean)
 checks the same proper root under the enforcing calendar. Across the complete
 remaining continuation, the compiler's value is 5/2 and the exhibited
 early-opening deviation's value is 2. Both finish successfully. This closes
@@ -200,7 +200,7 @@ fixed transmission allowance requires its own capacity argument at every prefix.
 **Witness.** A wrong packet addressed to a disclosure event makes the
 command-service compiler regard the event as already submitted. It waits even
 though a valid opening still succeeds.
-[ContinuationRecovery.lean](../VegasTests/ContinuationRecovery.lean) checks the
+[ContinuationRecovery.lean](../Vegas/Examples/ContinuationRecovery.lean) checks the
 legal player step, rejection, compiled wait, and successful replacement. It
 does not prove proper-root status or an SPE counterexample.
 
@@ -214,7 +214,7 @@ decide which one should enter the reconstructed source history.
 after unsupported own responses, preserves initialized execution laws, and
 reuses supported choices rather than repeatedly resampling them. Reconstruction
 matches an intention to the actual accepting receipt and checks the recorded
-response. [ReactiveRecovery.lean](../VegasTests/ReactiveRecovery.lean) tests
+response. [ReactiveRecovery.lean](../Vegas/Examples/ReactiveRecovery.lean) tests
 accepted, rejected, competing, and forged intentions.
 
 **Closure criterion.** Prove information-local source-history reconstruction and
@@ -299,7 +299,7 @@ player action boundary.
 | Running out of private preparation slots | [ReactiveFreshCandidates.lean](../Vegas/Pending/ReactiveFreshCandidates.lean) supplies fresh candidates after every legal history | Public transmission opportunities and deadlines remain finite |
 | Receiving one's own packet as a new leak | [ReactiveKnowledge.lean](../Interaction/ReactiveKnowledge.lean) proves foreign-only passive knowledge | Own action recall remains available |
 | Scheduler sees which private leak was sampled | [ReactiveObservation.lean](../Interaction/ReactiveObservation.lean) proves identical scheduler views across samples, including after silent responses | The scheduler still sees public traffic; shared public causes can correlate inclusion and observations |
-| A root inside consecutive implementation actions | [ResponseCoalescing.lean](../VegasTests/ResponseCoalescing.lean) excludes the particular split root in the comparison protocol | No universal SPE theorem for coalescing; O2 and O4 use separate public transmissions |
+| A root inside consecutive implementation actions | [ResponseCoalescing.lean](../Vegas/Examples/ResponseCoalescing.lean) excludes the particular split root in the comparison protocol | No universal SPE theorem for coalescing; O2 and O4 use separate public transmissions |
 
 The [action-boundary investigation](action-coalescing.md) also has a finite
 Alice-Bob-Alice experiment without adjacent same-player decisions. It has no
@@ -313,8 +313,8 @@ These are gaps to discharge, not additional proved counterexamples.
 1. **Proper roots and information sets.** A public checkpoint or completed event
    is not automatically a subgame root. Hidden source choices and private setup
    can make information sets cross a proposed cut; see
-   [SourceProtocol.lean](../VegasTests/SourceProtocol.lean) and
-   [SetupProtocol.lean](../VegasTests/SetupProtocol.lean). Root matching must use
+   [SourceProtocol.lean](../Vegas/Examples/SourceProtocol.lean) and
+   [SetupProtocol.lean](../Vegas/Examples/SetupProtocol.lean). Root matching must use
    the actual canonical information models throughout the suffix.
 2. **Service guarantees at arbitrary prefixes.** Termination, packet provenance,
    and graph completion are checked for the reserved reactive service. Acceptance,
@@ -338,7 +338,7 @@ These are gaps to discharge, not additional proved counterexamples.
    requirement should be mistaken for a necessary runtime assumption.
 4. **Original types and private recall.** Preserve the joint law of initial types
    and decoded public results, rather than only the public marginal. The checked
-   [parameter-outcome regression](../VegasTests/ParameterOutcomes.lean) gives
+   [parameter-outcome regression](../Vegas/Examples/ParameterOutcomes.lean) gives
    equal public marginals with different type-dependent utilities. Types already
    drawn at a root cannot be resampled. Failed attempts and accepted intentions
    must reconstruct the appropriate own recall as in O5.

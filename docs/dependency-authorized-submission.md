@@ -53,7 +53,7 @@ same reasoning excludes the early opening from later successful execution.
 
 The exclusion argument is checked in
 [ReactiveAuthorization.lean](../Vegas/Pending/ReactiveAuthorization.lean).
-[The concrete regression](../VegasTests/ReactiveAuthorization.lean) identifies
+[The concrete regression](../Vegas/Examples/ReactiveAuthorization.lean) identifies
 both premature origins, proves they remain unauthorized after binding, and
 checks that a fresh later opening is authorized. The raw early opening still
 enters the pending pool. These results are conditional on the acceptance
@@ -68,7 +68,7 @@ submission order; it is not a ledger-verifiable timestamp or certificate.
 The [service design](reactive-spe-service.md) specifies its filtering behavior
 and remaining completion and continuation obligations.
 
-[The enforcing-service regression](../VegasTests/ReactiveDependencyService.lean)
+[The enforcing-service regression](../Vegas/Examples/ReactiveDependencyService.lean)
 checks the same proper contested root under the authorized calendar and
 evaluates both full remaining continuations. The actual compiler obtains 5/2
 and the early-opening deviation obtains 2; both publish successfully. The

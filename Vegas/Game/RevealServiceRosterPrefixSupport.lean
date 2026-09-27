@@ -2,7 +2,7 @@
 
 import Vegas.Game.RevealServicePrefix
 import Vegas.Game.RevealServiceRosterCheckpoint
-import Vegas.Game.RevealServiceRosterCounts
+import Vegas.Game.ServiceRosterCounts
 import Vegas.Game.SourceStateKernel
 import Vegas.Game.SourceInformation
 

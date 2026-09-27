@@ -36,10 +36,10 @@ the subsequent kernel-checked build.
 | Conditional behavioral SPE preservation and reflection at proper roots | `GameTheoryExtensions/Protocol/BehavioralContinuation.lean` |
 | Conditional pure SPE preservation and reflection at proper roots | `GameTheoryExtensions/Protocol/Continuation.lean` |
 | Proper reactive subgames after two deterministic initial responses | `Interaction/ReactiveSubgamePrefix.lean` |
-| Honest source SPE whose compiled graph policy fails SPE under uniform, at-most-once inclusion | `VegasTests/ReactiveEarlyOpeningSPE.lean` |
+| Honest source SPE whose compiled graph policy fails SPE under uniform, at-most-once inclusion | `Vegas/Examples/ReactiveEarlyOpeningSPE.lean` |
 | Immutable authorization at original submission, with conditional exclusion at every legal continuation | `Interaction/ReactiveAuthorization.lean`, `Vegas/Pending/ReactiveAuthorization.lean` |
 | Authorized unfinished packets belong to the sender's current ready owned event under source information discipline | `Interaction/ReactiveRecallInvariant.lean`, `Vegas/Pending/ReactiveAuthorizationProgress.lean` |
-| Premature packets in the early-opening witness remain unauthorized; fresh later openings are authorized | `VegasTests/ReactiveAuthorization.lean` |
+| Premature packets in the early-opening witness remain unauthorized; fresh later openings are authorized | `Vegas/Examples/ReactiveAuthorization.lean` |
 | Source to typed graph and canonical single-policy correspondence | `Vegas/Compile/EventGraphCanonical.lean`, `Vegas/Compile/EventGraphDeviation.lean` |
 | Sequential completion by dependency barriers | `Vegas/EventGraph/Sequential.lean` |
 | Message transport and player policies | `Interaction/MessageApplication.lean`, `Interaction/MessageApplicationPolicies.lean` |
@@ -80,13 +80,13 @@ the subsequent kernel-checked build.
 | Passive sampling followed by ordinary replay and public at-most-once report inclusion gives persistent receipt and ledger evidence | `Interaction/ReactiveMonitoring.lean` |
 | Packets outside a ready public event reject in barrier-ordered graphs; timely reporting retains evidence of premature traffic | `Vegas/Pending/ReactiveMonitoring.lean` |
 | Current-address submissions are canonical after normalization, rejected, or publicly nonconforming, under explicit binding/node premises | `Vegas/Pending/ReactiveOpeningConformance.lean` |
-| Reveal-only source programs retain all withholding choices, count decisions by open obligations, and accept guards from an empty registry | `Vegas/Source/RevealSequence.lean`, `VegasTests/RevealSequence.lean` |
+| Reveal-only source programs retain all withholding choices, count decisions by open obligations, and accept guards from an empty registry | `Vegas/Source/RevealSequence.lean`, `Vegas/Examples/RevealSequence.lean` |
 | Canonical opening and silence/expiry blocks use the existing reactive service and preserve full execution effects under explicit acceptance/deadline premises | `Vegas/Pending/ReactiveRevealBlock.lean` |
 | A fixed reveal service and restricted response menu are constructed inside the actual native backend; source choices admit finite action splitting with exact Boolean projection and full support | `Vegas/Game/RevealService.lean`, `Vegas/Game/RevealServiceActions.lean` |
 | The reveal-service policy adapter reuses the source event compiler and stays within C at every input; monitored settlement composes watcher/report, ticks and expiry for either source branch | `Vegas/Game/RevealServicePolicy.lean`, `Vegas/Pending/ReactiveRevealSettlement.lean` |
 | The supported initial values extend a finite raw message alphabet without removing responses, and cover authentic openings at checkpoints retaining the initial binding tables | `Vegas/Pending/ReactiveInitialValues.lean`, `Vegas/Game/RevealServiceBounds.lean` |
-| Actual source/native revelation preserves typed store and completion-history agreement; a native decision view recovers the exact source view, including correlated initial types | `Vegas/Game/RevealServiceState.lean`, `Vegas/Game/RevealServiceInformation.lean` |
-| Equal source views reconstruct the native graph observation and initial candidate catalogue; full before-view equality reduces to explicit public service/transcript invariants | `Vegas/Game/RevealServiceObservation.lean` |
+| Actual source/native revelation preserves typed store and completion-history agreement; a native decision view recovers the exact source view, including correlated initial types | `Vegas/Game/RevealServiceState.lean`, `Vegas/Game/ServiceInformation.lean` |
+| Equal source views reconstruct the native graph observation and initial candidate catalogue; full before-view equality reduces to explicit public service/transcript invariants | `Vegas/Game/ServiceObservation.lean` |
 | Reveal-service decision clocks follow from existing observations at every raw history and every response menu, with a watcher distinct from source owners | `Vegas/Game/RevealServiceClock.lean` |
 | The actual compiled owner-choice law equals the residual source reveal kernel under the compiler's suffix, store and own-history invariants | `Vegas/Game/RevealServiceCorrespondence.lean` |
 | Every ordinary response executes a complete monitored reveal block with exact typed source-state and action-history agreement; published replays retain their actual network and recall effects | `Vegas/Pending/ReactiveRevealResponse.lean`, `Vegas/Game/RevealServiceBlock.lean` |
@@ -120,21 +120,21 @@ the subsequent kernel-checked build.
 | A finite mixture of scheduled response policies is realized behaviorally by the actual interaction-plan evaluator under arbitrary sampling and intervening responses | `Interaction/ReactivePolicyMixture.lean`, `Vegas/Pending/ReactivePolicyMixture.lean` |
 | Unpublished own packets add no passive information; including one identifier makes every remaining copy of that identifier public | `Interaction/DeferredObservation.lean` |
 | Opaque binding submission and inclusion preserve foreign recall and pending-observation laws across different privately fixed binding meanings | `Vegas/Pending/ReactiveBindingObservation.lean` |
-| Two ready canonical opening times give different remembered pending observations despite equal final public states and equal phase/ledger traffic-audit records; this is an information distinction, not an SE impossibility | `VegasTests/OpeningTimingChannel.lean` |
-| An actual unusable binding and a valid binding followed by withholding have equal public audit transcripts, so a sound public audit cannot distinguish them | `VegasTests/UnusableBindingAudit.lean` |
+| Two ready canonical opening times give different remembered pending observations despite equal final public states and equal phase/ledger traffic-audit records; this is an information distinction, not an SE impossibility | `Vegas/Examples/OpeningTimingChannel.lean` |
+| An actual unusable binding and a valid binding followed by withholding have equal public audit transcripts, so a sound public audit cannot distinguish them | `Vegas/Examples/UnusableBindingAudit.lean` |
 | From an arbitrary residual source belief, behavioral deviations using unusable bindings admit value-only continuation mixtures with the same joint parameter/result law and a conditional best-response comparator | `Vegas/Source/ValueBindingContinuation.lean` |
 | Completing a sequential event starts its successor's deadline at the actual completion time; local early and expiry branches both admit increasing deadlines | `Vegas/Pending/EventSequentialTiming.lean` |
-| Canonical evidence requests coincide exactly when certificates resolve equally; raw finite compiler coverage remains separate from normalization | `Vegas/Pending/EvidenceNormalization.lean`, `Vegas/Pending/ReactiveFiniteCompiler.lean`, `VegasTests/SuccessfulEvidenceAliases.lean` |
+| Canonical evidence requests coincide exactly when certificates resolve equally; raw finite compiler coverage remains separate from normalization | `Vegas/Pending/EvidenceNormalization.lean`, `Vegas/Pending/ReactiveFiniteCompiler.lean`, `Vegas/Examples/SuccessfulEvidenceAliases.lean` |
 | Pending published identifiers yield no new observations; spent replay preserves this local property without erasing scheduler or action recall | `Interaction/MessageReplayObservation.lean`, `Interaction/ReactiveQuiescent.lean` |
 | Reserved inclusion ignores inserted or removed published pending copies and actual spent replays | `Vegas/Pending/ReactiveReplaySelection.lean` |
-| The actual C/W/N menus inherit decision clocks from all raw histories; every watched-game SE extends to the effective native game when watcher utility is identically zero | `VegasTests/MonitoredGuessingRestricted.lean`, `VegasTests/MonitoredGuessingRestrictedClock.lean`, `VegasTests/MonitoredGuessingWatcherExtension.lean` |
-| Both source choices at both reveals have checked service laws, including silent withholding followed by expiry | `VegasTests/MonitoredGuessingRestrictedExecution.lean` |
-| Restoring watcher choices and every bounded raw private alias preserves the joint observation/payoff law, for normalization-invariant readouts and identically zero watcher utility | `VegasTests/MonitoredGuessingWatcherRaw.lean`, `GameTheoryExtensions/Protocol/ContinuationHorizon.lean` |
-| Every final raw Alice response has a local legal comparator at the source checkpoints, for arbitrary declared payoff tables and nonnegative rejection charges | `VegasTests/MonitoredGuessingRestrictedFinalComparison.lean` |
-| Unselected Bob packets leave Alice's entire next input equal to the silent source branch under the fixture's empty Alice passive sample | `VegasTests/MonitoredGuessingBobContinuation.lean` |
+| The actual C/W/N menus inherit decision clocks from all raw histories; every watched-game SE extends to the effective native game when watcher utility is identically zero | `Vegas/Examples/MonitoredGuessing/Restricted.lean`, `Vegas/Examples/MonitoredGuessing/RestrictedClock.lean`, `Vegas/Examples/MonitoredGuessing/WatcherExtension.lean` |
+| Both source choices at both reveals have checked service laws, including silent withholding followed by expiry | `Vegas/Examples/MonitoredGuessing/RestrictedExecution.lean` |
+| Restoring watcher choices and every bounded raw private alias preserves the joint observation/payoff law, for normalization-invariant readouts and identically zero watcher utility | `Vegas/Examples/MonitoredGuessing/WatcherRaw.lean`, `GameTheoryExtensions/Protocol/ContinuationHorizon.lean` |
+| Every final raw Alice response has a local legal comparator at the source checkpoints, for arbitrary declared payoff tables and nonnegative rejection charges | `Vegas/Examples/MonitoredGuessing/RestrictedFinalComparison.lean` |
+| Unselected Bob packets leave Alice's entire next input equal to the silent source branch under the fixture's empty Alice passive sample | `Vegas/Examples/MonitoredGuessing/BobContinuation.lean` |
 | Global recall can fail at inactive states while decision recall and the generic SE existence theorem still apply | `GameTheoryExtensions/Protocol/DecisionRecall.lean`, `GameTheoryExtensionsTests/DecisionRecall.lean` |
 | Nonvacuous general-theorem instance: Alice's departure creates a new Bob decision; deposit one preserves every source SE and the exact zero-payoff law | `GameTheoryExtensionsTests/RestrictionEnforcement.lean` |
-| Declared integer return tables share operational graph execution; inferred charges deter every raw early submission; prescribed native play retains the exact type/result/net-payoff law | `Vegas/EventGraph/PayoffTransport.lean`, `VegasTests/MonitoredGuessingPayoffs.lean`, `VegasTests/MonitoredGuessingPayoffInference.lean`, `VegasTests/MonitoredGuessingPayoffLaw.lean` |
+| Declared integer return tables share operational graph execution; inferred charges deter every raw early submission; prescribed native play retains the exact type/result/net-payoff law | `Vegas/EventGraph/PayoffTransport.lean`, `Vegas/Examples/MonitoredGuessing/Payoffs.lean`, `Vegas/Examples/MonitoredGuessing/PayoffInference.lean`, `Vegas/Examples/MonitoredGuessing/PayoffLaw.lean` |
 | Exact caught/missed continuation criterion; forcing the sender's future actions to fail cannot repair disclosure when it has no remaining source actions | `GameTheoryExtensions/Analysis/FailureEnforcement.lean`, `GameTheoryExtensionsTests/ForcedFailureEnforcement.lean` |
 | Simultaneous finite-agent best responses with pinned behavior and mandatory trembles; exact realization by original protocol execution | `GameTheoryExtensions/Analysis/ConstrainedNash.lean`, `GameTheoryExtensions/Analysis/Protocol/AgentForm.lean` |
 | Construct fully mixed Bayes approximants and one consistent limit with jointly optimal local responses at all free information sites | `GameTheoryExtensions/Analysis/Protocol/AgentCompletion.lean`, `GameTheoryExtensions/Analysis/Protocol/AgentCompletionLimit.lean` |
@@ -144,22 +144,22 @@ the subsequent kernel-checked build.
 | Rare contamination preserves even off-path limiting beliefs; finite-prefix departure probability is bounded by the per-step risk times horizon | `GameTheoryExtensions/Math/Probability/NegligibleContamination.lean`, `GameTheoryExtensions/Math/Probability/FirstDeparture.lean` |
 | A profitable deviation admits a finite sound sanction exactly when its observation law has positive mass outside all admitted observations | `GameTheoryExtensions/Analysis/ObservableEnforcement.lean` |
 | Ordinary-view packet reports, soundness on compliant snapshots, and conditional sampling/report-delivery bounds | `Interaction/MessageMonitoring.lean`, `Interaction/MessageMonitoringProbability.lean` |
-| Ledger-only conformance evidence persists through arbitrary raw continuations; accepted extra evidence in the native fixture escapes the pilot's charge but is publicly detectable | `Interaction/ReactiveLedgerConformance.lean`, `VegasTests/MonitoredGuessingConformance.lean` |
-| Every compiled graph decision satisfies the packet evidence checker; ordinary passive sampling detects the native counterexample with exactly its sampling probability | `Vegas/Pending/ReactiveConformance.lean`, `VegasTests/PassiveDisclosureMonitoring.lean` |
+| Ledger-only conformance evidence persists through arbitrary raw continuations; accepted extra evidence in the native fixture escapes the pilot's charge but is publicly detectable | `Interaction/ReactiveLedgerConformance.lean`, `Vegas/Examples/MonitoredGuessing/Conformance.lean` |
+| Every compiled graph decision satisfies the packet evidence checker; ordinary passive sampling detects the native counterexample with exactly its sampling probability | `Vegas/Pending/ReactiveConformance.lean`, `Vegas/Examples/PassiveDisclosureMonitoring.lean` |
 | Automatic penalties preserve every SE outcome law of the ordinary guessing game, with a converse under strict collateral and unchanged net payoff laws | `GameTheoryExtensionsTests/AmbientEnforcementEquilibrium.lean` |
 | Every source SE of the finite private-state sender/receiver class extends to an SE with identical state and net payoff laws under typewise disclosure charges; payoff-range bounds give a fixed target for all source SEs | `GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean` |
 | Statewise constant-sum, including zero-sum, games in that decision class preserve every source SE under optional disclosure without sanctions | `GameTheoryExtensions/Analysis/Protocol/DisclosureEnforcementEquilibrium.lean` |
-| Every SE of the actual initialized guessing program has a bounded native SE with identical joint private-bit/public-result/net-payoff law, for fixed collectible charge `D ≥ 2` | `VegasTests/MonitoredGuessingEquilibrium.lean`, `VegasTests/MonitoredGuessingNativePayoff.lean` |
-| One fixed playerwise policy translation preserves every source SE of that initialized guessing program and its joint secret/result/net-payoff law | `VegasTests/MonitoredGuessingCompilation.lean` |
-| Every SE of the literal two-reveal program with any integer return table and zero watcher payoff has a full bounded raw native SE preserving joint initial type, results and net payoffs | `VegasTests/MonitoredGuessingDeclaredCompilation.lean` |
-| Fixed source-to-restricted policies preserve all-profile joint laws and source SE; every restricted SE extends through ordinary, watcher and raw response restoration | `VegasTests/MonitoredGuessingRestrictedEquilibrium.lean`, `VegasTests/MonitoredGuessingRestrictedLaw.lean`, `VegasTests/MonitoredGuessingRestrictedExtension.lean` |
+| Every SE of the actual initialized guessing program has a bounded native SE with identical joint private-bit/public-result/net-payoff law, for fixed collectible charge `D ≥ 2` | `Vegas/Examples/MonitoredGuessing/Equilibrium.lean`, `Vegas/Examples/MonitoredGuessing/NativePayoff.lean` |
+| One fixed playerwise policy translation preserves every source SE of that initialized guessing program and its joint secret/result/net-payoff law | `Vegas/Examples/MonitoredGuessing/Compilation.lean` |
+| Every SE of the literal two-reveal program with any integer return table and zero watcher payoff has a full bounded raw native SE preserving joint initial type, results and net payoffs | `Vegas/Examples/MonitoredGuessing/DeclaredCompilation.lean` |
+| Fixed source-to-restricted policies preserve all-profile joint laws and source SE; every restricted SE extends through ordinary, watcher and raw response restoration | `Vegas/Examples/MonitoredGuessing/RestrictedEquilibrium.lean`, `Vegas/Examples/MonitoredGuessing/RestrictedLaw.lean`, `Vegas/Examples/MonitoredGuessing/RestrictedExtension.lean` |
 | Sharp collateral thresholds against arbitrary target SE implementations: one half for fair guessing, one for all source guessing laws | `GameTheoryExtensionsTests/AmbientEnforcementThreshold.lean` |
-| Explicit pending certificates escape a ledger-only alarm; a network-input alarm requires stronger observations | `VegasTests/DisclosureMonitoring.lean` |
+| Explicit pending certificates escape a ledger-only alarm; a network-input alarm requires stronger observations | `Vegas/Examples/DisclosureMonitoring.lean` |
 | Shared randomness enables signaling through permitted traffic; even observing the receiver's public guess does not permit detection with zero false positives | `GameTheoryExtensionsTests/MonitoredSignaling.lean` |
 | Auction failure of dominance, including every faithful translation | `Vegas/Examples/CommitRevealAuction.lean` |
-| SE separation for accepted named evidence, with literal declared and compiled settlement payoffs | `VegasTests/SelectiveAssociationSourceEquilibrium.lean`, `VegasTests/SelectiveAssociationSettlement.lean`, `VegasTests/SelectiveAssociationPayoffSeparation.lean` |
-| Native SE with empty passive observation, all legal information sites and whole-policy deviations | `VegasTests/SelectiveAssociationRestrictedEquilibrium.lean`, `VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean`, `VegasTests/SelectiveAssociationRestrictedBeliefs.lean` |
-| Isolated passive-observation change defeats preservation of that SE's payout law | `VegasTests/SelectiveAssociationRestrictedSeparation.lean` |
+| SE separation for accepted named evidence, with literal declared and compiled settlement payoffs | `Vegas/Examples/SelectiveAssociation/SourceEquilibrium.lean`, `Vegas/Examples/SelectiveAssociation/Settlement.lean`, `Vegas/Examples/SelectiveAssociation/PayoffSeparation.lean` |
+| Native SE with empty passive observation, all legal information sites and whole-policy deviations | `Vegas/Examples/SelectiveAssociation/RestrictedEquilibrium.lean`, `Vegas/Examples/SelectiveAssociation/RestrictedPrefixPosterior.lean`, `Vegas/Examples/SelectiveAssociation/RestrictedBeliefs.lean` |
+| Isolated passive-observation change defeats preservation of that SE's payout law | `Vegas/Examples/SelectiveAssociation/RestrictedSeparation.lean` |
 | Generic simulation and equilibrium transport | `GameTheoryExtensions/` |
 | Paper-visible theorem selection and axiom pins | `Paper.lean` |
 
@@ -196,11 +196,11 @@ premise covers arbitrary continuations; a strategic watcher who can decline
 reporting needs a separate argument. This theorem is not yet an all-program
 source-to-native compiler theorem.
 
-The [monitored native theorem](VegasTests/MonitoredGuessingEquilibrium.lean)
+The [monitored native theorem](Vegas/Examples/MonitoredGuessing/Equilibrium.lean)
 connects the actual initialized two-reveal source program to its compiled graph
 and the existing bounded raw-message runtime. Every source SE has a native SE
 with the same joint initial-bit, public-result and actual net-payoff-vector law.
-The [fixed playerwise translation](VegasTests/MonitoredGuessingCompilation.lean)
+The [fixed playerwise translation](Vegas/Examples/MonitoredGuessing/Compilation.lean)
 additionally makes Bob's completion depend only on his own source policy;
 Alice's and Watcher's policies are fixed. This semantic translation uses
 classical choice and does not supply executable strategy synthesis.
@@ -212,7 +212,7 @@ the proof supplies rational continuations at every information site and one
 consistent trembling sequence. Watcher is indifferent at zero utility, and
 collectibility is an explicit assumption; paid reporting and escrow are not
 implemented. See the [scope audit](docs/research/se-native-pilot.md).
-The [declared-payoff family](VegasTests/MonitoredGuessingDeclaredCompilation.lean)
+The [declared-payoff family](Vegas/Examples/MonitoredGuessing/DeclaredCompilation.lean)
 has a separate end-to-end theorem for every integer return table with zero
 watcher payoff. It starts with the literal source program's assessment and
 evaluated returns, retains source opening and withholding, and preserves the
@@ -266,7 +266,7 @@ or a result for unrestricted packets and unbounded interaction.
 The source protocol and generic continuation-transfer results do not establish
 native SPE preservation. Recovery has checked initialized execution laws and
 local incentive guarantees, but
-[`ReactiveEarlyOpeningSPE.lean`](VegasTests/ReactiveEarlyOpeningSPE.lean) proves
+[`ReactiveEarlyOpeningSPE.lean`](Vegas/Examples/ReactiveEarlyOpeningSPE.lean) proves
 that the current compiler fails SPE under the specified uniform service.
 The [counterexample guide](docs/early-opening-and-spe.md) explains the exact
 scope, completion facts, and profitable deviation. Whole-service continuation
@@ -275,17 +275,17 @@ The [combined service design](docs/reactive-spe-service.md) records the checked
 authorization consequences and the remaining enforcement and continuation
 obligations. No authorization-enforcing backend or native SPE preservation
 theorem is claimed by these conditional results.
-`VegasTests/SourceProtocol.lean` and
-`VegasTests/SetupProtocol.lean` check information-set closure on hidden source
+`Vegas/Examples/SourceProtocol.lean` and
+`Vegas/Examples/SetupProtocol.lean` check information-set closure on hidden source
 prefixes; `GameTheoryExtensionsTests/ContinuationTransfer.lean` proves that the
 atomic irreversible-failure example has no uniform continuation-law certificate.
-`VegasTests/BehavioralProtocol.lean` checks mixed binding admission with an
+`Vegas/Examples/BehavioralProtocol.lean` checks mixed binding admission with an
 infinite player universe and retention of bindings after a prefix.
-`VegasTests/EventService.lean` and the source/event-graph tests are concrete
+`Vegas/Examples/EventService.lean` and the source/event-graph tests are concrete
 execution regressions.
-`VegasTests/ParameterOutcomes.lean` checks a private-bit example with identical
+`Vegas/Examples/ParameterOutcomes.lean` checks a private-bit example with identical
 public marginals and different type-dependent utilities.
-`VegasTests/InFlightCommitment.lean` checks binding before inclusion: reading
+`Vegas/Examples/InFlightCommitment.lean` checks binding before inclusion: reading
 another pending message permits a new candidate but cannot change a transmitted
 handle. `Vegas.Paper.native_commitment_binding` audits the general invariant.
 The same regression checks private memory without preparation commands,

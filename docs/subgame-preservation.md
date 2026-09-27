@@ -136,8 +136,8 @@ private initial law as one chance step, using the same policies across draws.
 [SourceSubgame.lean](../Vegas/Game/SourceSubgame.lean) and
 [SetupSubgame.lean](../Vegas/Game/SetupSubgame.lean) identify canonical pure SPE
 with inequalities over those source continuation laws. The tests in
-[SourceProtocol.lean](../VegasTests/SourceProtocol.lean) and
-[SetupProtocol.lean](../VegasTests/SetupProtocol.lean) prove that a hidden
+[SourceProtocol.lean](../Vegas/Examples/SourceProtocol.lean) and
+[SetupProtocol.lean](../Vegas/Examples/SetupProtocol.lean) prove that a hidden
 forfeiture prefix and a hidden private-type draw, respectively, are not proper
 subgame roots when another player's information set crosses them.
 
@@ -229,7 +229,7 @@ an imperfect-information subgame; sequential equilibrium is a separate notion.
 
 ### A recoverable native prefix
 
-[`VegasTests/ContinuationRecovery.lean`](../VegasTests/ContinuationRecovery.lean)
+[`Vegas/Examples/ContinuationRecovery.lean`](../Vegas/Examples/ContinuationRecovery.lean)
 uses the real pending application and compiled player policy. There is one
 player, one initial Boolean binding, and one resolve event with deadline two.
 It checks:
@@ -276,13 +276,13 @@ The direct-action native game has no preparation-capacity obstruction.
 Every finite prefix leaves fresh handles, and one action can submit any value. The checked construction does not assume an empty cache or
 an unused canonical event slot. An existing transmitted candidate remains
 binding, and an earlier pending packet can still win inclusion; the two cases
-are checked in `VegasTests/InFlightCommitment.lean`. A continuation certificate
+are checked in `Vegas/Examples/InFlightCommitment.lean`. A continuation certificate
 must address these remaining network choices. It cannot treat a new submission
 as cancellation of the old one.
 
 ### A restricted menu in a proper native subgame
 
-[PendingMenus.lean](../VegasTests/PendingMenus.lean) uses the actual native
+[PendingMenus.lean](../Vegas/Examples/PendingMenus.lean) uses the actual native
 protocol, with one player, an integer binding, and its public disclosure.
 Deadlines are two, the event order is fixed, and one wire opportunity follows
 the three initial owner invocations. The reaction roster is empty; this is an
@@ -328,7 +328,7 @@ For the numerical obstruction, use public-result utilities:
 Every law supported by the residual native paths has utility sum at most three.
 Thus no randomized law has value at least two for both utilities.
 
-[PendingMenusStrategies.lean](../VegasTests/PendingMenusStrategies.lean)
+[PendingMenusStrategies.lean](../Vegas/Examples/PendingMenusStrategies.lean)
 proves both deviation witnesses against the canonical randomized runner.
 To obtain `1`, the player submits its correct future opening during the last
 binding invocation; to obtain `2`, it waits. During the disclosure grant it
@@ -336,16 +336,16 @@ submits the appropriate opening. Reserved inclusion publishes the selected
 value within ten service steps, before any clock tick. Every later service
 step preserves that result. Each deviation therefore earns two for its
 respective utility. SPE would require both lower bounds, contradicting the
-sum bound. `VegasTests.PendingMenus.no_common_native_spe` quantifies over all
+sum bound. `Vegas.Examples.PendingMenus.no_common_native_spe` quantifies over all
 native behavioral policies, including private memory and randomization.
 
-[PendingMenusSource.lean](../VegasTests/PendingMenusSource.lean) supplies the
+[PendingMenusSource.lean](../Vegas/Examples/PendingMenusSource.lean) supplies the
 actual source program and its common behavioral SPE: bind `0`, then always
 open. At a fresh binding, zero attains the global maximum of three. After any
 binding, opening weakly dominates withholding, including after forfeiture.
 The proof covers both source admission interfaces. The source and example
 graph publication kernels agree for every binding and disclosure.
-`VegasTests.PendingMenus.no_utility_independent_spe_compiler` combines these
+`Vegas.Examples.PendingMenus.no_utility_independent_spe_compiler` combines these
 facts. The translation is fixed before choosing the utility; no outcome
 simulation premise is needed for the contradiction.
 
@@ -569,7 +569,7 @@ boundary enforcing this guarantee.
 [ReactiveProtocol.lean](../InteractionTests/ReactiveProtocol.lean) checks
 reactions before inclusion and indistinguishable scheduler observations under
 different private samples. The fixed-service comparison in
-[InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean) separately
+[InFlightCommitment.lean](../Vegas/Examples/InFlightCommitment.lean) separately
 checks its explicit wire deliveries and retained service slots.
 
 ### When a transmitted handle acquires its meaning
@@ -582,7 +582,7 @@ private commands cannot change a fixed meaning.
 
 `EventGraphRuntime.submitted_commitment_binding` proves this invariant for
 arbitrary finite native continuations, without honesty or inclusion premises.
-[`VegasTests/InFlightCommitment.lean`](../VegasTests/InFlightCommitment.lean)
+[`Vegas/Examples/InFlightCommitment.lean`](../Vegas/Examples/InFlightCommitment.lean)
 checks the following transitions in the command-service comparison model:
 
 1. Alice submits an unprepared commitment handle.

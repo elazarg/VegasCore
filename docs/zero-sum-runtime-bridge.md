@@ -183,7 +183,7 @@ The checked local and service guarantees retain their full public-result scope:
   after those reactions and the reserved inclusion. Its existing readiness,
   deadline, integrity, and availability premises are unchanged.
 - `compiled_packet` in
-  [CommunicationNative.lean](../VegasTests/CommunicationNative.lean) withholds
+  [CommunicationNative.lean](../Vegas/Examples/CommunicationNative.lean) withholds
   the actual guard-rejected secret in the existing fixture. The same file's
   explicit raw `submitted` and `included` executions still prove failure of
   publication together with public knowledge of the secret binding.
@@ -272,24 +272,24 @@ it.
 Alice has three early opportunities; Bob has one later opportunity. If Alice
 remains silent, Bob is activated before his dependencies settle. The checked
 `silent_bob_not_ready` and `legal_unusable_bob_response` declarations in
-[CommunicationServiceOmission.lean](../VegasTests/CommunicationServiceOmission.lean)
+[CommunicationServiceOmission.lean](../Vegas/Examples/CommunicationServiceOmission.lean)
 exhibit this as an actual legal history. The service is dependency-authorized
 and uses at-most-once inclusion, as proved by `native_service_authorized` and
 `native_service_once` in
-[SequentialValidationService.lean](../VegasTests/SequentialValidationService.lean).
-That file also proves `VegasTests.SequentialValidation.native_unique_bob_activation`.
+[SequentialValidationService.lean](../Vegas/Examples/SequentialValidation/Service.lean).
+That file also proves `Vegas.Examples.SequentialValidation.native_unique_bob_activation`.
 
 Consider changing the declared payoff to give Bob 1 exactly when his final
 publication succeeds, and Alice its negative. Bob's initial commitment is a
 successful commitment to `true`. In the source, his final disclosure action
-can succeed after any preceding Alice choices; `VegasTests.SequentialValidation.guess_publication` in
-[SequentialValidationSource.lean](../VegasTests/SequentialValidationSource.lean)
+can succeed after any preceding Alice choices; `Vegas.Examples.SequentialValidation.guess_publication` in
+[SequentialValidationSource.lean](../Vegas/Examples/SequentialValidation/Source.lean)
 is the relevant checked calculation. The expected source value for Bob should
 therefore be 1.
 
 In the native silent prefix, Bob's sole response cannot yet resolve his event.
 After the last selection, `native_calendar_tail` in
-[SequentialValidationTail.lean](../VegasTests/SequentialValidationTail.lean)
+[SequentialValidationTail.lean](../Vegas/Examples/SequentialValidation/Tail.lean)
 permits only clock advancement and expiry. There is no later player activation
 or inclusion. The proposed native bound is therefore 0 for Bob against silent
 Alice. To turn this into a theorem requires the actual declared-payoff change,

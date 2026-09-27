@@ -29,10 +29,8 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
@@ -104,7 +102,7 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
   have matching (history : (menu.protocol (initialLaw setup) count scheduler).History)
       (who : Player) : payoff (restriction.history history).state who = base history.state who := by
     have clean := sourceService_history_audit_clear setup leaks bounds values capacity rosters
-      opportunities network profile sample authentic history who
+      opportunities network sample authentic history who
     change base history.state who - TerminalAudit.charge
       ((runtime setup).serviceAuditObservation leaks) (sourceServiceAudit setup leaks sample)
         history.state who * deposit who = base history.state who
@@ -120,7 +118,7 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
       (fun history who => payoff history.state who) matching
       (fun first second paired who site action _extra belief => by
         obtain ⟨repair, dominates⟩ := sourceService_continuation_settlement_comparison setup leaks
-          bounds values capacity rosters opportunities network profile parameter utility sample
+          bounds values capacity rosters opportunities network parameter utility sample
           authentic probability positive coverage first second paired who site
           (depth who (restriction.site who site)) (sourceClock who site)
           ((second who).commit (restriction.site who site).1 action)
@@ -140,7 +138,7 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
       apply FinDist.bind_congr
       intro final _
       have clean := sourceService_history_settlement setup leaks bounds values capacity rosters
-        opportunities network profile sample authentic base deposit final
+        opportunities network sample authentic base deposit final
       change settle final.state = FinDist.pure (base final.state) at clean
       change (settle final.state).map (fun payoffs => (observe final.state, payoffs)) =
         FinDist.pure (observe final.state, base final.state)

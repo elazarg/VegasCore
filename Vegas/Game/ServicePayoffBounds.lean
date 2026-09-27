@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceRoster
+import Vegas.Game.ServiceRoster
 import GameTheoryExtensions.Analysis.FinitePayoffBounds
 
 /-! # Fixed deposits from all bounded service histories

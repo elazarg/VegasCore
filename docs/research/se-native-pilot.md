@@ -8,7 +8,7 @@ results and actual net payoff vector. The native game and charge are fixed
 before choosing the source SE. One fixed playerwise policy translation preserves
 every source SE: Bob's native policy depends only on his own source policy;
 Alice's and Watcher's policies are fixed. See `compiled_source_equilibrium` in
-[MonitoredGuessingCompilation](../../VegasTests/MonitoredGuessingCompilation.lean).
+[MonitoredGuessingCompilation](../../Vegas/Examples/MonitoredGuessing/Compilation.lean).
 This mathematical translation uses classical choice for Bob's optimal off-path
 completion; it is not an executable synthesis procedure.
 This is forward preservation for one game, not reflection or a result for a
@@ -16,7 +16,7 @@ general Vegas source class or arbitrary blockchain service.
 
 ## Actual source program
 
-[MonitoredGuessingGame](../../VegasTests/MonitoredGuessingGame.lean) defines three
+[MonitoredGuessingGame](../../Vegas/Examples/MonitoredGuessing/Game.lean) defines three
 principals: Alice, Bob and Watcher. Its ordinary `Setup` contains Alice's initial
 commitment to a fair Boolean `x` and Bob's initial commitment to `true`, with
 ordinary disclosure obligations. Watcher has no source action.
@@ -32,7 +32,7 @@ return 0 to Watcher.
 Bob's guess is `isSuccess(guessResult)`: lawful withholding means `false` and
 is unpunished. Correctness is one exactly when Alice successfully opens and her
 bit equals that guess. These are literal integer payoff expressions. Checked
-[source SE results](../../VegasTests/MonitoredGuessingSourceEquilibrium.lean)
+[source SE results](../../Vegas/Examples/MonitoredGuessing/SourceEquilibrium.lean)
 show that every Boolean guess distribution `q` extends to a source SE, and every
 source SE has Alice open at all final sites and the joint law fair bit × `q`.
 
@@ -43,7 +43,7 @@ and setup incentives are outside this model.
 
 ## Actual native service and report
 
-[MonitoredGuessingNative](../../VegasTests/MonitoredGuessingNative.lean) uses the
+[MonitoredGuessingNative](../../Vegas/Examples/MonitoredGuessing/Native.lean) uses the
 existing compiled graph, reactive application and complete bounded raw menu.
 The value alphabet is `{false, true, integer 0}` with one prepared slot per owner;
 all bounded submissions, wrong event/type/value combinations, independent
@@ -59,7 +59,7 @@ Replay preserves Alice's authorship and original envelope identifier. Bob
 observes all pending messages at his sole decision; Alice observes none.
 
 The production public-event barrier blocks Alice's reveal before Bob's reveal.
-Checked [prelude laws](../../VegasTests/MonitoredGuessingNativePrelude.lean)
+Checked [prelude laws](../../Vegas/Examples/MonitoredGuessing/NativePrelude.lean)
 show that every possible Alice/Watcher prelude packet is rejected on inclusion
 and leaves the application unchanged. Ordinary final opening and withholding
 remain accepted. The single prelude excludes delayed reporting after a lawful
@@ -73,22 +73,22 @@ Receipt persistence is proved; **collectibility is an explicit utility/backend
 assumption, not an implemented escrow mechanism**. Withholding later cannot
 erase an existing charge.
 
-- [Monitoring](../../VegasTests/MonitoredGuessingNativeMonitoring.lean) gives
+- [Monitoring](../../Vegas/Examples/MonitoredGuessing/NativeMonitoring.lean) gives
   rejection probability exactly one half for every raw initial submission.
-- [Sanctions](../../VegasTests/MonitoredGuessingNativeSanctions.lean) bound its
+- [Sanctions](../../Vegas/Examples/MonitoredGuessing/NativeSanctions.lean) bound its
   expected utility by `1 − D/2`, for arbitrary entire subsequent Alice policies.
-- [Initial rationality](../../VegasTests/MonitoredGuessingNativeInitialRationality.lean)
+- [Initial rationality](../../Vegas/Examples/MonitoredGuessing/NativeInitialRationality.lean)
   proves silence optimal at each private type, against whole-policy deviations.
-- [Final rationality](../../VegasTests/MonitoredGuessingNativeResolutionFinal.lean)
+- [Final rationality](../../Vegas/Examples/MonitoredGuessing/NativeResolutionFinal.lean)
   proves truthful opening optimal at every final native site, including those
   reached after malformed traffic and existing liability.
-- [Receiver completion](../../VegasTests/MonitoredGuessingAssessment.lean)
+- [Receiver completion](../../Vegas/Examples/MonitoredGuessing/Assessment.lean)
   constructs one common fully mixed consistency sequence and makes Bob rational
   at every nonquiet site. Raw messages, report outcomes and receipts remain in
   his information; no quiet-or-authentic-bit partition is assumed.
-- [Quiet receiver rationality](../../VegasTests/MonitoredGuessingNativeReceiverRationality.lean)
+- [Quiet receiver rationality](../../Vegas/Examples/MonitoredGuessing/NativeReceiverRationality.lean)
   covers every raw Bob deviation at the quiet site using its fair posterior.
-- [Initialized laws](../../VegasTests/MonitoredGuessingNativeLaw.lean) match
+- [Initialized laws](../../Vegas/Examples/MonitoredGuessing/NativeLaw.lean) match
   fair bit × `q`, public results and absence of extra charges under the prescribed
   Alice/Watcher policies and Bob's quiet response. The checked capstone includes
   actual net payoffs in this joint law.
@@ -102,19 +102,19 @@ continuations directly; the finite disclosure experiment supplies intuition.
 
 ## Declared payoff tables and inferred charges
 
-[MonitoredGuessingPayoffs](../../VegasTests/MonitoredGuessingPayoffs.lean)
+[MonitoredGuessingPayoffs](../../Vegas/Examples/MonitoredGuessing/Payoffs.lean)
 replaces the literal return expressions by an arbitrary integer table over both
 publication results and players. It checks the actual source returns and common
 compiled operational graph. The production
 [payoff transport](../../Vegas/EventGraph/PayoffTransport.lean) preserves adaptive
 execution and public/player observations when changing a graph's settlement list.
 
-[MonitoredGuessingPayoffInference](../../VegasTests/MonitoredGuessingPayoffInference.lean)
+[MonitoredGuessingPayoffInference](../../Vegas/Examples/MonitoredGuessing/PayoffInference.lean)
 computes sender payoff extrema and calls the rational deposit checker with the
 proved collection coefficient one half. The result deters every raw early
 submission followed by any continuation policy or service plan; the original
 sender table computes charge two.
-[MonitoredGuessingPayoffLaw](../../VegasTests/MonitoredGuessingPayoffLaw.lean)
+[MonitoredGuessingPayoffLaw](../../Vegas/Examples/MonitoredGuessing/PayoffLaw.lean)
 preserves the exact initialized type/result/net-payoff law under the prescribed
 policies, including zero collected charge.
 

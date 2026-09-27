@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceCheckpoint
-import Vegas.Game.RevealServiceObservation
+import Vegas.Game.ServiceObservation
 import Vegas.Pending.ReactiveBindingTranscript
 import Vegas.Pending.ReactiveResponseRecall
 

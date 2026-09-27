@@ -2,7 +2,7 @@
 
 import Vegas.Game.SourceServiceEvaluatorRepair
 import Vegas.Game.SourceServiceRepairSettlement
-import Vegas.Game.RevealServiceRosterClock
+import Vegas.Game.ServiceRosterClock
 
 /-! # Conditional settlement dominance by one retained continuation
 
@@ -30,10 +30,8 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
@@ -128,7 +126,7 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
     change history.1.trace.length = depth at sameDepth
     omega
   obtain ⟨coupled, left, right, related⟩ := active_evaluator_stopped_coupling setup leaks bounds
-    values capacity rosters opportunities network profile source target agrees who reference
+    values capacity rosters opportunities network source target agrees who reference
     alternative control.remaining (2 * count + 1 - depth) enough control.execution history.1
       currentActive recalled
   change coupled.map (fun pair => some pair.1) =
@@ -150,7 +148,7 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
     obtain ⟨final, _, same⟩ := FinDist.support_map .. ▸ reached
     exact ⟨same ▸ final.trace⟩
   have compared := sourceService_repair_range_settlement_le setup leaks bounds values capacity
-    rosters opportunities network profile parameter utility sample authentic who probability
+    rosters opportunities network parameter utility sample authentic who probability
     (positive who) (coverage who) coupled realized
     (fun pair member => (related pair member).1)
     (fun pair member => (related pair member).2.1)
@@ -161,7 +159,7 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
   apply FinDist.expect_congr
   intro final _
   have clear := sourceService_history_audit_clear setup leaks bounds values capacity rosters
-    opportunities network profile sample authentic final who
+    opportunities network sample authentic final who
   change base final.state who - _ * deposit who = base final.state who
   rw [clear, zero_mul, sub_zero]
 

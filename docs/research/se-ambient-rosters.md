@@ -258,9 +258,9 @@ explicit service assumption, with no strategic watcher activation. It may
 return only a partial authentic sample; its coverage bound must hold for a
 forbidden record whenever that record is present.
 
-The [roster service](../../Vegas/Game/RevealServiceRoster.lean) is connected to
+The [roster service](../../Vegas/Game/ServiceRoster.lean) is connected to
 the existing scheduler evaluator. Its
-[response counts](../../Vegas/Game/RevealServiceRosterCounts.lean) hold for
+[response counts](../../Vegas/Game/ServiceRosterCounts.lean) hold for
 arbitrary raw policies. The
 [initialized prefix theorem](../../Vegas/Game/RevealServiceRosterPrefixSupport.lean)
 composes protected inclusion, expiry, public checkpoints and the actual source
@@ -313,7 +313,7 @@ connects an intermediate window to the original source step and the entire
 remaining source program, with the actual guarded terminal readout. Its finite
 coupling keeps the native final ledger, receipts and serials, so the existing
 public checkpoint applies at the next phase. The
-[local evaluation bridge](../../Vegas/Game/RevealServiceRosterLocalEvaluation.lean)
+[local evaluation bridge](../../Vegas/Game/ServiceRosterLocalEvaluation.lean)
 identifies one finite-menu response alternative followed by the physical global
 policy, at every legal history and at the standard assessment horizon.
 

@@ -2,7 +2,7 @@
 
 ## Checked native witness
 
-`VegasTests/OpeningTimingChannel.lean` uses the existing initialized graph,
+`Vegas/Examples/OpeningTimingChannel.lean` uses the existing initialized graph,
 reactive interpreter and canonical compiled opening. The service offers two
 owner responses, with a foreign pending-message observation between them.
 The owner sends the same opening at the first or second visit. No inclusion,

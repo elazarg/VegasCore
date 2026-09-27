@@ -24,10 +24,8 @@ private theorem current_slot
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -44,7 +42,7 @@ private theorem current_slot
       refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
       _, sampled, _, publicEq, _, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
-      network profile who control trace active
+      network (failureProfile setup.program) who control trace active
   have eventEq : selectedEvent = event := Option.some.inj
     (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans granted)
   subst selectedEvent
@@ -160,8 +158,7 @@ private theorem required_decision
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -223,8 +220,7 @@ theorem sourceServiceTimedPolicy_supported
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (timing : ∀ event who, (graph setup).actor? event = some who →
       FinDist (Fin ((rosters event).count who)))
@@ -274,7 +270,7 @@ theorem sourceServiceTimedPolicy_supported
     · have unsent : (runtime setup).eventRecorded leaks past event = false :=
         Bool.eq_false_iff.mpr recorded
       obtain ⟨current, count, ready⟩ := current_slot setup leaks bounds values capacity rosters
-        opportunities network profile who control trace active event granted
+        opportunities network who control trace active event granted
       change past.length = rosterOffset setup rosters who event + current.val at count
       have currentSupported := sourceServiceTimedPolicy_future_supported setup leaks bounds
         values
@@ -349,8 +345,7 @@ theorem sourceServiceTimedProfile_fullyMixed
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (timing : ∀ event who, (graph setup).actor? event = some who →
       FinDist (Fin ((rosters event).count who)))

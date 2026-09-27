@@ -64,10 +64,8 @@ theorem remaining_events_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -144,7 +142,7 @@ theorem remaining_events_stopped_coupling
       let block := rosterBlock setup rosters event
       let suffix := rest.flatMap (rosterBlock setup rosters)
       obtain ⟨step, first, second, related⟩ := event_block_stopped_coupling setup leaks bounds
-        values capacity rosters opportunities network profile source target agrees owner policy
+        values capacity rosters opportunities network source target agrees owner policy
           available reference memory original repaired frame onlyBindings started leftRecall sound
             leftBinding event (remaining + suffix.length) (by
               have equal : remaining + suffix.length + block.length =

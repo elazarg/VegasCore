@@ -3,7 +3,7 @@
 ## Decisive checked facts
 
 An unusable binding is not publicly identifiable in general.
-`VegasTests.UnusableBindingAudit.auditTrace_eq` compares actual reactive binding,
+`Vegas.Examples.UnusableBindingAudit.auditTrace_eq` compares actual reactive binding,
 inclusion, granted revelation and withholding steps. Valid binding followed by
 legal withholding and unusable binding followed by withholding have identical
 public snapshots, including phase, input authors, pending packets and receipts.

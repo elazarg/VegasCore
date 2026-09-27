@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterNoise
-import Vegas.Game.RevealServiceRoster
+import Vegas.Game.ServiceRoster
 import Vegas.Game.RevealServicePrefixInformation
 import Vegas.Pending.ReactiveServiceGrant
 

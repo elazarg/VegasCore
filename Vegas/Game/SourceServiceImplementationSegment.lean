@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceRosterCounts
+import Vegas.Game.ServiceRosterCounts
 import Interaction.ReactiveImplementation
 
 /-! # Exact private implementation memory through reserved service

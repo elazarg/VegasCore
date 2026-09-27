@@ -70,10 +70,8 @@ theorem binding_phase_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -218,7 +216,7 @@ theorem binding_phase_stopped_coupling
           List.length_map, position]
     simpa only [suffixLength] using binding_window_stopped_coupling setup leaks bounds values
       capacity rosters opportunities
-      network profile source target agrees owner policy available reference event payload outputEq
+      network source target agrees owner policy available reference event payload outputEq
         codeEq node rank prior next.1 next.2.1 sampled next.2.2 paired nextTrace nextStarted
           recalled
         nextGrant nextUnsent foreign rest roster

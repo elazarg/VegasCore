@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServicePrefix
-import Vegas.Game.RevealServiceInformation
+import Vegas.Game.ServiceInformation
 
 /-! # Full-source views on actual native information fibers
 

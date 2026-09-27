@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceRoster
+import Vegas.Game.ServiceRoster
 import GameTheoryExtensions.Math.Probability.DeferredChoice
 
 /-! # A common timing perturbation for every finite activation roster
@@ -21,7 +21,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   (rosters : (graph setup).EventId → List Player)
-  (coverage : ∀ event owner, (graph setup).actor? event = some owner → owner ∈ rosters event)
+  (coverage : ActorOpportunities setup rosters)
 
 def rosterLastSlot (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) : Fin ((rosters event).count owner) :=

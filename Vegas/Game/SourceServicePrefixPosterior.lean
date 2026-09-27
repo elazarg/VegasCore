@@ -67,14 +67,13 @@ theorem sourceService_timed_prefix_checkpoint [Fintype Player]
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (players : Player → (application setup leaks).Policy)
     (covered : ∀ who, (sourceServiceMenu setup leaks bounds rosters).Admissible
       (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) who (players who))
-    (profile : BehavioralProfile setup.program) (count : Nat)
+    (count : Nat)
     (within : count ≤ eventCount setup.program)
     (execution : (application setup leaks).Execution)
     (supported : execution ∈ ((initialLaw setup).bind fun state =>
@@ -92,7 +91,7 @@ theorem sourceService_timed_prefix_checkpoint [Fintype Player]
     bounds values capacity rosters opportunities menu.uniformResponses
     (fun who past view response member =>
       (menu.uniformResponses_support who past view response).mp member)
-    network profile count within execution retained
+    network (failureProfile setup.program) count within execution retained
   exact ⟨state, checkpoint⟩
 
 /-- At every owner visit before protected inclusion, the actual complete
@@ -105,8 +104,7 @@ theorem sourceService_owner_information_law [Fintype Player]
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : ∀ event who, (graph setup).actor? event = some who →
       FinDist (Fin ((rosters event).count who)))
     (full : ∀ event who owned, (timing event who owned).FullSupport)
@@ -299,14 +297,12 @@ theorem sourceService_owner_checkpoint [Fintype Player]
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (players : Player → (application setup leaks).Policy)
     (covered : ∀ who, (sourceServiceMenu setup leaks bounds rosters).Admissible
       (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) who (players who))
-    (profile : BehavioralProfile setup.program)
     (event : (graph setup).EventId) (owner : Player) (visits : List Player)
     (final : (application setup leaks).Execution)
     (reached : final ∈ (((initialLaw setup).bind fun state =>
@@ -332,7 +328,7 @@ theorem sourceService_owner_checkpoint [Fintype Player]
   rw [FinDist.support_bind] at combined
   obtain ⟨before, beforeSupport, tailSupport⟩ := Set.mem_iUnion₂.mp combined
   obtain ⟨state, checkpoint⟩ := sourceService_timed_prefix_checkpoint setup leaks bounds values
-    capacity rosters opportunities network players covered profile event.val event.isLt.le
+    capacity rosters opportunities network players covered event.val event.isLt.le
       before beforeSupport
   have unchanged := grant_window_config setup leaks players network event visits owner
     before final tailSupport
@@ -348,8 +344,7 @@ theorem sourceService_owner_posterior [Fintype Player]
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : ∀ event who, (graph setup).actor? event = some who →
       FinDist (Fin ((rosters event).count who)))
     (full : ∀ event who owned, (timing event who owned).FullSupport)
@@ -392,6 +387,6 @@ theorem sourceService_owner_posterior [Fintype Player]
     _ channel factor reference referenceSupport
   intro final reached
   exact sourceService_owner_checkpoint setup leaks bounds values capacity rosters opportunities
-    network players covered normalized event owner visits final reached
+    network players covered event owner visits final reached
 
 end Vegas.SourceProgram.RevealService

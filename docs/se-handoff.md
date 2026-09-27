@@ -8,11 +8,11 @@ checked; S3–S5 and E1–E2 remain open. The main mathematical work is S3–S4.
 Do not create new milestone boxes for helper lemmas or close existing boxes
 using conditional theorems with unproved compiler premises.
 
-The working branch is `spe`. The separate branch `spe-handoff-20260927`
-preserves unfinished proof files and detailed lane notes. Its draft files are
-not all checked and are deliberately absent from the main build roots. The
-ordinary `spe` branch contains the reviewed, checked proof batches. Consult
-the actual Git state when resuming; never overwrite existing work blindly.
+The working branch is `spe`. The former handoff drafts are integrated into the
+build roots and check. The branch `spe-handoff-20260927` keeps their earlier
+snapshot and lane notes; the draft status and process instructions in those
+notes are superseded by this document. Consult the actual Git state when
+resuming; never overwrite existing work blindly.
 
 Do not modify the GameTheory submodule. Generic mathematics belongs in
 `GameTheoryExtensions/`, generic execution in `Interaction/`, pending-message
@@ -120,51 +120,47 @@ equality of actual continuation outcomes for permitted alternatives, then
 average under the actual native belief. Do not assert that foreign native
 observations equal source observations: early observations remain in recall.
 
-## Immediate unfinished work
+## S4 interface and remaining cases
 
-The handoff branch includes three lane notes in `docs/se-handoff-notes/` with
-precise draft status, diagnostics and interfaces. The principal draft files are:
+[SourceServiceLocalComparison](../Vegas/Game/SourceServiceLocalComparison.lean)
+fixes the interface every S4 case uses. `SourceServiceSpec` bundles the
+service and its compiler side conditions. `TimedApproximant` bundles one fully
+mixed timed stage. `TimedApproximant.ofSource` builds the stage of the common
+S2 sequence for a fully supported source strategy, and `ofSource_bayes` gives
+its Bayes consistency. Every actual decision has a `DecisionPhase`
+(`SourceServiceSpec.exists_decisionPhase`). Three generic steps are proved
+once:
 
-1. [SourceServiceBindingContinuation](https://github.com/elazarg/VegasCore/blob/spe-handoff-20260927/Vegas/Game/SourceServiceBindingContinuation.lean): current-response binding
-   continuation and common source-choice distribution. An elaborator free-variable
-   failure in the dependent statement is being isolated; this is not checked.
-2. [ScheduledChoicePosterior](https://github.com/elazarg/VegasCore/blob/spe-handoff-20260927/Interaction/ScheduledChoicePosterior.lean) and
-   [SourceServiceTimingPosterior](https://github.com/elazarg/VegasCore/blob/spe-handoff-20260927/Vegas/Game/SourceServiceTimingPosterior.lean): actual waiting likelihoods
-   and timing posterior, including initialization from dormant recall.
-3. [SourceServiceDisclosureContinuation](https://github.com/elazarg/VegasCore/blob/spe-handoff-20260927/Vegas/Game/SourceServiceDisclosureContinuation.lean): disclosure continuation
-   work. The active raw opening checkpoint still needs the passed-slot/silence
-   case and the typed guarded source-successor connection.
-4. [SourceServiceTimedReachability](https://github.com/elazarg/VegasCore/blob/spe-handoff-20260927/Vegas/Game/SourceServiceTimedReachability.lean): fully mixed legal response
-   support and transfer back into initialized physical prefix support.
-5. [SourceServiceHarmlessContinuation](https://github.com/elazarg/VegasCore/blob/spe-handoff-20260927/Vegas/Game/SourceServiceHarmlessContinuation.lean),
-   [SourceServiceSampleComparison](https://github.com/elazarg/VegasCore/blob/spe-handoff-20260927/Vegas/Game/SourceServiceSampleComparison.lean), and
-   [SourceServiceRecordedContinuation](https://github.com/elazarg/VegasCore/blob/spe-handoff-20260927/Vegas/Game/SourceServiceRecordedContinuation.lean): application-law
-   congruence through the full source suffix and actual harmless local gains.
+- `TimedApproximant.response_continuation_law`: after any legal response, the
+  complete typed source terminal law is the source continuation from the next
+  event boundary, averaged over the actual application law of the phase.
+- `TimedApproximant.local_law_readout`: a local lottery runs as the lottery
+  over current responses.
+- `TimedApproximant.comparison_eq_of_phase_invariant`: if every legal response
+  leaves the same next-boundary application law at every history of a site,
+  prescribed and alternative assessment laws are equal for every local lottery.
 
-For the remaining active-opening case, reuse the checked opening frame and
-replay invariants. A passed selected slot produces replay only. From clean
-published traffic, replay preserves the application, reserved inclusion is
-idle, and the actual deadline completes the false branch. The current
-activation must not be sampled again. A future selected slot is already
-handled by the checked active-opening theorem.
-
-Once all local cases check, combine their vanishing gain bounds with
-`GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean`, the actual
-common sequence, and the initialized timed law. This closes S5 only after
-the complete source-to-permitted-runtime statement checks. Then compose R4
-for E1 and perform the full integration and claims audit for E2.
+Checked instances: public-sampling sites
+(`TimedApproximant.sample_comparison_eq`), foreign visits to binding and
+disclosure events (`TimedApproximant.foreign_binding_comparison_eq`,
+`TimedApproximant.foreign_disclosure_comparison_eq`), and owner visits after a
+recorded binding or opening (`TimedApproximant.recorded_comparison_eq`,
+`TimedApproximant.recorded_disclosure_comparison_eq`). The
+[completion plan](se-completion-plan.md) orders the remaining work: site
+classification, unsent owner bindings and disclosures, S5 assembly, E1
+composition and E2 validation.
 
 ## Build and validation discipline
 
-Use `lake --wfail build Module.Name`; bare `lake env lean file.lean` omits central
-options and can produce unrelated elaboration failures. A scratch checker must
-load all central options and set the **actual module name** in its setup JSON.
-Reusing another module's name can collide on generated private declarations.
-
-Configured builds temporarily remove imported oleans. Do not repeatedly launch
-dependent checks or restart live builds because an olean is missing. Poll the
-specific live handle until terminal; only then decide whether a rebuild is
-needed. Inspect authoritative process state after a cold restart.
+Check any module, including a draft that no aggregator imports, with
+`lake --wfail build Module.Name`. It applies every option in `lakefile.toml`
+and needs no setup file; the per-module setup JSONs and direct checker commands
+in the lane notes are unnecessary. Bare `lake env lean file.lean` omits the
+central options and can produce unrelated elaboration failures. Run one Lake
+build at a time: a build removes the oleans it is replacing, so a concurrent
+check can fail on a missing import that is not a real error. The lane notes'
+coordination instructions (build queues, lane ownership, process handles) do
+not apply.
 
 The last reviewed proof batch passed a configured 3,756-job targeted build and
 the module-boundary, documentation-reference, central-options and whitespace

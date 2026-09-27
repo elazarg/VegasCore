@@ -56,22 +56,31 @@ percentage estimate.
 
 - [ ] **S3. Information correspondence at every native decision.** Derive the
   actual conditional information laws throughout every source constructor and
-  every intermediate owner or foreign-player visit. Account for private source
-  intentions, timing, replay and passive observations using the original source
+  every intermediate owner visit. Account for private source intentions,
+  timing, replay and passive observations using the original source
   assessment. A joint law only at event boundaries does not close this box.
   The event-boundary joint law is checked in
   [SourceServicePrefixFactorization.lean](../Vegas/Game/SourceServicePrefixFactorization.lean);
   actual owner-visit Bayes posteriors and original-assessment comparisons are
   checked in [SourceServiceBayes.lean](../Vegas/Game/SourceServiceBayes.lean) and
   [SourceServiceAssessment.lean](../Vegas/Game/SourceServiceAssessment.lean).
-  Foreign and implementation-only visits must also be accounted for.
+  Foreign and implementation-only visits need no information law: every legal
+  response at such a site has the same complete continuation law at every
+  history of the site, so its comparison holds for every belief.
 
 - [ ] **S4. Sequential incentives for every permitted native choice.** Bound
   every actual local native deviation by comparisons in the original source
   assessment, along the common sequence from S2. Include waiting, replay,
   binding and guarded disclosure; any comparison error must vanish uniformly
   as needed by the SE limit theorem. A terminal-law equality does not close this
-  box.
+  box. The site-by-site interface is checked in
+  [SourceServiceLocalComparison.lean](../Vegas/Game/SourceServiceLocalComparison.lean);
+  public-sampling sites, foreign visits, and owner visits after a recorded
+  binding or opening have checked zero-gain comparisons
+  ([SourceServiceForeignComparison.lean](../Vegas/Game/SourceServiceForeignComparison.lean),
+  [SourceServiceForeignDisclosure.lean](../Vegas/Game/SourceServiceForeignDisclosure.lean)).
+  Unsent owner bindings and unsent owner disclosures remain; the
+  [completion plan](se-completion-plan.md) orders the remaining work.
 
 - [ ] **S5. Full-language source-to-permitted-runtime SE theorem.** Combine
   S1–S4 into an actual compiler theorem: every original source SE has a permitted

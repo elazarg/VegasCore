@@ -188,7 +188,7 @@ usable owner opportunities and an actual completion bound. The calendar type
 alone makes no such guarantee. A rejection or wait consumes its scheduled step;
 it does not restart a deadline.
 
-The [early-opening regression](../VegasTests/ReactiveDependencyService.lean)
+The [early-opening regression](../Vegas/Examples/ReactiveDependencyService.lean)
 instantiates a seven-step calendar and proves that the same contested prefix
 is a proper canonical subgame root. It evaluates the full five remaining
 rounds for the actual compiler and the exhibited early-opening deviation.

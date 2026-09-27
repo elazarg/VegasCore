@@ -231,7 +231,7 @@ Neither follows from the present ideal-interface proofs alone.
 | The checked no-leak native SE | It admits the full bounded raw response menu, including malformed calls, known replay and evidence forwarding. Its evidence-origin argument uses the ideal issuer and empty passive observation. Correlated initial witness possession, shared signing keys, or additional public verification are not silently covered by that quantifier. |
 
 For the exact native comparison, see
-[SelectiveAssociationRestrictedSeparation.lean](../VegasTests/SelectiveAssociationRestrictedSeparation.lean)
+[SelectiveAssociationRestrictedSeparation.lean](../Vegas/Examples/SelectiveAssociation/RestrictedSeparation.lean)
 and [ReactiveEvidenceOrigin.lean](../Vegas/Pending/ReactiveEvidenceOrigin.lean).
 The conceptual disclosure problem remains whenever a player can transfer a
 verifiable opening. Its current numerical payoff separation is a checked

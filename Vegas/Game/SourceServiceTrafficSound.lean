@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceConformance
-import Vegas.Game.RevealServiceRosterClock
+import Vegas.Game.ServiceRosterClock
 import Vegas.Game.RevealServiceSignedTraffic
 
 /-! # Authentic partial audits accept every retained source history
@@ -30,13 +30,11 @@ inside a source event. Every prefix has an actual permitted completion. -/
 theorem initialized_sourceService_partial_conformance
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (players : Player → (application setup leaks).Policy)
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (count : Nat) (execution : (application setup leaks).Execution)
     (reached : execution ∈ ((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network
@@ -56,7 +54,7 @@ theorem initialized_sourceService_partial_conformance
       (runtime setup).runInteractionPlan_append, FinDist.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨execution, reachedPrefix, continued⟩
   have traffic := initialized_sourceService_conformance bounds values capacity opportunities
-    players lawful network profile final (by
+    players lawful network final (by
       rw [FinDist.support_bind]
       exact Set.mem_iUnion₂.mpr ⟨initial, supported, complete⟩)
   have included := (runtime setup).executionTraffic_runInteractionPlan leaks players network
@@ -68,10 +66,8 @@ history, including off-path decisions and partially observed pending traffic. -/
 theorem sourceService_history_traffic
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (history : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History) :
     ∀ record ∈ (application setup leaks).stateTraffic history.state,
@@ -99,7 +95,7 @@ theorem sourceService_history_traffic
           rw [roster_roundsFrom setup leaks rosters network menu.uniformResponses _ within]
             at reached
           exact initialized_sourceService_partial_conformance bounds values capacity opportunities
-            menu.uniformResponses lawful network profile _ execution reached
+            menu.uniformResponses lawful network _ execution reached
       | some who =>
           obtain ⟨accounted, count, prior, command, position, reached, _, _, observed⟩ := supported
           have within : count ≤ (rosterPlan setup rosters).length := by omega
@@ -107,7 +103,7 @@ theorem sourceService_history_traffic
             at reached
           rw [app.executionTraffic_environment prior execution command observed]
           exact initialized_sourceService_partial_conformance bounds values capacity opportunities
-            menu.uniformResponses lawful network profile count prior reached
+            menu.uniformResponses lawful network count prior reached
 
 /-- Any authentic partial sample of signed phase evidence collects zero
 traffic penalties on a retained history. No sampling coverage is needed for
@@ -115,10 +111,8 @@ this soundness direction. -/
 theorem sourceService_history_traffic_audit_clear
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (sample : List (EnvelopeEvidence setup leaks) →
       FinDist (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed,
@@ -136,7 +130,7 @@ theorem sourceService_history_traffic_audit_clear
   apply (application setup leaks).sampledTrafficAudit_sound
   · exact authentic _
   · intro record member _
-    exact sourceService_history_traffic bounds values capacity opportunities network profile
+    exact sourceService_history_traffic bounds values capacity opportunities network
       history record member
 
 end Vegas.SourceProgram.RevealService

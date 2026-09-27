@@ -341,8 +341,7 @@ theorem ServiceBoundary.step_state_law [Fintype Player]
     (execution : (application setup leaks).Execution)
     (boundary : ServiceBoundary setup leaks rosters initial source refs offset execution)
     (bounds : MessageBounds (graph setup)) (network : (runtime setup).NetworkPolicy leaks)
-    (opportunities : ∀ event owner, (graph setup).actor? event = some owner →
-      owner ∈ rosters event)
+    (opportunities : ActorOpportunities setup rosters)
     (effective : ∀ who, (profile who).EffectiveDisclosures program
       source.registry source.revelations) :
     ((runtime setup).runInteractionPlan leaks

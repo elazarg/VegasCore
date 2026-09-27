@@ -218,10 +218,8 @@ private theorem recorded_binding_resources
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (owner : Player) (execution : (application setup leaks).Execution)
     (event : (graph setup).EventId) (payload : L.Ty)
     (outputEq : (graph setup).outputLayout event = .binding owner payload)
@@ -263,17 +261,17 @@ private theorem recorded_binding_resources
     exact actor
   obtain ⟨ready, timely, _, recalled, _, serials, _⟩ :=
     sourceService_binding_decision_resources setup leaks bounds values capacity rosters
-      opportunities network profile owner ⟨remaining, some owner, execution⟩ trace rfl event granted
+      opportunities network owner ⟨remaining, some owner, execution⟩ trace rfl event granted
         owner payload outputEq codeEq node owned
   obtain ⟨value, _, _, candidate, vacant, nextSerial, pending, packets, _, _⟩ :=
     sourceService_recorded_binding_resources setup leaks bounds values capacity rosters
-      opportunities network profile owner ⟨remaining, some owner, execution⟩ trace rfl event granted
+      opportunities network owner ⟨remaining, some owner, execution⟩ trace rfl event granted
         owner payload outputEq codeEq node owned recorded
   dsimp only at ready timely recalled serials candidate vacant nextSerial pending packets
   have unused : execution.application.HandleUnused (owner, .prepared serial) := by
     obtain ⟨before, _, _, selected, _, _, _, selectedEq, _, publicEq, _, unused, _⟩ :=
       sourceService_submitted_binding setup leaks bounds values capacity rosters opportunities
-        network profile owner ⟨remaining, some owner, execution⟩ trace rfl event granted owner
+        network owner ⟨remaining, some owner, execution⟩ trace rfl event granted owner
           payload outputEq codeEq node owned recorded
     rw [selectedEq] at unused
     intro field associated
@@ -286,7 +284,7 @@ private theorem recorded_binding_resources
     obtain ⟨before, value, _, selected, visits, middle, sample, _, _, _, _, _, _, beforeSerials,
         accounted, _, reached, sampled⟩ :=
       sourceService_submitted_binding setup leaks bounds values capacity rosters opportunities
-        network profile owner ⟨remaining, some owner, execution⟩ trace rfl event granted owner
+        network owner ⟨remaining, some owner, execution⟩ trace rfl event granted owner
           payload outputEq codeEq node owned recorded
     have ledger := (runtime setup).player_window_ledger leaks menu.uniformResponses network visits
       (before.respond app owner
@@ -309,10 +307,8 @@ theorem recorded_binding_history_response_block_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -387,7 +383,7 @@ theorem recorded_binding_history_response_block_coupling
   obtain ⟨value, ready, timely, recalled, serials, unused, repeated, candidate, vacant,
       pending, unpublished, packets⟩ :=
     recorded_binding_resources setup leaks bounds values capacity rosters opportunities network
-      profile owner execution event payload outputEq codeEq node granted recorded remaining trace
+      owner execution event payload outputEq codeEq node granted recorded remaining trace
   have coverage : bounds.compiledActions (runtime setup) leaks owner (execution.recall owner)
       (execution.observe app owner) ⊆ menu.actions owner (execution.recall owner)
         (execution.observe app owner) := by

@@ -30,10 +30,8 @@ theorem optional_binding_history_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (players : Player → (application setup leaks).Policy)
     (owner : Player) (remaining : Nat)
     (original repaired : (application setup leaks).Execution)
@@ -84,7 +82,7 @@ theorem optional_binding_history_coupling
     exact actor
   obtain ⟨ready, _, _, rightRecall, _, serials, beforeFirst⟩ :=
     sourceService_binding_decision_resources setup leaks bounds values capacity rosters
-      opportunities network profile owner ⟨remaining, some owner, repaired⟩ trace rfl event
+      opportunities network owner ⟨remaining, some owner, repaired⟩ trace rfl event
         granted owner payload outputEq codeEq node owned
   obtain ⟨small, selected, fresh, _, _, _, _⟩ := beforeFirst unsent
   have counted : original.application.publicView.bindingCount owner =

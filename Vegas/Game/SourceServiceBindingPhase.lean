@@ -2,7 +2,7 @@
 
 import Vegas.Game.SourceServiceWaiting
 import Vegas.Game.SourceServiceBindingRoster
-import Vegas.Game.RevealServiceRosterCounts
+import Vegas.Game.ServiceRosterCounts
 import Vegas.Pending.ReactiveServiceRecall
 
 /-! # A source binding across its complete finite response roster

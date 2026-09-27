@@ -185,7 +185,7 @@ These are semantic and information guarantees. They do not establish an
 equilibrium compiler theorem.
 
 The actual deferred-guard game is instantiated in
-[`VegasTests.CommunicationDisclosure`](../VegasTests/CommunicationDisclosure.lean).
+[`Vegas.Examples.CommunicationDisclosure`](../Vegas/Examples/CommunicationDisclosure.lean).
 Its checked public history retains the original failed publication and exposes
 the opening certificate. A second checked history privately discloses the same
 certificate before the first source command. The setup correlation then fixes
@@ -263,11 +263,11 @@ reactive realization does not supply the missing whole-service correctness edge.
 | Native packet decoding and handler soundness | [native ReactiveEvidence](../Vegas/Pending/ReactiveEvidence.lean) |
 | Compiled disclosure with arbitrary guarded result | [ReactiveDisclosure](../Vegas/Pending/ReactiveDisclosure.lean) |
 | Source-name correspondence under store agreement | [EventGraphEvidence](../Vegas/Compile/EventGraphEvidence.lean) |
-| Actual rejected-opening compiler and receipt instance | [CommunicationNative](../VegasTests/CommunicationNative.lean) |
+| Actual rejected-opening compiler and receipt instance | [CommunicationNative](../Vegas/Examples/CommunicationNative.lean) |
 | Transferable opening evidence, separate from the call | [OpeningEvidence](../Vegas/Pending/OpeningEvidence.lean) |
 | Evidence truth at every compatible native history | [ReactivePacketEvidence](../Interaction/ReactivePacketEvidence.lean) and its [Vegas instance](../Vegas/Pending/ReactivePacketEvidence.lean) |
-| Same-response issuance, partial observation, forwarding, rejection | [ReactiveWitnessedEvidence](../VegasTests/ReactiveWitnessedEvidence.lean) |
-| Indistinguishable genuine and false unauthenticated pending claims | [CommunicationPending](../VegasTests/CommunicationPending.lean) |
+| Same-response issuance, partial observation, forwarding, rejection | [ReactiveWitnessedEvidence](../Vegas/Examples/ReactiveWitnessedEvidence.lean) |
+| Indistinguishable genuine and false unauthenticated pending claims | [CommunicationPending](../Vegas/Examples/CommunicationPending.lean) |
 
 ### Pending observations and service design
 
@@ -294,7 +294,7 @@ certificate does not authenticate the forwarder's application call as the
 candidate owner's call. The soundness and information-fiber theorems quantify
 over arbitrary native play and partial passive-observation rules.
 
-The [pending-message experiment](../VegasTests/CommunicationPending.lean)
+The [pending-message experiment](../Vegas/Examples/CommunicationPending.lean)
 compares **unauthenticated** claims: Alice sends the same raw claim to open
 `true`, with no certificate, under either a `true` or a `false` binding. Bob has
 identical observations in both cases. Its `no_view_verifier` theorem concerns
@@ -546,7 +546,7 @@ compiler laws without changing that protocol:
   available binding field and handle **at inclusion**.
 
 The checked `binding_after_passive_reaction` fixture in
-[`ReactiveRuntime`](../VegasTests/ReactiveRuntime.lean) executes a partial-leak
+[`ReactiveRuntime`](../Vegas/Examples/ReactiveRuntime.lean) executes a partial-leak
 activation and an arbitrary player's response before including the original
 envelope. It proves the resulting binding law for every response policy and
 both successful and unopenable commitments. In this fixture the inclusion
@@ -626,7 +626,7 @@ message. [ReactiveAssociationEvidence](../Vegas/Pending/ReactiveAssociationEvide
 proves that a previously observed typed candidate certificate, together with
 the public accepted association, identifies the named binding throughout the
 receiver's information set. The
-[three-player fixture](../VegasTests/ReactiveAssociationEvidence.lean) gives Bob
+[three-player fixture](../Vegas/Examples/ReactiveAssociationEvidence.lean) gives Bob
 the candidate certificate before association and includes a different packet
 with no certificate to install that candidate. Bob can then authenticate the
 named binding, while Carol sees identical ledger data for either value. A
@@ -658,7 +658,7 @@ epoch service supplies a checked opportunity result in
 [ReactiveServiceOpportunity](../Vegas/Pending/ReactiveServiceOpportunity.lean):
 under the existing deadline-at-least-two assumption, an event newly activated
 during an epoch is ready and timely at its next reserved owner visit, or has
-already completed. The [deferred-guard instance](../VegasTests/CommunicationServiceOpportunity.lean)
+already completed. The [deferred-guard instance](../Vegas/Examples/CommunicationServiceOpportunity.lean)
 covers arbitrary prior epochs and behavior. Competing
 submissions, partial pending observations, and publication of rejected side
 traffic remain separate correspondence obligations. A schedule that advances
@@ -667,7 +667,7 @@ which begins at that completion; padding with waits cannot silently erase elapse
 time.
 
 An opportunity also does not cancel an earlier submission.
-[CommunicationServiceRecovery](../VegasTests/CommunicationServiceRecovery.lean)
+[CommunicationServiceRecovery](../Vegas/Examples/CommunicationServiceRecovery.lean)
 checks a recurring-service execution where an old, dependency-authorized
 binding packet is included after the owner's fresh corrective response and
 before reserved inclusion. The old value becomes irrevocable. The source

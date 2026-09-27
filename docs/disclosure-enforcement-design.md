@@ -369,11 +369,11 @@ The checked native witness proceeds as follows:
    certificate.
 
 The operational and payoff proofs are in
-[SelectiveAssociationNative.lean](../VegasTests/SelectiveAssociationNative.lean),
-[SelectiveAssociationNativeDeviation.lean](../VegasTests/SelectiveAssociationNativeDeviation.lean)
+[SelectiveAssociationNative.lean](../Vegas/Examples/SelectiveAssociation/Native.lean),
+[SelectiveAssociationNativeDeviation.lean](../Vegas/Examples/SelectiveAssociation/NativeDeviation.lean)
 and their companion modules. They contain no punishment service.
 
-The checked [monitor experiment](../VegasTests/DisclosureMonitoring.lean)
+The checked [monitor experiment](../Vegas/Examples/DisclosureMonitoring.lean)
 makes the access distinction precise. `pending_certificate_detected` shows
 that the network-input alarm sees the early certificate while the ledger alarm
 does not. `certificate_free_inclusion_keeps_gap` retains this distinction
@@ -434,7 +434,7 @@ checks every compiled graph action, including legal source deviations, against
 arbitrary emission states and known packets. `no_grant_no_transmission` checks
 that the prescribed compiler sends nothing without a service grant.
 
-[PassiveDisclosureMonitoring.lean](../VegasTests/PassiveDisclosureMonitoring.lean)
+[PassiveDisclosureMonitoring.lean](../Vegas/Examples/PassiveDisclosureMonitoring.lean)
 uses that checker on the actual native witness. Bob's ordinary observation
 contains the offending certified commitment while the ledger does not; his
 report persists after the separate certificate-free binding is included.

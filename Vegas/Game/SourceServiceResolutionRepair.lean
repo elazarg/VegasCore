@@ -28,10 +28,8 @@ theorem resolution_history_activation_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -106,7 +104,7 @@ theorem resolution_history_activation_coupling
     exact actor
   obtain ⟨ready, timely, rightBinding, rightRecall, _, serials, first⟩ :=
     sourceService_decision_resources setup leaks bounds values capacity rosters opportunities
-      network profile owner ⟨remaining, some owner, activated⟩ activeTrace rfl event granted
+      network owner ⟨remaining, some owner, activated⟩ activeTrace rfl event granted
         owner owned
   have rightReady : repaired.application.config.cut.Ready event := ready
   have rightTimely : repaired.application.WithinDeadline (runtime setup) event := timely

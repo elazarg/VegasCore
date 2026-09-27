@@ -41,10 +41,8 @@ theorem binding_window_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -178,7 +176,7 @@ theorem binding_window_stopped_coupling
       simpa only [players, Function.update_self] using available
     by_cases last : owner ∉ visits
     · obtain ⟨coupling, first, second, related⟩ := final_binding_history_coupling setup leaks
-        bounds values capacity rosters opportunities network profile players owner remaining
+        bounds values capacity rosters opportunities network players owner remaining
           prior original repaired sampled memory frame trace reference started recalled event
           payload outputEq codeEq node granted unsent (covered _ _) before after visits last
           (by simpa only [List.append_assoc, List.singleton_append, List.cons_append,
@@ -198,13 +196,13 @@ theorem binding_window_stopped_coupling
       have optional : ¬ bindingRequired setup leaks rosters owner (repaired.recall owner)
           (repaired.observe app owner) := by
         rw [sourceService_bindingRequired_iff_no_later_owner setup leaks bounds values capacity
-          rosters opportunities network profile owner ⟨remaining, some owner, repaired⟩ trace rfl
+          rosters opportunities network owner ⟨remaining, some owner, repaired⟩ trace rfl
             event granted payload outputEq owned unsent visited visits roster
             (by rw [← frame.service]; exact slot)]
         exact last
       obtain ⟨ready, timely, _, rightRecall, _, serials, firstResources⟩ :=
         sourceService_binding_decision_resources setup leaks bounds values capacity rosters
-          opportunities network profile owner ⟨remaining, some owner, repaired⟩ trace rfl
+          opportunities network owner ⟨remaining, some owner, repaired⟩ trace rfl
             event granted owner payload outputEq codeEq node owned
       obtain ⟨small, selected, fresh, unused, vacant, accounted, published⟩ := firstResources unsent
       have counted : original.application.publicView.bindingCount owner =

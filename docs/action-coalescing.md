@@ -166,11 +166,11 @@ from own recall remains an explicit proof obligation. The general protocol
 retains those reactions, but its information-model certificate is not yet
 instantiated for them.
 
-[`VegasTests/ResponseCoalescing.lean`](../VegasTests/ResponseCoalescing.lean)
+[`Vegas/Examples/ResponseCoalescing.lean`](../Vegas/Examples/ResponseCoalescing.lean)
 constructs the canonical information model for the actual pending-menu example.
 It proves that the original two-call execution is unreachable in the coalesced
 history tree, while retaining all three competing packets and the next wire
-slot. [`InFlightCommitment.lean`](../VegasTests/InFlightCommitment.lean) also
+slot. [`InFlightCommitment.lean`](../Vegas/Examples/InFlightCommitment.lean) also
 checks the coalesced transition for a received-bit reaction before inclusion.
 
 ## Experiment 1: the internal cut
@@ -293,7 +293,7 @@ sets agree in both utility tests. The experiment therefore demonstrates a
 remaining complete-strategy issue, not failure of SPE outcome preservation.
 It also does not establish that every native implementation has this issue.
 
-The existing native [in-flight-message example](../VegasTests/InFlightCommitment.lean)
+The existing native [in-flight-message example](../Vegas/Examples/InFlightCommitment.lean)
 checks actual delivery and a policy reaction before inclusion. It establishes
 that these observations belong to the runtime behavior that a coalescing
 transformation must retain. The [reactive inclusion obstruction](reactive-inclusion-obstruction.md)

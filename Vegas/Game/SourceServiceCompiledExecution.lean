@@ -31,8 +31,7 @@ theorem sourceServiceOpportunity_at_history
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -119,7 +118,7 @@ theorem sourceServiceOpportunity_at_history
             obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj (kind.symm.trans outputEq)
             rfl
       obtain ⟨_, _, _, _, _, _, resources⟩ := sourceService_binding_decision_resources
-        setup leaks bounds values capacity rosters opportunities network profile who control
+        setup leaks bounds values capacity rosters opportunities network who control
           trace active event grantedCurrent who _ outputEq codeEq node owned
       obtain ⟨room, selected, candidate, _, _, _, _⟩ := resources unsent
       have covered := sourceServiceOpportunity_commit_covered setup leaks bounds values rosters
@@ -174,8 +173,7 @@ theorem sourceServiceLastPolicy_admissible
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -245,8 +243,7 @@ theorem sourceServiceCompiledProfile_complete_state
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)
     (permitted : ∀ who, (original who).Admitted setup.program

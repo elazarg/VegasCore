@@ -52,10 +52,8 @@ theorem resolution_roster_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -163,7 +161,7 @@ theorem resolution_roster_stopped_coupling
         by_cases same : actor = owner
         · subst actor
           exact resolution_history_activation_coupling setup leaks bounds values capacity rosters
-            opportunities network profile source target agrees owner policy available reference
+            opportunities network source target agrees owner policy available reference
               memory original repaired frame started leftRecall sound leftBinding event payload
                 binding checks outputEq codeEq node granted (remaining + rest.length)
                   currentTrace selected

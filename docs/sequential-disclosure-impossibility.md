@@ -3,7 +3,7 @@
 ## Result
 
 The checked theorem
-[`native_no_utility_independent_sequential_translation`](../VegasTests/SequentialValidationImpossibility.lean)
+[`native_no_utility_independent_sequential_translation`](../Vegas/Examples/SequentialValidation/Impossibility.lean)
 rules out a utility-independent translator from one actual Vegas source game
 to its bounded native message game that preserves sequential equilibrium for
 all analysis utilities. The translator may inspect the entire source strategy
@@ -64,7 +64,7 @@ is uniform. Every replacement continuation has expected payoff `1/2` for
 either utility. At successful-publication information sets both utilities are
 zero. Alice is indifferent everywhere.
 
-[`VegasTests.SequentialValidation.source_sequential_equilibrium`](../VegasTests/SequentialValidationEquilibrium.lean)
+[`Vegas.Examples.SequentialValidation.source_sequential_equilibrium`](../Vegas/Examples/SequentialValidation/Equilibrium.lean)
 checks this for the actual source protocol, all legal source histories, and
 whole continuation-policy deviations. This is a source sequential equilibrium,
 including its beliefs and consistency proof.
@@ -120,7 +120,7 @@ encoding or an incentive argument about miners. The public-history dependency
 monitor is also an ideal service; constructing ledger-verifiable authorization
 evidence is a separate implementation obligation.
 
-[`native_runtime_completes`](../VegasTests/SequentialValidationCompletion.lean)
+[`native_runtime_completes`](../Vegas/Examples/SequentialValidation/Completion.lean)
 proves that the complete fifty-six-decision run finishes every graph event
 under arbitrary raw player policies. The finite horizon does not truncate an
 unfinished game. This completion result also covers responses outside the
@@ -152,7 +152,7 @@ strategy. They cannot both be at least one.
 
 The source assessment is the same for both utilities. A utility-independent
 translator would produce the same native strategy for both and contradict
-[`native_no_common_rational_strategy`](../VegasTests/SequentialValidationImpossibility.lean).
+[`native_no_common_rational_strategy`](../Vegas/Examples/SequentialValidation/Impossibility.lean).
 The failure is already in continuation rationality, before imposing target
 belief consistency. Consistent-completion existence therefore cannot repair it.
 
@@ -160,15 +160,15 @@ belief consistency. Consistent-completion existence therefore cannot repair it.
 
 | Obligation | Checked artifact |
 |---|---|
-| Actual source sequential equilibrium for both utilities | [SequentialValidationEquilibrium](../VegasTests/SequentialValidationEquilibrium.lean) |
-| Actual lowered guard and authenticated failed publication | [SequentialValidationNative](../VegasTests/SequentialValidationNative.lean) |
-| Receipt evidence fixes the type at every compatible history | [SequentialValidationEvidence](../VegasTests/SequentialValidationEvidence.lean) |
-| Fixed calendar, authorization, at-most-once inclusion, response bounds | [SequentialValidationService](../VegasTests/SequentialValidationService.lean) |
-| Legal scheduled prefix and actual Bob information site | [SequentialValidationHistory](../VegasTests/SequentialValidationHistory.lean) |
-| Information-set timing, recall, provenance and observed type | [SequentialValidationFibre](../VegasTests/SequentialValidationFibre.lean) |
-| Arbitrary response and complete continuation laws | [SequentialValidationResponse](../VegasTests/SequentialValidationResponse.lean), [SequentialValidationNativeIncentives](../VegasTests/SequentialValidationNativeIncentives.lean) |
-| Timeout completion under every raw player profile | [SequentialValidationCompletion](../VegasTests/SequentialValidationCompletion.lean) |
-| Native rationality contradiction and translator impossibility | [SequentialValidationImpossibility](../VegasTests/SequentialValidationImpossibility.lean) |
+| Actual source sequential equilibrium for both utilities | [SequentialValidationEquilibrium](../Vegas/Examples/SequentialValidation/Equilibrium.lean) |
+| Actual lowered guard and authenticated failed publication | [SequentialValidationNative](../Vegas/Examples/SequentialValidation/Native.lean) |
+| Receipt evidence fixes the type at every compatible history | [SequentialValidationEvidence](../Vegas/Examples/SequentialValidation/Evidence.lean) |
+| Fixed calendar, authorization, at-most-once inclusion, response bounds | [SequentialValidationService](../Vegas/Examples/SequentialValidation/Service.lean) |
+| Legal scheduled prefix and actual Bob information site | [SequentialValidationHistory](../Vegas/Examples/SequentialValidation/History.lean) |
+| Information-set timing, recall, provenance and observed type | [SequentialValidationFibre](../Vegas/Examples/SequentialValidation/Fibre.lean) |
+| Arbitrary response and complete continuation laws | [SequentialValidationResponse](../Vegas/Examples/SequentialValidation/Response.lean), [SequentialValidationNativeIncentives](../Vegas/Examples/SequentialValidation/NativeIncentives.lean) |
+| Timeout completion under every raw player profile | [SequentialValidationCompletion](../Vegas/Examples/SequentialValidation/Completion.lean) |
+| Native rationality contradiction and translator impossibility | [SequentialValidationImpossibility](../Vegas/Examples/SequentialValidation/Impossibility.lean) |
 
 ## Consequences for language design
 
@@ -181,7 +181,7 @@ surface syntax or a compiler flag.
 
 The [communication interpretation](ambient-communication.md) implements that
 distinction without changing `PublicationResult`. For this source game,
-[`CommunicationDisclosure`](../VegasTests/CommunicationDisclosure.lean)
+[`CommunicationDisclosure`](../Vegas/Examples/CommunicationDisclosure.lean)
 checks that the guard still records plain failure, while the opening supplies
 a certificate that fixes the private type under every compatible belief. It
 also constructs a legal private disclosure before the first source command.

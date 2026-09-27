@@ -60,7 +60,7 @@ comparison are checked below:
   abstract disclosure defeats every utility-independent sequential-equilibrium
   translator, even allowing utility-dependent target beliefs. The source
   witness satisfies the actual sequential-equilibrium definition.
-- [SequentialValidationEquilibrium.lean](../VegasTests/SequentialValidationEquilibrium.lean):
+- [SequentialValidationEquilibrium.lean](../Vegas/Examples/SequentialValidation/Equilibrium.lean):
   an actual source program with the full forfeiture interface has one fully
   mixed sequential equilibrium for both matching and mismatching a private
   input after a failed publication. The setup includes a pre-existing commitment
@@ -68,7 +68,7 @@ comparison are checked below:
   Bayes beliefs and whole continuation-policy deviations are checked. A deferred
   guard makes successful disclosure and withholding share a failed public result.
   The native impossibility theorem below uses this same source assessment.
-- [SequentialValidationNative.lean](../VegasTests/SequentialValidationNative.lean):
+- [SequentialValidationNative.lean](../Vegas/Examples/SequentialValidation/Native.lean):
   in that program's actual compiled graph, the native handler accepts an
   authenticated opening of the initial commitment while the deferred guard
   stores publication failure. The binding and both opening transitions are
@@ -98,7 +98,7 @@ comparison are checked below:
   a previously observed candidate certificate and its later public accepted
   association jointly certify the named graph binding at every compatible
   native history. No further certificate delivery or successful opening is
-  required. The [three-player fixture](../VegasTests/ReactiveAssociationEvidence.lean)
+  required. The [three-player fixture](../Vegas/Examples/ReactiveAssociationEvidence.lean)
   checks that Bob can acquire this evidence while Carol sees identical public
   ledger data in both value worlds. This is a knowledge result, not a further
   equilibrium impossibility theorem.
@@ -112,12 +112,12 @@ comparison are checked below:
   The proof maximizes over current choices, covers whole continuation policies,
   and supplies one common fully mixed sequence. It constructs an equilibrium
   for a given utility; it is not a utility-independent compiler.
-- [SequentialValidationEvidence.lean](../VegasTests/SequentialValidationEvidence.lean):
+- [SequentialValidationEvidence.lean](../Vegas/Examples/SequentialValidation/Evidence.lean):
   for the source fixture's actual initial law, every legal native history
   compatible with an observed accepted opening has the disclosed private type.
   Every belief on that information fiber assigns probability one to that type,
   including utility-dependent beliefs.
-- [SequentialValidationImpossibility.lean](../VegasTests/SequentialValidationImpossibility.lean):
+- [SequentialValidationImpossibility.lean](../Vegas/Examples/SequentialValidation/Impossibility.lean):
   a legal native disclosure prefix and both profitable guessing continuations
   are checked against the complete bounded response menu and actual service.
   Every history in Bob's information set has the known type and a common
@@ -127,7 +127,7 @@ comparison are checked below:
   for general sequential-equilibrium preservation. The witness includes an
   initial commitment correlated with a private type and uses ideal commitments,
   a fixed authorized calendar and explicit finite wire bounds.
-- [CommunicationSequentialEquilibrium.lean](../VegasTests/CommunicationSequentialEquilibrium.lean):
+- [CommunicationSequentialEquilibrium.lean](../Vegas/Examples/CommunicationSequentialEquilibrium.lean):
   the full bounded native disclosure fixture has a sequential equilibrium for
   either guessing objective. Alice is indifferent; Bob optimizes at every
   decision information set, including those without certified disclosure.
@@ -136,8 +136,8 @@ comparison are checked below:
   profile. Each equilibrium obtains payoff one at either certified bit view.
   This is native equilibrium construction, not source compilation preservation;
   the example's passive observation rule is empty.
-- [SelectiveAssociationRestrictedEquilibrium.lean](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean)
-  and [SelectiveAssociationRestrictedSeparation.lean](../VegasTests/SelectiveAssociationRestrictedSeparation.lean):
+- [SelectiveAssociationRestrictedEquilibrium.lean](../Vegas/Examples/SelectiveAssociation/RestrictedEquilibrium.lean)
+  and [SelectiveAssociationRestrictedSeparation.lean](../Vegas/Examples/SelectiveAssociation/RestrictedSeparation.lean):
   the selective-association native game with empty passive observation has a
   checked SE giving Alice expected declared payout zero. The application, full
   bounded raw menu, calendar, selector and deadlines are shared with the leaky
@@ -149,7 +149,7 @@ comparison are checked below:
   candidate-flip probability comparisons in the actual native prefixes. This
   isolates one observation edge; it is not general SE preservation for a source
   language or an empty-observation service.
-- [SequentialValidationCompletion.lean](../VegasTests/SequentialValidationCompletion.lean):
+- [SequentialValidationCompletion.lean](../Vegas/Examples/SequentialValidation/Completion.lean):
   the fixture's timeout suffix completes every graph event under arbitrary raw
   player policies, including policies outside the finite response menu. The
   horizon therefore does not truncate unfinished graph execution.
@@ -173,7 +173,7 @@ comparison are checked below:
 - [ReactiveReplayMenu.lean](../Interaction/ReactiveReplayMenu.lean): closing a
   finite menu under all known-envelope replays retains every base response and
   needs no numeric identifier cutoff. The
-  [Vegas binding fixture](../VegasTests/ReactiveRuntime.lean) admits both Boolean
+  [Vegas binding fixture](../Vegas/Examples/ReactiveRuntime.lean) admits both Boolean
   bindings, unopenable submissions and actual compiled first responses, and has
   a consistent finite assessment.
 - [ReactiveImplementation.lean](../Interaction/ReactiveImplementation.lean):
@@ -585,7 +585,7 @@ commitments remain choices. It retains every known replay without an envelope
 identifier cutoff. Only ineffective private opening annotations and unavailable
 replays are normalized; the exact public packet and fresh hidden meanings are
 preserved. Its exact membership theorem characterizes all bounded normal
-responses. The [fixture](../VegasTests/ReactiveFiniteResponses.lean) supplies
+responses. The [fixture](../Vegas/Examples/ReactiveFiniteResponses.lean) supplies
 finite histories and a consistent assessment for this complete menu.
 
 The compiler and recovery emit normal forms at every input. Static coverage of
@@ -605,7 +605,7 @@ Under its existing deadline-at-least-two assumption, an event newly activated
 during an epoch is either already completed or ready and timely at the next
 actual reserved owner response. The proof permits arbitrary intervening
 policies, malformed calls, omissions, network reactions, and partial leaks.
-[CommunicationServiceOpportunity](../VegasTests/CommunicationServiceOpportunity.lean)
+[CommunicationServiceOpportunity](../Vegas/Examples/CommunicationServiceOpportunity.lean)
 instantiates the guarantee for the deferred-guard graph after arbitrary earlier
 epochs. It does not establish selection of a particular pending packet or SE
 preservation for this service.
@@ -691,7 +691,7 @@ leave Bob's sole response before his dependencies settle. That calendar supports
 the impossibility witness and native equilibrium analysis. A source preservation
 instance needs a usable owner response **after** predecessor success or expiry.
 This is a service-coverage obligation; it does not require a new source opcode.
-[CommunicationServiceOmission](../VegasTests/CommunicationServiceOmission.lean)
+[CommunicationServiceOmission](../Vegas/Examples/CommunicationServiceOmission.lean)
 constructs a legal history of the actual bounded native game: Alice omits all
 three earlier submissions, then Bob is activated while his guess event is not
 ready. The recurring-service opportunity theorem covers the needed later
@@ -708,7 +708,7 @@ response. Its owner's prescribed-packet invariant excludes conflicting packets
 from an earlier deviation by that same owner; recovery at those prefixes
 remains a separate SE obligation.
 
-[CommunicationServiceRecovery](../VegasTests/CommunicationServiceRecovery.lean)
+[CommunicationServiceRecovery](../Vegas/Examples/CommunicationServiceRecovery.lean)
 checks an initialized recurring-service execution with a permitted decreasing
 event order. At an unavailable disclosure visit, the owner submits a binding
 for value one; the event-addressed reserved inclusion leaves it pending. At
@@ -721,7 +721,7 @@ obstruction for that admitted service, not an SE-impossibility theorem for every
 schedule or for an environment that represents pending requests.
 
 The reserved selector by itself does not check submission-time dependencies.
-[CommunicationServiceAuthorization](../VegasTests/CommunicationServiceAuthorization.lean)
+[CommunicationServiceAuthorization](../Vegas/Examples/CommunicationServiceAuthorization.lean)
 applies it to the existing premature-opening fixture: the raw selector includes
 an opening submitted too early, whereas the public-history monitor waits. The
 monitor produces no rejection receipt in that case. This fixture does not claim

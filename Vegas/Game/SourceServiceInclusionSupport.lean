@@ -163,10 +163,8 @@ theorem sourceService_inclusion_boundary
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -251,11 +249,11 @@ theorem sourceService_inclusion_boundary
       opportunities menu.uniformResponses
       (fun who past view response member =>
         (menu.uniformResponses_support who past view response).mp member)
-      network profile event.val event.isLt.le prior before
+      network (failureProfile setup.program) event.val event.isLt.le prior before
   obtain ⟨boundary, bounded, granted, _, _, grantLaw⟩ :=
     checkpoint.grant menu.uniformResponses network event
   have beforeTraffic := initialized_sourceService_prefix_conformance bounds values capacity
-    opportunities menu.uniformResponses lawful network profile event.val event.isLt.le prior before
+    opportunities menu.uniformResponses lawful network event.val event.isLt.le prior before
   have grantTraffic := (runtime setup).executionTraffic_passive_step leaks menu.uniformResponses
     network (.grant event) (by simp) (by simp) prior boundary
     (by rw [grantLaw]; exact FinDist.mem_support_pure.mpr rfl)
@@ -329,10 +327,8 @@ theorem sourceService_inclusion_binding_candidate
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -353,7 +349,7 @@ theorem sourceService_inclusion_binding_candidate
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨owned, initial, _, Γ, source, refs, boundary, checkpoint, granted, reached,
       _, publicEq, _⟩ := sourceService_inclusion_boundary setup leaks bounds values capacity
-    rosters opportunities network profile control trace idle event owner selected
+    rosters opportunities network control trace idle event owner selected
   let serial := boundary.application.publicView.bindingCount owner
   obtain ⟨slot, fresh, unused, vacant⟩ := checkpoint.binding_resources event rfl owner
   obtain ⟨final, included⟩ := ((runtime setup).interactionStep leaks menu.uniformResponses network

@@ -138,11 +138,11 @@ has been removed to obtain this negative result.
 
 | Obligation | Artifact |
 |---|---|
-| Actual reactive scheduler, legal history, and full proper-root closure | [ReactivePendingMenus.lean](../VegasTests/ReactivePendingMenus.lean) |
+| Actual reactive scheduler, legal history, and full proper-root closure | [ReactivePendingMenus.lean](../Vegas/Examples/ReactivePendingMenus.lean) |
 | Immutable accepted fields under arbitrary reactive continuations | [ReactiveStateInvariant.lean](../Vegas/Pending/ReactiveStateInvariant.lean) |
-| Bound for every randomized native policy, deviations, and no common SPE | [ReactivePendingMenusStrategies.lean](../VegasTests/ReactivePendingMenusStrategies.lean) |
-| Source common SPE and agreement of source/graph publication kernels | [PendingMenusSource.lean](../VegasTests/PendingMenusSource.lean) |
-| Impossibility of utility-independent source-to-reactive SPE translation | [ReactivePendingMenusSource.lean](../VegasTests/ReactivePendingMenusSource.lean) |
+| Bound for every randomized native policy, deviations, and no common SPE | [ReactivePendingMenusStrategies.lean](../Vegas/Examples/ReactivePendingMenusStrategies.lean) |
+| Source common SPE and agreement of source/graph publication kernels | [PendingMenusSource.lean](../Vegas/Examples/PendingMenusSource.lean) |
+| Impossibility of utility-independent source-to-reactive SPE translation | [ReactivePendingMenusSource.lean](../Vegas/Examples/ReactivePendingMenusSource.lean) |
 
 The application-level calculations reuse the two-value fixture. The reactive
 legal history, subgame proof, policy laws, and SPE contradiction use the

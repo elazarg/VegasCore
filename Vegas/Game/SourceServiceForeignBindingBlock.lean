@@ -27,10 +27,8 @@ theorem foreign_binding_block_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -181,7 +179,7 @@ theorem foreign_binding_block_stopped_coupling
           List.length_append]
       obtain ⟨coupling, leftLaw, rightLaw, connected⟩ :=
         foreign_binding_history_tail_coupling setup leaks
-        bounds values capacity rosters opportunities network profile source target agrees owner
+        bounds values capacity rosters opportunities network source target agrees owner
           policy reference next.2.2 next.1 next.2.1 paired memoryValid event actor different
             payload outputEq codeEq node remaining ticks
             (by rw [← length]; exact nextTrace)

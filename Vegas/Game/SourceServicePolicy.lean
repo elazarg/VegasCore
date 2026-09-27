@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceInformation
+import Vegas.Game.ServiceInformation
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Compile.EventGraphPolicyLaw
 

@@ -55,7 +55,7 @@ Only the existing pending-observation parameter differs:
 The parameter is supplied directly to
 [`EventGraphRuntime.reactiveApplication`](../Vegas/Pending/ReactiveRuntime.lean)
 and its finite response adapter. The fixture is
-[`SelectiveAssociationNative.lean`](../VegasTests/SelectiveAssociationNative.lean).
+[`SelectiveAssociationNative.lean`](../Vegas/Examples/SelectiveAssociation/Native.lean).
 There is no need for a new application language or runtime state structure.
 
 Passive observation is invisible to the scheduler at that activation, as proved
@@ -67,7 +67,7 @@ independently changed service rules.
 
 ### Checked operational comparison
 
-[`SelectiveAssociationRestricted.lean`](../VegasTests/SelectiveAssociationRestricted.lean)
+[`SelectiveAssociationRestricted.lean`](../Vegas/Examples/SelectiveAssociation/Restricted.lean)
 instantiates the empty observation rule on that same native fixture. It proves:
 
 | Result | Scope |
@@ -104,20 +104,20 @@ game and its complete raw response menus. The comparison changes only the
 pending-observation rule; it does not replace the restricted runtime by the
 source game or delete inconvenient responses.
 
-The [restricted equilibrium theorem](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean)
+The [restricted equilibrium theorem](../Vegas/Examples/SelectiveAssociation/RestrictedEquilibrium.lean)
 constructs a standard sequential equilibrium with silent preludes, a false
 binding for Alice, guesses determined by public evidence, and ordinary
-openings. Its [initialized payoff law](../VegasTests/SelectiveAssociationRestrictedPrescribedOutcome.lean)
+openings. Its [initialized payoff law](../Vegas/Examples/SelectiveAssociation/RestrictedPrescribedOutcome.lean)
 gives Alice zero and each guesser one. Consistency uses one common sequence of
 fully mixed profiles. Rationality covers every legal information site and every
 complete behavioral-policy deviation, including raw certificates, replays,
 wrong addresses, failed bindings and withheld openings.
 
 With passive observation enabled, the
-[native payout bound](../VegasTests/SelectiveAssociationPayoffSeparation.lean)
+[native payout bound](../Vegas/Examples/SelectiveAssociation/PayoffSeparation.lean)
 gives Alice expected payout at least one half in every sequentially rational
 assessment. The checked capstone
-[`exists_equilibrium_no_native_payout_match`](../VegasTests/SelectiveAssociationRestrictedSeparation.lean)
+[`exists_equilibrium_no_native_payout_match`](../Vegas/Examples/SelectiveAssociation/RestrictedSeparation.lean)
 therefore excludes every matching target assessment, even when its strategies
 and beliefs are chosen freely for this fixed declared payoff. The retained law
 is the actual native evaluator's payout to Alice on both sides. Target
@@ -141,15 +141,15 @@ remain separate; they contribute zero to the reward of either guess.
 
 | Obligation | Checked proof |
 | --- | --- |
-| Every prescribed response belongs to the full raw menu | [Profile and response availability](../VegasTests/SelectiveAssociationRestrictedPolicy.lean) |
-| Repair an arbitrary prelude and retain the chosen binding | [Binding realization](../VegasTests/SelectiveAssociationRestrictedRealization.lean) and [continuation](../VegasTests/SelectiveAssociationRestrictedBinding.lean) |
-| Factor the actual prefix law into three or four responses | [Response laws](../VegasTests/SelectiveAssociationRestrictedPrefix.lean) and [legal history projection](../VegasTests/SelectiveAssociationRestrictedPrefixExecution.lean) |
-| Recover evidence absence from legal histories | [Certificate soundness and acquisition](../VegasTests/SelectiveAssociationRestrictedPrefixEvidence.lean) |
-| Flip the accepted hidden bit while retaining each guesser's complete input | [Actual prefix transformation](../VegasTests/SelectiveAssociationRestrictedPrefixSymmetry.lean), [accepted-handle reconstruction](../VegasTests/SelectiveAssociationRestrictedPrefixAcceptance.lean), and [tuple injection facts](../VegasTests/SelectiveAssociationRestrictedPrefixInjection.lean) |
-| Compare exact tuple probabilities, including off-path responses | [Perturbation weights](../VegasTests/SelectiveAssociationRestrictedPrefixComparison.lean) and [joint event inequalities](../VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean) |
-| Obtain both posterior inequalities in one consistent assessment | [Bayes and common-limit proof](../VegasTests/SelectiveAssociationRestrictedBeliefs.lean), culminating in `exists_consistent_guess_assessment` |
-| Assemble rationality and consistency | [Restricted native SE](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean) |
-| Compare the same native payout evaluator under the two observation rules | [Payout separation](../VegasTests/SelectiveAssociationRestrictedSeparation.lean) |
+| Every prescribed response belongs to the full raw menu | [Profile and response availability](../Vegas/Examples/SelectiveAssociation/RestrictedPolicy.lean) |
+| Repair an arbitrary prelude and retain the chosen binding | [Binding realization](../Vegas/Examples/SelectiveAssociation/RestrictedRealization.lean) and [continuation](../Vegas/Examples/SelectiveAssociation/RestrictedBinding.lean) |
+| Factor the actual prefix law into three or four responses | [Response laws](../Vegas/Examples/SelectiveAssociation/RestrictedPrefix.lean) and [legal history projection](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixExecution.lean) |
+| Recover evidence absence from legal histories | [Certificate soundness and acquisition](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixEvidence.lean) |
+| Flip the accepted hidden bit while retaining each guesser's complete input | [Actual prefix transformation](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixSymmetry.lean), [accepted-handle reconstruction](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixAcceptance.lean), and [tuple injection facts](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixInjection.lean) |
+| Compare exact tuple probabilities, including off-path responses | [Perturbation weights](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixComparison.lean) and [joint event inequalities](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixPosterior.lean) |
+| Obtain both posterior inequalities in one consistent assessment | [Bayes and common-limit proof](../Vegas/Examples/SelectiveAssociation/RestrictedBeliefs.lean), culminating in `exists_consistent_guess_assessment` |
+| Assemble rationality and consistency | [Restricted native SE](../Vegas/Examples/SelectiveAssociation/RestrictedEquilibrium.lean) |
+| Compare the same native payout evaluator under the two observation rules | [Payout separation](../Vegas/Examples/SelectiveAssociation/RestrictedSeparation.lean) |
 
 The tuple injection preserves certificate issuance and rejection, packet call
 bodies, message identifiers, public receipts, and the actual service steps.
@@ -165,10 +165,10 @@ handle transmitted by the prescribed strategy.
 | Carol's and Bob's bindings | The common consistent assessment supplies the required false-versus-true posterior comparison when no public true certificate exists. A public true certificate fixes the relevant binding throughout the information set. |
 | All three openings | For arbitrary beliefs, ordinary publication is optimal, including after failed bindings. |
 
-The incentive proofs are in [Prelude](../VegasTests/SelectiveAssociationRestrictedPrelude.lean),
-[AliceOptimality](../VegasTests/SelectiveAssociationRestrictedAliceOptimality.lean),
-[GuessOptimality](../VegasTests/SelectiveAssociationRestrictedGuessOptimality.lean),
-and [OpeningOptimality](../VegasTests/SelectiveAssociationRestrictedOpeningOptimality.lean).
+The incentive proofs are in [Prelude](../Vegas/Examples/SelectiveAssociation/RestrictedPrelude.lean),
+[AliceOptimality](../Vegas/Examples/SelectiveAssociation/RestrictedAliceOptimality.lean),
+[GuessOptimality](../Vegas/Examples/SelectiveAssociation/RestrictedGuessOptimality.lean),
+and [OpeningOptimality](../Vegas/Examples/SelectiveAssociation/RestrictedOpeningOptimality.lean).
 The Alice proof checks the actual seven-step continuation between the guesses:
 Carol's prescribed commitment adds no certificate and cannot change Alice's
 accepted association. The posterior proof and these incentive proofs concern
@@ -381,7 +381,7 @@ or their suitability as assumptions about a blockchain.
 
 ## Readiness restrictions
 
-The [readiness experiment](../VegasTests/ReactiveReadinessRestrictions.lean)
+The [readiness experiment](../Vegas/Examples/ReactiveReadinessRestrictions.lean)
 uses the same selective-association runtime. Its distinction is between
 **when a call can execute** and **when the evidence attached to that call can
 be read**. No additional production semantics is introduced.
@@ -428,7 +428,7 @@ full-menu payoff bound cannot simply be applied to their assessments.
 The earlier [opening-race example](early-opening-and-spe.md) uses a fresh
 opening before its dependency has completed to improve a later selection
 probability. The checked
-[`ReactiveDependencyService`](../VegasTests/ReactiveDependencyService.lean)
+[`ReactiveDependencyService`](../Vegas/Examples/ReactiveDependencyService.lean)
 denies authorization to that envelope and to the earlier premature withholding
 call, and recalculates both compared continuations. This removes that particular
 profitable comparison. It supplies no general SE theorem and does not remove

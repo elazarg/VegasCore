@@ -236,7 +236,7 @@ constructs the structural action restriction, retaining every observation and
 the execution law under arbitrary policies. The
 [public ledger audit](../Interaction/ReactiveLedgerConformance.lean) proves
 detection and persistence of included nonconforming packets. Its
-[native regression](../VegasTests/MonitoredGuessingConformance.lean) checks an
+[native regression](../Vegas/Examples/MonitoredGuessing/Conformance.lean) checks an
 accepted disclosure missed by the pilot's charge. These are compiler ingredients;
 full response coverage, collection and source assessment transport remain open.
 

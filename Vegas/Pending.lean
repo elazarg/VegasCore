@@ -46,6 +46,7 @@ import Vegas.Pending.ReactiveBindingRealization
 import Vegas.Pending.ReactiveCompiledResolution
 import Vegas.Pending.ReactiveResolutionWindowConformance
 import Vegas.Pending.ReactiveResolutionWindowSupport
+import Vegas.Pending.ReactiveResolutionWindowState
 import Vegas.Pending.ReactiveResolutionSettlement
 import Vegas.Pending.ReactivePlayerWindow
 import Vegas.Pending.ReactiveBindingRetainedBlock

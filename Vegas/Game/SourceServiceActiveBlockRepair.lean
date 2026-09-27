@@ -26,10 +26,8 @@ theorem active_nonbinding_block_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -139,7 +137,7 @@ theorem active_nonbinding_block_stopped_coupling
                 code.actor) codeEq)
           cases Option.some.inj (actual.symm.trans owned)
           exact resolution_history_response_coupling setup leaks bounds values capacity rosters
-            opportunities network profile source target agrees owner policy available reference
+            opportunities network source target agrees owner policy available reference
             memory prior original repaired sampled frame started leftRecall sound leftBinding
             event payload binding checks outputEq codeEq node granted rank trace
     · exact off_turn_history_response_coupling setup leaks bounds rosters network source target
@@ -257,7 +255,7 @@ theorem active_nonbinding_block_stopped_coupling
               (congrArg (fun code : EventCode (graph setup).layout (.binding actor payload) =>
                 code.actor) codeEq)
           obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := foreign_binding_block_stopped_coupling
-            setup leaks bounds values capacity rosters opportunities network profile source target
+            setup leaks bounds values capacity rosters opportunities network source target
             agrees owner policy available reference next.2.2 next.1 next.2.1 paired nextMemory
             nextStarted nextRecall event actor different payload outputEq codeEq node nextGrant
             remaining visits ticks nextTrace before after (by simpa only [actual] using split)
@@ -270,7 +268,7 @@ theorem active_nonbinding_block_stopped_coupling
               (congrArg (fun code : EventCode (graph setup).layout (.publication payload) =>
                 code.actor) codeEq)
           obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := resolution_block_stopped_coupling
-            setup leaks bounds values capacity rosters opportunities network profile source target
+            setup leaks bounds values capacity rosters opportunities network source target
             agrees owner policy available reference next.2.2 next.1 next.2.1 paired nextMemory
             nextStarted nextRecall nextSound nextBinding event actor payload binding checks
             outputEq codeEq node nextGrant remaining visits ticks nextTrace before after

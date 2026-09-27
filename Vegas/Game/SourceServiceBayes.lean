@@ -29,8 +29,7 @@ theorem sourceService_owner_bayes_posterior
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : ∀ event who, (graph setup).actor? event = some who →
       FinDist (Fin ((rosters event).count who)))
     (full : ∀ event who owned, (timing event who owned).FullSupport)
@@ -167,8 +166,7 @@ theorem sourceService_owner_bayes_at_history
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : ∀ event who, (graph setup).actor? event = some who →
       FinDist (Fin ((rosters event).count who)))
     (full : ∀ event who owned, (timing event who owned).FullSupport)

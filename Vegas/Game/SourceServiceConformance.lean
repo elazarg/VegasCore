@@ -214,19 +214,16 @@ theorem ServiceBoundary.roster_block_conformance
       exact boundary.reveal_block_conformance bounds players lawful network event atRank
         owner payload binding checks outputEq codeEq node owned traffic final reached
 
-/-- Every initialized retained prefix passes the traffic checker. The syntax
-profile is only an alignment witness: the actual policies are arbitrary laws
-supported by the entire retained menu. -/
+/-- Every initialized retained prefix passes the traffic checker. The actual
+policies are arbitrary laws supported by the entire retained menu. -/
 theorem initialized_sourceService_prefix_conformance
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (players : Player → (application setup leaks).Policy)
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (count : Nat) (within : count ≤ eventCount setup.program)
     (final : (application setup leaks).Execution)
     (reached : final ∈ ((initialLaw setup).bind fun state =>
@@ -252,7 +249,8 @@ theorem initialized_sourceService_prefix_conformance
       obtain ⟨_, _, _, _, _, Δ, names, remaining, remainingProfile, current, currentRefs,
           embedding, refsBefore, _, _, _, _, _, _, _, _, boundary⟩ :=
         initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
-          opportunities players lawful network profile count (by omega) before prior
+          opportunities players lawful network (failureProfile setup.program) count (by omega)
+          before prior
       exact boundary.roster_block_conformance bounds players lawful network event rfl
         traffic final rest
 
@@ -261,13 +259,11 @@ Public chance, fresh bindings and arbitrary guarded disclosures are included. -/
 theorem initialized_sourceService_conformance
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (players : Player → (application setup leaks).Policy)
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (final : (application setup leaks).Execution)
     (reached : final ∈ ((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network (rosterPlan setup rosters)
@@ -276,7 +272,7 @@ theorem initialized_sourceService_conformance
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
   apply initialized_sourceService_prefix_conformance bounds values capacity opportunities players
-    lawful network profile (eventCount setup.program) le_rfl final
+    lawful network (eventCount setup.program) le_rfl final
   have complete : rosterPlanPrefix setup rosters (eventCount setup.program) =
       rosterPlan setup rosters := by
     unfold rosterPlanPrefix rosterPlan

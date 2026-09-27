@@ -91,10 +91,8 @@ theorem sourceService_unsubmitted_recall
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (owner : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -115,7 +113,7 @@ theorem sourceService_unsubmitted_recall
       refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
       _, sampled, _, publicEq, _, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
-      network profile owner control trace active
+      network (failureProfile setup.program) owner control trace active
   have eventEq : selectedEvent = event := Option.some.inj
     (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans granted)
   subst selectedEvent
@@ -142,8 +140,7 @@ theorem sourceServiceTimedPolicy_future_supported
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (owner : Player) (control : (application setup leaks).Control)
@@ -164,7 +161,7 @@ theorem sourceServiceTimedPolicy_future_supported
   let app := application setup leaks
   let family := sourceServiceTimedFamily setup leaks rosters profile owner event
   obtain ⟨past, suffix, recalled, offset, legal⟩ := sourceService_unsubmitted_recall setup leaks
-    bounds values capacity rosters opportunities network profile owner control trace active
+    bounds values capacity rosters opportunities network owner control trace active
     event granted owned unsent
   have dormant := app.policyMixture_posterior_dormant timing family app.replayPolicy
     (rosterOffset setup rosters owner event)

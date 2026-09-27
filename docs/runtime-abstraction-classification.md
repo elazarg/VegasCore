@@ -71,7 +71,7 @@ alone do not discharge multiplayer runtime obligations.
   gap from a relevant observation collision and lifts feasible deviations to
   initialized rationality bounds. The native selective-association proof uses
   its probability and continuation results directly.
-- The [isolated native observation comparison](../VegasTests/SelectiveAssociationRestrictedSeparation.lean)
+- The [isolated native observation comparison](../Vegas/Examples/SelectiveAssociation/RestrictedSeparation.lean)
   retains the compiled graph, complete bounded raw menu, service, and declared
   payoff, changing only passive observation. The empty-observation game has a
   checked standard SE giving Alice payout zero; every sequentially rational
@@ -121,7 +121,7 @@ The first implies the second when its strategy component has the required form;
 the second implies the third. The relevant distinction is `exists b, forall u`
 versus `forall u, exists b`. A failed comparison for one proposed `b` does not
 rule out all other native assessments. The
-[isolated observation separation](../VegasTests/SelectiveAssociationRestrictedSeparation.lean)
+[isolated observation separation](../Vegas/Examples/SelectiveAssociation/RestrictedSeparation.lean)
 does rule out outcome implementability for its two native games and fixed
 declared utility. The [source/native separation](selective-association-proof-contract.md)
 is a separate checked comparison.
@@ -301,13 +301,13 @@ depend on that bit, and Alice can still open. The generic calculation yields
 lower bound on every rational target assessment's initial payoff. The actual
 source equilibrium and its zero payoff remain separate proved facts.
 
-The [restricted native equilibrium](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean)
+The [restricted native equilibrium](../Vegas/Examples/SelectiveAssociation/RestrictedEquilibrium.lean)
 also gives zero under the same application, full raw menus and service when
 passive observation is empty. Its
-[tuple injection](../VegasTests/SelectiveAssociationRestrictedPrefixInjection.lean)
+[tuple injection](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixInjection.lean)
 preserves complete guesser inputs, including recorded raw actions; the
-[joint probability bounds](../VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean)
-and [common consistency limit](../VegasTests/SelectiveAssociationRestrictedBeliefs.lean)
+[joint probability bounds](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixPosterior.lean)
+and [common consistency limit](../Vegas/Examples/SelectiveAssociation/RestrictedBeliefs.lean)
 justify both guessing posteriors. Together with the universal enabled-runtime
 payout bound, this completes the isolated feature comparison. It excludes all
 matching target assessments, rather than only a proposed strategy translation.
@@ -540,7 +540,7 @@ serves as a small-instance completeness reference and diagnostic.
 2. Instantiate the checked
    [observation requirement](../GameTheoryExtensions/Analysis/Protocol/ObservationRequirement.lean)
    on native continuation decisions. The
-   [restricted native prefixes](../VegasTests/SelectiveAssociationRestricted.lean)
+   [restricted native prefixes](../Vegas/Examples/SelectiveAssociation/Restricted.lean)
    and [certificate acquisition constraint](../Vegas/Pending/ReactiveEvidenceOrigin.lean)
    establish operational parts of that argument. Distinguish an
    observation-respecting lift from unrestricted initialized outcome

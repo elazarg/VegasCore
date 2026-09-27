@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceMenu
-import Vegas.Game.RevealServiceRoster
+import Vegas.Game.ServiceRoster
 import Vegas.Pending.ReactiveRepeatedSubmissionWindow
 
 /-! # Stopped repair in the actual post-submission service roster

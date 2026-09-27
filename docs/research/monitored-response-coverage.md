@@ -16,7 +16,7 @@ The checked retained-history prerequisite is that each C Bob history has the
 `quietBob bit` state: Alice's ambient response and Watcher's response were silent,
 the pool and ledger are empty, and Bob has no earlier output. The explicit
 checkpoint and its classification of **all** C Bob histories are proved in
-[`MonitoredGuessingRestrictedSupport`](../../VegasTests/MonitoredGuessingRestrictedSupport.lean).
+[`MonitoredGuessingRestrictedSupport`](../../Vegas/Examples/MonitoredGuessing/RestrictedSupport.lean).
 
 | Response at that checkpoint | Actual effect | Certificate route and status |
 | --- | --- | --- |
@@ -44,13 +44,13 @@ ledger audit detects included Bob packets using original envelope authorship;
 its checked persistence is evidence preservation, not an escrow theorem.
 
 In this exact fixture Alice samples no pending packets. The checked
-[`wrong_address_alice_input_law`](../../VegasTests/MonitoredGuessingBobContinuation.lean)
+[`wrong_address_alice_input_law`](../../Vegas/Examples/MonitoredGuessing/BobContinuation.lean)
 runs actual reserved selection, tick, expiry, grant and activation, and proves
 exact equality of her next recall and full view with the C silent branch. It
 quantifies arbitrary submission contents, private registrations and policies.
 This is a substantive property of the observation rule, not a consequence of
 compiler correctness or rational behavior. The checked terminal comparison in
-[`MonitoredGuessingBobIgnored`](../../VegasTests/MonitoredGuessingBobIgnored.lean)
+[`MonitoredGuessingBobIgnored`](../../Vegas/Examples/MonitoredGuessing/BobIgnored.lean)
 uses this input equality and proves equality of the joint result/Bob-net-payoff
 law for arbitrary continuations agreeing on Alice's mixed legal response there.
 
@@ -74,9 +74,9 @@ All five receiver obligations have checked operational proofs: retained control,
 ignored-traffic terminal law, canonical-emission classification, persistent
 liability for addressed extras, and the arbitrary-table range bound. The latter
 uses Bob's whole-outcome payoff range as his deposit, through
-[`MonitoredGuessingBobDeterrence`](../../VegasTests/MonitoredGuessingBobDeterrence.lean).
+[`MonitoredGuessingBobDeterrence`](../../Vegas/Examples/MonitoredGuessing/BobDeterrence.lean).
 The checked `bob_continuation_comparison` in
-[`MonitoredGuessingRestrictedBobComparisons`](../../VegasTests/MonitoredGuessingRestrictedBobComparisons.lean)
+[`MonitoredGuessingRestrictedBobComparisons`](../../Vegas/Examples/MonitoredGuessing/RestrictedBobComparisons.lean)
 instantiates the generic action-restriction inequality. It quantifies over every
 C Bob site, every hidden history at that site, every extra W choice, and all
 extending continuation profiles. Its comparator is legal silence. The only fuel
@@ -88,7 +88,7 @@ The suffix proof reuses `final_response_owner_local` in
 `FinalResponseLocal` invariants give equal final application views for the same
 response. The ignored-traffic theorem supplies the input equality. Remaining
 trace obligations are discharged by
-[`MonitoredGuessingBobContinuationTrace`](../../VegasTests/MonitoredGuessingBobContinuationTrace.lean).
+[`MonitoredGuessingBobContinuationTrace`](../../Vegas/Examples/MonitoredGuessing/BobContinuationTrace.lean).
 Alice has no earlier emitted packet on this prefix, so the unique-event-output
 condition is vacuous. This covers silence/opening and their prescribed mixtures
 using the actual service implementation.

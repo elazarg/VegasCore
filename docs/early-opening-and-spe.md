@@ -13,10 +13,10 @@ costs. It applies with either source commitment interface; admitting commitment
 forfeiture does not remove this witness.
 
 The principal theorem is
-[`honest_source_spe_native_failure`](../VegasTests/ReactiveEarlyOpeningSPE.lean).
+[`honest_source_spe_native_failure`](../Vegas/Examples/ReactiveEarlyOpeningSPE.lean).
 It pairs the source honesty and SPE proofs with failure of the actual
 `compileReactivePolicy` on the corresponding bind-and-open graph policy.
-[`source_graph_publication`](../VegasTests/PendingMenusSource.lean) identifies
+[`source_graph_publication`](../Vegas/Examples/PendingMenusSource.lean) identifies
 the source and graph publication kernels for every binding and disclosure
 choice. This is a graph-policy compiler counterexample, not an evaluation of
 the entire `Setup.compileReactiveStrategy` pipeline.
@@ -68,7 +68,7 @@ submission are separate operations; fresh envelopes with equal payloads have
 distinct identifiers.
 
 This is the concrete bounded scheduler in
-[`ReactiveEarlyOpening.lean`](../VegasTests/ReactiveEarlyOpening.lean).
+[`ReactiveEarlyOpening.lean`](../Vegas/Examples/ReactiveEarlyOpening.lean).
 `scheduler_atMostOnce` proves the contract for all its histories and views.
 It is a particular reactive service instance, not the reserved-epoch service
 and not a verified blockchain implementation. The schedule has no general
@@ -125,7 +125,7 @@ enforcing at-most-once inclusion does not remove it.
 ## Why this is an SPE counterexample
 
 The prefix is a legal history of the actual canonical reactive protocol.
-[contested_isSubgameRoot](../VegasTests/ReactiveEarlyOpening.lean) proves
+[contested_isSubgameRoot](../Vegas/Examples/ReactiveEarlyOpening.lean) proves
 information-set closure. Alice remembers both
 earlier actions; that recall identifies the deterministic prefix in every
 future decision information set. The reusable argument is in
@@ -190,7 +190,7 @@ in this result.
 
 ## The witness with dependency-authorized inclusion
 
-[ReactiveDependencyService.lean](../VegasTests/ReactiveDependencyService.lean)
+[ReactiveDependencyService.lean](../Vegas/Examples/ReactiveDependencyService.lean)
 uses the same activation times and raw response interface with a different
 inclusion service. A public-history audit checks dependencies at each envelope's
 original submission. Both premature disclosure packets remain pending but are

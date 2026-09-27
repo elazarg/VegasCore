@@ -44,10 +44,8 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
@@ -96,7 +94,7 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
   intro menu raw count scheduler base deposit payoff settle
   obtain ⟨effective, equilibrium, _agrees, _histories, settled⟩ :=
     sourceService_audited_equilibrium_extends setup leaks bounds values capacity rosters
-      opportunities network profile parameter utility sample authentic probability positive coverage
+      opportunities network parameter utility sample authentic probability positive coverage
       observe source equilibrium
   obtain ⟨target, _strategy, targetSE, _beliefs, stateLaw⟩ :=
     bounds.exists_canonicalRaw_sequentialEquilibrium (runtime setup) leaks (initialLaw setup)

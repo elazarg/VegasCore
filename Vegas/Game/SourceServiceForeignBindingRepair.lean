@@ -28,10 +28,8 @@ theorem foreign_binding_history_tail_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -94,7 +92,7 @@ theorem foreign_binding_history_tail_coupling
     rfl
   obtain ⟨_, initial, _, Γ, config, refs, boundary, _, _, _, _, _, _, _, _, granted,
       _, _, _, _, _, conforming⟩ := sourceService_inclusion_boundary setup leaks
-    bounds values capacity rosters opportunities network profile
+    bounds values capacity rosters opportunities network
       ⟨remaining + (ticks + 2), none, repaired⟩ trace rfl event actor selected
   have originalGrant : original.application.serviceGrant = some event :=
     (congrArg PublicView.serviceGrant frame.publicView).trans granted
@@ -104,7 +102,7 @@ theorem foreign_binding_history_tail_coupling
     rw [frame.network, frame.publicView]
     exact conforming.pending
   obtain ⟨value, _, candidate⟩ := sourceService_inclusion_binding_candidate setup leaks
-    bounds values capacity rosters opportunities network profile
+    bounds values capacity rosters opportunities network
       ⟨remaining + (ticks + 2), none, repaired⟩ trace rfl event actor selected
         payload outputEq codeEq node
   have candidates := congrArg PlayerView.candidates (frame.views actor different)

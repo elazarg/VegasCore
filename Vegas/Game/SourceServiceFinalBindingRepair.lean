@@ -27,10 +27,8 @@ theorem final_binding_history_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (players : Player → (application setup leaks).Policy)
     (owner : Player) (remaining : Nat)
     (prior original repaired : (application setup leaks).Execution)
@@ -87,13 +85,13 @@ theorem final_binding_history_coupling
     exact actor
   obtain ⟨ready, timely, _, _, _, serials, beforeFirst⟩ :=
     sourceService_binding_decision_resources setup leaks bounds values capacity rosters
-      opportunities network profile owner ⟨remaining, some owner, repaired⟩ trace rfl event
+      opportunities network owner ⟨remaining, some owner, repaired⟩ trace rfl event
         granted owner payload outputEq codeEq node owned
   obtain ⟨small, selected, fresh, unused, vacant, _, published⟩ := beforeFirst unsent
   obtain ⟨_, _, initial, _, _, Γ, names, residual, residualProfile, source, refs, embedding,
       refsBefore, _, _, _, boundary, _, _, checkpoint, _, _, _, _, _, publicEq, _, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
-      network profile owner ⟨remaining, some owner, repaired⟩ trace rfl
+      network (failureProfile setup.program) owner ⟨remaining, some owner, repaired⟩ trace rfl
   have boundaryReady : boundary.application.config.cut.Ready event := by
     rw [← State.publicView_eventReady, ← publicEq, State.publicView_eventReady]
     exact ready

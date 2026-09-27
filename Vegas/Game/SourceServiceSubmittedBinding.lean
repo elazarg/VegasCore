@@ -28,10 +28,8 @@ theorem sourceService_submitted_binding
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -72,7 +70,7 @@ theorem sourceService_submitted_binding
       refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
       _, sampled, _, publicEq, _, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
-      network profile who control trace active
+      network (failureProfile setup.program) who control trace active
   have eventEq : selectedEvent = event := Option.some.inj
     (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans granted)
   subst selectedEvent
@@ -114,10 +112,8 @@ theorem sourceService_recorded_binding_resources
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -153,10 +149,10 @@ theorem sourceService_recorded_binding_resources
   obtain ⟨before, value, admitted, serial, remaining, prior, sample, serialEq, capacityBound,
       beforePublic, fresh, _, vacant, beforeSerials, accounted, published, tail, sampled⟩ :=
     sourceService_submitted_binding setup leaks bounds values capacity rosters opportunities
-      network profile who control trace active event granted owner payload outputEq codeEq node
+      network who control trace active event granted owner payload outputEq codeEq node
         owned recorded
   have currentReady := (sourceService_binding_decision_resources setup leaks bounds values
-    capacity rosters opportunities network profile who control trace active event granted owner
+    capacity rosters opportunities network who control trace active event granted owner
       payload outputEq codeEq node owned).1
   have beforeReady : before.application.config.cut.Ready event := by
     apply (before.application.publicView_eventReady event).mp

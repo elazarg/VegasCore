@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceRoster
+import Vegas.Game.ServiceRoster
 
 /-! # Separating the source choice from actual roster traffic
 

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterContinuation
-import Vegas.Game.RevealServiceRosterLocalEvaluation
+import Vegas.Game.ServiceRosterLocalEvaluation
 import Vegas.Game.RevealServiceRosterHarmless
 import Vegas.Game.RevealServiceRosterHarmlessComparison
 import Vegas.Game.RevealServiceRosterInitialized
@@ -41,6 +41,17 @@ import Vegas.Game.SourceServiceTimedMixing
 import Vegas.Game.SourceServiceTimedConsistency
 import Vegas.Game.SourceServiceTimedLaw
 import Vegas.Game.SourceServiceTimedContinuation
+import Vegas.Game.SourceServiceTimedReachability
+import Vegas.Game.SourceServiceLocalComparison
+import Vegas.Game.SourceServiceBindingSource
+import Vegas.Game.SourceServiceForeignComparison
+import Vegas.Game.SourceServiceForeignDisclosure
+import Vegas.Game.SourceServiceHarmlessContinuation
+import Vegas.Game.SourceServiceSampleComparison
+import Vegas.Game.SourceServiceRecordedContinuation
+import Vegas.Game.SourceServiceBindingContinuation
+import Vegas.Game.SourceServiceTimingPosterior
+import Vegas.Game.SourceServiceDisclosureContinuation
 import Vegas.Game.SourceServiceChoiceSupport
 import Vegas.Game.SourceServiceLocalSupport
 import Vegas.Game.SourceChoiceCompletion
@@ -130,7 +141,7 @@ import Vegas.Game.BindingRepairReadout
 import Vegas.Game.SourceServicePolicy
 import Vegas.Game.SourceServiceStep
 import Vegas.Game.SourceServiceBinding
-import Vegas.Game.RevealServiceRosterEvaluation
+import Vegas.Game.ServiceRosterEvaluation
 import Vegas.Game.RevealServiceRosterEvidence
 import Vegas.Game.RevealServiceRosterBoundaryPosterior
 import Vegas.Game.RevealServiceRosterOwnerNoise
@@ -204,11 +215,11 @@ import Vegas.Game.RevealServiceRosterMenu
 import Vegas.Game.RevealServiceRosterSupport
 import Vegas.Game.RevealServiceRosterCompletion
 import Vegas.Game.RevealServiceRosterCheckpoint
-import Vegas.Game.RevealServiceRoster
-import Vegas.Game.RevealServiceRosterCounts
+import Vegas.Game.ServiceRoster
+import Vegas.Game.ServiceRosterCounts
 import Vegas.Game.RevealServiceRosterPrefixSupport
-import Vegas.Game.RevealServiceRosterClock
-import Vegas.Game.RevealServiceRosterPosition
+import Vegas.Game.ServiceRosterClock
+import Vegas.Game.ServiceRosterPosition
 import Vegas.Game.RevealServiceRosterDecisionSupport
 import Vegas.Game.RevealServiceRosterDecisionData
 import Vegas.Game.RevealServiceRosterMixing
@@ -242,8 +253,8 @@ import Vegas.Game.RevealServiceSelector
 import Vegas.Game.RevealServiceTranscript
 import Vegas.Game.RevealServiceEnforcement
 import Vegas.Game.RevealServiceCorrespondence
-import Vegas.Game.RevealServiceInformation
-import Vegas.Game.RevealServiceObservation
+import Vegas.Game.ServiceInformation
+import Vegas.Game.ServiceObservation
 import Vegas.Game.RevealServiceState
 import Vegas.Game.RevealServicePolicy
 import Vegas.Game.RevealServiceWatcher

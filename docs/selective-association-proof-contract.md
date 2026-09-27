@@ -1,6 +1,6 @@
 # Selective association: sequential-equilibrium separation
 
-[`SelectiveAssociationSeparation.lean`](../VegasTests/SelectiveAssociationSeparation.lean)
+[`SelectiveAssociationSeparation.lean`](../Vegas/Examples/SelectiveAssociation/Separation.lean)
 proves that the accepted-named-evidence source interface has a sequential
 equilibrium whose initialized public-result law cannot be matched by any
 sequential equilibrium of the stated native game. The theorem allows arbitrary
@@ -8,7 +8,7 @@ strategy and belief translations. It compares the original three publication
 results. The analyzed utilities are exactly the signed integer payoffs returned
 by the source program and evaluated by its compiled settlement.
 
-An [isolated native comparison](../VegasTests/SelectiveAssociationRestrictedSeparation.lean)
+An [isolated native comparison](../Vegas/Examples/SelectiveAssociation/RestrictedSeparation.lean)
 also changes only passive observation. With an empty observation rule, the same
 bounded native game has an SE giving Alice zero. Restoring the stated leak rule
 prevents every sequentially rational assessment from matching that payout law.
@@ -20,7 +20,7 @@ prevents every sequentially rational assessment from matching that payout law.
 | Native with candidate evidence and later public association | Every sequentially rational assessment gives Alice expected payoff at least one half. |
 | Comparisons | Neither the named-evidence source equilibrium nor the empty-observation native equilibrium can have its Alice payout law matched by a rational assessment of the leaky native game. |
 
-The stronger [returned-payoff separation](../VegasTests/SelectiveAssociationPayoffSeparation.lean)
+The stronger [returned-payoff separation](../Vegas/Examples/SelectiveAssociation/PayoffSeparation.lean)
 rules out matching even Alice's payout distribution: her expected source payout
 is zero and every rational target assessment gives at least one half. This
 already fixes utility to the program's declared payoff. A translator that knows
@@ -37,7 +37,7 @@ no computation or verification costs.
 ## Isolating passive observation
 
 `Restricted.exists_sequentialEquilibrium` in
-[`SelectiveAssociationRestrictedEquilibrium.lean`](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean)
+[`SelectiveAssociationRestrictedEquilibrium.lean`](../Vegas/Examples/SelectiveAssociation/RestrictedEquilibrium.lean)
 constructs an SE of the native runtime with no passive leaks. The application,
 compiled graph, initial state, deadlines, service calendar, inclusion selector
 and response bounds use the same constructors as the leaky game. Both admit
@@ -52,11 +52,11 @@ publications are all successful `false`, giving payouts `(0, 1, 1)`.
 
 | Obligation | Checked code |
 | --- | --- |
-| Concrete candidate flip preserves the guesser's full input; actual accepted handles and inclusion checks justify the pairing | [PrefixInjection](../VegasTests/SelectiveAssociationRestrictedPrefixInjection.lean), [PrefixAcceptance](../VegasTests/SelectiveAssociationRestrictedPrefixAcceptance.lean) |
-| Every positive perturbation assigns at least as much mass to successful `false` as successful `true` at an uncertified guessing input | [PrefixPosterior](../VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean) |
-| One common fully mixed Bayes sequence supplies consistent beliefs at every information site | [Beliefs](../VegasTests/SelectiveAssociationRestrictedBeliefs.lean) |
-| Optimality against whole replacement policies, including every off-path site | [AliceOptimality](../VegasTests/SelectiveAssociationRestrictedAliceOptimality.lean), [Prelude](../VegasTests/SelectiveAssociationRestrictedPrelude.lean), [GuessOptimality](../VegasTests/SelectiveAssociationRestrictedGuessOptimality.lean), [OpeningOptimality](../VegasTests/SelectiveAssociationRestrictedOpeningOptimality.lean) |
-| Exact initialized results and actual compiled payout comparison | [PrescribedOutcome](../VegasTests/SelectiveAssociationRestrictedPrescribedOutcome.lean), [RestrictedSeparation](../VegasTests/SelectiveAssociationRestrictedSeparation.lean) |
+| Concrete candidate flip preserves the guesser's full input; actual accepted handles and inclusion checks justify the pairing | [PrefixInjection](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixInjection.lean), [PrefixAcceptance](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixAcceptance.lean) |
+| Every positive perturbation assigns at least as much mass to successful `false` as successful `true` at an uncertified guessing input | [PrefixPosterior](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixPosterior.lean) |
+| One common fully mixed Bayes sequence supplies consistent beliefs at every information site | [Beliefs](../Vegas/Examples/SelectiveAssociation/RestrictedBeliefs.lean) |
+| Optimality against whole replacement policies, including every off-path site | [AliceOptimality](../Vegas/Examples/SelectiveAssociation/RestrictedAliceOptimality.lean), [Prelude](../Vegas/Examples/SelectiveAssociation/RestrictedPrelude.lean), [GuessOptimality](../Vegas/Examples/SelectiveAssociation/RestrictedGuessOptimality.lean), [OpeningOptimality](../Vegas/Examples/SelectiveAssociation/RestrictedOpeningOptimality.lean) |
+| Exact initialized results and actual compiled payout comparison | [PrescribedOutcome](../Vegas/Examples/SelectiveAssociation/RestrictedPrescribedOutcome.lean), [RestrictedSeparation](../Vegas/Examples/SelectiveAssociation/RestrictedSeparation.lean) |
 
 `Restricted.exists_equilibrium_no_native_payout_match` then compares this SE's
 zero expected Alice payout with the leaky game's universal lower bound of one
@@ -99,11 +99,11 @@ assert facts about proposals or future source names.
 ## Matching service timeline
 
 The witness uses the actual compilation of the six-statement source program in
-[`SelectiveAssociationGame.lean`](../VegasTests/SelectiveAssociationGame.lean):
+[`SelectiveAssociationGame.lean`](../Vegas/Examples/SelectiveAssociation/Game.lean):
 Alice binds a Boolean, Carol binds a guess, Bob binds a guess, then each opens
 in that order. There are no initial bindings or private inputs; all guards
 accept. The schedule is defined in
-[`SelectiveAssociationNative.lean`](../VegasTests/SelectiveAssociationNative.lean).
+[`SelectiveAssociationNative.lean`](../Vegas/Examples/SelectiveAssociation/Native.lean).
 
 1. Alice has an ambient response. Its envelope remains pending.
 2. Bob activates, with a passive leak rule selecting only Alice's first envelope.
@@ -148,7 +148,7 @@ including after arbitrary replay and competing traffic from Bob. This coupling m
 service contract.
 
 The native prefix is checked in
-[`ReactiveAssociationEvidence.lean`](../VegasTests/ReactiveAssociationEvidence.lean).
+[`ReactiveAssociationEvidence.lean`](../Vegas/Examples/ReactiveAssociationEvidence.lean).
 `later_envelope_selected` proves the latest-envelope selection for every Bob
 response, including replay. `association_after_arbitrary_response` proves
 Bob retains the earlier certificate and recognizes the accepted binding.
@@ -156,25 +156,25 @@ Bob retains the earlier certificate and recognizes the accepted binding.
 and current view even with different Bob responses in the two worlds;
 `carol_activation_after_arbitrary_responses` extends it through the actual
 passive-observation activation. It uses the shared compiled six-event graph.
-[`SelectiveAssociationNativeSequentialDeviation.lean`](../VegasTests/SelectiveAssociationNativeSequentialDeviation.lean)
+[`SelectiveAssociationNativeSequentialDeviation.lean`](../Vegas/Examples/SelectiveAssociation/NativeSequentialDeviation.lean)
 proves the complete profitable-deviation bound against every sequentially
 rational native assessment. Its successful-publication conclusions are proved
 along the actual deviating run.
 
 ## Checked schedule and payoff facts
 
-[`SelectiveAssociationGame.lean`](../VegasTests/SelectiveAssociationGame.lean)
+[`SelectiveAssociationGame.lean`](../Vegas/Examples/SelectiveAssociation/Game.lean)
 returns three ordinary payoff expressions using only public publications. It
 proves that their evaluation agrees with the analyzed payoff function for every
 terminal source state, including failure results.
-[`SelectiveAssociationSettlement.lean`](../VegasTests/SelectiveAssociationSettlement.lean)
+[`SelectiveAssociationSettlement.lean`](../Vegas/Examples/SelectiveAssociation/Settlement.lean)
 uses the existing compiler readout theorem to prove the same equality for every
 completed native configuration. The payout-separation proof reads the actual
 compiled settlement and uses service completion to exclude its unfinished-state
 default. Payoffs are the language's signed integer scores; this is not a
 separate theorem about funded transfers on a deployed ledger.
 
-[`SelectiveAssociationSchedule.lean`](../VegasTests/SelectiveAssociationSchedule.lean)
+[`SelectiveAssociationSchedule.lean`](../Vegas/Examples/SelectiveAssociation/Schedule.lean)
 proves timeliness at every visit and terminal completion for arbitrary native
 policies. Visit `e` has deadline `2^e`; the preceding visits use `2^e - 1`
 clock ticks. Each visit provides one response and reserved inclusion, then
@@ -184,18 +184,18 @@ the native scheduler. These are service guarantees, not prescribed openings.
 [`ReactiveRoundReachability.lean`](../Interaction/ReactiveRoundReachability.lean)
 connects every legal finite-menu history to round evaluation under a profile
 that supports all responses.
-[`SelectiveAssociationHistory.lean`](../VegasTests/SelectiveAssociationHistory.lean)
-and [`SelectiveAssociationCursor.lean`](../VegasTests/SelectiveAssociationCursor.lean)
+[`SelectiveAssociationHistory.lean`](../Vegas/Examples/SelectiveAssociation/History.lean)
+and [`SelectiveAssociationCursor.lean`](../Vegas/Examples/SelectiveAssociation/Cursor.lean)
 therefore give ready-or-completed status, timeliness, and remaining horizon at
 every decision information fiber identified by its public service grant.
 
-[`SelectiveAssociationOpeningService.lean`](../VegasTests/SelectiveAssociationOpeningService.lean)
+[`SelectiveAssociationOpeningService.lean`](../Vegas/Examples/SelectiveAssociation/OpeningService.lean)
 constructs a legal opening response from the owner's observation. For a
 successful binding at a ready, timely visit, reserved inclusion publishes the
 value despite arbitrary earlier traffic. This establishes the feasible
 alternative.
 
-[`SelectiveAssociationOpeningEquilibrium.lean`](../VegasTests/SelectiveAssociationOpeningEquilibrium.lean)
+[`SelectiveAssociationOpeningEquilibrium.lean`](../Vegas/Examples/SelectiveAssociation/OpeningEquilibrium.lean)
 proves that sequential rationality forces publication of exactly the bound value
 at every usable opening information set with a successful owned binding. It covers all three
 players, the complete bounded raw response menu, every compatible legal history,
@@ -204,9 +204,9 @@ incentives under the actual service, rather than an imposed action.
 
 The argument needs more than optimality in expectation. A compatible history
 can have posterior probability zero. For each fixed raw response,
-[`SelectiveAssociationOpeningSelection.lean`](../VegasTests/SelectiveAssociationOpeningSelection.lean)
+[`SelectiveAssociationOpeningSelection.lean`](../Vegas/Examples/SelectiveAssociation/OpeningSelection.lean)
 proves that own recall and observation determine its reserved-inclusion effect.
-[`SelectiveAssociationOpeningSettlement.lean`](../VegasTests/SelectiveAssociationOpeningSettlement.lean)
+[`SelectiveAssociationOpeningSettlement.lean`](../Vegas/Examples/SelectiveAssociation/OpeningSettlement.lean)
 then accounts for the actual clock ticks and expiry. Thus a response that fails
 at one compatible history fails throughout that information set. Its payoff is
 minus four everywhere, while an available ordinary opening gives at least minus
@@ -214,15 +214,15 @@ one everywhere. Sequential rationality excludes the failing response from the
 strategy's support. No positive-posterior premise for individual histories is
 used.
 
-[`SelectiveAssociationCorrection.lean`](../VegasTests/SelectiveAssociationCorrection.lean)
+[`SelectiveAssociationCorrection.lean`](../Vegas/Examples/SelectiveAssociation/Correction.lean)
 proves Bob's corrective binding is available at every legal binding decision:
 he has only one earlier response, so two candidates leave a fresh one. Its new
 packet replaces an older pending guess under the actual reserved selector.
-[`SelectiveAssociationGuessEquilibrium.lean`](../VegasTests/SelectiveAssociationGuessEquilibrium.lean)
+[`SelectiveAssociationGuessEquilibrium.lean`](../Vegas/Examples/SelectiveAssociation/GuessEquilibrium.lean)
 proves Bob's incentive: when his observation certifies Alice's accepted bit,
 sequential rationality forces a matching successful guess and publication.
 The statement covers the complete mixed strategy and every compatible history.
-[`SelectiveAssociationSupportedResponses.lean`](../VegasTests/SelectiveAssociationSupportedResponses.lean)
+[`SelectiveAssociationSupportedResponses.lean`](../Vegas/Examples/SelectiveAssociation/SupportedResponses.lean)
 also proves guarantees for each supported raw response. These apply during
 Alice's deviating continuation, whose later actions need not follow the
 assessment strategy.
@@ -230,28 +230,28 @@ assessment strategy.
 Utilities depend only on the original three publication results. Alice receives
 Bob's correctness minus Carol's correctness; each guesser receives its own
 correctness. Each player loses four units if its own publication fails.
-[`SelectiveAssociationPayoffs.lean`](../VegasTests/SelectiveAssociationPayoffs.lean)
+[`SelectiveAssociationPayoffs.lean`](../Vegas/Examples/SelectiveAssociation/Payoffs.lean)
 proves that a feasible successful opening is preferable even allowing different
 other-player results in the compared continuations.
-[`SelectiveAssociationProbability.lean`](../VegasTests/SelectiveAssociationProbability.lean)
+[`SelectiveAssociationProbability.lean`](../Vegas/Examples/SelectiveAssociation/Probability.lean)
 proves the intended half-unit deviation bound **conditional on** successful
-Alice/Bob publication and Carol's independent-guess bound. [`SelectiveAssociationNativeDeviationCompletion.lean`](../VegasTests/SelectiveAssociationNativeDeviationCompletion.lean)
+Alice/Bob publication and Carol's independent-guess bound. [`SelectiveAssociationNativeDeviationCompletion.lean`](../Vegas/Examples/SelectiveAssociation/NativeDeviationCompletion.lean)
 and the final native deviation theorem discharge the successful-publication
 hypotheses using the actual information sets and response incentives.
 
-[`SelectiveAssociationGuessContinuation.lean`](../VegasTests/SelectiveAssociationGuessContinuation.lean)
+[`SelectiveAssociationGuessContinuation.lean`](../Vegas/Examples/SelectiveAssociation/GuessContinuation.lean)
 proves that later communication and publication decisions cannot improve the
 correctness of Carol's already settled guess. Successful publication must equal
-the stored binding; withholding can only remove a correct guess. [`SelectiveAssociationCarol.lean`](../VegasTests/SelectiveAssociationCarol.lean)
+the stored binding; withholding can only remove a correct guess. [`SelectiveAssociationCarol.lean`](../Vegas/Examples/SelectiveAssociation/Carol.lean)
 proves that the settled guess law is independent of Alice's bit, even with
 arbitrary, different earlier Bob responses. It includes the actual reserved
 inclusion, ticks, and timeout settlement.
 
 ## Source interface and sequential equilibrium
 
-[`SelectiveAssociationSourceCore.lean`](../VegasTests/SelectiveAssociationSourceCore.lean)
+[`SelectiveAssociationSourceCore.lean`](../Vegas/Examples/SelectiveAssociation/SourceCore.lean)
 uses the original source protocol transitions.
-[`SelectiveAssociationSourceService.lean`](../VegasTests/SelectiveAssociationSourceService.lean)
+[`SelectiveAssociationSourceService.lean`](../Vegas/Examples/SelectiveAssociation/SourceService.lean)
 adds pending messages with any finite nonempty claim alphabet, all requested
 named evidence, silence, and every known replay. Source game actions remain
 stage-local. Early request-shaped traffic is expressible as a claim; it creates
@@ -265,46 +265,46 @@ already be certified in that response's packet; the source equilibrium handles
 this public disclosure. Ordinary source opening supplies genuine owned
 evidence. Other claims remain available.
 
-[`SelectiveAssociationSourceCalendar.lean`](../VegasTests/SelectiveAssociationSourceCalendar.lean)
+[`SelectiveAssociationSourceCalendar.lean`](../Vegas/Examples/SelectiveAssociation/SourceCalendar.lean)
 defines the matching calendar, prescribed strategy, and a common perturbation
 with positive mass on every menu response. Full mixing and Bayes consistency
 of each positive perturbation are checked.
-[`SelectiveAssociationSourceGuessSymmetry.lean`](../VegasTests/SelectiveAssociationSourceGuessSymmetry.lean)
+[`SelectiveAssociationSourceGuessSymmetry.lean`](../Vegas/Examples/SelectiveAssociation/SourceGuessSymmetry.lean)
 proves equal conditional probabilities for the two successful Alice values in
 the actual response-prefix laws at guessing inputs with no public Alice certificate. Arbitrary prior
 responses, claims, and Carol's response are retained. Every certificate requested at the binding response is proved to become public
 before both guesses; the no-certificate premise is an observed fact. The result
 uses the same common perturbation on the complete menu; failure probability need not vanish.
-[`SelectiveAssociationSourceBeliefs.lean`](../VegasTests/SelectiveAssociationSourceBeliefs.lean)
+[`SelectiveAssociationSourceBeliefs.lean`](../Vegas/Examples/SelectiveAssociation/SourceBeliefs.lean)
 connects these laws to the canonical Bayes beliefs at every guessing information
 set, including off-path sites. The proof establishes the exact history depth
 of each information fiber rather than assuming it.
-[`SelectiveAssociationSourceConsistency.lean`](../VegasTests/SelectiveAssociationSourceConsistency.lean)
+[`SelectiveAssociationSourceConsistency.lean`](../Vegas/Examples/SelectiveAssociation/SourceConsistency.lean)
 constructs a consistent assessment with the prescribed strategy and these fair
 beliefs, using one common subsequence of the fully mixed assessments.
 
-[`SelectiveAssociationSourceGuessEquilibrium.lean`](../VegasTests/SelectiveAssociationSourceGuessEquilibrium.lean)
+[`SelectiveAssociationSourceGuessEquilibrium.lean`](../Vegas/Examples/SelectiveAssociation/SourceGuessEquilibrium.lean)
 and
-[`SelectiveAssociationSourceOpeningEquilibrium.lean`](../VegasTests/SelectiveAssociationSourceOpeningEquilibrium.lean)
+[`SelectiveAssociationSourceOpeningEquilibrium.lean`](../Vegas/Examples/SelectiveAssociation/SourceOpeningEquilibrium.lean)
 prove sequential rationality at the guessing and opening information sets
 against arbitrary whole behavioral continuation policies. Public certificates
 direct both prescribed guesses; without a public certificate, the consistent
 belief assigns equal mass to the two successful values. Failed bindings and
 optional failed openings remain in the game.
 
-[`SelectiveAssociationSourceAliceValues.lean`](../VegasTests/SelectiveAssociationSourceAliceValues.lean)
+[`SelectiveAssociationSourceAliceValues.lean`](../Vegas/Examples/SelectiveAssociation/SourceAliceValues.lean)
 proves the actual continuation payoff bounds for Alice's ambient and binding
 responses: arbitrary Alice policies yield at most zero against the prescribed
 guessers, while her prescribed policy yields zero. The key source fact is that
 both guessers select the same public guess; recording Carol's ordinary binding
-adds no new certificate. [`SelectiveAssociationSourceBobPrelude.lean`](../VegasTests/SelectiveAssociationSourceBobPrelude.lean)
+adds no new certificate. [`SelectiveAssociationSourceBobPrelude.lean`](../Vegas/Examples/SelectiveAssociation/SourceBobPrelude.lean)
 proves Bob's ambient continuation bound and prescribed value of one half.
-[`SelectiveAssociationSourceEquilibrium.lean`](../VegasTests/SelectiveAssociationSourceEquilibrium.lean)
+[`SelectiveAssociationSourceEquilibrium.lean`](../Vegas/Examples/SelectiveAssociation/SourceEquilibrium.lean)
 assembles all decision-site inequalities into a genuine source SE.
-[`SelectiveAssociationSourceInitialLaw.lean`](../VegasTests/SelectiveAssociationSourceInitialLaw.lean)
+[`SelectiveAssociationSourceInitialLaw.lean`](../Vegas/Examples/SelectiveAssociation/SourceInitialLaw.lean)
 proves its exact initialized public-result law.
 
-[`SelectiveAssociationNamedEvidence.lean`](../VegasTests/SelectiveAssociationNamedEvidence.lean)
+[`SelectiveAssociationNamedEvidence.lean`](../Vegas/Examples/SelectiveAssociation/NamedEvidence.lean)
 proves that its six named facts cover every genuine commitment fact of this
 source program, none is available initially, and observed certificates hold
 throughout the recipient's information fiber. It also proves exactly which
@@ -322,24 +322,24 @@ informative signals; this witness supplies a fair Boolean and a constant signal
 for Carol. It leaves evidence recognition, feasible responses, withholding
 incentives and the actual continuation law to the native proofs below.
 
-[`SelectiveAssociationNativeDeviation.lean`](../VegasTests/SelectiveAssociationNativeDeviation.lean)
+[`SelectiveAssociationNativeDeviation.lean`](../Vegas/Examples/SelectiveAssociation/NativeDeviation.lean)
 constructs Alice's legal strategy over the full response menu. Its prefix laws
 execute the actual calendar and retain Bob's arbitrary prelude response.
-[`SelectiveAssociationNativeDeviationPayoff.lean`](../VegasTests/SelectiveAssociationNativeDeviationPayoff.lean)
+[`SelectiveAssociationNativeDeviationPayoff.lean`](../Vegas/Examples/SelectiveAssociation/NativeDeviationPayoff.lean)
 factors the complete outcome law through Alice's fair bit and bounds Carol's
 correctness unconditionally in the opponents' policies.
-[`SelectiveAssociationNativeDeviationCompletion.lean`](../VegasTests/SelectiveAssociationNativeDeviationCompletion.lean)
+[`SelectiveAssociationNativeDeviationCompletion.lean`](../Vegas/Examples/SelectiveAssociation/NativeDeviationCompletion.lean)
 proves successful Alice and Bob publications at every supported terminal
 outcome of that deviation. It uses the target assessment's supported responses
 at intermediate legal histories, allowing arbitrary subsequent play.
-[`SelectiveAssociationNativeSequentialDeviation.lean`](../VegasTests/SelectiveAssociationNativeSequentialDeviation.lean)
+[`SelectiveAssociationNativeSequentialDeviation.lean`](../Vegas/Examples/SelectiveAssociation/NativeSequentialDeviation.lean)
 therefore proves Alice's deviation earns at least one half, with no remaining
 successful-publication assumptions.
 
-[`SelectiveAssociationInitialSite.lean`](../VegasTests/SelectiveAssociationInitialSite.lean)
+[`SelectiveAssociationInitialSite.lean`](../Vegas/Examples/SelectiveAssociation/InitialSite.lean)
 proves that every compatible history at Alice's first information set has the
 same concrete control state.
-[`SelectiveAssociationInitialRationality.lean`](../VegasTests/SelectiveAssociationInitialRationality.lean)
+[`SelectiveAssociationInitialRationality.lean`](../Vegas/Examples/SelectiveAssociation/InitialRationality.lean)
 identifies that continuation comparison with the initialized game comparison.
 Sequential rationality at this site implies Alice's equilibrium payoff is at
 least the deviation payoff. Thus every sequentially rational native assessment

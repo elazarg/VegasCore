@@ -156,7 +156,7 @@ deviations with all deviations in the unbounded raw game.
 
 For each bounded instance and scheduler horizon, the generic finite-history and
 assessment theorems apply. The
-[regression fixture](../VegasTests/ReactiveFiniteResponses.lean) checks malformed
+[regression fixture](../Vegas/Examples/ReactiveFiniteResponses.lean) checks malformed
 signaling, wrong-method/foreign-handle openings, retained wrong-type commitment
 meanings, unopenable commitments, ignored private material and replay coverage.
 It also instantiates finite histories and a consistent Bayes assessment for the
@@ -181,7 +181,7 @@ or make the compiled continuations optimal. The remaining compiler obligations
 are source-law correctness and finding a consistent completion that preserves
 continuation incentives. Concrete backend encoding and progress assumptions
 still need justification. The
-[monitored two-reveal theorem](../VegasTests/MonitoredGuessingDeclaredCompilation.lean)
+[monitored two-reveal theorem](../Vegas/Examples/MonitoredGuessing/DeclaredCompilation.lean)
 closes these obligations for its stated service and payoff-table family; the
 general source-to-native correspondence remains open. The
 [selective-association separation](selective-association-proof-contract.md)

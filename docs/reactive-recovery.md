@@ -101,10 +101,10 @@ Supported recovery may reuse a choice instead of the original source lottery;
 equal optimal utility does not imply equal action laws. A whole-service
 correspondence must account for this distinction explicitly.
 
-[ReactiveRuntime.lean](../VegasTests/ReactiveRuntime.lean) checks an actual
+[ReactiveRuntime.lean](../Vegas/Examples/ReactiveRuntime.lean) checks an actual
 wrong binding response followed by the compiler's recovery choice, and checks
 that ordinary supported choices are not resampled.
-[ReactiveRecovery.lean](../VegasTests/ReactiveRecovery.lean) checks accepted,
+[ReactiveRecovery.lean](../Vegas/Examples/ReactiveRecovery.lean) checks accepted,
 rejected, competing, and mismatched internal disclosure intentions, and proves
 that the two failed-disclosure intentions give the same semantic action. These are operational
 and reconstruction tests; they do not certify proper native subgame roots.

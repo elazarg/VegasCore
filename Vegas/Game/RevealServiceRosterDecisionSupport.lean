@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceRosterClock
-import Vegas.Game.RevealServiceRosterPosition
+import Vegas.Game.ServiceRosterClock
+import Vegas.Game.ServiceRosterPosition
 import Vegas.Game.RevealServiceRosterPrefixSupport
 
 /-! # Legal roster decisions start from legal source prefixes

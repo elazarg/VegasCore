@@ -118,18 +118,18 @@ adapter to that theorem's game-tree presentation.
 
 ### Checked no-leak equilibrium and restored-observation separation
 
-The [native SE construction](../VegasTests/SelectiveAssociationRestrictedEquilibrium.lean)
+The [native SE construction](../Vegas/Examples/SelectiveAssociation/RestrictedEquilibrium.lean)
 proves the required zero payout for Alice in the game with empty passive
 observation. It covers the complete bounded raw menu, including rejected
 packets, malformed candidates, replays, withholding and deadlines. The
-[prefix injection](../VegasTests/SelectiveAssociationRestrictedPrefixInjection.lean)
+[prefix injection](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixInjection.lean)
 flips a privately fixed true candidate into a false one while preserving the
 guesser's whole input. The
-[probability comparison](../VegasTests/SelectiveAssociationRestrictedPrefixPosterior.lean)
-and [common consistency limit](../VegasTests/SelectiveAssociationRestrictedBeliefs.lean)
+[probability comparison](../Vegas/Examples/SelectiveAssociation/RestrictedPrefixPosterior.lean)
+and [common consistency limit](../Vegas/Examples/SelectiveAssociation/RestrictedBeliefs.lean)
 justify the required beliefs at off-path sites as well as on the prescribed path.
 
-The [separation capstone](../VegasTests/SelectiveAssociationRestrictedSeparation.lean)
+The [separation capstone](../Vegas/Examples/SelectiveAssociation/RestrictedSeparation.lean)
 compares the actual native payout evaluator under the two observation rules.
 Every sequentially rational assessment with the original passive observation
 gives Alice at least one half, so none can match the restricted SE's payout law.

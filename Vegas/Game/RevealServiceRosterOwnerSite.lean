@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterOwnerComparison
-import Vegas.Game.RevealServiceRosterLocalEvaluation
+import Vegas.Game.ServiceRosterLocalEvaluation
 
 /-! # Original source information at every fresh native opening site
 

@@ -129,16 +129,33 @@ this recall property. General source-to-native correspondence and
 collection remain compiler obligations. Forcing future actions to fail is
 sufficient only when their actual continuation loss deters the departure.
 
-The [SE compiler roadmap](docs/se-preservation-roadmap.md) records the remaining
-native correspondence and checked executable inference of the least sufficient
-deposit for a finite rational comparison table. The
-[implementation stack](docs/se-compilation-stack.md) plans successive response
-restrictions over the same runtime, with early recall and monitoring feasibility
-gates. Declared source payoff tables now supply an actual native deterrence
-instance and exact prescribed
-net-payoff laws. General SE preservation for that payoff family remains open.
-Exact finite-game checking is a separate proposed diagnostic; failure of a
-sufficient certificate is not an impossibility result.
+For the two-reveal program of the monitored guessing fragment, with an
+arbitrary declared integer payoff table and a zero-payoff watcher, the
+[declared-payoff theorem](Vegas/Examples/MonitoredGuessing/DeclaredCompilation.lean)
+gives every source SE a full bounded raw native SE with the same joint initial
+type, public results and net payoffs. The
+[SE compiler roadmap](docs/se-preservation-roadmap.md) records checked
+executable inference of the least sufficient deposit for a finite rational
+comparison table. Exact finite-game checking is a separate proposed diagnostic;
+failure of a sufficient certificate is not an impossibility result.
+
+For reveal-only programs with openable initial bindings, the
+[audited roster theorem](Vegas/Game/RevealServiceRosterCompilation.lean)
+preserves every source SE in the full bounded raw runtime, with the same joint
+typed source outcome and realized settlement law. The native game, activation
+rosters and deposits are fixed before an equilibrium is chosen. Every actor has
+an activation at its event; additional roster visits, passive partial
+observation, replay and withholding remain available. Authentic partial audit
+evidence, positive conditional collection coverage and collectible deposits
+are explicit backend assumptions.
+
+For the full source language, including fresh commitments and public chance,
+the [completion checklist](docs/se-proof-checklist.md) is the status ledger and
+the [implementation stack](docs/se-compilation-stack.md) the proof map.
+Execution and settlement correspondence, one common consistency sequence, and
+the whole permitted-to-raw-runtime extension are checked. Belief
+correspondence at every native decision, local sequential incentives, and the
+composed end-to-end theorem remain open.
 
 The [runtime abstraction investigation](docs/runtime-abstraction-classification.md)
 classifies what a game presentation may forget. Its generic continuation

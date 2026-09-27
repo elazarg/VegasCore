@@ -46,8 +46,12 @@ proves the joint decoded-state and native-traffic law at every event boundary
 for the full language. The [actual owner posteriors](../Vegas/Game/SourceServiceBayes.lean)
 and [original-assessment comparison](../Vegas/Game/SourceServiceAssessment.lean)
 connect every owner visit to the original source assessment, including private
-intentions erased by normalization. Physical local continuation comparisons
-and the treatment of all remaining visits are still required. The
+intentions erased by normalization. The
+[local comparison interface](../Vegas/Game/SourceServiceLocalComparison.lean)
+reduces every physical local comparison to the configuration law of the
+current phase after each legal response. Public-sampling sites, foreign visits,
+and owner visits after a recorded binding or opening are checked; unsent owner
+bindings and disclosures are still required. The
 [joint phase checkpoint laws](../Vegas/Game/SourceServiceTimedCheckpoint.lean)
 retain each chosen source successor together with its actual native traffic;
 equal terminal marginals do not establish that joint law.
@@ -262,20 +266,20 @@ correspondence is checked for the revelation service. The
 [roadmap](se-preservation-roadmap.md) records current
 results and broader research boundaries.
 
-For the actual initialized fixture, [C/W/N menus](../VegasTests/MonitoredGuessingRestricted.lean),
-[their inherited decision clocks](../VegasTests/MonitoredGuessingRestrictedClock.lean),
-and the [W → N → T equilibrium extension](../VegasTests/MonitoredGuessingWatcherRaw.lean)
+For the actual initialized fixture, [C/W/N menus](../Vegas/Examples/MonitoredGuessing/Restricted.lean),
+[their inherited decision clocks](../Vegas/Examples/MonitoredGuessing/RestrictedClock.lean),
+and the [W → N → T equilibrium extension](../Vegas/Examples/MonitoredGuessing/WatcherRaw.lean)
 are checked. The watcher extension allows arbitrary fixed ordinary-player
 utilities and requires watcher utility zero at every history. The raw lift
 preserves every joint observation/payoff law invariant under the proved private
-normalization. The [S → C equilibrium theorem](../VegasTests/MonitoredGuessingRestrictedEquilibrium.lean)
-and [all-profile joint law](../VegasTests/MonitoredGuessingRestrictedLaw.lean) are
+normalization. The [S → C equilibrium theorem](../Vegas/Examples/MonitoredGuessing/RestrictedEquilibrium.lean)
+and [all-profile joint law](../Vegas/Examples/MonitoredGuessing/RestrictedLaw.lean) are
 checked for arbitrary declared integer tables with zero watcher payoff. The
 ordinary-player continuation comparisons are checked for every retained history
 and arbitrary paired profiles. Their
-[C → W → N → T composition](../VegasTests/MonitoredGuessingRestrictedExtension.lean)
+[C → W → N → T composition](../Vegas/Examples/MonitoredGuessing/RestrictedExtension.lean)
 is also checked. The
-[literal-source capstone](../VegasTests/MonitoredGuessingDeclaredCompilation.lean)
+[literal-source capstone](../Vegas/Examples/MonitoredGuessing/DeclaredCompilation.lean)
 composes these edges: every SE of the actual two-reveal program has a full raw
 native SE with the same joint initial-bit/result/net-payoff law. Its deposits
 are fixed from the declared table; watcher returns are zero.
@@ -432,7 +436,7 @@ combined extension. No game or fine may be chosen after seeing the source SE.
 
 ### Checked fixture
 
-The actual [two-publication payoff-table family](../VegasTests/MonitoredGuessingPayoffs.lean) has
+The actual [two-publication payoff-table family](../Vegas/Examples/MonitoredGuessing/Payoffs.lean) has
 valid initialized commitments, Bob's reveal followed by Alice's reveal, and
 literal integer return tables. It retains **both opening and withholding at both
 source decisions**, under arbitrary source strategies. Its S → C proof does
@@ -460,7 +464,7 @@ membership as a predicate/certificate on existing programs, not new syntax.
 existing syntax and proves that the open-obligation index counts the remaining
 decisions. From an empty guard registry, every reveal returns its bound result
 or failure according to the player's disclosure choice, and every policy
-satisfies guard acceptance. The [repeated-owner source check](../VegasTests/RevealSequence.lean)
+satisfies guard acceptance. The [repeated-owner source check](../Vegas/Examples/RevealSequence.lean)
 retains withholding followed by later openings in an Alice → Bob → Alice
 sequence. This check does not assert native SE preservation for that sequence.
 
@@ -501,7 +505,7 @@ invisible private distinctions cannot be audited. Replays of old envelopes also
 need a service-insensitivity argument, since old public content can still change
 the service's input history.
 
-The [successful-evidence regression](../VegasTests/SuccessfulEvidenceAliases.lean)
+The [successful-evidence regression](../Vegas/Examples/SuccessfulEvidenceAliases.lean)
 checks two available raw requests with identical external effects and different
 private recall. [EvidenceNormalization](../Vegas/Pending/EvidenceNormalization.lean)
 merges requests exactly when they resolve to the same certificate. It prefers
@@ -558,13 +562,13 @@ correlated setup and off-path source decisions.
 initial store agreement and its preservation by actual native completion and
 source revelation. The local source decoder finds the authentic opening using
 the owner's view and the binding invariant.
-[Information recovery](../Vegas/Game/RevealServiceInformation.lean) recovers
+[Information recovery](../Vegas/Game/ServiceInformation.lean) recovers
 the exact source decision view from store and completion-history agreement.
 [Action splitting](../Vegas/Game/RevealServiceActions.lean) projects C actions
 to the source Boolean choice and lifts fully supported distributions; silence
 and spent replay share the withholding fiber. These facts still need the
 whole-history induction and reverse information correspondence.
-The [reverse observation lemmas](../Vegas/Game/RevealServiceObservation.lean)
+The [reverse observation lemmas](../Vegas/Game/ServiceObservation.lean)
 recover the native graph observation and candidate catalogue from the source
 view at reachable ranked prefixes. They reduce complete before-view equality
 to the actual public accepted-handle, clock, activation, grant, ledger, leak
@@ -654,7 +658,7 @@ distinguishes its owner and watcher opportunities, with a watcher distinct
 from all source owners. The formulas include both actual environment steps
 and prior player responses; they do not assume source-conforming play.
 
-The [full raw fixture](../VegasTests/MonitoredGuessingNativeClock.lean) has common
+The [full raw fixture](../Vegas/Examples/MonitoredGuessing/NativeClock.lean) has common
 decision depths at all legal information sets: initial Alice at 2, Watcher at 4,
 Bob at 8, and final Alice at 14. The C/W/N games inherit this certificate through
 their actual history embeddings. Alice's two sites are distinguished by her
@@ -694,25 +698,25 @@ arbitrary policies. Include a repeated-owner fixture before claiming the
 arbitrary-length class. Check candidate/serial choices, ledger contents, own
 recall, deadline progress and observations at intervening activations.
 
-The eight [concrete branch laws](../VegasTests/MonitoredGuessingRestrictedExecution.lean)
+The eight [concrete branch laws](../Vegas/Examples/MonitoredGuessing/RestrictedExecution.lean)
 are checked, including the initial bit, both public results and zero pilot charge.
-The [meaningful checkpoint inputs](../VegasTests/MonitoredGuessingRestrictedInformation.lean)
+The [meaningful checkpoint inputs](../Vegas/Examples/MonitoredGuessing/RestrictedInformation.lean)
 have one Bob input and four distinct Alice inputs, and both source choices are
 legal at each checkpoint. The all-history Bob and Alice classifications and
 consistent assessment correspondence are also checked.
 
-The [reference-run support proof](../VegasTests/MonitoredGuessingRestrictedSupport.lean)
+The [reference-run support proof](../Vegas/Examples/MonitoredGuessing/RestrictedSupport.lean)
 also classifies every legal C Bob decision as a quiet checkpoint, and every Bob
 information site as the same source-representable input. The
-[Alice classification](../VegasTests/MonitoredGuessingRestrictedAliceSupport.lean)
+[Alice classification](../Vegas/Examples/MonitoredGuessing/RestrictedAliceSupport.lean)
 identifies both her forced initial responses and every final decision. Her final
 information determines the complete continuation state; Bob's consistent belief
 has the initial fair-bit distribution. These facts support the checked
-[source equilibrium theorem](../VegasTests/MonitoredGuessingRestrictedEquilibrium.lean)
+[source equilibrium theorem](../Vegas/Examples/MonitoredGuessing/RestrictedEquilibrium.lean)
 without assuming a target belief or rational completion.
 
 The existing compiler withholds a guard-rejected value:
-[compiled_packet](../VegasTests/CommunicationNative.lean) checks that case.
+[compiled_packet](../Vegas/Examples/CommunicationNative.lean) checks that case.
 Raw disclosure after guard failure is consequently an extra-action issue for
 that compiler. Collapsing the source's true/false intentions into the same
 packet is a separate recall obligation, deferred with guarded programs.
@@ -723,7 +727,7 @@ insufficient. No selected equilibrium is used to define C.
 
 ### G4. Observable deviations by every player
 
-A [checked operational witness](../VegasTests/MonitoredGuessingConformance.lean)
+A [checked operational witness](../Vegas/Examples/MonitoredGuessing/Conformance.lean)
 exposes a gap in the pilot's collector: Bob can attach a
 valid certificate to an accepted withholding packet. Alice then sees a new
 ledger observation. Against a paired source profile where Alice withholds after
@@ -754,19 +758,19 @@ The [coverage audit](research/monitored-response-coverage.md) tracks the concret
 classes. Two operational comparison gates are checked:
 
 - At the canonical final-Alice checkpoints, [every raw response has a legal C
-  comparator](../VegasTests/MonitoredGuessingRestrictedFinalComparison.lean),
+  comparator](../Vegas/Examples/MonitoredGuessing/RestrictedFinalComparison.lean),
   selected from Alice's information and the response. It preserves the terminal
   result and weakly increases her utility for arbitrary declared result tables
   and nonnegative rejection charges. No future player response is needed.
-- At the quiet Bob checkpoint, [unselected Bob submissions](../VegasTests/MonitoredGuessingBobContinuation.lean)
+- At the quiet Bob checkpoint, [unselected Bob submissions](../Vegas/Examples/MonitoredGuessing/BobContinuation.lean)
   leave Alice's entire next input equal to the C silent branch. Known replay is
   unavailable there. The proof uses Alice's empty passive sample; a service that
   allows her to read this pending traffic needs a different comparison or
   additional monitoring.
 
-The [early](../VegasTests/MonitoredGuessingRestrictedInitialComparison.lean),
-[receiver](../VegasTests/MonitoredGuessingRestrictedBobComparisons.lean), and
-[final](../VegasTests/MonitoredGuessingRestrictedComparisons.lean) comparison
+The [early](../Vegas/Examples/MonitoredGuessing/RestrictedInitialComparison.lean),
+[receiver](../Vegas/Examples/MonitoredGuessing/RestrictedBobComparisons.lean), and
+[final](../Vegas/Examples/MonitoredGuessing/RestrictedComparisons.lean) comparison
 theorems now connect actual service suffixes to behavioral continuation
 contexts. They cover every retained hidden history and arbitrary paired
 continuation profiles. Extra Bob-addressed packets have unit persistent
@@ -788,7 +792,7 @@ public detection at inclusion and persistence under arbitrary raw continuations.
 Its native regression accepts the canonical matching-certificate opening,
 detects the accepted extra evidence and missing-certificate packet, and leaves
 silence/expiry clean. The
-[whole-outcome payoff bounds](../VegasTests/MonitoredGuessingEnforcementPayoffs.lean)
+[whole-outcome payoff bounds](../Vegas/Examples/MonitoredGuessing/EnforcementPayoffs.lean)
 use Alice's deposit twice her payoff range and Bob's deposit equal to his range.
 These bounds and the actual response coverage discharge the fixture's
 conditional inequalities. Monetary collectibility remains an assumption of the

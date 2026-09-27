@@ -31,8 +31,7 @@ theorem roster_audited_source_sequential_equilibrium_preserved
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
-    (rosterCoverage : ∀ event owner,
-      (graph setup).actor? event = some owner → owner ∈ rosters event)
+    (rosterCoverage : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)

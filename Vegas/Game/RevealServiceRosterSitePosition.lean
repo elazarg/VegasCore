@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceRosterClock
+import Vegas.Game.ServiceRosterClock
 
 /-! # One physical phase position across an information site
 

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterOwnerNoise
-import Vegas.Game.RevealServiceRosterEvaluation
+import Vegas.Game.ServiceRosterEvaluation
 import GameTheoryExtensions.Math.Probability.ObservationRetraction
 
 /-! # Initialized owner information inside a revelation phase

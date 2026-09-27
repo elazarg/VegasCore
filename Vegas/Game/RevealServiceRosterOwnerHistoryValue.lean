@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterWindowSource
-import Vegas.Game.RevealServiceRosterLocalEvaluation
+import Vegas.Game.ServiceRosterLocalEvaluation
 import Vegas.Game.RevealServiceRosterSitePosition
 import Vegas.Game.RevealServiceRosterOwnerComparison
 

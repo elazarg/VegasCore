@@ -20,7 +20,7 @@ import sys
 
 ROOTS_DEFINING = (
     "GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction",
-    "InteractionTests", "Vegas", "VegasTests", "Paper", "GameTheory/GameTheory",
+    "InteractionTests", "Vegas", "Paper", "GameTheory/GameTheory",
 )
 ROOTS_CITING = (
     "GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction",

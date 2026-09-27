@@ -29,13 +29,11 @@ theorem sourceService_plan_no_omission
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (players : Player → (application setup leaks).Policy)
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (final : (application setup leaks).Execution)
     (reached : final ∈ ((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network (rosterPlan setup rosters)
@@ -53,8 +51,8 @@ theorem sourceService_plan_no_omission
   rw [← same] at supported
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, boundary⟩ :=
     initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
-      opportunities players lawful network profile (eventCount setup.program) (Nat.le_refl _)
-        final supported
+      opportunities players lawful network (failureProfile setup.program)
+      (eventCount setup.program) (Nat.le_refl _) final supported
   exact boundary.acceptedRecorded.missedBinding_false event
 
 /-- No initialized prefix of the real command plan can already contain
@@ -65,13 +63,12 @@ theorem sourceService_command_prefix_no_omission
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (players : Player → (application setup leaks).Policy)
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program) (count : Nat)
+    (count : Nat)
     (current : (application setup leaks).Execution)
     (reached : current ∈ ((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network
@@ -91,7 +88,7 @@ theorem sourceService_command_prefix_no_omission
     apply Set.mem_iUnion₂.mpr
     exact ⟨current, FinDist.support_bind .. ▸ reached, continued⟩
   have clear := sourceService_plan_no_omission setup leaks bounds values capacity rosters
-    opportunities players lawful network profile final finalSupported event
+    opportunities players lawful network final finalSupported event
   cases kind : (graph setup).outputLayout event with
   | publicData payload | privateInput owner payload | publication payload =>
       simp only [PublicView.missedBinding, kind]
@@ -114,10 +111,8 @@ theorem sourceService_history_no_omission
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (control : (application setup leaks).Control)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -129,7 +124,7 @@ theorem sourceService_history_no_omission
       obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
           boundary, _, _, checkpoint, _, _, _, _, _, publicEq, _, _⟩ :=
         sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
-          network profile who control trace actor
+          network (failureProfile setup.program) who control trace actor
       rw [publicEq]
       exact checkpoint.acceptedRecorded.missedBinding_false event
   | none =>
@@ -146,6 +141,6 @@ theorem sourceService_history_no_omission
         opportunities menu.uniformResponses
         (fun who past view response member =>
           (menu.uniformResponses_support who past view response).mp member)
-        network profile _ control.execution reached event
+        network _ control.execution reached event
 
 end Vegas.SourceProgram.RevealService

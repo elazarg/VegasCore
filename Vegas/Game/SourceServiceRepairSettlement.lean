@@ -35,10 +35,8 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
@@ -87,7 +85,7 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
       TerminalAudit.charge observe audit (some pair.2.1) who = 0 := by
     obtain ⟨trace⟩ := permitted pair supported
     exact sourceService_history_audit_clear setup leaks bounds values capacity rosters
-      opportunities network profile sample authentic ⟨some pair.2.1, trace⟩ who
+      opportunities network sample authentic ⟨some pair.2.1, trace⟩ who
   have collected (pair) (supported : pair ∈ coupled.support) (bad : pair ∈ departed) :
       min rate 1 ≤ TerminalAudit.charge observe audit (some pair.1) who := by
     rcases related pair supported with traffic | missing | framed
@@ -153,10 +151,8 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
@@ -196,7 +192,7 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
   intro base deposit settle
   have ratePositive : 0 < min (probability who) 1 := lt_min positive zero_lt_one
   apply sourceService_repair_settlement_le setup leaks bounds values capacity rosters
-    opportunities network profile parameter utility sample authentic who (probability who)
+    opportunities network parameter utility sample authentic who (probability who)
     (min (probability who) 1 * deposit who) deposit coverage
     (rosterAuditDeposit_nonnegative setup leaks bounds rosters network base _ who ratePositive)
     (le_refl _) coupled permitted onlyBindings related

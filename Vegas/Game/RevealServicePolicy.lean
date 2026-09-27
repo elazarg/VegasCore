@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceActions
-import Vegas.Game.RevealServiceInformation
+import Vegas.Game.ServiceInformation
 import Interaction.ReactiveMenuPolicy
 
 /-! # Source policies in the restricted revelation service

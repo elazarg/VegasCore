@@ -20,19 +20,6 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-omit [Fintype Player] in
-private theorem binding_actor (setup : Setup (Player := Player) (L := L))
-    (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
-    (kind : (graph setup).outputLayout event = .binding owner payload) :
-    (graph setup).actor? event = some owner := by
-  have castActor : (cast (congrArg (EventGraph.EventCode (graph setup).layout) kind)
-      ((graph setup).nodes event)).actor = some owner := by
-    generalize cast (congrArg (EventGraph.EventCode (graph setup).layout) kind)
-      ((graph setup).nodes event) = code
-    cases code
-    rfl
-  exact (EventGraph.EventCode.actor_cast kind ((graph setup).nodes event)).symm.trans castActor
-
 theorem sourceService_prefix_state_law
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -40,8 +27,7 @@ theorem sourceService_prefix_state_law
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner, (graph setup).actor? event = some owner →
-      owner ∈ rosters event)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -68,10 +54,7 @@ theorem sourceService_prefix_state_law
   let readout := fun count (execution : app.Execution) =>
     sourceServicePrefix? setup count execution.application.config
   let kernel := setup.behavioralStateStep admission encoded
-  have bindingOpportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event := by
-    intro event owner payload kind
-    exact opportunities event owner (binding_actor setup event owner payload kind)
+  have bindingOpportunities := opportunities.binding
   have covered := sourceServiceLastPolicy_admissible setup leaks bounds values initialValues
     capacity rosters bindingOpportunities network profile permitted
   have step (rank : Nat) (inside : rank < (graph setup).order.eventCount)
@@ -206,8 +189,7 @@ theorem sourceServiceLastPolicy_readout_law [Finite Player]
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner, (graph setup).actor? event = some owner →
-      owner ∈ rosters event)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -247,8 +229,7 @@ theorem sourceServiceCompiledProfile_readout_law
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner, (graph setup).actor? event = some owner →
-      owner ∈ rosters event)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)
     (permitted : ∀ who, (original who).Admitted setup.program
@@ -260,10 +241,7 @@ theorem sourceServiceCompiledProfile_readout_law
         (fun final => sourceReadout setup leaks final.state) = (setup.run original).map some := by
   let normalized := normalizeDisclosureProfile setup.program []
     (Revelations.initial setup.context) original
-  have bindingOpportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event := by
-    intro event owner payload kind
-    exact opportunities event owner (binding_actor setup event owner payload kind)
+  have bindingOpportunities := opportunities.binding
   have physical := sourceServiceCompiledProfile_complete_state setup leaks bounds values
     initialValues capacity rosters bindingOpportunities network original permitted
   have observed := congrArg (FinDist.map (sourceReadout setup leaks)) physical

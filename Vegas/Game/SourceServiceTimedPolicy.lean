@@ -281,8 +281,7 @@ theorem sourceServiceTimedPolicy_final
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (coverage : ∀ event owner, (graph setup).actor? event = some owner →
-      owner ∈ rosters event)
+    (coverage : ActorOpportunities setup rosters)
     (profile : BehavioralProfile setup.program) :
     sourceServiceTimedPolicy setup leaks rosters
       (fun event who owned => FinDist.pure (rosterLastSlot setup rosters coverage event who owned))

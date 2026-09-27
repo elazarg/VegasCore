@@ -32,8 +32,7 @@ theorem sourceService_owner_assessment_comparisons
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (timing : ∀ event who, (graph setup).actor? event = some who →
       FinDist (Fin ((rosters event).count who)))
     (full : ∀ event who owned, (timing event who owned).FullSupport)
@@ -125,7 +124,7 @@ theorem sourceService_owner_assessment_comparisons
   have covered := sourceServiceTimedPolicy_admissible setup leaks bounds values initialValues
     capacity rosters opportunities network timing full normalized normalizedAdmitted
   obtain ⟨state, checkpoint⟩ := sourceService_owner_checkpoint setup leaks bounds values capacity
-    rosters opportunities network players covered normalized event owner visits control.execution
+    rosters opportunities network players covered event owner visits control.execution
       referenceSupport
   have decoded : sourceServicePrefix? setup event.val control.execution.application.config =
       some state := SourcePrefixCheckpoint.decode setup.program _ _ _ _ 0 event.val state _

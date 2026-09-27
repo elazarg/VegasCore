@@ -342,7 +342,7 @@ opcode, a utility argument, or additional player information?
 uses structural sites of the given program. `CommitmentAdmission.values` admits
 successful bindings; `CommitmentAdmission.forfeiture` also admits irreversible
 forfeiture. Neither changes the timing of public observation. For the two-site
-program in [SourceProtocol.lean](../VegasTests/SourceProtocol.lean), an interface is:
+program in [SourceProtocol.lean](../Vegas/Examples/SourceProtocol.lean), an interface is:
 
 ```lean
 def interface (alice bob : CommitmentAdmission) : CommitmentInterface program
@@ -368,7 +368,7 @@ No finite player universe or finite payload assumption is needed.
 [SetupProtocolEvaluation.lean](../Vegas/Source/SetupProtocolEvaluation.lean)
 adds the existing initial law as a chance step. One policy is used across all
 draws. Continuation retains the draw; it never samples private types again.
-[SetupProtocol.lean](../VegasTests/SetupProtocol.lean) checks that a hidden
+[SetupProtocol.lean](../Vegas/Examples/SetupProtocol.lean) checks that a hidden
 private-input draw is not a proper root when the next player cannot distinguish
 the two draws. The owner observes the input normally.
 
@@ -379,7 +379,7 @@ Utilities can read the complete terminal store, including persistent types;
 restrictions to public results belong in the selected utility. These are
 source semantic bridges, not native preservation theorems.
 
-**Validation.** `lake build VegasTests.SourceProtocol VegasTests.SetupProtocol
+**Validation.** `lake build Vegas.Examples.SourceProtocol Vegas.Examples.SetupProtocol
 Vegas.Game.SetupSubgame` passes. The bridges concern pure policies with
 stochastic source chance. Behavioral policies are covered by E6 below.
 
@@ -436,11 +436,11 @@ and the compiler is fixed. The proved horizon-independence theorem prevents
 semantic dependence on evaluation fuel. Behavioral SPE of a point-mass profile
 implies pure SPE; the converse still needs a separate deviation argument.
 
-**Validation.** [BehavioralProtocol.lean](../VegasTests/BehavioralProtocol.lean)
+**Validation.** [BehavioralProtocol.lean](../Vegas/Examples/BehavioralProtocol.lean)
 uses natural numbers as players and a fair lottery over success and forfeiture.
 It checks exact encoding, rejection of the whole lottery by value-only
 admission, and retention of a binding under arbitrary randomized continuations.
-[SetupProtocol.lean](../VegasTests/SetupProtocol.lean) also checks that randomized
+[SetupProtocol.lean](../Vegas/Examples/SetupProtocol.lean) also checks that randomized
 policies cannot distinguish hidden setup draws and that continuations retain
 the actual private type. These are source results and conditional transfer
 results; native continuation coverage remains a proof obligation.
@@ -483,7 +483,7 @@ including deviations. Its internal expansion reuses message-machine safety
 proofs; the expanded states are not positions in this game's history tree.
 It is not a strategic equivalence with the command-service game.
 
-**Validation.** [InFlightCommitment.lean](../VegasTests/InFlightCommitment.lean)
+**Validation.** [InFlightCommitment.lean](../Vegas/Examples/InFlightCommitment.lean)
 checks reading a delivered bit and committing it before inclusion, retention
 of every invocation slot, and independence of observations from the hidden
 service cursor. A private bit can be recorded while sending nothing and used
@@ -532,7 +532,7 @@ source/native continuation laws for the direct-action compiler remain open.
 **Question.** Can pending traffic restrict continuation choices even when any
 fresh commitment can be submitted in one action?
 
-[PendingMenus.lean](../VegasTests/PendingMenus.lean) proves that it can. Two
+[PendingMenus.lean](../Vegas/Examples/PendingMenus.lean) proves that it can. Two
 valid commitments to `1` and `2` are submitted before the last initial owner
 invocation. A fixed public wire policy selects an old packet according to
 whether a third envelope exists. Waiting selects `2`; another submission
@@ -545,18 +545,18 @@ and later computation. For utilities `(3,2,1,0)` and `(3,1,2,0)` on public
 results `(0,1,2,failure)`, every residual randomized law has utility sum at most
 three. It cannot simultaneously attain value two for both tests.
 
-[PendingMenusStrategies.lean](../VegasTests/PendingMenusStrategies.lean)
+[PendingMenusStrategies.lean](../Vegas/Examples/PendingMenusStrategies.lean)
 proves that two information-local native deviations publish their preferred
 values within ten service steps and retain them through the complete service.
 They earn two for their respective utilities. The canonical behavioral SPE
 inequalities contradict the sum bound, so no native behavioral policy is SPE
 for both tests.
 
-[PendingMenusSource.lean](../VegasTests/PendingMenusSource.lean) proves that
+[PendingMenusSource.lean](../Vegas/Examples/PendingMenusSource.lean) proves that
 the source policy which binds zero and always opens is a behavioral SPE for
 both utilities, under either commitment admission. Its publication kernel
 agrees with the example graph for every binding and disclosure. The resulting
-`VegasTests.PendingMenus.no_utility_independent_spe_compiler` rules out even
+`Vegas.Examples.PendingMenus.no_utility_independent_spe_compiler` rules out even
 whole-profile translations into this fixed native service. This is an
 impossibility for the stated game and service, not for every implementation.
 The example graph is an explicit realization; identification with the

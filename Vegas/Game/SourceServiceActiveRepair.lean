@@ -26,10 +26,8 @@ theorem active_history_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -78,7 +76,7 @@ theorem active_history_stopped_coupling
       refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
       activated, sampled, configEq, publicEq, _, currentPosition⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
-      network profile owner ⟨remaining, some owner, execution⟩ trace rfl
+      network (failureProfile setup.program) owner ⟨remaining, some owner, execution⟩ trace rfl
   let visited := (rosters event).take slot
   let visits := (rosters event).drop (slot + 1)
   let events := (List.finRange (graph setup).order.eventCount).drop (event.val + 1)
@@ -185,7 +183,7 @@ theorem active_history_stopped_coupling
               (runtime setup).eventRecorded leaks (execution.recall owner) event = true
           · obtain ⟨coupling, first, second, related⟩ :=
               recorded_binding_history_response_block_coupling setup leaks bounds values capacity
-                rosters opportunities network profile source target agrees owner policy available
+                rosters opportunities network source target agrees owner policy available
                 prior execution activated event payload shape codeEq node granted recorded
                 remaining trace
                 before future visits ((runtime setup).deadline event)
@@ -198,7 +196,7 @@ theorem active_history_stopped_coupling
               refine ⟨?_, connected.2.imp_right Or.inr⟩
               simpa only [← tailEq, cut] using connected.1
           · obtain ⟨coupling, first, second, related⟩ := binding_window_stopped_coupling
-              setup leaks bounds values capacity rosters opportunities network profile source target
+              setup leaks bounds values capacity rosters opportunities network source target
               agrees owner policy available reference event payload shape codeEq node remaining
               prior
               execution execution activated memory frame trace (Nat.le_refl _) recalled granted
@@ -221,7 +219,7 @@ theorem active_history_stopped_coupling
                     omitted))
                 · exact Or.inr (Or.inr paired)
     · obtain ⟨coupling, first, second, related⟩ := active_nonbinding_block_stopped_coupling
-        setup leaks bounds values capacity rosters opportunities network profile source target
+        setup leaks bounds values capacity rosters opportunities network source target
         agrees
         owner policy available reference memory prior execution execution activated frame
         onlyBindings
@@ -322,7 +320,7 @@ theorem active_history_stopped_coupling
           middle resumed) next.2 advanced
       obtain ⟨coupling, first, second, related⟩ :=
         remaining_events_stopped_coupling setup leaks bounds
-        values capacity rosters opportunities network profile source target agrees owner policy
+        values capacity rosters opportunities network source target agrees owner policy
         available reference next.2.2 next.1 next.2.1 paired nextMemory nextStarted nextRecall
         nextSound
         nextBinding events 0 (by simpa only [Nat.zero_add] using nextTrace) (before ++ current) []

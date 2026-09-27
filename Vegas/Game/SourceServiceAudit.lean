@@ -48,10 +48,8 @@ theorem sourceService_history_audit_clear
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (sample : List (EnvelopeEvidence setup leaks) →
       FinDist (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
@@ -61,7 +59,7 @@ theorem sourceService_history_audit_clear
     TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
       (sourceServiceAudit setup leaks sample) history.state who = 0 := by
   have quiet := sourceService_history_traffic_audit_clear bounds values capacity opportunities
-    network profile sample authentic history who
+    network sample authentic history who
   have noOmission : history.state.elim false (fun control =>
       control.execution.application.publicView.missedBindingBy who) = false := by
     cases selected : history.state with
@@ -69,7 +67,7 @@ theorem sourceService_history_audit_clear
     | some control =>
         exact control.execution.application.publicView.missedBindingBy_clear
           (sourceService_history_no_omission setup leaks bounds values capacity rosters
-            opportunities network profile control (selected ▸ history.trace)) who
+            opportunities network control (selected ▸ history.trace)) who
   unfold sourceServiceAudit
   rw [(runtime setup).serviceAudit_charge, noOmission]
   exact quiet
@@ -82,10 +80,8 @@ theorem sourceService_history_settlement
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (sample : List (EnvelopeEvidence setup leaks) →
       FinDist (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
@@ -97,7 +93,7 @@ theorem sourceService_history_settlement
         FinDist.pure (base history.state) :=
   TerminalAudit.settlement_clean base _ _ deposit history.state
     (sourceService_history_audit_clear setup leaks bounds values capacity rosters opportunities
-      network profile sample authentic history)
+      network sample authentic history)
 
 /-- The full source compiler preserves the original typed outcome and actual
 settlement jointly. This law requires no equilibrium assumption; the deposit
@@ -109,8 +105,7 @@ theorem sourceServiceCompiledProfile_settlement_law
     (initialValues : ∀ state ∈ (initialLaw setup).support, bounds.CandidateValues state)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event owner, (graph setup).actor? event = some owner →
-      owner ∈ rosters event)
+    (opportunities : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)
     (permitted : ∀ who, (original who).Admitted setup.program
@@ -129,17 +124,7 @@ theorem sourceServiceCompiledProfile_settlement_law
         (settle final.state).map fun payoffs => (sourceReadout setup leaks final.state, payoffs)) =
       (setup.run original).map (fun state => (some state, utility state)) := by
   intro model settle
-  have bindingOpportunities : ∀ event owner payload,
-      (graph setup).outputLayout event = .binding owner payload → owner ∈ rosters event := by
-    intro event owner payload kind
-    apply opportunities event owner
-    have actor : (cast (congrArg (EventGraph.EventCode (graph setup).layout) kind)
-        ((graph setup).nodes event)).actor = some owner := by
-      generalize cast (congrArg (EventGraph.EventCode (graph setup).layout) kind)
-        ((graph setup).nodes event) = code
-      cases code
-      rfl
-    exact (EventGraph.EventCode.actor_cast kind ((graph setup).nodes event)).symm.trans actor
+  have bindingOpportunities := opportunities.binding
   let executions := model.runBehavioral
     (sourceServiceCompiledProfile setup leaks bounds rosters network original)
       (2 * (rosterPlan setup rosters).length + 1)
@@ -147,7 +132,7 @@ theorem sourceServiceCompiledProfile_settlement_law
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History) :
       settle history.state = FinDist.pure (baseUtility setup leaks utility history.state) :=
     sourceService_history_settlement setup leaks bounds values capacity rosters
-      bindingOpportunities network original sample authentic _ deposit history
+      bindingOpportunities network sample authentic _ deposit history
   change executions.bind _ = _
   have settled : executions.bind (fun final => (settle final.state).map
         (fun payoffs => (sourceReadout setup leaks final.state, payoffs))) =

@@ -28,10 +28,8 @@ theorem resolution_block_stopped_coupling
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
-    (opportunities : ∀ event actor payload,
-      (graph setup).outputLayout event = .binding actor payload → actor ∈ rosters event)
+    (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (profile : BehavioralProfile setup.program)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -119,7 +117,7 @@ theorem resolution_block_stopped_coupling
     by_cases same : actor = owner
     · subst actor
       obtain ⟨coupling, first, second, related⟩ := resolution_roster_stopped_coupling setup leaks
-        bounds values capacity rosters opportunities network profile source target agrees owner
+        bounds values capacity rosters opportunities network source target agrees owner
           policy available reference event payload binding checks outputEq codeEq node
             (remaining + ending.length) visits memory original repaired frame started leftRecall
               sound leftBinding granted windowTrace before (ending ++ after)
@@ -206,7 +204,7 @@ theorem resolution_block_stopped_coupling
           List.length_append]
       obtain ⟨coupling, leftLaw, rightLaw, connected⟩ :=
         resolution_history_tail_coupling setup leaks
-        bounds values capacity rosters opportunities network profile source target agrees owner
+        bounds values capacity rosters opportunities network source target agrees owner
           policy reference next.2.2 next.1 next.2.1 paired memoryValid certified valid event actor
             payload binding checks outputEq codeEq node remaining ticks
             (by rw [← length]; exact nextTrace)

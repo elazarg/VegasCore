@@ -3,7 +3,7 @@
 import Vegas.Game.RevealServiceRosterHarmless
 import Vegas.Game.RevealServiceRosterContinuation
 import Vegas.Game.RevealServiceRosterMixing
-import Vegas.Game.RevealServiceRosterLocalEvaluation
+import Vegas.Game.ServiceRosterLocalEvaluation
 import GameTheoryExtensions.Protocol.SequentialIncentives
 
 /-! # Zero local gain at retained replay-only information sites
