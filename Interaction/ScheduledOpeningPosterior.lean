@@ -119,6 +119,70 @@ def remainingOpeningSlots {slots : Nat} (count : Nat) : Set (Option (Fin slots))
     | none => True
     | some slot => count ≤ slot.val}
 
+/-- A single lawful waiting response advances an already conditioned timing
+posterior. The earlier recall need not be supplied as an explicit word. -/
+theorem scheduledMixture_waiting_step {slots : Nat}
+    (initial : FinDist (Option (Fin slots))) (never : none ∈ initial.support) (offset : Nat)
+    (opening : app.Action) (waiting : app.Policy)
+    (different : ∀ past view, opening ∉ (waiting past view).support)
+    (past : List app.PlayerEntry) (entry : app.PlayerEntry) (count : Nat)
+    (atCount : past.length = offset + count)
+    (old : (app.policyMixture initial (fun selected => app.scheduledPolicy offset selected
+      (fun _ _ => FinDist.pure opening) waiting)).posterior past =
+        initial.condOn (remainingOpeningSlots count) ⟨none, True.intro, never⟩)
+    (possible : entry.action ∈ (waiting past entry.beforeView).support) :
+    (app.policyMixture initial (fun selected => app.scheduledPolicy offset selected
+      (fun _ _ => FinDist.pure opening) waiting)).posterior (past ++ [entry]) =
+        initial.condOn (remainingOpeningSlots (count + 1)) ⟨none, True.intro, never⟩ := by
+  classical
+  let policies := fun selected : Option (Fin slots) =>
+    app.scheduledPolicy offset selected (fun _ _ => FinDist.pure opening) waiting
+  let mixture := app.policyMixture initial policies
+  change mixture.posterior past =
+    initial.condOn (remainingOpeningSlots count) ⟨none, True.intro, never⟩ at old
+  have meets (next : Nat) : ∃ selected ∈ remainingOpeningSlots next,
+      selected ∈ initial.support := ⟨none, True.intro, never⟩
+  have nextMeets : ∃ selected ∈ remainingOpeningSlots (count + 1),
+      selected ∈ (mixture.posterior past).support := by
+    refine ⟨none, True.intro, ?_⟩
+    rw [old]
+    exact FinDist.mem_support_condOn initial _ _ True.intro never
+  have branches (selected : Option (Fin slots))
+      (supported : selected ∈ (mixture.posterior past).support) :
+      policies selected past entry.beforeView =
+        if selected ∈ remainingOpeningSlots (count + 1) then
+          waiting past entry.beforeView else FinDist.pure opening := by
+    rw [old] at supported
+    have retained := (FinDist.support_condOn initial _ _ supported).1
+    cases selected with
+    | none => simp [policies, scheduledPolicy, remainingOpeningSlots]
+    | some slot =>
+        change count ≤ slot.val at retained
+        by_cases later : count + 1 ≤ slot.val
+        · have unequal : offset + slot.val ≠ past.length := by rw [atCount]; omega
+          simp only [policies, scheduledPolicy, Option.map_some,
+            Option.some.injEq, ite_eq_right unequal, remainingOpeningSlots,
+            Set.mem_ofPred_eq, later, ↓reduceIte]
+        · have equal : slot.val = count := by omega
+          simp only [policies, scheduledPolicy, Option.map_some, equal,
+            atCount, ↓reduceIte, remainingOpeningSlots,
+            Set.mem_ofPred_eq, Nat.add_one_le_iff, lt_self_iff_false]
+  have update := app.policyMixture_posterior_wait initial policies past entry
+    opening (waiting past entry.beforeView) (remainingOpeningSlots (count + 1))
+      nextMeets branches (fun equal => different _ _ (equal ▸ possible)) possible
+  rw [update]
+  have nested := FinDist.condOn_condOn initial (meets count) (meets (count + 1)) (by
+    intro selected member
+    rcases member with ⟨remaining, _⟩
+    cases selected with
+    | none => exact True.intro
+    | some slot =>
+        change count + 1 ≤ slot.val at remaining
+        change count ≤ slot.val
+        omega) (by simpa only [old] using nextMeets)
+  change (mixture.posterior past).condOn _ nextMeets = _
+  simpa only [old] using nested
+
 /-- Every observed replay/silence likelihood cancels. After a lawful waiting
 prefix, the actual latent posterior is exactly the original timing law
 conditioned on not selecting an earlier slot. -/
@@ -158,54 +222,10 @@ theorem scheduledMixture_waiting_posterior {slots : Nat}
         intro before next after split
         exact lawful before next (after ++ [entry]) (by simp [split, List.append_assoc])
       have old := ih earlierLawful
-      have entrySupported := lawful suffix entry [] (by simp)
-      have differs : entry.action ≠ opening := by
-        intro equal
-        exact different _ _ (equal ▸ entrySupported)
-      have nextMeets : ∃ selected ∈ remainingOpeningSlots (suffix.length + 1),
-          selected ∈ (mixture.posterior (past ++ suffix)).support := by
-        refine ⟨none, True.intro, ?_⟩
-        rw [old]
-        exact FinDist.mem_support_condOn initial _ _ True.intro never
-      have branches (selected : Option (Fin slots))
-          (supported : selected ∈ (mixture.posterior (past ++ suffix)).support) :
-          policies selected (past ++ suffix) entry.beforeView =
-            if selected ∈ remainingOpeningSlots (suffix.length + 1) then
-              waiting (past ++ suffix) entry.beforeView else FinDist.pure opening := by
-        rw [old] at supported
-        have retained := (FinDist.support_condOn initial _ _ supported).1
-        cases selected with
-        | none => simp [policies, scheduledPolicy, remainingOpeningSlots]
-        | some slot =>
-            change suffix.length ≤ slot.val at retained
-            by_cases later : suffix.length + 1 ≤ slot.val
-            · have unequal : offset + slot.val ≠ (past ++ suffix).length := by
-                simp only [List.length_append, atStart]
-                omega
-              simp only [policies, scheduledPolicy, Option.map_some,
-                Option.some.injEq, ite_eq_right unequal, remainingOpeningSlots,
-                Set.mem_ofPred_eq, later, ↓reduceIte]
-            · have equal : slot.val = suffix.length := by omega
-              simp only [policies, scheduledPolicy, Option.map_some, equal,
-                List.length_append, atStart, ↓reduceIte, remainingOpeningSlots,
-                Set.mem_ofPred_eq, Nat.add_one_le_iff, lt_self_iff_false]
-      have update := app.policyMixture_posterior_wait initial policies (past ++ suffix) entry
-        opening (waiting (past ++ suffix) entry.beforeView)
-        (remainingOpeningSlots (suffix.length + 1)) nextMeets branches differs entrySupported
-      rw [← List.append_assoc, update]
-      simp only [List.length_append, List.length_singleton]
-      have nested := FinDist.condOn_condOn initial (meets suffix.length)
-        (meets (suffix.length + 1)) (by
-          intro selected member
-          rcases member with ⟨remaining, _⟩
-          cases selected with
-          | none => exact True.intro
-          | some slot =>
-              change suffix.length + 1 ≤ slot.val at remaining
-              change suffix.length ≤ slot.val
-              omega) (by simpa only [old] using nextMeets)
-      change (mixture.posterior (past ++ suffix)).condOn _ nextMeets = _
-      simpa only [old] using nested
+      have update := app.scheduledMixture_waiting_step initial never offset opening waiting
+        different (past ++ suffix) entry suffix.length
+        (by simp only [List.length_append, atStart]) old (lawful suffix entry [] (by simp))
+      simpa only [List.append_assoc, List.length_append, List.length_singleton] using update
 
 private theorem remainingOpeningSlots_mass {slots : Nat} (probability : ℝ)
     (nonnegative : 0 ≤ probability) (bounded : probability ≤ 1)
@@ -233,6 +253,84 @@ private theorem remainingOpeningSlots_mass {slots : Nat} (probability : ℝ)
 
 /-- The real probability of each response under the actual recall-conditioned
 policy is its deferred hazard mixture. All replay likelihoods have cancelled. -/
+theorem scheduledMixture_probability_of_posterior {slots : Nat}
+    (probability : ℝ) (nonnegative : 0 ≤ probability) (small : probability < 1)
+    (timing : FinDist (Fin slots)) (offset : Nat) (opening : app.Action) (waiting : app.Policy)
+    (past : List app.PlayerEntry) (slot : Fin slots)
+    (atSlot : past.length = offset + slot.val)
+    (posterior :
+      (app.policyMixture
+        (FinDist.mix probability nonnegative small.le (timing.map some) (FinDist.pure none))
+        (fun selected => app.scheduledPolicy offset selected
+          (fun _ _ => FinDist.pure opening) waiting)).posterior past =
+        (FinDist.mix probability nonnegative small.le (timing.map some) (FinDist.pure none)).condOn
+          (remainingOpeningSlots slot.val) ⟨none, True.intro,
+            FinDist.mem_support_mix_right probability nonnegative small.le small (by simp)⟩)
+    (view : app.PlayerView) (action : app.Action) :
+    let initial := FinDist.mix probability nonnegative small.le
+      (timing.map some) (FinDist.pure none)
+    let policies := fun selected => app.scheduledPolicy offset selected
+      (fun _ _ => FinDist.pure opening) waiting
+    ((app.policyMixture initial policies).policy past view).prob action =
+      FinDist.deferredHazard probability timing slot.val * (FinDist.pure opening).prob action +
+        (1 - FinDist.deferredHazard probability timing slot.val) *
+          (waiting past view).prob action := by
+  classical
+  dsimp only
+  let initial := FinDist.mix probability nonnegative small.le
+    (timing.map some) (FinDist.pure none)
+  let policies := fun selected : Option (Fin slots) => app.scheduledPolicy offset selected
+    (fun _ _ => FinDist.pure opening) waiting
+  have never : none ∈ initial.support :=
+    FinDist.mem_support_mix_right probability nonnegative small.le small (by simp)
+  let post := initial.condOn (remainingOpeningSlots slot.val) ⟨none, True.intro, never⟩
+  change (app.policyMixture initial policies).posterior past = post at posterior
+  have mass : post.prob (some slot) = FinDist.deferredHazard probability timing slot.val := by
+    rw [FinDist.deferredHazard_at]
+    dsimp only [post]
+    rw [FinDist.prob_condOn, ite_eq_left
+      (show some slot ∈ remainingOpeningSlots slot.val from by
+        change slot.val ≤ slot.val
+        exact le_rfl)]
+    rw [remainingOpeningSlots_mass, FinDist.prob_mix,
+      FinDist.prob_map_of_injective some (Option.some_injective _),
+      FinDist.prob_pure_of_ne (by simp : some slot ≠ none), mul_zero, add_zero]
+  rw [app.policyMixture_policy]
+  change (((app.policyMixture initial policies).posterior past).bind
+    (fun selected => policies selected past view)).prob action = _
+  rw [posterior, FinDist.prob_bind]
+  have laws (selected : Option (Fin slots)) :
+      policies selected past view =
+        if selected = some slot then FinDist.pure opening else waiting past view := by
+    have same : selected.map (fun chosen => offset + chosen.val) =
+        some past.length ↔ selected = some slot := by
+      cases selected with
+      | none => simp
+      | some chosen =>
+          simp only [Option.map_some, Option.some.injEq, atSlot]
+          constructor
+          · intro equal
+            exact Fin.ext (by omega)
+          · intro equal
+            rw [equal]
+    simp only [policies, scheduledPolicy, same]
+  calc
+    _ = post.expect (fun selected => (waiting past view).prob action +
+        if some slot = selected then
+          (FinDist.pure opening).prob action - (waiting past view).prob action
+        else 0) := by
+      apply FinDist.expect_congr
+      intro selected _
+      rw [laws]
+      by_cases equal : selected = some slot
+      · subst selected
+        simp only [↓reduceIte]
+        ring
+      · simp only [equal, Ne.symm equal, ↓reduceIte, add_zero]
+    _ = _ := by
+      rw [FinDist.expect_add, FinDist.expect_const, FinDist.expect_ite_eq, mass]
+      ring
+
 theorem scheduledMixture_waiting_probability {slots : Nat}
     (probability : ℝ) (nonnegative : 0 ≤ probability) (small : probability < 1)
     (timing : FinDist (Fin slots)) (offset : Nat) (opening : app.Action) (waiting : app.Policy)
@@ -250,61 +348,17 @@ theorem scheduledMixture_waiting_probability {slots : Nat}
       FinDist.deferredHazard probability timing slot.val * (FinDist.pure opening).prob action +
         (1 - FinDist.deferredHazard probability timing slot.val) *
           (waiting (past ++ suffix) view).prob action := by
-  classical
   dsimp only
   let initial := FinDist.mix probability nonnegative small.le
     (timing.map some) (FinDist.pure none)
-  let policies := fun selected : Option (Fin slots) => app.scheduledPolicy offset selected
-    (fun _ _ => FinDist.pure opening) waiting
   have never : none ∈ initial.support :=
     FinDist.mem_support_mix_right probability nonnegative small.le small (by simp)
-  let post := initial.condOn (remainingOpeningSlots suffix.length) ⟨none, True.intro, never⟩
   have posterior := app.scheduledMixture_waiting_posterior initial never offset opening waiting
     different past suffix atStart lawful
-  change (app.policyMixture initial policies).posterior (past ++ suffix) = post at posterior
-  have mass : post.prob (some slot) = FinDist.deferredHazard probability timing slot.val := by
-    rw [FinDist.deferredHazard_at]
-    dsimp only [post]
-    rw [FinDist.prob_condOn, ite_eq_left
-      (show some slot ∈ remainingOpeningSlots suffix.length from atSlot.le)]
-    rw [remainingOpeningSlots_mass, atSlot, FinDist.prob_mix,
-      FinDist.prob_map_of_injective some (Option.some_injective _),
-      FinDist.prob_pure_of_ne (by simp : some slot ≠ none), mul_zero, add_zero]
-  rw [app.policyMixture_policy]
-  change (((app.policyMixture initial policies).posterior (past ++ suffix)).bind
-    (fun selected => policies selected (past ++ suffix) view)).prob action = _
-  rw [posterior, FinDist.prob_bind]
-  have laws (selected : Option (Fin slots)) :
-      policies selected (past ++ suffix) view =
-        if selected = some slot then FinDist.pure opening else waiting (past ++ suffix) view := by
-    have same : selected.map (fun chosen => offset + chosen.val) =
-        some (past ++ suffix).length ↔ selected = some slot := by
-      cases selected with
-      | none => simp
-      | some chosen =>
-          simp only [Option.map_some, Option.some.injEq, List.length_append, atStart, atSlot]
-          constructor
-          · intro equal
-            exact Fin.ext (by omega)
-          · intro equal
-            rw [equal]
-    simp only [policies, scheduledPolicy, same]
-  calc
-    _ = post.expect (fun selected => (waiting (past ++ suffix) view).prob action +
-        if some slot = selected then
-          (FinDist.pure opening).prob action - (waiting (past ++ suffix) view).prob action
-        else 0) := by
-      apply FinDist.expect_congr
-      intro selected _
-      rw [laws]
-      by_cases equal : selected = some slot
-      · subst selected
-        simp only [↓reduceIte]
-        ring
-      · simp only [equal, Ne.symm equal, ↓reduceIte, add_zero]
-    _ = _ := by
-      rw [FinDist.expect_add, FinDist.expect_const, FinDist.expect_ite_eq, mass]
-      ring
+  exact app.scheduledMixture_probability_of_posterior probability nonnegative small timing
+    offset opening waiting (past ++ suffix) slot
+    (by simp only [List.length_append, atStart, atSlot])
+    (by simpa only [atSlot] using posterior) view action
 
 /-- One common sequence converges at every lawful pre-opening history to
 waiting at earlier slots and using the original source mixture at the last.

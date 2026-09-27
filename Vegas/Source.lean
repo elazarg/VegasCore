@@ -13,6 +13,8 @@ import Vegas.Source.Purification
 import Vegas.Source.ValueBinding
 import Vegas.Source.ValueBindingContinuation
 import Vegas.Source.Disclosure
+import Vegas.Source.DisclosureAliases
+import Vegas.Source.DisclosureNormalization
 import Vegas.Source.Honest
 import Vegas.Source.RevealSequence
 import Vegas.Source.ObservationRecall

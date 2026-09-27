@@ -26,8 +26,11 @@ The retained responses are silence, replay of already-published envelopes, and
 replay of the phase's canonical opening once possessed, even before it is
 published. The owner may submit at most one fresh canonical opening envelope at
 any of its visits. A terminal audit deters other fresh traffic; full raw target
-menus retain it. Withholding remains legal and must not be fined. These are
-proposed conformance rules, not yet an instantiated roster menu theorem.
+menus retain it. Withholding remains legal and must not be fined.
+`RevealServiceRosterMenu` instantiates these retained responses as an existing
+finite response menu; its inclusion in the full raw menu is checked. Coverage
+of the prescribed policy at every complete-game information site and the
+roster audit extension remain separate obligations.
 
 ## Repeated current-owner visits
 
@@ -102,8 +105,12 @@ independently of the conditional opening-time distribution. The
 [expiry proof](../../Vegas/Pending/ReactiveOpeningExpiry.lean) turns the
 never-opening branch into source failure, and the
 [typed source step](../../Vegas/Game/RevealServiceRosterBlock.lean) proves store
-and decoded-history agreement. These local facts still need the multi-phase
-information and incentive argument.
+and decoded-history agreement. `PublicCheckpoint.reveal_roster` then preserves
+the full source/public checkpoint under arbitrary retained policies.
+`initialized_roster_prefix_support` propagates it through every actual phase
+prefix, including all withholding choices and correlated initial inputs; it
+also derives actual uniform-source support. These operational results still
+need the multi-phase information and incentive argument.
 `openingWindow_inclusion_coupling` also couples the
 complete auxiliary transcript through inclusion itself. Successful receipt
 equality is derived from acceptance of the canonical opening; withholding
@@ -118,6 +125,20 @@ openings. `rosterPolicy_window_eq` identifies its actual execution law with
 the local timing mixture. Thus the phase family is implemented by one policy;
 it is not selected separately for each hidden execution history.
 
+[`roster_owner_fullSupport`](../../Vegas/Game/RevealServiceRosterSupport.lean) proves positivity of
+every retained owner response at every actual legal phase prefix, including
+early off-path openings, under fully supported source/timing laws.
+`roster_window_posterior` identifies the owner's exact recall-conditioned
+timing law: condition on unpassed slots before opening, and pin the actual
+slot afterwards. Its selected-slot test agrees with the opening recorded in
+actual own recall. These statements quantify arbitrary policies generating
+the prefix and arbitrary current passive samples.
+[`roster_owner_policy_limit`](../../Vegas/Game/RevealServiceRosterLimit.lean) proves the
+limit of the single global `rosterPolicy` sequence is exactly the explicit
+`rosterLimitPolicy`, at all such owner prefixes. Source disclosure probabilities
+may tend to zero or one. This is a policy-limit theorem, not yet a consistent
+assessment or an equilibrium theorem for the complete roster service.
+
 `Interaction/ScheduledOpening.lean` proves that a supported first opening pins
 the latent slot and makes every subsequent response use the waiting policy.
 `openingWindowMixture_after_open` instantiates this with replay/silence.
@@ -129,9 +150,9 @@ fresh submissions after every legal opening. The last case includes histories
 of limiting probability zero. Evaluating a zero-weight mixture's fallback
 directly is not a valid substitute for this checked limit.
 
-The broader-roster SE gate still requires the complete source-block and
-multi-phase coupled-start invariant, instantiation of the checked local support
-and limit facts at every actual retained-menu information site, one common
+The broader-roster SE gate still requires the multi-phase conditional noise
+invariant, instantiation of the checked local support and limit facts at every
+actual retained-menu information site, one common
 consistent limiting assessment, and local sequential incentives.
 The one-phase posterior theorem does not prove those remaining obligations.
 The proof chain is: define the finite retained menu and prove all-history
@@ -193,12 +214,22 @@ first-departure comparison can use its author without identifying rebroadcasters
 Accountability after arbitrary earlier misconduct is a stronger requirement:
 charging a rebroadcaster requires separately authenticated transmission evidence.
 
-The implementation gates are: instantiate the deferred policy in the actual
-retained phase; compose checked protected inclusion with expiry and the next
-source checkpoint;
-derive the conditional source-belief and local-incentive correspondence; classify
-fresh departures under the phase rule; then apply the existing conditional
-terminal-audit collection and SE extension. The phase factorization retains an
+The [roster service](../../Vegas/Game/RevealServiceRoster.lean) is connected to
+the existing scheduler evaluator. Its
+[response counts](../../Vegas/Game/RevealServiceRosterCounts.lean) hold for
+arbitrary raw policies. The
+[initialized prefix theorem](../../Vegas/Game/RevealServiceRosterPrefixSupport.lean)
+composes protected inclusion, expiry, public checkpoints and the actual source
+decoder through every permitted phase. It retains pending copies and private
+observations. The
+[local policy limit](../../Vegas/Game/RevealServiceRosterLimit.lean) holds at
+all actual retained owner prefixes, including early openings with zero limiting
+probability; its policy explicitly stops opening after such a response.
+
+The remaining implementation gates are to derive the multi-phase conditional
+source-belief and local-incentive correspondence, classify fresh departures
+under the phase rule, and apply the existing conditional terminal-audit
+collection and SE extension. The phase factorization retains an
 arbitrary sampler, including in the checked one-phase posterior identity. The
 multi-phase SE proof remains open; no extra sampler restriction is currently
 assumed or established as necessary.

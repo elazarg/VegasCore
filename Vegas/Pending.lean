@@ -146,6 +146,10 @@ import Vegas.Pending.ReactiveOpeningExpiry
 import Vegas.Pending.ReactiveOpeningCoupling
 import Vegas.Pending.ReactiveBindingBlock
 import Vegas.Pending.ReactiveBindingRepair
+import Vegas.Pending.ReactiveBindingShadow
+import Vegas.Pending.ReactiveBindingShadowStep
+import Vegas.Pending.ReactiveCompiledMenu
+import Vegas.Pending.ReactiveBindingContinuation
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveServiceFootprint
 import Vegas.Pending.ReactiveAssociationPersistence

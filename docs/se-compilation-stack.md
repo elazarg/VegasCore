@@ -30,9 +30,12 @@ The checked extension work has three concrete boundaries:
   All retained packet identifiers are published afterward, including leaked
   copies. Exact ledger, receipt and allocation-counter laws, typed source
   completion, one total roster policy, and support classification for arbitrary
-  permitted policies are checked. Common timing-policy limits and one-phase
-  posterior laws are checked; source correspondence across phases and local
-  SE incentives remain open.
+  permitted policies are checked. The concrete roster scheduler evaluates the
+  same runtime; actual response counts determine policy offsets. The initialized
+  all-phase induction gives a legal source prefix, its decoder, public checkpoint
+  and published packet identifiers for every permitted policy. Common timing
+  limits and exact conditional owner timing posteriors are checked. Multi-phase
+  source-belief correspondence and SE incentives remain open.
 - [`reactive_commit_repair`](../Vegas/Game/BindingRepairBlock.lean) carries the typed source repair
   invariant through actual fresh native binding and inclusion. The native joint
   law and repaired-prefix induction step are checked. The stopped-run
@@ -44,7 +47,20 @@ public effects while leaving different owner recall. Their operational
 equivalence alone does not prove SE preservation. The general theorem must
 carry private randomization and one common consistent perturbation sequence
 through that erasure, with utilities depending on initial types and public
-outcomes.
+outcomes. The owner-local normalization and one finite policy mixture shared
+across a whole starting belief are checked. The generic limit theorem accepts
+perturbation-dependent continuation simulations and proves SE from vanishing
+uniform source regret. Constructing the actual multi-step posterior simulations
+remains an obligation.
+
+Required commitments introduce a separate enforcement case: a player can omit
+the submission without emitting forbidden traffic. A public deadline obligation
+must inspect acceptance under a protected timely-inclusion contract. Absence
+from a partial audit is insufficient. Before the final required opportunity,
+waiting must either remain permitted or receive a proved whole-continuation
+comparison. For guarded reveals, acceptance of an opening packet alone is also
+insufficient: permitted disclosure must pass the publication guard. These are
+full-source checker and continuation gates, not additional source constructs.
 
 These are proof relations and restrictions of the existing runtime. They add
 no emitted language, interpreter, source operation, or player-memory model.

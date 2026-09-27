@@ -77,6 +77,8 @@ import GameTheoryExtensions.Analysis.Protocol.OneShotDeviation
 import GameTheoryExtensions.Analysis.Protocol.LocalDeviation
 import GameTheoryExtensions.Analysis.Protocol.BehavioralOneShot
 import GameTheoryExtensions.Analysis.Protocol.OneShotLimit
+import GameTheoryExtensions.Analysis.Protocol.UniformContinuationLimit
+import GameTheoryExtensions.Analysis.Protocol.ContinuationSimulationLimit
 import GameTheoryExtensions.Analysis.Protocol.SequentialOneShot
 import GameTheoryExtensions.Analysis.Protocol.SequentialExistence
 import GameTheoryExtensions.Analysis.Protocol.RestrictionBeliefs

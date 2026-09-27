@@ -88,6 +88,43 @@ the actual compiler-decoded source views. This is not a claim that the owner's
 entire raw response history is already reconstructed, nor an induction through
 arbitrary subsequent native play.
 
+`Vegas/Pending/ReactiveBindingShadow.lean` supplies the next owner-local piece.
+`BindingShadow.rememberCandidate_submit_view` reconstructs the original catalog
+after real submissions, including absent or mistyped private opening material.
+`rememberCompletion_observation` reconstructs the original private result and
+typed own completion; `rememberCompletion_pending` proves that storing this
+memory does not expose a field before inclusion. `BindingMemory.restoreRecall_submit`
+restores original before-views and actions while taking the emitted envelope
+from actual own recall. It does not predict network nonces.
+
+`BindingMemory.implementation` is an actual private implementation using only
+the current own input and this memory. Its reference memory is constant across
+every hidden execution in the starting information set, and
+`implementation_behavioral_continuation` realizes it as an ordinary behavioral
+policy. It repairs fresh owned unusable material with a fixed valid value.
+[`repairResponse_submit_input`](../../Vegas/Pending/ReactiveBindingShadowStep.lean) connects this to
+the actual pair of original/repaired atomic responses, with exact original own
+input reconstruction after missing or mistyped private material.
+
+`ReactiveCompiledMenu` supplies a finite response restriction for every existing
+event-code constructor. Retained bindings are exactly typed successes;
+`binding_value_compiled` retains every source value, and `compiled_binding_cases`
+excludes silent fallback and public replay at covered, ready binding checkpoints.
+`canonical_binding_response_cases` separates represented valid material from
+unusable material under the same public canonical packet. The latter is a repair
+case, not an audit violation. `finite_binding_values` verifies the substantive
+finite-domain requirement instead of mistaking a finite wire alphabet for a
+finite unbounded source type.
+
+[`compiledPolicy`](../../Vegas/Pending/ReactiveBindingContinuation.lean) realizes the implementation
+as an actual retained behavioral continuation. All-input admissibility is
+proved: an excluded proposed output is replaced by a fixed locally legal output.
+`repairResponse_compiled` proves that canonical hidden unusability uses its valid
+repair rather than that fallback. `compiledImplementation_continuation` fixes
+one initial private memory uniformly across the starting information set.
+The remaining obligation is the stopped-run payoff comparison: exact coupling
+before excluded traffic, and actual collectible evidence for a first departure.
+
 ## Finite admission and clean-prefix contract
 
 A nonvacuous finite SE theorem for fresh commitments needs finite legal source
@@ -117,6 +154,15 @@ revelation service does not already supply a full-language binding/chance
 calendar or an arbitrary ambient-communication schedule. The ordinary target
 message space remains available; admission bounds and protected opportunities
 are explicit backend assumptions, not exclusions justified by an equilibrium.
+
+At a value-only binding, sending no commitment differs from submitting an opaque
+unusable handle. Silence or public replay can miss the binding obligation;
+neither is retained as a source value choice. Collection then needs public
+evidence of the missed mandatory binding deadline under protected timely
+inclusion. The absence of a watcher record is not such evidence. A grant that
+designates one required binding response is a sufficient backend discipline;
+earlier ambient waiting must remain legal. This does not yet establish fresh
+binding preservation under repeated owner visits within the same granted phase.
 
 ## Why the repair is local enough, and why the current comparator is too strong
 
@@ -200,12 +246,15 @@ obligations 1–3 or establish a completed full-language SE theorem.
 The target comparison is universal over paired source/target continuation
 profiles; it must not assume target sequential rationality.
 
-1. Draw a repair-policy seed independently of the hidden starting configuration,
-   using `exists_valueBinding_belief_mixture`. Use that one mixture for the whole
-   continuation comparison; no seed field is added to native state. Replacing
-   the mixture separately at each hidden history would
-   change correlations and is not a valid comparison.
-2. Couple the actual source/native execution until the first publicly
+1. Repair inside the retained native game using the existing private
+   `Implementation` interface. Initialize its memory from the fixed own input
+   at the information set; never from the hidden execution. Restore the original
+   owner's candidate meanings, private completions and raw response recall from
+   that memory and the current own input. Behavioral realization produces one
+   policy uniformly over the posterior. The source `Patched` and conditional
+   mixture results justify the underlying value/withholding repair; they do not
+   require a new encoder from arbitrary raw histories into source views.
+2. Couple the original and repaired native execution until the first publicly
    nonconforming transmission. A privately unusable binding does not stop this
    coupling. Its repaired value uses the same opaque handle, and the repaired
    owner withholds when the original binding could not publish. Common public
@@ -216,7 +265,7 @@ profiles; it must not assume target sequential rationality.
    establish the required correlation claim. In particular, both sides use the
    same public chance draw, rather than independently matching its marginals.
 3. At each nondeviating player's decision, prove its complete native input is a
-   retained input with the corresponding source view. Then `ExtendsProfile`
+   retained input. Then `ExtendsProfile`
    supplies its law. Equality of current ledger states alone is insufficient:
    private response recall, prior leaks and timing are part of that input.
 4. If no visible departure occurs, the terminal private-parameter/public-result
@@ -227,12 +276,35 @@ profiles; it must not assume target sequential rationality.
    later policies and later authentic audit transcripts. This permits arbitrary
    post-departure target play. A penalty already sunk on that branch provides no
    further deterrence; charges are not silently counted twice.
-6. Average over the starting posterior and the single seed. Source whole-policy
+6. Average over the starting posterior and the private implementation law. Retained whole-policy
    sequential rationality bounds every legal repair continuation. Only then use
    the common-consistency completion theorem for the native extra private sites.
 
 Steps 2–3 are the missing native induction. The checked prefix lemmas and source
 repair establish ingredients, not this induction or the final comparison.
+
+## Missing required commitments
+
+A missing accepted handle is a separate case from an accepted opaque handle
+with unusable private material. The full-source retained menu requires a typed
+value at its designated binding opportunity. Silence there cannot be justified
+by an audit of emitted messages alone.
+
+The enforcement interface must also consume the public completed-binding and
+accepted-handle records. A completed binding with no accepted handle records a
+missed requirement; an accepted handle must not be charged by this test merely
+because its hidden meaning is unusable. The backend must prove that a timely
+legal submission at the required opportunity is accepted before expiry. This
+is a service/fair-inclusion obligation, not an inference from a missing partial
+watcher record.
+
+The local value-only menu uses an owned, ready public grant to identify the
+required binding response. A backend with earlier owner visits must permit
+waiting there or provide a separate continuation comparison. Deadline evidence
+cannot punish every earlier silent response when a later timely submission
+could still meet the obligation. The simplest candidate service places the
+binding grant immediately before one protected required response; extending
+fresh binding to arbitrary granted rosters remains separate work.
 
 ## Guards and copying
 
@@ -242,6 +314,11 @@ does not publish successfully. A raw opening that still carries a rejected
 secret is extra traffic and may be audited. The source repair preserves guard
 results because guard reads use public data and revelation results; its existing
 proof covers the whole obligation registry.
+
+The full-source checker must therefore test successful guarded publication,
+not just packet acceptance or certificate format: an accepted opening can still
+complete with publication failure. The reveal-only checker is not a substitute
+for this guard-sensitive obligation.
 
 This introduces a separate source-to-retained-native proof obligation. When
 source disclosure fails its guard, `true` and `false` have the same publication,

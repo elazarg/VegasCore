@@ -59,6 +59,14 @@ import Vegas.Game.BindingRepairPrefix
 import Vegas.Game.RevealServiceRosterBlock
 import Vegas.Game.RevealServiceRosterPolicy
 import Vegas.Game.RevealServiceRosterMenu
+import Vegas.Game.RevealServiceRosterSupport
+import Vegas.Game.RevealServiceRosterCompletion
+import Vegas.Game.RevealServiceRosterCheckpoint
+import Vegas.Game.RevealServiceRoster
+import Vegas.Game.RevealServiceRosterCounts
+import Vegas.Game.RevealServiceRosterPrefix
+import Vegas.Game.RevealServiceRosterPrefixSupport
+import Vegas.Game.RevealServiceRosterLimit
 import Vegas.Game.RevealServiceTraffic
 import Vegas.Game.RevealServiceTrafficSound
 import Vegas.Game.RevealServiceTrafficDeparture

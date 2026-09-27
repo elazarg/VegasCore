@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveEvaluation
+import Interaction.ReactiveHistory
 
 /-! # Evaluation by scheduler rounds
 
@@ -43,6 +44,29 @@ def runRounds (scheduler : app.Scheduler) (players : Principal → app.Policy) :
   | 0, execution => FinDist.pure execution
   | count + 1, execution => (app.round scheduler players execution).bind
       (runRounds scheduler players count)
+
+/-- One dispatched command records exactly one response by its selected actor.
+Passive observations and application commands add no private response entry. -/
+theorem dispatch_recall_length (players : Principal → app.Policy) (command : app.Command)
+    (before after : app.Execution)
+    (reached : after ∈ (app.dispatch players command before).support) (who : Principal) :
+    (after.recall who).length = (before.recall who).length +
+      if command.actor? app = some who then 1 else 0 := by
+  obtain ⟨activated, observed, responded⟩ :=
+    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  have prior := app.environmentStep_recall before activated command observed
+  cases actor : command.actor? app with
+  | none =>
+      change after ∈ (app.resume players (command.actor? app) activated).support at responded
+      rw [actor] at responded
+      cases FinDist.mem_support_pure.mp responded
+      simp only [prior, reduceCtorEq, ↓reduceIte, Nat.add_zero]
+  | some owner =>
+      change after ∈ (app.resume players (command.actor? app) activated).support at responded
+      rw [actor] at responded
+      obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ responded
+      rw [app.respond_recall_length, prior]
+      simp only [Option.some.injEq]
 
 theorem resume_environmentRecall (players : Principal → app.Policy) (actor : Option Principal)
     (execution next : app.Execution)

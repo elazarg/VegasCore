@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveServiceEvaluation
 import Interaction.ReactiveHistory
+import Interaction.ReactiveAllocation
 
 /-! # Own-response prefixes during actual service execution
 
@@ -18,6 +19,38 @@ open GameTheory.Math.Probability Interaction
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+
+theorem runInteractionPlan_serials (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
+    (initial final : (runtime.reactiveApplication leaks).Execution)
+    (serials : initial.network.SerialsBeforeNext)
+    (reached : final ∈ (runtime.runInteractionPlan leaks players network plan initial).support) :
+    final.network.SerialsBeforeNext := by
+  let app := runtime.reactiveApplication leaks
+  induction plan generalizing initial with
+  | nil => cases FinDist.mem_support_pure.mp reached; exact serials
+  | cons instruction rest ih =>
+      obtain ⟨middle, stepped, continued⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      apply ih middle ?_ continued
+      obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ stepped)
+      obtain ⟨activated, observed, responded⟩ :=
+        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
+      have valid := (app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure command)).environment
+        initial activated command serials (FinDist.mem_support_pure.mpr rfl) observed
+      cases actor : command.actor? app with
+      | none =>
+          change middle ∈ (app.resume players (command.actor? app) activated).support at responded
+          rw [actor] at responded
+          cases FinDist.mem_support_pure.mp responded
+          exact valid
+      | some who =>
+          change middle ∈ (app.resume players (command.actor? app) activated).support at responded
+          rw [actor] at responded
+          obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ responded
+          exact (app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure .wait)).respond
+            activated who response valid
 
 /-- The added entry records the actual local view and physical response. Its
 emitted envelope is retained by the execution, including for replay aliases. -/
