@@ -5,9 +5,9 @@ import GameTheoryExtensions.Analysis.Protocol.LocalDeviation
 /-! # One deviating step followed by the original continuation
 
 The hybrid laws used in a finite deviation decomposition are ordinary
-behavioral runs composed by binding finite probability laws. Decision-site recall identifies one
-deviating step with installing the same behavioral law at its information
-site: the site cannot be revisited later in that continuation.
+behavioral runs composed by binding finite probability laws. A decision
+information antichain identifies one deviating step with installing the same
+behavioral law at its information site: that site cannot be revisited later.
 -/
 
 noncomputable section
@@ -19,7 +19,7 @@ open GameTheory.Math.Probability ExecutionProtocol
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} (M : InformationModel E)
 
-theorem one_step_then_baseline_eq_local_law (recall : M.DecisionRecall)
+theorem one_step_then_baseline_eq_local_law (antichain : M.DecisionInformationAntichain)
     (profile : ∀ player, M.BehavioralPolicy player) (who : Player)
     [DecidableEq (M.InfoState who)] (alternative : M.BehavioralPolicy who)
     (history : E.History) (active : E.active history.state who) (fuel : Nat) :
@@ -57,8 +57,11 @@ theorem one_step_then_baseline_eq_local_law (recall : M.DecisionRecall)
     intro later reached _ player
     by_cases same : player = who
     · subst player
-      have different := recall.infoOf_ne_after_step who draw.2
-        realized active reached
+      have different : M.infoOf who later.trace ≠ M.infoOf who history.trace := by
+        intro sameInfo
+        obtain ⟨site, same⟩ := M.exists_informationSite_of_active who history draw.2.1 active
+        exact antichain who site ⟨history, same.symm⟩ ⟨later, sameInfo.trans same.symm⟩
+          draw.1 draw.2 _ realized _ reached
       rw [Profile.update_same]
       exact (BehavioralPolicy.withLaw_of_ne _ _ _ different).symm
     · rw [Profile.update_of_ne _ _ same]

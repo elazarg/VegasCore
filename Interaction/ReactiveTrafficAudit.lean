@@ -5,9 +5,10 @@ import GameTheoryExtensions.Protocol.StateKernel
 
 /-! # Settlement evidence from the public traffic history
 
-An audit record contains a network input and the public application observation
-before that input. It distinguishes the broadcaster from the envelope author,
-and retains the phase even when the envelope later becomes acceptable.
+An audit record contains a network input, the public application observation,
+and the ledger before that input. It distinguishes the broadcaster from the
+envelope author and retains the phase and prior publication evidence even when
+the envelope later becomes acceptable or appears on the ledger.
 
 The readout uses only successive public environment views. It is not added to
 player observations. An implementation supplying this readout must authenticate
@@ -29,6 +30,7 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 
 structure TrafficRecord where
   observation : app.PublicObservation
+  ledger : List (Message Principal app.Payload)
   input : NetworkInput Principal app.Payload
 
 /-- Append-only network inputs identify successful transmissions, including
@@ -37,7 +39,8 @@ def trafficStep (before after : app.ProtocolState) : List app.TrafficRecord :=
   match before, after with
   | some previous, some next =>
       (next.execution.network.inputs.drop previous.execution.network.inputs.length).map
-        fun input => ⟨app.observePublic previous.execution.application, input⟩
+        fun input => ⟨app.observePublic previous.execution.application,
+          previous.execution.network.ledger, input⟩
   | _, _ => []
 
 omit [DecidableEq Principal] in
@@ -53,11 +56,13 @@ theorem trafficStep_public (firstBefore firstAfter secondBefore secondAfter : ap
   change
     ((firstAfter.execution.observeEnvironment app).network.inputs.drop
       (firstBefore.execution.observeEnvironment app).network.inputs.length).map
-        (fun input => (⟨(firstBefore.execution.observeEnvironment app).application, input⟩ :
+        (fun input => (⟨(firstBefore.execution.observeEnvironment app).application,
+          (firstBefore.execution.observeEnvironment app).network.ledger, input⟩ :
           app.TrafficRecord)) =
       ((secondAfter.execution.observeEnvironment app).network.inputs.drop
         (secondBefore.execution.observeEnvironment app).network.inputs.length).map
-          (fun input => (⟨(secondBefore.execution.observeEnvironment app).application, input⟩ :
+          (fun input => (⟨(secondBefore.execution.observeEnvironment app).application,
+            (secondBefore.execution.observeEnvironment app).network.ledger, input⟩ :
             app.TrafficRecord))
   rw [before, after]
 
@@ -79,7 +84,7 @@ theorem trafficStep_submit (execution : app.Execution) (remaining : Nat) (who : 
     (submission : app.Submission) :
     app.trafficStep (some ⟨remaining, some who, execution⟩)
       (some ⟨remaining, none, execution.respond app who ⟨some (.submit submission)⟩⟩) =
-        [⟨app.observePublic execution.application,
+        [⟨app.observePublic execution.application, execution.network.ledger,
           ⟨who, ⟨(who, execution.network.nextSerial who),
             app.packet (app.submit execution.application who submission) who
               (execution.network.known who) submission⟩⟩⟩] := by
@@ -92,7 +97,7 @@ theorem trafficStep_replay (execution : app.Execution) (remaining : Nat) (who : 
     (known : (execution.network.known who).find? (fun packet => packet.id = id) = some message) :
     app.trafficStep (some ⟨remaining, some who, execution⟩)
       (some ⟨remaining, none, execution.respond app who ⟨some (.replay id)⟩⟩) =
-        [⟨app.observePublic execution.application, ⟨who, message⟩⟩] := by
+        [⟨app.observePublic execution.application, execution.network.ledger, ⟨who, message⟩⟩] := by
   simp [trafficStep, Execution.respond, MessageNetwork.replay, known]
 
 /-- Environment operations never invent a transmission record. -/

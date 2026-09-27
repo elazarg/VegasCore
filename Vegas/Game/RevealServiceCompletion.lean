@@ -3,6 +3,7 @@
 import Vegas.Game.RevealServiceClock
 import Vegas.Pending.ReactiveServiceCompletion
 import Vegas.Pending.EventSequentialTiming
+import Interaction.ReactiveRoundReachability
 
 /-! # Settlement under arbitrary raw reveal-service play
 
@@ -190,6 +191,94 @@ theorem plan_terminal (watcher : Player) (reveals : setup.program.RevealOnly)
   apply Finset.eq_univ_of_forall
   intro event
   exact allEvents event event.isLt
+
+/-- Any remaining service suffix settles the application when its preceding
+events are already complete. The starting execution may come from an arbitrary
+history; neither its responses nor its network choices need be conformant. -/
+theorem planSuffix_terminal (watcher : Player) (reveals : setup.program.RevealOnly)
+    (players : Player → (application setup leaks).Policy)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (inputs : (graph setup).Inputs) (rank : Nat)
+    (within : rank ≤ (graph setup).order.eventCount)
+    (execution final : (application setup leaks).Execution)
+    (invariant : execution.application.Invariant inputs)
+    (previous : ∀ event : (graph setup).EventId, event.val < rank →
+      event ∈ execution.application.config.cut.completed)
+    (supported : final ∈ ((runtime setup).runInteractionPlan leaks players network
+      (((List.finRange (graph setup).order.eventCount).drop rank).flatMap
+        (block setup watcher)) execution).support) :
+    final.application.config.cut.Terminal := by
+  induction within using Nat.decreasingInduction generalizing execution with
+  | self =>
+      have empty : (List.finRange (graph setup).order.eventCount).drop
+          (graph setup).order.eventCount = [] := by simp
+      rw [empty, List.flatMap_nil] at supported
+      have same : final = execution := FinDist.mem_support_pure.mp supported
+      subst final
+      apply Finset.eq_univ_of_forall
+      intro event
+      exact previous event event.isLt
+  | of_succ rank inside ih =>
+      let current : (graph setup).EventId := ⟨rank, inside⟩
+      have split : (List.finRange (graph setup).order.eventCount).drop rank =
+          current :: (List.finRange (graph setup).order.eventCount).drop (rank + 1) := by
+        rw [List.drop_eq_getElem_cons (by simpa using inside)]
+        simp only [List.getElem_finRange, current]
+        congr 1
+      rw [split, List.flatMap_cons, (runtime setup).runInteractionPlan_append,
+        FinDist.support_bind] at supported
+      obtain ⟨middle, reached, rest⟩ := Set.mem_iUnion₂.mp supported
+      have progress := (runtime setup).runInteractionPlan_facts leaks inputs players network
+        (block setup watcher current) execution middle invariant reached
+      have completed := block_completes setup leaks watcher reveals players network inputs
+        current execution middle invariant previous reached
+      apply ih middle progress.invariant _ rest
+      intro event before
+      by_cases same : event.val = rank
+      · have identified : event = current := Fin.ext same
+        simpa only [identified] using completed
+      · exact progress.completed (previous event (by omega))
+
+/-- Every legal terminal history is settled, including histories with zero
+probability under the equilibrium or any particular behavioral profile. -/
+theorem terminal_history_settled
+    (responses : (application setup leaks).ResponseMenu) (watcher : Player)
+    (reveals : setup.program.RevealOnly)
+    (history : (responses.protocol (initialLaw setup) (horizon setup watcher)
+      (scheduler setup leaks watcher)).History)
+    (terminal : (responses.protocol (initialLaw setup) (horizon setup watcher)
+      (scheduler setup leaks watcher)).terminal history.state) :
+    ∃ execution : (application setup leaks).Execution,
+      history.state = (application setup leaks).finished execution ∧
+        execution.application.config.cut.Terminal := by
+  rcases history with ⟨state, trace⟩
+  cases state with
+  | none => exact terminal.elim
+  | some control =>
+      obtain ⟨finished, idle⟩ := terminal
+      have supported := responses.roundSupported_uniform (initialLaw setup)
+        (horizon setup watcher) (scheduler setup leaks watcher) trace
+      rcases supported with ⟨accounted, reached⟩
+      rw [idle] at reached
+      have position : control.execution.environmentRecall.length = horizon setup watcher := by
+        rw [finished, Nat.add_zero] at accounted
+        exact accounted
+      rw [position, ReactiveApplication.roundsFrom, FinDist.support_bind] at reached
+      obtain ⟨initial, initially, continued⟩ := Set.mem_iUnion₂.mp reached
+      rw [initialLaw, FinDist.support_map] at initially
+      obtain ⟨source, _drawn, rfl⟩ := initially
+      have actual := suffix_rounds setup leaks watcher responses.uniformResponses []
+        (plan setup watcher) rfl
+        (ReactiveApplication.Execution.initial (application setup leaks)
+          (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs source))) rfl
+      rw [actual] at continued
+      refine ⟨control.execution, ?_, ?_⟩
+      · cases control
+        simp_all only [ReactiveApplication.finished]
+      · exact plan_terminal setup leaks watcher reveals responses.uniformResponses
+          ((runtime setup).reportNetwork leaks watcher) (setup.eventInputs source) _
+          control.execution (EventGraphRuntime.State.initial_invariant (graph := graph setup)
+            (setup.eventInputs source)) continued
 
 /-- The actual finite-menu protocol reaches settled application states for
 every behavioral profile. In particular this holds for the full raw menu,

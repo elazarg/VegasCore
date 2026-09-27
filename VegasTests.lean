@@ -198,5 +198,6 @@ import VegasTests.MonitoredGuessingRestrictedExtension
 import VegasTests.MonitoredGuessingDeclaredCompilation
 import VegasTests.SuccessfulEvidenceAliases
 import VegasTests.RevealSequence
+import VegasTests.UnusableBindingAudit
 
 /-! Regression tests for the source, typed graph, and message runtime. -/

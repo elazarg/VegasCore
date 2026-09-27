@@ -2,6 +2,7 @@
 
 import Vegas.Game.RevealServiceExecution
 import Vegas.Game.RevealServicePayoffs
+import Vegas.Game.SourceContinuation
 
 /-! # Initialized law of the actual revelation compiler
 
@@ -113,5 +114,60 @@ theorem compiled_behavioral_source_law
   change (if final.application.config.cut.Terminal then
     decodeState? (terminalRefs setup.program) final.application.config.store else none) = _
   exact ite_eq_left settled
+
+/-- The original source behavioral profile is preserved through the actual
+history evaluators on both sides, not only through a syntactic policy law. -/
+theorem compiled_profile_readout_law
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (watcher : Player)
+    (reveals : setup.program.RevealOnly)
+    (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
+    (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
+    (admission : CommitmentInterface setup.program)
+    (profile : GameTheory.Profile (setup.informationModel admission).behavioralSignature)
+    (weight : ℝ) (nonnegative : 0 ≤ weight) (small : weight ≤ 1) :
+    ((information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).runBehavioral
+      (compiledProfile setup leaks (bounds.withInitialValues (initialLaw setup)) watcher
+        (setup.decodeBehavioralProfile admission profile) weight nonnegative small)
+      (2 * horizon setup watcher + 1)).map (fun final => sourceReadout setup leaks final.state) =
+      ((setup.informationModel admission).runBehavioral profile
+        (instructionCount setup.program + 1)).map
+          (fun final => setup.protocolReadout final.state) := by
+  rw [compiled_behavioral_source_law setup leaks bounds watcher reveals observer openable]
+  symm
+  exact setup.runBehavioralFrom_readout admission profile (instructionCount setup.program + 1)
+    (setup.executionProtocol admission).initHistory (Nat.le_refl _)
+
+/-- Initial private data, all public results, and the complete utility vector
+are retained jointly because they are read from the same typed terminal state. -/
+theorem compiled_profile_joint_utility_law
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (watcher : Player)
+    (reveals : setup.program.RevealOnly)
+    (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
+    (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
+    (admission : CommitmentInterface setup.program)
+    (profile : GameTheory.Profile (setup.informationModel admission).behavioralSignature)
+    (weight : ℝ) (nonnegative : 0 ≤ weight) (small : weight ≤ 1)
+    (utility : State L setup.program.terminalCtx → Player → ℝ) :
+    ((information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).runBehavioral
+      (compiledProfile setup leaks (bounds.withInitialValues (initialLaw setup)) watcher
+        (setup.decodeBehavioralProfile admission profile) weight nonnegative small)
+      (2 * horizon setup watcher + 1)).map
+        (fun final => (sourceReadout setup leaks final.state,
+          baseUtility setup leaks utility final.state)) =
+      ((setup.informationModel admission).runBehavioral profile
+        (instructionCount setup.program + 1)).map
+          (fun final => (setup.protocolReadout final.state,
+            fun who => (setup.protocolReadout final.state).elim 0
+              (fun state => utility state who))) := by
+  have law := compiled_profile_readout_law setup leaks bounds watcher reveals observer openable
+    admission profile weight nonnegative small
+  have mapped := congrArg (fun distribution => distribution.map
+    (fun state => (state, fun who => state.elim 0 (fun current => utility current who)))) law
+  unfold baseUtility
+  simpa only [FinDist.map_comp, Function.comp_def] using mapped
 
 end Vegas.SourceProgram.RevealService

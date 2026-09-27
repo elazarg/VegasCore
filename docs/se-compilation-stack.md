@@ -38,7 +38,7 @@ yet an instantiation for every VegasCore program or arbitrary service.
 
 [ReactiveTrafficAudit](../Interaction/ReactiveTrafficAudit.lean) reads traffic
 from successive public service views of the existing runtime. It retains the
-broadcaster, envelope and observation phase, including for replays. Its
+broadcaster, envelope, observation phase and preceding ledger, including for replays. Its
 persistence and partial-observation soundness proofs allow arbitrary schedulers
 and raw responses; no reserved reporting slot or one-message pending pool is
 assumed. The complete readout is an ideal service specification, not a claim
@@ -46,6 +46,10 @@ that an ordinary passive client sees all traffic or authenticates every sender.
 Coverage, accurate phase reports, attribution and collectible collateral are
 implementation obligations. A client/oracle realization may provide a partial
 record and a conditional collection bound instead of a complete log.
+[ReactiveAuditCollection](../Interaction/ReactiveAuditCollection.lean) derives
+that continuation bound from per-record sampling coverage and actual first-step
+evidence, against arbitrary later strategies. It also proves zero charges for
+conformant traffic under authentic partial sampling.
 
 The source-to-permitted-runtime proof must still establish observations,
 conditional laws and consistent beliefs. Single-trace membership does not
@@ -95,28 +99,37 @@ arbitrary-length theorem:
 | Existing reveal-only syntax, repeated owners, both disclosure choices | Checked, including source store and completion-history agreement after either choice. |
 | Fixed service, deadlines, C menu inside the full effective menu | Constructed, with initialized and prefix execution correspondence. |
 | Finite alphabet covering every supported initial value | Checked; extending the alphabet retains every previously admitted raw response. |
-| C actions project to opening/withholding with fully supported split perturbations | Checked locally at covered checkpoints. |
+| C actions project to opening/withholding with fully supported split perturbations | Checked at all actual native decision sites; source fully mixed perturbations compile to fully mixed native profiles and converge to the compiler profile. |
 | Native decision view determines the source decision view | Checked from typed store and completion-history agreement. |
 | Source view reconstructs native semantic observation and initial candidate catalogue | Checked at reachable ranked prefixes, including public service fields; the focal selector also reconstructs the sender's replay recall. |
 | Common decision depths for C/W/N/raw menus | Checked at all legal histories using existing grant and actor observations. |
-| Bounded settlement under arbitrary responses | Checked for every finite response menu and behavioral profile; each scheduled block completes its event even under malformed traffic. |
+| Bounded settlement under arbitrary responses | Checked for every finite response menu and every legal terminal history, including zero-probability histories. Remaining suffixes settle whenever preceding events have completed. |
 | Full monitored block agrees with its source reveal | Checked for every ordinary response, including published-replay aliases of withholding; typed source store and action history agree afterward. |
 | Initialized compiler execution law for arbitrary reveal sequences | Checked for all source policies and all alias-splitting weights, with correlated valid initial bindings. This is an execution law, not yet an SE theorem. |
 | Source information prerequisites | Checked common decision depths and a fully mixed reference policy; finite legal histories require no finite ambient secret type. |
-| Reverse information correspondence and checkpoint prefix laws | Checked at actual native boundary and owner-decision depths; includes correlated initialization and replay selectors. Conditional-belief and SE composition remains open. |
+| Reverse information correspondence and checkpoint prefix laws | Checked at actual native boundary and owner-decision depths; includes correlated initialization and replay selectors. |
+| Consistent native beliefs | Checked: one common perturbation sequence preserves the source-state posterior at every owner information site, including aliases with zero limiting probability. Local rationality and enforcement composition remain open. |
 | Conditional monitoring, packet classification and persistent evidence | Checked in actual behavioral continuations at every hidden history satisfying the operational checkpoint invariant. |
 | Ordinary-player net-utility comparison | Checked at such checkpoints, against any clean legal continuation; global checkpoint coverage and clean-continuation induction remain open. |
 | Fixed deposits | Exact finite rational payoff bounds and sufficient range/rate deposits are checked. Collection rates and monetary implementation remain backend obligations. |
 | W → N → raw equilibrium extension | Checked for arbitrary reveal sequences, normalization-invariant observations/utilities, and zero watcher utility at every history. |
 | End-to-end SE for arbitrary reveal sequences | Open. The checked end-to-end result remains the two-reveal payoff-table family. |
 
-The remaining source-to-C belief proof compares distributions over the existing
+The source-to-C belief proof compares distributions over the existing
 source protocol state. That state retains initial private values and source
 action memory. Standard source continuation values can therefore be evaluated
 from this marginal, while retaining the original history-based SE assessment.
 This avoids reconstructing a source execution history from every native history.
-The native selector must still account for recorded replay aliases, including at
+The checked native selector accounts for recorded replay aliases, including at
 zero-probability information sets of the limiting strategy.
+
+For the full-language boundary,
+[hidden-binding analysis](research/se-hidden-binding.md) separates a public
+audit limitation from the strategic question. A native unusable binding can be
+publicly indistinguishable from valid binding followed by withholding. Within
+source semantics, however, value-only continuations match every such behavioral
+deviation from an arbitrary posterior over residual configurations. The native
+opponent-view simulation and consistent extension remain proof obligations.
 
 ## Stack: one runtime, several strategic games
 
@@ -740,8 +753,13 @@ under the existing public-outcome observation. The
 [pending composition](../Vegas/Game/PendingCompositions.lean) replace an
 unusable binding by a value binding followed by withholding, preserving the
 public failure outcome. This does not require a rejecting guard or a watcher.
-The related type/outcome law also permits type-dependent utilities; it does not
-provide a local continuation correspondence for SE.
+The related type/outcome law also permits type-dependent utilities.
+[ValueBindingContinuation](../Vegas/Source/ValueBindingContinuation.lean)
+extends the source comparison to arbitrary residual beliefs and behavioral
+continuations, preserving the joint parameter/public-result law. Native SE
+still requires corresponding opponent observations and a consistent extension
+after hidden departures. A one-action comparison cannot simply assume that an
+unusable binding becomes openable.
 
 A global deposit rule can instead supply the incentive premise for removing
 withholding, or move failure-penalty conditionals out of programmer-written

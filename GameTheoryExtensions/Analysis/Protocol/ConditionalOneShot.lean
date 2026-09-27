@@ -138,8 +138,8 @@ theorem one_step_gain_le_after_own_prefix
           apply FinDist.expect_congr
           intro compatible _
           dsimp only [gain]
-          rw [M.one_step_then_baseline_eq_local_law recall assessment.strategy who alternative
-            compatible.1 (InformationSite.active M site compatible) fuel, compatible.2]
+          rw [M.one_step_then_baseline_eq_local_law recall.antichain assessment.strategy who
+            alternative compatible.1 (InformationSite.active M site compatible) fuel, compatible.2]
         _ ≤ allowance info := localBound site sameDepth
     · have zero : (prefixLaw.condOnFibre observation info).expect gain = 0 := by
         rw [← FinDist.expect_const (prefixLaw.condOnFibre observation info) (0 : ℝ)]

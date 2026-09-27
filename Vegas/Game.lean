@@ -28,6 +28,15 @@ import Vegas.Game.RevealServicePrefixContinuation
 import Vegas.Game.RevealServiceOwnerPrefix
 import Vegas.Game.RevealServiceOwnerSupport
 import Vegas.Game.RevealServiceOwnerInformation
+import Vegas.Game.RevealServiceOwnerSource
+import Vegas.Game.RevealServicePrefixChoice
+import Vegas.Game.RevealServiceMixing
+import Vegas.Game.RevealServiceBayes
+import Vegas.Game.RevealServiceConsistency
+import Vegas.Game.RevealServiceOwnerContinuation
+import Vegas.Game.RevealServicePrefixResponse
+import Vegas.Game.RevealServiceOwnerResponse
+import Vegas.Game.RevealServiceOwnerLocalLaw
 import Vegas.Game.RevealServicePerturbation
 import Vegas.Game.RevealServiceFocalLaw
 import Vegas.Game.RevealServiceFocalRecall
@@ -49,6 +58,7 @@ import Vegas.Game.ZeroSum
 import Vegas.Game.SetupSubgame
 import Vegas.Game.SourceInformation
 import Vegas.Game.SourceContinuation
+import Vegas.Game.SourceLocalContinuation
 import Vegas.Game.SourceStateKernel
 import Vegas.Game.SourcePrefixKernel
 import Vegas.Game.SourceObservationRecall

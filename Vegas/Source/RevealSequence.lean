@@ -54,6 +54,31 @@ def RevealOnly : {Γ : SourceCtx Player L} → {O : Finset VarId} →
   | _, _, .reveal _ _ _ _ _ _ next => RevealOnly next
   | _, _, .sample .. | _, _, .commit .. => False
 
+/-- At an active reveal, only the acting owner's disclosure bit determines
+the next source-state law. The statement uses the existing protocol step. -/
+theorem ProtocolState.step_disclosure_congr (who : Player) :
+    ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
+      (program : SourceProgram Player L Γ O), program.RevealOnly →
+      ∀ (state : ProtocolState program),
+        ProtocolView.actor who program (ProtocolState.observe who program state) = some who →
+        ∀ (left right : Player → Option (OwnAction Player L)),
+          OwnAction.disclosure (left who) = OwnAction.disclosure (right who) →
+          ProtocolState.step program state left = ProtocolState.step program state right := by
+  intro Γ O program
+  induction program with
+  | ret payoffs => intro _ state active; cases active
+  | sample name fresh law next ih => intro impossible; exact impossible.elim
+  | commit name owner fresh guard next ih => intro impossible; exact impossible.elim
+  | reveal published owner name fresh selected unresolved next ih =>
+      intro reveals state active left right same
+      cases state with
+      | inl current =>
+          have acting : owner = who := Option.some.inj active
+          subst owner
+          simp only [ProtocolState.step, Sum.elim_inl, same]
+      | inr later =>
+          exact congrArg (fun law => law.map Sum.inr) (ih reveals later active left right same)
+
 theorem RevealOnly.instructionCount_eq_card {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (reveals : RevealOnly program) :
     instructionCount program = O.card := by
