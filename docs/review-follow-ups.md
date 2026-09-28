@@ -67,65 +67,88 @@ The paper could state this, but it should first be a Lean lemma.
 
 ## Engineering
 
-**Unused modules.** A dependency walk from every `Paper.lean` statement, axiom
-pin and test finds modules with no reached declaration. Deleting them needs the
-importing modules repaired first, and some are cited in documents:
+**Unreached modules that are cited or used.** A dependency walk from every
+`Paper.lean` statement, axiom pin, test and example reaches no declaration in
+the modules below. Each is still cited as a result in `ARTIFACT.md` or a
+design or research note, or used by another module's proof, or is kept
+intentionally standalone (`docs/module-architecture.md`), so deleting it is a
+decision about the claim, not about dead code. For each, the choice is to pin
+the cited result in `Paper.lean` or to retire it together with its citation.
 
-| Module (`Vegas/Game/`) | Imported by | Cited in |
-| --- | --- | --- |
-| `SourceServiceResolution` | `SourceServiceResolutionBoundary`, `SourceServiceSettlement` | `se-compilation-stack.md`, `research/se-runtime-assumptions.md` |
-| `SourceServiceActiveDisclosureLaw` | `SourceServiceDisclosureContinuation`, `SourceServiceTimingPosterior` | `se-compilation-stack.md`, `se-handoff.md` |
-| `SourceServiceBindingExecution` | `SourceServiceTimedBinding` | `research/se-runtime-assumptions.md` |
-| `SourceServiceBindingCheckpoint` | `SourceServiceBoundary` | `research/se-runtime-assumptions.md` |
-| `SourceServiceBindingWindow` | `SourceServiceBindingSupport` | |
-| `SourceServiceBindingRepair` | | `research/se-runtime-assumptions.md` |
-| `SourceServiceCandidateStep` | `SourceServiceBindingCheckpoint` | |
-| `SourceServiceCandidateObservation` | `SourceServiceFactorization` | `research/se-runtime-assumptions.md` |
-| `SourceServiceDisclosureContinuation` | | |
-| `SourceServiceDisclosureMemory` | `SourceServiceFactorization` | `research/se-runtime-assumptions.md` |
-| `SourceServiceDisclosurePosterior` | `SourceServiceDisclosureMemory` | |
-| `SourceServiceTimedConsistency` | | `se-compilation-stack.md`, `se-handoff.md` |
-| `RevealServiceOwnerContinuation` | `RevealServiceOwnerResponse` | |
-| `RevealServicePrefixContinuation` | `RevealServiceOwnerContinuation`, `RevealServicePrefixResponse` | |
-| `RevealServiceRosterBoundaryPosterior` | | |
-| `RevealServiceRosterConsistency` | | `research/se-ambient-rosters.md` |
-| `RevealServiceRosterWindowContinuation` | `RevealServiceRosterWindowValue` | |
+| Module | Cited in |
+| --- | --- |
+| `GameTheoryExtensions.Core.RegularChoiceSimulation` | `inclusion-and-spe.md`, `inclusion-assumptions.md`, `reactive-recovery.md` |
+| `GameTheoryExtensions.Math.Probability.FirstDeparture` | `ARTIFACT.md` |
+| `GameTheoryExtensions.Math.Probability.NegligibleContamination` | `ARTIFACT.md` |
+| `GameTheoryExtensions.Math.Probability.RegularCoupling` | `inclusion-and-spe.md`, `inclusion-assumptions.md` |
+| `GameTheoryExtensions.Math.Probability.WeightedSet` | `inclusion-assumptions.md` |
+| `GameTheoryExtensions.Protocol.BehavioralIncentives` | `spe-incentive-criterion.md`, `spe-obstructions.md` |
+| `Interaction.MessageApplicationLocality` | `module-architecture.md` |
+| `Interaction.MessageApplicationPending` | `module-architecture.md` |
+| `Interaction.PendingWeighted` | `inclusion-and-spe.md`, `inclusion-assumptions.md` |
+| `Interaction.ReactiveKnowledge` | `module-architecture.md`, `passive-eavesdropping.md`, `spe-obstructions.md` |
+| `Interaction.ReactivePendingRetention` | used by other modules |
+| `Interaction.ReactivePublishedResponses` | `ARTIFACT.md` |
+| `Interaction.ReactiveRecallInvariant` | `ARTIFACT.md` |
+| `Interaction.ReactiveRecordedResponse` | `ARTIFACT.md` |
+| `Interaction.ReactiveSubmissionRounds` | used by other modules |
+| `Vegas.Compile.EventGraphEvidence` | `ambient-communication.md`, `module-architecture.md` |
+| `Vegas.Game.BindingRepairOpening` | `research/se-hidden-binding.md` |
+| `Vegas.Game.ReactiveCompilation` | `module-architecture.md`, `network-and-compilation.md`, `spe-obstructions.md` |
+| `Vegas.Game.RevealServiceRosterWindowContinuation` | used by other modules |
+| `Vegas.Game.SetupSubgame` | `ARTIFACT.md`, `preservation-contracts.md`, `source-semantics.md`, `subgame-preservation.md` |
+| `Vegas.Game.SourceObservationRecall` | `ARTIFACT.md` |
+| `Vegas.Game.SourceServiceDisclosureMemory` | `research/se-runtime-assumptions.md` |
+| `Vegas.Game.SourceServiceDisclosurePosterior` | used by other modules |
+| `Vegas.Pending.EventFreshCandidates` | `ARTIFACT.md`, `preservation-contracts.md` |
+| `Vegas.Pending.NativeRecall` | `action-coalescing.md` |
+| `Vegas.Pending.ReactiveActiveOpening` | `se-handoff.md` |
+| `Vegas.Pending.ReactiveAuthorizationProgress` | `ARTIFACT.md`, `reactive-spe-service.md` |
+| `Vegas.Pending.ReactiveBindingAdmission` | `ambient-communication.md` |
+| `Vegas.Pending.ReactiveBindingFrameExpiry` | `research/se-hidden-binding.md` |
+| `Vegas.Pending.ReactiveBindingFrameLaw` | `research/se-hidden-binding.md` |
+| `Vegas.Pending.ReactiveBindingGuardedInclusion` | `research/se-hidden-binding.md` |
+| `Vegas.Pending.ReactiveBindingLegalContinuation` | `research/se-hidden-binding.md` |
+| `Vegas.Pending.ReactiveBindingObservation` | `ARTIFACT.md`, `research/se-hidden-binding.md` |
+| `Vegas.Pending.ReactiveBindingPosterior` | `research/se-runtime-assumptions.md` |
+| `Vegas.Pending.ReactiveBindingRequiredStep` | `research/se-runtime-assumptions.md` |
+| `Vegas.Pending.ReactiveBindingResources` | `research/se-pmf-interaction.md`, `research/se-runtime-assumptions.md` |
+| `Vegas.Pending.ReactiveBindingRetainedBlock` | `research/se-hidden-binding.md` |
+| `Vegas.Pending.ReactiveBindingService` | `ambient-communication.md`, `sequential-equilibrium-design.md` |
+| `Vegas.Pending.ReactiveBindingServiceRepair` | used by other modules |
+| `Vegas.Pending.ReactiveBindingStopped` | `research/se-hidden-binding.md` |
+| `Vegas.Pending.ReactiveDisclosureService` | `ambient-communication.md`, `zero-sum-runtime-bridge.md` |
+| `Vegas.Pending.ReactiveFiniteConsistency` | `finite-reactive-responses.md`, `private-memory-and-subgames.md`, `sequential-equilibrium-design.md`, `zero-sum-runtime-bridge.md` |
+| `Vegas.Pending.ReactiveFreshCandidates` | `network-and-compilation.md`, `spe-obstructions.md` |
+| `Vegas.Pending.ReactiveHiddenEnvironment` | `research/se-hidden-binding.md` |
+| `Vegas.Pending.ReactiveOpeningPosterior` | `research/se-ambient-rosters.md`, `research/se-opening-timing.md` |
+| `Vegas.Pending.ReactiveRegularity` | `inclusion-and-spe.md`, `inclusion-assumptions.md`, `reactive-recovery.md` |
+| `Vegas.Pending.ReactiveSelection` | `inclusion-and-spe.md`, `inclusion-assumptions.md` |
+| `Vegas.Pending.ResponseProtocolRefinement` | `action-coalescing.md` |
+| `Vegas.Source.SetupProtocolPolicy` | used by other modules |
 
-`SetupSubgame` and `SourceObservationRecall` are also unreached. The theorem
-`sourceServiceCompiledProfile_settlement_law` (`SourceServiceAudit.lean`) is
-unused; the checklist no longer cites it.
+**Positional destructuring of the decision boundary.**
+`Vegas.sourceService_decision_boundary` returns about 30 components that 21
+call sites destructure by position. A structure with named fields was
+considered and not adopted: most call sites take apart the residual program
+(`cases` on it) or substitute the event, which needs local variables, so they
+would still destructure positionally, and projections would add casts where
+the event is rewritten. The positional patterns also name fields
+inconsistently between files; aligning those names is the cheaper
+improvement.
 
-**Namespaces.** The full-language development opens
-`namespace Vegas.SourceProgram.RevealService`, but no `RevealService` type
-exists. That breaks the flat-namespace rule and gives the headline theorem a
-name that suggests the reveal-only fragment. Moving the declarations to
-`Vegas` or to real type namespaces such as `SourceServiceSpec` is mechanical
-but touches about 250 files and the documents that cite the names.
+**Bundled service data.** About 80 lower-layer declarations take the value
+coverage, capacity, opportunities and initial values separately. They are
+stated over a bare setup and message bounds so that the reveal-only
+development can use them with its own bounds; bundling them into
+`SourceServiceSpec` would couple them to the full-language service. A smaller
+bundle for the bounds alone is possible but was not needed by any proof.
 
-**Named interfaces.**
-- `sourceService_decision_boundary` returns about 30 components that 21 call
-  sites destructure by position; `initialized_sourceService_prefix_support` has
-  22. A structure with named fields, in the style of `DecisionPhase`, makes
-  them robust to reordering.
-- The timing-law type is written out 106 times and the source information model
-  58 times; name them a timing-law type and a source-model
-  abbreviation on `SourceServiceSpec`.
-- About 80 declarations take the value coverage, capacity, opportunities and
-  initial values separately; lower layers could take a bundled structure.
-- Generic finite-distribution lemmas are copied as file-private helpers:
-  two copies of a fibre-conditioning support lemma, four copies of a kernel
-  iteration lemma, and two copies of a cast-transport lemma with a variant. They belong in
-  `GameTheoryExtensions/Math/Probability`, as do
-  a coupling interface for the 97
-  repeated coupling-marginal equations.
-- The `nodeView` case analysis after its output and code equations appears 44
-  times; one lemma would replace it.
-- `rosterTiming` duplicates the unused `FinDist.finalTiming`.
-
-**Reachability gate.** The module gate checks import reachability, which the
-aggregators make trivially true. A gate that walks declarations from
-`Paper.lean`, and checks that every evidence name in the checklist is reached
-from the SE theorem, would catch unused proof towers and stale evidence.
+**Roster timing.** `Vegas.rosterTiming` repeats the construction of the
+generic `FinDist.finalTiming`. The two are indexed differently
+(`Fin ((rosters event).count owner)` against `Fin (last + 1)`), so defining one
+through the other adds a cast to every use; the duplication is three short
+lemmas.
 
 **Paper annotations.** `check-doc-references.py` does not scan the `% Lean:`
 annotations in `overleaf/`; extending it would catch renamed declarations.
