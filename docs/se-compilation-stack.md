@@ -96,7 +96,7 @@ source support fact. The
 then proves that every permitted physical response is a replay alias or is
 supported by the actual source policy. The
 [native full-mixing theorem](../Vegas/Game/SourceServiceTimedMixing.lean) and
-[common consistency sequence](../Vegas/Game/SourceServiceTimedConsistency.lean)
+the [supported source sequence](../Vegas/Game/SourceServiceChoiceSupport.lean)
 are checked for the full language. A consistent assessment need not be
 rational, so belief correspondence and local incentives are separate proofs.
 The [initialized timed law](../Vegas/Game/SourceServiceTimedLaw.lean) identifies
@@ -106,12 +106,13 @@ derives the whole typed source continuation from any supported native phase
 boundary. The local response comparisons connect those boundary laws to the
 actual intermediate choices.
 
-The active [binding law](../Vegas/Game/SourceServiceActiveBindingLaw.lean),
+The active [binding law](../Vegas/Game/SourceServiceActiveBindingLaw.lean) and
 [binding checkpoint](../Vegas/Game/SourceServiceActiveBindingCheckpoint.lean)
-and [disclosure law](../Vegas/Game/SourceServiceActiveDisclosureLaw.lean)
-start after the current passive observation has occurred. Disclosure retains
-timing opportunities that passed with a silent source choice; binding excludes
+start after the current passive observation has occurred; binding excludes
 passed opportunities when no binding was submitted. The
+[available-opening laws](../Vegas/Game/SourceServiceAvailableOpening.lean)
+retain disclosure timing opportunities that passed with a silent source
+choice. The
 [local source policy theorem](../Vegas/Game/SourceLocalPolicy.lean) realizes an
 arbitrary one-site choice law as one admitted syntactic policy shared by all
 hidden histories at that observation, followed by the baseline continuation.

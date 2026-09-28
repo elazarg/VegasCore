@@ -55,7 +55,6 @@ import Vegas.Pending.ReactiveGuardConformance
 import Vegas.Pending.ReactiveGuardedResponse
 import Vegas.Pending.ReactiveBindingStopped
 import Vegas.Pending.ReactiveOpeningContinuationExpiry
-import Vegas.Pending.ReactiveOpeningNoninterference
 import Vegas.Pending.EventApplication
 import Vegas.Pending.RevealEvidence
 import Vegas.Pending.ReactiveServiceGrant

@@ -304,9 +304,9 @@ The [native Bayes theorem](../../Vegas/Game/RevealServiceRosterBayes.lean)
 identifies the actual finite game's owner belief with the original source
 posterior at every legal owner history. It conditions on full native recall and
 the current passive sample, including histories following an early own opening.
-The [common consistency construction](../../Vegas/Game/RevealServiceRosterConsistency.lean)
-uses one subsequence for all native sites and preserves those belief marginals
-at the fixed limiting policy. No player observes a new scheduler cursor.
+The [roster equilibrium theorem](../../Vegas/Game/RevealServiceRosterEquilibrium.lean)
+takes one common subsequence for all native sites, converging to the fixed
+limiting policy. No player observes a new scheduler cursor.
 
 The [phase continuation law](../../Vegas/Game/RevealServiceRosterPhase.lean)
 connects an intermediate window to the original source step and the entire

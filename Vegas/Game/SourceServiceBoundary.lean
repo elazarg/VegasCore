@@ -1,12 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceBindingCheckpoint
 import Vegas.Game.RevealServiceCalendarState
 import Vegas.Pending.ReactiveBindingPrefix
 import Interaction.ReactiveSubmissionSerial
 import Vegas.Pending.ReactiveServiceRecall
 import Vegas.Pending.ReactiveAssociationEvidence
 import Vegas.Pending.ReactiveServiceOpportunity
+import Vegas.Game.SourceServiceBindingPhase
+import Vegas.Game.SourceServiceCheckpoint
+import Vegas.Pending.ReactiveBindingTranscript
 
 /-! # Operational boundaries for the complete source syntax
 

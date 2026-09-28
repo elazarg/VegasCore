@@ -247,11 +247,7 @@ objective. The remaining proof obligations are:
    now starts before the first roster visit: the actual limiting source policy
    waits, submits at its final owner opportunity, and preserves the original
    typed commitment law through the remaining roster and reserved inclusion.
-   Its [supported endpoint theorem](../../Vegas/Game/SourceServiceBindingCheckpoint.lean)
-   also carries the semantic source successor and the evolving candidate and
-   accepted-handle catalogues through that entire phase. It preserves canonical
-   allocation, restores the serial/ledger counts, and proves all pending and
-   known copies published at the completed boundary. The
+   The
    [boundary invariant](../../Vegas/Game/SourceServiceBoundary.lean) combines
    those facts with actual response counts, future-event recall, source store
    agreement and deadline accounting. Initialization, grant, passive activation
@@ -309,10 +305,6 @@ objective. The remaining proof obligations are:
    [conditional private-history law](../../Vegas/Game/SourceServiceDisclosureMemory.lean)
    and a common mixture of original source assessment comparisons. Native
    observations determining a source view is weaker than posterior equality.
-   [Candidate reconstruction](../../Vegas/Game/SourceServiceCandidateObservation.lean)
-   removes an assumed private catalog correspondence, using the source view
-   and the coupled public and own-response records instead. Deriving that
-   joint coupling and its conditional likelihood remains necessary.
    The [binding-window likelihood](../../Vegas/Pending/ReactiveBindingLikelihood.lean)
    and [conditional law](../../Vegas/Pending/ReactiveBindingPosterior.lean)
    prove that an actual opaque submission, replay roster and reserved inclusion
@@ -343,9 +335,7 @@ objective. The remaining proof obligations are:
    or yet concluded.
    Actual passive activation converts this auxiliary traffic law into the
    law of the player's real input, retaining its response history and sampled
-   observation. The [binding execution law](../../Vegas/Game/SourceServiceBindingExecution.lean)
-   disintegrates the actual compiler's complete binding window without
-   discarding private recall or network state.
+   observation.
    The [public-sample constructor](../../Vegas/Game/SourceServiceSampleFactorization.lean)
    derives the actual sampling instruction's traffic law from the source
    distribution and preserves the joint effective/original source-memory
@@ -433,12 +423,7 @@ objective. The remaining proof obligations are:
    [repeat-submission step](../../Vegas/Pending/ReactiveRepeatedSubmissionStep.lean)
    gives the corresponding split without requiring a fresh candidate:
    transport preserves the repair frame; any fresh submission supplies an
-   actual rejected record. The
-   [actual-history repair](../../Vegas/Game/SourceServiceBindingRepair.lean)
-   derives the optional first-submission coupling's freshness, capacity,
-   readiness and public serial facts from a real retained trace. Every repaired
-   endpoint has another real retained trace; the rejected alternative supplies
-   the newly emitted authentic traffic record.
+   actual rejected record.
    [First-submission provenance](../../Vegas/Game/SourceServiceSubmittedBinding.lean)
    extracts the actual first typed binding and remaining roster from every
    retained decision that already records a submission, including the sampled

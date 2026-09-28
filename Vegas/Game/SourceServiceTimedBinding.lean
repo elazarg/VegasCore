@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceTimedPolicy
-import Vegas.Game.SourceServiceBindingExecution
 import Vegas.Game.RevealServiceRosterLaw
+import Vegas.Game.SourceServiceBindingPhase
 
 /-! # Binding lotteries at arbitrary scheduled owner visits
 

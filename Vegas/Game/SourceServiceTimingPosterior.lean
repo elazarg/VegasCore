@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceActiveDisclosureLaw
 import Interaction.ScheduledChoicePosterior
+import Vegas.Game.SourceServiceTimedDisclosure
 
 /-! # The actual unsent disclosure timing posterior
 

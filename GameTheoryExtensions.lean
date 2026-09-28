@@ -10,7 +10,6 @@ import GameTheoryExtensions.Math.Probability.ConditionalNoise
 import GameTheoryExtensions.Math.Probability.ObservationRetraction
 import GameTheoryExtensions.Math.Probability.Compactness
 import GameTheoryExtensions.Math.Probability.NegligibleContamination
-import GameTheoryExtensions.Math.Probability.RelativeConditioning
 import GameTheoryExtensions.Math.Probability.ConditionalDomination
 import GameTheoryExtensions.Math.Probability.KernelDomination
 import GameTheoryExtensions.Math.Probability.ProductDomination
@@ -81,8 +80,6 @@ import GameTheoryExtensions.Analysis.Protocol.OneShotDeviation
 import GameTheoryExtensions.Analysis.Protocol.LocalDeviation
 import GameTheoryExtensions.Analysis.Protocol.BehavioralOneShot
 import GameTheoryExtensions.Analysis.Protocol.OneShotLimit
-import GameTheoryExtensions.Analysis.Protocol.UniformContinuationLimit
-import GameTheoryExtensions.Analysis.Protocol.ContinuationSimulationLimit
 import GameTheoryExtensions.Analysis.Protocol.SequentialOneShot
 import GameTheoryExtensions.Analysis.Protocol.SequentialExistence
 import GameTheoryExtensions.Analysis.Protocol.RestrictionBeliefs

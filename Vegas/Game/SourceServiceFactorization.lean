@@ -1,12 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceDisclosureMemory
-import Vegas.Game.SourceServiceCandidateObservation
 import Vegas.Game.SourceServiceDisclosure
 import Vegas.Game.RevealServiceRosterLaw
 import Vegas.Pending.ReactiveOpeningLikelihood
 import GameTheoryExtensions.Math.Probability.ConditionalNoise
 import Vegas.Source.ObservationRecall
+import Vegas.Game.SourceServiceCheckpoint
+import Vegas.Game.ServiceObservation
+import Vegas.Pending.ReactiveBindingTranscript
+import Vegas.Pending.ReactiveResponseRecall
 
 /-! # Source memory and actual service-channel factorization
 

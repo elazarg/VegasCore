@@ -12,7 +12,7 @@ kind. Future-work areas outside the paper's scope are listed at the end.
 **Deposit range over terminal histories.**
 `Vegas.SourceProgram.RevealService.rosterAuditDeposit`
 ([ServicePayoffBounds.lean](../Vegas/Game/ServicePayoffBounds.lean)) takes the
-payoff range over every native history, and `baseUtility` is zero on an
+payoff range over every native history, and `RevealService.baseUtility` is zero on an
 unfinished one, so the range always contains zero. The deposit is sufficient
 but not invariant under adding a constant to all utilities (for payoffs in
 [74, 126] it is 126/p instead of 52/p). The paper and the assumptions table now
@@ -35,7 +35,7 @@ convergence component of the limit theorem),
 `SourceServiceRawExtension.lean` (the `canonicalRawPolicy` equation). Stating
 them needs the source sequence and timing law as existential witnesses.
 
-**Guard dependencies.** A guard's required inputs come from `exprDeps`, an
+**Guard dependencies.** A guard's required inputs come from the expression dependency function, an
 expression-interface field constrained only to over-approximate what the code
 reads (`Vegas/Foundation/Guard.lean`, `Vegas/Foundation/ExprInterface.lean`).
 Two expression languages with the same evaluation but different sound
@@ -44,7 +44,7 @@ meaning-preserving rewrite of guard code can move where the guard is checked.
 The paper now says the dependency set is part of the program. Two fixes: use
 the guard's declared `schema`, which `GuardCode` already carries, as its read
 set, with a congruence lemma for codes of equal meaning; or add an interface
-law that determines `exprDeps` from the code's syntax.
+law that determines the dependency function from the code's syntax.
 
 **A concrete service.** No `SourceServiceSpec` is constructed anywhere, so no
 concrete program is shown to meet the service hypotheses together.
@@ -108,17 +108,17 @@ but touches about 250 files and the documents that cite the names.
   22. A structure with named fields, in the style of `DecisionPhase`, makes
   them robust to reordering.
 - The timing-law type is written out 106 times and the source information model
-  58 times; name them `SourceServiceSpec.TimingLaw` and
-  `SourceServiceSpec.sourceModel`.
-- About 80 declarations take `values`, `capacity`, `opportunities` and
-  `initialValues` separately; lower layers could take a bundled structure.
+  58 times; name them a timing-law type and a source-model
+  abbreviation on `SourceServiceSpec`.
+- About 80 declarations take the value coverage, capacity, opportunities and
+  initial values separately; lower layers could take a bundled structure.
 - Generic finite-distribution lemmas are copied as file-private helpers:
-  `condOnFibre_mem`/`condOnFibre_support`, four copies of `iterate_bind`, and
-  `eq_map_cast_of_cast_eq` with a variant. They belong in
+  two copies of a fibre-conditioning support lemma, four copies of a kernel
+  iteration lemma, and two copies of a cast-transport lemma with a variant. They belong in
   `GameTheoryExtensions/Math/Probability`, as do
   `TimedApproximant.mixture_gain_eq` and a coupling interface for the 97
   repeated coupling-marginal equations.
-- The `nodeView` case analysis after an `outputEq`/`codeEq` preamble appears 44
+- The `nodeView` case analysis after its output and code equations appears 44
   times; one lemma would replace it.
 - `rosterTiming` duplicates the unused `FinDist.finalTiming`.
 

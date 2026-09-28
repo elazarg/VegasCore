@@ -1,8 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServicePrefixResponse
-import Vegas.Game.RevealServiceOwnerContinuation
 import Vegas.Game.RevealServicePayoffs
+import Vegas.Game.RevealServiceOwnerSupport
+import Vegas.Game.RevealServicePrefixLaw
+import Vegas.Game.RevealServiceCollection
 
 /-! # Terminal typed laws after an actual owner response
 

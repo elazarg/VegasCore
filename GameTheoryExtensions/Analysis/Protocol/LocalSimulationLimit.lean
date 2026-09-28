@@ -1,8 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Analysis.Protocol.ContinuationSimulationLimit
 import GameTheoryExtensions.Analysis.Protocol.SequentialOneShot
 import GameTheoryExtensions.Protocol.ContinuationHorizon
+import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
+import GameTheoryExtensions.Protocol.ContinuationSimulation
 
 /-! # Sequential equilibrium from local continuation comparisons
 

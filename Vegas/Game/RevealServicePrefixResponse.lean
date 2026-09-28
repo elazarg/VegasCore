@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServicePrefixContinuation
+import Vegas.Game.RevealServicePrefixLaw
 
 /-! # One ordinary response followed by the source continuation
 

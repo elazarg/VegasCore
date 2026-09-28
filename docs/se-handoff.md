@@ -46,9 +46,10 @@ values. See [the stack document](se-compilation-stack.md) for exact scope.
 
 - S1: `SourceServiceLaw.lean` and `SourceServiceAudit.lean` establish initialized
   source execution and settlement for the full language.
-- S2: `SourceServiceTimedConsistency.lean` constructs fully mixed actual native
-  profiles, Bayes beliefs and one common consistent subsequence from an original
-  source consistent assessment. Consistency alone is not rationality.
+- S2: `SourceServiceChoiceSupport.lean` gives one fully supported Bayes source
+  sequence, and `TimedApproximant.ofSource` compiles each stage to a fully
+  mixed native Bayes assessment; the SE limit theorem takes one common
+  consistent subsequence. Consistency alone is not rationality.
 - `SourceServiceBayes.lean` and `SourceServiceAssessment.lean` connect actual
   owner histories and native state beliefs to finite mixtures of comparisons
   in the **original** source assessment. Do not assume an SE or convergence of
@@ -60,9 +61,9 @@ values. See [the stack document](se-compilation-stack.md) for exact scope.
 - `SourceServiceActiveBindingLaw.lean` and
   `SourceServiceActiveBindingCheckpoint.lean` start after the current passive
   sample and retain the current response, source value and remaining service.
-- `SourceServiceActiveDisclosureLaw.lean` retains passed timing slots: these
-  may represent an earlier silent source choice. Do not discard them as is
-  valid for an unsent binding.
+- `SourceServiceAvailableOpening.lean` retains passed disclosure timing slots:
+  these may represent an earlier silent source choice. Do not discard them as
+  is valid for an unsent binding.
 - `SourceLocalPolicy.lean` constructs one admitted syntactic alternative for
   an arbitrary finite local source choice law, shared across hidden histories
   at that observation. Its exact continuation is the replacement step followed

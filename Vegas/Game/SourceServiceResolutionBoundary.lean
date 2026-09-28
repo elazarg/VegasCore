@@ -1,10 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceBoundary
-import Vegas.Game.SourceServiceResolution
 import Vegas.Pending.ReactiveResolutionSettlement
 import Vegas.Pending.ReactiveResolutionWindowConformance
 import Vegas.Pending.ReactiveServiceEvents
+import Vegas.Game.SourceServiceCheckpoint
+import Vegas.Game.SourceServiceDisclosure
+import Vegas.Pending.ReactiveDisclosure
+import Vegas.Pending.ReactiveRevealResponse
 
 /-! # Guarded disclosure boundaries for every permitted policy
 

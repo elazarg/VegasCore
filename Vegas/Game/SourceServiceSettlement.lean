@@ -1,6 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceResolution
+import Vegas.Game.SourceServiceCheckpoint
+import Vegas.Game.SourceServiceDisclosure
+import Vegas.Pending.ReactiveDisclosure
+import Vegas.Pending.ReactiveRevealResponse
+
 
 /-! # Sampling and binding settlement in the existing service
 

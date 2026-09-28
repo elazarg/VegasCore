@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceBindingWindow
 import Vegas.Pending.ReactiveBindingReplay
+import Vegas.Game.SourceServiceMenu
+import Vegas.Pending.ReactivePlayerWindow
 
 /-! # Binding provenance for every permitted service policy
 
