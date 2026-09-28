@@ -1,7 +1,7 @@
 # Completing the sequential-equilibrium preservation proof
 
-This plan closes the open boxes of the [checklist](se-proof-checklist.md):
-S3–S5, E1 and E2. The [handoff](se-handoff.md) describes the fixed theorem,
+This plan maps the [checklist](se-proof-checklist.md) boxes S3–S5, E1 and E2
+to the proofs that close them. The [handoff](se-handoff.md) describes the fixed theorem,
 the semantic decisions and the checked interfaces. Work within a milestone is
 checked with targeted `lake --wfail build Module.Name` builds; each milestone
 ends with the full warning-strict build and the repository gates. No step

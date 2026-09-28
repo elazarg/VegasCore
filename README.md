@@ -107,8 +107,8 @@ a strategically relevant capability: one source sequential-equilibrium outcome
 cannot occur at any native sequential equilibrium of the stated finite service.
 Its utilities are the program's returned payoffs, and even Alice's payout law
 cannot be matched by a payoff-aware strategy translation into that native game.
-Correspondence with a stronger communication semantics and general native
-sequential-equilibrium preservation remain open.
+Correspondence with a stronger communication semantics remains open. With an
+audited settlement, the full-language theorem below preserves every source SE.
 
 A [monitored guessing fragment](docs/research/se-native-pilot.md) has checked
 end-to-end SE preservation: every source SE has a native SE with identical
@@ -153,14 +153,16 @@ For the full source language, including private inputs, fresh commitments,
 public chance and guarded disclosure, the
 [full-language compiler theorem](Vegas/Game/SourceServiceCompilation.lean)
 (`Vegas.Paper.source_audited_raw_sequential_equilibrium`) preserves every
-source SE in the audited bounded raw runtime. The native SE has the source
-joint law of initial parameters, public outcome and payoff, with the payoff
-realized as settlement. The native service, activation rosters, audit backend
-and deposits are fixed before an equilibrium is chosen. Authentic partial
-audit evidence, positive conditional collection coverage, protected service
-and collectible fixed deposits are explicit backend assumptions; the theorem
-retains bounded interaction and a finite response interface, and asserts no
-cryptographic or EVM refinement. The
+source SE in the audited bounded raw runtime, for programs whose commitment
+payload types are finite. The native SE has the source joint law of the typed
+terminal state and payoff, with the payoff realized as settlement, and the
+audit charges no player on its paths. The native service, activation rosters,
+audit backend and deposits are fixed before an equilibrium is chosen.
+Authentic partial audit evidence, positive conditional collection coverage
+over closed communication, protected service with a non-strategic
+environment, and collectible fixed deposits are explicit backend assumptions;
+the theorem retains bounded interaction and a finite response interface, and
+asserts no cryptographic or EVM refinement. The
 [completion checklist](docs/se-proof-checklist.md) is the status ledger and
 the [implementation stack](docs/se-compilation-stack.md) the proof map and
 assumption list.

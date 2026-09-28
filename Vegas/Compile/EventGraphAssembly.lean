@@ -117,8 +117,10 @@ private theorem code_isPublic_of_mem_readFields {Field : Type} [DecidableEq Fiel
   | bind => simp [Vegas.EventGraph.EventCode.readFields] at member
   | resolve | sample => trivial
 
-/-- Compile the complete source language to an executable dependency-driven
-event graph. Node code and `reads_available` come from one ranked recursion. -/
+/-- Compile the complete source language to a dependency-driven event graph.
+Node code and `reads_available` come from one ranked recursion. The graph itself
+can be evaluated; the execution laws defined on it use real-valued finite
+distributions and cannot. -/
 def toEventGraph {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     : Vegas.EventGraph Player L where

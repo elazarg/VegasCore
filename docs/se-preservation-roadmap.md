@@ -16,7 +16,8 @@ For the full language, [execution preservation](../Vegas/Game/SourceServiceLaw.l
 and [actual settlement preservation](../Vegas/Game/SourceServiceAudit.lean) are
 checked for every admitted profile, and the
 [full-language SE compiler](../Vegas/Game/SourceServiceCompilation.lean)
-preserves every source SE in the audited bounded raw runtime. The
+preserves every source SE in the audited bounded raw runtime, for programs
+whose commitment payload types are finite. The
 [stack and implementation plan](se-compilation-stack.md) records proof edges,
 the theorem's assumptions and the remaining service and language boundaries.
 
@@ -27,7 +28,7 @@ the theorem's assumptions and the remaining service and language boundaries.
 | General SE extension | Every source SE extends across a structural action restriction satisfying the conditional enforcement bounds. Preserves retained strategies, beliefs, and joint completed-history/net-payoff laws. |
 | Scalar deposit inference | Executably computes the least nonnegative deposit for a finite rational comparison table, or identifies an infeasible row. This decides the certificate, not semantic SE implementability. |
 | Full-source repair settlement | Every actual whole native deviation has one permitted repair policy shared across hidden histories. Actual evaluator coupling and fixed deposits from all bounded effective-history payoff extrema prove conditional settlement dominance under every finite belief. |
-| Full-source SE compiler | Every source SE of the full language has an audited bounded raw-runtime SE with the source joint initial-parameter/public-outcome/payoff law, the payoff realized as settlement. It composes the source-to-permitted and permitted-to-raw edges below for one fixed service. |
+| Full-source SE compiler | Every source SE of the full language, for finite commitment payload types, has an audited bounded raw-runtime SE with the source joint typed-terminal-state/payoff law, the payoff realized as settlement and no charge on its paths. It composes the source-to-permitted and permitted-to-raw edges below for one fixed service. |
 | Full-source source-to-permitted SE | Every source SE has a permitted native SE with the same typed source terminal law: a limit of the timed approximants of one fully supported Bayes sequence. Each native site is compared with original source deviations by its kind; a disclosure with an available opening gains at most twice the source error. |
 | Full-source permitted-to-raw SE | Every permitted-runtime SE extends to the full bounded raw runtime under the fixed audit and deposit assumptions, preserving the joint initial-type/public-result and realized payoff law. |
 | Native guessing compiler | Every SE of the stated source program has a native SE under the fixed bounded service, partial monitoring and collectible charge. Includes a fixed playerwise policy translation. |

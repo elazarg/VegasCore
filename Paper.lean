@@ -841,16 +841,18 @@ theorem declared_payoff_sequential_separation (Claim : Type) [Fintype Claim]
 
 The native service, the audit backend and the deposit are fixed before a
 source equilibrium is chosen. The statement retains bounded interaction and a
-finite response interface; it asserts no cryptographic or EVM refinement.
+finite response interface, so every commitment payload type is finite; it
+asserts no cryptographic or EVM refinement.
 -/
 
 open Vegas.SourceProgram Vegas.SourceProgram.RevealService Vegas.EventGraphRuntime
   GameTheory.Protocol GameTheory.Enforcement in
-/-- Every original sequential equilibrium of the full source language has a
-sequential equilibrium of the audited bounded raw runtime with the source joint
-law of initial parameters, public outcome and payoff, the payoff realized as
-settlement. The authentic partial audit and positive conditional coverage are
-explicit service assumptions. -/
+/-- Every original sequential equilibrium of a source program whose
+commitment payload types are finite has a sequential equilibrium of the audited
+bounded raw runtime with the source joint law of the typed terminal state and
+payoff, the payoff realized as settlement. The audit charges no player on any
+history the native equilibrium reaches. The authentic partial audit and
+positive conditional coverage are explicit service assumptions. -/
 theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : SourceServiceSpec Player L)
     (parameter : State L service.setup.context → Parameter)
@@ -892,16 +894,18 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
           service.scheduler)
         (fun who site => target.continuationContext site
           (fun history => payoff history.state who) service.fuel) ∧
+      (∀ final ∈ ((raw.information (initialLaw service.setup) service.planLength
+          service.scheduler).runBehavioral target.strategy service.fuel).support, ∀ who,
+        TerminalAudit.charge ((runtime service.setup).serviceAuditObservation service.leaks)
+          (sourceServiceAudit service.setup service.leaks sample) final.state who = 0) ∧
       ((raw.information (initialLaw service.setup) service.planLength
           service.scheduler).runBehavioral target.strategy service.fuel).bind
           (fun final => (settle final.state).map (fun payoffs =>
-            ((sourceReadout service.setup service.leaks final.state).map
-              (service.setup.parameterOutcome parameter), payoffs))) =
+            (sourceReadout service.setup service.leaks final.state, payoffs))) =
         ((service.setup.informationModel
           (CommitmentInterface.values service.setup.program)).runBehavioral source.strategy
             (instructionCount service.setup.program + 1)).map
-              (fun final => ((service.setup.protocolReadout final.state).map
-                (service.setup.parameterOutcome parameter),
+              (fun final => (service.setup.protocolReadout final.state,
                 fun who => (service.setup.protocolReadout final.state).elim 0
                   (fun state => utility (service.setup.parameterOutcome parameter state)
                     who))) :=
@@ -912,6 +916,36 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_audited_raw_sequential_equilibrium
+
+open Vegas.SourceProgram in
+/-- The source horizon of `source_audited_raw_sequential_equilibrium` covers
+complete play: every history of the source protocol has ended by then, so its
+continuation values are those of standard sequential equilibrium. -/
+theorem source_protocol_horizon [IExpr.ResultTypes L]
+    (setup : Setup (Player := Player) (L := L))
+    (admission : CommitmentInterface setup.program) :
+    (setup.executionProtocol admission).BoundedHorizon (instructionCount setup.program + 1) :=
+  setup.protocol_bounded admission
+
+/-- info: 'Vegas.Paper.source_protocol_horizon' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.source_protocol_horizon
+
+open Vegas.SourceProgram.RevealService Vegas.EventGraphRuntime in
+/-- The native horizon of `source_audited_raw_sequential_equilibrium` covers
+complete play of the bounded raw runtime. -/
+theorem raw_service_horizon [Fintype Player] [IExpr.ResultTypes L]
+    (service : SourceServiceSpec Player L) :
+    ((service.bounds.rawMenu (runtime service.setup) service.leaks).protocol
+      (initialLaw service.setup) service.planLength service.scheduler).BoundedHorizon
+        service.fuel :=
+  (service.bounds.rawMenu (runtime service.setup) service.leaks).bounded _ _ _
+
+/-- info: 'Vegas.Paper.raw_service_horizon' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.raw_service_horizon
 
 /-! ## Runtime feature investigation
 
@@ -1259,6 +1293,12 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas.SourceProgram.RevealService in
 #print axioms sourceService_audited_raw_equilibrium_extends
+
+/-- info: 'Vegas.SourceProgram.RevealService.SourceServiceSpec.completeAudit_raw_sequentialEquilibrium_preserved'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SourceProgram.RevealService in
+#print axioms SourceServiceSpec.completeAudit_raw_sequentialEquilibrium_preserved
 
 /-- info: 'Vegas.EventGraphRuntime.MessageBounds.audited_raw_sequential_equilibrium'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/

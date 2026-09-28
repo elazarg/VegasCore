@@ -85,6 +85,10 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
         (raw.decisionInformationAntichain (initialLaw setup) count scheduler)
         (fun who site => target.continuationContext site
           (fun history => payoff history.state who) (2 * count + 1)) ∧
+      (∀ final ∈ ((raw.information (initialLaw setup) count scheduler).runBehavioral
+          target.strategy (2 * count + 1)).support, ∀ who,
+        TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
+          (sourceServiceAudit setup leaks sample) final.state who = 0) ∧
       ((raw.information (initialLaw setup) count scheduler).runBehavioral target.strategy
         (2 * count + 1)).bind (fun final =>
           (settle final.state).map (fun payoffs => (observe final.state, payoffs))) =
@@ -92,7 +96,7 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
           (2 * count + 1)).map (fun final => (observe final.state, base final.state)) := by
   classical
   intro menu raw count scheduler base deposit payoff settle
-  obtain ⟨effective, equilibrium, _agrees, _histories, settled⟩ :=
+  obtain ⟨effective, equilibrium, _agrees, histories, settled⟩ :=
     sourceService_audited_equilibrium_extends setup leaks bounds values capacity rosters
       opportunities network parameter utility sample authentic probability positive coverage
       observe source equilibrium
@@ -113,8 +117,27 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
   have settlementInvariant (state : (application setup leaks).ProtocolState) :
       settle (((runtime setup).reactiveNormalization leaks).state state) = settle state := by
     simp only [settle, TerminalAudit.settlement, baseInvariant, observation]
-  refine ⟨target, ?_, ?_⟩
+  refine ⟨target, ?_, ?_, ?_⟩
   · simpa only [payoffInvariant] using targetSE
+  · intro final reached who
+    have normalized : ((runtime setup).reactiveNormalization leaks).state final.state ∈
+        ((((bounds.menu (runtime setup) leaks).information (initialLaw setup) count
+          scheduler).runBehavioral effective.strategy (2 * count + 1)).map
+            GameTheory.Protocol.ExecutionProtocol.History.state).support := by
+      rw [← stateLaw, FinDist.support_map]
+      exact ⟨final, reached, rfl⟩
+    rw [FinDist.support_map, ← histories, FinDist.support_map] at normalized
+    obtain ⟨_, ⟨permitted, _, rfl⟩, sameState⟩ := normalized
+    have clear := sourceService_history_audit_clear setup leaks bounds values capacity rosters
+      opportunities network sample authentic permitted who
+    have invariant : TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
+        (sourceServiceAudit setup leaks sample)
+          (((runtime setup).reactiveNormalization leaks).state final.state) who =
+        TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
+          (sourceServiceAudit setup leaks sample) final.state who := by
+      simp only [TerminalAudit.charge, observation]
+    rw [← invariant, ← sameState]
+    exact clear
   · have joint := congrArg (fun law => law.bind fun state =>
       (settle state).map (fun payoffs => (observe state, payoffs))) stateLaw
     simp only [FinDist.bind_map, settlementInvariant, observationInvariant] at joint

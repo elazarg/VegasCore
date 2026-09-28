@@ -222,8 +222,10 @@ namespace TimedApproximant
 variable {service : SourceServiceSpec Player L}
 
 /-- The actual native Bayes assessment of a fully supported source strategy
-compiled with a full-support timing law. This is one stage of the common
-consistency sequence of `exists_sourceService_timed_consistent`. -/
+compiled with a full-support timing law. The sequential-equilibrium theorem
+takes these assessments along one fully supported Bayes sequence of the source
+equilibrium
+(`Vegas.SourceProgram.RevealService.sourceService_consistent_supported_sequence`). -/
 def ofSource (service : SourceServiceSpec Player L)
     (timing : ∀ event who, (graph service.setup).actor? event = some who →
       FinDist (Fin ((service.rosters event).count who)))

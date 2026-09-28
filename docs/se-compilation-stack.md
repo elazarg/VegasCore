@@ -32,8 +32,10 @@ and guarded disclosure. Its
 is checked. The permitted-to-full-runtime SE extension is checked, including actual
 conditional incentives, off-path completion and raw response aliases. Their
 [composition](../Vegas/Game/SourceServiceCompilation.lean) preserves every
-source SE of the full language in the audited bounded raw runtime, with the
-joint law of initial parameters, public outcome and realized settlement.
+source SE of the full language in the audited bounded raw runtime, for programs
+whose commitment payload types are finite, with the joint law of the typed
+terminal state and realized settlement and no charge on the equilibrium's
+paths.
 
 ### Assumptions of the full-language theorem
 
@@ -44,13 +46,15 @@ reasonable and what it leaves outside the claim.
 
 | Assumption | Mathematical role | Justification and impact |
 | --- | --- | --- |
-| Finite response interface (`SourceServiceSpec.values`, `SourceServiceSpec.initialValues`, `SourceServiceSpec.capacity`) | Every source binding value and supported initial binding table has a native message form and a candidate slot, so the native game is finite and implements every source choice. | Declared once for the service. A value outside the interface would be a truncated game; the theorem does not cover unbounded value spaces. |
+| Finite response interface (`SourceServiceSpec.values`, `SourceServiceSpec.initialValues`, `SourceServiceSpec.capacity`) | Every source binding value and supported initial binding table has a native message form and a candidate slot, so the native game is finite and implements every source choice. | Declared once for the service. Every commitment payload type must be finite, so a program committing integers is outside this theorem; the Nash-level theorems do not need this. |
 | Bounded interaction (`SourceServiceSpec.rosters`, `SourceServiceSpec.opportunities`) | Finite activation rosters give a bounded native horizon; each actor has an activation at its own event. | Rosters may add arbitrary finite extra visits and passive observation. Unbounded interaction and PMF-valued traffic are separate refinements. |
-| Protected service | The modeled runtime includes each submission at most once and completes events at their deadlines; public binding omissions are attributable. | A property of the service being modeled, not a hypothesis of the theorem. It is not implemented here by a ledger or contract. |
-| Authentic partial audit (`authentic`) | Sampled evidence is a subset of actual traffic, so the audit charges no permitted history. | Missing records are never evidence. Authenticating phase and prior-ledger context remains an oracle obligation beyond signatures. |
-| Positive conditional coverage (`positive`, `coverage`) | Each forbidden record of a player is sampled with at least a fixed positive probability, so a fixed deposit deters every first departure. | The rate is a property of the audit backend; the theorem does not construct a sampler achieving it. |
-| Collectible fixed deposits (`rosterAuditDeposit`) | Settlement subtracts a deposit fixed from the finite payoff range before an equilibrium is chosen. | Collectibility is an interpretation of the settlement utility; no escrow implementation is proved. |
+| Protected service | The modeled runtime includes each submission at most once and completes events at their deadlines; public binding omissions are attributable. The delivery and ordering environment is not a player. | A property of the service being modeled, not a hypothesis of the theorem. No ledger provides it outright: a block producer paid to delay an opening past its deadline turns a prescribed action into a failure, and payoffs that reward an opponent's failure make such bribes worthwhile. Censorship and a strategic sequencer are outside the claim. |
+| Authentic partial audit (`authentic`) | Sampled evidence is a subset of actual traffic, so the audit charges no permitted history. | Missing records are never evidence. Authenticating phase and prior-ledger context remains an oracle obligation beyond signatures. A record carries the phase at which a message was transmitted, including a third party's replay, and is attributed to its author, so a late replay of a pending envelope is charged to that author; the protected service keeps prescribed traffic clear of this. |
+| Positive conditional coverage (`positive`, `coverage`) | Each forbidden record of a player is sampled with at least a fixed positive probability, so a fixed deposit deters every first departure. | The rate is a property of the audit backend; independent per-record sampling achieves it, and a complete audit gives rate one (`SourceServiceSpec.completeAudit_raw_sequentialEquilibrium_preserved`). It covers messages that are never included, which no mempool observer guarantees, and it presupposes closed communication: an opening handed to an opponent through an unaudited channel or an unregistered account is verifiable and invisible to the audit. |
+| Collectible fixed deposits (`rosterAuditDeposit`) | Settlement subtracts a deposit fixed from the finite payoff range before an equilibrium is chosen. The range is taken over all native histories, where an unfinished history counts as zero. | Collectibility is an interpretation of the settlement utility: utilities are quasi-linear in money, forfeited deposits are burned, and one charge covers all of a player's violations. No escrow implementation is proved. The deposit scales as range/p. |
 | Utility of initial parameters and public outcome | The source utility is the raw utility evaluated on the typed source readout, invariant under private response normalization. | Utilities that read repaired private future values are outside the claim. |
+| Public chance | A sample draws exactly from its kernel, conditional on the preceding execution, and players cannot withhold or replace the draw. | A realization needs a randomness beacon that players cannot predict or bias, read after the draw's inputs are final; players' own commit–reveal and block hashes do not qualify. With bounded randomness only dyadic weights are exact. |
+| Final inclusion | An included message stays included. | Reorganizations before finality are outside the model; a reorganized grant would make lawful messages look forbidden to the audit. |
 | Finite source information histories (instance argument) | Required by the finite SE definition of the pinned GameTheory library to state the source SE; finiteness of all source histories then follows from consistency and the bounded source horizon. | No premise beyond that definition. |
 
 The theorem asserts no cryptographic or EVM refinement: commitments are ideal,

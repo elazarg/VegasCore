@@ -41,18 +41,25 @@ percentage estimate.
   has the correct source readout and realized settlement law, including fresh
   bindings, chance and guarded disclosure. This is an initialized-law result.
   Evidence: `sourceServiceCompiledProfile_readout_law` in
-  [SourceServiceLaw.lean](../Vegas/Game/SourceServiceLaw.lean) and
-  `sourceServiceCompiledProfile_settlement_law` in
-  [SourceServiceAudit.lean](../Vegas/Game/SourceServiceAudit.lean).
+  [SourceServiceLaw.lean](../Vegas/Game/SourceServiceLaw.lean), and for
+  settlement `sourceService_history_settlement` and
+  `sourceService_history_audit_clear` in
+  [SourceServiceAudit.lean](../Vegas/Game/SourceServiceAudit.lean), which hold
+  at every permitted history and are what the SE theorem uses.
 
 - [x] **S2. One common native consistency sequence.** From an original
   consistent source assessment, construct the actual fully mixed timed native
   profiles, their Bayes beliefs, and one common subsequence converging at all
   native information sites to a consistent assessment. No normalized-source
-  equilibrium is assumed. Evidence: `exists_sourceService_timed_consistent` in
-  [SourceServiceTimedConsistency.lean](../Vegas/Game/SourceServiceTimedConsistency.lean).
-  This establishes consistency, not rationality or outcome preservation of the
-  resulting limit.
+  equilibrium is assumed. Evidence: `sourceService_consistent_supported_sequence`
+  in [SourceServiceChoiceSupport.lean](../Vegas/Game/SourceServiceChoiceSupport.lean)
+  gives one fully supported Bayes source sequence;
+  `TimedApproximant.ofSource`, `TimedApproximant.mixed` and
+  `TimedApproximant.ofSource_bayes` in
+  [SourceServiceLocalComparison.lean](../Vegas/Game/SourceServiceLocalComparison.lean)
+  give the fully mixed native Bayes assessments, and the SE limit theorem takes
+  the common consistent subsequence. This establishes consistency, not
+  rationality or outcome preservation of the resulting limit.
 
 - [x] **S3. Information correspondence at every native decision.** Derive the
   actual conditional information laws throughout every source constructor and
@@ -156,7 +163,11 @@ percentage estimate.
   `SourceServiceSpec.audited_raw_sequentialEquilibrium_preserved` in
   [SourceServiceCompilation.lean](../Vegas/Game/SourceServiceCompilation.lean),
   restated and pinned in `Paper.lean` as
-  `Vegas.Paper.source_audited_raw_sequential_equilibrium`. One
+  `Vegas.Paper.source_audited_raw_sequential_equilibrium`, with the two horizon
+  lemmas `Vegas.Paper.source_protocol_horizon` and
+  `Vegas.Paper.raw_service_horizon`. The statement covers programs whose
+  commitment payload types are finite; it gives the joint law of the typed
+  terminal state and settlement, and no charge on the equilibrium's paths. One
   `SourceServiceSpec` supplies both edges: R4 takes its rosters, network,
   bounds and the binding projection of its opportunities; the observed result
   is the parameter and public-outcome readout, invariant under normalization
@@ -180,6 +191,7 @@ percentage estimate.
   the reviewed result is pushed.
 
 The [stack document](se-compilation-stack.md) gives the detailed proof map and
-backend assumptions. The [results roadmap](se-preservation-roadmap.md) records
+backend assumptions. [Review follow-ups](review-follow-ups.md) records the open
+design and engineering items. The [results roadmap](se-preservation-roadmap.md) records
 other checked results and research boundaries. This checklist is the completion
 ledger for the full-language end-to-end theorem.

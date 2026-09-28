@@ -10,11 +10,8 @@ and claims audit is done; E2 closes when the reviewed result is pushed.
 Do not create new milestone boxes for helper lemmas or close existing boxes
 using conditional theorems with unproved compiler premises.
 
-The working branch is `spe`. The former handoff drafts are integrated into the
-build roots and check. The branch `spe-handoff-20260927` keeps their earlier
-snapshot and lane notes; the draft status and process instructions in those
-notes are superseded by this document. Consult the actual Git state when
-resuming; never overwrite existing work blindly.
+Consult the actual Git state when resuming; never overwrite existing work
+blindly.
 
 Do not modify the GameTheory submodule. Generic mathematics belongs in
 `GameTheoryExtensions/`, generic execution in `Interaction/`, pending-message

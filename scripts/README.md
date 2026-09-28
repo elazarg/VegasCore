@@ -23,8 +23,7 @@ Run these tools from the repository root.
 - `python scripts/report-open-obligations.py` lists every result recorded as
   missing with a `-- OPEN OBLIGATION: <title>` Lean line comment, followed by
   its description on the directly following `--` lines. It never fails: CI shows
-  each obligation as a warning annotation on every run, and a local
-  `pre-commit` hook that runs it prints them on every commit. Use it for a
+  each obligation as a warning annotation on every run. Use it for a
   result that cannot yet be stated precisely; a precisely stated prospective
   theorem belongs in `Paper.lean` as described below. Remove the marker in the
   commit that proves the result.

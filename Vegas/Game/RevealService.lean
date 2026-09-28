@@ -23,8 +23,8 @@ expiry. These replays retain the player's own response recall; their source
 interpretation requires action splitting, not erasing native histories.
 Deadlines increase with source rank
 so that a successor can remain timely after an early successful predecessor.
-The operational timeliness and source-history correspondence are separate proof
-obligations; the definitions do not assert equilibrium preservation.
+The definitions assert no equilibrium property; operational timeliness and the
+source-history correspondence are proved in the modules that use them.
 -/
 
 noncomputable section
