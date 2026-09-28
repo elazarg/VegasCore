@@ -11,7 +11,9 @@ to their policies. The count theorem includes arbitrary raw responses.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -91,4 +93,4 @@ theorem roster_prefix_response_counts (setup : Setup (Player := Player) (L := L)
       rosterPlanPrefix_actors]
   rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

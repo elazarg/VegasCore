@@ -14,9 +14,11 @@ are retained; there is no reset of private recall or passive observations.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -264,4 +266,4 @@ theorem roster_continuation_sourceReadout_law [Finite Player]
     (initialRefsBefore setup.program) 0 (CompiledPolicySuffix.whole setup.program profile)
     count state execution checkpoint (by simpa only [Nat.zero_add] using counts) clean serials
 
-end Vegas.SourceProgram.RevealService
+end Vegas

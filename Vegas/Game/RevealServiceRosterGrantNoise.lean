@@ -9,9 +9,11 @@ import Vegas.Pending.ReactiveServiceGrant
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -250,4 +252,4 @@ theorem roster_prefix_grant_observation_kernel
     ReactiveApplication.Execution.environmentStep, reactiveApplication, environmentStep,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume] using nextLaw
 
-end Vegas.SourceProgram.RevealService
+end Vegas

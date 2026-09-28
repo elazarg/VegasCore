@@ -13,10 +13,12 @@ native histories; only the resulting terminal-state law is projected.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -141,4 +143,4 @@ theorem owner_local_law_readout
         (owner_choice_ordinary setup leaks extended watcher who different history _ execution
           current choice) _ (chosen _)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -21,9 +21,11 @@ and every later decoder offset.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -476,4 +478,4 @@ theorem initialized_sourceService_prefix_support
   · simpa only [Nat.zero_add] using aligned
   · simpa only [Nat.zero_add] using boundary
 
-end Vegas.SourceProgram.RevealService
+end Vegas

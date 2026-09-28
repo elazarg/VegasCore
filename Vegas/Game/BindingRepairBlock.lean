@@ -15,7 +15,9 @@ failed binding. They do not yet simulate an arbitrary future native policy.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open EventGraphRuntime Interaction GameTheory.Math.Probability
 
@@ -221,4 +223,4 @@ theorem reactive_commit_repair
       _ serial (ready repaired) (timely repaired) (fresh repaired) (vacant repaired)
       (unused repaired) (serials repaired) players network (supported repaired) ref
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

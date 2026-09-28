@@ -30,7 +30,7 @@ private def inputOnly (types : Player → Int) : SourceProgram.Initial
 
 example : commitmentNames context = ∅ := rfl
 example : SourcePublicCtx simpleExpr context = [] := rfl
-example (types : Player → Int) : EventLowering.eventCount (inputOnly types).program = 0 := rfl
+example (types : Player → Int) : Vegas.eventCount (inputOnly types).program = 0 := rfl
 
 /-- There is no guard operand that reads either private valuation. -/
 example (who : Player) (payload : simpleExpr.Ty)
@@ -50,12 +50,12 @@ example (types : Player → Int) :
 example (types : Player → Int) :
     (sourceObserve Player.bob (initial types)).cells.get (.there .here) = some (types .bob) := rfl
 
-private abbrev graph := EventLowering.toEventGraph program
+private abbrev graph := Vegas.toEventGraph program
 private abbrev aliceInput : graph.InputId := ⟨0, by decide⟩
 private abbrev bobInput : graph.InputId := ⟨1, by decide⟩
 
 private def native (types : Player → Int) : EventGraphRuntime.State graph :=
-  EventGraphRuntime.State.initial (EventLowering.encodeInputs (initial types))
+  EventGraphRuntime.State.initial (Vegas.encodeInputs (initial types))
 
 /-- Initial private inputs allocate no accepted commitment handles. -/
 example (types : Player → Int) (input : graph.InputId) :

@@ -14,7 +14,9 @@ pending observation or private recall is discarded.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -170,4 +172,4 @@ theorem binding_waiting_opportunity
       (runtime setup).eventRecorded_congr leaks _ _ frame.submissions event]
     exact unsent
 
-end Vegas.SourceProgram.RevealService
+end Vegas

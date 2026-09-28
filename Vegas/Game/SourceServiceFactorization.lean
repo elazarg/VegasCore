@@ -22,9 +22,11 @@ operations, rather than supplied as an independent channel hypothesis.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -571,4 +573,4 @@ theorem guarded_opening_handler_focal
       (congrArg EventGraphRuntime.PlayerView.candidates views) event leftReady rightReady
         _ _ _ _ (fun _ => rfl) (fun _ => rfl)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

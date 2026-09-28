@@ -15,7 +15,9 @@ hypotheses remain operational premises; no posterior or incentive premise is int
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
@@ -269,4 +271,4 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
   rw [FinDist.probOf_map, FinDist.probOf_map] at mapped
   exact monitored.trans_eq mapped.symm
 
-end Vegas.SourceProgram.RevealService
+end Vegas

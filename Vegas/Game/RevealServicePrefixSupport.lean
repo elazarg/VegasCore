@@ -14,9 +14,11 @@ choices need not be the compilation of any one source behavioral policy.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -230,4 +232,4 @@ theorem initialized_prefix_support
     PrefixCheckpoint.decode setup.program _ _ _ 0 count state finished related, priorView,
     sourceReach⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

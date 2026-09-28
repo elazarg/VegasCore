@@ -73,11 +73,11 @@ Arbitrary graph deviations may also use completion-order information.
 
 ## Canonical and asynchronous correspondence
 
-`EventLowering.canonical_setup_law` proves exact decoded terminal-state laws for
+`Vegas.canonical_setup_law` proves exact decoded terminal-state laws for
 the canonical source-order execution. The state decoder reconstructs every source
 cell from the immutable graph fields, without inventing payload defaults.
 
-`EventLowering.canonical_deviation_terminalState_law` gives every canonical
+`Vegas.canonical_deviation_terminalState_law` gives every canonical
 graph replacement one source-policy backtranslation, uniformly over concrete
 initial states. `canonical_setup_deviation_law` packages this result over
 distributed private setup. Same-error Nash follows by specializing the graph
@@ -85,7 +85,7 @@ scheduling theorem to canonical execution. Backtranslation need
 only agree on actual canonical decision observations; a global identity on
 arbitrary, inconsistent graph observations is not required.
 
-`EventLowering.scheduled_setup_law` gives the same honest terminal-state law under
+`Vegas.scheduled_setup_law` gives the same honest terminal-state law under
 adaptive public graph scheduling. `scheduled_setup_deviation_law` represents
 each unilateral asynchronous graph replacement by a finite mixture of source
 policies. The mixture is chosen before private setup is sampled and leaves

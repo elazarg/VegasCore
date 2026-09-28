@@ -15,9 +15,11 @@ identity, not a claim about arbitrary native information-site beliefs.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
@@ -108,4 +110,4 @@ theorem failed_disclosure_successor_posterior
     cases intention <;> simp only [effectiveDisclosure, disclosureResult_false, failure]
   rw [← effective, revealSuccessor_restore_effective]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

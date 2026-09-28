@@ -17,7 +17,9 @@ The lemmas would not justify erasure under an interface exposing those events.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -501,4 +503,4 @@ theorem environment_bind_eq {Outcome : Type}
       · exact (same.with_application state).append_environment _ _
 
 end ReplayAgreement
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -12,7 +12,9 @@ arbitrary effective choices, with authentic first-departure evidence retained.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -143,4 +145,4 @@ theorem first_binding_block_coupling
       (serials.next_unpublished owner) packets available before after visits ticks split
       (by rw [app.respond_environmentRecall]; exact position)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

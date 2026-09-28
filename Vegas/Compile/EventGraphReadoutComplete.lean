@@ -13,7 +13,9 @@ so successful decoding proves completion without an execution-policy premise.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -93,4 +95,4 @@ theorem terminal_decode_complete {Γ : SourceCtx Player L} {openNames : Finset V
   apply (config.output_available event).mp
   exact terminalRefsWith_available_outputs program _ _ config.store decoded event
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

@@ -15,7 +15,9 @@ The fixed implementation retains its memory and an actual retained endpoint.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -142,4 +144,4 @@ theorem resolution_history_tail_coupling
     rw [length]
     exact trace
 
-end Vegas.SourceProgram.RevealService
+end Vegas

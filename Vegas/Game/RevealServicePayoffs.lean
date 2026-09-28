@@ -21,7 +21,9 @@ The deduction models collection in utility units, not an implementation of escro
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open Interaction EventGraphRuntime GameTheory GameTheory.Math.Probability
 
@@ -37,7 +39,7 @@ def sourceReadout (state : (application setup leaks).ProtocolState) :
   state.bind fun control =>
     let config := control.execution.application.config
     if config.cut.Terminal then
-      EventLowering.decodeState? (EventLowering.terminalRefs setup.program) config.store
+      Vegas.decodeState? (Vegas.terminalRefs setup.program) config.store
     else none
 
 theorem sourceReadout_normalization (state : (application setup leaks).ProtocolState) :
@@ -48,12 +50,12 @@ theorem sourceReadout_normalization (state : (application setup leaks).ProtocolS
 theorem sourceReadout_eq_some (control : (application setup leaks).Control)
     (terminal : control.execution.application.config.cut.Terminal)
     (source : State L setup.program.terminalCtx)
-    (agree : (EventLowering.terminalRefs setup.program).Agrees source
+    (agree : (Vegas.terminalRefs setup.program).Agrees source
       control.execution.application.config.store) :
     sourceReadout setup leaks (some control) = some source := by
   unfold sourceReadout
   rw [Option.bind_some, ite_eq_left terminal]
-  exact EventLowering.decodeState?_eq_some _ source _ agree
+  exact Vegas.decodeState?_eq_some _ source _ agree
 
 /-- Every bounded raw play has a complete source-state readout. Decoding does
 not invent default payloads, even after arbitrary malformed responses. -/
@@ -72,10 +74,10 @@ theorem sourceReadout_succeeds [Fintype Player]
     menu_settles setup leaks responses watcher reveals profile history supported
   rw [same]
   change (if execution.application.config.cut.Terminal then
-    EventLowering.decodeState? (EventLowering.terminalRefs setup.program)
+    Vegas.decodeState? (Vegas.terminalRefs setup.program)
       execution.application.config.store else none).isSome = true
   rw [ite_eq_left terminal]
-  exact EventLowering.decodeState?_isSome_of_available _ _
+  exact Vegas.decodeState?_isSome_of_available _ _
     (fun field => execution.application.config.store_available_of_terminal terminal field)
 
 /-- Analysis utility of the actual terminal source readout, prior to a deposit
@@ -217,4 +219,4 @@ theorem netUtility_comparison (watcher who : Player) (ordinary : who ≠ watcher
       rw [netUtility_clean setup leaks watcher who base deposit state (clean state supported)]
       exact below state supported
 
-end Vegas.SourceProgram.RevealService
+end Vegas

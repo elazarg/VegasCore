@@ -12,7 +12,9 @@ caller. The site's full private recall and passive observation remain present.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -150,4 +152,4 @@ theorem roster_owner_site
       · rw [pastCount]
         exact roster_count_before selected
 
-end Vegas.SourceProgram.RevealService
+end Vegas

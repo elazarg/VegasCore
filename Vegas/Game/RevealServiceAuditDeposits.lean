@@ -17,7 +17,9 @@ assumption about the actual audit and collection service.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open Interaction EventGraphRuntime
@@ -95,4 +97,4 @@ theorem auditRangeDeposit_sufficient (probability : Player → ℝ)
       probability who * auditRangeDeposit setup leaks bounds watcher base probability who := by
   rw [auditRangeDeposit, mul_div_cancel₀ _ (positive who).ne']
 
-end Vegas.SourceProgram.RevealService
+end Vegas

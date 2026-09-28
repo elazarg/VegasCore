@@ -14,14 +14,16 @@ The authentic partial audit and positive conditional coverage are explicit
 service assumptions.
 
 The source edge is
-`Vegas.SourceProgram.RevealService.SourceServiceSpec.exists_native_sequentialEquilibrium`
+`Vegas.SourceServiceSpec.exists_native_sequentialEquilibrium`
 and the runtime edge is
-`Vegas.SourceProgram.RevealService.sourceService_audited_raw_equilibrium_extends`.
+`Vegas.sourceService_audited_raw_equilibrium_extends`.
 -/
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability GameTheory.Enforcement Interaction EventGraphRuntime
@@ -168,4 +170,4 @@ theorem completeAudit_raw_sequentialEquilibrium_preserved {Parameter : Type}
 
 end SourceServiceSpec
 
-end Vegas.SourceProgram.RevealService
+end Vegas

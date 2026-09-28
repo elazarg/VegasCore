@@ -15,9 +15,11 @@ choice kernel. This includes changing one player's private alias selector.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -167,4 +169,4 @@ theorem run_source_suffix_option_law
         (revealSuccessor published selected source (sourceChoice setup leaks response))
         tailRefs tailEmbedding tailBefore (offset + 1) nextAligned after afterCheckpoint
 
-end Vegas.SourceProgram.RevealService
+end Vegas

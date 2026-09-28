@@ -14,10 +14,12 @@ history. The statement covers all retained histories and arbitrary policies.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -399,4 +401,4 @@ theorem watcher_history_silent (bounds : MessageBounds (graph setup))
   rw [quiet] at seen
   exact (List.not_mem_nil seen).elim
 
-end Vegas.SourceProgram.RevealService
+end Vegas

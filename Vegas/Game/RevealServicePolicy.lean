@@ -20,9 +20,11 @@ transfer.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
@@ -176,4 +178,4 @@ theorem decoded_compiledProfile (watcher : Player) (profile : BehavioralProfile 
     (horizon setup watcher) (scheduler setup leaks watcher) who _
     (policy_covered setup leaks bounds watcher profile weight nonnegative atMostOne who)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

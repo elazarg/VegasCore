@@ -13,15 +13,17 @@ hidden source state and all native records retained in the auxiliary readout.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 /-- A conditional branch of the actual phase interpreter. This is a proof
-kernel; the implemented policy is `RevealService.rosterPolicy`. -/
+kernel; the implemented policy is `Vegas.rosterPolicy`. -/
 def rosterDisclosureTranscript
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -151,4 +153,4 @@ theorem roster_successor_observation_kernel
         change timing.bind _ = timing.bind _
         exact FinDist.bind_congr fun slot _ => fixed (some slot) rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

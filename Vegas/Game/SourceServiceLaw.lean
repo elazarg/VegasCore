@@ -12,10 +12,12 @@ initial types, dynamic binding catalogues and retained private traffic.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -260,4 +262,4 @@ theorem sourceServiceCompiledProfile_readout_law
   intro initial _
   exact normalizeDisclosureProfile_runFrom setup.program original (setup.initialConfig initial)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

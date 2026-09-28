@@ -14,7 +14,9 @@ memory comparison theorem on this law.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -269,4 +271,4 @@ theorem sourceService_owner_bayes_at_history
       event owner owned visits count selected before control.execution referenceSupport site
         observed
 
-end Vegas.SourceProgram.RevealService
+end Vegas

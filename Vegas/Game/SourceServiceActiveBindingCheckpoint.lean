@@ -12,7 +12,9 @@ value without sampling that opportunity a second time.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -169,4 +171,4 @@ theorem scheduledBindingActive_config
   rw [state]
   exact config
 
-end Vegas.SourceProgram.RevealService
+end Vegas

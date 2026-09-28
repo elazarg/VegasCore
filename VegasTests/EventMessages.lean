@@ -15,7 +15,6 @@ complete an event.
 namespace VegasTests.EventMessages
 
 open GameTheory.Math.Probability Interaction Vegas
-open SourceProgram.EventLowering
 
 noncomputable section
 

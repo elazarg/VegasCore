@@ -13,7 +13,9 @@ composes reserved inclusion and expiry with the single joint runner.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -228,4 +230,4 @@ theorem roster_runJoint_at_owner
     interactionInstruction, FinDist.pure_bind, ReactiveApplication.Command.actor?,
     FinDist.bind_bind]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

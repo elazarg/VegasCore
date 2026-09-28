@@ -12,7 +12,9 @@ fields and one source state; it does not assume an execution or whole-run law.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability
 
@@ -254,4 +256,4 @@ theorem compileResolve_eval? {Field : Type} [DecidableEq Field]
     Option.bind_some, acceptedExact]
   rfl
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

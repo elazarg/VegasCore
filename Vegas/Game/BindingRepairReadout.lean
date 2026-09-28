@@ -14,9 +14,11 @@ nor an equality of repaired future hidden values.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -89,4 +91,4 @@ theorem bindingFrame_baseUtility {Parameter : Type}
       Option.elim_none, Option.elim_some] at value ⊢
   all_goals exact value
 
-end Vegas.SourceProgram.RevealService
+end Vegas

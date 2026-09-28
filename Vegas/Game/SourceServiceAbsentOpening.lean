@@ -15,10 +15,12 @@ gives zero gain for every belief.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -251,4 +253,4 @@ theorem absent_opening_comparison_eq (who : Player) (site : service.model.Inform
 
 end TimedApproximant
 
-end Vegas.SourceProgram.RevealService
+end Vegas

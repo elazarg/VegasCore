@@ -17,7 +17,9 @@ arrival notifications. It does not erase fresh packets or private response recal
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -132,4 +134,4 @@ theorem replay_equilibrium_extends
     (fun who history => utility history.state who)).mp targetRemaining
   exact ⟨target, targetFull, agrees, historyLaw⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

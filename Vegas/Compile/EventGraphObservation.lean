@@ -12,7 +12,9 @@ Foreign private cells remain intentionally hidden.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -203,4 +205,4 @@ theorem decodeObservation?_playerStore_eq_some {graph : Vegas.EventGraph Player 
   rw [decodeObservation?_playerStore]
   exact decodeObservation?_eq_some refs who state store refsAgree
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

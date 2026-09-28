@@ -20,7 +20,7 @@ noncomputable section
 
 namespace Vegas.SourceProgram.Setup
 
-open GameTheory GameTheory.Math.Probability EventLowering
+open GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]

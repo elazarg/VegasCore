@@ -16,7 +16,9 @@ assuming honest responses, reporting, successful monitoring, or equilibrium.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open Interaction EventGraphRuntime GameTheory.Math.Probability
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -313,4 +315,4 @@ theorem menu_settles [Fintype Player]
     (EventGraphRuntime.State.initial_invariant (graph := graph setup)
       (setup.eventInputs source)) reached
 
-end Vegas.SourceProgram.RevealService
+end Vegas

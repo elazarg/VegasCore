@@ -14,9 +14,11 @@ source-history induction supplies them independently of equilibrium choices.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open Interaction EventGraphRuntime EventLowering GameTheory GameTheory.Protocol
+open SourceProgram
+
+open Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
@@ -256,4 +258,4 @@ theorem ordinary_extra_comparison (watcher owner : Player) (different : owner â‰
     (by rw [FinDist.probOf_map]; exact collected) sufficient
   simpa only [FinDist.expect_map] using compared
 
-end Vegas.SourceProgram.RevealService
+end Vegas

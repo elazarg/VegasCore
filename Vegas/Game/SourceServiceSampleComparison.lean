@@ -13,10 +13,12 @@ continuation laws for every local lottery and every belief over the site.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -89,4 +91,4 @@ theorem sample_comparison_eq (who : Player) (site : service.model.InformationSit
 
 end TimedApproximant
 
-end Vegas.SourceProgram.RevealService
+end Vegas

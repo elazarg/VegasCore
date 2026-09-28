@@ -13,7 +13,9 @@ local policy law, not whole-run scheduler invariance or deviation extraction.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -56,4 +58,4 @@ theorem compileEventPolicy_complete_hidden
     (toEventGraph program).ownCompletions_complete_of_not_actor who config
       completed ready action value notOwned]
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

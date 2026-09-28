@@ -14,7 +14,7 @@ noncomputable section
 
 namespace Vegas.SourceProgram
 
-open EventGraphRuntime EventLowering
+open EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}

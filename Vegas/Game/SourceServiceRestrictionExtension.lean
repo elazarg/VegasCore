@@ -14,7 +14,9 @@ The initialized law preserves the full joint realized payoff vector.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Math.Probability GameTheory.Protocol
 open GameTheory.Protocol.ExecutionProtocol GameTheory.Enforcement
@@ -145,4 +147,4 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
       rw [clean, FinDist.map_pure]
     _ = _ := (FinDist.map_eq_bind ..).symm
 
-end Vegas.SourceProgram.RevealService
+end Vegas

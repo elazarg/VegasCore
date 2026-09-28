@@ -12,7 +12,9 @@ certificate; it assumes no execution or distributional correspondence.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -210,4 +212,4 @@ theorem CompiledSuffix.revealTail
     simpa [OutputEmbedding.tail, compileRankedNodes, eventCount, outputLayout] using
       suffix.nodeEq (Fin.succ index)
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

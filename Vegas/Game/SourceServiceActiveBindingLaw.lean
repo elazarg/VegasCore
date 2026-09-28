@@ -12,9 +12,11 @@ executes the original source binding kernel within the remaining phase.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -315,4 +317,4 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
   exact servicePlan_players_eq setup leaks _ _ network maintenance
     (by simp [maintenance]) (by intro who; simp [maintenance]) final
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -30,7 +30,9 @@ uniqueness of the target equilibrium.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability GameTheory.Enforcement Interaction EventGraphRuntime
@@ -119,4 +121,4 @@ theorem audited_source_sequential_equilibrium_preserved
     (sourceReadout setup leaks) (sourceReadout_normalization setup leaks) retained retainedSE
   exact ⟨target, targetSE, targetLaw.trans sourceLaw⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

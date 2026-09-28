@@ -13,9 +13,11 @@ through the actual preceding replay and observation window.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering EventGraph
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -177,8 +179,8 @@ theorem sourceServiceOpportunity_reveal
   intro index event granted unsent
   let app := application setup leaks
   have outputEq : (graph setup).outputLayout event = .publication payload := by
-    change EventLowering.outputLayout setup.program (embedding.event index) = _
-    simpa [index, EventLowering.outputLayout, eventCount] using embedding.layout_eq index
+    change Vegas.outputLayout setup.program (embedding.event index) = _
+    simpa [index, Vegas.outputLayout, eventCount] using embedding.layout_eq index
   have codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve owner payload (refs.get binding)
         (compileChecks (published := published) refs source.registry
@@ -606,4 +608,4 @@ theorem sourceServiceTimedPolicy_reveal_traffic
             List.append_assoc, List.cons_append, List.nil_append]
           rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

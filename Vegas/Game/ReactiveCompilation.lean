@@ -37,6 +37,6 @@ def compileReactiveStrategy (setup : Setup (Player := Player) (L := L))
     (runtime.reactiveApplication leaks).Policy :=
   runtime.compileReactivePolicy leaks who
     (setup.eventGraph.toModePolicy mode who
-      (EventLowering.compileEventPolicy setup.program who policy))
+      (Vegas.compileEventPolicy setup.program who policy))
 
 end Vegas.SourceProgram.Setup

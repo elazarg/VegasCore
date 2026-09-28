@@ -18,9 +18,11 @@ steps, rather than fields silently assuming strategic correspondence.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -256,4 +258,4 @@ theorem sourceServicePolicy_commit_checkpoint
   exact stateEq ▸ checkpoint.commit name guard event eventRank ready outputEq
     (fun ref => refsBefore ref index) choice decoded
 
-end Vegas.SourceProgram.RevealService
+end Vegas

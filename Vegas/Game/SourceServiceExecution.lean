@@ -17,9 +17,11 @@ intentions belong to the source normalization's private-memory distribution.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -322,4 +324,4 @@ theorem effective_reveal_state_law [Fintype Player]
   rw [effectiveDisclosureView_observe] at fixed
   simp only [fixed, Function.comp_def]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

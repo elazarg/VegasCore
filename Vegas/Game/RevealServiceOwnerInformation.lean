@@ -12,10 +12,12 @@ derived from actual restricted-game histories and actual service execution.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -164,4 +166,4 @@ theorem owner_focal_information
     (by rw [leftLeaks, rightLeaks])).mp sourceView
   rw [leftInfo, rightInfo, past, beforeView]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

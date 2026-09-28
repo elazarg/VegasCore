@@ -15,7 +15,9 @@ history are retained through the sample and its complete clock suffix.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -284,4 +286,4 @@ theorem sample_block_stopped_coupling
       Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
     exact (existsTail next member).choose_spec.2.2 final reached
 
-end Vegas.SourceProgram.RevealService
+end Vegas

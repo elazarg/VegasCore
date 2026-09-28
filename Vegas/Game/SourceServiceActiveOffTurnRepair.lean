@@ -14,7 +14,9 @@ evidence; replay and silence preserve the private repair frame.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -133,4 +135,4 @@ theorem off_turn_history_response_coupling
       exact List.mem_append_right _ (List.mem_singleton_self _)
     · exact Or.inr ⟨good.1, good.2.1⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -15,7 +15,9 @@ tail either preserve their joint frame or retain a real audit departure.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -282,4 +284,4 @@ theorem repeated_binding_block_coupling
       Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ member)
     exact (existsTail next supported).choose_spec.2.2 final reached
 
-end Vegas.SourceProgram.RevealService
+end Vegas

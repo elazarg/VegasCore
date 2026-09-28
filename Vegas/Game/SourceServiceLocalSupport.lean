@@ -14,9 +14,11 @@ neither source-state reachability nor a normalized equilibrium is assumed.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -213,4 +215,4 @@ theorem sourceService_response_supported
       (control.execution.recall who) (control.execution.observe app who)
       event granted owned response member)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

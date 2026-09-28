@@ -15,7 +15,9 @@ comparison must retain the changed private recall and wire input history.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -88,4 +90,4 @@ theorem replay_extra_response (who : Player)
       exact ⟨same, (mem_publishedReplays setup leaks view response).mp replayed⟩
     · exact (Finset.notMem_empty _ replayed).elim
 
-end Vegas.SourceProgram.RevealService
+end Vegas

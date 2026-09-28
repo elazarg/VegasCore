@@ -18,9 +18,11 @@ after inclusion is separate from this typed and allocation checkpoint.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -433,4 +435,4 @@ theorem ServiceBoundary.binding_block
       (rosters event) granted visited grant window observer other otherEvent, grantRecall]
     exact boundary.unsent observer other (by omega)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

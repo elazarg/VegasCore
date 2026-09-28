@@ -11,7 +11,9 @@ prefix. Store agreement is the existing source-to-graph relation. Evidence
 does not introduce handles or add fields to publication results.
 -/
 
-namespace Vegas.SourceProgram.EventLowering.ContextRefs
+namespace Vegas.ContextRefs
+
+open SourceProgram
 
 variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L} {Γ : SourceCtx Player L}
@@ -46,4 +48,4 @@ theorem graphEvidence_of_source (refs : ContextRefs graph.layout Γ)
   obtain ⟨source, bound⟩ := valid
   exact ⟨source, (refs.commitmentEvidence_holds_iff state store agree source fact.value).mpr bound⟩
 
-end Vegas.SourceProgram.EventLowering.ContextRefs
+end Vegas.ContextRefs

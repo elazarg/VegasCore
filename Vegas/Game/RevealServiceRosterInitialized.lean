@@ -15,10 +15,12 @@ jointly distributed, rather than only their separate marginals.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -123,4 +125,4 @@ theorem rosterPerturbedProfile_readout_law
         (instructionCount setup.program + 1) (setup.executionProtocol admission).initHistory
         (Nat.le_refl _)).symm)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

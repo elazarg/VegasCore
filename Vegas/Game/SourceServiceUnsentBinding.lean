@@ -20,10 +20,12 @@ response reveals only that the current slot was not chosen.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -1198,4 +1200,4 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
 
 end TimedApproximant
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -13,10 +13,12 @@ recall do not select a different source continuation policy.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
-open Interaction EventGraphRuntime EventLowering
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -63,4 +65,4 @@ theorem roster_owner_choice_at_history
   rw [sourceChoiceLaw_application_eq setup leaks
     (setup.decodeBehavioralProfile admission profile) who _ _ unchanged, choiceLaw, sourceSame]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

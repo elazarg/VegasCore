@@ -13,7 +13,9 @@ field is unavailable, and never invents a binding or publication result.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability
 
@@ -204,4 +206,4 @@ theorem terminalPayouts_eq_source {Γ : SourceCtx Player L}
     terminalPayoffs_eq_source program result.1 result.2 state agree]
   simp [SourceProgram.evaluatePayoffs, List.map_map]
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

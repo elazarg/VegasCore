@@ -14,9 +14,11 @@ The raw owned request is therefore already the effective response representative
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -188,4 +190,4 @@ theorem roster_fresh_normal
       (fun slot => control.execution.application.candidates.lookup (who, slot))
       (control.execution.network.known who) ⟨candidate, raw⟩ owned localFixed unavailable)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

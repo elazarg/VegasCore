@@ -11,7 +11,9 @@ records are hidden from the watcher.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -234,4 +236,4 @@ theorem replay_history_counterpart
     subst control
     exact ⟨original, first, originalState, related⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

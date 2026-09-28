@@ -21,7 +21,9 @@ collection remain separate service obligations.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -379,4 +381,4 @@ theorem ordinary_response_traffic (bounds : MessageBounds (graph setup))
         rw [identified]
         exact List.mem_map.mpr ⟨published, member, rfl⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -15,9 +15,11 @@ identifiers, while actual response counts supply the next owner's offset.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -248,4 +250,4 @@ theorem initialized_roster_prefix_support
     PublicPrefixCheckpoint.decode setup.program _ _ _ 0 count state finished related,
     priorView, sourceReach, clean⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

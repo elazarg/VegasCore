@@ -14,9 +14,11 @@ it compares outcomes without identifying these information sets with source ones
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -211,4 +213,4 @@ theorem roster_harmless_response_source_law
       (ProtocolState.continuationLaw setup.program profile)).map some) same
   simpa only [FinDist.bind_map] using mapped
 
-end Vegas.SourceProgram.RevealService
+end Vegas

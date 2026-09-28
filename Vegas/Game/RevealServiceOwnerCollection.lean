@@ -14,10 +14,12 @@ bounded pools: every foreign pending envelope is sampled with the stated rate.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -110,4 +112,4 @@ theorem owner_extra_collection
     simp only [List.mem_append, List.mem_singleton, or_true]
   exact (sampling who different submitted.network.pending message present rfl).trans collected
 
-end Vegas.SourceProgram.RevealService
+end Vegas

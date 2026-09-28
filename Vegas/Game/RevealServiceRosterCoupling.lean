@@ -15,9 +15,11 @@ retained; no observation-kernel independence assumption is introduced.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -207,4 +209,4 @@ theorem PublicCheckpoint.reveal_scheduled_coupling
       · simp only [Option.isSome_some, ↓reduceIte, leftAccepted, rightAccepted, Option.getD_some]
         exact congrArg EventGraphRuntime.PlayerView.publicView completed
 
-end Vegas.SourceProgram.RevealService
+end Vegas

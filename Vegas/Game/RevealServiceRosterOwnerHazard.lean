@@ -11,7 +11,9 @@ at information sites that have zero probability in the limiting profile.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -235,4 +237,4 @@ theorem roster_owner_opening_probability
   rw [observed]
   exact probability.trans actual
 
-end Vegas.SourceProgram.RevealService
+end Vegas

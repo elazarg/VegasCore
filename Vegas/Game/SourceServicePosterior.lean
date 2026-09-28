@@ -15,9 +15,11 @@ private aliases and correlated source priors.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -116,4 +118,4 @@ theorem sourceService_state_posterior
   simp only [FinDist.map_comp, Function.comp_def] at retained
   exact retained.trans posterior
 
-end Vegas.SourceProgram.RevealService
+end Vegas

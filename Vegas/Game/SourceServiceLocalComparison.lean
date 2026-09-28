@@ -15,11 +15,11 @@ original source game through four generic steps, proved once here:
 * a local lottery at the site runs as the lottery over current responses;
 * a current response determines the complete typed source terminal law through
   the configuration law at the next event boundary
-  (`Vegas.SourceProgram.RevealService.TimedApproximant.response_continuation_law`);
+  (`Vegas.TimedApproximant.response_continuation_law`);
 * equal next-boundary configuration laws for all legal responses at every
   history of a site
   give equal prescribed and alternative assessment laws
-  (`Vegas.SourceProgram.RevealService.TimedApproximant.comparison_eq_of_phase_invariant`).
+  (`Vegas.TimedApproximant.comparison_eq_of_phase_invariant`).
 
 The remaining fact is specific to each kind of site: the configuration law at
 the next event boundary after each legal response.
@@ -27,10 +27,12 @@ the next event boundary after each legal response.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -229,7 +231,7 @@ variable {service : SourceServiceSpec Player L}
 compiled with a full-support timing law. The sequential-equilibrium theorem
 takes these assessments along one fully supported Bayes sequence of the source
 equilibrium
-(`Vegas.SourceProgram.RevealService.sourceService_consistent_supported_sequence`). -/
+(`Vegas.sourceService_consistent_supported_sequence`). -/
 def ofSource (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
@@ -473,4 +475,4 @@ theorem comparison_eq_of_phase_invariant (who : Player)
 
 end TimedApproximant
 
-end Vegas.SourceProgram.RevealService
+end Vegas

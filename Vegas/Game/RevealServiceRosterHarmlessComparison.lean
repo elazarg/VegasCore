@@ -16,10 +16,12 @@ entire terminal source-state law under the same continuation profile.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -331,4 +333,4 @@ theorem roster_harmless_comparison_gain
 
 end
 
-end Vegas.SourceProgram.RevealService
+end Vegas

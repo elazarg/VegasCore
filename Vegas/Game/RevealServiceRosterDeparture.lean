@@ -11,7 +11,9 @@ canonical response; the serial test supplies the once-per-phase condition.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -173,11 +175,11 @@ theorem roster_extra_traffic (bounds : MessageBounds (graph setup))
           fun owner => RevealOnly.uniformPolicy owner setup.program reveals
         have data := owner_choices_at_prefix setup leaks bounds profile who initial initialSupport
           setup.program reveals profile
-          (EventLowering.ContextRefs.initial setup.context
-            (EventLowering.outputLayout setup.program))
-          (Revelations.initial setup.context) (EventLowering.outputEmbedding setup.program)
-          (EventLowering.initialRefsBefore setup.program) 0
-          (EventLowering.CompiledPolicySuffix.whole setup.program profile)
+          (Vegas.ContextRefs.initial setup.context
+            (Vegas.outputLayout setup.program))
+          (Revelations.initial setup.context) (Vegas.outputEmbedding setup.program)
+          (Vegas.initialRefsBefore setup.program) 0
+          (Vegas.CompiledPolicySuffix.whole setup.program profile)
           event.val event.isLt state granted related event (by omega) ownedEvent grant
         obtain ⟨candidate, raw, opening, owned, valid, _, _⟩ := data.2.2
         have currentOpening : rosterOpening? setup leaks who event
@@ -193,9 +195,9 @@ theorem roster_extra_traffic (bounds : MessageBounds (graph setup))
         have canonical := roster_fresh_normal setup leaks bounds rosters network reveals openable
           who control trace active ((runtime setup).windowOpening leaks event candidate raw) fresh
         obtain ⟨context, source, refs, checkpoint⟩ := related.checkpoint setup.program
-          (EventLowering.ContextRefs.initial setup.context
-            (EventLowering.outputLayout setup.program))
-          (Revelations.initial setup.context) (EventLowering.outputRef setup.program)
+          (Vegas.ContextRefs.initial setup.context
+            (Vegas.outputLayout setup.program))
+          (Revelations.initial setup.context) (Vegas.outputRef setup.program)
           0 event.val state granted
         have binding : control.execution.application.BindingInvariant :=
           unchanged.symm ▸ checkpoint.binding
@@ -229,4 +231,4 @@ theorem roster_extra_traffic (bounds : MessageBounds (graph setup))
         rw [actionEq, fresh]
         simp
 
-end Vegas.SourceProgram.RevealService
+end Vegas

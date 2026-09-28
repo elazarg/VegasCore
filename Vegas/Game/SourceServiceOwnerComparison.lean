@@ -20,10 +20,12 @@ comparisons.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -315,4 +317,4 @@ theorem owner_site_source_histories (service : SourceServiceSpec Player L)
 
 end TimedApproximant
 
-end Vegas.SourceProgram.RevealService
+end Vegas

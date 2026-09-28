@@ -14,10 +14,12 @@ comparison the case analysis of the residual program.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -245,4 +247,4 @@ theorem exists_revealSource (profile : BehavioralProfile service.setup.program)
 
 end SourceServiceSpec
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -25,9 +25,9 @@ It composes two theorems:
   `(runBehavioral target).map service.readout =
    (runBehavioral source).map protocolReadout`.
 - **R4** `sourceService_audited_raw_equilibrium_extends` (checked), with
-  `observe` the parameter/public-outcome readout. Its `RevealService.baseUtility` is by
-  definition the S5 utility evaluated on `sourceReadout`, and its invariance
-  under raw normalization is `sourceParameterReadout_normalization`.
+  `observe` the typed source readout `sourceReadout`. Its `Vegas.baseUtility`
+  is by definition the S5 utility evaluated on `sourceReadout`, and its
+  invariance under raw normalization is `sourceReadout_normalization`.
 
 S5 instantiates
 `exists_sequentialEquilibrium_limit_of_local_comparisons`
@@ -218,7 +218,7 @@ S3, S4 and S5 together.
 composes M6 with R4 for one `SourceServiceSpec`. R4 takes its rosters, network,
 bounds and `ActorOpportunities.binding` projection; the S5 utility is the
 parameter-and-public-outcome utility on `sourceReadout`, so it is R4's
-`RevealService.baseUtility`. `Paper.lean` restates it as
+`Vegas.baseUtility`. `Paper.lean` restates it as
 `Vegas.Paper.source_audited_raw_sequential_equilibrium` with its axiom pin.
 
 ### M8. E2 validation and claims (checked up to the push)

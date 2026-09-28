@@ -16,10 +16,12 @@ information state, every history of a site has the same kind.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -135,4 +137,4 @@ theorem exists_siteKind (who : Player) (site : service.model.InformationSite who
 
 end SourceServiceSpec
 
-end Vegas.SourceProgram.RevealService
+end Vegas

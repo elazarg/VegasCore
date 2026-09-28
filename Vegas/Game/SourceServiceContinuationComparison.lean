@@ -15,7 +15,9 @@ range of all effective histories and is fixed before profiles or beliefs.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Math.Probability GameTheory.Protocol
 open GameTheory.Protocol.ExecutionProtocol GameTheory.Enforcement
@@ -163,4 +165,4 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
   change base final.state who - _ * deposit who = base final.state who
   rw [clear, zero_mul, sub_zero]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

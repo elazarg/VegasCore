@@ -12,10 +12,12 @@ and recall are retained; only the application law is compared.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -73,4 +75,4 @@ theorem sourceService_sample_response_application_law
         current execution (unchanged.trans same)
     _ = _ := FinDist.bind_const _ _
 
-end Vegas.SourceProgram.RevealService
+end Vegas

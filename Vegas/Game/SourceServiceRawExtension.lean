@@ -15,7 +15,9 @@ settlement vector. Original source-language SE preservation is a separate edge.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Math.Probability GameTheory.Protocol
 open GameTheory.Protocol.ExecutionProtocol GameTheory.Enforcement
@@ -143,4 +145,4 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
     simp only [FinDist.bind_map, settlementInvariant, observationInvariant] at joint
     exact joint.trans settled
 
-end Vegas.SourceProgram.RevealService
+end Vegas

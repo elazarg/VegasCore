@@ -14,7 +14,9 @@ The equality retains the complete execution, including all private recall.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open Interaction EventGraphRuntime GameTheory.Math.Probability
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
@@ -177,4 +179,4 @@ theorem menu_prefix_state [Fintype Player]
   rw [restLength] at segment
   exact segment
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -14,7 +14,9 @@ private binding outputs differ.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -126,4 +128,4 @@ theorem decoded_parameterOutcome_eq {Parameter : Type}
       (terminalRefs setup.program)
       leftSource rightSource left.store right.store firstAgree secondAgree publicEq
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

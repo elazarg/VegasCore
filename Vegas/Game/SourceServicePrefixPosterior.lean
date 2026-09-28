@@ -15,9 +15,11 @@ it is not identified with an original source assessment.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -387,4 +389,4 @@ theorem sourceService_owner_posterior [Fintype Player]
   exact sourceService_owner_checkpoint setup leaks bounds values capacity rosters opportunities
     network players covered event owner visits final reached
 
-end Vegas.SourceProgram.RevealService
+end Vegas

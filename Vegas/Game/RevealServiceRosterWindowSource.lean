@@ -11,9 +11,11 @@ and all later phases. Its private timing posterior is only a proof expression.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -285,4 +287,4 @@ theorem roster_owner_response_source_value [Fintype Player]
   cases mode <;> simp only [sourceValue, FinDist.expect_bind, Option.isSome_none,
     Option.isSome_some, Bool.false_eq_true, ↓reduceIte]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

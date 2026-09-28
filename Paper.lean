@@ -199,11 +199,11 @@ theorem source_event_graph_canonical_law [IExpr.ResultTypes L]
     (profile : SourceProgram.BehavioralProfile setup.program) :
     ((setup.eventGraph.canonicalGame
         (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
-      (SourceProgram.EventLowering.compileEventProfile setup.program
+      (Vegas.compileEventProfile setup.program
         profile)).map
-          (SourceProgram.EventLowering.terminalState setup.program) =
+          (Vegas.terminalState setup.program) =
       setup.run profile :=
-  SourceProgram.EventLowering.canonical_setup_law setup profile
+  Vegas.canonical_setup_law setup profile
 
 /-- info: 'Vegas.Paper.source_event_graph_canonical_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -219,13 +219,13 @@ theorem source_event_graph_canonical_deviation_law [IExpr.ResultTypes L]
     ((setup.eventGraph.canonicalGame
         (setup.initialLaw.map fun initial => setup.eventInputs initial)).play
       (Profile.update (sig := setup.eventGraph.gameSignature)
-        (SourceProgram.EventLowering.compileEventProfile setup.program profile)
+        (Vegas.compileEventProfile setup.program profile)
         who replacement)).map
-          (SourceProgram.EventLowering.terminalState setup.program) =
+          (Vegas.terminalState setup.program) =
       setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program) profile who
-        (SourceProgram.EventLowering.backtranslateEventPolicy setup.program
+        (Vegas.backtranslateEventPolicy setup.program
           who replacement)) :=
-  SourceProgram.EventLowering.canonical_setup_deviation_law setup profile who replacement
+  Vegas.canonical_setup_deviation_law setup profile who replacement
 
 /-- info: 'Vegas.Paper.source_event_graph_canonical_deviation_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -238,10 +238,10 @@ interpretation of outcomes. -/
 theorem source_event_graph_payout_readout [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
     (result : {config : setup.eventGraph.Config // config.cut.Terminal}) :
-    SourceProgram.EventLowering.terminalPayouts setup.program result =
+    Vegas.terminalPayouts setup.program result =
       setup.program.evaluatePayoffs
-        (SourceProgram.EventLowering.terminalState setup.program result) :=
-  SourceProgram.EventLowering.terminalPayouts_eq_source setup.program result
+        (Vegas.terminalState setup.program result) :=
+  Vegas.terminalPayouts_eq_source setup.program result
 
 /-- info: 'Vegas.Paper.source_event_graph_payout_readout' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -284,11 +284,11 @@ theorem source_event_graph_honest_law [IExpr.ResultTypes L]
     (profile : SourceProgram.BehavioralProfile setup.program) :
     (setup.initialLaw.bind fun initial =>
       (setup.eventGraph.terminalOutcomes scheduler
-        (SourceProgram.EventLowering.compileEventProfile setup.program profile)
+        (Vegas.compileEventProfile setup.program profile)
         (setup.eventInputs initial)).map
-          (SourceProgram.EventLowering.terminalState setup.program)) =
+          (Vegas.terminalState setup.program)) =
       setup.run profile :=
-  SourceProgram.EventLowering.scheduled_setup_law setup scheduler profile
+  Vegas.scheduled_setup_law setup scheduler profile
 
 /-- info: 'Vegas.Paper.source_event_graph_honest_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -306,14 +306,14 @@ theorem source_event_graph_deviation_law [IExpr.ResultTypes L]
       (setup.initialLaw.bind fun initial =>
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
-            (SourceProgram.EventLowering.compileEventProfile setup.program profile)
+            (Vegas.compileEventProfile setup.program profile)
             who replacement)
           (setup.eventInputs initial)).map
-            (SourceProgram.EventLowering.terminalState setup.program)) =
+            (Vegas.terminalState setup.program)) =
         mixture.bind fun alternative =>
           setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
             profile who alternative) :=
-  SourceProgram.EventLowering.scheduled_setup_deviation_law setup scheduler profile who
+  Vegas.scheduled_setup_deviation_law setup scheduler profile who
     replacement
 
 /-- info: 'Vegas.Paper.source_event_graph_deviation_law' depends on axioms:
@@ -331,8 +331,8 @@ theorem source_event_graph_approximate_nash_iff [IExpr.ResultTypes L]
     (ε : ℝ) (profile : SourceProgram.BehavioralProfile setup.program) :
     IsεNash (setup.eventGame scheduler)
         (fun outcome who => utility (SourceProgram.publicOutcome setup.program
-          (SourceProgram.EventLowering.terminalState setup.program outcome)) who)
-        ε (SourceProgram.EventLowering.compileEventProfile setup.program
+          (Vegas.terminalState setup.program outcome)) who)
+        ε (Vegas.compileEventProfile setup.program
           profile) ↔
       IsεNash setup.gameForm utility ε profile :=
   setup.eventGame_approximate_nash_iff scheduler utility ε profile
@@ -845,7 +845,7 @@ finite response interface, so every commitment payload type is finite; it
 asserts no cryptographic or EVM refinement.
 -/
 
-open Vegas.SourceProgram Vegas.SourceProgram.RevealService Vegas.EventGraphRuntime
+open Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Protocol GameTheory.Enforcement in
 /-- Every original sequential equilibrium of a source program whose
 commitment payload types are finite has a sequential equilibrium of the audited
@@ -928,7 +928,7 @@ theorem source_protocol_horizon [IExpr.ResultTypes L]
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_protocol_horizon
 
-open Vegas.SourceProgram.RevealService Vegas.EventGraphRuntime in
+open Vegas.EventGraphRuntime in
 /-- The native horizon of `source_audited_raw_sequential_equilibrium` covers
 complete play of the bounded raw runtime. -/
 theorem raw_service_horizon [Fintype Player] [IExpr.ResultTypes L]
@@ -1266,34 +1266,34 @@ open Vegas.Examples.MonitoredGuessing.Restricted in
 open Vegas.Examples.MonitoredGuessing in
 #print axioms declared_sequential_equilibrium_preserved
 
-/-- info: 'Vegas.SourceProgram.RevealService.source_raw_sequential_equilibrium_preserved'
+/-- info: 'Vegas.source_raw_sequential_equilibrium_preserved'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas.SourceProgram.RevealService in
+open Vegas in
 #print axioms source_raw_sequential_equilibrium_preserved
 
-/-- info: 'Vegas.SourceProgram.RevealService.audited_source_sequential_equilibrium_preserved'
+/-- info: 'Vegas.audited_source_sequential_equilibrium_preserved'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas.SourceProgram.RevealService in
+open Vegas in
 #print axioms audited_source_sequential_equilibrium_preserved
 
-/-- info: 'Vegas.SourceProgram.RevealService.roster_audited_source_sequential_equilibrium_preserved'
+/-- info: 'Vegas.roster_audited_source_sequential_equilibrium_preserved'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas.SourceProgram.RevealService in
+open Vegas in
 #print axioms roster_audited_source_sequential_equilibrium_preserved
 
-/-- info: 'Vegas.SourceProgram.RevealService.sourceService_audited_raw_equilibrium_extends'
+/-- info: 'Vegas.sourceService_audited_raw_equilibrium_extends'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas.SourceProgram.RevealService in
+open Vegas in
 #print axioms sourceService_audited_raw_equilibrium_extends
 
-/-- info: 'Vegas.SourceProgram.RevealService.SourceServiceSpec.completeAudit_raw_sequentialEquilibrium_preserved'
+/-- info: 'Vegas.SourceServiceSpec.completeAudit_raw_sequentialEquilibrium_preserved'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas.SourceProgram.RevealService in
+open Vegas in
 #print axioms SourceServiceSpec.completeAudit_raw_sequentialEquilibrium_preserved
 
 /-- info: 'Vegas.EventGraphRuntime.MessageBounds.audited_raw_sequential_equilibrium'
@@ -1302,10 +1302,10 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 open Vegas.EventGraphRuntime.MessageBounds in
 #print axioms audited_raw_sequential_equilibrium
 
-/-- info: 'Vegas.SourceProgram.RevealService.replay_equilibrium_extends' depends on axioms:
+/-- info: 'Vegas.replay_equilibrium_extends' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas.SourceProgram.RevealService in
+open Vegas in
 #print axioms replay_equilibrium_extends
 
 /-- info: 'Vegas.EventGraphRuntime.openingWindow_settlement' depends on axioms:
@@ -1320,16 +1320,16 @@ open Vegas.EventGraphRuntime in
 open Interaction.ReactiveApplication in
 #print axioms scheduledMixture_waiting_limit
 
-/-- info: 'Vegas.SourceProgram.EventLowering.reactive_commit_repair' depends on axioms:
+/-- info: 'Vegas.reactive_commit_repair' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas.SourceProgram.EventLowering in
+open Vegas in
 #print axioms reactive_commit_repair
 
-/-- info: 'Vegas.SourceProgram.RevealService.signed_audit_source_sequential_equilibrium_preserved'
+/-- info: 'Vegas.signed_audit_source_sequential_equilibrium_preserved'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas.SourceProgram.RevealService in
+open Vegas in
 #print axioms signed_audit_source_sequential_equilibrium_preserved
 
 end Vegas.Paper

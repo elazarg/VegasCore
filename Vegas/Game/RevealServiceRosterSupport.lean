@@ -13,7 +13,9 @@ is assumed.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -855,4 +857,4 @@ theorem roster_owner_fullSupport
           (rosterOffset setup rosters owner event) selected _ initial current owner sample)
         past recorded modes (by omega) choices full action member
 
-end Vegas.SourceProgram.RevealService
+end Vegas

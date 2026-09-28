@@ -14,7 +14,9 @@ discarding any previously admitted raw traffic.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open Interaction EventGraphRuntime GameTheory.Math.Probability
 
@@ -90,4 +92,4 @@ theorem opening_data_covered (bounds : MessageBounds (graph setup))
   rw [initialLaw, FinDist.support_map]
   exact ⟨initial, supported, rfl⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

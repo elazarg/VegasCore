@@ -11,7 +11,9 @@ restriction without changing or renormalizing the physical policy.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -143,4 +145,4 @@ theorem roster_owner_coverage
     simp
   · exact replay_roster setup leaks bounds rosters owner _ _ action selectedSupport
 
-end Vegas.SourceProgram.RevealService
+end Vegas

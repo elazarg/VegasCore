@@ -14,9 +14,11 @@ therefore determines the exact activation table, including with repeated owners.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
@@ -254,4 +256,4 @@ theorem settlement_successor_timely {inputs : (graph setup).Inputs}
       change event.val + 1 < next.val + 1
       omega
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -14,7 +14,9 @@ continuation range. The alternative is an actual source behavioral deviation.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -209,4 +211,4 @@ theorem roster_owner_comparison_of_posterior
 
 end
 
-end Vegas.SourceProgram.RevealService
+end Vegas

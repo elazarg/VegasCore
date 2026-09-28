@@ -14,7 +14,9 @@ the source checkpoints established by the operational history proofs.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime Filter
 
@@ -192,4 +194,4 @@ theorem compiledProfile_converges_at
   simp only [FinDist.prob_map_of_injective _ (Option.some_injective _)]
   exact physical response
 
-end Vegas.SourceProgram.RevealService
+end Vegas

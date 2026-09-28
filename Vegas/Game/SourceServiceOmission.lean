@@ -14,9 +14,11 @@ finite-game history, including off-path histories.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -143,4 +145,4 @@ theorem sourceService_history_no_omission
           (menu.uniformResponses_support who past view response).mp member)
         network _ control.execution reached event
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -15,9 +15,11 @@ the additional runtime fields and complete information fibers is separate.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
@@ -95,4 +97,4 @@ theorem source_view_eq_of_observe_eq {Γ : SourceCtx Player L}
   rw [same] at first
   exact Option.some.inj (first.symm.trans second)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -12,7 +12,9 @@ local alternative without assuming positive reach under a source equilibrium.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -245,4 +247,4 @@ theorem roster_fullyMixed_response_prefix_support [Finite Player]
 
 end
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -19,7 +19,9 @@ and deadline evidence remain separate obligations.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -195,4 +197,4 @@ theorem sourceService_final_binding_cases
   exact bounds.required_binding_cases (runtime setup) leaks covered who past view event payload
     outputEq codeEq node granted owned ready unsent serial fresh capacity response member
 
-end Vegas.SourceProgram.RevealService
+end Vegas

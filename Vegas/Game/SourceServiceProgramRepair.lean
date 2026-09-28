@@ -15,7 +15,9 @@ the same implementation memory and the same opponent policies.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -287,4 +289,4 @@ theorem binding_phase_stopped_coupling
     omega
   exact ⟨finished ▸ connected.1, connected.2⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

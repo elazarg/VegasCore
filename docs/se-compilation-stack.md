@@ -283,7 +283,7 @@ conditional laws and consistent beliefs. Single-trace membership does not
 establish those facts. These gates are checked for the revelation calendar and,
 through the full-language roster service, for every source constructor: fresh
 bindings, public chance and guarded disclosure are classified site by site
-(`Vegas.SourceProgram.RevealService.DecisionSiteKind`), not excluded.
+(`Vegas.DecisionSiteKind`), not excluded.
 
 ## Checked service instance
 

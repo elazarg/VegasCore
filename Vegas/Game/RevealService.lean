@@ -29,7 +29,9 @@ source-history correspondence are proved in the modules that use them.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -52,11 +54,13 @@ theorem RevealOnly.event_owner {Γ : SourceCtx Player L} {O : Finset VarId}
   | reveal published owner name fresh source unresolved next ih =>
       exact Fin.cases ⟨owner, rfl⟩ (fun later => ih reveals later) event
 
-end Vegas.SourceProgram.EventLowering
+end Vegas
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -77,7 +81,7 @@ theorem runtime_deadline_increases (setup : Setup (Player := Player) (L := L))
 theorem source_owner (setup : Setup (Player := Player) (L := L))
     (reveals : setup.program.RevealOnly) (event : (graph setup).EventId) :
     ∃ owner, (graph setup).actor? event = some owner := by
-  obtain ⟨owner, owned⟩ := EventLowering.RevealOnly.event_owner setup.program reveals event
+  obtain ⟨owner, owned⟩ := Vegas.RevealOnly.event_owner setup.program reveals event
   refine ⟨owner, ?_⟩
   change (toEventGraph setup.program).actor? event = some owner
   rw [← eventOwner?_eq_actor, owned]
@@ -318,4 +322,4 @@ abbrev information (watcher : Player) :=
   (menu setup leaks bounds watcher).information (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

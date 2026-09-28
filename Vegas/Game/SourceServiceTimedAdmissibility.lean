@@ -16,7 +16,9 @@ requiring a normalized policy to be fully mixed in the original source game.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime
 
@@ -430,4 +432,4 @@ def sourceServiceTimedProfile
       (normalizeDisclosureProfile setup.program []
         (Revelations.initial setup.context) original) who)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

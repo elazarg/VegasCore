@@ -21,7 +21,9 @@ of the utility readout.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability GameTheory.Protocol GameTheory.Enforcement
 open Interaction EventGraphRuntime
@@ -208,4 +210,4 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
   exact rosterAuditDeposit_covers_gain setup leaks bounds rosters network base
     (fun owner => min (probability owner) 1) who ratePositive originalHistory repairedHistory
 
-end Vegas.SourceProgram.RevealService
+end Vegas

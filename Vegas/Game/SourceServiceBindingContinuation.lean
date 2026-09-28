@@ -13,9 +13,11 @@ The resulting law retains the complete source terminal state.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -258,4 +260,4 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
       exact suffix
     _ = _ := FinDist.bind_const _ _
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -12,7 +12,9 @@ Different physical alias histories remain different native histories.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -109,4 +111,4 @@ theorem focal_behavioral_prefix_law
   exact focal_plan_prefix_law setup leaks bounds watcher reveals observer openable admission
     profile permitted weight nonnegative atMostOne who ordinary reference count within
 
-end Vegas.SourceProgram.RevealService
+end Vegas

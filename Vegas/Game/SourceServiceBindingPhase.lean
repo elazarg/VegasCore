@@ -16,9 +16,11 @@ required for sequential-equilibrium transport.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -557,4 +559,4 @@ theorem sourceServiceLastPolicy_binding_provenance
     counterEq.trans counters, nextSerials, supported, applicationFinal, ledgerFinal, receiptsFinal,
     countersFinal, publishedFinal⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

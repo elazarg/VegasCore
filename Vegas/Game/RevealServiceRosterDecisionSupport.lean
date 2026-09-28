@@ -13,7 +13,9 @@ regardless of equilibrium probability or passive pending-message observations.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime
 
@@ -92,9 +94,9 @@ theorem roster_decision_source (setup : Setup (Player := Player) (L := L))
         (prior.environmentStep (application setup leaks) (.activate who)).support ∧
       ∃ initial ∈ setup.initialLaw.support, ∃ state,
         PublicPrefixCheckpoint setup leaks initial setup.program
-          (EventLowering.ContextRefs.initial setup.context
-            (EventLowering.outputLayout setup.program))
-          (Revelations.initial setup.context) (EventLowering.outputRef setup.program)
+          (Vegas.ContextRefs.initial setup.context
+            (Vegas.outputLayout setup.program))
+          (Revelations.initial setup.context) (Vegas.outputRef setup.program)
           0 event.val state boundary ∧
         sourcePrefix? setup event.val boundary.application.config = some state ∧
         state ∈ ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
@@ -115,4 +117,4 @@ theorem roster_decision_source (setup : Setup (Player := Player) (L := L))
   exact ⟨event, slot, boundary, prior, owner, position, boundarySupport, phase, activated,
     initial, initialSupport, state, checkpoint, decoded, sourceSupport, clean⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

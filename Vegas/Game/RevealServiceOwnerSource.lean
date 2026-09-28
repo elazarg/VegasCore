@@ -11,10 +11,12 @@ source reference. Native full mixing is not used to construct that witness.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -108,4 +110,4 @@ theorem owner_source_site
   exact (setup.protocol_info admission who source.trace).trans
     (congrArg (setup.protocolObserve who) same)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

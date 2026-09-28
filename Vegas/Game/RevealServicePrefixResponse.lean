@@ -11,9 +11,11 @@ continuation. Native recall is retained throughout the actual execution.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -201,4 +203,4 @@ theorem prefix_response_option_law
                 FinDist.bind_map, ProtocolState.continuationLaw]
               convert tailLaw using 1 <;> rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -12,7 +12,9 @@ step needed when a binding is legally deferred to a later owner visit.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -149,4 +151,4 @@ theorem repair_next_owner_opportunity
       rw [← paired.network]
       exact selectedSupport
 
-end Vegas.SourceProgram.RevealService
+end Vegas

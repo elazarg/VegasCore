@@ -14,7 +14,9 @@ its real histories to justify the unchanged opponents there.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -130,4 +132,4 @@ theorem off_turn_roster_stopped_coupling
       exact BindingMemory.retainedImplementation_response_available (runtime setup) leaks menu
         owner reference (players owner) next (past, view) response member
 
-end Vegas.SourceProgram.RevealService
+end Vegas

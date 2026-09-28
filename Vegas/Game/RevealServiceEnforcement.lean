@@ -16,7 +16,9 @@ opening decoder; no player optimality or detection rate is assumed.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -451,4 +453,4 @@ theorem reserved_report_departure_lower (owner watcher : Player) (different : ow
     exact fresh_submission_report_lower setup leaks owner watcher different players reporter
       before waited packet rfl serials pendingPublished knownPublished departure continuation count
 
-end Vegas.SourceProgram.RevealService
+end Vegas

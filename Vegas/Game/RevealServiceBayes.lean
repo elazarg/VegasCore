@@ -15,7 +15,9 @@ Bayes posterior. No information-fiber or belief correspondence is assumed.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -177,4 +179,4 @@ theorem owner_bayes_state
     (antichain who site) (setup.decision_antichain admission who sourceSite)
     (mixed.informationMass_pos who site) (sourceMixed.informationMass_pos who sourceSite)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

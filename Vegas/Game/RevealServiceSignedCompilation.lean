@@ -18,7 +18,9 @@ actual collection are explicit assumptions.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability GameTheory.Enforcement Interaction EventGraphRuntime
@@ -82,7 +84,7 @@ theorem signed_audit_source_sequential_equilibrium_preserved
       admission utility source equilibrium
   let appPayoff (state : Option (application setup leaks).State) (who : Player) : ℝ :=
     (state.bind (fun native => if native.config.cut.Terminal then
-      EventLowering.decodeState? (EventLowering.terminalRefs setup.program) native.config.store
+      Vegas.decodeState? (Vegas.terminalRefs setup.program) native.config.store
         else none)).elim 0 (fun final => utility final who)
   have factors (state : (application setup leaks).ProtocolState) (who : Player) :
       appPayoff (state.map (fun control => control.execution.application)) who =
@@ -131,4 +133,4 @@ theorem signed_audit_source_sequential_equilibrium_preserved
   rw [FinDist.map_comp] at joint
   exact ⟨target, targetSE, targetLaw.trans (joint.symm.trans sourceLaw)⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

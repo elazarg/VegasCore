@@ -84,7 +84,7 @@ The checked graph-owned theorem
 environment. It is proved before lifting through the finite initial law.
 For compiled source profiles, normalization is definitionally the identity
 (`normalizeProfile_compileEventProfile`), so the checked source-order law
-supplies the source-facing conclusion `EventLowering.scheduled_setup_law`.
+supplies the source-facing conclusion `Vegas.scheduled_setup_law`.
 
 The proof uses the configuration projection
 
@@ -206,7 +206,7 @@ normalized arbitrary graph policy at every reachable selected source rank.
 The other players remain unchanged. `runPolicies_canonical_eq_of_reachable`
 lifts that equality to a full execution law, which composes with
 `canonical_terminalState_law` and the scheduler mixture in
-`EventLowering.scheduled_setup_deviation_law`.
+`Vegas.scheduled_setup_deviation_law`.
 `Vegas.Paper.source_event_graph_deviation_law` delegates to this result.
 `Setup.eventSimulation` exposes the composed certificate and yields same-error
 Nash correspondence and source-state deviation guarantees through the generic

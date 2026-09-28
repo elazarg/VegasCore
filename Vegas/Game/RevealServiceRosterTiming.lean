@@ -13,7 +13,9 @@ the relative speed of source trembles is needed.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime Filter
 
@@ -97,4 +99,4 @@ theorem rosterTiming_converges {weight : Nat → ℝ}
   simpa only [rosterTiming, FinDist.prob_mix, zero_mul, sub_zero, one_mul, zero_add] using
     first.add second
 
-end Vegas.SourceProgram.RevealService
+end Vegas

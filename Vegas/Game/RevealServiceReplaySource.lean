@@ -14,7 +14,9 @@ a newly transmitted unpublished packet in this source restriction.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -183,4 +185,4 @@ theorem scheduler_inclusion_fresh
   · exact (runtime setup).interactionInstruction_fresh leaks
       ((runtime setup).reportNetwork leaks watcher) past view _ id selected
 
-end Vegas.SourceProgram.RevealService
+end Vegas

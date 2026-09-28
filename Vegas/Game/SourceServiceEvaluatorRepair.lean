@@ -13,7 +13,9 @@ compare initial parameters, public outcomes and incremental audit evidence.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open Interaction EventGraphRuntime
@@ -117,4 +119,4 @@ theorem active_evaluator_stopped_coupling
     obtain ⟨next, member, rfl⟩ := FinDist.support_map .. ▸ supported
     exact related next member
 
-end Vegas.SourceProgram.RevealService
+end Vegas

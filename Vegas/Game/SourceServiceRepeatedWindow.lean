@@ -13,7 +13,9 @@ activation-only window; arbitrary raw opponents remain in the exact law.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -122,4 +124,4 @@ theorem repeated_roster_stopped_coupling
     (visits.map ServiceInstruction.player) after split original position
   simpa only [List.length_map] using law
 
-end Vegas.SourceProgram.RevealService
+end Vegas

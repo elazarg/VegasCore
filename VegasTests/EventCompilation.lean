@@ -21,7 +21,6 @@ source program checks heterogeneous results, initial secrets and public chance.
 namespace VegasTests.EventCompilation
 
 open Vegas
-open SourceProgram.EventLowering
 open GameTheory.Math.Probability
 
 noncomputable section

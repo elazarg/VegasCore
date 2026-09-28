@@ -14,7 +14,9 @@ including sites that have zero probability in the limiting strategy.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime Filter
@@ -122,4 +124,4 @@ theorem exists_compiled_consistent
   rw [sameSequence] at nativeLimit
   exact nativeLimit.unique sourceLimit
 
-end Vegas.SourceProgram.RevealService
+end Vegas

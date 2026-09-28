@@ -15,7 +15,9 @@ The audit remains an explicit authentic terminal observation/collection service.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability GameTheory.Enforcement Interaction EventGraphRuntime
@@ -111,4 +113,4 @@ theorem roster_audited_sequential_equilibrium
     (fun history who => FinitePayoffBounds.le_upper (payoff who) history) sufficient coverage
     observe observationInvariant source equilibrium
 
-end Vegas.SourceProgram.RevealService
+end Vegas

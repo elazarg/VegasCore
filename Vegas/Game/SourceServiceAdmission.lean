@@ -14,9 +14,11 @@ is separate and remains possible at publication.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -86,4 +88,4 @@ theorem sourceServicePolicy_commit_supported
       exact serviceDecision_binding_fresh (runtime setup) leaks execution owner event payload
         outputEq codeEq node serial selected candidate (.success value)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

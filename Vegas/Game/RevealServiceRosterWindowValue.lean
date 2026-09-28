@@ -11,7 +11,9 @@ mass. The bound is uniform over the source disclosure probability.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -187,4 +189,4 @@ theorem roster_owner_response_value
       rw [ite_eq_left (selectedIff.mp rfl), FinDist.expect_pure]
       rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

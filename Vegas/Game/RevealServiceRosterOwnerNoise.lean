@@ -14,9 +14,11 @@ of the owner's subsequent private recall.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -218,4 +220,4 @@ theorem roster_owner_information_kernel
   simpa only [FinDist.pure_bind, FinDist.map_pure, FinDist.bind_pure,
     FinDist.map_comp, Function.comp_def] using law
 
-end Vegas.SourceProgram.RevealService
+end Vegas

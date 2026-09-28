@@ -22,7 +22,9 @@ instances below only supply the finite sums in the standard SE definition.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -163,4 +165,4 @@ theorem source_sequential_equilibrium_preserved
   exact compiled_profile_joint_utility_law setup leaks bounds watcher reveals observer openable
     admission source.strategy 0 le_rfl (by norm_num) utility
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -23,7 +23,9 @@ or audit implementation must realize that payoff interpretation.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -109,4 +111,4 @@ theorem source_raw_sequential_equilibrium_preserved
         retained.strategy _ final (2 * horizon setup watcher + 1) (Nat.sub_le ..) supported who)
   · exact sourceLaw
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -10,9 +10,9 @@ kind. Future-work areas outside the paper's scope are listed at the end.
 ## Lean statements and proofs
 
 **Deposit range over terminal histories.**
-`Vegas.SourceProgram.RevealService.rosterAuditDeposit`
+`Vegas.rosterAuditDeposit`
 ([ServicePayoffBounds.lean](../Vegas/Game/ServicePayoffBounds.lean)) takes the
-payoff range over every native history, and `RevealService.baseUtility` is zero on an
+payoff range over every native history, and `Vegas.baseUtility` is zero on an
 unfinished one, so the range always contains zero. The deposit is sufficient
 but not invariant under adding a constant to all utilities (for payoffs in
 [74, 126] it is 126/p instead of 52/p). The paper and the assumptions table now

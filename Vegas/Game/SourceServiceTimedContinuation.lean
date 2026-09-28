@@ -13,9 +13,11 @@ physical continuation uses the existing remaining service blocks.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -364,4 +366,4 @@ theorem sourceServiceTimedPolicy_continuation_law
   change physical.map (fun final => sourceReadout setup leaks (some ⟨0, none, final⟩)) = _
   simpa only [sourceReadout_eq_decode, Setup.continuationLaw] using readout.trans finished
 
-end Vegas.SourceProgram.RevealService
+end Vegas

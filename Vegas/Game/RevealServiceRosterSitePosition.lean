@@ -12,7 +12,9 @@ same event and roster slot, including off-path sites.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -153,4 +155,4 @@ theorem roster_after_response_counts
   simp only [beq_iff_eq] at phaseCount
   omega
 
-end Vegas.SourceProgram.RevealService
+end Vegas

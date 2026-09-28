@@ -13,9 +13,11 @@ choices are retained. The law below records the whole execution.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -392,4 +394,4 @@ theorem sourceServiceTimedPolicy_binding_phase_law
   intro current _
   exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
 
-end Vegas.SourceProgram.RevealService
+end Vegas

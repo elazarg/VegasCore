@@ -13,7 +13,9 @@ started.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -60,4 +62,4 @@ theorem initialConfig_agrees {Γ : SourceCtx Player L} {openNames : Finset VarId
         (encodeInputs state)).store :=
   ContextRefs.initial_agrees (outputLayout program) state _ fun _ => rfl
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

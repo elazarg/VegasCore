@@ -15,18 +15,20 @@ import GameTheoryExtensions.Math.Probability.FinDist
 Every sequential equilibrium of the source information model has a sequential
 equilibrium of the permitted native service model with the same law of typed
 source terminal states. The native equilibrium is a limit of the timed
-approximants `Vegas.SourceProgram.RevealService.TimedApproximant.ofSource` of
+approximants `Vegas.TimedApproximant.ofSource` of
 one fully supported Bayes sequence of the source equilibrium, with the roster
 timing law at weight one half. Each native decision site is compared with
 original source deviations according to its kind
-(`Vegas.SourceProgram.RevealService.DecisionSiteKind`): most kinds have zero
+(`Vegas.DecisionSiteKind`): most kinds have zero
 gain, an unsent binding is simulated exactly, and a disclosure with an
 available opening gains at most twice the source gain error.
 -/
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime Filter
@@ -198,4 +200,4 @@ theorem exists_native_sequentialEquilibrium
 
 end SourceServiceSpec
 
-end Vegas.SourceProgram.RevealService
+end Vegas

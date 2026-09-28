@@ -23,9 +23,11 @@ No strategic correspondence or optimal assessment is a field of this relation.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -510,4 +512,4 @@ theorem Checkpoint.reveal_response [Fintype Player]
       _ recallInvariant suffix submitted next
       (app.respond_inputRecall execution owner response checkpoint.recall) supported
 
-end Vegas.SourceProgram.RevealService
+end Vegas

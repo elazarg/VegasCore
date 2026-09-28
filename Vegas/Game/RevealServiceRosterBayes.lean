@@ -14,10 +14,12 @@ history remain part of the native information site.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -53,8 +55,8 @@ theorem roster_owner_source_site
   obtain ⟨site, observed⟩ := roster_source_site setup leaks reveals admission who event owned
     initial initialSupport state granted related sourceSupport
   have decoded := PublicPrefixCheckpoint.decode setup.program
-    (EventLowering.ContextRefs.initial setup.context (EventLowering.outputLayout setup.program))
-    (Revelations.initial setup.context) (EventLowering.outputRef setup.program) 0 event.val
+    (Vegas.ContextRefs.initial setup.context (Vegas.outputLayout setup.program))
+    (Revelations.initial setup.context) (Vegas.outputRef setup.program) 0 event.val
     state granted related
   change sourcePrefix? setup event.val granted.application.config = some state at decoded
   refine ⟨site, ?_, ?_⟩
@@ -72,8 +74,8 @@ theorem roster_owner_source_site
           setup.protocol_info admission who history.trace,
         stateEq, observed]
     have acting := PublicPrefixCheckpoint.actor who setup.program
-      (EventLowering.ContextRefs.initial setup.context (EventLowering.outputLayout setup.program))
-      (Revelations.initial setup.context) (EventLowering.outputRef setup.program) 0 event.val
+      (Vegas.ContextRefs.initial setup.context (Vegas.outputLayout setup.program))
+      (Revelations.initial setup.context) (Vegas.outputRef setup.program) 0 event.val
       state granted related event.isLt
     rw [eventOwner?_eq_actor] at acting
     change ProtocolView.actor who setup.program (ProtocolState.observe who setup.program state) =
@@ -374,4 +376,4 @@ theorem roster_owner_bayes_source_state
   rw [sourceDepth, sourceView] at original
   exact projected.trans original.symm
 
-end Vegas.SourceProgram.RevealService
+end Vegas

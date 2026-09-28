@@ -15,9 +15,11 @@ source-prefix support theorem and current runtime bounds.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -260,4 +262,4 @@ theorem sourceServiceCompiledProfile_complete_state
     (sourceServiceLastPolicy_admissible setup leaks bounds values initialValues capacity rosters
       opportunities network _ (normalized_sourceService_admitted setup original permitted))
 
-end Vegas.SourceProgram.RevealService
+end Vegas

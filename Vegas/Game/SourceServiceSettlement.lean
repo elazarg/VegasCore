@@ -72,9 +72,11 @@ theorem settled_tail_config_receipts (runtime : EventGraphRuntime graph)
 
 end Vegas.EventGraphRuntime
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -136,4 +138,4 @@ theorem source_sample_settlement
   exact ((runtime setup).settled_tail_config_receipts leaks players network _ event ticks
     settled).trans sampleLaw
 
-end Vegas.SourceProgram.RevealService
+end Vegas

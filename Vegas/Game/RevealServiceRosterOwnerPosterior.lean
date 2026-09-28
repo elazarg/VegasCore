@@ -13,10 +13,12 @@ early own openings and later same-envelope replays remain in native information.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
-open Interaction EventGraphRuntime EventLowering
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -438,4 +440,4 @@ theorem roster_owner_state_posterior
   simp only [FinDist.map_comp, Function.comp_def] at retained
   exact retained.trans posterior
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -16,9 +16,11 @@ used by the information-likelihood induction.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -578,4 +580,4 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
     exact congrArg (Option.map Sum.inr) recovered
   · rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

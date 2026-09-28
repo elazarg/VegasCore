@@ -110,6 +110,6 @@ def utility (forfeiture : ℝ) (outcome : (Player → Int) × PublicOutcome prog
   CommitRevealAuction.utility (fun who => outcome.1 who) forfeiture outcome.2
 
 /-- Two bindings and two disclosures, independently of the private values. -/
-theorem eventCount : EventLowering.eventCount program = 4 := rfl
+theorem eventCount : Vegas.eventCount program = 4 := rfl
 
 end Vegas.Examples.PrivateValueAuction

@@ -18,7 +18,9 @@ all-site consistency and sequential optimality remain separate obligations.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -365,4 +367,4 @@ theorem rosterPolicy_window_eq (setup : Setup (Player := Player) (L := L))
       exact (rosterPolicy_application setup leaks rosters timing profile who activated action
         original).trans unchanged
 
-end Vegas.SourceProgram.RevealService
+end Vegas

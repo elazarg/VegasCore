@@ -14,9 +14,11 @@ No equality of additional native observations is inferred in the other direction
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -50,7 +52,7 @@ theorem SourcePrefixCheckpoint.source_view_eq_of_observe_eq
         obtain ⟨leftSource, rfl, _leftRegistry, _leftRevelations, leftCheckpoint⟩ := first <;>
         obtain ⟨rightSource, rfl, _rightRegistry, _rightRevelations, rightCheckpoint⟩ := second
       all_goals
-        have equal := RevealService.source_view_eq_of_observe_eq setup leaks refs who _ _
+        have equal := Vegas.source_view_eq_of_observe_eq setup leaks refs who _ _
           nativeLeft nativeRight leftCheckpoint.agrees rightCheckpoint.agrees
           leftCheckpoint.history rightCheckpoint.history same
         simpa only [ProtocolState.entry, ProtocolState.observe, Sum.elim_inl,
@@ -144,4 +146,4 @@ theorem SourcePrefixCheckpoint.actor
               have within : count < eventCount next := by simpa [eventCount] using inside
               exact ih next _ _ _ _ (offset + 1) rest native related within
 
-end Vegas.SourceProgram.RevealService
+end Vegas

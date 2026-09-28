@@ -13,9 +13,11 @@ clock and expiry commands. The law retains the full native execution.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -146,4 +148,4 @@ theorem sourceServiceTimedPolicy_sample_phase_law
   rw [sampleLaw, FinDist.bind_map]
   rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

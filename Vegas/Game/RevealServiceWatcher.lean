@@ -23,7 +23,9 @@ the constructed service, rather than another execution semantics.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
@@ -206,4 +208,4 @@ theorem watched_raw_equilibrium_extends (watcher : Player)
     rw [law, ← historyLaw, FinDist.map_comp]
     rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

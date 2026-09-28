@@ -18,7 +18,9 @@ nor to give the least deposit for the actual incentive comparisons.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -109,4 +111,4 @@ theorem rangeDeposit_sufficient (probability : Player → ℝ)
   rw [rangeDeposit, ite_eq_right ordinary,
     mul_div_cancel₀ _ (positive who ordinary).ne']
 
-end Vegas.SourceProgram.RevealService
+end Vegas

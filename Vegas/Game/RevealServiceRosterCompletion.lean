@@ -13,9 +13,11 @@ passive observations and replay choices.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -143,4 +145,4 @@ theorem roster_menu_reveal_source_step (setup : Setup (Player := Player) (L := L
     cases selected <;> simp only [Option.isSome_none, Option.isSome_some,
       Bool.false_eq_true, ↓reduceIte] at histories ⊢ <;> exact histories
 
-end Vegas.SourceProgram.RevealService
+end Vegas

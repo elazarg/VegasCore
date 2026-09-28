@@ -15,7 +15,9 @@ recorded native input, including observations made during earlier phases.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -185,4 +187,4 @@ theorem sourceServiceTimedPolicy_future_supported
     simpa only [family, sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
       Option.map_some, ite_eq_right unused] using (legal before entry after split).1
 
-end Vegas.SourceProgram.RevealService
+end Vegas

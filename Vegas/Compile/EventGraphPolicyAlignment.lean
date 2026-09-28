@@ -17,7 +17,9 @@ its setup-uniform backtranslation.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Math.Probability
 
@@ -388,4 +390,4 @@ theorem compileEventPolicy_backtranslate_at_prefix
   simpa [compileEventPolicy, backtranslateEventPolicy, outputEmbedding,
     outputEmbedding_ref, toEventGraph] using aligned
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

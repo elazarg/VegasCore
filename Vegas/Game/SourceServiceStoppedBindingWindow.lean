@@ -14,7 +14,9 @@ evidence. Original opponent laws remain fixed throughout.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -524,4 +526,4 @@ theorem binding_window_stopped_coupling
           Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
         exact (existsBranch response member).choose_spec.2.2 next reached
 
-end Vegas.SourceProgram.RevealService
+end Vegas

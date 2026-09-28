@@ -16,7 +16,9 @@ binding completion, which can be paired with the actual traffic readout.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -235,4 +237,4 @@ theorem scheduledBindingPhase_config
   rw [state]
   exact config
 
-end Vegas.SourceProgram.RevealService
+end Vegas

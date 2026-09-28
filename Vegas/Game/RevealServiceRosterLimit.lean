@@ -12,7 +12,9 @@ zero-probability early openings use the same limit as on-path histories.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -308,4 +310,4 @@ theorem roster_owner_policy_limit
   simpa only [EventGraphRuntime.openingWindowMixturePlayers, Function.update_self] using
     congrArg (fun (law : FinDist app.Action) => law.prob action) same
 
-end Vegas.SourceProgram.RevealService
+end Vegas

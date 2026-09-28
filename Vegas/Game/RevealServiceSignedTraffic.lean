@@ -13,7 +13,9 @@ do not establish those facts.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -100,4 +102,4 @@ theorem permittedEnvelope_forbidden (watcher : Player)
     rw [forbidden] at allowed
     cases allowed
 
-end Vegas.SourceProgram.RevealService
+end Vegas

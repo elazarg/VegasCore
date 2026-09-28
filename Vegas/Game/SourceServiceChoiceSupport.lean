@@ -13,9 +13,11 @@ publication payload types are not required to be finite.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 open GameTheory GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
@@ -95,4 +97,4 @@ theorem sourceService_consistent_supported_sequence [Fintype Player]
   exact ⟨sequence, full, bayes, converges,
     fun n who => sourceService_normalized_support setup (sequence n).strategy (full n) who⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

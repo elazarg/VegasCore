@@ -13,7 +13,9 @@ not. No missing audit record is treated as evidence of an omitted action.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -67,7 +69,7 @@ theorem permittedRosterEnvelope_wrong_serial
 included once, so the next per-author serial is the public count. -/
 theorem PublicCheckpoint.serial_eq_ledger_count
     {initial : State L setup.context} {Γ : SourceCtx Player L}
-    {source : Config Player L Γ} {refs : EventLowering.ContextRefs (graph setup).layout Γ}
+    {source : Config Player L Γ} {refs : Vegas.ContextRefs (graph setup).layout Γ}
     {rank : Nat} {execution : (application setup leaks).Execution}
     (checkpoint : PublicCheckpoint setup leaks initial source refs rank execution)
     (who : Player) :
@@ -142,10 +144,10 @@ theorem roster_fresh_iff_serial (bounds : MessageBounds (graph setup))
   subst phase
   have data := owner_choices_at_prefix setup leaks bounds profile who initial initialSupport
     setup.program reveals profile
-    (EventLowering.ContextRefs.initial setup.context (EventLowering.outputLayout setup.program))
-    (Revelations.initial setup.context) (EventLowering.outputEmbedding setup.program)
-    (EventLowering.initialRefsBefore setup.program) 0
-    (EventLowering.CompiledPolicySuffix.whole setup.program profile)
+    (Vegas.ContextRefs.initial setup.context (Vegas.outputLayout setup.program))
+    (Revelations.initial setup.context) (Vegas.outputEmbedding setup.program)
+    (Vegas.initialRefsBefore setup.program) 0
+    (Vegas.CompiledPolicySuffix.whole setup.program profile)
     event.val event.isLt state granted related event (by omega) ownedEvent grant
   obtain ⟨expected, expectedRaw, priorOpening, owned, valid, _, _⟩ := data.2.2
   have same := rosterOpening?_application_eq setup leaks who event control.execution granted
@@ -162,8 +164,8 @@ theorem roster_fresh_iff_serial (bounds : MessageBounds (graph setup))
     published menu.uniformResponses covered network ((rosters event).take slot)
     (roster_count_before selected).le prior reached
   obtain ⟨context, source, refs, checkpoint⟩ := related.checkpoint setup.program
-    (EventLowering.ContextRefs.initial setup.context (EventLowering.outputLayout setup.program))
-    (Revelations.initial setup.context) (EventLowering.outputRef setup.program) 0 event.val state
+    (Vegas.ContextRefs.initial setup.context (Vegas.outputLayout setup.program))
+    (Revelations.initial setup.context) (Vegas.outputRef setup.program) 0 event.val state
     granted
   have baseline := checkpoint.serial_eq_ledger_count setup leaks who
   have counter := congrFun frame.counters who
@@ -225,4 +227,4 @@ theorem roster_fresh_iff_serial (bounds : MessageBounds (graph setup))
     simp only [List.any_eq_true, decide_eq_true_eq]
     exact ite_eq_right absent
 
-end Vegas.SourceProgram.RevealService
+end Vegas

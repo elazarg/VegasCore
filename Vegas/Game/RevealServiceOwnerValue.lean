@@ -12,10 +12,12 @@ assumption of the value equation.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -139,4 +141,4 @@ theorem owner_context_local_value
   rw [strategy]
   simpa only [FinDist.expect_map, FinDist.expect_bind, Option.elim_some, clock history] using value
 
-end Vegas.SourceProgram.RevealService
+end Vegas

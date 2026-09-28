@@ -12,9 +12,11 @@ no special case or additional service assumption.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -114,4 +116,4 @@ theorem sourceService_grant_boundary
       network (failureProfile setup.program) event.val event.isLt.le control.execution reached
   exact ⟨initial, initialSupport, Γ, source, refs, checkpoint⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -13,9 +13,11 @@ candidate catalogues satisfying the stated fresh-allocation conditions.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
@@ -108,4 +110,4 @@ theorem sourceServicePolicy_commit_service
     node (commitKernel profile (source.view owner)) serial ready timely candidate vacant unused
     serials players network
 
-end Vegas.SourceProgram.RevealService
+end Vegas

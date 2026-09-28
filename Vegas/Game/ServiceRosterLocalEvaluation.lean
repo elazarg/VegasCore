@@ -12,7 +12,9 @@ baseline needs only all-history admissibility, not coverage at artificial inputs
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -166,4 +168,4 @@ theorem roster_phase_suffix
   rw [divided]
   simp only [List.append_assoc, List.cons_append, List.nil_append, events]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -15,7 +15,9 @@ retained history are preserved in the coupling.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -187,4 +189,4 @@ theorem resolution_history_activation_coupling
       exact List.mem_append_right _ (List.mem_singleton_self _)
     · exact Or.inr good
 
-end Vegas.SourceProgram.RevealService
+end Vegas

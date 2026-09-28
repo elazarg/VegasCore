@@ -14,9 +14,11 @@ without assuming positive probability under the compiled policy.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -165,4 +167,4 @@ theorem owner_choices_at_prefix
               simpa only [ProtocolState.observe, Sum.elim_inr, BehavioralPolicy.protocolAction,
                 afterReveal] using law
 
-end Vegas.SourceProgram.RevealService
+end Vegas

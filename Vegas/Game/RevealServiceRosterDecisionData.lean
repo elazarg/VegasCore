@@ -11,9 +11,11 @@ import Vegas.Pending.ReactiveServiceRecall
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -200,4 +202,4 @@ theorem roster_source_site
   exact (setup.protocol_info admission who history.trace).trans
     (congrArg (setup.protocolObserve who) stateEq)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

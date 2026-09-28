@@ -49,20 +49,20 @@ theorem eventPendingGame_deviation_law
           profile who alternative)).map some := by
   obtain ⟨mixture, law⟩ := runtime.exists_deviation_mixture_store_law feasible
     (setup.eventGraph.withMode_barrierOrdered
-      (EventLowering.toEventGraph_barrierOrdered setup.program) mode)
+      (Vegas.toEventGraph_barrierOrdered setup.program) mode)
     (setup.initialLaw.map fun initial => setup.eventInputs initial)
     (setup.eventGraph.toModeProfile mode
-      (EventLowering.compileEventProfile setup.program profile))
+      (Vegas.compileEventProfile setup.program profile))
     roster reactionRounds who replacement wire order
   refine ⟨mixture.map (fun alternative =>
-    EventLowering.backtranslateEventPolicy setup.program who
+    Vegas.backtranslateEventPolicy setup.program who
       (setup.eventGraph.fromModePolicy mode who alternative)), ?_⟩
   rw [setup.eventPendingGame_map_outcome]
   change (((runtime.servicedEventGame _ roster reactionRounds wire order).play
     (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
       (runtime.compileProfile
         (setup.eventGraph.toModeProfile mode
-          (EventLowering.compileEventProfile setup.program profile)))
+          (Vegas.compileEventProfile setup.program profile)))
       who replacement)).map (fun execution => execution.native.application.config.store)).map _ = _
   rw [law]
   simp only [FinDist.map_bind, FinDist.bind_map]
@@ -71,7 +71,7 @@ theorem eventPendingGame_deviation_law
   simp_rw [← (setup.eventGraph.withMode mode).runPolicies_canonical_normalize_eq,
     setup.eventGraph.runPolicies_withMode_store, setup.eventGraph.fromModeProfile_update,
     setup.eventGraph.fromModeProfile_toModeProfile]
-  have canonical := EventLowering.canonical_setup_deviation_decode setup profile who
+  have canonical := Vegas.canonical_setup_deviation_decode setup profile who
     (setup.eventGraph.fromModePolicy mode who alternative)
   simp only [← Vegas.EventGraph.runPolicies_canonical_normalize_eq] at canonical
   exact canonical
@@ -115,7 +115,7 @@ def eventPendingSimulation (setup : Setup (Player := Player) (L := L))
             (setup.initialLaw.map fun initial => setup.eventInputs initial)).trans
           (runtime.servicedCanonicalSimulation
             (setup.eventGraph.withMode_barrierOrdered
-              (EventLowering.toEventGraph_barrierOrdered setup.program) mode)
+              (Vegas.toEventGraph_barrierOrdered setup.program) mode)
             feasible (setup.initialLaw.map fun initial => setup.eventInputs initial)
             roster reactionRounds wire order)
           (fun _ _ => trivial)).reobserve setup.eventPublicDecode

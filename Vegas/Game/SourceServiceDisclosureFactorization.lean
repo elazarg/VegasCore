@@ -13,9 +13,11 @@ are handled by the source assessment's disclosure normalization.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -211,4 +213,4 @@ theorem guarded_disclosure_successor_factorization
       (effective right rightSupport second secondSupport) same traffic
       ((counts left leftSupport).trans (counts right rightSupport).symm)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

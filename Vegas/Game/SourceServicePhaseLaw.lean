@@ -12,9 +12,11 @@ physical runner and are integrated out only by this stated readout.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -366,4 +368,4 @@ theorem ServiceBoundary.step_state_law [Fintype Player]
         embedding refsBefore offset aligned execution network (opportunities _ owner owned)
         (effective owner)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

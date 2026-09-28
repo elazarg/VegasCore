@@ -13,9 +13,11 @@ state. This decoder performs no source or runtime transition.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open EventGraphRuntime EventLowering
+open SourceProgram
+
+open EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -267,4 +269,4 @@ theorem SourcePrefixCheckpoint.state_unique {setup : Setup (Player := Player) (L
     offset count right native second
   exact Option.some.inj (firstRead.symm.trans secondRead)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

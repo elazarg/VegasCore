@@ -16,9 +16,11 @@ the environment's recorded observation; it introduces no extra channel premise.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open Interaction EventGraphRuntime EventLowering GameTheory.Math.Probability
+open SourceProgram
+
+open Interaction EventGraphRuntime GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -178,4 +180,4 @@ theorem sample_successor_memory_factorization
       focal equal event beforeReady afterReady payload outputEq first
     simpa only [leftApp, rightApp] using completed
 
-end Vegas.SourceProgram.RevealService
+end Vegas

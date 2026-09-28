@@ -14,10 +14,12 @@ use this theorem without constructing an equilibrium of the normalized game.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -189,4 +191,4 @@ theorem sourceService_owner_assessment_comparisons
   · rw [belief, FinDist.bind_map]
     exact deviating
 
-end Vegas.SourceProgram.RevealService
+end Vegas

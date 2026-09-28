@@ -15,10 +15,12 @@ fixed throughout the comparison.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -217,4 +219,4 @@ theorem roster_owner_history_local_value
   simpa only [rest, ReactiveApplication.finished, activated, valueEq, residualEq]
     using localValue
 
-end Vegas.SourceProgram.RevealService
+end Vegas

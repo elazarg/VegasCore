@@ -14,7 +14,9 @@ all permitted policies and retains actual passive samples and replay copies.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -175,4 +177,4 @@ theorem sourceService_binding_roster_support
           serials.learn owner sample, included, finalApp, finalLedger, finalReceipts, finalCounters,
           finalPublished⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

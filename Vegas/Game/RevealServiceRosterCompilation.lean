@@ -19,7 +19,9 @@ and sampling require the full-source continuation proof.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability GameTheory.Enforcement Interaction EventGraphRuntime
@@ -89,4 +91,4 @@ theorem roster_audited_source_sequential_equilibrium_preserved
   simp only [FinDist.map_comp, Function.comp_def] at jointLaw
   exact ⟨target, targetSE, targetLaw.trans jointLaw⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

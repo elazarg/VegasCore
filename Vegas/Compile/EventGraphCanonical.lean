@@ -12,7 +12,9 @@ availability.  It adds no simulation hypothesis.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability
 
@@ -114,4 +116,4 @@ theorem canonical_setup_payout_law
     _ = _ := by
       rw [← FinDist.map_comp, canonical_setup_law setup profile]
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

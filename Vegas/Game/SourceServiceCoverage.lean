@@ -15,9 +15,11 @@ catalogue's fresh slot; earlier source commitments may have changed it.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -313,4 +315,4 @@ theorem sourceServiceOpportunity_reveal_covered
           (compileChecks (published := published) refs source.registry source.revelations binding)
           outputEq codeEq node granted owned ready unsent value resolved
 
-end Vegas.SourceProgram.RevealService
+end Vegas

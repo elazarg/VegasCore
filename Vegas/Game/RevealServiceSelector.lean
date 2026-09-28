@@ -13,7 +13,9 @@ establish compatibility along histories sharing the selected source view.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -159,4 +161,4 @@ theorem focalProfile_decode (watcher : Player) (profile : BehavioralProfile setu
   exact focalPolicy_covered setup leaks bounds profile weight nonnegative atMostOne
     who reference past view response supported
 
-end Vegas.SourceProgram.RevealService
+end Vegas

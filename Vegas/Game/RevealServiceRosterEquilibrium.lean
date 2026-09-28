@@ -19,7 +19,9 @@ native information set, with the original joint terminal source-state law.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime Filter
@@ -184,4 +186,4 @@ theorem roster_source_sequential_equilibrium_preserved
     target index increasing targetConverges consistent
   exact ⟨target, strategy, result.1, result.2⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

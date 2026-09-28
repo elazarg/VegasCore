@@ -14,9 +14,11 @@ guard is needed for these local correspondences.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -142,4 +144,4 @@ theorem effective_reveal_supported
       | failure => simp only [effectiveDisclosure, result, Bool.false_eq_true] at fixed
       | success value => exact Or.inr ⟨value, rfl, rfl⟩
 
-end Vegas.SourceProgram.RevealService
+end Vegas

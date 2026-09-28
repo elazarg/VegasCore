@@ -14,9 +14,11 @@ equalities; no information-fiber or posterior correspondence is assumed.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
@@ -261,4 +263,4 @@ theorem checkpoint_observe_eq
         fun slot => right.application.candidates.lookup (who, slot)⟩ right.receipts
   rw [leaked, ledger, publicView, same, candidates, receipts]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

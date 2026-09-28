@@ -18,7 +18,9 @@ the multi-phase correspondence.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -117,4 +119,4 @@ theorem sourceServiceLastPolicy_submissions
   intro response supported
   exact ite_eq_right (submits response supported)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

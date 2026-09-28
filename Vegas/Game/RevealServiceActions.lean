@@ -14,7 +14,9 @@ history correspondence or sequential equilibrium preservation.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -162,4 +164,4 @@ theorem splitChoiceLaw_fullSupport (law : FinDist Bool) (mixed : law.FullSupport
       law weight nonnegative atMostOne).FullSupport :=
   FinDist.split_fullSupport _ _ _ law mixed weight nonnegative atMostOne positive
 
-end Vegas.SourceProgram.RevealService
+end Vegas

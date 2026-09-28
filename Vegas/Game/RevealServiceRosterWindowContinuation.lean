@@ -13,7 +13,9 @@ settles with exactly that conditional source-choice law.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -139,4 +141,4 @@ theorem roster_remaining_settlement
   rw [same, law, exactModes choices full]
   rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

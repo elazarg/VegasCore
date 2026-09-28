@@ -14,7 +14,9 @@ site, including sites outside an equilibrium's support.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime
 
@@ -150,4 +152,4 @@ theorem roster_decision_supported (setup : Setup (Player := Player) (L := L))
         within.le] at priorSupport
       exact priorSupport
 
-end Vegas.SourceProgram.RevealService
+end Vegas

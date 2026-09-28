@@ -13,7 +13,9 @@ allocation data are therefore unchanged even when the initial pool is empty.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -209,4 +211,4 @@ theorem replay_window_eventRecorded
       · rw [app.respond_recall_other _ who owner same]
         rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

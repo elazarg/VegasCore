@@ -12,7 +12,9 @@ provides the typed reference environments used by the executable lowerer.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -115,4 +117,4 @@ def encodeInputs : {Γ : SourceCtx Player L} → State L Γ →
       (state.get .here)
       (encodeInputs (fun _ _ source => state.get (.there source))) input
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

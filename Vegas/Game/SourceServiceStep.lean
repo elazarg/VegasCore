@@ -19,7 +19,9 @@ not an assumption of that correspondence or of sequential rationality.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -248,4 +250,4 @@ theorem serviceDecision_binding_fresh (runtime : EventGraphRuntime graph)
   exact runtime.reactiveBinding_normal_of_fresh leaks owner (execution.recall owner)
     (execution.observe (runtime.reactiveApplication leaks) owner) event payload choice serial fresh
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

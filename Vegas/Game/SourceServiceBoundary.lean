@@ -21,9 +21,11 @@ or observation-factorization premise.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -366,4 +368,4 @@ theorem ServiceBoundary.roster_successor_timing
   change execution.application.clock + (rank + 1) - entered < next.val + 1
   omega
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -12,7 +12,9 @@ runtime representation of commitment handles or certificates.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -194,4 +196,4 @@ theorem resolution_field_injective {Γ : SourceCtx Player L} {openNames : Finset
   · rw [← nodes_resolution_name, second]
     rfl
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

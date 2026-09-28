@@ -12,7 +12,7 @@ payloads, initial commitments, deferred guards, and conditional chance.
 
 namespace VegasTests.EventStrategies
 
-open Vegas GameTheory GameTheory.Math.Probability SourceProgram.EventLowering
+open Vegas GameTheory GameTheory.Math.Probability
 
 noncomputable section
 

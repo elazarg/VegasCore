@@ -14,7 +14,9 @@ observations. This is a service instance, not another interpreter or language.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -209,4 +211,4 @@ theorem roster_segment_rounds (setup : Setup (Player := Player) (L := L))
         simp only [List.length_append, List.length_singleton]
         omega
 
-end Vegas.SourceProgram.RevealService
+end Vegas

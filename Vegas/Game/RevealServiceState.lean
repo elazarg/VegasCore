@@ -16,9 +16,11 @@ obligations of the adapter.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open EventLowering EventGraphRuntime Interaction
+open SourceProgram
+
+open EventGraphRuntime Interaction
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -167,4 +169,4 @@ theorem opening_at_checkpoint (setup : Setup (Player := Player) (L := L))
     ↓reduceIte, node, resolved, seesAccepted, owned]
   rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -15,7 +15,7 @@ noncomputable section
 
 namespace Vegas.Examples.SelectiveAssociation
 
-open Vegas Vegas.SourceProgram Vegas.SourceProgram.EventLowering
+open Vegas Vegas.SourceProgram
 
 /-- Evaluate the program's declared payoff on its public result carrier. -/
 def returnedPayoff (result : Results) (who : Player) : ℝ :=

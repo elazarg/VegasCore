@@ -14,15 +14,17 @@ boundary draws the source disclosure and continues from the configuration that
 completes the publication with it. Both disclosures are legal source choices
 there, so the source gains of disclosing and of withholding bound every native
 local gain at the site
-(`Vegas.SourceProgram.RevealService.TimedApproximant.available_opening_gain_le`).
+(`Vegas.TimedApproximant.available_opening_gain_le`).
 -/
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -1640,4 +1642,4 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
 
 end TimedApproximant
 
-end Vegas.SourceProgram.RevealService
+end Vegas

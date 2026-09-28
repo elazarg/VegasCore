@@ -12,7 +12,9 @@ only the dependent lookup equality connecting those two views.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability
 
@@ -294,4 +296,4 @@ player's component of the decoded whole source history. -/
       decodeHistory program config.history who := by
   rfl
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

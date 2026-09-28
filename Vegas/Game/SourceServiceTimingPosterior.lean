@@ -12,9 +12,11 @@ response likelihood is the source silence probability times the replay law.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering EventGraph
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -309,4 +311,4 @@ theorem sourceServiceTimedMixture_replay_window_posterior_initial
     (by simpa only [Nat.zero_add] using within) small old reached
   simpa only [Nat.zero_add] using result
 
-end Vegas.SourceProgram.RevealService
+end Vegas

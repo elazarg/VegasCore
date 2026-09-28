@@ -15,9 +15,11 @@ is retained and may be selected differently without changing Boolean marginals.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -338,4 +340,4 @@ theorem compiled_plan_prefix_law
   rw [encoded] at law
   exact law
 
-end Vegas.SourceProgram.RevealService
+end Vegas

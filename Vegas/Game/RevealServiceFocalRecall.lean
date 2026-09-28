@@ -15,9 +15,11 @@ blocks, including their emitted envelopes and private before-views.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -387,4 +389,4 @@ theorem initialized_focal_recall
     leftCheckpoint rightCheckpoint rfl leftEnd rightEnd leftRun rightRun referenceEq leftState
     rightState leftRelated rightRelated observed
 
-end Vegas.SourceProgram.RevealService
+end Vegas

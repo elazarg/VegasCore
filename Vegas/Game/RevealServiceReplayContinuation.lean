@@ -12,7 +12,9 @@ responses reveal no new packet under this native observation interface.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -289,4 +291,4 @@ theorem replay_finish_application_law
       rw [rankEq] at decreases
       exact ih _ decreases nextHistory count nextActor left right nextState related rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

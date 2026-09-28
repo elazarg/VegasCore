@@ -15,7 +15,9 @@ proved separately when applying an operational constructor case.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open EventGraphRuntime Interaction GameTheory.Math.Probability
 
@@ -309,4 +311,4 @@ theorem RepairedPrefix.commit
   · intro query
     exact iff_of_eq (congrFun (congrArg (fun frame => frame.2.2.2.2.2) same) query)
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

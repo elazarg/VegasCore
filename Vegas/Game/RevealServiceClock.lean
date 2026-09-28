@@ -12,7 +12,9 @@ they do not add a clock or a scheduler cursor to player observations.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open EventGraphRuntime Interaction GameTheory.Protocol GameTheory.Math.Probability
 open GameTheory.Protocol.ExecutionProtocol
@@ -728,4 +730,4 @@ theorem menu_common_decision_depth (responses : (application setup leaks).Respon
       exact raw_decision_depth_observed setup leaks watcher who reveals separate control
         (responses.toRawTrace _ _ _ trace) active
 
-end Vegas.SourceProgram.RevealService
+end Vegas

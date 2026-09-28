@@ -12,7 +12,9 @@ over hidden histories preserves the original source-state posterior exactly.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -149,4 +151,4 @@ theorem roster_owner_context_value
 
 end
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -11,7 +11,9 @@ strategic event and appends nothing for chance.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -118,4 +120,4 @@ theorem decodeHistory_step_of_some
           [sourceAction]) := by
   rw [decodeHistory_step program config next event ready action supported, decoded]
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

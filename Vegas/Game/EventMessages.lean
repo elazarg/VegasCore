@@ -48,7 +48,7 @@ def compileEventPendingStrategy (setup : Setup (Player := Player) (L := L))
     runtime.application.PlayerPolicy :=
   runtime.compilePlayerPolicy who
     (setup.eventGraph.toModePolicy mode who
-      (EventLowering.compileEventPolicy setup.program who policy))
+      (Vegas.compileEventPolicy setup.program who policy))
 
 /-- Decode the complete terminal source state, retaining missing outcomes
 explicitly. This semantic readout includes undisclosed private values; it is
@@ -59,9 +59,9 @@ def eventPendingOutcome (setup : Setup (Player := Player) (L := L))
     (execution : runtime.application.PolicyExecution) :
     Option (State L setup.program.terminalCtx) :=
   if terminal : execution.native.application.config.cut.Terminal then
-    some ((EventLowering.decodeState? (EventLowering.terminalRefs setup.program)
+    some ((Vegas.decodeState? (Vegas.terminalRefs setup.program)
       execution.native.application.config.store).get
-        (EventLowering.decodeState?_isSome_of_available _ _
+        (Vegas.decodeState?_isSome_of_available _ _
           (fun field => execution.native.application.config.store_available_of_terminal
             terminal field)))
   else none
@@ -94,7 +94,7 @@ theorem eventPendingGame_map_outcome (setup : Setup (Player := Player) (L := L))
         (setup.eventPendingOutcome mode runtime) =
       (((setup.eventPendingGame mode runtime roster reactionRounds wire order).play players).map
         (fun execution => execution.native.application.config.store)).map
-          (EventLowering.decodeState? (EventLowering.terminalRefs setup.program)) := by
+          (Vegas.decodeState? (Vegas.terminalRefs setup.program)) := by
   rw [FinDist.map_comp]
   apply FinDist.map_congr_of_eq_on_support
   intro execution supported
@@ -119,19 +119,19 @@ theorem eventPendingGame_honest_law (setup : Setup (Player := Player) (L := L))
   change (((runtime.servicedEventGame _ roster reactionRounds wire order).play
     (runtime.compileProfile
       (setup.eventGraph.toModeProfile mode
-        (EventLowering.compileEventProfile setup.program profile)))).map
+        (Vegas.compileEventProfile setup.program profile)))).map
         (fun execution => execution.native.application.config.store)).map _ = _
   rw [runtime.servicedEventGame_honest_store_law
     (setup.eventGraph.withMode_barrierOrdered
-      (EventLowering.toEventGraph_barrierOrdered setup.program) mode) feasible]
+      (Vegas.toEventGraph_barrierOrdered setup.program) mode) feasible]
   simp only [FinDist.bind_map, FinDist.map_bind]
   simp_rw [← (setup.eventGraph.withMode mode).runPolicies_canonical_normalize_eq,
     setup.eventGraph.runPolicies_withMode_store,
     setup.eventGraph.fromModeProfile_toModeProfile]
   have canonical := congrArg (fun law => law.map some)
-    (EventLowering.scheduled_setup_law setup setup.eventGraph.canonicalScheduler profile)
+    (Vegas.scheduled_setup_law setup setup.eventGraph.canonicalScheduler profile)
   simp only [FinDist.map_bind, eventGraph,
-    EventLowering.terminalOutcomes_map_decode] at canonical
+    Vegas.terminalOutcomes_map_decode] at canonical
   exact canonical
 
 end Vegas.SourceProgram.Setup

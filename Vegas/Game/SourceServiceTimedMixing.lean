@@ -11,7 +11,9 @@ including silence after failed guarded disclosure and pending-envelope replay.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -376,4 +378,4 @@ theorem sourceServiceTimedProfile_fullyMixed
         opportunities network timing timingFull normalized permitted supported who control trace
           active response member)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

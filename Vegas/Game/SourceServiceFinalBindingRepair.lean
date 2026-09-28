@@ -14,7 +14,9 @@ remains framed or carries authentic traffic/public omission evidence.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -171,4 +173,4 @@ theorem final_binding_history_coupling
     rw [← same, app.respond_environmentRecall, ← frame.service]
     exact position
 
-end Vegas.SourceProgram.RevealService
+end Vegas

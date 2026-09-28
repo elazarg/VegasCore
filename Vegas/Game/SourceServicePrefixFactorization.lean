@@ -20,9 +20,11 @@ read by the native decoder.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 open GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player]
@@ -1523,4 +1525,4 @@ theorem sourceServiceTimedProfile_prefix_factorization [Fintype Player]
     admitted (fun who => (original who).normalizeDisclosureFrom_effective setup.program []
       (Revelations.initial setup.context) (fun view => FinDist.pure view.2)) focal count within
 
-end Vegas.SourceProgram.RevealService
+end Vegas

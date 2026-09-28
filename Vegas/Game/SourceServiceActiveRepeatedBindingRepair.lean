@@ -16,7 +16,9 @@ was needed. All repaired endpoints have real retained histories.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -529,4 +531,4 @@ theorem recorded_binding_history_response_block_coupling
       rw [Nat.sub_add_cancel enoughTail]
       exact (firstTrace next member).some
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -15,9 +15,11 @@ retained separately by disclosure normalization's conditional memory law.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -558,4 +560,4 @@ theorem sourceServiceLastPolicy_reveal_roster
     simpa only [same, receipts, counters] using completed
   · exact FinDist.bind_const _ expected
 
-end Vegas.SourceProgram.RevealService
+end Vegas

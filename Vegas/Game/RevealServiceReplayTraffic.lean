@@ -8,7 +8,9 @@ import Vegas.Game.RevealServiceTrafficSound
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -243,4 +245,4 @@ theorem replay_history_traffic
     · exact replay_step_traffic setup leaks bounds watcher reveals observer openable
         ⟨source, prior⟩ joint legal target realized record added
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -13,10 +13,12 @@ from the original source choices and positive timing probabilities.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
-open Interaction EventGraphRuntime EventLowering
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -312,4 +314,4 @@ theorem rosterPerturbedProfile_fullyMixed :
 
 end Perturbation
 
-end Vegas.SourceProgram.RevealService
+end Vegas

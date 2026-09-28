@@ -16,7 +16,9 @@ foreign prefix, so subsequent source-service resource theorems apply there.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -103,4 +105,4 @@ theorem repair_foreign_roster_coupling
     exact BindingMemory.retainedImplementation_response_available (runtime setup) leaks menu
       owner reference (players owner) next (past, view) response member
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -13,9 +13,11 @@ view or the source Boolean choices.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -193,4 +195,4 @@ theorem PublicPrefixCheckpoint.source_view_eq_of_application_eq
                   exact congrArg Sum.inr (ih next _ _ _ (offset + 1) left right
                     nativeLeft nativeRight leftRelated rightRelated same)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

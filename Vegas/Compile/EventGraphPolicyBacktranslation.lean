@@ -14,7 +14,9 @@ decision. Malformed source views use genuine failure actions.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability
 
@@ -393,4 +395,4 @@ theorem backtranslatePolicyTable_reveal_kernel
   simp only [backtranslatePolicyTable]
   rw [encoded]
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

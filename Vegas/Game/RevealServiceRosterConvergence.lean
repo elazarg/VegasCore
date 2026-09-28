@@ -7,10 +7,12 @@ import Vegas.Game.RevealServiceRosterLimit
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
-open Interaction EventGraphRuntime EventLowering
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -217,4 +219,4 @@ theorem rosterPerturbedProfile_converges
       simp only [FinDist.prob_map_of_injective _ (Option.some_injective _)]
       exact physical action
 
-end Vegas.SourceProgram.RevealService
+end Vegas

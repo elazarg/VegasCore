@@ -13,7 +13,9 @@ subsequent strategy choices do not affect the already recorded evidence.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
@@ -172,4 +174,4 @@ theorem roster_extra_choice_traffic
       rw [current, recorded]
       exact List.mem_append_right _ (List.mem_singleton_self _)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

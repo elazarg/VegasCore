@@ -14,9 +14,11 @@ No prescribed source strategy or probability of the information site is used.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -296,4 +298,4 @@ theorem sourceService_bindingRequired_iff_no_later_owner
     binding owned ready unsent visited remaining split counted]
   exact List.count_eq_zero
 
-end Vegas.SourceProgram.RevealService
+end Vegas

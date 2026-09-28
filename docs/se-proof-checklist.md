@@ -170,8 +170,8 @@ percentage estimate.
   terminal state and settlement, and no charge on the equilibrium's paths. One
   `SourceServiceSpec` supplies both edges: R4 takes its rosters, network,
   bounds and the binding projection of its opportunities; the observed result
-  is the parameter and public-outcome readout, invariant under normalization
-  (`sourceParameterReadout_normalization`).
+  is the typed source readout, invariant under normalization
+  (`sourceReadout_normalization`).
 
 - [ ] **E2. Validate and audit the delivered claim.** Integrate the proof into
   the build roots; pass the warning-strict build and repository proof/document

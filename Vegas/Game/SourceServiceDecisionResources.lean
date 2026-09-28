@@ -13,9 +13,11 @@ message could name.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -90,4 +92,4 @@ theorem sourceService_decision_resources
     · rw [sampled]
       exact recalled.symm
 
-end Vegas.SourceProgram.RevealService
+end Vegas

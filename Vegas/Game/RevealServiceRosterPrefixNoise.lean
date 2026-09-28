@@ -12,9 +12,11 @@ executions only as proof data; no player receives an additional state component.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 
 variable {Player : Type} [DecidableEq Player]
@@ -518,4 +520,4 @@ theorem roster_compiled_prefix_noise
   simpa only [initialLaw, FinDist.bind_map, FinDist.map_bind, FinDist.map_comp,
     Function.comp_def, combined] using factor
 
-end Vegas.SourceProgram.RevealService
+end Vegas

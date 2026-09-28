@@ -14,9 +14,11 @@ or source-to-native assessment correspondence is assumed.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
@@ -118,4 +120,4 @@ theorem sourceChoiceLaw_reveal {Γ : SourceCtx Player L} {openNames : Finset Var
     (sourceObserve owner source.state) decoded] at law
   exact law
 
-end Vegas.SourceProgram.RevealService
+end Vegas

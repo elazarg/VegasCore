@@ -14,9 +14,11 @@ or information-set correspondence are assumed.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -160,4 +162,4 @@ theorem prefix_extra_submission
     event.val event.isLt source execution related event (by omega) owned granted
     response effective extra
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -20,9 +20,11 @@ or a restriction on the full raw target's actions.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering EventGraph
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -147,4 +149,4 @@ theorem sourceService_successful_opening
       rfl
     _ = _ := normal
 
-end Vegas.SourceProgram.RevealService
+end Vegas

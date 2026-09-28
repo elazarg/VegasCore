@@ -18,10 +18,12 @@ Later players and schedulers cannot remove these authenticated records.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -265,4 +267,4 @@ theorem extra_choice_traffic
       rw [current, recorded]
       exact List.mem_append_right _ (List.mem_singleton_self _)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

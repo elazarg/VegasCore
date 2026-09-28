@@ -13,9 +13,11 @@ traffic is reset at the phase boundary.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -483,4 +485,4 @@ theorem roster_window_source_step_law [Finite Player]
     slots choices visits current serials remaining complete
     (by simpa only [Nat.zero_add] using counts) joint chosen frames
 
-end Vegas.SourceProgram.RevealService
+end Vegas

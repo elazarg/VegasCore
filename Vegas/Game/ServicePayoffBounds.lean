@@ -13,7 +13,9 @@ finite-payoff checker computes the corresponding range certificate.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory Interaction EventGraphRuntime
 
@@ -67,4 +69,4 @@ theorem rosterAuditDeposit_covers_gain
   have second := FinitePayoffBounds.lower_le payoff repaired
   linarith
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -85,10 +85,10 @@ theorem payoffProgram_settlement (table : PayoffTable)
 
 def compiledPayoffs (table : PayoffTable) :
     List (Player × EventGraph.PublicExpr nativeGraph.layout simpleExpr.int) := by
-  simpa only [EventLowering.graphLayout, EventGraph.layout, nativeGraph, sourceSetup,
-    Setup.eventGraph, EventLowering.toEventGraph, payoffProgram, sourceProgram,
-    EventLowering.outputLayout, EventLowering.eventCount]
-      using EventLowering.payoffs (payoffProgram table)
+  simpa only [Vegas.graphLayout, EventGraph.layout, nativeGraph, sourceSetup,
+    Setup.eventGraph, Vegas.toEventGraph, payoffProgram, sourceProgram,
+    Vegas.outputLayout, Vegas.eventCount]
+      using Vegas.payoffs (payoffProgram table)
 
 /-- The ordinary compiler changes only terminal readout expressions. -/
 theorem payoffSetup_graph (table : PayoffTable) :

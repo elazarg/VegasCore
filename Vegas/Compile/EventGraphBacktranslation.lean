@@ -11,7 +11,9 @@ belong to the selected event.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -284,4 +286,4 @@ theorem encodeCompletions?_decodeCompletions_eq_some
         tailEncoded]
       rfl
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

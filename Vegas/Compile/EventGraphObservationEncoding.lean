@@ -12,7 +12,9 @@ player's private inputs and bindings.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -787,4 +789,4 @@ theorem encodeObservationStore_decodeObservation?_eq_playerStore_of_prefix
   exact encodeObservationStore_eq_playerStore_of_prefix whole refs offset covered
     config ordered state refsAgree who
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

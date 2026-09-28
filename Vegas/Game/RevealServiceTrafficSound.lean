@@ -13,10 +13,12 @@ result applies to every legal prefix, independently of policies or utilities.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -229,4 +231,4 @@ theorem retained_traffic_clear (bounds : MessageBounds (graph setup))
   exact retained_history_traffic setup leaks bounds watcher reveals observer openable
     history record (authentic member)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

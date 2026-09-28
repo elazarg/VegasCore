@@ -11,7 +11,9 @@ law and does not assume that all pending traffic is public.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -143,4 +145,4 @@ theorem menu_owner_readout
   exact grant_activate_readout setup leaks watcher owner players event event.val _ _ execution
     position grantAt ownerAt
 
-end Vegas.SourceProgram.RevealService
+end Vegas

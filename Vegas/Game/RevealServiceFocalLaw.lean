@@ -13,7 +13,9 @@ assumed here; information-fiber reflection is a separate obligation.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -36,7 +38,7 @@ theorem focal_plan_prefix_law
     (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
     (who : Player) (notWatcher : who ≠ watcher)
     (reference : List (application setup leaks).PlayerEntry)
-    (count : Nat) (within : count ≤ EventLowering.eventCount setup.program) :
+    (count : Nat) (within : count ≤ Vegas.eventCount setup.program) :
     let extended := bounds.withInitialValues (initialLaw setup)
     let selected := focalProfile setup leaks extended watcher profile weight nonnegative
       atMostOne who reference
@@ -93,4 +95,4 @@ theorem focal_plan_prefix_law
         actor past view opening found covered
   · exact within
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -13,9 +13,11 @@ the current one, and contains no assumed information-fiber equality.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
@@ -71,4 +73,4 @@ theorem guarded_disclosure_response_memory
     Config.withOwnHistory, Function.update_self, revealSuccessor, Function.update_idem,
     memory] using law
 
-end Vegas.SourceProgram.RevealService
+end Vegas

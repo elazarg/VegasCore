@@ -12,7 +12,9 @@ original source law. Physical replay aliases do not alter this marginal.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -260,4 +262,4 @@ theorem owner_local_optimal
   rw [changed, baseline]
   exact optimal _ (Set.mem_univ _)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

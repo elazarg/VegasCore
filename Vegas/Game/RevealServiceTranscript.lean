@@ -13,9 +13,11 @@ the resulting transcript encoder.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -109,4 +111,4 @@ theorem ordinary_response_transcript (setup : Setup (Player := Player) (L := L))
         event candidate ⟨payload, value⟩ ready _ _ recall owned verified serials ledger receipts
         counters completed published network recorded
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -12,7 +12,9 @@ the existing interpreter, including private recall and all network state.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -112,4 +114,4 @@ theorem rosterPolicy_phase_law
   cases disclose <;> simp only [Bool.false_eq_true, ↓reduceIte,
     FinDist.pure_bind, FinDist.bind_map]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

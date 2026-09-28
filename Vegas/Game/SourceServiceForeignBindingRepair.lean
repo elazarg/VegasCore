@@ -15,7 +15,9 @@ implementation, and a legal retained endpoint.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -158,4 +160,4 @@ theorem foreign_binding_history_tail_coupling
     rw [length]
     exact trace
 
-end Vegas.SourceProgram.RevealService
+end Vegas

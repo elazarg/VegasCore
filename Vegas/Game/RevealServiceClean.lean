@@ -13,10 +13,12 @@ evidence. This remains true after arbitrary retained continuation policies.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -152,4 +154,4 @@ theorem sequential_equilibrium_net_iff
     rw [same, same]
     exact rational who site alternative permitted
 
-end Vegas.SourceProgram.RevealService
+end Vegas

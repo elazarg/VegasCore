@@ -12,9 +12,11 @@ keep the public phase and ledger at transmission, including after settlement.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -279,4 +281,4 @@ theorem initialized_sourceService_conformance
     rw [List.take_of_length_le (by simp only [List.length_finRange]; exact le_rfl)]
   simpa only [complete] using reached
 
-end Vegas.SourceProgram.RevealService
+end Vegas

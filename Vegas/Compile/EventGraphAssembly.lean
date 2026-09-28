@@ -13,7 +13,9 @@ payoff readout.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -176,4 +178,4 @@ def _root_.Vegas.SourceProgram.Setup.eventInputs
     (state : State L source.context) : source.eventGraph.Inputs :=
   encodeInputs state
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

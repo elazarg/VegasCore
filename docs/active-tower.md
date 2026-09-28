@@ -147,7 +147,7 @@ Backtranslation runs through the canonical graph, and the strategic edges say so
 `Setup.canonicalEventSimulation` is the compiler's own edge, from the source game
 to `Setup.canonicalEventGame`: its deviation certificate is a point mass, because
 a canonical graph deviation *is* one backtranslated source policy
-(`EventLowering.canonical_setup_deviation_law`). Everything above it is a
+(`Vegas.canonical_setup_deviation_law`). Everything above it is a
 separate edge, and every mixture in the tower is contributed there rather than
 by the compiler.
 
@@ -178,7 +178,7 @@ common reading is `MixtureSimulationOn.reobserve`; both are generic.
 
 The canonical graph scheduler selects the least unfinished source rank. Its
 single-policy deviation correspondence is
-`EventLowering.canonical_setup_deviation_law`: the backtranslated policy is uniform over private
+`Vegas.canonical_setup_deviation_law`: the backtranslated policy is uniform over private
 initial setup and retains the unchanged opponents.
 
 For native execution, choosing a fixed order of service visits is insufficient
@@ -276,22 +276,22 @@ The compiled-graph regressions include an actual step that completes the second
 source commitment before the first, and a mixed source program with private
 initial inputs, deferred guards, and chance.
 
-The whole-run source-order theorem `EventLowering.canonical_setup_law` runs
+The whole-run source-order theorem `Vegas.canonical_setup_law` runs
 the actual compiled graph under its canonical public scheduler. Its decoded
 terminal-state law equals source execution, including a finite private setup
 law and one profile used across that law. `Vegas.Paper.source_event_graph_canonical_law`
 delegates to this result. It covers every source constructor and requires no
 guard-feasibility or failure-dominance premise.
 
-`EventLowering.scheduled_setup_law` composes this source-order law with graph
+`Vegas.scheduled_setup_law` composes this source-order law with graph
 scheduling independence. Every adaptive public schedule of the compiled
 profile has the full source terminal-state law, with one profile across the
 private setup distribution. `Vegas.Paper.source_event_graph_honest_law` delegates
 to this result. No failure-dominance or finite-payload premise is required.
 
-`EventLowering.canonical_deviation_terminalState_law` backtranslates every
+`Vegas.canonical_deviation_terminalState_law` backtranslates every
 canonical graph deviation to a single source policy, uniformly over initial
-states. `EventLowering.scheduled_setup_deviation_law` composes this result with
+states. `Vegas.scheduled_setup_deviation_law` composes this result with
 the graph-local scheduler mixture: every unilateral asynchronous graph
 deviation has exactly the terminal source-state law of a finite mixture of
 source deviations against unchanged opponents. One mixture is chosen before

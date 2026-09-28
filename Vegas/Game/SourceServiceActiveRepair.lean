@@ -13,7 +13,9 @@ against the same unchanged original strategy and the same fixed legal repair.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -411,4 +413,4 @@ theorem active_history_stopped_coupling
         Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
       exact (existsTail next member).choose_spec.2.2 final reached
 
-end Vegas.SourceProgram.RevealService
+end Vegas

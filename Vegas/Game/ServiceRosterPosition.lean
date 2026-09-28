@@ -6,7 +6,9 @@ import Vegas.Game.ServiceRoster
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open EventGraphRuntime
 
@@ -88,4 +90,4 @@ theorem roster_activation_prefix (setup : Setup (Player := Player) (L := L))
   rw [List.take_append_of_le_length (by
     simp only [List.length_cons, List.length_map]; omega), List.take_succ_cons, List.map_take]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

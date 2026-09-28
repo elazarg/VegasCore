@@ -78,10 +78,12 @@ theorem Setup.reveal_choice_fullSupport
 
 end Vegas.SourceProgram
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
-open Interaction EventGraphRuntime EventLowering
+open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -269,4 +271,4 @@ theorem compiledProfile_converges
         (setup.revealReference_fullyMixed reveals admission who sourceSite).finite
       exact (converges who sourceSite).map (fun choice => OwnAction.disclosure choice.1)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

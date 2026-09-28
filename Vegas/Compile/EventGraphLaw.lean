@@ -15,7 +15,9 @@ corresponding suffix of the single graph compiled from the whole program.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability
 
@@ -397,4 +399,4 @@ theorem runWith_option_law
         (Function.update history owner
           (history owner ++ [OwnAction.reveal owner name disclose])) nextHistory
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

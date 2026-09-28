@@ -12,10 +12,12 @@ and rebroadcasting do not require a new author identity.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -371,4 +373,4 @@ theorem roster_history_traffic (bounds : MessageBounds (graph setup))
       · exact roster_step_traffic setup leaks bounds rosters network reveals openable
           ⟨source, prior⟩ joint legal target realized record added
 
-end Vegas.SourceProgram.RevealService
+end Vegas

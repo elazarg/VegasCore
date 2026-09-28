@@ -14,10 +14,12 @@ No compiled-profile or positive-probability assumption on source play is used.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -296,4 +298,4 @@ theorem owner_history_supported
           InformationModel.BehavioralAssessment.ofStrategy] using supported
       · exact (ordinary same).elim
 
-end Vegas.SourceProgram.RevealService
+end Vegas

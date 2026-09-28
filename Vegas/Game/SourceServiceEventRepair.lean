@@ -13,7 +13,9 @@ same repaired policy and unchanged opponents. No payoff comparison is assumed.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
@@ -273,4 +275,4 @@ theorem event_block_stopped_coupling
         (by simp) repaired memory cursor, grantStep, FinDist.map_pure, FinDist.pure_bind]
     exact second
 
-end Vegas.SourceProgram.RevealService
+end Vegas

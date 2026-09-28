@@ -12,7 +12,9 @@ Its entire continuation has the same application-state law as silence.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -180,4 +182,4 @@ theorem replay_extra_continuation_law
   rw [FinDist.map_comp] at targetMapped sourceMapped
   exact targetMapped.trans (finished.symm.trans sourceMapped.symm)
 
-end Vegas.SourceProgram.RevealService
+end Vegas

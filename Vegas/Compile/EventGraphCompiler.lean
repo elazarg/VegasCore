@@ -12,7 +12,9 @@ supplies source-ranked references and the barrier dependency proof.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -589,4 +591,4 @@ def compileRankedNodes {inputCount totalCount : Nat}
           (revelations.reveal (published := published) selected) registry.weaken
           tailEmbedding tailRefsBefore) index
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

@@ -8,7 +8,9 @@ import Vegas.EventGraph.SchedulerMixture
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Math.Probability
 
@@ -176,4 +178,4 @@ theorem scheduled_setup_deviation_law
   exact canonical_deviation_terminalState_law setup.program profile
     who alternative initial
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

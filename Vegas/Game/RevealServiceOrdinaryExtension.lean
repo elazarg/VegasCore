@@ -19,7 +19,9 @@ interpretation; these theorems do not implement an escrow contract.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability Interaction EventGraphRuntime
@@ -241,4 +243,4 @@ theorem ordinary_raw_equilibrium_extends
   rw [joint, ← historyLaw, FinDist.map_comp]
   rfl
 
-end Vegas.SourceProgram.RevealService
+end Vegas

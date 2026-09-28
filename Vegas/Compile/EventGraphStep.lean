@@ -12,7 +12,9 @@ typed output equality is the only transport required by a suffix embedding.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability
 open Vegas.EventGraph
@@ -86,4 +88,4 @@ theorem reveal_step
     (compileResolve_eval? refs registry revelations state config.store refsAgree selected
       disclose), FinDist.map_pure]
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

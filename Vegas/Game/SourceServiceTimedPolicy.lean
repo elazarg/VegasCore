@@ -18,7 +18,9 @@ The latent slot is proof data of behavioral realization, not runtime state.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -309,4 +311,4 @@ theorem sourceServiceTimedPolicy_final
             ite_self]
       · simp only [owned, false_and, ↓reduceIte, ↓reduceDIte]
 
-end Vegas.SourceProgram.RevealService
+end Vegas

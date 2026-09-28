@@ -12,9 +12,11 @@ or runtime transition and does not identify native response histories.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -505,4 +507,4 @@ theorem PublicPrefixCheckpoint.actor
               have within : count < eventCount next := by simpa [eventCount] using inside
               exact ih next _ _ _ (offset + 1) rest execution related within
 
-end Vegas.SourceProgram.RevealService
+end Vegas

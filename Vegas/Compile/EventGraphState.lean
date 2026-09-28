@@ -14,7 +14,9 @@ prefix, and that storing a new cell's value extends it.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
@@ -131,4 +133,4 @@ theorem OutputEmbedding.ref_get?_complete
     (castInverse (congrArg Vegas.EventGraph.EventField.Value
       (embedding.layout_eq index)) value)
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

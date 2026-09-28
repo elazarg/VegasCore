@@ -13,9 +13,11 @@ existing native service evaluator and its actual normalized response compiler.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
@@ -170,4 +172,4 @@ theorem compiled_profile_joint_utility_law
   unfold baseUtility
   simpa only [FinDist.map_comp, Function.comp_def] using mapped
 
-end Vegas.SourceProgram.RevealService
+end Vegas

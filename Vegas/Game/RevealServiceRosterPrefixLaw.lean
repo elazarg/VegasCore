@@ -14,9 +14,11 @@ traffic remain in the native execution, and all withholding choices remain.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -296,4 +298,4 @@ theorem roster_compiled_prefix_law
         (openable initial supported)).toPublicCheckpoint
       (fun _ => rfl) MessageNetwork.Satisfies.empty MessageNetwork.SerialsBeforeNext.empty
 
-end Vegas.SourceProgram.RevealService
+end Vegas

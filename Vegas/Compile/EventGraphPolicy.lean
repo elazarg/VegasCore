@@ -14,7 +14,9 @@ failure action at malformed, unreachable graph views.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.EventLowering
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability
 
@@ -356,4 +358,4 @@ def compileEventProfile {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (toEventGraph program).BehavioralProfile :=
   fun who => compileEventPolicy program who (profile who)
 
-end Vegas.SourceProgram.EventLowering
+end Vegas

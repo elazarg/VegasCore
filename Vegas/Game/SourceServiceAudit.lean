@@ -17,7 +17,9 @@ separate continuation-repair obligation.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability GameTheory.Protocol GameTheory.Enforcement
 open Interaction EventGraphRuntime
@@ -150,4 +152,4 @@ theorem sourceServiceCompiledProfile_settlement_law
   simpa only [FinDist.map_comp, Function.comp_def, Option.elim_some,
     baseUtility, executions, model] using joint
 
-end Vegas.SourceProgram.RevealService
+end Vegas

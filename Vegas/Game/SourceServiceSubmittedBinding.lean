@@ -13,9 +13,11 @@ the real pending-envelope and private-candidate provenance.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -250,4 +252,4 @@ theorem sourceService_recorded_binding_resources
   · simpa only [message, packet, serialEq, currentId] using currentFound
   · simpa only [message, packet, serialEq, currentId] using currentSelected
 
-end Vegas.SourceProgram.RevealService
+end Vegas

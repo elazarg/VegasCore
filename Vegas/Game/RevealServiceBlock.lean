@@ -14,9 +14,11 @@ times, and the network equation retains the physical response and its receipt.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -237,4 +239,4 @@ theorem ordinary_response_source_step (setup : Setup (Player := Player) (L := L)
     cases chosen : sourceChoice setup leaks response <;>
       simp only [chosen] at histories ⊢ <;> exact histories
 
-end Vegas.SourceProgram.RevealService
+end Vegas

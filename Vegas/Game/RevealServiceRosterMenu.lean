@@ -16,7 +16,9 @@ sequence must establish the source-to-restricted-runtime correspondence.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -258,4 +260,4 @@ theorem roster_run_application (setup : Setup (Player := Player) (L := L))
         (roster_response_application setup leaks bounds rosters who
           (initial.sampledActivation app who sample) action (covered who _ _ action supported))
 
-end Vegas.SourceProgram.RevealService
+end Vegas

@@ -15,7 +15,9 @@ rebroadcaster or requiring observation of every pending envelope.
 
 noncomputable section
 
-namespace Vegas.SourceProgram.RevealService
+namespace Vegas
+
+open SourceProgram
 
 open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime
 
@@ -133,4 +135,4 @@ theorem sourceService_history_traffic_audit_clear
     exact sourceService_history_traffic bounds values capacity opportunities network
       history record member
 
-end Vegas.SourceProgram.RevealService
+end Vegas
