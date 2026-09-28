@@ -104,14 +104,8 @@ theorem sourceService_decision_supported
           ((toEventGraph setup.program).nodes (embedding.event index)) = _
         simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
       have node : nodeView (graph setup) (embedding.event index) =
-          .bind who payload outputEq codeEq := by
-        cases viewed : nodeView (graph setup) (embedding.event index) with
-        | sample otherPayload law kind code => cases kind.symm.trans outputEq
-        | resolve other otherPayload binding checks kind code =>
-            cases kind.symm.trans outputEq
-        | bind other otherPayload kind code =>
-            obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj (kind.symm.trans outputEq)
-            rfl
+          .bind who payload outputEq codeEq :=
+        EventGraphRuntime.nodeView_eq_bind _ _
       have grantedHead : execution.application.serviceGrant =
           some (embedding.event index) := by rw [same]; exact grantNow
       have ownedHead : (graph setup).actor? (embedding.event index) = some who := by
@@ -152,15 +146,8 @@ theorem sourceService_decision_supported
           ((toEventGraph setup.program).nodes (embedding.event index)) = _
         simpa [index, compileRankedNodes, checks] using aligned.graphSuffix.nodeEq index
       have node : nodeView (graph setup) (embedding.event index) =
-          .resolve who payload (refs.get binding) checks outputEq codeEq := by
-        cases viewed : nodeView (graph setup) (embedding.event index) with
-        | bind other otherPayload kind code => cases kind.symm.trans outputEq
-        | sample otherPayload law kind code => cases kind.symm.trans outputEq
-        | resolve other otherPayload reference guards kind code =>
-            have same := EventGraph.EventField.publication.inj (kind.symm.trans outputEq)
-            subst otherPayload
-            cases code.symm.trans codeEq
-            rfl
+          .resolve who payload (refs.get binding) checks outputEq codeEq :=
+        EventGraphRuntime.nodeView_eq_resolve _ _
       have grantedHead : execution.application.serviceGrant =
           some (embedding.event index) := by rw [same]; exact grantNow
       have ownedHead : (graph setup).actor? (embedding.event index) = some who := by

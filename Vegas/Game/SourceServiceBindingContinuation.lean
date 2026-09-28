@@ -210,13 +210,8 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
       ((toEventGraph setup.program).nodes event) = _
     exact aligned.graphSuffix.nodeEq index
-  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | sample other law kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload binding checks kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code =>
-        obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj (kind.symm.trans outputEq)
-        rfl
+  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_bind _ _
   rw [runInteractionPlan_append, FinDist.map_bind]
   change (continued response).bind _ = _
   rw [conditioned, FinDist.bind_bind]

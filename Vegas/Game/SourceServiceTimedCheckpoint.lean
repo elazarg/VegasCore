@@ -269,15 +269,8 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
     simpa [event, index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
   have node : nodeView (graph setup) event = .resolve owner payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
-      outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload otherBinding otherChecks kind code =>
-        have samePayload := EventGraph.EventField.publication.inj (kind.symm.trans outputEq)
-        subst otherPayload
-        cases code.symm.trans codeEq
-        rfl
+      outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_resolve _ _
   have eventRank : event.val = rank := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using aligned.graphSuffix.rankEq index
   have decoded (disclose : Bool) : decodeEventAction setup.program event
@@ -410,16 +403,8 @@ theorem sourceServiceTimedPolicy_sample_joint_law
       ((toEventGraph setup.program).nodes event) = _
     simpa [event, index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
   have node : nodeView (graph setup) event =
-      .sample payload (compilePublicDist refs distribution) outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | sample otherPayload law kind code =>
-        have samePayload := EventGraph.EventField.publicData.inj (kind.symm.trans outputEq)
-        subst otherPayload
-        cases code.symm.trans codeEq
-        rfl
-    | bind other otherPayload kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload otherBinding checks kind code =>
-        cases kind.symm.trans outputEq
+      .sample payload (compilePublicDist refs distribution) outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_sample _ _
   have chance : (graph setup).actor? event = none := by
     change (toEventGraph setup.program).actor? event = none
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
@@ -528,14 +513,8 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
     change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
       ((toEventGraph setup.program).nodes event) = _
     simpa [event, index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
-  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code =>
-        obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj (kind.symm.trans outputEq)
-        rfl
-    | resolve other otherPayload otherBinding checks kind code =>
-        cases kind.symm.trans outputEq
+  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_bind _ _
   obtain ⟨freshSlot, candidate, unused, vacant⟩ := boundary.binding_resources event eventRank owner
   have ready := boundary.ready event eventRank
   have timely := boundary.timely event eventRank (by simp only [owned, Option.isSome_some])

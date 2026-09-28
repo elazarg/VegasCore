@@ -92,13 +92,8 @@ theorem sourceServicePolicy_commit_delayed_service
     change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
       ((toEventGraph setup.program).nodes event) = _
     simpa [event, headIndex, compileRankedNodes] using aligned.graphSuffix.nodeEq headIndex
-  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload binding checks kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code =>
-        obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj (kind.symm.trans outputEq)
-        rfl
+  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_bind _ _
   have owned : (graph setup).actor? event = some owner := by
     change (toEventGraph setup.program).actor? event = some owner
     simpa [event, headIndex, eventOwner?, eventCount] using aligned.actorEq headIndex

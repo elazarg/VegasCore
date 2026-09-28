@@ -713,6 +713,58 @@ def nodeView (graph : Vegas.EventGraph Player L)
       | .sample _ law => .sample payload law outputEq codeEq
 
 omit [DecidableEq Player] in
+/-- A publication event's node view is its resolve code. -/
+theorem nodeView_eq_resolve {graph : Vegas.EventGraph Player L} {event : graph.EventId}
+    {owner : Player} {payload : L.Ty} {binding : FieldRef graph.layout (.binding owner payload)}
+    {checks : List (GuardCheck graph.layout payload)}
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks) :
+    nodeView graph event = .resolve owner payload binding checks outputEq codeEq := by
+  cases viewed : nodeView graph event with
+  | bind other otherPayload kind code => cases kind.symm.trans outputEq
+  | sample otherPayload law kind code => cases kind.symm.trans outputEq
+  | resolve other otherPayload otherBinding otherChecks kind code =>
+      have same := EventField.publication.inj (kind.symm.trans outputEq)
+      subst same
+      cases code.symm.trans codeEq
+      rfl
+
+omit [DecidableEq Player] in
+/-- A binding event's node view is its bind code. -/
+theorem nodeView_eq_bind {graph : Vegas.EventGraph Player L} {event : graph.EventId}
+    {owner : Player} {payload : L.Ty}
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload) :
+    nodeView graph event = .bind owner payload outputEq codeEq := by
+  cases viewed : nodeView graph event with
+  | sample otherPayload law kind code => cases kind.symm.trans outputEq
+  | resolve other otherPayload otherBinding otherChecks kind code =>
+      cases kind.symm.trans outputEq
+  | bind other otherPayload kind code =>
+      obtain ⟨rfl, rfl⟩ := EventField.binding.inj (kind.symm.trans outputEq)
+      rfl
+
+omit [DecidableEq Player] in
+/-- A public-sample event's node view is its sample code. -/
+theorem nodeView_eq_sample {graph : Vegas.EventGraph Player L} {event : graph.EventId}
+    {payload : L.Ty} {law : PublicDist graph.layout payload}
+    (outputEq : graph.outputLayout event = .publicData payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .sample payload law) :
+    nodeView graph event = .sample payload law outputEq codeEq := by
+  cases viewed : nodeView graph event with
+  | bind other otherPayload kind code => cases kind.symm.trans outputEq
+  | resolve other otherPayload otherBinding otherChecks kind code =>
+      cases kind.symm.trans outputEq
+  | sample otherPayload otherLaw kind code =>
+      have same := EventField.publicData.inj (kind.symm.trans outputEq)
+      subst same
+      cases code.symm.trans codeEq
+      rfl
+
+omit [DecidableEq Player] in
 private theorem bind_complete_mem_step (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)

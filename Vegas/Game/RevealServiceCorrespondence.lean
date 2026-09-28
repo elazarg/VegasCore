@@ -92,18 +92,8 @@ theorem sourceChoiceLaw_reveal {Γ : SourceCtx Player L} {openNames : Finset Var
     reveal_head_code setup fresh selected unresolved next refs source.revelations
       embedding refsBefore offset aligned.graphSuffix
   have node : nodeView (graph setup) event =
-      .resolve owner payload (refs.get selected) [] outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | bind other otherPayload kind code => cases kind.symm.trans outputEq
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload binding checks kind code =>
-        have same : otherPayload = payload := EventGraph.EventField.publication.inj
-          (kind.symm.trans outputEq)
-        subst otherPayload
-        have codes : EventGraph.EventCode.resolve other payload binding checks =
-            .resolve owner payload (refs.get selected) [] := code.symm.trans codeEq
-        cases codes
-        rfl
+      .resolve owner payload (refs.get selected) [] outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_resolve _ _
   rw [sourceChoiceLaw_at_reveal setup leaks wholeProfile owner execution event granted actor
     owner payload (refs.get selected) [] outputEq codeEq node]
   let observation := setup.eventGraph.fromModeObservation .sequential owner

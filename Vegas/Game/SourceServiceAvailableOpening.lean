@@ -135,15 +135,8 @@ theorem RevealSource.opening_success {setup : Setup (Player := Player) (L := L)}
   have node : nodeView (graph setup) (embedding.event ⟨0, by simp [eventCount]⟩) =
       .resolve owner payload (refs.get binding)
       (compileChecks (published := publishedName) refs source.registry source.revelations
-        binding) outputEq codeEq := by
-    cases viewed : nodeView (graph setup) (embedding.event ⟨0, by simp [eventCount]⟩) with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload otherBinding otherChecks kind code =>
-        have samePayload := EventGraph.EventField.publication.inj (kind.symm.trans outputEq)
-        subst otherPayload
-        cases code.symm.trans codeEq
-        rfl
+        binding) outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_resolve _ _
   cases result : disclosureResult publishedName binding source true with
   | failure =>
       have absent := guarded_rosterOpening_failure setup leaks publishedName binding source refs
@@ -208,15 +201,8 @@ theorem RevealSource.opening_config_law (setup : Setup (Player := Player) (L := 
   have node : nodeView (graph setup) (embedding.event ⟨0, by simp [eventCount]⟩) =
       .resolve owner payload (refs.get binding)
       (compileChecks (published := publishedName) refs source.registry source.revelations
-        binding) outputEq codeEq := by
-    cases viewed : nodeView (graph setup) (embedding.event ⟨0, by simp [eventCount]⟩) with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload otherBinding otherChecks kind code =>
-        have samePayload := EventGraph.EventField.publication.inj (kind.symm.trans outputEq)
-        subst otherPayload
-        cases code.symm.trans codeEq
-        rfl
+        binding) outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_resolve _ _
   let app := application setup leaks
   cases result : disclosureResult publishedName binding source true with
   | failure =>

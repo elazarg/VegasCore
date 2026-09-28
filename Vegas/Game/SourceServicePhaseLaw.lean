@@ -67,14 +67,8 @@ theorem ServiceBoundary.sample_state_law [Fintype Player]
       ((toEventGraph setup.program).nodes event) = _
     simpa [event, index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
   have node : nodeView (graph setup) event =
-      .sample payload (compilePublicDist refs distribution) outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | bind other otherPayload kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload binding checks kind code => cases kind.symm.trans outputEq
-    | sample otherPayload law kind code =>
-        cases EventGraph.EventField.publicData.inj (kind.symm.trans outputEq)
-        cases code.symm.trans codeEq
-        rfl
+      .sample payload (compilePublicDist refs distribution) outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_sample _ _
   have chance : (graph setup).actor? event = none := by
     change (toEventGraph setup.program).actor? event = none
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index

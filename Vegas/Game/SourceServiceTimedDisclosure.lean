@@ -188,15 +188,8 @@ theorem sourceServiceOpportunity_reveal
     simpa [event, index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
   have node : nodeView (graph setup) event = .resolve owner payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
-      outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload otherBinding otherChecks kind code =>
-        have samePayload := EventField.publication.inj (kind.symm.trans outputEq)
-        subst otherPayload
-        cases code.symm.trans codeEq
-        rfl
+      outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_resolve _ _
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte]
   rw [sourceServicePolicy_reveal setup leaks fresh binding unresolved next wholeProfile profile
     refs source embedding refsBefore rank aligned execution agree history granted, FinDist.bind_map]

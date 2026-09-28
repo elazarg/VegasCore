@@ -224,13 +224,8 @@ theorem sourceServiceTimedFamily_binding_law
     change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
       ((toEventGraph setup.program).nodes event) = _
     exact aligned.graphSuffix.nodeEq index
-  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload binding checks kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code =>
-        obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj (kind.symm.trans outputEq)
-        rfl
+  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_bind _ _
   simp only [List.cons_append, runInteractionPlan, interactionStep, interactionInstruction,
     FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     ReactiveApplication.resume, ReactiveApplication.invoke,

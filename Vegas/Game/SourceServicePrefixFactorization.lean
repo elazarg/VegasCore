@@ -164,15 +164,8 @@ theorem sourceService_reveal_prefix_factorization
   have node (seed : Seed) : nodeView (graph setup) event =
       .resolve owner payload (refs.get binding)
         (compileChecks (published := published) refs (source seed).registry
-          (source seed).revelations binding) outputEq (codeEq seed) := by
-    cases viewed : nodeView (graph setup) event with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload otherBinding otherChecks kind code =>
-        have samePayload := EventGraph.EventField.publication.inj (kind.symm.trans outputEq)
-        subst otherPayload
-        cases code.symm.trans (codeEq seed)
-        rfl
+          (source seed).revelations binding) outputEq (codeEq seed) :=
+    EventGraphRuntime.nodeView_eq_resolve _ _
   let choice := fun config : Config Player L Γ => revealKernel profile (config.view owner)
   let advance := revealSuccessor published binding
   let transcript := fun seed disclose => guardedDisclosureTranscript setup leaks network

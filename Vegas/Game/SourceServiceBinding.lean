@@ -86,14 +86,8 @@ theorem sourceServicePolicy_commit_service
     change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
       ((toEventGraph setup.program).nodes event) = _
     simpa [event, headIndex, compileRankedNodes] using aligned.graphSuffix.nodeEq headIndex
-  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload binding checks kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code =>
-        have same := EventGraph.EventField.binding.inj (kind.symm.trans outputEq)
-        obtain ⟨rfl, rfl⟩ := same
-        rfl
+  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_bind _ _
   have policy := sourceServicePolicy_commit setup leaks fresh guard next wholeProfile profile
     refs source embedding refsBefore offset aligned execution agree history granted
   dsimp only at policy

@@ -168,13 +168,8 @@ theorem sourceServiceOpportunity_commit_covered
     change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
       ((toEventGraph setup.program).nodes event) = _
     simpa [event, index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
-  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload binding checks kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code =>
-        obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj (kind.symm.trans outputEq)
-        rfl
+  have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_bind _ _
   have owned : (graph setup).actor? event = some owner := by
     change (toEventGraph setup.program).actor? event = some owner
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
@@ -258,16 +253,8 @@ theorem sourceServiceOpportunity_reveal_covered
     simpa [event, index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
   have node : nodeView (graph setup) event = .resolve owner payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
-      outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload otherBinding otherChecks kind code =>
-        have samePayload := EventGraph.EventField.publication.inj (kind.symm.trans outputEq)
-        subst otherPayload
-        have sameCode := code.symm.trans codeEq
-        cases sameCode
-        rfl
+      outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_resolve _ _
   have optional : ¬ bindingRequired setup leaks rosters owner (execution.recall owner)
       (execution.observe app owner) := by
     rintro ⟨other, otherPayload, otherGrant, otherBinding, _⟩

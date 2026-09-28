@@ -109,15 +109,8 @@ theorem reveal_slot_config_law (setup : Setup (Player := Player) (L := L))
   have node : nodeView (graph setup) (embedding.event ⟨0, by simp [eventCount]⟩) =
       .resolve owner payload (refs.get binding)
       (compileChecks (published := publishedName) refs source.registry source.revelations
-        binding) outputEq codeEq := by
-    cases viewed : nodeView (graph setup) (embedding.event ⟨0, by simp [eventCount]⟩) with
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | bind other otherPayload kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload otherBinding otherChecks kind code =>
-        have samePayload := EventGraph.EventField.publication.inj (kind.symm.trans outputEq)
-        subst otherPayload
-        cases code.symm.trans codeEq
-        rfl
+        binding) outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_resolve _ _
   obtain ⟨visited, remaining, position, counted⟩ := split_owner_visit owner visits
     (rosterOffset setup rosters owner (embedding.event ⟨0, by simp [eventCount]⟩) + slot.val -
       (execution.recall owner).length) (by omega)

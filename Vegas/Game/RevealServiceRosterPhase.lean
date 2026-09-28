@@ -167,18 +167,8 @@ theorem roster_reveal_continuation_law [Finite Player]
     reveal_head_code setup fresh binding unresolved next refs source.revelations embedding
       refsBefore offset aligned.graphSuffix
   have node : nodeView (graph setup) event =
-      .resolve owner payload (refs.get binding) [] outputEq codeEq := by
-    cases viewed : nodeView (graph setup) event with
-    | bind other otherPayload kind code => cases kind.symm.trans outputEq
-    | sample otherPayload law kind code => cases kind.symm.trans outputEq
-    | resolve other otherPayload read checks kind code =>
-        have same : otherPayload = payload := EventGraph.EventField.publication.inj
-          (kind.symm.trans outputEq)
-        subst otherPayload
-        have codes : EventGraph.EventCode.resolve other payload read checks =
-            .resolve owner payload (refs.get binding) [] := code.symm.trans codeEq
-        cases codes
-        rfl
+      .resolve owner payload (refs.get binding) [] outputEq codeEq :=
+    EventGraphRuntime.nodeView_eq_resolve _ _
   have ready : execution.application.config.cut.Ready event := by
     have within : offset < (graph setup).order.eventCount := eventRank ▸ event.isLt
     have same : (⟨offset, within⟩ : (graph setup).EventId) = event := Fin.ext eventRank.symm
@@ -365,18 +355,8 @@ theorem prefix_roster_window_continuation_law [Finite Player]
             reveal_head_code setup fresh binding unresolved next refs source.revelations
               embedding refsBefore offset aligned.graphSuffix
           have node : nodeView (graph setup) event =
-              .resolve owner payload (refs.get binding) [] outputEq codeEq := by
-            cases viewed : nodeView (graph setup) event with
-            | bind other otherPayload kind code => cases kind.symm.trans outputEq
-            | sample otherPayload law kind code => cases kind.symm.trans outputEq
-            | resolve other otherPayload read checks kind code =>
-                have same : otherPayload = payload := EventGraph.EventField.publication.inj
-                  (kind.symm.trans outputEq)
-                subst otherPayload
-                have codes : EventGraph.EventCode.resolve other payload read checks =
-                    .resolve owner payload (refs.get binding) [] := code.symm.trans codeEq
-                cases codes
-                rfl
+              .resolve owner payload (refs.get binding) [] outputEq codeEq :=
+            EventGraphRuntime.nodeView_eq_resolve _ _
           obtain ⟨value, bound⟩ := checkpoint.openable binding
           obtain ⟨canonical, associated, candidateOwned, valid, canonicalOpening⟩ :=
             roster_opening_at_checkpoint setup leaks binding source.state refs execution

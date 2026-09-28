@@ -110,13 +110,8 @@ theorem sourceServiceOpportunity_at_history
             ((toEventGraph setup.program).nodes (embedding.event index)) = _
           simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
         exact transport event same outputEq
-      have node : nodeView (graph setup) event = .bind who _ outputEq codeEq := by
-        cases viewed : nodeView (graph setup) event with
-        | sample payload law kind code => cases kind.symm.trans outputEq
-        | resolve other payload binding checks kind code => cases kind.symm.trans outputEq
-        | bind other payload kind code =>
-            obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj (kind.symm.trans outputEq)
-            rfl
+      have node : nodeView (graph setup) event = .bind who _ outputEq codeEq :=
+        EventGraphRuntime.nodeView_eq_bind _ _
       obtain ⟨_, _, _, _, _, _, resources⟩ := sourceService_binding_decision_resources
         setup leaks bounds values capacity rosters opportunities network who control
           trace active event grantedCurrent who _ outputEq codeEq node owned
