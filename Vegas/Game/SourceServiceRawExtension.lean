@@ -26,20 +26,6 @@ open Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-omit [Fintype Player] in
-/-- The full-source utility readout retains persistent initial parameters and
-public results, and is unchanged by private response normalization. -/
-theorem sourceParameterReadout_normalization {Parameter : Type}
-    (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (parameter : State L setup.context → Parameter)
-    (state : (application setup leaks).ProtocolState) :
-    (sourceReadout setup leaks (((runtime setup).reactiveNormalization leaks).state state)).map
-      (setup.parameterOutcome parameter) =
-        (sourceReadout setup leaks state).map (setup.parameterOutcome parameter) :=
-  congrArg (Option.map (setup.parameterOutcome parameter))
-    (sourceReadout_normalization setup leaks state)
-
 theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : Type}
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))

@@ -27,6 +27,12 @@ Run these tools from the repository root.
   result that cannot yet be stated precisely; a precisely stated prospective
   theorem belongs in `Paper.lean` as described below. Remove the marker in the
   commit that proves the result.
+- `python scripts/check-se-evidence.py`, run after `lake --wfail build`, checks
+  that every declaration cited after "Evidence:" in
+  `docs/se-proof-checklist.md` is used by the full-language sequential-equilibrium
+  theorem, its complete-audit corollary or its two horizon lemmas. It elaborates
+  a small Lean program against the built project, because Lake would not
+  rebuild a library module when only the checklist changes.
 - `lake --wfail build Paper` checks the single paper audit in root `Paper.lean`.
   Its proved statements delegate directly to repository theorems. Every audit
   theorem has a guarded axiom pin directly below it; axiom-print commands occur

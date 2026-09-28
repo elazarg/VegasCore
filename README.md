@@ -189,6 +189,7 @@ python scripts/check-module-boundaries.py
 python scripts/report-open-obligations.py
 python -m unittest discover -s scripts -p "test_*.py"
 lake --wfail build
+python scripts/check-se-evidence.py
 ```
 
 The pinned `GameTheory` dependency and `GameTheoryExtensions` contain reusable
