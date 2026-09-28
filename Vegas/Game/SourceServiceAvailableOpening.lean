@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceAbsentOpening
 import Vegas.Game.SourceServiceUnsentBinding
 import Vegas.Game.SourceServiceTimingPosterior
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # The owner's disclosure with an available opening
 
@@ -1619,7 +1620,8 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
     obtain ⟨mixture, prescribedLaw, alternativeLaw⟩ := owner_source_comparisons service timing
       timingFull source full sourceBayes approx built who site past view observed owned granted
       (alternative disclose) (admittedAlternative disclose)
-    have gain := mixture_gain_eq mixture _ _ _ _ prescribedLaw alternativeLaw utility
+    have gain := FinDist.expect_sub_eq_of_eq_bind mixture _ _ _ _ prescribedLaw alternativeLaw
+      utility
     rw [FinDist.expect_bind, FinDist.expect_bind] at gain
     have prescribedValue : (approx.assessment.belief who site).expect (fun history =>
         ((service.setup.continuationLaw approx.profile

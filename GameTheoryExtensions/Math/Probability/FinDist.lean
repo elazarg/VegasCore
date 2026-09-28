@@ -170,4 +170,50 @@ theorem uniformSet_insert [DecidableEq α] (members : Finset α)
     · simp only [prob_uniformSet, Finset.mem_insert, same, member, or_self,
         ↓reduceIte, prob_mix, prob_pure_of_ne same, mul_zero, add_zero]
 
+/-- Iterating a kernel after an initial bind is the bind of the iterates. -/
+theorem iterate_bind (kernel : β → FinDist β) (count : Nat) (law : FinDist α)
+    (start : α → FinDist β) :
+    (fun distribution => distribution.bind kernel)^[count] (law.bind start) =
+      law.bind (fun value => (fun distribution => distribution.bind kernel)^[count]
+        (start value)) := by
+  induction count with
+  | zero => rfl
+  | succ count ih =>
+      simp only [Function.iterate_succ_apply', ih, bind_bind]
+
+/-- A point of a nonempty fibre's conditional law lies in the fibre and in the
+original support. -/
+theorem mem_support_condOnFibre {μ : FinDist α} {f : α → β} {b : β}
+    (meets : ∃ a ∈ f ⁻¹' {b}, a ∈ μ.support) {a : α}
+    (member : a ∈ (μ.condOnFibre f b).support) : f a = b ∧ a ∈ μ.support := by
+  rw [condOnFibre, dite_eq_left meets] at member
+  exact support_condOn μ _ meets member
+
+/-- Transporting a law along a type equality maps it by the cast. -/
+theorem cast_eq_map_cast {A B : Type _} (same : A = B) (law : FinDist A) :
+    cast (congrArg FinDist same) law = law.map (cast same) := by
+  cases same
+  exact (map_id law).symm
+
+/-- A law whose transport is another law is that law mapped back by the cast. -/
+theorem eq_map_cast_of_cast_eq {A B : Type _} (same : A = B) (law : FinDist A)
+    (transported : FinDist B) (equal : cast (congrArg FinDist same) law = transported) :
+    law = transported.map (cast same.symm) := by
+  cases same
+  cases equal
+  exact (map_id law).symm
+
+/-- Two laws that bind one mixture into the prescribed and alternative laws of
+its components have, for every utility, the mixture's average gain as their
+gain. -/
+theorem expect_sub_eq_of_eq_bind {γ δ : Type*} (mixture : FinDist γ)
+    (prescribed alternative : FinDist δ) (componentPrescribed componentAlternative : γ → FinDist δ)
+    (prescribedEq : prescribed = mixture.bind componentPrescribed)
+    (alternativeEq : alternative = mixture.bind componentAlternative) (utility : δ → ℝ) :
+    alternative.expect utility - prescribed.expect utility =
+      mixture.expect (fun component =>
+        (componentAlternative component).expect utility -
+          (componentPrescribed component).expect utility) := by
+  rw [prescribedEq, alternativeEq, expect_bind, expect_bind, expect_sub]
+
 end GameTheory.Math.Probability.FinDist

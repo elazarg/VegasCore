@@ -5,6 +5,7 @@ import Vegas.Compile.EventGraphIndependence
 import Vegas.Compile.EventGraphPolicyBacktranslation
 import Vegas.EventGraph.CanonicalNormalization
 import Vegas.EventGraph.PolicyCongruence
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # Canonical policy backtranslation law
 
@@ -40,12 +41,6 @@ theorem compileEventProfile_update
   · subst owner
     simp [compileEventProfile, Profile.update_same]
   · simp [compileEventProfile, Profile.update_of_ne _ _ same]
-
-private theorem cast_finDist_eq_map {A B : Type} (same : A = B)
-    (law : FinDist A) :
-    cast (congrArg FinDist same) law = law.map (cast same) := by
-  cases same
-  exact (FinDist.map_id law).symm
 
 /-- At a reachable canonical decision, recompiling an arbitrary graph
 policy's source backtranslation yields its rank-normalized graph kernel. -/
@@ -199,7 +194,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
           (backtranslatePolicyTable whole who replacement
             (.commit name owner fresh guard next) refs embedding actorEq)
           ownerEq _ _ sourceObservation decodedStore]
-        rw [cast_finDist_eq_map]
+        rw [FinDist.cast_eq_map_cast]
         change _ = (replacement (embedding.event headIndex) headActor
           ((toEventGraph whole).normalizeObservation
             (embedding.event headIndex) who
@@ -304,7 +299,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
             (.reveal published owner name fresh selected unresolved next) refs
               embedding actorEq)
           ownerEq _ _ sourceObservation decodedStore]
-        rw [cast_finDist_eq_map]
+        rw [FinDist.cast_eq_map_cast]
         change _ = (replacement (embedding.event headIndex) headActor
           ((toEventGraph whole).normalizeObservation
             (embedding.event headIndex) who

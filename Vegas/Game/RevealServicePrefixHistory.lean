@@ -2,6 +2,7 @@
 
 import Vegas.Game.RevealServiceCompletion
 import Interaction.ReactiveScheduleEvaluation
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # Counted native histories at service-prefix boundaries
 
@@ -20,16 +21,6 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-
-private theorem iterate_bind {A B : Type} (kernel : B → FinDist B)
-    (count : Nat) (law : FinDist A) (start : A → FinDist B) :
-    (fun distribution => distribution.bind kernel)^[count] (law.bind start) =
-      law.bind (fun value => (fun distribution => distribution.bind kernel)^[count]
-        (start value)) := by
-  induction count with
-  | zero => rfl
-  | succ count ih =>
-      simp only [Function.iterate_succ_apply', ih, FinDist.bind_bind]
 
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -85,7 +76,7 @@ theorem segment_control_steps (watcher : Player)
           (runtime setup).interactionStep leaks players
             ((runtime setup).reportNetwork leaks watcher) instruction execution := by
         simp only [ReactiveApplication.round, schedulerEq, interactionStep]
-      rw [step, FinDist.map_eq_bind, iterate_bind, runInteractionPlan, FinDist.map_bind]
+      rw [step, FinDist.map_eq_bind, FinDist.iterate_bind, runInteractionPlan, FinDist.map_bind]
       apply FinDist.bind_congr
       intro next reached
       apply ih (before ++ [instruction])
@@ -160,7 +151,7 @@ theorem menu_prefix_state [Fintype Player]
         (scheduler setup leaks watcher) profile)))^[blockOffset count + 2 * count]
       ((initialLaw setup).map (fun state => some ⟨horizon setup watcher, none,
         ReactiveApplication.Execution.initial (application setup leaks) state⟩)) = _
-  rw [FinDist.map_eq_bind, iterate_bind]
+  rw [FinDist.map_eq_bind, FinDist.iterate_bind]
   apply FinDist.bind_congr
   intro state _supported
   let rest := ((List.finRange (graph setup).order.eventCount).drop count).flatMap

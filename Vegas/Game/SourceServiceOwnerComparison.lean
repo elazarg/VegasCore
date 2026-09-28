@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceLocalComparison
 import Vegas.Game.SourceServiceAssessment
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # Owner sites as mixtures of original source deviations
 
@@ -233,13 +234,6 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
     intro history member
     exact alternativeContinuation history member
 
-omit [DecidableEq Player] [Fintype Player] in
-private theorem condOnFibre_mem {α β : Type*} {μ : FinDist α} {f : α → β} {b : β}
-    (meets : ∃ a ∈ f ⁻¹' {b}, a ∈ μ.support) {a : α}
-    (member : a ∈ (μ.condOnFibre f b).support) : f a = b ∧ a ∈ μ.support := by
-  rw [FinDist.condOnFibre, dite_eq_left meets] at member
-  exact FinDist.support_condOn μ _ meets member
-
 /-- Every history in the Bayes belief of an owner site of the `ofSource`
 approximant decodes to a state that an actual source history reaches, and all
 these source histories give the owner one common information state. -/
@@ -306,7 +300,7 @@ theorem owner_site_source_histories (service : SourceServiceSpec Player L)
   rw [belief, FinDist.support_map] at decodedMember
   obtain ⟨state, conditioned, stateEq⟩ := decodedMember
   obtain ⟨_, _, _⟩ := FinDist.support_map .. ▸ viewSupport
-  obtain ⟨matched, supported⟩ := condOnFibre_mem (by
+  obtain ⟨matched, supported⟩ := FinDist.mem_support_condOnFibre (by
     obtain ⟨witness, witnessSupport, witnessView⟩ := FinDist.support_map .. ▸ viewSupport
     exact ⟨witness, witnessView, witnessSupport⟩) conditioned
   let encoded := fun player => service.setup.toProtocolBehavioralPolicy admission player
@@ -337,20 +331,6 @@ theorem owner_site_source_histories (service : SourceServiceSpec Player L)
       service.setup.protocolObserve who sourceHistory.state from
         service.setup.protocol_info admission who sourceHistory.trace]
     simp only [sourceState, Setup.protocolObserve, Option.map_some, matched]
-
-/-- Laws that are a common mixture of comparisons have, for every utility, the
-mixture's average gain as their gain. This is the form the sequential
-equilibrium limit theorem takes for a local comparison. -/
-theorem mixture_gain_eq {Deviation Outcome : Type*} (mixture : FinDist Deviation)
-    (prescribed alternative : FinDist Outcome)
-    (sourcePrescribed sourceAlternative : Deviation → FinDist Outcome)
-    (prescribedEq : prescribed = mixture.bind sourcePrescribed)
-    (alternativeEq : alternative = mixture.bind sourceAlternative) (utility : Outcome → ℝ) :
-    alternative.expect utility - prescribed.expect utility =
-      mixture.expect (fun deviation =>
-        (sourceAlternative deviation).expect utility -
-          (sourcePrescribed deviation).expect utility) := by
-  rw [prescribedEq, alternativeEq, FinDist.expect_bind, FinDist.expect_bind, FinDist.expect_sub]
 
 end TimedApproximant
 

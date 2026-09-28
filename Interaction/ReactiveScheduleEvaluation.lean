@@ -2,6 +2,7 @@
 
 import Interaction.ReactiveRoundReachability
 import Interaction.ReactiveResponseEvaluation
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # Exact protocol prefixes under a fixed activation schedule
 
@@ -16,16 +17,6 @@ namespace Interaction.ReactiveApplication
 open GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal]
-
-private theorem iterate_bind {A B : Type} (kernel : B → FinDist B)
-    (count : Nat) (law : FinDist A) (start : A → FinDist B) :
-    (fun distribution => distribution.bind kernel)^[count] (law.bind start) =
-      law.bind (fun value => (fun distribution => distribution.bind kernel)^[count]
-        (start value)) := by
-  induction count with
-  | zero => rfl
-  | succ count ih =>
-      simp only [Function.iterate_succ_apply', ih, FinDist.bind_bind]
 
 theorem control_round (app : ReactiveApplication Principal)
     (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
@@ -106,7 +97,7 @@ theorem scheduled_segment_control_steps (app : ReactiveApplication Principal)
       have start : (actor :: segment).length + rest.length =
           segment.length + rest.length + 1 := by simp only [List.length_cons]; omega
       rw [count, start, Function.iterate_add_apply, one,
-        FinDist.map_eq_bind, iterate_bind]
+        FinDist.map_eq_bind, FinDist.iterate_bind]
       change _ = ((app.round scheduler players execution).bind
         (app.runRounds scheduler players segment.length)).map _
       rw [FinDist.map_bind]
@@ -135,7 +126,7 @@ theorem scheduled_prefix_control_steps (app : ReactiveApplication Principal)
   change (fun law => law.bind (app.controlStep initial schedule.length scheduler players))^[
       count + ((schedule.take count).filterMap id).length]
       (initial.map (fun state => some ⟨schedule.length, none, Execution.initial app state⟩)) = _
-  rw [FinDist.map_eq_bind, iterate_bind, roundsFrom, FinDist.map_bind]
+  rw [FinDist.map_eq_bind, FinDist.iterate_bind, roundsFrom, FinDist.map_bind]
   apply FinDist.bind_congr
   intro state _
   have result := app.scheduled_segment_control_steps initial schedule.length scheduler schedule

@@ -8,6 +8,7 @@ import Vegas.Game.SourceServiceTimedLaw
 import Vegas.Game.RevealServiceRosterTiming
 import Vegas.Game.ServiceRosterClock
 import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # Sequential equilibrium of the full-language service
 
@@ -149,7 +150,7 @@ theorem exists_native_sequentialEquilibrium
           TimedApproximant.unsent_binding_comparisons service timing timingFull
             (sourceSequence n) (full n) (sourceBayes n) (approx n) rfl who site past view
             observed outputEq granted unsent law
-        have gain := TimedApproximant.mixture_gain_eq mixture _ _ _ _ prescribedEq alternativeEq
+        have gain := FinDist.expect_sub_eq_of_eq_bind mixture _ _ _ _ prescribedEq alternativeEq
           (utility · who)
         exact Or.inr ⟨mixture, gain.le.trans (le_add_of_nonneg_right (errorNonnegative n))⟩
     | recordedDisclosure payload owned outputEq recorded =>

@@ -6,6 +6,7 @@ import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Pending.ReactiveResolutionWindowState
 import Vegas.Game.SourceLocalPolicy
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # The owner's unsent binding
 
@@ -113,13 +114,6 @@ theorem BindingSource.opportunity_law {setup : Setup (Player := Player) (L := L)
   apply FinDist.bind_congr
   intro choice _
   cases choice <;> rfl
-
-omit [Fintype Player] in
-private theorem condOnFibre_support {α β : Type*} {μ : FinDist α} {f : α → β} {b : β}
-    (meets : ∃ a ∈ f ⁻¹' {b}, a ∈ μ.support) {a : α}
-    (member : a ∈ (μ.condOnFibre f b).support) : f a = b ∧ a ∈ μ.support := by
-  rw [FinDist.condOnFibre, dite_eq_left meets] at member
-  exact FinDist.support_condOn μ _ meets member
 
 namespace TimedApproximant
 
@@ -268,7 +262,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
     rw [afterDef, ReactiveApplication.Implementation.posterior_respond, FinDist.support_map]
       at member
     obtain ⟨pair, conditioned, rfl⟩ := member
-    obtain ⟨matched, supported⟩ := condOnFibre_support meets conditioned
+    obtain ⟨matched, supported⟩ := FinDist.mem_support_condOnFibre meets conditioned
     obtain ⟨memory, memorySupport, drawn⟩ :=
       Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
     obtain ⟨action, actionSupport, rfl⟩ := FinDist.support_map .. ▸ drawn
@@ -471,7 +465,7 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
   subst sameValue
   refine (FinDist.bind_congr (g := fun _ => _) ?_).trans (FinDist.bind_const _ _)
   intro tag member
-  obtain ⟨matched, supported⟩ := condOnFibre_support ⟨(value, slot, response), rfl, by
+  obtain ⟨matched, supported⟩ := FinDist.mem_support_condOnFibre ⟨(value, slot, response), rfl, by
     rw [FinDist.support_bind]
     refine Set.mem_iUnion₂.mpr ⟨value, valueSupport, ?_⟩
     rw [FinDist.support_bind]

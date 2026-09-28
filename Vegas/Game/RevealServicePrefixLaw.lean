@@ -3,6 +3,7 @@
 import Vegas.Game.RevealServicePrefixSupport
 import Vegas.Game.RevealServiceClock
 import Vegas.Game.SourceStateKernel
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # Source-state laws at every revelation prefix
 
@@ -20,16 +21,6 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime EventLowering
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
-
-private theorem iterate_kernel_bind {A B : Type} (kernel : B → FinDist B)
-    (law : FinDist A) (start : A → FinDist B) (count : Nat) :
-    (fun distribution => distribution.bind kernel)^[count] (law.bind start) =
-      law.bind fun value =>
-        (fun distribution => distribution.bind kernel)^[count] (start value) := by
-  induction count with
-  | zero => rfl
-  | succ count ih =>
-      simp only [Function.iterate_succ_apply', ih, FinDist.bind_bind]
 
 private theorem iterate_kernel_map {A B : Type}
     (left : A → FinDist A) (right : B → FinDist B) (readout : A → B)
@@ -272,12 +263,12 @@ theorem initialized_prefix_source_law
       (fun who => setup.toProtocolBehavioralPolicy admission who (profile who)
         (permitted who)) none)
   rw [setup.behavioralStateStep_none]
-  have split := iterate_kernel_bind
+  have split := FinDist.iterate_bind
     (setup.behavioralStateStep admission
       (fun who => setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who)))
-    setup.initialLaw
+    count setup.initialLaw
     (fun initial => FinDist.pure
-      (some (ProtocolState.entry setup.program (setup.initialConfig initial)))) count
+      (some (ProtocolState.entry setup.program (setup.initialConfig initial))))
   rw [← FinDist.map_eq_bind] at split
   rw [split, initialLaw, FinDist.bind_map, FinDist.map_bind]
   apply FinDist.bind_congr

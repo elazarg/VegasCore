@@ -116,7 +116,7 @@ but touches about 250 files and the documents that cite the names.
   two copies of a fibre-conditioning support lemma, four copies of a kernel
   iteration lemma, and two copies of a cast-transport lemma with a variant. They belong in
   `GameTheoryExtensions/Math/Probability`, as do
-  `TimedApproximant.mixture_gain_eq` and a coupling interface for the 97
+  a coupling interface for the 97
   repeated coupling-marginal equations.
 - The `nodeView` case analysis after its output and code equations appears 44
   times; one lemma would replace it.

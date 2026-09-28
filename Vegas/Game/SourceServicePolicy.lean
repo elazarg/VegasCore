@@ -3,6 +3,7 @@
 import Vegas.Game.ServiceInformation
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Compile.EventGraphPolicyLaw
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # Source decisions in the existing sequential native service
 
@@ -66,15 +67,6 @@ theorem sourceServicePolicy_at_event (profile : BehavioralProfile setup.program)
   simp only [granted, dite_eq_left owned]
   rfl
 
-private theorem eq_map_cast_of_cast_eq {A B : Type} (same : A = B)
-    (left : FinDist A) (right : FinDist B)
-    (equal : cast (congrArg FinDist same) left = right) :
-    left = right.map (cast same.symm) := by
-  cases same
-  change left = right.map id
-  rw [FinDist.map_id]
-  exact equal
-
 /-- The local source commitment distribution is retained exactly, including
 its dependence on the owner's initial type and complete source recall. -/
 theorem sourceServicePolicy_commit {Γ : SourceCtx Player L} {openNames : Finset VarId}
@@ -137,7 +129,7 @@ theorem sourceServicePolicy_commit {Γ : SourceCtx Player L} {openNames : Finset
       (source.history owner) at law
   rw [compilePolicyTable_commit_of_decode refs embedding.ref (profile owner) rfl _ _
     (sourceObserve owner source.state) decoded] at law
-  have actionLaw := eq_map_cast_of_cast_eq
+  have actionLaw := FinDist.eq_map_cast_of_cast_eq
     (congrArg EventGraph.EventField.Action (embedding.layout_eq headIndex)) _ _ law
   rw [actionLaw, FinDist.map_comp]
   rfl
@@ -205,7 +197,7 @@ theorem sourceServicePolicy_reveal {Γ : SourceCtx Player L} {openNames : Finset
       (source.history owner) at law
   rw [compilePolicyTable_reveal_of_decode refs embedding.ref (profile owner) rfl _ _
     (sourceObserve owner source.state) decoded] at law
-  have actionLaw := eq_map_cast_of_cast_eq
+  have actionLaw := FinDist.eq_map_cast_of_cast_eq
     (congrArg EventGraph.EventField.Action (embedding.layout_eq headIndex)) _ _ law
   rw [actionLaw, FinDist.map_comp]
   rfl

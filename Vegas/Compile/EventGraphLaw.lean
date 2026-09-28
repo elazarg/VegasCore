@@ -4,6 +4,7 @@ import Vegas.Compile.EventGraphPolicyLaw
 import Vegas.Compile.EventGraphReadout
 import Vegas.Compile.EventGraphStep
 import Vegas.EventGraph.CanonicalStep
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # Exact source-order law for event-graph compilation
 
@@ -52,16 +53,6 @@ private theorem EventCode.actionOfActorNone_eq_sample
   cases outputEq
   cases codeEq
   rfl
-
-/-- A policy law transported to a compiled event's action type is the source
-law mapped through the inverse transport. -/
-private theorem eq_map_cast_of_cast_eq {A B : Type} (same : A = B)
-    (law : FinDist A) (source : FinDist B)
-    (transported : cast (congrArg FinDist same) law = source) :
-    law = source.map (fun value => cast same.symm value) := by
-  cases same
-  cases transported
-  exact (FinDist.map_id law).symm
 
 /-- Exact execution law at every compiled suffix.  The `Option` result is the
 actual partial decoder; the theorem proves it is `some` on the entire source
@@ -222,7 +213,7 @@ theorem runWith_option_law
             (commitKernel profile (sourceObserve owner state, history owner)).map
               (fun binding => cast
                 (congrArg Vegas.EventGraph.EventField.Action outputEq.symm) binding) :=
-        eq_map_cast_of_cast_eq (congrArg Vegas.EventGraph.EventField.Action outputEq) _ _
+        FinDist.eq_map_cast_of_cast_eq (congrArg Vegas.EventGraph.EventField.Action outputEq) _ _
           policyLaw
       rw [show eventCount (.commit name owner fresh guard next) =
           eventCount next + 1 by simp [eventCount]]
@@ -331,7 +322,7 @@ theorem runWith_option_law
             (revealKernel profile (sourceObserve owner state, history owner)).map
               (fun disclose => cast
                 (congrArg Vegas.EventGraph.EventField.Action outputEq.symm) disclose) :=
-        eq_map_cast_of_cast_eq (congrArg Vegas.EventGraph.EventField.Action outputEq) _ _
+        FinDist.eq_map_cast_of_cast_eq (congrArg Vegas.EventGraph.EventField.Action outputEq) _ _
           policyLaw
       rw [show eventCount
           (.reveal published owner name fresh selected unresolved next) =

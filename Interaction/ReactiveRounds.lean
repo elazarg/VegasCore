@@ -2,6 +2,7 @@
 
 import Interaction.ReactiveEvaluation
 import Interaction.ReactiveHistory
+import GameTheoryExtensions.Math.Probability.FinDist
 
 /-! # Evaluation by scheduler rounds
 
@@ -149,15 +150,6 @@ theorem finish_step (initial : FinDist app.State) (horizon : Nat)
                 FinDist.bind_map, finish, resume, FinDist.pure_bind, runRounds, round,
                 dispatch, FinDist.map_bind]
 
-private theorem iterate_bind {α β : Type} (kernel : β → FinDist β)
-    (count : Nat) (law : FinDist α) (start : α → FinDist β) :
-    (fun law => law.bind kernel)^[count] (law.bind start) =
-      law.bind (fun value => (fun law => law.bind kernel)^[count] (start value)) := by
-  induction count with
-  | zero => rfl
-  | succ count ih =>
-      simp only [Function.iterate_succ_apply', ih, FinDist.bind_bind]
-
 theorem controlStep_rank (initial : FinDist app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (players : Principal → app.Policy)
     (before after : app.ProtocolState) (running : ¬ app.terminal before)
@@ -217,7 +209,7 @@ theorem iterate_eq_finish (initial : FinDist app.State) (horizon : Nat)
         rw [Function.iterate_succ_apply, FinDist.pure_bind, stationary]
         exact ih state (by rw [(app.rank_zero horizon state).mpr stopped]; omega)
       · rw [Function.iterate_succ_apply, FinDist.pure_bind]
-        have expand := iterate_bind (app.controlStep initial horizon scheduler players) fuel
+        have expand := FinDist.iterate_bind (app.controlStep initial horizon scheduler players) fuel
           (app.controlStep initial horizon scheduler players state) FinDist.pure
         rw [FinDist.bind_pure] at expand
         rw [expand]
