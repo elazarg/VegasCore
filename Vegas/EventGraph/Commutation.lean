@@ -112,7 +112,7 @@ theorem store_complete (config : graph.Config) (event : graph.EventId)
 
 private def outputLaw (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event) :
-    FinDist (graph.outputLayout event).Value :=
+    PMF (graph.outputLayout event).Value :=
   ((graph.nodes event).eval? action config.store).get
     (EventCode.eval?_isSome_of_reads (graph.nodes event) action config.store
       (fun _ read => config.read_available ready read))
@@ -156,9 +156,9 @@ private theorem map_store_step (config : graph.Config)
     (config.step event ready action).map Config.store =
       (outputLaw config event ready action).map fun value =>
         Function.update config.store (.inr event) (some value) := by
-  rw [step_eq_outputLaw_map, FinDist.map_comp]
+  rw [step_eq_outputLaw_map, PMF.map_comp]
   apply congrArg (fun observable =>
-    FinDist.map observable (outputLaw config event ready action))
+    PMF.map observable (outputLaw config event ready action))
   funext value
   exact store_complete config event ready action value
 
@@ -167,7 +167,7 @@ transport readiness through the first actual `Config.step`. -/
 def stepThen (config : graph.Config) (first second : graph.EventId)
     (firstReady : config.cut.Ready first) (secondReady : config.cut.Ready second)
     (different : first ≠ second) (firstAction : graph.Action first)
-    (secondAction : graph.Action second) : FinDist graph.Config :=
+    (secondAction : graph.Action second) : PMF graph.Config :=
   (config.step first firstReady firstAction).bindOnSupport fun afterFirst member =>
     afterFirst.step second (by
       rw [config.step_cut first firstReady firstAction afterFirst member]
@@ -185,23 +185,23 @@ private theorem stepThen_map_store (config : graph.Config) (first second : graph
           (secondReady.after_complete firstReady different.symm)
           secondAction secondValue).store := by
   unfold stepThen
-  rw [FinDist.map_bindOnSupport]
-  rw [FinDist.bindOnSupport_eq_bind_of_eq_on_support (g := fun (afterFirst : graph.Config) =>
+  rw [map_bindOnSupport]
+  rw [bindOnSupport_eq_bind_of_eq_on_support _ (g := fun (afterFirst : graph.Config) =>
     (outputLaw config second secondReady secondAction).map fun secondValue =>
       Function.update afterFirst.store (.inr second)
         (show Option (graph.layout (.inr second)).Value from some secondValue))]
-  · rw [step_eq_outputLaw_map, FinDist.bind_map]
-    apply FinDist.bind_congr
+  · rw [step_eq_outputLaw_map, PMF.bind_map]
+    apply bind_congr_on_support _
     intro firstValue _
     apply congrArg (fun observable =>
-      FinDist.map observable (outputLaw config second secondReady secondAction))
+      PMF.map observable (outputLaw config second secondReady secondAction))
     funext secondValue
     exact (store_complete
       (config.complete first firstReady firstAction firstValue) second
       (secondReady.after_complete firstReady different.symm)
       secondAction secondValue).symm
   · intro afterFirst member
-    rw [step_eq_outputLaw_map, FinDist.support_map] at member
+    rw [step_eq_outputLaw_map, PMF.support_map] at member
     obtain ⟨firstValue, _, rfl⟩ := member
     rw [map_store_step]
     rw [outputLaw_after_complete firstReady secondReady different firstAction firstValue
@@ -219,11 +219,11 @@ theorem stepThen_map_store_comm (config : graph.Config)
     (stepThen config right left rightReady leftReady different.symm
       rightAction leftAction).map Config.store := by
   rw [stepThen_map_store, stepThen_map_store]
-  simp only [FinDist.map_eq_bind]
-  rw [FinDist.bind_comm]
-  apply FinDist.bind_congr
+  simp only [← PMF.bind_pure_comp, Function.comp_def]
+  rw [PMF.bind_comm]
+  apply bind_congr_on_support _
   intro rightValue _
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro leftValue _
   congr 1
   exact store_complete_comm leftReady rightReady different leftAction rightAction

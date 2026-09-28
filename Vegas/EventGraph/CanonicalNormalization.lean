@@ -52,7 +52,7 @@ private theorem canonical_policyPlan_normalize_eq
   have least := (canonical_min_ready_is_least_unfinished config.cut notTerminal).2
   have historyEq := rankPrefix_history_eq config ordered event ready.1 least
   unfold policyPlan canonicalScheduler normalizeProfile normalizePolicy
-  simp only [FinDist.pure_bind]
+  simp only [PMF.pure_bind]
   split <;> rename_i actor
   · congr 1
     apply congrArg (profile _ event actor)
@@ -79,9 +79,9 @@ theorem runPlan_canonical_normalize_eq (profile : graph.BehavioralProfile) :
       · simp [runPlan, terminal]
       · rw [runPlan, runPlan, dite_eq_right terminal, dite_eq_right terminal,
           canonical_policyPlan_normalize_eq profile config ordered terminal]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro choice choiceMember
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro next nextMember
         apply ih
         exact rankPrefix_step ordered choice.1.1 choice.1.2 choice.2

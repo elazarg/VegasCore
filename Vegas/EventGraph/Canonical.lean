@@ -75,10 +75,10 @@ private theorem runPlan_rankPrefix (plan : graph.EventPlan)
       by_cases terminal : config.cut.Terminal
       · have same : next = config := by simpa [runPlan, terminal] using member
         exact same ▸ ordered
-      · rw [runPlan, dite_eq_right terminal, FinDist.support_bind] at member
+      · rw [runPlan, dite_eq_right terminal, PMF.support_bind] at member
         simp only [Set.mem_iUnion] at member
         obtain ⟨choice, choiceMem, restMem⟩ := member
-        rw [FinDist.support_bind] at restMem
+        rw [PMF.support_bind] at restMem
         simp only [Set.mem_iUnion] at restMem
         obtain ⟨intermediate, intermediateMem, nextMem⟩ := restMem
         exact ih intermediate next
@@ -97,12 +97,12 @@ theorem canonical_policyPlan_least (profile : graph.BehavioralProfile)
   have selectedEq : choice.1.1 =
       config.cut.enabled.min' (enabled_nonempty_of_not_terminal config notTerminal) := by
     unfold policyPlan canonicalScheduler at member
-    simp only [FinDist.pure_bind] at member
+    simp only [PMF.pure_bind] at member
     split at member
-    · rw [FinDist.support_map] at member
+    · rw [PMF.support_map] at member
       obtain ⟨action, _, rfl⟩ := member
       rfl
-    · have same := FinDist.mem_support_pure.mp member
+    · have same := (PMF.mem_support_pure_iff _ _).mp member
       subst choice
       rfl
   intro other unfinished

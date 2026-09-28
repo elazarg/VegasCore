@@ -123,7 +123,7 @@ class ResultTypes (L : IExpr) where
 /-- Denote a retained exact rational table as GameTheory's canonical semantic
 finite probability law. -/
 noncomputable def evalDist (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
-    (dist : L.DistExpr Γ τ) (env : Env L.Val Γ) : FinDist (L.Val τ) :=
+    (dist : L.DistExpr Γ τ) (env : Env L.Val Γ) : PMF (L.Val τ) :=
   (L.evalLaw dist env).denote
 
 /-- Dependency-local semantic distribution evaluation, derived from the
@@ -132,7 +132,7 @@ noncomputable def evalDistDeps (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
     (dist : L.DistExpr Γ τ)
     (env :
       (x : VarId) → (σ : L.Ty) → HasVar Γ x σ →
-        x ∈ L.distDeps dist → L.Val σ) : FinDist (L.Val τ) :=
+        x ∈ L.distDeps dist → L.Val σ) : PMF (L.Val τ) :=
   (L.evalLawDeps dist env).denote
 
 /-- Dependency-local and full-environment semantic laws agree because their

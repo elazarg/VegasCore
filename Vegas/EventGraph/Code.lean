@@ -404,8 +404,17 @@ theorem evalLaw?_eq_of_reads {Field : Type} [DecidableEq Field]
 def eval? {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
     (dist : PublicDist (R := R) layout payload) (store : Store layout) :
-    Option (FinDist (L.Val payload)) :=
+    Option (PMF (L.Val payload)) :=
   (dist.evalLaw? store).map RationalLaw.denote
+
+/-- An available retained law is a finite law. -/
+theorem eval?_support_finite {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {payload : L.Ty}
+    (dist : PublicDist (R := R) layout payload) (store : Store layout)
+    {law : PMF (L.Val payload)} (evaluated : dist.eval? store = some law) :
+    law.support.Finite := by
+  obtain ⟨table, _, rfl⟩ := Option.map_eq_some_iff.mp evaluated
+  exact table.denote_support_finite
 
 theorem evalLaw?_isSome {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {payload : L.Ty}
@@ -958,11 +967,28 @@ missing required inputs; the returned finite law is the node's semantic output. 
 def eval? {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} :
     {output : EventField Player L} → (code : EventCode layout output) →
-      EventField.Action output → Store layout → Option (FinDist output.Value)
-  | _, .bind _ _, action, _ => some (FinDist.pure action)
+      EventField.Action output → Store layout → Option (PMF output.Value)
+  | _, .bind _ _, action, _ => some (PMF.pure action)
   | _, .resolve _ _ binding checks, disclose, store =>
-      (resolveOutput? binding checks disclose store).map FinDist.pure
+      (resolveOutput? binding checks disclose store).map PMF.pure
   | _, .sample _ law, _, store => law.eval? store
+
+/-- Every node evaluation is a finite law: strategic nodes produce point laws
+and chance nodes denote exact rational tables. -/
+theorem eval?_support_finite {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {output : EventField Player L}
+    (code : EventCode layout output) (action : EventField.Action output)
+    (store : Store layout) {law : PMF output.Value}
+    (evaluated : code.eval? action store = some law) :
+    law.support.Finite := by
+  cases code with
+  | bind =>
+      cases evaluated
+      simp
+  | resolve =>
+      obtain ⟨value, _, rfl⟩ := Option.map_eq_some_iff.mp evaluated
+      simp
+  | sample _ dist => exact dist.eval?_support_finite store evaluated
 
 /-- The general evaluator embeds the unique deterministic resolve output as a
 point law.  Public-message handlers use `resolveOutput?` directly and prove
@@ -973,7 +999,7 @@ their transition law against `eval?` through this equation. -/
     (checks : List (GuardCheck layout payload)) (disclose : Bool)
     (store : Store layout) :
     (EventCode.resolve owner payload binding checks).eval? disclose store =
-      (resolveOutput? binding checks disclose store).map FinDist.pure := rfl
+      (resolveOutput? binding checks disclose store).map PMF.pure := rfl
 
 /-- Availability of the finite node footprint is sufficient for evaluation. -/
 theorem eval?_isSome_of_reads {Field : Type} [DecidableEq Field]
@@ -997,7 +1023,7 @@ theorem eval?_eq_pure_of_actor {Field : Type} [DecidableEq Field]
     (code : EventCode layout output) (owner : Player) (owned : code.actor = some owner)
     (action : output.Action) (store : Store layout)
     (available : ∀ field ∈ code.readFields, (store field).isSome = true) :
-    ∃ value, code.eval? action store = some (FinDist.pure value) := by
+    ∃ value, code.eval? action store = some (PMF.pure value) := by
   cases code with
   | bind who payload => exact ⟨action, rfl⟩
   | resolve who payload binding checks =>
@@ -1016,7 +1042,7 @@ theorem eval?_congr {Field : Type} [DecidableEq Field]
   cases code with
   | bind => rfl
   | resolve owner payload binding checks =>
-      exact congrArg (Option.map FinDist.pure)
+      exact congrArg (Option.map PMF.pure)
         (resolveOutput?_congr binding checks action left right agree)
   | sample payload law => exact law.eval?_congr left right agree
 

@@ -24,7 +24,7 @@ variable {graph : Vegas.EventGraph Player L}
 projected to the scheduling-insensitive semantic state. -/
 def canonicalSemanticLaw (graph : Vegas.EventGraph Player L)
     (profile : graph.BehavioralProfile) (fuel : Nat) (config : graph.Config) :
-    FinDist graph.SemanticKey :=
+    PMF graph.SemanticKey :=
   (graph.runPlan
     (graph.policyPlan (graph.normalizeProfile profile) graph.canonicalScheduler)
     fuel config).map graph.semanticKey
@@ -40,7 +40,7 @@ theorem canonicalSemanticLaw_congr (profile : graph.BehavioralProfile) :
   induction fuel with
   | zero =>
       intro left right same
-      simpa [canonicalSemanticLaw, runPlan] using congrArg FinDist.pure same
+      simpa [canonicalSemanticLaw, runPlan, PMF.pure_map] using congrArg PMF.pure same
   | succ fuel ih =>
       intro left right same
       have cutEq := semanticKey_cut_eq same
@@ -48,7 +48,7 @@ theorem canonicalSemanticLaw_congr (profile : graph.BehavioralProfile) :
       · have rightTerminal : right.cut.Terminal := by
           rw [← cutEq]
           exact leftTerminal
-        simp [canonicalSemanticLaw, runPlan, leftTerminal, rightTerminal, same]
+        simp [canonicalSemanticLaw, runPlan, leftTerminal, rightTerminal, same, PMF.pure_map]
       · have rightTerminal : ¬ right.cut.Terminal := by
           rw [← cutEq]
           exact leftTerminal
@@ -72,7 +72,7 @@ theorem canonicalSemanticLaw_congr (profile : graph.BehavioralProfile) :
         rw [canonicalSemanticLaw, canonicalSemanticLaw,
           runPlan_canonical_normalized_step profile fuel left event leftReady least,
           runPlan_canonical_normalized_step profile fuel right event rightReady rightLeast,
-          FinDist.map_bind, FinDist.map_bind]
+          PMF.map_bind, PMF.map_bind]
         apply bind_eq_of_semanticKey_map_eq
           (graph.normalizedPolicyStep profile left event leftReady)
           (graph.normalizedPolicyStep profile right event rightReady)
@@ -85,7 +85,7 @@ theorem canonicalSemanticLaw_congr (profile : graph.BehavioralProfile) :
 unfinished events. -/
 def canonicalContinuation (graph : Vegas.EventGraph Player L)
     (profile : graph.BehavioralProfile) (config : graph.Config) :
-    FinDist graph.SemanticKey :=
+    PMF graph.SemanticKey :=
   graph.canonicalSemanticLaw profile config.remaining config
 
 /-- At the empty cut the continuation is the complete canonical execution
@@ -119,7 +119,7 @@ theorem canonicalContinuation_congr (profile : graph.BehavioralProfile)
 def normalizedThenCanonical (graph : Vegas.EventGraph Player L)
     (profile : graph.BehavioralProfile) (config : graph.Config)
     (event : graph.EventId) (ready : config.cut.Ready event) :
-    FinDist graph.SemanticKey :=
+    PMF graph.SemanticKey :=
   (graph.normalizedPolicyStep profile config event ready).bind
     (graph.canonicalContinuation profile)
 
@@ -143,8 +143,8 @@ theorem canonicalContinuation_step (profile : graph.BehavioralProfile)
     exact ⟨config.remaining - 1, by omega⟩
   unfold canonicalContinuation canonicalSemanticLaw normalizedThenCanonical
   rw [remainingEq, runPlan_canonical_normalized_step profile fuel config event ready least,
-    FinDist.map_bind]
-  apply FinDist.bind_congr
+    PMF.map_bind]
+  apply bind_congr_on_support _
   intro next member
   have decreased := graph.normalizedPolicyStep_remaining profile config event ready next member
   have nextRemaining : next.remaining = fuel := by omega
@@ -176,13 +176,13 @@ private theorem normalizedThenCanonical_insert_second
   · rename_i owner actor
     have ownerEq : owner = firstOwner := Option.some.inj (actor.symm.trans firstActor)
     subst owner
-    simp only [FinDist.bind_bind]
-    apply FinDist.bind_congr
+    simp only [PMF.bind_bind]
+    apply bind_congr_on_support _
     intro firstAction _
-    rw [← FinDist.bindOnSupport_eq_bind
+    rw [← PMF.bindOnSupport_eq_bind
       (config.step first firstReady firstAction) (graph.canonicalContinuation profile)]
-    rw [FinDist.bind_bindOnSupport]
-    apply FinDist.bindOnSupport_congr
+    rw [bindOnSupport_bind]
+    apply bindOnSupport_congr _
     intro next member
     have nextReady : next.cut.Ready second := by
       rw [config.step_cut first firstReady firstAction next member]
@@ -206,7 +206,7 @@ private theorem normalizedThenCanonical_insert_second
         simp [ownerless] at secondActor
     rw [← recur]
     unfold normalizedThenCanonical
-    rw [secondStepEq, FinDist.bind_bind]
+    rw [secondStepEq, PMF.bind_bind]
   · rename_i ownerless
     simp [ownerless] at firstActor
 
@@ -304,10 +304,10 @@ theorem BarrierOrdered.normalizedThenCanonical_eq
 current semantic state. -/
 theorem canonicalContinuation_terminal (profile : graph.BehavioralProfile)
     (config : graph.Config) (terminal : config.cut.Terminal) :
-    FinDist.pure (graph.semanticKey config) =
+    PMF.pure (graph.semanticKey config) =
       graph.canonicalContinuation profile config := by
   have remainingZero := config.terminal_iff_remaining_zero.mp terminal
-  simp [canonicalContinuation, canonicalSemanticLaw, remainingZero, runPlan]
+  simp [canonicalContinuation, canonicalSemanticLaw, remainingZero, runPlan, PMF.pure_map]
 
 /-- The actual normalized runner under any adaptive public scheduler has the
 canonical semantic continuation law once fuel covers the unfinished events. -/
@@ -325,36 +325,36 @@ theorem BarrierOrdered.runPlan_normalized_semantic_eq_canonical
     (canonicalContinuation_terminal profile)
   · intro current notTerminal
     unfold policyPlan
-    rw [FinDist.bind_bind]
+    rw [PMF.bind_bind]
     calc
       _ = (scheduler (graph.publicObserve current) current.cut.enabled
           (enabled_nonempty_of_not_terminal current notTerminal)).bind
             (fun _ => graph.canonicalContinuation profile current) := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro selected _
         have ready : current.cut.Ready selected.1 :=
           (EventOrder.Cut.mem_enabled _ _).mp selected.2
         have localLaw := ordered.normalizedThenCanonical_eq profile current selected.1 ready
         split
         · rename_i owner actor
-          rw [FinDist.bind_map]
+          rw [PMF.bind_map, Function.comp_def]
           unfold normalizedThenCanonical normalizedPolicyStep at localLaw
           split at localLaw
           · rename_i actualOwner actualActor
             have ownerEq : actualOwner = owner :=
               Option.some.inj (actualActor.symm.trans actor)
             subst actualOwner
-            simpa [normalizeProfile, normalizePolicy, FinDist.bind_bind] using localLaw
+            simpa [normalizeProfile, normalizePolicy, PMF.bind_bind] using localLaw
           · rename_i ownerless
             simp [ownerless] at actor
         · rename_i ownerless
-          rw [FinDist.pure_bind]
+          rw [PMF.pure_bind]
           unfold normalizedThenCanonical normalizedPolicyStep at localLaw
           split at localLaw
           · rename_i owner actor
             simp [ownerless] at actor
           · simpa using localLaw
-      _ = graph.canonicalContinuation profile current := FinDist.bind_const _ _
+      _ = graph.canonicalContinuation profile current := PMF.bind_const _ _
   · exact enough
 
 /-- Full honest scheduling law: after normalizing completion-order metadata in
@@ -384,7 +384,7 @@ theorem BarrierOrdered.runPolicies_store_eq_canonical
           (graph.normalizeProfile profile) inputs).map graph.semanticKey := by
     simpa [runPolicies, EventGraph.run, canonicalSemanticLaw] using semanticEq
   have projected := congrArg
-    (fun law : FinDist graph.SemanticKey => law.map fun key => key.2.1) keyEq
-  simpa [FinDist.map_comp, semanticKey, storeRecall, Function.comp_def] using projected
+    (fun law : PMF graph.SemanticKey => law.map fun key => key.2.1) keyEq
+  simpa [PMF.map_comp, semanticKey, storeRecall, Function.comp_def] using projected
 
 end Vegas.EventGraph

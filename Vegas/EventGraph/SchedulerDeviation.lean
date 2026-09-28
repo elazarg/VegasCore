@@ -26,13 +26,13 @@ private theorem policyPlan_choice_selected
     (scheduler (graph.publicObserve config) config.cut.enabled
       (enabled_nonempty_of_not_terminal config notTerminal)).1 = choice.1.1 := by
   unfold policyPlan DeterministicPublicScheduler.toPublic at member
-  simp only [FinDist.pure_bind] at member
+  simp only [PMF.pure_bind] at member
   split at member <;> rename_i actor
-  · rw [FinDist.support_map] at member
+  · rw [PMF.support_map] at member
     obtain ⟨action, _, rfl⟩ := member
     rfl
   · simpa using congrArg (fun selected => selected.1.1)
-      (FinDist.mem_support_pure.mp member).symm
+      ((PMF.mem_support_pure_iff _ _).mp member).symm
 
 private theorem policyPlan_update_replay_eq
     (scheduler : graph.DeterministicPublicScheduler)
@@ -49,7 +49,7 @@ private theorem policyPlan_update_replay_eq
           (graph.replayPolicy scheduler who tau)) scheduler.toPublic
         config notTerminal := by
   unfold policyPlan DeterministicPublicScheduler.toPublic
-  simp only [FinDist.pure_bind]
+  simp only [PMF.pure_bind]
   split <;> rename_i ownerEq
   · rename_i owner
     by_cases same : owner = who
@@ -89,9 +89,9 @@ private theorem runPlan_update_replay_eq
       · simp [runPlan, terminal]
       · rw [runPlan, runPlan, dite_eq_right terminal, dite_eq_right terminal,
           policyPlan_update_replay_eq scheduler sigma who tau inputs config reachable terminal]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro choice choiceMember
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro next nextMember
         apply ih
         have selected := policyPlan_choice_selected scheduler
@@ -131,7 +131,7 @@ theorem BarrierOrdered.runPolicies_update_store_eq_canonical
           (graph.replayPolicy scheduler who tau)) inputs).map Config.store := by
   let replayed := Profile.update (sig := graph.gameSignature)
     (graph.normalizeProfile sigma) who (graph.replayPolicy scheduler who tau)
-  have sameScheduler := congrArg (fun law : FinDist graph.Config => law.map Config.store)
+  have sameScheduler := congrArg (fun law : PMF graph.Config => law.map Config.store)
     (graph.runPolicies_update_replay_eq scheduler sigma who tau inputs)
   have erased := ordered.runPolicies_store_eq_canonical replayed scheduler.toPublic inputs
   have fixed : graph.normalizeProfile replayed = replayed := by

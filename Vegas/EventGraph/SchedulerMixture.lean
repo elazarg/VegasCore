@@ -25,10 +25,11 @@ variable {graph : Vegas.EventGraph Player L}
 canonical deviations against the original opponents. The mixture
 is independent of the realized private setup. -/
 theorem BarrierOrdered.exists_deviation_mixture
-    (ordered : graph.BarrierOrdered) (inputs : FinDist graph.Inputs)
+    (ordered : graph.BarrierOrdered) (finite : graph.FiniteActions)
+    (inputs : PMF graph.Inputs) (finiteInputs : inputs.support.Finite)
     (scheduler : graph.PublicScheduler) (profile : graph.BehavioralProfile)
     (who : Player) (replacement : graph.BehavioralPolicy who) :
-    ∃ mixture : FinDist (graph.BehavioralPolicy who),
+    ∃ mixture : PMF (graph.BehavioralPolicy who), mixture.support.Finite ∧
       (inputs.bind fun initial =>
         graph.runPolicies scheduler
           (Profile.update (sig := graph.gameSignature)
@@ -38,15 +39,18 @@ theorem BarrierOrdered.exists_deviation_mixture
             graph.runPolicies graph.canonicalScheduler
               (Profile.update (sig := graph.gameSignature)
                 profile who alternative) initial).map Config.store := by
-  obtain ⟨schedulers, law⟩ := graph.exists_scheduler_mixture
+  obtain ⟨schedulers, finiteSchedulers, law⟩ := graph.exists_scheduler_mixture
     (Profile.update (sig := graph.gameSignature)
-      (graph.normalizeProfile profile) who replacement) inputs scheduler
-  refine ⟨schedulers.map (fun fixed => graph.replayPolicy fixed who replacement), ?_⟩
-  rw [← law, FinDist.map_bind, FinDist.bind_map]
-  apply FinDist.bind_congr
+      (graph.normalizeProfile profile) who replacement) inputs scheduler finiteInputs
+    (finite.profileFiniteSupport _)
+  refine ⟨schedulers.map (fun fixed => graph.replayPolicy fixed who replacement), ?_, ?_⟩
+  · rw [PMF.support_map]
+    exact finiteSchedulers.image _
+  rw [← law, PMF.map_bind, PMF.bind_map, Function.comp_def]
+  apply bind_congr_on_support _
   intro fixed _
-  rw [FinDist.map_bind, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
   intro initial _
   rw [ordered.runPolicies_update_store_eq_canonical fixed profile who replacement initial,
     graph.runPolicies_canonical_normalize_eq

@@ -173,17 +173,25 @@ theorem complete_output_of_ne (config : graph.Config) (event query : graph.Event
 law rather than being replaced by an external choice. -/
 def step (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event) :
-    FinDist graph.Config :=
+    PMF graph.Config :=
   ((graph.nodes event).eval? action config.store).get
     (EventCode.eval?_isSome_of_reads (graph.nodes event) action config.store
       (fun _ read => config.read_available ready read)) |>.map
         (config.complete event ready action)
 
+/-- Every configuration transition is a finite law. -/
+theorem step_support_finite (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) (action : graph.Action event) :
+    (config.step event ready action).support.Finite := by
+  rw [step, PMF.support_map]
+  exact (EventCode.eval?_support_finite (graph.nodes event) action config.store
+    (Option.some_get _).symm).image _
+
 /-- A local evaluator law determines the actual configuration transition.
 The readiness proof supplies availability; it does not change the law. -/
 theorem step_eq_map_of_eval (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
-    (law : FinDist (graph.outputLayout event).Value)
+    (law : PMF (graph.outputLayout event).Value)
     (evaluates : (graph.nodes event).eval? action config.store = some law) :
     config.step event ready action = law.map (config.complete event ready action) := by
   unfold step
@@ -197,7 +205,7 @@ theorem step_eq_map_of_code (config : graph.Config) (event : graph.EventId)
     (outputEq : graph.outputLayout event = output)
     (code : EventCode graph.layout output)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) = code)
-    (action : output.Action) (law : FinDist output.Value)
+    (action : output.Action) (law : PMF output.Value)
     (evaluates : code.eval? action config.store = some law) :
     config.step event ready (cast (congrArg EventField.Action outputEq.symm) action) =
       law.map (fun value => config.complete event ready
@@ -211,7 +219,7 @@ theorem step_eq_map_of_code (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (next : graph.Config) (member : next ∈ (config.step event ready action).support) :
     next.cut = config.cut.complete event ready := by
-  rw [step, FinDist.support_map] at member
+  rw [step, PMF.support_map] at member
   obtain ⟨value, _, rfl⟩ := member
   rfl
 
@@ -220,19 +228,19 @@ theorem step_eq_pure_of_actor (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (owner : Player) (owned : (graph.nodes event).actor = some owner)
     (next : graph.Config) (member : next ∈ (config.step event ready action).support) :
-    config.step event ready action = FinDist.pure next := by
+    config.step event ready action = PMF.pure next := by
   obtain ⟨value, evaluates⟩ := (graph.nodes event).eval?_eq_pure_of_actor owner owned
     action config.store (fun _ read => config.read_available ready read)
-  have law := config.step_eq_map_of_eval event ready action (FinDist.pure value) evaluates
-  rw [FinDist.map_pure] at law
-  rw [law, FinDist.mem_support_pure] at member
-  exact law.trans (congrArg FinDist.pure member.symm)
+  have law := config.step_eq_map_of_eval event ready action (PMF.pure value) evaluates
+  rw [PMF.pure_map] at law
+  rw [law, PMF.mem_support_pure_iff] at member
+  exact law.trans (congrArg PMF.pure member.symm)
 
 @[simp] theorem step_history (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (next : graph.Config) (member : next ∈ (config.step event ready action).support) :
     next.history = config.history ++ [⟨event, action⟩] := by
-  rw [step, FinDist.support_map] at member
+  rw [step, PMF.support_map] at member
   obtain ⟨value, _, rfl⟩ := member
   rfl
 
@@ -261,7 +269,7 @@ theorem step_store_of_some (config next : graph.Config)
     (member : next ∈ (config.step event ready action).support)
     (field : graph.Field) (value : (graph.layout field).Value)
     (stored : config.store field = some value) : next.store field = some value := by
-  rw [step, FinDist.support_map] at member
+  rw [step, PMF.support_map] at member
   obtain ⟨output, _, rfl⟩ := member
   exact config.complete_store_of_some event ready action output field value stored
 
@@ -325,25 +333,41 @@ Public/native schedulers later restrict which parts of this configuration are
 observable; this ideal runner does not assume such a projection. -/
 abbrev EventPlan (graph : Vegas.EventGraph Player L) :=
   (config : graph.Config) → ¬ config.cut.Terminal →
-    FinDist (Σ selected : {event : graph.EventId // config.cut.Ready event},
+    PMF (Σ selected : {event : graph.EventId // config.cut.Ready event},
       graph.Action selected.1)
 
 /-- Execute at most `fuel` events according to an adaptive causal plan. -/
 def runPlan (graph : Vegas.EventGraph Player L) (plan : graph.EventPlan) :
-    Nat → graph.Config → FinDist graph.Config
-  | 0, config => FinDist.pure config
+    Nat → graph.Config → PMF graph.Config
+  | 0, config => PMF.pure config
   | fuel + 1, config =>
       if terminal : config.cut.Terminal then
-        FinDist.pure config
+        PMF.pure config
       else
         (plan config terminal).bind fun choice =>
           (config.step choice.1.1 choice.1.2 choice.2).bind
             (graph.runPlan plan fuel)
 
+/-- A runner branches finitely when every plan choice law does; node chance is
+finite by construction. -/
+theorem runPlan_support_finite (graph : Vegas.EventGraph Player L) (plan : graph.EventPlan)
+    (finitePlan : ∀ config terminal, (plan config terminal).support.Finite) :
+    ∀ fuel config, (graph.runPlan plan fuel config).support.Finite
+  | 0, config => by simp [runPlan]
+  | fuel + 1, config => by
+      rw [runPlan]
+      split
+      · simp
+      · rw [PMF.support_bind]
+        refine (finitePlan _ _).biUnion fun choice _ => ?_
+        rw [PMF.support_bind]
+        exact (config.step_support_finite _ _ _).biUnion fun next _ =>
+          graph.runPlan_support_finite plan finitePlan fuel next
+
 /-- The complete finite runner. The event count is a sufficient fuel bound
 because every step adds exactly one previously unfinished event to the cut. -/
 def run (graph : Vegas.EventGraph Player L) (inputs : graph.Inputs) (plan : graph.EventPlan) :
-    FinDist graph.Config :=
+    PMF graph.Config :=
   graph.runPlan plan graph.order.eventCount (Config.initial inputs)
 
 /-- The finite plan runner preserves semantic reachability from fixed inputs. -/
@@ -363,10 +387,10 @@ theorem runPlan_reachable (graph : Vegas.EventGraph Player L) (plan : graph.Even
       by_cases terminal : config.cut.Terminal
       · have nextEq : next = config := by simpa [runPlan, terminal] using member
         exact nextEq ▸ reachable
-      · rw [runPlan, dite_eq_right terminal, FinDist.support_bind] at member
+      · rw [runPlan, dite_eq_right terminal, PMF.support_bind] at member
         simp only [Set.mem_iUnion] at member
         obtain ⟨choice, _, restMem⟩ := member
-        rw [FinDist.support_bind] at restMem
+        rw [PMF.support_bind] at restMem
         simp only [Set.mem_iUnion] at restMem
         obtain ⟨intermediate, intermediateMem, nextMem⟩ := restMem
         have intermediateReachable : Config.Reachable inputs intermediate :=
@@ -438,10 +462,10 @@ theorem runPlan_terminal (graph : Vegas.EventGraph Player L) (plan : graph.Event
       · have nextEq : next = config := by simpa [runPlan, terminal] using member
         subst next
         exact terminal
-      · rw [runPlan, dite_eq_right terminal, FinDist.support_bind] at member
+      · rw [runPlan, dite_eq_right terminal, PMF.support_bind] at member
         simp only [Set.mem_iUnion] at member
         obtain ⟨choice, _, restMem⟩ := member
-        rw [FinDist.support_bind] at restMem
+        rw [PMF.support_bind] at restMem
         simp only [Set.mem_iUnion] at restMem
         obtain ⟨intermediate, intermediateMem, nextMem⟩ := restMem
         have decreased := config.remaining_step choice.1.1 choice.1.2 choice.2

@@ -30,7 +30,7 @@ def DeterministicPublicScheduler : Type :=
 /-- Regard a deterministic scheduler as a degenerate randomized scheduler. -/
 def DeterministicPublicScheduler.toPublic
     (scheduler : graph.DeterministicPublicScheduler) : graph.PublicScheduler :=
-  fun observation enabled nonempty => FinDist.pure (scheduler observation enabled nonempty)
+  fun observation enabled nonempty => PMF.pure (scheduler observation enabled nonempty)
 
 /-- Retain exactly the public fields available at a replayed cut.  The input
 store may come from a later player observation; private bindings and public

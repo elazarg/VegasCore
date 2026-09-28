@@ -57,7 +57,7 @@ theorem normalizeObservation_congr_of_semanticKey_eq
 retain their ordinary evaluator law and unique unit action. -/
 def normalizedPolicyStep (graph : Vegas.EventGraph Player L)
     (profile : graph.BehavioralProfile) (config : graph.Config)
-    (event : graph.EventId) (ready : config.cut.Ready event) : FinDist graph.Config :=
+    (event : graph.EventId) (ready : config.cut.Ready event) : PMF graph.Config :=
   match actor : graph.actor? event with
   | some who =>
       (graph.normalizePolicy who (profile who) event actor
@@ -123,8 +123,8 @@ theorem step_map_semanticKey_congr {left right : graph.Config}
       evalEq ▸ found
     rw [left.step_eq_map_of_eval event leftReady action law found,
       right.step_eq_map_of_eval event rightReady action law rightFound]
-    simp only [FinDist.map_comp]
-    apply FinDist.map_congr_of_eq_on_support
+    simp only [PMF.map_comp]
+    apply map_congr_on_support _
     intro value _
     exact semanticKey_complete_congr same event leftReady rightReady action value
 
@@ -146,8 +146,8 @@ theorem normalizedPolicyStep_map_semanticKey_congr
           graph.normalizePolicy who (profile who) event actor
             (graph.playerObserve who right) := by
       exact congrArg (profile who event actor) observationEq
-    rw [actionLaw, FinDist.map_bind, FinDist.map_bind]
-    apply FinDist.bind_congr
+    rw [actionLaw, PMF.map_bind, PMF.map_bind]
+    apply bind_congr_on_support _
     intro action _
     exact step_map_semanticKey_congr same event leftReady rightReady action
   · exact step_map_semanticKey_congr same event leftReady rightReady _
@@ -161,7 +161,7 @@ theorem normalizedPolicyStep_cut
     next.cut = config.cut.complete event ready := by
   unfold normalizedPolicyStep at member
   split at member
-  · rw [FinDist.support_bind] at member
+  · rw [PMF.support_bind] at member
     simp only [Set.mem_iUnion] at member
     obtain ⟨action, _, stepMember⟩ := member
     exact config.step_cut event ready action next stepMember
@@ -177,7 +177,7 @@ theorem normalizedPolicyStep_remaining
     next.remaining + 1 = config.remaining := by
   unfold normalizedPolicyStep at member
   split at member
-  · rw [FinDist.support_bind] at member
+  · rw [PMF.support_bind] at member
     simp only [Set.mem_iUnion] at member
     obtain ⟨action, _, stepMember⟩ := member
     exact config.remaining_step event ready action next stepMember
@@ -199,11 +199,11 @@ theorem runPlan_canonical_normalized_step
   unfold normalizedPolicyStep
   split
   · rename_i who actor
-    simpa [normalizeProfile, normalizePolicy, FinDist.bind_bind] using
+    simpa [normalizeProfile, normalizePolicy, PMF.bind_bind] using
       graph.runPlan_canonical_actor (graph.normalizeProfile profile) fuel config
         event ready least who actor
   · rename_i ownerless
-    simpa [FinDist.bind_bind] using
+    simpa [PMF.bind_bind] using
       graph.runPlan_canonical_ownerless (graph.normalizeProfile profile) fuel config
         event ready least ownerless
 
@@ -211,14 +211,14 @@ theorem runPlan_canonical_normalized_step
 the semantic key. This is the finite-law quotient step used after a local
 diamond. -/
 theorem bind_eq_of_semanticKey_map_eq
-    (left right : FinDist graph.Config)
+    (left right : PMF graph.Config)
     (same : left.map graph.semanticKey = right.map graph.semanticKey)
-    (leftNext rightNext : graph.Config → FinDist graph.SemanticKey)
+    (leftNext rightNext : graph.Config → PMF graph.SemanticKey)
     (congruent : ∀ leftConfig ∈ left.support, ∀ rightConfig ∈ right.support,
       graph.semanticKey leftConfig = graph.semanticKey rightConfig →
         leftNext leftConfig = rightNext rightConfig) :
     left.bind leftNext = right.bind rightNext :=
-  FinDist.bind_eq_of_map_eq left right graph.semanticKey graph.semanticKey same
+  bind_eq_of_map_eq left right graph.semanticKey graph.semanticKey same
     leftNext rightNext congruent
 
 omit [DecidableEq Player] in
@@ -278,13 +278,13 @@ theorem policyStepThen_result_cut
     result.cut = (config.cut.complete first firstReady).complete second
       (secondReady.after_complete firstReady different.symm) := by
   unfold policyStepThen at member
-  rw [FinDist.support_bind] at member
+  rw [PMF.support_bind] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨firstAction, _, afterAction⟩ := member
-  rw [FinDist.support_bindOnSupport] at afterAction
+  rw [PMF.support_bindOnSupport] at afterAction
   simp only [Set.mem_iUnion] at afterAction
   obtain ⟨afterFirst, firstMember, afterFirstLaw⟩ := afterAction
-  rw [FinDist.support_bind] at afterFirstLaw
+  rw [PMF.support_bind] at afterFirstLaw
   simp only [Set.mem_iUnion] at afterFirstLaw
   obtain ⟨secondAction, _, secondMember⟩ := afterFirstLaw
   have resultCut := Config.step_cut afterFirst second _ secondAction result secondMember
@@ -320,8 +320,8 @@ theorem BarrierOrdered.policyStepThen_map_semanticKey_comm
         (fun recalled =>
           ((config.cut.complete left leftReady).complete right
             (rightReady.after_complete leftReady different.symm), recalled)) := by
-    rw [FinDist.map_comp]
-    apply FinDist.map_congr_of_eq_on_support
+    rw [PMF.map_comp]
+    apply map_congr_on_support _
     intro result member
     apply Prod.ext
     · change result.cut = _
@@ -333,8 +333,8 @@ theorem BarrierOrdered.policyStepThen_map_semanticKey_comm
         (fun recalled =>
           ((config.cut.complete left leftReady).complete right
             (rightReady.after_complete leftReady different.symm), recalled)) := by
-    rw [FinDist.map_comp]
-    apply FinDist.map_congr_of_eq_on_support
+    rw [PMF.map_comp]
+    apply map_congr_on_support _
     intro result member
     apply Prod.ext
     · change result.cut = _

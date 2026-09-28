@@ -24,27 +24,28 @@ def terminalStore (result : graph.gameSignature.Outcome) :
 /-- The store law of a play, with the outcome's terminality certificate and
 chronological trace forgotten. -/
 theorem gameForm_play_map_terminalStore
-    (inputs : FinDist graph.Inputs) (scheduler : graph.PublicScheduler)
+    (inputs : PMF graph.Inputs) (scheduler : graph.PublicScheduler)
     (profile : graph.BehavioralProfile) :
     ((graph.gameForm inputs scheduler).play profile).map graph.terminalStore =
       inputs.bind fun initial =>
         (graph.runPolicies scheduler profile initial).map Config.store := by
   unfold gameForm terminalStore
-  rw [FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [PMF.map_bind]
+  apply bind_congr_on_support _
   intro initial _
   calc
     (graph.terminalOutcomes scheduler profile initial).map
         (fun result => result.1.store) =
       ((graph.terminalOutcomes scheduler profile initial).map Subtype.val).map
-        Config.store := by rw [FinDist.map_comp]; rfl
+        Config.store := by rw [PMF.map_comp]; rfl
     _ = (graph.runPolicies scheduler profile initial).map Config.store := by
       rw [graph.terminalOutcomes_map_val]
 
 /-- Canonical execution and execution under an arbitrary adaptive public
 scheduler form an exact unilateral-mixture simulation on typed terminal stores. -/
-def eventSchedulingSimulation (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (scheduler : graph.PublicScheduler) :
+def eventSchedulingSimulation (ordered : graph.BarrierOrdered) (finite : graph.FiniteActions)
+    (inputs : PMF graph.Inputs) (finiteInputs : inputs.support.Finite)
+    (scheduler : graph.PublicScheduler) :
     GameForm.MixtureSimulationOn (graph.canonicalGame inputs)
       (graph.gameForm inputs scheduler) graph.terminalStore graph.terminalStore
       (fun _ _ => True) where
@@ -53,11 +54,11 @@ def eventSchedulingSimulation (ordered : graph.BarrierOrdered)
     change graph.BehavioralProfile at profile
     unfold canonicalGame
     have targetProfile :
-        (fun who => graph.normalizePolicy who (profile who)) =
-          graph.normalizeProfile profile := rfl
+        Profile.map (sig := graph.gameSignature) (target := graph.gameSignature)
+          graph.normalizePolicy profile = graph.normalizeProfile profile := rfl
     rw [targetProfile, gameForm_play_map_terminalStore,
       gameForm_play_map_terminalStore]
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro initial _
     calc
       (graph.runPolicies scheduler (graph.normalizeProfile profile) initial).map
@@ -72,11 +73,11 @@ def eventSchedulingSimulation (ordered : graph.BarrierOrdered)
   deviation_mixture profile who replacement _ := by
     change graph.BehavioralProfile at profile
     unfold canonicalGame
-    obtain ⟨mixture, law⟩ := ordered.exists_deviation_mixture inputs scheduler
-      profile who replacement
+    obtain ⟨mixture, -, law⟩ := ordered.exists_deviation_mixture finite inputs finiteInputs
+      scheduler profile who replacement
     have sourceProfile :
-        (fun player => graph.normalizePolicy player (profile player)) =
-          graph.normalizeProfile profile := rfl
+        Profile.map (sig := graph.gameSignature) (target := graph.gameSignature)
+          graph.normalizePolicy profile = graph.normalizeProfile profile := rfl
     refine ⟨mixture, ?_⟩
     rw [sourceProfile]
     rw [gameForm_play_map_terminalStore]
@@ -85,9 +86,9 @@ def eventSchedulingSimulation (ordered : graph.BarrierOrdered)
           (graph.runPolicies graph.canonicalScheduler
             (Profile.update (sig := graph.gameSignature) profile who alternative)
             initial).map Config.store) := by
-              simpa only [FinDist.map_bind] using law
+              simpa only [PMF.map_bind] using law
       _ = _ := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro alternative _
         exact (gameForm_play_map_terminalStore inputs graph.canonicalScheduler
           (Profile.update (sig := graph.gameSignature) profile who alternative)).symm
@@ -95,31 +96,33 @@ def eventSchedulingSimulation (ordered : graph.BarrierOrdered)
 /-- Concurrent and sequential dependency choices are one game on typed terminal
 stores, and the correspondence needs no mixture: a deviation in the mode graph
 is one policy of the graph it was built from. -/
-def eventModeSimulation (mode : ExecutionMode) (inputs : FinDist graph.Inputs) :
+def eventModeSimulation (mode : ExecutionMode) (inputs : PMF graph.Inputs) :
     GameForm.MixtureSimulationOn (graph.canonicalGame inputs)
       ((graph.withMode mode).canonicalGame inputs)
       graph.terminalStore (graph.withMode mode).terminalStore (fun _ _ => True) where
   compileStrategy := graph.toModePolicy mode
   honest_law profile := by
     change graph.BehavioralProfile at profile
-    have toProfile : (fun who => graph.toModePolicy mode who (profile who)) =
-        graph.toModeProfile mode profile := rfl
+    have toProfile : Profile.map (sig := graph.gameSignature)
+        (target := (graph.withMode mode).gameSignature) (graph.toModePolicy mode) profile =
+          graph.toModeProfile mode profile := rfl
     unfold canonicalGame
     rw [toProfile, (graph.withMode mode).gameForm_play_map_terminalStore,
       graph.gameForm_play_map_terminalStore]
-    refine FinDist.bind_congr fun initial _ => ?_
+    refine bind_congr_on_support _ fun initial _ => ?_
     rw [graph.runPolicies_withMode_store mode (graph.toModeProfile mode profile) initial,
       graph.fromModeProfile_toModeProfile]
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
     change graph.BehavioralProfile at profile
-    refine ⟨FinDist.pure (graph.fromModePolicy mode who replacement), ?_⟩
-    have toProfile : (fun player => graph.toModePolicy mode player (profile player)) =
-        graph.toModeProfile mode profile := rfl
+    refine ⟨PMF.pure (graph.fromModePolicy mode who replacement), ?_⟩
+    have toProfile : Profile.map (sig := graph.gameSignature)
+        (target := (graph.withMode mode).gameSignature) (graph.toModePolicy mode) profile =
+          graph.toModeProfile mode profile := rfl
     unfold canonicalGame
-    rw [FinDist.pure_bind, toProfile, (graph.withMode mode).gameForm_play_map_terminalStore,
+    rw [PMF.pure_bind, toProfile, (graph.withMode mode).gameForm_play_map_terminalStore,
       graph.gameForm_play_map_terminalStore]
-    refine FinDist.bind_congr fun initial _ => ?_
+    refine bind_congr_on_support _ fun initial _ => ?_
     rw [graph.runPolicies_withMode_store mode _ initial, graph.fromModeProfile_update,
       graph.fromModeProfile_toModeProfile]
 
@@ -133,9 +136,9 @@ private theorem map_some_observe {Ω : Type}
     (observe : graph.gameSignature.Outcome → Ω)
     (decode : EventGraph.Store graph.layout → Option Ω)
     (factors : ∀ outcome, decode (graph.terminalStore outcome) = some (observe outcome))
-    (law : FinDist graph.gameSignature.Outcome) :
+    (law : PMF graph.gameSignature.Outcome) :
     (law.map observe).map some = (law.map graph.terminalStore).map decode := by
-  rw [FinDist.map_comp, FinDist.map_comp]
+  rw [PMF.map_comp, PMF.map_comp]
   congr 1
   funext outcome
   exact (factors outcome).symm
@@ -144,7 +147,8 @@ private theorem map_some_observe {Ω : Type}
 store determines. This is what composes: an edge below supplies its own reading
 of a completed play, and the scheduler is invisible to it. -/
 def eventSchedulingSimulationOn {Ω : Type} (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (scheduler : graph.PublicScheduler)
+    (finite : graph.FiniteActions) (inputs : PMF graph.Inputs)
+    (finiteInputs : inputs.support.Finite) (scheduler : graph.PublicScheduler)
     (observe : graph.gameSignature.Outcome → Ω)
     (decode : EventGraph.Store graph.layout → Option Ω)
     (factors : ∀ outcome, decode (graph.terminalStore outcome) = some (observe outcome)) :
@@ -152,26 +156,28 @@ def eventSchedulingSimulationOn {Ω : Type} (ordered : graph.BarrierOrdered)
       (graph.gameForm inputs scheduler) observe observe (fun _ _ => True) where
   compileStrategy := graph.normalizePolicy
   honest_law profile := by
-    have base := (graph.eventSchedulingSimulation ordered inputs scheduler).honest_law profile
+    have base := (graph.eventSchedulingSimulation ordered finite inputs finiteInputs
+      scheduler).honest_law profile
     simp only [eventSchedulingSimulation] at base
-    refine FinDist.map_injective (Option.some_injective _) ?_
+    refine pmf_map_injective (Option.some_injective _) ?_
     rw [graph.map_some_observe observe decode factors,
       graph.map_some_observe observe decode factors, base]
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement considered := by
-    obtain ⟨mixture, law⟩ := (graph.eventSchedulingSimulation ordered inputs scheduler
-      ).deviation_mixture profile who replacement considered
+    obtain ⟨mixture, law⟩ := (graph.eventSchedulingSimulation ordered finite inputs
+      finiteInputs scheduler).deviation_mixture profile who replacement considered
     simp only [eventSchedulingSimulation] at law
-    refine ⟨mixture, FinDist.map_injective (Option.some_injective _) ?_⟩
-    rw [graph.map_some_observe observe decode factors, law, FinDist.map_bind]
-    rw [FinDist.map_bind]
-    exact FinDist.bind_congr fun alternative _ =>
+    refine ⟨mixture, pmf_map_injective (Option.some_injective _) ?_⟩
+    rw [graph.map_some_observe observe decode factors, law, PMF.map_bind]
+    rw [PMF.map_bind]
+    exact bind_congr_on_support _ fun alternative _ =>
       (graph.map_some_observe observe decode factors _).symm
 
 /-- Same-error Nash correspondence for every utility of the typed terminal
 store. -/
 theorem eventScheduling_approximate_nash_iff
-    (ordered : graph.BarrierOrdered) (inputs : FinDist graph.Inputs)
+    (ordered : graph.BarrierOrdered) (finite : graph.FiniteActions)
+    (inputs : PMF graph.Inputs) (finiteInputs : inputs.support.Finite)
     (scheduler : graph.PublicScheduler)
     (utility : EventGraph.Store graph.layout → Player → ℝ)
     (ε : ℝ) (profile : graph.BehavioralProfile) :
@@ -180,7 +186,11 @@ theorem eventScheduling_approximate_nash_iff
         (graph.normalizeProfile profile) ↔
       IsεNash (graph.canonicalGame inputs)
         (fun outcome who => utility (graph.terminalStore outcome) who) ε profile := by
-  exact (graph.eventSchedulingSimulation ordered inputs scheduler).isεNash_compileProfile_iff
-    utility ε profile (fun _ _ => trivial)
+  refine ((graph.eventSchedulingSimulation ordered finite inputs finiteInputs scheduler
+    ).isεNash_compileProfile_iff utility ε profile (fun _ _ => trivial)).trans ?_
+  exact and_iff_left fun who replacement =>
+    payoffIntegrable_of_finite_support _ _
+      (graph.gameForm_play_support_finite inputs finiteInputs scheduler _
+        (finite.profileFiniteSupport _))
 
 end Vegas.EventGraph

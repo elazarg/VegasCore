@@ -289,7 +289,7 @@ private theorem fromSequentialConfig_step (graph : Vegas.EventGraph Player L)
   rw [config.step_eq_map_of_eval event ready action law sequentialEvaluates]
   rw [(graph.fromSequentialConfig config).step_eq_map_of_eval event
     (graph.fromSequentialReady config event ready) action law originalEvaluates]
-  rw [FinDist.map_comp]
+  rw [PMF.map_comp]
   apply congrArg (fun function => law.map function)
   funext value
   exact graph.fromSequentialConfig_complete config event ready action value
@@ -311,10 +311,10 @@ private theorem normalizedPolicyStep_fromSequential (graph : Vegas.EventGraph Pl
     · rename_i originalWho originalActor
       have same : originalWho = who := Option.some.inj (originalActor.symm.trans actor)
       subst originalWho
-      simp only [FinDist.map_bind]
+      simp only [PMF.map_bind]
       unfold normalizePolicy fromModeProfile fromModePolicy
       rw [graph.normalizedObservation_fromSequentialConfig config event who]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro action _
       exact graph.fromSequentialConfig_step config event ready action
     · rename_i ownerless
@@ -346,14 +346,14 @@ private theorem runPlan_canonical_fromSequential
   induction fuel with
   | zero =>
       intro config
-      simp [runPlan]
+      simp [runPlan, PMF.pure_map]
   | succ fuel ih =>
       intro config
       by_cases terminal : config.cut.Terminal
       · have originalTerminal :
           (graph.fromSequentialConfig config).cut.Terminal := by
           simpa using terminal
-        simp [runPlan, terminal, originalTerminal]
+        simp [runPlan, terminal, originalTerminal, PMF.pure_map]
       · let event := config.cut.enabled.min'
           (enabled_nonempty_of_not_terminal config terminal)
         have ready : config.cut.Ready event :=
@@ -375,7 +375,7 @@ private theorem runPlan_canonical_fromSequential
         rw [graph.runPlan_canonical_normalized_step
           (graph.fromModeProfile .sequential profile) fuel
           (graph.fromSequentialConfig config) event originalReady originalLeast]
-        rw [FinDist.map_bind]
+        rw [PMF.map_bind]
         calc
           _ = (graph.sequentialize.normalizedPolicyStep profile config event ready).bind
                 (fun next => graph.runPlan
@@ -383,7 +383,7 @@ private theorem runPlan_canonical_fromSequential
                     (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
                     graph.canonicalScheduler)
                   fuel (graph.fromSequentialConfig next)) := by
-              apply FinDist.bind_congr
+              apply bind_congr_on_support _
               intro next _
               exact ih next
           _ = ((graph.sequentialize.normalizedPolicyStep profile config event ready).map
@@ -393,7 +393,7 @@ private theorem runPlan_canonical_fromSequential
                   (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
                     graph.canonicalScheduler)
                   fuel) := by
-              rw [FinDist.bind_map]
+              rw [PMF.bind_map, Function.comp_def]
           _ = _ := by
               rw [graph.normalizedPolicyStep_fromSequential profile config event ready]
 
@@ -434,7 +434,7 @@ theorem canonical_fromSequential_store_law
   calc
     law.map Config.store =
         (law.map graph.fromSequentialConfig).map Config.store := by
-        rw [FinDist.map_comp]
+        rw [PMF.map_comp]
         apply congrArg (fun function => law.map function)
         funext config
         exact (graph.fromSequentialConfig_store config).symm

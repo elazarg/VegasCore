@@ -30,7 +30,7 @@ structure SchedulerSite (graph : Vegas.EventGraph Player L) where
 
 /-- Player and chance execution after a ready event has been selected. -/
 def selectedPolicyStep (profile : graph.BehavioralProfile) (config : graph.Config)
-    (event : graph.EventId) (ready : config.cut.Ready event) : FinDist graph.Config :=
+    (event : graph.EventId) (ready : config.cut.Ready event) : PMF graph.Config :=
   match actor : graph.actor? event with
   | some owner =>
       (profile owner event actor (graph.playerObserve owner config)).bind
@@ -44,7 +44,7 @@ theorem selectedPolicyStep_history_length (profile : graph.BehavioralProfile)
     next.history.length = config.history.length + 1 := by
   unfold selectedPolicyStep at member
   split at member
-  · rw [FinDist.support_bind] at member
+  · rw [PMF.support_bind] at member
     obtain ⟨action, _, supported⟩ := Set.mem_iUnion₂.mp member
     rw [config.step_history event ready action next supported]
     simp
@@ -60,20 +60,20 @@ def schedulerSite? : Option graph.Config → Option (SchedulerSite graph)
         enabled_nonempty_of_not_terminal config terminal⟩
 
 private def schedulerTransition (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) (state : Option graph.Config)
-    (choice : Option graph.EventId) : FinDist (Option graph.Config) :=
+    (inputs : PMF graph.Inputs) (state : Option graph.Config)
+    (choice : Option graph.EventId) : PMF (Option graph.Config) :=
   match state with
   | none => inputs.map (fun initial => some (Config.initial initial))
   | some config => match choice with
-    | none => FinDist.pure state
+    | none => PMF.pure state
     | some event =>
         if ready : config.cut.Ready event then
           (selectedPolicyStep profile config event ready).map some
-        else FinDist.pure state
+        else PMF.pure state
 
 /-- An analysis presentation whose only choices select ready graph events. -/
 abbrev schedulerProtocol (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) : ExecutionProtocol Unit where
+    (inputs : PMF graph.Inputs) : ExecutionProtocol Unit where
   State := Option graph.Config
   Action _ := graph.EventId
   init := none
@@ -95,7 +95,7 @@ abbrev schedulerProtocol (profile : graph.BehavioralProfile)
         exact ⟨fun _ => some event, fun _ => ⟨notTerminal, ready⟩⟩
 
 private abbrev schedulerSignals (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) : InfoSignals (schedulerProtocol profile inputs) where
+    (inputs : PMF graph.Inputs) : InfoSignals (schedulerProtocol profile inputs) where
   PublicSignal := Option (SchedulerSite graph)
   PrivateSignal _ := Unit
   initialPublic := none
@@ -107,14 +107,14 @@ private abbrev schedulerSignals (profile : graph.BehavioralProfile)
   pushInfo _ _ _ _ signal := signal
 
 private theorem schedulerSignals_infoOf (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) {state : (schedulerProtocol profile inputs).State}
+    (inputs : PMF graph.Inputs) {state : (schedulerProtocol profile inputs).State}
     (trace : (schedulerProtocol profile inputs).Trace state) :
     (schedulerSignals profile inputs).infoOf () trace = schedulerSite? state := by
   cases trace <;> rfl
 
 /-- The scheduler's menu depends only on its public observation and enabled set. -/
 abbrev schedulerInformation (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) : InformationModel (schedulerProtocol profile inputs) where
+    (inputs : PMF graph.Inputs) : InformationModel (schedulerProtocol profile inputs) where
   toInfoSignals := schedulerSignals profile inputs
   menu _ site := match site with
     | none => {choice | choice = none}
@@ -132,22 +132,22 @@ abbrev schedulerInformation (profile : graph.BehavioralProfile)
             simp [schedulerSite?, terminal, LegalOption, EventOrder.Cut.mem_enabled]
 
 @[simp] theorem schedulerInformation_infoOf (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) {state : (schedulerProtocol profile inputs).State}
+    (inputs : PMF graph.Inputs) {state : (schedulerProtocol profile inputs).State}
     (trace : (schedulerProtocol profile inputs).Trace state) :
     (schedulerInformation profile inputs).infoOf () trace = schedulerSite? state :=
   schedulerSignals_infoOf profile inputs trace
 
 /-- The scheduler's actual behavioral response, with no player policy changed. -/
-def schedulerBehavioral (profile : graph.BehavioralProfile) (inputs : FinDist graph.Inputs)
+def schedulerBehavioral (profile : graph.BehavioralProfile) (inputs : PMF graph.Inputs)
     (scheduler : graph.PublicScheduler) :
     (schedulerInformation profile inputs).BehavioralPolicy () :=
   fun site => match site with
-  | none => FinDist.pure ⟨none, rfl⟩
+  | none => PMF.pure ⟨none, rfl⟩
   | some site => (scheduler site.observation site.enabled site.nonempty).map fun selected =>
       ⟨some selected.1, ⟨selected.1, rfl, selected.2⟩⟩
 
 theorem schedulerBehavioral_of_some (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) (scheduler : graph.PublicScheduler)
+    (inputs : PMF graph.Inputs) (scheduler : graph.PublicScheduler)
     (info : Option (SchedulerSite graph)) (site : SchedulerSite graph)
     (same : info = some site) :
     schedulerBehavioral profile inputs scheduler info =
@@ -160,7 +160,7 @@ theorem schedulerBehavioral_of_some (profile : graph.BehavioralProfile)
   rfl
 
 /-- Extract a total deterministic public scheduler from a pure analysis policy. -/
-def schedulerOfPolicy (profile : graph.BehavioralProfile) (inputs : FinDist graph.Inputs)
+def schedulerOfPolicy (profile : graph.BehavioralProfile) (inputs : PMF graph.Inputs)
     (policy : (schedulerInformation profile inputs).Policy ()) :
     graph.DeterministicPublicScheduler := fun observation enabled nonempty => by
   let choice := policy (some ⟨observation, enabled, nonempty⟩)
@@ -171,12 +171,46 @@ def schedulerOfPolicy (profile : graph.BehavioralProfile) (inputs : FinDist grap
   obtain ⟨event, choiceEq, member⟩ := choice.2
   simpa [choiceEq] using member
 
+theorem selectedPolicyStep_support_finite (profile : graph.BehavioralProfile)
+    (finiteProfile : graph.ProfileFiniteSupport profile) (config : graph.Config)
+    (event : graph.EventId) (ready : config.cut.Ready event) :
+    (selectedPolicyStep profile config event ready).support.Finite := by
+  unfold selectedPolicyStep
+  split
+  · rw [PMF.support_bind]
+    exact (finiteProfile _ _ _ _).biUnion fun action _ =>
+      config.step_support_finite event ready action
+  · exact config.step_support_finite event ready _
+
+/-- The analysis protocol branches finitely when the input law and every player
+law do; node chance is finite by construction. -/
+theorem schedulerProtocol_step_support_finite (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (finiteInputs : inputs.support.Finite)
+    (finiteProfile : graph.ProfileFiniteSupport profile)
+    {state : (schedulerProtocol profile inputs).State}
+    (draw : {joint // (schedulerProtocol profile inputs).Legal state joint}) :
+    ((schedulerProtocol profile inputs).step state draw).support.Finite := by
+  change (schedulerTransition profile inputs state (draw.1 ())).support.Finite
+  cases state with
+  | none =>
+      rw [schedulerTransition, PMF.support_map]
+      exact finiteInputs.image _
+  | some config =>
+      cases draw.1 () with
+      | none => simp [schedulerTransition]
+      | some event =>
+          by_cases ready : config.cut.Ready event
+          · rw [schedulerTransition, dite_eq_left ready, PMF.support_map]
+            exact (selectedPolicyStep_support_finite profile finiteProfile config
+              event ready).image _
+          · simp [schedulerTransition, ready]
+
 private def schedulerDepth : Option graph.Config → Nat
   | none => 0
   | some config => config.history.length + 1
 
 private theorem scheduler_step_depth (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs)
+    (inputs : PMF graph.Inputs)
     (state next : (schedulerProtocol profile inputs).State)
     (joint : Unit → Option graph.EventId)
     (legal : (schedulerProtocol profile inputs).Legal state joint)
@@ -185,7 +219,7 @@ private theorem scheduler_step_depth (profile : graph.BehavioralProfile)
   change next ∈ (schedulerTransition profile inputs state (joint ())).support at supported
   cases state with
   | none =>
-      rw [schedulerTransition, FinDist.support_map] at supported
+      rw [schedulerTransition, PMF.support_map] at supported
       obtain ⟨initial, _, rfl⟩ := supported
       rfl
   | some config =>
@@ -198,13 +232,13 @@ private theorem scheduler_step_depth (profile : graph.BehavioralProfile)
           have valid := legal.2 ()
           rw [choiceEq] at valid
           have ready : config.cut.Ready event := valid.2
-          rw [choiceEq, schedulerTransition, dite_eq_left ready, FinDist.support_map] at supported
+          rw [choiceEq, schedulerTransition, dite_eq_left ready, PMF.support_map] at supported
           obtain ⟨result, member, rfl⟩ := supported
           simp only [schedulerDepth, selectedPolicyStep_history_length profile config
             event ready result member]
 
 private theorem scheduler_active_site (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) (state : (schedulerProtocol profile inputs).State)
+    (inputs : PMF graph.Inputs) (state : (schedulerProtocol profile inputs).State)
     (active : (schedulerProtocol profile inputs).active state ()) :
     ∃ site, schedulerSite? state = some site ∧
       site.observation.completionOrder.length + 1 = schedulerDepth state := by
@@ -218,7 +252,7 @@ private theorem scheduler_active_site (profile : graph.BehavioralProfile)
       · simp [schedulerDepth, publicObserve]
 
 private theorem scheduler_actedAt_depth_lt (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) {state : (schedulerProtocol profile inputs).State}
+    (inputs : PMF graph.Inputs) {state : (schedulerProtocol profile inputs).State}
     (trace : (schedulerProtocol profile inputs).Trace state) :
     ∀ info ∈ (schedulerInformation profile inputs).actedAt () trace,
       ∃ site, info = some site ∧
@@ -248,7 +282,7 @@ private theorem scheduler_actedAt_depth_lt (profile : graph.BehavioralProfile)
 /-- Completed-event count strictly separates the scheduler's decision sites.
 Setup and terminal observations never contribute a scheduler action. -/
 theorem scheduler_actsOnce (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) :
+    (inputs : PMF graph.Inputs) :
     (schedulerInformation profile inputs).ActsOnceWhereItMatters := by
   apply InformationModel.actsOnceWhereItMatters_of_actsOnce
   intro who state trace
@@ -276,26 +310,26 @@ theorem scheduler_actsOnce (profile : graph.BehavioralProfile)
 /-- Recovering a pure scheduler and presenting it behaviorally recovers the
 same singleton policy, including its uniquely determined inactive response. -/
 theorem schedulerBehavioral_schedulerOfPolicy (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs)
+    (inputs : PMF graph.Inputs)
     (policy : (schedulerInformation profile inputs).Policy ()) :
     schedulerBehavioral profile inputs (schedulerOfPolicy profile inputs policy).toPublic =
       policy.toBehavioral := by
   funext site
   cases site with
   | none =>
-      apply congrArg FinDist.pure
+      apply congrArg PMF.pure
       apply Subtype.ext
       exact (policy none).2.symm
   | some site =>
-      simp only [schedulerBehavioral, DeterministicPublicScheduler.toPublic, FinDist.map_pure]
-      apply congrArg FinDist.pure
+      simp only [schedulerBehavioral, DeterministicPublicScheduler.toPublic, PMF.pure_map]
+      apply congrArg PMF.pure
       apply Subtype.ext
       exact Option.some_get _
 
 /-- Separate the actual scheduler draw from the retained player/chance kernel. -/
 theorem policyPlan_step_bind {Outcome : Type} (profile : graph.BehavioralProfile)
     (scheduler : graph.PublicScheduler) (config : graph.Config)
-    (notTerminal : ¬ config.cut.Terminal) (continuation : graph.Config → FinDist Outcome) :
+    (notTerminal : ¬ config.cut.Terminal) (continuation : graph.Config → PMF Outcome) :
     ((graph.policyPlan profile scheduler config notTerminal).bind fun choice =>
       (config.step choice.1.1 choice.1.2 choice.2).bind continuation) =
       (scheduler (graph.publicObserve config) config.cut.enabled
@@ -303,20 +337,20 @@ theorem policyPlan_step_bind {Outcome : Type} (profile : graph.BehavioralProfile
           (selectedPolicyStep profile config selected.1
             ((EventOrder.Cut.mem_enabled _ _).mp selected.2)).bind continuation := by
   unfold policyPlan
-  rw [FinDist.bind_bind]
-  apply FinDist.bind_congr
+  rw [PMF.bind_bind]
+  apply bind_congr_on_support _
   intro selected _
   split <;> rename_i actor
-  · rw [FinDist.bind_map]
+  · rw [PMF.bind_map, Function.comp_def]
     unfold selectedPolicyStep
     split
     · rename_i owner actualActor
       have same := Option.some.inj (actualActor.symm.trans actor)
       subst owner
-      rw [FinDist.bind_bind]
+      rw [PMF.bind_bind]
     · rename_i ownerless
       simp [ownerless] at actor
-  · rw [FinDist.pure_bind]
+  · rw [PMF.pure_bind]
     unfold selectedPolicyStep
     split
     · rename_i owner actualActor
@@ -326,11 +360,11 @@ theorem policyPlan_step_bind {Outcome : Type} (profile : graph.BehavioralProfile
 /-- The probability presentation takes exactly the actual scheduled graph
 transition from a nonterminal initialized configuration. -/
 theorem scheduler_step_bind {Outcome : Type} (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) (scheduler : graph.PublicScheduler)
+    (inputs : PMF graph.Inputs) (scheduler : graph.PublicScheduler)
     (config : graph.Config)
     (trace : (schedulerProtocol profile inputs).Trace (some config))
     (notTerminal : ¬ config.cut.Terminal)
-    (continuation : Option graph.Config → FinDist Outcome) :
+    (continuation : Option graph.Config → PMF Outcome) :
     ((schedulerInformation profile inputs).behavioralJoint
       (fun _ => schedulerBehavioral profile inputs scheduler) trace notTerminal).bind
         (fun draw =>
@@ -355,30 +389,30 @@ theorem scheduler_step_bind {Outcome : Type} (profile : graph.BehavioralProfile)
       schedulerBehavioral_of_some profile inputs scheduler _ site infoEq
   rw [InformationModel.behavioralJoint_eq_map_of_at_most_one_active
     (M := M) _ trace notTerminal () (fun _ _ => rfl), policyEq]
-  simp only [FinDist.bind_map]
+  simp only [PMF.bind_map]
   rw [policyPlan_step_bind]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro selected _
   have ready : config.cut.Ready selected.1 :=
     (EventOrder.Cut.mem_enabled _ _).mp selected.2
   change (schedulerTransition profile inputs (some config) (some selected.1)).bind continuation = _
-  rw [schedulerTransition, dite_eq_left ready, FinDist.bind_map]
+  rw [schedulerTransition, dite_eq_left ready, PMF.bind_map, Function.comp_def]
 
 /-- Reference readout of the existing graph runner, with its setup draw kept
 inside the initial transition. This defines no additional graph steps. -/
-def schedulerRun (profile : graph.BehavioralProfile) (inputs : FinDist graph.Inputs)
+def schedulerRun (profile : graph.BehavioralProfile) (inputs : PMF graph.Inputs)
     (scheduler : graph.PublicScheduler) (fuel : Nat) :
-    Option graph.Config → FinDist (Option graph.Config)
+    Option graph.Config → PMF (Option graph.Config)
   | some config => (graph.runPlan (graph.policyPlan profile scheduler) fuel config).map some
   | none => match fuel with
-    | 0 => FinDist.pure none
+    | 0 => PMF.pure none
     | fuel + 1 => inputs.bind fun initial =>
         (graph.runPlan (graph.policyPlan profile scheduler) fuel (Config.initial initial)).map some
 
 /-- The analysis protocol and the actual graph runner have identical state
 laws, at every horizon and history. -/
 theorem scheduler_runBehavioralFrom (profile : graph.BehavioralProfile)
-    (inputs : FinDist graph.Inputs) (scheduler : graph.PublicScheduler) :
+    (inputs : PMF graph.Inputs) (scheduler : graph.PublicScheduler) :
     ∀ fuel (history : (schedulerProtocol profile inputs).History),
       ((schedulerInformation profile inputs).runBehavioralFrom
         (fun _ => schedulerBehavioral profile inputs scheduler) fuel history).map
@@ -389,8 +423,8 @@ theorem scheduler_runBehavioralFrom (profile : graph.BehavioralProfile)
   | zero =>
       intro history
       simp only [InformationModel.runBehavioralFrom,
-        ExecutionProtocol.runRandomizedFor_zero, FinDist.map_pure]
-      cases history.state <;> simp [schedulerRun, runPlan]
+        ExecutionProtocol.runRandomizedFor_zero, PMF.pure_map]
+      cases history.state <;> simp [schedulerRun, runPlan, PMF.pure_map]
   | succ fuel ih =>
       intro history
       let E := schedulerProtocol profile inputs
@@ -398,23 +432,23 @@ theorem scheduler_runBehavioralFrom (profile : graph.BehavioralProfile)
       let policies := fun (_ : Unit) => schedulerBehavioral profile inputs scheduler
       by_cases terminal : E.terminal history.state
       · rw [InformationModel.runBehavioralFrom_of_terminal (M := M) _ _ terminal,
-          FinDist.map_pure]
+          PMF.pure_map]
         rcases history with ⟨state, trace⟩
         cases state with
         | none => exact False.elim terminal
         | some config =>
             change config.cut.Terminal at terminal
-            simp only [schedulerRun, runPlan, dite_eq_left terminal, FinDist.map_pure]
+            simp only [schedulerRun, runPlan, dite_eq_left terminal, PMF.pure_map]
       · rw [InformationModel.runBehavioralFrom_succ_of_not_terminal (M := M) _ fuel terminal,
-          FinDist.map_bind]
+          PMF.map_bind]
         calc
           _ = (M.behavioralJoint policies history.trace terminal).bind fun draw =>
               (E.step history.state draw).bind
                 (schedulerRun profile inputs scheduler fuel) := by
-            apply FinDist.bind_congr
+            apply bind_congr_on_support _
             intro draw _
-            rw [FinDist.map_bindOnSupport]
-            apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+            rw [map_bindOnSupport]
+            apply bindOnSupport_eq_bind_of_eq_on_support _
             intro next realized
             exact ih (history.extend draw.2 realized)
           _ = _ := by
@@ -422,17 +456,17 @@ theorem scheduler_runBehavioralFrom (profile : graph.BehavioralProfile)
             cases state with
             | none =>
                 rw [InformationModel.behavioralJoint_eq_pure_of_no_active (M := M) _ trace terminal
-                  (fun _ => not_false), FinDist.pure_bind]
+                  (fun _ => not_false), PMF.pure_bind]
                 change (inputs.map (fun initial => some (Config.initial initial))).bind _ = _
-                rw [FinDist.bind_map]
+                rw [PMF.bind_map]
                 rfl
             | some config =>
                 rw [scheduler_step_bind profile inputs scheduler config trace terminal]
                 change _ = (graph.runPlan _ (fuel + 1) config).map some
-                rw [runPlan, dite_eq_right terminal, FinDist.map_bind]
-                apply FinDist.bind_congr
+                rw [runPlan, dite_eq_right terminal, PMF.map_bind]
+                apply bind_congr_on_support _
                 intro choice _
-                rw [FinDist.map_bind]
+                rw [PMF.map_bind]
                 rfl
 
 end Vegas.EventGraph

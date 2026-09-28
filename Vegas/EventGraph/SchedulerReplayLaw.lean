@@ -48,23 +48,23 @@ theorem runPlan_schedulerReachable
       by_cases terminal : config.cut.Terminal
       · have same : next = config := by simpa [runPlan, terminal] using member
         exact same ▸ reachable
-      · rw [runPlan, dite_eq_right terminal, FinDist.support_bind] at member
+      · rw [runPlan, dite_eq_right terminal, PMF.support_bind] at member
         simp only [Set.mem_iUnion] at member
         obtain ⟨choice, choiceMem, restMem⟩ := member
-        rw [FinDist.support_bind] at restMem
+        rw [PMF.support_bind] at restMem
         simp only [Set.mem_iUnion] at restMem
         obtain ⟨intermediate, intermediateMem, nextMem⟩ := restMem
         have selected :
             (scheduler (graph.publicObserve config) config.cut.enabled
               (enabled_nonempty_of_not_terminal config terminal)).1 = choice.1.1 := by
           unfold policyPlan DeterministicPublicScheduler.toPublic at choiceMem
-          simp only [FinDist.pure_bind] at choiceMem
+          simp only [PMF.pure_bind] at choiceMem
           split at choiceMem <;> rename_i ownerEq
-          · rw [FinDist.support_map] at choiceMem
+          · rw [PMF.support_map] at choiceMem
             obtain ⟨action, _, rfl⟩ := choiceMem
             rfl
           · simpa using congrArg (fun selected => selected.1.1)
-              (FinDist.mem_support_pure.mp choiceMem).symm
+              ((PMF.mem_support_pure_iff _ _).mp choiceMem).symm
         have intermediateReachable : graph.SchedulerReachable scheduler inputs intermediate :=
           .step reachable terminal choice.1.1 selected choice.1.2 choice.2
             intermediate intermediateMem
@@ -78,7 +78,7 @@ theorem store_eq_of_step_of_available (config : graph.Config)
     (member : next ∈ (config.step event ready action).support)
     (field : graph.Field) (available : graph.FieldAvailable config.cut field) :
     next.store field = config.store field := by
-  rw [Config.step, FinDist.support_map] at member
+  rw [Config.step, PMF.support_map] at member
   obtain ⟨value, _, rfl⟩ := member
   cases field with
   | inl input => rfl

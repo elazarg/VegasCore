@@ -74,7 +74,7 @@ private theorem stepThen_history {config : graph.Config} {first second : graph.E
     result.history = config.history ++
       [⟨first, firstAction⟩, ⟨second, secondAction⟩] := by
   unfold stepThen at member
-  rw [FinDist.support_bindOnSupport] at member
+  rw [PMF.support_bindOnSupport] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨afterFirst, firstMember, secondMember⟩ := member
   calc
@@ -95,8 +95,8 @@ private theorem stepThen_map_storeRecall
       firstAction secondAction).map Config.store).map fun store =>
         (store, fun who => graph.ownCompletions who
           (config.history ++ [⟨first, firstAction⟩, ⟨second, secondAction⟩])) := by
-  rw [FinDist.map_comp]
-  apply FinDist.map_congr_of_eq_on_support
+  rw [PMF.map_comp]
+  apply map_congr_on_support _
   intro result member
   simp only [storeRecall]
   rw [stepThen_history firstReady secondReady different firstAction secondAction result member]

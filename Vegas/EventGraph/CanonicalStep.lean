@@ -95,8 +95,8 @@ private theorem canonicalScheduler_eq_pure (config : graph.Config) (event : grap
     (least : ∀ other, other ∉ config.cut.completed → event.val ≤ other.val) :
     graph.canonicalScheduler (graph.publicObserve config) config.cut.enabled
         (enabled_nonempty_of_not_terminal config (not_terminal_of_ready config ready)) =
-      FinDist.pure ⟨event, (EventOrder.Cut.mem_enabled _ _).mpr ready⟩ := by
-  apply congrArg FinDist.pure
+      PMF.pure ⟨event, (EventOrder.Cut.mem_enabled _ _).mpr ready⟩ := by
+  apply congrArg PMF.pure
   apply Subtype.ext
   exact canonical_selected_eq config event ready least
 
@@ -116,12 +116,12 @@ theorem runPlan_canonical_actor (profile : graph.BehavioralProfile)
     arg 1
     unfold policyPlan
     dsimp only
-    rw [canonicalScheduler_eq_pure config event ready least, FinDist.pure_bind]
+    rw [canonicalScheduler_eq_pure config event ready least, PMF.pure_bind]
   split
   · rename_i selectedOwner selectedActor
     have same : selectedOwner = who := Option.some.inj (selectedActor.symm.trans actor)
     subst selectedOwner
-    rw [FinDist.bind_map]
+    rw [PMF.bind_map, Function.comp_def]
   · rename_i selectedActor
     simp [actor] at selectedActor
 
@@ -141,10 +141,10 @@ theorem runPlan_canonical_ownerless (profile : graph.BehavioralProfile)
     arg 1
     unfold policyPlan
     dsimp only
-    rw [canonicalScheduler_eq_pure config event ready least, FinDist.pure_bind]
+    rw [canonicalScheduler_eq_pure config event ready least, PMF.pure_bind]
   split
   · rename_i selectedOwner selectedActor
     simp [ownerless] at selectedActor
-  · rw [FinDist.pure_bind]
+  · rw [PMF.pure_bind]
 
 end Vegas.EventGraph

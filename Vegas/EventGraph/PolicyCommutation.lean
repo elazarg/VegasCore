@@ -29,7 +29,7 @@ def policyStepThen (profile : graph.BehavioralProfile) (config : graph.Config)
     (firstReady : config.cut.Ready first) (secondReady : config.cut.Ready second)
     (different : first ≠ second) (firstOwner secondOwner : Player)
     (firstActor : graph.actor? first = some firstOwner)
-    (secondActor : graph.actor? second = some secondOwner) : FinDist graph.Config :=
+    (secondActor : graph.actor? second = some secondOwner) : PMF graph.Config :=
   (graph.normalizePolicy firstOwner (profile firstOwner) first firstActor
       (graph.playerObserve firstOwner config)).bind fun firstAction =>
     (config.step first firstReady firstAction).bindOnSupport fun afterFirst member =>
@@ -60,7 +60,7 @@ theorem BarrierOrdered.policyStepThen_eq_independent
           stepThen config first second firstReady secondReady different
             firstAction secondAction := by
   unfold policyStepThen
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro firstAction _
   let secondLaw := graph.normalizePolicy secondOwner (profile secondOwner)
     second secondActor (graph.playerObserve secondOwner config)
@@ -77,9 +77,9 @@ theorem BarrierOrdered.policyStepThen_eq_independent
           afterFirst.step second (by
             rw [config.step_cut first firstReady firstAction afterFirst member]
             exact secondReady.after_complete firstReady different.symm) secondAction) := by
-        apply FinDist.bindOnSupport_congr
+        apply bindOnSupport_congr _
         intro afterFirst member
-        rw [Config.step, FinDist.support_map] at member
+        rw [Config.step, PMF.support_map] at member
         obtain ⟨value, _, rfl⟩ := member
         have stable := (ordered.normalizePolicy_complete_foreign
           (profile secondOwner) config second first secondReady firstReady secondActor
@@ -92,7 +92,7 @@ theorem BarrierOrdered.policyStepThen_eq_independent
           afterFirst.step second (by
             rw [config.step_cut first firstReady firstAction afterFirst member]
             exact secondReady.after_complete firstReady different.symm) secondAction := by
-      exact (FinDist.bind_bindOnSupport_comm secondLaw
+      exact (bind_bindOnSupport_comm secondLaw
         (config.step first firstReady firstAction)
         (fun secondAction afterFirst member =>
           afterFirst.step second (by
@@ -123,11 +123,11 @@ theorem BarrierOrdered.policyStepThen_map_storeRecall_comm
       different leftOwner rightOwner leftActor rightActor ownerNe,
     ordered.policyStepThen_eq_independent profile config right left rightReady leftReady
       different.symm rightOwner leftOwner rightActor leftActor ownerNe.symm]
-  simp only [FinDist.map_bind]
-  rw [FinDist.bind_comm]
-  apply FinDist.bind_congr
+  simp only [PMF.map_bind]
+  rw [PMF.bind_comm]
+  apply bind_congr_on_support _
   intro rightAction _
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro leftAction _
   exact stepThen_map_storeRecall_comm discipline config left right leftReady rightReady
     different leftAction rightAction

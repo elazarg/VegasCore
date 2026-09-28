@@ -23,11 +23,28 @@ variable {L : IExpr} [R : IExpr.ResultTypes L]
 player, from the player's actual graph observation. -/
 def BehavioralPolicy (graph : Vegas.EventGraph Player L) (who : Player) : Type :=
   ∀ (event : graph.EventId), graph.actor? event = some who →
-    graph.PlayerObservation who → FinDist (graph.Action event)
+    graph.PlayerObservation who → PMF (graph.Action event)
 
 /-- A playerwise behavioral profile. -/
 abbrev BehavioralProfile (graph : Vegas.EventGraph Player L) :=
   ∀ who, BehavioralPolicy graph who
+
+/-- Every local action law of the profile has finite support. -/
+def ProfileFiniteSupport (graph : Vegas.EventGraph Player L)
+    (profile : graph.BehavioralProfile) : Prop :=
+  ∀ who event actor observation, (profile who event actor observation).support.Finite
+
+/-- Every event has finitely many actions, so every behavioral policy of the
+graph, including every deviation, branches finitely. -/
+def FiniteActions (graph : Vegas.EventGraph Player L) : Prop :=
+  ∀ event, Finite (graph.Action event)
+
+omit [DecidableEq Player] in
+theorem FiniteActions.profileFiniteSupport {graph : Vegas.EventGraph Player L}
+    (finite : graph.FiniteActions) (profile : graph.BehavioralProfile) :
+    graph.ProfileFiniteSupport profile := fun _ event _ _ =>
+  have := finite event
+  Set.toFinite _
 
 /-- A public scheduler selects one member of the currently enabled set. The
 enabled set is computed from public completion identities, while the scheduler
@@ -35,7 +52,7 @@ receives no full semantic or private store. -/
 def PublicScheduler (graph : Vegas.EventGraph Player L) : Type :=
   (observation : graph.PublicObservation) →
   (enabled : Finset graph.EventId) → enabled.Nonempty →
-    FinDist {event : graph.EventId // event ∈ enabled}
+    PMF {event : graph.EventId // event ∈ enabled}
 
 namespace EventCode
 
@@ -80,15 +97,37 @@ def policyPlan (graph : Vegas.EventGraph Player L)
             (profile owner selected.1 ownerEq (graph.playerObserve owner config)).map
               fun action => ⟨readyEvent, action⟩
         | none =>
-            FinDist.pure ⟨readyEvent,
+            PMF.pure ⟨readyEvent,
               EventCode.actionOfActorNone (graph.nodes selected.1) ownerEq⟩
 
 /-- Execute a behavioral profile from one concrete input environment under a
 public scheduler. -/
 def runPolicies (graph : Vegas.EventGraph Player L)
     (scheduler : PublicScheduler graph) (profile : BehavioralProfile graph)
-    (inputs : graph.Inputs) : FinDist graph.Config :=
+    (inputs : graph.Inputs) : PMF graph.Config :=
   graph.run inputs (graph.policyPlan profile scheduler)
+
+/-- A policy plan branches finitely when the profile does: the scheduler
+selects among finitely many enabled events. -/
+theorem policyPlan_support_finite (graph : Vegas.EventGraph Player L)
+    (profile : BehavioralProfile graph) (finiteProfile : graph.ProfileFiniteSupport profile)
+    (scheduler : PublicScheduler graph) (config : graph.Config)
+    (notTerminal : ¬ config.cut.Terminal) :
+    (graph.policyPlan profile scheduler config notTerminal).support.Finite := by
+  unfold policyPlan
+  rw [PMF.support_bind]
+  refine (Set.toFinite _).biUnion fun selected _ => ?_
+  split
+  · rw [PMF.support_map]
+    exact (finiteProfile _ _ _ _).image _
+  · simp
+
+theorem runPolicies_support_finite (graph : Vegas.EventGraph Player L)
+    (scheduler : PublicScheduler graph) (profile : BehavioralProfile graph)
+    (finiteProfile : graph.ProfileFiniteSupport profile) (inputs : graph.Inputs) :
+    (graph.runPolicies scheduler profile inputs).support.Finite :=
+  graph.runPlan_support_finite _ (graph.policyPlan_support_finite profile finiteProfile scheduler)
+    _ _
 
 /-- Every supported policy execution completes the finite event graph. -/
 theorem runPolicies_terminal (graph : Vegas.EventGraph Player L)
@@ -103,10 +142,10 @@ only a proof-carrying relabeling of `runPolicies`, not a second executor. -/
 def terminalOutcomes (graph : Vegas.EventGraph Player L)
     (scheduler : PublicScheduler graph) (profile : BehavioralProfile graph)
     (inputs : graph.Inputs) :
-    FinDist {config : graph.Config // config.cut.Terminal} :=
+    PMF {config : graph.Config // config.cut.Terminal} :=
   let law := graph.runPolicies scheduler profile inputs
   law.bindOnSupport fun result member =>
-    FinDist.pure ⟨result, graph.runPolicies_terminal scheduler profile inputs result member⟩
+    PMF.pure ⟨result, graph.runPolicies_terminal scheduler profile inputs result member⟩
 
 /-- Forgetting the terminality certificate recovers the original execution law
 exactly. -/
@@ -116,8 +155,9 @@ exactly. -/
     (graph.terminalOutcomes scheduler profile inputs).map Subtype.val =
       graph.runPolicies scheduler profile inputs := by
   unfold terminalOutcomes
-  rw [FinDist.map_bindOnSupport]
-  simp
+  rw [map_bindOnSupport,
+    bindOnSupport_eq_bind_of_eq_on_support _ (g := PMF.pure) fun _ _ => PMF.pure_map _ _,
+    PMF.bind_pure]
 
 /-- The utility-free game signature of one event graph. Outcomes retain the
 complete terminal configuration, including its scheduling and action trace. -/
@@ -136,16 +176,31 @@ def liftOutcomeUtility (graph : Vegas.EventGraph Player L)
 
 /-- The graph game samples private/public initial inputs before execution, but
 each player supplies one strategy across the entire input law. -/
-def gameForm (graph : Vegas.EventGraph Player L) (inputs : FinDist graph.Inputs)
+def gameForm (graph : Vegas.EventGraph Player L) (inputs : PMF graph.Inputs)
     (scheduler : PublicScheduler graph) : GameForm Player where
   sig := graph.gameSignature
   play profile := inputs.bind fun initial => graph.terminalOutcomes scheduler profile initial
+
+/-- Every play of a finitely branching profile from a finite input law has
+finite support, so every utility is integrable against it. -/
+theorem gameForm_play_support_finite (graph : Vegas.EventGraph Player L)
+    (inputs : PMF graph.Inputs) (finiteInputs : inputs.support.Finite)
+    (scheduler : PublicScheduler graph) (profile : BehavioralProfile graph)
+    (finiteProfile : graph.ProfileFiniteSupport profile) :
+    ((graph.gameForm inputs scheduler).play profile).support.Finite := by
+  change (inputs.bind fun initial =>
+    graph.terminalOutcomes scheduler profile initial).support.Finite
+  rw [PMF.support_bind]
+  refine finiteInputs.biUnion fun initial _ => ?_
+  have finiteRun := graph.runPolicies_support_finite scheduler profile finiteProfile initial
+  rw [← graph.terminalOutcomes_map_val scheduler profile initial, PMF.support_map] at finiteRun
+  exact finiteRun.of_finite_image Subtype.val_injective.injOn
 
 /-- The canonical public scheduler always chooses the least enabled event id.
 It ignores public store contents but remains an ordinary scheduler specialization. -/
 def canonicalScheduler (graph : Vegas.EventGraph Player L) : PublicScheduler graph :=
   fun _ enabled nonempty =>
-    FinDist.pure ⟨enabled.min' nonempty, Finset.min'_mem enabled nonempty⟩
+    PMF.pure ⟨enabled.min' nonempty, Finset.min'_mem enabled nonempty⟩
 
 omit [DecidableEq Player] in
 /-- The canonical selector is not merely least among ready events: it is the
@@ -176,10 +231,10 @@ theorem canonical_min_ready_is_least_unfinished
 currently enabled event id. -/
 def greatestScheduler (graph : Vegas.EventGraph Player L) : PublicScheduler graph :=
   fun _ enabled nonempty =>
-    FinDist.pure ⟨enabled.max' nonempty, Finset.max'_mem enabled nonempty⟩
+    PMF.pure ⟨enabled.max' nonempty, Finset.max'_mem enabled nonempty⟩
 
 /-- Canonical-order specialization of the same ready-event graph game. -/
-def canonicalGame (graph : Vegas.EventGraph Player L) (inputs : FinDist graph.Inputs) :
+def canonicalGame (graph : Vegas.EventGraph Player L) (inputs : PMF graph.Inputs) :
     GameForm Player :=
   graph.gameForm inputs graph.canonicalScheduler
 
