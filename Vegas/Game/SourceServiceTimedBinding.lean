@@ -316,8 +316,7 @@ theorem sourceServiceTimedPolicy_binding_phase_law
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)

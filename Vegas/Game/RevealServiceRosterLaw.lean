@@ -61,8 +61,7 @@ settlement. Conditioning on the source Boolean leaves only the public timing
 law and replay policy; the entire native execution is retained. -/
 theorem rosterPolicy_phase_law
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program)
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)

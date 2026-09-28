@@ -337,8 +337,7 @@ theorem sourceServiceTimedPolicy_admissible
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (full : ∀ event who owned, (timing event who owned).FullSupport)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -420,8 +419,7 @@ def sourceServiceTimedProfile
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (original : BehavioralProfile setup.program) :
     GameTheory.Profile ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length

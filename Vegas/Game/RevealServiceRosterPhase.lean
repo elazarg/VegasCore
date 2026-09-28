@@ -97,8 +97,7 @@ theorem roster_reveal_continuation_law [Finite Player]
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (wholeProfile : BehavioralProfile setup.program) (initial : State L setup.context)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
@@ -284,8 +283,7 @@ theorem prefix_roster_window_continuation_law [Finite Player]
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (wholeProfile : BehavioralProfile setup.program) (initial : State L setup.context) :
     ∀ {Γ : SourceCtx Player L} {openNames : Finset VarId}
@@ -454,8 +452,7 @@ theorem roster_window_source_step_law [Finite Player]
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (reveals : setup.program.RevealOnly) (profile : BehavioralProfile setup.program)
     (initial : State L setup.context) (event : (graph setup).EventId)

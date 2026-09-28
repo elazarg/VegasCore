@@ -32,8 +32,7 @@ theorem roster_compiled_prefix_checkpoint [Finite Player]
     (admission : CommitmentInterface setup.program)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (count : Nat) (within : count ≤ eventCount setup.program)
     (execution : (application setup leaks).Execution)
@@ -72,8 +71,7 @@ theorem roster_owner_information_law
     (admission : CommitmentInterface setup.program)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) (visits : List Player) :
@@ -251,8 +249,7 @@ theorem roster_owner_supported_application [Finite Player]
     (admission : CommitmentInterface setup.program)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (event : (graph setup).EventId) (owner : Player) (visits : List Player)
     (final : (application setup leaks).Execution) :
@@ -313,8 +310,7 @@ theorem roster_owner_information_projects [Finite Player]
     (admission : CommitmentInterface setup.program)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (event : (graph setup).EventId) (owner : Player) (visits : List Player)
     (left right : (application setup leaks).Execution) :
@@ -361,8 +357,7 @@ theorem roster_owner_state_posterior
     (admission : CommitmentInterface setup.program)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) (visits : List Player)

@@ -101,8 +101,7 @@ theorem roster_harmless_response_disclosure
 the actual global roster policy. They may change traffic and recall, but these
 changes do not change any later source choice or payoff. -/
 theorem roster_harmless_response_source_law
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (reveals : setup.program.RevealOnly) (profile : BehavioralProfile setup.program)
     (initial : State L setup.context) (event : (graph setup).EventId)

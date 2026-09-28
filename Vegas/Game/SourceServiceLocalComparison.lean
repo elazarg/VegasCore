@@ -132,6 +132,11 @@ abbrev planLength : Nat := (rosterPlan service.setup service.rosters).length
 
 abbrev scheduler := rosterScheduler service.setup service.leaks service.rosters service.network
 
+/-- The source information model of the service's program, with every binding
+value admitted. -/
+abbrev sourceModel := service.setup.informationModel
+  (CommitmentInterface.values service.setup.program)
+
 /-- The native information model of the retained service. -/
 abbrev model := service.menu.information (initialLaw service.setup) service.planLength
   service.scheduler
@@ -197,8 +202,7 @@ end SourceServiceSpec
 timing law, its admissibility, and a fully mixed native assessment whose
 strategy is exactly that compilation. -/
 structure TimedApproximant (service : SourceServiceSpec Player L) where
-  timing : ∀ event who, (graph service.setup).actor? event = some who →
-    FinDist (Fin ((service.rosters event).count who))
+  timing : TimingLaw service.setup service.rosters
   timingFull : ∀ event who owned, (timing event who owned).FullSupport
   profile : BehavioralProfile service.setup.program
   admitted : ∀ who, (profile who).Admitted service.setup.program
@@ -227,11 +231,9 @@ takes these assessments along one fully supported Bayes sequence of the source
 equilibrium
 (`Vegas.SourceProgram.RevealService.sourceService_consistent_supported_sequence`). -/
 def ofSource (service : SourceServiceSpec Player L)
-    (timing : ∀ event who, (graph service.setup).actor? event = some who →
-      FinDist (Fin ((service.rosters event).count who)))
+    (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
-    (source : Profile (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).behavioralSignature)
+    (source : Profile service.sourceModel.behavioralSignature)
     (full : ∀ who info, (source who info).FullSupport) : TimedApproximant service :=
   let admission := CommitmentInterface.values service.setup.program
   let original := service.setup.decodeBehavioralProfile admission source
@@ -265,11 +267,9 @@ def ofSource (service : SourceServiceSpec Player L)
     mixed := native.bayes_isFullyMixed nativeMixed _ }
 
 theorem ofSource_strategy (service : SourceServiceSpec Player L)
-    (timing : ∀ event who, (graph service.setup).actor? event = some who →
-      FinDist (Fin ((service.rosters event).count who)))
+    (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
-    (source : Profile (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).behavioralSignature)
+    (source : Profile service.sourceModel.behavioralSignature)
     (full : ∀ who info, (source who info).FullSupport) :
     (ofSource service timing timingFull source full).assessment.strategy =
       sourceServiceTimedProfile service.setup service.leaks service.bounds service.rosters
@@ -278,11 +278,9 @@ theorem ofSource_strategy (service : SourceServiceSpec Player L)
   rfl
 
 theorem ofSource_bayes (service : SourceServiceSpec Player L)
-    (timing : ∀ event who, (graph service.setup).actor? event = some who →
-      FinDist (Fin ((service.rosters event).count who)))
+    (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
-    (source : Profile (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).behavioralSignature)
+    (source : Profile service.sourceModel.behavioralSignature)
     (full : ∀ who info, (source who info).FullSupport) :
     InformationModel.BehavioralAssessment.IsBayesConsistent service.model
       (ofSource service timing timingFull source full).assessment

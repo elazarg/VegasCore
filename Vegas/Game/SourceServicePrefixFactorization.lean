@@ -83,8 +83,7 @@ theorem sourceService_reveal_prefix_factorization
     {Seed : Type} (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {published name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : published ∉ Γ.map Prod.fst)
@@ -273,8 +272,7 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
     (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
@@ -413,8 +411,7 @@ theorem sourceService_sample_prefix_factorization
     {Seed : Type} (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     {Γ : SourceCtx Player L} {openNames : Finset VarId} {name : VarId} {payload : L.Ty}
     (fresh : name ∉ Γ.map Prod.fst) (distribution : L.DistExpr (SourcePublicCtx L Γ) payload)
     (next : SourceProgram Player L ((name, .publicData payload) :: Γ) openNames)
@@ -727,8 +724,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (wholeProfile : BehavioralProfile setup.program)
     (covered : ∀ who, (sourceServiceMenu setup leaks bounds rosters).Admissible
@@ -1403,8 +1399,7 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (profile : BehavioralProfile setup.program)
     (covered : ∀ who, (sourceServiceMenu setup leaks bounds rosters).Admissible
@@ -1504,8 +1499,7 @@ theorem sourceServiceTimedProfile_prefix_factorization [Fintype Player]
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (full : ∀ event who owned, (timing event who owned).FullSupport)
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)

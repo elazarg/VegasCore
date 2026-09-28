@@ -24,8 +24,7 @@ theorem sourceServiceTimedPolicy_sample_window
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program) (event : (graph setup).EventId)
     (chance : (graph setup).actor? event = none)
     (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
@@ -88,8 +87,7 @@ theorem sourceServiceTimedPolicy_sample_phase_law
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program)
     {Γ : SourceCtx Player L} {payload : L.Ty}
     (source : Config Player L Γ) (refs : ContextRefs (graph setup).layout Γ)

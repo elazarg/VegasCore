@@ -274,8 +274,7 @@ theorem roster_owner_policy_limit
       (fun n => sourceChoiceLaw setup leaks (profiles n) owner
         (initial.observe (application setup leaks) owner))
       (sourceChoiceLaw setup leaks source owner (initial.observe (application setup leaks) owner)))
-    (timing : Nat → ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : Nat → TimingLaw setup rosters)
     (timingFull : ∀ n, (timing n event owner ownedEvent).FullSupport)
     (last : Fin ((rosters event).count owner)) (final : last.val + 1 = (rosters event).count owner)
     (timingConverges : FinDistConvergesPointwise

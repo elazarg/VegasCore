@@ -34,8 +34,7 @@ theorem roster_owner_site
     (mixed : source.IsFullyMixed)
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       (setup.informationModel admission) source (setup.decision_antichain admission))
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport) :
     let menu := rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters
     let scheduler := rosterScheduler setup leaks rosters network

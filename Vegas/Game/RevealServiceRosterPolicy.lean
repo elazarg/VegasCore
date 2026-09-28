@@ -30,6 +30,12 @@ def rosterOffset (setup : Setup (Player := Player) (L := L))
     (event : (graph setup).EventId) : Nat :=
   (((List.finRange (graph setup).order.eventCount).take event.val).flatMap rosters).count who
 
+/-- A timing law: for each event with an owner, a distribution over the owner's
+visits in that event's roster. -/
+abbrev TimingLaw (setup : Setup (Player := Player) (L := L))
+    (rosters : (graph setup).EventId → List Player) : Type :=
+  ∀ event who, (graph setup).actor? event = some who → FinDist (Fin ((rosters event).count who))
+
 /-- The immutable local opening data, before choosing an evidence-request
 representation. It reads only the owner's current application observation. -/
 def rosterOpening? (setup : Setup (Player := Player) (L := L))

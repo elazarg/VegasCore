@@ -25,8 +25,7 @@ theorem roster_owner_window_coupling
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program)
     (left right : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
@@ -83,8 +82,7 @@ theorem roster_owner_activation_coupling
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program)
     (left right : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
@@ -141,8 +139,7 @@ theorem roster_owner_information_kernel
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program)
     (event : (graph setup).EventId) (owner : Player)
     (actor : (graph setup).actor? event = some owner)

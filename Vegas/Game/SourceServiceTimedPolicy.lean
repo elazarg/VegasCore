@@ -52,8 +52,7 @@ def sourceServiceTimedPolicy
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program) (who : Player) :
     (application setup leaks).Policy := fun past view =>
   match view.application.publicView.serviceGrant with
@@ -70,8 +69,7 @@ theorem sourceServiceTimedPolicy_recorded
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program) (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
@@ -128,8 +126,7 @@ theorem sourceServiceTimedPolicy_window_eq
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program) (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
     (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
@@ -186,8 +183,7 @@ theorem sourceServiceTimedPolicy_phase_law
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program) (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
     (network : (runtime setup).NetworkPolicy leaks) (ticks : Nat)
@@ -225,8 +221,7 @@ theorem sourceServiceTimedPolicy_active_phase_law
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program) (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
     (network : (runtime setup).NetworkPolicy leaks) (remaining : List Player) (ticks : Nat)

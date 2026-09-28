@@ -107,8 +107,7 @@ theorem roster_owner_bayes_posterior
     (admission : CommitmentInterface setup.program)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) (visits : List Player)
@@ -237,8 +236,7 @@ theorem roster_owner_bayes_at_history
     (admission : CommitmentInterface setup.program)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) (visits : List Player)
@@ -335,8 +333,7 @@ theorem roster_owner_bayes_source_state
     (mixed : source.IsFullyMixed)
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       (setup.informationModel admission) source (setup.decision_antichain admission))
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) (visits : List Player)

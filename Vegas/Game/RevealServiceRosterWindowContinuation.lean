@@ -39,8 +39,7 @@ theorem roster_remaining_settlement
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program)
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)

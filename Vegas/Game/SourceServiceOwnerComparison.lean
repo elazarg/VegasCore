@@ -96,18 +96,14 @@ belief, are the prescribed laws of one mixture of original source assessment
 comparisons; after replacing the owner's policy by any admitted alternative,
 they are the mixture's alternative laws. -/
 theorem owner_source_comparisons (service : SourceServiceSpec Player L)
-    (timing : ∀ event who, (graph service.setup).actor? event = some who →
-      FinDist (Fin ((service.rosters event).count who)))
+    (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
-    (source : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).BehavioralAssessment)
-    [∀ who (site : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).InformationSite who),
-      Fintype ((service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).InformationHistory who site.1)]
+    (source : service.sourceModel.BehavioralAssessment)
+    [∀ who (site : service.sourceModel.InformationSite who),
+      Fintype (service.sourceModel.InformationHistory who site.1)]
     (full : ∀ who info, (source.strategy who info).FullSupport)
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
-      (service.setup.informationModel (CommitmentInterface.values service.setup.program)) source
+      service.sourceModel source
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
     (approx : TimedApproximant service)
     (built : approx = ofSource service timing timingFull source.strategy full)
@@ -121,20 +117,17 @@ theorem owner_source_comparisons (service : SourceServiceSpec Player L)
     (alternative : BehavioralPolicy who service.setup.program)
     (admitted : alternative.Admitted service.setup.program
       (CommitmentInterface.values service.setup.program)) :
-    ∃ mixture : FinDist ((service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).AssessmentDeviation who),
+    ∃ mixture : FinDist (service.sourceModel.AssessmentDeviation who),
       ((approx.assessment.belief who site).bind fun history =>
         (service.setup.continuationLaw approx.profile
           (decodedState service event history.1)).map some) =
-        mixture.bind (fun deviation => ((service.setup.informationModel
-          (CommitmentInterface.values service.setup.program)).assessmentComparison
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
             (fun final => service.setup.protocolReadout final.state)
             (instructionCount service.setup.program + 1) source who deviation).prescribed) ∧
       ((approx.assessment.belief who site).bind fun history =>
         (service.setup.continuationLaw (Function.update approx.profile who alternative)
           (decodedState service event history.1)).map some) =
-        mixture.bind (fun deviation => ((service.setup.informationModel
-          (CommitmentInterface.values service.setup.program)).assessmentComparison
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
             (fun final => service.setup.protocolReadout final.state)
             (instructionCount service.setup.program + 1) source who deviation).alternative) := by
   subst built
@@ -165,18 +158,14 @@ one admitted source alternative has native prescribed and alternative laws
 equal to the prescribed and alternative laws of one mixture of original source
 assessment comparisons. -/
 theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L)
-    (timing : ∀ event who, (graph service.setup).actor? event = some who →
-      FinDist (Fin ((service.rosters event).count who)))
+    (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
-    (source : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).BehavioralAssessment)
-    [∀ who (site : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).InformationSite who),
-      Fintype ((service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).InformationHistory who site.1)]
+    (source : service.sourceModel.BehavioralAssessment)
+    [∀ who (site : service.sourceModel.InformationSite who),
+      Fintype (service.sourceModel.InformationHistory who site.1)]
     (full : ∀ who info, (source.strategy who info).FullSupport)
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
-      (service.setup.informationModel (CommitmentInterface.values service.setup.program)) source
+      service.sourceModel source
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
     (approx : TimedApproximant service)
     (built : approx = ofSource service timing timingFull source.strategy full)
@@ -202,18 +191,15 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
           service.fuel history.1).map service.readout =
         (service.setup.continuationLaw (Function.update approx.profile who alternative)
           (decodedState service event history.1)).map some) :
-    ∃ mixture : FinDist ((service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).AssessmentDeviation who),
+    ∃ mixture : FinDist (service.sourceModel.AssessmentDeviation who),
       (service.model.assessmentComparison service.readout service.fuel approx.assessment who
         (site, (approx.assessment.strategy who).withLaw site.1 law)).prescribed =
-        mixture.bind (fun deviation => ((service.setup.informationModel
-          (CommitmentInterface.values service.setup.program)).assessmentComparison
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
             (fun final => service.setup.protocolReadout final.state)
             (instructionCount service.setup.program + 1) source who deviation).prescribed) ∧
       (service.model.assessmentComparison service.readout service.fuel approx.assessment who
         (site, (approx.assessment.strategy who).withLaw site.1 law)).alternative =
-        mixture.bind (fun deviation => ((service.setup.informationModel
-          (CommitmentInterface.values service.setup.program)).assessmentComparison
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
             (fun final => service.setup.protocolReadout final.state)
             (instructionCount service.setup.program + 1) source who deviation).alternative) := by
   obtain ⟨mixture, prescribedLaw, alternativeLaw⟩ := owner_source_comparisons service timing
@@ -238,18 +224,14 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
 approximant decodes to a state that an actual source history reaches, and all
 these source histories give the owner one common information state. -/
 theorem owner_site_source_histories (service : SourceServiceSpec Player L)
-    (timing : ∀ event who, (graph service.setup).actor? event = some who →
-      FinDist (Fin ((service.rosters event).count who)))
+    (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
-    (source : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).BehavioralAssessment)
-    [∀ who (site : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).InformationSite who),
-      Fintype ((service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).InformationHistory who site.1)]
+    (source : service.sourceModel.BehavioralAssessment)
+    [∀ who (site : service.sourceModel.InformationSite who),
+      Fintype (service.sourceModel.InformationHistory who site.1)]
     (full : ∀ who info, (source.strategy who info).FullSupport)
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
-      (service.setup.informationModel (CommitmentInterface.values service.setup.program)) source
+      service.sourceModel source
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
     (approx : TimedApproximant service)
     (built : approx = ofSource service timing timingFull source.strategy full)
@@ -269,8 +251,7 @@ theorem owner_site_source_histories (service : SourceServiceSpec Player L)
             (CommitmentInterface.values service.setup.program)).terminal sourceHistory.state ∧
           (service.setup.executionProtocol
             (CommitmentInterface.values service.setup.program)).active sourceHistory.state who ∧
-          (service.setup.informationModel
-            (CommitmentInterface.values service.setup.program)).infoOf who
+          service.sourceModel.infoOf who
               sourceHistory.trace = some sourceView := by
   subst built
   obtain ⟨reference, control, current, visits, count, selected, before, position⟩ :=

@@ -164,8 +164,7 @@ disclosure, whatever the remaining traffic. -/
 theorem RevealSource.opening_config_law (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (wholeProfile : BehavioralProfile setup.program)
     (network : (runtime setup).NetworkPolicy leaks) {event : (graph setup).EventId}
     (execution : (application setup leaks).Execution)
@@ -1342,18 +1341,14 @@ native lottery with some probability in `[0, 1]`; the source gains of
 disclosing and of withholding at the common source view bound the difference
 (`FinDist.deferredRemaining_regret_le`). -/
 theorem available_opening_gain_le (service : SourceServiceSpec Player L)
-    (timing : ∀ event who, (graph service.setup).actor? event = some who →
-      FinDist (Fin ((service.rosters event).count who)))
+    (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
-    (source : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).BehavioralAssessment)
-    [∀ who (site : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).InformationSite who),
-      Fintype ((service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).InformationHistory who site.1)]
+    (source : service.sourceModel.BehavioralAssessment)
+    [∀ who (site : service.sourceModel.InformationSite who),
+      Fintype (service.sourceModel.InformationHistory who site.1)]
     (full : ∀ who info, (source.strategy who info).FullSupport)
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
-      (service.setup.informationModel (CommitmentInterface.values service.setup.program)) source
+      service.sourceModel source
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
     (approx : TimedApproximant service)
     (built : approx = ofSource service timing timingFull source.strategy full)
@@ -1369,10 +1364,8 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
     (candidate : Handle (graph service.setup)) (raw : Raw L)
     (opening : rosterOpening? service.setup service.leaks who event view = some (candidate, raw))
     (utility : Option (State L service.setup.program.terminalCtx) → ℝ) (error : ℝ)
-    (sourceGains : ∀ deviation : (service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).AssessmentDeviation who,
-      let comparison := (service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).assessmentComparison
+    (sourceGains : ∀ deviation : service.sourceModel.AssessmentDeviation who,
+      let comparison := service.sourceModel.assessmentComparison
           (fun final => service.setup.protocolReadout final.state)
           (instructionCount service.setup.program + 1) source who deviation
       comparison.alternative.expect utility - comparison.prescribed.expect utility ≤ error)

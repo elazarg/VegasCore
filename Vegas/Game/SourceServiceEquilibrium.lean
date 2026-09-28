@@ -43,12 +43,9 @@ sequential equilibrium of the permitted native service model whose law of
 typed source terminal states is the source law. -/
 theorem exists_native_sequentialEquilibrium
     (utility : Option (State L service.setup.program.terminalCtx) → Player → ℝ)
-    (source : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).BehavioralAssessment)
-    [∀ who (site : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).InformationSite who),
-      Fintype ((service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).InformationHistory who site.1)]
+    (source : service.sourceModel.BehavioralAssessment)
+    [∀ who (site : service.sourceModel.InformationSite who),
+      Fintype (service.sourceModel.InformationHistory who site.1)]
     (equilibrium : source.IsSequentialEquilibriumFor
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
       (fun who site => source.continuationContext site
@@ -61,8 +58,7 @@ theorem exists_native_sequentialEquilibrium
         (fun who site => target.continuationContext site
           (fun final => utility (service.readout final) who) service.fuel) ∧
       (service.model.runBehavioral target.strategy service.fuel).map service.readout =
-        ((service.setup.informationModel
-          (CommitmentInterface.values service.setup.program)).runBehavioral source.strategy
+        (service.sourceModel.runBehavioral source.strategy
             (instructionCount service.setup.program + 1)).map
               (fun final => service.setup.protocolReadout final.state) := by
   classical

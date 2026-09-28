@@ -345,8 +345,7 @@ theorem reactiveBinding_injective {setup : Setup (Player := Player) (L := L)}
 the complete typed source terminal law after the submission is the source
 continuation after that binding. -/
 theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
-    (timing : ∀ event who, (graph service.setup).actor? event = some who →
-      FinDist (Fin ((service.rosters event).count who)))
+    (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (wholeProfile : BehavioralProfile service.setup.program)
     (permitted : ∀ who, (wholeProfile who).Admitted service.setup.program
@@ -1019,18 +1018,14 @@ comparisons. A native submission of a value is simulated by the source
 commitment of that value, and a transport response by the prescribed source
 action law, which it leaves unchanged. -/
 theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
-    (timing : ∀ event who, (graph service.setup).actor? event = some who →
-      FinDist (Fin ((service.rosters event).count who)))
+    (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
-    (source : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).BehavioralAssessment)
-    [∀ who (site : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).InformationSite who),
-      Fintype ((service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).InformationHistory who site.1)]
+    (source : service.sourceModel.BehavioralAssessment)
+    [∀ who (site : service.sourceModel.InformationSite who),
+      Fintype (service.sourceModel.InformationHistory who site.1)]
     (full : ∀ who info, (source.strategy who info).FullSupport)
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
-      (service.setup.informationModel (CommitmentInterface.values service.setup.program)) source
+      service.sourceModel source
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
     (approx : TimedApproximant service)
     (built : approx = ofSource service timing timingFull source.strategy full)
@@ -1043,18 +1038,15 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
     (granted : view.application.publicView.serviceGrant = some event)
     (unsent : (runtime service.setup).eventRecorded service.leaks past event = false)
     (law : FinDist (service.model.Choice who site.1)) :
-    ∃ mixture : FinDist ((service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).AssessmentDeviation who),
+    ∃ mixture : FinDist (service.sourceModel.AssessmentDeviation who),
       (service.model.assessmentComparison service.readout service.fuel approx.assessment who
         (site, (approx.assessment.strategy who).withLaw site.1 law)).prescribed =
-        mixture.bind (fun deviation => ((service.setup.informationModel
-          (CommitmentInterface.values service.setup.program)).assessmentComparison
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
             (fun final => service.setup.protocolReadout final.state)
             (instructionCount service.setup.program + 1) source who deviation).prescribed) ∧
       (service.model.assessmentComparison service.readout service.fuel approx.assessment who
         (site, (approx.assessment.strategy who).withLaw site.1 law)).alternative =
-        mixture.bind (fun deviation => ((service.setup.informationModel
-          (CommitmentInterface.values service.setup.program)).assessmentComparison
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
             (fun final => service.setup.protocolReadout final.state)
             (instructionCount service.setup.program + 1) source who deviation).alternative) := by
   have owned := binding_actor service.setup event who payload outputEq

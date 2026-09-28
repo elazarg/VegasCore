@@ -28,8 +28,7 @@ theorem roster_policy_converges
     (source : Profile (setup.informationModel admission).behavioralSignature)
     (converges : ∀ who (site : (setup.informationModel admission).InformationSite who),
       FinDistConvergesPointwise (fun n => (sequence n).strategy who site.1) (source who site.1))
-    (timing : Nat → ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : Nat → TimingLaw setup rosters)
     (timingFull : ∀ n event who owned, (timing n event who owned).FullSupport)
     (timingConverges : ∀ event who owned, ∃ last : Fin ((rosters event).count who),
       last.val + 1 = (rosters event).count who ∧
@@ -97,8 +96,7 @@ theorem roster_policy_converges
       (setup.decodeBehavioralProfile admission source) full choiceConverges timing
       (fun n => timingFull n event who ownedEvent) last final timingLimit
   · have waiting (profile : BehavioralProfile setup.program)
-        (when : ∀ event who, (graph setup).actor? event = some who →
-          FinDist (Fin ((rosters event).count who))) :
+        (when : TimingLaw setup rosters) :
         rosterPolicy setup leaks rosters when profile who (control.execution.recall who)
           (control.execution.observe app who) =
           app.replayPolicy (control.execution.recall who) (control.execution.observe app who) := by
@@ -140,8 +138,7 @@ theorem rosterPerturbedProfile_converges
     (source : Profile (setup.informationModel admission).behavioralSignature)
     (converges : ∀ who (site : (setup.informationModel admission).InformationSite who),
       FinDistConvergesPointwise (fun n => (sequence n).strategy who site.1) (source who site.1))
-    (timing : Nat → ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : Nat → TimingLaw setup rosters)
     (timingFull : ∀ n event who owned, (timing n event who owned).FullSupport)
     (timingConverges : ∀ event who owned, ∃ last : Fin ((rosters event).count who),
       last.val + 1 = (rosters event).count who ∧

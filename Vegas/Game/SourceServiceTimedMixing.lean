@@ -222,8 +222,7 @@ theorem sourceServiceTimedPolicy_supported
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
@@ -347,8 +346,7 @@ theorem sourceServiceTimedProfile_fullyMixed
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (source : Profile (setup.informationModel
       (CommitmentInterface.values setup.program)).behavioralSignature)

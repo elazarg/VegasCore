@@ -115,8 +115,7 @@ theorem roster_owner_opening_probability
     (admission : CommitmentInterface setup.program)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
     (who : Player)
     (site : ((rosterMenu setup leaks

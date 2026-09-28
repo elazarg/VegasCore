@@ -105,8 +105,7 @@ theorem sourceService_owner_information_law [Fintype Player]
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (full : ∀ event who owned, (timing event who owned).FullSupport)
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)
@@ -345,8 +344,7 @@ theorem sourceService_owner_posterior [Fintype Player]
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (full : ∀ event who owned, (timing event who owned).FullSupport)
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)

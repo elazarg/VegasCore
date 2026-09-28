@@ -864,12 +864,9 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
     (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
       (runtime service.setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
       probability who ≤ (sample actual).probOf {observed | record ∈ observed})
-    (source : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).BehavioralAssessment)
-    [∀ who (site : (service.setup.informationModel
-      (CommitmentInterface.values service.setup.program)).InformationSite who),
-      Fintype ((service.setup.informationModel
-        (CommitmentInterface.values service.setup.program)).InformationHistory who site.1)]
+    (source : service.sourceModel.BehavioralAssessment)
+    [∀ who (site : service.sourceModel.InformationSite who),
+      Fintype (service.sourceModel.InformationHistory who site.1)]
     (equilibrium : source.IsSequentialEquilibriumFor
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
       (fun who site => source.continuationContext site
@@ -902,8 +899,7 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
           service.scheduler).runBehavioral target.strategy service.fuel).bind
           (fun final => (settle final.state).map (fun payoffs =>
             (sourceReadout service.setup service.leaks final.state, payoffs))) =
-        ((service.setup.informationModel
-          (CommitmentInterface.values service.setup.program)).runBehavioral source.strategy
+        (service.sourceModel.runBehavioral source.strategy
             (instructionCount service.setup.program + 1)).map
               (fun final => (service.setup.protocolReadout final.state,
                 fun who => (service.setup.protocolReadout final.state).elim 0

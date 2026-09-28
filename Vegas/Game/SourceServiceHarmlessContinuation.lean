@@ -26,8 +26,7 @@ theorem sourceService_sample_response_application_law
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program)
     (network : (runtime setup).NetworkPolicy leaks)
     (event : (graph setup).EventId) (chance : (graph setup).actor? event = none)

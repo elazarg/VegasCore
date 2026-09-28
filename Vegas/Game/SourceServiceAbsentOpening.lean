@@ -60,8 +60,7 @@ the timed compiler responds only by transport, for every player. -/
 theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+    (timing : TimingLaw setup rosters)
     (profile : BehavioralProfile setup.program)
     {actor : Player} {event : (graph setup).EventId} {payload : L.Ty}
     {binding : EventGraph.FieldRef (graph setup).layout (.binding actor payload)}
