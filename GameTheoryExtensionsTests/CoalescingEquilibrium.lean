@@ -293,8 +293,8 @@ theorem canonical_rational (split goal : Bool)
     assessment.IsSequentiallyRationalWithin (fun _ h => reward goal h.state) 2 := by
   intro who site
   cases who
-  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
-    fun alternative _ => ?_⟩
+  refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
   rw [context_value, context_value, update_own, strategy]
   obtain ⟨history, _, _⟩ := site.2
   have acts := InformationModel.InformationSite.active (model split) site history
@@ -357,7 +357,9 @@ theorem update_unit {split : Bool}
 theorem rational_branch_value (goal : Bool) (assessment : (model true).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin (fun _ h => reward goal h.state) 2) :
     1 ≤ expect (stateLaw assessment.strategy [some false]) (reward goal) := by
-  have bound := (rational () branchSite).2.2 ((canonical true goal) ()) (Set.mem_univ _)
+  have bound := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mp (rational () branchSite)
+      ((canonical true goal) ()) (Set.mem_univ _)
   rw [context_value, context_value, update_own, update_unit, branch_site_value] at bound
   change expect (stateLaw (canonical true goal) [some false]) (reward goal) ≤ _ at bound
   rw [canonical_state_branch, expect_pure] at bound

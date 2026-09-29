@@ -39,7 +39,8 @@ theorem firstBit_preserves_every_optimal_law {Action : Type*}
     (∃ policy : (Bool × Bool) → PMF Action,
       IsBayesOptimal twoBits id (fun state => utility state.1) policy ∧
         resultLaw twoBits id Prod.fst policy = law) :=
-  optimal_result_law_iff twoBits Prod.fst Prod.fst firstBit_determines utility law
+  optimal_result_law_iff twoBits (Set.toFinite _) Prod.fst Prod.fst firstBit_determines utility
+    law
 
 theorem constant_determines_on_singleton :
     Determines (PMF.pure false) (fun _ : Bool => ()) id := by
@@ -56,7 +57,7 @@ theorem unreachable_merge_preserves {Action : Type*} (utility : Bool → Action 
     (∃ policy : Bool → PMF Action,
       IsBayesOptimal (PMF.pure false) id utility policy ∧
         resultLaw (PMF.pure false) id id policy = law) :=
-  optimal_result_law_iff (PMF.pure false) (fun _ => ()) id
+  optimal_result_law_iff (PMF.pure false) (Set.toFinite _) (fun _ => ()) id
     constant_determines_on_singleton utility law
 
 /-- With both bits possible, removing the bit forbids all-optimum preservation.
@@ -66,11 +67,11 @@ theorem supported_merge_does_not_preserve :
       IsBayesOptimal (PMF.uniformOfFintype Bool) (fun _ => ()) utility source →
         ∃ target : Bool → PMF Bool,
           IsBayesOptimal (PMF.uniformOfFintype Bool) id utility target ∧
-            resultLaw PMF.uniformOfFintype id id target =
-              resultLaw PMF.uniformOfFintype (fun _ => ()) id source) := by
+            resultLaw (PMF.uniformOfFintype Bool) id id target =
+              resultLaw (PMF.uniformOfFintype Bool) (fun _ => ()) id source) := by
   intro preserves
   have determines := (preserves_all_optima_iff_determines
-    (PMF.uniformOfFintype Bool) (fun _ => ()) id).mp preserves
+    (PMF.uniformOfFintype Bool) (Set.toFinite _) (fun _ => ()) id).mp preserves
   have impossible := determines false (PMF.mem_support_uniformOfFintype false)
     true (PMF.mem_support_uniformOfFintype true) rfl
   cases impossible

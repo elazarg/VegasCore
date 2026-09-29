@@ -223,9 +223,9 @@ private def withheldState : State simpleExpr (mixedProgram.terminalCtx) :=
 
 @[simp] private theorem point_law (value : Bool) :
     (RationalLaw.pure value).denote = PMF.pure value := by
-  apply pmf_ext_toReal
-  intro other
-  simp [RationalLaw.prob_denote, RationalLaw.pure, toReal_pure_apply]
+  ext other
+  rw [RationalLaw.denote_apply, PMF.pure_apply]
+  simp [RationalLaw.pure, RationalLaw.entryMass]
 
 macro "solve_mixed_run" : tactic =>
   `(tactic|
@@ -270,11 +270,11 @@ example (value : Bool) :
   rw [successful_run, PMF.map_comp]
   change ((fairBool.denote.map id) value).toReal = _
   rw [PMF.map_id]
-  rw [RationalLaw.prob_denote]
+  rw [RationalLaw.denote_apply]
   change (∑ index : Fin 2, if value = (fairBool.entries.get index).1 then
-    ((fairBool.entries.get index).2 : ℝ) else 0) = _
+    RationalLaw.entryMass (fairBool.entries.get index) else 0).toReal = _
   rw [Fin.sum_univ_two]
-  cases value <;> norm_num [fairBool]
+  cases value <;> norm_num [fairBool, RationalLaw.entryMass]
 
 example :
     (mixedProgram.run (mixedProfile (.success Option.none) true) initialState).map

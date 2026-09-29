@@ -20,8 +20,12 @@ open GameTheory.Protocol.ExecutionProtocol OffPathDisclosure SequentialCredibili
 theorem rational_preferred_response : (assessment limitProfile).IsSequentiallyRationalWithin
     (fun who history => SequentialCredibility.payoff history who) 3 := by
   intro who site
-  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
-    fun alternative _ => ?_⟩
+  have integrable (policy : (model false).BehavioralPolicy who) :
+      ((assessment limitProfile).continuationContext site
+        (fun history => SequentialCredibility.payoff history who) 3).IntegrableAt policy :=
+    SequentialCredibility.payoff_integrable _ who
+  refine (Context.isLocallyOptimal_iff_of_integrable (integrable _)
+    fun policy _ => integrable policy).mpr fun alternative _ => ?_
   cases who
   · simp [InformationModel.BehavioralAssessment.continuationContext, Context.value,
       Protocol.Context.ofBelief, SequentialCredibility.payoff, expect_constant]
@@ -82,8 +86,12 @@ theorem rational_guessing (matchBit : Bool) :
     (assessment limitProfile).IsSequentiallyRationalWithin
       (fun who history => OffPathDisclosure.payoff matchBit history who) 3 := by
   intro who site
-  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
-    fun alternative _ => ?_⟩
+  have integrable (policy : (model false).BehavioralPolicy who) :
+      ((assessment limitProfile).continuationContext site
+        (fun history => OffPathDisclosure.payoff matchBit history who) 3).IntegrableAt policy :=
+    OffPathDisclosure.payoff_integrable matchBit _ who
+  refine (Context.isLocallyOptimal_iff_of_integrable (integrable _)
+    fun policy _ => integrable policy).mpr fun alternative _ => ?_
   cases who
   · simp [InformationModel.BehavioralAssessment.continuationContext, Context.value,
       Protocol.Context.ofBelief, OffPathDisclosure.payoff, utility, expect_constant]

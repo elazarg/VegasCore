@@ -258,10 +258,13 @@ chosen before private setup is sampled.
 
 /-- Public asynchronous scheduling preserves and reflects same-error Nash
 at normalized canonical profiles for every utility of the terminal typed
-store. The compiler supplies the public-barrier certificate. -/
+store. The compiler supplies the public-barrier certificate. Every event has
+finitely many actions and the input law is finitely supported. -/
 theorem event_graph_scheduling_approximate_nash_iff [IExpr.ResultTypes L]
     (graph : Vegas.EventGraph Player L) (ordered : graph.BarrierOrdered)
-    (inputs : PMF graph.Inputs) (scheduler : graph.PublicScheduler)
+    (finite : graph.FiniteActions)
+    (inputs : PMF graph.Inputs) (finiteInputs : inputs.support.Finite)
+    (scheduler : graph.PublicScheduler)
     (utility : EventGraph.Store graph.layout → Player → ℝ)
     (ε : ℝ) (profile : graph.BehavioralProfile) :
     IsεNash (graph.gameForm inputs scheduler)
@@ -269,7 +272,8 @@ theorem event_graph_scheduling_approximate_nash_iff [IExpr.ResultTypes L]
         (graph.normalizeProfile profile) ↔
       IsεNash (graph.canonicalGame inputs)
         (fun outcome who => utility (graph.terminalStore outcome) who) ε profile :=
-  graph.eventScheduling_approximate_nash_iff ordered inputs scheduler utility ε profile
+  graph.eventScheduling_approximate_nash_iff ordered finite inputs finiteInputs scheduler utility ε
+    profile
 
 /-- info: 'Vegas.Paper.event_graph_scheduling_approximate_nash_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -296,13 +300,15 @@ theorem source_event_graph_honest_law [IExpr.ResultTypes L]
 #print axioms Vegas.Paper.source_event_graph_honest_law
 
 /-- An arbitrary unilateral asynchronous graph deviation has a finite
-mixture of source deviations against unchanged opponents. -/
+mixture of source deviations against unchanged opponents. Commitment payload
+types are finite and the private setup law is finitely supported. -/
 theorem source_event_graph_deviation_law [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (scheduler : setup.eventGraph.PublicScheduler)
     (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
     (replacement : setup.eventGraph.BehavioralPolicy who) :
-    ∃ mixture : PMF (SourceProgram.BehavioralPolicy who setup.program),
+    ∃ mixture : PMF (SourceProgram.BehavioralPolicy who setup.program), mixture.support.Finite ∧
       (setup.initialLaw.bind fun initial =>
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
@@ -313,7 +319,7 @@ theorem source_event_graph_deviation_law [IExpr.ResultTypes L]
         mixture.bind fun alternative =>
           setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
             profile who alternative) :=
-  Vegas.scheduled_setup_deviation_law setup scheduler profile who
+  Vegas.scheduled_setup_deviation_law setup finite scheduler profile who
     replacement
 
 /-- info: 'Vegas.Paper.source_event_graph_deviation_law' depends on axioms:
@@ -323,9 +329,11 @@ theorem source_event_graph_deviation_law [IExpr.ResultTypes L]
 
 /-- Full-source compilation preserves and reflects same-error Nash at the
 actual asynchronously scheduled graph profile, for every utility of the public
-source result. -/
+source result. Commitment payload types are finite and the private setup law is
+finitely supported. -/
 theorem source_event_graph_approximate_nash_iff [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (scheduler : setup.eventGraph.PublicScheduler)
     (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : SourceProgram.BehavioralProfile setup.program) :
@@ -335,7 +343,7 @@ theorem source_event_graph_approximate_nash_iff [IExpr.ResultTypes L]
         ε (Vegas.compileEventProfile setup.program
           profile) ↔
       IsεNash setup.gameForm utility ε profile :=
-  setup.eventGame_approximate_nash_iff scheduler utility ε profile
+  setup.eventGame_approximate_nash_iff finite scheduler utility ε profile
 
 /-- info: 'Vegas.Paper.source_event_graph_approximate_nash_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -413,19 +421,22 @@ theorem source_event_pending_honest_law [IExpr.ResultTypes L]
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_pending_honest_law
 
-/-- Every arbitrary native unilateral deviation has the terminal
+/-- Every finitely branching native unilateral deviation has the terminal
 source-state law of a finite mixture of source deviations against unchanged
 opponents. One mixture is chosen across the entire private setup law. -/
 theorem source_event_pending_deviation_law [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (mode : EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport)
     (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
-    (replacement : runtime.application.PlayerPolicy) :
-    ∃ mixture : PMF (SourceProgram.BehavioralPolicy who setup.program),
+    (replacement : runtime.application.PlayerPolicy)
+    (replacementFinite : replacement.FiniteSupport) :
+    ∃ mixture : PMF (SourceProgram.BehavioralPolicy who setup.program), mixture.support.Finite ∧
       ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
         (Profile.update (sig := (setup.eventPendingGame mode runtime
           roster reactionRounds wire order).sig)
@@ -434,8 +445,8 @@ theorem source_event_pending_deviation_law [IExpr.ResultTypes L]
       mixture.bind fun alternative =>
         (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
           profile who alternative)).map some :=
-  setup.eventPendingGame_deviation_law mode runtime feasible roster reactionRounds wire order
-    profile who replacement
+  setup.eventPendingGame_deviation_law finite mode runtime feasible roster reactionRounds wire
+    wireFinite order orderFinite profile who replacement replacementFinite
 
 /-- info: 'Vegas.Paper.source_event_pending_deviation_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -445,49 +456,63 @@ theorem source_event_pending_deviation_law [IExpr.ResultTypes L]
 /-- Same-error Nash preservation and reflection at compiled source
 profiles in either pending-message dependency mode, for every utility of the
 public source result. The utility assigned to a missing outcome is arbitrary;
-the concrete service has a separate proved completion theorem.
+the concrete service has a separate proved completion theorem. Native
+deviations range over finitely branching player policies.
 
 The utility domain here is the outcome, which is the public result. The
 deviation law above is the stronger statement, over complete terminal source
 states; it is not what this theorem quantifies over. -/
 theorem source_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (mode : EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport)
     (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ)
     (missing : Player → ℝ) (ε : ℝ)
     (profile : SourceProgram.BehavioralProfile setup.program) :
-    IsεNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
+    (∀ who (replacement : runtime.application.PlayerPolicy), replacement.FiniteSupport →
+      euPreferenceWithin ε
         (fun outcome who => (setup.eventPendingPublicOutcome mode runtime outcome).elim
-          (missing who) (fun result => utility result who))
-        ε (fun who => setup.compileEventPendingStrategy mode runtime who (profile who)) ↔
+          (missing who) (fun result => utility result who)) who
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor)))
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (Profile.update (sig := (setup.eventPendingGame mode runtime
+            roster reactionRounds wire order).sig)
+            (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))
+            who replacement))) ↔
       IsεNash setup.gameForm utility ε profile :=
-  setup.eventPendingGame_approximate_nash_iff mode runtime feasible roster reactionRounds wire order
-    utility missing ε profile
+  setup.eventPendingGame_approximate_nash_iff finite mode runtime feasible roster reactionRounds
+    wire wireFinite order orderFinite utility missing ε profile
 
 /-- info: 'Vegas.Paper.source_event_pending_approximate_nash_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.source_event_pending_approximate_nash_iff
 
-/-- Public-result lower bounds survive arbitrary unilateral native deviations
-in either dependency mode, independently of adversary preferences. -/
+/-- Public-result lower bounds survive finitely branching unilateral native
+deviations in either dependency mode, independently of adversary preferences. -/
 theorem source_event_pending_deviation_guarantee [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (mode : EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport)
     (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
     (value : SourceProgram.PublicOutcome setup.program → ℝ) (missing bound : ℝ)
     (sourceBound : ∀ alternative : SourceProgram.BehavioralPolicy who setup.program,
-      bound ≤ expect (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
-        profile who alternative)) value)
-    (replacement : runtime.application.PlayerPolicy) :
+      bound ≤ expect (setup.publicRun
+        (Profile.update (sig := SourceProgram.gameSignature setup.program)
+          profile who alternative)) value)
+    (replacement : runtime.application.PlayerPolicy)
+    (replacementFinite : replacement.FiniteSupport) :
     bound ≤ expect ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
       (Profile.update (sig := (setup.eventPendingGame mode runtime
         roster reactionRounds wire order).sig)
@@ -495,8 +520,9 @@ theorem source_event_pending_deviation_guarantee [IExpr.ResultTypes L]
         who replacement))
           (fun outcome =>
             (setup.eventPendingPublicOutcome mode runtime outcome).elim missing value) :=
-  setup.eventPendingGame_deviation_guarantee mode runtime feasible roster reactionRounds wire order
-    profile who value missing bound sourceBound replacement
+  setup.eventPendingGame_deviation_guarantee finite mode runtime feasible roster reactionRounds
+    wire wireFinite order orderFinite profile who value missing bound sourceBound replacement
+    replacementFinite
 
 /-- info: 'Vegas.Paper.source_event_pending_deviation_guarantee' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -517,25 +543,34 @@ from restricting which deviations they face, and matching pennies is the
 standing reminder that a pure game need not have one. -/
 
 /-- Same-error Nash preservation and reflection between the game whose policies
-always bind a value and the pending-message service, against arbitrary native
-deviations. Commit-time failure is not among the source moves here. -/
+always bind a value and the pending-message service, against finitely branching
+native deviations. Commit-time failure is not among the source moves here. -/
 theorem value_binding_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (mode : EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport)
     (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ)
     (missing : Player → ℝ) (ε : ℝ)
     (profile : Profile setup.valueBindingGame.sig) :
-    IsεNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
+    (∀ who (replacement : runtime.application.PlayerPolicy), replacement.FiniteSupport →
+      euPreferenceWithin ε
         (fun outcome who => (setup.eventPendingPublicOutcome mode runtime outcome).elim
-          (missing who) (fun result => utility result who))
-        ε (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who)) ↔
+          (missing who) (fun result => utility result who)) who
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who)))
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (Profile.update (sig := (setup.eventPendingGame mode runtime
+            roster reactionRounds wire order).sig)
+            (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who))
+            who replacement))) ↔
       IsεNash setup.valueBindingGame utility ε profile :=
-  setup.valueBindingPendingGame_approximate_nash_iff mode runtime feasible roster reactionRounds
-    wire order utility missing ε profile
+  setup.valueBindingPendingGame_approximate_nash_iff finite mode runtime feasible roster
+    reactionRounds wire wireFinite order orderFinite utility missing ε profile
 
 /-- info: 'Vegas.Paper.value_binding_event_pending_approximate_nash_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -546,21 +581,30 @@ theorem value_binding_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
 profile against the real host needs only pure source deviations. -/
 theorem pure_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
     (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (mode : EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport)
     (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ)
     (missing : Player → ℝ) (ε : ℝ)
     (profile : Profile setup.pureGame.sig) :
-    IsεNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
+    (∀ who (replacement : runtime.application.PlayerPolicy), replacement.FiniteSupport →
+      euPreferenceWithin ε
         (fun outcome who => (setup.eventPendingPublicOutcome mode runtime outcome).elim
-          (missing who) (fun result => utility result who))
-        ε (fun who => setup.compilePurePendingProfile mode runtime who (profile who)) ↔
+          (missing who) (fun result => utility result who)) who
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (fun who => setup.compilePurePendingProfile mode runtime who (profile who)))
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (Profile.update (sig := (setup.eventPendingGame mode runtime
+            roster reactionRounds wire order).sig)
+            (fun who => setup.compilePurePendingProfile mode runtime who (profile who))
+            who replacement))) ↔
       IsεNash setup.pureGame utility ε profile :=
-  setup.purePendingGame_approximate_nash_iff mode runtime feasible roster reactionRounds
-    wire order utility missing ε profile
+  setup.purePendingGame_approximate_nash_iff finite mode runtime feasible roster reactionRounds
+    wire wireFinite order orderFinite utility missing ε profile
 
 /-- info: 'Vegas.Paper.pure_event_pending_approximate_nash_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -572,19 +616,21 @@ theorem pure_event_pending_approximate_nash_iff [IExpr.ResultTypes L]
 /-- Compiled prescribed play preserves the joint initial-parameter/public-result law. -/
 theorem private_type_event_pending_honest_law [IExpr.ResultTypes L] {Parameter : Type}
     (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (parameter : State L setup.context → Parameter)
     (mode : EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport)
     (profile : Profile (setup.valueBindingParameterGame parameter).sig) :
     ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
       (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who))).map
         (setup.eventPendingParameterOutcome parameter mode runtime) =
       ((setup.valueBindingParameterGame parameter).play profile).map some :=
-  (setup.valueBindingParameterPendingSimulation parameter mode runtime feasible roster
-    reactionRounds wire order).honest_law profile
+  (setup.valueBindingParameterPendingSimulation finite parameter mode runtime feasible roster
+    reactionRounds wire wireFinite order orderFinite).honest_law profile
 
 /-- info: 'Vegas.Paper.private_type_event_pending_honest_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -595,14 +641,17 @@ theorem private_type_event_pending_honest_law [IExpr.ResultTypes L] {Parameter :
 parameters and public results, with one deviation mixture across the prior. -/
 theorem private_type_event_pending_deviation_law [IExpr.ResultTypes L] {Parameter : Type}
     (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (parameter : State L setup.context → Parameter)
     (mode : EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport)
     (profile : Profile (setup.valueBindingParameterGame parameter).sig) (who : Player)
-    (replacement : runtime.application.PlayerPolicy) :
+    (replacement : runtime.application.PlayerPolicy)
+    (replacementFinite : replacement.FiniteSupport) :
     ∃ mixture : PMF (SourceProgram.ValueBindingPolicy who setup.program),
       ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
         (Profile.update (sig := (setup.eventPendingGame mode runtime
@@ -612,8 +661,9 @@ theorem private_type_event_pending_deviation_law [IExpr.ResultTypes L] {Paramete
       mixture.bind fun alternative =>
         ((setup.valueBindingParameterGame parameter).play
           (Profile.update profile who alternative)).map some :=
-  (setup.valueBindingParameterPendingSimulation parameter mode runtime feasible roster
-    reactionRounds wire order).deviation_mixture profile who replacement trivial
+  (setup.valueBindingParameterPendingSimulation finite parameter mode runtime feasible roster
+    reactionRounds wire wireFinite order orderFinite).deviation_mixture profile who replacement
+      replacementFinite
 
 /-- info: 'Vegas.Paper.private_type_event_pending_deviation_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -625,23 +675,31 @@ plan, are preserved and reflected without exposing commit-time failure.
 Approximation is measured ex ante under the fixed finite prior. -/
 theorem private_type_event_pending_approximate_nash_iff [IExpr.ResultTypes L] {Parameter : Type}
     (setup : SourceProgram.Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (parameter : State L setup.context → Parameter)
     (mode : EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport)
     (utility : Parameter × SourceProgram.PublicOutcome setup.program → Player → ℝ)
     (missing : Player → ℝ) (ε : ℝ)
     (profile : Profile (setup.valueBindingParameterGame parameter).sig) :
-    IsεNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
-        (fun outcome who =>
-          (setup.eventPendingParameterOutcome parameter mode runtime outcome).elim
-            (missing who) (fun result => utility result who))
-        ε (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who)) ↔
+    (∀ who (replacement : runtime.application.PlayerPolicy), replacement.FiniteSupport →
+      euPreferenceWithin ε
+        (fun outcome who => (setup.eventPendingParameterOutcome parameter mode runtime outcome).elim
+          (missing who) (fun result => utility result who)) who
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who)))
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (Profile.update (sig := (setup.eventPendingGame mode runtime
+            roster reactionRounds wire order).sig)
+            (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who))
+            who replacement))) ↔
       IsεNash (setup.valueBindingParameterGame parameter) utility ε profile :=
-  setup.valueBindingParameterPendingGame_approximate_nash_iff parameter mode runtime feasible
-    roster reactionRounds wire order utility missing ε profile
+  setup.valueBindingParameterPendingGame_approximate_nash_iff finite parameter mode runtime
+    feasible roster reactionRounds wire wireFinite order orderFinite utility missing ε profile
 
 /-- info: 'Vegas.Paper.private_type_event_pending_approximate_nash_iff' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -681,12 +739,15 @@ theorem auction_translated_truthful_not_dominant
           (target.play (Profile.map compile players)) =
         expectedUtility (Examples.CommitRevealAuction.utility values forfeiture)
           Examples.CommitRevealAuction.Player.alice
-          (Examples.CommitRevealAuction.setup.valueBindingGame.play players)) :
+          (Examples.CommitRevealAuction.setup.valueBindingGame.play players))
+    (targetIntegrable : ∀ players : Profile Examples.CommitRevealAuction.setup.valueBindingGame.sig,
+      UtilityIntegrable targetUtility Examples.CommitRevealAuction.Player.alice
+        (target.play (Profile.map compile players))) :
     ¬ IsDominant target (euPreference targetUtility) Examples.CommitRevealAuction.Player.alice
       (compile Examples.CommitRevealAuction.Player.alice
         (Examples.CommitRevealAuction.aliceStrategy 5)) :=
   Examples.CommitRevealAuction.translated_truthful_not_dominant values forfeiture valuation
-    target compile targetUtility preserves
+    target compile targetUtility preserves targetIntegrable
 
 /-- info: 'Vegas.Paper.auction_translated_truthful_not_dominant' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -724,7 +785,8 @@ may depend on the utility; the necessity claim is stronger than failure of a
 particular compiler. This is a decision-experiment theorem. -/
 theorem terminal_observation_classification {State Signal Fact : Type*}
     [Finite Fact] [Nonempty Fact]
-    (prior : PMF State) (observe : State → Signal) (fact : State → Fact) :
+    (prior : PMF State) (priorFinite : prior.support.Finite) (observe : State → Signal)
+    (fact : State → Fact) :
     (∀ utility : Fact → Fact → ℝ, ∀ source : Signal → PMF Fact,
       DecisionExperiment.IsBayesOptimal prior observe (fun state => utility (fact state)) source →
         ∃ target : State → PMF Fact,
@@ -732,7 +794,7 @@ theorem terminal_observation_classification {State Signal Fact : Type*}
             DecisionExperiment.resultLaw prior id fact target =
               DecisionExperiment.resultLaw prior observe fact source) ↔
       DecisionExperiment.Determines prior observe fact :=
-  DecisionExperiment.preserves_all_optima_iff_determines prior observe fact
+  DecisionExperiment.preserves_all_optima_iff_determines prior priorFinite observe fact
 
 /-- info: 'Vegas.Paper.terminal_observation_classification' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -742,7 +804,8 @@ theorem terminal_observation_classification {State Signal Fact : Type*}
 /-- Retaining the payoff-relevant fact preserves the entire set of optimal
 fact/action outcome laws, for arbitrary public actions and utilities. -/
 theorem terminal_observation_optimal_laws {State Signal Fact Action : Type*}
-    (prior : PMF State) (observe : State → Signal) (fact : State → Fact)
+    (prior : PMF State) (priorFinite : prior.support.Finite) (observe : State → Signal)
+    (fact : State → Fact)
     (determines : DecisionExperiment.Determines prior observe fact)
     (utility : Fact → Action → ℝ) (law : PMF (Fact × Action)) :
     (∃ policy : Signal → PMF Action,
@@ -751,7 +814,8 @@ theorem terminal_observation_optimal_laws {State Signal Fact Action : Type*}
     (∃ policy : State → PMF Action,
       DecisionExperiment.IsBayesOptimal prior id (fun state => utility (fact state)) policy ∧
         DecisionExperiment.resultLaw prior id fact policy = law) :=
-  DecisionExperiment.optimal_result_law_iff prior observe fact determines utility law
+  DecisionExperiment.optimal_result_law_iff prior priorFinite observe fact determines utility
+    law
 
 /-- info: 'Vegas.Paper.terminal_observation_optimal_laws' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -865,8 +929,6 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
       (runtime service.setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : service.sourceModel.BehavioralAssessment)
-    [∀ who (site : service.sourceModel.InformationSite who),
-      Fintype (service.sourceModel.InformationHistory who site.1)]
     (equilibrium : source.IsSequentialEquilibriumFor
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
       (fun who site => source.continuationContext site
@@ -1012,15 +1074,15 @@ The restricted native equilibrium is a separate, open proof obligation.
 #print axioms
   GameTheory.Protocol.InformationModel.ContinuationDecision.rationalAt_of_omitted_dominated
 
-/-- info: 'PMF.condOn_observation_probOf_le' depends on axioms:
+/-- info: 'GameTheory.Math.Probability.filter_observation_toOuterMeasure_le' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms PMF.condOn_observation_probOf_le
+#print axioms GameTheory.Math.Probability.filter_observation_toOuterMeasure_le
 
-/-- info: 'GameTheory.Math.Probability.PMFConvergesPointwise.probOf_le' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
+/-- info: 'GameTheory.Math.Probability.PMFConvergesPointwise.toOuterMeasure_toReal_le' depends on
+axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms GameTheory.Math.Probability.PMFConvergesPointwise.probOf_le
+#print axioms GameTheory.Math.Probability.PMFConvergesPointwise.toOuterMeasure_toReal_le
 
 /-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.continuationContext_value_eq_expect_commit' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -1071,10 +1133,10 @@ open Vegas.Examples.SelectiveAssociation.Restricted in
 open Vegas.Examples.SelectiveAssociation.Restricted in
 #print axioms exists_equilibrium_no_native_payout_match
 
-/-- info: 'GameTheory.IsCoarseCorrelatedEq.expectedUtility_eq_of_zeroSum' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
+/-- info: 'GameTheory.IsCoarseCorrelatedEq.extendedExpectedUtility_eq_of_zeroSum' depends on
+axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms GameTheory.IsCoarseCorrelatedEq.expectedUtility_eq_of_zeroSum
+#print axioms GameTheory.IsCoarseCorrelatedEq.extendedExpectedUtility_eq_of_zeroSum
 
 /-- info: 'Vegas.SourceProgram.Setup.valueBindingParameterPendingGame_coarseCorrelated_value' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

@@ -38,7 +38,8 @@ theorem preserves_reward :
       ∃ target : Bool → PMF Bool,
         IsBayesOptimal prior id reward target ∧
         resultLaw prior id id target = resultLaw prior (fun _ => ()) id source :=
-  (preserves_fixed_payoff_iff_commonMaximizer prior (fun _ => ()) id reward).mpr common_action
+  (preserves_fixed_payoff_iff_commonMaximizer prior (Set.toFinite _) (fun _ => ()) id reward).mpr
+    common_action
 
 theorem reporting_has_no_common_action :
     ¬ HasCommonMaximizer prior (fun _ => ()) (reportUtility (id : Bool → Bool)) := by
@@ -60,15 +61,15 @@ theorem constant_payoff_extra_informed_law :
       ∀ source : Unit → PMF Bool,
         resultLaw prior id id PMF.pure ≠ resultLaw prior (fun _ => ()) id source := by
   refine ⟨?_, ?_⟩
-  · intro signal alternative
+  · refine ⟨fun _ => ResponseIntegrable.of_finite _ _ _, fun signal alternative _ => ?_⟩
     simp [localValue, expect_constant]
   · intro source
-    apply no_optimal_report_law_match prior (fun _ => ()) id id
+    apply no_optimal_report_law_match prior (Set.toFinite _) (fun _ => ()) id id
       (fun _ _ _ _ same => same)
       (PMF.mem_support_uniformOfFintype false)
       (PMF.mem_support_uniformOfFintype true) rfl Bool.false_ne_true source PMF.pure
     rw [fullInformation_optimal_iff]
-    intro state _ action
+    refine ⟨fun _ => ResponseIntegrable.of_finite _ _ _, fun state _ action => ?_⟩
     simp only [expect_pure, reportUtility, id_eq, ↓reduceIte]
     split <;> norm_num
 

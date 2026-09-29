@@ -21,7 +21,7 @@ open GameTheory.Math.Probability
 
 open GameTheory.DecisionExperiment.Protocol
 
-variable {State Signal Action : Type} [Nonempty Action]
+variable {State Signal Action : Type} [Nonempty Action] [Finite State] [Finite Action]
 
 def decision (prior : PMF State) (observe : State → Signal)
     (site : (model (Action := Action) prior observe).InformationSite ())
@@ -32,6 +32,7 @@ def decision (prior : PMF State) (observe : State → Signal)
   site := site
   state history := latent prior history.1.state
   response profile := response prior observe (profile ()) (siteSignal prior observe site)
+  response_finite _ := Set.toFinite _
   reward := utility
   policy action := policy prior observe (fun _ => PMF.pure action)
   history_value profile history := by
@@ -42,7 +43,7 @@ def decision (prior : PMF State) (observe : State → Signal)
     rw [same]
     change _ = expect (response prior observe (profile ()) (siteSignal prior observe site))
       (utility state)
-    simpa only [expect_map, signalEq, payoff, latent] using law
+    simpa only [expect_map, Function.comp_def, signalEq, payoff, latent] using law
   realize profile action := by
     simp only [Profile.update_same, response_policy]
 
@@ -52,7 +53,7 @@ def biasedBit : PMF Bool :=
 theorem biasedBit_full : FullSupport biasedBit := by
   intro bit
   apply pmf_toReal_pos_iff.mp
-  cases bit <;> norm_num [biasedBit, mix_apply_toReal, FinDist.prob_pure_of_ne]
+  cases bit <;> norm_num [biasedBit, mix_apply_toReal, toReal_pure_apply]
 
 def hiddenSite : (model (Action := Bool) biasedBit (fun _ => ())).InformationSite () :=
   site biasedBit (fun _ => ()) false (biasedBit_full false)
@@ -68,27 +69,29 @@ def hiddenHistory (bit : Bool) :
 theorem canonical_posterior (original : Unit → PMF Bool) :
     guess.posterior (assessment biasedBit (fun _ => ()) original) = biasedBit := by
   classical
-  apply pmf_ext_toReal
-  intro bit
+  ext bit
   calc
-    _ = (((assessment biasedBit (fun _ => ()) original).belief () hiddenSite) (hiddenHistory bit)).toReal := by
-      exact FinDist.prob_map_of_injective guess.state
-        (information_state_injective biasedBit (fun _ => ()) hiddenSite) _ (hiddenHistory bit)
-    _ = (biasedBit bit).toReal := by
-      change (((InformationModel.bayesAssessment _ (reference biasedBit (fun _ => ())).strategy (reference_mixed biasedBit (fun _ => ())) (antichain biasedBit (fun _ => ()))).belief () hiddenSite) (hiddenHistory bit)).toReal = _
+    _ = ((assessment biasedBit (fun _ => ()) original).belief () hiddenSite) (hiddenHistory bit) :=
+      pmf_map_apply_of_injective _
+        (information_state_injective biasedBit (fun _ => ()) hiddenSite) (hiddenHistory bit)
+    _ = biasedBit bit := by
+      change (InformationModel.bayesAssessment _ (reference biasedBit (fun _ => ())).strategy
+        (reference_mixed biasedBit (fun _ => ())) (antichain biasedBit (fun _ => ()))).belief ()
+          hiddenSite (hiddenHistory bit) = _
       rw [InformationModel.bayesAssessment, InformationModel.bayesBelief_apply,
         information_mass]
-      change ((model biasedBit (fun _ => ())).historyReachWeight _ (decisionHistory biasedBit bit (biasedBit_full bit))).toReal /
-          (biasedBit.toOuterMeasure ((fun _ : Bool => ()) ⁻¹'
-            {siteSignal biasedBit (fun _ => ()) hiddenSite})).toReal = _
+      change (model biasedBit (fun _ => ())).historyReachWeight _
+          (decisionHistory biasedBit bit (biasedBit_full bit)) /
+        biasedBit.toOuterMeasure ((fun _ : Bool => ()) ⁻¹'
+          {siteSignal biasedBit (fun _ => ()) hiddenSite}) = _
       rw [reach_decision]
       have all : (fun _ : Bool => ()) ⁻¹' {siteSignal biasedBit (fun _ => ()) hiddenSite} =
           Set.univ := by
         ext state
         simp only [Set.mem_preimage, Set.mem_singleton_iff, Set.mem_univ]
-      have mass : (biasedBit.toOuterMeasure Set.univ).toReal = 1 := by
-        rw [← expect_indicator]
-        simp
+      have mass : biasedBit.toOuterMeasure Set.univ = 1 := by
+        rw [PMF.toOuterMeasure_apply, Set.indicator_univ]
+        exact biasedBit.tsum_coe
       rw [all, mass, div_one]
 
 /-- A non-degenerate posterior prefers `true`; certainty about the latent
@@ -99,7 +102,7 @@ theorem posterior_rewards
     guess.expectedReward assessment false = 1 / 4 ∧
       guess.expectedReward assessment true = 3 / 4 := by
   simp only [InformationModel.ContinuationDecision.expectedReward, posterior]
-  norm_num [guess, decision, reportUtility, biasedBit, FinDist.expect_mix,
+  norm_num [guess, decision, reportUtility, biasedBit, expect_mix_of_finite,
     expect_pure]
 
 /-- A response using the minority guess cannot be rational for this fixed

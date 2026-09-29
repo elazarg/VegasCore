@@ -132,7 +132,11 @@ example : orderSensitiveFirst first rfl (pairGraph.playerObserve false completed
 
 /-- The actual order-sensitive deviation, not just a compiled source policy,
 is covered by the asynchronous graph mixture theorem. -/
-example (inputs : PMF pairGraph.Inputs) (scheduler : pairGraph.PublicScheduler) :
+theorem pairSource_finiteBindingTypes : pairSource.FiniteBindingTypes :=
+  ⟨inferInstanceAs (Finite Bool), inferInstanceAs (Finite Bool), trivial⟩
+
+example (inputs : PMF pairGraph.Inputs) (inputsFinite : inputs.support.Finite)
+    (scheduler : pairGraph.PublicScheduler) :
     ∃ mixture : PMF (pairGraph.BehavioralPolicy false),
       (inputs.bind fun initial => pairGraph.runPolicies scheduler
         (GameTheory.Profile.update (sig := pairGraph.gameSignature)
@@ -143,9 +147,10 @@ example (inputs : PMF pairGraph.Inputs) (scheduler : pairGraph.PublicScheduler) 
             (GameTheory.Profile.update (sig := pairGraph.gameSignature)
               (compileEventProfile pairSource pairProfile)
               false alternative) initial).map Vegas.EventGraph.Config.store := by
-  obtain ⟨mixture, law⟩ :=
+  obtain ⟨mixture, _, law⟩ :=
     (toEventGraph_barrierOrdered pairSource).exists_deviation_mixture
-      inputs scheduler (compileEventProfile pairSource pairProfile)
+      (toEventGraph_finiteActions pairSource pairSource_finiteBindingTypes)
+      inputs inputsFinite scheduler (compileEventProfile pairSource pairProfile)
       false orderSensitiveFirst
   rw [normalizeProfile_compileEventProfile] at law
   exact ⟨mixture, law⟩
@@ -157,6 +162,8 @@ private def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) w
   obligations := ∅
   program := pairSource
   accounts := rfl
+
+instance : pairSetup.FiniteInitialLaw := ⟨by simp [pairSetup]⟩
 
 /-- The order-sensitive asynchronous deviation has a source-policy mixture
 for the program whose independent bindings admit both completion orders. -/
@@ -171,8 +178,10 @@ example (scheduler : pairSetup.eventGraph.PublicScheduler) :
             (terminalState pairSource)) =
         mixture.bind fun alternative =>
           pairSetup.run (GameTheory.Profile.update
-            (sig := SourceProgram.gameSignature pairSource) pairProfile false alternative) :=
-  scheduled_setup_deviation_law pairSetup scheduler pairProfile false orderSensitiveFirst
+            (sig := SourceProgram.gameSignature pairSource) pairProfile false alternative) := by
+  obtain ⟨mixture, _, law⟩ := scheduled_setup_deviation_law pairSetup
+    pairSource_finiteBindingTypes scheduler pairProfile false orderSensitiveFirst
+  exact ⟨mixture, law⟩
 
 /-- The actual compiled second-player policy can act first. It does not wait
 for the foreign binding merely to reconstruct its source observation. -/

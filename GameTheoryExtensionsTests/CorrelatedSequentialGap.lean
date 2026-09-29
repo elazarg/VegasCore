@@ -258,8 +258,8 @@ theorem source_rational (assessment : (model false).BehavioralAssessment)
     (strategy : assessment.strategy = prescribed false) :
     assessment.IsSequentiallyRationalWithin (fun who h => reward who h.state) 2 := by
   intro who site
-  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
-    fun alternative _ => ?_⟩
+  refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
   obtain ⟨history, _, _⟩ := site.2
   have acts := InformationModel.InformationSite.active (model false) site history
   have same : history.1.state = site.1 := by simpa using history.2
@@ -361,7 +361,9 @@ theorem branch_deviation_value (profile : Profile (model true).behavioralSignatu
 theorem rational_branch_value (assessment : (model true).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin (fun who h => reward who h.state) 2) :
     1 ≤ expect (stateLaw assessment.strategy [(true, false)]) (reward true) := by
-  have improves := (rational true branchSite).2.2 ((canonical true fun _ => true) true)
+  have improves := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mp (rational true branchSite)
+      ((canonical true fun _ => true) true)
     (Set.mem_univ _)
   rw [context_value, context_value, Profile.update_eq_self] at improves
   change expect (stateLaw _ [(true, false)]) _ ≤ _ at improves
@@ -395,7 +397,9 @@ theorem rational_root_value (assessment : (model true).BehavioralAssessment)
     2 ≤ expect (stateLaw assessment.strategy []) (reward false) := by
   have incumbent := rational_branch_value assessment rational
   have relation := branch_payoff_relation assessment.strategy
-  have improves := (rational false rootSite).2.2 ((canonical true fun _ => true) false)
+  have improves := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mp (rational false rootSite)
+      ((canonical true fun _ => true) false)
     (Set.mem_univ _)
   rw [context_value, context_value, Profile.update_eq_self] at improves
   change expect (stateLaw _ []) _ ≤ _ at improves
@@ -473,10 +477,10 @@ theorem threat_nash (sequential : Bool) :
       (fun _ => false) := by
   rw [isNash_iff]
   intro who replacement
-  rw [euPreference_apply, normalForm_play, normalForm_play,
+  rw [normalForm_play, normalForm_play,
+    euPreference_iff _ _ _ _ (payoffIntegrable_pure _ _) (payoffIntegrable_pure _ _),
     expectedUtility_pure, expectedUtility_pure]
-  cases who <;> cases replacement <;>
-    norm_num [Profile.update, utility, UtilityIntegrable, payoffIntegrable_pure]
+  cases who <;> cases replacement <;> norm_num [Profile.update, utility]
 
 theorem threat_correlated (sequential : Bool) :
     IsCorrelatedEq (normalForm sequential) (euPreference (fun result who => utility who result))

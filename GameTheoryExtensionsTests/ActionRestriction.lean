@@ -39,13 +39,14 @@ theorem restricted_equilibrium (keep : Bool) :
         (fun history => payoff (fun state action => reward state action.1) history.state) 2) := by
   apply (isSequentialEquilibrium_iff prior id _ _).mpr
   rw [fullInformation_optimal_iff]
-  intro state _ action
+  refine ⟨fun _ => ResponseIntegrable.of_finite _ _ _, fun state _ action => ?_⟩
   simp only [expect_pure, action.property, le_refl]
 
 theorem restricted_outcome (keep : Bool) :
     (observedLaw prior id id (restricted keep)).map
         (fun result => (result.1, result.2.val)) = PMF.pure ((), keep) := by
-  simp [observedLaw_eq, restricted, assessment, response_policy, resultLaw_eq_bind, prior]
+  simp [observedLaw_eq, restricted, assessment, response_policy, resultLaw_eq_bind, prior,
+    PMF.pure_map]
 
 def restored (keep : Bool) : (model (Action := Bool) prior id).BehavioralAssessment :=
   assessment prior id (fun _ => PMF.pure keep)
@@ -61,10 +62,11 @@ theorem restored_equilibrium_iff (keep : Bool) :
   rw [restored, isSequentialEquilibrium_iff, fullInformation_optimal_iff]
   constructor
   · intro optimal
-    have bound := optimal () ((PMF.mem_support_pure_iff _ _).mpr rfl) true
-    cases keep <;> norm_num [reward] at *
-  · rintro rfl state _ action
-    cases action <;> norm_num [reward]
+    have bound := optimal.2 () ((PMF.mem_support_pure_iff _ _).mpr rfl) true
+    cases keep <;> norm_num [reward, expect_pure] at *
+  · rintro rfl
+    refine ⟨fun _ => ResponseIntegrable.of_finite _ _ _, fun state _ action => ?_⟩
+    cases action <;> norm_num [reward, expect_pure]
 
 /-- A standard SE may give a legal action exactly zero probability. Its
 consistency proof uses fully mixed approximating profiles in the full game. -/
@@ -75,7 +77,7 @@ theorem equilibrium_with_zero_probability_action :
       ((response prior id ((restored true).strategy ()) ()) false).toReal = 0 ∧
       (arena (Action := Bool) prior).Legal (.decision ()) (fun _ => some false) := by
   refine ⟨(restored_equilibrium_iff true).mpr rfl, ?_, decision_legal prior () false⟩
-  simp [restored, assessment, response_policy, FinDist.prob_pure_of_ne]
+  simp [restored, assessment, response_policy, PMF.pure_apply]
 
 def decision : (model (Action := Bool) prior id).ContinuationDecision
     (fun _ history => payoff reward history.state) 2 Unit Bool :=
@@ -85,7 +87,7 @@ def decision : (model (Action := Bool) prior id).ContinuationDecision
 theorem expected_reward (original : (model (Action := Bool) prior id).BehavioralAssessment)
     (action : Bool) : decision.expectedReward original action = reward () action := by
   simp [InformationModel.ContinuationDecision.expectedReward, decision, reward,
-    GameTheoryExtensionsTests.ContinuationDecision.decision]
+    GameTheoryExtensionsTests.ContinuationDecision.decision, expect_constant]
 
 theorem restored_response (keep : Bool) :
     decision.response (restored keep).strategy = PMF.pure keep := by
@@ -101,7 +103,7 @@ theorem zero_probability_is_not_deletion :
         (fun _ history => payoff reward history.state) 2 := by
   refine ⟨restored_consistent false, ?_, ?_⟩
   · rw [restored_response]
-    exact FinDist.prob_pure_of_ne (by decide)
+    simp [PMF.pure_apply]
   · apply decision.not_rational_of_supported_inferior (restored false) false true
     · rw [restored_response]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl
@@ -137,9 +139,9 @@ theorem no_equilibrium_with_restricted_false_outcome
   change (response prior id (target.strategy ()) ()).map id = PMF.pure false at responseEq
   rw [PMF.map_id] at responseEq
   have optimal := optimal_of_sequentialEquilibrium prior id target reward equilibrium
-  have bound := (fullInformation_optimal_iff prior reward _).mp optimal ()
+  have bound := ((fullInformation_optimal_iff prior reward _).mp optimal).2 ()
     ((PMF.mem_support_pure_iff _ _).mpr rfl) true
   rw [responseEq] at bound
-  norm_num [reward] at bound
+  norm_num [reward, expect_pure] at bound
 
 end GameTheoryExtensionsTests.ActionRestriction

@@ -181,8 +181,8 @@ theorem source_rational (profile : Profile (model false).behavioralSignature) :
   intro who site
   cases who
   · exact (source_no_alice_site site).elim
-  · refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
-      fun alternative _ => ?_⟩
+  · refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+      fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
     rw [source_context_value, source_context_value]
 
 /-- Every source policy profile has an explicit standard sequential equilibrium

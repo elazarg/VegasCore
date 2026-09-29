@@ -168,7 +168,8 @@ theorem source_spe (matchBit : Bool) :
       (payoff matchBit) := by
   rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff]
   intro history proper who alternative
-  refine ⟨payoff_integrable _ _ _, payoff_integrable _ _ _, ?_⟩
+  refine (euPreference_iff (payoff matchBit) who _ _ (payoff_integrable _ _ _)
+    (payoff_integrable _ _ _)).mpr ?_
   unfold expectedUtility
   rcases source_proper_initial_or_terminal history proper with rfl | stopped
   · cases who
@@ -207,10 +208,12 @@ theorem no_common_target_spe : ¬ ∃ profile : Profile (model true).behavioralS
       (model true).IsSingleMoverBehavioralSubgamePerfect single bounded profile (payoff false) := by
   rintro ⟨profile, matchOptimal, mismatchOptimal⟩
   rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff] at matchOptimal mismatchOptimal
-  have first := (matchOptimal (bobHistory false) (bob_proper false) true
-    (choose true true false)).2.2
-  have second := (mismatchOptimal (bobHistory false) (bob_proper false) true
-    (choose true true true)).2.2
+  have first := (euPreference_iff (payoff true) true _ _ (payoff_integrable _ _ _)
+    (payoff_integrable _ _ _)).mp
+      (matchOptimal (bobHistory false) (bob_proper false) true (choose true true false))
+  have second := (euPreference_iff (payoff false) true _ _ (payoff_integrable _ _ _)
+    (payoff_integrable _ _ _)).mp
+      (mismatchOptimal (bobHistory false) (bob_proper false) true (choose true true true))
   unfold expectedUtility at first second
   have firstValue := bob_deviation_value true profile
   have secondValue := bob_deviation_value false profile

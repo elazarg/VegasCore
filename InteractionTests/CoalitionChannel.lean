@@ -176,8 +176,14 @@ theorem isEmpty_coalitionSimulation :
       (GameTheory.nonemptyGroups Principal)) :=
   GameForm.UtilitySimulation.isEmpty_of_grandCoalitionValue Finset.univ_nonempty
     (fun _ => false) 0 collusion (1 / 2)
-    (fun profile => ⟨payoffIntegrable_of_finite _ _, le_of_eq (base_expect profile 0)⟩)
+    (fun profile => ⟨UtilityIntegrable.hasExpectation (payoffIntegrable_of_finite _ _), by
+      rw [extendedExpectedUtility_eq (payoffIntegrable_of_finite _ _)]
+      exact EReal.coe_le_coe_iff.mpr (le_of_eq (base_expect profile 0))⟩)
     (fun _ => by
+      rw [extendedExpectedUtility_eq (payoffIntegrable_of_bounded _ _ (C := 1) fun execution => by
+        unfold hostUtility
+        split <;> norm_num)]
+      refine EReal.coe_lt_coe_iff.mpr ?_
       change (1 : ℝ) / 2 <
         expect (hostGame.play collusion) (fun execution => hostUtility execution 0)
       rw [collusion_expect]

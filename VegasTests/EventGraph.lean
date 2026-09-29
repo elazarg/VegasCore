@@ -242,7 +242,8 @@ private theorem secondAccepted_ready0 : secondAccepted.cut.Ready (0 : Fin 2) := 
 /-- This is an actual binding transition, not just a reordered submission. -/
 example : pairInitial.step (1 : Fin 2) (pairInitial_ready 1) (.success true) =
     PMF.pure secondAccepted := by
-  simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, secondAccepted]
+  simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, secondAccepted,
+    PMF.pure_map]
 
 example : secondAccepted.outputs 1 = some (.success true) ∧
     secondAccepted.outputs 0 = none := by
@@ -313,7 +314,7 @@ example :
   simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.canonicalScheduler, pairProfile,
     Vegas.EventGraph.actor?, Vegas.EventGraph.EventCode.actor,
     pairInitial, Vegas.EventGraph.Config.initial, pairGraph, pairOrder,
-    EventOrder.Cut.enabled, EventOrder.Cut.empty, EventOrder.Cut.Ready, minUniv]
+    EventOrder.Cut.enabled, EventOrder.Cut.empty, EventOrder.Cut.Ready, minUniv, PMF.pure_map]
 
 example :
     (pairGraph.policyPlan pairProfile pairGraph.greatestScheduler pairInitial
@@ -326,20 +327,23 @@ example :
   simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.greatestScheduler, pairProfile,
     Vegas.EventGraph.actor?, Vegas.EventGraph.EventCode.actor,
     pairInitial, Vegas.EventGraph.Config.initial, pairGraph, pairOrder,
-    EventOrder.Cut.enabled, EventOrder.Cut.empty, EventOrder.Cut.Ready, maxUniv]
+    EventOrder.Cut.enabled, EventOrder.Cut.empty, EventOrder.Cut.Ready, maxUniv, PMF.pure_map]
 
 /-- Both schedule traces consist of supported semantic binding transitions. -/
 example : pairInitial.step (0 : Fin 2) (pairInitial_ready 0) (.success false) =
     PMF.pure firstAccepted := by
-  simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, firstAccepted]
+  simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, firstAccepted,
+    PMF.pure_map]
 
 example : firstAccepted.step (1 : Fin 2) firstAccepted_ready1 (.success true) =
     PMF.pure canonicalResult := by
-  simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, canonicalResult]
+  simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, canonicalResult,
+    PMF.pure_map]
 
 example : secondAccepted.step (0 : Fin 2) secondAccepted_ready0 (.success false) =
     PMF.pure reverseResult := by
-  simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, reverseResult]
+  simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, reverseResult,
+    PMF.pure_map]
 
 /-- The semantic outputs do not depend on which independent binding ran first. -/
 example (event : pairGraph.EventId) :

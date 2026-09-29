@@ -30,7 +30,9 @@ theorem rational_disclosed_reward_lower (deposit : ℝ)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who history => payoff deposit history.state who) 3) (bit : Bool) :
     1 ≤ expect (resultLaw assessment.strategy bit true) (payoff deposit · true) := by
-  have best := (rational true (bobDisclosedSite bit)).2.2 (choose true true bit) (Set.mem_univ _)
+  have best := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mp (rational true (bobDisclosedSite bit))
+      (choose true true bit) (Set.mem_univ _)
   rw [disclosed_context assessment bit (payoff deposit · true) (choose true true bit),
     disclosed_context assessment bit (payoff deposit · true) (assessment.strategy true),
     Profile.update_eq_self] at best
@@ -60,7 +62,9 @@ theorem rational_alice_reward_lower (deposit : ℝ)
     1 - deposit ≤
       expect ((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
         (aliceHistory true bit)) (fun history => payoff deposit history.state false) := by
-  have best := (rational false (aliceSite bit)).2.2 (choose true false true) (Set.mem_univ _)
+  have best := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mp (rational false (aliceSite bit))
+      (choose true false true) (Set.mem_univ _)
   rw [alice_context assessment bit (payoff deposit · false) (choose true false true),
     alice_context assessment bit (payoff deposit · false) (assessment.strategy false),
     Profile.update_eq_self,

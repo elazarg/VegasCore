@@ -64,17 +64,17 @@ theorem source_nash (profile : Profile source.sig) :
     IsNash source (euPreference payout) profile := by
   rw [isNash_iff]
   intro who replacement
-  rw [euPreference_apply]
-  exact ⟨payoffIntegrable_of_finite _ _, payoffIntegrable_of_finite _ _,
-    le_of_eq (source_nonstrategic profile who replacement)⟩
+  rw [euPreference_iff _ _ _ _ (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
+  exact le_of_eq (source_nonstrategic profile who replacement)
 
 theorem embed_nash (profile : Profile source.sig) :
     IsNash communicated (euPreference payout) (embed profile) := by
   rw [isNash_iff]
   intro who replacement
+  rw [euPreference_iff _ _ _ _ (payoffIntegrable_of_finite (α := Bool × Bool) _ _)
+    (payoffIntegrable_of_finite (α := Bool × Bool) _ _)]
   fin_cases who <;>
-    simp [euPreference, UtilityIntegrable, expectedUtility, communicated, embed, payout,
-      payoffIntegrable_pure, expect_pure]
+    simp [expectedUtility, communicated, embed, payout, expect_pure]
 
 def responsive (message : Bool) : Profile communicated.sig :=
   Fin.cons message

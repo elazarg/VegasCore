@@ -102,7 +102,7 @@ theorem retainsFact_iff_preserves_all_optima (quotient : QuotientMap) :
           ∃ target : Observation → PMF Bool,
             IsBayesOptimal prior id (fun state => utility (fact state)) target ∧
               resultLaw prior id fact target = resultLaw prior quotient fact source) := by
-  rw [preserves_all_optima_iff_determines,
+  rw [preserves_all_optima_iff_determines prior (Set.toFinite _),
     determines_iff_of_fullSupport prior PMF.mem_support_uniformOfFintype]
   rfl
 
@@ -137,7 +137,7 @@ theorem rejected_map_no_optimal_outcome_match (quotient : QuotientMap)
           (outcomeLaw prior id target).map (fun result => (fact result.1, result.2)) ≠
             (outcomeLaw prior quotient source).map (fun result => (fact result.1, result.2)) := by
   obtain ⟨first, second, same, different⟩ := rejected_map_has_collision quotient rejected
-  exact exists_optimal_no_report_law_match prior quotient id fact
+  exact exists_optimal_no_report_law_match prior (Set.toFinite _) quotient id fact
     (fun _ _ _ _ same => congrArg fact same)
     (PMF.mem_support_uniformOfFintype first)
     (PMF.mem_support_uniformOfFintype second) same different

@@ -33,9 +33,8 @@ theorem same_submission_optimal (retained : PMF Outcome)
     rw [isNash_iff]
     intro who alternative
     cases who
-    rw [euPreference_apply]
-    refine ⟨payoffIntegrable_of_finite (α := Outcome) _ _,
-      payoffIntegrable_of_finite (α := Outcome) _ _, ?_⟩
+    rw [euPreference_iff _ _ _ _ (payoffIntegrable_of_finite (α := Outcome) _ _)
+      (payoffIntegrable_of_finite (α := Outcome) _ _)]
     change expect (alternative.bind PMF.pure) (utility · ()) ≤
       expect ((PMF.pure Outcome.a).bind PMF.pure) (utility · ())
     rw [PMF.bind_pure, PMF.pure_bind, expect_pure]
@@ -45,12 +44,14 @@ theorem same_submission_optimal (retained : PMF Outcome)
       PendingChoice.nash_preserved weight nonnegative atMostOne retained PMF.pure
         utilityB (PMF.pure Outcome.a)
         (sourceOptimal utilityB (by intro outcome; cases outcome <;> norm_num [utilityB]))
-        (fun _ => payoffIntegrable_of_finite _ _)
+        (fun _ => payoffIntegrable_of_finite _ _) (fun _ => payoffIntegrable_of_finite _ _)
+        (payoffIntegrable_of_finite _ _)
   · simpa only [PMF.pure_map] using
       PendingChoice.nash_preserved weight nonnegative atMostOne retained PMF.pure
         utilityC (PMF.pure Outcome.a)
         (sourceOptimal utilityC (by intro outcome; cases outcome <;> norm_num [utilityC]))
-        (fun _ => payoffIntegrable_of_finite _ _)
+        (fun _ => payoffIntegrable_of_finite _ _) (fun _ => payoffIntegrable_of_finite _ _)
+        (payoffIntegrable_of_finite _ _)
 
 inductive Response where
   | fresh (outcome : Outcome)
@@ -97,8 +98,12 @@ theorem no_common_weighted_replay_response :
         IsNash replayGame (euPreference utilityC) profile := by
   rintro ⟨profile, bestB, bestC⟩
   rw [isNash_iff] at bestB bestC
-  have first := (bestB () (PMF.pure (.replay true))).2.2
-  have second := (bestC () (PMF.pure (.replay false))).2.2
+  have first := (euPreference_iff _ _ _ _ (payoffIntegrable_of_finite (α := Outcome) _ _)
+    (payoffIntegrable_of_finite (α := Outcome) _ _)).mp
+    (bestB () (PMF.pure (.replay true)))
+  have second := (euPreference_iff _ _ _ _ (payoffIntegrable_of_finite (α := Outcome) _ _)
+    (payoffIntegrable_of_finite (α := Outcome) _ _)).mp
+    (bestC () (PMF.pure (.replay false)))
   change (expect ((PMF.pure (Response.replay true)).bind weightedCopies) (utilityB · ())) ≤
     expect ((profile ()).bind weightedCopies) (utilityB · ()) at first
   change (expect ((PMF.pure (Response.replay false)).bind weightedCopies) (utilityC · ())) ≤

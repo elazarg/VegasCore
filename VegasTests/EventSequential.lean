@@ -73,7 +73,8 @@ it does not introduce a second strategic proof. -/
 example (profile : sequentialGraph.BehavioralProfile)
     (roster : List Bool) (reactionRounds : Nat) (focal : Bool)
     (replacement : runtime.application.PlayerPolicy)
-    (wire : runtime.application.WirePolicy) :
+    (replacementFinite : replacement.FiniteSupport)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport) :
     ∃ mixture : PMF (sequentialGraph.BehavioralPolicy focal),
       ((runtime.servicedEventGame (PMF.pure inputValues) roster reactionRounds
         wire decreasingOrder).play
@@ -87,9 +88,12 @@ example (profile : sequentialGraph.BehavioralProfile)
               (Profile.update (sig := sequentialGraph.gameSignature)
                 profile focal alternative)) inputValues).map
                   (fun config => config.store) := by
-  simpa using runtime.exists_deviation_mixture_store_law feasible
-    pairGraph.sequentialize_barrierOrdered (PMF.pure inputValues) profile
-      roster reactionRounds focal replacement wire decreasingOrder
+  obtain ⟨mixture, _, law⟩ := runtime.exists_deviation_mixture_store_law feasible
+    pairGraph.sequentialize_barrierOrdered
+      (fun _ => by change Finite (PublicationResult Bool); infer_instance) (PMF.pure inputValues)
+      (by simp) profile roster reactionRounds focal replacement replacementFinite wire
+      wireFinite decreasingOrder (fun _ _ => by simp [decreasingOrder])
+  exact ⟨mixture, by simpa using law⟩
 
 end
 

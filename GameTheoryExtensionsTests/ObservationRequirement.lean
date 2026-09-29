@@ -80,7 +80,7 @@ theorem reporting_sequential_equilibrium :
       (fun _ site => reporting.continuationContext site
         (fun history => payoff (reportUtility id) history.state) 2) := by
   apply (isSequentialEquilibrium_iff biasedBit id _ _).mpr
-  intro signal alternative
+  refine ⟨fun _ => ResponseIntegrable.of_finite _ _ _, fun signal alternative _ => ?_⟩
   unfold localValue
   refine expect_mono (fun state _ => ?_) (payoffIntegrable_of_finite _ _)
     (payoffIntegrable_of_finite _ _)

@@ -56,7 +56,7 @@ theorem prescribed_spe :
       payoff := by
   rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff]
   intro history proper who alternative
-  refine ⟨payoff_integrable _ _, payoff_integrable _ _, ?_⟩
+  refine (euPreference_iff payoff who _ _ (payoff_integrable _ _) (payoff_integrable _ _)).mpr ?_
   rcases source_proper_initial_or_terminal history proper with rfl | stopped
   · cases who
     · simp [expectedUtility, payoff, expect_constant]
@@ -110,7 +110,12 @@ theorem no_sequentially_rational_assessment
     (strategy : assessment.strategy = prescribed false) :
     ¬ assessment.IsSequentiallyRationalWithin (fun who history => payoff history who) 3 := by
   intro rational
-  have inequality := (rational true bobSite).2.2 (choose false true true) (Set.mem_univ _)
+  have integrable (policy : (model false).BehavioralPolicy true) :
+      (assessment.continuationContext bobSite (fun history => reward history.state) 3).IntegrableAt
+        policy := reward_integrable _
+  have inequality := (Context.isLocallyOptimal_iff_of_integrable (integrable _)
+    fun policy _ => integrable policy).mp (rational true bobSite) (choose false true true)
+      (Set.mem_univ _)
   change (assessment.continuationContext bobSite (fun history => reward history.state) 3).value
       (choose false true true) ≤
     (assessment.continuationContext bobSite (fun history => reward history.state) 3).value

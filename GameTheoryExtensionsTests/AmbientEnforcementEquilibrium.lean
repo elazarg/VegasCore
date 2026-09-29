@@ -45,8 +45,8 @@ theorem target_rational (guesses : PMF Bool) (deposit : ℝ)
     (targetAssessment (silentProfile guesses)).IsSequentiallyRationalWithin
       (fun who h => payoff deposit h.state who) 3 := by
   intro who decision
-  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
-    fun alternative _ => ?_⟩
+  refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
   cases who
   · obtain ⟨bit, rfl⟩ := alice_site_eq decision
     rw [alice_context _ bit (payoff deposit · false) alternative,
@@ -244,7 +244,9 @@ theorem strict_deposit_silence (deposit : ℝ) (strict : 1 < deposit)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who h => payoff deposit h.state who) 3) (bit : Bool) :
     choiceLaw assessment.strategy false (some (some bit)) = PMF.pure false := by
-  have best := (rational false (aliceSite bit)).2.2 (choose true false false) (Set.mem_univ _)
+  have best := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mp (rational false (aliceSite bit))
+      (choose true false false) (Set.mem_univ _)
   rw [alice_context assessment bit (payoff deposit · false) (choose true false false),
     alice_context assessment bit (payoff deposit · false) (assessment.strategy false),
     Profile.update_eq_self,

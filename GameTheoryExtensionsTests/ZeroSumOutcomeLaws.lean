@@ -66,8 +66,14 @@ theorem expectedPayoff (row col : PMF Action) :
 theorem centered_nash (law : PMF Action) (mean : expect law amount = 0) :
     IsNash form.mixed (euPreference payout) (MatrixGame.mixedProfile law law) := by
   apply IsSaddlePoint.isNash _ zeroSum
-  apply (MatrixGame.isSaddlePoint_iff_guarantees_caps matrix law law).mpr
-  refine ⟨integrable _ _, fun col => ⟨integrable _ _, ?_⟩, fun row => ⟨integrable _ _, ?_⟩⟩ <;>
+  apply (MatrixGame.isSaddlePoint_iff_guarantees_caps matrix law law (integrable _ _)).mpr
+  refine ⟨fun col => ⟨UtilityIntegrable.hasExpectation (integrable _ _), ?_⟩,
+    fun row => ⟨UtilityIntegrable.hasExpectation (integrable _ _), ?_⟩⟩
+  · rw [extendedExpectedUtility_eq (integrable _ _), EReal.coe_le_coe_iff]
+    change MatrixGame.expectedPayoff matrix law law ≤ MatrixGame.expectedPayoff matrix law col
+    simp [expectedPayoff, mean]
+  · rw [extendedExpectedUtility_eq (integrable _ _), EReal.coe_le_coe_iff]
+    change MatrixGame.expectedPayoff matrix row law ≤ MatrixGame.expectedPayoff matrix law law
     simp [expectedPayoff, mean]
 
 theorem zero_nash : IsNash form.mixed (euPreference payout) zeroProfile :=
@@ -111,11 +117,16 @@ theorem equilibrium_values_equal (who : Fin 2) :
       expectedUtility payout who (form.mixed.play signProfile) := by
   have first := zero_nash.isSaddlePoint zeroSum
   have second := signs_nash.isSaddlePoint zeroSum
+  have same : expectedUtility payout 0 (form.mixed.play zeroProfile) =
+      expectedUtility payout 0 (form.mixed.play signProfile) := by
+    have extended := (first.value_eq second).2.2
+    rwa [extendedExpectedUtility_eq (integrable _ _), extendedExpectedUtility_eq (integrable _ _),
+      EReal.coe_eq_coe_iff] at extended
   fin_cases who
-  · exact (first.value_eq second).2.2
+  · exact same
   · change expectedUtility payout 1 (form.mixed.play zeroProfile) =
       expectedUtility payout 1 (form.mixed.play signProfile)
-    rw [zeroSum.expectedUtility_one, zeroSum.expectedUtility_one, (first.value_eq second).2.2]
+    rw [zeroSum.expectedUtility_one, zeroSum.expectedUtility_one, same]
 
 theorem same_zeroSum_values_different_payout_laws :
     IsZeroSum payout ∧

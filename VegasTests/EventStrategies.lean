@@ -3,6 +3,7 @@
 import Vegas.Game.EventCompilation
 import VegasTests.SourceSetup
 import VegasTests.SourceSemantics
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Full-source asynchronous strategic regression instances
 
@@ -15,6 +16,14 @@ namespace VegasTests.EventStrategies
 open Vegas GameTheory GameTheory.Math.Probability
 
 noncomputable section
+
+instance : SourceSetup.fairSetup.FiniteInitialLaw := by
+  constructor
+  refine Set.Finite.subset (Set.Finite.union ?_ ?_)
+    (support_mix_subset (1 / 2) (by norm_num) (by norm_num) _ _) <;> simp
+
+theorem fair_finiteBindingTypes : SourceSetup.fairSetup.program.FiniteBindingTypes :=
+  ⟨inferInstanceAs (Finite Bool), trivial⟩
 
 /-- One deviation mixture serves both private worlds of the guessing game. -/
 example (scheduler : SourceSetup.fairSetup.eventGraph.PublicScheduler)
@@ -32,10 +41,11 @@ example (scheduler : SourceSetup.fairSetup.eventGraph.PublicScheduler)
             (Profile.update
               (sig := SourceProgram.gameSignature SourceSetup.fairSetup.program)
               (SourceSetup.profile chosen) who alternative) := by
-  simpa only [SourceProgram.Setup.eventGame, EventGraph.gameForm,
-    PMF.map_bind, PMF.bind_map] using
-    scheduled_setup_deviation_law SourceSetup.fairSetup scheduler
-      (SourceSetup.profile chosen) who replacement
+  obtain ⟨mixture, _, law⟩ := scheduled_setup_deviation_law SourceSetup.fairSetup
+    fair_finiteBindingTypes scheduler (SourceSetup.profile chosen) who replacement
+  exact ⟨mixture, by
+    simpa only [SourceProgram.Setup.eventGame, EventGraph.gameForm,
+      PMF.map_bind, PMF.bind_map, Function.comp_def] using law⟩
 
 private def mixedSetup : SourceProgram.Setup
     (Player := SourceSemantics.Player) (L := simpleExpr) where
@@ -45,6 +55,8 @@ private def mixedSetup : SourceProgram.Setup
   obligations := SourceSemantics.mixedInitial.obligations
   program := SourceSemantics.mixedInitial.program
   accounts := SourceSemantics.mixedInitial.accounts
+
+instance : mixedSetup.FiniteInitialLaw := ⟨by simp [mixedSetup]⟩
 
 /-- The strategic theorem does not require sample-free code, homogeneous
 payloads, universally accepting guards, or commitments created during play. -/
@@ -56,7 +68,8 @@ example (scheduler : mixedSetup.eventGraph.PublicScheduler)
           (terminalState mixedSetup.program outcome)) who)
         ε (compileEventProfile mixedSetup.program profile) ↔
       IsεNash mixedSetup.gameForm utility ε profile :=
-  mixedSetup.eventGame_approximate_nash_iff scheduler utility ε profile
+  mixedSetup.eventGame_approximate_nash_iff ⟨inferInstanceAs (Finite (Option Bool)), trivial⟩
+    scheduler utility ε profile
 
 end
 end VegasTests.EventStrategies

@@ -66,7 +66,8 @@ inequalities, including utilities depending on the source-site label. -/
 theorem preserves_all_utilities (utility : (Bool × Bool) → Unit → ℝ)
     (respected : ∀ who branch, (source who branch).Holds (utility · who)) :
     ∀ who comparison, (target who comparison).Holds (utility · who) :=
-  composed.preserves utility respected
+  composed.preserves utility respected fun _ _ =>
+    ⟨payoffIntegrable_of_finite _ _, payoffIntegrable_of_finite _ _⟩
 
 /-- The exact cone criterion can hold even when no law-pair mixture certificate
 exists. Failure to find this certificate therefore does not prove impossibility. -/
@@ -99,7 +100,8 @@ theorem separate_law_matching_insufficient :
   · simp only [crossed, PMF.pure_bind, neutral]
   · simp only [crossed, PMF.pure_bind, neutral]
   · intro utility branch
-    exact ⟨payoffIntegrable_pure _ _, payoffIntegrable_pure _ _, le_refl _⟩
+    exact (IncentiveComparison.holds_iff_of_integrable (neutral branch) utility
+      (payoffIntegrable_pure _ _) (payoffIntegrable_pure _ _)).mpr le_rfl
   · norm_num [crossed, IncentiveComparison.Holds, expect_pure]
 
 end GameTheoryExtensionsTests.ContinuationSimulation

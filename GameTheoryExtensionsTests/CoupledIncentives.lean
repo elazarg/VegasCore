@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Analysis.IncentiveCone
+import GameTheoryExtensions.Analysis.IncentiveComparison
 
 /-! # Incentive implication can use a joint restriction on players' utilities
 
@@ -69,8 +70,9 @@ def separatingUtility (coordinate : Coordinate) : ℝ :=
   if coordinate = (0, false) then 1 else 0
 
 theorem unrestricted_source_holds : (source ()).Holds separatingUtility := by
-  norm_num [source, IncentiveComparison.Holds, separatingUtility, UtilityIntegrable,
-    payoffIntegrable_pure]
+  rw [IncentiveComparison.holds_iff_of_integrable _ _ (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)]
+  norm_num [source, separatingUtility, expect_pure]
 
 theorem unrestricted_target_fails : ¬ target.Holds separatingUtility := by
   norm_num [target, IncentiveComparison.Holds, separatingUtility]

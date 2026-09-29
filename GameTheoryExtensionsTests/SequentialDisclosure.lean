@@ -82,9 +82,9 @@ def disclosedDecision : (model true).BinaryDecision (fun goal who history =>
       ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true) single]
     unfold payoff
     rw [value_bob profile false (utility goal · true)]
-    simp only [resultLaw, expect_map, utility, ↓reduceIte]
+    simp only [resultLaw, expect_map, Function.comp_def, utility, ↓reduceIte]
   force profile goal := by
-    cases goal <;> simp [choiceLaw, Profile.update, choose]
+    cases goal <;> simp [choiceLaw, Profile.update, choose, PMF.pure_map]
 
 theorem rationality_forces_payoff_one (assessment : (model true).BehavioralAssessment)
     (matchBit : Bool)
@@ -94,7 +94,8 @@ theorem rationality_forces_payoff_one (assessment : (model true).BehavioralAsses
       (bobHistory false)) (payoff matchBit · true) := by
   unfold payoff
   rw [value_bob assessment.strategy false (utility matchBit · true)]
-  simpa only [disclosedDecision, resultLaw, expect_map, utility, ↓reduceIte] using
+  simpa only [disclosedDecision, resultLaw, expect_map, Function.comp_def, utility,
+    ↓reduceIte] using
     disclosedDecision.rational_value assessment matchBit rational
 
 /-- Beliefs may depend on the utility. Even this freedom cannot rationalize
