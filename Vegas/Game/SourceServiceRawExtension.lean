@@ -27,13 +27,15 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : Type}
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    [leaks.FiniteSupport]
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
+    [network.FiniteSupport]
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
@@ -128,7 +130,7 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
     exact clear
   · have joint := congrArg (fun law => law.bind fun state =>
       (settle state).map (fun payoffs => (observe state, payoffs))) stateLaw
-    simp only [PMF.bind_map, settlementInvariant, observationInvariant] at joint
+    simp only [PMF.bind_map, Function.comp_def, settlementInvariant, observationInvariant] at joint
     exact joint.trans settled
 
 end Vegas

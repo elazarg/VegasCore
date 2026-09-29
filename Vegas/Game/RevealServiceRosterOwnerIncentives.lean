@@ -42,6 +42,7 @@ variable (setup : Setup (Player := Player) (L := L))
 open Classical in
 include reveals openable mixed timingFull in
 theorem roster_owner_comparison_of_posterior
+    [setup.FiniteInitialLaw] [leaks.FiniteSupport] [network.FiniteSupport]
     (assessment : ((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length
@@ -101,6 +102,7 @@ theorem roster_owner_comparison_of_posterior
         expect original.alternative (fun value => value.elim 0 utility) -
           expect original.prescribed (fun value => value.elim 0 utility) + weight * range := by
   intro model comparison
+  have := setup.reveal_finite_history reveals admission
   let joint : Bool → Player → Option (OwnAction Player L) :=
     fun disclose _ => some (.reveal who 0 disclose)
   let values := fun disclose => expect (source.stateBelief who sourceSite) (fun state =>
@@ -118,10 +120,8 @@ theorem roster_owner_comparison_of_posterior
   have aNonnegative : 0 ≤ immediate := ENNReal.toReal_nonneg
   have aBounded : immediate ≤ 1 := by
     change (law.toOuterMeasure predicate).toReal ≤ 1
-    rw [← expect_indicator, ← expect_constant law (1 : ℝ)]
-    apply FinDist.expect_mono
-    intro option _
-    split <;> norm_num
+    exact ENNReal.toReal_le_of_le_ofReal zero_le_one
+      (ENNReal.ofReal_one ▸ outerMeasure_le_one law predicate)
   have full : FullSupport choice := by
     dsimp only [choice]
     rw [choiceLaw]

@@ -680,6 +680,7 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
             advance (OwnAction.binding siteOwner name sitePayload action)) ∘
               fun joint : Player → Option (OwnAction Player L) => joint siteOwner) = _
           rw [← PMF.map_comp, independentProduct_map_eval]
+          exact (pmf_bind_pure_eq_map _ _).symm
         have injective : Function.Injective advance := by
           intro first second same
           have successor := commutes.2.2 same
@@ -1026,8 +1027,6 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : service.sourceModel.BehavioralAssessment)
-    [∀ who (site : service.sourceModel.InformationSite who),
-      Fintype (service.sourceModel.InformationHistory who site.1)]
     (full : ∀ who info, FullSupport (source.strategy who info))
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       service.sourceModel source
@@ -1184,7 +1183,7 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
       have realized : OwnAction.binding who otherName payload (realize value).1 = value := by
         simp only [realize, realizable, ↓reduceDIte]
         exact realizable.choose_spec.2
-      rw [decodedValue, readout]
+      rw [Function.comp_apply, decodedValue, readout]
       simp only [PMF.pure_bind, realized]
       rfl
     · have decodedValue : submittedValue (choice.1.getD ⟨none⟩) = none := by
@@ -1198,7 +1197,7 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
           · rw [replayed] at submitted
             cases submitted
         · rfl
-      rw [decodedValue, readout, ← baselineValues, PMF.bind_map, PMF.bind_map]
+      rw [Function.comp_apply, decodedValue, readout, ← baselineValues, PMF.bind_map, PMF.bind_map]
       rfl
 
 end TimedApproximant
