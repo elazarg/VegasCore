@@ -10,7 +10,9 @@ commitment choices. The value-binding abstraction preserves the joint law of
 any initial parameter and the public result. Composing it with the native
 full-store law gives one deviation mixture across the entire private prior.
 Nash of this type-contingent policy game is the Bayesian incentive notion;
-the theorem also applies to a designated truthful plan.
+the theorem also applies to a designated truthful plan. Native deviations are
+finitely branching, fresh binding alphabets are finite, and the prior is
+finitely supported.
 -/
 
 noncomputable section
@@ -52,6 +54,7 @@ the policies or made public by this game interpretation. -/
 /-- The abstraction erases commit-time failure even for type-dependent utility. -/
 def valueBindingParameterSimulationOn {Observation : Type}
     (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (parameter : State L setup.context → Parameter)
     (observe : Parameter × PublicOutcome setup.program → Observation) :
     GameForm.MixtureSimulationOn (setup.valueBindingParameterGame parameter)
@@ -60,8 +63,8 @@ def valueBindingParameterSimulationOn {Observation : Type}
   honest_law _ := rfl
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
-    obtain ⟨mixture, hmixture⟩ :=
-      exists_pureMixture_run setup (valueBindingProfile profile) replacement
+    obtain ⟨mixture, _, hmixture⟩ :=
+      exists_pureMixture_run setup finite (valueBindingProfile profile) replacement
     have joint := congrArg (PMF.map (setup.parameterOutcome parameter)) hmixture
     simp only [PMF.map_bind, setup.run_map_parameterOutcome] at joint
     refine ⟨mixture.map fun choice =>
@@ -95,17 +98,21 @@ def eventPendingParameterOutcome (setup : Setup (Player := Player) (L := L))
 /-- The full-core native certificate retains initial parameters jointly with
 public results, with the same mixture chosen before the setup draw. -/
 def parameterPendingSimulation (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (parameter : State L setup.context → Parameter)
     (mode : Vegas.EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport) :
     GameForm.MixtureSimulationOn (setup.parameterGame parameter)
       (setup.eventPendingGame mode runtime roster reactionRounds wire order) some
-      (setup.eventPendingParameterOutcome parameter mode runtime) (fun _ _ => True) where
+      (setup.eventPendingParameterOutcome parameter mode runtime)
+      (fun _ policy => Interaction.MessageApplication.PlayerPolicy.FiniteSupport policy) where
   compileStrategy := setup.compileEventPendingStrategy mode runtime
-  compiled_considered _ _ := trivial
+  compiled_considered who policy :=
+    setup.compileEventPendingStrategy_finiteSupport finite mode runtime who policy
   honest_law profile := by
     unfold eventPendingParameterOutcome
     have h := congrArg (PMF.map (Option.map (setup.parameterOutcome parameter)))
@@ -113,83 +120,115 @@ def parameterPendingSimulation (setup : Setup (Player := Player) (L := L))
         profile)
     change _ = (setup.parameterRun parameter profile).map some
     rw [← setup.run_map_parameterOutcome parameter profile]
-    simpa only [Profile.update, eventPendingParameterOutcome, PMF.map_comp, Function.comp_def,
-      Option.map_some] using h
-  deviation_mixture profile who replacement _ := by
+    simp only [PMF.map_comp, Function.comp_def, Option.map_some] at h ⊢
+    exact h
+  deviation_mixture profile who replacement replacementFinite := by
     unfold eventPendingParameterOutcome
-    obtain ⟨mixture, hmixture⟩ := setup.eventPendingGame_deviation_law mode runtime feasible
-      roster reactionRounds wire order profile who replacement
+    obtain ⟨mixture, _, hmixture⟩ := setup.eventPendingGame_deviation_law finite mode runtime
+      feasible roster reactionRounds wire wireFinite order orderFinite profile who replacement
+      replacementFinite
     refine ⟨mixture, ?_⟩
     have h := congrArg (PMF.map (Option.map (setup.parameterOutcome parameter))) hmixture
     simp only [PMF.map_bind] at h
     simp only [parameterGame]
     simp_rw [← setup.run_map_parameterOutcome parameter]
-    simpa only [Profile.update, eventPendingParameterOutcome, PMF.map_comp, Function.comp_def,
-      Option.map_some] using h
+    simp only [Profile.update, PMF.map_comp, Function.comp_def, Option.map_some] at h ⊢
+    exact h
 
 /-- Complete value-only source-to-native certificate for type-dependent results. -/
 def valueBindingParameterPendingSimulation (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (parameter : State L setup.context → Parameter)
     (mode : Vegas.EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport) :
     GameForm.MixtureSimulationOn (setup.valueBindingParameterGame parameter)
       (setup.eventPendingGame mode runtime roster reactionRounds wire order) some
-      (setup.eventPendingParameterOutcome parameter mode runtime) (fun _ _ => True) :=
-  (setup.valueBindingParameterSimulationOn parameter some).trans
-    (setup.parameterPendingSimulation parameter mode runtime feasible roster reactionRounds
-      wire order) (fun _ _ => trivial)
+      (setup.eventPendingParameterOutcome parameter mode runtime)
+      (fun _ policy => Interaction.MessageApplication.PlayerPolicy.FiniteSupport policy) :=
+  (setup.valueBindingParameterSimulationOn finite parameter some).trans
+    (setup.parameterPendingSimulation finite parameter mode runtime feasible roster
+      reactionRounds wire wireFinite order orderFinite) (fun _ _ => trivial)
 
 /-- Same-error Bayesian Nash correspondence: utilities can depend on private
 initial types and public results, while commitments choose ordinary values.
-The approximation bound is ex ante under the specified prior. -/
+The approximation bound is ex ante under the specified prior, and native
+deviations are finitely branching. -/
 theorem valueBindingParameterPendingGame_approximate_nash_iff
     (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (parameter : State L setup.context → Parameter)
     (mode : Vegas.EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (missing : Player → ℝ) (ε : ℝ)
     (profile : Profile (setup.valueBindingParameterGame parameter).sig) :
-    IsεNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
+    (∀ who (replacement : runtime.application.PlayerPolicy), replacement.FiniteSupport →
+      euPreferenceWithin ε
         (fun outcome who =>
           (setup.eventPendingParameterOutcome parameter mode runtime outcome).elim
-            (missing who) (fun result => utility result who))
-        ε (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who)) ↔
+            (missing who) (fun result => utility result who)) who
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who)))
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (Profile.update (sig := (setup.eventPendingGame mode runtime
+            roster reactionRounds wire order).sig)
+            (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who))
+            who replacement))) ↔
       IsεNash (setup.valueBindingParameterGame parameter) utility ε profile := by
   let optionUtility : Option (Parameter × PublicOutcome setup.program) → Player → ℝ :=
     fun outcome who => outcome.elim (missing who) (fun result => utility result who)
-  exact GameForm.MixtureSimulationOn.isεNash_compileProfile_iff
-    (setup.valueBindingParameterPendingSimulation parameter mode runtime feasible roster
-      reactionRounds wire order) optionUtility ε profile (fun _ _ => trivial)
+  exact ((setup.valueBindingParameterPendingSimulation finite parameter mode runtime feasible
+    roster reactionRounds wire wireFinite order orderFinite).considered_deviations_iff_isεNash
+      optionUtility ε profile).trans
+      (and_iff_left fun who replacement replacementFinite =>
+        payoffIntegrable_of_finite_support _ _
+          (setup.eventPendingGame_play_support_finite mode runtime roster reactionRounds
+            wireFinite orderFinite _ (setup.compileEventPending_update_finiteSupport finite mode
+              runtime roster reactionRounds wire order _ who replacement replacementFinite)))
 
 /-- In particular, a designated truthful plan is Bayesian Nash in the source
-exactly when its compilation is Nash against all unilateral native deviations. -/
+exactly when its compilation gains nothing against every finitely branching
+unilateral native deviation. -/
 theorem valueBindingParameterPendingGame_nash_iff
     (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (parameter : State L setup.context → Parameter)
     (mode : Vegas.EventGraph.ExecutionMode)
     (runtime : EventGraphRuntime (setup.eventGraph.withMode mode))
     (feasible : runtime.ServiceFeasible)
     (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (missing : Player → ℝ)
     (profile : Profile (setup.valueBindingParameterGame parameter).sig) :
-    IsNash (setup.eventPendingGame mode runtime roster reactionRounds wire order)
-        (euPreference fun outcome who =>
+    (∀ who (replacement : runtime.application.PlayerPolicy), replacement.FiniteSupport →
+      euPreference
+        (fun outcome who =>
           (setup.eventPendingParameterOutcome parameter mode runtime outcome).elim
-            (missing who) (fun result => utility result who))
-        (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who)) ↔
+            (missing who) (fun result => utility result who)) who
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who)))
+        ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+          (Profile.update (sig := (setup.eventPendingGame mode runtime
+            roster reactionRounds wire order).sig)
+            (fun who => setup.compileValueBindingPendingProfile mode runtime who (profile who))
+            who replacement))) ↔
       IsNash (setup.valueBindingParameterGame parameter) (euPreference utility) profile := by
-  rw [isNash_iff_isεNash_zero, isNash_iff_isεNash_zero]
-  exact setup.valueBindingParameterPendingGame_approximate_nash_iff parameter mode runtime
-    feasible roster reactionRounds wire order utility missing 0 profile
+  rw [isNash_iff_isεNash_zero]
+  have within := setup.valueBindingParameterPendingGame_approximate_nash_iff finite parameter
+    mode runtime feasible roster reactionRounds wire wireFinite order orderFinite utility
+    missing 0 profile
+  simp only [euPreferenceWithin, add_zero] at within
+  exact within
 
 end Setup
 end Vegas.SourceProgram
