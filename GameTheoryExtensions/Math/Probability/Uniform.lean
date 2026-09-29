@@ -26,6 +26,21 @@ theorem expect_uniformOfFintype [Fintype α] [Nonempty α] (value : α → ℝ) 
   simp_rw [toReal_uniformOfFintype_apply]
   rw [← Finset.mul_sum, div_eq_inv_mul]
 
+/-- A strict mixture of two point masses supports exactly the two points. -/
+theorem mem_support_mix_pure_iff (t : ℝ) (h0 : 0 ≤ t) (h1 : t ≤ 1) (positive : 0 < t)
+    (belowOne : t < 1) {first second value : α} :
+    value ∈ (mix t h0 h1 (PMF.pure first) (PMF.pure second)).support ↔
+      value = first ∨ value = second := by
+  constructor
+  · intro member
+    by_contra neither
+    push Not at neither
+    rw [PMF.mem_support_iff, mix_apply] at member
+    simp [PMF.pure_apply, neither.1, neither.2] at member
+  · rintro (rfl | rfl)
+    · exact mem_support_mix_left _ _ _ positive ((PMF.mem_support_pure_iff _ _).mpr rfl)
+    · exact mem_support_mix_right _ _ _ belowOne ((PMF.mem_support_pure_iff _ _).mpr rfl)
+
 /-- Adding one distinct candidate scales every old candidate equally. -/
 theorem uniformOfFinset_insert [DecidableEq α] (members : Finset α)
     (nonempty : members.Nonempty) (fresh : α) (absent : fresh ∉ members) :

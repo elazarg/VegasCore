@@ -38,7 +38,7 @@ theorem compiled_prescribed :
       prescribed true := by
   funext who info
   cases who <;> cases info <;>
-    simp [Profile.map, compile, prescribed, choose, forgetInfo]
+    simp [Profile.map, compile, prescribed, choose, forgetInfo, PMF.pure_map]
 
 /-- The state retains both the original private bit and public result. -/
 theorem compiled_initial_law (profile : Profile (model false).behavioralSignature) :
@@ -60,6 +60,6 @@ theorem initial_deviation_law (who : Bool) (alternative : (model true).Behaviora
       (Profile.update (prescribed false) who alternative) 3 arena.initHistory).map
       History.state := by
   rw [run_initial, run_initial]
-  cases who <;> simp [resultLaw, choiceLaw, Profile.update, prescribed, choose]
+  cases who <;> simp [resultLaw, choiceLaw, Profile.update, prescribed, choose, PMF.pure_map]
 
 end GameTheoryExtensionsTests.OffPathDisclosure

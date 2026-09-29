@@ -26,20 +26,40 @@ def reward : State → ℝ
 def payoff (history : arena.History) (who : Bool) : ℝ :=
   if who then reward history.state else 0
 
+theorem reward_bounded (state : State) : |reward state| ≤ 1 := by
+  unfold reward
+  split <;> norm_num
+
+/-- Payoffs are bounded, so every law over histories integrates them. -/
+theorem payoff_integrable (law : PMF arena.History) (who : Bool) :
+    PayoffIntegrable law (payoff · who) :=
+  payoffIntegrable_of_bounded _ _ (C := 1) fun history => by
+    unfold payoff
+    split
+    · exact reward_bounded _
+    · norm_num
+
+theorem reward_integrable (law : PMF arena.History) :
+    PayoffIntegrable law (fun history => reward history.state) :=
+  payoffIntegrable_of_bounded _ _ (C := 1) fun _ => reward_bounded _
+
 theorem initial_reward_zero (replacement : (model false).BehavioralPolicy true) :
     expect ((model false).runSingleMoverBehavioralFrom single
       (Profile.update (prescribed false) true replacement) 3 arena.initHistory)
       (fun history => reward history.state) = 0 := by
   rw [value_initial]
-  simp [choiceLaw, Profile.update, prescribed, choose, reward, FinDist.expect_bind]
+  simp [choiceLaw, Profile.update, prescribed, choose, reward, expect_bind_of_finite,
+    expect_pure, expect_constant]
 
 theorem prescribed_spe :
-    (model false).IsSingleMoverBehavioralSubgamePerfect single bounded (prescribed false) payoff := by
+    (model false).IsSingleMoverBehavioralSubgamePerfect single bounded (prescribed false)
+      payoff := by
   rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff]
   intro history proper who alternative
+  refine ⟨payoff_integrable _ _, payoff_integrable _ _, ?_⟩
   rcases source_proper_initial_or_terminal history proper with rfl | stopped
   · cases who
-    · simp [payoff]
+    · simp [expectedUtility, payoff, expect_constant]
     · change expect ((model false).runSingleMoverBehavioralFrom single
         (Profile.update (prescribed false) true alternative) 3 arena.initHistory)
         (fun history => reward history.state) ≤
@@ -49,7 +69,7 @@ theorem prescribed_spe :
       rw [Profile.update_eq_self] at baseline
       rw [initial_reward_zero, baseline]
   · simp only [InformationModel.runSingleMoverBehavioralFrom,
-      runRandomizedFor_of_terminal _ _ stopped, expect_pure]
+      runRandomizedFor_of_terminal _ _ stopped]
     exact le_rfl
 
 def bobSite : (model false).InformationSite true :=
@@ -71,7 +91,8 @@ theorem history_at_bob (history : (model false).InformationHistory true bobSite.
 theorem bob_value (assessment : (model false).BehavioralAssessment) (value : Bool) :
     (assessment.continuationContext bobSite (fun history => reward history.state) 3).value
       (choose false true value) = if value then 1 else 0 := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+    expect_bind_tower _ _ _ (reward_integrable _)]
   calc
     _ = expect (assessment.belief true bobSite) (fun _ => if value then 1 else 0) := by
       apply expect_congr_on_support
@@ -79,7 +100,8 @@ theorem bob_value (assessment : (model false).BehavioralAssessment) (value : Boo
       obtain ⟨bit, same⟩ := history_at_bob history
       rw [same, ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
         (model false) single, value_bob]
-      cases value <;> simp [resultLaw, choiceLaw, Profile.update, choose, reward]
+      cases value <;> simp [resultLaw, choiceLaw, Profile.update, choose, reward, PMF.pure_map,
+        expect_pure]
     _ = _ := expect_constant _ _
 
 /-- Even an arbitrarily chosen off-path belief cannot rationalize the threat. -/
@@ -88,7 +110,7 @@ theorem no_sequentially_rational_assessment
     (strategy : assessment.strategy = prescribed false) :
     ¬ assessment.IsSequentiallyRationalWithin (fun who history => payoff history who) 3 := by
   intro rational
-  have inequality := rational true bobSite (choose false true true) (Set.mem_univ _)
+  have inequality := (rational true bobSite).2.2 (choose false true true) (Set.mem_univ _)
   change (assessment.continuationContext bobSite (fun history => reward history.state) 3).value
       (choose false true true) ≤
     (assessment.continuationContext bobSite (fun history => reward history.state) 3).value

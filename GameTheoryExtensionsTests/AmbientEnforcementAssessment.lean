@@ -62,14 +62,14 @@ theorem uniformReference_full : uniformReference.IsFullyMixed := by
     (mix (1 / 2) (by norm_num) (by norm_num)
       (choose true who false info) (choose true who true info)).support
   simp only [choose]
-  rw [FinDist.mem_support_mix_pure_iff _ _ _ (by norm_num) (by norm_num)]
+  rw [mem_support_mix_pure_iff _ _ _ (by norm_num) (by norm_num)]
   simp only [Subtype.mk.injEq]
   change value.isSome = decisionInfo true who info at legal
   simp only [decisionInfo, Bool.true_or, Bool.true_and] at legal ⊢
   cases info <;> cases value
   all_goals simp_all only [Option.isSome_none, Option.isSome_some, Bool.false_eq_true,
     Bool.true_eq_false, ite_true, ite_false]
-  all_goals first | trivial | (rename_i value; cases value; simp)
+  all_goals first | trivial | simp
 
 def targetPerturb (guesses : PMF Bool) (n : Nat) :
     Profile (model true).behavioralSignature :=
@@ -89,34 +89,46 @@ theorem target_reach_silent (guesses : PMF Bool) (n : Nat) (bit : Bool) :
     (arena true).initHistory) (bobHistory true bit false)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true)
       (single true),
-    ← FinDist.prob_map_of_injective History.state (state_injective true), run_states]
+    ← pmf_map_apply_of_injective _ (state_injective true), run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind,
     initHistory, kernel, PMF.bind_map, toReal_bind_apply]
   change expect (PMF.uniformOfFintype Bool) (fun hidden =>
     (((choiceLaw (targetPerturb guesses n) false (some (some hidden))).map
       (fun disclose => State.bob hidden disclose)) (.bob bit false)).toReal) = _
+  have weight : (ENNReal.ofReal (trembleWeight n) * 2⁻¹ +
+      ENNReal.ofReal (1 - trembleWeight n)).toReal =
+        trembleWeight n / 2 + (1 - trembleWeight n) := by
+    rw [ENNReal.toReal_add (ENNReal.mul_ne_top ENNReal.ofReal_ne_top (by norm_num))
+        ENNReal.ofReal_ne_top, ENNReal.toReal_mul, ENNReal.toReal_ofReal (trembleWeight_nonneg n),
+      ENNReal.toReal_ofReal (by linarith [trembleWeight_le_one n]), ENNReal.toReal_inv,
+      ENNReal.toReal_ofNat]
+    ring
   rw [expect_eq_sum, Fintype.sum_bool]
   cases bit <;>
     simp [choiceLaw, targetPerturb, InformationModel.BehavioralAssessment.perturb,
       uniformReference, silentProfile, choose, decisionInfo, mix_map,
-      mix_apply_toReal, toReal_uniformOfFintype_apply, Fintype.card_bool,
-      toReal_pure_apply] <;> ring
+      Fintype.card_bool, PMF.pure_map, weight] <;> ring
 
 theorem target_mass_silent (guesses : PMF Bool) (n : Nat) :
-    (model true).informationMass (targetPerturb guesses n) true (bobSilentSite true) =
+    ((model true).informationMass (targetPerturb guesses n) true (bobSilentSite true)).toReal =
       1 - trembleWeight n / 2 := by
   unfold InformationModel.informationMass
-  rw [← (silentHistories true).sum_comp]
-  change (∑ bit : Bool, ((model true).historyReachWeight (targetPerturb guesses n) (bobHistory true bit false)).toReal) = _
+  rw [← (silentHistories true).tsum_eq, tsum_fintype]
+  change (∑ bit : Bool, (model true).historyReachWeight (targetPerturb guesses n)
+    (bobHistory true bit false)).toReal = _
+  have finiteWeight (bit : Bool) : (model true).historyReachWeight (targetPerturb guesses n)
+      (bobHistory true bit false) ≠ ⊤ := PMF.apply_ne_top _ _
+  rw [ENNReal.toReal_sum fun bit _ => finiteWeight bit]
   simp only [target_reach_silent, Finset.sum_const, Finset.card_univ, Fintype.card_bool,
     nsmul_eq_mul]
   ring
 
 theorem target_belief_silent_prob (profile : Profile (model true).behavioralSignature)
     (bit : Bool) :
-    (((targetAssessment profile).belief true (bobSilentSite true)) (silentHistory true bit)).toReal = 1 / 2 := by
+    (((targetAssessment profile).belief true (bobSilentSite true))
+      (silentHistory true bit)).toReal = 1 / 2 := by
   classical
-  rw [target_silent_belief, FinDist.prob_map_of_injective _ (silentHistory_injective true)]
+  rw [target_silent_belief, pmf_map_apply_of_injective _ (silentHistory_injective true)]
   norm_num [toReal_uniformOfFintype_apply, Fintype.card_bool]
 
 theorem targetPerturb_bayes (guesses : PMF Bool) (n : Nat) :
@@ -136,10 +148,17 @@ theorem targetPerturb_bayes (guesses : PMF Bool) (n : Nat) :
     · obtain ⟨bit, same⟩ := history_at_silent true history
       have historyEq : history = silentHistory true bit := Subtype.ext same
       subst history
-      change (((targetAssessment (targetPerturb guesses n)).belief true (bobSilentSite true)) (silentHistory true bit)).toReal =
-          ((model true).historyReachWeight (targetPerturb guesses n) (bobHistory true bit false)).toReal /
+      change (targetAssessment (targetPerturb guesses n)).belief true (bobSilentSite true)
+          (silentHistory true bit) =
+        (model true).historyReachWeight (targetPerturb guesses n) (bobHistory true bit false) /
           (model true).informationMass (targetPerturb guesses n) true (bobSilentSite true)
-      rw [target_belief_silent_prob, target_reach_silent, target_mass_silent]
+      have massNe : (model true).informationMass (targetPerturb guesses n) true
+          (bobSilentSite true) ≠ 0 := positive.ne'
+      have weightNe : (model true).historyReachWeight (targetPerturb guesses n)
+          (bobHistory true bit false) ≠ ⊤ := PMF.apply_ne_top _ _
+      rw [← ENNReal.toReal_eq_toReal_iff' (PMF.apply_ne_top _ _)
+          (ENNReal.div_ne_top weightNe massNe), ENNReal.toReal_div,
+        target_belief_silent_prob, target_reach_silent, target_mass_silent]
       have nonzero : 1 - trembleWeight n / 2 ≠ 0 := by
         have small := trembleWeight_le_one n
         linarith
