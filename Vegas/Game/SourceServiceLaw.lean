@@ -120,8 +120,7 @@ theorem sourceService_prefix_state_law
             (ReactiveApplication.Execution.initial app state)).map (readout 0) = _
         simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan,
           Nat.zero_add, Function.iterate_one, PMF.pure_bind, ← PMF.bind_pure_comp,
-              Function.comp_def,
-          PMF.map_comp]
+          Function.comp_def, PMF.bind_bind]
         change (initialLaw setup).map (fun state => sourceServicePrefix? setup 0
           (ReactiveApplication.Execution.initial app state).application.config) =
             setup.behavioralStateStep admission encoded none
@@ -144,7 +143,8 @@ theorem sourceService_prefix_state_law
         trans (physical rank).bind (fun execution => kernel (readout rank execution))
         · exact bind_congr_on_support _
             (fun execution supported => step rank inside execution supported)
-        · rw [← PMF.bind_map, prior]
+        · refine (PMF.bind_map (physical rank) (readout rank) kernel).symm.trans ?_
+          rw [prior]
           exact (Function.iterate_succ_apply' (fun law => law.bind kernel) (rank + 1)
             (PMF.pure none)).symm
   have sourceLaw := setup.runBehavioralFrom_state admission encoded (count + 1)

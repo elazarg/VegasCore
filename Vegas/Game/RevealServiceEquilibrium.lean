@@ -38,9 +38,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
   (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
   (admission : CommitmentInterface setup.program)
-  [Finite (setup.executionProtocol admission).History]
-  [∀ who (site : (setup.informationModel admission).InformationSite who),
-    Fintype ((setup.informationModel admission).InformationHistory who site.1)]
 
 /-- Reporting is forced by this restricted menu, at every local input. Its
 optimality therefore imposes no assumption on the reporting player's utility. -/
@@ -71,7 +68,7 @@ include reveals observer openable in
 /-- The complete typed source state and utility vector are preserved jointly.
 The target game, menus, utility and strategy compiler are fixed before choosing
 the source equilibrium. Only the consistent belief completion is existential. -/
-theorem source_sequential_equilibrium_preserved
+theorem source_sequential_equilibrium_preserved [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)

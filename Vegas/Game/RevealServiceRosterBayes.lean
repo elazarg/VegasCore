@@ -101,7 +101,7 @@ theorem roster_owner_source_site
       ((setup.decisionDepth_trace admission who history.trace).trans length)
 
 theorem roster_owner_bayes_posterior
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -189,10 +189,9 @@ theorem roster_owner_bayes_posterior
   have clockAt : ∀ current : model.InformationHistory owner site.1,
       current.1.trace.length = depth := fun current =>
     (clock current).trans ((clock ⟨history, observed⟩).symm.trans length)
-  have mixedNative := assessment.bayes_isFullyMixed
-    (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
-      admission source mixed timing timingFull)
-    (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+  have mixedNative : assessment.IsFullyMixed :=
+    rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
+      admission source mixed timing timingFull
   have bayesNative := InformationModel.bayesAssessment_isBayesConsistent _ assessment.strategy
       (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
       admission source mixed timing timingFull)
@@ -206,7 +205,7 @@ theorem roster_owner_bayes_posterior
     exact ⟨reference, referenceSupport, observeEmbed reference⟩
   have transported := PMF.map_conditional_readout executions embed
     ((application setup leaks).observe owner) (some (input reference)) present
-  have fiber := fiberConditional_eq_of_support_fiber executions
+  have fiber := PMF.fiberConditional_eq_of_support_fiber executions
     ((application setup leaks).observe owner ∘ embed) input (some (input reference))
     (input reference) (by
       intro value _
@@ -231,7 +230,7 @@ theorem roster_owner_bayes_posterior
 posterior identity. Full mixing supplies its positive reach; no chosen-run
 support hypothesis is supplied by the caller. -/
 theorem roster_owner_bayes_at_history
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -276,10 +275,9 @@ theorem roster_owner_bayes_at_history
     (setup.decodeBehavioralProfile admission source.strategy)
   let depth := count +
     (((rosterPlan setup rosters).take count).filterMap instructionActor).length + 2
-  have mixedNative := assessment.bayes_isFullyMixed
-    (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
-      admission source mixed timing timingFull)
-    (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+  have mixedNative : assessment.IsFullyMixed :=
+    rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
+      admission source mixed timing timingFull
   have active := InformationModel.InformationSite.active model site history
   rw [current] at active
   have acting : control.actor = some owner := active
@@ -325,15 +323,13 @@ theorem roster_owner_bayes_at_history
 structurally recovered site, including native timing histories that disappear
 in the limiting strategy. -/
 theorem roster_owner_bayes_source_state
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
     (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
     (admission : CommitmentInterface setup.program)
-    [∀ who (site : (setup.informationModel admission).InformationSite who),
-      Fintype ((setup.informationModel admission).InformationHistory who site.1)]
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent

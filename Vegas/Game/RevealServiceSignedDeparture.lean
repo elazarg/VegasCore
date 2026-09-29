@@ -104,7 +104,7 @@ theorem replay_extra_submission
         silence | opening | replayed
       · subst response
         apply Finset.mem_union_left
-        rw [quiet, Set.Finite.mem_toFinset, PMF.mem_support_pure_iff _ _]
+        rw [Set.Finite.mem_toFinset, quiet, PMF.mem_support_pure_iff _ _]
       · rw [observer_opening_none setup leaks watcher observer] at opening
         cases opening
       · exact Finset.mem_union_right _ ((mem_publishedReplays setup leaks _ response).mpr replayed)

@@ -93,7 +93,7 @@ theorem scheduledBindingActive_config
         congrArg some now
       simp only [players, ReactiveApplication.invoke, Function.update_self,
         ReactiveApplication.scheduledPolicy, Option.map_some, ite_eq_left scheduled,
-        PMF.bind_map, PMF.pure_bind] at includedSupport
+        PMF.bind_map, PMF.pure_bind, Function.comp_apply] at includedSupport
       have after : offset + slot.val <
           ((execution.respond app owner response).recall owner).length := by
         rw [app.respond_recall_length]
