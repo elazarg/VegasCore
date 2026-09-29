@@ -40,15 +40,12 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
   (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
   (admission : CommitmentInterface setup.program)
-  [Finite (setup.executionProtocol admission).History]
-  [∀ who (site : (setup.informationModel admission).InformationSite who),
-    Fintype ((setup.informationModel admission).InformationHistory who site.1)]
 
 include reveals observer openable in
 /-- The game, response bound, observation rule and range-based deposits are
 fixed before choosing the source equilibrium. Beliefs at all raw off-path
 information sets satisfy the standard common-tremble consistency condition. -/
-theorem source_raw_sequential_equilibrium_preserved
+theorem source_raw_sequential_equilibrium_preserved [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (watcherZero : ∀ state, utility state watcher = 0)
     (probability : Player → ℝ)

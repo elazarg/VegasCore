@@ -186,8 +186,7 @@ theorem sourceServiceTimedPolicy_suffix_state_law
   have all : (List.finRange (eventCount program)).take (eventCount program) =
       List.finRange (eventCount program) :=
     List.take_of_length_le (by rw [List.length_finRange])
-  simp only [PMF.pure_bind, all, PMF.map_bind, PMF.map_comp, Function.comp_def,
-    PMF.map_const, PMF.bind_pure] at marginal
+  simp only [PMF.pure_bind, all, PMF.map_bind, PMF.map_comp, Function.comp_def] at marginal
   exact marginal
 
 /-- At any supported typed boundary, all remaining actual timed service blocks

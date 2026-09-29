@@ -34,14 +34,12 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
   (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
   (admission : CommitmentInterface setup.program)
-  [Finite (setup.executionProtocol admission).History]
-  [∀ who (site : (setup.informationModel admission).InformationSite who),
-    Fintype ((setup.informationModel admission).InformationHistory who site.1)]
 
 include reveals observer openable in
 /-- One audited native game and deposit vector implement every original source
 SE. Utilities may depend on persistent private initial data as well as results. -/
 theorem signed_audit_source_sequential_equilibrium_preserved
+    [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
       PMF (List (EnvelopeEvidence setup leaks)))

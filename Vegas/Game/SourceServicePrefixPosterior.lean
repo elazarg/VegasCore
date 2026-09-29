@@ -197,7 +197,7 @@ theorem sourceService_owner_information_law [Fintype Player]
     change prefixLaw.bind (fun execution =>
       (execution.environmentStep app (.application (.grant event))).map fun final =>
         (read execution, (runtime setup).bindingTraffic leaks owner final)) = _ at grantFactor
-    simp only [grantLaw, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def] at grantFactor
+    simp only [grantLaw, ← PMF.bind_pure_comp, Function.comp_def] at grantFactor
     rw [grantMarginal]
     simpa only [afterGrant, PMF.map_comp, Function.comp_def, marginal] using grantFactor
   let policy := (app.policyMixture (timing event owner owned)
