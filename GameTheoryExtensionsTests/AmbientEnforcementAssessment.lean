@@ -41,7 +41,7 @@ def targetAssessment (profile : Profile (model true).behavioralSignature) :
         obtain ⟨bit, rfl⟩ := alice_site_eq decision; rfl⟩
     · by_cases same : decision = bobSilentSite true
       · subst decision
-        exact (PMF.uniformOfFintype (α := Bool)).map (silentHistory true)
+        exact (PMF.uniformOfFintype Bool).map (silentHistory true)
       · exact PMF.pure ⟨bobHistory true ((decision.1.getD none).getD false) true, by
           rcases target_bob_site_eq decision with equal | ⟨bit, equal⟩
           · exact (same equal).elim
@@ -49,7 +49,7 @@ def targetAssessment (profile : Profile (model true).behavioralSignature) :
 
 theorem target_silent_belief (profile : Profile (model true).behavioralSignature) :
     (targetAssessment profile).belief true (bobSilentSite true) =
-      (PMF.uniformOfFintype (α := Bool)).map (silentHistory true) := by
+      (PMF.uniformOfFintype Bool).map (silentHistory true) := by
   simp [targetAssessment]
 
 def uniformReference : (model true).BehavioralAssessment := .ofStrategy fun who info =>
@@ -92,14 +92,14 @@ theorem target_reach_silent (guesses : PMF Bool) (n : Nat) (bit : Bool) :
     ← FinDist.prob_map_of_injective History.state (state_injective true), run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind,
     initHistory, kernel, PMF.bind_map, toReal_bind_apply]
-  change expect (PMF.uniformOfFintype (α := Bool)) (fun hidden =>
+  change expect (PMF.uniformOfFintype Bool) (fun hidden =>
     (((choiceLaw (targetPerturb guesses n) false (some (some hidden))).map
       (fun disclose => State.bob hidden disclose)) (.bob bit false)).toReal) = _
   rw [expect_eq_sum, Fintype.sum_bool]
   cases bit <;>
     simp [choiceLaw, targetPerturb, InformationModel.BehavioralAssessment.perturb,
       uniformReference, silentProfile, choose, decisionInfo, mix_map,
-      mix_apply_toReal, FinDist.prob_uniformOfFintype, Fintype.card_bool,
+      mix_apply_toReal, toReal_uniformOfFintype_apply, Fintype.card_bool,
       toReal_pure_apply] <;> ring
 
 theorem target_mass_silent (guesses : PMF Bool) (n : Nat) :
@@ -117,7 +117,7 @@ theorem target_belief_silent_prob (profile : Profile (model true).behavioralSign
     (((targetAssessment profile).belief true (bobSilentSite true)) (silentHistory true bit)).toReal = 1 / 2 := by
   classical
   rw [target_silent_belief, FinDist.prob_map_of_injective _ (silentHistory_injective true)]
-  norm_num [FinDist.prob_uniformOfFintype, Fintype.card_bool]
+  norm_num [toReal_uniformOfFintype_apply, Fintype.card_bool]
 
 theorem targetPerturb_bayes (guesses : PMF Bool) (n : Nat) :
     InformationModel.BehavioralAssessment.IsBayesConsistent (model true)

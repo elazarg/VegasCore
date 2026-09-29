@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Protocol.DecisionPayoff
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Fixed payoffs permit some genuinely lossy observations
 
@@ -15,7 +16,7 @@ namespace GameTheoryExtensionsTests.ObservationPayoff
 
 open GameTheory.DecisionExperiment GameTheory.Math.Probability
 
-def prior : PMF Bool := PMF.uniformOfFintype
+def prior : PMF Bool := (PMF.uniformOfFintype _)
 
 def reward (state action : Bool) : ℝ :=
   if action then (if state then 2 else 1) else 0

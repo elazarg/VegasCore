@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.NativePrelude
 import Vegas.Pending.ReactiveServiceCompletion
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Exact calendar evaluation for the monitored native game -/
 
@@ -60,7 +61,7 @@ theorem native_finish_response (players : Player → nativeApp.Policy)
 
 theorem native_finish_initial (players : Player → nativeApp.Policy) :
     nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players none =
-      (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
+      (PMF.uniformOfFintype Bool).bind (fun bit =>
         (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork nativePlan
           (nativeStart bit)).map nativeApp.finished) := by
   simp only [ReactiveApplication.finish, nativeInitialLaw, PMF.bind_map]

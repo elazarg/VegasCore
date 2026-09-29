@@ -3,6 +3,7 @@
 import Vegas.Examples.MonitoredGuessing.RestrictedEvaluation
 import Vegas.Examples.MonitoredGuessing.RestrictedBeliefs
 import Vegas.Examples.MonitoredGuessing.EnforcementPayoffs
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Restricted continuations retain the declared game utilities
 
@@ -115,7 +116,7 @@ theorem receiver_context_value (table : PayoffTable)
     (assessment.continuationContext site
       (fun history => Enforcement.stateUtility table history.state bob)
         (2 * nativeHorizon + 1)).value alternative =
-      expect (PMF.uniformOfFintype (α := Bool)) fun bit =>
+      expect (PMF.uniformOfFintype Bool) fun bit =>
         expect (targetGuesses (Profile.update assessment.strategy bob alternative)) fun guess =>
           expect (targetDisclosures assessment.strategy bit guess) fun disclose =>
             tableReward table (sourceResults (finalConfig bit guess disclose).state) bob := by

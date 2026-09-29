@@ -5,6 +5,7 @@ import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheory.Analysis.Protocol.Examples
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # A genuine off-path information set with consistent beliefs
 
@@ -118,7 +119,7 @@ def assessment (profile : Profile (model false).behavioralSignature) :
     cases who
     · exact PMF.pure ⟨aliceHistory (site.1.getD false), by
         obtain ⟨bit, rfl⟩ := alice_site_eq site; rfl⟩
-    · exact (PMF.uniformOfFintype (α := Bool)).map fun bit =>
+    · exact (PMF.uniformOfFintype Bool).map fun bit =>
         ⟨bobHistory bit, by rw [bob_site_eq site]; rfl⟩
 
 def historyOfState : State → arena.History
@@ -144,9 +145,9 @@ theorem reach_alice (profile : Profile (model false).behavioralSignature) (bit :
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
     ← FinDist.prob_map_of_injective History.state state_injective, run_states]
   simp only [Function.iterate_one, PMF.pure_bind]
-  change (((PMF.uniformOfFintype (α := Bool)).map State.alice) (.alice bit)).toReal = _
+  change (((PMF.uniformOfFintype Bool).map State.alice) (.alice bit)).toReal = _
   rw [FinDist.prob_map_of_injective State.alice (fun _ _ same => State.alice.inj same)]
-  norm_num [FinDist.prob_uniformOfFintype, Fintype.card_bool]
+  norm_num [toReal_uniformOfFintype_apply, Fintype.card_bool]
 
 theorem reach_bob (n : Nat) (bit : Bool) :
     ((model false).historyReachWeight (perturbedProfile n) (bobHistory bit)).toReal =
@@ -157,13 +158,13 @@ theorem reach_bob (n : Nat) (bit : Bool) :
     ← FinDist.prob_map_of_injective History.state state_injective, run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, initHistory, kernel, PMF.bind_map, toReal_bind_apply]
-  change expect (PMF.uniformOfFintype (α := Bool)) (fun hidden =>
+  change expect (PMF.uniformOfFintype Bool) (fun hidden =>
     (((choiceLaw (perturbedProfile n) false (some hidden)).map
       (fun ask => if ask then State.bob hidden else .done hidden none)) (.bob bit)).toReal) = _
   rw [expect_eq_sum, Fintype.sum_bool]
   cases bit <;>
     simp [choiceLaw, perturbedProfile, choose, mix_map, mix_apply_toReal,
-      FinDist.prob_uniformOfFintype, Fintype.card_bool, toReal_pure_apply] <;> ring
+      toReal_uniformOfFintype_apply, Fintype.card_bool, toReal_pure_apply] <;> ring
 
 def bobInformationHistory (bit : Bool) : (model false).InformationHistory true bobSite.1 :=
   ⟨bobHistory bit, rfl⟩
@@ -190,9 +191,9 @@ theorem mass_bob (n : Nat) :
 theorem belief_bob_prob (profile : Profile (model false).behavioralSignature) (bit : Bool) :
     (((assessment profile).belief true bobSite) (bobInformationHistory bit)).toReal = 1 / 2 := by
   classical
-  change (((PMF.uniformOfFintype (α := Bool)).map bobInformationHistory) (bobInformationHistory bit)).toReal = _
+  change (((PMF.uniformOfFintype Bool).map bobInformationHistory) (bobInformationHistory bit)).toReal = _
   rw [FinDist.prob_map_of_injective _ bobInformationHistory_injective]
-  norm_num [FinDist.prob_uniformOfFintype, Fintype.card_bool]
+  norm_num [toReal_uniformOfFintype_apply, Fintype.card_bool]
 
 instance (bit : Bool) : Subsingleton ((model false).InformationHistory false (aliceSite bit).1) :=
   ⟨fun first second => Subtype.ext
@@ -248,7 +249,7 @@ theorem reach_bob_limit (bit : Bool) :
     ← FinDist.prob_map_of_injective History.state state_injective, run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, initHistory, kernel, PMF.bind_map, toReal_bind_apply]
-  change expect (PMF.uniformOfFintype (α := Bool)) (fun hidden =>
+  change expect (PMF.uniformOfFintype Bool) (fun hidden =>
     (((choiceLaw limitProfile false (some hidden)).map
       (fun ask => if ask then State.bob hidden else .done hidden none)) (.bob bit)).toReal) = _
   simp [choiceLaw, limitProfile, choose, toReal_pure_apply]

@@ -5,6 +5,7 @@ import Vegas.Examples.MonitoredGuessing.RestrictedClock
 import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveAssessmentEvaluation
 import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # The restricted receiver's posterior follows from consistency
 
@@ -49,7 +50,7 @@ theorem decoded_quiet_watcher (profile : Profile restrictedModel.behavioralSigna
 
 theorem bob_prefix_law (profile : Profile restrictedModel.behavioralSignature) :
     (restrictedModel.runBehavioral profile 8).map History.state =
-      (PMF.uniformOfFintype (α := Bool)).map
+      (PMF.uniformOfFintype Bool).map
         (fun bit => some ⟨9, some bob, quietBob bit⟩) := by
   rw [InformationModel.runBehavioral, restrictedMenu.run_map_controlStep]
   exact quiet_bob_control_law _ (decoded_early_alice profile) (decoded_quiet_watcher profile)
@@ -58,7 +59,7 @@ theorem bob_state_belief (assessment : restrictedModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent restricted_decisionRecall.decisionInformationAntichain)
     (site : restrictedModel.InformationSite bob) :
     (assessment.belief bob site).map (fun history => history.1.state) =
-      (PMF.uniformOfFintype (α := Bool)).map
+      (PMF.uniformOfFintype Bool).map
         (fun bit => some ⟨9, some bob, quietBob bit⟩) := by
   classical
   have depth : ∀ history : restrictedModel.InformationHistory bob site.1,
@@ -91,7 +92,7 @@ theorem bob_context_value (assessment : restrictedModel.BehavioralAssessment)
     (alternative : restrictedModel.BehavioralPolicy bob) :
     (assessment.continuationContext site (fun history => payoff history.state)
       (2 * nativeHorizon + 1)).value alternative =
-      expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+      expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
           (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
             (Profile.update (sig := restrictedModel.behavioralSignature)

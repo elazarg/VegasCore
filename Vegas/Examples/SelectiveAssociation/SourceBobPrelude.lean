@@ -3,6 +3,7 @@
 import Vegas.Examples.SelectiveAssociation.SourcePreludeControls
 import Vegas.Examples.SelectiveAssociation.SourceGuessPayoffs
 import Vegas.Examples.SelectiveAssociation.Probability
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Bob cannot gain by an ambient response before Alice's fresh binding -/
 
@@ -74,7 +75,7 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
     expect (runInstructions players ((List.finRange 6).flatMap visit) (prelude first second))
       (fun final => utility (results final.application) bob) ≤ 1 / 2 := by
   have aliceLaw : chooseAt players alice (aliceInput first second) =
-      (PMF.uniformOfFintype (α := Bool)).map
+      (PMF.uniformOfFintype Bool).map
         (fun bit => playing Claim defaultClaim 0 (.success bit)) := by
     simp only [chooseAt, alicePolicy, policy]
     rfl
@@ -92,7 +93,7 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
     exact congrArg (fun info => players bob info.1 info.2) same
   rw [after_prelude_law, aliceLaw, FinDist.expect_bind, expect_map]
   calc
-    _ ≤ expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+    _ ≤ expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (chooseAt players carol
           (carolInput first second (playing Claim defaultClaim 0 (.success false))))
             (fun guess => expect (chooseAt players bob
@@ -117,7 +118,7 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
       linarith
     _ = expect (chooseAt players carol
         (carolInput first second (playing Claim defaultClaim 0 (.success false))))
-          (fun guess => expect (PMF.uniformOfFintype (α := Bool))
+          (fun guess => expect (PMF.uniformOfFintype Bool)
             (fun bit => expect (chooseAt players bob
               (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess))
                 (fun response => correctness (.success bit) (selectedBinding 2 response)))) :=
@@ -140,7 +141,7 @@ theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
   let input := fun guess => bobInput first second (binding false) guess
   let target := fun guess => publicGuess ((input guess).observe (application Claim) bob)
   have aliceLaw : chooseAt players alice (aliceInput first second) =
-      (PMF.uniformOfFintype (α := Bool)).map binding := by
+      (PMF.uniformOfFintype Bool).map binding := by
     simp only [chooseAt, players, policy]
     rfl
   have carolLaw (bit : Bool) : chooseAt players carol (carolInput first second (binding bit)) =
@@ -160,7 +161,7 @@ theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
     rfl
   rw [after_prelude_law, aliceLaw, FinDist.expect_bind, expect_map]
   calc
-    _ = expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+    _ = expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (chooseAt players carol (carolInput first second (binding false)))
           (fun guess => correctness (.success bit) (.success (target guess)))) := by
       apply expect_congr_on_support
@@ -189,15 +190,15 @@ theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
           · exact supported
         _ = _ := expect_constant ..
     _ = expect (chooseAt players carol (carolInput first second (binding false)))
-        (fun guess => expect (PMF.uniformOfFintype (α := Bool))
+        (fun guess => expect (PMF.uniformOfFintype Bool)
           (fun bit => correctness (.success bit) (.success (target guess)))) :=
       FinDist.expect_comm _ _ _
     _ = 1 / 2 := by
       have fair (guess : (application Claim).Action) :
-          expect (PMF.uniformOfFintype (α := Bool))
+          expect (PMF.uniformOfFintype Bool)
             (fun bit => correctness (.success bit) (.success (target guess))) = 1 / 2 := by
         rw [expect_eq_sum]
-        simp only [FinDist.prob_uniformOfFintype, Fintype.card_bool, Nat.cast_ofNat,
+        simp only [toReal_uniformOfFintype_apply, Fintype.card_bool, Nat.cast_ofNat,
           Fintype.sum_bool]
         cases target guess <;> norm_num [correctness]
       simp_rw [fair]

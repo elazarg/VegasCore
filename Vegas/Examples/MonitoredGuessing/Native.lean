@@ -49,7 +49,7 @@ def nativeInitial (bit : Bool) : EventGraphRuntime.State nativeGraph := State.in
     (nativeInputs bit)
 
 def nativeInitialLaw : PMF (EventGraphRuntime.State nativeGraph) :=
-  (PMF.uniformOfFintype (α := Bool)).map nativeInitial
+  (PMF.uniformOfFintype Bool).map nativeInitial
 
 /-- The complete bounded raw menu includes arbitrary event addresses, wrong
 values and types, independently attached evidence, and replay. -/

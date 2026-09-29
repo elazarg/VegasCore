@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.NativeHonest
 import Vegas.Examples.MonitoredGuessing.SourceEquilibrium
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Joint initialized outcome and liability laws in the actual native game -/
 
@@ -58,7 +59,7 @@ theorem native_finish_quiet (players : Player → nativeApp.Policy)
     (alicePolicy : players alice = nativeAlicePolicy)
     (watcherPolicy : players watcher = nativeWatcherPolicy) :
     nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players none =
-      (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
+      (PMF.uniformOfFintype Bool).bind (fun bit =>
         nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
           (some ⟨9, some bob, quietBob bit⟩)) := by
   have stopped := nativeApp.finish_after_steps nativeInitialLaw nativeHorizon nativeScheduler
@@ -88,7 +89,7 @@ theorem native_initialized_observation (profile : Profile nativeModel.behavioral
     (watcherPolicy : profile watcher = nativeWatcherBehavior)
     (atQuiet : profile bob quietBobSite.1 = nativeGuessBehavior guesses quietBobSite.1) :
     ((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map History.state).map
-      nativeObservation = (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
+      nativeObservation = (PMF.uniformOfFintype Bool).bind (fun bit =>
         guesses.map (guessingObservation bit)) := by
   let players := nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile
   have aliceEq : players alice = nativeAlicePolicy := by
@@ -126,7 +127,7 @@ theorem source_equilibrium_observation (assessment : sourceModel.BehavioralAsses
     (equilibrium : assessment.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       assessment.continuationContext site (sourcePayoff who) 3)) :
     ((sourceModel.runBehavioral assessment.strategy 3).map History.state).map sourceObservation =
-      (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
+      (PMF.uniformOfFintype Bool).bind (fun bit =>
         (sourceDecisionLaw assessment.strategy bob sourceBobSite.1).map
           (guessingObservation bit)) :=
     by

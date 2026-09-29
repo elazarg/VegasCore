@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Analysis.ObservationAbstraction
 import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Exhaustive observation quotients of a four-observation decision
 
@@ -82,7 +83,7 @@ theorem rejected_map_has_collision (quotient : QuotientMap)
   push Not at rejected
   exact rejected
 
-noncomputable def prior : PMF Observation := PMF.uniformOfFintype
+noncomputable def prior : PMF Observation := (PMF.uniformOfFintype _)
 
 /-- The executable criterion is exactly the checked information condition. -/
 theorem retainsFact_iff_perfect_report (quotient : QuotientMap) :

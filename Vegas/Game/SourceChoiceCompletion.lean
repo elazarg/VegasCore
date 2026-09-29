@@ -6,6 +6,7 @@ import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Protocol.FiniteInformation
 import GameTheory.Analysis.Protocol.Sequential
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Completing unreachable source choices before normalization
 
@@ -33,7 +34,7 @@ def completeChoices (setup : Setup (Player := Player) (L := L))
     let := Fintype.ofFinite ((setup.informationModel admission).Choice who info)
     let : Nonempty ((setup.informationModel admission).Choice who info) :=
       ⟨(profile who info).support_nonempty.choose⟩
-    exact PMF.uniformOfFintype)
+    exact (PMF.uniformOfFintype _))
 
 theorem completeChoices_site (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program)

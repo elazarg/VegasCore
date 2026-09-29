@@ -25,8 +25,6 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E T : ExecutionProtocol Player} {M : InformationModel E} {N : InformationModel T}
   [Finite T.History]
   [∀ who, DecidableEq (N.InfoState who)]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
-  [∀ who (site : N.InformationSite who), Fintype (N.InformationHistory who site.1)]
   (restriction : M.ActionRestriction N)
 
 /-- Extend every source SE when each additional target action is bounded by
@@ -109,13 +107,18 @@ theorem sequential_equilibrium_extends_of_continuation
         who original (beliefs who original) (fun history => sourcePayoff history who)
         (fun history => targetPayoff history who) (fun history => matching history who)
         (horizon - depth who (restriction.site who original)) (sourceEquilibrium.1 who original)
-        _ law
+        (fun _ => payoffIntegrable_of_finite _ _) _ law
       intro action extra
       obtain ⟨alternative, bound⟩ := comparison source.strategy target.strategy agrees who original
         action extra (source.belief who original)
       refine ⟨alternative, ?_⟩
-      simpa only [BehavioralAssessment.continuationContext_value, beliefs,
-        FinDist.expect_bind, expect_map, informationHistory_val] using bound
+      have _ : Finite E.History :=
+        Finite.of_injective restriction.history restriction.history.injective
+      rw [BehavioralAssessment.continuationContext_value,
+        BehavioralAssessment.continuationContext_value, beliefs, PMF.bind_map,
+        expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _),
+        expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)]
+      simpa only [Function.comp_apply, informationHistory_val] using bound
     · exact newOptimal who site retained law
   have historyLaw := restriction.initialized_law source.strategy target.strategy agrees horizon
   refine ⟨target, ⟨rational, consistent⟩, agrees, beliefs, historyLaw, ?_, ?_⟩
@@ -192,8 +195,11 @@ theorem sequential_equilibrium_extends_of_comparator
     _ source sourceEquilibrium
   intro sourceProfile targetProfile agrees who site action extra belief
   refine ⟨(sourceProfile who).withLaw site.1 (comparator who site action), ?_⟩
-  exact FinDist.expect_mono fun history _ =>
-    comparison sourceProfile targetProfile agrees who site action extra history
+  have _ : Finite E.History :=
+    Finite.of_injective restriction.history restriction.history.injective
+  exact expect_mono (fun history _ =>
+    comparison sourceProfile targetProfile agrees who site action extra history)
+    (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
 
 omit [∀ who, DecidableEq (N.InfoState who)] in
 /-- Restoring choices of payoff-indifferent players preserves every restricted
@@ -309,21 +315,25 @@ theorem sequential_equilibrium_extends
     (fun history who => by simp only [utility, matching, clean, zero_mul, sub_zero])
     comparator _ source sourceEquilibrium
   intro sourceProfile targetProfile _ who site action forbidden history
+  have _ : Finite E.History :=
+    Finite.of_injective restriction.history restriction.history.injective
   rw [show (fun final => utility final who) =
       (fun final => base final who - charge final who * deposit who) from rfl,
-    FinDist.expect_sub, FinDist.expect_mul_const]
+    expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _),
+    expect_mul_const]
   have upperBound : expect (N.runBehavioralFrom
       (Profile.update (sig := N.behavioralSignature) targetProfile who
         ((targetProfile who).commit (restriction.site who site).1 action))
       (horizon - depth who (restriction.site who site))
       (restriction.history history.1)) (fun final => base final who) ≤ upper who := by
-    exact (FinDist.expect_mono (fun final _ => target_upper final who)).trans_eq
-      (expect_constant _ _)
+    exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) _
+      fun final _ => target_upper final who
   have netBound := sub_le_sub upperBound
     (mul_le_mul_of_nonneg_right (collection targetProfile who site action forbidden history)
       (deposit_nonnegative who))
   apply (netBound.trans (sufficient who)).trans
   exact (expect_constant _ (lower who)).symm.trans_le
-    (FinDist.expect_mono (fun final _ => source_lower final who))
+    (expect_mono (fun final _ => source_lower final who) (payoffIntegrable_constant _ _)
+      (payoffIntegrable_of_finite _ _))
 
 end GameTheory.Protocol.InformationModel.ActionRestriction

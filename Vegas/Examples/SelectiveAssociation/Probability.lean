@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SelectiveAssociation.Game
 import GameTheoryExtensions.Analysis.Protocol.InducedInformation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # The payoff gain from selective knowledge of a fair binding
 
@@ -24,7 +25,7 @@ theorem correctness_pair (guess : PublicationResult Bool) :
   | success value => cases value <;> norm_num [correctness, PublicationResult.isSuccess]
 
 theorem fair_guess_le_half (guesses : PMF (PublicationResult Bool)) :
-    expect (PMF.uniformOfFintype (α := Bool))
+    expect (PMF.uniformOfFintype Bool)
         (fun bit => expect guesses (correctness (.success bit))) ≤ 1 / 2 := by
   have bound : expect guesses (correctness (.success false)) +
       expect guesses (correctness (.success true)) ≤ 1 := by
@@ -34,23 +35,23 @@ theorem fair_guess_le_half (guesses : PMF (PublicationResult Bool)) :
     rw [correctness_pair]
     split <;> norm_num
   rw [expect_eq_sum]
-  simp only [FinDist.prob_uniformOfFintype, Fintype.card_bool, Nat.cast_ofNat,
+  simp only [toReal_uniformOfFintype_apply, Fintype.card_bool, Nat.cast_ofNat,
     Fintype.sum_bool]
   linarith
 
 theorem fair_guess_reference_value :
-    value (PMF.uniformOfFintype (α := Bool)) (fun _ => ())
+    value (PMF.uniformOfFintype Bool) (fun _ => ())
       (fun bit guess => correctness (.success bit) guess)
       (fun _ => PMF.pure (.success false)) = 1 / 2 := by
   rw [value_eq_expect, expect_eq_sum]
-  simp only [expect_pure, FinDist.prob_uniformOfFintype, Fintype.card_bool,
+  simp only [expect_pure, toReal_uniformOfFintype_apply, Fintype.card_bool,
     Nat.cast_ofNat, Fintype.sum_bool, correctness]
   norm_num
 
 /-- A constant correct-or-incorrect report is optimal for the observer with
 no signal. Failed reports remain in the observer's action menu. -/
 theorem fair_guess_reference_optimal :
-    IsBayesOptimal (PMF.uniformOfFintype (α := Bool)) (fun _ => ())
+    IsBayesOptimal (PMF.uniformOfFintype Bool) (fun _ => ())
       (fun bit guess => correctness (.success bit) guess)
       (fun _ => PMF.pure (.success false)) := by
   intro signal alternative
@@ -72,9 +73,9 @@ theorem selective_advantage (outcomes : Bool → PMF Results)
     (carol_bound : ∀ bit,
       expect (outcomes bit) (fun result => correctness (.success bit) result.carol) ≤
         expect guesses (correctness (.success bit))) :
-    1 / 2 ≤ expect ((PMF.uniformOfFintype (α := Bool)).bind outcomes)
+    1 / 2 ≤ expect ((PMF.uniformOfFintype Bool).bind outcomes)
       (fun result => utility result alice) := by
-  have bound := induced_advantage (PMF.uniformOfFintype (α := Bool)) (fun _ => ())
+  have bound := induced_advantage (PMF.uniformOfFintype Bool) (fun _ => ())
     (fun bit guess => correctness (.success bit) guess)
     (fun _ => PMF.pure (.success false)) (fun _ => guesses)
     fair_guess_reference_optimal outcomes (fun result => utility result alice)

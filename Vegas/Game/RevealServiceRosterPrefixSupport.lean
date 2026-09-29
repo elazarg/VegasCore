@@ -5,6 +5,7 @@ import Vegas.Game.RevealServiceRosterCheckpoint
 import Vegas.Game.ServiceRosterCounts
 import Vegas.Game.SourceStateKernel
 import Vegas.Game.SourceInformation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Every retained roster prefix represents a source prefix
 

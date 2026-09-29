@@ -3,6 +3,7 @@
 import Vegas.Game.BehavioralSubgame
 import Vegas.Expr.Simple
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Randomized source play with an infinite player universe
 
@@ -36,7 +37,7 @@ private def choice (bit : Bool) : PublicationResult Bool :=
   if bit then .success true else .failure
 
 private def lottery : PMF (PublicationResult Bool) :=
-  (PMF.uniformOfFintype (α := Bool)).map choice
+  (PMF.uniformOfFintype Bool).map choice
 
 def profile (who : Nat) : BehavioralPolicy who program :=
   (fun _ _ => lottery, (fun _ _ => PMF.pure true, PUnit.unit))

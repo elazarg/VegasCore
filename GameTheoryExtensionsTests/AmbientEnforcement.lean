@@ -3,6 +3,7 @@
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Protocol.BehavioralContinuation
 import GameTheory.Protocol.StateKernel
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Optional communication before an unchanged guessing game
 
@@ -41,7 +42,7 @@ def terminal : State → Prop
 
 def transition (ambient : Bool) (state : State) (joint : Bool → Option Bool) : PMF State :=
   match state with
-  | .initial => (PMF.uniformOfFintype (α := Bool)).map State.alice
+  | .initial => (PMF.uniformOfFintype Bool).map State.alice
   | .alice bit => PMF.pure (.bob bit (ambient && (joint false).getD false))
   | .bob bit disclosed => PMF.pure (.done bit disclosed ((joint true).getD false))
   | .done bit disclosed guess => PMF.pure (.done bit disclosed guess)
@@ -147,7 +148,7 @@ theorem bob_legal (ambient bit disclosed guess : Bool) :
 
 def aliceHistory (ambient bit : Bool) : (arena ambient).History :=
   (arena ambient).initHistory.extend (target := .alice bit) (initial_legal ambient) (by
-    change State.alice bit ∈ ((PMF.uniformOfFintype (α := Bool)).map State.alice).support
+    change State.alice bit ∈ ((PMF.uniformOfFintype Bool).map State.alice).support
     rw [PMF.support_map]
     exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
 
@@ -279,7 +280,7 @@ def choiceLaw {ambient : Bool} (profile : Profile (model ambient).behavioralSign
 
 def kernel {ambient : Bool} (profile : Profile (model ambient).behavioralSignature) :
     State → PMF State
-  | .initial => (PMF.uniformOfFintype (α := Bool)).map State.alice
+  | .initial => (PMF.uniformOfFintype Bool).map State.alice
   | .alice bit => (choiceLaw profile false (some (some bit))).map
       (fun disclose => .bob bit (ambient && disclose))
   | .bob bit disclosed => (choiceLaw profile true (some (if disclosed then some bit else none))).map
@@ -360,7 +361,7 @@ theorem run_alice {ambient : Bool} (profile : Profile (model ambient).behavioral
 theorem run_initial {ambient : Bool} (profile : Profile (model ambient).behavioralSignature) :
     ((model ambient).runSingleMoverBehavioralFrom (single ambient) profile 3
       (arena ambient).initHistory).map History.state =
-        (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+        (PMF.uniformOfFintype Bool).bind fun bit =>
           (choiceLaw profile false (some (some bit))).bind fun disclose =>
             resultLaw profile bit (ambient && disclose) := by
   rw [run_states]

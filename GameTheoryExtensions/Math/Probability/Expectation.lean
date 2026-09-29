@@ -55,6 +55,12 @@ theorem expect_ite_eq {α : Type*} [DecidableEq α] (μ : PMF α) (a : α) (c : 
   rw [tsum_eq_single a fun b different => by simp [Ne.symm different]]
   simp
 
+/-- A constant factor on the right leaves the expectation. -/
+theorem expect_mul_const {α : Type*} (μ : PMF α) (f : α → ℝ) (c : ℝ) :
+    expect μ (fun a => f a * c) = expect μ f * c := by
+  simp_rw [mul_comm _ c]
+  rw [expect_const_mul, mul_comm]
+
 /-- A finitely supported law's expectation is a finite sum over its support. -/
 theorem expect_eq_sum_of_support_finite {α : Type*} (μ : PMF α) (finite : μ.support.Finite)
     (f : α → ℝ) : expect μ f = ∑ a ∈ finite.toFinset, (μ a).toReal * f a := by

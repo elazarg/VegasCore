@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.RestrictedValues
 import Vegas.Examples.MonitoredGuessing.RestrictedSourceValues
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Joint initial-type, result and net-payoff preservation
 
@@ -120,7 +121,7 @@ theorem bob_finish_observation (table : PayoffTable)
 theorem finish_quiet (profile : Profile restrictedModel.behavioralSignature) :
     nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
       (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile) none =
-      (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+      (PMF.uniformOfFintype Bool).bind fun bit =>
         nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
           (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
           (some ⟨9, some bob, quietBob bit⟩) := by
@@ -139,7 +140,7 @@ theorem initialized_observation (table : PayoffTable)
     (profile : Profile restrictedModel.behavioralSignature) :
     ((restrictedModel.runBehavioral profile (2 * nativeHorizon + 1)).map History.state).map
       (nativePayoffObservation table) =
-      (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+      (PMF.uniformOfFintype Bool).bind fun bit =>
         (targetGuesses profile).bind fun guess =>
           (targetDisclosures profile bit guess).map (decisionObservation table bit guess) := by
   rw [InformationModel.runBehavioral,

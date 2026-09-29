@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SelectiveAssociation.NativeDeviation
 import Vegas.Pending.ReactiveAuthorization
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Readiness restrictions do not remove candidate certificates
 
@@ -153,7 +154,7 @@ def silentPlayers : Player → nativeApp.Policy := fun _ _ _ => PMF.pure ⟨none
 certificate is learned passively, before Alice's certificate-free inclusion. -/
 theorem silent_bob_prefix :
     nativeApp.runRounds nativeScheduler (nativeAliceProfile silentPlayers) 5 nativeRoot =
-      (PMF.uniformOfFintype (α := Bool)).map (fun bit => includedAfter bit ⟨none⟩) := by
+      (PMF.uniformOfFintype Bool).map (fun bit => includedAfter bit ⟨none⟩) := by
   have bridge := native_prefix_rounds (nativeAliceProfile silentPlayers)
     (nativePlan.take 5) (nativePlan.drop 5) (by simp)
   change nativeApp.runRounds nativeScheduler (nativeAliceProfile silentPlayers) 5 nativeRoot = _

@@ -3,6 +3,7 @@
 import Vegas.Source.SetupProtocolBehavioral
 import Vegas.Expr.Simple
 import GameTheory.Protocol.SubgamePerfect
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Private types do not create publicly identifiable subgames
 
@@ -36,7 +37,7 @@ def initial (bit : Bool) : State simpleExpr context := Env.cons bit (Env.empty _
 def setup : Setup (Player := Bool) (L := simpleExpr) where
   context := context
   namesNodup := by decide
-  initialLaw := (PMF.uniformOfFintype (α := Bool)).map initial
+  initialLaw := (PMF.uniformOfFintype Bool).map initial
   obligations := ∅
   program := program
   accounts := rfl
@@ -57,7 +58,7 @@ def drawHistory (bit : Bool) : game.History :=
     change afterSetup bit ∈ (setup.initialLaw.map _).support
     rw [PMF.support_map]
     refine ⟨initial bit, ?_, rfl⟩
-    rw [show setup.initialLaw = (PMF.uniformOfFintype (α := Bool)).map initial from rfl,
+    rw [show setup.initialLaw = (PMF.uniformOfFintype Bool).map initial from rfl,
       PMF.support_map]
     exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)⟩
 

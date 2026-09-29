@@ -3,6 +3,7 @@
 import Vegas.Source.SetupProtocolBehavioral
 import Vegas.Expr.Simple
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # A source game with a deferred rejecting guard
 
@@ -45,7 +46,7 @@ def initialState (bit : Bool) : State simpleExpr initialCtx :=
 def sourceSetup : Setup (Player := Bool) (L := simpleExpr) where
   context := initialCtx
   namesNodup := by decide
-  initialLaw := (PMF.uniformOfFintype (α := Bool)).map initialState
+  initialLaw := (PMF.uniformOfFintype Bool).map initialState
   obligations := {1, 2}
   program := sourceProgram
   accounts := rfl
@@ -89,10 +90,10 @@ theorem guess_publication (bit : Bool) (dummy : PublicationResult Bool)
 instance : Nonempty (PublicationResult Bool) := ⟨.failure⟩
 
 def uniformSourcePolicy (who : Bool) : BehavioralPolicy who sourceProgram :=
-  (fun _ _ => PMF.uniformOfFintype (α := PublicationResult Bool),
-    (fun _ _ => PMF.uniformOfFintype (α := Bool),
-      (fun _ _ => PMF.uniformOfFintype (α := Bool),
-        (fun _ _ => PMF.uniformOfFintype (α := Bool), PUnit.unit))))
+  (fun _ _ => PMF.uniformOfFintype (PublicationResult Bool),
+    (fun _ _ => PMF.uniformOfFintype Bool,
+      (fun _ _ => PMF.uniformOfFintype Bool,
+        (fun _ _ => PMF.uniformOfFintype Bool, PUnit.unit))))
 
 theorem uniformSourcePolicy_admitted (who : Bool) :
     (uniformSourcePolicy who).Admitted sourceProgram sourceAdmission := by

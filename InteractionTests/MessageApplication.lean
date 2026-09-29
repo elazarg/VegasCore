@@ -5,6 +5,7 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.MessageApplicationPolicies
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # A guarded message-application lottery
 
@@ -44,7 +45,7 @@ structure PublicState where
   outcome : Option Bool
   deriving DecidableEq
 
-def fair : PMF Bool := PMF.uniformOfFintype
+def fair : PMF Bool := (PMF.uniformOfFintype _)
 
 def privateStep (state : Application) (who : Principal) :
     PrivateCommand → Application

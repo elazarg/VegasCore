@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.ObservationAbstraction
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Relevant facts, irrelevant private detail, and unreachable states
 
@@ -16,7 +17,7 @@ namespace GameTheoryExtensionsTests.ObservationErasure
 
 open GameTheory.DecisionExperiment GameTheory.Math.Probability
 
-def twoBits : PMF (Bool × Bool) := PMF.uniformOfFintype
+def twoBits : PMF (Bool × Bool) := (PMF.uniformOfFintype _)
 
 theorem firstBit_determines : Determines twoBits Prod.fst Prod.fst := by
   intro first _ second _ same

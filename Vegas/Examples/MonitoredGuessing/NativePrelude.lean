@@ -6,6 +6,7 @@ import Vegas.Pending.ReactiveResponseObservation
 import Vegas.Pending.ReactiveStateInvariant
 import Interaction.MessageNetworkInvariant
 import Interaction.ReactiveRoundTrace
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # The monitored prefix preserves the initialized application
 

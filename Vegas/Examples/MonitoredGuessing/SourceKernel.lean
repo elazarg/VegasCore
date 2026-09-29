@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.MonitoredGuessing.Source
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Behavioral kernels and source policies of the guessing game -/
 
@@ -93,7 +94,7 @@ def sourceProfile (guess opening : PMF Bool) : Profile sourceModel.behavioralSig
     (sourcePolicy guess opening who) (sourcePolicy_admitted guess opening who)
 
 def uniformSourceProfile : Profile sourceModel.behavioralSignature :=
-  sourceProfile (PMF.uniformOfFintype (α := Bool)) (PMF.uniformOfFintype (α := Bool))
+  sourceProfile (PMF.uniformOfFintype Bool) (PMF.uniformOfFintype Bool)
 
 theorem uniformSourceProfile_full (who : Player) (info : sourceModel.InfoState who) :
     FullSupport (uniformSourceProfile who info) := by

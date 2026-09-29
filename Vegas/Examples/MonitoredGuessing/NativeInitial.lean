@@ -3,6 +3,7 @@
 import Vegas.Examples.MonitoredGuessing.NativeSanctions
 import Vegas.Examples.MonitoredGuessing.NativeSchedule
 import Interaction.ReactiveAssessmentEvaluation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Alice's private initial native decisions
 
@@ -219,7 +220,7 @@ theorem native_alice_initial_representation (control : nativeApp.Control)
   subst count
   have roots : nativeApp.roundsFrom nativeInitialLaw nativeScheduler
       nativeMenu.uniformResponses 0 =
-        (PMF.uniformOfFintype (α := Bool)).map nativeStart := by
+        (PMF.uniformOfFintype Bool).map nativeStart := by
     simp only [ReactiveApplication.roundsFrom, ReactiveApplication.runRounds, nativeInitialLaw,
       ← ← PMF.bind_pure_comp, Function.comp_def, PMF.map_comp]
     rfl

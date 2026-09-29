@@ -4,6 +4,7 @@ import Vegas.Source.ObservationRecall
 import Vegas.Source.SetupProtocolBehavioral
 import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Source decision depths and finite revelation histories
 
@@ -84,7 +85,7 @@ def uniformPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset Var
   | _, _, .sample .., impossible => impossible.elim
   | _, _, .commit .., impossible => impossible.elim
   | _, _, .reveal _ _ _ _ _ _ next, reveals =>
-      (fun _ _ => PMF.uniformOfFintype (α := Bool), uniformPolicy who next reveals)
+      (fun _ _ => PMF.uniformOfFintype Bool, uniformPolicy who next reveals)
 
 theorem uniformPolicy_admitted (who : Player) :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →

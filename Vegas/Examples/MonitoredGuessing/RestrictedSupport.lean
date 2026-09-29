@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.RestrictedInformation
 import Vegas.Examples.MonitoredGuessing.NativeHistory
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Exhaustive restricted receiver checkpoints
 
@@ -94,7 +95,7 @@ theorem reference_quiet_prefix (bit : Bool) :
 
 theorem reference_rounds_four :
     nativeApp.roundsFrom nativeInitialLaw nativeScheduler restrictedMenu.uniformResponses 4 =
-      (PMF.uniformOfFintype (α := Bool)).map (quietGranted) := by
+      (PMF.uniformOfFintype Bool).map (quietGranted) := by
   rw [ReactiveApplication.roundsFrom, nativeInitialLaw, PMF.bind_map]
   rw [← PMF.bind_pure_comp, Function.comp_def]
   apply bind_congr_on_support _

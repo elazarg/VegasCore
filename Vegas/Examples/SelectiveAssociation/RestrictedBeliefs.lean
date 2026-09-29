@@ -94,7 +94,7 @@ theorem tremble_bit_belief_ratio (weight : ℝ) (positive : 0 < weight)
     refine ⟨history.1, history.2, ?_⟩
     have reached := mixed.history_supported history.1.trace
     rwa [sameDepth history] at reached
-  have conditioned := model.bayesBelief_map_eq_condOn (tremble weight positive atMostOne).strategy
+  have conditioned := model.bayesBelief_map_eq_filter (tremble weight positive atMostOne).strategy
     who site depth sameDepth
     (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon
       scheduler who site)

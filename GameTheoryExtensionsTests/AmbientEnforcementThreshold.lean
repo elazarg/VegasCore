@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensionsTests.AmbientEnforcementEquilibrium
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Sharp collateral thresholds for preserving the guessing-game outcomes
 
@@ -111,15 +112,15 @@ theorem initialized_bit_score (deposit : ℝ)
   simp only [FinDist.expect_bind, resultLaw, expect_map]
   rw [expect_eq_sum, Fintype.sum_bool]
   cases bit <;>
-    simp [FinDist.prob_uniformOfFintype, Fintype.card_bool, retainedBitScore, retained, payoff]
+    simp [toReal_uniformOfFintype_apply, Fintype.card_bool, retainedBitScore, retained, payoff]
 
 theorem source_bit_score (guesses : PMF Bool) (bit : Bool) :
-    expect ((bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => guesses)).map some)
+    expect ((bindPairLaw (PMF.uniformOfFintype Bool) (fun _ => guesses)).map some)
         (retainedBitScore bit) =
       (1 / 2) * expect guesses (fun guess => if guess = bit then (1 : ℝ) else 0) := by
   rw [expect_map, FinDist.expect_product, expect_eq_sum, Fintype.sum_bool]
   cases bit <;>
-    simp [FinDist.prob_uniformOfFintype, Fintype.card_bool, retainedBitScore]
+    simp [toReal_uniformOfFintype_apply, Fintype.card_bool, retainedBitScore]
 
 /-- Necessary collateral for matching any source guessing law, even when the
 target strategies and beliefs are chosen freely and disclosure is not retained. -/
@@ -130,7 +131,7 @@ theorem retained_law_requires_deterrence {deposit : ℝ} (nonnegative : 0 ≤ de
     (matching :
       (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
         (arena true).initHistory).map History.state).map retained =
-      (bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => guesses)).map some) :
+      (bindPairLaw (PMF.uniformOfFintype Bool) (fun _ => guesses)).map some) :
     ∀ bit, 1 - deposit ≤ expect guesses (fun guess => if guess = bit then (1 : ℝ) else 0) := by
   intro bit
   have same := congrArg (fun law => expect law (retainedBitScore bit)) matching
@@ -147,7 +148,7 @@ theorem retained_law_implementable_iff {deposit : ℝ} (nonnegative : 0 ≤ depo
       isEquilibrium deposit assessment ∧
         (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
           (arena true).initHistory).map History.state).map retained =
-        (bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => guesses)).map some) ↔
+        (bindPairLaw (PMF.uniformOfFintype Bool) (fun _ => guesses)).map some) ↔
       ∀ bit, 1 - deposit ≤ expect guesses (correct bit) := by
   constructor
   · rintro ⟨assessment, equilibrium, matching⟩
@@ -165,7 +166,7 @@ theorem fair_law_implementable_iff {deposit : ℝ} (nonnegative : 0 ≤ deposit)
       isEquilibrium deposit assessment ∧
         (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
           (arena true).initHistory).map History.state).map retained =
-        (bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => (PMF.uniformOfFintype (α := Bool)))).map some) ↔
+        (bindPairLaw (PMF.uniformOfFintype Bool) (fun _ => (PMF.uniformOfFintype Bool))).map some) ↔
       1 / 2 ≤ deposit := by
   rw [retained_law_implementable_iff nonnegative]
   constructor
@@ -184,7 +185,7 @@ theorem all_source_laws_implementable_iff {deposit : ℝ} (nonnegative : 0 ≤ d
       isEquilibrium deposit assessment ∧
         (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
           (arena true).initHistory).map History.state).map retained =
-        (bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => guesses)).map some) ↔
+        (bindPairLaw (PMF.uniformOfFintype Bool) (fun _ => guesses)).map some) ↔
       1 ≤ deposit := by
   constructor
   · intro implements
@@ -206,7 +207,7 @@ theorem no_unpenalized_fair_law :
       isEquilibrium 0 assessment ∧
         (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
           (arena true).initHistory).map History.state).map retained =
-        (bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => (PMF.uniformOfFintype (α := Bool)))).map some := by
+        (bindPairLaw (PMF.uniformOfFintype Bool) (fun _ => (PMF.uniformOfFintype Bool))).map some := by
   rw [fair_law_implementable_iff (by norm_num)]
   norm_num
 

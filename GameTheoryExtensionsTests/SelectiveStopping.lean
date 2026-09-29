@@ -3,6 +3,7 @@
 import GameTheory.Math.Probability.SelectiveStopping
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Finite regressions for information-fiber stopping bounds -/
 
@@ -12,7 +13,7 @@ namespace GameTheoryExtensionsTests.SelectiveStopping
 
 open GameTheory.Math.Probability
 
-def law : PMF (Fin 3) := FinDist.uniformFin 3
+def law : PMF (Fin 3) := PMF.uniformOfFintype (Fin 3)
 
 def stopped (state : Fin 3) : Bool := decide (state = 0 ∨ state = 1)
 
@@ -69,7 +70,7 @@ theorem stopped_fiber_comparison (observed : Fin 3)
   rw [heq]
   rw [htarget, hsource]
   unfold law
-  rw [FinDist.expect_uniformFin, FinDist.expect_uniformFin]
+  rw [expect_uniformOfFintype, expect_uniformOfFintype]
   have hne : (2 : Fin 3) ≠ 1 := by decide
   norm_num [Fin.sum_univ_succ, hne]
 
@@ -92,7 +93,7 @@ theorem randomized_positive_margin_bound :
       expect law targetValue + margin * ((law.map stopped) true).toReal ≤
         expect law sourceValue := by
   refine ⟨by norm_num [margin], ?_, ?_⟩
-  · rw [toReal_map_apply, law, FinDist.expect_uniformFin]
+  · rw [toReal_map_apply, law, expect_uniformOfFintype]
     norm_num [stopped, Fin.sum_univ_succ]
     exact ⟨0, by simp⟩
   · apply FinDist.stopping_information_fiber_bound law stopped information
@@ -111,17 +112,17 @@ private def gapTarget (state : Fin 2) : ℝ := if state = 0 then 0 else 3
 on an event of probability one half raises expectation from one to three halves.
 This is a finite-law regression, not a native-runtime optimality claim. -/
 theorem event_gap_sharp :
-    let pair := FinDist.uniformFin 2
+    let pair := PMF.uniformOfFintype (Fin 2)
     ((pair.map gapEvent) true).toReal = 1 / 2 ∧
       expect pair gapSource = 1 ∧ expect pair gapTarget = 3 / 2 ∧
       expect pair gapTarget ≤ expect pair gapSource + 1 * ((pair.map gapEvent) true).toReal := by
   dsimp only
   refine ⟨?_, ?_, ?_, ?_⟩
-  · rw [toReal_map_apply, FinDist.expect_uniformFin]
+  · rw [toReal_map_apply, expect_uniformOfFintype]
     norm_num [gapEvent, Fin.sum_univ_succ]
-  · rw [FinDist.expect_uniformFin]
+  · rw [expect_uniformOfFintype]
     norm_num [gapSource, Fin.sum_univ_succ]
-  · rw [FinDist.expect_uniformFin]
+  · rw [expect_uniformOfFintype]
     norm_num [gapTarget, Fin.sum_univ_succ]
   · rw [FinDist.prob_map_eq_probOf_preimage_singleton]
     apply FinDist.expect_le_add_event_gap

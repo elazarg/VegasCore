@@ -3,6 +3,7 @@
 import Vegas.Examples.SelectiveAssociation.NativeDeviationPayoff
 import Vegas.Examples.SelectiveAssociation.ResponseExecution
 import Vegas.Pending.ReactiveAssociationPersistence
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Certified bindings along the actual unilateral deviation -/
 

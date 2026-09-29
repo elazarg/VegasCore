@@ -51,12 +51,12 @@ theorem decode_uniformPolicy (who : Principal) (past : List app.PlayerEntry)
     ⟨⟨(menu.nonempty who past view).choose, (menu.nonempty who past view).choose_spec⟩⟩
   let equiv := menu.responseChoiceEquiv initial horizon scheduler who past view
   have uniform : (PMF.uniformOfFintype choices).map equiv =
-      PMF.uniformOfFintype := by
+      (PMF.uniformOfFintype _) := by
     apply pmf_ext_toReal
     intro action
     obtain ⟨before, rfl⟩ := equiv.surjective action
     rw [FinDist.prob_map_of_injective equiv equiv.injective]
-    simp only [FinDist.prob_uniformOfFintype, Fintype.card_congr equiv]
+    simp only [toReal_uniformOfFintype_apply, Fintype.card_congr equiv]
   simp only [decodePolicy, embedPolicy, uniformPolicy, PMF.map_comp]
   change (PMF.uniformOfFintype choices).map
     (fun choice => (equiv choice).1) = _

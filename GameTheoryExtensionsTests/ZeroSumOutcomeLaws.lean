@@ -50,7 +50,7 @@ theorem expectedPayoff (row col : PMF Action) :
   change expect (form.mixed.play (MatrixGame.mixedProfile row col))
     (fun result => matrix result.1 result.2) = _
   rw [mixed_play, FinDist.expect_product]
-  simp only [matrix, FinDist.expect_smul, FinDist.expect_mul_const]
+  simp only [matrix, FinDist.expect_smul, expect_mul_const]
 
 @[simp] theorem signs_mean : expect signs amount = 0 := by
   norm_num [signs, FinDist.expect_mix, amount]

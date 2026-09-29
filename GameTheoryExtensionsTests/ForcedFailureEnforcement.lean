@@ -2,6 +2,7 @@
 
 import GameTheoryExtensionsTests.AmbientEnforcementThreshold
 import GameTheoryExtensions.Analysis.FailureEnforcement
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Why forcing future source actions to fail is not a universal punishment
 
@@ -41,13 +42,13 @@ theorem exclusion_without_source_actions_insufficient :
           (((model false).runSingleMoverBehavioralFrom (single false) source.strategy 3
             (arena false).initHistory).map History.state).map retained := by
   refine ⟨source_no_alice_site,
-    sourceAssessment (sourceProfile (PMF.uniformOfFintype (α := Bool))),
+    sourceAssessment (sourceProfile (PMF.uniformOfFintype Bool)),
     source_sequential_equilibrium _, ?_⟩
   rintro ⟨target, equilibrium, matching⟩
   apply no_unpenalized_fair_law
   refine ⟨target, equilibrium, ?_⟩
   change _ = (((model false).runSingleMoverBehavioralFrom (single false)
-    (sourceProfile (PMF.uniformOfFintype (α := Bool))) 3
+    (sourceProfile (PMF.uniformOfFintype Bool)) 3
       (arena false).initHistory).map History.state).map retained at matching
   rwa [source_initialized_law, source_profile_guess] at matching
 
@@ -62,9 +63,9 @@ theorem abort_avoids_obligation :
 half-probability detection, if a service actually enforces this caught payoff.
 This is the continuation calculation, not an implementation of forced failure. -/
 theorem failed_opening_loss_suffices :
-    expect (Enforcement.caughtContinuation (PMF.uniformOfFintype (α := Bool)) (-4) 1) id ≤
+    expect (Enforcement.caughtContinuation (PMF.uniformOfFintype Bool) (-4) 1) id ≤
       (0 : ℝ) := by
-  rw [Enforcement.caught_continuation_value, FinDist.prob_uniformOfFintype]
+  rw [Enforcement.caught_continuation_value, toReal_uniformOfFintype_apply]
   norm_num
 
 end GameTheoryExtensionsTests.ForcedFailureEnforcement

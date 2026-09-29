@@ -4,6 +4,7 @@ import Vegas.Examples.MonitoredGuessing.NativeResponses
 import Interaction.ReactiveRoundTrace
 import Interaction.ReactiveResponseEvaluation
 import Interaction.ReactiveResponseKernel
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Initialized prescribed execution of the monitored guessing game
 
@@ -166,7 +167,7 @@ private theorem control_step_player (players : Player → nativeApp.Policy)
 
 private theorem quiet_step_initial (players : Player → nativeApp.Policy) :
     nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players none =
-      (PMF.uniformOfFintype (α := Bool)).map
+      (PMF.uniformOfFintype Bool).map
         (fun bit => some ⟨14, none, nativeStart bit⟩) := by
   simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_none,
     ReactiveApplication.transition, nativeInitialLaw, PMF.map_comp]
@@ -235,7 +236,7 @@ theorem quiet_bob_control_law (players : Player → nativeApp.Policy)
     (fun distribution => distribution.bind
       (nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players))^[8]
         (PMF.pure none) =
-      (PMF.uniformOfFintype (α := Bool)).map
+      (PMF.uniformOfFintype Bool).map
         (fun bit => some ⟨9, some bob, quietBob bit⟩) := by
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, quiet_step_initial, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, quiet_step_alice,
@@ -247,7 +248,7 @@ theorem quiet_bob_history_law (profile : Profile nativeModel.behavioralSignature
     (alicePolicy : profile alice = nativeAliceBehavior)
     (watcherPolicy : profile watcher = nativeWatcherBehavior) :
     (nativeModel.runBehavioral profile 8).map History.state =
-      (PMF.uniformOfFintype (α := Bool)).map
+      (PMF.uniformOfFintype Bool).map
         (fun bit => some ⟨9, some bob, quietBob bit⟩) := by
   rw [InformationModel.runBehavioral, nativeMenu.run_map_controlStep]
   apply quiet_bob_control_law

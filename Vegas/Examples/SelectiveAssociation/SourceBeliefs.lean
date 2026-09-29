@@ -107,7 +107,7 @@ theorem tremble_bit_belief_eq (Claim : Type) [Fintype Claim] (defaultClaim : Cla
     have mixed := tremble_fullyMixed Claim defaultClaim weight positive atMostOne
     have reached := mixed.history_supported history.1.trace
     rwa [sameDepth history] at reached
-  have conditioned := (model Claim).bayesBelief_map_eq_condOn
+  have conditioned := (model Claim).bayesBelief_map_eq_filter
     (tremble Claim defaultClaim weight positive atMostOne).strategy who site depth sameDepth
     ((menu Claim).decisionInformationAntichain (PMF.pure initial)
       horizon (scheduler Claim) who site)

@@ -31,7 +31,7 @@ private theorem expect_binary {α : Type*} (law : PMF α) (predicate : Set α)
   have point (value : α) : (if value ∈ predicate then first else second) =
       (if value ∈ predicate then 1 else 0) * (first - second) + second := by
     split <;> ring
-  simp only [point, FinDist.expect_add, FinDist.expect_mul_const,
+  simp only [point, FinDist.expect_add, expect_mul_const,
     expect_indicator, expect_constant]
   ring
 

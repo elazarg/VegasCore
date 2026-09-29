@@ -3,6 +3,7 @@
 import Vegas.Examples.MonitoredGuessing.Payoffs
 import Vegas.Examples.MonitoredGuessing.NativePayoff
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Native settlement readout for the source return-table family
 
@@ -49,7 +50,7 @@ theorem native_initialized_table_payoffs (table : PayoffTable) (charge : ℝ)
       (fun history => ((nativeObservation history.state).1,
         (nativeObservation history.state).2.1,
         fun who => nativeTableUtility table charge who history.state)) =
-      (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
+      (PMF.uniformOfFintype Bool).bind (fun bit =>
         guesses.map (fun guess => (bit, ⟨.success bit, guessResult guess⟩,
           fun who => (table ⟨.success bit, guessResult guess⟩ who : ℝ)))) := by
   have law := native_initialized_observation profile guesses alicePolicy watcherPolicy atQuiet

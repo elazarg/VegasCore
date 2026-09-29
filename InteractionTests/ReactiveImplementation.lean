@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveImplementation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Private state stays outside the reactive game
 
@@ -32,7 +33,7 @@ private abbrev app : ReactiveApplication Bool where
 private def send (bit : Bool) : app.Action := ⟨some (.submit bit)⟩
 
 private def retainedBit : app.Implementation Bool where
-  initial := PMF.uniformOfFintype
+  initial := (PMF.uniformOfFintype _)
   respond bit _ := PMF.pure (send bit, bit)
 
 private def scheduler : app.Scheduler := fun _ _ => PMF.pure (.activate false)
@@ -61,10 +62,10 @@ theorem private_two (bit : Bool) :
 /-- Behavioral realization retains the correlation between the two packets. -/
 theorem behavioral_two :
     app.runRounds scheduler (Function.update players false retainedBit.policy) 2 initial =
-      (PMF.uniformOfFintype (α := Bool)).map twice := by
+      (PMF.uniformOfFintype Bool).map twice := by
   unfold initial
   rw [← retainedBit.realize_initial false players scheduler 2 ()]
-  change (PMF.uniformOfFintype (α := Bool)).bind _ = _
+  change (PMF.uniformOfFintype Bool).bind _ = _
   rw [← PMF.bind_pure_comp, Function.comp_def]
   apply bind_congr_on_support _
   intro bit _

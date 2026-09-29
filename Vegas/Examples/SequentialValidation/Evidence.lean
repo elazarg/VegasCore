@@ -5,6 +5,7 @@ import Vegas.Pending.ReactiveOpeningEvidence
 import Vegas.Pending.ReactiveStateInvariant
 import Interaction.ReactiveResponseMenu
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # An accepted opening identifies the type throughout an information set
 
@@ -24,7 +25,7 @@ open GameTheory.Protocol GameTheory.Math.Probability
 def typeInput : nativeGraph.InputId := ⟨0, by decide⟩
 
 def nativeInitialLaw : PMF (EventGraphRuntime.State nativeGraph) :=
-  (PMF.uniformOfFintype (α := Bool)).map nativeStart
+  (PMF.uniformOfFintype Bool).map nativeStart
 
 variable (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket nativeGraph))
 

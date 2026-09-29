@@ -2,6 +2,7 @@
 
 import Vegas.Examples.ReactiveAssociationEvidence
 import Vegas.Examples.SelectiveAssociation.Probability
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Removing passive observation from the native selective-association service
 
@@ -104,11 +105,11 @@ theorem bob_response_same (policy : app.Policy) :
 
 def firstPolicy (players : Player → app.Policy) : Player → app.Policy :=
   Function.update players alice fun _ _ =>
-    (PMF.uniformOfFintype (α := Bool)).map certifiedOffer
+    (PMF.uniformOfFintype Bool).map certifiedOffer
 
 theorem first_round (players : Player → app.Policy) :
     nativeRuntime.interactionStep leaks (firstPolicy players) network (.player alice) initial =
-      (PMF.uniformOfFintype (α := Bool)).map first := by
+      (PMF.uniformOfFintype Bool).map first := by
   simp only [interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, activation_law, PMF.pure_bind,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke,
@@ -129,7 +130,7 @@ one Bob response distribution, independent of Alice's private bit. -/
 theorem two_rounds (players : Player → app.Policy) :
     nativeRuntime.runInteractionPlan leaks (firstPolicy players) network
       (nativePlan.take 2) initial =
-      (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+      (PMF.uniformOfFintype Bool).bind fun bit =>
         (players bob ((bobInput false).recall bob) ((bobInput false).observe app bob)).map
           ((bobInput bit).respond app bob) := by
   change nativeRuntime.runInteractionPlan leaks (firstPolicy players) network
@@ -148,7 +149,7 @@ of the private fair bit with accuracy above one half. Failure-valued reports
 are included. This is a prefix information bound, not an equilibrium claim. -/
 theorem first_response_guess_bound (policy : app.Policy)
     (report : app.Action → PublicationResult Bool) :
-    expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+    expect (PMF.uniformOfFintype Bool) (fun bit =>
       expect (policy ((bobInput bit).recall bob) ((bobInput bit).observe app bob))
         (fun response => correctness (.success bit) (report response))) ≤ 1 / 2 := by
   have constant (bit : Bool) :

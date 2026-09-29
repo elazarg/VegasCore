@@ -5,6 +5,7 @@ import Vegas.Examples.SelectiveAssociation.SourcePreludeControls
 import Vegas.Examples.SelectiveAssociation.SourceAliceValues
 import Vegas.Examples.SelectiveAssociation.SourceBobPrelude
 import Vegas.Examples.SelectiveAssociation.SourceInitialLaw
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # A sequential equilibrium of the named-evidence source interface
 
@@ -192,7 +193,7 @@ theorem exists_sequentialEquilibrium (Claim : Type) [Fintype Claim] (defaultClai
         (fun who site => assessment.continuationContext site (payoff who) (2 * horizon + 1)) ∧
       (((model Claim).runBehavioral assessment.strategy (2 * horizon + 1)).map
         (fun history => protocolResults history.state)) =
-        (PMF.uniformOfFintype (α := Bool)).map (fun bit =>
+        (PMF.uniformOfFintype Bool).map (fun bit =>
           (⟨.success bit, .success false, .success false⟩ : Results)) := by
   obtain ⟨assessment, strategy, consistent, fair⟩ :=
     exists_consistent_fair_assessment Claim defaultClaim

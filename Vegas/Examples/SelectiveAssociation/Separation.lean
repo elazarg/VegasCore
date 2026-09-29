@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SelectiveAssociation.SourceEquilibrium
 import Vegas.Examples.SelectiveAssociation.InitialRationality
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Sequential-equilibrium separation for accepted named evidence
 
@@ -62,7 +63,7 @@ theorem native_rational_public_law_ne_source (Claim : Type) [Fintype Claim] (def
     (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)
     rational alice nativeInitialSite native_initial_history_value nativeAliceBehavior
     (fun history => nativePublicResult history.state) (fun result => utility result alice)
-    native_public_law_value (PMF.uniformOfFintype (α := Bool)) (fun _ => ())
+    native_public_law_value (PMF.uniformOfFintype Bool) (fun _ => ())
     (fun bit guess => correctness (.success bit) guess)
     (fun _ => PMF.pure (.success false))
     (fun _ => nativeCarolGuessLaw (nativeAliceProfile players)) fair_guess_reference_optimal

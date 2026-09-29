@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.MonitoredGuessing.SourceInformation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Exact continuation utilities of the source guessing game -/
 
@@ -144,7 +145,7 @@ theorem source_bob_context (assessment : sourceModel.BehavioralAssessment)
       by
         apply expect_congr_on_support
         intro guess _
-        simp only [expect_eq_sum, FinDist.prob_uniformOfFintype,
+        simp only [expect_eq_sum, toReal_uniformOfFintype_apply,
           Fintype.card_bool, Fintype.sum_bool]
         cases guess <;> norm_num
     _ = _ := expect_constant _ _

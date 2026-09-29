@@ -2,6 +2,7 @@
 
 import GameTheoryExtensionsTests.AmbientEnforcementAssessment
 import GameTheoryExtensionsTests.AmbientEnforcementSource
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Sequential implementation with a penalty on ambient communication
 
@@ -108,12 +109,12 @@ theorem universal_deposit_sequential_equilibrium (guesses : PMF Bool) (deposit :
   linarith
 
 theorem fair_correct (bit : Bool) :
-    expect (PMF.uniformOfFintype (α := Bool)) (correct bit) = 1 / 2 := by
+    expect (PMF.uniformOfFintype Bool) (correct bit) = 1 / 2 := by
   cases bit <;>
-    norm_num [correct, expect_eq_sum, Fintype.sum_bool, FinDist.prob_uniformOfFintype]
+    norm_num [correct, expect_eq_sum, Fintype.sum_bool, toReal_uniformOfFintype_apply]
 
 theorem fair_sequential_equilibrium (deposit : ℝ) (enforced : 1 / 2 ≤ deposit) :
-    isEquilibrium deposit (targetAssessment (silentProfile PMF.uniformOfFintype)) := by
+    isEquilibrium deposit (targetAssessment (silentProfile (PMF.uniformOfFintype _))) := by
   apply target_sequential_equilibrium
   intro bit
   rw [fair_correct]
@@ -122,7 +123,7 @@ theorem fair_sequential_equilibrium (deposit : ℝ) (enforced : 1 / 2 ≤ deposi
 theorem target_initialized_law (guesses : PMF Bool) :
     (((model true).runSingleMoverBehavioralFrom (single true) (silentProfile guesses) 3
       (arena true).initHistory).map History.state).map retained =
-        (PMF.uniformOfFintype (α := Bool)).bind
+        (PMF.uniformOfFintype Bool).bind
           (fun bit => guesses.map (fun guess => some (bit, guess))) := by
   rw [run_initial]
   simp [choiceLaw, silentProfile, choose, decisionInfo, resultLaw, bobRespond,
@@ -153,7 +154,7 @@ theorem compile_initialized_law (profile : Profile (model false).behavioralSigna
 theorem target_initialized_state_law (guesses : PMF Bool) :
     ((model true).runSingleMoverBehavioralFrom (single true) (silentProfile guesses) 3
       (arena true).initHistory).map History.state =
-        (PMF.uniformOfFintype (α := Bool)).bind
+        (PMF.uniformOfFintype Bool).bind
           (fun bit => guesses.map (fun guess => State.done bit false guess)) := by
   rw [run_initial]
   simp [choiceLaw, silentProfile, choose, decisionInfo, resultLaw, bobRespond,
@@ -162,7 +163,7 @@ theorem target_initialized_state_law (guesses : PMF Bool) :
 theorem source_initialized_state_law (profile : Profile (model false).behavioralSignature) :
     ((model false).runSingleMoverBehavioralFrom (single false) profile 3
       (arena false).initHistory).map History.state =
-        (PMF.uniformOfFintype (α := Bool)).bind
+        (PMF.uniformOfFintype Bool).bind
           (fun bit => (choiceLaw profile true (some none)).map
             (fun guess => State.done bit false guess)) := by
   rw [run_initial]

@@ -2,6 +2,7 @@
 
 import Interaction.ReactiveResponseMenu
 import Interaction.ReactiveRounds
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Legal histories occur in the round evaluator
 

@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SelectiveAssociation.Carol
 import Interaction.ReactiveMenuPolicy
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # A legal native strategy for selective disclosure
 
@@ -50,7 +51,7 @@ theorem alice_associate_available (past : List nativeApp.PlayerEntry)
 
 def nativeAlicePolicy : nativeApp.Policy := fun past view =>
   match view.application.publicView.serviceGrant with
-  | none => if past = [] then (PMF.uniformOfFintype (α := Bool)).map aliceCertifiedOffer
+  | none => if past = [] then (PMF.uniformOfFintype Bool).map aliceCertifiedOffer
       else PMF.pure ⟨none⟩
   | some event =>
       if event = aliceBinding then PMF.pure aliceAssociate
@@ -95,7 +96,7 @@ def nativeAliceBehavior : nativeModel.BehavioralPolicy alice :=
 
 theorem native_alice_initial :
     nativeAlicePolicy (activatedInitial.recall alice) (activatedInitial.observe nativeApp alice) =
-      (PMF.uniformOfFintype (α := Bool)).map aliceCertifiedOffer := rfl
+      (PMF.uniformOfFintype Bool).map aliceCertifiedOffer := rfl
 
 theorem native_alice_association (execution : nativeApp.Execution) :
     nativeAlicePolicy ((beforeOffer execution).recall alice)
@@ -111,7 +112,7 @@ theorem native_alice_opening (past : List nativeApp.PlayerEntry) (view : nativeA
 
 theorem native_alice_first_round (players : Player → nativeApp.Policy) :
     nativeRuntime.interactionStep nativeLeaks (nativeAliceProfile players) nativeNetwork
-      (.player alice) initial = (PMF.uniformOfFintype (α := Bool)).map first := by
+      (.player alice) initial = (PMF.uniformOfFintype Bool).map first := by
   simp only [interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, initial_activation, PMF.pure_bind,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke,
@@ -214,7 +215,7 @@ theorem native_alice_after_bob (players : Player → nativeApp.Policy)
 input is exactly the concrete selectively informed prefix. -/
 theorem native_alice_nine_rounds (players : Player → nativeApp.Policy) :
     nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 9 nativeRoot =
-      (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+      (PMF.uniformOfFintype Bool).bind fun bit =>
         (players bob ((observed bit).recall bob) ((observed bit).observe nativeApp bob)).bind
           fun response => (players carol ((carolSite bit response).recall carol)
             ((carolSite bit response).observe nativeApp carol)).map
@@ -237,7 +238,7 @@ theorem native_alice_nine_rounds (players : Player → nativeApp.Policy) :
 continuation of the legal Alice deviation, with both opponents unrestricted. -/
 theorem native_alice_thirteen_rounds (players : Player → nativeApp.Policy) :
     nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 13 nativeRoot =
-      (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+      (PMF.uniformOfFintype Bool).bind fun bit =>
         (players bob ((observed bit).recall bob) ((observed bit).observe nativeApp bob)).bind
           (nativeCarolPlay (nativeAliceProfile players) bit) := by
   change nativeApp.runRounds nativeScheduler (nativeAliceProfile players) (9 + 4) nativeRoot = _
@@ -282,7 +283,7 @@ This is her genuine decision input, with the exact private-leak rule intact. -/
 theorem native_alice_carol_activation (players : Player → nativeApp.Policy) :
     (nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 8 nativeRoot).bind
         (fun prior => prior.environmentStep nativeApp (.activate carol)) =
-      (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+      (PMF.uniformOfFintype Bool).bind fun bit =>
         (players bob ((observed bit).recall bob) ((observed bit).observe nativeApp bob)).map
           (carolSite bit) := by
   have bridge := native_prefix_rounds (nativeAliceProfile players) (nativePlan.take 8)

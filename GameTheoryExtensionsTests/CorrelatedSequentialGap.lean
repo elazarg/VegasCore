@@ -4,6 +4,7 @@ import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheory.Protocol.StateKernel
 import GameTheory.Core.Equilibrium
 import GameTheory.Core.Utility
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Normal-form correlation does not record credible continuations
 
@@ -115,7 +116,7 @@ instance (sequential who : Bool) (state : State) :
   ⟨((canonical sequential fun _ => false) who state).support_nonempty.choose⟩
 
 def reference (sequential : Bool) : (model sequential).BehavioralAssessment :=
-  .ofStrategy (fun _ _ => PMF.uniformOfFintype)
+  .ofStrategy (fun _ _ => (PMF.uniformOfFintype _))
 
 theorem reference_mixed (sequential : Bool) : (reference sequential).IsFullyMixed := by
   intro who site choice

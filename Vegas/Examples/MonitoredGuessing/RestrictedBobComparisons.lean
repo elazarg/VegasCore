@@ -5,6 +5,7 @@ import Vegas.Examples.MonitoredGuessing.RestrictedValues
 import Vegas.Examples.MonitoredGuessing.RestrictedClock
 import Vegas.Examples.MonitoredGuessing.BobDeterrence
 import Vegas.Examples.MonitoredGuessing.BobIgnored
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Receiver comparisons for the generic action-restriction theorem
 

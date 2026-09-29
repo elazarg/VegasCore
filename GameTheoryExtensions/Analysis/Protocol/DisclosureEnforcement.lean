@@ -3,6 +3,7 @@
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Protocol.BehavioralContinuation
 import GameTheory.Protocol.StateKernel
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Finite private-state decisions with optional authenticated disclosure
 
@@ -473,14 +474,14 @@ instance (who : Bool) : Nonempty (PlayerAction Decision who) := ⟨fallback who�
 /-- A finite fully mixed reference; the sender trembles equally at all private states. -/
 def reference [Fintype Decision] (prior : PMF Secret) (ambient : Bool) :
     (model (Decision := Decision) prior ambient).BehavioralAssessment :=
-  .ofStrategy fun who info => (PMF.uniformOfFintype (α := PlayerAction Decision who)).bind
+  .ofStrategy fun who info => (PMF.uniformOfFintype (PlayerAction Decision who)).bind
     (fun value => choose prior ambient who value info)
 
 theorem reference_full [Fintype Decision] (prior : PMF Secret) (ambient : Bool) :
     (reference (Decision := Decision) prior ambient).IsFullyMixed := by
   classical
   intro who site choice
-  change choice ∈ ((PMF.uniformOfFintype (α := PlayerAction Decision who)).bind
+  change choice ∈ ((PMF.uniformOfFintype (PlayerAction Decision who)).bind
     (fun value => choose prior ambient who value site.1)).support
   simp only [PMF.support_bind, Set.mem_iUnion]
   refine ⟨choice.val.getD (fallback who), PMF.mem_support_uniformOfFintype _, ?_⟩

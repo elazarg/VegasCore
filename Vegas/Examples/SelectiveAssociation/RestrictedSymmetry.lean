@@ -3,6 +3,7 @@
 import Vegas.Examples.SelectiveAssociation.Restricted
 import Interaction.ReactiveRoundReachability
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Flipping one hidden native candidate
 
@@ -543,12 +544,12 @@ theorem uniform (selected : Handle nativeGraph) (who : Player)
   let : Nonempty choices :=
     ⟨⟨(menu.nonempty who past view).choose, (menu.nonempty who past view).choose_spec⟩⟩
   have symmetric : (PMF.uniformOfFintype choices).map
-      (responseEquiv selected who past view) = PMF.uniformOfFintype := by
+      (responseEquiv selected who past view) = (PMF.uniformOfFintype _) := by
     apply pmf_ext_toReal
     intro response
     obtain ⟨before, rfl⟩ := (responseEquiv selected who past view).surjective response
     rw [FinDist.prob_map_of_injective _ (responseEquiv selected who past view).injective]
-    simp only [FinDist.prob_uniformOfFintype]
+    simp only [toReal_uniformOfFintype_apply]
   change ((PMF.uniformOfFintype choices).map Subtype.val).map (action selected) = _
   rw [PMF.map_comp]
   calc

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensionsTests.OffPathDisclosure
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Disclosure after a deviation creates additional SPE obligations
 
@@ -29,7 +30,7 @@ def choiceLaw {disclose : Bool} (profile : Profile (model disclose).behavioralSi
 
 def kernel {disclose : Bool} (profile : Profile (model disclose).behavioralSignature) :
     State → PMF State
-  | .initial => (PMF.uniformOfFintype (α := Bool)).map State.alice
+  | .initial => (PMF.uniformOfFintype Bool).map State.alice
   | .alice bit => (choiceLaw profile false (some bit)).map
       (fun ask => if ask then .bob bit else .done bit none)
   | .bob bit => (choiceLaw profile true (some (if disclose then bit else false))).map
@@ -100,7 +101,7 @@ theorem run_bob {disclose : Bool}
 theorem run_initial {disclose : Bool}
     (profile : Profile (model disclose).behavioralSignature) :
     ((model disclose).runSingleMoverBehavioralFrom single profile 3 arena.initHistory).map
-      History.state = (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+      History.state = (PMF.uniformOfFintype Bool).bind fun bit =>
         (choiceLaw profile false (some bit)).bind fun ask =>
           if ask then resultLaw profile bit else PMF.pure (.done bit none) := by
   rw [run_states]
@@ -122,7 +123,7 @@ theorem value_bob {disclose : Bool}
 theorem value_initial {disclose : Bool}
     (profile : Profile (model disclose).behavioralSignature) (u : State → ℝ) :
     expect ((model disclose).runSingleMoverBehavioralFrom single profile 3 arena.initHistory)
-      (fun h => u h.state) = expect ((PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+      (fun h => u h.state) = expect ((PMF.uniformOfFintype Bool).bind fun bit =>
         (choiceLaw profile false (some bit)).bind fun ask =>
           if ask then resultLaw profile bit else PMF.pure (.done bit none)) u := by
   have values := congrArg (fun law => expect law u) (run_initial profile)

@@ -69,7 +69,7 @@ theorem stateBelief_eq_conditional_prefix
     rw [PMF.support_map]
     refine ⟨history.1, supported, ?_⟩
     exact (setup.protocol_info admission who history.1.trace).symm.trans history.2
-  have conditioned := M.bayesBelief_map_eq_condOn assessment.strategy who site depth clock
+  have conditioned := M.bayesBelief_map_eq_filter assessment.strategy who site depth clock
     (setup.decision_antichain admission who site) positive meets
   rw [← belief] at conditioned
   have fiber : prefixLaw.filter {h | M.infoOf who h.trace = site.1} meets =

@@ -2,6 +2,7 @@
 
 import GameTheory.Math.Probability.Mixture
 import Mathlib.Probability.Distributions.Uniform
+import GameTheory.Math.Probability.Expectation
 
 /-! # Uniform laws on finite sets -/
 
@@ -12,6 +13,18 @@ open scoped ENNReal
 namespace GameTheory.Math.Probability
 
 variable {α : Type*}
+
+/-- Every point of a finite nonempty carrier has real mass one over its size. -/
+theorem toReal_uniformOfFintype_apply [Fintype α] [Nonempty α] (a : α) :
+    ((PMF.uniformOfFintype α) a).toReal = (Fintype.card α : ℝ)⁻¹ := by
+  rw [PMF.uniformOfFintype_apply, ENNReal.toReal_inv, ENNReal.toReal_natCast]
+
+/-- The uniform expectation is the average over the carrier. -/
+theorem expect_uniformOfFintype [Fintype α] [Nonempty α] (value : α → ℝ) :
+    expect (PMF.uniformOfFintype α) value = (∑ a, value a) / Fintype.card α := by
+  rw [expect_eq_sum]
+  simp_rw [toReal_uniformOfFintype_apply]
+  rw [← Finset.mul_sum, div_eq_inv_mul]
 
 /-- Adding one distinct candidate scales every old candidate equally. -/
 theorem uniformOfFinset_insert [DecidableEq α] (members : Finset α)

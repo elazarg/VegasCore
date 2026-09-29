@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.NativeReceiver
 import Vegas.Examples.MonitoredGuessing.NativeReceiverValue
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Rationality of every source guessing mixture at the quiet native site -/
 
@@ -41,7 +42,7 @@ theorem quiet_receiver_context_le (assessment : nativeModel.BehavioralAssessment
   let players := nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
     (Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy bob alternative)
   calc
-    _ ≤ expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+    _ ≤ expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (players bob [] ((quietBob false).observe nativeApp bob))
           (fun response => correctness (.success bit) (quietGuess response players))) :=
       FinDist.expect_mono (fun bit _ => quiet_raw_finish_value_le deposit players bit)

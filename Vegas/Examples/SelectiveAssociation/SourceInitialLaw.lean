@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SelectiveAssociation.SourceAlicePayoffs
 import Vegas.Examples.SelectiveAssociation.SourceGuessEquilibrium
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # The initialized public-result law of prescribed source play -/
 
@@ -68,7 +69,7 @@ theorem prescribed_binding_results (Claim : Type) (defaultClaim : Claim)
 
 theorem prescribed_calendar_law (Claim : Type) (defaultClaim : Claim) :
     runInstructions (policy Claim defaultClaim) calendar (root Claim) =
-      (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
+      (PMF.uniformOfFintype Bool).bind (fun bit =>
         runInstructions (policy Claim defaultClaim) (afterResponse 0)
           ((aliceInput ⟨none⟩ ⟨none⟩).respond (application Claim) alice
             (playing Claim defaultClaim 0 (.success bit)))) := by
@@ -80,7 +81,7 @@ theorem prescribed_calendar_law (Claim : Type) (defaultClaim : Claim) :
   rw [PMF.pure_bind, runInstructions_player]
   change ((PMF.pure (⟨none⟩ : (application Claim).Action)).bind _) = _
   rw [PMF.pure_bind, runInstructions_application, runInstructions_player]
-  change (((PMF.uniformOfFintype (α := Bool)).map
+  change (((PMF.uniformOfFintype Bool).map
     (fun bit => playing Claim defaultClaim 0 (.success bit))).bind _) = _
   rw [PMF.bind_map]
   rfl
@@ -88,7 +89,7 @@ theorem prescribed_calendar_law (Claim : Type) (defaultClaim : Claim) :
 theorem prescribed_calendar_results (Claim : Type) (defaultClaim : Claim) :
     (runInstructions (policy Claim defaultClaim) calendar (root Claim)).map
         (fun final => results final.application) =
-      (PMF.uniformOfFintype (α := Bool)).map (fun bit =>
+      (PMF.uniformOfFintype Bool).map (fun bit =>
         (⟨.success bit, .success false, .success false⟩ : Results)) := by
   rw [prescribed_calendar_law, PMF.map_bind, ← PMF.bind_pure_comp, Function.comp_def]
   exact bind_congr_on_support _ (fun bit _ => prescribed_binding_results Claim defaultClaim _ _ bit)
@@ -96,7 +97,7 @@ theorem prescribed_calendar_results (Claim : Type) (defaultClaim : Claim) :
 theorem prescribed_initial_results (Claim : Type) [Fintype Claim] (defaultClaim : Claim) :
     (((model Claim).runBehavioral (profile Claim defaultClaim) (2 * horizon + 1)).map
       (fun history => protocolResults history.state)) =
-      (PMF.uniformOfFintype (α := Bool)).map (fun bit =>
+      (PMF.uniformOfFintype Bool).map (fun bit =>
         (⟨.success bit, .success false, .success false⟩ : Results)) := by
   have law := (menu Claim).run_eq_finish (PMF.pure initial) horizon (scheduler Claim)
     (profile Claim defaultClaim) (2 * horizon + 1) (arena Claim).initHistory (by exact le_rfl)

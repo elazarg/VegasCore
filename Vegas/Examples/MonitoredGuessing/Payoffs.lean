@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.Game
 import Vegas.EventGraph.PayoffTransport
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # A source family with arbitrary declared integer payoffs
 
@@ -64,7 +65,7 @@ def payoffProgram (table : PayoffTable) :
 def payoffSetup (table : PayoffTable) : Setup (Player := Player) (L := simpleExpr) where
   context := initialCtx
   namesNodup := by decide
-  initialLaw := (PMF.uniformOfFintype (α := Bool)).map initialState
+  initialLaw := (PMF.uniformOfFintype Bool).map initialState
   obligations := {0, 1}
   program := payoffProgram table
   accounts := rfl

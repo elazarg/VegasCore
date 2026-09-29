@@ -4,6 +4,7 @@ import Vegas.Examples.MonitoredGuessing.Game
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheory.Protocol.StateKernel
 import Mathlib.Tactic.DeriveFintype
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Complete histories of the actual two-reveal source protocol -/
 
@@ -102,7 +103,7 @@ def SourcePath.trace : (path : SourcePath) → sourceArena.Trace path.state
       change (SourcePath.drawn bit).state ∈ (sourceSetup.initialLaw.map _).support
       rw [PMF.support_map]
       refine ⟨initialState bit, ?_, rfl⟩
-      rw [show sourceSetup.initialLaw = (PMF.uniformOfFintype (α := Bool)).map initialState
+      rw [show sourceSetup.initialLaw = (PMF.uniformOfFintype Bool).map initialState
         from rfl, PMF.support_map]
       exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
   | .guessed bit guess => Trace.extend (SourcePath.drawn bit).trace _
@@ -151,7 +152,7 @@ theorem SourcePath.step_complete (path : SourcePath)
       subst joint
       change target ∈ (sourceSetup.initialLaw.map _).support at supported
       obtain ⟨initial, member, rfl⟩ := PMF.support_map .. ▸ supported
-      change initial ∈ ((PMF.uniformOfFintype (α := Bool)).map initialState).support at member
+      change initial ∈ ((PMF.uniformOfFintype Bool).map initialState).support at member
       obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ member
       refine ⟨.drawn bit, ?_⟩
       simp only [history, trace, History.extend]

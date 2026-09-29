@@ -4,6 +4,7 @@ import Vegas.Examples.MonitoredGuessing.Assessment
 import Vegas.Examples.MonitoredGuessing.NativeDepth
 import Vegas.Examples.MonitoredGuessing.NativeOutcome
 import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Native receiver beliefs on the prescribed silent path
 
@@ -26,9 +27,9 @@ retains every history that the assessment gives positive probability. -/
 theorem quiet_native_state_belief (assessment : nativeModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent nativeAntichain)
     (prefixLaw : (nativeModel.runBehavioral assessment.strategy 8).map History.state =
-      (PMF.uniformOfFintype (α := Bool)).map (fun bit => (quietBobHistory bit).state)) :
+      (PMF.uniformOfFintype Bool).map (fun bit => (quietBobHistory bit).state)) :
     (assessment.belief bob quietBobSite).map (fun history => history.1.state) =
-      (PMF.uniformOfFintype (α := Bool)).map (fun bit => (quietBobHistory bit).state) := by
+      (PMF.uniformOfFintype Bool).map (fun bit => (quietBobHistory bit).state) := by
   classical
   have depth := native_bob_information_depth quietBobSite
   let law := nativeModel.runBehavioral assessment.strategy 8
@@ -58,7 +59,7 @@ theorem quiet_native_state_belief_of_prescribed (assessment : nativeModel.Behavi
     (alicePolicy : assessment.strategy alice = nativeAliceBehavior)
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior) :
     (assessment.belief bob quietBobSite).map (fun history => history.1.state) =
-      (PMF.uniformOfFintype (α := Bool)).map (fun bit => (quietBobHistory bit).state) := by
+      (PMF.uniformOfFintype Bool).map (fun bit => (quietBobHistory bit).state) := by
   apply quiet_native_state_belief assessment consistent
   exact quiet_bob_history_law assessment.strategy alicePolicy watcherPolicy
 
@@ -70,7 +71,7 @@ theorem quiet_native_context (assessment : nativeModel.BehavioralAssessment)
     (assessment.continuationContext quietBobSite
       (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
         alternative =
-      expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+      expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
           (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
             (Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy bob

@@ -125,7 +125,7 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
     rw [zero, sub_zero, expect_map]
     calc
       _ = expect coupled (fun pair => (if pair ∈ departed then 1 else 0) * min rate 1) := by
-        rw [FinDist.expect_mul_const, expect_indicator]
+        rw [expect_mul_const, expect_indicator]
       _ ≤ _ := by
         apply FinDist.expect_mono
         intro pair supported

@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SequentialValidation.Kernel
 import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Reach probabilities and source information in the validation example -/
 
@@ -13,13 +14,13 @@ open Vegas Vegas.SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Pr
 open GameTheory.Protocol.ExecutionProtocol
 
 def uniformPathKernel : SourcePath → PMF SourcePath
-  | .root => (PMF.uniformOfFintype (α := Bool)).map .drawn
-  | .drawn bit => (PMF.uniformOfFintype (α := PublicationResult Bool)).map (.bound bit)
-  | .bound bit dummy => (PMF.uniformOfFintype (α := Bool)).map (.dummyPublished bit dummy)
+  | .root => (PMF.uniformOfFintype Bool).map .drawn
+  | .drawn bit => (PMF.uniformOfFintype (PublicationResult Bool)).map (.bound bit)
+  | .bound bit dummy => (PMF.uniformOfFintype Bool).map (.dummyPublished bit dummy)
   | .dummyPublished bit dummy first =>
-      (PMF.uniformOfFintype (α := Bool)).map (.secretPublished bit dummy first)
+      (PMF.uniformOfFintype Bool).map (.secretPublished bit dummy first)
   | .secretPublished bit dummy first second =>
-      (PMF.uniformOfFintype (α := Bool)).map (.done bit dummy first second)
+      (PMF.uniformOfFintype Bool).map (.done bit dummy first second)
   | .done bit dummy first second guess => .pure (.done bit dummy first second guess)
 
 theorem uniform_source_kernel (path : SourcePath) :
@@ -81,7 +82,7 @@ theorem source_reach_secret (bit : Bool) (dummy : PublicationResult Bool) (first
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, uniformPathKernel, PMF.bind_map, PMF.bind_bind]
   simp only [toReal_bind_apply, toReal_map_apply, expect_eq_sum,
-    Fintype.sum_bool, sum_publication_bool, FinDist.prob_uniformOfFintype,
+    Fintype.sum_bool, sum_publication_bool, toReal_uniformOfFintype_apply,
     card_publication_bool, Fintype.card_bool]
   cases bit <;> cases dummy <;> cases first <;> cases second
   all_goals first

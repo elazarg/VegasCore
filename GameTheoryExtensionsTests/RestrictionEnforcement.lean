@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.SequentialExistence
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Enforcing a restriction with a new opponent continuation
 
@@ -361,7 +362,7 @@ instance (unrestricted who : Bool) (info : State) :
   infer_instance
 
 def reference (unrestricted : Bool) : (model unrestricted).BehavioralAssessment :=
-  InformationModel.BehavioralAssessment.ofStrategy fun _ _ => PMF.uniformOfFintype
+  InformationModel.BehavioralAssessment.ofStrategy fun _ _ => (PMF.uniformOfFintype _)
 
 theorem reference_mixed (unrestricted : Bool) : (reference unrestricted).IsFullyMixed := by
   intro who site choice

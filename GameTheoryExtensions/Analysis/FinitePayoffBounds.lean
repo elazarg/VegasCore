@@ -53,14 +53,14 @@ theorem range_nonnegative (payoff : Outcome → ℚ) : 0 ≤ range payoff :=
 theorem lower_le_expect (payoff : Outcome → ℚ) (law : PMF Outcome) :
     ((lower payoff : ℚ) : ℝ) ≤ expect law (fun outcome => (payoff outcome : ℝ)) := by
   rw [← expect_constant law ((lower payoff : ℚ) : ℝ)]
-  apply FinDist.expect_mono
+  apply expect_mono _ (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
   intro outcome _
   exact_mod_cast lower_le payoff outcome
 
 theorem expect_le_upper (payoff : Outcome → ℚ) (law : PMF Outcome) :
     expect law (fun outcome => (payoff outcome : ℝ)) ≤ ((upper payoff : ℚ) : ℝ) := by
   rw [← expect_constant law ((upper payoff : ℚ) : ℝ)]
-  apply FinDist.expect_mono
+  apply expect_mono _ (payoffIntegrable_of_finite _ _) (payoffIntegrable_constant _ _)
   intro outcome _
   exact_mod_cast le_upper payoff outcome
 
@@ -97,6 +97,7 @@ theorem range_deposit_holds (payoff : Outcome → ℚ) (rate : ℚ) (positive : 
   apply Enforcement.inferred_deposit_holds {()} (fun _ => range payoff) (fun _ => rate)
     (fun _ _ => positive.le) (infer_range_deposit payoff rate positive)
     (fun _ => comparison) (fun outcome => (payoff outcome : ℝ)) sanction
+    (fun _ _ => payoffIntegrable_of_finite _ _) (fun _ _ => payoffIntegrable_of_finite _ _)
     (fun _ _ => expect_gain_le_range payoff comparison.prescribed comparison.alternative)
     (fun _ _ => collection) (Finset.mem_singleton_self ())
 

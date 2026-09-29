@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Protocol.BehavioralContinuation
 import GameTheory.Protocol.StateKernel
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # A private type disclosed only after an earlier deviation
 
@@ -39,7 +40,7 @@ def terminal : State → Prop
 
 def transition (state : State) (joint : Bool → Option Bool) : PMF State :=
   match state with
-  | .initial => (PMF.uniformOfFintype (α := Bool)).map State.alice
+  | .initial => (PMF.uniformOfFintype Bool).map State.alice
   | .alice bit => PMF.pure (if (joint false).getD false then .bob bit else .done bit none)
   | .bob bit => PMF.pure (.done bit (some ((joint true).getD false)))
   | .done bit guess => PMF.pure (.done bit guess)
@@ -137,7 +138,7 @@ theorem bob_legal (bit guess : Bool) : arena.Legal (.bob bit) (bobJoint guess) :
 
 def aliceHistory (bit : Bool) : arena.History :=
   arena.initHistory.extend (target := .alice bit) initial_legal (by
-    change State.alice bit ∈ ((PMF.uniformOfFintype (α := Bool)).map State.alice).support
+    change State.alice bit ∈ ((PMF.uniformOfFintype Bool).map State.alice).support
     rw [PMF.support_map]
     exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
 

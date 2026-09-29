@@ -5,6 +5,7 @@ import GameTheory.Math.Probability.Mixture
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
 import Mathlib.Probability.Distributions.Uniform
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Deferring a binary choice through finitely many opportunities
 

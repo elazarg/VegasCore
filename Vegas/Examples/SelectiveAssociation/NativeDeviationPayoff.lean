@@ -3,6 +3,7 @@
 import Vegas.Examples.SelectiveAssociation.NativeDeviation
 import Vegas.Examples.SelectiveAssociation.GuessContinuation
 import Vegas.Examples.SelectiveAssociation.Probability
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Expected utility of the actual selective-disclosure strategy
 
@@ -28,7 +29,7 @@ def nativeDeviationOutcomes (players : Player → nativeApp.Policy) (bit : Bool)
 theorem native_deviation_outcome_law (players : Player → nativeApp.Policy) :
     (nativeApp.runRounds nativeScheduler (nativeAliceProfile players) nativeHorizon nativeRoot).map
         (fun final => nativeResults final.application.config) =
-      (PMF.uniformOfFintype (α := Bool)).bind (nativeDeviationOutcomes players) := by
+      (PMF.uniformOfFintype Bool).bind (nativeDeviationOutcomes players) := by
   change (nativeApp.runRounds nativeScheduler (nativeAliceProfile players) (13 + 76)
     nativeRoot).map _ = _
   rw [ReactiveApplication.runRounds_add, native_alice_thirteen_rounds,

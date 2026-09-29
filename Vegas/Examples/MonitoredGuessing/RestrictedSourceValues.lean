@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.MonitoredGuessing.RestrictedEvaluation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Source continuation incentives for arbitrary result utilities -/
 
@@ -72,7 +73,7 @@ theorem source_result_bob_context (reward : Results → Player → ℝ)
     (alternative : sourceModel.BehavioralPolicy bob) :
     (assessment.continuationContext sourceBobSite (sourceResultPayoff reward bob) 3).value
         alternative =
-      expect (PMF.uniformOfFintype (α := Bool)) fun bit =>
+      expect (PMF.uniformOfFintype Bool) fun bit =>
         expect (sourceGuesses (Profile.update (sig := sourceModel.behavioralSignature)
           assessment.strategy bob alternative)) fun guess =>
           expect (sourceDisclosures assessment.strategy bit guess) fun disclose =>
@@ -116,10 +117,10 @@ theorem source_guess_optimal (reward : Results → Player → ℝ)
     (consistent : assessment.IsSequentiallyConsistent sourceAntichain)
     (rational : assessment.IsSequentiallyRationalWithin (sourceResultPayoff reward) 3)
     (guess : Bool) :
-    expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+    expect (PMF.uniformOfFintype Bool) (fun bit =>
       expect (sourceDisclosures assessment.strategy bit guess) fun disclose =>
         reward (decisionResult bit guess disclose) bob) ≤
-      expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+      expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (sourceGuesses assessment.strategy) fun decision =>
           expect (sourceDisclosures assessment.strategy bit decision) fun disclose =>
             reward (decisionResult bit decision disclose) bob) := by

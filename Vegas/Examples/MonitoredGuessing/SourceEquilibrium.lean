@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.SourceEvaluation
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # All sequential equilibria of the actual source guessing game
 
@@ -93,7 +94,7 @@ theorem source_sequential_equilibrium (guess : PMF Bool) :
 theorem source_initialized_states (profile : Profile sourceModel.behavioralSignature)
     (opens : Opens profile) :
     (sourceModel.runBehavioral profile 3).map History.state =
-      (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+      (PMF.uniformOfFintype Bool).bind fun bit =>
         (sourceDecisionLaw profile bob sourceBobSite.1).map fun guess =>
           (SourcePath.done bit guess true).state := by
   change (sourceModel.runBehavioralFrom profile 3 sourceArena.initHistory).map History.state = _
@@ -102,7 +103,7 @@ theorem source_initialized_states (profile : Profile sourceModel.behavioralSigna
   change ((sourceSetup.initialLaw.map
     (fun state => (some (.inl (sourceSetup.initialConfig state)) : sourceArena.State))).bind
       (sourceKernel profile)).bind (sourceKernel profile) = _
-  change ((((PMF.uniformOfFintype (α := Bool)).map initialState).map
+  change ((((PMF.uniformOfFintype Bool).map initialState).map
     (fun state => (some (.inl (sourceSetup.initialConfig state)) : sourceArena.State))).bind
       (sourceKernel profile)).bind (sourceKernel profile) = _
   simp only [PMF.bind_map, PMF.bind_bind]
@@ -135,7 +136,7 @@ theorem source_equilibrium_states (assessment : sourceModel.BehavioralAssessment
     (equilibrium : assessment.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       assessment.continuationContext site (sourcePayoff who) 3)) :
     (sourceModel.runBehavioral assessment.strategy 3).map History.state =
-      (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+      (PMF.uniformOfFintype Bool).bind fun bit =>
         (sourceDecisionLaw assessment.strategy bob sourceBobSite.1).map fun guess =>
           (SourcePath.done bit guess true).state :=
   source_initialized_states assessment.strategy (source_rational_opens assessment equilibrium.1)

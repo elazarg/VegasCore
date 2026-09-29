@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.NativeLaw
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Joint preservation of the private bit, public results, and actual utilities
 
@@ -67,7 +68,7 @@ theorem native_initialized_payoffs (deposit : ℝ)
     (watcherPolicy : profile watcher = nativeWatcherBehavior)
     (atQuiet : profile bob quietBobSite.1 = nativeGuessBehavior guesses quietBobSite.1) :
     ((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map History.state).map
-      (nativePayoffObservation deposit) = (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
+      (nativePayoffObservation deposit) = (PMF.uniformOfFintype Bool).bind (fun bit =>
         guesses.map (guessingPayoffs bit)) := by
   have observationLaw := native_initialized_observation profile guesses alicePolicy watcherPolicy
     atQuiet
@@ -88,7 +89,7 @@ theorem source_equilibrium_payoffs (assessment : sourceModel.BehavioralAssessmen
     (equilibrium : assessment.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       assessment.continuationContext site (sourcePayoff who) 3)) :
     ((sourceModel.runBehavioral assessment.strategy 3).map History.state).map
-      sourcePayoffObservation = (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
+      sourcePayoffObservation = (PMF.uniformOfFintype Bool).bind (fun bit =>
         (sourceDecisionLaw assessment.strategy bob sourceBobSite.1).map (guessingPayoffs bit)) := by
   rw [source_equilibrium_states assessment equilibrium]
   simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, source_done_payoffs]

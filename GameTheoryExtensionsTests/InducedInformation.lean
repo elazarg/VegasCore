@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Analysis.Protocol.InducedInformation
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Partial signals in an induced information advantage
 
@@ -18,7 +19,7 @@ namespace GameTheoryExtensionsTests.InducedInformation
 
 open GameTheory.DecisionExperiment GameTheory.Math.Probability
 
-def prior : PMF (Fin 3) := PMF.uniformOfFintype
+def prior : PMF (Fin 3) := (PMF.uniformOfFintype _)
 
 def observe (state : Fin 3) : Bool := decide (state = 0)
 
@@ -28,7 +29,7 @@ def reference (signal : Bool) : PMF (Fin 3) :=
 theorem reference_value : value prior observe (reportUtility id) reference = 2 / 3 := by
   rw [value_eq_expect]
   norm_num [prior, observe, reference, reportUtility, expect_eq_sum,
-    FinDist.prob_uniformOfFintype, toReal_pure_apply, Fin.sum_univ_succ]
+    toReal_uniformOfFintype_apply, toReal_pure_apply, Fin.sum_univ_succ]
 
 theorem reference_optimal : IsBayesOptimal prior observe (reportUtility id) reference := by
   intro signal alternative
@@ -37,7 +38,7 @@ theorem reference_optimal : IsBayesOptimal prior observe (reportUtility id) refe
   intro action _
   cases signal <;> fin_cases action <;>
     norm_num [localValue, prior, observe, reference, reportUtility, expect_eq_sum,
-      FinDist.prob_uniformOfFintype, toReal_pure_apply, Fin.sum_univ_succ]
+      toReal_uniformOfFintype_apply, toReal_pure_apply, Fin.sum_univ_succ]
 
 /-- Informed score losses reduce the guaranteed margin by precisely the same
 amount. At benchmark one this specializes to the one-third information gain. -/

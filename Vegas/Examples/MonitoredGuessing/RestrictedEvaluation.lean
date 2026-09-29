@@ -3,6 +3,7 @@
 import Vegas.Examples.MonitoredGuessing.RestrictedPolicy
 import Vegas.Examples.MonitoredGuessing.SourceEvaluation
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Exact decision lotteries of arbitrary restricted policies
 
@@ -120,14 +121,14 @@ theorem mixed_branch_summary (players : Player → nativeApp.Policy)
 
 theorem source_initialized_states_all (profile : Profile sourceModel.behavioralSignature) :
     (sourceModel.runBehavioral profile 3).map History.state =
-      (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
+      (PMF.uniformOfFintype Bool).bind fun bit =>
         (sourceGuesses profile).bind fun guess =>
           (sourceDisclosures profile bit guess).map fun disclose =>
             (SourcePath.done bit guess disclose).state := by
   change (sourceModel.runBehavioralFrom profile 3 sourceArena.initHistory).map History.state = _
   rw [source_run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind]
-  change ((((PMF.uniformOfFintype (α := Bool)).map initialState).map
+  change ((((PMF.uniformOfFintype Bool).map initialState).map
     (fun state => (some (.inl (sourceSetup.initialConfig state)) : sourceArena.State))).bind
       (sourceKernel profile)).bind (sourceKernel profile) = _
   simp only [PMF.bind_map, PMF.bind_bind]

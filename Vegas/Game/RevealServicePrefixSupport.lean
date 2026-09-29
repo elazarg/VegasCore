@@ -4,6 +4,7 @@ import Vegas.Game.RevealServicePrefix
 import Vegas.Game.RevealServiceClock
 import Vegas.Game.SourceInformation
 import Vegas.Game.SourceStateKernel
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Operational coverage of every restricted service prefix
 

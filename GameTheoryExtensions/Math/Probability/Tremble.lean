@@ -5,6 +5,7 @@ import GameTheory.Math.Probability.Product
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import Mathlib.Probability.Distributions.Uniform
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Uniform action floors and independent local trembles
 

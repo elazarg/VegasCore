@@ -2,6 +2,7 @@
 
 import Vegas.Game.ServiceRoster
 import GameTheoryExtensions.Math.Probability.DeferredChoice
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # A common timing perturbation for every finite activation roster
 
@@ -73,7 +74,7 @@ theorem rosterTiming_prefix_le (weight : ℝ) (nonnegative : 0 ≤ weight) (boun
     have final := rosterLastSlot_final setup rosters coverage event owner owned
     change last.val + 1 = _ at final
     omega
-  change (mix weight nonnegative bounded PMF.uniformOfFintype
+  change (mix weight nonnegative bounded (PMF.uniformOfFintype _)
     (PMF.pure last)).timingPrefix visits ≤ weight
   rw [PMF.timingPrefix_mix, PMF.timingPrefix_pure_of_le last visits earlier,
     mul_zero, add_zero]
@@ -93,7 +94,7 @@ theorem rosterTiming_converges {weight : Nat → ℝ}
   let _ : Nonempty (Fin ((rosters event).count owner)) := ⟨last⟩
   intro slot
   have first := vanishes.mul_const
-    (((PMF.uniformOfFintype : PMF (Fin ((rosters event).count owner))) slot).toReal)
+    ((((PMF.uniformOfFintype _) : PMF (Fin ((rosters event).count owner))) slot).toReal)
   have one : Tendsto (fun _ : Nat => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
   have second := (one.sub vanishes).mul_const (((PMF.pure last) slot).toReal)
   simpa only [rosterTiming, mix_apply_toReal, zero_mul, sub_zero, one_mul, zero_add] using

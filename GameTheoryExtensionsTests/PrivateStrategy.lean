@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Protocol.PrivateStrategy
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Correlated private randomness survives behavioral realization
 
@@ -17,7 +18,7 @@ namespace GameTheoryExtensionsTests.PrivateStrategy
 open GameTheory.Protocol.PrivateStrategy GameTheory.Math.Probability
 
 def strategy : Strategy Bool Bool Bool where
-  initial := PMF.uniformOfFintype
+  initial := (PMF.uniformOfFintype _)
   respond memory input := PMF.pure (xor memory input, memory)
 
 def observe (past : List Bool) : Bool := past.headD false
@@ -30,10 +31,10 @@ theorem private_two (memory : Bool) : runPrivate strategy observe advance 2 [] [
   cases memory <;> simp [runPrivate, strategy, observe, advance]
 
 theorem behavioral_two : runBehavioral (behavioral strategy) observe advance 2 [] [] =
-    (PMF.uniformOfFintype (α := Bool)).map (fun bit =>
+    (PMF.uniformOfFintype Bool).map (fun bit =>
       ([false, bit], [(bit, false), (false, bit)])) := by
   rw [← realize strategy observe advance 2 [] []]
-  change (PMF.uniformOfFintype (α := Bool)).bind _ = _
+  change (PMF.uniformOfFintype Bool).bind _ = _
   rw [← PMF.bind_pure_comp, Function.comp_def]
   apply bind_congr_on_support _
   intro memory _

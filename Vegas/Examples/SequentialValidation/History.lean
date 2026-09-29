@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.SequentialValidation.Prefix
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Legal histories of the concrete native disclosure prefix -/
 

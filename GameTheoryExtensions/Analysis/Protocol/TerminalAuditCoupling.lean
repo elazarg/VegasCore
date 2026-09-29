@@ -49,7 +49,7 @@ theorem settlement_le_of_departure_coupling
   have collected := mul_le_mul_of_nonneg_right collection nonnegative
   simp only [expect_map] at collected
   simp only [FinDist.expect_bind, settlement_expect, utility, FinDist.expect_sub,
-    FinDist.expect_mul_const, expect_map]
+    expect_mul_const, expect_map]
   nlinarith
 
 end GameTheory.Enforcement.TerminalAudit

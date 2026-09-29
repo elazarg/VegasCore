@@ -110,7 +110,7 @@ private theorem perturb_sender_law (decisions : PMF Decision) (response : Secret
     (n : Nat) (secret : Secret) :
     choiceLaw (perturbProfile prior true decisions response n) false (some (some secret)) =
       mix (trembleWeight n) (trembleWeight_nonneg n) (trembleWeight_le_one n)
-        (PMF.uniformOfFintype (α := Bool)) (PMF.pure false) := by
+        (PMF.uniformOfFintype Bool) (PMF.pure false) := by
   simp [choiceLaw, perturbProfile, BehavioralAssessment.perturb, reference, silentProfile,
     choose, decisionInfo, mix_map, PMF.map_bind]
 
@@ -153,7 +153,7 @@ private theorem reach_silent (ambient : Bool) (decisions : PMF Decision)
         (fun disclose => State.receiver (Decision := Decision) secret disclose) (by
           intro first second same
           exact (State.receiver.inj same).2)]
-      simp [mix_apply_toReal, FinDist.prob_uniformOfFintype, Fintype.card_bool]
+      simp [mix_apply_toReal, toReal_uniformOfFintype_apply, Fintype.card_bool]
       ring
   · intro hidden _ reached
     obtain ⟨disclose, _, same⟩ := PMF.support_map .. ▸ reached

@@ -4,6 +4,7 @@ import Vegas.Examples.SelectiveAssociation.SourceService
 import Interaction.ReactiveMenuPolicy
 import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveRounds
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # The fixed pending-message calendar for the named-evidence source fixture
 
@@ -96,7 +97,7 @@ def policy (Claim : Type) (defaultClaim : Claim) (who : Player) :
   | some event =>
       if who = eventOwner event then
         if event.val = 0 then
-          (PMF.uniformOfFintype (α := Bool)).map fun bit =>
+          (PMF.uniformOfFintype Bool).map fun bit =>
             playing Claim defaultClaim event (.success bit)
         else PMF.pure (playing Claim defaultClaim event (.success (publicGuess view)))
       else PMF.pure ⟨none⟩

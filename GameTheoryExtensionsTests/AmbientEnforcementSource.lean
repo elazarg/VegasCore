@@ -2,6 +2,7 @@
 
 import GameTheoryExtensionsTests.AmbientEnforcementInformation
 import GameTheory.Analysis.Protocol.Examples
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Sequential equilibria of the ordinary guessing game
 
@@ -25,7 +26,7 @@ def sourceAssessment (profile : Profile (model false).behavioralSignature) :
   belief who site := by
     cases who
     · exact (source_no_alice_site site).elim
-    · exact (PMF.uniformOfFintype (α := Bool)).map fun bit =>
+    · exact (PMF.uniformOfFintype Bool).map fun bit =>
         ⟨bobHistory false bit false, by rw [source_bob_site_eq site]; rfl⟩
 
 theorem source_reach_bob (profile : Profile (model false).behavioralSignature) (bit : Bool) :
@@ -38,9 +39,9 @@ theorem source_reach_bob (profile : Profile (model false).behavioralSignature) (
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, initHistory, kernel, PMF.bind_map, Bool.false_and,
     PMF.map_const]
-  change (((PMF.uniformOfFintype (α := Bool)).map (fun x => State.bob x false)) (.bob bit false)).toReal = _
+  change (((PMF.uniformOfFintype Bool).map (fun x => State.bob x false)) (.bob bit false)).toReal = _
   rw [FinDist.prob_map_of_injective _ (fun _ _ same => (State.bob.inj same).1)]
-  norm_num [FinDist.prob_uniformOfFintype, Fintype.card_bool]
+  norm_num [toReal_uniformOfFintype_apply, Fintype.card_bool]
 
 def sourceProfile (guesses : PMF Bool) : Profile (model false).behavioralSignature
   | false => choose false false false
@@ -53,7 +54,7 @@ theorem source_profile_guess (guesses : PMF Bool) :
 theorem source_initialized_law (profile : Profile (model false).behavioralSignature) :
     (((model false).runSingleMoverBehavioralFrom (single false) profile 3
       (arena false).initHistory).map History.state).map retained =
-      (bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => (choiceLaw profile true (some none)))).map some := by
+      (bindPairLaw (PMF.uniformOfFintype Bool) (fun _ => (choiceLaw profile true (some none)))).map some := by
   rw [run_initial]
   simp [Bool.false_and, resultLaw, retained,
     FinDist.product, ← PMF.bind_pure_comp, Function.comp_def]
@@ -71,9 +72,9 @@ theorem source_belief_bob_prob (profile : Profile (model false).behavioralSignat
     (bit : Bool) :
     (((sourceAssessment profile).belief true (bobSilentSite false)) (silentHistory false bit)).toReal = 1 / 2 := by
   classical
-  change (((PMF.uniformOfFintype (α := Bool)).map (silentHistory false)) (silentHistory false bit)).toReal = _
+  change (((PMF.uniformOfFintype Bool).map (silentHistory false)) (silentHistory false bit)).toReal = _
   rw [FinDist.prob_map_of_injective _ (silentHistory_injective false)]
-  norm_num [FinDist.prob_uniformOfFintype, Fintype.card_bool]
+  norm_num [toReal_uniformOfFintype_apply, Fintype.card_bool]
 
 theorem source_bayes (profile : Profile (model false).behavioralSignature) :
     InformationModel.BehavioralAssessment.IsBayesConsistent (model false)
@@ -132,7 +133,7 @@ one half, in either game and for any deposit charged to Alice. -/
 theorem uniform_silent_context_value (ambient : Bool)
     (assessment : (model ambient).BehavioralAssessment)
     (uniform : assessment.belief true (bobSilentSite ambient) =
-      (PMF.uniformOfFintype (α := Bool)).map (silentHistory ambient))
+      (PMF.uniformOfFintype Bool).map (silentHistory ambient))
     (deposit : ℝ) (alternative : (model ambient).BehavioralPolicy true) :
     (assessment.continuationContext (bobSilentSite ambient)
       (fun history => payoff deposit history.state true) 3).value alternative = 1 / 2 := by
@@ -140,7 +141,7 @@ theorem uniform_silent_context_value (ambient : Bool)
   rw [FinDist.expect_bind, expect_map]
   simp_rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
     (model ambient) (single ambient)]
-  change expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+  change expect (PMF.uniformOfFintype Bool) (fun bit =>
     expect ((model ambient).runSingleMoverBehavioralFrom (single ambient)
       (Profile.update (sig := (model ambient).behavioralSignature)
         assessment.strategy true alternative)
@@ -150,10 +151,10 @@ theorem uniform_silent_context_value (ambient : Bool)
   simp only [resultLaw, Bool.and_false, Bool.false_eq_true, ite_false, expect_map, payoff,
     Bool.not_true, sub_zero]
   rw [FinDist.expect_comm]
-  have fair (guess : Bool) : expect (PMF.uniformOfFintype (α := Bool))
+  have fair (guess : Bool) : expect (PMF.uniformOfFintype Bool)
       (fun bit => if guess = bit then (1 : ℝ) else 0) = 1 / 2 := by
     cases guess <;>
-      norm_num [expect_eq_sum, Fintype.sum_bool, FinDist.prob_uniformOfFintype]
+      norm_num [expect_eq_sum, Fintype.sum_bool, toReal_uniformOfFintype_apply]
   simp_rw [fair]
   exact expect_constant _ _
 

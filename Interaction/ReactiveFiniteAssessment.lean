@@ -3,6 +3,7 @@
 import Interaction.ReactiveResponseMenu
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Finite assessments for explicitly bounded response menus
 
@@ -44,7 +45,7 @@ instance nonempty_choice (who : Principal) (info : app.Info) :
 def uniformPolicy (who : Principal) :
     (menu.information initial horizon scheduler).BehavioralPolicy who := fun info => by
   let := Fintype.ofFinite ((menu.information initial horizon scheduler).Choice who info)
-  exact PMF.uniformOfFintype
+  exact (PMF.uniformOfFintype _)
 
 def uniformAssessment : (menu.information initial horizon scheduler).BehavioralAssessment :=
   InformationModel.BehavioralAssessment.ofStrategy (menu.uniformPolicy initial horizon scheduler)

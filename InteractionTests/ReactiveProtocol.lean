@@ -2,6 +2,7 @@
 
 import Interaction.ReactiveEvaluation
 import Interaction.ReactiveObservation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Network observation, repeated activation, and in-flight reactions
 
@@ -132,7 +133,7 @@ theorem redundant_observation_is_inert :
 
 private abbrev partialApp : ReactiveApplication Bool :=
   { app with observePending := fun _ _ =>
-      (PMF.uniformOfFintype (α := Bool)).map fun bit =>
+      (PMF.uniformOfFintype Bool).map fun bit =>
         if bit then {(false, 0)} else ∅ }
 
 private def beforePartial : partialApp.Execution :=
@@ -146,7 +147,7 @@ private def afterPartial (bit : Bool) : partialApp.Execution :=
 
 private theorem partial_activation :
     beforePartial.environmentStep partialApp (.activate true) =
-      (PMF.uniformOfFintype (α := Bool)).map afterPartial := by
+      (PMF.uniformOfFintype Bool).map afterPartial := by
   simp only [ReactiveApplication.Execution.environmentStep]
   rw [PMF.map_comp, PMF.map_comp]
   rfl

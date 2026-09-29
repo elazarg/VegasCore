@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensionsTests.SequentialBeliefs
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Sequential equilibria with an unreachable decision information set
 
@@ -50,11 +51,11 @@ theorem guessing_value (profile : Profile (model false).behavioralSignature)
       (fun history => OffPathDisclosure.payoff matchBit history true) 3).value alternative =
         1 / 2 := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value]
-  change expect (((PMF.uniformOfFintype (α := Bool)).map bobInformationHistory).bind _) _ = _
+  change expect (((PMF.uniformOfFintype Bool).map bobInformationHistory).bind _) _ = _
   rw [FinDist.expect_bind, expect_map, expect_eq_sum, Fintype.sum_bool]
   simp only [bobInformationHistory, assessment, OffPathDisclosure.payoff,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
-    FinDist.prob_uniformOfFintype, Fintype.card_bool]
+    toReal_uniformOfFintype_apply, Fintype.card_bool]
   rw [value_bob _ true (utility matchBit · true),
     value_bob _ false (utility matchBit · true)]
   simp only [resultLaw, expect_map, Bool.false_eq_true, ↓reduceIte]

@@ -6,6 +6,7 @@ import GameTheory.Protocol.StateKernel
 import GameTheory.Protocol.SingleMover
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Terminal decision experiments as protocol games
 
@@ -402,7 +403,7 @@ variable [Finite Action]
 
 def reference : (model (Action := Action) prior observe).BehavioralAssessment :=
   letI : Fintype Action := Fintype.ofFinite _
-  .ofStrategy (fun _ => policy prior observe (fun _ => PMF.uniformOfFintype))
+  .ofStrategy (fun _ => policy prior observe (fun _ => (PMF.uniformOfFintype _)))
 
 theorem reference_mixed : (reference (Action := Action) prior observe).IsFullyMixed := by
   let : Fintype Action := Fintype.ofFinite _
@@ -414,7 +415,7 @@ theorem reference_mixed : (reference (Action := Action) prior observe).IsFullyMi
   cases chosen : selected.1 with
   | none => simp [chosen] at legal
   | some action =>
-      change selected ∈ ((PMF.uniformOfFintype (α := Action)).map
+      change selected ∈ ((PMF.uniformOfFintype Action).map
         (choice prior observe (observe state))).support
       rw [PMF.support_map]
       exact ⟨action, PMF.mem_support_uniformOfFintype action, Subtype.ext chosen.symm⟩

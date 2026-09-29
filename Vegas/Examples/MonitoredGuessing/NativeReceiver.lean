@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.NativeBeliefs
 import Vegas.Examples.MonitoredGuessing.NativeLaw
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # The prescribed receiver's value at the actual quiet information site -/
 
@@ -51,9 +52,9 @@ theorem quiet_prescribed_finish_value (profile : Profile nativeModel.behavioralS
   exact value
 
 theorem fair_correctness (guess : PublicationResult Bool) :
-    expect (PMF.uniformOfFintype (α := Bool))
+    expect (PMF.uniformOfFintype Bool)
       (fun bit => correctness (.success bit) guess) = (1 / 2 : ℝ) := by
-  simp only [expect_eq_sum, FinDist.prob_uniformOfFintype,
+  simp only [expect_eq_sum, toReal_uniformOfFintype_apply,
     Fintype.card_bool, Fintype.sum_bool]
   cases guess <;> norm_num [correctness, PublicationResult.isSuccess]
 

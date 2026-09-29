@@ -3,6 +3,7 @@
 import Interaction.ReactiveMenuRestriction
 import Interaction.ReactiveOwnPlay
 import GameTheoryExtensions.Protocol.RestrictionExecution
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Nested response menus retain communication and arbitrary policy laws
 
@@ -31,7 +32,7 @@ private abbrev app : ReactiveApplication Bool where
   environment _ command := nomatch command
   observePlayer _ _ := ()
   observePublic _ := ()
-  observePending _ pending := (PMF.uniformOfFintype (α := Bool)).map fun observed =>
+  observePending _ pending := (PMF.uniformOfFintype Bool).map fun observed =>
     if observed then (pending.map Message.id).toFinset else ∅
 
 private def silent : app.Action := ⟨none⟩

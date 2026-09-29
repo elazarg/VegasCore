@@ -3,6 +3,7 @@
 import Vegas.Source.Communication
 import Interaction.CommunicationHistory
 import Vegas.Examples.SequentialValidation.Histories
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Disclosure evidence without changing publication results
 
@@ -77,7 +78,7 @@ def privateDraw (bit : Bool) : (channel.protocol [false]).History :=
       change (SourcePath.drawn bit).state ∈ (sourceSetup.initialLaw.map _).support
       rw [PMF.support_map]
       refine ⟨initialState bit, ?_, rfl⟩
-      change initialState bit ∈ ((PMF.uniformOfFintype (α := Bool)).map initialState).support
+      change initialState bit ∈ ((PMF.uniformOfFintype Bool).map initialState).support
       rw [PMF.support_map]
       exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
 

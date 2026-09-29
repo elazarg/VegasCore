@@ -3,6 +3,7 @@
 import Vegas.Examples.SelectiveAssociation.SourceCalendar
 import Interaction.ReactiveRoundReachability
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # The local symmetry used by the common source perturbations
 
@@ -102,12 +103,12 @@ theorem uniform_flip (Claim : Type) [Fintype Claim] (who : Player)
     ⟨⟨((menu Claim).nonempty who past view).choose,
       ((menu Claim).nonempty who past view).choose_spec⟩⟩
   have uniform : (PMF.uniformOfFintype choices).map
-      (responseFlip Claim who past view) = PMF.uniformOfFintype := by
+      (responseFlip Claim who past view) = (PMF.uniformOfFintype _) := by
     apply pmf_ext_toReal
     intro action
     obtain ⟨before, rfl⟩ := (responseFlip Claim who past view).surjective action
     rw [FinDist.prob_map_of_injective _ (responseFlip Claim who past view).injective]
-    simp only [FinDist.prob_uniformOfFintype]
+    simp only [toReal_uniformOfFintype_apply]
   change ((PMF.uniformOfFintype choices).map Subtype.val).map flipResponse = _
   rw [PMF.map_comp]
   calc
@@ -121,21 +122,21 @@ theorem flipResponse_playing (Claim : Type) (defaultClaim : Claim)
       playing Claim defaultClaim event (flipBinding binding) := rfl
 
 theorem fairBinding_flip (Claim : Type) (defaultClaim : Claim) (event : Event) :
-    ((PMF.uniformOfFintype (α := Bool)).map
+    ((PMF.uniformOfFintype Bool).map
         (fun bit => playing Claim defaultClaim event (.success bit))).map flipResponse =
-      (PMF.uniformOfFintype (α := Bool)).map
+      (PMF.uniformOfFintype Bool).map
         (fun bit => playing Claim defaultClaim event (.success bit)) := by
-  have uniform : (PMF.uniformOfFintype (α := Bool)).map Bool.not =
-      PMF.uniformOfFintype := by
+  have uniform : (PMF.uniformOfFintype Bool).map Bool.not =
+      (PMF.uniformOfFintype _) := by
     apply pmf_ext_toReal
     intro bit
     have involutive : Function.Involutive Bool.not := fun bit => Bool.not_not bit
     have same := FinDist.prob_map_of_injective Bool.not involutive.injective
-      (PMF.uniformOfFintype (α := Bool)) (!bit)
-    simpa only [Bool.not_not, FinDist.prob_uniformOfFintype] using same
+      (PMF.uniformOfFintype Bool) (!bit)
+    simpa only [Bool.not_not, toReal_uniformOfFintype_apply] using same
   rw [PMF.map_comp]
   calc
-    _ = ((PMF.uniformOfFintype (α := Bool)).map Bool.not).map
+    _ = ((PMF.uniformOfFintype Bool).map Bool.not).map
         (fun bit => playing Claim defaultClaim event (.success bit)) := by
       rw [PMF.map_comp]
       rfl

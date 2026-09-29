@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.SourceKernel
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # The receiver's fair prior and the sender's observed final decision -/
 
@@ -138,16 +139,16 @@ theorem source_reach_bob (profile : Profile sourceModel.behavioralSignature) (bi
   rw [source_run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind,
     initHistory, sourceKernel]
-  change ((((PMF.uniformOfFintype (α := Bool)).map initialState).map
+  change ((((PMF.uniformOfFintype Bool).map initialState).map
     (fun state => (some (.inl (sourceSetup.initialConfig state)) : sourceArena.State))) _).toReal = _
   rw [PMF.map_comp]
-  change (((PMF.uniformOfFintype (α := Bool)).map
+  change (((PMF.uniformOfFintype Bool).map
     (fun bit => (SourcePath.drawn bit).state)) (SourcePath.drawn bit)).toReal.state = _
   have injective : Function.Injective (fun bit => (SourcePath.drawn bit).state) := by
     intro first second same
     have decoded := congrArg decodeSource same
     exact SourcePath.drawn.inj decoded
-  rw [FinDist.prob_map_of_injective _ injective, FinDist.prob_uniformOfFintype]
+  rw [FinDist.prob_map_of_injective _ injective, toReal_uniformOfFintype_apply]
   norm_num
 
 theorem source_mass_bob (profile : Profile sourceModel.behavioralSignature) :
@@ -161,14 +162,14 @@ theorem source_mass_bob (profile : Profile sourceModel.behavioralSignature) :
 theorem source_consistent_bob (assessment : sourceModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent sourceAntichain) :
     assessment.belief bob sourceBobSite =
-      (PMF.uniformOfFintype (α := Bool)).map sourceBobHistory := by
+      (PMF.uniformOfFintype Bool).map sourceBobHistory := by
   classical
   obtain ⟨sequence, approximates, converges⟩ := consistent
   apply pmf_ext_toReal
   intro history
   obtain ⟨bit, rfl⟩ := sourceBobHistories.surjective history
   change ((assessment.belief bob sourceBobSite) (sourceBobHistory bit)).toReal =
-    (((PMF.uniformOfFintype (α := Bool)).map sourceBobHistory) (sourceBobHistory bit)).toReal
+    (((PMF.uniformOfFintype Bool).map sourceBobHistory) (sourceBobHistory bit)).toReal
   have each (n : Nat) :
       (((sequence n).belief bob sourceBobSite) (sourceBobHistory bit)).toReal = 1 / 2 := by
     rw [(approximates n).2 bob sourceBobSite (by rw [source_mass_bob]; norm_num)]
@@ -176,7 +177,7 @@ theorem source_consistent_bob (assessment : sourceModel.BehavioralAssessment)
         (sequence n).strategy bob sourceBobSite = _
     rw [source_reach_bob, source_mass_bob, div_one]
   rw [FinDist.prob_map_of_injective _ sourceBobHistory_injective,
-    FinDist.prob_uniformOfFintype, Fintype.card_bool]
+    toReal_uniformOfFintype_apply, Fintype.card_bool]
   have limit := converges.2 bob sourceBobSite (sourceBobHistory bit)
   simp_rw [each] at limit
   convert tendsto_nhds_unique limit tendsto_const_nhds using 1
