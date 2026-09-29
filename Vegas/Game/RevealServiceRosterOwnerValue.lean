@@ -32,8 +32,12 @@ private theorem expect_binary {α : Type*} (law : PMF α) (predicate : Set α)
   have point (value : α) : (if value ∈ predicate then first else second) =
       (if value ∈ predicate then 1 else 0) * (first - second) + second := by
     split <;> ring
-  simp only [point, FinDist.expect_add, expect_mul_const,
-    expect_indicator, expect_constant]
+  have scaled : PayoffIntegrable law
+      (fun value => (if value ∈ predicate then (1 : ℝ) else 0) * (first - second)) :=
+    payoffIntegrable_of_bounded _ _ (C := |first - second|) fun value => by split <;> simp
+  simp only [point]
+  rw [expect_add scaled (payoffIntegrable_constant _ _), expect_mul_const, expect_indicator,
+    expect_constant]
   ring
 
 section
@@ -42,6 +46,7 @@ variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
   (network : (runtime setup).NetworkPolicy leaks)
+  [setup.FiniteInitialLaw] [leaks.FiniteSupport] [network.FiniteSupport]
   (reveals : setup.program.RevealOnly)
   (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
   (admission : CommitmentInterface setup.program)
@@ -115,7 +120,7 @@ theorem roster_owner_context_value
           if choice.1.getD ⟨none⟩ = (runtime setup).windowOpening leaks event candidate raw
           then valueAt decoded true
           else residual * valueAt decoded true + (1 - residual) * valueAt decoded false)) := by
-    rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+    rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
     apply expect_congr_on_support
     intro history _supported
     have active := InformationModel.InformationSite.active model site history
@@ -146,9 +151,9 @@ theorem roster_owner_context_value
     intro history _
     exact expect_binary law {choice | choice.1.getD ⟨none⟩ =
       (runtime setup).windowOpening leaks event candidate raw} _ _
-  simp only [FinDist.expect_add, FinDist.expect_smul]
+  simp only [expect_add_of_finite, expect_const_mul]
   simp only [values, stateLaw, InformationModel.BehavioralAssessment.stateBelief,
-    expect_map, valueAt]
+    expect_map, Function.comp_def, valueAt]
 
 end
 

@@ -26,13 +26,15 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    [leaks.FiniteSupport]
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
+    [network.FiniteSupport]
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
@@ -146,6 +148,6 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
       change (settle final.state).map (fun payoffs => (observe final.state, payoffs)) =
         PMF.pure (observe final.state, base final.state)
       rw [clean, PMF.pure_map]
-    _ = _ := (FinDist.map_eq_bind ..).symm
+    _ = _ := pmf_bind_pure_eq_map _ _
 
 end Vegas

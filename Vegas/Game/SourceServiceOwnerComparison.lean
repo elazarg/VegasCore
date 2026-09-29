@@ -103,8 +103,6 @@ theorem owner_source_comparisons (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : service.sourceModel.BehavioralAssessment)
-    [∀ who (site : service.sourceModel.InformationSite who),
-      Fintype (service.sourceModel.InformationHistory who site.1)]
     (full : ∀ who info, FullSupport (source.strategy who info))
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       service.sourceModel source
@@ -165,8 +163,6 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
     (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : service.sourceModel.BehavioralAssessment)
-    [∀ who (site : service.sourceModel.InformationSite who),
-      Fintype (service.sourceModel.InformationHistory who site.1)]
     (full : ∀ who info, FullSupport (source.strategy who info))
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       service.sourceModel source
@@ -211,15 +207,14 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
     alternative admitted
   refine ⟨mixture, ?_, ?_⟩
   · rw [← prescribedLaw]
-    simp only [InformationModel.assessmentComparison,
-      InformationModel.BehavioralAssessment.continuationContext, Profile.update_eq_self,
-      PMF.map_bind]
+    simp only [InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+      Profile.update_eq_self, PMF.map_bind]
     apply bind_congr_on_support _
     intro history member
     exact prescribedContinuation history member
   · rw [← alternativeLaw]
-    simp only [InformationModel.assessmentComparison,
-      InformationModel.BehavioralAssessment.continuationContext, PMF.map_bind]
+    simp only [InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+      PMF.map_bind]
     apply bind_congr_on_support _
     intro history member
     exact alternativeContinuation history member
@@ -231,8 +226,6 @@ theorem owner_site_source_histories (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : service.sourceModel.BehavioralAssessment)
-    [∀ who (site : service.sourceModel.InformationSite who),
-      Fintype (service.sourceModel.InformationHistory who site.1)]
     (full : ∀ who info, FullSupport (source.strategy who info))
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       service.sourceModel source
