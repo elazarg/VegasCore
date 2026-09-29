@@ -50,7 +50,7 @@ def OwnUtilityIndependent (form : GameForm (Fin 2))
 theorem source_nonstrategic : OwnUtilityIndependent source payout := by
   intro profile who replacement
   fin_cases who <;>
-    simp [expectedUtility, source, MatrixGame.form, payout]
+    simp [expectedUtility, source, MatrixGame.form, payout, expect_pure]
 
 /-- Alice keeps her action; Bob ignores the message. -/
 def embed (profile : Profile source.sig) : Profile communicated.sig :=
@@ -64,14 +64,17 @@ theorem source_nash (profile : Profile source.sig) :
     IsNash source (euPreference payout) profile := by
   rw [isNash_iff]
   intro who replacement
-  exact le_of_eq (source_nonstrategic profile who replacement)
+  rw [euPreference_apply]
+  exact ⟨payoffIntegrable_of_finite _ _, payoffIntegrable_of_finite _ _,
+    le_of_eq (source_nonstrategic profile who replacement)⟩
 
 theorem embed_nash (profile : Profile source.sig) :
     IsNash communicated (euPreference payout) (embed profile) := by
   rw [isNash_iff]
   intro who replacement
   fin_cases who <;>
-    simp [euPreference, expectedUtility, communicated, embed, payout]
+    simp [euPreference, UtilityIntegrable, expectedUtility, communicated, embed, payout,
+      payoffIntegrable_pure, expect_pure]
 
 def responsive (message : Bool) : Profile communicated.sig :=
   Fin.cons message

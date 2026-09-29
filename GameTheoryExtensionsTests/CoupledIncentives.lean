@@ -69,7 +69,8 @@ def separatingUtility (coordinate : Coordinate) : ℝ :=
   if coordinate = (0, false) then 1 else 0
 
 theorem unrestricted_source_holds : (source ()).Holds separatingUtility := by
-  norm_num [source, IncentiveComparison.Holds, separatingUtility]
+  norm_num [source, IncentiveComparison.Holds, separatingUtility, UtilityIntegrable,
+    payoffIntegrable_pure]
 
 theorem unrestricted_target_fails : ¬ target.Holds separatingUtility := by
   norm_num [target, IncentiveComparison.Holds, separatingUtility]

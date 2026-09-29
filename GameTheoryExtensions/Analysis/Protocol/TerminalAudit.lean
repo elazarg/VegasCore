@@ -52,6 +52,7 @@ theorem settlement_expect (base : Outcome → Player → ℝ) (observe : Outcome
       utility base observe audit deposit outcome who := by
   have reduced := expect_monitoredUtility (PMF.pure outcome) (fun result => base result who)
     observe (fun observed => (audit observed).map (fun verdict => verdict who)) (deposit who)
+    (payoffIntegrable_pure _ _)
   simpa only [expect_pure, PMF.pure_map, PMF.pure_bind, monitoredUtility,
     PMF.map_comp, Function.comp_def, expect_map, id_eq, settlement, utility, charge]
     using reduced
@@ -102,8 +103,6 @@ variable {Player Observation : Type} [Fintype Player] [DecidableEq Player]
   {E T : ExecutionProtocol Player} {M : InformationModel E} {N : InformationModel T}
   [Finite T.History]
   [∀ who, DecidableEq (N.InfoState who)]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
-  [∀ who (site : N.InformationSite who), Fintype (N.InformationHistory who site.1)]
   (restriction : M.ActionRestriction N)
 
 /-- A sound terminal audit with a uniform conditional collection guarantee
@@ -186,11 +185,12 @@ theorem sequential_equilibrium_extends_of_terminal_audit
     calc
       _ = (M.runBehavioral source.strategy horizon).bind (fun history =>
           PMF.pure (restriction.history history, sourcePayoff history)) :=
-        FinDist.map_eq_bind _ _
+        (PMF.bind_pure_comp _ _).symm
       _ = _ := by
         apply bind_congr_on_support _
         intro history _
-        rw [settlement_clean base observe audit deposit _ (sound history), PMF.pure_map]
+        rw [Function.comp_apply, settlement_clean base observe audit deposit _ (sound history),
+          PMF.pure_map]
         congr 1
         exact congrArg (fun payoffs => (restriction.history history, payoffs))
           (funext (matching history)).symm

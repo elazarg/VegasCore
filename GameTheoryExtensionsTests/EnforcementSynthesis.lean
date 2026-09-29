@@ -70,10 +70,11 @@ theorem inferred_comparison :
       (fun _ => 3 / 2) (fun _ => 1) = some (3 / 2) := by decide +kernel
   have result := inferred_deposit_holds (Finset.univ : Finset Unit)
     (fun _ => 3 / 2) (fun _ => 1) (by simp) inferred
-    (fun _ => comparison) base {true} (index := ())
+    (fun _ => comparison) base {true} (fun _ _ => payoffIntegrable_of_finite _ _)
+    (fun _ _ => payoffIntegrable_of_finite _ _) (index := ())
   apply (by norm_num at result; exact result)
   · norm_num [comparison, base, expect_pure]
-  · norm_num [comparison, FinDist.probOf_singleton, toReal_pure_apply]
+  · norm_num [comparison, PMF.toOuterMeasure_apply_singleton, PMF.pure_apply]
 
 end
 

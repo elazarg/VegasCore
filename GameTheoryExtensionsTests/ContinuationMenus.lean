@@ -18,7 +18,7 @@ open GameTheory GameTheory.Math.Probability
 
 inductive Outcome where
   | a | b | c
-  deriving DecidableEq
+  deriving DecidableEq, Fintype
 
 abbrev source : GameForm Unit where
   sig := { Strategy := fun _ => PMF Outcome, Outcome := Outcome }
@@ -46,17 +46,18 @@ theorem sourcePlan_optimal_for_both :
     IsεNash source utilityB 0 sourcePlan ∧ IsεNash source utilityC 0 sourcePlan := by
   constructor <;> rw [isεNash_iff] <;> intro who replacement <;> cases who
   all_goals
+    refine ⟨payoffIntegrable_of_finite _ _, payoffIntegrable_of_finite _ _, ?_⟩
     simp only [expectedUtility, source, Profile.update_same, sourcePlan, expect_pure,
       utilityB, utilityC, add_zero]
-    apply FinDist.expect_le_of_forall
+    apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
     intro result _
     cases result <;> norm_num [utilityB, utilityC]
 
 theorem continuation_utility_sum (profile : Profile continuation.sig) :
     expect (continuation.play profile) (fun outcome => utilityB outcome ()) +
       expect (continuation.play profile) (fun outcome => utilityC outcome ()) = 3 := by
-  simp only [continuation, expect_map]
-  rw [← FinDist.expect_add]
+  simp only [continuation, expect_map, Function.comp_def]
+  rw [← expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
   have values : (fun choice =>
       utilityB (remainingOutcome choice) () + utilityC (remainingOutcome choice) ()) =
       fun _ => (3 : ℝ) := by
@@ -69,13 +70,13 @@ theorem no_common_optimal_continuation :
       IsεNash continuation utilityB 0 profile ∧ IsεNash continuation utilityC 0 profile := by
   rintro ⟨profile, bestB, bestC⟩
   rw [isεNash_iff] at bestB bestC
-  have prefersB := bestB () (PMF.pure true)
-  have prefersC := bestC () (PMF.pure false)
+  have prefersB := (bestB () (PMF.pure true)).2.2
+  have prefersC := (bestC () (PMF.pure false)).2.2
   simp only [expectedUtility, continuation, Profile.update_same, PMF.pure_map,
     expect_pure, remainingOutcome, ite_true, utilityB, utilityC,
     add_zero] at prefersB prefersC
   have total := continuation_utility_sum profile
-  simp only [continuation, expect_map] at total
+  simp only [continuation, expect_map, Function.comp_def] at total
   simp only [expect_map] at prefersB prefersC
   change (2 : ℝ) ≤ expect (profile ())
     (fun choice => utilityB (remainingOutcome choice) ()) at prefersB

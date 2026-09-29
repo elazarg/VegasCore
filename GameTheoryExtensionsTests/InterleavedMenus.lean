@@ -59,8 +59,9 @@ theorem no_randomized_fixed_response (law : PMF (Option Bool)) :
   rintro ⟨first, second⟩
   have total : expect law (fun command =>
       payoff true (resolve false command) + payoff true (resolve true command)) ≤ 3 :=
-    FinDist.expect_le_of_forall _ _ _ (fun command _ => reply_payoff_sum command)
-  rw [FinDist.expect_add] at total
+    expect_le_const _ _ (payoffIntegrable_of_finite _ _) _
+      (fun command _ => reply_payoff_sum command)
+  rw [expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)] at total
   linarith
 
 theorem payoff_sum (result : Option Bool) :
@@ -77,8 +78,9 @@ theorem no_common_randomized_completion (reply : Bool) (law : PMF (Option Bool))
   rintro ⟨first, second⟩
   have total : expect law (fun command =>
       payoff false (resolve reply command) + payoff true (resolve reply command)) ≤ 3 :=
-    FinDist.expect_le_of_forall _ _ _ (fun command _ => payoff_sum (resolve reply command))
-  rw [FinDist.expect_add] at total
+    expect_le_const _ _ (payoffIntegrable_of_finite _ _) _
+      (fun command _ => payoff_sum (resolve reply command))
+  rw [expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)] at total
   linarith
 
 end GameTheoryExtensionsTests.InterleavedMenus

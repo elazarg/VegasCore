@@ -57,7 +57,8 @@ theorem not_fixed_mixture : ¬ ∃ (weight : ℝ) (nonnegative : 0 ≤ weight)
   have fresh := congrArg (fun law => (law (some 1)).toReal) same
   have old := congrArg (fun law => (law (some 0)).toReal) same
   rw [after_eq, before_eq] at fresh old
-  norm_num [mix_apply_toReal, toReal_pure_apply] at fresh old
+  norm_num [mix_apply_toReal, toReal_pure_apply, ENNReal.toReal_ofReal nonnegative,
+    ENNReal.toReal_ofReal (sub_nonneg.mpr atMostOne)] at fresh old
   linarith
 
 end GameTheoryExtensionsTests.RegularChoice
