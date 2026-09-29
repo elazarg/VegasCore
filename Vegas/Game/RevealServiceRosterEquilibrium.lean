@@ -32,14 +32,13 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 theorem roster_source_sequential_equilibrium_preserved
     (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    [leaks.FiniteSupport]
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (coverage : ActorOpportunities setup rosters)
-    (network : (runtime setup).NetworkPolicy leaks)
+    (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport]
     (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
     (admission : CommitmentInterface setup.program)
-    [∀ who (site : (setup.informationModel admission).InformationSite who),
-      Fintype ((setup.informationModel admission).InformationHistory who site.1)]
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
@@ -110,7 +109,7 @@ theorem roster_source_sequential_equilibrium_preserved
       timing timingFull timingConverges who site
   obtain ⟨target, strategy, index, increasing, targetConverges, consistent⟩ :=
     InformationModel.BehavioralAssessment.exists_consistent_completion_subsequence antichain
-      compiled sequence (fun n => (original n).bayes_isFullyMixed (mixed n) antichain)
+      compiled sequence (fun n => mixed n)
       (fun n => InformationModel.bayesAssessment_isBayesConsistent _ (original n).strategy
           (mixed n) antichain) strategies
   let sourceObserve := fun history : (setup.executionProtocol admission).History =>
@@ -180,8 +179,7 @@ theorem roster_source_sequential_equilibrium_preserved
     (menu.bounded (initialLaw setup) horizon scheduler)
     (menu.decisionRecall (initialLaw setup) horizon scheduler)
     (roster_menu_common_depth setup leaks rosters network menu) payoff source sourceSequence
-    (approximates 0).1 converges equilibrium.1 sequence
-    (fun n => (original n).bayes_isFullyMixed (mixed n) antichain)
+    converges equilibrium.1 sequence
     (fun n => weight n * range) (by simpa only [zero_mul] using vanishes.mul_const range)
     localComparisons (fun n => rosterPerturbedProfile_readout_law setup leaks bounds rosters network
       reveals openable admission (sourceSequence n) (approximates n).1 (timing n) (timingFull n))

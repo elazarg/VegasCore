@@ -48,8 +48,6 @@ typed source terminal states is the source law. -/
 theorem exists_native_sequentialEquilibrium
     (utility : Option (State L service.setup.program.terminalCtx) → Player → ℝ)
     (source : service.sourceModel.BehavioralAssessment)
-    [∀ who (site : service.sourceModel.InformationSite who),
-      Fintype (service.sourceModel.InformationHistory who site.1)]
     (equilibrium : source.IsSequentialEquilibriumFor
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
       (fun who site => source.continuationContext site
@@ -71,6 +69,12 @@ theorem exists_native_sequentialEquilibrium
   obtain ⟨witness, approximates, _⟩ := equilibrium.2
   let _ : Finite (service.setup.executionProtocol admission).History :=
     (approximates 0).1.finite_history (service.setup.protocol_bounded admission)
+      (fun who info =>
+        have := service.setup.finite_choice
+          (sourceService_finiteBindingTypes service.setup service.bounds service.values)
+          admission who info
+        Set.toFinite _)
+      (fun draw => service.setup.protocolStep_support_finite _ draw.1)
   obtain ⟨sourceSequence, full, sourceBayes, converges, _⟩ :=
     sourceService_consistent_supported_sequence service.setup service.bounds service.values
       source (service.setup.decision_antichain admission) equilibrium.2
@@ -92,7 +96,7 @@ theorem exists_native_sequentialEquilibrium
   let sourceObserve := fun final : (service.setup.executionProtocol admission).History =>
     service.setup.protocolReadout final.state
   choose errors nonnegative vanishes bounds using fun who =>
-    converges.exists_uniform_policy_gain_bound (sourceSequence 0) sourceMixed who
+    converges.exists_uniform_policy_gain_bound who
       (fun history => utility (sourceObserve history) who)
       (instructionCount service.setup.program + 1) (equilibrium.1 who)
   have sourceGain (n : Nat) (who : Player) (deviation : sourceModel.AssessmentDeviation who) :
@@ -100,9 +104,10 @@ theorem exists_native_sequentialEquilibrium
         (instructionCount service.setup.program + 1) (sourceSequence n) who deviation
       expect comparison.alternative (utility · who) -
         expect comparison.prescribed (utility · who) ≤ errors who n := by
-    simpa only [InformationModel.assessmentComparison, expect_map, Context.value,
-      InformationModel.BehavioralAssessment.continuationContext] using
-        bounds who n deviation.1 deviation.2
+    dsimp only
+    simp only [InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+      expect_map, Function.comp_def]
+    exact bounds who n deviation.1 deviation.2
   let comparisonError (n : Nat) : ℝ := 2 * ∑ who, errors who n
   have errorNonnegative (n : Nat) : 0 ≤ comparisonError n :=
     mul_nonneg (by norm_num) (Finset.sum_nonneg fun who _ => nonnegative who n)
@@ -152,6 +157,12 @@ theorem exists_native_sequentialEquilibrium
             observed outputEq granted unsent law
         have gain := expect_sub_eq_of_eq_bind mixture _ _ _ _ prescribedEq alternativeEq
           (utility · who)
+          (payoffIntegrable_of_finite_support _ _
+            (by rw [InformationModel.assessmentComparison, PMF.support_map]
+                exact (Set.toFinite _).image _))
+          (payoffIntegrable_of_finite_support _ _
+            (by rw [InformationModel.assessmentComparison, PMF.support_map]
+                exact (Set.toFinite _).image _))
         exact Or.inr ⟨mixture, gain.le.trans (le_add_of_nonneg_right (errorNonnegative n))⟩
     | recordedDisclosure payload owned outputEq recorded =>
         exact Or.inl (zeroGain ((approx n).recorded_disclosure_comparison_eq who site past view
@@ -193,7 +204,7 @@ theorem exists_native_sequentialEquilibrium
         service.scheduler)
       (roster_menu_common_depth service.setup service.leaks service.rosters service.network
         service.menu)
-      utility source sourceSequence sourceMixed converges equilibrium.1
+      utility source sourceSequence converges equilibrium.1
       (fun n => (approx n).assessment) (fun n => (approx n).mixed)
       (fun n => TimedApproximant.ofSource_bayes service timing timingFull
         (sourceSequence n).strategy (full n))

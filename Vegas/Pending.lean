@@ -239,6 +239,6 @@ import Vegas.Pending.ReactiveRawBindingFrame
 import Vegas.Pending.ReactiveSelectionObservation
 import Vegas.Pending.ReactiveServiceFootprint
 import Vegas.Pending.ReactiveAssociationPersistence
+import Vegas.Pending.ReactiveServiceFiniteness
 
 /-! Graph execution and strategic refinement over public pending messages. -/
-import Vegas.Pending.ReactiveServiceFiniteness
