@@ -39,34 +39,49 @@ def sanctionedUtility (base : Outcome → ℝ) (sanction : Set Outcome) (penalty
   classical
   exact fun outcome => base outcome - if outcome ∈ sanction then penalty else 0
 
+/-- The sanction is bounded, so it preserves integrability of the base utility. -/
+theorem payoffIntegrable_sanctionedUtility {law : PMF Outcome} {base : Outcome → ℝ}
+    (integrable : PayoffIntegrable law base) (sanction : Set Outcome) (penalty : ℝ) :
+    PayoffIntegrable law (sanctionedUtility base sanction penalty) := by
+  classical
+  unfold sanctionedUtility
+  exact payoffIntegrable_sub integrable
+    (payoffIntegrable_of_bounded _ _ (C := |penalty|) fun outcome => by split <;> simp)
+
 theorem expect_sanctionedUtility (law : PMF Outcome) (base : Outcome → ℝ)
-    (sanction : Set Outcome) (penalty : ℝ) :
+    (sanction : Set Outcome) (penalty : ℝ) (integrable : PayoffIntegrable law base) :
     expect law (sanctionedUtility base sanction penalty) =
       expect law base - (law.toOuterMeasure sanction).toReal * penalty := by
   classical
   unfold sanctionedUtility
-  rw [FinDist.expect_sub]
+  rw [expect_sub integrable
+    (payoffIntegrable_of_bounded _ _ (C := |penalty|) fun outcome => by split <;> simp)]
   have amount : (fun outcome => if outcome ∈ sanction then penalty else 0) =
-      (fun outcome => (if outcome ∈ sanction then (1 : ℝ) else 0) * penalty) := by
+      (fun outcome => penalty * if outcome ∈ sanction then (1 : ℝ) else 0) := by
     funext outcome
     split <;> simp
-  rw [amount, FinDist.expect_mul_const, expect_indicator]
+  rw [amount, expect_const_mul, expect_indicator, mul_comm]
 
 /-- The probability difference, rather than detection alone, is what matters
 when the comparison plan may also incur a sanction. -/
 theorem regret_eq (comparison : IncentiveComparison Outcome) (base : Outcome → ℝ)
-    (sanction : Set Outcome) (penalty : ℝ) :
+    (sanction : Set Outcome) (penalty : ℝ)
+    (prescribedIntegrable : PayoffIntegrable comparison.prescribed base)
+    (alternativeIntegrable : PayoffIntegrable comparison.alternative base) :
     expect comparison.alternative (sanctionedUtility base sanction penalty) -
         expect comparison.prescribed (sanctionedUtility base sanction penalty) =
       (expect comparison.alternative base - expect comparison.prescribed base) -
-        ((comparison.alternative.toOuterMeasure sanction).toReal - (comparison.prescribed.toOuterMeasure sanction).toReal) *
-          penalty := by
-  rw [expect_sanctionedUtility, expect_sanctionedUtility]
+        ((comparison.alternative.toOuterMeasure sanction).toReal -
+          (comparison.prescribed.toOuterMeasure sanction).toReal) * penalty := by
+  rw [expect_sanctionedUtility _ _ _ _ alternativeIntegrable,
+    expect_sanctionedUtility _ _ _ _ prescribedIntegrable]
   ring
 
 /-- Conditional detection and bounded gain give a quantitative deterrence certificate. -/
 theorem regret_le (comparison : IncentiveComparison Outcome) (base : Outcome → ℝ)
     (sanction : Set Outcome) {penalty gain probability : ℝ}
+    (prescribedIntegrable : PayoffIntegrable comparison.prescribed base)
+    (alternativeIntegrable : PayoffIntegrable comparison.alternative base)
     (penalty_nonneg : 0 ≤ penalty)
     (gain_bound : expect comparison.alternative base - expect comparison.prescribed base ≤ gain)
     (detection : probability ≤ (comparison.alternative.toOuterMeasure sanction).toReal)
@@ -74,22 +89,29 @@ theorem regret_le (comparison : IncentiveComparison Outcome) (base : Outcome →
     expect comparison.alternative (sanctionedUtility base sanction penalty) -
         expect comparison.prescribed (sanctionedUtility base sanction penalty) ≤
       gain - probability * penalty := by
-  rw [regret_eq, no_sanction, sub_zero]
+  rw [regret_eq _ _ _ _ prescribedIntegrable alternativeIntegrable, no_sanction, sub_zero]
   exact sub_le_sub gain_bound (mul_le_mul_of_nonneg_right detection penalty_nonneg)
 
 theorem holds_of_sanction (comparison : IncentiveComparison Outcome) (base : Outcome → ℝ)
     (sanction : Set Outcome) {penalty gain probability : ℝ}
+    (prescribedIntegrable : PayoffIntegrable comparison.prescribed base)
+    (alternativeIntegrable : PayoffIntegrable comparison.alternative base)
     (penalty_nonneg : 0 ≤ penalty)
     (gain_bound : expect comparison.alternative base - expect comparison.prescribed base ≤ gain)
     (detection : probability ≤ (comparison.alternative.toOuterMeasure sanction).toReal)
     (no_sanction : (comparison.prescribed.toOuterMeasure sanction).toReal = 0)
     (sufficient : gain ≤ probability * penalty) :
     comparison.Holds (sanctionedUtility base sanction penalty) := by
-  have bound := regret_le comparison base sanction penalty_nonneg gain_bound detection no_sanction
-  exact sub_nonpos.mp (bound.trans (sub_nonpos.mpr sufficient))
+  have bound := regret_le comparison base sanction prescribedIntegrable alternativeIntegrable
+    penalty_nonneg gain_bound detection no_sanction
+  exact ⟨payoffIntegrable_sanctionedUtility prescribedIntegrable _ _,
+    payoffIntegrable_sanctionedUtility alternativeIntegrable _ _,
+    sub_nonpos.mp (bound.trans (sub_nonpos.mpr sufficient))⟩
 
 theorem strictly_prefers_of_sanction (comparison : IncentiveComparison Outcome)
     (base : Outcome → ℝ) (sanction : Set Outcome) {penalty gain probability : ℝ}
+    (prescribedIntegrable : PayoffIntegrable comparison.prescribed base)
+    (alternativeIntegrable : PayoffIntegrable comparison.alternative base)
     (penalty_nonneg : 0 ≤ penalty)
     (gain_bound : expect comparison.alternative base - expect comparison.prescribed base ≤ gain)
     (detection : probability ≤ (comparison.alternative.toOuterMeasure sanction).toReal)
@@ -97,7 +119,8 @@ theorem strictly_prefers_of_sanction (comparison : IncentiveComparison Outcome)
     (sufficient : gain < probability * penalty) :
     expect comparison.alternative (sanctionedUtility base sanction penalty) <
       expect comparison.prescribed (sanctionedUtility base sanction penalty) := by
-  have bound := regret_le comparison base sanction penalty_nonneg gain_bound detection no_sanction
+  have bound := regret_le comparison base sanction prescribedIntegrable alternativeIntegrable
+    penalty_nonneg gain_bound detection no_sanction
   exact sub_neg.mp (bound.trans_lt (sub_neg.mpr sufficient))
 
 /-- A fixed utility sanction cannot deter every positive rescaling of a
@@ -105,6 +128,8 @@ profitable base utility. The sanction term is held fixed: this is not a claim
 about rescaling the entire utility function, including its value for money. -/
 theorem exists_rescaling_defeating_sanction (comparison : IncentiveComparison Outcome)
     (base : Outcome → ℝ) (sanction : Set Outcome) (penalty : ℝ)
+    (prescribedIntegrable : PayoffIntegrable comparison.prescribed base)
+    (alternativeIntegrable : PayoffIntegrable comparison.alternative base)
     (profitable : expect comparison.prescribed base < expect comparison.alternative base) :
     ∃ scale : ℝ, 0 < scale ∧
       expect comparison.prescribed
@@ -113,12 +138,15 @@ theorem exists_rescaling_defeating_sanction (comparison : IncentiveComparison Ou
           (sanctionedUtility (fun outcome => scale * base outcome) sanction penalty) := by
   let advantage := expect comparison.alternative base - expect comparison.prescribed base
   let charge :=
-    ((comparison.alternative.toOuterMeasure sanction).toReal - (comparison.prescribed.toOuterMeasure sanction).toReal) * penalty
+    ((comparison.alternative.toOuterMeasure sanction).toReal -
+      (comparison.prescribed.toOuterMeasure sanction).toReal) * penalty
   have advantage_pos : 0 < advantage := sub_pos.mpr profitable
   let scale := (|charge| + 1) / advantage
   have scale_pos : 0 < scale := div_pos (by positivity) advantage_pos
   refine ⟨scale, scale_pos, sub_pos.mp ?_⟩
-  rw [regret_eq, FinDist.expect_smul, FinDist.expect_smul, ← mul_sub]
+  rw [regret_eq _ _ _ _ (payoffIntegrable_const_mul prescribedIntegrable)
+      (payoffIntegrable_const_mul alternativeIntegrable), expect_const_mul, expect_const_mul,
+    ← mul_sub]
   change 0 < scale * advantage - charge
   dsimp only [scale]
   rw [div_mul_cancel₀ _ advantage_pos.ne']
@@ -129,19 +157,12 @@ with positive lawful probability, even when the alarm itself randomizes. -/
 theorem alarm_zero_iff (lawful : PMF Outcome) (alarm : Outcome → PMF Bool) :
     ((lawful.bind alarm) true).toReal = 0 ↔
       ∀ outcome ∈ lawful.support, ((alarm outcome) true).toReal = 0 := by
+  simp only [pmf_toReal_eq_zero_iff, PMF.mem_support_bind_iff]
   constructor
-  · intro silent outcome supported
-    apply FinDist.prob_eq_zero_iff.mpr
-    intro reported
-    apply (FinDist.prob_eq_zero_iff.mp silent)
-    simp only [PMF.support_bind, Set.mem_iUnion]
-    exact ⟨outcome, supported, reported⟩
-  · intro silent
-    apply FinDist.prob_eq_zero_iff.mpr
-    intro reported
-    simp only [PMF.support_bind, Set.mem_iUnion] at reported
-    obtain ⟨outcome, supported, reported⟩ := reported
-    exact (FinDist.prob_eq_zero_iff.mp (silent outcome supported)) reported
+  · intro silent outcome supported reported
+    exact silent ⟨outcome, supported, reported⟩
+  · rintro silent ⟨outcome, supported, reported⟩
+    exact silent outcome supported reported
 
 /-- A sound alarm can detect only the deviating probability mass outside the
 lawful observable support. Randomization does not improve this bound. -/
@@ -151,7 +172,11 @@ theorem detection_le_outside_support (lawful deviating : PMF Outcome)
     ((deviating.bind alarm) true).toReal ≤ (deviating.toOuterMeasure lawful.supportᶜ).toReal := by
   classical
   rw [toReal_bind_apply, ← expect_indicator]
-  apply FinDist.expect_mono
+  apply expect_mono _
+    (payoffIntegrable_of_bounded _ _ (C := 1) fun outcome => by
+      rw [abs_of_nonneg ENNReal.toReal_nonneg]
+      exact pmf_toReal_apply_le_one _ _)
+    (payoffIntegrable_of_bounded _ _ (C := 1) fun outcome => by split <;> simp)
   intro outcome _
   by_cases supported : outcome ∈ lawful.support
   · rw [(alarm_zero_iff lawful alarm).mp no_false_positives outcome supported]
@@ -166,20 +191,22 @@ theorem exists_optimal_sound_alarm (lawful : PMF Outcome) :
     ∃ alarm : Outcome → PMF Bool,
       ((lawful.bind alarm) true).toReal = 0 ∧
         ∀ deviating : PMF Outcome,
-          ((deviating.bind alarm) true).toReal = (deviating.toOuterMeasure lawful.supportᶜ).toReal := by
+          ((deviating.bind alarm) true).toReal =
+            (deviating.toOuterMeasure lawful.supportᶜ).toReal := by
   classical
   let alarm : Outcome → PMF Bool := fun outcome =>
     PMF.pure (decide (outcome ∉ lawful.support))
   refine ⟨alarm, ?_, ?_⟩
   · apply (alarm_zero_iff lawful alarm).mpr
     intro outcome supported
-    simp [alarm, supported, toReal_pure_apply]
+    simp [alarm, (PMF.mem_support_iff _ _).mp supported]
   · intro deviating
     rw [toReal_bind_apply, ← expect_indicator]
     apply expect_congr_on_support
     intro outcome _
-    by_cases supported : outcome ∈ lawful.support <;>
-      simp [alarm, supported, toReal_pure_apply]
+    by_cases supported : outcome ∈ lawful.support
+    · simp [alarm, supported, (PMF.mem_support_iff _ _).mp supported]
+    · simp [alarm, supported, (PMF.apply_eq_zero_iff _ _).mpr supported]
 
 /-- If every deviating observation is also lawful, zero false positives force
 zero detection, even when the two observation laws have different probabilities. -/
@@ -206,25 +233,30 @@ theorem isSequentiallyRationalAt_of_sanction
     (base : E.History → ℝ) (sanction : Set E.History) (fuel : Nat) {penalty : ℝ}
     (penalty_nonneg : 0 ≤ penalty)
     (gain probability : M.BehavioralPolicy who → ℝ)
-    (no_sanction :
-      (((assessment.continuationContext site base fuel).outcome (assessment.strategy who)).toOuterMeasure sanction).toReal = 0)
+    (integrable : ∀ policy, (assessment.continuationContext site base fuel).IntegrableAt policy)
+    (no_sanction : (((assessment.continuationContext site base fuel).outcome
+      (assessment.strategy who)).toOuterMeasure sanction).toReal = 0)
     (gain_bound : ∀ alternative,
       (assessment.continuationContext site base fuel).value alternative -
         (assessment.continuationContext site base fuel).value (assessment.strategy who) ≤
           gain alternative)
     (detection : ∀ alternative, probability alternative ≤
-      (((assessment.continuationContext site base fuel).outcome alternative).toOuterMeasure sanction).toReal)
+      (((assessment.continuationContext site base fuel).outcome alternative).toOuterMeasure
+        sanction).toReal)
     (sufficient : ∀ alternative, gain alternative ≤ probability alternative * penalty) :
     assessment.IsSequentiallyRationalAt site
       (assessment.continuationContext site
         (Enforcement.sanctionedUtility base sanction penalty) fuel) := by
-  intro alternative _
+  refine ⟨Enforcement.payoffIntegrable_sanctionedUtility (integrable _) _ _,
+    fun alternative _ => Enforcement.payoffIntegrable_sanctionedUtility (integrable _) _ _,
+    fun alternative _ => ?_⟩
   let comparison : IncentiveComparison E.History := {
     prescribed := (assessment.continuationContext site base fuel).outcome
       (assessment.strategy who)
     alternative := (assessment.continuationContext site base fuel).outcome alternative }
-  exact Enforcement.holds_of_sanction comparison base sanction penalty_nonneg
-    (gain_bound alternative) (detection alternative) no_sanction (sufficient alternative)
+  exact (Enforcement.holds_of_sanction comparison base sanction (integrable _) (integrable _)
+    penalty_nonneg (gain_bound alternative) (detection alternative) no_sanction
+    (sufficient alternative)).2.2
 
 end Protocol.InformationModel.BehavioralAssessment
 end GameTheory

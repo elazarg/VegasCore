@@ -31,6 +31,10 @@ theorem pmf_toReal_pos_iff {μ : PMF α} {a : α} : 0 < (μ a).toReal ↔ a ∈ 
   rw [ENNReal.toReal_pos_iff, PMF.mem_support_iff, pos_iff_ne_zero]
   exact and_iff_left (μ.apply_lt_top a)
 
+/-- An atom has zero real mass exactly when it lies outside the support. -/
+theorem pmf_toReal_eq_zero_iff {μ : PMF α} {a : α} : (μ a).toReal = 0 ↔ a ∉ μ.support := by
+  rw [ENNReal.toReal_eq_zero_iff, or_iff_left (μ.apply_ne_top a), PMF.apply_eq_zero_iff]
+
 /-- Laws with the same real atom masses are equal. -/
 theorem pmf_ext_toReal {μ ν : PMF α} (same : ∀ a, (μ a).toReal = (ν a).toReal) : μ = ν :=
   PMF.ext fun a => (ENNReal.toReal_eq_toReal_iff' (μ.apply_ne_top a) (ν.apply_ne_top a)).mp

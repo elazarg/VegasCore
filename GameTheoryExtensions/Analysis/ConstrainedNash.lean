@@ -52,11 +52,13 @@ private theorem response_kernel_law (free : Finset ι)
     else pinned who) = _
   by_cases active : who ∈ free
   · simp only [pinnedTremble, active, ↓reduceIte]
-    apply pmf_ext_toReal
-    intro action
-    simp only [toReal_bind_apply, mix_apply_toReal, FinDist.expect_add,
-      expect_constant, FinDist.expect_smul]
-    rw [← toReal_bind_apply, PMF.bind_pure]
+    ext action
+    have pure : ∑' choice, (residual who) choice * (PMF.pure choice) action =
+        (residual who) action := by
+      rw [← PMF.bind_apply, PMF.bind_pure]
+    simp only [PMF.bind_apply, mix_apply, mul_add, ENNReal.tsum_add, ENNReal.tsum_mul_right,
+      PMF.tsum_coe, one_mul, mul_left_comm _ (ENNReal.ofReal (1 - epsilon)),
+      ENNReal.tsum_mul_left, pure]
   · simp only [pinnedTremble, active, ↓reduceIte, PMF.bind_const]
 
 private theorem response_game_law (free : Finset ι)
@@ -86,7 +88,8 @@ private theorem pinned_tremble_update (free : Finset ι)
     simp only [pinnedTremble, active, ↓reduceIte, Profile.update_same]
   · simp only [pinnedTremble, Profile.update_of_ne _ _ same]
 
-private theorem expected_mixed_update_mix (utility : F.sig.Outcome → ι → ℝ)
+private theorem expected_mixed_update_mix [∀ who, Finite (F.sig.Strategy who)]
+    (utility : F.sig.Outcome → ι → ℝ) (integrable : F.HasIntegrableUtility utility)
     (profile : Profile F.sig.mixed) (who : ι)
     (epsilon : ℝ) (nonnegative : 0 ≤ epsilon) (small : epsilon ≤ 1)
     (first second : PMF (F.sig.Strategy who)) :
@@ -95,17 +98,20 @@ private theorem expected_mixed_update_mix (utility : F.sig.Outcome → ι → �
       epsilon * expectedUtility utility who (F.mixed.play (Profile.update profile who first)) +
         (1 - epsilon) *
           expectedUtility utility who (F.mixed.play (Profile.update profile who second)) := by
-  rw [F.mixed_play_update profile who (mix epsilon nonnegative small first second),
-    F.mixed_play_update profile who first, F.mixed_play_update profile who second]
-  simp only [expectedUtility_bind, FinDist.expect_mix]
+  have mixed := integrable.mixed_of_finite (F := F)
+  rw [F.mixed_play_update profile who (mix epsilon nonnegative small first second), mix_bind,
+    ← F.mixed_play_update profile who first, ← F.mixed_play_update profile who second]
+  exact expect_mix _ _ _ _ _ _ (mixed who _) (mixed who _)
 
 /-- Finite Nash existence jointly selects the residual responses of all free
 agents. Their optimality compares every mixed deviation against the same
 perturbed opponents. The played profile includes the compulsory trembles, so
-the theorem does not call that fully mixed profile an unconstrained equilibrium. -/
+the theorem does not call that fully mixed profile an unconstrained equilibrium.
+Every pure play must have an integrable utility, as for finite Nash existence. -/
 theorem exists_pinned_tremble_bestResponses [∀ who, Finite (F.sig.Strategy who)]
     [∀ who, Nonempty (F.sig.Strategy who)]
-    (utility : F.sig.Outcome → ι → ℝ) (free : Finset ι)
+    (utility : F.sig.Outcome → ι → ℝ) (integrable : F.HasIntegrableUtility utility)
+    (free : Finset ι)
     (pinned reference : Profile F.sig.mixed)
     (epsilon : ℝ) (nonnegative : 0 ≤ epsilon) (small : epsilon < 1) :
     ∃ residual : Profile F.sig.mixed, ∀ who ∈ free,
@@ -125,12 +131,17 @@ theorem exists_pinned_tremble_bestResponses [∀ who, Finite (F.sig.Strategy who
   let _ (who : ι) : Nonempty
       ((responseGame free pinned reference epsilon nonnegative small.le).sig.Strategy who) :=
     inferInstanceAs (Nonempty (F.sig.Strategy who))
+  have responseIntegrable :
+      (responseGame free pinned reference epsilon nonnegative small.le).HasIntegrableUtility
+        utility := fun who profile => integrable.mixed_of_finite who _
   obtain ⟨residual, optimal⟩ := exists_isNash_mixed
     (F := responseGame free pinned reference epsilon nonnegative small.le) utility
+    responseIntegrable
   refine ⟨residual, fun who active alternative => ?_⟩
   have comparison := (isNash_iff
     (F := (responseGame free pinned reference epsilon nonnegative small.le).mixed)
     (weaklyPrefers := euPreference utility) residual).mp optimal who alternative
+  replace comparison := comparison.2.2
   change expectedUtility utility who
     ((responseGame free pinned reference epsilon nonnegative small.le).mixed.play
       (Profile.update residual who alternative)) ≤
@@ -147,7 +158,8 @@ theorem exists_pinned_tremble_bestResponses [∀ who, Finite (F.sig.Strategy who
     exact pinned_tremble_update free pinned reference residual epsilon nonnegative small.le
       who active (residual who)
   nth_rw 2 [self] at comparison
-  rw [expected_mixed_update_mix, expected_mixed_update_mix] at comparison
+  rw [expected_mixed_update_mix utility integrable,
+    expected_mixed_update_mix utility integrable] at comparison
   exact (mul_le_mul_iff_right₀ (sub_pos.mpr small)).mp (by linarith)
 
 omit [Fintype ι] in
