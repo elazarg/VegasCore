@@ -22,13 +22,13 @@ open GameTheory.Math.Probability ExecutionProtocol
 
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} (M : InformationModel E) [Finite E.History]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
   (assessment : M.BehavioralAssessment) (recall : M.DecisionRecall)
   (mixed : assessment.IsFullyMixed)
   (bayes : BehavioralAssessment.IsBayesConsistent M assessment
     recall.decisionInformationAntichain)
   (who : Player) (alternative : M.BehavioralPolicy who)
 
+omit [Finite E.History] in
 include recall mixed bayes in
 /-- The actual cut-law posterior after any own-policy deviation equals the
 baseline assessment's belief at every reached common-depth decision site. -/
@@ -46,12 +46,11 @@ theorem own_prefix_conditional_eq_belief (depth : Nat) (site : M.InformationSite
   let antichain := recall.decisionInformationAntichain who site
   have positive : 0 < M.informationMass updated who site := by
     rw [M.informationMass_eq_fixedDepth_toOuterMeasure updated who site depth sameDepth]
-    exact toOuterMeasure_toReal_pos _ reached
-  have originalPositive := mixed.informationMass_pos who site
+    exact pos_iff_ne_zero.mpr ((toOuterMeasure_ne_zero_iff _ _).mpr reached)
+  have originalPositive := M.informationMass_pos_of_fullSupport _ mixed who site
   have originalBelief : assessment.belief who site =
       M.bayesBelief assessment.strategy who site antichain originalPositive := by
-    apply pmf_ext_toReal
-    intro history
+    ext history
     rw [M.bayesBelief_apply]
     exact bayes who site originalPositive history
   have sameBelief := M.bayesBelief_eq_of_eq_off updated assessment.strategy who site antichain
@@ -136,12 +135,15 @@ theorem one_step_gain_le_after_own_prefix
               (assessment.strategy who) := by
           rw [BehavioralAssessment.continuationContext_value,
             BehavioralAssessment.continuationContext_value, Profile.update_eq_self,
-            FinDist.expect_bind, FinDist.expect_bind, ← FinDist.expect_sub]
+            expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _),
+            expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _),
+            ← expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
           apply expect_congr_on_support
           intro compatible _
-          dsimp only [gain]
-          rw [M.one_step_then_baseline_eq_local_law recall.decisionInformationAntichain assessment.strategy who
-            alternative compatible.1 (InformationSite.active M site compatible) fuel, compatible.2]
+          dsimp only [gain, updated, Function.comp_apply]
+          rw [M.one_step_then_baseline_eq_local_law recall.decisionInformationAntichain
+            assessment.strategy who alternative compatible.1 (InformationSite.active M site
+                compatible) fuel, compatible.2]
         _ ≤ allowance info := localBound site sameDepth
     · have zero : expect (fiberConditional prefixLaw observation info) gain = 0 := by
         rw [← expect_constant (fiberConditional prefixLaw observation info) (0 : ℝ)]
@@ -160,14 +162,18 @@ theorem one_step_gain_le_after_own_prefix
             history inactive fuel, sub_self]
       rw [zero]
       exact nonnegative info
+  have observedFinite : (prefixLaw.map observation).support.Finite := by
+    rw [PMF.support_map]
+    exact (Set.toFinite _).image _
   calc
     expect prefixLaw gain =
         expect (prefixLaw.map observation) (fun info =>
           expect (fiberConditional prefixLaw observation info) gain) := by
-      conv_lhs => rw [prefixLaw.eq_bind_condOnFibre observation]
-      exact FinDist.expect_bind ..
+      conv_lhs => rw [eq_bind_fiberConditional prefixLaw observation]
+      exact expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)
     _ ≤ expect (prefixLaw.map observation) allowance :=
-      FinDist.expect_mono conditionalBound
+      expect_mono conditionalBound (payoffIntegrable_of_finite_support _ _ observedFinite)
+        (payoffIntegrable_of_finite_support _ _ observedFinite)
     _ = _ := expect_map ..
 
 end GameTheory.Protocol.InformationModel

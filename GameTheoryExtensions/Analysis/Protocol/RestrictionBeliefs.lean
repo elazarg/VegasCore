@@ -35,13 +35,11 @@ private theorem information_event_meets (assessment : M.BehavioralAssessment)
 
 private theorem bayes_belief_eq (assessment : M.BehavioralAssessment)
     (who : Player) (site : M.InformationSite who)
-    [Fintype (M.InformationHistory who site.1)]
     (antichain : site.IsHistoryAntichain)
     (positive : 0 < M.informationMass assessment.strategy who site)
     (bayes : BehavioralAssessment.IsBayesConsistentAt M assessment who site antichain positive) :
     assessment.belief who site = M.bayesBelief assessment.strategy who site antichain positive := by
-  apply pmf_ext_toReal
-  intro history
+  ext history
   rw [M.bayesBelief_apply]
   exact bayes history
 
@@ -60,9 +58,7 @@ theorem information_event_preimage (who : Player) (site : M.InformationSite who)
   simp only [Set.mem_preimage, Set.mem_ofPred_eq, restriction.observed,
     site_val, Function.Embedding.apply_eq_iff_eq]
 
-variable [Finite E.History] [Finite T.History]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
-  [∀ who (site : N.InformationSite who), Fintype (N.InformationHistory who site.1)]
+variable [Finite T.History]
 
 /-- Bayes beliefs on retained sites follow from the actual execution-law bound,
 not from an assumed belief translation. One sequence covers every history. -/
@@ -86,7 +82,8 @@ theorem retained_beliefs_converge
         restriction.history) history).toReal ≤
           ((N.runBehavioral (targetSequence n).strategy depth) history).toReal)
     (negligible : Tendsto (fun n => (1 - factor n) /
-      (factor n * M.informationMass (sourceSequence n).strategy who site)) atTop (nhds 0))
+      (factor n * (M.informationMass (sourceSequence n).strategy who site).toReal)) atTop
+        (nhds 0))
     (limit : PMF (M.InformationHistory who site.1))
     (converges : PMFConvergesPointwise (fun n => (sourceSequence n).belief who site) limit) :
     PMFConvergesPointwise
@@ -123,28 +120,33 @@ theorem retained_beliefs_converge
         change history ∈ restriction.history ⁻¹' targetEvent ↔ history ∈ sourceEvent
         rw [preimage]) (sourceMeet n) (encodedMeet n)]
     rw [← M.bayesBelief_map_eq_filter (sourceSequence n).strategy who site depth
-      sourceClock (sourceAntichain who site) ((sourceMixed n).informationMass_pos who site)
+      sourceClock (sourceAntichain who site) (M.informationMass_pos_of_fullSupport _ (sourceMixed
+          n) who site)
       (sourceMeet n),
       ← bayes_belief_eq (sourceSequence n) who site (sourceAntichain who site)
-        ((sourceMixed n).informationMass_pos who site)
-        (sourceBayes n who site ((sourceMixed n).informationMass_pos who site)), PMF.map_comp]
+        (M.informationMass_pos_of_fullSupport _ (sourceMixed n) who site)
+        (sourceBayes n who site (M.informationMass_pos_of_fullSupport _ (sourceMixed n) who site)),
+            PMF.map_comp]
     rfl
   have targetConditioned (n : Nat) :
       (N.runBehavioral (targetSequence n).strategy depth).filter targetEvent (targetMeet n) =
         ((targetSequence n).belief who (restriction.site who site)).map Subtype.val := by
     rw [← N.bayesBelief_map_eq_filter (targetSequence n).strategy who
       (restriction.site who site) depth clock (targetAntichain who (restriction.site who site))
-      ((targetMixed n).informationMass_pos who (restriction.site who site)) (targetMeet n),
+      (N.informationMass_pos_of_fullSupport _ (targetMixed n) who (restriction.site who site))
+          (targetMeet n),
       ← bayes_belief_eq (targetSequence n) who (restriction.site who site)
         (targetAntichain who (restriction.site who site))
-        ((targetMixed n).informationMass_pos who (restriction.site who site))
+        (N.informationMass_pos_of_fullSupport _ (targetMixed n) who (restriction.site who site))
         (targetBayes n who (restriction.site who site)
-          ((targetMixed n).informationMass_pos who (restriction.site who site)))]
+          (N.informationMass_pos_of_fullSupport _ (targetMixed n) who (restriction.site who site)))]
   have mass (n : Nat) :
-      (((M.runBehavioral (sourceSequence n).strategy depth).map restriction.history).toOuterMeasure targetEvent).toReal = M.informationMass (sourceSequence n).strategy who site := by
-    rw [FinDist.probOf_map, preimage]
-    exact (M.informationMass_eq_fixedDepth_toOuterMeasure (sourceSequence n).strategy who site
-      depth sourceClock).symm
+      (((M.runBehavioral (sourceSequence n).strategy depth).map
+        restriction.history).toOuterMeasure targetEvent).toReal =
+        (M.informationMass (sourceSequence n).strategy who site).toReal := by
+    rw [PMF.toOuterMeasure_map_apply, preimage,
+      M.informationMass_eq_fixedDepth_toOuterMeasure (sourceSequence n).strategy who site
+        depth sourceClock]
   have conditioned := conditional_domination_converges
     (fun n => (M.runBehavioral (sourceSequence n).strategy depth).map restriction.history)
     (fun n => N.runBehavioral (targetSequence n).strategy depth) targetEvent encodedMeet targetMeet
@@ -158,8 +160,8 @@ theorem retained_beliefs_converge
     ← PMF.map_comp] at conditioned
   intro history
   have point := conditioned history.1
-  simpa only [targetConditioned, FinDist.prob_map_of_injective Subtype.val
-    Subtype.val_injective] using point
+  simpa only [targetConditioned, pmf_map_apply_of_injective _ Subtype.val_injective]
+    using point
 
 end ActionRestriction
 

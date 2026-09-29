@@ -30,20 +30,19 @@ def informationReadout (who : Player) (site : M.InformationSite who)
     (readout : E.History → X) (history : E.History) : Option X :=
   if M.infoOf who history.trace = site.1 then some (readout history) else none
 
-variable [Finite E.History]
-  (strategy : ∀ who, M.BehavioralPolicy who) (who : Player)
-  (site : M.InformationSite who) [Fintype (M.InformationHistory who site.1)]
+variable (strategy : ∀ who, M.BehavioralPolicy who) (who : Player)
+  (site : M.InformationSite who)
   (depth : Nat) (sameDepth : ∀ history : M.InformationHistory who site.1,
     history.1.trace.length = depth)
 
 include sameDepth in
 theorem informationReadout_mass (readout : E.History → X) :
-    (((M.runBehavioral strategy depth).map
-      (M.informationReadout who site readout)).toOuterMeasure {value | value.isSome}).toReal =
+    ((M.runBehavioral strategy depth).map
+      (M.informationReadout who site readout)).toOuterMeasure {value | value.isSome} =
       M.informationMass strategy who site := by
   classical
   rw [M.informationMass_eq_fixedDepth_toOuterMeasure strategy who site depth sameDepth,
-    FinDist.probOf_map]
+    PMF.toOuterMeasure_map_apply]
   congr 1
   ext history
   by_cases observed : M.infoOf who history.trace = site.1 <;>
@@ -51,55 +50,45 @@ theorem informationReadout_mass (readout : E.History → X) :
 
 include sameDepth in
 open Classical in
-private theorem informationReadout_prob (readout : E.History → X) (value : X) :
-    (((M.runBehavioral strategy depth).map
-      (M.informationReadout who site readout)) (some value)).toReal =
-      ∑ history : M.InformationHistory who site.1,
-        (M.historyReachWeight strategy history.1).toReal *
-          (if value = readout history.1 then 1 else 0) := by
-  classical
-  let := Fintype.ofFinite E.History
-  rw [toReal_map_apply, expect_eq_sum]
-  have terms (history : E.History) :
-      ((M.runBehavioral strategy depth) history).toReal *
-          (if some value = M.informationReadout who site readout history then 1 else 0) =
-        if M.infoOf who history.trace = site.1 then
-          ((M.runBehavioral strategy depth) history).toReal *
-            (if value = readout history then 1 else 0) else 0 := by
-    by_cases observed : M.infoOf who history.trace = site.1 <;>
-      simp [informationReadout, observed]
-  simp_rw [terms]
-  rw [← Finset.sum_filter]
-  rw [Finset.sum_subtype _ (p := fun history => M.infoOf who history.trace = site.1)
-    (by intro history; simp) _]
-  apply Finset.sum_congr rfl
-  intro history _
-  rw [historyReachWeight, sameDepth history]
+private theorem informationReadout_apply (readout : E.History → X) (value : X) :
+    ((M.runBehavioral strategy depth).map (M.informationReadout who site readout)) (some value) =
+      ∑' history : M.InformationHistory who site.1,
+        if value = readout history.1 then M.historyReachWeight strategy history.1 else 0 := by
+  let fiber : Set E.History := {history | M.infoOf who history.trace = site.1}
+  let joint (history : E.History) : ENNReal :=
+    if value = readout history then (M.runBehavioral strategy depth) history else 0
+  rw [PMF.map_apply]
+  calc
+    _ = ∑' history, fiber.indicator joint history := by
+      apply tsum_congr
+      intro history
+      by_cases observed : M.infoOf who history.trace = site.1 <;>
+        simp [informationReadout, observed, fiber, joint]
+    _ = ∑' history : fiber, joint history := (tsum_subtype fiber joint).symm
+    _ = _ := tsum_congr fun history => by
+      simp only [joint, historyReachWeight, sameDepth history]
 
 include sameDepth in
 /-- The posterior probability of a state is its joint probability with the
 information event, divided by the information event's mass. -/
-theorem bayesBelief_readout_prob (readout : E.History → X)
+theorem bayesBelief_readout_apply (readout : E.History → X)
     (antichain : site.IsHistoryAntichain)
     (positive : 0 < M.informationMass strategy who site) (value : X) :
-    (((M.bayesBelief strategy who site antichain positive).map
-      (fun history => readout history.1)) value).toReal =
-      (((M.runBehavioral strategy depth).map
-        (M.informationReadout who site readout)) (some value)).toReal /
+    ((M.bayesBelief strategy who site antichain positive).map
+      (fun history => readout history.1)) value =
+      ((M.runBehavioral strategy depth).map
+        (M.informationReadout who site readout)) (some value) /
           M.informationMass strategy who site := by
   classical
-  rw [toReal_map_apply, expect_eq_sum,
-    M.informationReadout_prob strategy who site depth sameDepth readout value,
-    Finset.sum_div]
-  apply Finset.sum_congr rfl
-  intro history _
-  rw [M.bayesBelief_apply]
-  ring
+  rw [M.informationReadout_apply strategy who site depth sameDepth readout value, PMF.map_apply,
+    div_eq_mul_inv, ← ENNReal.tsum_mul_right]
+  apply tsum_congr
+  intro history
+  by_cases same : value = readout history.1 <;>
+    simp [same, M.bayesBelief_apply, div_eq_mul_inv]
 
-variable [Finite T.History]
-  (source : ∀ who, N.BehavioralPolicy who)
+variable (source : ∀ who, N.BehavioralPolicy who)
   (sourceSite : N.InformationSite who)
-  [Fintype (N.InformationHistory who sourceSite.1)]
   (sourceDepth : Nat)
   (sourceClock : ∀ history : N.InformationHistory who sourceSite.1,
     history.1.trace.length = sourceDepth)
@@ -112,7 +101,8 @@ include sameDepth sourceClock law in
 theorem informationMass_readout_at_depth :
     M.informationMass strategy who site = N.informationMass source who sourceSite := by
   classical
-  have mass := congrArg (fun distribution => (distribution.toOuterMeasure {value | value.isSome}).toReal) law
+  have mass := congrArg (fun distribution => distribution.toOuterMeasure {value | value.isSome})
+    law
   rw [M.informationReadout_mass strategy who site depth sameDepth readout,
     N.informationReadout_mass source who sourceSite sourceDepth sourceClock sourceReadout] at mass
   exact mass
@@ -130,16 +120,12 @@ theorem bayesBelief_readout_at_depth
       (N.bayesBelief source who sourceSite sourceAntichain sourcePositive).map
         (fun history => sourceReadout history.1) := by
   classical
-  apply pmf_ext_toReal
-  intro value
-  rw [M.bayesBelief_readout_prob strategy who site depth sameDepth readout,
-    N.bayesBelief_readout_prob source who sourceSite sourceDepth sourceClock sourceReadout,
+  ext value
+  rw [M.bayesBelief_readout_apply strategy who site depth sameDepth readout,
+    N.bayesBelief_readout_apply source who sourceSite sourceDepth sourceClock sourceReadout,
     law, M.informationMass_readout_at_depth N strategy who site depth sameDepth source
       sourceSite sourceDepth sourceClock readout sourceReadout law]
 
-omit [Finite E.History] [Finite T.History]
-  [Fintype (M.InformationHistory who site.1)]
-  [Fintype (N.InformationHistory who sourceSite.1)] in
 /-- An ordinary readout law suffices when one predicate on that readout
 characterizes the two information events on their actual prefix supports. -/
 theorem informationReadout_law_of_fiber
