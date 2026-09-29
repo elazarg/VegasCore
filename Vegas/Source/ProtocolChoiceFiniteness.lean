@@ -19,16 +19,6 @@ open GameTheory.Protocol GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- Finiteness applies to new binding decisions and imposes no restriction on
-initial parameters, chance distributions, or publication payloads. -/
-def FiniteBindingTypes : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    SourceProgram Player L Γ O → Prop
-  | _, _, .ret _ => True
-  | _, _, .sample _ _ _ next => FiniteBindingTypes next
-  | _, _, .commit (payload := payload) _ _ _ _ next =>
-      Finite (L.Val payload) ∧ FiniteBindingTypes next
-  | _, _, .reveal _ _ _ _ _ _ next => FiniteBindingTypes next
-
 theorem ProtocolView.available_finite (who : Player) :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → program.FiniteBindingTypes →

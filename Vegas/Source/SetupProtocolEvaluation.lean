@@ -53,9 +53,9 @@ theorem continuationLaw_step (setup : Setup (Player := Player) (L := L))
   cases state with
   | none =>
       simp [protocolStep, PMF.bind_map, continuationLaw, run, initialConfig,
-        SourceProgram.run, runFrom]
+        SourceProgram.run, runFrom, Function.comp_def]
   | some state =>
-      simp only [protocolStep, PMF.bind_map, continuationLaw, protocolJoint]
+      simp only [protocolStep, PMF.bind_map, continuationLaw, protocolJoint, Function.comp_def]
       exact SourceProgram.ProtocolState.continuationLaw_step setup.program profile state running
 
 def protocolChooser (setup : Setup (Player := Player) (L := L))
@@ -93,7 +93,7 @@ theorem protocol_runFor_eq (setup : Setup (Player := Player) (L := L))
       | some state =>
           have stopped := (SourceProgram.ProtocolState.remaining_zero_iff_terminal
             setup.program state).mp (Nat.eq_zero_of_le_zero enough)
-          simpa using (setup.continuationLaw_terminal
+          simpa [PMF.pure_map] using (setup.continuationLaw_terminal
             (fun who => (profile who).toBehavioral setup.program) (some state) stopped).symm
   | succ fuel ih =>
       by_cases stopped : (setup.executionProtocol admission).terminal state

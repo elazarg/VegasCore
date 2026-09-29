@@ -326,30 +326,33 @@ law of every initial parameter and the complete typed terminal state. The draw
 is shared across the hidden configurations; it is not chosen after seeing them. -/
 theorem exists_effectiveDisclosure_belief_mixture {who : Player} {Γ : SourceCtx Player L}
     {O : Finset VarId} {Parameter : Type}
-    (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
+    (program : SourceProgram Player L Γ O) (finite : program.FiniteBindingTypes)
+    (profile : BehavioralProfile program)
     (replacement : BehavioralPolicy who program) (registry : Registry Γ)
     (revelations : Revelations Γ) (belief : PMF (Config Player L Γ))
+    (beliefFinite : belief.support.Finite)
     (registryEq : ∀ config ∈ belief.support, config.registry = registry)
     (revelationsEq : ∀ config ∈ belief.support, @config.revelations = @revelations)
     (parameter : Config Player L Γ → Parameter) :
     ∃ mixture : PMF {policy : BehavioralPolicy who program //
         policy.EffectiveDisclosures program registry revelations},
-      (belief.bind fun config =>
+      mixture.support.Finite ∧ (belief.bind fun config =>
         (runFrom program (Function.update profile who replacement) config).map
           (fun result => (parameter config, result))) =
       mixture.bind fun alternative => belief.bind fun config =>
         (runFrom program (Function.update profile who alternative.1) config).map
           (fun result => (parameter config, result)) := by
   classical
-  obtain ⟨mixture, laws⟩ :=
-    exists_pureMixture program profile replacement belief.supportFinset.toList
+  obtain ⟨mixture, mixtureFinite, laws⟩ :=
+    exists_pureMixture program finite profile replacement beliefFinite.toFinset.toList
   refine ⟨mixture.map (fun policy =>
     ⟨(policy.normalizeDisclosureFrom program registry revelations id).toBehavioral program,
-      normalizeDisclosureFrom_effective program registry revelations id policy⟩), ?_⟩
-  rw [PMF.bind_map, PMF.bind_comm]
+      normalizeDisclosureFrom_effective program registry revelations id policy⟩),
+    by rw [PMF.support_map]; exact mixtureFinite.image _, ?_⟩
+  rw [PMF.bind_map, Function.comp_def, PMF.bind_comm]
   apply bind_congr_on_support _
   intro config supported
-  rw [laws config (Finset.mem_toList.mpr (FinDist.mem_supportFinset.mpr supported)),
+  rw [laws config (Finset.mem_toList.mpr (beliefFinite.mem_toFinset.mpr supported)),
     PMF.map_bind]
   apply bind_congr_on_support _
   intro policy _

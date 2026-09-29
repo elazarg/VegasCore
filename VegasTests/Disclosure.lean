@@ -136,7 +136,7 @@ example :
     ⟨Env.cons (Val := CellVal simpleExpr) (x := bid) (τ := .commitment () .bool)
       (.success false) (Env.empty (CellVal simpleExpr)),
       [], Revelations.initial _, fun _ => []⟩
-  simp [runFrom, runWith, refusalPaysValue, revealSuccessor, payOnSuccess,
+  simp [runFrom, runWith, refusalPaysValue, revealSuccessor, payOnSuccess, expect_pure,
     Registry.completedBy] at applied
   norm_num at applied
 

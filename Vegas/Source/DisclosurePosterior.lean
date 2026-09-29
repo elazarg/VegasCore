@@ -97,8 +97,8 @@ theorem commitSuccessor_memory_disintegration {payload : L.Ty} (name : VarId)
           ((fiberConditional (bindingMemoryLaw name payload remember choose (config.view who))
             Prod.fst binding).map Prod.snd).map
               ((commitSuccessor name guard config binding).withOwnHistory who) := by
-  simpa only [Config.restoreMemory, Config.view, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind,
-    PMF.pure_bind, Config.withOwnHistory, Function.update_self, commitSuccessor,
+  simpa only [Config.restoreMemory, Config.view, ← PMF.bind_pure_comp, Function.comp_def,
+    PMF.bind_bind, PMF.pure_bind, Config.withOwnHistory, Function.update_self, commitSuccessor,
     Function.update_idem] using
     bindingMemoryLaw_disintegrate name payload remember choose (config.view who)
     (fun binding past => PMF.pure
@@ -116,8 +116,9 @@ theorem revealSuccessor_memory_disintegration {payload : L.Ty} {name : VarId}
       (choose (original.view who)).map (revealSuccessor published selected original)) =
       ((disclosureMemoryLaw published selected config.registry config.revelations remember
         choose (config.view who)).map Prod.fst).bind fun disclose =>
-          ((fiberConditional (disclosureMemoryLaw published selected config.registry config.revelations remember
-            choose (config.view who)) Prod.fst disclose).map Prod.snd).map
+          ((fiberConditional (disclosureMemoryLaw published selected config.registry
+            config.revelations remember choose (config.view who)) Prod.fst disclose).map
+              Prod.snd).map
               ((revealSuccessor published selected config disclose).withOwnHistory who) := by
   have law := disclosureMemoryLaw_disintegrate published selected config.registry
     config.revelations remember choose (config.view who)

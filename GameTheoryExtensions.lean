@@ -17,6 +17,7 @@ import GameTheoryExtensions.Math.Probability.Regularity
 import GameTheoryExtensions.Math.Probability.RegularCoupling
 import GameTheoryExtensions.Math.Probability.WeightedSet
 import GameTheoryExtensions.Math.Probability.PriorityChoice
+import GameTheoryExtensions.Math.Probability.SiteDraw
 import GameTheoryExtensions.Protocol.HistoryProjection
 import GameTheoryExtensions.Protocol.BehavioralContinuation
 import GameTheoryExtensions.Protocol.FiniteInformation

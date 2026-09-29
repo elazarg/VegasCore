@@ -53,6 +53,9 @@ def equivOption : PublicationResult α ≃ Option α where
 instance [Fintype α] : Fintype (PublicationResult α) :=
   Fintype.ofEquiv (Option α) equivOption.symm
 
+instance [Finite α] : Finite (PublicationResult α) :=
+  Finite.of_equiv (Option α) equivOption.symm
+
 def isSuccess : PublicationResult α → Bool
   | .failure => false
   | .success _ => true

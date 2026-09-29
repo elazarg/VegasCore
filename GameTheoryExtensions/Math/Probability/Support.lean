@@ -158,6 +158,13 @@ theorem bindOnSupport_map {γ : Type*} (law : PMF α) (f : α → β)
   intro value supported
   exact agrees (f value) (by rw [PMF.support_map]; exact ⟨value, supported, rfl⟩)
 
+/-- Finitely many finitely supported branches from a finitely supported law
+give a finitely supported mixture. -/
+theorem bind_support_finite {p : PMF α} {f : α → PMF β} (finite : p.support.Finite)
+    (branches : ∀ a ∈ p.support, (f a).support.Finite) : (p.bind f).support.Finite := by
+  rw [PMF.support_bind]
+  exact finite.biUnion branches
+
 /-- Tagging each branch's draw with its branch makes a tagged atom's mass the
 product of the branch mass and the draw's mass within that branch. -/
 theorem bind_map_tag_apply (prior : PMF α) (branch : α → PMF β) (value : β) (index : α) :

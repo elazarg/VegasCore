@@ -79,9 +79,10 @@ theorem continuationLaw_behavioral_step (setup : Setup (Player := Player) (L := 
   cases state with
   | none =>
       simp [protocolStep, continuationLaw, PMF.bind_const, PMF.bind_map,
-        run, initialConfig, SourceProgram.run, SourceProgram.runFrom]
+        run, initialConfig, SourceProgram.run, SourceProgram.runFrom, Function.comp_def]
   | some state =>
-      simpa only [protocolStep, continuationLaw, PMF.bind_bind, PMF.bind_map] using
+      simpa only [protocolStep, continuationLaw, PMF.bind_bind, PMF.bind_map,
+          Function.comp_def] using
         SourceProgram.ProtocolState.continuationLaw_behavioral_step setup.program profile state
           running joint marginal
 
@@ -129,7 +130,7 @@ theorem protocol_runBehavioralFrom_eq (setup : Setup (Player := Player) (L := L)
           admission who (profile who) (permitted who) _)))
     change law.bind (fun joint => (setup.protocolStep before.state joint.1).bind
       (fun state => (setup.continuationLaw profile state).map some)) = _
-    simpa only [PMF.map_bind, PMF.bind_bind, PMF.bind_map] using stepLaw
+    simpa only [PMF.map_bind, PMF.bind_bind, PMF.bind_map, Function.comp_def] using stepLaw
 
 theorem protocol_runBehavioral_eq (setup : Setup (Player := Player) (L := L))
     (admission : CommitmentInterface setup.program) (profile : BehavioralProfile setup.program)

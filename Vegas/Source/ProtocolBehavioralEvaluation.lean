@@ -36,11 +36,12 @@ theorem continuationLaw_behavioral_step : {Γ : SourceCtx Player L} → {O : Fin
   | _, _, .sample _ _ _ next, profile, state, running, joint, marginal => by
       cases state with
       | inl config =>
-          simp [step, continuationLaw, PMF.bind_const, PMF.bind_map, runFrom_sample]
+          simp [step, continuationLaw, PMF.bind_const, PMF.bind_map, runFrom_sample,
+              Function.comp_def]
           rfl
       | inr rest =>
           simpa only [step, continuationLaw, Sum.elim_inr, PMF.bind_bind,
-            PMF.bind_map] using
+            PMF.bind_map, Function.comp_def] using
             continuationLaw_behavioral_step next profile rest running joint marginal
   | _, _, .commit (payload := payload) name owner fresh guard next,
       profile, state, running, joint, marginal => by
@@ -53,12 +54,12 @@ theorem continuationLaw_behavioral_step : {Γ : SourceCtx Player L} → {O : Fin
           simp only [PMF.bind_map, BehavioralPolicy.protocolAction, observe,
             Sum.elim_inl, Sum.elim_inr, dite_true, OwnAction.binding_commit, step,
             PMF.bind_bind, PMF.pure_bind, continuationLaw, continuationLaw_entry,
-            runFrom_commit, commitKernel, Config.view] at law ⊢
+            runFrom_commit, commitKernel, Config.view, Function.comp_def] at law ⊢
           convert law using 1
           rfl
       | inr rest =>
           simpa only [step, continuationLaw, Sum.elim_inr, PMF.bind_bind,
-            PMF.bind_map] using
+            PMF.bind_map, Function.comp_def] using
             continuationLaw_behavioral_step next (fun who => (profile who).2)
               rest running joint marginal
   | _, _, .reveal published owner name fresh source unresolved next,
@@ -72,12 +73,12 @@ theorem continuationLaw_behavioral_step : {Γ : SourceCtx Player L} → {O : Fin
           simp only [PMF.bind_map, BehavioralPolicy.protocolAction, observe,
             Sum.elim_inl, Sum.elim_inr, dite_true, OwnAction.disclosure, step,
             PMF.bind_bind, PMF.pure_bind, continuationLaw, continuationLaw_entry,
-            runFrom_reveal, revealKernel, Config.view] at law ⊢
+            runFrom_reveal, revealKernel, Config.view, Function.comp_def] at law ⊢
           convert law using 1
           rfl
       | inr rest =>
           simpa only [step, continuationLaw, Sum.elim_inr, PMF.bind_bind,
-            PMF.bind_map] using
+            PMF.bind_map, Function.comp_def] using
             continuationLaw_behavioral_step next (fun who => (profile who).2)
               rest running joint marginal
 
@@ -129,7 +130,7 @@ theorem protocol_runBehavioralFrom_eq {Γ : SourceCtx Player L} {O : Finset VarI
         (law.map Subtype.val) marginal)
     change law.bind (fun joint => (ProtocolState.step program before.state joint.1).bind
       (fun state => (ProtocolState.continuationLaw program profile state).map some)) = _
-    simpa only [PMF.map_bind, PMF.bind_bind, PMF.bind_map] using stepLaw
+    simpa only [PMF.map_bind, PMF.bind_bind, PMF.bind_map, Function.comp_def] using stepLaw
 
 theorem protocol_runBehavioral_eq {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)

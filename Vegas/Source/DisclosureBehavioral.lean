@@ -55,11 +55,12 @@ theorem bindingMemoryLaw_disintegrate {Result : Type} (name : VarId) (payload : 
     ((remember view).bind fun past => (choose (view.1, past)).bind fun binding =>
       next binding (past ++ [.commit who name payload binding])) =
       ((bindingMemoryLaw name payload remember choose view).map Prod.fst).bind fun binding =>
-        ((fiberConditional (bindingMemoryLaw name payload remember choose view) Prod.fst binding).map
-          Prod.snd).bind (next binding) := by
+        ((fiberConditional (bindingMemoryLaw name payload remember choose view) Prod.fst
+          binding).map Prod.snd).bind (next binding) := by
   have disintegration := congrArg (PMF.bind · (fun pair => next pair.1 pair.2))
-    (bindingMemoryLaw name payload remember choose view).eq_bind_fst_conditional_snd
-  simpa only [bindingMemoryLaw, PMF.bind_bind, PMF.bind_map] using disintegration
+    (eq_bind_fst_conditional_snd (bindingMemoryLaw name payload remember choose view))
+  simpa only [bindingMemoryLaw, PMF.bind_bind, PMF.bind_map, Function.comp_def] using
+    disintegration
 
 omit [IExpr.ResultTypes L] in
 theorem disclosureMemoryLaw_disintegrate {Result : Type} {name : VarId} {payload : L.Ty}
@@ -73,12 +74,13 @@ theorem disclosureMemoryLaw_disintegrate {Result : Type} {name : VarId} {payload
         (past ++ [.reveal who name disclose])) =
       ((disclosureMemoryLaw published selected registry revelations remember choose view).map
         Prod.fst).bind fun disclose =>
-          ((fiberConditional (disclosureMemoryLaw published selected registry revelations remember choose
-              view) Prod.fst disclose).map Prod.snd).bind (next disclose) := by
+          ((fiberConditional (disclosureMemoryLaw published selected registry revelations remember
+              choose view) Prod.fst disclose).map Prod.snd).bind (next disclose) := by
   have disintegration := congrArg (PMF.bind · (fun pair => next pair.1 pair.2))
-    (disclosureMemoryLaw published selected registry revelations remember choose
-      view).eq_bind_fst_conditional_snd
-  simpa only [disclosureMemoryLaw, PMF.bind_bind, PMF.bind_map] using disintegration
+    (eq_bind_fst_conditional_snd (disclosureMemoryLaw published selected registry revelations
+      remember choose view))
+  simpa only [disclosureMemoryLaw, PMF.bind_bind, PMF.bind_map, Function.comp_def] using
+    disintegration
 
 /-- A behavioral compiler carries only an observation-local conditional law.
 Later policies see their original intentions through that posterior. -/
@@ -270,8 +272,8 @@ private theorem realizesDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
     have step := ih (afterReveal profile) policy.2
       registry.weaken (revelations.reveal (published := published) selected)
       (fun nextView => if own : owner = owner then
-        (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations remember
-            (policy.1 own) (nextView.back true)) Prod.fst
+        (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations
+            remember (policy.1 own) (nextView.back true)) Prod.fst
           (OwnAction.disclosure nextView.2.getLast?)).map Prod.snd
       else remember (nextView.back false))
       (Env.cons (result disclose) state)
@@ -288,8 +290,8 @@ private theorem realizesDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
     have step := ih (afterReveal profile) policy.2
       registry.weaken (revelations.reveal (published := published) selected)
       (fun nextView => if own : owner = who then
-        (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations remember
-            (policy.1 own) (nextView.back true)) Prod.fst
+        (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations
+            remember (policy.1 own) (nextView.back true)) Prod.fst
           (OwnAction.disclosure nextView.2.getLast?)).map Prod.snd
       else remember (nextView.back false))
       (Env.cons (disclosureResult published selected

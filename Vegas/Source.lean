@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Source.Basic
 import Vegas.Source.Semantics
 import Vegas.Source.Setup
+import Vegas.Source.FiniteSupport
 import Vegas.Source.InitialState
 import Vegas.Source.PrivateInputs
 import Vegas.Source.Purification

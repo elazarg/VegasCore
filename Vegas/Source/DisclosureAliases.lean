@@ -190,7 +190,7 @@ theorem disclosure_alias_disintegration (published : VarId)
           (fun intention => (revealSuccessor published source config response).restoreDisclosure
             owner name intention) := by
   classical
-  conv_lhs => arg 2; rw [law.eq_bind_condOnFibre (effectiveDisclosure published source config)]
+  conv_lhs => arg 2; rw [eq_bind_fiberConditional law (effectiveDisclosure published source config)]
   rw [PMF.map_bind]
   apply bind_congr_on_support _
   intro response reached

@@ -2,6 +2,7 @@
 
 import Vegas.Source.ValueBinding
 import Vegas.Source.Purification
+import Vegas.Source.FiniteSupport
 import Vegas.Source.ProtocolBehavioralPolicy
 
 /-! # Value-only binding from an arbitrary source continuation
@@ -71,18 +72,23 @@ theorem bindValues_runFrom_publicOutcome_eq
 /-- Every behavioral continuation has one value-binding mixture shared across
 all listed hidden configurations. Opponents' source policies remain unchanged. -/
 theorem exists_valueBinding_continuation_mixture
-    (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
+    (program : SourceProgram Player L Γ O) (finite : program.FiniteBindingTypes)
+    (profile : BehavioralProfile program)
     (replacement : BehavioralPolicy who program) (configs : List (Config Player L Γ)) :
-    ∃ mixture : PMF (ValueBindingPolicy who program), ∀ config ∈ configs,
+    ∃ mixture : PMF (ValueBindingPolicy who program), mixture.support.Finite ∧
+      ∀ config ∈ configs,
       (runFrom program (Function.update profile who replacement) config).map
           (publicOutcome program) =
         mixture.bind fun alternative =>
           (runFrom program (Function.update profile who alternative.1) config).map
             (publicOutcome program) := by
-  obtain ⟨mixture, law⟩ := exists_pureMixture program profile replacement configs
+  obtain ⟨mixture, mixtureFinite, law⟩ :=
+    exists_pureMixture program finite profile replacement configs
   refine ⟨mixture.map (fun policy =>
     ⟨PurePolicy.toBehavioral program (PurePolicy.bindValues program policy),
-      valueBinding_bindValues program policy⟩), ?_⟩
+      valueBinding_bindValues program policy⟩),
+          by rw [PMF.support_map]; exact mixtureFinite.image _,
+    ?_⟩
   intro config member
   rw [law config member, PMF.map_bind, PMF.bind_map]
   exact bind_congr_on_support _ fun policy _ =>
@@ -91,10 +97,11 @@ theorem exists_valueBinding_continuation_mixture
 /-- The mixing draw precedes the hidden configuration draw. The readout can
 retain private types or any other initial parameter jointly with public results. -/
 theorem exists_valueBinding_belief_mixture {Parameter : Type}
-    (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
+    (program : SourceProgram Player L Γ O) (finite : program.FiniteBindingTypes)
+    (profile : BehavioralProfile program)
     (replacement : BehavioralPolicy who program) (belief : PMF (Config Player L Γ))
-    (parameter : Config Player L Γ → Parameter) :
-    ∃ mixture : PMF (ValueBindingPolicy who program),
+    (beliefFinite : belief.support.Finite) (parameter : Config Player L Γ → Parameter) :
+    ∃ mixture : PMF (ValueBindingPolicy who program), mixture.support.Finite ∧
       (belief.bind fun config =>
         (runFrom program (Function.update profile who replacement) config).map
           (fun result => (parameter config, publicOutcome program result))) =
@@ -102,23 +109,24 @@ theorem exists_valueBinding_belief_mixture {Parameter : Type}
         (runFrom program (Function.update profile who alternative.1) config).map
           (fun result => (parameter config, publicOutcome program result)) := by
   classical
-  obtain ⟨mixture, law⟩ := exists_valueBinding_continuation_mixture program profile replacement
-    belief.supportFinset.toList
-  refine ⟨mixture, ?_⟩
+  obtain ⟨mixture, mixtureFinite, law⟩ := exists_valueBinding_continuation_mixture program finite
+    profile replacement beliefFinite.toFinset.toList
+  refine ⟨mixture, mixtureFinite, ?_⟩
   rw [PMF.bind_comm]
   apply bind_congr_on_support _
   intro config supported
   have equality := congrArg (PMF.map fun result => (parameter config, result))
-    (law config (Finset.mem_toList.mpr (FinDist.mem_supportFinset.mpr supported)))
+    (law config (Finset.mem_toList.mpr (beliefFinite.mem_toFinset.mpr supported)))
   simpa only [PMF.map_comp, Function.comp_def, PMF.map_bind] using equality
 
 /-- Hidden inability to open cannot increase the conditional best-response
 value when opponents retain their source observations and policies. This is
 stronger than an initial Nash comparison, and still weaker than native SE. -/
 theorem exists_valueBinding_continuation_ge {Parameter : Type}
-    (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
+    (program : SourceProgram Player L Γ O) (finite : program.FiniteBindingTypes)
+    (profile : BehavioralProfile program)
     (replacement : BehavioralPolicy who program) (belief : PMF (Config Player L Γ))
-    (parameter : Config Player L Γ → Parameter)
+    (beliefFinite : belief.support.Finite) (parameter : Config Player L Γ → Parameter)
     (utility : Parameter × PublicOutcome program → ℝ) :
     ∃ alternative : ValueBindingPolicy who program,
       expect (belief.bind fun config =>
@@ -127,13 +135,24 @@ theorem exists_valueBinding_continuation_ge {Parameter : Type}
       expect (belief.bind fun config =>
         (runFrom program (Function.update profile who alternative.1) config).map
           (fun result => (parameter config, publicOutcome program result))) utility := by
-  obtain ⟨mixture, law⟩ := exists_valueBinding_belief_mixture program profile replacement
-    belief parameter
-  rw [law, FinDist.expect_bind]
-  obtain ⟨alternative, _, bound⟩ := mixture.exists_expect_le_support (fun alternative =>
+  obtain ⟨mixture, _, law⟩ := exists_valueBinding_belief_mixture program finite profile
+    replacement belief beliefFinite parameter
+  have lawFinite : (belief.bind fun config =>
+      (runFrom program (Function.update profile who replacement) config).map
+        (fun result => (parameter config, publicOutcome program result))).support.Finite := by
+    rw [PMF.support_bind]
+    exact beliefFinite.biUnion fun config _ => by
+      rw [PMF.support_map]
+      exact (runFrom_support_finite _ _
+        (FiniteBindingTypes.profileFiniteSupport _ finite _) config).image _
+  rw [law] at lawFinite ⊢
+  have integrable := payoffIntegrable_of_finite_support _ utility lawFinite
+  rw [expect_bind_tower _ _ _ integrable]
+  obtain ⟨alternative, _, bound⟩ := exists_expect_le_support mixture (fun alternative =>
     expect (belief.bind fun config =>
       (runFrom program (Function.update profile who alternative.1) config).map
         (fun result => (parameter config, publicOutcome program result))) utility)
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ integrable)
   exact ⟨alternative, bound⟩
 
 end Vegas.SourceProgram

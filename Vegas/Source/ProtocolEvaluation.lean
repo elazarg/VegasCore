@@ -92,7 +92,7 @@ theorem continuationLaw_step : {Γ : SourceCtx Player L} → {O : Finset VarId} 
       cases state with
       | inl config =>
           simp [step, continuationLaw, PMF.bind_map, runFrom_sample,
-            PurePolicy.toBehavioral]
+            PurePolicy.toBehavioral, Function.comp_def]
           rfl
       | inr rest =>
           dsimp only [step, continuationLaw, Sum.elim]
@@ -151,7 +151,7 @@ theorem protocol_runFor_eq {Γ : SourceCtx Player L} {O : Finset VarId}
   induction fuel generalizing state with
   | zero =>
       have stopped := (ProtocolState.remaining_zero_iff_terminal program state).mp (by omega)
-      simpa using (ProtocolState.continuationLaw_terminal program
+      simpa [PMF.pure_map] using (ProtocolState.continuationLaw_terminal program
         (fun who => (profile who).toBehavioral program) state stopped).symm
   | succ fuel ih =>
       by_cases stopped : ProtocolState.terminal program state

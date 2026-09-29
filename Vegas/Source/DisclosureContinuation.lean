@@ -96,7 +96,7 @@ theorem disclosure_alternative_continuation_law
   · exact (PMF.bind_const ..).symm
   · apply bind_congr_on_support _
     intro past _
-    rw [PMF.bind_map]
+    rw [PMF.bind_map, Function.comp_def]
     apply bind_congr_on_support _
     intro config supported
     rw [rebaseHistory_runFrom program profile alternative past view.2
@@ -109,7 +109,9 @@ theorem disclosure_alternative_continuation_law
 /-- Source continuation bounds average without changing their error. This
 uses whole-policy deviations, including future private randomization, rather
 than only the next response. Posterior correctness is proved separately from
-actual prefix execution in `Vegas.SourceProgram.normalized_disclosure_prefix_posterior`. -/
+actual prefix execution in `Vegas.SourceProgram.normalized_disclosure_prefix_posterior`.
+The utility must be integrable under both compared laws, which is automatic
+when they are finitely supported. -/
 theorem disclosure_continuation_gain_le
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
     (policy alternative : BehavioralPolicy who program)
@@ -125,16 +127,25 @@ theorem disclosure_continuation_gain_le
         (runFrom program (Function.update profile who
           (alternative.rebaseHistory past.length view.2 program)))) utility -
         expect ((belief.map (fun config => config.withOwnHistory who past)).bind
-          (runFrom program (Function.update profile who policy))) utility ≤ error) :
+          (runFrom program (Function.update profile who policy))) utility ≤ error)
+    (alternativeIntegrable : PayoffIntegrable
+      (belief.bind (runFrom program (Function.update profile who alternative))) utility)
+    (prescribedIntegrable : PayoffIntegrable (belief.bind (runFrom program
+      (Function.update profile who
+        (policy.normalizeDisclosureFrom program registry revelations remember)))) utility) :
     expect (belief.bind (runFrom program (Function.update profile who alternative))) utility -
       expect (belief.bind (runFrom program (Function.update profile who
         (policy.normalizeDisclosureFrom program registry revelations remember)))) utility ≤
       error := by
   rw [disclosure_alternative_continuation_law program profile alternative belief view sameView
-      (remember view),
-    disclosure_prescribed_continuation_law program profile policy registry revelations remember
-      belief view sameView registryEq revelationsEq,
-    FinDist.expect_bind, FinDist.expect_bind, ← FinDist.expect_sub]
-  exact (FinDist.expect_mono sourceBound).trans_eq (expect_constant _ _)
+      (remember view)] at alternativeIntegrable ⊢
+  rw [disclosure_prescribed_continuation_law program profile policy registry revelations remember
+      belief view sameView registryEq revelationsEq] at prescribedIntegrable ⊢
+  have alternativeValues := payoffIntegrable_bind_conditionalExpectation _ _ _ alternativeIntegrable
+  have prescribedValues := payoffIntegrable_bind_conditionalExpectation _ _ _ prescribedIntegrable
+  rw [expect_bind_tower _ _ _ alternativeIntegrable, expect_bind_tower _ _ _ prescribedIntegrable,
+    ← expect_sub alternativeValues prescribedValues]
+  exact (expect_mono sourceBound (payoffIntegrable_sub alternativeValues prescribedValues)
+    (payoffIntegrable_constant _ _)).trans_eq (expect_constant _ _)
 
 end Vegas.SourceProgram

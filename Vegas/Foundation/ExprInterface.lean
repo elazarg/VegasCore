@@ -127,6 +127,12 @@ noncomputable def evalDist (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
     (dist : L.DistExpr Γ τ) (env : Env L.Val Γ) : PMF (L.Val τ) :=
   (L.evalLaw dist env).denote
 
+/-- Every distribution expression denotes an exact finite table, so its
+semantic law has finite support. -/
+theorem evalDist_support_finite (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
+    (dist : L.DistExpr Γ τ) (env : Env L.Val Γ) : (L.evalDist dist env).support.Finite :=
+  (L.evalLaw dist env).denote_support_finite
+
 /-- Dependency-local semantic distribution evaluation, derived from the
 retained exact rational table. -/
 noncomputable def evalDistDeps (L : IExpr) {Γ : Ctx L.Ty} {τ : L.Ty}
