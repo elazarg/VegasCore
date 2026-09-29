@@ -77,7 +77,8 @@ private theorem sample_tail_coupling
         intro next member
         exact (existsTail next member).choose_spec.1
       _ = _ := by
-        rw [← PMF.bind_map, first]
+        refine (PMF.bind_map _ Prod.fst _).symm.trans ?_
+        rw [first]
         exact congrArg
           (fun step => step.bind ((runtime setup).runInteractionPlan leaks players network
             (List.replicate ticks .tick ++ [.expire event]))) (sampleLaw original).symm
@@ -89,7 +90,8 @@ private theorem sample_tail_coupling
         intro next member
         exact (existsTail next member).choose_spec.2.1
       _ = _ := by
-        rw [← PMF.bind_map, second]
+        refine (PMF.bind_map _ Prod.snd _).symm.trans ?_
+        rw [second]
         exact congrArg
           (fun step => step.bind ((runtime setup).runInteractionPlan leaks players network
             (List.replicate ticks .tick ++ [.expire event]))) (sampleLaw repaired).symm
@@ -242,7 +244,10 @@ theorem sample_block_stopped_coupling
         apply bindOnSupport_eq_bind_of_eq_on_support _
         intro next supported
         exact (existsTail next supported).choose_spec.1
-      _ = _ := by rw [← PMF.bind_map, first, ← (runtime setup).runInteractionPlan_append]
+      _ = _ := by
+        refine (PMF.bind_map window Prod.fst
+          ((runtime setup).runInteractionPlan leaks players network ending)).symm.trans ?_
+        rw [first, ← (runtime setup).runInteractionPlan_append]
   have rightLaw : coupling.map Prod.snd = strategy.runJoint owner players scheduler
       (visits.map ServiceInstruction.player ++ ending).length repaired memory := by
     rw [roster_runJoint_append_reserved setup leaks rosters network strategy owner players
@@ -258,7 +263,7 @@ theorem sample_block_stopped_coupling
         exact (existsTail next supported).choose_spec.2.1
       _ = (window.map Prod.snd).bind (fun next =>
           ((runtime setup).runInteractionPlan leaks players network ending next.1).map
-            fun final => (final, next.2)) := by rw [PMF.bind_map]
+            fun final => (final, next.2)) := by rw [PMF.bind_map]; rfl
       _ = _ := by rw [second]
   refine ⟨coupling, leftLaw, rightLaw, ?_⟩
   intro final supported

@@ -286,7 +286,8 @@ theorem resolution_roster_stopped_coupling
             intro next member
             exact (existsTail next member).choose_spec.1
           _ = _ := by
-            rw [← PMF.bind_map, first]
+            refine (PMF.bind_map _ Prod.fst _).symm.trans ?_
+            rw [first]
             simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
               PMF.pure_bind]
             rfl
@@ -301,7 +302,7 @@ theorem resolution_roster_stopped_coupling
             exact (existsTail next member).choose_spec.2.1
           _ = (step.map Prod.snd).bind (fun next =>
               strategy.runJoint owner players scheduler rest.length next.1 next.2) := by
-            rw [PMF.bind_map]
+            rw [PMF.bind_map]; rfl
           _ = _ := by rw [second]; rfl
       refine ⟨coupling, leftLaw, rightLaw, ?_⟩
       intro final supported

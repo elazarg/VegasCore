@@ -24,7 +24,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 theorem owner_choices_at_prefix
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup))
     (wholeProfile : BehavioralProfile setup.program) (who : Player)

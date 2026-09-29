@@ -177,26 +177,30 @@ theorem netUtility_ordinary (watcher who : Player) (ordinary : who ≠ watcher)
   · rw [ite_eq_right (fun h => detected h.2), ite_eq_right detected]
 
 /-- A conditional collection bound controls net utility under any subsequent
-play. No independence between collection, disclosure, and payoff is required. -/
+play whose base payoff is integrable. No independence between collection,
+disclosure, and payoff is required. -/
 theorem netUtility_expect_le (watcher who : Player) (ordinary : who ≠ watcher)
     (base : (application setup leaks).ProtocolState → Player → ℝ)
     (deposit : Player → ℝ) (nonnegative : 0 ≤ deposit who)
     (law : PMF (application setup leaks).ProtocolState) (upper probability : ℝ)
     (bounded : ∀ state ∈ law.support, base state who ≤ upper)
+    (integrable : PayoffIntegrable law fun state => base state who)
     (collection : probability ≤
         (law.toOuterMeasure {state | departureAtState setup leaks who state}).toReal) :
     expect law (fun state => netUtility setup leaks watcher base deposit state who) ≤
       upper - probability * deposit who := by
   rw [netUtility_ordinary setup leaks watcher who ordinary,
-    Enforcement.expect_sanctionedUtility]
+    Enforcement.expect_sanctionedUtility _ _ _ _ integrable]
   apply sub_le_sub _ (mul_le_mul_of_nonneg_right collection nonnegative)
   calc
-    _ ≤ expect law (fun _ => upper) := FinDist.expect_mono bounded
+    _ ≤ expect law (fun _ => upper) :=
+      expect_mono bounded integrable (payoffIntegrable_constant _ _)
     _ = upper := expect_constant ..
 
 /-- A whole-payoff-range deposit compares a monitored extra response with any
-clean legal continuation. Both distributions are the actual native state laws;
-the legal continuation may be randomized and may withhold later openings. -/
+clean legal continuation. Both distributions are the actual native state laws,
+with integrable base payoffs; the legal continuation may be randomized and may
+withhold later openings. -/
 theorem netUtility_comparison (watcher who : Player) (ordinary : who ≠ watcher)
     (base : (application setup leaks).ProtocolState → Player → ℝ)
     (deposit : Player → ℝ) (nonnegative : 0 ≤ deposit who)
@@ -205,6 +209,8 @@ theorem netUtility_comparison (watcher who : Player) (ordinary : who ≠ watcher
     (above : ∀ state ∈ extra.support, base state who ≤ upper)
     (below : ∀ state ∈ legal.support, lower ≤ base state who)
     (clean : ∀ state ∈ legal.support, ¬ departureAtState setup leaks who state)
+    (extraIntegrable : PayoffIntegrable extra fun state => base state who)
+    (legalIntegrable : PayoffIntegrable legal fun state => base state who)
     (collection : probability ≤
         (extra.toOuterMeasure {state | departureAtState setup leaks who state}).toReal)
     (sufficient : upper - lower ≤ probability * deposit who) :
@@ -212,11 +218,14 @@ theorem netUtility_comparison (watcher who : Player) (ordinary : who ≠ watcher
       expect legal (fun state => netUtility setup leaks watcher base deposit state who) := by
   calc
     _ ≤ upper - probability * deposit who := netUtility_expect_le setup leaks watcher who ordinary
-      base deposit nonnegative extra upper probability above collection
+      base deposit nonnegative extra upper probability above extraIntegrable collection
     _ ≤ lower := by linarith
     _ = expect legal (fun _ => lower) := (expect_constant ..).symm
     _ ≤ _ := by
-      apply FinDist.expect_mono
+      refine expect_mono ?_ (payoffIntegrable_constant _ _)
+        (payoffIntegrable_congr_on_support (fun state supported =>
+          (netUtility_clean setup leaks watcher who base deposit state
+            (clean state supported)).symm) legalIntegrable)
       intro state supported
       rw [netUtility_clean setup leaks watcher who base deposit state (clean state supported)]
       exact below state supported

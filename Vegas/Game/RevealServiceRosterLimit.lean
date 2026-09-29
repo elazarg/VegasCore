@@ -36,13 +36,13 @@ private theorem hazard_tendsto_final {slots : Nat} (last : Fin slots)
         intro same
         subst earlier
         omega
-      simp only [before, ↓reduceIte, FinDist.prob_pure_of_ne different]
+      simp only [before, ↓reduceIte, toReal_pure_apply, different]
     · simp only [before, ↓reduceIte]
   rw [zero] at prefixLimit
   have one : Filter.Tendsto (fun _ : Nat => (1 : ℝ)) Filter.atTop (nhds 1) :=
     tendsto_const_nhds
   have denominator := one.sub (probabilityConverges.mul prefixLimit)
-  have numerator := probabilityConverges.mul (timingConverges slot)
+  have numerator := probabilityConverges.mul (timingConverges.toReal slot)
   have quotient := numerator.div denominator (by norm_num : (1 : ℝ) - limit * 0 ≠ 0)
   simpa only [PMF.deferredHazard_at, PMF.deferredSurvival,
     toReal_pure_apply, mul_ite, mul_zero, mul_one, sub_zero, div_one,
@@ -192,7 +192,9 @@ theorem roster_owner_mixture_limit
         · intro same
           apply Fin.ext
           omega
-      have hazard := hazard_tendsto_final last final (choiceConverges true) timingConverges slot
+      have hazard := hazard_tendsto_final last final (choiceConverges.toReal true) timingConverges
+        slot
+      rw [pmfConvergesPointwise_iff_toReal]
       intro action
       have one : Filter.Tendsto (fun _ : Nat => (1 : ℝ)) Filter.atTop (nhds 1) :=
         tendsto_const_nhds
@@ -309,6 +311,6 @@ theorem roster_owner_policy_limit
   have same := rosterPolicy_at_phase setup leaks rosters (timing n) (profiles n)
     initial activated event owner granted ownedEvent candidate raw opening unchanged owner
   simpa only [EventGraphRuntime.openingWindowMixturePlayers, Function.update_self] using
-    congrArg (fun (law : PMF app.Action) => (law action).toReal) same
+    congrArg (fun (law : PMF app.Action) => law action) same
 
 end Vegas

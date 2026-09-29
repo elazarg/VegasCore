@@ -47,7 +47,8 @@ theorem scheduled_window_waiting
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind,
+        Function.comp_def]
       apply bind_congr_on_support _
       intro sample _
       let activated := initial.sampledActivation app actor sample
@@ -232,7 +233,8 @@ theorem sourceServiceTimedFamily_binding_law
   simp only [List.cons_append, runInteractionPlan, interactionStep, interactionInstruction,
     PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     ReactiveApplication.resume, ReactiveApplication.invoke,
-    ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+    ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind,
+    Function.comp_def]
   conv_rhs => rw [PMF.bind_comm]
   apply bind_congr_on_support _
   intro sample _

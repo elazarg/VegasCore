@@ -45,7 +45,8 @@ theorem sourceServiceTimedPolicy_sample_window
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind,
+        Function.comp_def]
       apply bind_congr_on_support _
       intro sample _
       let activated := execution.sampledActivation app actor sample

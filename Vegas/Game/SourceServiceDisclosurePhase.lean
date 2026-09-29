@@ -402,6 +402,7 @@ theorem sourceServiceLastPolicy_reveal_opportunity
         granted, PMF.bind_map, PMF.bind_bind, ← PMF.bind_pure_comp, Function.comp_def]
   apply bind_congr_on_support _
   intro disclose _
+  simp only [Function.comp_apply]
   rw [serviceDecision_effectiveDisclosure (runtime setup) leaks published binding source refs
     execution checkpoint.agrees event outputEq codeEq node disclose]
   let effective := effectiveDisclosure published binding source disclose

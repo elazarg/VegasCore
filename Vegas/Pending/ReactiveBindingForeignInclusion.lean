@@ -139,14 +139,12 @@ theorem pending_binding_foreign_coupling
       ← PMF.bind_pure_comp, Function.comp_def]
     apply bind_congr_on_support _
     intro pair supported
-    simp only [runInteractionPlan, PMF.bind_pure, leftLaw pair supported]
-    rfl
+    simp only [Function.comp_apply, runInteractionPlan, PMF.bind_pure, leftLaw pair supported]
   · rw [PMF.map_comp, runtime.runInteractionPlan_append, ← second, PMF.bind_map,
       ← PMF.bind_pure_comp, Function.comp_def]
     apply bind_congr_on_support _
     intro pair supported
-    simp only [runInteractionPlan, PMF.bind_pure, rightLaw pair supported]
-    rfl
+    simp only [Function.comp_apply, runInteractionPlan, PMF.bind_pure, rightLaw pair supported]
   · intro next supported
     obtain ⟨pair, chosen, rfl⟩ := PMF.support_map .. ▸ supported
     have leftData := runtime.foreign_window_data leaks players network owner _

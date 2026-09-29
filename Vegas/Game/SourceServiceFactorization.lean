@@ -110,7 +110,7 @@ theorem source_initial_memory_factorization
   have present : ∃ other ∈ setup.initialLaw.support,
       (setup.initialConfig other).view focal = (setup.initialConfig initial).view focal :=
     ⟨initial, supported, rfl⟩
-  simp only [noise, dite_eq_left present, PMF.pure_map]
+  simp only [noise, Function.comp_apply, dite_eq_left present, PMF.pure_map]
   rw [show read initial = read present.choose from
     source_initial_traffic_eq setup leaks focal initial present.choose present.choose_spec.2.symm]
 
@@ -416,8 +416,9 @@ theorem binding_phase_memory
       (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
         timing execution result).map fun traffic =>
           (traffic, (commitSuccessor name guard source result).withOwnHistory owner past))
-  simpa only [Config.restoreMemory, PMF.bind_map, Config.view, Config.withOwnHistory,
-    commitSuccessor, Function.update_self, Function.update_idem, memory] using law
+  simpa only [Config.restoreMemory, PMF.bind_map, Function.comp_def, Config.view,
+    Config.withOwnHistory, commitSuccessor, Function.update_self, Function.update_idem, memory]
+    using law
 
 /-- Failed disclosure intentions stay distinct in the proof joint law even
 after an arbitrary actual service suffix. The runtime receives the effective
@@ -467,7 +468,7 @@ theorem guarded_disclosure_service_memory
   have continued := congrArg (fun law => law.bind fun pair =>
     ((runtime setup).runInteractionPlan leaks players network remaining pair.1).map fun final =>
       (final, pair.2)) law
-  simpa only [PMF.bind_bind, PMF.bind_map, response, memory] using continued
+  simpa only [PMF.bind_bind, PMF.bind_map, Function.comp_def, response, memory] using continued
 
 /-- Equal successful guarded publications supply the handler agreement needed
 by the actual focal window coupling. Both candidates are recovered from their

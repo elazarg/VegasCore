@@ -250,7 +250,7 @@ theorem run_roster_source_prefix_option_law
                 using finishSlot none
           | true =>
               simp only [↓reduceIte, PMF.bind_bind, PMF.map_bind]
-              have branch := bind_congr_on_support _ (μ := timing event owner actor)
+              have branch := bind_congr_on_support (timing event owner actor)
                 fun slot _ => finishSlot (some slot)
               simp only [Option.isSome_some, PMF.bind_const, phase, PMF.map_bind] at branch
               exact branch

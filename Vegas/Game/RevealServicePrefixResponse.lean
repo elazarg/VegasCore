@@ -24,7 +24,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 The source joint action is interpreted by the existing source step; callers
 apply this equation to legal source choices. -/
 theorem prefix_response_option_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)

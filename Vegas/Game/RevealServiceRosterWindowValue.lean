@@ -106,7 +106,7 @@ theorem roster_waiting_settlement_value
   subst selected
   simp only at law
   have values := congrArg (fun distribution => expect distribution value) law
-  simp only [expect_map] at values
+  simp only [expect_map, Function.comp_def] at values
   rw [values]
   have conditional := rosterSelection_waiting_value
     (sourceChoiceLaw setup leaks profile owner (initial.observe app owner)) choiceFull

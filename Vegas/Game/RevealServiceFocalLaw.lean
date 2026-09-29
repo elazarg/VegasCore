@@ -26,7 +26,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 uniformly over private setup draws and including zero-probability aliases of
 the original profile. -/
 theorem focal_plan_prefix_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (reveals : setup.program.RevealOnly)

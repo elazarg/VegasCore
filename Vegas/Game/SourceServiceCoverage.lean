@@ -269,6 +269,7 @@ theorem sourceServiceOpportunity_reveal_covered
         granted, PMF.bind_map] at supported
   obtain ⟨disclose, _chosen, supported⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  simp only [Function.comp_apply] at supported
   rw [serviceDecision_effectiveDisclosure (runtime setup) leaks published binding source refs
     execution checkpoint.agrees event outputEq codeEq node disclose] at supported
   cases effective : effectiveDisclosure published binding source disclose with
