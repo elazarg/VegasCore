@@ -52,8 +52,6 @@ theorem audited_raw_sequentialEquilibrium_preserved {Parameter : Type}
       (runtime service.setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : service.sourceModel.BehavioralAssessment)
-    [∀ who (site : service.sourceModel.InformationSite who),
-      Fintype (service.sourceModel.InformationHistory who site.1)]
     (equilibrium : source.IsSequentialEquilibriumFor
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
       (fun who site => source.continuationContext site
@@ -117,8 +115,6 @@ theorem completeAudit_raw_sequentialEquilibrium_preserved {Parameter : Type}
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (source : service.sourceModel.BehavioralAssessment)
-    [∀ who (site : service.sourceModel.InformationSite who),
-      Fintype (service.sourceModel.InformationHistory who site.1)]
     (equilibrium : source.IsSequentialEquilibriumFor
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
       (fun who site => source.continuationContext site
@@ -164,7 +160,7 @@ theorem completeAudit_raw_sequentialEquilibrium_preserved {Parameter : Type}
     (fun actual observed drawn => by
       rw [(PMF.mem_support_pure_iff _ _).mp drawn])
     (fun _ => 1) (fun _ => one_pos)
-    (fun _ actual _ present _ _ => (FinDist.probOf_pure_self actual _ present).ge)
+    (fun _ actual _ present _ _ => by simp [sample, PMF.toOuterMeasure_pure_apply, present])
     source equilibrium
   simpa only [min_self] using preserved
 

@@ -30,16 +30,16 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 theorem roster_audited_source_sequential_equilibrium_preserved
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    [leaks.FiniteSupport]
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (rosterCoverage : ActorOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
+    [network.FiniteSupport]
     (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
     (admission : CommitmentInterface setup.program)
-    [∀ who (site : (setup.informationModel admission).InformationSite who),
-      Fintype ((setup.informationModel admission).InformationHistory who site.1)]
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) → PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
