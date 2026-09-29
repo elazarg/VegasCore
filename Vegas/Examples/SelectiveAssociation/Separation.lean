@@ -43,6 +43,7 @@ theorem native_public_law_value (profile : Profile nativeModel.behavioralSignatu
       (fun control => nativeResults control.execution.application.config)))
         (fun result => utility result alice) = _
   rw [native_initial_result_law, expect_map, native_initial_value]
+  rfl
 
 /-- The obstruction already applies to sequential rationality. Allowing a
 different consistent belief system or a different profile translation cannot
@@ -62,13 +63,15 @@ theorem native_rational_public_law_ne_source (Claim : Type) [Fintype Claim] (def
   refine nativeModel.initial_law_ne_of_induced_information target
     (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)
     rational alice nativeInitialSite native_initial_history_value nativeAliceBehavior
+    (nativeUtility_continuation_integrable target nativeInitialSite _)
     (fun history => nativePublicResult history.state) (fun result => utility result alice)
-    native_public_law_value (PMF.uniformOfFintype Bool) (fun _ => ())
+    native_public_law_value (PMF.uniformOfFintype Bool) (Set.toFinite _) (fun _ => ())
     (fun bit guess => correctness (.success bit) guess)
     (fun _ => PMF.pure (.success false))
     (fun _ => nativeCarolGuessLaw (nativeAliceProfile players)) fair_guess_reference_optimal
+    (fun _ => DecisionExperiment.ResponseIntegrable.of_finite _ _ _)
     (nativeDeviationOutcomes players) (fun bit result => correctness (.success bit) result.carol)
-    1 ?_ ?_ ?_ _ ?_
+    1 (fun _ _ => ⟨payoffIntegrable_of_finite _ _, payoffIntegrable_of_finite _ _⟩) ?_ ?_ ?_ _ ?_
   · rw [native_initial_value, native_decode_alice_deviation]
     have value := congrArg (fun law : PMF Results =>
       expect law (fun result => utility result alice)) (native_deviation_outcome_law players)

@@ -40,7 +40,8 @@ def SenderDeterrence (choices : PMF Decision) (response : Secret → Decision)
     (sender : Secret → Decision → ℝ) (charge : Secret → ℝ) : Prop :=
   ∀ secret, sender secret (response secret) - charge secret ≤ expect choices (sender secret)
 
-theorem silent_optimal_mixture (prior : PMF Secret) (choices : PMF Decision)
+theorem silent_optimal_mixture [Finite Secret] [Finite Decision]
+    (prior : PMF Secret) (choices : PMF Decision)
     (receiver : Secret → Decision → ℝ) (optimal : SilentOptimal prior choices receiver)
     (alternative : PMF Decision) :
     expect prior (fun secret => expect alternative (receiver secret)) ≤
@@ -60,9 +61,14 @@ theorem sender_deterrence_of_range (choices : PMF Decision)
     SenderDeterrence choices response sender charge := by
   intro secret
   have average : lower secret ≤ expect choices (sender secret) := by
-    have bound := FinDist.expect_mono (μ := choices)
-      (u := fun _ => lower secret) (v := sender secret)
-      (fun decision _ => (bounded secret decision).1)
+    have integrable : PayoffIntegrable choices (sender secret) :=
+      payoffIntegrable_of_bounded _ _ (C := |lower secret| + |upper secret|) fun decision =>
+        abs_le.mpr ⟨by linarith [neg_abs_le (lower secret), abs_nonneg (upper secret),
+            (bounded secret decision).1],
+          by linarith [le_abs_self (upper secret), abs_nonneg (lower secret),
+            (bounded secret decision).2]⟩
+    have bound := expect_mono (μ := choices) (f := fun _ => lower secret) (g := sender secret)
+      (fun decision _ => (bounded secret decision).1) (payoffIntegrable_constant _ _) integrable
     simpa only [expect_constant] using bound
   have ceiling := (bounded secret (response secret)).2
   have amount := enforced secret
@@ -70,7 +76,7 @@ theorem sender_deterrence_of_range (choices : PMF Decision)
 
 /-- In a statewise constant-sum decision problem, the receiver's informed
 best response is already worst for the sender. No additional charge is needed. -/
-theorem sender_deterrence_of_constant_sum (choices : PMF Decision)
+theorem sender_deterrence_of_constant_sum [Finite Decision] (choices : PMF Decision)
     (response : Secret → Decision) (sender receiver : Secret → Decision → ℝ)
     (total : Secret → ℝ)
     (constantSum : ∀ secret decision,
@@ -79,13 +85,13 @@ theorem sender_deterrence_of_constant_sum (choices : PMF Decision)
     SenderDeterrence choices response sender (fun _ => 0) := by
   intro secret
   rw [sub_zero]
-  have bound := FinDist.expect_mono (μ := choices)
-    (u := fun _ => sender secret (response secret)) (v := sender secret)
+  have bound := expect_mono (μ := choices)
+    (f := fun _ => sender secret (response secret)) (g := sender secret)
     (fun decision _ => by
       have first := constantSum secret (response secret)
       have second := constantSum secret decision
       have best := optimal secret decision
-      linarith)
+      linarith) (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
   simpa only [expect_constant] using bound
 
 theorem exists_disclosure_optimal [Finite Decision] [Nonempty Decision]
@@ -157,7 +163,7 @@ section Rationality
 variable [Nonempty Decision] (prior : PMF Secret)
   (full : ∀ secret, secret ∈ prior.support)
 
-theorem silent_context_value (ambient : Bool)
+theorem silent_context_value [Finite Secret] [Finite Decision] (ambient : Bool)
     (assessment : (model (Decision := Decision) prior ambient).BehavioralAssessment)
     (posterior : assessment.belief true (receiverSilentSite prior full ambient) =
       prior.map (silentHistory prior full ambient))
@@ -179,7 +185,8 @@ theorem silent_context_value (ambient : Bool)
         (receiverHistory prior full ambient secret false))
           (fun history => payoff sender receiver charge history.state true)) = _
   simp_rw [value_receiver prior full _ _ _ (payoff sender receiver charge · true)]
-  simp only [resultLaw, Bool.and_false, Bool.false_eq_true, ite_false, expect_map, payoff]
+  simp only [resultLaw, Bool.and_false, Bool.false_eq_true, ite_false, expect_map,
+    Function.comp_def, payoff]
 
 theorem resultLaw_update_sender {ambient : Bool}
     (profile : Profile (model (Decision := Decision) prior ambient).behavioralSignature)
@@ -192,7 +199,10 @@ theorem resultLaw_update_sender {ambient : Bool}
 theorem silent_profile_choice (ambient : Bool) (choices : PMF Decision)
     (response : Secret → Decision) :
     choiceLaw (silentProfile prior ambient choices response) true (some none) = choices := by
-  simp [choiceLaw, silentProfile, receiverRespond, choose, decisionInfo, PMF.map_bind]
+  simp only [choiceLaw, decisionInfo, Option.isSome_some, Set.mem_ofPred_eq, silentProfile,
+    receiverRespond, choose, Bool.or_true, Bool.and_self, ↓reduceIte, pmf_bind_pure_eq_map,
+    PMF.map_comp, Function.comp_def, Option.getD_some]
+  exact PMF.map_id _
 
 theorem silent_branch_value (choices : PMF Decision) (response : Secret → Decision)
     (sender receiver : Secret → Decision → ℝ) (charge : Secret → ℝ)
@@ -203,21 +213,24 @@ theorem silent_branch_value (choices : PMF Decision) (response : Secret → Deci
         else expect choices (sender secret) := by
   cases disclose <;>
     simp [resultLaw, choiceLaw, silentProfile, receiverRespond, choose, decisionInfo,
-      expect_map, payoff]
+      expect_map, payoff, PMF.pure_map, pmf_bind_pure_eq_map, Function.comp_def, expect_pure]
 
 theorem disclosed_receiver_value (choices : PMF Decision) (response : Secret → Decision)
     (sender receiver : Secret → Decision → ℝ) (charge : Secret → ℝ) (secret : Secret) :
     expect (resultLaw (silentProfile prior true choices response) secret true)
       (payoff sender receiver charge · true) = receiver secret (response secret) := by
-  simp [resultLaw, choiceLaw, silentProfile, receiverRespond, choose, decisionInfo, payoff]
+  simp [resultLaw, choiceLaw, silentProfile, receiverRespond, choose, decisionInfo, payoff,
+    PMF.pure_map, expect_pure]
 
-theorem source_rational
+theorem source_rational [Finite Secret] [Finite Decision]
     (profile : Profile (model (Decision := Decision) prior false).behavioralSignature)
     (sender receiver : Secret → Decision → ℝ) (charge : Secret → ℝ)
     (optimal : SilentOptimal prior (choiceLaw profile true (some none)) receiver) :
     (assessment prior full false profile).IsSequentiallyRationalWithin
       (fun who history => payoff sender receiver charge history.state who) 3 := by
-  intro who site alternative _
+  intro who site
+  refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _) fun _ _ =>
+      (payoffIntegrable_of_finite _ _)).mpr fun alternative _ => ?_
   cases who
   · exact (source_no_sender_site prior site).elim
   · rw [source_receiver_site_eq prior full site]
@@ -226,7 +239,8 @@ theorem source_rational
     simp only [assessment, Profile.update_eq_self]
     apply silent_optimal_mixture prior _ receiver optimal
 
-theorem target_rational (choices : PMF Decision) (response : Secret → Decision)
+theorem target_rational [Finite Secret] [Finite Decision] (choices : PMF Decision)
+    (response : Secret → Decision)
     (sender receiver : Secret → Decision → ℝ) (charge : Secret → ℝ)
     (silentOptimal : SilentOptimal prior choices receiver)
     (disclosedOptimal : DisclosureOptimal response receiver)
@@ -234,7 +248,9 @@ theorem target_rational (choices : PMF Decision) (response : Secret → Decision
     (assessment prior full true
       (silentProfile prior true choices response)).IsSequentiallyRationalWithin
       (fun who history => payoff sender receiver charge history.state who) 3 := by
-  intro who site alternative _
+  intro who site
+  refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _) fun _ _ =>
+      (payoffIntegrable_of_finite _ _)).mpr fun alternative _ => ?_
   cases who
   · obtain ⟨secret, rfl⟩ := sender_site_eq prior full site
     rw [sender_context prior full _ secret (payoff sender receiver charge · false) alternative,
@@ -245,7 +261,7 @@ theorem target_rational (choices : PMF Decision) (response : Secret → Decision
     simp_rw [Bool.true_and, resultLaw_update_sender, silent_branch_value]
     have silent : choiceLaw (silentProfile prior true choices response) false
         (some (some secret)) = PMF.pure false := by
-      simp [choiceLaw, silentProfile, choose, decisionInfo]
+      simp [choiceLaw, silentProfile, choose, decisionInfo, PMF.pure_map]
     rw [silent, expect_pure]
     simp only [Bool.false_eq_true, ite_false]
     refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun disclose _ => ?_
@@ -335,7 +351,7 @@ end Implementation
 
 section Sequential
 
-variable [Nonempty Decision] [Finite Decision] (prior : PMF Secret)
+variable [Nonempty Decision] [Finite Decision] [Finite Secret] (prior : PMF Secret)
 
 def IsEquilibrium (ambient : Bool) (sender receiver : Secret → Decision → ℝ)
     (charge : Secret → ℝ)
@@ -376,11 +392,15 @@ theorem source_equilibrium_optimal (sender receiver : Secret → Decision → �
     SilentOptimal prior (choiceLaw original.strategy true (some none)) receiver := by
   have posterior := source_consistent_belief prior full original equilibrium.2
   intro action
-  have comparison := equilibrium.1 true (receiverSilentSite prior full false)
-    (choose prior false true action) trivial
+  have comparison :=
+      (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _) fun _ _ =>
+      (payoffIntegrable_of_finite _ _)).mp
+    (equilibrium.1 true (receiverSilentSite prior full false)) (choose prior false true action)
+      trivial
   rw [silent_context_value prior full false original posterior,
     silent_context_value prior full false original posterior] at comparison
-  simpa [choiceLaw, Profile.update, choose, decisionInfo] using comparison
+  simpa [choiceLaw, Profile.update, choose, decisionInfo, PMF.pure_map, expect_pure]
+    using comparison
 
 /-- The finite source class is characterized exactly by ordinary prior
 optimization. The statement concerns all initialized source equilibrium laws. -/

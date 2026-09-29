@@ -98,12 +98,17 @@ private theorem matrix_saddle {First Second : Type}
       (payoffIntegrable_of_finite (α := First × Second) _ _)).2
   have guarantees := MatrixGame.valueRow_guarantees payoff
   have caps := MatrixGame.valueColumn_caps payoff
+  have real {first second : PMF (First × Second)}
+      (compared : extendedExpectedUtility (MatrixGame.utility payoff) 0 first ≤
+        extendedExpectedUtility (MatrixGame.utility payoff) 0 second) :=
+    (extendedExpectedUtility_le_iff (payoffIntegrable_of_finite _ _)
+      (payoffIntegrable_of_finite _ _)).mp compared
   refine ⟨MatrixGame.valueRow payoff, MatrixGame.valueColumn payoff,
     fun other => ?_, fun other => ?_⟩
   · rw [← rows, ← rows]
-    exact (caps other).2.trans (guarantees _).2
+    exact real ((caps other).2.trans (guarantees _).2)
   · rw [← rows, ← rows]
-    exact (caps _).2.trans (guarantees other).2
+    exact real ((caps _).2.trans (guarantees other).2)
 
 section Signs
 

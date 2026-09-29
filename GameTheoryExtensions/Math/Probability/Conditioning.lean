@@ -2,6 +2,7 @@
 
 import GameTheory.Math.Probability.Conditioning
 import GameTheory.Math.Probability.Joint
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Total conditioning on a fiber
@@ -66,6 +67,19 @@ theorem fiberConditional_eq_fiberPosterior (μ : PMF α) (f : α → β) {b : β
     exact ⟨a, rfl, ha⟩
   simp only [fiberConditional, meets, ↓reduceDIte]
   rfl
+
+/-- Conditioning on a fiber keeps a payoff integrable: on a positive fiber it
+rescales the law, and on a null fiber it is the law itself. -/
+theorem payoffIntegrable_fiberConditional (μ : PMF α) (f : α → β) (b : β) {g : α → ℝ}
+    (integrable : PayoffIntegrable μ g) : PayoffIntegrable (fiberConditional μ f b) g := by
+  by_cases hb : b ∈ (μ.map f).support
+  · rw [fiberConditional_eq_fiberPosterior μ f hb]
+    exact payoffIntegrable_fiberPosterior μ f g integrable b hb
+  · have absent : ¬ ∃ a ∈ f ⁻¹' {b}, a ∈ μ.support := by
+      rintro ⟨a, fiber, supported⟩
+      exact hb ((PMF.mem_support_map_iff f μ b).mpr ⟨a, supported, fiber⟩)
+    classical
+    simpa only [fiberConditional, absent, ↓reduceDIte] using integrable
 
 /-- **Disintegration.** Drawing from a law is drawing its image and then
 drawing from the conditional law of that image's fiber. -/

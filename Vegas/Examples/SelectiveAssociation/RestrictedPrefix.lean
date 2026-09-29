@@ -213,7 +213,7 @@ theorem carol_factorization (players : Player → app.Policy) :
       initial).bind fun prior => prior.environmentStep app (.activate carol)) = _
   simp only [runInteractionPlan, player_step, grant_step, tick_step, expire_step, include_step,
     PMF.pure_bind, PMF.bind_pure, PMF.bind_map, PMF.map_bind,
-    PMF.bind_bind, activation_law, carolLaw, PMF.map_comp]
+    PMF.bind_bind, activation_law, carolLaw, PMF.map_comp, Function.comp_def]
   rfl
 
 theorem bob_factorization (players : Player → app.Policy) :
@@ -226,7 +226,7 @@ theorem bob_factorization (players : Player → app.Policy) :
       initial).bind fun prior => prior.environmentStep app (.activate bob)) = _
   simp only [runInteractionPlan, player_step, grant_step, tick_step, expire_step, include_step,
     PMF.pure_bind, PMF.bind_pure, PMF.bind_map, PMF.map_bind,
-    PMF.bind_bind, activation_law, bobLaw, carolLaw, PMF.map_comp]
+    PMF.bind_bind, activation_law, bobLaw, carolLaw, PMF.map_comp, Function.comp_def]
   rfl
 
 end Vegas.Examples.SelectiveAssociation.Restricted.Prefix

@@ -13,6 +13,15 @@ namespace Vegas.Examples.SelectiveAssociation.NamedSource
 
 open Vegas Interaction GameTheory GameTheory.Protocol GameTheory.Math.Probability
 
+private theorem bob_utility_integrable {α : Type*} (μ : PMF α) (summary : α → Results) :
+    PayoffIntegrable μ (fun a => utility (summary a) bob) :=
+  payoffIntegrable_of_finite_summary μ summary (fun result => utility result bob)
+
+private theorem correctness_abs_le (value guess : PublicationResult Bool) :
+    |correctness value guess| ≤ 1 := by
+  cases value <;> cases guess <;> simp only [correctness] <;>
+    first | (split_ifs <;> norm_num) | norm_num
+
 theorem playing_no_certificate (Claim : Type) (defaultClaim : Claim)
     (first second : (application Claim).Action) (bit : Bool) :
     bindingCertificates first second (playing Claim defaultClaim 0 (.success bit)) = ∅ := by
@@ -91,7 +100,8 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
         (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess) := by
     have same := prescribed_bob_input_same Claim defaultClaim first second guess bit
     exact congrArg (fun info => players bob info.1 info.2) same
-  rw [after_prelude_law, aliceLaw, expect_bind_of_finite, expect_map]
+  rw [after_prelude_law, aliceLaw, expect_bind_tower _ _ _ (bob_utility_integrable _ _),
+    expect_map]
   calc
     _ ≤ expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (chooseAt players carol
@@ -101,13 +111,20 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
                 (fun response => correctness (.success bit) (selectedBinding 2 response)))) := by
       refine expect_mono (fun bit _ => ?_) (payoffIntegrable_of_finite _ _)
         (payoffIntegrable_of_finite _ _)
-      rw [expect_bind_of_finite, carolLaw bit]
-      refine expect_mono (fun guess _ => ?_) (payoffIntegrable_of_finite _ _)
-        (payoffIntegrable_of_finite _ _)
-      rw [expect_bind_of_finite, bobLaw guess bit]
-      refine expect_mono (fun response _ => ?_) (payoffIntegrable_of_finite _ _)
-        (payoffIntegrable_of_finite _ _)
-      refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun final supported => ?_
+      dsimp only [Function.comp_apply]
+      rw [expect_bind_tower _ _ _ (bob_utility_integrable _ _), carolLaw bit]
+      refine expect_mono (fun guess _ => ?_)
+        (payoffIntegrable_expect_of_finite_summary _ _ _
+          (fun result => utility result bob))
+        (payoffIntegrable_of_bounded _ _ (C := 1) fun _ =>
+          expect_abs_le_of_bounded zero_le_one fun _ => correctness_abs_le _ _)
+      rw [expect_bind_tower _ _ _ (bob_utility_integrable _ _), bobLaw guess bit]
+      refine expect_mono (fun response _ => ?_)
+        (payoffIntegrable_expect_of_finite_summary _ _ _
+          (fun result => utility result bob))
+        (payoffIntegrable_of_finite_summary _ (selectedBinding 2) (correctness (.success bit)))
+      refine expect_le_const _ _ (bob_utility_integrable _ _)
+        _ fun final supported => ?_
       have bound := bob_guess_response_payoff_le players _ final response
         (.success bit) (selectedBinding 1 guess) (by
           rw [bobInput_core]
@@ -121,13 +138,17 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
             (fun bit => expect (chooseAt players bob
               (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess))
                 (fun response => correctness (.success bit) (selectedBinding 2 response)))) :=
-      expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _) _ _ _
+      expect_comm_of_support_finite_left _ _ (Set.toFinite _) _ fun bit _ =>
+        payoffIntegrable_expect_of_finite_summary _ _ (selectedBinding 2)
+          (correctness (.success bit))
     _ ≤ 1 / 2 := by
-      refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun guess _ => ?_
+      refine expect_le_const _ _ (payoffIntegrable_of_bounded _ _ (C := 1) fun _ =>
+        expect_abs_le_of_bounded zero_le_one fun _ =>
+          expect_abs_le_of_bounded zero_le_one fun _ => correctness_abs_le _ _) _ fun guess _ => ?_
       have bound := fair_guess_le_half ((chooseAt players bob
         (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess)).map
           (selectedBinding 2))
-      simpa only [expect_map] using bound
+      simpa only [expect_map, Function.comp_def] using bound
 
 theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
     (first second : (application Claim).Action) :
@@ -157,17 +178,20 @@ theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
     dsimp only [chooseAt, players]
     simp only [policy]
     rfl
-  rw [after_prelude_law, aliceLaw, expect_bind_of_finite, expect_map]
+  rw [after_prelude_law, aliceLaw, expect_bind_tower _ _ _ (bob_utility_integrable _ _),
+    expect_map]
   calc
     _ = expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (chooseAt players carol (carolInput first second (binding false)))
           (fun guess => correctness (.success bit) (.success (target guess)))) := by
       apply expect_congr_on_support
       intro bit _
-      rw [expect_bind_of_finite, carolLaw bit]
+      dsimp only [Function.comp_apply]
+      rw [expect_bind_tower _ _ _ (bob_utility_integrable _ _), carolLaw bit]
       apply expect_congr_on_support
       intro guess _
-      rw [expect_bind_of_finite, bobLaw guess bit, expect_pure]
+      rw [expect_bind_tower _ _ _ (bob_utility_integrable _ _), bobLaw guess bit,
+        expect_pure]
       calc
         _ = expect (runInstructions players (afterResponse 2)
             ((bobInput first second (binding bit) guess).respond (application Claim) bob
@@ -190,7 +214,9 @@ theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
     _ = expect (chooseAt players carol (carolInput first second (binding false)))
         (fun guess => expect (PMF.uniformOfFintype Bool)
           (fun bit => correctness (.success bit) (.success (target guess)))) :=
-      expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _) _ _ _
+      expect_comm_of_support_finite_left _ _ (Set.toFinite _) _ fun bit _ =>
+        payoffIntegrable_of_finite_summary _ target
+          (fun guess => correctness (.success bit) (.success guess))
     _ = 1 / 2 := by
       have fair (guess : (application Claim).Action) :
           expect (PMF.uniformOfFintype Bool)
@@ -215,8 +241,12 @@ theorem finish_bob_ambient_bound (Claim : Type) [Fintype Claim] (defaultClaim : 
     rw [execution]
     rfl
   rw [finish_ambient_law players 2 (by decide) bob control active remaining position,
-    expect_map, expect_bind_of_finite]
-  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun response _ => ?_
+    expect_map]
+  simp only [Function.comp_def]
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite_summary _ _
+      (fun result => utility result bob))]
+  refine expect_le_const _ _ (payoffIntegrable_expect_of_finite_summary _ _ _
+    (fun result => utility result bob)) _ fun response _ => ?_
   change expect (runInstructions players (calendar.drop 2)
     (control.execution.respond (application Claim) bob response))
       (fun final => utility (results final.application) bob) ≤ 1 / 2
@@ -233,7 +263,10 @@ theorem finish_bob_ambient_prescribed (Claim : Type) [Fintype Claim] (defaultCla
     bob_ambient_representation Claim control trace active ambient
   have position : control.execution.environmentRecall.length = 2 := by rw [execution]; rfl
   rw [finish_ambient_law (policy Claim defaultClaim) 2 (by decide) bob control active remaining
-    position, expect_map, expect_bind_of_finite]
+    position, expect_map]
+  simp only [Function.comp_def]
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite_summary _ _
+      (fun result => utility result bob))]
   calc
     _ = expect (policy Claim defaultClaim bob (control.execution.recall bob)
         (control.execution.observe (application Claim) bob)) (fun _ => 1 / 2) := by
@@ -257,7 +290,9 @@ theorem bob_ambient_sequentially_rational (Claim : Type) [Fintype Claim] (defaul
     (siteEq : site.1 = some (past, view)) (ambient : view.application.visit = none) :
     assessment.IsSequentiallyRationalAt site
       (assessment.continuationContext site (payoff bob) (2 * horizon + 1)) := by
-  intro alternative _
+  refine (Context.isLocallyOptimal_iff_of_integrable
+    (continuation_integrable assessment site _ _)
+      fun _ _ => continuation_integrable assessment site _ _).mpr fun alternative _ => ?_
   rw [prescribed_context_value_finish Claim defaultClaim assessment strategy,
     prescribed_context_baseline Claim defaultClaim assessment strategy]
   have bound : expect (assessment.belief bob site) (fun history =>
@@ -265,7 +300,8 @@ theorem bob_ambient_sequentially_rational (Claim : Type) [Fintype Claim] (defaul
         (Function.update (policy Claim defaultClaim) bob
           (decodedAlternative Claim bob alternative)) history.1.state)
             (fun state => utility (protocolResults state) bob)) ≤ 1 / 2 := by
-      refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun history _ => ?_
+      refine expect_le_const _ _ (payoffIntegrable_expect_of_finite_summary _ _ _
+        (fun result => utility result bob)) _ fun history _ => ?_
       obtain ⟨control, stateEq, active, _, observed⟩ := information_control Claim bob past view
         ⟨history.1, history.2.trans siteEq⟩
       rcases history with ⟨⟨state, trace⟩, information⟩

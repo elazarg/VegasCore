@@ -82,14 +82,13 @@ theorem reporting_sequential_equilibrium :
   apply (isSequentialEquilibrium_iff biasedBit id _ _).mpr
   intro signal alternative
   unfold localValue
-  apply FinDist.expect_mono
-  intro state _
+  refine expect_mono (fun state _ => ?_) (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)
   by_cases same : state = signal
   · subst state
     simp only [Set.mem_preimage, Set.mem_singleton_iff, id_eq, Set.indicator_of_mem,
       expect_pure, reportUtility, ite_true]
-    apply FinDist.expect_le_of_forall
-    intro action _
+    refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun action _ => ?_
     unfold reportUtility
     split <;> norm_num
   · simp [same]

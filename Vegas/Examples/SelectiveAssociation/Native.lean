@@ -166,4 +166,25 @@ theorem nativeUtility_integrable
   exact payoffIntegrable_of_finite_summary law _
     (fun summary : Option Results => summary.elim 0 fun result => utility result who)
 
+/-- Every continuation of a native utility is integrable. -/
+theorem nativeUtility_continuation_integrable
+    {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+    (assessment : (serviceModel observation).BehavioralAssessment) {who : Player}
+    (site : (serviceModel observation).InformationSite who) (fuel : Nat)
+    (policy : (serviceModel observation).BehavioralPolicy who) :
+    (assessment.continuationContext site (fun history => nativeUtility who history.state)
+      fuel).IntegrableAt policy := by
+  have summarized : (fun history : (serviceArena observation).History =>
+      nativeUtility (observation := observation) who history.state) = fun history =>
+        (history.state.map fun control =>
+          nativeResults control.execution.application.config).elim 0
+            fun result => utility result who := by
+    funext history
+    cases history.state <;> rfl
+  change PayoffIntegrable _ (fun history : (serviceArena observation).History =>
+    nativeUtility who history.state)
+  rw [summarized]
+  exact payoffIntegrable_of_finite_summary _ _
+    (fun summary : Option Results => summary.elim 0 fun result => utility result who)
+
 end Vegas.Examples.SelectiveAssociation

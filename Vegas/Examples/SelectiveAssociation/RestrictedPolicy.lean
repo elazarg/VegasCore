@@ -4,6 +4,7 @@ import Vegas.Examples.SelectiveAssociation.Restricted
 import Vegas.Examples.SelectiveAssociation.OpeningService
 import Vegas.Pending.ReactiveCandidateBudget
 import Interaction.ReactiveMenuPolicy
+import Interaction.ReactiveConsistentAssessment
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 
 /-! # A complete prescribed profile for the restricted native service
@@ -218,9 +219,6 @@ theorem exists_consistent_assessment :
     ∃ assessment : model.BehavioralAssessment, assessment.strategy = profile ∧
       assessment.IsSequentiallyConsistent
         (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon scheduler) :=
-  InformationModel.BehavioralAssessment.exists_consistent_completion
-    (menu.uniformAssessment (PMF.pure nativeInitial) nativeHorizon scheduler)
-    (menu.uniform_fullyMixed (PMF.pure nativeInitial) nativeHorizon scheduler)
-    (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon scheduler) profile
+  menu.exists_consistent_assessment (PMF.pure nativeInitial) nativeHorizon scheduler profile
 
 end Vegas.Examples.SelectiveAssociation.Restricted

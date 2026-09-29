@@ -47,21 +47,26 @@ theorem localValue_id (prior : PMF State) (utility : State → Action → ℝ)
 theorem fullInformation_optimal_iff (prior : PMF State)
     (utility : State → Action → ℝ) (policy : State → PMF Action) :
     IsBayesOptimal prior id utility policy ↔
-      ∀ state ∈ prior.support, ∀ action,
-        utility state action ≤ expect (policy state) (utility state) := by
+      PolicyIntegrable prior utility policy ∧
+        ∀ state ∈ prior.support, ∀ action,
+          utility state action ≤ expect (policy state) (utility state) := by
   constructor
-  · intro optimal state supported action
-    have comparison := optimal state (PMF.pure action)
+  · intro optimal
+    refine ⟨optimal.1, fun state supported action => ?_⟩
+    have comparison := optimal.2 state (PMF.pure action)
+      (fun _ _ => payoffIntegrable_pure _ _)
     rw [localValue_id, localValue_id, expect_pure] at comparison
     have positive := pmf_toReal_pos_iff.mpr supported
     nlinarith
-  · intro optimal state alternative
+  · rintro ⟨integrable, optimal⟩
+    refine ⟨integrable, fun state alternative alternativeIntegrable => ?_⟩
     rw [localValue_id, localValue_id]
     by_cases supported : state ∈ prior.support
     · exact mul_le_mul_of_nonneg_left
-        (expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun action _ => optimal state supported action)
+        (expect_le_const _ _ (alternativeIntegrable state supported) _ fun action _ =>
+          optimal state supported action)
         (le_of_lt (pmf_toReal_pos_iff.mpr supported))
-    · rw [FinDist.prob_eq_zero_iff.mpr supported, zero_mul, zero_mul]
+    · rw [(PMF.apply_eq_zero_iff _ _).mpr supported, ENNReal.toReal_zero, zero_mul, zero_mul]
 
 /-- Every action used with positive probability must maximize the fixed payoff.
 This criterion applies separately at each supported state. -/
@@ -69,22 +74,24 @@ theorem fullInformation_optimal_iff_support
     (prior : PMF State) (utility : State → Action → ℝ)
     (policy : State → PMF Action) :
     IsBayesOptimal prior id utility policy ↔
-      ∀ state ∈ prior.support, ∀ action ∈ (policy state).support,
-        ∀ alternative, utility state alternative ≤ utility state action := by
+      PolicyIntegrable prior utility policy ∧
+        ∀ state ∈ prior.support, ∀ action ∈ (policy state).support,
+          ∀ alternative, utility state alternative ≤ utility state action := by
   rw [fullInformation_optimal_iff]
+  refine and_congr_right fun integrable => ?_
   constructor
   · intro optimal state supported action used alternative
-    have selected := FinDist.eq_of_expect_eq_of_le (policy state) (utility state)
-      (expect (policy state) (utility state))
-      (fun candidate _ => optimal state supported candidate) rfl used
+    have selected := expect_eq_const_of_le_on_support (policy state) (utility state)
+      (expect (policy state) (utility state)) (integrable state state supported)
+      (fun candidate _ => optimal state supported candidate) rfl action used
     rw [selected]
     exact optimal state supported alternative
   · intro optimal state supported alternative
     calc
       utility state alternative = expect (policy state) (fun _ => utility state alternative) :=
         (expect_constant _ _).symm
-      _ ≤ _ := FinDist.expect_mono fun action used =>
-        optimal state supported action used alternative
+      _ ≤ _ := expect_mono (fun action used => optimal state supported action used alternative)
+        (payoffIntegrable_constant _ _) (integrable state state supported)
 
 /-- Each supported observation fiber has at least one common maximizing action.
 An unobserved state may affect payoffs, provided it never forces a conflicting
@@ -105,20 +112,22 @@ theorem exists_optimal_lift_iff_commonMaximizer
     obtain ⟨action, used⟩ := (policy signal).support_nonempty
     refine ⟨action, ?_⟩
     intro state supported same alternative
-    exact (fullInformation_optimal_iff_support prior utility _).mp optimal
+    exact ((fullInformation_optimal_iff_support prior utility _).mp optimal).2
       state supported action (by simpa only [same] using used) alternative
   · intro common
     choose best maximal using common
     refine ⟨fun signal => PMF.pure (best signal), ?_⟩
     rw [fullInformation_optimal_iff]
-    intro state supported action
+    refine ⟨fun _ _ _ => payoffIntegrable_pure _ _, fun state supported action => ?_⟩
     simpa only [expect_pure] using maximal (observe state) state supported rfl action
 
 /-- A matching fully informed optimum exists exactly when the original policy
 itself remains optimal with full information. Equality of the retained law is
 strong enough because the fixed payoff factors through that law. -/
-theorem optimal_match_iff_lift (prior : PMF State) (observe : State → Signal)
-    (fact : State → Fact) (utility : Fact → Action → ℝ) (source : Signal → PMF Action) :
+theorem optimal_match_iff_lift (prior : PMF State) (priorFinite : prior.support.Finite)
+    (observe : State → Signal) (fact : State → Fact) (utility : Fact → Action → ℝ)
+    (source : Signal → PMF Action)
+    (sourceIntegrable : PolicyIntegrable prior (fun state => utility (fact state)) source) :
     (∃ target : State → PMF Action,
       IsBayesOptimal prior id (fun state => utility (fact state)) target ∧
         resultLaw prior id fact target = resultLaw prior observe fact source) ↔
@@ -126,9 +135,9 @@ theorem optimal_match_iff_lift (prior : PMF State) (observe : State → Signal)
         (fun state => source (observe state)) := by
   constructor
   · rintro ⟨target, optimal, sameLaw⟩
-    rw [isBayesOptimal_iff_value]
-    intro alternative
-    have comparison := optimal.value_le alternative
+    rw [isBayesOptimal_iff_value prior priorFinite]
+    refine ⟨fun state => sourceIntegrable (observe state), fun alternative integrable => ?_⟩
+    have comparison := optimal.value_le priorFinite alternative integrable
     rw [value_eq_resultLaw prior id fact utility target, sameLaw,
       ← value_eq_resultLaw prior observe fact utility source] at comparison
     exact comparison
@@ -139,8 +148,8 @@ theorem optimal_match_iff_lift (prior : PMF State) (observe : State → Signal)
 requiring the fact to be recoverable. Target strategies may depend on the payoff,
 but whenever a match exists, the simple observation-respecting lift suffices. -/
 theorem preserves_fixed_payoff_iff_commonMaximizer [Finite Action] [Nonempty Action]
-    (prior : PMF State) (observe : State → Signal) (fact : State → Fact)
-    (utility : Fact → Action → ℝ) :
+    (prior : PMF State) (priorFinite : prior.support.Finite) (observe : State → Signal)
+    (fact : State → Fact) (utility : Fact → Action → ℝ) :
     (∀ source : Signal → PMF Action,
       IsBayesOptimal prior observe (fun state => utility (fact state)) source →
         ∃ target : State → PMF Action,
@@ -150,16 +159,19 @@ theorem preserves_fixed_payoff_iff_commonMaximizer [Finite Action] [Nonempty Act
   constructor
   · intro preserves
     obtain ⟨source, optimal⟩ :=
-      exists_bayesOptimal prior observe (fun state => utility (fact state))
+      exists_bayesOptimal prior priorFinite observe (fun state => utility (fact state))
     exact (exists_optimal_lift_iff_commonMaximizer prior observe _).mp
-      ⟨source, (optimal_match_iff_lift prior observe fact utility source).mp
-        (preserves source optimal)⟩
+      ⟨source, (optimal_match_iff_lift prior priorFinite observe fact utility source
+        optimal.1).mp (preserves source optimal)⟩
   · intro common source sourceOptimal
     obtain ⟨witness, witnessOptimal⟩ :=
       (exists_optimal_lift_iff_commonMaximizer prior observe _).mpr common
-    apply (optimal_match_iff_lift prior observe fact utility source).mpr
-    rw [isBayesOptimal_iff_value]
-    intro alternative
-    exact (witnessOptimal.value_le alternative).trans (sourceOptimal.value_le witness)
+    apply (optimal_match_iff_lift prior priorFinite observe fact utility source
+      sourceOptimal.1).mpr
+    rw [isBayesOptimal_iff_value prior priorFinite]
+    refine ⟨fun _ => ResponseIntegrable.of_finite prior _ _, fun alternative integrable => ?_⟩
+    exact (witnessOptimal.value_le priorFinite alternative integrable).trans
+      (sourceOptimal.value_le priorFinite witness
+        fun _ => ResponseIntegrable.of_finite prior _ _)
 
 end GameTheory.DecisionExperiment

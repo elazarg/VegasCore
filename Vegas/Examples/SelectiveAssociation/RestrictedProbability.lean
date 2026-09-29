@@ -99,7 +99,7 @@ theorem mixed_flip_le (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : w
   rw [CandidateFlip.uniform_prob_of_known_ids selected who firstPast secondPast firstView
     secondView same chosen]
   exact le_add_of_nonneg_right (mul_nonneg (sub_nonneg.mpr atMostOne)
-    (ENNReal.toReal_nonneg))
+    (by split_ifs <;> norm_num))
 
 theorem mixed_flip_silent (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
     (selected : Handle nativeGraph) (who : Player)

@@ -359,12 +359,15 @@ theorem antichain : (model (Action := Action) prior observe).DecisionInformation
 theorem reach_decision
     (profile : Profile (model (Action := Action) prior observe).behavioralSignature)
     (state : State) (supported : state ∈ prior.support) :
-    ((model prior observe).historyReachWeight profile (decisionHistory (Action := Action) prior state supported)).toReal = (prior state).toReal := by
+    (model prior observe).historyReachWeight profile
+      (decisionHistory (Action := Action) prior state supported) = prior state := by
   classical
-  change (((model prior observe).runBehavioralFrom profile 1 (arena prior).initHistory) (decisionHistory prior state supported)).toReal = _
-  rw [← FinDist.prob_map_of_injective History.state (state_injective prior), run_states]
+  change ((model prior observe).runBehavioralFrom profile 1 (arena prior).initHistory)
+    (decisionHistory prior state supported) = _
+  refine (pmf_map_apply_of_injective _ (state_injective prior) _).symm.trans ?_
+  rw [run_states]
   simp only [Function.iterate_one, PMF.pure_bind, initHistory, kernel]
-  exact FinDist.prob_map_of_injective Node.decision (fun _ _ same => Node.decision.inj same) _ _
+  exact pmf_map_apply_of_injective _ (fun _ _ same => Node.decision.inj same) _
 
 def latent : Node State Action → State
   | .initial => prior.support_nonempty.choose
@@ -420,30 +423,21 @@ theorem reference_mixed : (reference (Action := Action) prior observe).IsFullyMi
       rw [PMF.support_map]
       exact ⟨action, PMF.mem_support_uniformOfFintype action, Subtype.ext chosen.symm⟩
 
-instance : Finite (arena (Action := Action) prior).History :=
-  (reference_mixed (Action := Action) prior id).finite_history (bounded prior)
-
-instance : Fintype (arena (Action := Action) prior).History := Fintype.ofFinite _
-
-instance (who : Unit) (original : (model (Action := Action) prior observe).InformationSite who) :
-    Fintype ((model prior observe).InformationHistory who original.1) := by
-  classical
-  infer_instance
-
 omit [Finite Action] in
 theorem decision_reach_invariant
     (first second : Profile (model (Action := Action) prior observe).behavioralSignature)
     (original : (model (Action := Action) prior observe).InformationSite ())
     (history : (model prior observe).InformationHistory () original.1) :
-    ((model prior observe).historyReachWeight first history.1).toReal =
-      ((model prior observe).historyReachWeight second history.1).toReal := by
+    (model prior observe).historyReachWeight first history.1 =
+      (model prior observe).historyReachWeight second history.1 := by
   obtain ⟨state, supported, same, _⟩ := history_at_site prior observe original history
   rw [same, reach_decision, reach_decision]
 
 def assessment (original : Signal → PMF Action) :
     (model (Action := Action) prior observe).BehavioralAssessment where
   strategy _ := policy prior observe original
-  belief := (InformationModel.bayesAssessment _ (reference prior observe).strategy (reference_mixed prior observe) (antichain prior observe)).belief
+  belief := (InformationModel.bayesAssessment _ (reference prior observe).strategy
+    (reference_mixed prior observe) (antichain prior observe)).belief
 
 theorem assessment_consistent (original : Signal → PMF Action) :
     (assessment prior observe original).IsSequentiallyConsistent (antichain prior observe) := by
@@ -458,11 +452,31 @@ theorem assessment_consistent (original : Signal → PMF Action) :
 
 variable [Finite State]
 
+omit [Finite Action] in
+theorem transition_support_finite {node : Node State Action} (joint : Unit → Option Action) :
+    (transition prior node joint).support.Finite := by
+  cases node with
+  | initial =>
+      rw [transition, PMF.support_map]
+      exact (Set.toFinite _).image _
+  | decision state => simp [transition]
+  | done state action => simp [transition]
+
+instance : Finite (arena (Action := Action) prior).History :=
+  (reference_mixed (Action := Action) prior id).finite_history (bounded prior)
+    (fun _ _ => Set.toFinite _) (fun draw => transition_support_finite prior draw.1)
+
+instance : Fintype (arena (Action := Action) prior).History := Fintype.ofFinite _
+
+instance (who : Unit) (original : (model (Action := Action) prior observe).InformationSite who) :
+    Fintype ((model prior observe).InformationHistory who original.1) := by
+  classical
+  infer_instance
+
 open Classical in
-omit [Finite State] in
-theorem sum_information [Fintype State]
+theorem sum_information [Fintype State] {Value : Type*} [AddCommMonoid Value]
     (original : (model (Action := Action) prior observe).InformationSite ())
-    (f : State → ℝ) :
+    (f : State → Value) :
     (∑ history : (model prior observe).InformationHistory () original.1,
       f (latent prior history.1.state)) =
       ∑ state, if state ∈ prior.support ∧ observe state = siteSignal prior observe original
@@ -487,24 +501,25 @@ theorem information_mass
     (profile : Profile (model (Action := Action) prior observe).behavioralSignature)
     (original : (model (Action := Action) prior observe).InformationSite ()) :
     (model prior observe).informationMass profile () original =
-      (prior.toOuterMeasure (observe ⁻¹' {siteSignal prior observe original})).toReal := by
+      prior.toOuterMeasure (observe ⁻¹' {siteSignal prior observe original}) := by
   classical
   let : Fintype State := Fintype.ofFinite _
   unfold InformationModel.informationMass
   have reach (history : (model prior observe).InformationHistory () original.1) :
-      ((model prior observe).historyReachWeight profile history.1).toReal =
-        (prior (latent prior history.1.state)).toReal := by
+      (model prior observe).historyReachWeight profile history.1 =
+        prior (latent prior history.1.state) := by
     obtain ⟨state, supported, same, _⟩ := history_at_site prior observe original history
     rw [same, reach_decision]
     rfl
   simp_rw [reach]
-  rw [sum_information, ← expect_indicator, expect_eq_sum]
+  rw [tsum_fintype, sum_information, PMF.toOuterMeasure_apply, tsum_fintype]
   apply Finset.sum_congr rfl
   intro state _
   by_cases present : state ∈ prior.support
-  · by_cases same : observe state = siteSignal prior observe original <;> simp [present, same]
-  · have zero := FinDist.prob_eq_zero_iff.mpr present
-    simp [present, zero]
+  · by_cases same : observe state = siteSignal prior observe original <;>
+      simp [present, same, Set.indicator]
+  · have zero := (PMF.apply_eq_zero_iff _ _).mpr present
+    simp [present, zero, Set.indicator]
 
 omit [Finite State] in
 theorem consistent_beliefs_unique
@@ -516,19 +531,17 @@ theorem consistent_beliefs_unique
   funext who site
   cases who
   have equal (n : Nat) : (sequence n).belief () site =
-      (InformationModel.bayesAssessment _ (reference prior observe).strategy (reference_mixed prior observe) (antichain prior observe)).belief () site := by
-    apply pmf_ext_toReal
-    intro history
-    rw [(approximates n).2 () site ((approximates n).1.informationMass_pos () site) history,
+      (InformationModel.bayesAssessment _ (reference prior observe).strategy
+        (reference_mixed prior observe) (antichain prior observe)).belief () site := by
+    ext history
+    rw [(approximates n).2 () site (InformationModel.informationMass_pos_of_fullSupport _ _
+        (approximates n).1 () site) history,
       InformationModel.bayesAssessment, InformationModel.bayesBelief_apply]
     congr 1
     · exact decision_reach_invariant prior observe _ _ site history
     · unfold InformationModel.informationMass
-      apply Finset.sum_congr rfl
-      intro history _
-      exact decision_reach_invariant prior observe _ _ site history
-  apply pmf_ext_toReal
-  intro history
+      exact tsum_congr fun history => decision_reach_invariant prior observe _ _ site history
+  ext history
   have converges := converges.2 () site history
   simp_rw [equal] at converges
   exact tendsto_nhds_unique converges tendsto_const_nhds
@@ -582,14 +595,15 @@ theorem continuation_value (original : Signal → PMF Action)
     rw [same]
     change _ = expect (response prior observe alternative (siteSignal prior observe site))
       (utility state)
-    simpa only [expect_map, Profile.update_same, signalEq, payoff] using law
+    simpa only [expect_map, Function.comp_def, Profile.update_same, signalEq, payoff] using law
   have mass (history : (model prior observe).InformationHistory () site.1) :
       (((assessment prior observe original).belief () site) history).toReal =
         (prior (latent prior history.1.state)).toReal /
           (prior.toOuterMeasure (observe ⁻¹' {siteSignal prior observe site})).toReal := by
-    change (((InformationModel.bayesAssessment _ (reference prior observe).strategy (reference_mixed prior observe) (antichain prior observe)).belief () site) history).toReal = _
+    change (((InformationModel.bayesAssessment _ (reference prior observe).strategy
+      (reference_mixed prior observe) (antichain prior observe)).belief () site) history).toReal = _
     rw [InformationModel.bayesAssessment, InformationModel.bayesBelief_apply,
-      information_mass]
+      information_mass, ENNReal.toReal_div]
     obtain ⟨state, supported, same, _⟩ := history_at_site prior observe site history
     rw [same, reach_decision]
     rfl
@@ -603,7 +617,7 @@ theorem continuation_value (original : Signal → PMF Action)
   intro state _
   by_cases present : state ∈ prior.support
   · by_cases same : observe state = siteSignal prior observe site <;> simp [present, same]
-  · have zero := FinDist.prob_eq_zero_iff.mpr present
+  · have zero := (PMF.apply_eq_zero_iff _ _).mpr present
     simp [present, zero]
 
 theorem isSequentialEquilibrium_iff (original : Signal → PMF Action)
@@ -614,10 +628,14 @@ theorem isSequentialEquilibrium_iff (original : Signal → PMF Action)
       IsBayesOptimal prior observe utility original := by
   classical
   constructor
-  · intro equilibrium signal alternative
+  · intro equilibrium
+    refine ⟨fun _ => ResponseIntegrable.of_finite prior utility _, fun signal alternative _ => ?_⟩
     by_cases found : ∃ state ∈ prior.support, observe state = signal
     · obtain ⟨state, supported, observed⟩ := found
-      have comparison := equilibrium.1 () (site (Action := Action) prior observe state supported)
+      have comparison :=
+          (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _) fun _ _ =>
+          (payoffIntegrable_of_finite _ _)).mp
+        (equilibrium.1 () (site (Action := Action) prior observe state supported))
         (policy prior observe (fun _ => alternative)) (Set.mem_univ _)
       change ((assessment prior observe original).continuationContext _ _ 2).value _ ≤
         ((assessment prior observe original).continuationContext _ _ 2).value
@@ -641,16 +659,22 @@ theorem isSequentialEquilibrium_iff (original : Signal → PMF Action)
       rw [zero, zero]
   · intro optimal
     refine ⟨?_, assessment_consistent prior observe original⟩
-    intro who site alternative _
+    intro who site
     cases who
+    refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _) fun _ _ =>
+        (payoffIntegrable_of_finite _ _)).mpr fun alternative _ => ?_
     change ((assessment prior observe original).continuationContext _ _ 2).value _ ≤
       ((assessment prior observe original).continuationContext _ _ 2).value
         (policy prior observe original)
     rw [continuation_value, continuation_value, response_policy]
-    have positive : 0 < (prior.toOuterMeasure (observe ⁻¹' {siteSignal prior observe site})).toReal := by
+    have positive :
+        0 < (prior.toOuterMeasure (observe ⁻¹' {siteSignal prior observe site})).toReal := by
       rw [← information_mass prior observe (reference prior observe).strategy site]
-      exact (reference_mixed prior observe).informationMass_pos () site
-    exact (div_le_div_iff_of_pos_right positive).mpr (optimal _ _)
+      exact ENNReal.toReal_pos (InformationModel.informationMass_pos_of_fullSupport _ _
+        (reference_mixed prior observe) () site).ne' (ne_top_of_le_ne_top ENNReal.one_ne_top
+          (InformationModel.informationMass_le_one _ _ () site (antichain prior observe () site)))
+    exact (div_le_div_iff_of_pos_right positive).mpr
+      (optimal.2 _ _ (ResponseIntegrable.of_finite prior utility _))
 
 theorem optimal_of_sequentialEquilibrium
     (original : (model (Action := Action) prior observe).BehavioralAssessment)
@@ -733,7 +757,7 @@ theorem sequentialEquilibrium_laws_iff {Fact : Type} (fact : State → Fact)
           (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
         observedLaw prior id fact original = law) := by
   rw [equilibrium_law_iff, equilibrium_law_iff]
-  exact optimal_result_law_iff prior observe fact determines utility law
+  exact optimal_result_law_iff prior (Set.toFinite _) observe fact determines utility law
 
 omit [Nonempty Action] [Finite Action] in
 /-- Exact standard-SE classification for deterministic observation quotients
@@ -753,7 +777,7 @@ theorem preserves_all_sequentialEquilibria_iff_determines
               (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
           observedLaw prior id fact target = observedLaw prior observe fact source) ↔
       Determines prior observe fact := by
-  rw [← preserves_all_optima_iff_determines prior observe fact]
+  rw [← preserves_all_optima_iff_determines prior (Set.toFinite _) observe fact]
   constructor
   · intro preserves utility source optimal
     obtain ⟨target, equilibrium, lawEq⟩ := preserves utility (assessment prior observe source)

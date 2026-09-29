@@ -111,78 +111,117 @@ private theorem perturb_sender_law (decisions : PMF Decision) (response : Secret
     choiceLaw (perturbProfile prior true decisions response n) false (some (some secret)) =
       mix (trembleWeight n) (trembleWeight_nonneg n) (trembleWeight_le_one n)
         (PMF.uniformOfFintype Bool) (PMF.pure false) := by
-  simp [choiceLaw, perturbProfile, BehavioralAssessment.perturb, reference, silentProfile,
-    choose, decisionInfo, mix_map, PMF.map_bind]
+  simp only [choiceLaw, decisionInfo, Option.isSome_some, Set.mem_ofPred_eq, perturbProfile,
+    BehavioralAssessment.perturb, reference, choose, Bool.true_or, Bool.true_and,
+        pmf_bind_pure_eq_map,
+    BehavioralAssessment.ofStrategy_strategy, silentProfile, ↓reduceIte, Bool.or_false,
+        Bool.and_self,
+    mix_map, PMF.pure_map, Option.getD_some]
+  rw [PMF.map_comp]
+  congr 1
+  simp only [Function.comp_def, Option.getD_some]
+  exact PMF.map_id _
 
 private theorem perturb_source_sender_law (decisions : PMF Decision)
     (response : Secret → Decision)
     (n : Nat) (secret : Secret) :
     choiceLaw (perturbProfile prior false decisions response n) false (some (some secret)) =
       PMF.pure false := by
-  simp [choiceLaw, perturbProfile, BehavioralAssessment.perturb, reference, silentProfile,
-    choose, decisionInfo, mix_map, PMF.map_bind]
+  simp only [choiceLaw, decisionInfo, Option.isSome_some, Set.mem_ofPred_eq, perturbProfile,
+    BehavioralAssessment.perturb, reference, choose, Bool.false_or, Bool.and_eq_true,
+    pmf_bind_pure_eq_map, BehavioralAssessment.ofStrategy_strategy, silentProfile,
+    Bool.false_eq_true, and_true, ↓reduceIte, Bool.or_self, Bool.and_true, mix_map, PMF.pure_map,
+    Option.getD_none]
+  rw [PMF.map_comp]
+  simp only [Function.comp_def, Option.getD_none, pmf_map_fun_const, mix_self]
 
-private theorem reach_silent (ambient : Bool) (decisions : PMF Decision)
+/-- The weight the silent receiver history retains: all of it in the source, and
+all but half the tremble when the sender may disclose. -/
+private def silentWeight (ambient : Bool) (n : Nat) : ℝ :=
+  if ambient then 1 - trembleWeight n / 2 else 1
+
+private theorem silentWeight_pos (ambient : Bool) (n : Nat) : 0 < silentWeight ambient n := by
+  unfold silentWeight
+  cases ambient
+  · norm_num
+  · have := trembleWeight_le_one n
+    simp only [↓reduceIte]
+    linarith
+
+private theorem reach_silent_toReal (ambient : Bool) (decisions : PMF Decision)
     (response : Secret → Decision)
     (n : Nat) (secret : Secret) :
-    ((model prior ambient).historyReachWeight (perturbProfile prior ambient decisions response n) (receiverHistory prior full ambient secret false)).toReal =
-      (prior secret).toReal * (if ambient then 1 - trembleWeight n / 2 else 1) := by
+    ((model prior ambient).historyReachWeight (perturbProfile prior ambient decisions response n)
+      (receiverHistory prior full ambient secret false)).toReal =
+      (prior secret).toReal * silentWeight ambient n := by
   classical
   change (((model prior ambient).runBehavioralFrom
-    (perturbProfile prior ambient decisions response n) 2 (arena prior ambient).initHistory) (receiverHistory prior full ambient secret false)).toReal = _
+    (perturbProfile prior ambient decisions response n) 2 (arena prior ambient).initHistory)
+      (receiverHistory prior full ambient secret false)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
-    (model prior ambient) (single prior ambient),
-    ← FinDist.prob_map_of_injective History.state (state_injective prior full ambient), run_states]
+    (model prior ambient) (single prior ambient)]
+  refine (congrArg ENNReal.toReal
+    (pmf_map_apply_of_injective _ (state_injective prior full ambient) _)).symm.trans ?_
+  rw [run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind,
-    initHistory, kernel, PMF.bind_map]
+    initHistory, kernel, PMF.bind_map, Function.comp_def]
   have stateEq : (receiverHistory (Decision := Decision) prior full ambient secret false).state =
       .receiver secret false := by
     cases ambient <;> rfl
   rw [stateEq]
   change ((prior.bind fun hidden =>
     (choiceLaw (perturbProfile prior ambient decisions response n) false (some (some hidden))).map
-      (fun disclose => State.receiver hidden (ambient && disclose))) (.receiver secret false)).toReal = _
-  rw [FinDist.prob_bind_of_unique_branch _ _ _ secret]
+      (fun disclose => State.receiver hidden (ambient && disclose)))
+        (.receiver secret false)).toReal = _
+  rw [bind_apply_of_unique_branch _ _ _ secret, ENNReal.toReal_mul]
   · congr 1
     cases ambient
     · rw [perturb_source_sender_law]
-      simp
+      simp [silentWeight]
     · rw [perturb_sender_law]
-      simp only [Bool.true_and, ↓reduceIte]
-      rw [FinDist.prob_map_of_injective
-        (fun disclose => State.receiver (Decision := Decision) secret disclose) (by
+      simp only [Bool.true_and]
+      refine (congrArg ENNReal.toReal (pmf_map_apply_of_injective _
+        (f := fun disclose => State.receiver (Decision := Decision) secret disclose) (by
           intro first second same
-          exact (State.receiver.inj same).2)]
-      simp [mix_apply_toReal, toReal_uniformOfFintype_apply, Fintype.card_bool]
+          exact (State.receiver.inj same).2) false)).trans ?_
+      rw [mix_apply_toReal, toReal_uniformOfFintype_apply, Fintype.card_bool, toReal_pure_apply]
+      simp only [↓reduceIte, silentWeight]
+      push_cast
       ring
   · intro hidden _ reached
     obtain ⟨disclose, _, same⟩ := PMF.support_map .. ▸ reached
     exact (State.receiver.inj same).1
+
+private theorem reach_silent (ambient : Bool) (decisions : PMF Decision)
+    (response : Secret → Decision)
+    (n : Nat) (secret : Secret) :
+    (model prior ambient).historyReachWeight (perturbProfile prior ambient decisions response n)
+      (receiverHistory prior full ambient secret false) =
+      prior secret * ENNReal.ofReal (silentWeight ambient n) := by
+  have real := reach_silent_toReal prior full ambient decisions response n secret
+  rw [← ENNReal.toReal_ofReal (silentWeight_pos ambient n).le, ← ENNReal.toReal_mul] at real
+  exact (ENNReal.toReal_eq_toReal_iff' (PMF.apply_ne_top _ _)
+    (ENNReal.mul_ne_top (PMF.apply_ne_top _ _) ENNReal.ofReal_ne_top)).mp real
 
 private theorem mass_silent (ambient : Bool) (decisions : PMF Decision)
     (response : Secret → Decision)
     (n : Nat) :
     (model prior ambient).informationMass (perturbProfile prior ambient decisions response n)
         true (receiverSilentSite prior full ambient) =
-      if ambient then 1 - trembleWeight n / 2 else 1 := by
-  classical
-  let : Fintype Secret := Fintype.ofEquiv
-    ((model (Decision := Decision) prior ambient).InformationHistory true
-      (receiverSilentSite prior full ambient).1) (silentHistories prior full ambient).symm
+      ENNReal.ofReal (silentWeight ambient n) := by
   unfold InformationModel.informationMass
-  rw [← (silentHistories prior full ambient).sum_comp]
-  simp only [silentHistories, Equiv.ofBijective_apply, silentHistory, reach_silent]
-  rw [← Finset.sum_mul, pmf_sum_toReal_eq_one, one_mul]
+  refine ((silentHistories prior full ambient).tsum_eq _).symm.trans ?_
+  simp only [silentHistories, Equiv.ofBijective_apply, silentHistory, reach_silent,
+    ENNReal.tsum_mul_right, PMF.tsum_coe, one_mul]
 
 omit [Fintype Decision] in
 theorem belief_silent_prob (ambient : Bool)
     (profile : Profile (model (Decision := Decision) prior ambient).behavioralSignature)
     (secret : Secret) :
-    (((assessment prior full ambient profile).belief true
-      (receiverSilentSite prior full ambient)) (silentHistory prior full ambient secret)).toReal = (prior secret).toReal := by
-  classical
-  rw [silent_belief, FinDist.prob_map_of_injective _
-    (silentHistory_injective prior full ambient)]
+    ((assessment prior full ambient profile).belief true
+      (receiverSilentSite prior full ambient)) (silentHistory prior full ambient secret) =
+        prior secret := by
+  rw [silent_belief, pmf_map_apply_of_injective _ (silentHistory_injective prior full ambient)]
 
 private theorem perturb_bayes (ambient : Bool) (decisions : PMF Decision)
     (response : Secret → Decision) (n : Nat) :
@@ -209,20 +248,16 @@ private theorem perturb_bayes (ambient : Bool) (decisions : PMF Decision)
     · obtain ⟨secret, same⟩ := history_at_silent prior full ambient history
       have historyEq : history = silentHistory prior full ambient secret := Subtype.ext same
       subst history
-      change (((assessment prior full ambient
+      change ((assessment prior full ambient
         (perturbProfile prior ambient decisions response n)).belief true
-          (receiverSilentSite prior full ambient)) (silentHistory prior full ambient secret)).toReal =
-        ((model prior ambient).historyReachWeight (perturbProfile prior ambient decisions response n) (receiverHistory prior full ambient secret false)).toReal /
+          (receiverSilentSite prior full ambient)) (silentHistory prior full ambient secret) =
+        (model prior ambient).historyReachWeight (perturbProfile prior ambient decisions response n)
+            (receiverHistory prior full ambient secret false) /
           (model prior ambient).informationMass (perturbProfile prior ambient decisions response n)
             true (receiverSilentSite prior full ambient)
-      rw [belief_silent_prob, reach_silent, mass_silent]
-      have positiveWeight : (if ambient then 1 - trembleWeight n / 2 else 1) ≠ 0 := by
-        cases ambient
-        · norm_num
-        · have := trembleWeight_le_one n
-          simp only [↓reduceIte]
-          linarith
-      rw [mul_div_cancel_right₀ _ positiveWeight]
+      rw [belief_silent_prob, reach_silent, mass_silent,
+        ENNReal.mul_div_cancel_right (ENNReal.ofReal_pos.mpr (silentWeight_pos ambient n)).ne'
+          ENNReal.ofReal_ne_top]
     · have siteEq : decision = receiverDisclosedSite prior full secret := Subtype.ext same
       subst decision
       have equal :

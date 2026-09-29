@@ -34,26 +34,40 @@ open Math.Probability
 
 variable {State Signal Action Fact : Type*}
 
-theorem isBayesOptimal_iff_value (prior : PMF State) (observe : State → Signal)
-    (utility : State → Action → ℝ) (policy : Signal → PMF Action) :
+theorem isBayesOptimal_iff_value (prior : PMF State) (priorFinite : prior.support.Finite)
+    (observe : State → Signal) (utility : State → Action → ℝ) (policy : Signal → PMF Action) :
     IsBayesOptimal prior observe utility policy ↔
-      ∀ alternative, value prior observe utility alternative ≤
-        value prior observe utility policy := by
+      PolicyIntegrable prior utility policy ∧
+        ∀ alternative, PolicyIntegrable prior utility alternative →
+          value prior observe utility alternative ≤ value prior observe utility policy := by
   classical
-  refine ⟨fun optimal => optimal.value_le, ?_⟩
-  intro maximal signal alternative
+  refine ⟨fun optimal => ⟨optimal.1, fun alternative integrable =>
+    optimal.value_le priorFinite alternative integrable⟩, ?_⟩
+  rintro ⟨integrable, maximal⟩
+  refine ⟨integrable, fun signal alternative alternativeIntegrable => ?_⟩
   let replaced : Signal → PMF Action :=
     fun current => if current = signal then alternative else policy current
+  have replacedIntegrable : PolicyIntegrable prior utility replaced := fun current => by
+    by_cases same : current = signal
+    · simpa only [replaced, same, ↓reduceIte] using alternativeIntegrable
+    · simpa only [replaced, same, ↓reduceIte] using integrable current
+  have finiteIntegrable (g : State → ℝ) := payoffIntegrable_of_finite_support prior g priorFinite
   have replacement : value prior observe utility replaced =
       value prior observe utility policy - localValue prior observe utility signal (policy signal) +
         localValue prior observe utility signal alternative := by
-    simp only [value_eq_expect, localValue, ← FinDist.expect_sub, ← expect_add_of_finite]
+    rw [value_eq_expect _ _ _ _
+        (outcomeLaw_integrable prior priorFinite observe utility _ replacedIntegrable),
+      value_eq_expect _ _ _ _
+        (outcomeLaw_integrable prior priorFinite observe utility _ integrable)]
+    simp only [localValue]
+    rw [← expect_sub (finiteIntegrable _) (finiteIntegrable _),
+      ← expect_add (finiteIntegrable _) (finiteIntegrable _)]
     apply expect_congr_on_support
     intro state _
     by_cases same : observe state = signal
     · simp [replaced, same]
     · simp [replaced, same]
-  have inequality := maximal replaced
+  have inequality := maximal replaced replacedIntegrable
   rw [replacement] at inequality
   linarith
 
@@ -72,14 +86,15 @@ theorem resultLaw_fst (prior : PMF State) (observe : State → Signal)
     (fact : State → Fact) (policy : Signal → PMF Action) :
     (resultLaw prior observe fact policy).map Prod.fst = prior.map fact := by
   rw [resultLaw_eq_bind]
-  simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, PMF.map_const]
-  rfl
+  simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, pmf_map_fun_const]
+  exact pmf_bind_pure_eq_map _ _
 
 theorem value_eq_resultLaw (prior : PMF State) (observe : State → Signal)
     (fact : State → Fact) (utility : Fact → Action → ℝ) (policy : Signal → PMF Action) :
     value prior observe (fun state => utility (fact state)) policy =
       expect (resultLaw prior observe fact policy) (fun result => utility result.1 result.2) := by
   rw [value, resultLaw, expect_map]
+  rfl
 
 variable {Summary : Type*}
 
@@ -121,6 +136,20 @@ theorem averagePolicy_result_law (prior : PMF State) (observe : State → Signal
     resultLaw_of_decoder prior id observe fact decode decodes,
     averagePolicy_observation_law]
 
+/-- Averaging integrable fully informed responses gives integrable responses:
+each averaged response is a conditional of a finite mixture of them. -/
+theorem averagePolicy_integrable (prior : PMF State) (priorFinite : prior.support.Finite)
+    (observe : State → Signal) (utility : State → Action → ℝ) (policy : State → PMF Action)
+    (integrable : PolicyIntegrable prior utility policy) :
+    PolicyIntegrable prior utility (averagePolicy prior observe policy) := by
+  intro signal state supported
+  unfold averagePolicy
+  rw [payoffIntegrable_map_iff]
+  apply payoffIntegrable_fiberConditional
+  rw [resultLaw_eq_bind]
+  exact payoffIntegrable_bind_of_finite_support _ _ _ priorFinite fun hidden _ =>
+    (payoffIntegrable_map_iff _ _ _).mpr (integrable hidden state supported)
+
 theorem averagePolicy_value (prior : PMF State) (observe : State → Signal)
     (fact : State → Fact) (determines : Determines prior observe fact)
     (utility : Fact → Action → ℝ) (policy : State → PMF Action) :
@@ -132,35 +161,38 @@ theorem averagePolicy_value (prior : PMF State) (observe : State → Signal)
 
 /-- Every abstract optimum lifts to a fully informed optimum with the same
 retained law, for every utility of the retained fact and public action. -/
-theorem bayesOptimal_lift (prior : PMF State) (observe : State → Signal)
-    (fact : State → Fact) (determines : Determines prior observe fact)
+theorem bayesOptimal_lift (prior : PMF State) (priorFinite : prior.support.Finite)
+    (observe : State → Signal) (fact : State → Fact) (determines : Determines prior observe fact)
     (utility : Fact → Action → ℝ) (policy : Signal → PMF Action)
     (optimal : IsBayesOptimal prior observe (fun state => utility (fact state)) policy) :
     IsBayesOptimal prior id (fun state => utility (fact state))
       (fun state => policy (observe state)) := by
-  rw [isBayesOptimal_iff_value]
-  intro alternative
-  have inequality := optimal.value_le (averagePolicy prior observe alternative)
+  rw [isBayesOptimal_iff_value prior priorFinite]
+  refine ⟨fun state => optimal.1 (observe state), fun alternative integrable => ?_⟩
+  have inequality := optimal.value_le priorFinite (averagePolicy prior observe alternative)
+    (averagePolicy_integrable prior priorFinite observe _ alternative integrable)
   rw [averagePolicy_value prior observe fact determines] at inequality
   exact inequality
 
 /-- Every fully informed optimum has an abstract optimum with the same
 retained law. The abstract response may randomize even when the concrete one does not. -/
-theorem bayesOptimal_average (prior : PMF State) (observe : State → Signal)
-    (fact : State → Fact) (determines : Determines prior observe fact)
+theorem bayesOptimal_average (prior : PMF State) (priorFinite : prior.support.Finite)
+    (observe : State → Signal) (fact : State → Fact) (determines : Determines prior observe fact)
     (utility : Fact → Action → ℝ) (policy : State → PMF Action)
     (optimal : IsBayesOptimal prior id (fun state => utility (fact state)) policy) :
     IsBayesOptimal prior observe (fun state => utility (fact state))
       (averagePolicy prior observe policy) := by
-  rw [isBayesOptimal_iff_value]
-  intro alternative
+  rw [isBayesOptimal_iff_value prior priorFinite]
+  refine ⟨averagePolicy_integrable prior priorFinite observe _ policy optimal.1,
+    fun alternative integrable => ?_⟩
   rw [averagePolicy_value prior observe fact determines]
-  exact optimal.value_le (fun state => alternative (observe state))
+  exact optimal.value_le priorFinite (fun state => alternative (observe state))
+    fun state => integrable (observe state)
 
 /-- The complete sets of optimal retained outcome laws coincide. This is
 utility-uniform, and the policy maps themselves do not depend on the utility. -/
-theorem optimal_result_law_iff (prior : PMF State) (observe : State → Signal)
-    (fact : State → Fact) (determines : Determines prior observe fact)
+theorem optimal_result_law_iff (prior : PMF State) (priorFinite : prior.support.Finite)
+    (observe : State → Signal) (fact : State → Fact) (determines : Determines prior observe fact)
     (utility : Fact → Action → ℝ) (law : PMF (Fact × Action)) :
     (∃ policy : Signal → PMF Action,
       IsBayesOptimal prior observe (fun state => utility (fact state)) policy ∧
@@ -171,10 +203,10 @@ theorem optimal_result_law_iff (prior : PMF State) (observe : State → Signal)
   constructor
   · rintro ⟨policy, optimal, lawEq⟩
     exact ⟨fun state => policy (observe state),
-      bayesOptimal_lift prior observe fact determines utility policy optimal, lawEq⟩
+      bayesOptimal_lift prior priorFinite observe fact determines utility policy optimal, lawEq⟩
   · rintro ⟨policy, optimal, lawEq⟩
     exact ⟨averagePolicy prior observe policy,
-      bayesOptimal_average prior observe fact determines utility policy optimal,
+      bayesOptimal_average prior priorFinite observe fact determines utility policy optimal,
       (averagePolicy_result_law prior observe fact determines policy).trans lawEq⟩
 
 /-- An exact necessity-and-sufficiency theorem for the abstraction class.
@@ -183,7 +215,8 @@ abstract optimum for every utility on fact/report pairs is equivalent to the
 observation determining the fact on the prior support. Sufficiency for other
 action carriers is `bayesOptimal_lift` and `optimal_result_law_iff`. -/
 theorem preserves_all_optima_iff_determines [Finite Fact] [Nonempty Fact]
-    (prior : PMF State) (observe : State → Signal) (fact : State → Fact) :
+    (prior : PMF State) (priorFinite : prior.support.Finite) (observe : State → Signal)
+    (fact : State → Fact) :
     (∀ utility : Fact → Fact → ℝ, ∀ source : Signal → PMF Fact,
       IsBayesOptimal prior observe (fun state => utility (fact state)) source →
         ∃ target : State → PMF Fact,
@@ -197,14 +230,16 @@ theorem preserves_all_optima_iff_determines [Finite Fact] [Nonempty Fact]
     simp only [Determines] at notDetermines
     push Not at notDetermines
     obtain ⟨first, firstPresent, second, secondPresent, same, different⟩ := notDetermines
-    obtain ⟨source, sourceOptimal⟩ := exists_bayesOptimal prior observe (reportUtility fact)
+    obtain ⟨source, sourceOptimal⟩ :=
+      exists_bayesOptimal prior priorFinite observe (reportUtility fact)
     obtain ⟨target, targetOptimal, sameLaw⟩ :=
       preserves (fun actual report => if actual = report then 1 else 0) source sourceOptimal
-    exact no_optimal_report_law_match prior observe id fact
+    exact no_optimal_report_law_match prior priorFinite observe id fact
       (fun first _ second _ same => congrArg fact same)
       firstPresent secondPresent same different source target targetOptimal sameLaw
   · intro determines utility source sourceOptimal
     exact ⟨fun state => source (observe state),
-      bayesOptimal_lift prior observe fact determines utility source sourceOptimal, rfl⟩
+      bayesOptimal_lift prior priorFinite observe fact determines utility source sourceOptimal,
+      rfl⟩
 
 end GameTheory.DecisionExperiment

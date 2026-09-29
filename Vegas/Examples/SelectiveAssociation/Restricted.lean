@@ -23,6 +23,8 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 def leaks : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph) :=
   fun _ _ => PMF.pure ∅
 
+instance : leaks.FiniteSupport := ⟨fun _ _ => by simp [leaks]⟩
+
 abbrev app := serviceApp leaks
 abbrev menu := serviceMenu leaks
 abbrev network := serviceNetwork leaks
@@ -138,6 +140,7 @@ theorem two_rounds (players : Player → app.Policy) :
   rw [runInteractionPlan, first_round, PMF.bind_map]
   apply bind_congr_on_support _
   intro bit _
+  simp only [Function.comp_apply]
   rw [runInteractionPlan, bob_round]
   simp only [runInteractionPlan, PMF.bind_pure]
   cases bit
@@ -159,7 +162,7 @@ theorem first_response_guess_bound (policy : app.Policy)
     · rfl
     · exact (bob_response_same policy).symm
   simp_rw [constant]
-  simpa only [expect_map] using fair_guess_le_half
+  simpa only [expect_map, Function.comp_def] using fair_guess_le_half
     ((policy ((bobInput false).recall bob) ((bobInput false).observe app bob)).map report)
 
 def reacted (bit : Bool) : app.Execution := (bobInput bit).respond app bob ⟨none⟩

@@ -209,9 +209,9 @@ theorem value_receiver {ambient : Bool}
         expect (resultLaw profile secret (ambient && disclose)) utility := by
   have mapped := congrArg (fun law => expect law utility)
     (run_receiver full profile secret disclose)
-  simpa only [expect_map] using mapped
+  simpa only [expect_map, Function.comp_def] using mapped
 
-theorem value_sender {ambient : Bool}
+theorem value_sender [Finite Decision] {ambient : Bool}
     (profile : Profile (model (Decision := Decision) prior ambient).behavioralSignature)
     (secret : Secret) (utility : State Secret Decision → ℝ) :
     expect ((model prior ambient).runSingleMoverBehavioralFrom (single prior ambient) profile 3
@@ -219,6 +219,10 @@ theorem value_sender {ambient : Bool}
         expect (choiceLaw profile false (some (some secret)))
           (fun disclose => expect (resultLaw profile secret (ambient && disclose)) utility) := by
   have mapped := congrArg (fun law => expect law utility) (run_sender full profile secret)
-  simpa only [expect_map, expect_bind_of_finite] using mapped
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite_support _ _
+    (bind_support_finite (Set.toFinite _) fun _ _ => by
+      rw [resultLaw, PMF.support_map]
+      exact (Set.toFinite _).image _))] at mapped
+  simpa only [expect_map, Function.comp_def] using mapped
 
 end GameTheory.Protocol.DisclosureEnforcement

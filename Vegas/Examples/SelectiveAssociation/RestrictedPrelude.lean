@@ -124,7 +124,10 @@ theorem bob_prelude_rational (assessment : model.BehavioralAssessment)
     (ambient : view.application.publicView.serviceGrant = none) :
     assessment.IsSequentiallyRationalAt site (assessment.continuationContext site
       (fun history => nativeUtility bob history.state) (2 * nativeHorizon + 1)) := by
-  intro alternative _
+  refine (Context.isLocallyOptimal_iff_of_integrable
+    (nativeUtility_continuation_integrable assessment site _ _)
+      fun _ _ => nativeUtility_continuation_integrable assessment site _ _).mpr
+        fun alternative _ => ?_
   simp only [InformationModel.BehavioralAssessment.continuationContext_value,
     expect_bind_of_finite, strategy, Profile.update_eq_self]
   refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
@@ -139,7 +142,7 @@ theorem bob_prelude_rational (assessment : model.BehavioralAssessment)
     exact ambient
   have prescribed : expect (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩) (fun final => nativeUtility bob final.state) = 1 := by
-    refine (expect_congr_on_support (v := fun _ => (1 : ℝ)) ?_).trans
+    refine (expect_congr_on_support (g := fun _ => (1 : ℝ)) ?_).trans
       (expect_constant _ 1)
     intro final finalMem
     obtain ⟨result, finalEq, outcomes⟩ := prescribed_prelude_results bob control trace active

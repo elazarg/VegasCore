@@ -158,7 +158,9 @@ theorem prescribed_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultC
   cases visited : view.application.visit with
   | none =>
       rcases site_ambient_owner Claim who site past view observed visited with rfl | rfl
-      · intro alternative _
+      · refine (Context.isLocallyOptimal_iff_of_integrable
+          (continuation_integrable assessment site _ _)
+            fun _ _ => continuation_integrable assessment site _ _).mpr fun alternative _ => ?_
         exact alice_early_sequentiallyRational Claim defaultClaim assessment strategy site
           past view observed (Or.inl visited) alternative
       · exact bob_ambient_sequentially_rational Claim defaultClaim assessment strategy site
@@ -166,7 +168,9 @@ theorem prescribed_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultC
   | some event =>
       have owner := site_granted_owner Claim who site past view observed event visited
       subst who
-      intro alternative _
+      refine (Context.isLocallyOptimal_iff_of_integrable
+        (continuation_integrable assessment site _ _)
+          fun _ _ => continuation_integrable assessment site _ _).mpr fun alternative _ => ?_
       fin_cases event
       · exact alice_early_sequentiallyRational Claim defaultClaim assessment strategy site
           past view observed (Or.inr visited) alternative

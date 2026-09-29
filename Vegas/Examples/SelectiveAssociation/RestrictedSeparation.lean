@@ -20,7 +20,7 @@ open Vegas Interaction GameTheory GameTheory.Protocol GameTheory.Math.Probabilit
 theorem profile_payout_zero : expect (nativePayoutLaw (observation := leaks) profile) id = 0 := by
   rw [native_payout_expectation]
   have value := congrArg (fun law : PMF ℝ => expect law id) (initialized_payoff_law alice)
-  simpa only [expect_map, expect_pure, id_eq, ↓reduceIte] using value
+  simpa only [expect_map, expect_pure, id_eq, ↓reduceIte, Function.id_comp] using value
 
 /-- Restoring passive observation can prevent every sequentially rational
 assessment from matching the restricted game's equilibrium payout law.

@@ -56,7 +56,7 @@ theorem prescribed_guess_optimal (assessment : model.BehavioralAssessment)
   | true =>
       have target : expect (assessment.belief who site) (fun history =>
           guessReward (.success true) history.1.state) = 1 := by
-        refine (expect_congr_on_support (v := fun _ => (1 : ℝ)) ?_).trans
+        refine (expect_congr_on_support (g := fun _ => (1 : ℝ)) ?_).trans
           (expect_constant _ _)
         intro history _
         have known := publicGuess_true_known who past view selected
@@ -134,7 +134,7 @@ theorem profile_guesser_context (assessment : model.BehavioralAssessment)
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
   change state = some control at stateEq
   subst state
-  refine (expect_congr_on_support (v := fun _ =>
+  refine (expect_congr_on_support (g := fun _ =>
     guessReward (.success (publicGuess view)) (some control)) ?_).trans
       (expect_constant _ _)
   intro final supported
@@ -159,13 +159,17 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
     assessment.IsSequentiallyRationalAt site (assessment.continuationContext site
       (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) := by
   classical
-  intro alternative _
+  refine (Context.isLocallyOptimal_iff_of_integrable
+    (nativeUtility_continuation_integrable assessment site _ _)
+      fun _ _ => nativeUtility_continuation_integrable assessment site _ _).mpr
+        fun alternative _ => ?_
   have once : model.ActsOnceWhereItMatters := model.actsOnceWhereItMatters_of_actsOnce
     (InformationModel.actsOnce_of_decisionInformationAntichain
       (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon scheduler))
   rw [assessment.continuationContext_value_eq_expect_commit once site
     (menu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon scheduler
-      who site) _ (2 * nativeHorizon) alternative,
+      who site) _ (2 * nativeHorizon) alternative
+      (nativeUtility_continuation_integrable assessment site _ _),
     profile_guesser_context assessment strategy who guesser site past view information granted]
   refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun choice _ => ?_
   obtain ⟨guess, bound⟩ := committed_guesser_bound assessment who guesser site past view

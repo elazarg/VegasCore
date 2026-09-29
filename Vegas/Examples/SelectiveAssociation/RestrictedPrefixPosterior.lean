@@ -64,10 +64,12 @@ theorem carol_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weigh
     refine ⟨⟨sameInput.trans member.1, related_true_false selected _ _ related member.2⟩, ?_⟩
     exact carol_flip_probability weight positive.le atMostOne selected owner responses
       (carol_true_response_different players responses support member.2)
-  exact PMF.toOuterMeasure_le_of_injection law (event true) (event false) (flipCarol selected)
-    (fun _ _ _ _ same => (flipCarol_involutive selected).injective same)
-    (fun responses member supported => (moves responses member supported).1)
-    (fun responses member supported => (moves responses member supported).2)
+  exact ENNReal.toReal_mono (outerMeasure_ne_top law _)
+    (toOuterMeasure_le_of_injection law (event true) (event false) (flipCarol selected)
+      (fun _ _ _ _ same => (flipCarol_involutive selected).injective same)
+      (fun responses member supported => (moves responses member supported).1)
+      (fun responses member supported => (ENNReal.toReal_le_toReal (PMF.apply_ne_top _ _)
+        (PMF.apply_ne_top _ _)).mp (moves responses member supported).2))
 
 theorem bob_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1)
     (past : List app.PlayerEntry) (view : app.PlayerView)
@@ -112,9 +114,11 @@ theorem bob_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weight 
     refine ⟨⟨sameInput.trans member.1, related_true_false selected _ _ related member.2⟩, ?_⟩
     exact bob_flip_probability weight positive.le atMostOne selected owner responses
       (bob_true_response_different players responses support member.2) carolSame
-  exact PMF.toOuterMeasure_le_of_injection law (event true) (event false) (flipBob selected)
-    (fun _ _ _ _ same => (flipBob_involutive selected).injective same)
-    (fun responses member supported => (moves responses member supported).1)
-    (fun responses member supported => (moves responses member supported).2)
+  exact ENNReal.toReal_mono (outerMeasure_ne_top law _)
+    (toOuterMeasure_le_of_injection law (event true) (event false) (flipBob selected)
+      (fun _ _ _ _ same => (flipBob_involutive selected).injective same)
+      (fun responses member supported => (moves responses member supported).1)
+      (fun responses member supported => (ENNReal.toReal_le_toReal (PMF.apply_ne_top _ _)
+        (PMF.apply_ne_top _ _)).mp (moves responses member supported).2))
 
 end Vegas.Examples.SelectiveAssociation.Restricted.Prefix

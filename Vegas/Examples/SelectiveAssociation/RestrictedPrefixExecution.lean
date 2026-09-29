@@ -116,7 +116,7 @@ theorem alice_control_law (players : Player → app.Policy) :
     List.length_singleton, Nat.zero_add, prefix_lookup, List.getElem?_cons_zero,
     List.getElem?_cons_succ, interactionInstruction, PMF.pure_map, PMF.bind_map,
     PMF.bind_bind, PMF.map_bind, environmentResult_activate,
-    activation_actor, application_actor, preludeLaw, PMF.map_comp]
+    activation_actor, application_actor, preludeLaw, PMF.map_comp, Function.comp_def]
   rfl
 
 theorem carol_control_law (players : Player → app.Policy) :
@@ -130,7 +130,8 @@ theorem carol_control_law (players : Player → app.Policy) :
     List.length_singleton, Nat.zero_add, prefix_lookup, List.getElem?_cons_zero,
     List.getElem?_cons_succ, interactionInstruction, PMF.pure_map, PMF.bind_map,
     PMF.bind_bind, PMF.map_bind, environmentResult_activate,
-    activation_actor, application_actor, selection_passive, carolLaw, PMF.map_comp]
+    activation_actor, application_actor, selection_passive, carolLaw, PMF.map_comp,
+    Function.comp_def]
   rfl
 
 theorem bob_control_law (players : Player → app.Policy) :
@@ -144,7 +145,8 @@ theorem bob_control_law (players : Player → app.Policy) :
     List.length_singleton, Nat.zero_add, prefix_lookup, List.getElem?_cons_zero,
     List.getElem?_cons_succ, interactionInstruction, PMF.pure_map, PMF.bind_map,
     PMF.bind_bind, PMF.map_bind, environmentResult_activate,
-    activation_actor, application_actor, selection_passive, bobLaw, carolLaw, PMF.map_comp]
+    activation_actor, application_actor, selection_passive, bobLaw, carolLaw,
+    PMF.map_comp, Function.comp_def]
   rfl
 
 theorem alice_history_law (players : Profile model.behavioralSignature) :

@@ -42,7 +42,7 @@ theorem fair_guess_reference_value :
     value (PMF.uniformOfFintype Bool) (fun _ => ())
       (fun bit guess => correctness (.success bit) guess)
       (fun _ => PMF.pure (.success false)) = 1 / 2 := by
-  rw [value_eq_expect, expect_eq_sum]
+  rw [value_eq_expect _ _ _ _ (payoffIntegrable_of_finite _ _), expect_eq_sum]
   simp only [expect_pure, toReal_uniformOfFintype_apply, Fintype.card_bool,
     Nat.cast_ofNat, Fintype.sum_bool, correctness]
   norm_num
@@ -53,10 +53,10 @@ theorem fair_guess_reference_optimal :
     IsBayesOptimal (PMF.uniformOfFintype Bool) (fun _ => ())
       (fun bit guess => correctness (.success bit) guess)
       (fun _ => PMF.pure (.success false)) := by
-  intro signal alternative
+  refine ⟨fun _ => ResponseIntegrable.of_finite _ _ _, fun signal alternative _ => ?_⟩
   cases signal
   have reference := fair_guess_reference_value
-  rw [value_eq_expect] at reference
+  rw [value_eq_expect _ _ _ _ (payoffIntegrable_of_finite _ _)] at reference
   simpa only [localValue, Set.preimage_const_of_mem, Set.mem_singleton_iff,
     Set.indicator_univ, reference] using fair_guess_le_half alternative
 
@@ -74,11 +74,13 @@ theorem selective_advantage (outcomes : Bool → PMF Results)
         expect guesses (correctness (.success bit))) :
     1 / 2 ≤ expect ((PMF.uniformOfFintype Bool).bind outcomes)
       (fun result => utility result alice) := by
-  have bound := induced_advantage (PMF.uniformOfFintype Bool) (fun _ => ())
+  have bound := induced_advantage (PMF.uniformOfFintype Bool) (Set.toFinite _) (fun _ => ())
     (fun bit guess => correctness (.success bit) guess)
     (fun _ => PMF.pure (.success false)) (fun _ => guesses)
-    fair_guess_reference_optimal outcomes (fun result => utility result alice)
+    fair_guess_reference_optimal (fun _ => ResponseIntegrable.of_finite _ _ _) outcomes
+    (fun result => utility result alice)
     (fun bit result => correctness (.success bit) result.carol) 1
+    (fun _ _ => ⟨payoffIntegrable_of_finite _ _, payoffIntegrable_of_finite _ _⟩)
     (fun bit _ result supported => by
       rw [utility_alice, alice_success bit result supported, bob_correct bit result supported]
       simp)

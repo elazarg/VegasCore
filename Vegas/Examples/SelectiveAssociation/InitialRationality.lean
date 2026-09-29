@@ -31,7 +31,7 @@ theorem native_initial_history_value (profile : Profile nativeModel.behavioralSi
     profile (2 * nativeHorizon + 1) history.1 enough
   have value := congrArg (fun law : PMF nativeApp.ProtocolState =>
     expect law (nativeUtility alice)) law
-  rw [expect_map, native_initial_information_control history] at value
+  rw [expect_map, native_initial_information_control history, Function.comp_def] at value
   rw [value, native_initial_value]
   exact native_initial_finish_value _
 
@@ -43,6 +43,7 @@ theorem native_sequential_initial_bound (assessment : nativeModel.BehavioralAsse
   apply nativeModel.initial_value_ge_of_induced_deviation assessment
     (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)
       rational alice nativeInitialSite native_initial_history_value nativeAliceBehavior
+      (nativeUtility_continuation_integrable assessment nativeInitialSite _)
   rw [native_initial_value, native_decode_alice_deviation]
   exact native_sequential_deviation_gain assessment rational
 

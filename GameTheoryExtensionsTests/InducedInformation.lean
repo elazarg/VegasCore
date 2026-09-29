@@ -34,8 +34,7 @@ theorem reference_value : value prior observe (reportUtility id) reference = 2 /
 theorem reference_optimal : IsBayesOptimal prior observe (reportUtility id) reference := by
   intro signal alternative
   rw [localValue_eq_expect_pure]
-  apply FinDist.expect_le_of_forall
-  intro action _
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun action _ => ?_
   cases signal <;> fin_cases action <;>
     norm_num [localValue, prior, observe, reference, reportUtility, expect_eq_sum,
       toReal_uniformOfFintype_apply, toReal_pure_apply, Fin.sum_univ_succ]
@@ -86,7 +85,7 @@ observer can now report every fact correctly, making the score difference zero. 
 example :
     expect (prior.bind fun state => (PMF.pure state).map fun guess => (state, guess))
       (fun result => 1 - reportUtility id result.1 result.2) = 0 := by
-  simp only [PMF.pure_map, FinDist.expect_bind, expect_pure,
+  simp only [PMF.pure_map, expect_bind_of_finite, expect_pure,
     reportUtility, id_eq, ↓reduceIte, sub_self, expect_constant]
 
 end GameTheoryExtensionsTests.InducedInformation

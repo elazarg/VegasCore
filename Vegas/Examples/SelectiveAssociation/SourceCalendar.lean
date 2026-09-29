@@ -87,6 +87,20 @@ def payoff {Claim : Type} [Fintype Claim] (who : Player) (history : (arena Claim
   utility (history.state.elim ⟨.failure, .failure, .failure⟩
     (fun control => results control.execution.application)) who
 
+/-- Source payoffs read only the finitely many results. -/
+theorem payoff_integrable {Claim : Type} [Fintype Claim] (who : Player)
+    (μ : PMF (arena Claim).History) : PayoffIntegrable μ (payoff who) := by
+  unfold payoff
+  exact payoffIntegrable_of_finite_summary μ _ (fun result => utility result who)
+
+/-- Every continuation of a source payoff is integrable. -/
+theorem continuation_integrable {Claim : Type} [Fintype Claim]
+    (assessment : (model Claim).BehavioralAssessment) {who : Player}
+    (site : (model Claim).InformationSite who) (fuel : Nat)
+    (policy : (model Claim).BehavioralPolicy who) :
+    (assessment.continuationContext site (payoff who) fuel).IntegrableAt policy :=
+  payoff_integrable who _
+
 /-- Only a publicly recorded Alice certificate directs the prescribed guess.
 Private claims, including request-shaped messages, remain observations. -/
 def publicGuess {Claim : Type} (view : (application Claim).PlayerView) : Bool :=

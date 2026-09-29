@@ -33,7 +33,7 @@ theorem preserves_fixed_payoff_sequentialEquilibria_iff_commonMaximizer
             (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
         observedLaw prior id fact target = observedLaw prior observe fact source) ↔
       HasCommonMaximizer prior observe (fun state => utility (fact state)) := by
-  rw [← preserves_fixed_payoff_iff_commonMaximizer prior observe fact utility]
+  rw [← preserves_fixed_payoff_iff_commonMaximizer prior (Set.toFinite _) observe fact utility]
   constructor
   · intro preserves source optimal
     obtain ⟨target, equilibrium, lawEq⟩ := preserves (assessment prior observe source)

@@ -23,31 +23,30 @@ variable (prior : PMF Secret) (full : ∀ secret, secret ∈ prior.support)
 theorem source_reach_receiver
     (profile : Profile (model (Decision := Decision) prior false).behavioralSignature)
     (secret : Secret) :
-    ((model prior false).historyReachWeight profile (receiverHistory prior full false secret false)).toReal = (prior secret).toReal := by
+    (model prior false).historyReachWeight profile
+      (receiverHistory prior full false secret false) = prior secret := by
   classical
-  change (((model prior false).runBehavioralFrom profile 2 (arena prior false).initHistory) (receiverHistory prior full false secret false)).toReal = _
+  change ((model prior false).runBehavioralFrom profile 2 (arena prior false).initHistory)
+    (receiverHistory prior full false secret false) = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
-    (model prior false) (single prior false),
-    ← FinDist.prob_map_of_injective History.state (state_injective prior full false), run_states]
+    (model prior false) (single prior false)]
+  refine (pmf_map_apply_of_injective _ (state_injective prior full false) _).symm.trans ?_
+  rw [run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
-    PMF.pure_bind, initHistory, kernel, PMF.bind_map, Bool.false_and,
-    PMF.map_const]
-  change ((prior.map (fun secret => State.receiver (Decision := Decision) secret false)) (.receiver secret false)).toReal = _
-  exact FinDist.prob_map_of_injective _ (fun _ _ same => (State.receiver.inj same).1) _ _
-
-variable [Finite Decision]
+    PMF.pure_bind, initHistory, kernel, PMF.bind_map, Bool.false_and, Function.comp_def,
+    pmf_map_fun_const, pmf_bind_pure_eq_map]
+  change (prior.map (fun secret => State.receiver (Decision := Decision) secret false))
+    (.receiver secret false) = _
+  exact pmf_map_apply_of_injective _ (fun _ _ same => (State.receiver.inj same).1) _
 
 theorem source_mass_receiver
     (profile : Profile (model (Decision := Decision) prior false).behavioralSignature) :
     (model prior false).informationMass profile true (receiverSilentSite prior full false) = 1 := by
-  classical
-  let : Fintype Secret := Fintype.ofEquiv
-    ((model (Decision := Decision) prior false).InformationHistory true
-      (receiverSilentSite prior full false).1) (silentHistories prior full false).symm
   unfold InformationModel.informationMass
-  rw [← (silentHistories (Decision := Decision) prior full false).sum_comp]
-  change (∑ secret, ((model prior false).historyReachWeight profile (receiverHistory prior full false secret false)).toReal) = _
-  simp only [source_reach_receiver, pmf_sum_toReal_eq_one]
+  refine ((silentHistories (Decision := Decision) prior full false).tsum_eq _).symm.trans ?_
+  change (∑' secret, (model prior false).historyReachWeight profile
+    (receiverHistory prior full false secret false)) = _
+  simp only [source_reach_receiver, PMF.tsum_coe]
 
 theorem source_consistent_belief
     (assessment : (model (Decision := Decision) prior false).BehavioralAssessment)
@@ -56,21 +55,22 @@ theorem source_consistent_belief
       prior.map (silentHistory prior full false) := by
   classical
   obtain ⟨sequence, approximates, converges⟩ := consistent
-  apply pmf_ext_toReal
-  intro history
+  ext history
   obtain ⟨secret, same⟩ := history_at_silent prior full false history
   have historyEq : history = silentHistory prior full false secret := Subtype.ext same
   subst history
   have each (n : Nat) :
-      (((sequence n).belief true (receiverSilentSite prior full false)) (silentHistory prior full false secret)).toReal = (prior secret).toReal := by
+      ((sequence n).belief true (receiverSilentSite prior full false))
+        (silentHistory prior full false secret) = prior secret := by
     rw [(approximates n).2 true (receiverSilentSite prior full false) (by
       rw [source_mass_receiver prior full]
       norm_num)]
-    change ((model prior false).historyReachWeight (sequence n).strategy (receiverHistory prior full false secret false)).toReal /
+    change (model prior false).historyReachWeight (sequence n).strategy
+      (receiverHistory prior full false secret false) /
         (model prior false).informationMass (sequence n).strategy true
           (receiverSilentSite prior full false) = _
     rw [source_reach_receiver, source_mass_receiver, div_one]
-  rw [FinDist.prob_map_of_injective _ (silentHistory_injective prior full false)]
+  rw [pmf_map_apply_of_injective _ (silentHistory_injective prior full false)]
   have limit := converges.2 true (receiverSilentSite prior full false)
     (silentHistory prior full false secret)
   simp_rw [each] at limit
