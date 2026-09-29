@@ -61,6 +61,39 @@ theorem expect_mix_of_finite {α : Type*} [Finite α] (t : ℝ) (h0 : 0 ≤ t) (
     expect (mix t h0 h1 μ ν) f = t * expect μ f + (1 - t) * expect ν f :=
   expect_mix t h0 h1 μ ν f (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
 
+/-- A payoff dominated on the support by an integrable one is integrable. -/
+theorem payoffIntegrable_of_abs_le_on_support {α : Type*} {μ : PMF α} {f g : α → ℝ}
+    (hg : PayoffIntegrable μ g) (bound : ∀ a ∈ μ.support, |f a| ≤ |g a|) :
+    PayoffIntegrable μ f := by
+  unfold PayoffIntegrable at hg ⊢
+  refine Summable.of_nonneg_of_le (fun a => mul_nonneg ENNReal.toReal_nonneg (abs_nonneg _))
+    (fun a => ?_) hg
+  by_cases supported : a ∈ μ.support
+  · exact mul_le_mul_of_nonneg_left (bound a supported) ENNReal.toReal_nonneg
+  · simp [(PMF.apply_eq_zero_iff μ a).mpr supported]
+
+/-- A kernel whose values stay within a bounded offset of an integrable outer
+payoff has an integrable bind. -/
+theorem payoffIntegrable_bind_of_abs_le {α β : Type*} (p : PMF α) (q : α → PMF β)
+    (f : β → ℝ) (g : α → ℝ) (offset : ℝ) (hg : PayoffIntegrable p g)
+    (bound : ∀ a ∈ p.support, ∀ b ∈ (q a).support, |f b| ≤ |g a| + offset) :
+    PayoffIntegrable (p.bind q) f := by
+  rw [← bindPairLaw_map_snd, payoffIntegrable_map_iff]
+  have absolute : PayoffIntegrable ((bindPairLaw p q).map Prod.fst) (fun a => |g a|) := by
+    rw [bindPairLaw_map_fst]
+    simpa only [PayoffIntegrable, abs_abs] using hg
+  have outer : PayoffIntegrable (bindPairLaw p q) (fun pair => |g pair.1| + |offset|) := by
+    have lifted := (payoffIntegrable_map_iff _ _ _).mp absolute
+    exact payoffIntegrable_add lifted (payoffIntegrable_constant _ |offset|)
+  apply payoffIntegrable_of_abs_le_on_support outer
+  rintro ⟨a, b⟩ supported
+  rw [PMF.mem_support_iff, bindPairLaw_apply, mul_ne_zero_iff] at supported
+  have within := bound a ((PMF.mem_support_iff _ _).mpr supported.1) b
+    ((PMF.mem_support_iff _ _).mpr supported.2)
+  change |f b| ≤ |(|g a| + |offset|)|
+  rw [abs_of_nonneg (add_nonneg (abs_nonneg (g a)) (abs_nonneg offset))]
+  exact within.trans (add_le_add le_rfl (le_abs_self offset))
+
 /-- On a finite carrier the tower rule needs no integrability premise. -/
 theorem expect_bind_of_finite {α β : Type*} [Finite β] (p : PMF α) (q : α → PMF β)
     (f : β → ℝ) : expect (p.bind q) f = expect p (fun a => expect (q a) f) :=
