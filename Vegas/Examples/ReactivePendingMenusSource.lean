@@ -26,13 +26,13 @@ theorem no_utility_independent_spe_compiler
     ¬ ∃ compile : Profile (PendingMenus.sourceModel admission).behavioralSignature →
         Profile model.behavioralSignature,
       ∀ preferOne,
-        (PendingMenus.sourceModel admission).IsBehavioralSubgamePerfect
+        (PendingMenus.sourceModel admission).IsSingleMoverBehavioralSubgamePerfect
           (protocol_singleMover PendingMenus.sourceProgram admission PendingMenus.sourceInitial)
           (protocol_bounded PendingMenus.sourceProgram admission PendingMenus.sourceInitial)
           (PendingMenus.sourceProtocolProfile admission)
           (protocolUtility PendingMenus.sourceProgram admission PendingMenus.sourceInitial
             (PendingMenus.sourceUtility preferOne)) →
-        model.IsBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
+        model.IsSingleMoverBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
           (app.bounded (PMF.pure initialState) 7 scheduler)
           (compile (PendingMenus.sourceProtocolProfile admission)) (payoff preferOne) := by
   rintro ⟨compile, preserves⟩

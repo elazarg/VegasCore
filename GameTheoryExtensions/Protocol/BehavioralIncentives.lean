@@ -43,12 +43,12 @@ theorem isBehavioralSubgamePerfect_iff_comparisons
     {Observation : Type uv} (observe : E.History → Observation)
     {bound : Nat} (bounded : E.BoundedHorizon bound)
     (profile : Profile M.behavioralSignature) (utility : Observation → ι → ℝ) :
-    M.IsBehavioralSubgamePerfect single bounded profile
+    M.IsSingleMoverBehavioralSubgamePerfect single bounded profile
         (fun history who => utility (observe history) who) ↔
       ∀ who deviation,
         (M.continuationComparison single observe bound profile who deviation).Holds
           (utility · who) := by
-  rw [M.isBehavioralSubgamePerfect_iff single bounded]
+  rw [M.isSingleMoverBehavioralSubgamePerfect_iff single bounded]
   simp only [continuationComparison, IncentiveComparison.Holds, expect_map]
   constructor
   · intro perfect who ⟨⟨root, proper⟩, alternative⟩
@@ -71,9 +71,9 @@ theorem behavioral_spe_preservation_iff_cone
     (sourceProfile : Profile M.behavioralSignature)
     (targetProfile : Profile N.behavioralSignature) :
     (∀ utility : Observation → ι → ℝ,
-      M.IsBehavioralSubgamePerfect single sourceBounded sourceProfile
+      M.IsSingleMoverBehavioralSubgamePerfect single sourceBounded sourceProfile
         (fun history who => utility (sourceObserve history) who) →
-      N.IsBehavioralSubgamePerfect targetSingle targetBounded targetProfile
+      N.IsSingleMoverBehavioralSubgamePerfect targetSingle targetBounded targetProfile
         (fun history who => utility (targetObserve history) who)) ↔
     ∀ who (deviation : N.ContinuationDeviation who),
       (N.continuationComparison targetSingle targetObserve targetBound targetProfile who

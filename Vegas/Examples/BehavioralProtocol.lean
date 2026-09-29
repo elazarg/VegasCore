@@ -94,10 +94,10 @@ example (replacement : BehavioralProfile program) (value : PublicationResult Boo
 example (policies : GameTheory.Profile model.behavioralSignature)
     (utility : (executionProtocol program admission initial).History → Nat → ℝ)
     (largerBound : (executionProtocol program admission initial).BoundedHorizon 10) :
-    model.IsBehavioralSubgamePerfect (protocol_singleMover program admission initial)
+    model.IsSingleMoverBehavioralSubgamePerfect (protocol_singleMover program admission initial)
       (protocol_bounded program admission initial) policies utility ↔
-    model.IsBehavioralSubgamePerfect (protocol_singleMover program admission initial)
+    model.IsSingleMoverBehavioralSubgamePerfect (protocol_singleMover program admission initial)
       largerBound policies utility :=
-  model.isBehavioralSubgamePerfect_bound_iff _ _ _ _ _
+  model.isSingleMoverBehavioralSubgamePerfect_bound_iff _ _ _ _ _
 
 end Vegas.Examples.BehavioralProtocol

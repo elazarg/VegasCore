@@ -48,8 +48,8 @@ theorem includeLaw_factor (rule : RegularSelection Action) (response : Option Ac
 
 theorem translateResponses_prescribed (rule : RegularSelection Action) (law : PMF Action) :
     rule.translateResponses (law.map some) = law := by
-  simp only [translateResponses, PMF.bind_map, translateResponse, Option.elim_some,
-    PMF.bind_pure]
+  simp only [translateResponses, PMF.bind_map, Function.comp_def, translateResponse,
+    Option.elim_some, PMF.bind_pure]
 
 /-- The branch weights are fixed before choosing the alternative response. -/
 theorem responseLaw_factor (rule : RegularSelection Action)

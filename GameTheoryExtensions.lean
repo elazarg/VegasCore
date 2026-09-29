@@ -87,7 +87,6 @@ import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 import GameTheoryExtensions.Core.PendingChoice
-import GameTheoryExtensions.Core.ZeroSum
 import GameTheoryExtensions.Core.RegularChoice
 import GameTheoryExtensions.Core.RegularChoiceSimulation
 import GameTheoryExtensions.Math.Probability.ConditionalSymmetry

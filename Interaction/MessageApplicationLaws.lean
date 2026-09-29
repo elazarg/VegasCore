@@ -68,7 +68,8 @@ theorem step_environment_pool_receipts (state : app.State)
     (command : app.EnvironmentCommand) :
     (app.step state (.environment command)).map (fun next => (next.pool, next.receipts)) =
       PMF.pure (state.pool, state.receipts) := by
-  simp [step, PMF.map_comp, Function.comp_def]
+  simp only [step, PMF.map_comp, Function.comp_def]
+  exact PMF.map_const _ _
 
 /-- A native supported path records every supplied command, including commands
 whose application effect is a stutter. It does not assert any service bound. -/

@@ -270,7 +270,7 @@ theorem playerStep_native [DecidableEq Principal] (who : Principal)
       | none => PMF.pure execution.native
       | some action => app.step execution.native action := by
   cases hcommand : command.toAction app who <;>
-    simp [playerStep, advance, hcommand, PMF.map_bind]
+    simp [playerStep, advance, hcommand, PMF.map_bind, PMF.pure_map]
 
 /-- Recording an environment command preserves the native transition law. -/
 theorem environmentStep_native [DecidableEq Principal]
@@ -281,7 +281,7 @@ theorem environmentStep_native [DecidableEq Principal]
       | none => PMF.pure execution.native
       | some action => app.step execution.native action := by
   cases hcommand : command.toAction <;>
-    simp [environmentPolicyStep, advance, hcommand, PMF.map_bind]
+    simp [environmentPolicyStep, advance, hcommand, PMF.map_bind, PMF.pure_map]
 
 theorem playerStep_history_self [DecidableEq Principal]
     (who : Principal) (execution : app.PolicyExecution) (command : app.PlayerCommand)

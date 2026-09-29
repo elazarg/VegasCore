@@ -29,26 +29,26 @@ theorem interaction_includeLatest_environment
         (runtime.reactiveLatest leaks event who
           (execution.observeEnvironment (runtime.reactiveApplication leaks))) := by
   simp only [interactionStep, interactionInstruction,
-    GameTheory.Math.Probability.PMF.pure_bind, ReactiveApplication.dispatch]
+    PMF.pure_bind, ReactiveApplication.dispatch]
   have inactive : (runtime.reactiveLatest leaks event who
       (execution.observeEnvironment (runtime.reactiveApplication leaks))).actor?
         (runtime.reactiveApplication leaks) = none := by
     unfold reactiveLatest
     split <;> rfl
   rw [inactive]
-  change (_ : GameTheory.Math.Probability.PMF _).bind
-    GameTheory.Math.Probability.PMF.pure = _
-  exact GameTheory.Math.Probability.PMF.bind_pure _
+  change (_ : PMF _).bind
+    PMF.pure = _
+  exact PMF.bind_pure _
 
 theorem reactiveLatest_step_pure (who : Player) (event : graph.EventId)
     (execution : (runtime.reactiveApplication leaks).Execution) :
     ∃ next, execution.environmentStep (runtime.reactiveApplication leaks)
       (runtime.reactiveLatest leaks event who
         (execution.observeEnvironment (runtime.reactiveApplication leaks))) =
-          GameTheory.Math.Probability.PMF.pure next := by
+          PMF.pure next := by
   unfold reactiveLatest
   split <;> simp only [ReactiveApplication.Execution.environmentStep,
-    GameTheory.Math.Probability.PMF.pure_map]
+    PMF.pure_map]
   all_goals exact ⟨_, rfl⟩
 
 theorem reactive_include_playerView (execution : (runtime.reactiveApplication leaks).Execution)
@@ -56,12 +56,12 @@ theorem reactive_include_playerView (execution : (runtime.reactiveApplication le
     (found : execution.network.lookup id = some message) :
     ((execution.environmentStep (runtime.reactiveApplication leaks) (.include id)).map
       fun next => next.application.playerView who) =
-      GameTheory.Math.Probability.PMF.pure
+      PMF.pure
         (((handle runtime execution.application ⟨message.id, message.payload.call⟩).getD
           execution.application).playerView who) := by
   simp only [ReactiveApplication.Execution.environmentStep,
     ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found,
-    GameTheory.Math.Probability.PMF.pure_map]
+    PMF.pure_map]
   rfl
 
 theorem reactive_respond_playerView_congr
@@ -195,7 +195,7 @@ theorem reactive_reserved_nonmatching_playerView (who : Player) (event : graph.E
       (runtime.reactiveLatest leaks event who
         (after.observeEnvironment (runtime.reactiveApplication leaks)))).map
           fun next => next.application.playerView who) =
-      GameTheory.Math.Probability.PMF.pure
+      PMF.pure
         (match ((runtime.reactiveApplication leaks).outputs (execution.recall who)).find?
           (fun message => message.sender = who ∧ message.payload.call.event? graph = some event ∧
             (execution.observeEnvironment (runtime.reactiveApplication leaks)).Unpublished
@@ -213,7 +213,7 @@ theorem reactive_reserved_nonmatching_playerView (who : Player) (event : graph.E
           (runtime.reactiveApplication leaks) message.id) with
   | none =>
       simp only [ReactiveApplication.Execution.environmentStep,
-        GameTheory.Math.Probability.PMF.pure_map]
+        PMF.pure_map]
   | some message =>
       have good : message.sender = who ∧ message.payload.call.event? graph = some event ∧
           (execution.observeEnvironment (runtime.reactiveApplication leaks)).Unpublished
@@ -280,7 +280,7 @@ theorem reactive_reserved_playerView_congr (who : Player) (event : graph.EventId
               who (execution.network.known who)⟩ := serials.lookup_submit who _
     rw [runtime.reactive_include_playerView leaks _ who _ _ (lookup left leftSerials),
       runtime.reactive_include_playerView leaks _ who _ _ (lookup right rightSerials)]
-    exact congrArg GameTheory.Math.Probability.PMF.pure
+    exact congrArg PMF.pure
       (runtime.handle_result_playerView_congr _ _ who (left.network.nextSerial who)
         (right.network.nextSerial who) material.call.packet afterViews)
   · have nonmatching : ∀ material, response.transmission = some (.submit material) →
@@ -308,7 +308,7 @@ theorem reactive_reserved_playerView_congr (who : Player) (event : graph.EventId
         (fun message => message.sender = who ∧ message.payload.call.event? graph = some event ∧
           (left.observeEnvironment (runtime.reactiveApplication leaks)).Unpublished
             (runtime.reactiveApplication leaks) message.id) with
-    | none => exact congrArg GameTheory.Math.Probability.PMF.pure afterViews
+    | none => exact congrArg PMF.pure afterViews
     | some message =>
         have author : message.sender = who := by
           have good := List.find?_some selected
@@ -316,7 +316,7 @@ theorem reactive_reserved_playerView_congr (who : Player) (event : graph.EventId
         rcases message with ⟨⟨sender, serial⟩, packet⟩
         change sender = who at author
         subst sender
-        exact congrArg GameTheory.Math.Probability.PMF.pure
+        exact congrArg PMF.pure
           (runtime.handle_result_playerView_congr _ _ who serial serial packet.call afterViews)
 
 end Vegas.EventGraphRuntime

@@ -112,11 +112,11 @@ def payoff (final : arena.History) (_who : Unit) : ℝ :=
   PendingMenus.publicUtility true (result final.state)
 
 theorem compiled_not_spe :
-    ¬ model.IsBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
+    ¬ model.IsSingleMoverBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
       (app.bounded (PMF.pure initialState) 7 scheduler)
       (fun _ => app.encodePolicy compiled) payoff := by
   intro perfect
-  rw [InformationModel.isBehavioralSubgamePerfect_iff] at perfect
+  rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff] at perfect
   have improves := perfect (secondHistory first second) contested_isSubgameRoot ()
     (app.encodePolicy earlyPolicy)
   have updated : Profile.update (sig := model.behavioralSignature)
@@ -143,13 +143,13 @@ publication semantics are identified by `PendingMenus.source_graph_publication`.
 theorem honest_source_spe_native_failure
     (admission : CommitmentInterface PendingMenus.sourceProgram) :
     Honest PendingMenus.sourceProgram (PendingMenus.sourcePolicy ()) ∧
-      (PendingMenus.sourceModel admission).IsBehavioralSubgamePerfect
+      (PendingMenus.sourceModel admission).IsSingleMoverBehavioralSubgamePerfect
         (protocol_singleMover PendingMenus.sourceProgram admission PendingMenus.sourceInitial)
         (protocol_bounded PendingMenus.sourceProgram admission PendingMenus.sourceInitial)
         (PendingMenus.sourceProtocolProfile admission)
         (protocolUtility PendingMenus.sourceProgram admission PendingMenus.sourceInitial
           (PendingMenus.sourceUtility true)) ∧
-      ¬ model.IsBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
+      ¬ model.IsSingleMoverBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
         (app.bounded (PMF.pure initialState) 7 scheduler)
         (fun _ => app.encodePolicy compiled) payoff :=
   ⟨source_honest, PendingMenus.source_spe admission true, compiled_not_spe⟩

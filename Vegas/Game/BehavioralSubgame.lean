@@ -51,7 +51,7 @@ theorem protocol_isBehavioralSubgamePerfect_iff (program : SourceProgram Player 
     (admission : CommitmentInterface program) (initial : Config Player L Γ)
     (profile : Profile (admittedBehavioralSignature program admission))
     (utility : State L program.terminalCtx → Player → ℝ) :
-    (informationModel program admission initial).IsBehavioralSubgamePerfect
+    (informationModel program admission initial).IsSingleMoverBehavioralSubgamePerfect
         (protocol_singleMover program admission initial)
         (protocol_bounded program admission initial)
         (Profile.map (fun who => behavioralPolicyEquiv program admission initial who) profile)
@@ -63,7 +63,7 @@ theorem protocol_isBehavioralSubgamePerfect_iff (program : SourceProgram Player 
             history.state) (utility · who) ≤
           expect (ProtocolState.continuationLaw program (fun player => (profile player).1)
             history.state) (utility · who) := by
-  rw [InformationModel.isBehavioralSubgamePerfect_iff]
+  rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff]
   constructor
   · intro perfect history proper who alternative
     have bound := perfect history proper who
@@ -106,7 +106,7 @@ theorem protocol_isBehavioralSubgamePerfect_iff (setup : Setup (Player := Player
     (admission : CommitmentInterface setup.program)
     (profile : Profile (admittedBehavioralSignature setup.program admission))
     (utility : State L setup.program.terminalCtx → Player → ℝ) :
-    (setup.informationModel admission).IsBehavioralSubgamePerfect
+    (setup.informationModel admission).IsSingleMoverBehavioralSubgamePerfect
         (setup.protocol_singleMover admission) (setup.protocol_bounded admission)
         (Profile.map (fun who => setup.behavioralPolicyEquiv admission who) profile)
         (setup.protocolUtility admission utility) ↔
@@ -117,7 +117,7 @@ theorem protocol_isBehavioralSubgamePerfect_iff (setup : Setup (Player := Player
             history.state) (utility · who) ≤
           expect (setup.continuationLaw (fun player => (profile player).1)
             history.state) (utility · who) := by
-  rw [InformationModel.isBehavioralSubgamePerfect_iff]
+  rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff]
   constructor
   · intro perfect history proper who alternative
     have bound := perfect history proper who (setup.behavioralPolicyEquiv admission who alternative)

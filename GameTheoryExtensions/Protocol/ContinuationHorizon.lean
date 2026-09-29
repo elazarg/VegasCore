@@ -63,7 +63,7 @@ theorem BehavioralAssessment.continuationContext_remaining
   exact congrArg (fun outcome => GameTheory.Protocol.Context.mk outcome payoff) outcomes
 
 theorem BehavioralAssessment.sequentialEquilibrium_remaining_iff
-    [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
+    [∀ who (site : M.InformationSite who), Finite (M.InformationHistory who site.1)]
     (assessment : M.BehavioralAssessment) (antichain : M.DecisionInformationAntichain)
     (horizon : Nat) (bounded : E.BoundedHorizon horizon)
     (depth : ∀ who, M.InformationSite who → Nat)

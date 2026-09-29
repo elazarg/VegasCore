@@ -154,9 +154,9 @@ theorem prescribed_bob_zero (disclose matchBit : Bool) :
   exact initial_bob_zero disclose matchBit _
 
 theorem source_spe (matchBit : Bool) :
-    (model false).IsBehavioralSubgamePerfect single bounded (prescribed false)
+    (model false).IsSingleMoverBehavioralSubgamePerfect single bounded (prescribed false)
       (payoff matchBit) := by
-  rw [InformationModel.isBehavioralSubgamePerfect_iff]
+  rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff]
   intro history proper who alternative
   rcases source_proper_initial_or_terminal history proper with rfl | stopped
   · cases who
@@ -190,10 +190,10 @@ theorem bob_utility_sum (profile : Profile (model true).behavioralSignature) :
   rw [constant, expect_constant]
 
 theorem no_common_target_spe : ¬ ∃ profile : Profile (model true).behavioralSignature,
-    (model true).IsBehavioralSubgamePerfect single bounded profile (payoff true) ∧
-      (model true).IsBehavioralSubgamePerfect single bounded profile (payoff false) := by
+    (model true).IsSingleMoverBehavioralSubgamePerfect single bounded profile (payoff true) ∧
+      (model true).IsSingleMoverBehavioralSubgamePerfect single bounded profile (payoff false) := by
   rintro ⟨profile, matchOptimal, mismatchOptimal⟩
-  rw [InformationModel.isBehavioralSubgamePerfect_iff] at matchOptimal mismatchOptimal
+  rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff] at matchOptimal mismatchOptimal
   have first := matchOptimal (bobHistory false) (bob_proper false) true (choose true true false)
   have second := mismatchOptimal (bobHistory false) (bob_proper false) true (choose true true true)
   have firstValue := bob_deviation_value true profile
@@ -205,8 +205,8 @@ theorem no_common_target_spe : ¬ ∃ profile : Profile (model true).behavioralS
 /-- Failure already holds for an arbitrary whole-profile translator. -/
 theorem no_utility_independent_spe_translation : ¬ ∃ translate :
     Profile (model false).behavioralSignature → Profile (model true).behavioralSignature,
-    ∀ matchBit, (model false).IsBehavioralSubgamePerfect single bounded (prescribed false)
-      (payoff matchBit) → (model true).IsBehavioralSubgamePerfect single bounded
+    ∀ matchBit, (model false).IsSingleMoverBehavioralSubgamePerfect single bounded (prescribed false)
+      (payoff matchBit) → (model true).IsSingleMoverBehavioralSubgamePerfect single bounded
         (translate (prescribed false)) (payoff matchBit) := by
   rintro ⟨translate, preserves⟩
   exact no_common_target_spe ⟨translate (prescribed false),

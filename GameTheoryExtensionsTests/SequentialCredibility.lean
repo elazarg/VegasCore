@@ -34,8 +34,8 @@ theorem initial_reward_zero (replacement : (model false).BehavioralPolicy true) 
   simp [choiceLaw, Profile.update, prescribed, choose, reward, FinDist.expect_bind]
 
 theorem prescribed_spe :
-    (model false).IsBehavioralSubgamePerfect single bounded (prescribed false) payoff := by
-  rw [InformationModel.isBehavioralSubgamePerfect_iff]
+    (model false).IsSingleMoverBehavioralSubgamePerfect single bounded (prescribed false) payoff := by
+  rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff]
   intro history proper who alternative
   rcases source_proper_initial_or_terminal history proper with rfl | stopped
   · cases who

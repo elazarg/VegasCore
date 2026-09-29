@@ -338,9 +338,9 @@ def payoff (preferOne : Bool) (final : arena.History) (_who : Unit) : ℝ :=
 the source has a common SPE. This quantifies over all native policies. -/
 theorem no_common_spe :
     ¬ ∃ profile : Profile model.behavioralSignature,
-      model.IsBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
+      model.IsSingleMoverBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
         (app.bounded (PMF.pure initialState) 7 scheduler) profile (payoff true) ∧
-      model.IsBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
+      model.IsSingleMoverBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
         (app.bounded (PMF.pure initialState) 7 scheduler) profile (payoff false) := by
   rintro ⟨profile, one, two⟩
   let policy := app.decodePolicy (profile ())
@@ -354,7 +354,7 @@ theorem no_common_spe :
     funext who
     cases who
     simp [Profile.update]
-  rw [InformationModel.isBehavioralSubgamePerfect_iff] at one two
+  rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff] at one two
   have left := one (secondHistory first second) contested_isSubgameRoot ()
     (app.encodePolicy (recovery true))
   have right := two (secondHistory first second) contested_isSubgameRoot ()

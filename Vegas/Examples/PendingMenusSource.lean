@@ -158,7 +158,7 @@ def sourceProtocolProfile (admission : CommitmentInterface sourceProgram) :
 /-- The same source profile is a behavioral SPE for both public utilities,
 under either value-only or forfeiture-admitting commitment semantics. -/
 theorem source_spe (admission : CommitmentInterface sourceProgram) (preferOne : Bool) :
-    (sourceModel admission).IsBehavioralSubgamePerfect
+    (sourceModel admission).IsSingleMoverBehavioralSubgamePerfect
       (protocol_singleMover sourceProgram admission sourceInitial)
       (protocol_bounded sourceProgram admission sourceInitial)
       (sourceProtocolProfile admission)
@@ -176,12 +176,12 @@ theorem no_utility_independent_spe_compiler (admission : CommitmentInterface sou
     ¬ ∃ compile : Profile (sourceModel admission).behavioralSignature →
         Profile nativeModel.behavioralSignature,
       ∀ preferOne,
-        (sourceModel admission).IsBehavioralSubgamePerfect
+        (sourceModel admission).IsSingleMoverBehavioralSubgamePerfect
           (protocol_singleMover sourceProgram admission sourceInitial)
           (protocol_bounded sourceProgram admission sourceInitial)
           (sourceProtocolProfile admission)
           (protocolUtility sourceProgram admission sourceInitial (sourceUtility preferOne)) →
-        nativeModel.IsBehavioralSubgamePerfect
+        nativeModel.IsSingleMoverBehavioralSubgamePerfect
           (runtime.native_singleMover (PMF.pure input) [] 1 wire ordering)
           (runtime.native_bounded (PMF.pure input) [] 1 wire ordering)
           (compile (sourceProtocolProfile admission)) (nativePayoff preferOne) := by

@@ -46,7 +46,7 @@ def publicView (network : MessageNetwork Principal Payload) : PublicView Princip
 identifiers. Its sample is private to the observer and is never scheduler recall. -/
 abbrev ObservationRule (Principal Payload : Type) :=
   Principal → List (Message Principal Payload) →
-    GameTheory.Math.Probability.PMF (Finset (MessageId Principal))
+    PMF (Finset (MessageId Principal))
 
 structure PlayerView (Principal Payload : Type) where
   leaked : List (Message Principal Payload)
