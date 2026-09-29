@@ -19,10 +19,12 @@ open GameTheory.Protocol.ExecutionProtocol OffPathDisclosure SequentialCredibili
 
 theorem rational_preferred_response : (assessment limitProfile).IsSequentiallyRationalWithin
     (fun who history => SequentialCredibility.payoff history who) 3 := by
-  intro who site alternative _
+  intro who site
+  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
+    fun alternative _ => ?_⟩
   cases who
   · simp [InformationModel.BehavioralAssessment.continuationContext, Context.value,
-      SequentialCredibility.payoff]
+      Protocol.Context.ofBelief, SequentialCredibility.payoff, expect_constant]
   · have siteEq := bob_site_eq site
     subst site
     change ((assessment limitProfile).continuationContext bobSite
@@ -30,7 +32,7 @@ theorem rational_preferred_response : (assessment limitProfile).IsSequentiallyRa
       ((assessment limitProfile).continuationContext bobSite
         (fun history => reward history.state) 3).value (choose false true true)
     rw [bob_value]
-    apply FinDist.expect_le_of_forall
+    apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
     intro history _
     change reward history.state ≤ 1
     cases history.state with
@@ -52,19 +54,20 @@ theorem guessing_value (profile : Profile (model false).behavioralSignature)
         1 / 2 := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value]
   change expect (((PMF.uniformOfFintype Bool).map bobInformationHistory).bind _) _ = _
-  rw [FinDist.expect_bind, expect_map, expect_eq_sum, Fintype.sum_bool]
-  simp only [bobInformationHistory, assessment, OffPathDisclosure.payoff,
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _), expect_map, expect_eq_sum,
+    Fintype.sum_bool]
+  simp only [Function.comp_apply, bobInformationHistory, assessment, OffPathDisclosure.payoff,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
     toReal_uniformOfFintype_apply, Fintype.card_bool]
   rw [value_bob _ true (utility matchBit · true),
     value_bob _ false (utility matchBit · true)]
-  simp only [resultLaw, expect_map, Bool.false_eq_true, ↓reduceIte]
+  simp only [resultLaw, expect_map, Function.comp_def, Bool.false_eq_true, ↓reduceIte]
   have total :
       expect (choiceLaw (Profile.update profile true alternative) true (some false))
           (fun guess => utility matchBit (.done true (some guess)) true) +
       expect (choiceLaw (Profile.update profile true alternative) true (some false))
           (fun guess => utility matchBit (.done false (some guess)) true) = 1 := by
-    rw [← FinDist.expect_add]
+    rw [← expect_add_of_finite]
     calc
       _ = expect (choiceLaw (Profile.update profile true alternative) true (some false))
           (fun _ => (1 : ℝ)) := by
@@ -78,10 +81,12 @@ theorem guessing_value (profile : Profile (model false).behavioralSignature)
 theorem rational_guessing (matchBit : Bool) :
     (assessment limitProfile).IsSequentiallyRationalWithin
       (fun who history => OffPathDisclosure.payoff matchBit history who) 3 := by
-  intro who site alternative _
+  intro who site
+  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
+    fun alternative _ => ?_⟩
   cases who
   · simp [InformationModel.BehavioralAssessment.continuationContext, Context.value,
-      OffPathDisclosure.payoff, utility]
+      Protocol.Context.ofBelief, OffPathDisclosure.payoff, utility, expect_constant]
   · have siteEq := bob_site_eq site
     subst site
     change _ ≤ ((assessment limitProfile).continuationContext bobSite
