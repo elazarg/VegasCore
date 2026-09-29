@@ -27,13 +27,14 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 theorem sourceService_continuation_settlement_comparison {Parameter : Type}
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    [leaks.FiniteSupport]
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
-    (network : (runtime setup).NetworkPolicy leaks)
+    (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport]
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
@@ -95,7 +96,8 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
     who alternative)
   let repair := BindingMemory.retainedPolicy (runtime setup) leaks menu (initialLaw setup)
     count scheduler who reference policy
-  refine ⟨repair, fun belief => FinDist.expect_mono fun history _ => ?_⟩
+  refine ⟨repair, fun belief => expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)⟩
   have active := InformationModel.InformationSite.active _ site history
   obtain ⟨control, current, acting⟩ := app.control_of_active (initialLaw setup) count scheduler
     (menu.toRawHistory (initialLaw setup) count scheduler history.1) who active
@@ -156,7 +158,25 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
     (fun pair member => (related pair member).2.1)
     (fun pair member => (related pair member).2.2)
   rw [left, right] at compared
-  simp only [PMF.bind_map, FinDist.expect_bind, TerminalAudit.settlement_expect] at compared
+  dsimp only at compared
+  have settledIntegrable (law : PMF app.ProtocolState) (finite : law.support.Finite)
+      (settle : app.ProtocolState → PMF (Player → ℝ))
+      (settleFinite : ∀ outcome, (settle outcome).support.Finite) :
+      PayoffIntegrable (law.bind settle) (fun payoffs => payoffs who) :=
+    payoffIntegrable_of_finite_support _ _
+      (bind_support_finite finite fun outcome _ => settleFinite outcome)
+  have settleFinite {Observation : Type} (observe : app.ProtocolState → Observation)
+      (audit : Observation → PMF (Player → Bool)) (payoffs : app.ProtocolState → Player → ℝ)
+      (charges : Player → ℝ) (outcome : app.ProtocolState) :
+      (TerminalAudit.settlement payoffs observe audit charges outcome).support.Finite := by
+    rw [TerminalAudit.settlement, PMF.support_map]
+    exact (Set.toFinite _).image _
+  rw [expect_bind_tower _ _ _ (settledIntegrable _
+      (by rw [PMF.support_map]; exact (Set.toFinite _).image _) _ (settleFinite _ _ _ _)),
+    expect_bind_tower _ _ _ (settledIntegrable _
+      (by rw [PMF.support_map]; exact (Set.toFinite _).image _) _ (settleFinite _ _ _ _))]
+    at compared
+  simp only [expect_map, Function.comp_def, TerminalAudit.settlement_expect] at compared
   apply compared.trans_eq
   apply expect_congr_on_support
   intro final _

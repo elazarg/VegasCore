@@ -41,10 +41,6 @@ theorem sourceService_owner_assessment_comparisons
     (network : (runtime setup).NetworkPolicy leaks)
     (source : (setup.informationModel
       (CommitmentInterface.values setup.program)).BehavioralAssessment)
-    [∀ who (site : (setup.informationModel
-      (CommitmentInterface.values setup.program)).InformationSite who),
-      Fintype ((setup.informationModel
-        (CommitmentInterface.values setup.program)).InformationHistory who site.1)]
     (sourceMixed : source.IsFullyMixed)
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       (setup.informationModel (CommitmentInterface.values setup.program)) source
@@ -146,13 +142,13 @@ theorem sourceService_owner_assessment_comparisons
   have prefixEq : (((setup.informationModel admission).runBehavioral encoded
       (event.val + 1)).map History.state) = prefixLaw.map some := by
     rw [setup.encoded_prefix_state]
-    simp only [prefixLaw, PMF.bind_map, PMF.map_bind]
+    simp only [prefixLaw, PMF.bind_map, Function.comp_def, PMF.map_bind]
   obtain ⟨channel, factor⟩ := sourceService_owner_information_law setup leaks bounds values
     initialValues capacity rosters opportunities timing full network original permitted
       event owner owned visits
   have marginal := congrArg (PMF.map Prod.fst) factor
-  simp only [PMF.map_comp, PMF.map_bind, Function.comp_def,
-    PMF.map_const, PMF.bind_pure] at marginal
+  simp only [PMF.map_comp, PMF.map_bind, Function.comp_def, pmf_map_fun_const,
+    PMF.bind_pure] at marginal
   have executionMarginal : executions.map (fun execution =>
       sourceServicePrefix? setup event.val execution.application.config) =
         (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
@@ -174,7 +170,7 @@ theorem sourceService_owner_assessment_comparisons
     (setup.protocolObserve owner) (some view) imagePresent
   have fiber : fiberConditional prefixLaw (setup.protocolObserve owner ∘ some) (some view) =
       fiberConditional prefixLaw (ProtocolState.observe owner setup.program) view := by
-    apply fiberConditional_eq_of_support_fiber
+    apply PMF.fiberConditional_eq_of_support_fiber
     intro value _
     simp only [Function.comp_apply, Setup.protocolObserve, Option.map_some, Option.some.injEq]
   rw [fiber] at transported

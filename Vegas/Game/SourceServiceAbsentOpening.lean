@@ -107,7 +107,7 @@ theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Play
           (cast (congrArg EventGraph.EventField.Action outputEq) action) with silent |
             ⟨candidate, value, evidence, result, associated, owned, _⟩
         · simp only [cast_cast, cast_eq] at silent
-          simp only [silent, ↓reduceIte] at drawn
+          simp only [Function.comp_apply, silent, ↓reduceIte] at drawn
           exact app.replayPolicy_cases _ _ response drawn
         · exact (rosterOpening_none_no_opening setup leaks node _ absent candidate value result
             associated owned).elim

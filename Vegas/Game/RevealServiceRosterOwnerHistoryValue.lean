@@ -29,8 +29,9 @@ open Classical in
 theorem roster_owner_history_local_value
     (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    [leaks.FiniteSupport]
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
-    (network : (runtime setup).NetworkPolicy leaks)
+    (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport]
     (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
     (admission : CommitmentInterface setup.program)
@@ -165,7 +166,7 @@ theorem roster_owner_history_local_value
         (ProtocolState.continuationLaw setup.program decoded)) utility := by
     dsimp only [values]
     rw [unchanged, decoder]
-    simp only [Setup.protocolStep, PMF.bind_map, Setup.continuationLaw]
+    simp only [Setup.protocolStep, PMF.bind_map]
     rfl
   have residualEq : residual = PMF.deferredRemaining
       (((sourceChoiceLaw setup leaks decoded who (boundary.observe app who)) true).toReal)
@@ -189,9 +190,18 @@ theorem roster_owner_history_local_value
         List.length_take]
       have inside : slot < (rosters event).length := (List.getElem?_eq_some_iff.mp selected).1
       omega) observed law
+  have integrable : PayoffIntegrable ((law.map fun choice => choice.1.getD ⟨none⟩).bind
+      fun response => ((runtime setup).runInteractionPlan leaks players network rest
+        (execution.respond app who response)).map (application setup leaks).finished)
+      (fun final => (sourceReadout setup leaks final).elim 0 utility) := by
+    rw [← physical]
+    exact payoffIntegrable_of_finite_support _ _
+      (by rw [PMF.support_map]; exact (Set.toFinite _).image _)
   have expectation := congrArg (fun distribution => expect distribution
     (fun final => (sourceReadout setup leaks final).elim 0 utility)) physical
-  simp only [expect_map, FinDist.expect_bind] at expectation
+  simp only [expect_map] at expectation
+  rw [expect_bind_tower _ _ _ integrable] at expectation
+  simp only [expect_map, Function.comp_def] at expectation
   change expect (model.runBehavioralFrom
     (Profile.update (sig := model.behavioralSignature) baseline who
       ((baseline who).withLaw (some (past, view)) law))
