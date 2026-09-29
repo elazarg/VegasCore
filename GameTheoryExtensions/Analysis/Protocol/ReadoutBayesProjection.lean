@@ -42,7 +42,7 @@ theorem informationReadout_mass (readout : E.History → X) :
       (M.informationReadout who site readout)).toOuterMeasure {value | value.isSome}).toReal =
       M.informationMass strategy who site := by
   classical
-  rw [M.informationMass_eq_fixedDepth_probOf strategy who site depth sameDepth,
+  rw [M.informationMass_eq_fixedDepth_toOuterMeasure strategy who site depth sameDepth,
     FinDist.probOf_map]
   congr 1
   ext history

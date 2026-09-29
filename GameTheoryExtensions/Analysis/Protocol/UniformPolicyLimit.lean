@@ -19,31 +19,25 @@ open GameTheory.Math.Probability Filter
 
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} {M : InformationModel E} [Finite E.History]
+  [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
 
 omit [Fintype Player] [DecidableEq Player] in
-private theorem policy_subsequence (reference : M.BehavioralAssessment)
-    (mixed : reference.IsFullyMixed) (who : Player)
-    (policies : ℕ → M.BehavioralPolicy who) :
+private theorem policy_subsequence (who : Player) (policies : ℕ → M.BehavioralPolicy who) :
     ∃ policy : M.BehavioralPolicy who, ∃ index : ℕ → ℕ, StrictMono index ∧
       ∀ site : M.InformationSite who,
         PMFConvergesPointwise (fun n => policies (index n) site.1) (policy site.1) := by
   classical
-  let _ (site : M.InformationSite who) : Finite (M.Choice who site.1) :=
-    (mixed who site).finite
   obtain ⟨laws, index, increasing, converges⟩ :=
-    exists_subseq_pmfConvergesPointwise_pi (fun n (site : M.InformationSite who) => policies n site.1)
+    exists_subseq_pmfConvergesPointwise_pi
+      (fun n (site : M.InformationSite who) => policies n site.1)
   let policy : M.BehavioralPolicy who := fun info =>
-    if decision : ∃ history : M.InformationHistory who info,
-        ¬ E.terminal history.1.state ∧ ∃ action : E.Action who, some action ∈ M.menu who info
-    then laws ⟨info, decision⟩ else reference.strategy who info
+    if decision : M.IsDecisionInfo who info then laws ⟨info, decision⟩ else policies 0 info
   refine ⟨policy, index, increasing, ?_⟩
   intro site
-  dsimp only [policy]
-  rw [dite_eq_left site.2]
+  simp only [policy, site.2, ↓reduceDIte]
   exact converges site
 
-private theorem uniform_gain_at_site (reference : M.BehavioralAssessment)
-    (mixed : reference.IsFullyMixed)
+private theorem uniform_gain_at_site
     {sequence : ℕ → M.BehavioralAssessment} {assessment : M.BehavioralAssessment}
     (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
     (who : Player) (site : M.InformationSite who) (payoff : E.History → ℝ) (fuel : Nat)
@@ -66,12 +60,14 @@ private theorem uniform_gain_at_site (reference : M.BehavioralAssessment)
     apply sub_le_sub
     · change expect (((sequence n).continuationContext site payoff fuel).outcome alternative)
         payoff ≤ upper
-      rw [← expect_constant _ upper]
-      exact FinDist.expect_mono fun history _ => above (Set.mem_range_self history)
+      exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) upper
+        fun history _ => above (Set.mem_range_self history)
     · change lower ≤ expect (((sequence n).continuationContext site payoff fuel).outcome
         ((sequence n).strategy who)) payoff
-      rw [← expect_constant _ lower]
-      exact FinDist.expect_mono fun history _ => below (Set.mem_range_self history)
+      rw [← expect_constant (((sequence n).continuationContext site payoff fuel).outcome
+        ((sequence n).strategy who)) lower]
+      exact expect_mono (fun history _ => below (Set.mem_range_self history))
+        (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
   let error (n : ℕ) := max 0 (sSup (Set.range (gain n)))
   have nonnegative (n : ℕ) : 0 ≤ error n := le_max_left _ _
   have bound (n : ℕ) (alternative : M.BehavioralPolicy who) : gain n alternative ≤ error n :=
@@ -93,34 +89,33 @@ private theorem uniform_gain_at_site (reference : M.BehavioralAssessment)
         exact (le_max_iff.mp notSmall).resolve_left (not_le.mpr positive)
       obtain ⟨value, ⟨alternative, rfl⟩, greater⟩ := exists_lt_of_lt_csSup
         (show (Set.range (gain (first n))).Nonempty from
-          ⟨_, Set.mem_range_self (reference.strategy who)⟩) (show epsilon / 2 <
+          ⟨_, Set.mem_range_self ((sequence (first n)).strategy who)⟩) (show epsilon / 2 <
           sSup (Set.range (gain (first n))) by linarith)
       exact ⟨alternative, greater⟩
     choose alternatives greater using deviations
     obtain ⟨alternative, second, secondIncreasing, policyConverges⟩ :=
-      policy_subsequence reference mixed who alternatives
+      policy_subsequence who alternatives
     have selectedConverges : BehavioralAssessmentConvergesPointwise
         (fun n => sequence (first (second n))) assessment :=
-      ⟨fun player decision => (converges.strategy player decision).subsequence
+      ⟨fun player decision => (converges.strategy player decision).subseq
           (firstIncreasing.comp secondIncreasing),
-        fun player decision => (converges.belief player decision).subsequence
+        fun player decision => (converges.belief player decision).subseq
           (firstIncreasing.comp secondIncreasing)⟩
-    have alternate := selectedConverges.context_value reference mixed site payoff fuel
+    have alternate := selectedConverges.context_value (.of_finite_history E) site payoff fuel
       (fun n => alternatives (second n)) alternative policyConverges
-    have prescribed := selectedConverges.context_value reference mixed site payoff fuel
+    have prescribed := selectedConverges.context_value (.of_finite_history E) site payoff fuel
       (fun n => (sequence (first (second n))).strategy who) (assessment.strategy who)
       (selectedConverges.strategy who)
     have limitBound := le_of_tendsto_of_tendsto tendsto_const_nhds (alternate.sub prescribed)
       (Eventually.of_forall fun n => (greater (second n)).le)
-    have optimal := rational alternative (Set.mem_univ _)
+    have optimal := rational.2.2 alternative (Set.mem_univ _)
     linarith
 
 /-- Sequential rationality of a finite assessment controls every whole
-continuation policy uniformly along any convergent assessment sequence. A fully
-mixed reference is used only to establish finiteness of reachable decision menus;
-the sequence itself need not be fully mixed, Bayesian, or sequentially rational. -/
+continuation policy uniformly along any convergent assessment sequence.
+Reachable decision menus must be finite; the sequence itself need not be fully
+mixed, Bayesian, or sequentially rational. -/
 theorem BehavioralAssessmentConvergesPointwise.exists_uniform_policy_gain_bound
-    (reference : M.BehavioralAssessment) (mixed : reference.IsFullyMixed)
     {sequence : ℕ → M.BehavioralAssessment} {assessment : M.BehavioralAssessment}
     (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
     (who : Player) (payoff : E.History → ℝ) (fuel : Nat)
@@ -134,7 +129,7 @@ theorem BehavioralAssessmentConvergesPointwise.exists_uniform_policy_gain_bound
   classical
   let _ := Fintype.ofFinite (M.InformationSite who)
   choose errors nonnegative vanishes bounds using fun site =>
-    uniform_gain_at_site reference mixed converges who site payoff fuel (rational site)
+    uniform_gain_at_site converges who site payoff fuel (rational site)
   let error (n : ℕ) := ∑ site, errors site n
   refine ⟨error, (fun n => Finset.sum_nonneg fun site _ => nonnegative site n), ?_, ?_⟩
   · simpa only [Finset.sum_const_zero] using

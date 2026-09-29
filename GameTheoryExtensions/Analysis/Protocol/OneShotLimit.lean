@@ -25,7 +25,8 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
 decision sites. This allows source behavior to be pinned at finite trembles
 even when only its limiting assessment is locally rational. -/
 theorem BehavioralAssessmentConvergesPointwise.exists_vanishing_local_gain_bound
-    (reference : M.BehavioralAssessment) (mixed : reference.IsFullyMixed)
+    [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
+    (transitions : E.FiniteTransitions)
     {sequence : ℕ → M.BehavioralAssessment} {assessment : M.BehavioralAssessment}
     (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
     (who : Player) [Finite (M.InformationSite who)]
@@ -69,7 +70,7 @@ theorem BehavioralAssessmentConvergesPointwise.exists_vanishing_local_gain_bound
     by_cases before : depth site < horizon
     · simp only [gain, ite_eq_left before]
       apply Filter.Tendsto.sub
-      · apply converges.context_value reference mixed site payoff (horizon - depth site)
+      · apply converges.context_value transitions site payoff (horizon - depth site)
         intro decision
         by_cases same : decision = site
         · subst decision
@@ -78,7 +79,7 @@ theorem BehavioralAssessmentConvergesPointwise.exists_vanishing_local_gain_bound
         · have different : decision.1 ≠ site.1 := fun equal => same (Subtype.ext equal)
           simpa only [BehavioralPolicy.withLaw_of_ne _ _ _ different] using
             converges.strategy who decision
-      · exact converges.context_value reference mixed site payoff (horizon - depth site)
+      · exact converges.context_value transitions site payoff (horizon - depth site)
           (fun n => (sequence n).strategy who) (assessment.strategy who)
           (converges.strategy who)
     · simp only [gain, ite_eq_right before]

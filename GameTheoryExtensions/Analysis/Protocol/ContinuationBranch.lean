@@ -101,7 +101,7 @@ theorem continuationBranch_probability [Finite E.History]
     ((M.runBehavioral profile (depth + fuel)).toOuterMeasure (M.continuationBranch who site)).toReal =
       M.informationMass profile who site := by
   classical
-  rw [M.informationMass_eq_fixedDepth_probOf profile who site depth sameDepth]
+  rw [M.informationMass_eq_fixedDepth_toOuterMeasure profile who site depth sameDepth]
   unfold runBehavioral
   rw [M.runBehavioralFrom_add, FinDist.toReal_toOuterMeasure_bind, ← expect_indicator]
   apply expect_congr_on_support
@@ -126,8 +126,8 @@ theorem switched_continuationBranch_probability [DecidableEq Player] [Finite E.H
     ((M.runBehavioral (Profile.update (sig := M.behavioralSignature) profile who
       ((profile who).switchAt M alternative site)) (depth + fuel)).toOuterMeasure (M.continuationBranch who site)).toReal = M.informationMass profile who site := by
   rw [M.continuationBranch_probability _ who site depth sameDepth fuel,
-    M.informationMass_eq_fixedDepth_probOf _ who site depth sameDepth,
+    M.informationMass_eq_fixedDepth_toOuterMeasure _ who site depth sameDepth,
     M.run_switchAt_prefix recall profile who site alternative depth sameDepth,
-    ← M.informationMass_eq_fixedDepth_probOf profile who site depth sameDepth]
+    ← M.informationMass_eq_fixedDepth_toOuterMeasure profile who site depth sameDepth]
 
 end GameTheory.Protocol.InformationModel

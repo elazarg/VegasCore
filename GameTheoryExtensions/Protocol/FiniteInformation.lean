@@ -1,14 +1,39 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Protocol.BehavioralAssessment
+import GameTheory.Protocol.DecisionRecall
 
 /-! # Finite decision information
 
-Finite legal histories imply finite decision sites. The ambient information
-carrier may remain infinite: unreachable information values are irrelevant.
+Finite legal histories imply finite decision sites and finitely many outcomes
+of every reachable transition. The ambient information carrier may remain
+infinite: unreachable information values are irrelevant.
 -/
 
 noncomputable section
+
+namespace GameTheory.Protocol.ExecutionProtocol
+
+variable {ι : Type*} (E : ExecutionProtocol ι)
+
+/-- Every legal transition from a nonterminal history has finitely many
+outcomes. Transitions from states no history reaches are unconstrained. -/
+def FiniteTransitions : Prop :=
+  ∀ history : E.History, ¬ E.terminal history.state →
+    ∀ draw : { joint : ∀ i, Option (E.Action i) // E.Legal history.state joint },
+      (E.step history.state draw).support.Finite
+
+/-- Finitely many legal histories bound every reachable transition: distinct
+outcomes of one transition extend its history to distinct histories. -/
+theorem FiniteTransitions.of_finite_history [Finite E.History] : E.FiniteTransitions := by
+  intro history _ draw
+  let extend (target : (E.step history.state draw).support) : E.History :=
+    history.extend draw.2 target.2
+  have injective : Function.Injective extend := fun first second same =>
+    Subtype.ext (congrArg ExecutionProtocol.History.state same)
+  exact Set.finite_coe_iff.mp (Finite.of_injective extend injective)
+
+end GameTheory.Protocol.ExecutionProtocol
 
 namespace GameTheory.Protocol.InformationModel
 
@@ -25,19 +50,6 @@ instance InformationSite.finite [Finite E.History] (who : ι) :
   exact first.2.choose.2.symm.trans
     ((congrArg (fun history : E.History => M.infoOf who history.trace) same).trans
       second.2.choose.2)
-
-/-- Every active player at a nonterminal legal history is at a decision site. -/
-theorem exists_informationSite_of_active (who : ι) (history : E.History)
-    (nonterminal : ¬ E.terminal history.state) (active : E.active history.state who) :
-    ∃ site : M.InformationSite who, site.1 = M.infoOf who history.trace := by
-  obtain ⟨joint, legal⟩ := E.exists_legal nonterminal
-  obtain ⟨action, same⟩ :=
-    (E.legalOption_of_legal legal who).exists_eq_some_of_active (joint who) active
-  have permitted : some action ∈ M.menu who (M.infoOf who history.trace) := by
-    rw [← same]
-    exact (M.menu_adequate who history.trace (joint who)).mpr
-      (E.legalOption_of_legal legal who)
-  exact ⟨M.informationSite who history action nonterminal permitted, rfl⟩
 
 /-- A pure plan records only legal decision sites, retaining each site's menu. -/
 abbrev DecisionPlan (who : ι) :=

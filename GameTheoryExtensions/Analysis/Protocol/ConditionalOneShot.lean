@@ -45,7 +45,7 @@ theorem own_prefix_conditional_eq_belief (depth : Nat) (site : M.InformationSite
   let updated := Profile.update (sig := M.behavioralSignature) assessment.strategy who alternative
   let antichain := recall.decisionInformationAntichain who site
   have positive : 0 < M.informationMass updated who site := by
-    rw [M.informationMass_eq_fixedDepth_probOf updated who site depth sameDepth]
+    rw [M.informationMass_eq_fixedDepth_toOuterMeasure updated who site depth sameDepth]
     exact toOuterMeasure_toReal_pos _ reached
   have originalPositive := mixed.informationMass_pos who site
   have originalBelief : assessment.belief who site =
@@ -60,7 +60,7 @@ theorem own_prefix_conditional_eq_belief (depth : Nat) (site : M.InformationSite
     (M.commonPlayerReachAt_of_decisionRecall recall assessment.strategy who site)
     positive originalPositive
   rw [originalBelief, ← sameBelief,
-    M.bayesBelief_map_eq_condOn updated who site depth sameDepth antichain positive reached]
+    M.bayesBelief_map_eq_filter updated who site depth sameDepth antichain positive reached]
   exact dite_eq_left reached
 
 include recall mixed bayes in
